@@ -22,7 +22,7 @@ Build the `base-ubi8-python-3.8` by running the following command:
 make base-ubi8-python-3.8
 ```
 
-The image will be built and pushed to the [quay.io/opendatahub/notebooks](quay.io/opendatahub/notebooks) repository.
+The image will be built and pushed to the [quay.io/opendatahub/notebooks](https://quay.io/opendatahub/notebooks) repository.
 
 You can use a different registry by overwriting the `IMAGE_REGISTRY` variable:
 
