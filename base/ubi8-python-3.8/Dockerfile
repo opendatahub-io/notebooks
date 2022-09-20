@@ -12,6 +12,8 @@ LABEL name="odh-notebook-base-ubi8-python-3.8" \
 
 WORKDIR /opt/app-root/src
 
+RUN python -m pip install pip-tools==6.8.0
+
 # install the oc client
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz \
         -o /tmp/openshift-client-linux.tar.gz && \
