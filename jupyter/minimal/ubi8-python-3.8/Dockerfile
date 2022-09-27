@@ -11,12 +11,12 @@ LABEL name="odh-notebook-jupyter-minimal-ubi8-python-3.8" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/minimal/ubi8-python-3.8" \
     io.openshift.build.image="quay.io/opendatahub/notebooks:jupyter-minimal-ubi8-python-3.8"
 
-
 WORKDIR /opt/app-root/bin
 
 COPY requirements.txt start-notebook.sh ./
 
-RUN python -m pip install -r requirements.txt && rm -f requirements.txt
+RUN python -m pip install -r requirements.txt && \
+      rm -f requirements.txt
 
 WORKDIR /opt/app-root/src
 
