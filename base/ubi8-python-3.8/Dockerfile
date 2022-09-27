@@ -10,13 +10,18 @@ LABEL name="odh-notebook-base-ubi8-python-3.8" \
       io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/base/ubi8-python-3.8" \
       io.openshift.build.image="quay.io/opendatahub/notebooks:base-ubi8-python-3.8"
 
-WORKDIR /opt/app-root/src
+WORKDIR /opt/app-root/bin
 
-RUN python -m pip install pip-tools==6.8.0
+COPY requirements.txt ./
 
-# install the oc client
+# Install Python dependencies from requirements.txt file
+RUN python -m pip install -r requirements.txt && \
+      rm -f requirements.txt
+
+# Install the oc client
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz \
         -o /tmp/openshift-client-linux.tar.gz && \
     tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
-    mv oc /opt/app-root/bin && \
     rm -f /tmp/openshift-client-linux.tar.gz
+
+WORKDIR /opt/app-root/src
