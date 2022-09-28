@@ -13,6 +13,7 @@ LABEL name="odh-notebook-jupyter-minimal-ubi8-python-3.8" \
 
 WORKDIR /opt/app-root/bin
 
+COPY utils utils/
 COPY requirements.txt start-notebook.sh ./
 
 RUN python -m pip install -r requirements.txt && \

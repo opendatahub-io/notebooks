@@ -3,7 +3,7 @@
 These images were created to be used with Open Data Hub (ODH) with the ODH Notebook Controller as the launcher.
 
 ## Container Image Layering
- 
+
 ```mermaid
 graph TB
     subgraph Main Tree
@@ -49,4 +49,25 @@ You can use a different registry by overwriting the `IMAGE_REGISTRY` variable:
 
 ```shell
 make -e IMAGE_REGISRY=quay.io/YOUR_USER/notebooks jupyter-minimal-ubi8-python-3.8
+```
+
+## Testing
+
+Deploy the notebook images in your Kubernetes environment (replace
+**jupyter-minimal-ubi8-python-3.8** with the name of your notebook):
+
+```shell
+make deploy-jupyter-minimal-ubi8-python-3.8
+```
+
+Run the test suite against this notebook:
+
+```shell
+make test-jupyter-minimal-ubi8-python-3.8
+```
+
+Clean up the environment when the tests are finished:
+
+```shell
+make undeploy-jupyter-minimal-ubi8-python-3.8
 ```
