@@ -1,6 +1,8 @@
 CONTAINER_ENGINE ?= podman
 IMAGE_REGISTRY   ?= quay.io/opendatahub/notebooks
 IMAGE_TAG        ?= $(shell git describe --tags --always --dirty || echo 'dev')
+KUBECTL_BIN      ?= bin/kubectl
+KUBECTL_VERSION  ?= v1.23.11
 
 # Build function for the notebok image:
 # 	ARG 1: Path of image context we want to build.
@@ -64,3 +66,41 @@ jupyter-minimal-ubi8-python-3.8: base-ubi8-python-3.8
 		base/ubi8-python-3.8/requirements.in jupyter/minimal/ubi8-python-3.8/requirements.in,\
 		jupyter/minimal/ubi8-python-3.8/requirements.txt)
 	$(call image,jupyter/minimal/ubi8-python-3.8,base/ubi8-python-3.8)
+
+# Download kubectl binary
+.PHONY: bin/kubectl
+bin/kubectl:
+ifeq (,$(wildcard $(KUBECTL_BIN)))
+	@mkdir -p bin
+	@curl -sSL https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/linux/amd64/kubectl > \
+		$(KUBECTL_BIN)
+	@chmod +x $(KUBECTL_BIN)
+endif
+
+# Deploy a notebook image using kustomize
+.PHONY: deploy
+deploy-%-ubi8-python-3.8: bin/kubectl
+	$(eval NOTEBOOK_DIR := $(subst -,/,$*)/ubi8-python-3.8/kustomize/base)
+	$(eval NOTEBOOK_TAG := $*-ubi8-python-3.8-$(IMAGE_TAG))
+	$(info # Deploying notebook from $(NOTEBOOK_DIR) directory...)
+	@sed -i 's,newName: .*,newName: $(IMAGE_REGISTRY),g' $(NOTEBOOK_DIR)/kustomization.yaml
+	@sed -i 's,newTag: .*,newTag: $(NOTEBOOK_TAG),g' $(NOTEBOOK_DIR)/kustomization.yaml
+	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
+
+# Undeploy a notebook image using kustomize
+.PHONY: undeploy
+undeploy-%-ubi8-python-3.8: bin/kubectl
+	$(eval NOTEBOOK_DIR := $(subst -,/,$*)/ubi8-python-3.8/kustomize/base)
+	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
+	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
+
+# Check if the notebook is ready by pinging the /api endpoint
+.PHONY: test
+test-%: bin/kubectl
+	$(eval NOTEBOOK_NAME := $(subst .,-,$*))
+	$(info # Running tests for $(NOTEBOOK_NAME) notebook...)
+	$(KUBECTL_BIN) wait --for=condition=ready pod -l app=$(NOTEBOOK_NAME) --timeout=60s
+	$(KUBECTL_BIN) port-forward svc/$(NOTEBOOK_NAME)-notebook 8888:8888 &
+	curl --retry-all-errors --retry 5 --retry-delay 5 -s \
+		http://localhost:8888/notebook/opendatahub/jovyan/api && echo
+	pkill -f "$(KUBECTL_BIN).*port-forward.*"
