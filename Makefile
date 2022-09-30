@@ -81,7 +81,9 @@ endif
 .PHONY: deploy
 deploy-%-ubi8-python-3.8: bin/kubectl
 	$(eval NOTEBOOK_DIR := $(subst -,/,$*)/ubi8-python-3.8/kustomize/base)
+ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-ubi8-python-3.8-$(IMAGE_TAG))
+endif
 	$(info # Deploying notebook from $(NOTEBOOK_DIR) directory...)
 	@sed -i 's,newName: .*,newName: $(IMAGE_REGISTRY),g' $(NOTEBOOK_DIR)/kustomization.yaml
 	@sed -i 's,newTag: .*,newTag: $(NOTEBOOK_TAG),g' $(NOTEBOOK_DIR)/kustomization.yaml
