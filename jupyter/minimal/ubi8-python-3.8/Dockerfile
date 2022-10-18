@@ -19,6 +19,10 @@ COPY requirements.txt start-notebook.sh ./
 RUN python -m pip install -r requirements.txt && \
       rm -f requirements.txt
 
+# Fix permissions to support pip in Openshift environments
+RUN chmod -R g+w /opt/app-root/lib/python3.8/site-packages && \
+      fix-permissions /opt/app-root -P
+
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
