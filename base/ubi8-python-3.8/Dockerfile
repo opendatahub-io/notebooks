@@ -12,9 +12,9 @@ LABEL name="odh-notebook-base-ubi8-python-3.8" \
 
 WORKDIR /opt/app-root/bin
 
+# Install Python dependencies from requirements.txt file
 COPY requirements.txt ./
 
-# Install Python dependencies from requirements.txt file
 RUN python -m pip install -r requirements.txt && \
       rm -f requirements.txt
 
@@ -23,5 +23,9 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/sta
         -o /tmp/openshift-client-linux.tar.gz && \
     tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
     rm -f /tmp/openshift-client-linux.tar.gz
+
+# Fix permissions to support pip in Openshift environments
+RUN chmod -R g+w /opt/app-root/lib/python3.8/site-packages && \
+      fix-permissions /opt/app-root -P
 
 WORKDIR /opt/app-root/src
