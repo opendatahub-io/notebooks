@@ -92,6 +92,22 @@ cuda-jupyter-minimal-ubi8-python-3.8: cuda-ubi8-python-3.8
 cuda-jupyter-datascience-ubi8-python-3.8: cuda-jupyter-minimal-ubi8-python-3.8
 	$(call image,$@,jupyter/datascience/ubi8-python-3.8,$<)
 
+# Build and push cuda-jupyter-pytorch-ubi8-python-3.8 image to the registry
+.PHONY: cuda-jupyter-pytorch-ubi8-python-3.8
+cuda-jupyter-pytorch-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.8
+	$(call pip_compile,bootstrap/ubi8-python-3.8,\
+		base/ubi8-python-3.8/requirements.in jupyter/minimal/ubi8-python-3.8/requirements.in jupyter/datascience/ubi8-python-3.8/requirements.in jupyter/pytorch/ubi8-python-3.8/requirements.in,\
+		jupyter/pytorch/ubi8-python-3.8/requirements.txt)
+	$(call image,$@,jupyter/pytorch/ubi8-python-3.8,$<)
+
+# Build and push cuda-jupyter-tensorflow-ubi8-python-3.8 image to the registry
+.PHONY: cuda-jupyter-tensorflow-ubi8-python-3.8
+cuda-jupyter-tensorflow-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.8
+	$(call pip_compile,bootstrap/ubi8-python-3.8,\
+		base/ubi8-python-3.8/requirements.in jupyter/minimal/ubi8-python-3.8/requirements.in jupyter/datascience/ubi8-python-3.8/requirements.in jupyter/tensorflow/ubi8-python-3.8/requirements.in,\
+		jupyter/tensorflow/ubi8-python-3.8/requirements.txt)
+	$(call image,$@,jupyter/tensorflow/ubi8-python-3.8,$<)
+
 # Download kubectl binary
 .PHONY: bin/kubectl
 bin/kubectl:
