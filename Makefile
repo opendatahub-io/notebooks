@@ -5,32 +5,34 @@ KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
 
 # Build function for the notebok image:
-# 	ARG 1: Path of image context we want to build.
-#	ARG 2: Path of the base image directory.
+#   ARG 1: Image tag name.
+#   ARG 2: Path of image context we want to build.
+#   ARG 3: Base image tag name (optional).
 define build_image
-	$(eval IMAGE_NAME := $(IMAGE_REGISTRY):$(subst /,-,$(1))-$(IMAGE_TAG))
-	$(info ## Building $(IMAGE_NAME) image...)
-	$(if $(2),
-		$(eval BASE_IMAGE_NAME := $(IMAGE_REGISTRY):$(subst /,-,$(2))-$(IMAGE_TAG))
+	$(eval IMAGE_NAME := $(IMAGE_REGISTRY):$(1)-$(IMAGE_TAG))
+	$(info # Building $(IMAGE_NAME) image...)
+	$(if $(3),
+		$(eval BASE_IMAGE_NAME := $(IMAGE_REGISTRY):$(3)-$(IMAGE_TAG))
 		$(eval BUILD_ARGS := --build-arg BASE_IMAGE=$(BASE_IMAGE_NAME)),
 		$(eval BUILD_ARGS :=)
 	)
-	$(CONTAINER_ENGINE) build -t $(IMAGE_NAME) $(BUILD_ARGS) $(1)
+	$(CONTAINER_ENGINE) build -t $(IMAGE_NAME) $(BUILD_ARGS) $(2)
 endef
 
 # Push function for the notebok image:
 # 	ARG 1: Path of image context we want to build.
 define push_image
 	$(eval IMAGE_NAME := $(IMAGE_REGISTRY):$(subst /,-,$(1))-$(IMAGE_TAG))
-	$(info ## Pushing $(IMAGE_NAME) image...)
+	$(info # Pushing $(IMAGE_NAME) image...)
 	$(CONTAINER_ENGINE) push $(IMAGE_NAME)
 endef
 
 # Build and push the notebook images:
-#   ARG 1: Path of image context we want to build.
-#   ARG 2: Path of the base image directory.
+#   ARG 1: Image tag name.
+#   ARG 2: Path of image context we want to build.
+#   ARG 3: Base image tag name (optional).
 define image
-	$(call build_image,$(1),$(2))
+	$(call build_image,$(1),$(2),$(3))
 	$(call push_image,$(1))
 endef
 
@@ -45,27 +47,27 @@ define pip_compile
 		pip-compile -q --generate-hashes --allow-unsafe --output-file=- - <<< $$(cat $(2)) > $(3)
 endef
 
-# Build bootstrap/ubi8-python-3.8 image, used to generate the corresponding
+# Build bootstrap-ubi8-python-3.8, used to generate the corresponding
 # requirements.txt file for the notebooks images
 .PHONY: bootstrap-ubi8-python-3.8
 bootstrap-ubi8-python-3.8:
-	$(call build_image,bootstrap/ubi8-python-3.8)
+	$(call build_image,$@,bootstrap/ubi8-python-3.8)
 
-# Build and push base/ubi8-python-3.8 image to the registry
+# Build and push base-ubi8-python-3.8 image to the registry
 .PHONY: base-ubi8-python-3.8
 base-ubi8-python-3.8: bootstrap-ubi8-python-3.8
 	$(call pip_compile,bootstrap/ubi8-python-3.8,\
 		base/ubi8-python-3.8/requirements.in,\
 		base/ubi8-python-3.8/requirements.txt)
-	$(call image,base/ubi8-python-3.8)
+	$(call image,$@,base/ubi8-python-3.8)
 
-# Build and push jupyter/minimal-ubi8-python-3.8 image to the registry
+# Build and push jupyter-minimal-ubi8-python-3.8 image to the registry
 .PHONY: jupyter-minimal-ubi8-python-3.8
 jupyter-minimal-ubi8-python-3.8: base-ubi8-python-3.8
 	$(call pip_compile,bootstrap/ubi8-python-3.8,\
 		base/ubi8-python-3.8/requirements.in jupyter/minimal/ubi8-python-3.8/requirements.in,\
 		jupyter/minimal/ubi8-python-3.8/requirements.txt)
-	$(call image,jupyter/minimal/ubi8-python-3.8,base/ubi8-python-3.8)
+	$(call image,$@,jupyter/minimal/ubi8-python-3.8,$<)
 
 # Build and push jupyter-datascience-ubi8-python-3.8 image to the registry
 .PHONY: jupyter-datascience-ubi8-python-3.8
@@ -73,7 +75,22 @@ jupyter-datascience-ubi8-python-3.8: jupyter-minimal-ubi8-python-3.8
 	$(call pip_compile,bootstrap/ubi8-python-3.8,\
 		base/ubi8-python-3.8/requirements.in jupyter/minimal/ubi8-python-3.8/requirements.in jupyter/datascience/ubi8-python-3.8/requirements.in,\
 		jupyter/datascience/ubi8-python-3.8/requirements.txt)
-	$(call image,jupyter/datascience/ubi8-python-3.8,jupyter/minimal/ubi8-python-3.8)
+	$(call image,$@,jupyter/datascience/ubi8-python-3.8,$<)
+
+# Build and push cuda-ubi8-python-3.8 image to the registry
+.PHONY: cuda-ubi8-python-3.8
+cuda-ubi8-python-3.8: base-ubi8-python-3.8
+	$(call image,$@,cuda/ubi8-python-3.8,$<)
+
+# Build and push cuda-jupyter-minimal-ubi8-python-3.8 image to the registry
+.PHONY: cuda-jupyter-minimal-ubi8-python-3.8
+cuda-jupyter-minimal-ubi8-python-3.8: cuda-ubi8-python-3.8
+	$(call image,$@,jupyter/minimal/ubi8-python-3.8,$<)
+
+# Build and push cuda-jupyter-datascience-ubi8-python-3.8 image to the registry
+.PHONY: cuda-jupyter-datascience-ubi8-python-3.8
+cuda-jupyter-datascience-ubi8-python-3.8: cuda-jupyter-minimal-ubi8-python-3.8
+	$(call image,$@,jupyter/datascience/ubi8-python-3.8,$<)
 
 # Download kubectl binary
 .PHONY: bin/kubectl
@@ -88,7 +105,7 @@ endif
 # Deploy a notebook image using kustomize
 .PHONY: deploy
 deploy-%-ubi8-python-3.8: bin/kubectl
-	$(eval NOTEBOOK_DIR := $(subst -,/,$*)/ubi8-python-3.8/kustomize/base)
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi8-python-3.8/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-ubi8-python-3.8-$(IMAGE_TAG))
 endif
@@ -100,14 +117,14 @@ endif
 # Undeploy a notebook image using kustomize
 .PHONY: undeploy
 undeploy-%-ubi8-python-3.8: bin/kubectl
-	$(eval NOTEBOOK_DIR := $(subst -,/,$*)/ubi8-python-3.8/kustomize/base)
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi8-python-3.8/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
 # Check if the notebook is ready by pinging the /api endpoint
 .PHONY: test
 test-%: bin/kubectl
-	$(eval NOTEBOOK_NAME := $(subst .,-,$*))
+	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
 	$(info # Running tests for $(NOTEBOOK_NAME) notebook...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod -l app=$(NOTEBOOK_NAME) --timeout=300s
 	$(KUBECTL_BIN) port-forward svc/$(NOTEBOOK_NAME)-notebook 8888:8888 &
