@@ -4,89 +4,78 @@ These images were created to be used with Open Data Hub (ODH) with the ODH Noteb
 
 ## Container Image Layering
 
+The different notebooks images available are built in this order:
+
 ```mermaid
 graph TB
-    subgraph Main Tree
-    %% base
-    ubi8py38(UBI8 Python 3.8)-->base-ubi8py38("Notebooks Base<br/>(base-ubi8-python-3.8)");
-    base-ubi8py38("Notebooks Base<br/>(base-ubi8-python-3.8)")--> minimal("Minimal Notebook<br/>(jupyter-minimal-ubi8-python-3.8)");
-    minimal("Minimal Notebook<br/>(jupyter-minimal-ubi8-python-3.8)")--> datascience("Data Science Notebook<br/>(jupyter-datascience-ubi8-python-3.8)");
+    subgraph Notebooks
+        %% Nodes
+        ubi8-python-3.8(UBI8 Python 3.8);
+        base-ubi8-python-3.8("Notebooks Base<br/>(base-ubi8-python-3.8)");
+        jupyter-minimal-ubi8-python-3.8("Minimal Notebook<br/>(jupyter-minimal-ubi8-python-3.8)");
+        jupyter-datascience-ubi8-python-3.8("Data Science Notebook<br/>(jupyter-datascience-ubi8-python-3.8)");
+
+        %% Edges
+        ubi8-python-3.8 --> base-ubi8-python-3.8;
+        base-ubi8-python-3.8 --> jupyter-minimal-ubi8-python-3.8;
+        jupyter-minimal-ubi8-python-3.8 --> jupyter-datascience-ubi8-python-3.8;
+    end
+
+    subgraph CUDA
+        %% Nodes
+        cuda-ubi8-python-3.8("CUDA Notebooks Base<br/>(cuda-ubi8-python-3.8)");
+        cuda-jupyter-minimal-ubi8-python-3.8("CUDA Minimal Notebook<br/>(cuda-jupyter-minimal-ubi8-python-3.8)");
+        cuda-jupyter-datascience-ubi8-python-3.8("CUDA Data Science Notebook<br/>(cuda-jupyter-datascience-ubi8-python-3.8)");
+
+        %% Edges
+        base-ubi8-python-3.8 --> cuda-ubi8-python-3.8;
+        cuda-ubi8-python-3.8 --> cuda-jupyter-minimal-ubi8-python-3.8;
+        cuda-jupyter-minimal-ubi8-python-3.8 --> cuda-jupyter-datascience-ubi8-python-3.8;
     end
 ```
 
-### Building base-ubi8-python-3.8 image
+## Building
 
-We use the Red Hat UBI image [registry.access.redhat.com/ubi8/python-38](https://catalog.redhat.com/software/containers/ubi8/python-38/5dde9cacbed8bd164a0af24a) as builder image for the notebook base.
+The following notebook images are available:
 
-Build the `base-ubi8-python-3.8` by running the following command:
+- jupyter-minimal-ubi8-python-3.8
+- jupyter-datascience-ubi8-python-3.8
+- cuda-jupyter-minimal-ubi8-python-3.8
+- cuda-jupyter-datascience-ubi8-python-3.8
+
+If you want to manually build a notebook image, you can use the following
+command:
 
 ```shell
-make base-ubi8-python-3.8
+make ${NOTEBOOK_NAME}
 ```
 
-The image will be built and pushed to the [quay.io/opendatahub/notebooks](https://quay.io/opendatahub/notebooks) repository.
+The image will be built and pushed to the
+[quay.io/opendatahub/notebooks](https://quay.io/opendatahub/notebooks)
+repository.
 
 You can use a different registry by overwriting the `IMAGE_REGISTRY` variable:
 
 ```shell
-make -e IMAGE_REGISRY=quay.io/YOUR_USER/notebooks base-ubi8-python-3.8
-```
-
-### Building jupyter-minimal-ubi8-python-3.8 image
-
-The jupyter-minimal-ubi8-python-3.8 is a lightweight image for running the Jupyter notebook server.
-
-We use the base-ubi8-python-3.8 image [quay.io/opendatahub/notebooks:base-ubi8-python-3.8](https://quay.io/repository/opendatahub/notebooks?tab=tags) as the base image.
-
-Build the `jupyter-minimal-ubi8-python-3.8` by running the following command:
-
-```shell
-make jupyter-minimal-ubi8-python-3.8
-```
-
-The image will be built and pushed to the [quay.io/opendatahub/notebooks](https://quay.io/opendatahub/notebooks) repository.
-
-You can use a different registry by overwriting the `IMAGE_REGISTRY` variable:
-
-```shell
-make -e IMAGE_REGISRY=quay.io/YOUR_USER/notebooks jupyter-minimal-ubi8-python-3.8
-```
-
-### Building jupyter-datascience-ubi8-python-3.8 image
-
-The jupyter-datascience-ubi8-python-3.8 notebook image includes a list of generic datascience packages.
-
-Build the `jupyter-datascience-ubi8-python-3.8` by running the following command:
-
-```shell
-make jupyter-datascience-ubi8-python-3.8
-```
-
-The image will be built and pushed to the [quay.io/opendatahub/notebooks](https://quay.io/opendatahub/notebooks) repository.
-
-You can use a different registry by overwriting the `IMAGE_REGISTRY` variable:
-
-```shell
-make -e IMAGE_REGISRY=quay.io/YOUR_USER/notebooks jupyter-datascience-ubi8-python-3.8
+make ${NOTEBOOK_NAME} -e IMAGE_REGISRY=quay.io/${YOUR_USER}/notebooks
 ```
 
 ## Testing
 
-Deploy the notebook images in your Kubernetes environment (replace
-**jupyter-minimal-ubi8-python-3.8** with the name of your notebook):
+Deploy the notebook images in your Kubernetes environment:
 
 ```shell
-make deploy-jupyter-minimal-ubi8-python-3.8
+make deploy-${NOTEBOOK_NAME}
 ```
 
 Run the test suite against this notebook:
 
 ```shell
-make test-jupyter-minimal-ubi8-python-3.8
+make test-${NOTEBOOK_NAME}
 ```
 
 Clean up the environment when the tests are finished:
 
 ```shell
-make undeploy-jupyter-minimal-ubi8-python-3.8
+make undeploy-${NOTEBOOK_NAME}
 ```
