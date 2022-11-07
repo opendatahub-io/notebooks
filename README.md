@@ -26,11 +26,15 @@ graph TB
         cuda-ubi8-python-3.8("CUDA Notebooks Base<br/>(cuda-ubi8-python-3.8)");
         cuda-jupyter-minimal-ubi8-python-3.8("CUDA Minimal Notebook<br/>(cuda-jupyter-minimal-ubi8-python-3.8)");
         cuda-jupyter-datascience-ubi8-python-3.8("CUDA Data Science Notebook<br/>(cuda-jupyter-datascience-ubi8-python-3.8)");
+        cuda-jupyter-pytorch-ubi8-python-3.8("CUDA PyTorch Notebook<br/>(cuda-jupyter-pytorch-ubi8-python-3.8)");
+        cuda-jupyter-tensorflow-ubi8-python-3.8("CUDA TensorFlow Notebook<br/>(cuda-jupyter-tensorflow-ubi8-python-3.8)");
 
         %% Edges
         base-ubi8-python-3.8 --> cuda-ubi8-python-3.8;
         cuda-ubi8-python-3.8 --> cuda-jupyter-minimal-ubi8-python-3.8;
         cuda-jupyter-minimal-ubi8-python-3.8 --> cuda-jupyter-datascience-ubi8-python-3.8;
+        cuda-jupyter-datascience-ubi8-python-3.8 --> cuda-jupyter-pytorch-ubi8-python-3.8;
+        cuda-jupyter-datascience-ubi8-python-3.8 --> cuda-jupyter-tensorflow-ubi8-python-3.8;
     end
 ```
 
@@ -42,6 +46,8 @@ The following notebook images are available:
 - jupyter-datascience-ubi8-python-3.8
 - cuda-jupyter-minimal-ubi8-python-3.8
 - cuda-jupyter-datascience-ubi8-python-3.8
+- cuda-jupyter-pytorch-ubi8-python-3.8
+- cuda-jupyter-tensorflow-ubi8-python-3.8
 
 If you want to manually build a notebook image, you can use the following
 command:
