@@ -85,3 +85,8 @@ Clean up the environment when the tests are finished:
 ```shell
 make undeploy-${NOTEBOOK_NAME}
 ```
+
+
+## Note
+
+This repository includes the n-1 packages from the main (latest) branch, in order to provide the option for the user to choose via the UI version n or n-1.
