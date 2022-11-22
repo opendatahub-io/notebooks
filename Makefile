@@ -44,7 +44,7 @@ define pip_compile
 	$(info # Locking $(3) file..)
 	$(eval PY_BUILDER_IMAGE := $(IMAGE_REGISTRY):$(subst /,-,$(1))-$(IMAGE_TAG))
 	$(CONTAINER_ENGINE) run -q --rm -i --entrypoint="" $(PY_BUILDER_IMAGE) \
-		pip-compile -q --generate-hashes --allow-unsafe --output-file=- - <<< $$(cat $(2)) > $(3)
+		pip-compile -q --generate-hashes --resolver=backtracking --allow-unsafe --output-file=- - <<< $$(cat $(2)) > $(3)
 endef
 
 # Build bootstrap-ubi8-python-3.8, used to generate the corresponding
