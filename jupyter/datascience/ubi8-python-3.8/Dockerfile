@@ -18,7 +18,7 @@ RUN python -m pip install -r requirements.txt && \
     rm -f requirements.txt
 
 # Install Elyra extensions
-RUN jupyter labextension install @elyra/python-editor-extension@2.2.4 --no-build && \
+RUN jupyter labextension install @elyra/python-editor-extension@3.13.0 --no-build && \
     jupyter lab build --dev-build=False
 
 # Fix permissions to support pip in Openshift environments
