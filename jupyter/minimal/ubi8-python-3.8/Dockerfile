@@ -25,4 +25,8 @@ RUN chmod -R g+w /opt/app-root/lib/python3.8/site-packages && \
 
 WORKDIR /opt/app-root/src
 
+RUN sed -i -e "s/Python.*/$(python --version)\",/" \
+      /opt/app-root/share/jupyter/kernels/python3/kernel.json
+
 ENTRYPOINT ["start-notebook.sh"]
+
