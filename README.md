@@ -85,3 +85,5 @@ Clean up the environment when the tests are finished:
 ```shell
 make undeploy-${NOTEBOOK_NAME}
 ```
+
+For further information please see [CONTRIBUTING.md](CONTRIBUTING.md) file.
