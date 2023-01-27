@@ -1,6 +1,6 @@
 CONTAINER_ENGINE ?= podman
 IMAGE_REGISTRY   ?= quay.io/opendatahub/notebooks
-IMAGE_TAG        ?= $(shell git describe --tags --always --dirty || echo 'dev')
+IMAGE_TAG		 ?=	$(eval $(call generate_image_tag,IMAGE_TAG))
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
 
@@ -45,6 +45,16 @@ define pip_compile
 	$(eval PY_BUILDER_IMAGE := $(IMAGE_REGISTRY):$(subst /,-,$(1))-$(IMAGE_TAG))
 	$(CONTAINER_ENGINE) run -q --rm -i --entrypoint="" $(PY_BUILDER_IMAGE) \
 		pip-compile -q --generate-hashes --resolver=backtracking --allow-unsafe --output-file=- - <<< $$(cat $(2)) > $(3)
+endef
+
+# Generates the IMAGE_TAG in YYYYq_YYYYMMDD format
+define generate_image_tag
+	DATE=$(shell date +'%Y%m%d')
+	YEAR=$(shell date +'%Y')
+	$(eval QUARTER := $(shell date +'%q'))
+	$(eval QQ := $(shell echo $(QUARTER) | sed 's/1/a/g;s/2/b/g;s/3/c/g;s/4/d/g'))
+	TAG=$$(YEAR)$$(QQ)_$$(DATE)
+	$(1):=$$(TAG)
 endef
 
 # Build bootstrap-ubi8-python-3.8, used to generate the corresponding
@@ -161,6 +171,7 @@ endif
 # Deploy a notebook image using kustomize
 .PHONY: deploy8
 deploy8-%-ubi8-python-3.8: bin/kubectl
+	$(eval $(call generate_image_tag,IMAGE_TAG))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi8-python-3.8/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-ubi8-python-3.8-$(IMAGE_TAG))
@@ -172,6 +183,7 @@ endif
 
 .PHONY: deploy9
 deploy9-%-ubi9-python-3.9: bin/kubectl
+	$(eval $(call generate_image_tag,IMAGE_TAG))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi9-python-3.9/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-ubi9-python-3.9-$(IMAGE_TAG))

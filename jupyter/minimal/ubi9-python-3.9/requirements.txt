@@ -465,15 +465,15 @@ invectio==0.2.2 \
     --hash=sha256:cc1a2e69dd95ab98d90bc23fa6ad245d7f1a5f58b40cc9320c4d81786db01bdb \
     --hash=sha256:f20c8a35f1747eff5cc0a2d5222b0427f75d6096712e67ec2829f491bc5ed82e
     # via thamos
-ipykernel==6.20.2 \
-    --hash=sha256:1893c5b847033cd7a58f6843b04a9349ffb1031bc6588401cadc9adb58da428e \
-    --hash=sha256:5d0675d5f48bf6a95fd517d7b70bcb3b2c5631b2069949b5c2d6e1d7477fb5a0
+ipykernel==6.21.0 \
+    --hash=sha256:719eac0f1d86706589ee0910d6f785fd4c1ef123ab8e3466b8961c37991d0ef2 \
+    --hash=sha256:a9aaefb0cd6f44e3dcaeaafb9222862ae73831f71afd77f465fc83d6199d1888
     # via
     #   nbclassic
     #   notebook
-ipython==8.8.0 \
-    --hash=sha256:da01e6df1501e6e7c32b5084212ddadd4ee2471602e2cf3e0190f4de6b0ea481 \
-    --hash=sha256:f3bf2c08505ad2c3f4ed5c46ae0331a8547d36bf4b21a451e8ae80c0791db95b
+ipython==8.9.0 \
+    --hash=sha256:71618e82e6d59487bea059626e7c79fb4a5b760d1510d02fab1160db6fdfa1f7 \
+    --hash=sha256:9c207b0ef2d276d1bfcfeb9a62804336abbe4b170574ea061500952319b1d78c
     # via
     #   ipykernel
     #   jupyterlab
@@ -522,19 +522,20 @@ jsonschema[format-nongpl]==4.17.3 \
     #   jupyterlab-server
     #   nbformat
     #   thamos
-jupyter-client==8.0.1 \
-    --hash=sha256:3f67b1c8b7687e6db09bef10ff97669932b5e6ef6f5a8ee56d444b89022c5007 \
-    --hash=sha256:6016b874fd1111d721bc5bee30624399e876e79e6f395d1a559e6dce9fb2e1ba
+jupyter-client==8.0.2 \
+    --hash=sha256:47ac9f586dbcff4d79387ec264faf0fdeb5f14845fa7345fd7d1e378f8096011 \
+    --hash=sha256:c53731eb590b68839b0ce04bf46ff8c4f03278f5d9fe5c3b0f268a57cc2bd97e
     # via
     #   ipykernel
     #   jupyter-server
     #   nbclassic
     #   nbclient
     #   notebook
-jupyter-core==5.1.5 \
-    --hash=sha256:83064d61bb2a9bc874e8184331c117b3778c2a7e1851f60cb00d273ceb3285ae \
-    --hash=sha256:8e54c48cde1e0c8345f64bcf9658b78044ddf02b273726cea9d9f59be4b02130
+jupyter-core==5.2.0 \
+    --hash=sha256:1407cdb4c79ee467696c04b76633fc1884015fa109323365a6372c8e890cc83f \
+    --hash=sha256:4bdc2928c37f6917130c667d8b8708f20aee539d8283c6be72aabd2a4b4c83b0
     # via
+    #   ipykernel
     #   jupyter-client
     #   jupyter-server
     #   jupyterlab
@@ -869,7 +870,6 @@ nest-asyncio==1.5.6 \
     --hash=sha256:b9a953fb40dceaa587d109609098db21900182b16440652454a146cffb06e8b8 \
     --hash=sha256:d267cc1ff794403f7df692964d1d2a3fa9418ffea2a3f6859a439ff482fef290
     # via
-    #   ipykernel
     #   nbclassic
     #   notebook
 notebook==6.5.2 \
@@ -1218,9 +1218,9 @@ rfc5424-logging-handler==1.4.3 \
     --hash=sha256:9ae14073ef6d76d0c730ad6b6e3aeece841a6d413672d282876c0506dc097257 \
     --hash=sha256:eaba528e47fba3e2845d52d559885cbc27a37db42a9d265ea539b3b4452d3057
     # via thoth-common
-rich==13.2.0 \
-    --hash=sha256:7c963f0d03819221e9ac561e1bc866e3f95a02248c1234daa48954e6d381c003 \
-    --hash=sha256:f1a00cdd3eebf999a15d85ec498bfe0b1a77efe9b34f645768a54132ef444ac5
+rich==13.3.1 \
+    --hash=sha256:125d96d20c92b946b983d0d392b84ff945461e5a06d3867e9f9e575f8697b67f \
+    --hash=sha256:8aa57747f3fc3e977684f0176a88e789be314a99f99b43b75d1e9cb5dc6db9e9
     # via
     #   rich-click
     #   thamos
@@ -1383,9 +1383,9 @@ tornado==6.2 \
     #   nbdime
     #   notebook
     #   terminado
-traitlets==5.8.1 \
-    --hash=sha256:32500888f5ff7bbf3b9267ea31748fa657aaf34d56d85e60f91dda7dc7f5785b \
-    --hash=sha256:a1ca5df6414f8b5760f7c5f256e326ee21b581742114545b462b35ffe3f04861
+traitlets==5.9.0 \
+    --hash=sha256:9e6ec080259b9a5940c797d58b613b5e31441c2257b87c2e795c5228ae80d2d8 \
+    --hash=sha256:f6cde21a9c68cf756af02035f72d5a723bf607e862e7be33ece505abf4a3bad9
     # via
     #   comm
     #   ipykernel
@@ -1529,21 +1529,21 @@ yaspin==2.3.0 \
     --hash=sha256:17b5548479b3d5b30adec7a87ffcdcddb403d14a2bb86fbcee97f37951e13427 \
     --hash=sha256:547afd1a9700ac3a29a9f5591c70343bef186ed5dfb5e545a9bb0c77e561a1c9
     # via thamos
-zipp==3.11.0 \
-    --hash=sha256:83a28fcb75844b5c0cdaf5aa4003c2d728c77e05f5aeabe8e95e56727005fbaa \
-    --hash=sha256:a7a22e05929290a67401440b39690ae6563279bced5f314609d9d03798f56766
+zipp==3.12.0 \
+    --hash=sha256:73efd63936398aac78fd92b6f4865190119d6c91b531532e798977ea8dd402eb \
+    --hash=sha256:9eb0a4c5feab9b08871db0d672745b53450d7f26992fd1e4653aa43345e97b86
     # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==22.3.1 \
-    --hash=sha256:65fd48317359f3af8e593943e6ae1506b66325085ea64b706a998c6e83eeaf38 \
-    --hash=sha256:908c78e6bc29b676ede1c4d57981d490cb892eb45cd8c214ab6298125119e077
+pip==23.0 \
+    --hash=sha256:aee438284e82c8def684b0bcc50b1f6ed5e941af97fa940e83e2e8ef1a59da9b \
+    --hash=sha256:b5f88adff801f5ef052bcdef3daa31b55eb67b0fccd6d0106c206fa248e0463c
     # via
     #   micropipenv
     #   pip-tools
-setuptools==66.1.1 \
-    --hash=sha256:6f590d76b713d5de4e49fe4fbca24474469f53c83632d5d0fd056f7ff7e8112b \
-    --hash=sha256:ac4008d396bc9cd983ea483cb7139c0240a07bbc74ffb6232fceffedc6cf03a8
+setuptools==67.0.0 \
+    --hash=sha256:883131c5b6efa70b9101c7ef30b2b7b780a4283d5fc1616383cdf22c83cbefe6 \
+    --hash=sha256:9d790961ba6219e9ff7d9557622d2fe136816a264dd01d5997cfc057d804853d
     # via
     #   kubernetes
     #   pip-tools
