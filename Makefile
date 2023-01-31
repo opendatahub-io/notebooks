@@ -1,6 +1,6 @@
 CONTAINER_ENGINE ?= podman
 IMAGE_REGISTRY   ?= quay.io/opendatahub/notebooks
-IMAGE_TAG        ?= $(shell git describe --tags --always --dirty || echo 'dev')
+IMAGE_TAG		 ?=	$(eval $(call generate_image_tag,IMAGE_TAG))
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
 
@@ -45,6 +45,16 @@ define pip_compile
 	$(eval PY_BUILDER_IMAGE := $(IMAGE_REGISTRY):$(subst /,-,$(1))-$(IMAGE_TAG))
 	$(CONTAINER_ENGINE) run -q --rm -i --entrypoint="" $(PY_BUILDER_IMAGE) \
 		pip-compile -q --generate-hashes --resolver=backtracking --allow-unsafe --output-file=- - <<< $$(cat $(2)) > $(3)
+endef
+
+# Generates the IMAGE_TAG in YYYYq_YYYYMMDD format
+define generate_image_tag
+	DATE=$(shell date +'%Y%m%d')
+	YEAR=$(shell date +'%Y')
+	$(eval QUARTER := $(shell date +'%q'))
+	$(eval QQ := $(shell echo $(QUARTER) | sed 's/1/a/g;s/2/b/g;s/3/c/g;s/4/d/g'))
+	TAG=$$(YEAR)$$(QQ)_$$(DATE)
+	$(1):=$$(TAG)
 endef
 
 # Build bootstrap-ubi8-python-3.8, used to generate the corresponding
@@ -108,6 +118,46 @@ cuda-jupyter-tensorflow-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.
 		jupyter/tensorflow/ubi8-python-3.8/requirements.txt)
 	$(call image,$@,jupyter/tensorflow/ubi8-python-3.8,$<)
 
+####################################### Buildchain for Python 3.9 using ubi9 #######################################
+
+# Build bootstrap-ubi9-python-3.9, used to generate the corresponding
+# requirements.txt file for the notebooks images
+.PHONY: bootstrap-ubi9-python-3.9
+bootstrap-ubi9-python-3.9:
+	$(call build_image,$@,bootstrap/ubi9-python-3.9)
+
+# Build and push base-ubi9-python-3.9 image to the registry
+.PHONY: base-ubi9-python-3.9
+base-ubi9-python-3.9: bootstrap-ubi9-python-3.9
+	$(call pip_compile,bootstrap/ubi9-python-3.9,\
+		base/ubi9-python-3.9/requirements.in,\
+		base/ubi9-python-3.9/requirements.txt)
+	$(call image,$@,base/ubi9-python-3.9)
+
+# Build and push jupyter-minimal-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-minimal-ubi9-python-3.9
+jupyter-minimal-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call pip_compile,bootstrap/ubi9-python-3.9,\
+		base/ubi9-python-3.9/requirements.in jupyter/minimal/ubi9-python-3.9/requirements.in,\
+		jupyter/minimal/ubi9-python-3.9/requirements.txt)
+	$(call image,$@,jupyter/minimal/ubi9-python-3.9,$<)
+
+# Build and push jupyter-datascience-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-datascience-ubi9-python-3.9
+jupyter-datascience-ubi9-python-3.9: jupyter-minimal-ubi9-python-3.9
+	$(call pip_compile,bootstrap/ubi9-python-3.9,\
+		base/ubi9-python-3.9/requirements.in jupyter/minimal/ubi9-python-3.9/requirements.in jupyter/datascience/ubi9-python-3.9/requirements.in,\
+		jupyter/datascience/ubi9-python-3.9/requirements.txt)
+	$(call image,$@,jupyter/datascience/ubi9-python-3.9,$<)
+
+# Build and push jupyter-pytorch-ubi8-python-3.9 image to the registry
+.PHONY: jupyter-pytorch-ubi9-python-3.9
+jupyter-pytorch-ubi9-python-3.9: jupyter-datascience-ubi9-python-3.9
+	$(call pip_compile,bootstrap/ubi9-python-3.9,\
+		base/ubi9-python-3.9/requirements.in jupyter/minimal/ubi9-python-3.9/requirements.in jupyter/datascience/ubi9-python-3.9/requirements.in jupyter/pytorch/ubi9-python-3.9/requirements.in,\
+		jupyter/pytorch/ubi9-python-3.9/requirements.txt)
+	$(call image,$@,jupyter/pytorch/ubi9-python-3.9,$<)
+
 # Download kubectl binary
 .PHONY: bin/kubectl
 bin/kubectl:
@@ -119,8 +169,9 @@ ifeq (,$(wildcard $(KUBECTL_BIN)))
 endif
 
 # Deploy a notebook image using kustomize
-.PHONY: deploy
-deploy-%-ubi8-python-3.8: bin/kubectl
+.PHONY: deploy8
+deploy8-%-ubi8-python-3.8: bin/kubectl
+	$(eval $(call generate_image_tag,IMAGE_TAG))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi8-python-3.8/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-ubi8-python-3.8-$(IMAGE_TAG))
@@ -130,10 +181,28 @@ endif
 	@sed -i 's,newTag: .*,newTag: $(NOTEBOOK_TAG),g' $(NOTEBOOK_DIR)/kustomization.yaml
 	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
 
+.PHONY: deploy9
+deploy9-%-ubi9-python-3.9: bin/kubectl
+	$(eval $(call generate_image_tag,IMAGE_TAG))
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi9-python-3.9/kustomize/base)
+ifndef NOTEBOOK_TAG
+	$(eval NOTEBOOK_TAG := $*-ubi9-python-3.9-$(IMAGE_TAG))
+endif
+	$(info # Deploying notebook from $(NOTEBOOK_DIR) directory...)
+	@sed -i 's,newName: .*,newName: $(IMAGE_REGISTRY),g' $(NOTEBOOK_DIR)/kustomization.yaml
+	@sed -i 's,newTag: .*,newTag: $(NOTEBOOK_TAG),g' $(NOTEBOOK_DIR)/kustomization.yaml
+	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
+
 # Undeploy a notebook image using kustomize
-.PHONY: undeploy
-undeploy-%-ubi8-python-3.8: bin/kubectl
+.PHONY: undeploy8
+undeploy8-%-ubi8-python-3.8: bin/kubectl
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi8-python-3.8/kustomize/base)
+	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
+	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
+
+.PHONY: undeploy9
+undeploy9-%-ubi9-python-3.9: bin/kubectl
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi9-python-3.9/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 

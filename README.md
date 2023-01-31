@@ -6,6 +6,8 @@ These images were created to be used with Open Data Hub (ODH) with the ODH Noteb
 
 The different notebooks images available are built in this order:
 
+**Based on Python 3.8**
+
 ```mermaid
 graph TB
     subgraph Notebooks
@@ -38,6 +40,27 @@ graph TB
     end
 ```
 
+**Based on Python 3.9**
+
+```mermaid
+graph TB
+    subgraph Notebooks
+        %% Nodes
+        ubi9-python-3.9(UBI9 Python 3.9);
+        base-ubi9-python-3.9("Notebooks Base<br/>(base-ubi9-python-3.9)");
+        jupyter-minimal-ubi9-python-3.9("Minimal Notebook<br/>(jupyter-minimal-ubi9-python-3.9)");
+        jupyter-datascience-ubi9-python-3.9("Data Science Notebook<br/>(jupyter-datascience-ubi9-python-3.9)");
+        jupyter-pytorch-ubi9-python-3.9("PyTorch Notebook<br/>(jupyter-pytorch-ubi9-python-3.9)");
+
+        %% Edges
+        ubi9-python-3.9 --> base-ubi9-python-3.9;
+        base-ubi9-python-3.9 --> jupyter-minimal-ubi9-python-3.9;
+        jupyter-minimal-ubi9-python-3.9 --> jupyter-datascience-ubi9-python-3.9;
+        jupyter-datascience-ubi9-python-3.9 --> jupyter-pytorch-ubi9-python-3.9;
+    end
+
+```
+
 ## Building
 
 The following notebook images are available:
@@ -48,6 +71,9 @@ The following notebook images are available:
 - cuda-jupyter-minimal-ubi8-python-3.8
 - cuda-jupyter-datascience-ubi8-python-3.8
 - cuda-jupyter-tensorflow-ubi8-python-3.8
+- jupyter-minimal-ubi9-python-3.9
+- jupyter-datascience-ubi9-python-3.9
+- jupyter-pytorch-ubi9-python-3.9
 
 If you want to manually build a notebook image, you can use the following
 command:
@@ -63,15 +89,15 @@ repository.
 You can use a different registry by overwriting the `IMAGE_REGISTRY` variable:
 
 ```shell
-make ${NOTEBOOK_NAME} -e IMAGE_REGISRY=quay.io/${YOUR_USER}/notebooks
+make ${NOTEBOOK_NAME} -e IMAGE_REGISTRY=quay.io/${YOUR_USER}/notebooks
 ```
 
 ## Testing
 
-Deploy the notebook images in your Kubernetes environment:
+Deploy the notebook images in your Kubernetes environment using deploy8-${NOTEBOOK_NAME} for ubi8 or deploy9-${NOTEBOOK_NAME} for ubi9:
 
 ```shell
-make deploy-${NOTEBOOK_NAME}
+make deployX-${NOTEBOOK_NAME}
 ```
 
 Run the test suite against this notebook:
@@ -83,7 +109,7 @@ make test-${NOTEBOOK_NAME}
 Clean up the environment when the tests are finished:
 
 ```shell
-make undeploy-${NOTEBOOK_NAME}
+make undeployX-${NOTEBOOK_NAME}
 ```
 
 For further information please see [CONTRIBUTING.md](CONTRIBUTING.md) file.
