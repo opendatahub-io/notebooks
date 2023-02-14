@@ -59,21 +59,41 @@ graph TB
         jupyter-datascience-ubi9-python-3.9 --> jupyter-pytorch-ubi9-python-3.9;
     end
 
+    subgraph CUDA
+        %% Nodes
+        cuda-ubi9-python-3.9("CUDA Notebooks Base<br/>(cuda-ubi9-python-3.9)");
+        cuda-jupyter-minimal-ubi9-python-3.9("CUDA Minimal Notebook<br/>(cuda-jupyter-minimal-ubi9-python-3.9)");
+        cuda-jupyter-datascience-ubi9-python-3.9("CUDA Data Science Notebook<br/>(cuda-jupyter-datascience-ubi9-python-3.9)");
+        cuda-jupyter-tensorflow-ubi9-python-3.9("CUDA TensorFlow Notebook<br/>(cuda-jupyter-tensorflow-ubi9-python-3.9)");
+
+        %% Edges
+        base-ubi9-python-3.9 --> cuda-ubi9-python-3.9;
+        cuda-ubi9-python-3.9 --> cuda-jupyter-minimal-ubi9-python-3.9;
+        cuda-jupyter-minimal-ubi9-python-3.9 --> cuda-jupyter-datascience-ubi9-python-3.9;
+        cuda-jupyter-datascience-ubi9-python-3.9 --> cuda-jupyter-tensorflow-ubi9-python-3.9;
+    end
+
 ```
 
 ## Building
 
 The following notebook images are available:
 
+### Python 3.8
 - jupyter-minimal-ubi8-python-3.8
 - jupyter-datascience-ubi8-python-3.8
 - jupyter-pytorch-ubi8-python-3.8
 - cuda-jupyter-minimal-ubi8-python-3.8
 - cuda-jupyter-datascience-ubi8-python-3.8
 - cuda-jupyter-tensorflow-ubi8-python-3.8
+
+### Python 3.9
 - jupyter-minimal-ubi9-python-3.9
 - jupyter-datascience-ubi9-python-3.9
 - jupyter-pytorch-ubi9-python-3.9
+- cuda-jupyter-minimal-ubi9-python-3.9
+- cuda-jupyter-datascience-ubi9-python-3.9
+- cuda-jupyter-tensorflow-ubi9-python-3.9
 
 If you want to manually build a notebook image, you can use the following
 command:

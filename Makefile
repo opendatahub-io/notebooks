@@ -1,6 +1,6 @@
 CONTAINER_ENGINE ?= podman
 IMAGE_REGISTRY   ?= quay.io/opendatahub/notebooks
-IMAGE_TAG		 ?=	$(eval $(call generate_image_tag,IMAGE_TAG))
+IMAGE_TAG	 ?= $(eval $(call generate_image_tag,IMAGE_TAG))
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
 
@@ -61,11 +61,13 @@ endef
 # requirements.txt file for the notebooks images
 .PHONY: bootstrap-ubi8-python-3.8
 bootstrap-ubi8-python-3.8:
+	$(eval $(call generate_image_tag,IMAGE_TAG))
 	$(call build_image,$@,bootstrap/ubi8-python-3.8)
 
 # Build and push base-ubi8-python-3.8 image to the registry
 .PHONY: base-ubi8-python-3.8
 base-ubi8-python-3.8: bootstrap-ubi8-python-3.8
+	$(eval $(call generate_image_tag,IMAGE_TAG))
 	$(call pip_compile,bootstrap/ubi8-python-3.8,\
 		base/ubi8-python-3.8/requirements.in,\
 		base/ubi8-python-3.8/requirements.txt)
@@ -98,6 +100,7 @@ jupyter-pytorch-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
 # Build and push cuda-ubi8-python-3.8 image to the registry
 .PHONY: cuda-ubi8-python-3.8
 cuda-ubi8-python-3.8: base-ubi8-python-3.8
+	$(eval $(call generate_image_tag,IMAGE_TAG))
 	$(call image,$@,cuda/ubi8-python-3.8,$<)
 
 # Build and push cuda-jupyter-minimal-ubi8-python-3.8 image to the registry
@@ -124,11 +127,13 @@ cuda-jupyter-tensorflow-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.
 # requirements.txt file for the notebooks images
 .PHONY: bootstrap-ubi9-python-3.9
 bootstrap-ubi9-python-3.9:
+	$(eval $(call generate_image_tag,IMAGE_TAG))
 	$(call build_image,$@,bootstrap/ubi9-python-3.9)
 
 # Build and push base-ubi9-python-3.9 image to the registry
 .PHONY: base-ubi9-python-3.9
 base-ubi9-python-3.9: bootstrap-ubi9-python-3.9
+	$(eval $(call generate_image_tag,IMAGE_TAG))
 	$(call pip_compile,bootstrap/ubi9-python-3.9,\
 		base/ubi9-python-3.9/requirements.in,\
 		base/ubi9-python-3.9/requirements.txt)
@@ -150,13 +155,37 @@ jupyter-datascience-ubi9-python-3.9: jupyter-minimal-ubi9-python-3.9
 		jupyter/datascience/ubi9-python-3.9/requirements.txt)
 	$(call image,$@,jupyter/datascience/ubi9-python-3.9,$<)
 
-# Build and push jupyter-pytorch-ubi8-python-3.9 image to the registry
+# Build and push jupyter-pytorch-ubi9-python-3.9 image to the registry
 .PHONY: jupyter-pytorch-ubi9-python-3.9
 jupyter-pytorch-ubi9-python-3.9: jupyter-datascience-ubi9-python-3.9
 	$(call pip_compile,bootstrap/ubi9-python-3.9,\
 		base/ubi9-python-3.9/requirements.in jupyter/minimal/ubi9-python-3.9/requirements.in jupyter/datascience/ubi9-python-3.9/requirements.in jupyter/pytorch/ubi9-python-3.9/requirements.in,\
 		jupyter/pytorch/ubi9-python-3.9/requirements.txt)
 	$(call image,$@,jupyter/pytorch/ubi9-python-3.9,$<)
+
+# Build and push cuda-ubi9-python-3.9 image to the registry
+.PHONY: cuda-ubi9-python-3.9
+cuda-ubi9-python-3.9: base-ubi9-python-3.9
+	$(eval $(call generate_image_tag,IMAGE_TAG))
+	$(call image,$@,cuda/ubi9-python-3.9,$<)
+
+# Build and push cuda-jupyter-minimal-ubi9-python-3.9 image to the registry
+.PHONY: cuda-jupyter-minimal-ubi9-python-3.9
+cuda-jupyter-minimal-ubi9-python-3.9: cuda-ubi9-python-3.9
+	$(call image,$@,jupyter/minimal/ubi9-python-3.9,$<)
+
+# Build and push cuda-jupyter-datascience-ubi9-python-3.9 image to the registry
+.PHONY: cuda-jupyter-datascience-ubi9-python-3.9
+cuda-jupyter-datascience-ubi9-python-3.9: cuda-jupyter-minimal-ubi9-python-3.9
+	$(call image,$@,jupyter/datascience/ubi9-python-3.9,$<)
+
+# Build and push cuda-jupyter-tensorflow-ubi9-python-3.9 image to the registry
+.PHONY: cuda-jupyter-tensorflow-ubi9-python-3.9
+cuda-jupyter-tensorflow-ubi9-python-3.9: cuda-jupyter-datascience-ubi9-python-3.9
+	$(call pip_compile,bootstrap/ubi9-python-3.9,\
+		base/ubi9-python-3.9/requirements.in jupyter/minimal/ubi9-python-3.9/requirements.in jupyter/datascience/ubi9-python-3.9/requirements.in jupyter/tensorflow/ubi9-python-3.9/requirements.in,\
+		jupyter/tensorflow/ubi9-python-3.9/requirements.txt)
+	$(call image,$@,jupyter/tensorflow/ubi9-python-3.9,$<)
 
 # Download kubectl binary
 .PHONY: bin/kubectl
