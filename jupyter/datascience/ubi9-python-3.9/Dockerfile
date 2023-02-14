@@ -11,15 +11,13 @@ LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.9" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/datascience/ubi9-python-3.9" \
     io.openshift.build.image="quay.io/opendatahub/notebooks:jupyter-datascience-ubi9-python-3.9"
 
-# Install Python packages and Jupyterlab extensions from requirements.txt
-COPY requirements.txt ./
+# Install Python packages and Jupyterlab extensions from Pipfile.lock
+COPY Pipfile.lock ./
 
-RUN python -m pip install -r requirements.txt && \
-    rm -f requirements.txt
+RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
 
-# Install Elyra extensions
-RUN jupyter labextension install @elyra/python-editor-extension@3.14.1 --no-build && \
-    jupyter lab build --dev-build=False
+# Remove Elyra logo from JupyterLab because this is not a pure Elyra image \
+RUN sed -i 's/widget\.id === \x27jp-MainLogo\x27/widget\.id === \x27jp-MainLogo\x27 \&\& false/' /opt/app-root/share/jupyter/labextensions/@elyra/theme-extension/static/lib_index_js.*.js
 
 # Fix permissions to support pip in Openshift environments
 RUN chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \

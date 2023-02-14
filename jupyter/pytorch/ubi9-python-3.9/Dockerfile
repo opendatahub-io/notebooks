@@ -11,11 +11,10 @@ LABEL name="odh-notebook-jupyter-pytorch-ubi8-python-3.8" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/pytorch/ubi8-python-3.8" \
     io.openshift.build.image="quay.io/opendatahub/notebooks:jupyter-pytorch-ubi8-python-3.8"
 
-# Install Python packages and Jupyterlab extensions from requirements.txt
-COPY requirements.txt ./
+# Install Python packages and Jupyterlab extensions from Pipfile.lock
+COPY Pipfile.lock ./
 
-RUN python -m pip install -r requirements.txt && \
-    rm -f requirements.txt
+RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
 
 # Fix permissions to support pip in Openshift environments
 RUN chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
