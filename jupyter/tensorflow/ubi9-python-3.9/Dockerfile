@@ -11,11 +11,13 @@ LABEL name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.9" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/tensorflow/ubi8-python-3.9" \
     io.openshift.build.image="quay.io/opendatahub/notebooks:cuda-jupyter-tensorflow-ubi9-python-3.9"
 
-# Install Python packages and Jupyterlab extensions from requirements.txt
-COPY requirements.txt ./
+# Install Python packages and Jupyterlab extensions from Pipfile.lock
+COPY Pipfile.lock ./
 
-RUN python -m pip install -r requirements.txt && \
-    rm -f requirements.txt
+RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
+
+# Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
+RUN sed -i -e "s/Python.*/$(python --version)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
 
 # Fix permissions to support pip in Openshift environments
 RUN chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \

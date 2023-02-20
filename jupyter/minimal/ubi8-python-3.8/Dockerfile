@@ -14,10 +14,11 @@ LABEL name="odh-notebook-jupyter-minimal-ubi8-python-3.8" \
 WORKDIR /opt/app-root/bin
 
 COPY utils utils/
-COPY requirements.txt start-notebook.sh ./
 
-RUN python -m pip install -r requirements.txt && \
-      rm -f requirements.txt
+COPY Pipfile.lock start-notebook.sh ./
+
+# Install Python dependencies from Pipfile.lock file
+RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
 
 # Fix permissions to support pip in Openshift environments
 RUN chmod -R g+w /opt/app-root/lib/python3.8/site-packages && \
@@ -25,8 +26,8 @@ RUN chmod -R g+w /opt/app-root/lib/python3.8/site-packages && \
 
 WORKDIR /opt/app-root/src
 
-RUN sed -i -e "s/Python.*/$(python --version)\",/" \
-      /opt/app-root/share/jupyter/kernels/python3/kernel.json
+# Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
+RUN sed -i -e "s/Python.*/$(python --version)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
 
 ENTRYPOINT ["start-notebook.sh"]
 

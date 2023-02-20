@@ -12,11 +12,13 @@ LABEL name="odh-notebook-base-ubi8-python-3.8" \
 
 WORKDIR /opt/app-root/bin
 
-# Install Python dependencies from requirements.txt file
-COPY requirements.txt ./
+# Install micropipenv to deploy packages from Pipfile.lock
+RUN pip install -U "micropipenv[toml]"
 
-RUN python -m pip install -r requirements.txt && \
-      rm -f requirements.txt
+# Install Python dependencies from Pipfile.lock file
+COPY Pipfile.lock /.
+
+RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
 
 # Install the oc client
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz \

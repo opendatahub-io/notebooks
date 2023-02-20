@@ -26,7 +26,8 @@ Pull requests are the best way to propose changes to the notebooks repository:
 - Decide from which notebook you want to derive the new notebook
 - Create a proper filepath and naming to the corresponding folder
 - Add the minimum files you have to add:
-    - requirments.in with the additional packages
+    - Pipfile with the additional packages
+    - Generate the Pipfile lock by running `pipenv lock` to the corresponding pipfile directory
     - Dockefile with proper instructions
     - Kustomization objects to deploy the new notebook into an openshift cluster (Kustomization.yaml, service.yaml, statefulset.yaml)
 - Create instructions into Makefile, for example if you derive the new notebooks from minimal then the recipe should be like the following:
@@ -34,9 +35,6 @@ Pull requests are the best way to propose changes to the notebooks repository:
     # Your comment here
     .PHONY: jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8
     jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8: jupyter-minimal-ubi8-python-3.8
-	$(call pip_compile,bootstrap/ubi8-python-3.8,\
-		base/ubi8-python-3.8/requirements.in jupyter/minimal/ubi8-python-3.8/requirements.in jupyter/${NOTEBOOK_NAME}/ubi8-python-3.8/requirements.in,\
-		jupyter/${NOTEBOOK_NAME}/ubi8-python-3.8/requirements.txt)
 	$(call image,$@,jupyter/${NOTEBOOK_NAME}/ubi8-python-3.8,$<)
     ```
 - Test the changes locally, by manually running the `$ make jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8` from the terminal.
