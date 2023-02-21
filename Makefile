@@ -1,6 +1,8 @@
 CONTAINER_ENGINE ?= podman
-IMAGE_REGISTRY   ?= quay.io/opendatahub/notebooks
-IMAGE_TAG		 ?= $(eval $(call generate_image_tag,IMAGE_TAG))
+IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
+RELEASE	 		 ?= 2023a
+DATE 			 ?= $(shell date +'%Y%m%d')
+IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
 
@@ -36,20 +38,9 @@ define image
 	$(call push_image,$(1))
 endef
 
-# Generates the IMAGE_TAG in YYYYq_YYYYMMDD format
-define generate_image_tag
-	DATE=$(shell date +'%Y%m%d')
-	YEAR=$(shell date +'%Y')
-	$(eval QUARTER := $(shell date +'%q'))
-	$(eval QQ := $(shell echo $(QUARTER) | sed 's/1/a/g;s/2/b/g;s/3/c/g;s/4/d/g'))
-	TAG=$$(YEAR)$$(QQ)_$$(DATE)
-	$(1):=$$(TAG)
-endef
-
 # Build and push base-ubi8-python-3.8 image to the registry
 .PHONY: base-ubi8-python-3.8
 base-ubi8-python-3.8:
-	$(eval $(call generate_image_tag,IMAGE_TAG))
 	$(call image,$@,base/ubi8-python-3.8)
 
 # Build and push jupyter-minimal-ubi8-python-3.8 image to the registry
@@ -93,7 +84,6 @@ cuda-jupyter-tensorflow-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.
 # Build and push base-ubi9-python-3.9 image to the registry
 .PHONY: base-ubi9-python-3.9
 base-ubi9-python-3.9:
-	$(eval $(call generate_image_tag,IMAGE_TAG))
 	$(call image,$@,base/ubi9-python-3.9)
 
 # Build and push jupyter-minimal-ubi9-python-3.9 image to the registry
@@ -114,7 +104,6 @@ jupyter-pytorch-ubi9-python-3.9: jupyter-datascience-ubi9-python-3.9
 # Build and push cuda-ubi9-python-3.9 image to the registry
 .PHONY: cuda-ubi9-python-3.9
 cuda-ubi9-python-3.9: base-ubi9-python-3.9
-	$(eval $(call generate_image_tag,IMAGE_TAG))
 	$(call image,$@,cuda/ubi9-python-3.9,$<)
 
 # Build and push cuda-jupyter-minimal-ubi9-python-3.9 image to the registry
@@ -145,7 +134,6 @@ endif
 # Deploy a notebook image using kustomize
 .PHONY: deploy8
 deploy8-%-ubi8-python-3.8: bin/kubectl
-	$(eval $(call generate_image_tag,IMAGE_TAG))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi8-python-3.8/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-ubi8-python-3.8-$(IMAGE_TAG))
@@ -157,7 +145,6 @@ endif
 
 .PHONY: deploy9
 deploy9-%-ubi9-python-3.9: bin/kubectl
-	$(eval $(call generate_image_tag,IMAGE_TAG))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi9-python-3.9/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-ubi9-python-3.9-$(IMAGE_TAG))
@@ -191,3 +178,17 @@ test-%: bin/kubectl
 		http://localhost:8888/notebook/opendatahub/jovyan/api; EXIT_CODE=$$?; echo && \
 	pkill --full "^$(KUBECTL_BIN).*port-forward.*"; \
 	exit $${EXIT_CODE}
+
+# This is only for the workflow action
+.PHONY: refresh-pipfilelock-files
+refresh-pipfilelock-files:
+	cd base/ubi8-python-3.8 && pipenv lock
+	cd base/ubi9-python-3.9 && pipenv lock
+	cd jupyter/minimal/ubi8-python-3.8 && pipenv lock
+	cd jupyter/minimal/ubi9-python-3.9 && pipenv lock
+	cd jupyter/datascience/ubi8-python-3.8 && pipenv lock
+	cd jupyter/datascience/ubi9-python-3.9 && pipenv lock
+	cd jupyter/pytorch/ubi9-python-3.9 && pipenv lock
+	cd jupyter/pytorch/ubi8-python-3.8 && pipenv lock
+	cd jupyter/tensorflow/ubi8-python-3.8 && pipenv lock
+	cd jupyter/tensorflow/ubi9-python-3.9 && pipenv lock
