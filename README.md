@@ -103,13 +103,13 @@ make ${NOTEBOOK_NAME}
 ```
 
 The image will be built and pushed to the
-[quay.io/opendatahub/notebooks](https://quay.io/opendatahub/notebooks)
+[quay.io/opendatahub/workbench-images](https://quay.io/opendatahub/workbench-images)
 repository.
 
-You can use a different registry by overwriting the `IMAGE_REGISTRY` variable:
+You can overwrite `IMAGE_REGISTRY` and `RELEASE` variables to use a different registry or release tag:
 
 ```shell
-make ${NOTEBOOK_NAME} -e IMAGE_REGISTRY=quay.io/${YOUR_USER}/notebooks
+make ${NOTEBOOK_NAME} -e IMAGE_REGISTRY=quay.io/${YOUR_USER}/workbench-images -e RELEASE=2023x
 ```
 
 ## Testing
