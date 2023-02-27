@@ -3,9 +3,9 @@
 name: Weekly Pipfile.locks renewal on [2023a] branch
 
 on:
- # Triggers the workflow every Saturday at 9 am
+ # Triggers the workflow every Monday at 22pm UTC am 0 22 * * 1
  schedule:
-   - cron: "0 9 * * 6"
+   - cron: "0 22 * * 1"
 
 jobs:
   build:
@@ -22,6 +22,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: 2023a
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
 
       # Setup Python environment
       - name: Setup Python environment
