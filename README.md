@@ -51,12 +51,14 @@ graph TB
         jupyter-minimal-ubi9-python-3.9("Minimal Notebook<br/>(jupyter-minimal-ubi9-python-3.9)");
         jupyter-datascience-ubi9-python-3.9("Data Science Notebook<br/>(jupyter-datascience-ubi9-python-3.9)");
         jupyter-pytorch-ubi9-python-3.9("PyTorch Notebook<br/>(jupyter-pytorch-ubi9-python-3.9)");
+        jupyter-trustyai-ubi9-python-3.9("TrustyAI Notebook<br/>(jupyter-trustyai-ubi9-python-3.9)");
 
         %% Edges
         ubi9-python-3.9 --> base-ubi9-python-3.9;
         base-ubi9-python-3.9 --> jupyter-minimal-ubi9-python-3.9;
         jupyter-minimal-ubi9-python-3.9 --> jupyter-datascience-ubi9-python-3.9;
         jupyter-datascience-ubi9-python-3.9 --> jupyter-pytorch-ubi9-python-3.9;
+        jupyter-datascience-ubi9-python-3.9 --> jupyter-trustyai-ubi9-python-3.9;
     end
 
     subgraph CUDA
@@ -91,6 +93,7 @@ The following notebook images are available:
 - jupyter-minimal-ubi9-python-3.9
 - jupyter-datascience-ubi9-python-3.9
 - jupyter-pytorch-ubi9-python-3.9
+- jupyter-trustyai-ubi9-python-3.9
 - cuda-jupyter-minimal-ubi9-python-3.9
 - cuda-jupyter-datascience-ubi9-python-3.9
 - cuda-jupyter-tensorflow-ubi9-python-3.9

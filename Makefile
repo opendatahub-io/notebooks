@@ -121,6 +121,11 @@ cuda-jupyter-datascience-ubi9-python-3.9: cuda-jupyter-minimal-ubi9-python-3.9
 cuda-jupyter-tensorflow-ubi9-python-3.9: cuda-jupyter-datascience-ubi9-python-3.9
 	$(call image,$@,jupyter/tensorflow/ubi9-python-3.9,$<)
 
+# Build and push jupyter-trustyai-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-trustyai-ubi9-python-3.9
+jupyter-trustyai-ubi9-python-3.9: jupyter-datascience-ubi9-python-3.9
+	$(call image,$@,jupyter/trustyai/ubi9-python-3.9,$<)
+
 # Download kubectl binary
 .PHONY: bin/kubectl
 bin/kubectl:
@@ -192,3 +197,5 @@ refresh-pipfilelock-files:
 	cd jupyter/pytorch/ubi8-python-3.8 && pipenv lock
 	cd jupyter/tensorflow/ubi8-python-3.8 && pipenv lock
 	cd jupyter/tensorflow/ubi9-python-3.9 && pipenv lock
+	cd jupyter/trustyai/ubi9-python-3.9 && pipenv lock
+
