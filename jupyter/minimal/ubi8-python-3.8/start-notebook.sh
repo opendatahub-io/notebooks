@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 
 # Load bash libraries
-SCRIPT_DIR=$(dirname -- "$0")
-source ${SCRIPT_DIR}/utils/*.sh
+SCRIPT_DIR=/opt/app-root/bin
+source ${SCRIPT_DIR}/utils/process.sh
+
+if [ -f "${SCRIPT_DIR}/utils/setup-elyra.sh" ]; then
+  source ${SCRIPT_DIR}/utils/setup-elyra.sh
+fi
 
 # Initialize notebooks arguments variable
 NOTEBOOK_PROGRAM_ARGS=""
