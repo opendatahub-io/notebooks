@@ -9,7 +9,7 @@ LABEL name="odh-notebook-cuda-ubi8-python-3.8" \
       authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
       io.openshift.build.commit.ref="main" \
       io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/cuda/ubi8-python-3.8" \
-      io.openshift.build.image="quay.io/opendatahub/notebooks:cuda-ubi8-python-3.8"
+      io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-ubi8-python-3.8"
 
 # Install CUDA base from:
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/11.4.2/ubi8/base/Dockerfile
