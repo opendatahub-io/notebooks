@@ -21,6 +21,8 @@ COPY jupyter_elyra_config.py setup-elyra.sh ./utils/
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \
     rm -f ./Pipfile.lock && \
+    # setup path for runtime configuration \
+    mkdir /opt/app-root/runtimes && \
     # Explicitly enable jupyterlab_s3_browser plugin \
     jupyter serverextension enable --py jupyterlab_s3_browser && \
     # Remove Elyra logo from JupyterLab because this is not a pure Elyra image \
