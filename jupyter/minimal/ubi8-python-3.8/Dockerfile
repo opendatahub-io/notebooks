@@ -9,7 +9,7 @@ LABEL name="odh-notebook-jupyter-minimal-ubi8-python-3.8" \
     authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
     io.openshift.build.commit.ref="main" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/minimal/ubi8-python-3.8" \
-    io.openshift.build.image="quay.io/opendatahub/notebooks:jupyter-minimal-ubi8-python-3.8"
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:jupyter-minimal-ubi8-python-3.8"
 
 WORKDIR /opt/app-root/bin
 
