@@ -79,6 +79,21 @@ cuda-jupyter-datascience-ubi8-python-3.8: cuda-jupyter-minimal-ubi8-python-3.8
 cuda-jupyter-tensorflow-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.8
 	$(call image,$@,jupyter/tensorflow/ubi8-python-3.8,$<)
 
+# Build and push runtime-datascience-ubi8-python-3.8 image to the registry
+.PHONY: runtime-datascience-ubi8-python-3.8
+runtime-datascience-ubi8-python-3.8: base-ubi8-python-3.8
+	$(call image,$@,runtimes/datascience/ubi8-python-3.8,$<)
+
+# Build and push runtime-pytorch-ubi8-python-3.8 image to the registry
+.PHONY: runtime-cuda-pytorch-ubi8-python-3.8
+runtime-cuda-pytorch-ubi8-python-3.8: base-ubi8-python-3.8
+	$(call image,$@,runtimes/pytorch/ubi8-python-3.8,$<)
+
+# Build and push runtime-cuda-tensorflow-ubi8-python-3.8 image to the registry
+.PHONY: runtime-cuda-tensorflow-ubi8-python-3.8
+runtime-cuda-tensorflow-ubi8-python-3.8: cuda-ubi8-python-3.8
+	$(call image,$@,runtimes/tensorflow/ubi8-python-3.8,$<)
+
 ####################################### Buildchain for Python 3.9 using ubi9 #######################################
 
 # Build and push base-ubi9-python-3.9 image to the registry
@@ -125,6 +140,22 @@ cuda-jupyter-tensorflow-ubi9-python-3.9: cuda-jupyter-datascience-ubi9-python-3.
 .PHONY: jupyter-trustyai-ubi9-python-3.9
 jupyter-trustyai-ubi9-python-3.9: jupyter-datascience-ubi9-python-3.9
 	$(call image,$@,jupyter/trustyai/ubi9-python-3.9,$<)
+
+# Build and push runtime-datascience-ubi9-python-3.9 image to the registry
+.PHONY: runtime-datascience-ubi9-python-3.9
+runtime-datascience-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,runtimes/datascience/ubi9-python-3.9,$<)
+
+# Build and push runtime-pytorch-ubi9-python-3.9 image to the registry
+.PHONY: runtime-cuda-pytorch-ubi9-python-3.9
+runtime-cuda-pytorch-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,runtimes/pytorch/ubi9-python-3.9,$<)
+
+# Build and push runtime-cuda-tensorflow-ubi9-python-3.9 image to the registry
+.PHONY: runtime-cuda-tensorflow-ubi9-python-3.9
+runtime-cuda-tensorflow-ubi9-python-3.9: cuda-ubi9-python-3.9
+	$(call image,$@,runtimes/tensorflow/ubi9-python-3.9,$<)
+
 
 # Download kubectl binary
 .PHONY: bin/kubectl
@@ -198,4 +229,9 @@ refresh-pipfilelock-files:
 	cd jupyter/tensorflow/ubi8-python-3.8 && pipenv lock
 	cd jupyter/tensorflow/ubi9-python-3.9 && pipenv lock
 	cd jupyter/trustyai/ubi9-python-3.9 && pipenv lock
-
+	cd runtimes/datascience/ubi8-python-3.8 && pipenv lock
+	cd runtimes/datascience/ubi9-python-3.9 && pipenv lock
+	cd runtimes/pytorch/ubi9-python-3.9 && pipenv lock
+	cd runtimes/pytorch/ubi8-python-3.8 && pipenv lock
+	cd runtimes/tensorflow/ubi8-python-3.8 && pipenv lock
+	cd runtimes/tensorflow/ubi9-python-3.9 && pipenv lock
