@@ -8,6 +8,6 @@ resources:
   - service.yaml
   - statefulset.yaml
 images:
-  - name: quay.io/opendatahub/notebooks
-    newName: quay.io/opendatahub/notebooks
+  - name: quay.io/opendatahub/workbench-images
+    newName: quay.io/opendatahub/workbench-images
     newTag: jupyter-minimal-ubi8-python-3.8
