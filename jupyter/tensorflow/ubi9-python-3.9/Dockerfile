@@ -9,7 +9,7 @@ LABEL name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.9" \
     authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
     io.openshift.build.commit.ref="main" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/tensorflow/ubi8-python-3.9" \
-    io.openshift.build.image="quay.io/opendatahub/notebooks:cuda-jupyter-tensorflow-ubi9-python-3.9"
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-tensorflow-ubi9-python-3.9"
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY Pipfile.lock ./
