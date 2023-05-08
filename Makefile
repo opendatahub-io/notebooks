@@ -219,6 +219,9 @@ test-%: bin/kubectl
 # This validation is created from subset of https://github.com/elyra-ai/elyra/blob/9c417d2adc9d9f972de5f98fd37f6945e0357ab9/Makefile#L325
 .PHONY: validate-runtime-image
 validate-runtime-image: bin/kubectl
+	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
+	$(info # Running tests for $(NOTEBOOK_NAME) runtime...)
+	$(KUBECTL_BIN) wait --for=condition=ready pod runtime-pod --timeout=300s
 	@required_commands=$(REQUIRED_RUNTIME_IMAGE_COMMANDS) ; \
 	if [[ $$image == "" ]] ; then \
 		echo "Usage: make validate-runtime-image image=<container-image-name>" ; \
