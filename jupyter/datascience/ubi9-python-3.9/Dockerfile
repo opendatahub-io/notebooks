@@ -9,19 +9,33 @@ LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.9" \
     authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
     io.openshift.build.commit.ref="main" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/datascience/ubi9-python-3.9" \
-    io.openshift.build.image="quay.io/opendatahub/notebooks:jupyter-datascience-ubi9-python-3.9"
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.9"
+
+WORKDIR /opt/app-root/bin
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY Pipfile.lock ./
+# Copy Elyra setup to utils so that it's sourced at startup
+COPY jupyter_elyra_config.py setup-elyra.sh ./utils/
 
-RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
-
-# Explicitly enable jupyterlab_s3_browser plugin
-RUN jupyter serverextension enable --py jupyterlab_s3_browser
-
-# Remove Elyra logo from JupyterLab because this is not a pure Elyra image \
-RUN sed -i 's/widget\.id === \x27jp-MainLogo\x27/widget\.id === \x27jp-MainLogo\x27 \&\& false/' /opt/app-root/share/jupyter/labextensions/@elyra/theme-extension/static/lib_index_js.*.js
-
-# Fix permissions to support pip in Openshift environments
-RUN chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
+RUN echo "Installing softwares and packages" && \
+    micropipenv install && \
+    rm -f ./Pipfile.lock && \
+    # setup path for runtime configuration \
+    mkdir /opt/app-root/runtimes && \
+    # Explicitly enable jupyterlab_s3_browser plugin \
+    jupyter serverextension enable --py jupyterlab_s3_browser && \
+    # Remove Elyra logo from JupyterLab because this is not a pure Elyra image \
+    sed -i 's/widget\.id === \x27jp-MainLogo\x27/widget\.id === \x27jp-MainLogo\x27 \&\& false/' /opt/app-root/share/jupyter/labextensions/@elyra/theme-extension/static/lib_index_js.*.js && \
+    # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
+    sed -i -e "s/Python.*/$(python --version)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
+    # Remove default Elyra runtime-images \
+    rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
+    # Fix permissions to support pip in Openshift environments \
+    chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
     fix-permissions /opt/app-root -P
+
+# Copy Elyra runtime-images definitions and set the version
+COPY runtime-images/ /opt/app-root/share/jupyter/metadata/runtime-images/
+
+WORKDIR /opt/app-root/src
