@@ -38,6 +38,18 @@ graph TB
         cuda-jupyter-minimal-ubi8-python-3.8 --> cuda-jupyter-datascience-ubi8-python-3.8;
         cuda-jupyter-datascience-ubi8-python-3.8 --> cuda-jupyter-tensorflow-ubi8-python-3.8;
     end
+
+    subgraph Runtimes
+        %% Nodes
+        runtimes-datascience-ubi8-python-3.8("CUDA Data Science Notebook<br/>(cuda-jupyter-datascience-ubi8-python-3.8)");
+        runtimes-pytorch-ubi8-python-3.8("PyTorch Notebook<br/>(jupyter-pytorch-ubi8-python-3.8)");
+        cuda-runtimes-tensorflow-ubi8-python-3.8("CUDA TensorFlow Notebook<br/>(cuda-jupyter-tensorflow-ubi8-python-3.8)");
+
+        %% Edges
+        base-ubi8-python-3.8 --> runtimes-datascience-ubi8-python-3.8;
+        base-ubi8-python-3.8 --> runtimes-pytorch-ubi8-python-3.8;
+        cuda-ubi8-python-3.8 --> cuda-runtimes-tensorflow-ubi8-python-3.8;
+    end
 ```
 
 **Based on Python 3.9**
@@ -75,11 +87,23 @@ graph TB
         cuda-jupyter-datascience-ubi9-python-3.9 --> cuda-jupyter-tensorflow-ubi9-python-3.9;
     end
 
+    subgraph Runtimes
+        %% Nodes
+        runtimes-datascience-ubi8-python-3.9("CUDA Data Science Notebook<br/>(cuda-jupyter-datascience-ubi8-python-3.9)");
+        runtimes-pytorch-ubi8-python-3.9("PyTorch Notebook<br/>(jupyter-pytorch-ubi8-python-3.9)");
+        cuda-runtimes-tensorflow-ubi8-python-3.9("CUDA TensorFlow Notebook<br/>(cuda-jupyter-tensorflow-ubi8-python-3.9)");
+
+        %% Edges
+        base-ubi8-python-3.9 --> runtimes-datascience-ubi8-python-3.9;
+        base-ubi8-python-3.9 --> runtimes-pytorch-ubi8-python-3.9;
+        cuda-ubi8-python-3.9 --> cuda-runtimes-tensorflow-ubi8-python-3.9;
+    end
+
 ```
 
 ## Building
 
-The following notebook images are available:
+The following workbench images are available:
 
 ### Python 3.8
 - jupyter-minimal-ubi8-python-3.8
@@ -88,6 +112,9 @@ The following notebook images are available:
 - cuda-jupyter-minimal-ubi8-python-3.8
 - cuda-jupyter-datascience-ubi8-python-3.8
 - cuda-jupyter-tensorflow-ubi8-python-3.8
+- runtime-datascience-ubi8-python-3.8
+- runtime-pytorch-ubi8-python-3.8
+- cuda-runtime-tensorflow-ubi8-python-3.8
 
 ### Python 3.9
 - jupyter-minimal-ubi9-python-3.9
@@ -97,12 +124,15 @@ The following notebook images are available:
 - cuda-jupyter-minimal-ubi9-python-3.9
 - cuda-jupyter-datascience-ubi9-python-3.9
 - cuda-jupyter-tensorflow-ubi9-python-3.9
+- runtime-datascience-ubi8-python-3.9
+- runtime-pytorch-ubi8-python-3.9
+- cuda-runtime-tensorflow-ubi8-python-3.9
 
-If you want to manually build a notebook image, you can use the following
+If you want to manually build a workbench image, you can use the following
 command:
 
 ```shell
-make ${NOTEBOOK_NAME}
+make ${WORKBENCH_NAME}
 ```
 
 The image will be built and pushed to the
@@ -112,10 +142,10 @@ repository.
 You can overwrite `IMAGE_REGISTRY` and `RELEASE` variables to use a different registry or release tag:
 
 ```shell
-make ${NOTEBOOK_NAME} -e IMAGE_REGISTRY=quay.io/${YOUR_USER}/workbench-images -e RELEASE=2023x
+make ${WORKBENCH_NAME} -e IMAGE_REGISTRY=quay.io/${YOUR_USER}/workbench-images -e RELEASE=2023x
 ```
 
-## Testing
+## Testing Notebooks
 
 Deploy the notebook images in your Kubernetes environment using deploy8-${NOTEBOOK_NAME} for ubi8 or deploy9-${NOTEBOOK_NAME} for ubi9:
 
@@ -135,4 +165,28 @@ Clean up the environment when the tests are finished:
 make undeployX-${NOTEBOOK_NAME}
 ```
 
-For further information please see [CONTRIBUTING.md](CONTRIBUTING.md) file.
+## Validating Runtimes
+
+The runtimes image requires to have curl and python installed,
+so that on runtime additional packages can be installed. 
+
+Deploy the runtime images in your Kubernetes environment using deploy8-${WORKBENCH_NAME} for ubi8 or deploy9-${WORKBENCH_NAME} for ubi9:
+
+```shell
+make deployX-${WORKBENCH_NAME}
+```
+
+Run the validate test suit for checking compatabilty of runtime images:
+
+```shell
+make validate-runtime-image image=<runtime-image>
+```
+
+Clean up the environment when the tests are finished:
+
+```shell
+make undeployX-${WORKBENCH_NAME}
+```
+
+## Contributions
+Please refer [CONTRIBUTING.md](CONTRIBUTING.md) file.

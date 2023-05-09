@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: notebook
-          image: quay.io/opendatahub/notebooks:jupyter-pytorch-ubi8-python-3.8
+          image: quay.io/opendatahub/workbench-images:jupyter-pytorch-ubi8-python-3.8
           imagePullPolicy: Always
           workingDir: /opt/app-root/src
           env:

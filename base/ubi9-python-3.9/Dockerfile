@@ -8,7 +8,7 @@ LABEL name="odh-notebook-base-ubi9-python-3.9" \
       authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
       io.openshift.build.commit.ref="main" \
       io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/base/ubi9-python-3.9" \
-      io.openshift.build.image="quay.io/opendatahub/notebooks:base-ubi9-python-3.9"
+      io.openshift.build.image="quay.io/opendatahub/workbench-images:base-ubi9-python-3.9"
 
 WORKDIR /opt/app-root/bin
 

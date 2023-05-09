@@ -1,0 +1,25 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[dev-packages]
+
+[packages]
+# PyTorch and useful extensions
+torch = "~=1.13.1"
+tensorboard = "~=2.11.2"
+torchvision = "~=0.14.1"
+
+# Datascience
+kafka-python = "~=2.0.2"
+matplotlib = "~=3.6.3"
+numpy = "~=1.24.1"
+pandas = "~=1.5.3"
+plotly = "~=5.13.0"
+scikit-learn = "~=1.2.1"
+scipy = "~=1.10.0"
+
+
+[requires]
+python_version = "3.9"

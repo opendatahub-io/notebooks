@@ -5,7 +5,7 @@ DATE 			 ?= $(shell date +'%Y%m%d')
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
-
+REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
 # Build function for the notebok image:
 #   ARG 1: Image tag name.
 #   ARG 2: Path of image context we want to build.
@@ -79,6 +79,21 @@ cuda-jupyter-datascience-ubi8-python-3.8: cuda-jupyter-minimal-ubi8-python-3.8
 cuda-jupyter-tensorflow-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.8
 	$(call image,$@,jupyter/tensorflow/ubi8-python-3.8,$<)
 
+# Build and push runtime-datascience-ubi8-python-3.8 image to the registry
+.PHONY: runtime-datascience-ubi8-python-3.8
+runtime-datascience-ubi8-python-3.8: base-ubi8-python-3.8
+	$(call image,$@,runtimes/datascience/ubi8-python-3.8,$<)
+
+# Build and push runtime-pytorch-ubi8-python-3.8 image to the registry
+.PHONY: runtime-pytorch-ubi8-python-3.8
+runtime-pytorch-ubi8-python-3.8: base-ubi8-python-3.8
+	$(call image,$@,runtimes/pytorch/ubi8-python-3.8,$<)
+
+# Build and push runtime-cuda-tensorflow-ubi8-python-3.8 image to the registry
+.PHONY: runtime-cuda-tensorflow-ubi8-python-3.8
+runtime-cuda-tensorflow-ubi8-python-3.8: cuda-ubi8-python-3.8
+	$(call image,$@,runtimes/tensorflow/ubi8-python-3.8,$<)
+
 ####################################### Buildchain for Python 3.9 using ubi9 #######################################
 
 # Build and push base-ubi9-python-3.9 image to the registry
@@ -125,6 +140,22 @@ cuda-jupyter-tensorflow-ubi9-python-3.9: cuda-jupyter-datascience-ubi9-python-3.
 .PHONY: jupyter-trustyai-ubi9-python-3.9
 jupyter-trustyai-ubi9-python-3.9: jupyter-datascience-ubi9-python-3.9
 	$(call image,$@,jupyter/trustyai/ubi9-python-3.9,$<)
+
+# Build and push runtime-datascience-ubi9-python-3.9 image to the registry
+.PHONY: runtime-datascience-ubi9-python-3.9
+runtime-datascience-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,runtimes/datascience/ubi9-python-3.9,$<)
+
+# Build and push runtime-pytorch-ubi9-python-3.9 image to the registry
+.PHONY: runtime-pytorch-ubi9-python-3.9
+runtime-pytorch-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,runtimes/pytorch/ubi9-python-3.9,$<)
+
+# Build and push runtime-cuda-tensorflow-ubi9-python-3.9 image to the registry
+.PHONY: runtime-cuda-tensorflow-ubi9-python-3.9
+runtime-cuda-tensorflow-ubi9-python-3.9: cuda-ubi9-python-3.9
+	$(call image,$@,runtimes/tensorflow/ubi9-python-3.9,$<)
+
 
 # Download kubectl binary
 .PHONY: bin/kubectl
@@ -184,6 +215,44 @@ test-%: bin/kubectl
 	pkill --full "^$(KUBECTL_BIN).*port-forward.*"; \
 	exit $${EXIT_CODE}
 
+# Validate that runtime image meets minimum criteria
+# This validation is created from subset of https://github.com/elyra-ai/elyra/blob/9c417d2adc9d9f972de5f98fd37f6945e0357ab9/Makefile#L325
+.PHONY: validate-runtime-image
+validate-runtime-image: bin/kubectl
+	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
+	$(info # Running tests for $(NOTEBOOK_NAME) runtime...)
+	$(KUBECTL_BIN) wait --for=condition=ready pod runtime-pod --timeout=300s
+	@required_commands=$(REQUIRED_RUNTIME_IMAGE_COMMANDS) ; \
+	if [[ $$image == "" ]] ; then \
+		echo "Usage: make validate-runtime-image image=<container-image-name>" ; \
+		exit 1 ; \
+	fi ; \
+	for cmd in $$required_commands ; do \
+		echo "=> Checking container image $$image for $$cmd..." ; \
+		$(KUBECTL_BIN) exec runtime-pod which $$cmd > /dev/null 2>&1 ; \
+		if [ $$? -ne 0 ]; then \
+			echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd" ; \
+			fail=1; \
+			continue; \
+		fi; \
+		if [ $$cmd == "python3" ]; then \
+			echo "=> Checking notebook execution..." ; \
+			$(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "python3 -m pip install -r /opt/app-root/elyra/requirements-elyra.txt && \
+				curl https://raw.githubusercontent.com/nteract/papermill/main/papermill/tests/notebooks/simple_execute.ipynb --output simple_execute.ipynb && \
+				python3 -m papermill simple_execute.ipynb output.ipynb > /dev/null" ; \
+			if [ $$? -ne 0 ]; then \
+				echo "ERROR: Image does not meet Python requirements criteria in requirements-elyra.txt" ; \
+				fail=1; \
+			fi; \
+		fi; \
+	done ; \
+	if [ $$fail -eq 1 ]; then \
+		echo "=> ERROR: Container image $$image is not a suitable Elyra runtime image" ; \
+		exit 1 ; \
+	else \
+		echo "=> Container image $$image is a suitable Elyra runtime image" ; \
+	fi;
+
 # This is only for the workflow action
 .PHONY: refresh-pipfilelock-files
 refresh-pipfilelock-files:
@@ -198,4 +267,9 @@ refresh-pipfilelock-files:
 	cd jupyter/tensorflow/ubi8-python-3.8 && pipenv lock
 	cd jupyter/tensorflow/ubi9-python-3.9 && pipenv lock
 	cd jupyter/trustyai/ubi9-python-3.9 && pipenv lock
-
+	cd runtimes/datascience/ubi8-python-3.8 && pipenv lock
+	cd runtimes/datascience/ubi9-python-3.9 && pipenv lock
+	cd runtimes/pytorch/ubi9-python-3.9 && pipenv lock
+	cd runtimes/pytorch/ubi8-python-3.8 && pipenv lock
+	cd runtimes/tensorflow/ubi8-python-3.8 && pipenv lock
+	cd runtimes/tensorflow/ubi9-python-3.9 && pipenv lock
