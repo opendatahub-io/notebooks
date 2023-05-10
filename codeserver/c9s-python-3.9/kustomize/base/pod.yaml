@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  labels:                                
+    app: codeserver-image
+spec:
+  containers:                            
+  - name: codeserver
+    image: codeserver-workbench
+    command: [ "/bin/sh", "-c", "while true ; do date; sleep 5; done;" ] 
+    imagePullPolicy: Always
+    ports:
+      - containerPort: 8585
+    resources:
+      limits:
+        cpu: 500m
+        memory: 500Mi
+      requests:
+        cpu: 500m
+        memory: 500Mi

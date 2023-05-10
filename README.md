@@ -99,6 +99,15 @@ graph TB
         cuda-ubi8-python-3.9 --> cuda-runtimes-tensorflow-ubi8-python-3.9;
     end
 
+    subgraph Code Server/VS code
+        %% Nodes
+        c9s-python-3.9("CentOS Stream Base<br/>(c9s-python-3.9)");
+        code-server-c9s-python-3.9("Code Server <br/>(code-server-c9s-python-3.9)");
+
+        %% Edges
+        c9s-python-3.9 --> code-server-c9s-python-3.9;
+    end
+
 ```
 
 ## Building
@@ -127,6 +136,7 @@ The following workbench images are available:
 - runtime-datascience-ubi8-python-3.9
 - runtime-pytorch-ubi8-python-3.9
 - cuda-runtime-tensorflow-ubi8-python-3.9
+- code-server-c9s-python-3.9
 
 If you want to manually build a workbench image, you can use the following
 command:
