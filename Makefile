@@ -6,6 +6,8 @@ IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
 REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
+REQUIRED_CODE_SERVER_IMAGE_COMMANDS="curl python oc code-server"
+
 # Build function for the notebok image:
 #   ARG 1: Image tag name.
 #   ARG 2: Path of image context we want to build.
@@ -156,6 +158,17 @@ runtime-pytorch-ubi9-python-3.9: base-ubi9-python-3.9
 runtime-cuda-tensorflow-ubi9-python-3.9: cuda-ubi9-python-3.9
 	$(call image,$@,runtimes/tensorflow/ubi9-python-3.9,$<)
 
+####################################### Buildchain for Python 3.9 using C9S #######################################
+
+# Build and push base-c9s-python-3.9 image to the registry
+.PHONY: base-c9s-python-3.9
+base-c9s-python-3.9:
+	$(call image,$@,base/c9s-python-3.9)
+
+.PHONY: codeserver-c9s-python-3.9
+codeserver-c9s-python-3.9: base-c9s-python-3.9
+	$(call image,$@,codeserver/c9s-python-3.9,$<)
+
 
 # Download kubectl binary
 .PHONY: bin/kubectl
@@ -200,6 +213,23 @@ undeploy8-%-ubi8-python-3.8: bin/kubectl
 .PHONY: undeploy9
 undeploy9-%-ubi9-python-3.9: bin/kubectl
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi9-python-3.9/kustomize/base)
+	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
+	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
+
+.PHONY: deploy-c9s
+deploy-c9s-%-c9s-python-3.9: bin/kubectl
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/c9s-python-3.9/kustomize/base)
+ifndef NOTEBOOK_TAG
+	$(eval NOTEBOOK_TAG := $*-c9s-python-3.9-$(IMAGE_TAG))
+endif
+	$(info # Deploying notebook from $(NOTEBOOK_DIR) directory...)
+	@sed -i 's,newName: .*,newName: $(IMAGE_REGISTRY),g' $(NOTEBOOK_DIR)/kustomization.yaml
+	@sed -i 's,newTag: .*,newTag: $(NOTEBOOK_TAG),g' $(NOTEBOOK_DIR)/kustomization.yaml
+	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
+
+.PHONY: undeploy-c9s
+undeploy-c9s-%-c9s-python-3.9: bin/kubectl
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/c9s-python-3.9/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
@@ -253,6 +283,27 @@ validate-runtime-image: bin/kubectl
 		echo "=> Container image $$image is a suitable Elyra runtime image" ; \
 	fi;
 
+.PHONY: validate-codeserver-image
+validate-codeserver-image: bin/kubectl
+	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
+	$(info # Running tests for $(NOTEBOOK_NAME) Code Server image...)
+	$(KUBECTL_BIN) wait --for=condition=ready pod codeserver-pod --timeout=300s
+	@required_commands=$(REQUIRED_CODE_SERVER_IMAGE_COMMANDS) ; \
+	if [[ $$image == "" ]] ; then \
+		echo "Usage: make validate-codeserver-image image=<container-image-name>" ; \
+		exit 1 ; \
+	fi ; \
+	for cmd in $$required_commands ; do \
+		echo "=> Checking container image $$image for $$cmd..." ; \
+		$(KUBECTL_BIN) exec codeserver-pod which $$cmd > /dev/null 2>&1 ; \
+		if [ $$? -ne 0 ]; then \
+			echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd" ; \
+			fail=1; \
+			continue; \
+		fi; \
+	done ; \
+
+
 # This is only for the workflow action
 .PHONY: refresh-pipfilelock-files
 refresh-pipfilelock-files:
@@ -273,3 +324,4 @@ refresh-pipfilelock-files:
 	cd runtimes/pytorch/ubi8-python-3.8 && pipenv lock
 	cd runtimes/tensorflow/ubi8-python-3.8 && pipenv lock
 	cd runtimes/tensorflow/ubi9-python-3.9 && pipenv lock
+	cd base/c9s-python-3.9 && pipenv lock
