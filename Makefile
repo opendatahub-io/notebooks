@@ -7,6 +7,8 @@ KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
 REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
 REQUIRED_CODE_SERVER_IMAGE_COMMANDS="curl python oc code-server"
+REQUIRED_R_STUDIO_IMAGE_COMMANDS="curl python oc /usr/lib/rstudio-server/bin/rserver"
+
 
 # Build function for the notebok image:
 #   ARG 1: Image tag name.
@@ -169,6 +171,10 @@ base-c9s-python-3.9:
 codeserver-c9s-python-3.9: base-c9s-python-3.9
 	$(call image,$@,codeserver/c9s-python-3.9,$<)
 
+.PHONY: rstudio-c9s-python-3.9
+rstudio-c9s-python-3.9: base-c9s-python-3.9
+	$(call image,$@,rstudio/c9s-python-3.9,$<)
+
 
 # Download kubectl binary
 .PHONY: bin/kubectl
@@ -303,6 +309,25 @@ validate-codeserver-image: bin/kubectl
 		fi; \
 	done ; \
 
+.PHONY: validate-rstudio-image
+validate-rstudio-image: bin/kubectl
+	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
+	$(info # Running tests for $(NOTEBOOK_NAME) Code Server image...)
+	$(KUBECTL_BIN) wait --for=condition=ready pod rstudio-pod --timeout=300s
+	@required_commands=$(REQUIRED_R_STUDIO_IMAGE_COMMANDS) ; \
+	if [[ $$image == "" ]] ; then \
+		echo "Usage: make validate-rstudio-image image=<container-image-name>" ; \
+		exit 1 ; \
+	fi ; \
+	for cmd in $$required_commands ; do \
+		echo "=> Checking container image $$image for $$cmd..." ; \
+		$(KUBECTL_BIN) exec rstudio-pod which $$cmd > /dev/null 2>&1 ; \
+		if [ $$? -ne 0 ]; then \
+			echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd" ; \
+			fail=1; \
+			continue; \
+		fi; \
+	done ; \
 
 # This is only for the workflow action
 .PHONY: refresh-pipfilelock-files
