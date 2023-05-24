@@ -167,6 +167,10 @@ runtime-cuda-tensorflow-ubi9-python-3.9: cuda-ubi9-python-3.9
 base-c9s-python-3.9:
 	$(call image,$@,base/c9s-python-3.9)
 
+.PHONY: cuda-c9s-python-3.9
+cuda-c9s-python-3.9: base-c9s-python-3.9
+	$(call image,$@,cuda/c9s-python-3.9,$<)
+
 .PHONY: codeserver-c9s-python-3.9
 codeserver-c9s-python-3.9: base-c9s-python-3.9
 	$(call image,$@,codeserver/c9s-python-3.9,$<)
@@ -175,6 +179,9 @@ codeserver-c9s-python-3.9: base-c9s-python-3.9
 rstudio-c9s-python-3.9: base-c9s-python-3.9
 	$(call image,$@,rstudio/c9s-python-3.9,$<)
 
+.PHONY: cuda-rstudio-c9s-python-3.9
+cuda-rstudio-c9s-python-3.9: cuda-c9s-python-3.9
+	$(call image,$@,rstudio/c9s-python-3.9,$<)
 
 # Download kubectl binary
 .PHONY: bin/kubectl
