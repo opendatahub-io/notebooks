@@ -35,6 +35,7 @@ if [[ ! -f "$DEFAULT_RUNTIME_FILE" ]]; then
 fi
 
 # Set the elyra config on the right path
+jupyter elyra --generate-config
 cp /opt/app-root/bin/utils/jupyter_elyra_config.py /opt/app-root/src/.jupyter/
 
 # Set runtime config from volume mount
