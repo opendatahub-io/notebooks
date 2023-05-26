@@ -8,4 +8,4 @@ c = get_config()  #noqa
 # PipelineProcessorRegistry(SingletonConfigurable) configuration
 #------------------------------------------------------------------------------
 
-c.PipelineProcessorRegistry.runtimes = ['kfp', 'local']
+c.PipelineProcessorRegistry.runtimes = ['kfp']
