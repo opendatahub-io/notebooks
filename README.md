@@ -89,14 +89,25 @@ graph TB
 
     subgraph Runtimes
         %% Nodes
-        runtimes-datascience-ubi8-python-3.9("CUDA Data Science Notebook<br/>(cuda-jupyter-datascience-ubi8-python-3.9)");
-        runtimes-pytorch-ubi8-python-3.9("PyTorch Notebook<br/>(jupyter-pytorch-ubi8-python-3.9)");
-        cuda-runtimes-tensorflow-ubi8-python-3.9("CUDA TensorFlow Notebook<br/>(cuda-jupyter-tensorflow-ubi8-python-3.9)");
+        runtimes-datascience-ubi9-python-3.9("CUDA Data Science Notebook<br/>(cuda-jupyter-datascience-ubi9-python-3.9)");
+        runtimes-pytorch-ubi9-python-3.9("PyTorch Notebook<br/>(jupyter-pytorch-ubi9-python-3.9)");
+        cuda-runtimes-tensorflow-ubi9-python-3.9("CUDA TensorFlow Notebook<br/>(cuda-jupyter-tensorflow-ubi9-python-3.9)");
 
         %% Edges
-        base-ubi8-python-3.9 --> runtimes-datascience-ubi8-python-3.9;
-        base-ubi8-python-3.9 --> runtimes-pytorch-ubi8-python-3.9;
-        cuda-ubi8-python-3.9 --> cuda-runtimes-tensorflow-ubi8-python-3.9;
+        base-ubi9-python-3.9 --> runtimes-datascience-ubi9-python-3.9;
+        base-ubi9-python-3.9 --> runtimes-pytorch-ubi9-python-3.9;
+        cuda-ubi9-python-3.9 --> cuda-runtimes-tensorflow-ubi9-python-3.9;
+    end
+
+    subgraph Other Notebooks
+        %% Nodes
+        c9s-python-3.9("CentOS Stream Base<br/>(c9s-python-3.9)");
+        code-server-c9s-python-3.9("Code Server <br/>(code-server-c9s-python-3.9)");
+        r-studio-c9s-python-3.9("R Studio <br/>(r-studio-c9s-python-3.9)");
+
+        %% Edges
+        c9s-python-3.9 --> code-server-c9s-python-3.9;
+        c9s-python-3.9 --> r-studio-c9s-python-3.9;
     end
 
 ```
@@ -127,6 +138,8 @@ The following workbench images are available:
 - runtime-datascience-ubi8-python-3.9
 - runtime-pytorch-ubi8-python-3.9
 - cuda-runtime-tensorflow-ubi8-python-3.9
+- code-server-c9s-python-3.9
+- r-studio-c9s-python-3.9;
 
 If you want to manually build a workbench image, you can use the following
 command:
