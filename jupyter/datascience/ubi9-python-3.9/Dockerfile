@@ -16,7 +16,7 @@ WORKDIR /opt/app-root/bin
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY Pipfile.lock ./
 # Copy Elyra setup to utils so that it's sourced at startup
-COPY jupyter_elyra_config.py setup-elyra.sh RHODS.svg ./utils/
+COPY jupyter_elyra_config.py setup-elyra.sh pipeline-flow.svg ./utils/
 
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \
@@ -24,7 +24,7 @@ RUN echo "Installing softwares and packages" && \
     # setup path for runtime configuration \
     mkdir /opt/app-root/runtimes && \
     # switch to Data Science Pipeline \
-    cp utils/RHODS.svg /opt/app-root/lib/python3.9/site-packages/elyra/static/icons/kubeflow.svg && \
+    cp utils/pipeline-flow.svg /opt/app-root/lib/python3.9/site-packages/elyra/static/icons/kubeflow.svg && \
     sed -i "s/Kubeflow Pipelines/Data Science/g" /opt/app-root/lib/python3.9/site-packages/elyra/pipeline/runtime_type.py && \
     sed -i "s/Kubeflow Pipelines/Data Science Pipelines/g" /opt/app-root/lib/python3.9/site-packages/elyra/metadata/schemas/kfp.json && \
     sed -i "s/\"default\": \"Argo\",/\"default\": \"Tekton\",/g" /opt/app-root/lib/python3.9/site-packages/elyra/metadata/schemas/kfp.json && \
