@@ -1,5 +1,5 @@
 CONTAINER_ENGINE ?= podman
-IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
+IMAGE_REGISTRY   ?= quay.io/rh_ee_atheodor/notebooks
 RELEASE	 		 ?= 2023a
 DATE 			 ?= $(shell date +'%Y%m%d')
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
@@ -117,7 +117,7 @@ jupyter-datascience-ubi9-python-3.9: jupyter-minimal-ubi9-python-3.9
 
 # Build and push jupyter-pytorch-ubi9-python-3.9 image to the registry
 .PHONY: jupyter-pytorch-ubi9-python-3.9
-jupyter-pytorch-ubi9-python-3.9: jupyter-datascience-ubi9-python-3.9
+jupyter-pytorch-ubi9-python-3.9: cuda-jupyter-datascience-ubi9-python-3.9
 	$(call image,$@,jupyter/pytorch/ubi9-python-3.9,$<)
 
 # Build and push cuda-ubi9-python-3.9 image to the registry
