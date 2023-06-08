@@ -1,5 +1,5 @@
 CONTAINER_ENGINE ?= podman
-IMAGE_REGISTRY   ?= quay.io/rh_ee_atheodor/notebooks
+IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
 RELEASE	 		 ?= 2023a
 DATE 			 ?= $(shell date +'%Y%m%d')
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
@@ -57,11 +57,6 @@ jupyter-minimal-ubi8-python-3.8: base-ubi8-python-3.8
 jupyter-datascience-ubi8-python-3.8: jupyter-minimal-ubi8-python-3.8
 	$(call image,$@,jupyter/datascience/ubi8-python-3.8,$<)
 
-# Build and push jupyter-pytorch-ubi8-python-3.8 image to the registry
-.PHONY: jupyter-pytorch-ubi8-python-3.8
-jupyter-pytorch-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
-	$(call image,$@,jupyter/pytorch/ubi8-python-3.8,$<)
-
 # Build and push cuda-ubi8-python-3.8 image to the registry
 .PHONY: cuda-ubi8-python-3.8
 cuda-ubi8-python-3.8: base-ubi8-python-3.8
@@ -82,6 +77,11 @@ cuda-jupyter-datascience-ubi8-python-3.8: cuda-jupyter-minimal-ubi8-python-3.8
 .PHONY: cuda-jupyter-tensorflow-ubi8-python-3.8
 cuda-jupyter-tensorflow-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.8
 	$(call image,$@,jupyter/tensorflow/ubi8-python-3.8,$<)
+
+# Build and push jupyter-pytorch-ubi8-python-3.8 image to the registry
+.PHONY: jupyter-pytorch-ubi8-python-3.8
+jupyter-pytorch-ubi8-python-3.8: cuda-jupyter-datascience-ubi9-python-3.9
+	$(call image,$@,jupyter/pytorch/ubi8-python-3.8,$<)
 
 # Build and push runtime-datascience-ubi8-python-3.8 image to the registry
 .PHONY: runtime-datascience-ubi8-python-3.8
@@ -115,11 +115,6 @@ jupyter-minimal-ubi9-python-3.9: base-ubi9-python-3.9
 jupyter-datascience-ubi9-python-3.9: jupyter-minimal-ubi9-python-3.9
 	$(call image,$@,jupyter/datascience/ubi9-python-3.9,$<)
 
-# Build and push jupyter-pytorch-ubi9-python-3.9 image to the registry
-.PHONY: jupyter-pytorch-ubi9-python-3.9
-jupyter-pytorch-ubi9-python-3.9: cuda-jupyter-datascience-ubi9-python-3.9
-	$(call image,$@,jupyter/pytorch/ubi9-python-3.9,$<)
-
 # Build and push cuda-ubi9-python-3.9 image to the registry
 .PHONY: cuda-ubi9-python-3.9
 cuda-ubi9-python-3.9: base-ubi9-python-3.9
@@ -139,6 +134,11 @@ cuda-jupyter-datascience-ubi9-python-3.9: cuda-jupyter-minimal-ubi9-python-3.9
 .PHONY: cuda-jupyter-tensorflow-ubi9-python-3.9
 cuda-jupyter-tensorflow-ubi9-python-3.9: cuda-jupyter-datascience-ubi9-python-3.9
 	$(call image,$@,jupyter/tensorflow/ubi9-python-3.9,$<)
+
+# Build and push jupyter-pytorch-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-pytorch-ubi9-python-3.9
+jupyter-pytorch-ubi9-python-3.9: cuda-jupyter-datascience-ubi9-python-3.9
+	$(call image,$@,jupyter/pytorch/ubi9-python-3.9,$<)
 
 # Build and push jupyter-trustyai-ubi9-python-3.9 image to the registry
 .PHONY: jupyter-trustyai-ubi9-python-3.9

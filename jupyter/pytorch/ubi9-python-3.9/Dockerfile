@@ -14,8 +14,6 @@ LABEL name="odh-notebook-jupyter-pytorch-ubi9-python-3.9" \
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY Pipfile.lock ./
 
-RUN pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu118
-
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \
     rm -f ./Pipfile.lock && \
