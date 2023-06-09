@@ -36,6 +36,9 @@ RUN mkdir /opt/app-root/runtimes && \
     sed -i "s/Kubeflow Pipelines/Data Science Pipelines/g" /opt/app-root/lib/python3.8/site-packages/elyra/metadata/schemas/kfp.json && \
     sed -i "s/kubeflow-service/data-science-pipeline-service/g" /opt/app-root/lib/python3.8/site-packages/elyra/metadata/schemas/kfp.json && \
     sed -i "s/\"default\": \"Argo\",/\"default\": \"Tekton\",/g" /opt/app-root/lib/python3.8/site-packages/elyra/metadata/schemas/kfp.json && \
+    # Workaround for passing ssl_sa_cert
+    patch /opt/app-root/lib/python3.8/site-packages/elyra/pipeline/kfp/kfp_authentication.py -i utils/kfp_authentication.patch && \
+    patch /opt/app-root/lib/python3.8/site-packages/elyra/pipeline/kfp/processor_kfp.py -i utils/processor_kfp.patch && \
     # switch to Data Science Pipeline in component catalog \
     DIR_COMPONENT="/opt/app-root/lib/python3.8/site-packages/elyra/metadata/schemas/local-directory-catalog.json" && \
     FILE_COMPONENT="/opt/app-root/lib/python3.8/site-packages/elyra/metadata/schemas/local-file-catalog.json" && \
