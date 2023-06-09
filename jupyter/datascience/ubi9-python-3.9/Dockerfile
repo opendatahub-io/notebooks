@@ -16,18 +16,35 @@ WORKDIR /opt/app-root/bin
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY Pipfile.lock ./
 # Copy Elyra setup to utils so that it's sourced at startup
-COPY jupyter_elyra_config.py setup-elyra.sh pipeline-flow.svg ./utils/
+COPY setup-elyra.sh ./utils/
 
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \
-    rm -f ./Pipfile.lock && \
-    # setup path for runtime configuration \
-    mkdir /opt/app-root/runtimes && \
+    rm -f ./Pipfile.lock
+
+COPY utils ./utils/
+
+USER root
+RUN dnf install -y jq
+USER 1001
+
+# setup path for runtime configuration
+RUN mkdir /opt/app-root/runtimes && \
     # switch to Data Science Pipeline \
     cp utils/pipeline-flow.svg /opt/app-root/lib/python3.9/site-packages/elyra/static/icons/kubeflow.svg && \
     sed -i "s/Kubeflow Pipelines/Data Science/g" /opt/app-root/lib/python3.9/site-packages/elyra/pipeline/runtime_type.py && \
     sed -i "s/Kubeflow Pipelines/Data Science Pipelines/g" /opt/app-root/lib/python3.9/site-packages/elyra/metadata/schemas/kfp.json && \
+    sed -i "s/kubeflow-service/data-science-pipeline-service/g" /opt/app-root/lib/python3.9/site-packages/elyra/metadata/schemas/kfp.json && \
     sed -i "s/\"default\": \"Argo\",/\"default\": \"Tekton\",/g" /opt/app-root/lib/python3.9/site-packages/elyra/metadata/schemas/kfp.json && \
+    # switch to Data Science Pipeline in component catalog \
+    DIR_COMPONENT="/opt/app-root/lib/python3.9/site-packages/elyra/metadata/schemas/local-directory-catalog.json" && \
+    FILE_COMPONENT="/opt/app-root/lib/python3.9/site-packages/elyra/metadata/schemas/local-file-catalog.json" && \
+    URL_COMPONENT="/opt/app-root/lib/python3.9/site-packages/elyra/metadata/schemas/url-catalog.json" && \
+    tmp=$(mktemp) && \
+    jq '.properties.metadata.properties.runtime_type = input' $DIR_COMPONENT utils/component_runtime.json > "$tmp" && mv "$tmp" $DIR_COMPONENT && \
+    jq '.properties.metadata.properties.runtime_type = input' $FILE_COMPONENT utils/component_runtime.json > "$tmp" && mv "$tmp" $FILE_COMPONENT && \
+    jq '.properties.metadata.properties.runtime_type = input' $URL_COMPONENT utils/component_runtime.json > "$tmp" && mv "$tmp" $URL_COMPONENT && \
+    sed -i "s/metadata.metadata.runtime_type/\"DATA_SCIENCE_PIPELINES\"/g" /opt/app-root/share/jupyter/labextensions/@elyra/pipeline-editor-extension/static/lib_index_js.*.js && \
     # Explicitly enable jupyterlab_s3_browser plugin \
     jupyter serverextension enable --py jupyterlab_s3_browser && \
     # Remove Elyra logo from JupyterLab because this is not a pure Elyra image \
