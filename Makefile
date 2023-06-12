@@ -183,6 +183,21 @@ rstudio-c9s-python-3.9: base-c9s-python-3.9
 cuda-rstudio-c9s-python-3.9: cuda-c9s-python-3.9
 	$(call image,$@,rstudio/c9s-python-3.9,$<)
 
+####################################### Buildchain for Anaconda Python #######################################
+
+# Build and push base-anaconda-python-3.8 image to the registry
+.PHONY: base-anaconda-python-3.8
+base-anaconda-python-3.8:
+	$(call image,$@,base/anaconda-python-3.8)
+
+# Build and push jupyter-datascience-anaconda-python-3.8 image to the registry
+.PHONY: jupyter-datascience-anaconda-python-3.8
+jupyter-datascience-anaconda-python-3.8: base-anaconda-python-3.8
+	$(call image,$@,jupyter/datascience/anaconda-python-3.8,$<)
+
+
+####################################### Buildchain for Anaconda Python #######################################
+
 # Download kubectl binary
 .PHONY: bin/kubectl
 bin/kubectl:
@@ -205,6 +220,18 @@ endif
 	@sed -i 's,newTag: .*,newTag: $(NOTEBOOK_TAG),g' $(NOTEBOOK_DIR)/kustomization.yaml
 	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
 
+# Deploy a notebook image using kustomize
+.PHONY: deploy-anaconda8
+deploy8-%-anaconda-python-3.8: bin/kubectl
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/anaconda-python-3.8/kustomize/base)
+ifndef NOTEBOOK_TAG
+	$(eval NOTEBOOK_TAG := $*-anaconda-python-3.8-$(IMAGE_TAG))
+endif
+	$(info # Deploying notebook from $(NOTEBOOK_DIR) directory...)
+	@sed -i 's,newName: .*,newName: $(IMAGE_REGISTRY),g' $(NOTEBOOK_DIR)/kustomization.yaml
+	@sed -i 's,newTag: .*,newTag: $(NOTEBOOK_TAG),g' $(NOTEBOOK_DIR)/kustomization.yaml
+	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
+
 .PHONY: deploy9
 deploy9-%-ubi9-python-3.9: bin/kubectl
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi9-python-3.9/kustomize/base)
@@ -220,6 +247,12 @@ endif
 .PHONY: undeploy8
 undeploy8-%-ubi8-python-3.8: bin/kubectl
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi8-python-3.8/kustomize/base)
+	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
+	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
+
+.PHONY: undeploy-anaconda8
+undeploy8-%-anaconda-python-3.8: bin/kubectl
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/anaconda-python-3.8/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
@@ -251,7 +284,7 @@ undeploy-c9s-%-c9s-python-3.9: bin/kubectl
 test-%: bin/kubectl
 	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
 	$(info # Running tests for $(NOTEBOOK_NAME) notebook...)
-	$(KUBECTL_BIN) wait --for=condition=ready pod -l app=$(NOTEBOOK_NAME) --timeout=300s
+	$(KUBECTL_BIN) wait --for=condition=ready pod -l app=$(NOTEBOOK_NAME) --timeout=600s
 	$(KUBECTL_BIN) port-forward svc/$(NOTEBOOK_NAME)-notebook 8888:8888 &
 	curl --retry 5 --retry-delay 5 --retry-connrefused \
 		http://localhost:8888/notebook/opendatahub/jovyan/api; EXIT_CODE=$$?; echo && \
