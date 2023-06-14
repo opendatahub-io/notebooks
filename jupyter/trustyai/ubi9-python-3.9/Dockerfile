@@ -14,7 +14,7 @@ LABEL name="odh-notebook-jupyter-trustyai-ubi9-python-3.9" \
 USER 0
 
 # Install jre that is needed to run the trustyai library
-RUN INSTALL_PKGS="java-11-openjdk" && \
+RUN INSTALL_PKGS="java-17-openjdk" && \
     yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
     yum -y clean all --enablerepo='*'
 
