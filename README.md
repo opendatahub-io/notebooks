@@ -16,7 +16,6 @@ graph TB
         base-ubi8-python-3.8("Notebooks Base<br/>(base-ubi8-python-3.8)");
         jupyter-minimal-ubi8-python-3.8("Minimal Notebook<br/>(jupyter-minimal-ubi8-python-3.8)");
         jupyter-datascience-ubi8-python-3.8("Data Science Notebook<br/>(jupyter-datascience-ubi8-python-3.8)");
-        jupyter-pytorch-ubi8-python-3.8("PyTorch Notebook<br/>(jupyter-pytorch-ubi8-python-3.8)");
 
         %% Edges
         ubi8-python-3.8 --> base-ubi8-python-3.8;
@@ -30,12 +29,14 @@ graph TB
         cuda-ubi8-python-3.8("CUDA Notebooks Base<br/>(cuda-ubi8-python-3.8)");
         cuda-jupyter-minimal-ubi8-python-3.8("CUDA Minimal Notebook<br/>(cuda-jupyter-minimal-ubi8-python-3.8)");
         cuda-jupyter-datascience-ubi8-python-3.8("CUDA Data Science Notebook<br/>(cuda-jupyter-datascience-ubi8-python-3.8)");
+        cuda-jupyter-pytorch-ubi8-python-3.8("PyTorch Notebook<br/>(cuda-jupyter-pytorch-ubi8-python-3.8)");
         cuda-jupyter-tensorflow-ubi8-python-3.8("CUDA TensorFlow Notebook<br/>(cuda-jupyter-tensorflow-ubi8-python-3.8)");
 
         %% Edges
         base-ubi8-python-3.8 --> cuda-ubi8-python-3.8;
         cuda-ubi8-python-3.8 --> cuda-jupyter-minimal-ubi8-python-3.8;
         cuda-jupyter-minimal-ubi8-python-3.8 --> cuda-jupyter-datascience-ubi8-python-3.8;
+        cuda-jupyter-datascience-ubi8-python-3.8 --> cuda-jupyter-pytorch-ubi8-python-3.8;
         cuda-jupyter-datascience-ubi8-python-3.8 --> cuda-jupyter-tensorflow-ubi8-python-3.8;
     end
 
@@ -62,14 +63,12 @@ graph TB
         base-ubi9-python-3.9("Notebooks Base<br/>(base-ubi9-python-3.9)");
         jupyter-minimal-ubi9-python-3.9("Minimal Notebook<br/>(jupyter-minimal-ubi9-python-3.9)");
         jupyter-datascience-ubi9-python-3.9("Data Science Notebook<br/>(jupyter-datascience-ubi9-python-3.9)");
-        jupyter-pytorch-ubi9-python-3.9("PyTorch Notebook<br/>(jupyter-pytorch-ubi9-python-3.9)");
         jupyter-trustyai-ubi9-python-3.9("TrustyAI Notebook<br/>(jupyter-trustyai-ubi9-python-3.9)");
 
         %% Edges
         ubi9-python-3.9 --> base-ubi9-python-3.9;
         base-ubi9-python-3.9 --> jupyter-minimal-ubi9-python-3.9;
         jupyter-minimal-ubi9-python-3.9 --> jupyter-datascience-ubi9-python-3.9;
-        jupyter-datascience-ubi9-python-3.9 --> jupyter-pytorch-ubi9-python-3.9;
         jupyter-datascience-ubi9-python-3.9 --> jupyter-trustyai-ubi9-python-3.9;
     end
 
@@ -78,12 +77,14 @@ graph TB
         cuda-ubi9-python-3.9("CUDA Notebooks Base<br/>(cuda-ubi9-python-3.9)");
         cuda-jupyter-minimal-ubi9-python-3.9("CUDA Minimal Notebook<br/>(cuda-jupyter-minimal-ubi9-python-3.9)");
         cuda-jupyter-datascience-ubi9-python-3.9("CUDA Data Science Notebook<br/>(cuda-jupyter-datascience-ubi9-python-3.9)");
+        cuda-jupyter-pytorch-ubi9-python-3.9("CUDA PyTorch Notebook<br/>(cuda-jupyter-pytorch-ubi9-python-3.9)");
         cuda-jupyter-tensorflow-ubi9-python-3.9("CUDA TensorFlow Notebook<br/>(cuda-jupyter-tensorflow-ubi9-python-3.9)");
 
         %% Edges
         base-ubi9-python-3.9 --> cuda-ubi9-python-3.9;
         cuda-ubi9-python-3.9 --> cuda-jupyter-minimal-ubi9-python-3.9;
         cuda-jupyter-minimal-ubi9-python-3.9 --> cuda-jupyter-datascience-ubi9-python-3.9;
+        cuda-jupyter-datascience-ubi9-python-3.9 --> cuda-jupyter-pytorch-ubi9-python-3.9;
         cuda-jupyter-datascience-ubi9-python-3.9 --> cuda-jupyter-tensorflow-ubi9-python-3.9;
     end
 
