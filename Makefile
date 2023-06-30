@@ -1,6 +1,6 @@
 CONTAINER_ENGINE ?= podman
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
-RELEASE	 		 ?= 2023a
+RELEASE	 		 ?= 2023b
 DATE 			 ?= $(shell date +'%Y%m%d')
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
