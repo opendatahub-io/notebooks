@@ -1,5 +1,8 @@
 # Notebook Images
 
+[![GitHub Tag](https://img.shields.io/github/v/tag/opendatahub-io/notebooks?style=plastic)](https://github.com/opendatahub-io/notebooks/releases)
+[![Docker Repository on Quay](https://quay.io/repository/opendatahub/workbench-images/status "Docker Repository on Quay")](https://quay.io/repository/opendatahub/workbench-images?tab=tags)
+
 These images were created to be used with Open Data Hub (ODH) with the ODH Notebook Controller as the launcher.
 
 ## Container Image Layering
@@ -38,6 +41,18 @@ graph TB
         cuda-jupyter-minimal-ubi8-python-3.8 --> cuda-jupyter-datascience-ubi8-python-3.8;
         cuda-jupyter-datascience-ubi8-python-3.8 --> cuda-jupyter-pytorch-ubi8-python-3.8;
         cuda-jupyter-datascience-ubi8-python-3.8 --> cuda-jupyter-tensorflow-ubi8-python-3.8;
+    end
+
+    subgraph Habana
+        %% Nodes
+        habana-jupyter-1.9.0-ubi8-python-3.8("HabanaAI Data Science Notebook<br/>(habana-jupyter-1.9.0-ubi8-python-3.8)");
+        habana-jupyter-1.10.0-ubi8-python-3.8("HabanaAI Data Science Notebook<br/>(habana-jupyter-1.10.0-ubi8-python-3.8)");
+        habana-jupyter-1.11.0-ubi8-python-3.8("HabanaAI Data Science Notebook<br/>(habana-jupyter-1.11.0-ubi8-python-3.8)");
+
+        %% Edges
+        jupyter-datascience-ubi8-python-3.8 --> habana-jupyter-1.9.0-ubi8-python-3.8;
+        jupyter-datascience-ubi8-python-3.8 --> habana-jupyter-1.10.0-ubi8-python-3.8;
+        jupyter-datascience-ubi8-python-3.8 --> habana-jupyter-1.11.0-ubi8-python-3.8;
     end
 
     subgraph Runtimes
@@ -129,6 +144,9 @@ The following workbench images are available:
 - cuda-jupyter-minimal-ubi8-python-3.8
 - cuda-jupyter-datascience-ubi8-python-3.8
 - cuda-jupyter-tensorflow-ubi8-python-3.8
+- habana-jupyter-1.9.0-ubi8-python-3.8
+- habana-jupyter-1.10.0-ubi8-python-3.8
+- habana-jupyter-1.11.0-ubi8-python-3.8
 - runtime-minimal-ubi8-python-3.8
 - runtime-datascience-ubi8-python-3.8
 - runtime-pytorch-ubi8-python-3.8
@@ -164,6 +182,15 @@ You can overwrite `IMAGE_REGISTRY` and `RELEASE` variables to use a different re
 
 ```shell
 make ${WORKBENCH_NAME} -e IMAGE_REGISTRY=quay.io/${YOUR_USER}/workbench-images -e RELEASE=2023x
+```
+
+## Local Execution
+
+The notebook can be run as container on the local systems.
+Use podman/docker to execute the workbench images as container.
+
+```shell
+podman run -p 8888:8888 quay.io/opendatahub/workbench-images:jupyter-minimal-ubi8-python-3.8-20230808
 ```
 
 ## Testing Notebooks

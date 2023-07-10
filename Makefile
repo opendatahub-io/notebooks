@@ -42,6 +42,8 @@ define image
 	$(call push_image,$(1))
 endef
 
+####################################### Buildchain for Python 3.8 using ubi8 #######################################
+
 # Build and push base-ubi8-python-3.8 image to the registry
 .PHONY: base-ubi8-python-3.8
 base-ubi8-python-3.8:
@@ -86,6 +88,21 @@ jupyter-pytorch-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.8
 .PHONY: jupyter-trustyai-ubi8-python-3.8
 jupyter-trustyai-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
 	$(call image,$@,jupyter/trustyai/ubi8-python-3.8,$<)
+
+# Build and push habana-jupyter-1.9.0-ubi8-python-3.8 image to the registry
+.PHONY: habana-jupyter-1.9.0-ubi8-python-3.8
+habana-jupyter-1.9.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
+	$(call image,$@,habana/1.9.0/ubi8-python-3.8,$<)
+
+# Build and push habana-jupyter-1.10.0-ubi8-python-3.8 image to the registry
+.PHONY: habana-jupyter-1.10.0-ubi8-python-3.8
+habana-jupyter-1.10.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
+	$(call image,$@,habana/1.10.0/ubi8-python-3.8,$<)
+
+# Build and push habana-jupyter-1.11.0-ubi8-python-3.8 image to the registry
+.PHONY: habana-jupyter-1.11.0-ubi8-python-3.8
+habana-jupyter-1.11.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
+	$(call image,$@,habana/1.11.0/ubi8-python-3.8,$<)
 
 # Build and push runtime-minimal-ubi8-python-3.8 image to the registry
 .PHONY: runtime-minimal-ubi8-python-3.8
@@ -210,7 +227,7 @@ jupyter-datascience-anaconda-python-3.8: base-anaconda-python-3.8
 	$(call image,$@,jupyter/datascience/anaconda-python-3.8,$<)
 
 
-####################################### Buildchain for Anaconda Python #######################################
+####################################### Deployments #######################################
 
 # Download kubectl binary
 .PHONY: bin/kubectl
