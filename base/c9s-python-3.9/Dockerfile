@@ -16,7 +16,7 @@ WORKDIR /opt/app-root/bin
 RUN pip install -U "micropipenv[toml]"
 
 # Install Python dependencies from Pipfile.lock file
-COPY Pipfile.lock /.
+COPY Pipfile.lock ./
 
 RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock && \
     # Install the oc client \

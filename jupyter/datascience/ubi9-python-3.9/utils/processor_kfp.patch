@@ -1,5 +1,5 @@
---- a/processor_kfp.py	2023-06-09 10:17:15.659461927 -0400
-+++ b/processor_kfp.py	2023-06-09 10:16:20.062429914 -0400
+--- a/processor_kfp.py	2023-06-09 10:19:08.882563609 -0400
++++ b/processor_kfp.py	2023-07-13 19:31:43.572407879 -0400
 @@ -213,6 +213,7 @@
                      credentials=auth_info.get("credentials", None),
                      existing_token=auth_info.get("existing_token", None),
@@ -8,7 +8,16 @@
                  )
              else:
                  client = ArgoClient(
-@@ -435,7 +435,7 @@
+@@ -416,7 +417,7 @@
+ 
+                 # create pipeline run (or specified pipeline version)
+                 run = client.run_pipeline(
+-                    experiment_id=experiment.id, job_name=job_name, pipeline_id=pipeline_id, version_id=version_id
++                    experiment_id=experiment.id, job_name=job_name, pipeline_id=pipeline_id, version_id=pipeline_id
+                 )
+ 
+             except Exception as ex:
+@@ -435,7 +436,7 @@
  
              self.log_pipeline_info(
                  pipeline_name,
@@ -17,7 +26,7 @@
                  duration=time.time() - t0,
              )
  
-@@ -451,7 +451,7 @@
+@@ -451,7 +452,7 @@
  
          return KfpPipelineProcessorResponse(
              run_id=run.id,
@@ -25,5 +34,5 @@
 +            run_url=f"{public_api_endpoint}/{run.id}",
              object_storage_url=object_storage_url,
              object_storage_path=object_storage_path,
-         )
 
+         )
