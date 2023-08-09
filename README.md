@@ -16,6 +16,7 @@ graph TB
         base-ubi8-python-3.8("Notebooks Base<br/>(base-ubi8-python-3.8)");
         jupyter-minimal-ubi8-python-3.8("Minimal Notebook<br/>(jupyter-minimal-ubi8-python-3.8)");
         jupyter-datascience-ubi8-python-3.8("Data Science Notebook<br/>(jupyter-datascience-ubi8-python-3.8)");
+        jupyter-trustyai-ubi8-python-3.8("TrustyAI Notebook<br/>(jupyter-trustyai-ubi8-python-3.8)");
 
         %% Edges
         ubi8-python-3.8 --> base-ubi8-python-3.8;
