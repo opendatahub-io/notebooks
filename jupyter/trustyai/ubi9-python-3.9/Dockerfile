@@ -14,7 +14,7 @@ LABEL name="odh-notebook-jupyter-trustyai-ubi9-python-3.9" \
 USER 0
 
 # Install jre that is needed to run the trustyai library
-RUN INSTALL_PKGS="java-11-openjdk" && \
+RUN INSTALL_PKGS="java-17-openjdk" && \
     yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
     yum -y clean all --enablerepo='*'
 
@@ -26,7 +26,7 @@ COPY Pipfile.lock ./
 RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
 
 # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
-RUN sed -i -e "s/Python.*/$(python --version)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
+RUN sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
 
 # Fix permissions to support pip in Openshift environments
 RUN chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \

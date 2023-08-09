@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  labels:                                
+    app: rstudio-image
+spec:
+  containers:                            
+  - name: rstudio
+    image: rstudio-workbench
+    command: [ "/bin/sh", "-c", "while true ; do date; sleep 5; done;" ] 
+    imagePullPolicy: Always
+    ports:
+      - containerPort: 8787
+    resources:
+      limits:
+        cpu: 500m
+        memory: 500Mi
+      requests:
+        cpu: 500m
+        memory: 500Mi
