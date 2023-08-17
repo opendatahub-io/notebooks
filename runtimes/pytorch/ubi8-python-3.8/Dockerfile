@@ -13,6 +13,8 @@ LABEL name="odh-notebook-runtime-pytorch-ubi8-python-3.8" \
 
 # Install Python packages from Pipfile.lock
 COPY Pipfile.lock ./
+# Copy Elyra dependencies for air-gapped enviroment
+COPY utils ./utils/
 
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \
