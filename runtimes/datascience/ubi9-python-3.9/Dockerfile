@@ -15,6 +15,8 @@ WORKDIR /opt/app-root/bin
 
 # Install Python packages from Pipfile.lock
 COPY Pipfile.lock ./
+# Copy Elyra dependencies for air-gapped enviroment
+COPY utils ./utils/
 
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \

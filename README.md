@@ -42,11 +42,13 @@ graph TB
 
     subgraph Runtimes
         %% Nodes
-        runtimes-datascience-ubi8-python-3.8("CUDA Data Science Notebook<br/>(cuda-jupyter-datascience-ubi8-python-3.8)");
-        runtimes-pytorch-ubi8-python-3.8("PyTorch Notebook<br/>(jupyter-pytorch-ubi8-python-3.8)");
-        cuda-runtimes-tensorflow-ubi8-python-3.8("CUDA TensorFlow Notebook<br/>(cuda-jupyter-tensorflow-ubi8-python-3.8)");
+        runtimes-minimal-ubi8-python-3.8("Minimal Runtime<br/>(runtime-minimal-ubi8-python-3.8)");
+        runtimes-datascience-ubi8-python-3.8("Data Science Runtime<br/>(runtime-datascience-ubi8-python-3.8)");
+        runtimes-pytorch-ubi8-python-3.8("PyTorch Runtime<br/>(runtime-pytorch-ubi8-python-3.8)");
+        cuda-runtimes-tensorflow-ubi8-python-3.8("CUDA TensorFlow Runtime<br/>(cuda-runtime-tensorflow-ubi8-python-3.8)");
 
         %% Edges
+        base-ubi8-python-3.8 --> runtimes-minimal-ubi8-python-3.8;
         base-ubi8-python-3.8 --> runtimes-datascience-ubi8-python-3.8;
         base-ubi8-python-3.8 --> runtimes-pytorch-ubi8-python-3.8;
         cuda-ubi8-python-3.8 --> cuda-runtimes-tensorflow-ubi8-python-3.8;
@@ -90,11 +92,13 @@ graph TB
 
     subgraph Runtimes
         %% Nodes
-        runtimes-datascience-ubi9-python-3.9("CUDA Data Science Notebook<br/>(cuda-jupyter-datascience-ubi9-python-3.9)");
-        runtimes-pytorch-ubi9-python-3.9("PyTorch Notebook<br/>(jupyter-pytorch-ubi9-python-3.9)");
-        cuda-runtimes-tensorflow-ubi9-python-3.9("CUDA TensorFlow Notebook<br/>(cuda-jupyter-tensorflow-ubi9-python-3.9)");
+        runtimes-minimal-ubi9-python-3.9("Minimal Runtime<br/>(runtime-minimal-ubi9-python-3.9)");
+        runtimes-datascience-ubi9-python-3.9("Data Science Runtime<br/>(runtime-datascience-ubi9-python-3.9)");
+        runtimes-pytorch-ubi9-python-3.9("PyTorch Runtime<br/>(runtime-pytorch-ubi9-python-3.9)");
+        cuda-runtimes-tensorflow-ubi9-python-3.9("CUDA TensorFlow Runtime<br/>(cuda-runtime-tensorflow-ubi9-python-3.9)");
 
         %% Edges
+        base-ubi9-python-3.9 --> runtimes-minimal-ubi9-python-3.9;
         base-ubi9-python-3.9 --> runtimes-datascience-ubi9-python-3.9;
         base-ubi9-python-3.9 --> runtimes-pytorch-ubi9-python-3.9;
         cuda-ubi9-python-3.9 --> cuda-runtimes-tensorflow-ubi9-python-3.9;
@@ -124,6 +128,7 @@ The following workbench images are available:
 - cuda-jupyter-minimal-ubi8-python-3.8
 - cuda-jupyter-datascience-ubi8-python-3.8
 - cuda-jupyter-tensorflow-ubi8-python-3.8
+- runtime-minimal-ubi8-python-3.8
 - runtime-datascience-ubi8-python-3.8
 - runtime-pytorch-ubi8-python-3.8
 - cuda-runtime-tensorflow-ubi8-python-3.8
@@ -136,6 +141,7 @@ The following workbench images are available:
 - cuda-jupyter-minimal-ubi9-python-3.9
 - cuda-jupyter-datascience-ubi9-python-3.9
 - cuda-jupyter-tensorflow-ubi9-python-3.9
+- runtime-minimal-ubi9-python-3.9
 - runtime-datascience-ubi8-python-3.9
 - runtime-pytorch-ubi8-python-3.9
 - cuda-runtime-tensorflow-ubi8-python-3.9
