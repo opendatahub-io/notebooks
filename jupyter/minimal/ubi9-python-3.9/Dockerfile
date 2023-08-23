@@ -27,7 +27,7 @@ RUN chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
 WORKDIR /opt/app-root/src
 
 # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
-RUN sed -i -e "s/Python.*/$(python --version)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
+RUN sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
 
 ENTRYPOINT ["start-notebook.sh"]
 
