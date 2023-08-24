@@ -23,6 +23,8 @@ metadata:
 - **`opendatahub.io/notebook-image-desc:`** - a desired description string of the of the particular workbench image (used in the UI) 
 - **`opendatahub.io/notebook-image-order:`** - an index value for the particular workbench ImageStream (used by the UI to list available workbench images in a specific order)
 
+- **`opendatahub.io/recommended-accelerators`** - a string that represents the list of recommended hardware accelerators for the particular workbench ImageStream. This is used by the ODH dashboard component to correctly assign accelerators and tolerations to the workbench. Ex: `'["nvidia.com/gpu", "habana.com/gen1"]'`
+Note: The annotation is not required for non-accelerator recommended images i.e. you do not need to include an empty array.
 ### Tag-specific annotations
 One ImageStream can reference multiple image tags. The following annotations are specific to a particular workbench image tag and are provided in its `annotations:` section.
 ```yaml
@@ -60,13 +62,14 @@ metadata:
     opendatahub.io/notebook-image-name: "Example Jupyter Notebook"
     opendatahub.io/notebook-image-desc: "Exemplary Jupyter notebook image just for demonstrative purposes"
     opendatahub.io/notebook-image-order: "1"
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
   name: example-jupyter-notebook
 spec:
   lookupPolicy:
     local: true
   tags:
   - annotations:
-      opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
+      opendatahub.io/notebook-software: '[{"name":"CUDA","version":"11.8"},{"name":"Python","version":"v3.9"}]'
       opendatahub.io/notebook-python-dependencies: '[{"name":"Boto3","version":"1.26"},{"name":"Kafka-Python","version":"2.0"},{"name":"Kfp-tekton","version":"1.5"},{"name":"Matplotlib","version":"3.6"},{"name":"Numpy","version":"1.24"},{"name":"Pandas","version":"1.5"},{"name":"Scikit-learn","version":"1.2"},{"name":"Scipy","version":"1.10"}]'
       openshift.io/imported-from: quay.io/opendatahub/workbench-images
       opendatahub.io/workbench-image-recommended: 'true'
