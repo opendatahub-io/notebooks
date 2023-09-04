@@ -83,6 +83,10 @@ cuda-jupyter-tensorflow-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.
 jupyter-pytorch-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.8
 	$(call image,$@,jupyter/pytorch/ubi8-python-3.8,$<)
 
+.PHONY: jupyter-trustyai-ubi8-python-3.8
+jupyter-trustyai-ubi8-python-3.8: jupyter-datascience-ubi9-python-3.9
+	$(call image,$@,jupyter/trustyai/ubi8-python-3.8,$<)
+
 # Build and push runtime-minimal-ubi8-python-3.8 image to the registry
 .PHONY: runtime-minimal-ubi8-python-3.8
 runtime-minimal-ubi8-python-3.8: base-ubi8-python-3.8
@@ -392,6 +396,7 @@ refresh-pipfilelock-files:
 	cd jupyter/pytorch/ubi8-python-3.8 && pipenv lock
 	cd jupyter/tensorflow/ubi8-python-3.8 && pipenv lock
 	cd jupyter/tensorflow/ubi9-python-3.9 && pipenv lock
+	cd jupyter/trustyai/ubi8-python-3.8 && pipenv lock
 	cd jupyter/trustyai/ubi9-python-3.9 && pipenv lock
 	cd runtimes/datascience/ubi8-python-3.8 && pipenv lock
 	cd runtimes/datascience/ubi9-python-3.9 && pipenv lock

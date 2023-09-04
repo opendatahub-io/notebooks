@@ -125,6 +125,7 @@ The following workbench images are available:
 - jupyter-minimal-ubi8-python-3.8
 - jupyter-datascience-ubi8-python-3.8
 - jupyter-pytorch-ubi8-python-3.8
+- jupyter-trustyai-ubi8-python-3.8
 - cuda-jupyter-minimal-ubi8-python-3.8
 - cuda-jupyter-datascience-ubi8-python-3.8
 - cuda-jupyter-tensorflow-ubi8-python-3.8
