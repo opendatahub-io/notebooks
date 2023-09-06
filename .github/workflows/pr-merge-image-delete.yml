@@ -1,0 +1,88 @@
+name: Delete quay image of PR once merged
+on:
+  push:
+    branches:
+      - 'main'
+
+permissions:
+  pull-requests: read
+env:
+  QUAY_IMAGE_REPO: ${{ secrets.QUAY_IMAGE_REPO }}
+jobs:
+  delete-pr-quay-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: '0'
+      - name: Install skopeo
+        shell: bash
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install skopeo
+      - name: Get Pull Request Number
+        uses: actions/github-script@v6
+        id: get_pr_number
+        with:
+          script: |
+            if (context.issue.number) {
+              // Return issue number if present
+              return context.issue.number;
+            } else {
+              // Otherwise return issue number from commit
+              return (
+                await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                  commit_sha: context.sha,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                })
+              ).data[0].number;
+            }
+          result-encoding: string
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to quay.io
+        shell: bash
+        env:
+          QUAY_ROBOT_USERNAME: ${{ secrets.QUAY_ROBOT_USERNAME }}
+          QUAY_ROBOT_TOKEN: ${{ secrets.QUAY_ROBOT_TOKEN }}
+        run: |
+         skopeo login quay.io -u ${QUAY_ROBOT_USERNAME} -p ${QUAY_ROBOT_TOKEN}
+      - name: Delete PR image
+        shell: bash
+        continue-on-error: true
+        env:
+          PR: ${{steps.get_pr_number.outputs.result}}
+        run: |
+
+          set +e # Don't abort if a delete operation fails as all images might not be available for the PR
+
+          skopeo delete docker://${QUAY_IMAGE_REPO}:base-ubi8-python-3.8-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:base-ubi8-python-3.8-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:base-c9s-python-3.9-pr-${{ env.PR }}
+
+          skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-minimal-ubi8-python-3.8-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-datascience-ubi8-python-3.8-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-pytorch-ubi8-python-3.8-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-jupyter-minimal-ubi8-python-3.8-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-jupyter-datascience-ubi8-python-3.8-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-jupyter-tensorflow-ubi8-python-3.8-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-minimal-ubi8-python-3.8-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-datascience-ubi8-python-3.8-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-pytorch-ubi8-python-3.8-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-runtime-tensorflow-ubi8-python-3.8-pr-${{ env.PR }}
+          
+          skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-minimal-ubi9-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-datascience-ubi9-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-pytorch-ubi9-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-trustyai-ubi9-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-jupyter-minimal-ubi9-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-jupyter-datascience-ubi9-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-jupyter-tensorflow-ubi9-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-minimal-ubi9-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-datascience-ubi9-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-pytorch-ubi9-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-runtime-tensorflow-ubi8-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:codeserver-c9s-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:rstudio-c9s-python-3.9-pr-${{ env.PR }}
