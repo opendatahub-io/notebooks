@@ -17,7 +17,7 @@ USER 0
 WORKDIR /opt/app-root/bin
 
 ENV NVARCH x86_64
-ENV NVIDIA_REQUIRE_CUDA "cuda>=11.8 brand=tesla,driver>=450,driver<451 brand=tesla,driver>=470,driver<471 brand=unknown,driver>=470,driver<471 brand=nvidia,driver>=470,driver<471 brand=nvidiartx,driver>=470,driver<471 brand=geforce,driver>=470,driver<471 brand=geforcertx,driver>=470,driver<471 brand=quadro,driver>=470,driver<471 brand=quadrortx,driver>=470,driver<471 brand=titan,driver>=470,driver<471 brand=titanrtx,driver>=470,driver<471 brand=tesla,driver>=510,driver<511 brand=unknown,driver>=510,driver<511 brand=nvidia,driver>=510,driver<511 brand=nvidiartx,driver>=510,driver<511 brand=geforce,driver>=510,driver<511 brand=geforcertx,driver>=510,driver<511 brand=quadro,driver>=510,driver<511 brand=quadrortx,driver>=510,driver<511 brand=titan,driver>=510,driver<511 brand=titanrtx,driver>=510,driver<511 brand=tesla,driver>=515,driver<516 brand=unknown,driver>=515,driver<516 brand=nvidia,driver>=515,driver<516 brand=nvidiartx,driver>=515,driver<516 brand=geforce,driver>=515,driver<516 brand=geforcertx,driver>=515,driver<516 brand=quadro,driver>=515,driver<516 brand=quadrortx,driver>=515,driver<516 brand=titan,driver>=515,driver<516 brand=titanrtx,driver>=515,driver<516"
+ENV NVIDIA_REQUIRE_CUDA "cuda>=11.8 brand=tesla,driver>=450,driver<451 brand=tesla,driver>=470,driver<471 brand=unknown,driver>=470,driver<471 brand=nvidia,driver>=470,driver<471 brand=nvidiartx,driver>=470,driver<471 brand=geforce,driver>=470,driver<471 brand=geforcertx,driver>=470,driver<471 brand=quadro,driver>=470,driver<471 brand=quadrortx,driver>=470,driver<471 brand=titan,driver>=470,driver<471 brand=titanrtx,driver>=470,driver<471"
 ENV NV_CUDA_CUDART_VERSION 11.8.89-1
 
 COPY cuda.repo-x86_64 /etc/yum.repos.d/cuda.repo
@@ -70,6 +70,9 @@ RUN yum install -y \
     && yum clean all \
     && rm -rf /var/cache/yum/*
 
+# Set this flag so that libraries can find the location of CUDA
+ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
+
 # Install CUDA devel from:
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/11.8.0/ubi8/devel/Dockerfile
 ENV NV_CUDA_LIB_VERSION 11.8.0-1
@@ -103,7 +106,7 @@ ENV LIBRARY_PATH /usr/local/cuda/lib64/stubs
 
 # Install CUDA devel cudnn8 from:
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/11.8.0/ubi8/devel/cudnn8/Dockerfile
-ENV NV_CUDNN_VERSION 8.7.0.84-1
+ENV NV_CUDNN_VERSION 8.9.0.131-1
 ENV NV_CUDNN_PACKAGE libcudnn8-${NV_CUDNN_VERSION}.cuda11.8
 ENV NV_CUDNN_PACKAGE_DEV libcudnn8-devel-${NV_CUDNN_VERSION}.cuda11.8
 

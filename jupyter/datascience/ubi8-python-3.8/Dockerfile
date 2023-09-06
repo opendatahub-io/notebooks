@@ -24,8 +24,25 @@ RUN echo "Installing softwares and packages" && \
 
 COPY utils ./utils/
 
+# OS Packages needs to be installed as root
 USER root
-RUN dnf install -y jq
+
+# Install usefull OS packages
+RUN dnf install -y jq unixODBC git-lfs libsndfile
+
+# Install MongoDB Client, We need a special repo for MongoDB as they do their own distribution
+COPY mongodb-org-6.0.repo-x86_64 /etc/yum.repos.d/mongodb-org-6.0.repo
+
+RUN dnf install -y mongocli
+
+# Install MSSQL Client, We need a special repo for MSSQL as they do their own distribution
+COPY mssql-2022.repo-x86_64 /etc/yum.repos.d/mssql-2022.repo
+
+RUN ACCEPT_EULA=Y dnf install -y mssql-tools18 unixODBC-devel
+
+ENV PATH="$PATH:/opt/mssql-tools18/bin"
+
+# Other apps and tools installed as default user
 USER 1001
 
 # setup path for runtime configuration
@@ -48,8 +65,6 @@ RUN mkdir /opt/app-root/runtimes && \
     jq '.properties.metadata.properties.runtime_type = input' $FILE_COMPONENT utils/component_runtime.json > "$tmp" && mv "$tmp" $FILE_COMPONENT && \
     jq '.properties.metadata.properties.runtime_type = input' $URL_COMPONENT utils/component_runtime.json > "$tmp" && mv "$tmp" $URL_COMPONENT && \
     sed -i "s/metadata.metadata.runtime_type/\"DATA_SCIENCE_PIPELINES\"/g" /opt/app-root/share/jupyter/labextensions/@elyra/pipeline-editor-extension/static/lib_index_js.*.js && \
-    # Explicitly enable jupyterlab_s3_browser plugin \
-    jupyter serverextension enable --py jupyterlab_s3_browser && \
     # Remove Elyra logo from JupyterLab because this is not a pure Elyra image \
     sed -i 's/widget\.id === \x27jp-MainLogo\x27/widget\.id === \x27jp-MainLogo\x27 \&\& false/' /opt/app-root/share/jupyter/labextensions/@elyra/theme-extension/static/lib_index_js.*.js && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
