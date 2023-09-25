@@ -85,7 +85,7 @@ jupyter-pytorch-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.8
 
 # Build and push jupyter-trustyai-ubi8-python-3.8 image to the registry
 .PHONY: jupyter-trustyai-ubi8-python-3.8
-jupyter-trustyai-ubi8-python-3.8: jupyter-datascience-ubi9-python-3.9
+jupyter-trustyai-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
 	$(call image,$@,jupyter/trustyai/ubi8-python-3.8,$<)
 
 # Build and push runtime-minimal-ubi8-python-3.8 image to the registry
