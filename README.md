@@ -125,6 +125,7 @@ The following workbench images are available:
 - jupyter-minimal-ubi8-python-3.8
 - jupyter-datascience-ubi8-python-3.8
 - jupyter-pytorch-ubi8-python-3.8
+- jupyter-trustyai-ubi8-python-3.8
 - cuda-jupyter-minimal-ubi8-python-3.8
 - cuda-jupyter-datascience-ubi8-python-3.8
 - cuda-jupyter-tensorflow-ubi8-python-3.8
@@ -142,9 +143,9 @@ The following workbench images are available:
 - cuda-jupyter-datascience-ubi9-python-3.9
 - cuda-jupyter-tensorflow-ubi9-python-3.9
 - runtime-minimal-ubi9-python-3.9
-- runtime-datascience-ubi8-python-3.9
-- runtime-pytorch-ubi8-python-3.9
-- cuda-runtime-tensorflow-ubi8-python-3.9
+- runtime-datascience-ubi9-python-3.9
+- runtime-pytorch-ubi9-python-3.9
+- cuda-runtime-tensorflow-ubi9-python-3.9
 - code-server-c9s-python-3.9
 - r-studio-c9s-python-3.9;
 
