@@ -75,16 +75,6 @@ cuda-jupyter-minimal-ubi8-python-3.8: cuda-ubi8-python-3.8
 cuda-jupyter-datascience-ubi8-python-3.8: cuda-jupyter-minimal-ubi8-python-3.8
 	$(call image,$@,jupyter/datascience/ubi8-python-3.8,$<)
 
-# Build and push cuda-jupyter-tensorflow-ubi8-python-3.8 image to the registry
-.PHONY: cuda-jupyter-tensorflow-ubi8-python-3.8
-cuda-jupyter-tensorflow-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.8
-	$(call image,$@,jupyter/tensorflow/ubi8-python-3.8,$<)
-
-# Build and push jupyter-pytorch-ubi8-python-3.8 image to the registry
-.PHONY: jupyter-pytorch-ubi8-python-3.8
-jupyter-pytorch-ubi8-python-3.8: cuda-jupyter-datascience-ubi8-python-3.8
-	$(call image,$@,jupyter/pytorch/ubi8-python-3.8,$<)
-
 # Build and push jupyter-trustyai-ubi8-python-3.8 image to the registry
 .PHONY: jupyter-trustyai-ubi8-python-3.8
 jupyter-trustyai-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
@@ -338,12 +328,6 @@ test-%: bin/kubectl
 		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/minimal/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi8"; then \
-		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/pytorch/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb pytorch_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi8"; then \
-		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/tensorflow/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb tensorflow_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/trustyai/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb trustyai_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
@@ -451,8 +435,6 @@ refresh-pipfilelock-files:
 	cd jupyter/datascience/ubi8-python-3.8 && pipenv lock
 	cd jupyter/datascience/ubi9-python-3.9 && pipenv lock
 	cd jupyter/pytorch/ubi9-python-3.9 && pipenv lock
-	cd jupyter/pytorch/ubi8-python-3.8 && pipenv lock
-	cd jupyter/tensorflow/ubi8-python-3.8 && pipenv lock
 	cd jupyter/tensorflow/ubi9-python-3.9 && pipenv lock
 	cd jupyter/trustyai/ubi8-python-3.8 && pipenv lock
 	cd jupyter/trustyai/ubi9-python-3.9 && pipenv lock
