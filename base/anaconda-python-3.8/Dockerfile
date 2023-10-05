@@ -79,7 +79,7 @@ ENV BASH_ENV="source /opt/anaconda3/bin/activate ${APP_ROOT}" \
 USER 1001
 
 # Set the default CMD to print the usage of the language image.
-CMD $STI_SCRIPTS_PATH/usage
+CMD ["$STI_SCRIPTS_PATH/usage"]
 
 
 FROM s2i-python-anaconda-38-base

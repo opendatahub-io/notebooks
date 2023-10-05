@@ -87,4 +87,4 @@ WORKDIR /opt/app-root/src
 
 USER 1001
 
-CMD /opt/app-root/bin/run-code-server.sh
+CMD ["/opt/app-root/bin/run-code-server.sh"]
