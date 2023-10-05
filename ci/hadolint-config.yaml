@@ -1,0 +1,36 @@
+---
+
+# Reference https://github.com/hadolint/hadolint
+# hadolint --config ./ci/hadolint-config.yaml <Dockerfile>
+
+# We should revisit this ignore list and reduce it regularly
+
+ignored:
+  # DL3006 warning: Always tag the version of an image explicitly
+  - DL3006
+  # DL3033 warning: Specify version with `yum install -y <package>-<version>`.
+  - DL3033
+  # DL3045 warning: `COPY` to a relative destination without `WORKDIR` set.
+  - DL3045
+  # DL3041 warning: Specify version with `dnf install -y <package>-<version>`.
+  - DL3041
+  # DL3059 info: Multiple consecutive `RUN` instructions. Consider consolidation.
+  - DL3059
+  # DL3013 warning: Pin versions in pip. Instead of `pip install <package>` use
+  # `pip install <package>==<version>` or `pip install --requirement <requirements file>`
+  - DL3013
+  # DL4006 warning: Set the SHELL option -o pipefail before RUN with a pipe in it.
+  # If you are using /bin/sh in an alpine image or if your shell is symlinked to busybox
+  # then consider explicitly setting your SHELL to /bin/ash, or disable this check
+  - DL4006
+  # DL3007 warning: Using latest is prone to errors if the image will ever update.
+  # Pin the version explicitly to a release tag
+  - DL3007
+  # SC3060 warning: In POSIX sh, string replacement is undefined.
+  - SC3060
+  # SC2086 info: Double quote to prevent globbing and word splitting.
+  - SC2086
+  # SC2046 warning: Quote this to prevent word splitting.
+  - SC2046
+  # SC2140 warning: Word is of the form "A"B"C" (B indicated). Did you mean "ABC" or "A\"B\"C"?
+  - SC2140
