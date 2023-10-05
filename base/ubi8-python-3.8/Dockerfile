@@ -13,7 +13,7 @@ LABEL name="odh-notebook-base-ubi8-python-3.8" \
 WORKDIR /opt/app-root/bin
 
 # Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install -U "micropipenv[toml]"
+RUN pip install --no-cache-dir -U "micropipenv[toml]"
 
 # Install Python dependencies from Pipfile.lock file
 COPY Pipfile.lock ./
