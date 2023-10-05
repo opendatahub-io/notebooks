@@ -6,20 +6,26 @@ name = "pypi"
 [dev-packages]
 
 [packages]
-# TensorFlow and useful extensions
+# TensorFlow packages
+tensorflow = "~=2.13.0"
+tensorboard = "~=2.13.0"
+tf2onnx = "~= 1.15.1"
 
-tensorflow = "~=2.11.0"
-tensorboard = "~=2.11.2"
-tf2onnx = "~= 1.13.0"
-
-# Datascience
+# Datascience and useful extensions
 kafka-python = "~=2.0.2"
 matplotlib = "~=3.6.3"
-numpy = "~=1.24.1"
+numpy = "~=1.24.3"
 pandas = "~=1.5.3"
-plotly = "~=5.13.0"
-scikit-learn = "~=1.2.1"
-scipy = "~=1.10.0"
+plotly = "~=5.16.1"
+scikit-learn = "~=1.3.0"
+scipy = "~=1.11.2"
+skl2onnx = "~=1.15.0"
+codeflare-sdk = "~=0.7.0"
+# DB connectors
+pymongo = "~=4.5.0"
+psycopg = "~=3.1.10"
+pyodbc = "~=4.0.39"
+mysql-connector-python = "~=8.0.33"
 
 [requires]
 python_version = "3.9"

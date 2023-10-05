@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG CODESERVER_VERSION=v4.11.0
+ARG CODESERVER_VERSION=v4.16.1
 
 LABEL name="odh-notebook-code-server-c9s-python-3.9" \
       summary="Code Server (VS Code) image with python 3.9 based on CentOS Stream 9" \
@@ -22,8 +22,8 @@ RUN yum install -y "https://github.com/coder/code-server/releases/download/${COD
     yum -y clean all --enablerepo='*'
 
 # Install NGINX to proxy VSCode and pass probes check
-ENV NGINX_VERSION=1.20 \
-    NGINX_SHORT_VER=120 \
+ENV NGINX_VERSION=1.22 \
+    NGINX_SHORT_VER=122 \
     NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_CONF_PATH=/etc/nginx/nginx.conf \
     NGINX_DEFAULT_CONF_PATH=${APP_ROOT}/etc/nginx.default.d \
@@ -34,7 +34,7 @@ ENV NGINX_VERSION=1.20 \
 
 # Modules does not exist
 RUN yum install -y https://download.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
-    INSTALL_PKGS="nss_wrapper bind-utils gettext hostname nginx nginx-mod-stream nginx-mod-http-perl fcgiwrap initscripts chkconfig" && \
+    INSTALL_PKGS="bind-utils nginx nginx-mod-stream nginx-mod-http-perl fcgiwrap initscripts chkconfig" && \
     yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
     # spawn-fcgi is not in epel9 \
@@ -76,7 +76,6 @@ RUN sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH} && \
 COPY nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
 COPY nginx/httpconf/ /opt/app-root/etc/nginx.d/
 COPY nginx/api/ /opt/app-root/api/
-
 
 # Launcher
 COPY utils utils/

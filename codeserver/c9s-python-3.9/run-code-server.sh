@@ -8,10 +8,9 @@ source ${SCRIPT_DIR}/utils/*.sh
 run-nginx.sh &
 spawn-fcgi -s /var/run/fcgiwrap.socket -M 766 /usr/sbin/fcgiwrap 
 
-# Create .bashrc if not present
-if [ ! -f /opt/app-root/src/.bashrc ]
-then
-	touch /opt/app-root/src/.bashrc
+# Add .bashrc for custom promt if not present
+if [ ! -f "/opt/app-root/src/.bashrc" ]; then
+  echo 'PS1="\[\033[34;1m\][\$(pwd)]\[\033[0m\]\n\[\033[1;0m\]$ \[\033[0m\]"' > /opt/app-root/src/.bashrc
 fi
 
 # Initilize access logs for culling
