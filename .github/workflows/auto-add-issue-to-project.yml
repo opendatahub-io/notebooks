@@ -1,5 +1,6 @@
+---
 name: Auto Add Issues to Tracking boards
-on:
+on:  # yamllint disable-line rule:truthy
   issues:
     types:
       - opened
