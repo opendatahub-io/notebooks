@@ -7,6 +7,7 @@ resources:
 - jupyter-pytorch-notebook-imagestream.yaml
 - jupyter-tensorflow-notebook-imagestream.yaml
 - jupyter-trustyai-notebook-imagestream.yaml
+- jupyter-habana-notebook-imagestream.yaml
 
 commonLabels:
   opendatahub.io/component: "true"
@@ -95,6 +96,20 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-trustyai-notebook-image-n
+  - name: odh-habana-notebook-image-n
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-habana-notebook-image-n
+  - name: odh-habana-notebook-image-n-1
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-habana-notebook-image-n-1
 configurations:
   - params.yaml
 
