@@ -1,9 +1,9 @@
 CONTAINER_ENGINE ?= podman
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
-RELEASE	 		 ?= 2023a
+RELEASE	 		 ?= 2023b
 DATE 			 ?= $(shell date +'%Y%m%d')
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
-KUBECTL_BIN      ?= bin/kubectl
+KUBECTL_BIN      ?= kubectl
 KUBECTL_VERSION  ?= v1.23.11
 REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
 REQUIRED_CODE_SERVER_IMAGE_COMMANDS="curl python oc code-server"
@@ -20,7 +20,7 @@ define build_image
 	$(if $(3),
 		$(eval BASE_IMAGE_NAME := $(IMAGE_REGISTRY):$(3)-$(IMAGE_TAG))
 		$(eval BUILD_ARGS := --build-arg BASE_IMAGE=$(BASE_IMAGE_NAME)),
-		$(eval BUILD_ARGS :=)
+		$(eval BUILD_ARGS := --platform linux/amd64)
 	)
 	$(CONTAINER_ENGINE) build --no-cache  -t $(IMAGE_NAME) $(BUILD_ARGS) $(2)
 endef
