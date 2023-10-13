@@ -328,6 +328,12 @@ test-%: bin/kubectl
 		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/minimal/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi8"; then \
+		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/pytorch/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb pytorch_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi8"; then \
+		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/tensorflow/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb tensorflow_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/trustyai/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb trustyai_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
