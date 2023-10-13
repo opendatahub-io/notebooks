@@ -5,6 +5,7 @@ DATE 			 ?= $(shell date +'%Y%m%d')
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
+NOTEBOOK_REPO_BRANCH_BASE ?= https://raw.githubusercontent.com/opendatahub-io/notebooks/main
 REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
 REQUIRED_CODE_SERVER_IMAGE_COMMANDS="curl python oc code-server"
 REQUIRED_R_STUDIO_IMAGE_COMMANDS="curl python oc /usr/lib/rstudio-server/bin/rserver"
@@ -322,31 +323,31 @@ test-%: bin/kubectl
 	echo "=> Checking $(FULL_NOTEBOOK_NAME) notebook execution..." ; \
 	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "python3 -m pip install papermill" ; \
 	if echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi9"; then \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/minimal/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/minimal/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/pytorch/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb pytorch_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/pytorch/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb pytorch_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/tensorflow/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb tensorflow_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/tensorflow/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb tensorflow_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/trustyai/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb trustyai_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/trustyai/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb trustyai_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi8"; then \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/minimal/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/minimal/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/pytorch/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb pytorch_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/pytorch/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb pytorch_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/tensorflow/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb tensorflow_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/tensorflow/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb tensorflow_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/trustyai/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb trustyai_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/trustyai/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb trustyai_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "anaconda"; then \
 		echo "There is no test notebook implemented yet for Anaconda Notebook...." ; \
 	else \
@@ -355,13 +356,13 @@ test-%: bin/kubectl
 
 .PHONY: validate-ubi9-datascience
 validate-ubi9-datascience:
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/minimal/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/datascience/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb datascience_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/minimal/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/datascience/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb datascience_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
 
 .PHONY: validate-ubi8-datascience
 validate-ubi8-datascience:
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/minimal/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/datascience/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb datascience_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/minimal/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/datascience/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb datascience_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
 
 # Validate that runtime image meets minimum criteria
 # This validation is created from subset of https://github.com/elyra-ai/elyra/blob/9c417d2adc9d9f972de5f98fd37f6945e0357ab9/Makefile#L325
