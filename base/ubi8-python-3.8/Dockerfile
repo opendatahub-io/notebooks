@@ -20,6 +20,15 @@ COPY Pipfile.lock ./
 
 RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
 
+# OS Packages needs to be installed as root
+USER root
+
+# Install usefull OS packages
+RUN dnf install -y mesa-libGL
+
+# Other apps and tools installed as default user
+USER 1001
+
 # Install the oc client
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz \
         -o /tmp/openshift-client-linux.tar.gz && \
