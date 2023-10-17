@@ -1,7 +1,7 @@
 ---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namePrefix: runtime- 
+namePrefix: runtime-
 resources:
   - pod.yaml
 images:
@@ -9,6 +9,6 @@ images:
     newName: quay.io/opendatahub/workbench-images
     newTag: runtime-cuda-tensorflow-ubi9-python-3.9
 configMapGenerator:
-- name: req-config
-  files:
-  - requirements-elyra.txt
+  - name: req-config
+    files:
+      - requirements-elyra.txt

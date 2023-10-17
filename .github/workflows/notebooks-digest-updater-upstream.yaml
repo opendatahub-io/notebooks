@@ -1,13 +1,14 @@
+---
 # The aim of this GitHub workflow is to update the params.env file with the latest digest.
-on:
+on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:
       branch:
         required: true
         description: "Provide the name of the branch you want to update ex main, vYYYYx etc: "
-  # Put the scheduler on comment until automate the full release procedure
-  # schedule:
-  #   - cron: "0 0 * * 5" #Scheduled every Friday
+        # Put the scheduler on comment until automate the full release procedure
+        # schedule:
+        #   - cron: "0 0 * * 5"  #Scheduled every Friday
 env:
   DIGEST_UPDATER_BRANCH: digest-updater-${{ github.run_id }}
   BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
@@ -39,7 +40,7 @@ jobs:
          git push --set-upstream origin ${{ env.DIGEST_UPDATER_BRANCH }}
 
   update-n-version:
-    needs: [ initialize ]
+    needs: [initialize]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -53,8 +54,8 @@ jobs:
       - name: Checkout upstream notebooks repo
         uses: actions/checkout@v3
         with:
-         repository: opendatahub-io/notebooks.git
-         ref: ${{ env.RELEASE_VERSION_N }}
+          repository: opendatahub-io/notebooks.git
+          ref: ${{ env.RELEASE_VERSION_N }}
 
       - name: Retrieve latest weekly commit hash from the release branch
         id: hash-n
@@ -88,7 +89,7 @@ jobs:
               git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/params.env && git commit -m "Update images for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
 
   update-n-1-version:
-    needs: [ initialize, update-n-version ]
+    needs: [initialize, update-n-version]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -102,8 +103,8 @@ jobs:
       - name: Checkout upstream notebooks repo
         uses: actions/checkout@v3
         with:
-         repository: opendatahub-io/notebooks.git
-         ref: ${{ env.RELEASE_VERSION_N_1 }}
+          repository: opendatahub-io/notebooks.git
+          ref: ${{ env.RELEASE_VERSION_N_1 }}
 
       - name: Retrieve latest weekly commit hash from the release branch
         id: hash-n-1
@@ -138,7 +139,7 @@ jobs:
 
   # Creates the Pull Request
   open-pull-request:
-    needs: [ update-n-version, update-n-1-version ]
+    needs: [update-n-version, update-n-1-version]
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -149,7 +150,7 @@ jobs:
       - name: pull-request
         uses: repo-sync/pull-request@v2
         with:
-          source_branch:  ${{ env.DIGEST_UPDATER_BRANCH }}
+          source_branch: ${{ env.DIGEST_UPDATER_BRANCH }}
           destination_branch: ${{ env.BRANCH_NAME}}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_label: "automated pr"
