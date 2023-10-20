@@ -13,6 +13,12 @@ The device on AWS with machine `dl1.24xlarge` has habana fireware.
 With documentation for [OpenShift Enviornment](https://docs.habana.ai/en/latest/Orchestration/HabanaAI_Operator/index.html?highlight=openshift).  
 
 
+### Utilize with OpenDatahub
+
+User can use the Habana base notebook image with OpenDatahub, 
+With the [notebook manifests](../manifests/base/jupyter-habana-notebook-imagestream.yaml),  
+user can include the habanaAI compatible image directly to Opendatahub.
+
 ### Reference  
 
 https://github.com/HabanaAI/Setup_and_Install/tree/1.9.0  

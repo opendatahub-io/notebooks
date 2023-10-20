@@ -5,6 +5,7 @@ DATE 			 ?= $(shell date +'%Y%m%d')
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
+NOTEBOOK_REPO_BRANCH_BASE ?= https://raw.githubusercontent.com/opendatahub-io/notebooks/main
 REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
 REQUIRED_CODE_SERVER_IMAGE_COMMANDS="curl python oc code-server"
 REQUIRED_R_STUDIO_IMAGE_COMMANDS="curl python oc /usr/lib/rstudio-server/bin/rserver"
@@ -301,51 +302,78 @@ undeploy-c9s-%-c9s-python-3.9: bin/kubectl
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
+# Function for testing a notebook with papermill
+#   ARG 1: Notebook name
+#   ARG 1: UBI flavor
+#   ARG 1: Python kernel
+define test_with_papermill
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "python3 -m pip install papermill" ; \
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/$(1)/$(2)-$(3)/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb $(1)_$(2)_output.ipynb --kernel python3 --stderr-file $(1)_$(2)_error.txt" ; \
+    if [ $$? -ne 0 ]; then \
+		echo "ERROR: The $(1) $(2) notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-$(1)-$(2)-$(3)-test-e2e' directory or run 'cat $(1)_$(2)_error.txt' within your container. The make process has been aborted." ; \
+		exit 1 ; \
+	fi ; \
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(1)_$(2)_error.txt | grep --quiet FAILED" ; \
+	if [ $$? -eq 0 ]; then \
+		echo "ERROR: The $(1) $(2) notebook encountered a failure. The make process has been aborted." ; \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(1)_$(2)_error.txt" ; \
+		exit 1 ; \
+	fi
+endef
+
 # Verify the notebook's readiness by pinging the /api endpoint and executing the corresponding test_notebook.ipynb file in accordance with the build chain logic.
 .PHONY: test
 test-%: bin/kubectl
+
+	# Verify the notebook's readiness by pinging the /api endpoint
 	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
 	$(info # Running tests for $(NOTEBOOK_NAME) notebook...)
-	$(KUBECTL_BIN) wait --for=condition=ready pod -l app=$(NOTEBOOK_NAME) --timeout=300s
+	$(KUBECTL_BIN) wait --for=condition=ready pod -l app=$(NOTEBOOK_NAME) --timeout=600s
 	$(KUBECTL_BIN) port-forward svc/$(NOTEBOOK_NAME)-notebook 8888:8888 & curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:8888/notebook/opendatahub/jovyan/api ; EXIT_CODE=$$?; echo && pkill --full "^$(KUBECTL_BIN).*port-forward.*"; \
 	$(eval FULL_NOTEBOOK_NAME = $(shell ($(KUBECTL_BIN) get pods -l app=$(NOTEBOOK_NAME) -o custom-columns=":metadata.name" | tr -d '\n')))
-	echo "=> Checking $(FULL_NOTEBOOK_NAME) notebook execution..." ; \
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "python3 -m pip install papermill" ; \
+	
+	# Tests notebook's functionalities 
 	if echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi9"; then \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/minimal/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
+		$(call test_with_papermill,minimal,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/pytorch/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb pytorch_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
+		$(call test_with_papermill,pytorch,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/tensorflow/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb tensorflow_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
+		$(call test_with_papermill,tensorflow,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/trustyai/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb trustyai_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
+		$(call test_with_papermill,trustyai,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi8"; then \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/minimal/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
+		$(call test_with_papermill,minimal,ubi8,python-3.8) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi8"; then \
+		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
+		$(call test_with_papermill,pytorch,ubi8,python-3.8) \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi8"; then \
+		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
+		$(call test_with_papermill,tensorflow,ubi8,python-3.8) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/trustyai/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb trustyai_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
+		$(call test_with_papermill,trustyai,ubi8,python-3.8) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "anaconda"; then \
-		echo "There is no test notebook implemented yet for Anaconda Notebook...." ; \
+		echo "There is no test notebook implemented yet for Anaconda Notebook...." \
 	else \
 		echo "No matching condition found for $(FULL_NOTEBOOK_NAME)." ; \
 	fi
 
 .PHONY: validate-ubi9-datascience
 validate-ubi9-datascience:
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/minimal/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/datascience/ubi9-python-3.9/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb datascience_ubi9_output.ipynb --kernel python3 > /dev/null" ; \
+	$(call test_with_papermill,minimal,ubi9,python-3.9)
+	$(call test_with_papermill,datascience,ubi9,python-3.9)
 
 .PHONY: validate-ubi8-datascience
 validate-ubi8-datascience:
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/minimal/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb minimal_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget https://raw.githubusercontent.com/opendatahub-io/notebooks/main/jupyter/datascience/ubi8-python-3.8/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb datascience_ubi8_output.ipynb --kernel python3 > /dev/null" ; \
+	$(call test_with_papermill,minimal,ubi8,python-3.8)
+	$(call test_with_papermill,datascience,ubi8,python-3.8)
 
 # Validate that runtime image meets minimum criteria
 # This validation is created from subset of https://github.com/elyra-ai/elyra/blob/9c417d2adc9d9f972de5f98fd37f6945e0357ab9/Makefile#L325

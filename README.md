@@ -208,6 +208,12 @@ Run the test suite against this notebook:
 make test-${NOTEBOOK_NAME}
 ```
 
+You can overwrite `NOTEBOOK_REPO_BRANCH_BASE` variable to use a different repository and branch for testing scripts. This is useful when you debug your changes.
+
+```shell
+make test-${NOTEBOOK_NAME} -e NOTEBOOK_REPO_BRANCH_BASE="https://raw.githubusercontent.com/${YOUR_USER}/notebooks/${YOUR_BRANCH}"
+```
+
 Clean up the environment when the tests are finished:
 
 ```shell

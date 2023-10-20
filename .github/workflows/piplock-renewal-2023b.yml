@@ -1,7 +1,7 @@
 ---
 # This GitHub action is meant to be triggered weekly in order to update the pipfile.locks
 
-name: Weekly Pipfile.locks renewal on [2023a] branch
+name: Weekly Pipfile.locks renewal on [2023b] branch
 
 on:  # yamllint disable-line rule:truthy
   # Triggers the workflow every Monday at 22pm UTC am 0 22 * * 1
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout code from the release branch
         uses: actions/checkout@v3
         with:
-          ref: 2023a
+          ref: 2023b
           token: ${{ secrets.GH_ACCESS_TOKEN }}
 
       # Setup Python environment
