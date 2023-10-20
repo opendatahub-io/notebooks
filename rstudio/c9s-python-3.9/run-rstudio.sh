@@ -8,8 +8,14 @@ source ${SCRIPT_DIR}/utils/*.sh
 run-nginx.sh &
 spawn-fcgi -s /var/run/fcgiwrap.socket -M 766 /usr/sbin/fcgiwrap 
 
+
+# Add .bashrc for custom promt if not present
+if [ ! -f "/opt/app-root/src/.bashrc" ]; then
+  echo 'PS1="\[\033[34;1m\][\$(pwd)]\[\033[0m\]\n\[\033[1;0m\]$ \[\033[0m\]"' > /opt/app-root/src/.bashrc
+fi
+
 # Create lib folders if it does not exist
-mkdir -p  /opt/app-root/src/Rpackages/4.2
+mkdir -p  /opt/app-root/src/Rpackages/4.3
 
 # rstudio terminal cant see environment variables set by the container runtime
 # (which breaks kubectl, to fix this we store the KUBERNETES_* env vars in Renviron.site)

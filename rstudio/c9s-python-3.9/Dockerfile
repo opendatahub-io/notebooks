@@ -13,7 +13,7 @@ LABEL name="odh-notebook-rstudio-c9s-python-3.9" \
 
 USER 0
 
-ENV R_VERSION=4.3.0
+ENV R_VERSION=4.3.1
 
 # Install R
 RUN yum install -y yum-utils && \
@@ -35,9 +35,9 @@ ENV R_LIBS_USER /opt/app-root/src/Rpackages/4.2
 WORKDIR /tmp/
 
 # Install RStudio
-RUN wget https://download2.rstudio.org/server/rhel8/x86_64/rstudio-server-rhel-2022.12.0-353-x86_64.rpm && \
-    yum install -y rstudio-server-rhel-2022.12.0-353-x86_64.rpm && \
-    rm rstudio-server-rhel-2022.12.0-353-x86_64.rpm && \
+RUN wget https://download2.rstudio.org/server/rhel9/x86_64/rstudio-server-rhel-2023.06.1-524-x86_64.rpm && \
+    yum install -y rstudio-server-rhel-2023.06.1-524-x86_64.rpm && \
+    rm rstudio-server-rhel-2023.06.1-524-x86_64.rpm && \
     yum -y clean all  --enablerepo='*'
 
 # Specific RStudio config and fixes
