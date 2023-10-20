@@ -1,0 +1,42 @@
+---
+name: Code static analysis
+on: [pull_request]  # yamllint disable-line rule:truthy
+
+permissions:
+  contents: read
+
+jobs:
+  code-static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Validate YAML files (best code practices check included)
+        id: validate-yaml-files
+        uses: ibiqlik/action-yamllint@v3.1.1
+        with:
+          config_file: ./ci/yamllint-config.yaml
+
+      # In some YAML files we use JSON strings, let's check these
+      - name: Validate JSON strings in YAML files (just syntax)
+        id: validate-json-strings-in-yaml-files
+        run: |
+          type json_verify || sudo apt-get install yajl-tools
+          bash ./ci/check-json.sh
+
+      - name: Validate JSON files (just syntax)
+        id: validate-json-files
+        run: |
+          type json_verify || sudo apt-get install yajl-tools
+          shopt -s globstar
+          ret_code=0
+          echo "-- Checking a regular '*.json' files"
+          for f in **/*.json; do echo "Checking: '${f}"; echo -n "  > "; cat $f | json_verify || ret_code=1; done
+          echo "-- Checking a 'Pipfile.lock' files"
+          for f in **/Pipfile.lock; do echo "Checking: '${f}"; echo -n "  > "; cat $f | json_verify || ret_code=1; done
+          echo "-- Checking a '*.ipynb' Jupyter notebook files"
+          for f in **/*.ipynb; do echo "Checking: '${f}"; echo -n "  > "; cat $f | json_verify || ret_code=1; done
+          if test "${ret_code}" -ne 0; then
+              echo "There were errors in some of the checked files. Please run `json_verify` on such files and fix issues there."
+          fi
+          exit "${ret_code}"

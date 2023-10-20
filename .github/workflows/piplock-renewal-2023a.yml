@@ -1,17 +1,18 @@
-# This GitHub action is meant to be triggered weekly in order to update the pipfile.locks 
+---
+# This GitHub action is meant to be triggered weekly in order to update the pipfile.locks
 
 name: Weekly Pipfile.locks renewal on [2023a] branch
 
-on:
- # Triggers the workflow every Monday at 22pm UTC am 0 22 * * 1
- schedule:
-   - cron: "0 22 * * 1"
- workflow_dispatch:  # for manual trigger workflow from GH Web UI
- 
+on:  # yamllint disable-line rule:truthy
+  # Triggers the workflow every Monday at 22pm UTC am 0 22 * * 1
+  schedule:
+    - cron: "0 22 * * 1"
+  workflow_dispatch:  # for manual trigger workflow from GH Web UI
+
 jobs:
   build:
     runs-on: ubuntu-latest
-     
+
     permissions:
       # Give the default GITHUB_TOKEN write permission to commit and push the
       # added or changed files to the repository.
