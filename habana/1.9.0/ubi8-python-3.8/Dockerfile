@@ -79,7 +79,7 @@ RUN dnf install -y habanalabs-thunk-"$VERSION"-"$REVISION".el8 \
 ENV PIP_NO_CACHE_DIR=on
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install python packages 
+# Install python packages
 # RUN python3.8 -m pip install hpu_media_loader=="${VERSION}"."${REVISION}"
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY Pipfile.lock ./
@@ -94,7 +94,7 @@ ENV HABANA_SCAL_BIN_PATH=/opt/habanalabs/engines_fw
 ENV HABANA_PLUGINS_LIB_PATH=/opt/habanalabs/habana_plugins
 
 ## Install habana pytorch
-# Reference: https://github.com/HabanaAI/Setup_and_Install/blob/1.9.0/dockerfiles/Dockerfile_rhel8.6_pytorch_installer 
+# Reference: https://github.com/HabanaAI/Setup_and_Install/blob/1.9.0/dockerfiles/Dockerfile_rhel8.6_pytorch_installer
 ENV LANG=en_US.UTF-8
 ENV PYTHONPATH=/root:/usr/lib/habanalabs/
 

@@ -6,7 +6,7 @@ source ${SCRIPT_DIR}/utils/*.sh
 
 # Start nginx and fastcgiwrap
 run-nginx.sh &
-spawn-fcgi -s /var/run/fcgiwrap.socket -M 766 /usr/sbin/fcgiwrap 
+spawn-fcgi -s /var/run/fcgiwrap.socket -M 766 /usr/sbin/fcgiwrap
 
 # Add .bashrc for custom promt if not present
 if [ ! -f "/opt/app-root/src/.bashrc" ]; then

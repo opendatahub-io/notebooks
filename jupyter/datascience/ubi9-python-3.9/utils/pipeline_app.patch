@@ -1,12 +1,12 @@
---- a/pipeline_app.py	2023-11-09 13:36:35
-+++ b/pipeline_app.py	2023-11-09 12:10:35
+--- a/pipeline_app.py    2023-11-09 13:36:35
++++ b/pipeline_app.py    2023-11-09 12:10:35
 @@ -296,7 +296,8 @@
          _validate_pipeline_definition(pipeline_definition)
      except Exception:
          raise click.ClickException("Pipeline validation FAILED.")
 -
-+    
++
 +    print_info("Pipeline validation SUCCEEDED.", [])
- 
+
  def validate_timeout_option(ctx, param, value):
      """Callback for monitor-timeout parameter validation"""

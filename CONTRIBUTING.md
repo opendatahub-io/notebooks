@@ -15,6 +15,7 @@ Pull requests are the best way to propose changes to the notebooks repository:
 
 - Configure name and email in git
 - Fork the repo and create your branch from main.
+- Install [pre-commit](https://pre-commit.com/) into your [git hooks](https://githooks.com/) by running `pre-commit install`. See [linting](#linting) for more.
 - Sign off your commit using the -s, --signoff option. Write a good commit message (see [How to Write a Git Commit Message](https://chris.beams.io/posts/git-commit/))
 - If you've added code that should be tested, [add tests](https://github.com/openshift/release/blob/master/ci-operator/config/opendatahub-io/notebooks/opendatahub-io-notebooks-main.yaml).
 - Ensure the test suite passes.
@@ -35,7 +36,7 @@ Pull requests are the best way to propose changes to the notebooks repository:
     # Your comment here
     .PHONY: jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8
     jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8: jupyter-minimal-ubi8-python-3.8
-	$(call image,$@,jupyter/${NOTEBOOK_NAME}/ubi8-python-3.8,$<)
+    $(call image,$@,jupyter/${NOTEBOOK_NAME}/ubi8-python-3.8,$<)
     ```
 - Add the paths of the new pipfiles under `refresh-pipfilelock-files`
 - Test the changes locally, by manually running the `$ make jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8` from the terminal.
@@ -56,3 +57,17 @@ Pull requests are the best way to propose changes to the notebooks repository:
 ### Testing your PR locally
 
 - Test the changes locally, by manually running the `$make jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8` from the terminal. This definitely helps in that initial phase.
+
+### Linting
+
+To run linting tests, we use [pre-commit](https://pre-commit.com/).
+
+We have setup a [pre-commit](https://pre-commit.com) config file in [.pre-commit-config.yaml](.pre-commit-config.yaml).
+To [utilize pre-commit](https://pre-commit.com/#usage), install pre-commit with `pip3 install pre-commit` and then either:
+
+Run `pre-commit install` after you clone the repo, `pre-commit` will run automatically on git commit.
+   * If any one of the tests fail, add and commit the changes made by pre-commit. Once the pre-commit check passes, you can make your PR.
+   * `pre-commit` will from now on run all the checkers/linters/formatters on every commit.
+   * If you later want to commit without running it, just run `git commit` with `-n/--no-verify`.
+or
+  * If you want to manually run all the checkers/linters/formatters, run `pre-commit run --all-files`.

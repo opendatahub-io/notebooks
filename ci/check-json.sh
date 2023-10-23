@@ -21,16 +21,16 @@ function check_json() {
     echo "" # Let's make some space from eventual previous file check
     echo "Checking: '${f}' - for '${string}':"
 
-    if grep --quiet --extended-regexp "${string}" "${f}"; then
     #if $(grep -e "${string}" "${f}"); then
+    if grep --quiet --extended-regexp "${string}" "${f}"; then
         jsons=$(yq -r ".spec.tags[].annotations.\"${string}\"" "${f}")
-        
+
         while IFS= read -r json; do
             echo "    ${json}"
             echo -n "  > "; echo "${json}" | json_verify || ret_code="${?}"
         done <<< "${jsons}"
     else
-	echo "    Ignoring as this file doesn't contain necessary key field '${string}' for check"
+        echo "\tIgnoring as this file doesn't contain necessary key field '${string}' for check"
     fi
 
     return "${ret_code}"

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # HabanaLabs Dockerfile base installer layer for RedHat 8.6
-# Reference: https://github.com/HabanaAI/Setup_and_Install/blob/1.11.0/dockerfiles/base/Dockerfile.rhel8.6 
+# Reference: https://github.com/HabanaAI/Setup_and_Install/blob/1.11.0/dockerfiles/base/Dockerfile.rhel8.6
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
@@ -85,7 +85,7 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV RDMA_CORE_ROOT=/opt/habanalabs/rdma-core/src
 ENV RDMA_CORE_LIB=${RDMA_CORE_ROOT}/build/lib
 
-# Install python packages 
+# Install python packages
 # RUN python3.8 -m pip install hpu_media_loader=="${VERSION}"."${REVISION}"
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY Pipfile.lock ./

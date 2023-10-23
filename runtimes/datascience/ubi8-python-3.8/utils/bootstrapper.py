@@ -1,3 +1,4 @@
+"""Boot Strap script to install and result notebook commands as scripts."""
 # Copied from: https://github.com/elyra-ai/elyra/blob/main/elyra/kfp/bootstrapper.py
 #
 # Copyright 2018-2023 Elyra Authors
@@ -52,7 +53,7 @@ operation_name = None  # global used in formatted logging
 
 
 class FileOpBase(ABC):
-    """Abstract base class for file-based operations"""
+    """Abstract base class for file-based operations."""
 
     filepath = None
     cos_client = None
@@ -60,7 +61,7 @@ class FileOpBase(ABC):
 
     @classmethod
     def get_instance(cls: Type[F], **kwargs: Any) -> F:
-        """Creates an appropriate subclass instance based on the extension of the filepath (-f) argument"""
+        """Creates an appropriate subclass instance based on the extension of the filepath (-f) argument."""
         filepath = kwargs["filepath"]
         if ".ipynb" in filepath:
             return NotebookFileOp(**kwargs)
@@ -72,7 +73,7 @@ class FileOpBase(ABC):
             raise ValueError(f"Unsupported file type: {filepath}")
 
     def __init__(self, **kwargs: Any) -> None:
-        """Initializes the FileOpBase instance"""
+        """Initializes the FileOpBase instance."""
         import minio
         from minio.credentials import providers
 
@@ -82,7 +83,9 @@ class FileOpBase(ABC):
         self.cos_bucket = self.input_params.get("cos-bucket")
 
         self.parameter_pass_method = self.input_params.get("parameter_pass_method")
-        self.pipeline_param_dict = self.convert_param_str_to_dict(self.input_params.get("pipeline_parameters"))
+        self.pipeline_param_dict = self.convert_param_str_to_dict(
+            self.input_params.get("pipeline_parameters")
+        )
 
         # Infer secure from the endpoint's scheme.
         self.secure = self.cos_endpoint.scheme == "https"
@@ -93,9 +96,13 @@ class FileOpBase(ABC):
                 access_key=self.input_params.get("cos-user"),
                 secret_key=self.input_params.get("cos-password"),
             )
-        elif "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ:
+        elif (
+            "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ
+        ):
             cred_provider = providers.EnvAWSProvider()
-        elif "AWS_ROLE_ARN" in os.environ and "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ:
+        elif (
+            "AWS_ROLE_ARN" in os.environ and "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ
+        ):
             cred_provider = providers.IamAwsProvider()
         else:
             raise RuntimeError(
@@ -104,12 +111,16 @@ class FileOpBase(ABC):
             )
 
         # get minio client
-        self.cos_client = minio.Minio(self.cos_endpoint.netloc, secure=self.secure, credentials=cred_provider)
+        self.cos_client = minio.Minio(
+            self.cos_endpoint.netloc, secure=self.secure, credentials=cred_provider
+        )
 
     @abstractmethod
     def execute(self) -> None:
-        """Execute the operation relative to derived class"""
-        raise NotImplementedError("Method 'execute()' must be implemented by subclasses!")
+        """Execute the operation relative to derived class."""
+        raise NotImplementedError(
+            "Method 'execute()' must be implemented by subclasses!"
+        )
 
     def process_dependencies(self) -> None:
         """Process dependencies
@@ -180,7 +191,9 @@ class FileOpBase(ABC):
             # output_path doesn't meet the requirements
             # treat this as a non-fatal error and log a warning
             logger.warning(f'Cannot create files in "{output_path}".')
-            OpUtil.log_operation_info("Aborted metrics and metadata processing", time.time() - t0)
+            OpUtil.log_operation_info(
+                "Aborted metrics and metadata processing", time.time() - t0
+            )
             return
 
         # Name of the proprietary KFP UI metadata file.
@@ -225,11 +238,15 @@ class FileOpBase(ABC):
             except ValueError as ve:
                 # The file content could not be parsed. Log a warning
                 # and treat this as a non-fatal error.
-                logger.warning(f"Ignoring incompatible {str(src)} produced by {self.filepath}: {ve} {str(ve)}")
+                logger.warning(
+                    f"Ignoring incompatible {str(src)} produced by {self.filepath}: {ve} {str(ve)}"
+                )
             except Exception as ex:
                 # Something is wrong with the user-generated metadata file.
                 # Log a warning and treat this as a non-fatal error.
-                logger.warning(f"Error processing {str(src)} produced by {self.filepath}: {ex} {str(ex)}")
+                logger.warning(
+                    f"Error processing {str(src)} produced by {self.filepath}: {ex} {str(ex)}"
+                )
 
         #
         # Augment kfp_ui_metadata_filename with Elyra-specific information:
@@ -245,13 +262,16 @@ class FileOpBase(ABC):
             metadata = {}
 
         # Assure the 'output' property exists and is of the correct type
-        if metadata.get("outputs", None) is None or not isinstance(metadata["outputs"], list):
+        if metadata.get("outputs", None) is None or not isinstance(
+            metadata["outputs"], list
+        ):
             metadata["outputs"] = []
 
         # Define HREF for COS bucket:
         # <COS_URL>/<BUCKET_NAME>/<COS_DIRECTORY>
         bucket_url = urljoin(
-            urlunparse(self.cos_endpoint), f"{self.cos_bucket}/{self.input_params.get('cos-directory', '')}/"
+            urlunparse(self.cos_endpoint),
+            f"{self.cos_bucket}/{self.input_params.get('cos-directory', '')}/",
         )
 
         # add Elyra metadata to 'outputs'
@@ -292,13 +312,20 @@ class FileOpBase(ABC):
 
         object_to_get = self.get_object_storage_filename(file_to_get)
         t0 = time.time()
-        self.cos_client.fget_object(bucket_name=self.cos_bucket, object_name=object_to_get, file_path=file_to_get)
+        self.cos_client.fget_object(
+            bucket_name=self.cos_bucket,
+            object_name=object_to_get,
+            file_path=file_to_get,
+        )
         duration = time.time() - t0
         OpUtil.log_operation_info(
-            f"downloaded {file_to_get} from bucket: {self.cos_bucket}, object: {object_to_get}", duration
+            f"downloaded {file_to_get} from bucket: {self.cos_bucket}, object: {object_to_get}",
+            duration,
         )
 
-    def put_file_to_object_storage(self, file_to_upload: str, object_name: Optional[str] = None) -> None:
+    def put_file_to_object_storage(
+        self, file_to_upload: str, object_name: Optional[str] = None
+    ) -> None:
         """Utility function to put files into an object storage
 
         :param file_to_upload: filename
@@ -311,10 +338,15 @@ class FileOpBase(ABC):
 
         object_to_upload = self.get_object_storage_filename(object_to_upload)
         t0 = time.time()
-        self.cos_client.fput_object(bucket_name=self.cos_bucket, object_name=object_to_upload, file_path=file_to_upload)
+        self.cos_client.fput_object(
+            bucket_name=self.cos_bucket,
+            object_name=object_to_upload,
+            file_path=file_to_upload,
+        )
         duration = time.time() - t0
         OpUtil.log_operation_info(
-            f"uploaded {file_to_upload} to bucket: {self.cos_bucket} object: {object_to_upload}", duration
+            f"uploaded {file_to_upload} to bucket: {self.cos_bucket} object: {object_to_upload}",
+            duration,
         )
 
     def has_wildcard(self, filename):
@@ -335,14 +367,18 @@ class FileOpBase(ABC):
             else:
                 self.put_file_to_object_storage(matched_file)
 
-    def convert_param_str_to_dict(self, pipeline_parameters: Optional[str] = None) -> Dict[str, Any]:
+    def convert_param_str_to_dict(
+        self, pipeline_parameters: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Convert INOUT-separated string of pipeline parameters into a dictionary."""
         parameter_dict = {}
         if pipeline_parameters:
             parameter_list = pipeline_parameters.split(INOUT_SEPARATOR)
             for parameter in parameter_list:
                 param_name, value = parameter.split("=", 1)
-                if self.parameter_pass_method == "env" and (not value or not isinstance(value, str)):
+                if self.parameter_pass_method == "env" and (
+                    not value or not isinstance(value, str)
+                ):
                     continue  # env vars must be non-empty strings
                 parameter_dict[param_name] = value
         return parameter_dict
@@ -366,7 +402,9 @@ class NotebookFileOp(FileOpBase):
         notebook_html = f"{notebook_name}.html"
 
         try:
-            OpUtil.log_operation_info(f"executing notebook using 'papermill {notebook} {notebook_output}'")
+            OpUtil.log_operation_info(
+                f"executing notebook using 'papermill {notebook} {notebook_output}'"
+            )
             t0 = time.time()
             # Include kernel selection in execution time
             kernel_name = NotebookFileOp.find_best_kernel(notebook)
@@ -377,7 +415,9 @@ class NotebookFileOp(FileOpBase):
 
             import papermill
 
-            papermill.execute_notebook(notebook, notebook_output, kernel_name=kernel_name, **kwargs)
+            papermill.execute_notebook(
+                notebook, notebook_output, kernel_name=kernel_name, **kwargs
+            )
             duration = time.time() - t0
             OpUtil.log_operation_info("notebook execution completed", duration)
 
@@ -485,7 +525,9 @@ class PythonFileOp(FileOpBase):
                 self.set_parameters_in_env()
 
             with open(python_script_output, "w") as log_file:
-                subprocess.run(run_args, stdout=log_file, stderr=subprocess.STDOUT, check=True)
+                subprocess.run(
+                    run_args, stdout=log_file, stderr=subprocess.STDOUT, check=True
+                )
 
             duration = time.time() - t0
             OpUtil.log_operation_info("python script execution completed", duration)
@@ -511,7 +553,9 @@ class RFileOp(FileOpBase):
         r_script_output = f"{r_script_name}.log"
 
         try:
-            OpUtil.log_operation_info(f"executing R script using 'Rscript {r_script}' to '{r_script_output}'")
+            OpUtil.log_operation_info(
+                f"executing R script using 'Rscript {r_script}' to '{r_script_output}'"
+            )
             t0 = time.time()
 
             run_args = ["Rscript", r_script]
@@ -519,7 +563,9 @@ class RFileOp(FileOpBase):
                 self.set_parameters_in_env()
 
             with open(r_script_output, "w") as log_file:
-                subprocess.run(run_args, stdout=log_file, stderr=subprocess.STDOUT, check=True)
+                subprocess.run(
+                    run_args, stdout=log_file, stderr=subprocess.STDOUT, check=True
+                )
 
             duration = time.time() - t0
             OpUtil.log_operation_info("R script execution completed", duration)
@@ -558,7 +604,9 @@ class OpUtil(object):
                     continue
                 try:
                     version.Version(current_packages[package])
-                except version.InvalidVersion:  # current version is not PEP-440 compliant
+                except (
+                    version.InvalidVersion
+                ):  # current version is not PEP-440 compliant
                     logger.warning(
                         f"WARNING: Source package '{package}' found already installed from "
                         f"{current_packages[package]}. This may conflict with the required "
@@ -566,7 +614,9 @@ class OpUtil(object):
                     )
                     continue
                 if version.Version(ver) > version.Version(current_packages[package]):
-                    logger.info(f"Updating {package} package from version {current_packages[package]} to {ver}...")
+                    logger.info(
+                        f"Updating {package} package from version {current_packages[package]} to {ver}..."
+                    )
                     to_install_list.append(f"{package}=={ver}")
                 elif version.Version(ver) < version.Version(current_packages[package]):
                     logger.info(
@@ -574,7 +624,9 @@ class OpUtil(object):
                         f"already installed. Skipping..."
                     )
             else:
-                logger.info(f"Package not found. Installing {package} package with version {ver}...")
+                logger.info(
+                    f"Package not found. Installing {package} package with version {ver}..."
+                )
                 to_install_list.append(f"{package}=={ver}")
 
         if to_install_list:
@@ -582,7 +634,9 @@ class OpUtil(object):
                 to_install_list.insert(0, f"--target={user_volume_path}")
                 to_install_list.append("--no-cache-dir")
 
-            subprocess.run([sys.executable, "-m", "pip", "install"] + to_install_list, check=True)
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install"] + to_install_list, check=True
+            )
 
         if user_volume_path:
             os.environ["PIP_CONFIG_FILE"] = f"{user_volume_path}/pip.conf"
@@ -609,16 +663,28 @@ class OpUtil(object):
             for line in fh:
                 if line[0] != "#":
                     if " @ " in line:
-                        package_name, package_version = line.strip("\n").split(sep=" @ ")
+                        package_name, package_version = line.strip("\n").split(
+                            sep=" @ "
+                        )
                     elif "===" in line:
-                        package_name, package_version = line.strip("\n").split(sep="===")
+                        package_name, package_version = line.strip("\n").split(
+                            sep="==="
+                        )
                     elif "==" in line:
                         package_name, package_version = line.strip("\n").split(sep="==")
                     elif line.startswith("-e ") or line.startswith("--editable "):
-                        package_name = line.strip("\n").replace("-e ", "").replace("--editable ", "")
-                        if "#egg=" in package_name:  # editable package from version control system
+                        package_name = (
+                            line.strip("\n")
+                            .replace("-e ", "")
+                            .replace("--editable ", "")
+                        )
+                        if (
+                            "#egg=" in package_name
+                        ):  # editable package from version control system
                             package_name = package_name.split("=")[-1]
-                        elif "/" in package_name:  # editable package from local directory
+                        elif (
+                            "/" in package_name
+                        ):  # editable package from local directory
                             package_name = os.path.basename(package_name)
                         package_version = None
                     else:
@@ -638,10 +704,18 @@ class OpUtil(object):
         logger.debug("Parsing Arguments.....")
         parser = argparse.ArgumentParser()
         parser.add_argument(
-            "-e", "--cos-endpoint", dest="cos-endpoint", help="Cloud object storage endpoint", required=True
+            "-e",
+            "--cos-endpoint",
+            dest="cos-endpoint",
+            help="Cloud object storage endpoint",
+            required=True,
         )
         parser.add_argument(
-            "-b", "--cos-bucket", dest="cos-bucket", help="Cloud object storage bucket to use", required=True
+            "-b",
+            "--cos-bucket",
+            dest="cos-bucket",
+            help="Cloud object storage bucket to use",
+            required=True,
         )
         parser.add_argument(
             "-d",
@@ -657,9 +731,23 @@ class OpUtil(object):
             help="Archive containing notebook and dependency artifacts",
             required=True,
         )
-        parser.add_argument("-f", "--file", dest="filepath", help="File to execute", required=True)
-        parser.add_argument("-o", "--outputs", dest="outputs", help="Files to output to object store", required=False)
-        parser.add_argument("-i", "--inputs", dest="inputs", help="Files to pull in from parent node", required=False)
+        parser.add_argument(
+            "-f", "--file", dest="filepath", help="File to execute", required=True
+        )
+        parser.add_argument(
+            "-o",
+            "--outputs",
+            dest="outputs",
+            help="Files to output to object store",
+            required=False,
+        )
+        parser.add_argument(
+            "-i",
+            "--inputs",
+            dest="inputs",
+            help="Files to pull in from parent node",
+            required=False,
+        )
         parser.add_argument(
             "-p",
             "--user-volume-path",
@@ -694,12 +782,16 @@ class OpUtil(object):
         # set pipeline name as global
         pipeline_name = parsed_args.get("pipeline-name")
         # operation/node name is the basename of the non-suffixed filepath, set as global
-        operation_name = os.path.basename(os.path.splitext(parsed_args.get("filepath"))[0])
+        operation_name = os.path.basename(
+            os.path.splitext(parsed_args.get("filepath"))[0]
+        )
 
         return parsed_args
 
     @classmethod
-    def log_operation_info(cls, action_clause: str, duration_secs: Optional[float] = None) -> None:
+    def log_operation_info(
+        cls, action_clause: str, duration_secs: Optional[float] = None
+    ) -> None:
         """Produces a formatted log INFO message used entirely for support purposes.
 
         This method is intended to be called for any entries that should be captured across aggregated
@@ -715,13 +807,17 @@ class OpUtil(object):
         global pipeline_name, operation_name
         if enable_pipeline_info:
             duration_clause = f"({duration_secs:.3f} secs)" if duration_secs else ""
-            logger.info(f"'{pipeline_name}':'{operation_name}' - {action_clause} {duration_clause}")
+            logger.info(
+                f"'{pipeline_name}':'{operation_name}' - {action_clause} {duration_clause}"
+            )
 
 
 def main():
     # Configure logger format, level
     logging.basicConfig(
-        format="[%(levelname)1.1s %(asctime)s.%(msecs).03d] %(message)s", datefmt="%H:%M:%S", level=logging.DEBUG
+        format="[%(levelname)1.1s %(asctime)s.%(msecs).03d] %(message)s",
+        datefmt="%H:%M:%S",
+        level=logging.DEBUG,
     )
     # Setup packages and gather arguments
     input_params = OpUtil.parse_arguments(sys.argv[1:])

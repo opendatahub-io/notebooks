@@ -2,7 +2,7 @@ The following sections are aimed to provide a comprehensive guide for developers
 
 ## Getting Started
 This project utilizes three branches for the development: the **main** branch, which hosts the latest development, and t**wo additional branches for each release**.
-These release branches follow a specific naming format: YYYYx, where "YYYY" represents the year, and "x" is an increasing letter. Thus, they help to keep working on minor updates and bug fixes on the supported versions (N & N-1) of each workbench. 
+These release branches follow a specific naming format: YYYYx, where "YYYY" represents the year, and "x" is an increasing letter. Thus, they help to keep working on minor updates and bug fixes on the supported versions (N & N-1) of each workbench.
 
 ## Architecture
 The structure of the notebook's build chain is derived from the parent image. To better comprehend this concept, refer to the following graph.
@@ -19,13 +19,13 @@ Detailed instructions on how developers can contribute to this project can be fo
 ## Workbench ImageStreams
 
 ODH supports multiple out-of-the-box pre-built workbench images ([provided in this repository](https://github.com/opendatahub-io/notebooks)). For each of those workbench images, there is a dedicated ImageStream object definition. This ImageStream object references the actual image tag(s) and contains additional metadata that describe the workbench image.
-  
+
 ### **Annotations**
 
 Aside from the general ImageStream config values, there are additional annotations that can be provided in the workbench ImageStream definition. This additional data is leveraged further by the [odh-dashboard](https://github.com/opendatahub-io/odh-dashboard/).
 
-### **ImageStream-specific annotations**  
-The following labels and annotations are specific to the particular workbench image. They are provided in their respective sections in the `metadata` section. 
+### **ImageStream-specific annotations**
+The following labels and annotations are specific to the particular workbench image. They are provided in their respective sections in the `metadata` section.
 ```yaml
 metadata:
   labels:
@@ -33,16 +33,16 @@ metadata:
   annotations:
     ...
 ```
-### **Available labels**  
+### **Available labels**
 -  **`opendatahub.io/notebook-image:`** - a flag that determines whether the ImageStream references a workbench image that is meant be shown in the UI
 ### **Available annotations**
 - **`opendatahub.io/notebook-image-url:`** - a URL reference to the source of the particular workbench image
 - **`opendatahub.io/notebook-image-name:`** - a desired display name string for the particular workbench image (used in the UI)
-- **`opendatahub.io/notebook-image-desc:`** - a desired description string of the of the particular workbench image (used in the UI) 
+- **`opendatahub.io/notebook-image-desc:`** - a desired description string of the of the particular workbench image (used in the UI)
 - **`opendatahub.io/notebook-image-order:`** - an index value for the particular workbench ImageStream (used by the UI to list available workbench images in a specific order)
 - **`opendatahub.io/recommended-accelerators`** - a string that represents the list of recommended hardware accelerators for the particular workbench ImageStream (used in the UI)
 
-### **Tag-specific annotations**  
+### **Tag-specific annotations**
 One ImageStream can reference multiple image tags. The following annotations are specific to a particular workbench image tag and are provided in its `annotations:` section.
 ```yaml
 spec:
@@ -54,17 +54,17 @@ spec:
         name: image-repository/tag
       name: tag-name
 ```
-### **Available annotations**  
+### **Available annotations**
   - **`opendatahub.io/notebook-software:`** - a string that represents the technology stack included within the workbench image. Each technology in the list is described by its name and the version used (e.g. `'[{"name":"CUDA","version":"11.8"},{"name":"Python","version":"v3.9"}]`')
   - **`opendatahub.io/notebook-python-dependencies:`** -  a string that represents the list of Python libraries included within the workbench image. Each library is described by its name and currently used version (e.g. `'[{"name":"Numpy","version":"1.24"},{"name":"Pandas","version":"1.5"}]'`)
   - **`openshift.io/imported-from:`** - a reference to the image repository where the workbench image was obtained (e.g. `quay.io/repository/opendatahub/workbench-images`)
   - **`opendatahub.io/workbench-image-recommended:`** - a flag that allows the ImageStream tag to be marked as Recommended (used by the UI to distinguish which tags are recommended for use, e.g., when the workbench image offers multiple tags to choose from)
 
-### **ImageStream definitions for the supported out-of-the-box images in ODH**  
+### **ImageStream definitions for the supported out-of-the-box images in ODH**
 
 The ImageStream definitions of the out-of-the-box workbench images for ODH can be found [here](https://github.com/opendatahub-io/notebooks/tree/main/manifests).
 
-### **Example ImageStream object definition**  
+### **Example ImageStream object definition**
 
 An exemplary, non-functioning ImageStream object definition that uses all the aforementioned annotations is provided below.
 
@@ -114,11 +114,11 @@ The opendatahub-io-ci-image-mirror job will be used to mirror the images from th
 tests:
   - as: ${NOTEBOOK_IMAGE_NAME}-image-mirror
     steps:
-  	dependencies:
-    	  SOURCE_IMAGE_REF: ${NOTEBOOK_IMAGE_NAME}
-  	env:
-    	  IMAGE_REPO: notebooks
-  	workflow: opendatahub-io-ci-image-mirror
+      dependencies:
+          SOURCE_IMAGE_REF: ${NOTEBOOK_IMAGE_NAME}
+      env:
+          IMAGE_REPO: notebooks
+      workflow: opendatahub-io-ci-image-mirror
 ```
 The images mirrored under 2 different scenarios:
 1. A new PR is opened.
@@ -128,7 +128,7 @@ The Openshift CI is also configured to run the unit and integration tests:
 
 ```
 tests:
-  - as: notebooks-e2e-tests 
+  - as: notebooks-e2e-tests
     steps:
       test:
         - as: ${NOTEBOOK_IMAGE_NAME}-e2e-tests
@@ -146,15 +146,15 @@ This GitHub action is configured to be triggered on a weekly basis, specifically
 
 ### **Sync the downstream release branch with the upstream** [[Link]](https://github.com/red-hat-data-services/notebooks/blob/main/.github/workflows/sync-release-branch-2023a.yml)
 
-This GitHub action is configured to be triggered on a weekly basis, specifically every Tuesday at 08:00 AM UTC. Its main objective is to automatically update the downstream release branch with the upstream branch. 
+This GitHub action is configured to be triggered on a weekly basis, specifically every Tuesday at 08:00 AM UTC. Its main objective is to automatically update the downstream release branch with the upstream branch.
 
 ### **Digest Updater workflow on the manifests** [[Link]](https://github.com/opendatahub-io/odh-manifests/blob/master/.github/workflows/notebooks-digest-updater-upstream.yaml)
- 
+
 This GitHub action is designed to be triggered on a weekly basis, specifically every Friday at 12:00 AM UTC. Its primary purpose is to automate the process of updating the SHA digest of the notebooks. It achieves this by fetching the new SHA values from the quay.io registry and updating the [param.env](https://github.com/opendatahub-io/odh-manifests/blob/master/notebook-images/base/params.env) file, which is hosted on the odh-manifest repository. By automatically updating the SHA digest, this action ensures that the notebooks remain synchronized with the latest changes.
 
 ### **Digest Updater workflow on the live-builder** [[Link]](https://gitlab.cee.redhat.com/data-hub/rhods-live-builder/-/blob/main/.gitlab/notebook-sha-digest-updater.yml)
 
-This GitHub action works with the same logic as the above and is designed to be triggered on a weekly basis, specifically every Friday. It is also update the SHA digest of the images into the [CSV](https://gitlab.cee.redhat.com/data-hub/rhods-live-builder/-/blob/main/rhods-operator-live/bundle/template/manifests/clusterserviceversion.yml.j2#L725) file on the live-builder repo. 
-  
-  
+This GitHub action works with the same logic as the above and is designed to be triggered on a weekly basis, specifically every Friday. It is also update the SHA digest of the images into the [CSV](https://gitlab.cee.redhat.com/data-hub/rhods-live-builder/-/blob/main/rhods-operator-live/bundle/template/manifests/clusterserviceversion.yml.j2#L725) file on the live-builder repo.
+
+
 [Previous Page](https://github.com/opendatahub-io/notebooks/wiki/Workbenches) | [Next Page](https://github.com/opendatahub-io/notebooks/wiki/User-Guide)

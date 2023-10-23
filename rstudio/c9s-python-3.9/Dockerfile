@@ -45,7 +45,7 @@ RUN chmod 1777 /var/run/rstudio-server && \
     mkdir -p /usr/share/doc/R
 COPY rsession.conf /etc/rstudio/rsession.conf
 
-# Install NGINX to proxy RStudio and pass probes check 
+# Install NGINX to proxy RStudio and pass probes check
 ENV NGINX_VERSION=1.22 \
     NGINX_SHORT_VER=122 \
     NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \

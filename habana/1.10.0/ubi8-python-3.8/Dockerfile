@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # HabanaLabs Dockerfile base installer layer for RedHat 8.6
-# Reference: https://github.com/HabanaAI/Setup_and_Install/blob/1.10.0/dockerfiles/base/Dockerfile.rhel8.6 
+# Reference: https://github.com/HabanaAI/Setup_and_Install/blob/1.10.0/dockerfiles/base/Dockerfile.rhel8.6
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
@@ -80,7 +80,7 @@ RUN dnf install -y habanalabs-rdma-core-"$VERSION"-"$REVISION".el8 \
 ENV PIP_NO_CACHE_DIR=on
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install python packages 
+# Install python packages
 # RUN python3.8 -m pip install hpu_media_loader=="${VERSION}"."${REVISION}"
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY Pipfile.lock ./
@@ -95,7 +95,7 @@ ENV HABANA_SCAL_BIN_PATH=/opt/habanalabs/engines_fw
 ENV HABANA_PLUGINS_LIB_PATH=/opt/habanalabs/habana_plugins
 
 ## Install habana tensorflow
-## Reference: https://github.com/HabanaAI/Setup_and_Install/blob/1.10.0/dockerfiles/tensorflow/Dockerfile.rhel8.6 
+## Reference: https://github.com/HabanaAI/Setup_and_Install/blob/1.10.0/dockerfiles/tensorflow/Dockerfile.rhel8.6
 
 # For AML/CentOS/RHEL OS'es TFIO_DATAPATH have to be specified to import tensorflow_io lib correctly
 ENV TFIO_DATAPATH=/opt/app-root/src/python3.8/site-packages/
@@ -135,7 +135,7 @@ RUN wget --no-verbose https://"${ARTIFACTORY_URL}"/artifactory/gaudi-pt-modules/
     rm -rf /root/habanalabs/pytorch_temp/ && \
     rm -rf pytorch_modules-v"${PT_VERSION}"_"${VERSION}"_"${REVISION}".tgz && \
     echo "source /etc/profile.d/habanalabs.sh" >> ~/.bashrc
-    
+
 ENV LD_PRELOAD=/lib64/libtcmalloc.so.4
 ENV TCMALLOC_LARGE_ALLOC_REPORT_THRESHOLD=7516192768
 

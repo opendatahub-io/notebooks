@@ -1,9 +1,9 @@
---- a/pipeline_definition.py	2023-11-09 13:36:35
-+++ b/pipeline_definition.py	2023-11-07 20:07:49
+--- a/pipeline_definition.py    2023-11-09 13:36:35
++++ b/pipeline_definition.py    2023-11-07 20:07:49
 @@ -265,6 +265,9 @@
          if parameter_class is None:
              return None  # runtime type does not support parameters, skip
- 
+
 +        if not ElyraProperty.subclass_exists_for_property(parameter_class.property_id):
 +            ElyraProperty.build_property_map()
 +

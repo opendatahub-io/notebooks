@@ -223,7 +223,7 @@ make undeployX-${NOTEBOOK_NAME}
 ## Validating Runtimes
 
 The runtimes image requires to have curl and python installed,
-so that on runtime additional packages can be installed. 
+so that on runtime additional packages can be installed.
 
 Deploy the runtime images in your Kubernetes environment using deploy8-${WORKBENCH_NAME} for ubi8 or deploy9-${WORKBENCH_NAME} for ubi9:
 

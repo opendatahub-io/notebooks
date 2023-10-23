@@ -1,5 +1,5 @@
---- a/processor_kfp.py	2023-06-09 10:17:15.659461927 -0400
-+++ b/processor_kfp.py	2023-06-09 10:16:20.062429914 -0400
+--- a/processor_kfp.py    2023-06-09 10:17:15.659461927 -0400
++++ b/processor_kfp.py    2023-06-09 10:16:20.062429914 -0400
 @@ -213,6 +213,7 @@
                      credentials=auth_info.get("credentials", None),
                      existing_token=auth_info.get("existing_token", None),

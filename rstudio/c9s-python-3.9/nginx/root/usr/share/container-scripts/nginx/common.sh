@@ -23,7 +23,7 @@ function process_extending_files() {
       # Custom file is prefered
       if [ -f $custom_dir/$filename ]; then
         source $custom_dir/$filename
-      elif [ -f $default_dir/$filename ]; then 
+      elif [ -f $default_dir/$filename ]; then
         source $default_dir/$filename
       fi
     fi
