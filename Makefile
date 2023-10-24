@@ -1,6 +1,6 @@
 CONTAINER_ENGINE ?= podman
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
-RELEASE	 		 ?= 2023a
+RELEASE	 		 ?= 2023b
 DATE 			 ?= $(shell date +'%Y%m%d')
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
@@ -350,12 +350,6 @@ test-%: bin/kubectl
 		$(call test_with_papermill,minimal,ubi8,python-3.8) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi8"; then \
-		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(call test_with_papermill,pytorch,ubi8,python-3.8) \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi8"; then \
-		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(call test_with_papermill,tensorflow,ubi8,python-3.8) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 		$(call test_with_papermill,trustyai,ubi8,python-3.8) \
