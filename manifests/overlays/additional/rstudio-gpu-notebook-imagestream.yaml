@@ -15,6 +15,19 @@ spec:
   lookupPolicy:
     local: true
   tags:
+    # N Version of the image
+    - annotations:
+        opendatahub.io/notebook-software: '[{"name":"CUDA","version":"11.8"},{"name":"Python","version":"v3.9"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"r-studio","version":"4.3"}]'
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'true'
+      from:
+        kind: DockerImage
+        name: quay.io/opendatahub/workbench-images@sha256:3ad0bb5f3b8c2ca1d29a423913b6d8f32353d9787c5f38e4b56a9a922f6e3cdd
+      name: "2023.2"
+      referencePolicy:
+        type: Source
+    # N - 1 Version of the image
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"CUDA","version":"11.8"},{"name":"Python","version":"v3.9"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"r-studio","version":"4.3"}]'
