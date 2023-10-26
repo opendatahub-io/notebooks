@@ -8,7 +8,7 @@ These release branches follow a specific naming format: YYYYx, where "YYYY" repr
 The structure of the notebook's build chain is derived from the parent image. To better comprehend this concept, refer to the following graph.
 
 <p align="center">
-<img src="https://github.com/opendatahub-io/notebooks/assets/42587738/9e5df03f-01f4-4bba-9792-3b56e9b5b912" data-canonical-src="https://github.com/opendatahub-io/notebooks/assets/42587738/9e5df03f-01f4-4bba-9792-3b56e9b5b912" width="820" height="520" />
+<img src="https://github.com/opendatahub-io/notebooks/assets/42587738/9e5df03f-01f4-4bba-9792-3b56e9b5b912" data-canonical-src="https://github.com/opendatahub-io/notebooks/assets/42587738/9e5df03f-01f4-4bba-9792-3b56e9b5b912" width="820" height="450" />
 </p>
 
 
@@ -62,7 +62,7 @@ spec:
 
 ### **ImageStream definitions for the supported out-of-the-box images in ODH**  
 
-The ImageStream definitions of the out-of-the-box workbench images for ODH can be found [here](https://github.com/opendatahub-io/odh-manifests/tree/master/notebook-images).
+The ImageStream definitions of the out-of-the-box workbench images for ODH can be found [here](https://github.com/opendatahub-io/notebooks/tree/main/manifests).
 
 ### **Example ImageStream object definition**  
 
@@ -140,19 +140,19 @@ tests:
 ## GitHub Actions
 This section provides an overview of the automation functionalities.
 
-**Piplock Renewal** [[Link](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/piplock-renewal-2023a.yml)]
+### **Piplock Renewal** [[Link]](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/piplock-renewal-2023a.yml)
 
 This GitHub action is configured to be triggered on a weekly basis, specifically every Monday at 22:00 PM UTC. Its main objective is to automatically update the Pipfile.lock files by fetching the most recent minor versions available. Additionally, it also updates the hashes for the downloaded files of Python dependencies, including any sub-dependencies. Once the updated files are pushed, the CI pipeline is triggered to generate new updated images based on these changes.
 
-**Sync the downstream release branch with the upstream** [[Link](https://github.com/red-hat-data-services/notebooks/blob/main/.github/workflows/sync-release-branch-2023a.yml)]
+### **Sync the downstream release branch with the upstream** [[Link]](https://github.com/red-hat-data-services/notebooks/blob/main/.github/workflows/sync-release-branch-2023a.yml)
 
 This GitHub action is configured to be triggered on a weekly basis, specifically every Tuesday at 08:00 AM UTC. Its main objective is to automatically update the downstream release branch with the upstream branch. 
 
-**Digest Updater workflow on the manifests** [[Link](https://github.com/opendatahub-io/odh-manifests/blob/master/.github/workflows/notebooks-digest-updater-upstream.yaml)]
+### **Digest Updater workflow on the manifests** [[Link]](https://github.com/opendatahub-io/odh-manifests/blob/master/.github/workflows/notebooks-digest-updater-upstream.yaml)
  
 This GitHub action is designed to be triggered on a weekly basis, specifically every Friday at 12:00 AM UTC. Its primary purpose is to automate the process of updating the SHA digest of the notebooks. It achieves this by fetching the new SHA values from the quay.io registry and updating the [param.env](https://github.com/opendatahub-io/odh-manifests/blob/master/notebook-images/base/params.env) file, which is hosted on the odh-manifest repository. By automatically updating the SHA digest, this action ensures that the notebooks remain synchronized with the latest changes.
 
-**Digest Updater workflow on the live-builder** [[Link](https://gitlab.cee.redhat.com/data-hub/rhods-live-builder/-/blob/main/.gitlab/notebook-sha-digest-updater.yml)]
+### **Digest Updater workflow on the live-builder** [[Link]](https://gitlab.cee.redhat.com/data-hub/rhods-live-builder/-/blob/main/.gitlab/notebook-sha-digest-updater.yml)
 
 This GitHub action works with the same logic as the above and is designed to be triggered on a weekly basis, specifically every Friday. It is also update the SHA digest of the images into the [CSV](https://gitlab.cee.redhat.com/data-hub/rhods-live-builder/-/blob/main/rhods-operator-live/bundle/template/manifests/clusterserviceversion.yml.j2#L725) file on the live-builder repo. 
   
