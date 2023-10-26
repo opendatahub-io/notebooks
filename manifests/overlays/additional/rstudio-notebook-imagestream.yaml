@@ -14,6 +14,19 @@ spec:
   lookupPolicy:
     local: true
   tags:
+    # N Version of the image
+    - annotations:
+        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"r-studio","version":"4.3"}]'
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'true'
+      from:
+        kind: DockerImage
+        name: quay.io/opendatahub/workbench-images@sha256:8e99e4e3800db121d02b50adec5eba27746bf89d32dba3e2b17e8d750ac53608
+      name: "2023.2"
+      referencePolicy:
+        type: Source
+    # N - 1 Version of the image
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"r-studio","version":"4.3"}]'

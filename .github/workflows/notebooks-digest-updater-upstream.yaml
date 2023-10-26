@@ -70,7 +70,7 @@ jobs:
         with:
           ref: ${{ env.DIGEST_UPDATER_BRANCH }}
 
-      - name: Fetch digest, and update the param.env file
+      - name: Fetch digest, and update the params.env file
         run: |
               echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
               IMAGES=("odh-minimal-notebook-image-n" "odh-minimal-gpu-notebook-image-n" "odh-pytorch-gpu-notebook-image-n" "odh-generic-data-science-notebook-image-n" "odh-tensorflow-gpu-notebook-image-n" "odh-trustyai-notebook-image-n")
@@ -119,7 +119,7 @@ jobs:
         with:
           ref: ${{ env.DIGEST_UPDATER_BRANCH }}
 
-      - name: Fetch digest, and update the param.env file
+      - name: Fetch digest, and update the params.env file
         run: |
               echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N_1 }} on ${{ env.RELEASE_VERSION_N_1}}
               IMAGES=("odh-minimal-notebook-image-n-1" "odh-minimal-gpu-notebook-image-n-1" "odh-pytorch-gpu-notebook-image-n-1" "odh-generic-data-science-notebook-image-n-1" "odh-tensorflow-gpu-notebook-image-n-1" "odh-trustyai-notebook-image-n-1")
