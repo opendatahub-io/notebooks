@@ -70,7 +70,9 @@ jobs:
         with:
           ref: ${{ env.DIGEST_UPDATER_BRANCH }}
 
-      - name: Fetch digest, and update the param.env file
+      - name: Fetch digest, and update the params.env file
+        shell: bash
+        continue-on-error: true
         run: |
               echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
               IMAGES=("odh-minimal-notebook-image-n" "odh-minimal-gpu-notebook-image-n" "odh-pytorch-gpu-notebook-image-n" "odh-generic-data-science-notebook-image-n" "odh-tensorflow-gpu-notebook-image-n" "odh-trustyai-notebook-image-n")
@@ -80,15 +82,15 @@ jobs:
                 image=${IMAGES[$i]}
                 echo $image
                 regex=${REGEXES[$i]}
-                img=$(cat jupyterhub/notebook-images/overlays/additional/params.env | grep -E "${image}=" | cut -d '=' -f2)
+                img=$(cat manifests/base/params.env | grep -E "${image}=" | cut -d '=' -f2)
                 registry=$(echo $img | cut -d '@' -f1)
                 latest_tag=$(skopeo inspect docker://$img | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
                 digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
                 output=$registry@$digest
                 echo $output
-                sed -i "s|${image}=.*|${image}=$output|" jupyterhub/notebook-images/overlays/additional/params.env
+                sed -i "s|${image}=.*|${image}=$output|" manifests/base/params.env
               done
-              git fetch origin ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin ${{ env.DIGEST_UPDATER_BRANCH }} && git add jupyterhub/notebook-images/overlays/additional/params.env && git commit -m "Update images for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin ${{ env.DIGEST_UPDATER_BRANCH }}
+              git fetch origin ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/params.env && git commit -m "Update images for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin ${{ env.DIGEST_UPDATER_BRANCH }}
 
   update-n-1-version:
     needs: [initialize, update-n-version]
@@ -120,7 +122,9 @@ jobs:
         with:
           ref: ${{ env.DIGEST_UPDATER_BRANCH }}
 
-      - name: Fetch digest, and update the param.env file
+      - name: Fetch digest, and update the params.env file
+        shell: bash
+        continue-on-error: true
         run: |
               echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N-1 }} on ${{ env.RELEASE_VERSION_N_1}}
               IMAGES=("odh-minimal-notebook-image-n-1" "odh-minimal-gpu-notebook-image-n-1" "odh-pytorch-gpu-notebook-image-n-1" "odh-generic-data-science-notebook-image-n-1" "odh-tensorflow-gpu-notebook-image-n-1" "odh-trustyai-notebook-image-n-1")
@@ -131,15 +135,15 @@ jobs:
                 image=${IMAGES[$i]}
                 echo $image
                 regex=${REGEXES[$i]}
-                img=$(cat jupyterhub/notebook-images/overlays/additional/params.env | grep -E "${image}=" | cut -d '=' -f2)
+                img=$(cat manifests/base/params.env | grep -E "${image}=" | cut -d '=' -f2)
                 registry=$(echo $img | cut -d '@' -f1)
                 latest_tag=$(skopeo inspect docker://$img | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
                 digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
                 output=$registry@$digest
                 echo $output
-                sed -i "s|${image}=.*|${image}=$output|" jupyterhub/notebook-images/overlays/additional/params.env
+                sed -i "s|${image}=.*|${image}=$output|" manifests/base/params.env
               done
-              git fetch origin ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin ${{ env.DIGEST_UPDATER_BRANCH }} && git add jupyterhub/notebook-images/overlays/additional/params.env && git commit -m "Update images for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }}GitHub action" && git push origin ${{ env.DIGEST_UPDATER_BRANCH }}
+              git fetch origin ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/params.env && git commit -m "Update images for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }}GitHub action" && git push origin ${{ env.DIGEST_UPDATER_BRANCH }}
 
 
   open-pull-request:
@@ -162,7 +166,7 @@ jobs:
           pr_body: |
             :rocket: This is an automated Pull Request.
 
-            This PR updates the `jupyterhub/notebook-images/overlays/additional/params.env` file with the latest updated SHA digests of the notebooks (N & N-1).
+            This PR updates the `manifests/base/params.env` file with the latest updated SHA digests of the notebooks (N & N-1).
             Created by `/.github/workflows/notebooks-digest-updater-upstream.yaml`
 
             :exclamation: **IMPORTANT NOTE**: Remember to delete the `${{ env.DIGEST_UPDATER_BRANCH }}` branch after merging the changes
