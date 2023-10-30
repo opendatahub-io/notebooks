@@ -12,6 +12,10 @@ LABEL name="odh-notebook-base-ubi8-python-3.8" \
 
 WORKDIR /opt/app-root/bin
 
+USER root
+RUN dnf update -y libnghttp2 && dnf clean all
+USER 1001
+
 # Install micropipenv to deploy packages from Pipfile.lock
 RUN pip install -U "micropipenv[toml]"
 
