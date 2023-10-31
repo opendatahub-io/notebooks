@@ -10,6 +10,8 @@ resources:
   - jupyter-trustyai-notebook-imagestream.yaml
   - jupyter-habana-notebook-imagestream.yaml
   - code-server-notebook-imagestream.yaml
+  - rstudio-gpu-notebook-imagestream.yaml
+  - rstudio-notebook-imagestream.yaml
 
 commonLabels:
   opendatahub.io/component: "true"
@@ -161,5 +163,33 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-codeserver-notebook-n-1
+  - name: odh-rstudio-notebook-n
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rstudio-notebook-n
+  - name: odh-rstudio-notebook-n-1
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rstudio-notebook-n-1
+  - name: odh-rstudio-gpu-notebook-n
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rstudio-gpu-notebook-n
+  - name: odh-rstudio-gpu-notebook-n-1
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rstudio-gpu-notebook-n-1
 configurations:
   - params.yaml
