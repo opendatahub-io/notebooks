@@ -1,0 +1,23 @@
+---
+name: Validation of params.env content (image SHAs)
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+    paths:
+      - 'manifests/base/params.env'
+
+permissions:
+  contents: read
+
+jobs:
+  validation-of-params-env:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y skopeo jq
+
+      - name: Validate the 'manifests/base/params.env' file content
+        run: |
+          bash ./ci/check-params-env.sh
