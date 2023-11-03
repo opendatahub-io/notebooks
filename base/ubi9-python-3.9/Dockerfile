@@ -3,8 +3,8 @@ FROM registry.access.redhat.com/ubi9/python-39:latest
 LABEL name="odh-notebook-base-ubi9-python-3.9" \
       summary="Python 3.9 base image for ODH notebooks" \
       description="Base Python 3.9 builder image based on UBI9 for ODH notebooks" \
-      io.k9s.display-name="Python 3.9 base image for ODH notebooks" \
-      io.k9s.description="Base Python 3.9 builder image based on UBI9 for ODH notebooks" \
+      io.k8s.display-name="Python 3.9 base image for ODH notebooks" \
+      io.k8s.description="Base Python 3.9 builder image based on UBI9 for ODH notebooks" \
       authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
       io.openshift.build.commit.ref="main" \
       io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/base/ubi9-python-3.9" \
