@@ -4,9 +4,6 @@ kind: Kustomization
 
 resources:
   - ../../base
-  - code-server-notebook-imagestream.yaml
-  - rstudio-notebook-imagestream.yaml
-  - rstudio-gpu-notebook-imagestream.yaml
 
 commonLabels:
   opendatahub.io/component: "true"
