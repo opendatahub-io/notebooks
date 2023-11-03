@@ -1,15 +1,19 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG AUTHORITATIVE_SOURCE_URL
+ARG BUILD_COMMIT_REF
+ARG IMAGE_REGISTRY
+
 LABEL name="odh-notebook-rstudio-server-c9s-python-3.9" \
       summary="RStudio Server image with python 3.9 based on CentOS Stream 9" \
       description="RStudio server image with python 3.9 based on CentOS Stream 9" \
       io.k8s.display-name="RStudio server image with python 3.9 based on CentOS Stream 9" \
       io.k8s.description="RStudio server image with python 3.9 based on CentOS Stream 9" \
-      authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-      io.openshift.build.commit.ref="main" \
-      io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/rstudio/c9s-python-3.9" \
-      io.openshift.build.image="quay.io/opendatahub/workbench-images:rstudio-c9s-python-3.9"
+      authoritative-source-url="${AUTHORITATIVE_SOURCE_URL}" \
+      io.openshift.build.commit.ref="${BUILD_COMMIT_REF}" \
+      io.openshift.build.source-location="${AUTHORITATIVE_SOURCE_URL}/tree/${BUILD_COMMIT_REF}/rstudio/c9s-python-3.9" \
+      io.openshift.build.image="${IMAGE_REGISTRY}:rstudio-c9s-python-3.9"
 
 USER 0
 

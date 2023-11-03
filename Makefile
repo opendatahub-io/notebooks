@@ -5,6 +5,7 @@ DATE 			 ?= $(shell date +'%Y%m%d')
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
+AUTHORITATIVE_SOURCE_URL ?= https://github.com/opendatahub-io/notebooks
 NOTEBOOK_REPO_BRANCH_BASE ?= https://raw.githubusercontent.com/opendatahub-io/notebooks/main
 REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
 REQUIRED_CODE_SERVER_IMAGE_COMMANDS="curl python oc code-server"
@@ -18,12 +19,13 @@ REQUIRED_R_STUDIO_IMAGE_COMMANDS="curl python oc /usr/lib/rstudio-server/bin/rse
 define build_image
 	$(eval IMAGE_NAME := $(IMAGE_REGISTRY):$(1)-$(IMAGE_TAG))
 	$(info # Building $(IMAGE_NAME) image...)
+	$(eval BUILD_ARGS := --build-arg BUILD_COMMIT_REF=$(RELEASE) --build-arg IMAGE_REGISTRY=$(IMAGE_REGISTRY) \
+		--build-arg AUTHORITATIVE_SOURCE_URL=$(AUTHORITATIVE_SOURCE_URL))
 	$(if $(3),
 		$(eval BASE_IMAGE_NAME := $(IMAGE_REGISTRY):$(3)-$(IMAGE_TAG))
-		$(eval BUILD_ARGS := --build-arg BASE_IMAGE=$(BASE_IMAGE_NAME)),
-		$(eval BUILD_ARGS :=)
+		$(eval BUILD_ARGS := $(BUILD_ARGS) --build-arg BASE_IMAGE=$(BASE_IMAGE_NAME)),
 	)
-	$(CONTAINER_ENGINE) build --no-cache  -t $(IMAGE_NAME) $(BUILD_ARGS) $(2)
+	$(CONTAINER_ENGINE) build --no-cache --tag $(IMAGE_NAME) $(BUILD_ARGS) $(2)
 endef
 
 # Push function for the notebok image:

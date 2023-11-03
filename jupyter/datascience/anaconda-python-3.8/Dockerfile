@@ -1,6 +1,10 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG AUTHORITATIVE_SOURCE_URL
+ARG BUILD_COMMIT_REF
+ARG IMAGE_REGISTRY
+
 LABEL name="jupyter-datascience-anaconda-python-3.8:latest" \
     summary="Minimal Jupyter Notebook Source-to-Image for Python 3.8 applications. Uses Anaconda CE instead of pip." \
     description="Notebook image based on Anaconda CE Python.These images can be used in OpenDatahub JupterHub." \
@@ -8,10 +12,10 @@ LABEL name="jupyter-datascience-anaconda-python-3.8:latest" \
     io.k8s.display-name="Anaconda s2i-minimal-notebook, python38" \
     io.openshift.expose-services="8888:http" \
     io.openshift.tags="python,python38,python-38,anaconda-python38" \
-    authoritative-source-url="https://quay.io//opendatahub/workbench-images:jupyter-datascience-anaconda-python-3.8" \
-    io.openshift.s2i.build.commit.ref="main" \
-    io.openshift.s2i.build.source-location="https://github.com/opendatahub-io/notebooks/jupyter/datascience/anaconda-python-3.8" \
-    io.openshift.s2i.build.image="quay.io/repository/opendatahub/workbench-images:jupyter-datascience-anaconda-python-3.8"
+    authoritative-source-url="${AUTHORITATIVE_SOURCE_URL}" \
+    io.openshift.s2i.build.commit.ref="${BUILD_COMMIT_REF}" \
+    io.openshift.s2i.build.source-location="${AUTHORITATIVE_SOURCE_URL}/tree/${BUILD_COMMIT_REF}/jupyter/datascience/anaconda-python-3.8" \
+    io.openshift.s2i.build.image="${IMAGE_REGISTRY}:jupyter-datascience-anaconda-python-3.8"
 
 ENV JUPYTER_ENABLE_LAB="1"
 USER root

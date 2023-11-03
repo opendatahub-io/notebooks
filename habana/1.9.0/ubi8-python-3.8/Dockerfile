@@ -7,6 +7,10 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG AUTHORITATIVE_SOURCE_URL
+ARG BUILD_COMMIT_REF
+ARG IMAGE_REGISTRY
+
 ARG ARTIFACTORY_URL="vault.habana.ai"
 ARG VERSION="1.9.0"
 ARG REVISION="580"
@@ -136,10 +140,10 @@ LABEL name="odh-notebook-habana-jupyter-1.9.0-ubi8-python-3.8" \
     description="Jupyter HabanaAI 1.9.0 notebook image with base Python 3.8 builder image based on ubi8 for ODH notebooks" \
     io.k8s.display-name="Jupyter HabanaAI 1.9.0 notebook image for ODH notebooks" \
     io.k8s.description="Jupyter HabanaAI 1.9.0 notebook image with base Python 3.8 builder image based on ubi8 for ODH notebooks" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-    io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/habana/1.9.0/ubi8-python-3.8" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:habana-jupyter-1.9.0-ubi8-python-3.8"
+    authoritative-source-url="${AUTHORITATIVE_SOURCE_URL}" \
+    io.openshift.build.commit.ref="${BUILD_COMMIT_REF}" \
+    io.openshift.build.source-location="${AUTHORITATIVE_SOURCE_URL}/tree/${BUILD_COMMIT_REF}/habana/1.9.0/ubi8-python-3.8" \
+    io.openshift.build.image="${IMAGE_REGISTRY}:habana-jupyter-1.9.0-ubi8-python-3.8"
 
 # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x
 RUN sed -i -e "s/Python.*/$(python --version| cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
