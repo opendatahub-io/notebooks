@@ -43,6 +43,7 @@ spec:
         opendatahub.io/notebook-software: '[{"name":"CUDA","version":"11.4"},{"name":"Python","version":"v3.8"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version":"3.2"},{"name":"Notebook","version":"6.4"}]'
         openshift.io/imported-from: quay.io/opendatahub/notebooks
+        opendatahub.io/image-tag-outdated: 'true'
       from:
         kind: DockerImage
         name: $(odh-minimal-gpu-notebook-image-n-2)
