@@ -24,7 +24,7 @@ RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./P
 USER root
 
 # Install usefull OS packages
-RUN dnf install -y mesa-libGL
+RUN dnf install -y mesa-libGL libnghttp2 && dnf clean all
 
 # Other apps and tools installed as default user
 USER 1001
