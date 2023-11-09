@@ -42,6 +42,7 @@ spec:
   - **`openshift.io/imported-from:`** - a reference to the image repository where the workbench image was obtained (e.g. `quay.io/repository/opendatahub/workbench-images`)
   - **`opendatahub.io/workbench-image-recommended:`** - a flag that allows the ImageStream tag to be marked as Recommended (used by the UI to distinguish which tags are recommended for use, e.g., when the workbench image offers multiple tags to choose from)
   - **`opendatahub.io/image-tag-outdated:`** - a reference to the image version Tags that are outdated and out of regular maintaince cycle. The image tag would be eventually removed.
+  - **`opendatahub.io/notebook-build-commit:`** - a reference to the build commit with the ID to look at the updated information.
 
 ### **ImageStream definitions for the supported out-of-the-box images in ODH**  
 
