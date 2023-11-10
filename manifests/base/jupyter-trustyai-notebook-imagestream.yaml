@@ -29,7 +29,7 @@ spec:
     # N-1 Version of the image
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"TrustyAI","version":"0.2"}, {"name":"Boto3","version":"1.26"},{"name":"Kafka-Python","version":"2.0"},{"name":"Kfp-tekton","version":"1.5"},{"name":"Matplotlib","version":"3.6"},{"name":"Numpy","version":"1.24"},{"name":"Pandas","version":"1.5"},{"name":"Scikit-learn","version":"1.2"},{"name":"Scipy","version":"1.10"},{"name":"Elyra","version":"3.15"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"TrustyAI","version":"0.3"}, {"name":"Boto3","version":"1.26"},{"name":"Kafka-Python","version":"2.0"},{"name":"Kfp-tekton","version":"1.5"},{"name":"Matplotlib","version":"3.6"},{"name":"Numpy","version":"1.24"},{"name":"Pandas","version":"1.5"},{"name":"Scikit-learn","version":"1.2"},{"name":"Scipy","version":"1.10"},{"name":"Elyra","version":"3.15"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
       from:
         kind: DockerImage

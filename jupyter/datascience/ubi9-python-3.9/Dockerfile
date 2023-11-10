@@ -30,6 +30,9 @@ USER root
 # Install usefull OS packages
 RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile
 
+# Disable announcement plugin of jupyterlab
+RUN jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+
 # Install MongoDB Client, We need a special repo for MongoDB as they do their own distribution
 COPY mongodb-org-6.0.repo-x86_64 /etc/yum.repos.d/mongodb-org-6.0.repo
 
