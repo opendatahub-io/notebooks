@@ -393,6 +393,7 @@
                 "sha256:f371343f371a5207c409696521281a75aa8383c0fec7ebb78c6973edbd157692"
             ],
             "index": "pypi",
+            "markers": "python_version >= '3.8' and python_version < '4.0'",
             "version": "==0.12.0"
         },
         "codeflare-torchx": {
@@ -1063,6 +1064,7 @@
                 "sha256:ff2aa84e74f80891e6bcf292ebb1dd57714ffbe13177642d65fee25384a30894"
             ],
             "index": "pypi",
+            "markers": "python_version >= '3.8'",
             "version": "==3.6.3"
         },
         "mpmath": {
@@ -1293,6 +1295,7 @@
                 "sha256:f3a86ed21e4f87050382c7bc96571755193c4c1392490744ac73d660e8f564a9"
             ],
             "index": "pypi",
+            "markers": "python_version >= '3.8'",
             "version": "==1.24.4"
         },
         "nvidia-ml-py": {
@@ -1409,6 +1412,7 @@
                 "sha256:f76d097d12c82a535fda9dfe5e8dd4127952b45fea9b0276cb30cca5ea313fbc"
             ],
             "index": "pypi",
+            "markers": "python_version >= '3.8'",
             "version": "==1.5.3"
         },
         "paramiko": {
@@ -1493,6 +1497,7 @@
                 "sha256:295ac25edeb18c893abb71dcadcea075b78fd6fdf07cee4217a4e1009667925b"
             ],
             "index": "pypi",
+            "markers": "python_version >= '3.6'",
             "version": "==5.16.1"
         },
         "prometheus-client": {
@@ -1558,6 +1563,7 @@
                 "sha256:cec7ad2bc6a8510e56c45746c631cf9394148bdc8a9a11fd8cf8554ce129ae78"
             ],
             "index": "pypi",
+            "markers": "python_version >= '3.7'",
             "version": "==3.1.12"
         },
         "py-spy": {
@@ -1730,6 +1736,7 @@
                 "sha256:fff7d17d30b2cd45afd654b3fc117755c5d84506ed25fda386494e4e0a3416e1"
             ],
             "index": "pypi",
+            "markers": "python_version >= '3.7'",
             "version": "==4.5.0"
         },
         "pynacl": {
@@ -1787,6 +1794,7 @@
                 "sha256:fe4ee87b88867867f582dd0c1236cd982508db359a6cbb5e91623ceb6c83e60a"
             ],
             "index": "pypi",
+            "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4, 3.5'",
             "version": "==4.0.39"
         },
         "pyparsing": {
@@ -2082,6 +2090,7 @@
                 "sha256:fc4144a5004a676d5022b798d9e573b05139e77f271253a4703eed295bde0433"
             ],
             "index": "pypi",
+            "markers": "python_version >= '3.8'",
             "version": "==1.3.2"
         },
         "scipy": {
@@ -2113,6 +2122,7 @@
                 "sha256:e1f97cd89c0fe1a0685f8f89d85fa305deb3067d0668151571ba50913e445820"
             ],
             "index": "pypi",
+            "markers": "python_version < '3.13' and python_version >= '3.9'",
             "version": "==1.11.3"
         },
         "setuptools": {
@@ -2175,6 +2185,7 @@
                 "sha256:ab69961ebddbddc83f5fa2ff9233572bdad5b883778c35e4fe94bf1798bd8481"
             ],
             "index": "pypi",
+            "markers": "python_version >= '3.8'",
             "version": "==2.13.0"
         },
         "tensorboard-data-server": {
@@ -2196,13 +2207,27 @@
         },
         "torch": {
             "hashes": [
-                "sha256:eb55f29db5744eda8a96f5594e637daed0d52278273005de759970e67cfa6a5a"
+                "sha256:143b6c658c17d43376e2dfbaa2c106d35639d615e5e8dec4429cf1e510dd8d61",
+                "sha256:2ce38a6e4ea7c4b7f5baa51e65243a5f687f6e19ab7915ba5b2a431105f50bbe",
+                "sha256:a7a49d459bf4862f64f7bc1a68beccf8881c2fa9f3e0569608e16ba6f85ebf7b",
+                "sha256:b663a4ee744d574095dbd612644de345944247c0605692309fd9f6c7ccdea022",
+                "sha256:e58d26a11bd57ac19761c018c3151c15bc71d068afc8ec409bfd9b4cfcc63a52",
+                "sha256:eb55f29db5744eda8a96f5594e637daed0d52278273005de759970e67cfa6a5a",
+                "sha256:f58d75619bc96e4322343c030b893613701caa2d6db8017155da226c14171335",
+                "sha256:fa225b6f941ee0e78978ac85ed7744d3c19fff462473821f8060c14faa60043e"
             ],
             "index": "pytorch",
             "version": "==2.0.1+cu118"
         },
         "torchvision": {
             "hashes": [
+                "sha256:19ca4ab5d6179bbe53cff79df1a855ee6533c2861ddc7389f68349d8b9f8302a",
+                "sha256:27be62ec887ab9a7b86612eac55ba80f8c23978c8afd5e4339669a1bbc4925ea",
+                "sha256:406ed3d8bc5b66a99b692d4c742de39a3a515a399e6bfd1c24fbb688fbb31968",
+                "sha256:af6807d5e599fe5381c916235a5581407e850eb77c3d43899f37a1511ff81cc0",
+                "sha256:bfd2435d681418bea8dacde2b2cb6e5dd40a0e0243d3631e2b71c10bf9831f39",
+                "sha256:def9af47ebc2cad55c5aa2dad1230dcf4261833ed6df8a73e839bc233764f09e",
+                "sha256:ee36a68bb369d4173eb74ddf457751f6be1531d883f456eaf9b337a06f31c8fb",
                 "sha256:f2c6f5a100bcf9020b82f5d4c87cd7e26af0409cf33b90fb797b1127dcd42de6"
             ],
             "index": "pytorch",
@@ -2264,10 +2289,10 @@
         },
         "wcwidth": {
             "hashes": [
-                "sha256:9a929bd8380f6cd9571a968a9c8f4353ca58d7cd812a4822bba831f8d685b223",
-                "sha256:a675d1a4a2d24ef67096a04b85b02deeecd8e226f57b5e3a72dbb9ed99d27da8"
+                "sha256:390c7454101092a6a5e43baad8f83de615463af459201709556b6e4b1c861f97",
+                "sha256:aec5179002dd0f0d40c456026e74a729661c9d468e1ed64405e3a6c2176ca36f"
             ],
-            "version": "==0.2.9"
+            "version": "==0.2.10"
         },
         "websocket-client": {
             "hashes": [
