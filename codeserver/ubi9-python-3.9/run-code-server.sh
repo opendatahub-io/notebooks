@@ -16,6 +16,12 @@ fi
 # Initilize access logs for culling
 echo '[{"id":"code-server","name":"code-server","last_activity":"'$(date -Iseconds)'","execution_state":"running","connections":1}]' > /var/log/nginx/vscode.access.log
 
+# Install extensions if not present
+if [ ! -f "/opt/app-root/src/.local/share/code-server" ]; then
+   code-server --install-extension ms-python.python
+   code-server --install-extension ms-toolsai.jupyter
+fi
+
 # Start server
 start_process /usr/bin/code-server \
   --bind-addr 0.0.0.0:8787 \
