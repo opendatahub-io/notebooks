@@ -20,6 +20,7 @@ spec:
         opendatahub.io/notebook-python-dependencies: '[{"name":"code-sever","version":"4.16"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: "c91d58c"
       from:
         kind: DockerImage
         name: quay.io/opendatahub/workbench-images@sha256:1c5bcbfc222dfb59849fee67e050719c688c93d3608f7b46edbe5666263641f3
@@ -31,6 +32,7 @@ spec:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"code-sever","version":"4.11"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/notebook-build-commit: "6332c3b"
       from:
         kind: DockerImage
         name: quay.io/opendatahub/workbench-images@sha256:fd5b9f65c0f46d4c093e2f58fce305eeb125bf19ee1d88f67b9fafe56142e92d
