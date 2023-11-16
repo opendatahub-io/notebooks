@@ -3,19 +3,19 @@ Workbench images are supported for a minimum of one year. Major updates to pre-c
 
 Open Data Hub contains the following workbench images with different variations:
 
-| Workbenches          | ODH         | RHODS       | OS       | GPU         | Runtimes    |
-|----------------------|-------------|-------------|----------|-------------|-------------|
-| Jupyter Minimal      | &#9745; | &#9745; | UBI8/9   | &#9746;| &#9746;|
-| CUDA                 | &#9745; | &#9745; | UBI8/9   | &#9745; | &#9746;|
-| HabanaAI             | &#9745; | &#9746;| UBI8/9   | &#9745; | &#9746;|
-| Jupyter Data Science | &#9745; | &#9745; | UBI8/9   | &#9746;| &#9745; |
-| Jupyter Tensorflow   | &#9745; | &#9745; | UBI8/9   | &#9745; | &#9745; |
-| Jupyter PyTorch      | &#9745; | &#9745; | UBI8/9   | &#9745; | &#9745; |
-| Jupyter TrustyAI     | &#9745; | &#9745; | UBI9     | &#9746;| &#9746;|
-| Code Server          | &#9745; | &#9746;| C9S      | &#9746;| &#9746;|
-| R Studio             | &#9745; | &#9746;| C9S      | &#9745; | &#9746;|
+| Workbenches          | ODH     | OpenShift AI | OS     | GPU     | Runtimes |
+| -------------------- | ------- | ------------ | ------ | ------- | -------- |
+| Jupyter Minimal      | &#9745; | &#9745;      | UBI8/9 | &#9746; | &#9746;  |
+| CUDA                 | &#9745; | &#9745;      | UBI8/9 | &#9745; | &#9746;  |
+| HabanaAI             | &#9745; | &#9746;      | UBI8/9 | &#9745; | &#9746;  |
+| Jupyter Data Science | &#9745; | &#9745;      | UBI8/9 | &#9746; | &#9745;  |
+| Jupyter Tensorflow   | &#9745; | &#9745;      | UBI8/9 | &#9745; | &#9745;  |
+| Jupyter PyTorch      | &#9745; | &#9745;      | UBI8/9 | &#9745; | &#9745;  |
+| Jupyter TrustyAI     | &#9745; | &#9745;      | UBI9   | &#9746; | &#9746;  |
+| Code Server          | &#9745; | &#9746;      | C9S    | &#9746; | &#9746;  |
+| R Studio             | &#9745; | &#9746;      | C9S    | &#9745; | &#9746;  |
 
-These notebooks are incorporated to be used in conjunction with Open Data Hub, specifically utilizing the ODH Notebook Controller as the launching platform. The table above provides insights into the characteristics of each notebook, including their availability in both ODH and RHODS environments, GPU support, and whether they are offered as runtimes ie without the JupyterLab UI.  
+These notebooks are incorporated to be used in conjunction with Open Data Hub, specifically utilizing the ODH Notebook Controller as the launching platform. The table above provides insights into the characteristics of each notebook, including their availability in both ODH and OpenShift AI environments, GPU support, and whether they are offered as runtimes ie without the JupyterLab UI.  
 
 All the notebooks are available on the[ Quay.io registry](https://quay.io/repository/opendatahub/workbench-images?tab=tags&tag=latest); please filter the results by using the tag "2023b" for the latest release and "2023a" for the n-1.
 
