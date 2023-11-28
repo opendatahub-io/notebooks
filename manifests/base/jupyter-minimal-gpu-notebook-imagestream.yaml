@@ -33,6 +33,7 @@ spec:
         opendatahub.io/notebook-software: '[{"name":"CUDA","version":"11.8"},{"name":"Python","version":"v3.9"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version":"3.5"},{"name":"Notebook","version":"6.5"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: "17c2e49"
       from:
         kind: DockerImage

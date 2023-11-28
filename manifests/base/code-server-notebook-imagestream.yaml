@@ -32,6 +32,7 @@ spec:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"code-sever","version":"4.11"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: "6332c3b"
       from:
         kind: DockerImage
