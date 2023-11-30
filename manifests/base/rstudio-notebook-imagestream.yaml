@@ -20,7 +20,7 @@ spec:
         opendatahub.io/notebook-python-dependencies: '[{"name":"r-studio","version":"4.3"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/notebook-build-commit: "c91d58c"
+        opendatahub.io/notebook-build-commit: $(odh-rstudio-notebook-image-commit-n)
       from:
         kind: DockerImage
         name: $(odh-rstudio-notebook-n)
@@ -33,7 +33,7 @@ spec:
         opendatahub.io/notebook-python-dependencies: '[{"name":"r-studio","version":"4.3"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
-        opendatahub.io/notebook-build-commit: "6332c3b"
+        opendatahub.io/notebook-build-commit: $(odh-rstudio-notebook-image-commit-n-1)
       from:
         kind: DockerImage
         name: $(odh-rstudio-notebook-n-1)
