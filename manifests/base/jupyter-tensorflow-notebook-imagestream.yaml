@@ -21,7 +21,7 @@ spec:
         opendatahub.io/notebook-python-dependencies: '[{"name":"TensorFlow","version":"2.13"},{"name":"Tensorboard","version":"2.13"},{"name":"Boto3","version":"1.28"},{"name":"Kafka-Python","version":"2.0"},{"name":"Kfp-tekton","version":"1.5"},{"name":"Matplotlib","version":"3.6"},{"name":"Numpy","version":"1.24"},{"name":"Pandas","version":"1.5"},{"name":"Scikit-learn","version":"1.3"},{"name":"Scipy","version":"1.11"},{"name":"Elyra","version":"3.15"},{"name":"PyMongo","version":"4.5"},{"name":"Pyodbc","version":"4.0"}, {"name":"Codeflare-SDK","version":"0.12"}, {"name":"sklearn-onnx","version":"1.15"}, {"name":"Psycopg","version":"3.1"}, {"name":"MySQL Connector/Python","version":"8.0"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/notebook-build-commit: "cf1b63e"
+        opendatahub.io/notebook-build-commit: $(odh-tensorflow-gpu-notebook-image-commit-n)
       from:
         kind: DockerImage
         name: $(odh-tensorflow-gpu-notebook-image-n)
@@ -33,7 +33,8 @@ spec:
         opendatahub.io/notebook-software: '[{"name":"CUDA","version":"11.8"},{"name":"Python","version":"v3.9"},{"name":"TensorFlow","version":"2.11"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"TensorFlow","version":"2.11"},{"name":"Tensorboard","version":"2.11"},{"name":"Boto3","version":"1.26"},{"name":"Kafka-Python","version":"2.0"},{"name":"Kfp-tekton","version":"1.5"},{"name":"Matplotlib","version":"3.6"},{"name":"Numpy","version":"1.24"},{"name":"Pandas","version":"1.5"},{"name":"Scikit-learn","version":"1.2"},{"name":"Scipy","version":"1.10"},{"name":"Elyra","version":"3.15"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
-        opendatahub.io/notebook-build-commit: "17c2e49"
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: $(odh-tensorflow-gpu-notebook-image-commit-n-1)
       from:
         kind: DockerImage
         name: $(odh-tensorflow-gpu-notebook-image-n-1)
@@ -46,7 +47,7 @@ spec:
         opendatahub.io/notebook-python-dependencies: '[{"name":"TensorFlow","version":"2.7"},{"name":"Tensorboard","version":"2.6"},{"name":"Boto3","version":"1.17"},{"name":"Kafka-Python","version":"2.0"},{"name":"Matplotlib","version":"3.4"},{"name":"Numpy","version":"1.19"},{"name":"Pandas","version":"1.2"},{"name":"Scikit-learn","version":"0.24"},{"name":"Scipy","version":"1.6"}]'
         openshift.io/imported-from: quay.io/opendatahub/notebooks
         opendatahub.io/image-tag-outdated: 'true'
-        opendatahub.io/notebook-build-commit: "4c8f26e"
+        opendatahub.io/notebook-build-commit: $(odh-tensorflow-gpu-notebook-image-commit-n-2)
       from:
         kind: DockerImage
         name: $(odh-tensorflow-gpu-notebook-image-n-2)

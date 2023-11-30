@@ -89,6 +89,15 @@ jobs:
               done
               git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/params.env && git commit -m "Update images for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
 
+      - name: Fetch digest, and update the commit.env file
+        run: |
+            echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
+            COMMIT=("odh-minimal-notebook-image-commit-n" "odh-minimal-gpu-notebook-image-commit-n" "odh-pytorch-gpu-notebook-image-commit-n" "odh-generic-data-science-notebook-image-commit-n" "odh-tensorflow-gpu-notebook-image-commit-n" "odh-trustyai-notebook-image-commit-n")
+            for val in "${COMMIT[@]}"; do
+              echo $val
+              sed -i "s|${val}=.*|${val}=${{ steps.hash-n.outputs.HASH_N }}|" manifests/base/commit.env
+            done
+            git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/commit.env && git commit -m "Update image commits for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}      
   update-n-1-version:
     needs: [initialize, update-n-version]
     runs-on: ubuntu-latest
@@ -137,7 +146,15 @@ jobs:
                 sed -i "s|${image}=.*|${image}=$output|" manifests/base/params.env
               done
               git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/params.env && git commit -m "Update images for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
-
+      - name: Fetch digest, and update the commit.env file
+        run: |
+              echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
+              COMMIT=("odh-minimal-notebook-image-commit-n" "odh-minimal-gpu-notebook-image-commit-n" "odh-pytorch-gpu-notebook-image-commit-n" "odh-generic-data-science-notebook-image-commit-n" "odh-tensorflow-gpu-notebook-image-commit-n" "odh-trustyai-notebook-image-commit-n")
+              for val in "${COMMIT[@]}"; do
+                echo $val
+                sed -i "s|${val}=.*|${val}=${{ steps.hash-n.outputs.HASH_N }}|" manifests/base/commit.env
+              done
+              git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/commit.env && git commit -m "Update image commits for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
   # Creates the Pull Request
   open-pull-request:
     needs: [update-n-version, update-n-1-version]
