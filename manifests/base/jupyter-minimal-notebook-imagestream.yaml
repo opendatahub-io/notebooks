@@ -21,7 +21,7 @@ spec:
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/default-image: "true"
-        opendatahub.io/notebook-build-commit: "cf1b63e"
+        opendatahub.io/notebook-build-commit: $(odh-minimal-notebook-image-commit-n)
       from:
         kind: DockerImage
         name: $(odh-minimal-notebook-image-n)
@@ -34,7 +34,7 @@ spec:
         opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version": "3.5"}, {"name": "Notebook","version": "6.5"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
-        opendatahub.io/notebook-build-commit: "17c2e49"
+        opendatahub.io/notebook-build-commit: $(odh-minimal-notebook-image-commit-n-1)
       from:
         kind: DockerImage
         name: $(odh-minimal-notebook-image-n-1)
@@ -47,7 +47,7 @@ spec:
         opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version": "3.2"}, {"name": "Notebook","version": "6.4"}]'
         openshift.io/imported-from: quay.io/opendatahub/notebooks
         opendatahub.io/image-tag-outdated: 'true'
-        opendatahub.io/notebook-build-commit: "4c8f26e"
+        opendatahub.io/notebook-build-commit: $(odh-minimal-notebook-image-commit-n-2)
       from:
         kind: DockerImage
         name: $(odh-minimal-notebook-image-n-2)
