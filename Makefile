@@ -96,6 +96,11 @@ habana-jupyter-1.10.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
 habana-jupyter-1.11.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
 	$(call image,$@,habana/1.11.0/ubi8-python-3.8,$<)
 
+# Build and push habana-jupyter-1.13.0-ubi8-python-3.8 image to the registry
+.PHONY: habana-jupyter-1.13.0-ubi8-python-3.8
+habana-jupyter-1.13.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
+	$(call image,$@,habana/1.13.0/ubi8-python-3.8,$<)
+
 # Build and push runtime-minimal-ubi8-python-3.8 image to the registry
 .PHONY: runtime-minimal-ubi8-python-3.8
 runtime-minimal-ubi8-python-3.8: base-ubi8-python-3.8
