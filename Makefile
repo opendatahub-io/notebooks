@@ -469,3 +469,8 @@ refresh-pipfilelock-files:
 	cd runtimes/tensorflow/ubi9-python-3.9 && pipenv lock
 	cd base/c9s-python-3.9 && pipenv lock
 	
+# This is only for the workflow action
+# For running manually, set the required environment variables
+.PHONY: scan-image-vulnerabilities
+scan-image-vulnerabilities:
+	python ci/security-scan/quay_security_analysis.py
