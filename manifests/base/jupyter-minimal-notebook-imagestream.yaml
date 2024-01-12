@@ -18,11 +18,7 @@ spec:
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version": "3.6"}, {"name": "Notebook","version": "6.5"}]'
-<<<<<<< HEAD
         openshift.io/imported-from: quay.io/modh/odh-minimal-notebook-container
-=======
-        openshift.io/imported-from: quay.io/opendatahub/workbench-images
->>>>>>> 01332596d595eefe5cb6c8d488fbef2ebda9e49a
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/default-image: "true"
         opendatahub.io/notebook-build-commit: $(odh-minimal-notebook-image-commit-n)

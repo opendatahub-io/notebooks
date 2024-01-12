@@ -9,7 +9,6 @@ resources:
   - jupyter-pytorch-notebook-imagestream.yaml
   - jupyter-tensorflow-notebook-imagestream.yaml
   - jupyter-trustyai-notebook-imagestream.yaml
-  - jupyter-habana-notebook-imagestream.yaml
   - code-server-notebook-imagestream.yaml
 
 commonLabels:
@@ -157,41 +156,6 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-codeserver-notebook-n
-  - name: odh-codeserver-notebook-n-1
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-codeserver-notebook-n-1
-  - name: odh-rstudio-notebook-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-notebook-n
-  - name: odh-rstudio-notebook-n-1
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-notebook-n-1
-  - name: odh-rstudio-gpu-notebook-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-gpu-notebook-n
-  - name: odh-rstudio-gpu-notebook-n-1
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-gpu-notebook-n-1
   - name: odh-minimal-notebook-image-commit-n
     objref:
       kind: ConfigMap
@@ -325,41 +289,6 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-codeserver-notebook-image-commit-n
-  - name: odh-codeserver-notebook-image-commit-n-1
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-codeserver-notebook-image-commit-n-1
-  - name: odh-rstudio-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-notebook-image-commit-n
-  - name: odh-rstudio-notebook-image-commit-n-1
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-notebook-image-commit-n-1
-  - name: odh-rstudio-gpu-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-gpu-notebook-image-commit-n
-  - name: odh-rstudio-gpu-notebook-image-commit-n-1
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-gpu-notebook-image-commit-n-1
 configurations:
   - params.yaml
   - commit.yaml
