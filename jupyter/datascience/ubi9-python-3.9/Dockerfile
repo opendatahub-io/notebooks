@@ -30,6 +30,9 @@ USER root
 # Install usefull OS packages
 RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile
 
+# Disable announcement plugin of jupyterlab
+RUN jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+
 # Install MongoDB Client, We need a special repo for MongoDB as they do their own distribution
 COPY mongodb-org-6.0.repo-x86_64 /etc/yum.repos.d/mongodb-org-6.0.repo
 
@@ -56,6 +59,9 @@ RUN mkdir /opt/app-root/runtimes && \
     # Workaround for passing ssl_sa_cert and to ensure that Elyra redirects to a correct pipeline run URL
     patch /opt/app-root/lib/python3.9/site-packages/elyra/pipeline/kfp/kfp_authentication.py -i utils/kfp_authentication.patch && \
     patch /opt/app-root/lib/python3.9/site-packages/elyra/pipeline/kfp/processor_kfp.py -i utils/processor_kfp.patch && \
+    # Workaround for elyra pipeline validation command
+    patch /opt/app-root/lib/python3.9/site-packages/elyra/cli/pipeline_app.py -i utils/pipeline_app.patch && \
+    patch /opt/app-root/lib/python3.9/site-packages/elyra/pipeline/pipeline_definition.py -i utils/pipeline_definition.patch && \
     # switch to Data Science Pipeline in component catalog \
     DIR_COMPONENT="/opt/app-root/lib/python3.9/site-packages/elyra/metadata/schemas/local-directory-catalog.json" && \
     FILE_COMPONENT="/opt/app-root/lib/python3.9/site-packages/elyra/metadata/schemas/local-file-catalog.json" && \
