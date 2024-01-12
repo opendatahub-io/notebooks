@@ -72,8 +72,8 @@ RUN /opt/anaconda3/bin/conda env create --file environment.yml -p "${APP_ROOT}" 
 
 # For RHEL/Centos 8+ scl_enable isn't sourced automatically in s2i-core
 # so virtualenv needs to be activated this way
-ENV BASH_ENV="/opt/anaconda3/bin/activate ${APP_ROOT}" \
-    ENV="/opt/anaconda3/bin/activate ${APP_ROOT}" \
+ENV BASH_ENV="source /opt/anaconda3/bin/activate ${APP_ROOT}" \
+    ENV="source /opt/anaconda3/bin/activate ${APP_ROOT}" \
     PROMPT_COMMAND=". /opt/anaconda3/bin/activate ${APP_ROOT}"
 
 USER 1001
