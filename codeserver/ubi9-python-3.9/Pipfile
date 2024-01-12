@@ -1,0 +1,38 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[[source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu118"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+# Base packages
+wheel = "~=0.41.2"
+setuptools = "~=68.1.2"
+
+# Datascience packages
+boto3 = "~=1.29.7"
+kafka-python = "~=2.0.2"
+matplotlib = "~=3.8.2"
+numpy = "~=1.26.2"
+pandas = "~=2.1.3"
+plotly = "~=5.18.0"
+scikit-learn = "~=1.3.2"
+scipy = "~=1.11.4"
+skl2onnx = "~=1.15.0"
+ipykernel = "~=6.26.0"
+
+# Some extra usefull packages
+opencensus = "~=0.11.3"
+smart-open = "~=6.4.0"
+virtualenv = "~=20.21.0"
+py-spy = "~=0.3.14"
+prometheus-client = "~=0.19.0"
+
+[requires]
+python_version = "3.9"

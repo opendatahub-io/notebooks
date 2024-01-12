@@ -17,9 +17,27 @@ USER 0
 
 WORKDIR /opt/app-root/bin
 
+# Install usefull packages from Pipfile.lock
+COPY Pipfile.lock ./
+
+# Install packages and cleanup
+RUN echo "Installing softwares and packages" && \
+    micropipenv install && \
+    rm -f ./Pipfile.lock && \
+    # Fix permissions to support pip in Openshift environments \
+    chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
+    fix-permissions /opt/app-root -P
+
+# Install usefull OS packages
+RUN dnf install -y jq git-lfs libsndfile
+
 # Install Code Server
 RUN yum install -y "https://github.com/coder/code-server/releases/download/${CODESERVER_VERSION}/code-server-${CODESERVER_VERSION/v/}-amd64.rpm" && \
     yum -y clean all --enablerepo='*'
+
+# Change ownership of relevant directories
+RUN chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
+    fix-permissions /opt/app-root -P
 
 # Install NGINX to proxy VSCode and pass probes check
 ENV NGINX_VERSION=1.22 \
@@ -78,8 +96,8 @@ COPY nginx/httpconf/ /opt/app-root/etc/nginx.d/
 COPY nginx/api/ /opt/app-root/api/
 
 # Launcher
-COPY utils utils/
-COPY run-code-server.sh run-nginx.sh ./
+COPY --chown=1001:0 utils utils/
+COPY --chown=1001:0 run-code-server.sh run-nginx.sh ./
 
 ENV SHELL /bin/bash
 
