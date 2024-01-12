@@ -66,7 +66,7 @@ We have setup a [pre-commit](https://pre-commit.com) config file in [.pre-commit
 To [utilize pre-commit](https://pre-commit.com/#usage), install pre-commit with `pip3 install pre-commit` and then either:
 
 Run `pre-commit install` after you clone the repo, `pre-commit` will run automatically on git commit.
-   * If any one of the tests fail, add and commit the changes made by pre-commit. Once the pre-commit check passes, you can make your PR.
+   * If any one of the tests fails, add and commit the changes made by pre-commit. Once the pre-commit check passes, you can make your PR.
    * `pre-commit` will from now on run all the checkers/linters/formatters on every commit.
    * If you later want to commit without running it, just run `git commit` with `-n/--no-verify`.
 or
