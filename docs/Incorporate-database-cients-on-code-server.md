@@ -1,36 +1,36 @@
-# Incorporate standard database clients on code server (vs code)
+# Incorporate standard database clients on code-server
 
 ## Introduction
 
-In the field of Database Management Systems effective interaction is crucial for developers. Incorporating standard database clients directly into your VS Code environment can streamline your workflow, offering a seamless interface for managing databases. This tutorial will walk you through the process of incorporating different Database Management System clients into Code Server, whether through built-in extensions within VS Code or by creating your own custom image.
+In the field of Database Management Systems effective interaction is crucial for developers. Incorporating standard database clients directly into your code-server environment can streamline your workflow, offering a seamless interface for managing databases. This tutorial will walk you through the process of incorporating different Database Management System clients into code-server, whether through built-in extensions within code-server or by creating your own custom image.
 
 ## 1. Through Extensions
 
 ### Installation Guide
 
-1.  Open the code server workbench and navigate to the Extensions view.
+1.  Open the code-server workbench and navigate to the Extensions view.
     
 2.  Search for the desired extension using the provided recommended links.
     
-3.  Click "Install" to add the extension to your VS Code environment.
+3.  Click "Install" to add the extension to your code-server environment.
     
 ### Recommended extensions list
 
-**MongoDB for VS Code**
+**MongoDB for code-server**
 
-MongoDB for VS Code empowers you to connect to MongoDB and Atlas directly from your VS Code environment. Explore databases and collections, inspect schemas, and prototype queries and aggregations effortlessly using the integrated playgrounds.
+MongoDB for code-server empowers you to connect to MongoDB and Atlas directly from your code-server environment. Explore databases and collections, inspect schemas, and prototype queries and aggregations effortlessly using the integrated playgrounds.
 
 [Link to Extension](https://marketplace.visualstudio.com/items?itemName=mongodb.mongodb-vscode)
 
-**MySQL Shell for VS Code**
+**MySQL Shell for code-server**
 
-This extension provides a robust MySQL Shell for VS Code, enhancing your capability to manage MySQL databases seamlessly within the VS Code environment.
+This extension provides a robust MySQL Shell for code-server, enhancing your capability to manage MySQL databases seamlessly within the code-server environment.
 
 [Link to Extension](https://marketplace.visualstudio.com/items?itemName=Oracle.mysql-shell-for-vs-code)
 
 **SQL Server (MSSQL)**
 
-Connect to SQL Server effortlessly with this extension, enabling you to perform database tasks directly from your VS Code workspace.
+Connect to SQL Server effortlessly with this extension, enabling you to perform database tasks directly from your code-server workspace.
 
 [Link to Extension](https://marketplace.visualstudio.com/items?itemName=ms-mssql.mssql)
 
@@ -48,7 +48,7 @@ SQLTools simplifies database connections, supporting a wide array of commonly us
 
 **Database Client**
 
-This versatile extension serves as a database manager for MySQL/MariaDB, PostgreSQL, SQLite, Redis, and ElasticSearch. It provides a unified interface for managing diverse databases within the VS Code environment.
+This versatile extension serves as a database manager for MySQL/MariaDB, PostgreSQL, SQLite, Redis, and ElasticSearch. It provides a unified interface for managing diverse databases within the code-server environment.
 
 [Link to Extension](https://marketplace.visualstudio.com/items?itemName=cweijan.vscode-database-client2)
 
@@ -157,7 +157,7 @@ Create or open a Data Science Project, create a new workbench, and select the cu
 
 **Step 7: Verify Database Clients Installation**
 
-Open a new terminal inside the code server and run the following command to ensure successful installation of database clients:
+Open a new terminal inside the code-server and run the following command to ensure successful installation of database clients:
 
 `$ yum list installed | grep -E 'mssql|mongo|postgresql'`
 

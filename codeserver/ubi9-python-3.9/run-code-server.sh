@@ -14,10 +14,10 @@ if [ ! -f "/opt/app-root/src/.bashrc" ]; then
 fi
 
 # Initilize access logs for culling
-echo '[{"id":"code-server","name":"code-server","last_activity":"'$(date -Iseconds)'","execution_state":"running","connections":1}]' > /var/log/nginx/vscode.access.log
+echo '[{"id":"code-server","name":"code-server","last_activity":"'$(date -Iseconds)'","execution_state":"running","connections":1}]' > /var/log/nginx/codeserver.access.log
 
 # Check if code-server exists
-if [ ! -f "/opt/app-root/src/.local/share/code-server" ]; then
+if [ ! -f "/opt/app-root/src/.local/share/codeserver" ]; then
 
     # Check internet connection
     if curl -Is http://www.google.com | head -n 1 | grep -q "200 OK"; then

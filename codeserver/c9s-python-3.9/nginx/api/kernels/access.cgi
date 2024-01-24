@@ -3,7 +3,7 @@ echo "Status: 200"
 echo "Content-type: application/json"
 echo
 # Query the heartbeat endpoint
-HEALTHZ=$(curl -s http://127.0.0.1:8888/vscode/healthz)
+HEALTHZ=$(curl -s http://127.0.0.1:8888/codeserver/healthz)
 # Extract last_activity | remove milliseconds
 LAST_ACTIVITY_EPOCH=$(echo $HEALTHZ | grep -Po 'lastHeartbeat":\K.*?(?=})' | awk '{ print substr( $0, 1, length($0)-3 ) }')
 # Convert to ISO8601 date format
