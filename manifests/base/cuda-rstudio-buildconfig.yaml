@@ -1,0 +1,152 @@
+---
+kind: ImageStream
+apiVersion: image.openshift.io/v1
+metadata:
+  name: cuda-rhel9
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - name: latest
+      referencePolicy:
+        type: Source
+---
+kind: ImageStream
+apiVersion: image.openshift.io/v1
+metadata:
+  annotations:
+    opendatahub.io/notebook-image-creator: RHOAI
+    opendatahub.io/notebook-image-url: "https://github.com/red-hat-data-services/notebooks/tree/main/rstudio"
+    opendatahub.io/notebook-image-name: "CUDA - R Studio"
+    opendatahub.io/notebook-image-desc: "R Studio Workbench image with an integrated development environment for R, a programming language designed for statistical computing and graphics."
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+  name: cuda-rstudio-rhel9
+  labels:
+    opendatahub.io/dashboard: 'true'
+    opendatahub.io/notebook-image: 'true'
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - name: latest
+      annotations:
+        opendatahub.io/notebook-software: '[{"name":"CUDA","version":"11.8"},{"name":"R","version":"v4.3"},{"name":"Python","version":"v3.9"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"r-studio","version":"4.3"}]'
+      referencePolicy:
+        type: Source
+---
+kind: BuildConfig
+apiVersion: build.openshift.io/v1
+metadata:
+  name: cuda-rhel9
+  labels:
+    app: buildchain
+    component: cuda-rhel9
+spec:
+  source:
+    type: Git
+    git:
+      uri: "https://github.com/red-hat-data-services/notebooks"
+      ref: main
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: "cuda/rhel9-python-3.9/Dockerfile"
+      noCache: true
+      from:
+        kind: "DockerImage"
+        name: "quay.io/modh/odh-base-rhel9:base-rhel9-python-3.9-20240131-378dafd"
+      env:
+      - name: USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: rhel-subscription-secret
+            key: USERNAME
+      - name: PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: rhel-subscription-secret
+            key: PASSWORD
+      - name: SERVERURL
+        valueFrom:
+          secretKeyRef:
+            name: rhel-subscription-secret
+            key: SERVERURL
+      - name: BASEURL
+        valueFrom:
+          secretKeyRef:
+            name: rhel-subscription-secret
+            key: BASEURL
+  output:
+    to:
+      kind: ImageStreamTag
+      name: "cuda-rhel9:latest"
+  resources:
+    limits:
+      cpu: "1"
+      memory: 1Gi
+    requests:
+      cpu: "1"
+      memory: 1Gi
+  runPolicy: Serial
+  triggers:
+    - imageChange: {}
+      type: ImageChange
+---
+kind: BuildConfig
+apiVersion: build.openshift.io/v1
+metadata:
+  name: cuda-rstudio-rhel9
+  labels:
+    app: buildchain
+    component: cuda-rstudio-image
+spec:
+  source:
+    type: Git
+    git:
+      uri: "https://github.com/red-hat-data-services/notebooks"
+      ref: main
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: "rstudio/rhel9-python-3.9/Dockerfile"
+      noCache: true
+      from:
+        kind: "ImageStreamTag"
+        name: "cuda-rhel9:latest"
+      env:
+      - name: USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: rhel-subscription-secret
+            key: USERNAME
+      - name: PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: rhel-subscription-secret
+            key: PASSWORD
+      - name: SERVERURL
+        valueFrom:
+          secretKeyRef:
+            name: rhel-subscription-secret
+            key: SERVERURL
+      - name: BASEURL
+        valueFrom:
+          secretKeyRef:
+            name: rhel-subscription-secret
+            key: BASEURL
+  output:
+    to:
+      kind: ImageStreamTag
+      name: "cuda-rstudio-rhel9:latest"
+  resources:
+    limits:
+      cpu: "1"
+      memory: 1Gi
+    requests:
+      cpu: "1"
+      memory: 1Gi
+  runPolicy: Serial
+  triggers:
+    - imageChange: {}
+      type: ImageChange
