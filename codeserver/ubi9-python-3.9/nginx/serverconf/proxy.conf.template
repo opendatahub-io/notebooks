@@ -1,13 +1,13 @@
 ###############
-# api calls from probes get to VSCode /healthz endpoint
+# api calls from probes get to code-server /healthz endpoint
 ###############
 location = /api {
-  return 302 /vscode/healthz/;
+  return 302 /codeserver/healthz/;
   access_log  off;
 }
 
 location /api/ {
-  return 302 /vscode/healthz/;
+  return 302 /codeserver/healthz/;
   access_log  off;
 }
 ###############
@@ -33,18 +33,18 @@ location /api/kernels/ {
 ###############
 
 ###############
-# root and prefix get to VSCode endpoint
+# root and prefix get to code-server endpoint
 ###############
 location = / {
-    return 302 $custom_scheme://$http_host/vscode/;
+    return 302 $custom_scheme://$http_host/codeserver/;
 }
 
-location = /vscode {
-    return 302 $custom_scheme://$http_host/vscode/;
+location = /codeserver {
+    return 302 $custom_scheme://$http_host/codeserver/;
 }
 
-location /vscode/ {
-    # Standard Code-Server/NGINX configuration
+location /codeserver/ {
+    # Standard code-server/NGINX configuration
     proxy_pass http://127.0.0.1:8787/;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -59,6 +59,6 @@ location /vscode/ {
     proxy_set_header X-NginX-Proxy true;
     proxy_redirect off;
 
-    access_log /var/log/nginx/vscode.access.log json if=$loggable;
+    access_log /var/log/nginx/codeserver.access.log json if=$loggable;
 }
 ###############

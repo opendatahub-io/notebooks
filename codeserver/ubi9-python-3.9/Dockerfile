@@ -4,10 +4,10 @@ FROM ${BASE_IMAGE}
 ARG CODESERVER_VERSION=v4.16.1
 
 LABEL name="odh-notebook-code-server-ubi9-python-3.9" \
-      summary="Code Server (VS Code) image with python 3.9 based on UBI 9" \
-      description="Code Server (VS Code) image with python 3.9 based on UBI9" \
-      io.k8s.display-name="Code Server (VS Code) image with python 3.9 based on UBI9" \
-      io.k8s.description="Code Server (VS Code) image with python 3.9 based on UBI9" \
+      summary="code-server image with python 3.9 based on UBI 9" \
+      description="code-server image with python 3.9 based on UBI9" \
+      io.k8s.display-name="code-server image with python 3.9 based on UBI9" \
+      io.k8s.description="code-server image with python 3.9 based on UBI9" \
       authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
       io.openshift.build.commit.ref="main" \
       io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/codeserver/ubi9-python-3.9" \
@@ -31,7 +31,7 @@ RUN echo "Installing softwares and packages" && \
 # Install usefull OS packages
 RUN dnf install -y jq git-lfs libsndfile
 
-# Install Code Server
+# Install code-server
 RUN yum install -y "https://github.com/coder/code-server/releases/download/${CODESERVER_VERSION}/code-server-${CODESERVER_VERSION/v/}-amd64.rpm" && \
     yum -y clean all --enablerepo='*'
 
@@ -39,7 +39,7 @@ RUN yum install -y "https://github.com/coder/code-server/releases/download/${COD
 RUN chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
     fix-permissions /opt/app-root -P
 
-# Install NGINX to proxy VSCode and pass probes check
+# Install NGINX to proxy code-server and pass probes check
 ENV NGINX_VERSION=1.22 \
     NGINX_SHORT_VER=122 \
     NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
