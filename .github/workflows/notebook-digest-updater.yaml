@@ -135,7 +135,7 @@ jobs:
         shell: bash
         continue-on-error: true
         run: |
-              echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N-1 }} on ${{ env.RELEASE_VERSION_N_1}}
+              echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N_1 }} on ${{ env.RELEASE_VERSION_N_1}}
               IMAGES=("odh-minimal-notebook-image-n-1" "odh-minimal-gpu-notebook-image-n-1" "odh-pytorch-gpu-notebook-image-n-1" "odh-generic-data-science-notebook-image-n-1" "odh-tensorflow-gpu-notebook-image-n-1" "odh-trustyai-notebook-image-n-1")
               REGEXES=("v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" "cuda-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}" "v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" \
                        "v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" "cuda-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}" "v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}")
