@@ -207,6 +207,13 @@ rstudio-c9s-python-3.9: base-c9s-python-3.9
 cuda-rstudio-c9s-python-3.9: cuda-c9s-python-3.9
 	$(call image,$@,rstudio/c9s-python-3.9,$<)
 
+####################################### Buildchain for RHEL9 #######################################
+
+# Build and push base-rhel9-python-3.9 image to the registry
+.PHONY: base-rhel9-python-3.9
+base-rhel9-python-3.9:
+	$(call image,$@,base/rhel9-python-3.9)
+
 ####################################### Buildchain for Anaconda Python #######################################
 
 # Build and push base-anaconda-python-3.8 image to the registry
