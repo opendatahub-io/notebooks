@@ -1,0 +1,92 @@
+---
+# The aim of this GitHub workflow is to update the pipfile to sync with Codeflare-SDK release.
+name: Sync with codeflare-sdk release
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+    inputs:
+      codeflare_sdk_release_version:
+        required: true
+        description: "Provide the version of the codeflare release you want to update to : "
+      branch:
+        required: true
+        description: "Provide the name of the branch you want to update ex main, vYYYYx etc: "
+
+env:
+  BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
+  CODEFLARE_RELEASE_VERSION: ${{ github.event.inputs.codeflare_sdk_release_version }}
+  UPDATER_BRANCH: codeflare-sync-updater-${{ github.run_id }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ env.BRANCH_NAME }}
+
+      - name: Create a new branch
+        run: |
+          echo ${{ env.UPDATER_BRANCH }}
+          git checkout -b ${{ env.UPDATER_BRANCH }}
+          git push --set-upstream origin ${{ env.UPDATER_BRANCH }}
+
+      - name: Set up Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Update Pipfiles in accordance with Codeflare-SDK latest release
+        run: |
+          # list all Pipfile paths having Codeflare-SDK listed
+          paths+=($(grep -rl 'codeflare-sdk = "~=.*"'))
+          # Extracting only directories from file paths, excluding a `.gitworkflow` directory
+          directories=()
+          exclude_directories=(
+            ".git/objects/pack"
+            ".github/workflows/",
+          )
+          for path in "${paths[@]}"; do
+            current_dir=$(dirname "$path")
+            #Check if current_dir is not in exclude_directories list
+            if [[ ! "${exclude_directories[@]}" =~ "$current_dir" ]]; then
+              #Check if Pipfile exists in current_dir
+              if [ -f "$current_dir/Pipfile" ];then
+                directories+=("$current_dir")
+              fi
+            fi
+          done
+          # Remove duplicates
+          directories=($(echo "${directories[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+          # Print the directories for verification
+          echo "Directories (Start updating Pipfile in these below directories in accordance with Codeflare-SDK latest release):"
+          for dir in "${directories[@]}"; do
+            echo "- $dir"
+          done
+          # iterate over the directories and update Pipfile
+          for dir in "${directories[@]}"; do
+            sed -i 's/codeflare-sdk = "~=.*"/codeflare-sdk = "~='"${CODEFLARE_RELEASE_VERSION}"'"/' $dir/Pipfile
+          done
+
+      - name: Push changes
+        run: |
+          git fetch origin ${{ env.UPDATER_BRANCH }} && \
+          git pull origin ${{ env.UPDATER_BRANCH }} && \
+          git commit -am "Updated Codeflare-SDK via ${{ env.UPDATER_BRANCH }} GitHub action" && \
+          git push origin ${{ env.UPDATER_BRANCH }}
+
+      - name: pull-request
+        uses: repo-sync/pull-request@v2
+        with:
+          source_branch: ${{ env.UPDATER_BRANCH }}
+          destination_branch: ${{ env.BRANCH_NAME}}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          pr_label: "automated pr"
+          pr_title: "[Digest Updater Action] Update notebook's pipfile to sync with Codeflare-SDK release"
+          pr_body: |
+            :rocket: This is an automated Pull Request.
+
+            This PR updates the `Pipfile` to sync with latest Codeflare-SDK release.
+
+            Created by `/.github/workflows/codeflare-sdk-release-sync.yaml`
+
+            :exclamation: **IMPORTANT NOTE**: Remember to delete the ` ${{ env.UPDATER_BRANCH }}` branch after merging the changes
