@@ -2,8 +2,6 @@ ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
 # Access the client's secret for the subscription manager from the environment variable
-ARG USERNAME
-ARG PASSWORD
 ENV USERNAME=$USERNAME
 ENV PASSWORD=$PASSWORD
 # These should be removed after testing the recipe
@@ -25,14 +23,20 @@ LABEL name="odh-notebook-cuda-c9s-python-3.9" \
 USER 0
 WORKDIR /opt/app-root/bin
 
-# Run the subscription manager command using the provided credentials
-RUN subscription-manager register --serverurl=$SERVERURL --baseurl=$BASEURL --username=$USERNAME --password=$PASSWORD --force --auto-attach
+# Run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
+RUN subscription-manager register \
+    ${SERVERURL:+--serverurl=$SERVERURL} \
+    ${BASEURL:+--baseurl=$BASEURL} \
+    --username=$USERNAME \
+    --password=$PASSWORD \
+    --force \
+    --auto-attach
 
 ENV NVARCH x86_64
 ENV NVIDIA_REQUIRE_CUDA "cuda>=11.8 brand=tesla,driver>=450,driver<451 brand=tesla,driver>=470,driver<471 brand=unknown,driver>=470,driver<471 brand=nvidia,driver>=470,driver<471 brand=nvidiartx,driver>=470,driver<471 brand=geforce,driver>=470,driver<471 brand=geforcertx,driver>=470,driver<471 brand=quadro,driver>=470,driver<471 brand=quadrortx,driver>=470,driver<471 brand=titan,driver>=470,driver<471 brand=titanrtx,driver>=470,driver<471"
 ENV NV_CUDA_CUDART_VERSION 11.8.89-1
 
-COPY cuda.repo-x86_64 /etc/yum.repos.d/cuda.repo
+COPY cuda/rhel9-python-3.9/cuda.repo-x86_64 /etc/yum.repos.d/cuda.repo
 
 RUN NVIDIA_GPGKEY_SUM=d0664fbbdb8c32356d45de36c5984617217b2d0bef41b93ccecd326ba3b80c87 && \
     curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/rhel8/${NVARCH}/D42D0685.pub | sed '/^Version/d' > /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA && \
@@ -54,7 +58,7 @@ RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf && \
 ENV PATH /usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
 ENV LD_LIBRARY_PATH /usr/local/nvidia/lib:/usr/local/nvidia/lib64
 
-COPY NGC-DL-CONTAINER-LICENSE /
+COPY cuda/rhel9-python-3.9/NGC-DL-CONTAINER-LICENSE /
 
 # nvidia-container-runtime
 ENV NVIDIA_VISIBLE_DEVICES all
@@ -133,6 +137,9 @@ RUN yum -y install cuda-toolkit-11-8 && \
 
 # Set this flag so that libraries can find the location of CUDA
 ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
+
+# Unregister the system
+RUN subscription-manager remove --all && subscription-manager unregister && subscription-manager clean
 
 # Restore notebook user workspace
 USER 1001

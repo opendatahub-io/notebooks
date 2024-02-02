@@ -2,8 +2,6 @@ ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
 # Access the client's secret for the subscription manager from the environment variable
-ARG USERNAME
-ARG PASSWORD
 ENV USERNAME=$USERNAME
 ENV PASSWORD=$PASSWORD
 # These should be removed after testing the recipe
@@ -25,12 +23,14 @@ USER root
 # uncomment the bellow line if you fall on this error: subscription-manager is disabled when running inside a container. Please refer to your host system for subscription management.
 #RUN sed -i 's/\(def in_container():\)/\1\n    return False/g' /usr/lib64/python*/*-packages/rhsm/config.py
 
-# Run the subscription manager command using the provided credentials
-RUN subscription-manager register --serverurl=$SERVERURL --baseurl=$BASEURL --username=$USERNAME --password=$PASSWORD --force --auto-attach
-
-# Run the subscription manager command using the provided credentials
-#RUN subscription-manager register --username=$USERNAME --password=$PASSWORD --force --auto-attach
-
+# Run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
+RUN subscription-manager register \
+    ${SERVERURL:+--serverurl=$SERVERURL} \
+    ${BASEURL:+--baseurl=$BASEURL} \
+    --username=$USERNAME \
+    --password=$PASSWORD \
+    --force \
+    --auto-attach
 
 ENV R_VERSION=4.3.1
 
