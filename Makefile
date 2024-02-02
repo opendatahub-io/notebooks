@@ -418,7 +418,7 @@ validate-runtime-image: bin/kubectl
 .PHONY: validate-codeserver-image
 validate-codeserver-image: bin/kubectl
 	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
-	$(info # Running tests for $(NOTEBOOK_NAME) Code Server image...)
+	$(info # Running tests for $(NOTEBOOK_NAME) code-server image...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod codeserver-pod --timeout=300s
 	@required_commands=$(REQUIRED_CODE_SERVER_IMAGE_COMMANDS) ; \
 	if [[ $$image == "" ]] ; then \
@@ -438,7 +438,7 @@ validate-codeserver-image: bin/kubectl
 .PHONY: validate-rstudio-image
 validate-rstudio-image: bin/kubectl
 	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
-	$(info # Running tests for $(NOTEBOOK_NAME) Code Server image...)
+	$(info # Running tests for $(NOTEBOOK_NAME) code-server image...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod rstudio-pod --timeout=300s
 	@required_commands=$(REQUIRED_R_STUDIO_IMAGE_COMMANDS) ; \
 	if [[ $$image == "" ]] ; then \

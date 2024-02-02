@@ -3,7 +3,7 @@ FROM ${BASE_IMAGE}
 
 LABEL name="odh-notebook-rstudio-c9s-python-3.9" \
       summary="R Studio image with python 3.9 based on CentOS Stream 9" \
-      description="Code Server (VS Code) image with python 3.9 based on CentOS Stream 9" \
+      description="code-server image with python 3.9 based on CentOS Stream 9" \
       io.k8s.display-name="R Studio image with python 3.9 based on CentOS Stream 9" \
       io.k8s.description="R Studio image with python 3.9 based on CentOS Stream 9" \
       authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
@@ -44,6 +44,11 @@ RUN wget https://download2.rstudio.org/server/rhel9/x86_64/rstudio-server-rhel-2
 RUN chmod 1777 /var/run/rstudio-server && \
     mkdir -p /usr/share/doc/R
 COPY rsession.conf /etc/rstudio/rsession.conf
+
+# package installation 
+RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*"
+RUN R -e "install.packages('Rcpp')"
+RUN R -e 'install.packages(c("tidyverse", "tidymodels", "plumber", "vetiver", "devtools"))'
 
 # Install NGINX to proxy RStudio and pass probes check 
 ENV NGINX_VERSION=1.22 \

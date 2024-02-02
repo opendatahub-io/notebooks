@@ -123,7 +123,7 @@ graph TB
     subgraph Other Notebooks
         %% Nodes
         c9s-python-3.9("CentOS Stream Base<br/>(c9s-python-3.9)");
-        code-server-c9s-python-3.9("Code Server <br/>(code-server-c9s-python-3.9)");
+        code-server-c9s-python-3.9("code-server <br/>(code-server-c9s-python-3.9)");
         r-studio-c9s-python-3.9("R Studio <br/>(r-studio-c9s-python-3.9)");
 
         %% Edges
