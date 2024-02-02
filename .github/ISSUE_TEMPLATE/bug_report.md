@@ -20,7 +20,7 @@ labels: 'kind/bug'
 - OpenDatahub Version: (please check the operator version)
 - Workbench: (all, data-science, etc)
 - Workbench Version: (2023.1, etc)
-- Specific tool: (jupyterlab, rstudio, vscode, elyra-pipelines,etc)
+- Specific tool: (jupyterlab, rstudio, code-server, elyra-pipelines,etc)
 - Notebook-Controller Version: (please check the image version in notebook-controller deployment)
 
 **Logs/Screenshots**
