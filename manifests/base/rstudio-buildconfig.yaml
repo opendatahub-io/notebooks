@@ -42,26 +42,28 @@ spec:
         name: "quay.io/modh/odh-base-rhel9:base-rhel9-python-3.9-20240131-378dafd"
       dockerfilePath: "rstudio/rhel9-python-3.9/Dockerfile"
       env:
-      - name: USERNAME
-        valueFrom:
-          secretKeyRef:
-            name: rhel-subscription-secret
-            key: USERNAME
-      - name: PASSWORD
-        valueFrom:
-          secretKeyRef:
-            name: rhel-subscription-secret
-            key: PASSWORD
-      - name: SERVERURL
-        valueFrom:
-          secretKeyRef:
-            name: rhel-subscription-secret
-            key: SERVERURL
-      - name: BASEURL
-        valueFrom:
-          secretKeyRef:
-            name: rhel-subscription-secret
-            key: BASEURL
+        - name: USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: rhel-subscription-secret
+              key: USERNAME
+        - name: PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: rhel-subscription-secret
+              key: PASSWORD
+        - name: SERVERURL
+          valueFrom:
+            secretKeyRef:
+              name: rhel-subscription-secret
+              key: SERVERURL
+              optional: true
+        - name: BASEURL
+          valueFrom:
+            secretKeyRef:
+              name: rhel-subscription-secret
+              key: BASEURL
+              optional: true
       noCache: true
   output:
     to:
