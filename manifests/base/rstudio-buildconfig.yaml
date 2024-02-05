@@ -73,10 +73,12 @@ spec:
   resources:
     limits:
       cpu: "1"
-      memory: 1Gi
+      memory: 2Gi
     requests:
       cpu: "1"
-      memory: 1Gi
+      memory: 2Gi
+  successfulBuildsHistoryLimit: 2
+  failedBuildsHistoryLimit: 2
   triggers:
     - imageChange: {}
       type: ImageChange

@@ -86,10 +86,12 @@ spec:
   resources:
     limits:
       cpu: "1"
-      memory: 1Gi
+      memory: 4Gi
     requests:
       cpu: "1"
-      memory: 1Gi
+      memory: 4Gi
+  successfulBuildsHistoryLimit: 2
+  failedBuildsHistoryLimit: 2
   runPolicy: Serial
   triggers:
     - imageChange: {}
@@ -145,11 +147,13 @@ spec:
       name: "cuda-rstudio-rhel9:latest"
   resources:
     limits:
-      cpu: "1"
-      memory: 1Gi
+      cpu: "1500m"
+      memory: 4Gi
     requests:
-      cpu: "1"
-      memory: 1Gi
+      cpu: "1500m"
+      memory: 4Gi
+  successfulBuildsHistoryLimit: 2
+  failedBuildsHistoryLimit: 2
   runPolicy: Serial
   triggers:
     - imageChange: {}
