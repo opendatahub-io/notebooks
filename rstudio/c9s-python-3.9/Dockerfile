@@ -48,7 +48,7 @@ COPY rsession.conf /etc/rstudio/rsession.conf
 # package installation 
 RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*"
 RUN R -e "install.packages('Rcpp')"
-# RUN R -e 'install.packages(c("tidyverse", "tidymodels", "plumber", "vetiver", "devtools"))'
+RUN R -e 'install.packages(c("tidyverse", "tidymodels", "plumber", "vetiver", "devtools"))'
 
 # Install NGINX to proxy RStudio and pass probes check 
 ENV NGINX_VERSION=1.22 \
