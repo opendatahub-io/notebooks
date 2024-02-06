@@ -56,29 +56,15 @@ spec:
       from:
         kind: "DockerImage"
         name: "quay.io/modh/odh-base-rhel9:base-rhel9-python-3.9-20240131-378dafd"
-      env:
-        - name: USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: rhel-subscription-secret
-              key: USERNAME
-        - name: PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: rhel-subscription-secret
-              key: PASSWORD
-        - name: SERVERURL
-          valueFrom:
-            secretKeyRef:
-              name: rhel-subscription-secret
-              key: SERVERURL
-              optional: true
-        - name: BASEURL
-          valueFrom:
-            secretKeyRef:
-              name: rhel-subscription-secret
-              key: BASEURL
-              optional: true
+      volumes:
+        - name: secret-mvn
+          source:
+            type: Secret
+            secret:
+              secretName: rhel-subscription-secret
+              defaultMode: 420
+          mounts:
+            - destinationPath: /opt/app-root/src/.sec
   output:
     to:
       kind: ImageStreamTag
@@ -116,29 +102,15 @@ spec:
       from:
         kind: "ImageStreamTag"
         name: "cuda-rhel9:latest"
-      env:
-        - name: USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: rhel-subscription-secret
-              key: USERNAME
-        - name: PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: rhel-subscription-secret
-              key: PASSWORD
-        - name: SERVERURL
-          valueFrom:
-            secretKeyRef:
-              name: rhel-subscription-secret
-              key: SERVERURL
-              optional: true
-        - name: BASEURL
-          valueFrom:
-            secretKeyRef:
-              name: rhel-subscription-secret
-              key: BASEURL
-              optional: true
+      volumes:
+        - name: secret-mvn
+          source:
+            type: Secret
+            secret:
+              secretName: rhel-subscription-secret
+              defaultMode: 420
+          mounts:
+            - destinationPath: /opt/app-root/src/.sec
   output:
     to:
       kind: ImageStreamTag
