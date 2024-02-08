@@ -36,8 +36,30 @@ function check_json() {
     return "${ret_code}"
 }
 
+function split_yaml_file() {
+    local filepath="${1}"
+    local target_dir="${2}"
+
+    local filename
+    filename=$(echo "${filepath}" | sed 's#/#_#g') || return 1
+
+    csplit --elide-empty-files -f "${target_dir}/${filename}_" -n 3 -s "${filepath}" '/^---$/' '{*}' || return 1
+
+    return 0
+}
+
 ret_code=0
+
+
+# Some yaml files can contain more definitions.
+# This is a problem for `yq` tool so we need to split these into separate files.
+tmp_dir=$(mktemp --directory --suffix=-check-json)
 for f in **/*.yml **/*.yaml; do
+    echo "Splitting the '${f}' file."
+    split_yaml_file "${f}" "${tmp_dir}" || ret_code="${?}"
+done
+
+for f in "${tmp_dir}"/*; do
     check_json "${f}" "opendatahub.io/notebook-software" || ret_code="${?}"
     check_json "${f}" "opendatahub.io/notebook-python-dependencies" || ret_code="${?}"
 done
