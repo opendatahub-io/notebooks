@@ -1,11 +1,11 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-LABEL name="odh-notebook-rstudio-c9s-python-3.9" \
-      summary="R Studio image with python 3.9 based on CentOS Stream 9" \
-      description="code-server image with python 3.9 based on CentOS Stream 9" \
-      io.k8s.display-name="R Studio image with python 3.9 based on CentOS Stream 9" \
-      io.k8s.description="R Studio image with python 3.9 based on CentOS Stream 9" \
+LABEL name="odh-notebook-rstudio-server-c9s-python-3.9" \
+      summary="RStudio Server image with python 3.9 based on CentOS Stream 9" \
+      description="RStudio server image with python 3.9 based on CentOS Stream 9" \
+      io.k8s.display-name="RStudio server image with python 3.9 based on CentOS Stream 9" \
+      io.k8s.description="RStudio server image with python 3.9 based on CentOS Stream 9" \
       authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
       io.openshift.build.commit.ref="main" \
       io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/rstudio/c9s-python-3.9" \
