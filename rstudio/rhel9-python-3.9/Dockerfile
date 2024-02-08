@@ -6,11 +6,11 @@ ARG SECRET_DIR=/opt/app-root/src/.sec
 ARG SERVERURL_DEFAULT=""
 ARG BASEURL_DEFAULT=""
 
-LABEL name="odh-notebook-rstudio-rhel9-python-3.9" \
-      summary="R Studio image with python 3.9 based on Red Hat Enterprise Linux 9" \
-      description="Code Server (VS Code) image with python 3.9 based on Red Hat Enterprise Linux 9" \
-      io.k9s.display-name="R Studio image with python 3.9 based on Red Hat Enterprise Linux 9" \
-      io.k9s.description="R Studio image with python 3.9 based on Red Hat Enterprise Linux 9" \
+LABEL name="odh-notebook-rstudio-server-rhel9-python-3.9" \
+      summary="RStudio Server image with python 3.9 based on Red Hat Enterprise Linux 9" \
+      description="RStudio Server image with python 3.9 based on Red Hat Enterprise Linux 9" \
+      io.k9s.display-name="RStudio Server image with python 3.9 based on Red Hat Enterprise Linux 9" \
+      io.k9s.description="RStudio Server image with python 3.9 based on Red Hat Enterprise Linux 9" \
       authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
       io.openshift.build.commit.ref="main" \
       io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/rstudio/rhel9-python-3.9" \
