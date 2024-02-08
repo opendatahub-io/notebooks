@@ -1,5 +1,5 @@
---- a/processor_kfp.py	2023-06-09 10:17:15.659461927 -0400
-+++ b/processor_kfp.py	2023-06-09 10:16:20.062429914 -0400
+--- a/processor_kfp.py	2023-06-09 10:19:08.882563609 -0400
++++ b/processor_kfp.py	2024-02-02 00:35:38.064021086 -0500
 @@ -213,6 +213,7 @@
                      credentials=auth_info.get("credentials", None),
                      existing_token=auth_info.get("existing_token", None),
@@ -8,3 +8,21 @@
                  )
              else:
                  client = ArgoClient(
+@@ -435,7 +436,7 @@
+ 
+             self.log_pipeline_info(
+                 pipeline_name,
+-                f"pipeline submitted: {public_api_endpoint}/#/runs/details/{run.id}",
++                f"pipeline submitted: {public_api_endpoint}/{run.id}",
+                 duration=time.time() - t0,
+             )
+ 
+@@ -451,7 +452,7 @@
+ 
+         return KfpPipelineProcessorResponse(
+             run_id=run.id,
+-            run_url=f"{public_api_endpoint}/#/runs/details/{run.id}",
++            run_url=f"{public_api_endpoint}/{run.id}",
+             object_storage_url=object_storage_url,
+             object_storage_path=object_storage_path,
+         )
