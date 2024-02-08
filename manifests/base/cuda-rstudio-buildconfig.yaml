@@ -17,8 +17,8 @@ metadata:
   annotations:
     opendatahub.io/notebook-image-creator: RHOAI
     opendatahub.io/notebook-image-url: "https://github.com/red-hat-data-services/notebooks/tree/main/rstudio"
-    opendatahub.io/notebook-image-name: "CUDA - R Studio"
-    opendatahub.io/notebook-image-desc: "R Studio Workbench image with an integrated development environment for R, a programming language designed for statistical computing and graphics."
+    opendatahub.io/notebook-image-name: "CUDA - RStudio Server"
+    opendatahub.io/notebook-image-desc: "RStudio Server Workbench image with an integrated development environment for R, a programming language designed for statistical computing and graphics."
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
   name: cuda-rstudio-rhel9
   labels:
@@ -31,7 +31,7 @@ spec:
     - name: latest
       annotations:
         opendatahub.io/notebook-software: '[{"name":"CUDA","version":"11.8"},{"name":"R","version":"v4.3"},{"name":"Python","version":"v3.9"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"r-studio","version":"4.3"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"rstudio-server","version":"4.3"}]'
       referencePolicy:
         type: Source
 ---
@@ -98,10 +98,10 @@ spec:
 kind: BuildConfig
 apiVersion: build.openshift.io/v1
 metadata:
-  name: cuda-rstudio-rhel9
+  name: cuda-rstudio-server-rhel9
   labels:
     app: buildchain
-    component: cuda-rstudio-image
+    component: cuda-rstudio-server-image
 spec:
   source:
     type: Git
