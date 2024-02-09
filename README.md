@@ -124,7 +124,7 @@ graph TB
         %% Nodes
         c9s-python-3.9("CentOS Stream Base<br/>(c9s-python-3.9)");
         code-server-c9s-python-3.9("code-server <br/>(code-server-c9s-python-3.9)");
-        r-studio-c9s-python-3.9("R Studio <br/>(r-studio-c9s-python-3.9)");
+        r-studio-c9s-python-3.9("RStudio Server<br/>(r-studio-c9s-python-3.9)");
 
         %% Edges
         c9s-python-3.9 --> code-server-c9s-python-3.9;
