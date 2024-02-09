@@ -66,6 +66,10 @@ RUN chmod 1777 /var/run/rstudio-server && \
     mkdir -p /usr/share/doc/R
 COPY rstudio/rhel9-python-3.9/rsession.conf /etc/rstudio/rsession.conf
 
+# package installation 
+RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*"
+RUN R -e "install.packages('Rcpp')"
+
 # Install NGINX to proxy RStudio and pass probes check
 ENV NGINX_VERSION=1.22 \
     NGINX_SHORT_VER=122 \
