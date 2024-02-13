@@ -16,6 +16,32 @@ fi
 # Initilize access logs for culling
 echo '[{"id":"code-server","name":"code-server","last_activity":"'$(date -Iseconds)'","execution_state":"running","connections":1}]' > /var/log/nginx/codeserver.access.log
 
+# Directory for settings file
+user_dir="/opt/app-root/src/.local/share/code-server/User/"
+settings_filepath="${user_dir}settings.json"
+
+json_settings='{
+  "python.defaultInterpreterPath": "/opt/app-root/bin/python3"
+}'
+
+# Check if User directory exists
+if [ ! -d "$user_dir" ]; then
+  echo "Debug: User directory not found, creating '$user_dir'..."
+  mkdir -p "$user_dir"
+  echo "$json_settings" > "$settings_filepath"
+  echo "Debug: '$settings_filepath' file created."
+else
+  echo "Debug: User directory already exists."
+  # Add settings.json if not present
+  if [ ! -f "$settings_filepath" ]; then
+    echo "Debug: '$settings_filepath' file not found, creating..."
+    echo "$json_settings" > "$settings_filepath"
+    echo "Debug: '$settings_filepath' file created."
+  else
+    echo "Debug: '$settings_filepath' file already exists."
+  fi
+fi
+
 # Check if code-server folder exists
 if [ ! -f "/opt/app-root/src/.local/share/code-server" ]; then
 
