@@ -187,6 +187,20 @@ runtime-cuda-tensorflow-ubi9-python-3.9: cuda-ubi9-python-3.9
 codeserver-ubi9-python-3.9: base-ubi9-python-3.9
 	$(call image,$@,codeserver/ubi9-python-3.9,$<)
 
+# Build and push base-anaconda-python-3.9-intel-gpu image to the registry
+.PHONY: intel-base-gpu-ubi9-python-3.9
+intel-base-gpu-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,intel/base/gpu/ubi9-python-3.9,$<)
+
+# Build and push intel-runtime-tensorflow-ubi9-python-3.9 image to the registry
+.PHONY: intel-runtime-tensorflow-ubi9-python-3.9
+intel-runtime-tensorflow-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
+	$(call image,$@,intel/runtimes/tensorflow/ubi9-python-3.9,$<)
+
+# Build and push jupyter-intel-tensorflow-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-intel-tensorflow-ubi9-python-3.9
+jupyter-intel-tensorflow-ubi9-python-3.9: intel-runtime-tensorflow-ubi9-python-3.9
+	$(call image,$@,jupyter/intel/tensorflow/ubi9-python-3.9,$<)
 
 ####################################### Buildchain for Python 3.9 using C9S #######################################
 
@@ -308,16 +322,17 @@ undeploy-c9s-%-c9s-python-3.9: bin/kubectl
 #   ARG 1: UBI flavor
 #   ARG 1: Python kernel
 define test_with_papermill
+	$(eval PREFIX_NAME := $(subst /,-,$(1)_$(2))) \
 	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "python3 -m pip install papermill" ; \
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/$(1)/$(2)-$(3)/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb $(1)_$(2)_output.ipynb --kernel python3 --stderr-file $(1)_$(2)_error.txt" ; \
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/$(1)/$(2)-$(3)/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb $(PREFIX_NAME)_output.ipynb --kernel python3 --stderr-file $(PREFIX_NAME)_error.txt" ; \
     if [ $$? -ne 0 ]; then \
-		echo "ERROR: The $(1) $(2) notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-$(1)-$(2)-$(3)-test-e2e' directory or run 'cat $(1)_$(2)_error.txt' within your container. The make process has been aborted." ; \
+		echo "ERROR: The $(1) $(2) notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-$(1)-$(2)-$(3)-test-e2e' directory or run 'cat $(PREFIX_NAME)_error.txt' within your container. The make process has been aborted." ; \
 		exit 1 ; \
 	fi ; \
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(1)_$(2)_error.txt | grep --quiet FAILED" ; \
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_error.txt | grep --quiet FAILED" ; \
 	if [ $$? -eq 0 ]; then \
 		echo "ERROR: The $(1) $(2) notebook encountered a failure. The make process has been aborted." ; \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(1)_$(2)_error.txt" ; \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_error.txt" ; \
 		exit 1 ; \
 	fi
 endef
@@ -325,7 +340,6 @@ endef
 # Verify the notebook's readiness by pinging the /api endpoint and executing the corresponding test_notebook.ipynb file in accordance with the build chain logic.
 .PHONY: test
 test-%: bin/kubectl
-
 	# Verify the notebook's readiness by pinging the /api endpoint
 	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
 	$(info # Running tests for $(NOTEBOOK_NAME) notebook...)
@@ -336,6 +350,8 @@ test-%: bin/kubectl
 	# Tests notebook's functionalities 
 	if echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi9"; then \
 		$(call test_with_papermill,minimal,ubi9,python-3.9) \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-tensorflow-ubi9"; then \
+		$(call test_with_papermill,intel/tensorflow,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi9"; then \
