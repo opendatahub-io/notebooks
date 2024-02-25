@@ -1,14 +1,14 @@
 ---
 # The aim of this GitHub workflow is to update the `ci/securitty-scan/security_scan_results.md` with latest security scan results.
 name: Update notebook image security reports
-on:
+on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:
       branch:
         required: true
         description: "Provide the name of the branch you want to update ex main, vYYYYx etc: "
   schedule:
-    - cron: "0 0 */21 * 5"  #Scheduled every third Friday
+    - cron: "0 0 */21 * 5"  # Scheduled every third Friday
 env:
   SEC_SCAN_BRANCH: sec-scan-${{ github.run_id }}
   BRANCH_NAME: main
