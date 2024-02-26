@@ -188,6 +188,16 @@ codeserver-ubi9-python-3.9: base-ubi9-python-3.9
 	$(call image,$@,codeserver/ubi9-python-3.9,$<)
 
 
+# Build and push intel-runtime-ml-ubi9-python-3.9 image to the registry
+.PHONY: intel-runtime-ml-ubi9-python-3.9
+intel-runtime-ml-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,intel/runtimes/ml/ubi9-python-3.9,$<)
+
+# Build and push jupyter-intel-ml-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-intel-ml-ubi9-python-3.9
+jupyter-intel-ml-ubi9-python-3.9: intel-runtime-ml-ubi9-python-3.9
+	$(call image,$@,jupyter/intel/ml/ubi9-python-3.9,$<)
+
 ####################################### Buildchain for Python 3.9 using C9S #######################################
 
 # Build and push base-c9s-python-3.9 image to the registry
@@ -308,16 +318,17 @@ undeploy-c9s-%-c9s-python-3.9: bin/kubectl
 #   ARG 1: UBI flavor
 #   ARG 1: Python kernel
 define test_with_papermill
+	$(eval PREFIX_NAME := $(subst /,-,$(1)_$(2))) \
 	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "python3 -m pip install papermill" ; \
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/$(1)/$(2)-$(3)/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb $(1)_$(2)_output.ipynb --kernel python3 --stderr-file $(1)_$(2)_error.txt" ; \
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/$(1)/$(2)-$(3)/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb $(PREFIX_NAME)_output.ipynb --kernel python3 --stderr-file $(PREFIX_NAME)_error.txt" ; \
     if [ $$? -ne 0 ]; then \
-		echo "ERROR: The $(1) $(2) notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-$(1)-$(2)-$(3)-test-e2e' directory or run 'cat $(1)_$(2)_error.txt' within your container. The make process has been aborted." ; \
+		echo "ERROR: The $(1) $(2) notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-$(1)-$(2)-$(3)-test-e2e' directory or run 'cat $(PREFIX_NAME)_error.txt' within your container. The make process has been aborted." ; \
 		exit 1 ; \
 	fi ; \
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(1)_$(2)_error.txt | grep --quiet FAILED" ; \
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_error.txt | grep --quiet FAILED" ; \
 	if [ $$? -eq 0 ]; then \
 		echo "ERROR: The $(1) $(2) notebook encountered a failure. The make process has been aborted." ; \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(1)_$(2)_error.txt" ; \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_error.txt" ; \
 		exit 1 ; \
 	fi
 endef
@@ -344,6 +355,8 @@ test-%: bin/kubectl
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 		$(call test_with_papermill,tensorflow,ubi9,python-3.9) \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-ml-ubi9"; then \
+		$(call test_with_papermill,intel/ml,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 		$(call test_with_papermill,trustyai,ubi9,python-3.9) \
