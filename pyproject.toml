@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "notebooks-tests"
+version = "0.0.0"
+description = "Test suite for Open Data Hub / OpenShift AI Notebook / Workbench images, written in Python."
+requires-python = ">=3.11"
+keywords = [
+    "testing", "packaging"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Libraries",
+]
+readme = "README.md"
+
+dependencies = [
+    "pytest",
+]
+
+[project.urls]
+Repository = "https://github.com/opendatahub-io/notebooks"
+Documentation = "https://github.com/opendatahub-io/opendatahub-documentation"
+
+[tool.hatch]
+[tool.hatch.build.targets.wheel]
+packages = ["tests"]
+

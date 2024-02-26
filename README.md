@@ -196,6 +196,19 @@ podman run -p 8888:8888 quay.io/opendatahub/workbench-images:jupyter-minimal-ubi
 
 ## Testing Notebooks
 
+## Pytest in PyCharm
+
+* https://youtrack.jetbrains.com/issue/PY-16316/Test-Runner-unify-showing-of-the-subtests-and-yielded-tests-of-nose-and-py.test#focus=Comments-27-2718487.0-0
+* 
+
+```shell
+pip install hatch
+hatch config set dirs.env.virtual .venv
+hatch env create
+
+hatch run pytest 
+```
+
 Deploy the notebook images in your Kubernetes environment using deploy8-${NOTEBOOK_NAME} for ubi8 or deploy9-${NOTEBOOK_NAME} for ubi9:
 
 ```shell
