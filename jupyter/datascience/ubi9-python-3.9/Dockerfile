@@ -28,7 +28,7 @@ COPY utils ./utils/
 USER root
 
 # Install usefull OS packages
-RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile
+RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile && dnf clean all && rm -rf /var/cache/yum
 
 # Disable announcement plugin of jupyterlab
 RUN jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
@@ -36,12 +36,12 @@ RUN jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 # Install MongoDB Client, We need a special repo for MongoDB as they do their own distribution
 COPY mongodb-org-6.0.repo-x86_64 /etc/yum.repos.d/mongodb-org-6.0.repo
 
-RUN dnf install -y mongocli
+RUN dnf install -y mongocli && dnf clean all && rm -rf /var/cache/yum
 
 # Install MSSQL Client, We need a special repo for MSSQL as they do their own distribution
 COPY mssql-2022.repo-x86_64 /etc/yum.repos.d/mssql-2022.repo
 
-RUN ACCEPT_EULA=Y dnf install -y mssql-tools18 unixODBC-devel
+RUN ACCEPT_EULA=Y dnf install -y mssql-tools18 unixODBC-devel && dnf clean all && rm -rf /var/cache/yum
 
 ENV PATH="$PATH:/opt/mssql-tools18/bin"
 
