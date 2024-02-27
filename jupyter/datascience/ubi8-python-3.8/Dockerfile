@@ -62,6 +62,7 @@ RUN mkdir /opt/app-root/runtimes && \
     # Workaround for elyra pipeline validation command
     patch /opt/app-root/lib/python3.8/site-packages/elyra/cli/pipeline_app.py -i utils/pipeline_app.patch && \
     patch /opt/app-root/lib/python3.8/site-packages/elyra/pipeline/pipeline_definition.py -i utils/pipeline_definition.patch && \
+    patch /opt/app-root/lib/python3.8/site-packages/elyra/metadata/schemas/kfp.json -i utils/kfp.json.patch && \
     # switch to Data Science Pipeline in component catalog \
     DIR_COMPONENT="/opt/app-root/lib/python3.8/site-packages/elyra/metadata/schemas/local-directory-catalog.json" && \
     FILE_COMPONENT="/opt/app-root/lib/python3.8/site-packages/elyra/metadata/schemas/local-file-catalog.json" && \
