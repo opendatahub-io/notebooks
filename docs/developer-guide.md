@@ -154,7 +154,11 @@ This GitHub action is designed to be triggered on a weekly basis, specifically e
 
 ### **Digest Updater workflow on the live-builder** [[Link]](https://gitlab.cee.redhat.com/data-hub/rhods-live-builder/-/blob/main/.gitlab/notebook-sha-digest-updater.yml)
 
-This GitHub action works with the same logic as the above and is designed to be triggered on a weekly basis, specifically every Friday. It is also update the SHA digest of the images into the [CSV](https://gitlab.cee.redhat.com/data-hub/rhods-live-builder/-/blob/main/rhods-operator-live/bundle/template/manifests/clusterserviceversion.yml.j2#L725) file on the live-builder repo. 
-  
+This GitHub action works with the same logic as the above and is designed to be triggered on a weekly basis, specifically every Friday. It is also update the SHA digest of the images into the [CSV](https://gitlab.cee.redhat.com/data-hub/rhods-live-builder/-/blob/main/rhods-operator-live/bundle/template/manifests/clusterserviceversion.yml.j2#L725) file on the live-builder repo.
+
+
+### **Quay security scan** [[Link]](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/sec-scan.yml)
+
+This GitHub action is designed to be triggered on a weekly basis. It generates a summary of security vulnerabilities reported by [Quay](https://quay.io/) for the latest images built for different versions of notebooks. 
   
 [Previous Page](https://github.com/opendatahub-io/notebooks/wiki/Workbenches) | [Next Page](https://github.com/opendatahub-io/notebooks/wiki/User-Guide)

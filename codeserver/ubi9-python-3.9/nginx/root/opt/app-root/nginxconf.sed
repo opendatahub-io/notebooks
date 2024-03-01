@@ -17,5 +17,5 @@ s%/usr/share/nginx/html%/opt/app-root/src%
 /40x.html/,+1d
 /50x.html/,+1d
 
-# Addition for RStudio
+# Addition for RStudio Server
 /server_name/s%server_name  _%server_name  ${BASE_URL}%

@@ -9,25 +9,26 @@ jobs:
   code-static-analysis:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Validate YAML files (best code practices check included)
         id: validate-yaml-files
-        uses: ibiqlik/action-yamllint@v3.1.1
-        with:
-          config_file: ./ci/yamllint-config.yaml
+        run: |
+          type yamllint || sudo apt-get -y install yamllint
+          find . -name "*.yaml" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
+          find . -name "*.yml" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
 
       # In some YAML files we use JSON strings, let's check these
       - name: Validate JSON strings in YAML files (just syntax)
         id: validate-json-strings-in-yaml-files
         run: |
-          type json_verify || sudo apt-get install yajl-tools
+          type json_verify || sudo apt-get -y install yajl-tools
           bash ./ci/check-json.sh
 
       - name: Validate JSON files (just syntax)
         id: validate-json-files
         run: |
-          type json_verify || sudo apt-get install yajl-tools
+          type json_verify || sudo apt-get -y install yajl-tools
           shopt -s globstar
           ret_code=0
           echo "-- Checking a regular '*.json' files"
@@ -40,3 +41,13 @@ jobs:
               echo "There were errors in some of the checked files. Please run `json_verify` on such files and fix issues there."
           fi
           exit "${ret_code}"
+
+      - name: Validate Dockerfiles
+        id: validate-dockerfiles
+        run: |
+          type hadolint || sudo apt-get -y install wget \
+                             && wget --output-document=hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 \
+                             && chmod a+x hadolint
+          echo "Starting Hadolint"
+          find . -name "Dockerfile" | xargs ./hadolint --config ./ci/hadolint-config.yaml
+          echo "Hadolint done"

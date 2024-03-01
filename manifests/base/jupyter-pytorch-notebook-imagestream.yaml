@@ -45,7 +45,7 @@ spec:
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"CUDA","version":"11.4"},{"name":"Python","version":"v3.8"},{"name":"PyTorch","version":"1.8"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"PyTorch","version":"1.8"},{"name":"Tensorboard","version":"2.6"},{"name":"Boto3","version":"1.17"},{"name":"Kafka-Python","version":"2.0"},{"name":"Matplotlib","version":"3.4"},{"name":"Numpy","version":"1.19"},{"name":"Pandas","version":"1.2"},{"name":"Scikit-learn","version":"0.24"},{"name":"Scipy","version":"1.6"}]'
-        openshift.io/imported-from: quay.io/modh/cuda-notebooks
+        openshift.io/imported-from: quay.io/modh/odh-pytorch-notebook
         opendatahub.io/image-tag-outdated: 'true'
         opendatahub.io/notebook-build-commit: $(odh-pytorch-gpu-notebook-image-commit-n-2)
       from:
