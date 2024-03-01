@@ -69,130 +69,99 @@ function check_image_variable_matches_name_and_commitref() {
     case "${image_variable}" in
         odh-minimal-notebook-image-n)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="release-2023b"
             expected_build_name="jupyter-minimal-ubi9-python-3.9-amd64"
             ;;
         odh-minimal-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
-            expected_commitref="2023a"
+            expected_commitref="release-2023a"
             expected_build_name="jupyter-minimal-ubi9-python-3.9-amd64"
             ;;
         odh-minimal-notebook-image-n-2)
             expected_name="odh-notebook-jupyter-minimal-ubi8-python-3.8"
-            expected_commitref="main"
-            expected_build_name="jupyter-minimal-ubi8-python-3.8"
+            expected_commitref="release-1.2"
+            expected_build_name="jupyter-minimal-ubi8-python-3.8-amd64"
             ;;
         odh-minimal-gpu-notebook-image-n)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="release-2023b"
             expected_build_name="cuda-jupyter-minimal-ubi9-python-3.9-amd64"
             ;;
         odh-minimal-gpu-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
-            expected_commitref="2023a"
+            expected_commitref="release-2023a"
             expected_build_name="cuda-jupyter-minimal-ubi9-python-3.9-amd64"
             ;;
         odh-minimal-gpu-notebook-image-n-2)
             expected_name="odh-notebook-jupyter-minimal-ubi8-python-3.8"
-            expected_commitref="main"
-            expected_build_name="cuda-jupyter-minimal-ubi8-python-3.8"
+            expected_commitref="release-1.2"
+            expected_build_name="cuda-jupyter-minimal-ubi8-python-3.8-amd64"
             ;;
         odh-pytorch-gpu-notebook-image-n)
             expected_name="odh-notebook-jupyter-pytorch-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="release-2023b"
             expected_build_name="jupyter-pytorch-ubi9-python-3.9-amd64"
             ;;
         odh-pytorch-gpu-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-pytorch-ubi9-python-3.9"
-            expected_commitref="2023a"
+            expected_commitref="release-2023a"
             expected_build_name="jupyter-pytorch-ubi9-python-3.9-amd64"
             ;;
         odh-pytorch-gpu-notebook-image-n-2)
             expected_name="odh-notebook-cuda-jupyter-pytorch-ubi8-python-3.8"
-            expected_commitref="main"
-            expected_build_name="cuda-jupyter-pytorch-ubi8-python-3.8"
+            expected_commitref="release-1.2"
+            expected_build_name="jupyter-pytorch-ubi8-python-3.8-amd64"
             ;;
         odh-generic-data-science-notebook-image-n)
             expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="release-2023b"
             expected_build_name="jupyter-datascience-ubi9-python-3.9-amd64"
             ;;
         odh-generic-data-science-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.9"
-            expected_commitref="2023a"
+            expected_commitref="release-2023a"
             expected_build_name="jupyter-datascience-ubi9-python-3.9-amd64"
             ;;
         odh-generic-data-science-notebook-image-n-2)
             expected_name="odh-notebook-jupyter-datascience-ubi8-python-3.8"
-            expected_commitref="main"
-            expected_build_name="jupyter-datascience-ubi8-python-3.8"
+            expected_commitref="release-1.2"
+            expected_build_name="jupyter-datascience-ubi8-python-3.8-amd64"
             ;;
         odh-tensorflow-gpu-notebook-image-n)
             expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="release-2023b"
             expected_build_name="cuda-jupyter-tensorflow-ubi9-python-3.9-amd64"
             ;;
         odh-tensorflow-gpu-notebook-image-n-1)
             expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.9"
-            expected_commitref="2023a"
+            expected_commitref="release-2023a"
             expected_build_name="cuda-jupyter-tensorflow-ubi9-python-3.9-amd64"
             ;;
         odh-tensorflow-gpu-notebook-image-n-2)
             expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi8-python-3.8"
-            expected_commitref="main"
-            expected_build_name="cuda-jupyter-tensorflow-ubi8-python-3.8"
+            expected_commitref="release-1.2"
+            expected_build_name="cuda-jupyter-tensorflow-ubi8-python-3.8-amd64"
             ;;
         odh-trustyai-notebook-image-n)
             expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="release-2023b"
             expected_build_name="jupyter-trustyai-ubi9-python-3.9-amd64"
             ;;
         odh-trustyai-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.9"
-            expected_commitref="2023a"
+            expected_commitref="release-2023a"
             expected_build_name="jupyter-trustyai-ubi9-python-3.9-amd64"
             ;;
         odh-habana-notebook-image-n)
             expected_name="odh-notebook-habana-jupyter-1.10.0-ubi8-python-3.8"
-            # expected_commitref="2023b"
-            expected_commitref="main"
-            expected_build_name="habana-jupyter-1.10.0-ubi8-python-3.8"
+            # expected_commitref="release-2023b"
+            expected_commitref="rhods-1.34"
+            expected_build_name="habana-jupyter-1.10.0-ubi8-python-3.8-amd64"
             ;;
         odh-codeserver-notebook-n)
             expected_name="odh-notebook-code-server-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="release-2023b"
             expected_build_name="codeserver-ubi9-python-3.9-amd64"
-            ;;
-        odh-codeserver-notebook-n-1)
-            expected_name="odh-notebook-code-server-c9s-python-3.9"
-            # expected_commitref="2023a"
-            expected_commitref="main"
-            expected_build_name="codeserver-c9s-python-3.9"
-            ;;
-        odh-rstudio-notebook-n)
-            expected_name="odh-notebook-rstudio-c9s-python-3.9"
-            expected_commitref="2023b"
-            expected_build_name="rstudio-c9s-python-3.9-amd64"
-            ;;
-        odh-rstudio-notebook-n-1)
-            expected_name="odh-notebook-rstudio-c9s-python-3.9"
-            # expected_commitref="2023a"
-            expected_commitref="main"
-            expected_build_name="rstudio-c9s-python-3.9"
-            ;;
-        # For both RStudio GPU workbenches - the final name labels are identical to plain RStudio ones
-        # This is because the very same RStudio Dockerfile is used but different base images in both cases
-        # We should consider what to do with this - in ideal case, we should have different labels for these cases.
-        odh-rstudio-gpu-notebook-n)
-            expected_name="odh-notebook-rstudio-c9s-python-3.9"
-            expected_commitref="2023b"
-            expected_build_name="cuda-rstudio-c9s-python-3.9-amd64"
-            ;;
-        odh-rstudio-gpu-notebook-n-1)
-            expected_name="odh-notebook-rstudio-c9s-python-3.9"
-            # expected_commitref="2023a"
-            expected_commitref="main"
-            expected_build_name="cuda-rstudio-c9s-python-3.9"
             ;;
         *)
             echo "Unimplemented variable name: '${image_variable}'"
@@ -267,7 +236,7 @@ function check_image() {
     echo "---------------------------------------------"
 }
 
-# ------------------------------ MAIN SCRIPT --------------------------------- #
+# ------------------------------ release-1.2 SCRIPT --------------------------------- #
 
 ret_code=0
 
