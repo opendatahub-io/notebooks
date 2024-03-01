@@ -29,7 +29,7 @@ RUN echo "Installing softwares and packages" && \
     fix-permissions /opt/app-root -P
 
 # Install usefull OS packages
-RUN dnf install -y jq git-lfs libsndfile
+RUN dnf install -y jq git-lfs libsndfile && dnf clean all && rm -rf /var/cache/yum
 
 # Install code-server
 RUN yum install -y "https://github.com/coder/code-server/releases/download/${CODESERVER_VERSION}/code-server-${CODESERVER_VERSION/v/}-amd64.rpm" && \
@@ -105,4 +105,4 @@ WORKDIR /opt/app-root/src
 
 USER 1001
 
-CMD /opt/app-root/bin/run-code-server.sh
+CMD ["/opt/app-root/bin/run-code-server.sh"]
