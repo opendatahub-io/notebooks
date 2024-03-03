@@ -58,7 +58,7 @@ ENV R_LIBS_USER /opt/app-root/bin/Rpackages/4.3
 WORKDIR /tmp/
 
 # Install RStudio
-RUN wget https://download2.rstudio.org/server/rhel9/x86_64/rstudio-server-rhel-2023.12.1-402-x86_64.rpm && \
+RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/rstudio-server-rhel-2023.12.1-402-x86_64.rpm && \
     yum install -y rstudio-server-rhel-2023.12.1-402-x86_64.rpm && \
     rm rstudio-server-rhel-2023.12.1-402-x86_64.rpm && \
     yum -y clean all  --enablerepo='*'
@@ -68,8 +68,9 @@ RUN chmod 1777 /var/run/rstudio-server && \
     mkdir -p /usr/share/doc/R
 COPY rstudio/rhel9-python-3.9/rsession.conf /etc/rstudio/rsession.conf
 
-# package installation
-RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*"
+# package installation 
+RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" && \
+    dnf clean all && rm -rf /var/cache/yum
 RUN R -e "install.packages('Rcpp')"
 
 # Install NGINX to proxy RStudio and pass probes check
@@ -142,4 +143,4 @@ WORKDIR /opt/app-root/src
 
 USER 1001
 
-CMD /opt/app-root/bin/run-rstudio.sh
+CMD ["/opt/app-root/bin/run-rstudio.sh"]
