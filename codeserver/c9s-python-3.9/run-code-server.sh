@@ -14,7 +14,7 @@ if [ ! -f "/opt/app-root/src/.bashrc" ]; then
 fi
 
 # Initilize access logs for culling
-echo '[{"id":"code-server","name":"code-server","last_activity":"'$(date -Iseconds)'","execution_state":"running","connections":1}]' > /var/log/nginx/vscode.access.log
+echo '[{"id":"code-server","name":"code-server","last_activity":"'$(date -Iseconds)'","execution_state":"running","connections":1}]' > /var/log/nginx/codeserver.access.log
 
 # Start server
 start_process /usr/bin/code-server \

@@ -6,8 +6,8 @@ metadata:
     opendatahub.io/notebook-image: "true"
   annotations:
     opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/codeserver"
-    opendatahub.io/notebook-image-name: "Code Server"
-    opendatahub.io/notebook-image-desc: "Code Server workbench image, allows to run Visual Studio Code (VSCode) on a remote server through the browser."
+    opendatahub.io/notebook-image-name: "Code server"
+    opendatahub.io/notebook-image-desc: "Code server workbench allows users to code, build, and collaborate on projects directly from web."
     opendatahub.io/notebook-image-order: "8"
   name: code-server-notebook
 spec:
@@ -17,7 +17,7 @@ spec:
     # N Version of the image
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"code-sever","version":"4.16"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"Code-server","version":"4.16"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: $(odh-codeserver-notebook-image-commit-n)
@@ -30,7 +30,7 @@ spec:
     # N - 1 Version of the image
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"code-sever","version":"4.11"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"Code-server","version":"4.11"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: $(odh-codeserver-notebook-image-commit-n-1)

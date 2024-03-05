@@ -3,9 +3,9 @@ FROM ${BASE_IMAGE}
 
 LABEL name="odh-notebook-jupyter-trustyai-ubi8-python-3.8" \
     summary="Jupyter trustyai notebook image for ODH notebooks" \
-    description="Jupyter trustyai notebook image with base Python 3.8 builder image based on UBI9 for ODH notebooks" \
+    description="Jupyter trustyai notebook image with base Python 3.8 builder image based on UBI8 for ODH notebooks" \
     io.k8s.display-name="Jupyter trustyai notebook image for ODH notebooks" \
-    io.k8s.description="Jupyter trustyai notebook image with base Python 3.8 builder image based on UBI9 for ODH notebooks" \
+    io.k8s.description="Jupyter trustyai notebook image with base Python 3.8 builder image based on UBI8 for ODH notebooks" \
     authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
     io.openshift.build.commit.ref="main" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/trustyai/ubi8-python-3.8" \

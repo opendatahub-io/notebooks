@@ -411,7 +411,7 @@ validate-runtime-image: bin/kubectl
 .PHONY: validate-codeserver-image
 validate-codeserver-image: bin/kubectl
 	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
-	$(info # Running tests for $(NOTEBOOK_NAME) Code Server image...)
+	$(info # Running tests for $(NOTEBOOK_NAME) code-server image...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod codeserver-pod --timeout=300s
 	@required_commands=$(REQUIRED_CODE_SERVER_IMAGE_COMMANDS) ; \
 	if [[ $$image == "" ]] ; then \
@@ -431,7 +431,7 @@ validate-codeserver-image: bin/kubectl
 .PHONY: validate-rstudio-image
 validate-rstudio-image: bin/kubectl
 	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
-	$(info # Running tests for $(NOTEBOOK_NAME) Code Server image...)
+	$(info # Running tests for $(NOTEBOOK_NAME) code-server image...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod rstudio-pod --timeout=300s
 	@required_commands=$(REQUIRED_R_STUDIO_IMAGE_COMMANDS) ; \
 	if [[ $$image == "" ]] ; then \
@@ -468,3 +468,4 @@ refresh-pipfilelock-files:
 	cd runtimes/tensorflow/ubi8-python-3.8 && pipenv lock
 	cd runtimes/tensorflow/ubi9-python-3.9 && pipenv lock
 	cd base/c9s-python-3.9 && pipenv lock
+
