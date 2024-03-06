@@ -492,6 +492,7 @@ validate-rstudio-image: bin/kubectl
 refresh-pipfilelock-files:
 	cd base/ubi8-python-3.8 && pipenv lock
 	cd base/ubi9-python-3.9 && pipenv lock
+	cd base/c9s-python-3.9 && pipenv lock
 	cd jupyter/minimal/ubi8-python-3.8 && pipenv lock
 	cd jupyter/minimal/ubi9-python-3.9 && pipenv lock
 	cd jupyter/datascience/ubi8-python-3.8 && pipenv lock
@@ -506,7 +507,6 @@ refresh-pipfilelock-files:
 	cd runtimes/pytorch/ubi8-python-3.8 && pipenv lock
 	cd runtimes/tensorflow/ubi8-python-3.8 && pipenv lock
 	cd runtimes/tensorflow/ubi9-python-3.9 && pipenv lock
-	cd base/c9s-python-3.9 && pipenv lock
 	
 # This is only for the workflow action
 # For running manually, set the required environment variables
