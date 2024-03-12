@@ -42,7 +42,7 @@ else
   fi
 fi
 
-# Check if code-server folder exists
+# # Check if code-server folder exists
 if [ ! -f "/opt/app-root/src/.local/share/code-server" ]; then
 
     # Check internet connection - this check is for disconected enviroments
@@ -51,15 +51,16 @@ if [ ! -f "/opt/app-root/src/.local/share/code-server" ]; then
         echo "Internet connection available. Installing specific extensions."
 
         # Install specific extensions
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.python-2023.14.0.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-2023.3.100.vsix
+        code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.python-2024.2.1.vsix
+        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-2023.9.100.vsix
     else
         # No internet connection
         echo "No internet connection. Installing all extensions."
 
         # Install all extensions
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.python-2023.14.0.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-2023.3.100.vsix
+        code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.python-2024.2.1.vsix
+        code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.debugpy-2024.2.0@linux-x64.vsix
+        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-2023.9.100.vsix
         code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-keymap-1.1.2.vsix
         code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-renderers-1.0.17.vsix
         code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.vscode-jupyter-cell-tags-0.1.8.vsix
