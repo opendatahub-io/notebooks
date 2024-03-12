@@ -34,7 +34,7 @@ RUN SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFA
     --force \
     --auto-attach
 
-ENV R_VERSION=4.3.1
+ENV R_VERSION=4.3.3
 
 # Install R
 RUN yum install -y yum-utils && \
@@ -58,9 +58,9 @@ ENV R_LIBS_USER /opt/app-root/src/Rpackages/4.3
 WORKDIR /tmp/
 
 # Install RStudio
-RUN wget https://download2.rstudio.org/server/rhel9/x86_64/rstudio-server-rhel-2023.06.1-524-x86_64.rpm && \
-    yum install -y rstudio-server-rhel-2023.06.1-524-x86_64.rpm && \
-    rm rstudio-server-rhel-2023.06.1-524-x86_64.rpm && \
+RUN wget https://download2.rstudio.org/server/rhel9/x86_64/rstudio-server-rhel-2023.12.1-402-x86_64.rpm && \
+    yum install -y rstudio-server-rhel-2023.12.1-402-x86_64.rpm && \
+    rm rstudio-server-rhel-2023.12.1-402-x86_64.rpm && \
     yum -y clean all  --enablerepo='*'
 
 # Specific RStudio config and fixes
@@ -68,13 +68,13 @@ RUN chmod 1777 /var/run/rstudio-server && \
     mkdir -p /usr/share/doc/R
 COPY rstudio/rhel9-python-3.9/rsession.conf /etc/rstudio/rsession.conf
 
-# package installation 
+# package installation
 RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*"
 RUN R -e "install.packages('Rcpp')"
 
 # Install NGINX to proxy RStudio and pass probes check
-ENV NGINX_VERSION=1.22 \
-    NGINX_SHORT_VER=122 \
+ENV NGINX_VERSION=1.24 \
+    NGINX_SHORT_VER=124 \
     NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_CONF_PATH=/etc/nginx/nginx.conf \
     NGINX_DEFAULT_CONF_PATH=${APP_ROOT}/etc/nginx.default.d \
