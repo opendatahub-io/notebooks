@@ -1,14 +1,18 @@
 FROM registry.access.redhat.com/ubi8/python-38:latest
 
+ARG AUTHORITATIVE_SOURCE_URL
+ARG BUILD_COMMIT_REF
+ARG IMAGE_REGISTRY
+
 LABEL name="odh-notebook-base-ubi8-python-3.8" \
       summary="Python 3.8 base image for ODH notebooks" \
       description="Base Python 3.8 builder image based on UBI8 for ODH notebooks" \
       io.k8s.display-name="Python 3.8 base image for ODH notebooks" \
       io.k8s.description="Base Python 3.8 builder image based on UBI8 for ODH notebooks" \
-      authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-      io.openshift.build.commit.ref="main" \
-      io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/base/ubi8-python-3.8" \
-      io.openshift.build.image="quay.io/opendatahub/workbench-images:base-ubi8-python-3.8"
+      authoritative-source-url="${AUTHORITATIVE_SOURCE_URL}" \
+      io.openshift.build.commit.ref="${BUILD_COMMIT_REF}" \
+      io.openshift.build.source-location="${AUTHORITATIVE_SOURCE_URL}/tree/${BUILD_COMMIT_REF}/base/ubi8-python-3.8" \
+      io.openshift.build.image="${IMAGE_REGISTRY}:base-ubi8-python-3.8"
 
 WORKDIR /opt/app-root/bin
 

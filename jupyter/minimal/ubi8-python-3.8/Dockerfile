@@ -1,15 +1,19 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG AUTHORITATIVE_SOURCE_URL
+ARG BUILD_COMMIT_REF
+ARG IMAGE_REGISTRY
+
 LABEL name="odh-notebook-jupyter-minimal-ubi8-python-3.8" \
     summary="Minimal Jupyter notebook image for ODH notebooks" \
     description="Minimal Jupyter notebook image with base Python 3.8 builder image based on UBI8 for ODH notebooks" \
     io.k8s.display-name="Minimal Jupyter notebook image for ODH notebooks" \
     io.k8s.description="Minimal Jupyter notebook image with base Python 3.8 builder image based on UBI8 for ODH notebooks" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-    io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/minimal/ubi8-python-3.8" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:jupyter-minimal-ubi8-python-3.8"
+    authoritative-source-url="${AUTHORITATIVE_SOURCE_URL}" \
+    io.openshift.build.commit.ref="${BUILD_COMMIT_REF}" \
+    io.openshift.build.source-location="${AUTHORITATIVE_SOURCE_URL}/tree/${BUILD_COMMIT_REF}/jupyter/minimal/ubi8-python-3.8" \
+    io.openshift.build.image="${IMAGE_REGISTRY}:jupyter-minimal-ubi8-python-3.8"
 
 WORKDIR /opt/app-root/bin
 

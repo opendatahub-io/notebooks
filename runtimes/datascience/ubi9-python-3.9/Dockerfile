@@ -1,15 +1,19 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG AUTHORITATIVE_SOURCE_URL
+ARG BUILD_COMMIT_REF
+ARG IMAGE_REGISTRY
+
 LABEL name="odh-notebook-runtime-datascience-ubi9-python-3.9" \
     summary="Runtime data science notebook image for ODH notebooks" \
     description="Runtime data science notebook image with base Python 3.9 builder image based on UBI9 for ODH notebooks" \
     io.k8s.display-name="Runtime data science notebook image for ODH notebooks" \
     io.k8s.description="Runtime data science notebook image with base Python 3.9 builder image based on UBI9 for ODH notebooks" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-    io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/datascience/ubi9-python-3.9" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:runtime-datascience-ubi9-python-3.9"
+    authoritative-source-url="${AUTHORITATIVE_SOURCE_URL}" \
+    io.openshift.build.commit.ref="${BUILD_COMMIT_REF}" \
+    io.openshift.build.source-location="${AUTHORITATIVE_SOURCE_URL}/tree/${BUILD_COMMIT_REF}/runtimes/datascience/ubi9-python-3.9" \
+    io.openshift.build.image="${IMAGE_REGISTRY}:runtime-datascience-ubi9-python-3.9"
 
 WORKDIR /opt/app-root/bin
 
