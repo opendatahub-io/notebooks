@@ -13,7 +13,7 @@ LABEL name="odh-notebook-base-ubi8-python-3.8" \
 WORKDIR /opt/app-root/bin
 
 # Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install -U "micropipenv[toml]"
+RUN pip install --no-cache-dir -U "micropipenv[toml]"
 
 # Install Python dependencies from Pipfile.lock file
 COPY Pipfile.lock ./
@@ -30,7 +30,7 @@ RUN dnf install -y mesa-libGL libnghttp2 && dnf clean all
 USER 1001
 
 # Install the oc client
-RUN curl -L https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz \
+RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
         -o /tmp/openshift-client-linux.tar.gz && \
     tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
     rm -f /tmp/openshift-client-linux.tar.gz

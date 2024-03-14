@@ -202,6 +202,16 @@ intel-runtime-tensorflow-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
 jupyter-intel-tensorflow-ubi9-python-3.9: intel-runtime-tensorflow-ubi9-python-3.9
 	$(call image,$@,jupyter/intel/tensorflow/ubi9-python-3.9,$<)
 
+# Build and push intel-runtime-pytorch-ubi9-python-3.9 image to the registry
+.PHONY: intel-runtime-pytorch-ubi9-python-3.9
+intel-runtime-pytorch-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
+	$(call image,$@,intel/runtimes/pytorch/ubi9-python-3.9,$<)
+
+# Build and push jupyter-intel-pytorch-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-intel-pytorch-ubi9-python-3.9
+jupyter-intel-pytorch-ubi9-python-3.9: intel-runtime-pytorch-ubi9-python-3.9
+	$(call image,$@,jupyter/intel/pytorch/ubi9-python-3.9,$<)
+
 ####################################### Buildchain for Python 3.9 using C9S #######################################
 
 # Build and push base-c9s-python-3.9 image to the registry
@@ -352,6 +362,8 @@ test-%: bin/kubectl
 		$(call test_with_papermill,minimal,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-tensorflow-ubi9"; then \
 		$(call test_with_papermill,intel/tensorflow,ubi9,python-3.9) \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-pytorch-ubi9"; then \
+		$(call test_with_papermill,intel/pytorch,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi9"; then \
