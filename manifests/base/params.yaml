@@ -11,19 +11,11 @@ varReference:
   - path: spec/tags[]/from/name
     kind: ImageStream
     apiGroup: image.openshift.io/v1
-    name: odh-minimal-notebook-image-n-2
-  - path: spec/tags[]/from/name
-    kind: ImageStream
-    apiGroup: image.openshift.io/v1
     name: odh-minimal-gpu-notebook-image-n
   - path: spec/tags[]/from/name
     kind: ImageStream
     apiGroup: image.openshift.io/v1
     name: odh-minimal-gpu-notebook-image-n-1
-  - path: spec/tags[]/from/name
-    kind: ImageStream
-    apiGroup: image.openshift.io/v1
-    name: odh-minimal-gpu-notebook-image-n-2
   - path: spec/tags[]/from/name
     kind: ImageStream
     apiGroup: image.openshift.io/v1
@@ -35,10 +27,6 @@ varReference:
   - path: spec/tags[]/from/name
     kind: ImageStream
     apiGroup: image.openshift.io/v1
-    name: odh-pytorch-gpu-notebook-image-n-2
-  - path: spec/tags[]/from/name
-    kind: ImageStream
-    apiGroup: image.openshift.io/v1
     name: odh-generic-data-science-notebook-image-n
   - path: spec/tags[]/from/name
     kind: ImageStream
@@ -47,19 +35,11 @@ varReference:
   - path: spec/tags[]/from/name
     kind: ImageStream
     apiGroup: image.openshift.io/v1
-    name: odh-generic-data-science-notebook-image-n-2
-  - path: spec/tags[]/from/name
-    kind: ImageStream
-    apiGroup: image.openshift.io/v1
     name: odh-tensorflow-gpu-notebook-image-n
   - path: spec/tags[]/from/name
     kind: ImageStream
     apiGroup: image.openshift.io/v1
     name: odh-tensorflow-gpu-notebook-image-n-1
-  - path: spec/tags[]/from/name
-    kind: ImageStream
-    apiGroup: image.openshift.io/v1
-    name: odh-tensorflow-gpu-notebook-image-n-2
   - path: spec/tags[]/from/name
     kind: ImageStream
     apiGroup: image.openshift.io/v1
