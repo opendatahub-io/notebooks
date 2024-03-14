@@ -438,22 +438,45 @@ validate-codeserver-image: bin/kubectl
 .PHONY: validate-rstudio-image
 validate-rstudio-image: bin/kubectl
 	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
-	$(info # Running tests for $(NOTEBOOK_NAME) code-server image...)
+	$(info # Running tests for $(NOTEBOOK_NAME) RStudio Server image...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod rstudio-pod --timeout=300s
 	@required_commands=$(REQUIRED_R_STUDIO_IMAGE_COMMANDS) ; \
 	if [[ $$image == "" ]] ; then \
 		echo "Usage: make validate-rstudio-image image=<container-image-name>" ; \
 		exit 1 ; \
 	fi ; \
+	echo "=> Checking container image $$image for package intallation..." ; \
+	$(KUBECTL_BIN) exec -it rstudio-pod -- mkdir -p /opt/app-root/src/R/temp-library > /dev/null 2>&1 ; \
+	$(KUBECTL_BIN) exec rstudio-pod -- R -e "install.packages('tinytex', lib='/opt/app-root/src/R/temp-library')" > /dev/null 2>&1 ; \
+	if [ $$? -eq 0 ]; then \
+        echo "Tinytex installation successful!"; \
+    else \
+        echo "Error: Tinytex installation failed."; \
+	fi; \
 	for cmd in $$required_commands ; do \
 		echo "=> Checking container image $$image for $$cmd..." ; \
 		$(KUBECTL_BIN) exec rstudio-pod which $$cmd > /dev/null 2>&1 ; \
-		if [ $$? -ne 0 ]; then \
-			echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd" ; \
+		if [ $$? -eq 0 ]; then \
+        	echo "$$cmd executed successfuly!"; \
+		else \
+        	echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd" ; \
 			fail=1; \
 			continue; \
 		fi; \
 	done ; \
+	echo "=> Fetching R script from URL and executing on the container..."; \
+	curl -sSL -o test_script.R "${NOTEBOOK_REPO_BRANCH_BASE}/rstudio/c9s-python-3.9/test/test_script.R" > /dev/null 2>&1 ; \
+	$(KUBECTL_BIN) cp test_script.R rstudio-pod:/opt/app-root/src/test_script.R > /dev/null 2>&1; \
+	$(KUBECTL_BIN) exec rstudio-pod -- Rscript /opt/app-root/src/test_script.R > /dev/null 2>&1 ; \
+	if [ $$? -eq 0 ]; then \
+        echo "R script executed successfully!"; \
+		rm test_script.R ; \
+	else \
+        echo "Error: R script failed."; \
+		fail=1; \
+		continue; \
+	fi; \
+
 
 # This is only for the workflow action
 .PHONY: refresh-pipfilelock-files
@@ -476,3 +499,8 @@ refresh-pipfilelock-files:
 	cd runtimes/tensorflow/ubi9-python-3.9 && pipenv lock
 	cd base/c9s-python-3.9 && pipenv lock
 	
+# This is only for the workflow action
+# For running manually, set the required environment variables
+.PHONY: scan-image-vulnerabilities
+scan-image-vulnerabilities:
+	python ci/security-scan/quay_security_analysis.py
