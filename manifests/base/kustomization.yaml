@@ -144,6 +144,13 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-rstudio-notebook-n-1
+  - name: odh-rstudio-notebook-n-2
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rstudio-notebook-n-2
   - name: odh-rstudio-gpu-notebook-n
     objref:
       kind: ConfigMap
@@ -158,6 +165,13 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-rstudio-gpu-notebook-n-1
+  - name: odh-rstudio-gpu-notebook-n-2
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rstudio-gpu-notebook-n-2
   - name: odh-minimal-notebook-image-commit-n
     objref:
       kind: ConfigMap
