@@ -9,7 +9,7 @@ https://docs.habana.ai/en/latest/Support_Matrix/Support_Matrix.html
 
 ### Setup Habana AI on Openshift.  
 
-The device on AWS with machine `dl1.24xlarge` has habana fireware.  
+The device on AWS with machine `dl1.24xlarge` has habana firmware.  
 With documentation for [OpenShift Enviornment](https://docs.habana.ai/en/latest/Orchestration/HabanaAI_Operator/index.html?highlight=openshift).  
 
 
