@@ -12,7 +12,7 @@ on:  # yamllint disable-line rule:truthy
 #     - cron:  "0 0 * * 5" #Scheduled every Friday
 env:
   DIGEST_UPDATER_BRANCH: digest-updater-${{ github.run_id }}
-  BRANCH_NAME: ${{ github.event.inputs.branch || 'master' }}
+  BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
   RELEASE_VERSION_N: 2024a
   RELEASE_VERSION_N_1: 2023b
 jobs:

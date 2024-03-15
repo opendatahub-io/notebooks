@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG CODESERVER_VERSION=v4.16.1
+ARG CODESERVER_VERSION=v4.22.0
 
 LABEL name="odh-notebook-code-server-ubi9-python-3.9" \
       summary="code-server image with python 3.9 based on UBI 9" \
@@ -40,8 +40,8 @@ RUN chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
     fix-permissions /opt/app-root -P
 
 # Install NGINX to proxy code-server and pass probes check
-ENV NGINX_VERSION=1.22 \
-    NGINX_SHORT_VER=122 \
+ENV NGINX_VERSION=1.24 \
+    NGINX_SHORT_VER=124 \
     NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_CONF_PATH=/etc/nginx/nginx.conf \
     NGINX_DEFAULT_CONF_PATH=${APP_ROOT}/etc/nginx.default.d \
