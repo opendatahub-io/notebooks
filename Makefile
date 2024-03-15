@@ -212,6 +212,16 @@ intel-runtime-pytorch-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
 jupyter-intel-pytorch-ubi9-python-3.9: intel-runtime-pytorch-ubi9-python-3.9
 	$(call image,$@,jupyter/intel/pytorch/ubi9-python-3.9,$<)
 
+# Build and push intel-runtime-ml-ubi9-python-3.9 image to the registry
+.PHONY: intel-runtime-ml-ubi9-python-3.9
+intel-runtime-ml-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,intel/runtimes/ml/ubi9-python-3.9,$<)
+
+# Build and push jupyter-intel-ml-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-intel-ml-ubi9-python-3.9
+jupyter-intel-ml-ubi9-python-3.9: intel-runtime-ml-ubi9-python-3.9
+	$(call image,$@,jupyter/intel/ml/ubi9-python-3.9,$<)
+
 ####################################### Buildchain for Python 3.9 using C9S #######################################
 
 # Build and push base-c9s-python-3.9 image to the registry
@@ -372,6 +382,8 @@ test-%: bin/kubectl
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 		$(call test_with_papermill,tensorflow,ubi9,python-3.9) \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-ml-ubi9"; then \
+		$(call test_with_papermill,intel/ml,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 		$(call test_with_papermill,trustyai,ubi9,python-3.9) \
