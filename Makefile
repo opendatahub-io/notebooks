@@ -192,6 +192,16 @@ codeserver-ubi9-python-3.9: base-ubi9-python-3.9
 intel-base-gpu-ubi9-python-3.9: base-ubi9-python-3.9
 	$(call image,$@,intel/base/gpu/ubi9-python-3.9,$<)
 
+# Build and push intel-runtime-tensorflow-ubi9-python-3.9 image to the registry
+.PHONY: intel-runtime-tensorflow-ubi9-python-3.9
+intel-runtime-tensorflow-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
+	$(call image,$@,intel/runtimes/tensorflow/ubi9-python-3.9,$<)
+
+# Build and push jupyter-intel-tensorflow-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-intel-tensorflow-ubi9-python-3.9
+jupyter-intel-tensorflow-ubi9-python-3.9: intel-runtime-tensorflow-ubi9-python-3.9
+	$(call image,$@,jupyter/intel/tensorflow/ubi9-python-3.9,$<)
+
 # Build and push intel-runtime-pytorch-ubi9-python-3.9 image to the registry
 .PHONY: intel-runtime-pytorch-ubi9-python-3.9
 intel-runtime-pytorch-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
@@ -350,6 +360,8 @@ test-%: bin/kubectl
 	# Tests notebook's functionalities 
 	if echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi9"; then \
 		$(call test_with_papermill,minimal,ubi9,python-3.9) \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-tensorflow-ubi9"; then \
+		$(call test_with_papermill,intel/tensorflow,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-pytorch-ubi9"; then \
 		$(call test_with_papermill,intel/pytorch,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi9"; then \
