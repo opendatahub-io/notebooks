@@ -202,6 +202,78 @@ intel-runtime-pytorch-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
 jupyter-intel-pytorch-ubi9-python-3.9: intel-runtime-pytorch-ubi9-python-3.9
 	$(call image,$@,jupyter/intel/pytorch/ubi9-python-3.9,$<)
 
+####################################### Buildchain for Python 3.11 using UBI9 #######################################
+
+# Build and push base-ubi9-python-3.9 image to the registry
+.PHONY: base-ubi9-python-3.11
+base-ubi9-python-3.11:
+	$(call image,$@,base/ubi9-python-3.11)
+
+# Build and push jupyter-minimal-ubi9-python-3.11 image to the registry
+.PHONY: jupyter-minimal-ubi9-python-3.11
+jupyter-minimal-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,jupyter/minimal/ubi9-python-3.11,$<)
+
+# Build and push jupyter-datascience-ubi9-python-3.11 image to the registry
+.PHONY: jupyter-datascience-ubi9-python-3.11
+jupyter-datascience-ubi9-python-3.11: jupyter-minimal-ubi9-python-3.11
+	$(call image,$@,jupyter/datascience/ubi9-python-3.11,$<)
+
+# Build and push cuda-ubi9-python-3.11 image to the registry
+.PHONY: cuda-ubi9-python-3.11
+cuda-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,cuda/ubi9-python-3.11,$<)
+
+# Build and push cuda-jupyter-minimal-ubi9-python-3.11 image to the registry
+.PHONY: cuda-jupyter-minimal-ubi9-python-3.11
+cuda-jupyter-minimal-ubi9-python-3.11: cuda-ubi9-python-3.11
+	$(call image,$@,jupyter/minimal/ubi9-python-3.11,$<)
+
+# Build and push cuda-jupyter-datascience-ubi9-python-3.11 image to the registry
+.PHONY: cuda-jupyter-datascience-ubi9-python-3.11
+cuda-jupyter-datascience-ubi9-python-3.11: cuda-jupyter-minimal-ubi9-python-3.11
+	$(call image,$@,jupyter/datascience/ubi9-python-3.11,$<)
+
+# Build and push cuda-jupyter-tensorflow-ubi9-python-3.11 image to the registry
+.PHONY: cuda-jupyter-tensorflow-ubi9-python-3.11
+cuda-jupyter-tensorflow-ubi9-python-3.11: cuda-jupyter-datascience-ubi9-python-3.11
+	$(call image,$@,jupyter/tensorflow/ubi9-python-3.11,$<)
+
+# Build and push jupyter-pytorch-ubi9-python-3.11 image to the registry
+.PHONY: jupyter-pytorch-ubi9-python-3.11
+jupyter-pytorch-ubi9-python-3.11: cuda-jupyter-datascience-ubi9-python-3.11
+	$(call image,$@,jupyter/pytorch/ubi9-python-3.11,$<)
+
+# Build and push jupyter-trustyai-ubi9-python-3.11 image to the registry
+.PHONY: jupyter-trustyai-ubi9-python-3.11
+jupyter-trustyai-ubi9-python-3.11: jupyter-datascience-ubi9-python-3.11
+	$(call image,$@,jupyter/trustyai/ubi9-python-3.11,$<)
+
+# Build and push runtime-minimal-ubi9-python-3.11 image to the registry
+.PHONY: runtime-minimal-ubi9-python-3.11
+runtime-minimal-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,runtimes/minimal/ubi9-python-3.11,$<)
+
+# Build and push runtime-datascience-ubi9-python-3.11 image to the registry
+.PHONY: runtime-datascience-ubi9-python-3.11
+runtime-datascience-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,runtimes/datascience/ubi9-python-3.11,$<)
+
+# Build and push runtime-pytorch-ubi9-python-3.11 image to the registry
+.PHONY: runtime-pytorch-ubi9-python-3.11
+runtime-pytorch-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,runtimes/pytorch/ubi9-python-3.11,$<)
+
+# Build and push runtime-cuda-tensorflow-ubi9-python-3.11 image to the registry
+.PHONY: runtime-cuda-tensorflow-ubi9-python-3.11
+runtime-cuda-tensorflow-ubi9-python-3.11: cuda-ubi9-python-3.11
+	$(call image,$@,runtimes/tensorflow/ubi9-python-3.11,$<)
+
+.PHONY: codeserver-ubi9-python-3.11
+codeserver-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,codeserver/ubi9-python-3.11,$<)
+
+
 ####################################### Buildchain for Python 3.9 using C9S #######################################
 
 # Build and push base-c9s-python-3.9 image to the registry
@@ -507,6 +579,17 @@ refresh-pipfilelock-files:
 	cd runtimes/pytorch/ubi8-python-3.8 && pipenv lock
 	cd runtimes/tensorflow/ubi8-python-3.8 && pipenv lock
 	cd runtimes/tensorflow/ubi9-python-3.9 && pipenv lock
+	cd base/ubi9-python-3.11 && pipenv lock
+	cd jupyter/minimal/ubi9-python-3.11 && pipenv lock
+	cd jupyter/datascience/ubi9-python-3.11 && pipenv lock
+	cd jupyter/pytorch/ubi9-python-3.11 && pipenv lock
+	cd jupyter/tensorflow/ubi9-python-3.11 && pipenv lock
+	cd jupyter/trustyai/ubi9-python-3.11 && pipenv lock
+	cd runtimes/datascience/ubi9-python-3.11 && pipenv lock
+	cd runtimes/pytorch/ubi9-python-3.11 && pipenv lock
+	cd runtimes/tensorflow/ubi9-python-3.11 && pipenv lock
+
+
 	
 # This is only for the workflow action
 # For running manually, set the required environment variables
