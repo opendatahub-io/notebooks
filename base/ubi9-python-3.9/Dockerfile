@@ -13,7 +13,7 @@ LABEL name="odh-notebook-base-ubi9-python-3.9" \
 WORKDIR /opt/app-root/bin
 
 # Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install -U "micropipenv[toml]"
+RUN pip install --no-cache-dir -U "micropipenv[toml]"
 
 # Install Python dependencies from Pipfile.lock file
 COPY Pipfile.lock ./
@@ -24,13 +24,13 @@ RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./P
 USER root
 
 # Install usefull OS packages
-RUN dnf install -y mesa-libGL
+RUN dnf install -y mesa-libGL && dnf clean all && rm -rf /var/cache/yum
 
 # Other apps and tools installed as default user
 USER 1001
 
 # Install the oc client
-RUN curl -L https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz \
+RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
         -o /tmp/openshift-client-linux.tar.gz && \
     tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
     rm -f /tmp/openshift-client-linux.tar.gz

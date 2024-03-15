@@ -12,9 +12,9 @@ on:  # yamllint disable-line rule:truthy
 #     - cron:  "0 0 * * 5" #Scheduled every Friday
 env:
   DIGEST_UPDATER_BRANCH: digest-updater-${{ github.run_id }}
-  BRANCH_NAME: ${{ github.event.inputs.branch || 'master' }}
-  RELEASE_VERSION_N: 2023b
-  RELEASE_VERSION_N_1: 2023a
+  BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
+  RELEASE_VERSION_N: 2024a
+  RELEASE_VERSION_N_1: 2023b
 jobs:
   initialize:
     runs-on: ubuntu-latest
@@ -51,7 +51,7 @@ jobs:
          git config --global user.email "github-actions[bot]@users.noreply.github.com"
          git config --global user.name "GitHub Actions"
 
-      # Get the latest weekly build commit hash: https://github.com/red-hat-data-services/notebooks/tree/release-2023b
+      # Get the latest weekly build commit hash: https://github.com/red-hat-data-services/notebooks/tree/release-2024a
       - name: Checkout upstream notebooks repo
         uses: actions/checkout@v3
         with:
@@ -112,7 +112,7 @@ jobs:
          git config --global user.email "github-actions[bot]@users.noreply.github.com"
          git config --global user.name "GitHub Actions"
 
-      # Get the latest weekly build commit hash: https://github.com/red-hat-data-services/notebooks/tree/release-2023a
+      # Get the latest weekly build commit hash: https://github.com/red-hat-data-services/notebooks/tree/release-2023b
       - name: Checkout upstream notebooks repo
         uses: actions/checkout@v3
         with:
@@ -153,15 +153,16 @@ jobs:
                 sed -i "s|${image}=.*|${image}=$output|" manifests/base/params.env
               done
               git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/params.env && git commit -m "Update images for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
+
       - name: Fetch digest, and update the commit.env file
         run: |
-              echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
-              COMMIT=("odh-minimal-notebook-image-commit-n" "odh-minimal-gpu-notebook-image-commit-n" "odh-pytorch-gpu-notebook-image-commit-n" "odh-generic-data-science-notebook-image-commit-n" "odh-tensorflow-gpu-notebook-image-commit-n" "odh-trustyai-notebook-image-commit-n")
+              echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N_1 }} on ${{ env.RELEASE_VERSION_N_1}}
+              COMMIT=("odh-minimal-notebook-image-commit-n-1" "odh-minimal-gpu-notebook-image-commit-n-1" "odh-pytorch-gpu-notebook-image-commit-n-1" "odh-generic-data-science-notebook-image-commit-n-1" "odh-tensorflow-gpu-notebook-image-commit-n-1" "odh-trustyai-notebook-image-commit-n-1")
               for val in "${COMMIT[@]}"; do
                 echo $val
-                sed -i "s|${val}=.*|${val}=${{ steps.hash-n.outputs.HASH_N }}|" manifests/base/commit.env
+                sed -i "s|${val}=.*|${val}=${{ steps.hash-n-1.outputs.HASH_N_1 }}|" manifests/base/commit.env
               done
-              git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/commit.env && git commit -m "Update image commits for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
+              git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/commit.env && git commit -m "Update image commits for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
   # Creates the Pull Request
   open-pull-request:
     needs: [update-n-version, update-n-1-version]

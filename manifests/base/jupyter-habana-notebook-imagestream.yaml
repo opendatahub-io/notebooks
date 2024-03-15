@@ -20,7 +20,7 @@ spec:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.8"},{"name":"Habana","version":"1.10"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"Boto3","version":"1.26"},{"name":"Kafka-Python","version":"2.0"},{"name":"Kfp-tekton","version":"1.5"},{"name":"Matplotlib","version":"3.6"},{"name":"Numpy","version":"1.23"},{"name":"Pandas","version":"1.5"},{"name":"Scikit-learn","version":"1.2"},{"name":"Scipy","version":"1.10"},{"name":"TensorFlow","version":"2.12.0"},{"name":"PyTorch","version":"2.0.1"},{"name":"Elyra","version":"3.15"}]'
         openshift.io/imported-from: quay.io/modh/odh-habana-notebooks
-        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/workbench-image-recommended: "true"
         opendatahub.io/notebook-build-commit: $(odh-habana-notebook-image-commit-n)
       from:
         kind: DockerImage

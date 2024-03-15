@@ -17,13 +17,13 @@ spec:
     # N Version of the image
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"code-sever","version":"4.16"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"code-server","version":"4.16"}]'
         openshift.io/imported-from: quay.io/modh/codeserver
-        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/workbench-image-recommended: "true"
         opendatahub.io/notebook-build-commit: $(odh-codeserver-notebook-image-commit-n)
       from:
         kind: DockerImage
         name: $(odh-codeserver-notebook-n)
-      name: "2023.2"
+      name: "2024.1"
       referencePolicy:
         type: Source

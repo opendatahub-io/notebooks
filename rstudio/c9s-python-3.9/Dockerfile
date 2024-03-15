@@ -1,11 +1,11 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-LABEL name="odh-notebook-rstudio-c9s-python-3.9" \
-      summary="R Studio image with python 3.9 based on CentOS Stream 9" \
-      description="code-server image with python 3.9 based on CentOS Stream 9" \
-      io.k8s.display-name="R Studio image with python 3.9 based on CentOS Stream 9" \
-      io.k8s.description="R Studio image with python 3.9 based on CentOS Stream 9" \
+LABEL name="odh-notebook-rstudio-server-c9s-python-3.9" \
+      summary="RStudio Server image with python 3.9 based on CentOS Stream 9" \
+      description="RStudio server image with python 3.9 based on CentOS Stream 9" \
+      io.k8s.display-name="RStudio server image with python 3.9 based on CentOS Stream 9" \
+      io.k8s.description="RStudio server image with python 3.9 based on CentOS Stream 9" \
       authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
       io.openshift.build.commit.ref="main" \
       io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/rstudio/c9s-python-3.9" \
@@ -13,7 +13,7 @@ LABEL name="odh-notebook-rstudio-c9s-python-3.9" \
 
 USER 0
 
-ENV R_VERSION=4.3.1
+ENV R_VERSION=4.3.3
 
 # Install R
 RUN yum install -y yum-utils && \
@@ -27,17 +27,19 @@ RUN yum install -y yum-utils && \
     yum -y clean all --enablerepo='*'
 
 # set R library to default (used in install.r from littler)
+RUN chmod -R a+w /usr/lib64/R/library
 ENV LIBLOC /usr/lib64/R/library
 
 # set User R Library path
-ENV R_LIBS_USER /opt/app-root/src/Rpackages/4.2
+RUN mkdir -p /opt/app-root/src/Rpackages/4.3 && chmod -R a+w /opt/app-root/src/Rpackages/4.3
+ENV R_LIBS_USER /opt/app-root/src/Rpackages/4.3
 
 WORKDIR /tmp/
 
 # Install RStudio
-RUN wget https://download2.rstudio.org/server/rhel9/x86_64/rstudio-server-rhel-2023.06.1-524-x86_64.rpm && \
-    yum install -y rstudio-server-rhel-2023.06.1-524-x86_64.rpm && \
-    rm rstudio-server-rhel-2023.06.1-524-x86_64.rpm && \
+RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/rstudio-server-rhel-2023.12.1-402-x86_64.rpm && \
+    yum install -y rstudio-server-rhel-2023.12.1-402-x86_64.rpm && \
+    rm rstudio-server-rhel-2023.12.1-402-x86_64.rpm && \
     yum -y clean all  --enablerepo='*'
 
 # Specific RStudio config and fixes
@@ -46,13 +48,13 @@ RUN chmod 1777 /var/run/rstudio-server && \
 COPY rsession.conf /etc/rstudio/rsession.conf
 
 # package installation 
-RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*"
+RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" \
+    && dnf clean all && rm -rf /var/cache/yum
 RUN R -e "install.packages('Rcpp')"
-RUN R -e 'install.packages(c("tidyverse", "tidymodels", "plumber", "vetiver", "devtools"))'
 
 # Install NGINX to proxy RStudio and pass probes check 
-ENV NGINX_VERSION=1.22 \
-    NGINX_SHORT_VER=122 \
+ENV NGINX_VERSION=1.24 \
+    NGINX_SHORT_VER=124 \
     NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_CONF_PATH=/etc/nginx/nginx.conf \
     NGINX_DEFAULT_CONF_PATH=${APP_ROOT}/etc/nginx.default.d \
@@ -117,4 +119,4 @@ WORKDIR /opt/app-root/src
 
 USER 1001
 
-CMD /opt/app-root/bin/run-rstudio.sh
+CMD ["/opt/app-root/bin/run-rstudio.sh"]
