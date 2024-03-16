@@ -54,7 +54,7 @@ RUN cd ${CPU_ENV} && \
     unlink ${CPU_ENV}/lib64 && \
     cp -r ${CPU_ENV}/lib ${CPU_ENV}/lib64 && \
     source ${CPU_ENV}/bin/activate && \
-    pip install -U "micropipenv[toml]" && \
+    pip install --no-cache-dir -U "micropipenv[toml]" && \
     micropipenv install && \
     rm -f ./Pipfile.lock && \
     # Fix permissions to support pip in Openshift environments \

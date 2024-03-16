@@ -24,7 +24,7 @@ PARAMS_ENV_PATH="manifests/base/params.env"
 
 # This value needs to be updated everytime we deliberately change number of the
 # images we want to have in the `params.env` file.
-EXPECTED_NUM_RECORDS=24
+EXPECTED_NUM_RECORDS=19
 
 # ---------------------------- DEFINED FUNCTIONS ----------------------------- #
 
@@ -69,130 +69,102 @@ function check_image_variable_matches_name_and_commitref() {
     case "${image_variable}" in
         odh-minimal-notebook-image-n)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="2024a"
             expected_build_name="jupyter-minimal-ubi9-python-3.9-amd64"
             ;;
         odh-minimal-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
-            expected_commitref="2023a"
+            expected_commitref="2023b"
             expected_build_name="jupyter-minimal-ubi9-python-3.9-amd64"
-            ;;
-        odh-minimal-notebook-image-n-2)
-            expected_name="odh-notebook-jupyter-minimal-ubi8-python-3.8"
-            expected_commitref="main"
-            expected_build_name="jupyter-minimal-ubi8-python-3.8"
             ;;
         odh-minimal-gpu-notebook-image-n)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="2024a"
             expected_build_name="cuda-jupyter-minimal-ubi9-python-3.9-amd64"
             ;;
         odh-minimal-gpu-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
-            expected_commitref="2023a"
+            expected_commitref="2023b"
             expected_build_name="cuda-jupyter-minimal-ubi9-python-3.9-amd64"
-            ;;
-        odh-minimal-gpu-notebook-image-n-2)
-            expected_name="odh-notebook-jupyter-minimal-ubi8-python-3.8"
-            expected_commitref="main"
-            expected_build_name="cuda-jupyter-minimal-ubi8-python-3.8"
             ;;
         odh-pytorch-gpu-notebook-image-n)
             expected_name="odh-notebook-jupyter-pytorch-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="2024a"
             expected_build_name="jupyter-pytorch-ubi9-python-3.9-amd64"
             ;;
         odh-pytorch-gpu-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-pytorch-ubi9-python-3.9"
-            expected_commitref="2023a"
+            expected_commitref="2023b"
             expected_build_name="jupyter-pytorch-ubi9-python-3.9-amd64"
-            ;;
-        odh-pytorch-gpu-notebook-image-n-2)
-            expected_name="odh-notebook-cuda-jupyter-pytorch-ubi8-python-3.8"
-            expected_commitref="main"
-            expected_build_name="cuda-jupyter-pytorch-ubi8-python-3.8"
             ;;
         odh-generic-data-science-notebook-image-n)
             expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="2024a"
             expected_build_name="jupyter-datascience-ubi9-python-3.9-amd64"
             ;;
         odh-generic-data-science-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.9"
-            expected_commitref="2023a"
+            expected_commitref="2023b"
             expected_build_name="jupyter-datascience-ubi9-python-3.9-amd64"
-            ;;
-        odh-generic-data-science-notebook-image-n-2)
-            expected_name="odh-notebook-jupyter-datascience-ubi8-python-3.8"
-            expected_commitref="main"
-            expected_build_name="jupyter-datascience-ubi8-python-3.8"
             ;;
         odh-tensorflow-gpu-notebook-image-n)
             expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="2024a"
             expected_build_name="cuda-jupyter-tensorflow-ubi9-python-3.9-amd64"
             ;;
         odh-tensorflow-gpu-notebook-image-n-1)
             expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.9"
-            expected_commitref="2023a"
+            expected_commitref="2023b"
             expected_build_name="cuda-jupyter-tensorflow-ubi9-python-3.9-amd64"
-            ;;
-        odh-tensorflow-gpu-notebook-image-n-2)
-            expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi8-python-3.8"
-            expected_commitref="main"
-            expected_build_name="cuda-jupyter-tensorflow-ubi8-python-3.8"
             ;;
         odh-trustyai-notebook-image-n)
             expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="2024a"
             expected_build_name="jupyter-trustyai-ubi9-python-3.9-amd64"
             ;;
         odh-trustyai-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.9"
-            expected_commitref="2023a"
+            expected_commitref="2023b"
             expected_build_name="jupyter-trustyai-ubi9-python-3.9-amd64"
             ;;
         odh-habana-notebook-image-n)
             expected_name="odh-notebook-habana-jupyter-1.10.0-ubi8-python-3.8"
-            # expected_commitref="2023b"
+            # expected_commitref="2024a"
             expected_commitref="main"
             expected_build_name="habana-jupyter-1.10.0-ubi8-python-3.8"
             ;;
         odh-codeserver-notebook-n)
             expected_name="odh-notebook-code-server-ubi9-python-3.9"
-            expected_commitref="2023b"
+            expected_commitref="2024a"
             expected_build_name="codeserver-ubi9-python-3.9-amd64"
             ;;
         odh-codeserver-notebook-n-1)
-            expected_name="odh-notebook-code-server-c9s-python-3.9"
-            # expected_commitref="2023a"
-            expected_commitref="main"
-            expected_build_name="codeserver-c9s-python-3.9"
+            expected_name="odh-notebook-code-server-ubi9-python-3.9"
+            expected_commitref="2023b"
+            expected_build_name="codeserver-ubi9-python-3.9-amd64"
             ;;
         odh-rstudio-notebook-n)
-            expected_name="odh-notebook-rstudio-c9s-python-3.9"
-            expected_commitref="2023b"
+            expected_name="odh-notebook-rstudio-server-c9s-python-3.9"
+            expected_commitref="2024a"
             expected_build_name="rstudio-c9s-python-3.9-amd64"
             ;;
         odh-rstudio-notebook-n-1)
-            expected_name="odh-notebook-rstudio-c9s-python-3.9"
-            # expected_commitref="2023a"
-            expected_commitref="main"
-            expected_build_name="rstudio-c9s-python-3.9"
+            expected_name="odh-notebook-rstudio-server-c9s-python-3.9"
+            expected_commitref="2023b"
+            expected_build_name="rstudio-c9s-python-3.9-amd64"
             ;;
         # For both RStudio GPU workbenches - the final name labels are identical to plain RStudio ones
         # This is because the very same RStudio Dockerfile is used but different base images in both cases
         # We should consider what to do with this - in ideal case, we should have different labels for these cases.
         odh-rstudio-gpu-notebook-n)
-            expected_name="odh-notebook-rstudio-c9s-python-3.9"
-            expected_commitref="2023b"
+            expected_name="odh-notebook-rstudio-server-c9s-python-3.9"
+            expected_commitref="2024a"
             expected_build_name="cuda-rstudio-c9s-python-3.9-amd64"
             ;;
         odh-rstudio-gpu-notebook-n-1)
-            expected_name="odh-notebook-rstudio-c9s-python-3.9"
-            # expected_commitref="2023a"
-            expected_commitref="main"
-            expected_build_name="cuda-rstudio-c9s-python-3.9"
+            expected_name="odh-notebook-rstudio-server-c9s-python-3.9"
+            expected_commitref="2023b"
+            expected_build_name="cuda-rstudio-c9s-python-3.9-amd64"
             ;;
         *)
             echo "Unimplemented variable name: '${image_variable}'"
