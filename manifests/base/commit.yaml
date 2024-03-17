@@ -60,3 +60,7 @@ varReference:
     kind: ImageStream
     apiGroup: image.openshift.io/v1
     name: odh-codeserver-notebook-image-commit-n
+  - path: spec/tags[]/annotations/opendatahub.io\/notebook-build-commit
+    kind: ImageStream
+    apiGroup: image.openshift.io/v1
+    name: odh-codeserver-notebook-image-commit-n-1

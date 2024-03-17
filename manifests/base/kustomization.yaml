@@ -130,6 +130,13 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-codeserver-notebook-n
+  - name: odh-codeserver-notebook-n-1
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-codeserver-notebook-n-1
   - name: odh-minimal-notebook-image-commit-n
     objref:
       kind: ConfigMap
@@ -235,6 +242,13 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-codeserver-notebook-image-commit-n
+  - name: odh-codeserver-notebook-image-commit-n-1
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-codeserver-notebook-image-commit-n-1
 configurations:
   - params.yaml
   - commit.yaml
