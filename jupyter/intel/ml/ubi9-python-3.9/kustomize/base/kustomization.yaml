@@ -1,0 +1,13 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namePrefix: jupyter-intel-ml-ubi9-python-3-9-
+commonLabels:
+  app: jupyter-intel-ml-ubi9-python-3-9
+resources:
+  - service.yaml
+  - statefulset.yaml
+images:
+  - name: quay.io/opendatahub/workbench-images
+    newName: quay.io/opendatahub/workbench-images
+    newTag: jupyter-intel-ml-ubi9-python-3.9
