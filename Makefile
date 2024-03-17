@@ -192,6 +192,16 @@ codeserver-ubi9-python-3.9: base-ubi9-python-3.9
 intel-base-gpu-ubi9-python-3.9: base-ubi9-python-3.9
 	$(call image,$@,intel/base/gpu/ubi9-python-3.9,$<)
 
+# Build and push intel-runtime-tensorflow-ubi9-python-3.9 image to the registry
+.PHONY: intel-runtime-tensorflow-ubi9-python-3.9
+intel-runtime-tensorflow-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
+	$(call image,$@,intel/runtimes/tensorflow/ubi9-python-3.9,$<)
+
+# Build and push jupyter-intel-tensorflow-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-intel-tensorflow-ubi9-python-3.9
+jupyter-intel-tensorflow-ubi9-python-3.9: intel-runtime-tensorflow-ubi9-python-3.9
+	$(call image,$@,jupyter/intel/tensorflow/ubi9-python-3.9,$<)
+
 # Build and push intel-runtime-pytorch-ubi9-python-3.9 image to the registry
 .PHONY: intel-runtime-pytorch-ubi9-python-3.9
 intel-runtime-pytorch-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
@@ -201,6 +211,16 @@ intel-runtime-pytorch-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
 .PHONY: jupyter-intel-pytorch-ubi9-python-3.9
 jupyter-intel-pytorch-ubi9-python-3.9: intel-runtime-pytorch-ubi9-python-3.9
 	$(call image,$@,jupyter/intel/pytorch/ubi9-python-3.9,$<)
+
+# Build and push intel-runtime-ml-ubi9-python-3.9 image to the registry
+.PHONY: intel-runtime-ml-ubi9-python-3.9
+intel-runtime-ml-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,intel/runtimes/ml/ubi9-python-3.9,$<)
+
+# Build and push jupyter-intel-ml-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-intel-ml-ubi9-python-3.9
+jupyter-intel-ml-ubi9-python-3.9: intel-runtime-ml-ubi9-python-3.9
+	$(call image,$@,jupyter/intel/ml/ubi9-python-3.9,$<)
 
 ####################################### Buildchain for Python 3.9 using C9S #######################################
 
@@ -350,6 +370,8 @@ test-%: bin/kubectl
 	# Tests notebook's functionalities 
 	if echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi9"; then \
 		$(call test_with_papermill,minimal,ubi9,python-3.9) \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-tensorflow-ubi9"; then \
+		$(call test_with_papermill,intel/tensorflow,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-pytorch-ubi9"; then \
 		$(call test_with_papermill,intel/pytorch,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi9"; then \
@@ -360,6 +382,8 @@ test-%: bin/kubectl
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 		$(call test_with_papermill,tensorflow,ubi9,python-3.9) \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-ml-ubi9"; then \
+		$(call test_with_papermill,intel/ml,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 		$(call test_with_papermill,trustyai,ubi9,python-3.9) \
