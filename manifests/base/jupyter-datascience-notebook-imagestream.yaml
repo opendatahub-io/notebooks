@@ -53,3 +53,16 @@ spec:
       name: "2023.1"
       referencePolicy:
         type: Source
+    # N-3 Version of the image
+    - annotations:
+        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.8"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"Boto3","version":"1.17"},{"name":"Kafka-Python","version":"2.0"},{"name":"Matplotlib","version":"3.4"},{"name":"Numpy","version":"1.19"},{"name":"Pandas","version":"1.2"},{"name":"Scikit-learn","version":"0.24"},{"name":"Scipy","version":"1.6"}]'
+        openshift.io/imported-from: quay.io/modh/odh-generic-data-science-notebook
+        opendatahub.io/image-tag-outdated: 'true'
+        opendatahub.io/notebook-build-commit: $(odh-generic-data-science-notebook-image-commit-n-3)
+      from:
+        kind: DockerImage
+        name: $(odh-generic-data-science-notebook-image-n-3)
+      name: "1.2"
+      referencePolicy:
+        type: Source
