@@ -54,3 +54,16 @@ spec:
       name: "2023.1"
       referencePolicy:
         type: Source
+    # N-3 Version of the image
+    - annotations:
+        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.8"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version": "3.2"}, {"name": "Notebook","version": "6.4"}]'
+        openshift.io/imported-from: quay.io/modh/odh-minimal-notebook-container
+        opendatahub.io/image-tag-outdated: 'true'
+        opendatahub.io/notebook-build-commit: $(odh-minimal-notebook-image-commit-n-3)
+      from:
+        kind: DockerImage
+        name: $(odh-minimal-notebook-image-n-3)
+      name: "1.2"
+      referencePolicy:
+        type: Source

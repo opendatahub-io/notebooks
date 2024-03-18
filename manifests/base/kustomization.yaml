@@ -39,6 +39,20 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-minimal-notebook-image-n-1
+  - name: odh-minimal-notebook-image-n-2
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-minimal-notebook-image-n-2
+  - name: odh-minimal-notebook-image-n-3
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-minimal-notebook-image-n-3
   - name: odh-minimal-gpu-notebook-image-n
     objref:
       kind: ConfigMap
@@ -53,6 +67,20 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-minimal-gpu-notebook-image-n-1
+  - name: odh-minimal-gpu-notebook-image-n-2
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-minimal-gpu-notebook-image-n-2
+  - name: odh-minimal-gpu-notebook-image-n-3
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-minimal-gpu-notebook-image-n-3
   - name: odh-pytorch-gpu-notebook-image-n
     objref:
       kind: ConfigMap
@@ -67,6 +95,20 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-pytorch-gpu-notebook-image-n-1
+  - name: odh-pytorch-gpu-notebook-image-n-2
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-pytorch-gpu-notebook-image-n-2
+  - name: odh-pytorch-gpu-notebook-image-n-3
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-pytorch-gpu-notebook-image-n-3
   - name: odh-generic-data-science-notebook-image-n
     objref:
       kind: ConfigMap
@@ -81,6 +123,20 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-generic-data-science-notebook-image-n-1
+  - name: odh-generic-data-science-notebook-image-n-2
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-generic-data-science-notebook-image-n-2
+  - name: odh-generic-data-science-notebook-image-n-3
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-generic-data-science-notebook-image-n-3
   - name: odh-tensorflow-gpu-notebook-image-n
     objref:
       kind: ConfigMap
@@ -95,6 +151,20 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-tensorflow-gpu-notebook-image-n-1
+  - name: odh-tensorflow-gpu-notebook-image-n-2
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-tensorflow-gpu-notebook-image-n-2
+  - name: odh-tensorflow-gpu-notebook-image-n-3
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-tensorflow-gpu-notebook-image-n-3
   - name: odh-trustyai-notebook-image-n
     objref:
       kind: ConfigMap
@@ -151,6 +221,20 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-minimal-notebook-image-commit-n-1
+  - name: odh-minimal-notebook-image-commit-n-2
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-minimal-notebook-image-commit-n-2
+  - name: odh-minimal-notebook-image-commit-n-3
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-minimal-notebook-image-commit-n-3
   - name: odh-minimal-gpu-notebook-image-commit-n
     objref:
       kind: ConfigMap
@@ -165,6 +249,20 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-minimal-gpu-notebook-image-commit-n-1
+  - name: odh-minimal-gpu-notebook-image-commit-n-2
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-minimal-gpu-notebook-image-commit-n-2
+  - name: odh-minimal-gpu-notebook-image-commit-n-3
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-minimal-gpu-notebook-image-commit-n-3
   - name: odh-pytorch-gpu-notebook-image-commit-n
     objref:
       kind: ConfigMap
@@ -179,6 +277,20 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-pytorch-gpu-notebook-image-commit-n-1
+  - name: odh-pytorch-gpu-notebook-image-commit-n-2
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-pytorch-gpu-notebook-image-commit-n-2
+  - name: odh-pytorch-gpu-notebook-image-commit-n-3
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-pytorch-gpu-notebook-image-commit-n-3
   - name: odh-generic-data-science-notebook-image-commit-n
     objref:
       kind: ConfigMap
@@ -193,6 +305,20 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-generic-data-science-notebook-image-commit-n-1
+  - name: odh-generic-data-science-notebook-image-commit-n-2
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-generic-data-science-notebook-image-commit-n-2
+  - name: odh-generic-data-science-notebook-image-commit-n-3
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-generic-data-science-notebook-image-commit-n-3
   - name: odh-tensorflow-gpu-notebook-image-commit-n
     objref:
       kind: ConfigMap
@@ -207,6 +333,20 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-tensorflow-gpu-notebook-image-commit-n-1
+  - name: odh-tensorflow-gpu-notebook-image-commit-n-2
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-tensorflow-gpu-notebook-image-commit-n-2
+  - name: odh-tensorflow-gpu-notebook-image-commit-n-3
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-tensorflow-gpu-notebook-image-commit-n-3
   - name: odh-trustyai-notebook-image-commit-n
     objref:
       kind: ConfigMap
