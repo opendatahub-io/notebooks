@@ -1,7 +1,15 @@
-CONTAINER_ENGINE ?= podman
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
 RELEASE	 		 ?= 2023b
-DATE 			 ?= $(shell date +'%Y%m%d')
+
+# OS dependant: Generate date, select appropriate cmd to locate container engine
+ifeq ($(OS), Windows_NT)
+	DATE 		?= $(shell powershell -Command "Get-Date -Format 'yyyyMMdd'")
+	WHERE_WHICH ?= where
+else
+	DATE 		?= $(shell date +'%Y%m%d')
+	WHERE_WHICH ?= which
+endif
+
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
@@ -10,6 +18,16 @@ REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
 REQUIRED_CODE_SERVER_IMAGE_COMMANDS="curl python oc code-server"
 REQUIRED_R_STUDIO_IMAGE_COMMANDS="curl python oc /usr/lib/rstudio-server/bin/rserver"
 
+# Detect and select the system's available container engine
+ifeq (, $(shell $(WHERE_WHICH) podman))
+	DOCKER := $(shell $(WHERE_WHICH) docker)
+	ifeq (, $(DOCKER))
+		$(error "Neither Docker nor Podman is installed. Please install one of them.")
+	endif
+	CONTAINER_ENGINE := docker
+else
+	CONTAINER_ENGINE := podman
+endif
 
 # Build function for the notebok image:
 #   ARG 1: Image tag name.
