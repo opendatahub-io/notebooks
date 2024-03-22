@@ -41,7 +41,7 @@ RUN echo "Installing softwares and packages" && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
     sed -i -e "s/Python.*/$(python --version)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
     # Remove default Elyra runtime-images \
-    rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
+    # rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.8/site-packages && \
     fix-permissions /opt/app-root -P
