@@ -30,32 +30,41 @@ mkl = "==2023.1"
 mkl-include = "==2023.1"
 
 # Parent image requirements to maintain cohesion
-elyra-pipeline-editor-extension = "~=3.15.0"
-elyra-python-editor-extension = "~=3.15.0"
-elyra-code-snippet-extension = "~=3.15.0"
-kfp-tekton = "<1.6.0"
-boto3 = "~=1.26.69"
-jupyter-bokeh = "~=3.0.5"
+boto3 = "~=1.34.50"
 kafka-python = "~=2.0.2"
-matplotlib = "~=3.6.3"
-pandas = "~=1.5.3"
-plotly = "~=5.13.0"
-scikit-learn = "~=1.2.1"
-scipy = "~=1.10.0"
-jupyterlab-lsp = "~=3.10.2"
-jupyterlab-widgets = "~=3.0.5"
-jupyter-resource-usage = "~=0.6.0"
+matplotlib = "~=3.7.5"
+pandas = "~=2.0.3"
+plotly = "~=5.20.0"
+scikit-learn = "~=1.3.2"
+scipy = "~=1.10.1"
+skl2onnx = "~=1.16.0"
+onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
+codeflare-sdk = "~=0.14.1"
 
-# Parent image requirements to maintain cohesion
-jupyterlab = "~=3.5.3"
-jupyter-server = "~=2.1.0"
-jupyter-server-proxy = "~=3.2.2"
-jupyter-server-terminals = "~=0.4.4"
-jupyterlab-git = "~=0.41.0"
-nbdime = "~=3.1.1"
-nbgitpuller = "~=1.1.1"
-# ---
-wheel = "~=0.38.4"
+# DB connectors
+pymongo = "~=4.6.2"
+psycopg = "~=3.1.18"
+pyodbc = "~=5.1.0"
+mysql-connector-python = "~=8.3.0"
+
+# JupyterLab packages
+odh-elyra = "~=3.16.1"
+
+jupyterlab = "~=3.6.7" # Wait on upgrade till plugins are ready
+jupyter-bokeh = "~=3.0.7" # Upgrade would bring in jupyterlab 4
+jupyter-server = "~=2.13.0"
+jupyter-server-proxy = "~=4.0.0" # Upgrade would bring in jupyterlab 4
+jupyter-server-terminals = "~=0.5.3"
+jupyterlab-git = "~=0.44.0"
+jupyterlab-lsp = "~=4.2.0"
+jupyterlab-widgets = "~=3.0.10"
+jupyter-resource-usage = "~=0.7.2"
+nbdime = "~=3.2.1"
+nbgitpuller = "~=1.2.0"
+
+# Base packages
+wheel = "~=0.43.0"
+setuptools = "~=69.2.0"
 
 [requires]
 python_version = "3.8"
