@@ -1,0 +1,133 @@
+---
+# The aim of this GitHub workflow is to update the runtimes across `/jupyter/datascience/ubi*-python-*/runtime-images/*.json` paths.
+name: Update runtime images
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+    inputs:
+      branch:
+        required: true
+        description: "Provide the name of the branch you want to update ex main, vYYYYx etc: "
+        # Put the scheduler on comment until automate the full release procedure
+        # schedule:
+        #   - cron: "0 0 * * 5"  #Scheduled every Friday
+env:
+  DIGEST_UPDATER_BRANCH: digest-updater-${{ github.run_id }}
+  BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
+  RELEASE_VERSION_N: 2024a
+jobs:
+  initialize:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Install Skopeo CLI
+        shell: bash
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install skopeo
+
+      # Checkout the branch
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH_NAME }}
+
+      # Create a new branch
+      - name: Create a new branch
+        run: |
+         echo ${{ env.DIGEST_UPDATER_BRANCH }}
+         git checkout -b ${{ env.DIGEST_UPDATER_BRANCH }}
+         git push --set-upstream origin ${{ env.DIGEST_UPDATER_BRANCH }}
+
+  update-runtimes:
+    needs: [initialize]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+
+      # Get latest build commit from the https://github.com/opendatahub-io/notebooks/${release_branch} using this as identifier for the latest tag name
+      - name: Retrive latest commit hash from the release branch
+        id: hash-n
+        shell: bash
+        run: |
+          PAYLOAD=$(curl --silent -H 'Accept: application/vnd.github.v4.raw' https://api.github.com/repos/opendatahub-io/notebooks/commits?sha=$RELEASE_VERSION_N&per_page=1)
+          echo "HASH_N=$(echo $PAYLOAD | jq -r '.[0].sha[0:7]')" >> ${GITHUB_OUTPUT}
+
+      # Checkout the release branch to apply the updates
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DIGEST_UPDATER_BRANCH }}
+
+      - name: Update Runtimes
+        run: |
+            echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
+            PATHS=("jupyter/datascience/anaconda-python-3.8/runtime-images/datascience-ubi8-py38.json"
+            "jupyter/datascience/anaconda-python-3.8/runtime-images/pytorch-ubi8-py38.json"
+            "jupyter/datascience/anaconda-python-3.8/runtime-images/tensorflow-ubi8-py38.json"
+            "jupyter/datascience/anaconda-python-3.8/runtime-images/ubi8-py38.json"
+            "jupyter/datascience/ubi8-python-3.8/runtime-images/datascience-ubi8-py38.json"
+            "jupyter/datascience/ubi8-python-3.8/runtime-images/pytorch-ubi8-py38.json"
+            "jupyter/datascience/ubi8-python-3.8/runtime-images/tensorflow-ubi8-py38.json"
+            "jupyter/datascience/ubi8-python-3.8/runtime-images/ubi8-py38.json"
+            "jupyter/datascience/ubi9-python-3.9/runtime-images/datascience-ubi9-py39.json"
+            "jupyter/datascience/ubi9-python-3.9/runtime-images/pytorch-ubi9-py39.json"
+            "jupyter/datascience/ubi9-python-3.9/runtime-images/tensorflow-ubi9-py39.json"
+            "jupyter/datascience/ubi9-python-3.9/runtime-images/ubi9-py39.json")
+
+            for ((i=0;i<${#PATHS[@]};++i)); do
+              path=${PATHS[$i]}
+              img=$(cat ${path} | jq -r '.metadata.image_name')
+              name=$(echo "$path" | sed 's#.*runtime-images/\(.*\)-py.*#\1#')
+              py_version=$(echo "$path" | grep -o 'python-[0-9]\.[0-9]')
+              # Handling specific cases
+              if [[ $name == *tensorflow* ]]; then
+                  name="cuda-$name"
+              elif [[ $name == ubi* ]]; then
+                  name="minimal-$name"
+              fi
+              registry=$(echo $img | cut -d '@' -f1)
+              regex="runtime-$name-$py_version-${{ env.RELEASE_VERSION_N}}-\d+-${{ steps.hash-n.outputs.HASH_N }}"
+              echo "CHECKING: "  $regex
+              latest_tag=$(skopeo inspect docker://$img | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+              digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
+              output=$registry@$digest
+              echo "NEW: " $output
+              jq --arg output "$output" '.metadata.image_name = $output' "$path" > "$path.tmp" && mv "$path.tmp" "$path"
+            done
+            if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
+              git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add jupyter/datascience/* && git commit -m "Update file via  ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
+            else
+              echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
+            fi
+
+  open-pull-request:
+    needs: [update-runtimes]
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: pull-request
+        uses: repo-sync/pull-request@v2
+        with:
+          source_branch: ${{ env.DIGEST_UPDATER_BRANCH }}
+          destination_branch: ${{ env.BRANCH_NAME}}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          pr_label: "automated pr"
+          pr_title: "[Digest Updater Action] Update Runtimes Images"
+          pr_body: |
+            :rocket: This is an automated Pull Request.
+            Created by `/.github/workflows/runtimes-digest-updater-upstream.yaml`
+
+            This PR updates the following files:
+            - All the runtime images across `/jupyter/datascience/ubi*-python-*/runtime-images/*.json` paths
+
+            :exclamation: **IMPORTANT NOTE**: Remember to delete the ` ${{ env.DIGEST_UPDATER_BRANCH }}` branch after merging the changes
