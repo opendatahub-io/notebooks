@@ -99,6 +99,10 @@ varReference:
   - path: spec/tags[]/from/name
     kind: ImageStream
     apiGroup: image.openshift.io/v1
+    name: odh-habana-notebook-image-n-1
+  - path: spec/tags[]/from/name
+    kind: ImageStream
+    apiGroup: image.openshift.io/v1
     name: odh-codeserver-notebook-n
   - path: spec/tags[]/from/name
     kind: ImageStream
