@@ -146,7 +146,7 @@ ENV TCMALLOC_LARGE_ALLOC_REPORT_THRESHOLD=7516192768
 RUN dnf clean all && rm -rf /var/cache/dnf && rm -rf /tmp/*
 
 ## Label the image with details required by ODH
-LABEL name="odh-notebook-habana-jupyter-1.3.0-ubi8-python-3.8" \
+LABEL name="odh-notebook-habana-jupyter-1.13.0-ubi8-python-3.8" \
     summary="Jupyter HabanaAI 1.13.0 notebook image for ODH notebooks" \
     description="Jupyter HabanaAI 1.13.0 notebook image with base Python 3.8 builder image based on ubi8 for ODH notebooks" \
     io.k8s.display-name="Jupyter HabanaAI 1.13.0 notebook image for ODH notebooks" \
