@@ -73,8 +73,8 @@ RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel har
 RUN R -e "install.packages('Rcpp')"
 
 # Install NGINX to proxy RStudio and pass probes check
-ENV NGINX_VERSION=1.24 \
-    NGINX_SHORT_VER=124 \
+ENV NGINX_VERSION=1.22 \
+    NGINX_SHORT_VER=122 \
     NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_CONF_PATH=/etc/nginx/nginx.conf \
     NGINX_DEFAULT_CONF_PATH=${APP_ROOT}/etc/nginx.default.d \
