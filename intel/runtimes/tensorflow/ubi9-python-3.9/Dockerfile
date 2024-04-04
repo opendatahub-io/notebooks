@@ -47,14 +47,14 @@ ENV CPU_ENV=/opt/app-root-cpu
 COPY --chown=1001:0 Pipfile.lock.cpu ${CPU_ENV}/Pipfile.lock
 
 #CPU env
-RUN cd ${CPU_ENV} && \
-    python3.9 -m venv ${CPU_ENV} && \
+WORKDIR ${CPU_ENV}
+RUN python3.9 -m venv ${CPU_ENV} && \
     chown -R 1001:0 ${CPU_ENV} && \
     fix-permissions ${CPU_ENV} -P && \
     unlink ${CPU_ENV}/lib64 && \
     cp -r ${CPU_ENV}/lib ${CPU_ENV}/lib64 && \
     source ${CPU_ENV}/bin/activate && \
-    pip install -U "micropipenv[toml]" && \
+    pip install --no-cache-dir -U "micropipenv[toml]" && \
     micropipenv install && \
     rm -f ./Pipfile.lock && \
     # Fix permissions to support pip in Openshift environments \
