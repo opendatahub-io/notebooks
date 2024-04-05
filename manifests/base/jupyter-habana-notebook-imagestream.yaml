@@ -15,16 +15,29 @@ spec:
   lookupPolicy:
     local: true
   tags:
-    # 1.10.0 Version of the image n-1
+    # 1.13.0 Version of the image n
     - annotations:
-        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.8"},{"name":"Habana","version":"1.10"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"Boto3","version":"1.26"},{"name":"Kafka-Python","version":"2.0"},{"name":"Kfp-tekton","version":"1.5"},{"name":"Matplotlib","version":"3.6"},{"name":"Numpy","version":"1.23"},{"name":"Pandas","version":"1.5"},{"name":"Scikit-learn","version":"1.2"},{"name":"Scipy","version":"1.10"},{"name":"TensorFlow","version":"2.12.0"},{"name":"PyTorch","version":"2.0.1"},{"name":"Elyra","version":"3.15"}]'
+        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.8"},{"name":"Habana","version":"1.13"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"Boto3","version":"1.34"},{"name":"Kafka-Python","version":"2.0"},{"name":"Matplotlib","version":"3.7"},{"name":"Numpy","version":"1.23"},{"name":"Pandas","version":"2.0"},{"name":"Scikit-learn","version":"1.3"},{"name":"Scipy","version":"1.10"},{"name":"TensorFlow","version":"2.13"},{"name":"PyTorch","version":"2.1"},{"name":"ODH-Elyra","version":"3.16"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: $(odh-habana-notebook-image-commit-n)
       from:
         kind: DockerImage
         name: $(odh-habana-notebook-image-n)
+      name: "2024.1"
+      referencePolicy:
+        type: Source
+    # 1.10.0 Version of the image n-1
+    - annotations:
+        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.8"},{"name":"Habana","version":"1.10"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"Boto3","version":"1.26"},{"name":"Kafka-Python","version":"2.0"},{"name":"Kfp-tekton","version":"1.5"},{"name":"Matplotlib","version":"3.6"},{"name":"Numpy","version":"1.23"},{"name":"Pandas","version":"1.5"},{"name":"Scikit-learn","version":"1.2"},{"name":"Scipy","version":"1.10"},{"name":"TensorFlow","version":"2.12"},{"name":"PyTorch","version":"2.0"},{"name":"Elyra","version":"3.15"}]'
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: "false"
+        opendatahub.io/notebook-build-commit: $(odh-habana-notebook-image-commit-n-1)
+      from:
+        kind: DockerImage
+        name: $(odh-habana-notebook-image-n-1)
       name: "2023.2"
       referencePolicy:
         type: Source

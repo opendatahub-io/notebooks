@@ -24,7 +24,7 @@ PARAMS_ENV_PATH="manifests/base/params.env"
 
 # This value needs to be updated everytime we deliberately change number of the
 # images we want to have in the `params.env` file.
-EXPECTED_NUM_RECORDS=19
+EXPECTED_NUM_RECORDS=20
 
 # ---------------------------- DEFINED FUNCTIONS ----------------------------- #
 
@@ -128,6 +128,12 @@ function check_image_variable_matches_name_and_commitref() {
             expected_build_name="jupyter-trustyai-ubi9-python-3.9-amd64"
             ;;
         odh-habana-notebook-image-n)
+            expected_name="odh-notebook-habana-jupyter-1.13.0-ubi8-python-3.8"
+            # expected_commitref="2024a"
+            expected_commitref="main"
+            expected_build_name="habana-jupyter-1.13.0-ubi8-python-3.8"
+            ;;
+        odh-habana-notebook-image-n-1)
             expected_name="odh-notebook-habana-jupyter-1.10.0-ubi8-python-3.8"
             # expected_commitref="2024a"
             expected_commitref="main"

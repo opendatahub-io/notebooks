@@ -116,6 +116,13 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-habana-notebook-image-n
+  - name: odh-habana-notebook-image-n-1
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-habana-notebook-image-n-1
   - name: odh-codeserver-notebook-n
     objref:
       kind: ConfigMap
@@ -249,6 +256,13 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-habana-notebook-image-commit-n
+  - name: odh-habana-notebook-image-commit-n-1
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-habana-notebook-image-commit-n-1
   - name: odh-codeserver-notebook-image-commit-n
     objref:
       kind: ConfigMap
