@@ -40,6 +40,8 @@ RUN echo "Installing softwares and packages" && \
     fix-permissions /opt/app-root -P
 
 ENV CPU_ENV=/opt/app-root-cpu
+ENV GPU_ENV=/opt/app-root
+
 COPY --chown=1001:0 Pipfile.lock.cpu ${CPU_ENV}/Pipfile.lock
 
 #CPU env
