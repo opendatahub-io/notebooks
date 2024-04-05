@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Git checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: '0'
       - name: Install skopeo
@@ -23,7 +23,7 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install skopeo
       - name: Get Pull Request Number
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         id: get_pr_number
         with:
           script: |

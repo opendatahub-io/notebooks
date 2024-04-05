@@ -34,8 +34,8 @@ COPY --chown=1001:0 utils /opt/app-root/bin/utils
 #CPU env
 COPY --chown=1001:0 Pipfile.lock.cpu ${CPU_ENV}/Pipfile.lock
 
-RUN cd ${CPU_ENV} && \
-    source ${CPU_ENV}/bin/activate && \
+WORKDIR ${CPU_ENV}
+RUN source ${CPU_ENV}/bin/activate && \
     micropipenv install && \
     rm -f ./Pipfile.lock && \
     python -m ipykernel install --prefix=/opt/app-root --name 'tensorflow-cpu' --display-name='tensorflow-cpu' && \
