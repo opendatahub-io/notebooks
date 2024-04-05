@@ -2,4 +2,4 @@
 
 source /opt/intel/oneapi/setvars.sh
 
-exec /opt/app-root/bin/python -m ipykernel_launcher $@
+exec ${JUPYTER_ENV}/bin/python -m ipykernel_launcher $@

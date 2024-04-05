@@ -25,7 +25,7 @@ RUN echo "Installing softwares and packages" && \
     fix-permissions /opt/app-root -P
 
 #Replacing kernel manually with oneapi variable setting script
-COPY --chown=1001:0 start-gpu-kernel /opt/app-root/bin/start-gpu-kernel
+COPY --chown=1001:0 start-kernel /opt/app-root/bin/start-kernel
 COPY --chown=1001:0 kernel-gpu.json /opt/app-root/share/jupyter/kernels/python3/kernel.json
 COPY --chown=1001:0 start-notebook.sh /opt/app-root/bin
 COPY --chown=1001:0 builder /opt/app-root/builder
@@ -35,6 +35,7 @@ COPY --chown=1001:0 utils /opt/app-root/bin/utils
 COPY --chown=1001:0 Pipfile.lock.cpu ${CPU_ENV}/Pipfile.lock
 
 WORKDIR ${CPU_ENV}
+
 RUN source ${CPU_ENV}/bin/activate && \
     micropipenv install && \
     rm -f ./Pipfile.lock && \
@@ -44,6 +45,8 @@ RUN source ${CPU_ENV}/bin/activate && \
     chmod -R g+w ${CPU_ENV}/lib/python3.9/site-packages && \
     fix-permissions ${CPU_ENV} -P && \
     chmod -R g+w /opt/app-root/src
+
+COPY --chown=1001:0 kernel-cpu.json /opt/app-root/share/jupyter/kernels/tensorflow-cpu/kernel.json
 
 WORKDIR /opt/app-root/src
 
