@@ -15,7 +15,6 @@ name = "pytorch"
 tensorboard = "~=2.16.2"
 torch = {version = "~=2.2.1", index = "pytorch"}
 torchvision = {version = "~=0.17.1", index = "pytorch"}
-
 # Datascience and useful extensions
 boto3 = "~=1.34.50"
 kafka-python = "~=2.0.2"
@@ -27,17 +26,14 @@ scikit-learn = "~=1.4.0"
 scipy = "~=1.12.0"
 skl2onnx = "~=1.16.0"
 onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
-codeflare-sdk = "~=0.14.1"
-
+codeflare-sdk = "~=0.15.0"
 # DB connectors
 pymongo = "~=4.6.2"
 psycopg = "~=3.1.18"
 pyodbc = "~=5.1.0"
 mysql-connector-python = "~=8.3.0"
-
 # JupyterLab packages
 odh-elyra = "~=3.16.1"
-
 jupyterlab = "~=3.6.7" # Wait on upgrade till plugins are ready
 jupyter-bokeh = "~=3.0.7" # Upgrade would bring in jupyterlab 4
 jupyter-server = "~=2.13.0"
@@ -49,7 +45,6 @@ jupyterlab-widgets = "~=3.0.10"
 jupyter-resource-usage = "~=0.7.2"
 nbdime = "~=3.2.1"
 nbgitpuller = "~=1.2.0"
-
 # Base packages
 wheel = "~=0.43.0"
 setuptools = "~=69.2.0"
