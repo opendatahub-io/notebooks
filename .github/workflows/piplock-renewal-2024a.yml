@@ -1,0 +1,47 @@
+---
+# This GitHub action is meant to be triggered weekly in order to update the pipfile.locks
+
+name: Weekly Pipfile.locks renewal on [2024a] branch
+
+on:  # yamllint disable-line rule:truthy
+  # Triggers the workflow every Monday at 22pm UTC am 0 22 * * 1
+  schedule:
+    - cron: "0 22 * * 1"
+  workflow_dispatch:  # for manual trigger workflow from GH Web UI
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Give the default GITHUB_TOKEN write permission to commit and push the
+      # added or changed files to the repository.
+      contents: write
+
+    steps:
+      # Checkout the paricular branch
+      - name: Checkout code from the release branch
+        uses: actions/checkout@v4
+        with:
+          ref: 2024a
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+
+      # Setup Python environment
+      - name: Setup Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.8
+            3.9
+      - name: Install pipenv
+        run: pip install pipenv
+
+      # Runs the makefile recipe `refresh-pipfilelock-files` and push the chances back to the branch
+      - name: Run make refresh-pipfilelock-files and push the chances back to the branch
+        run: |
+          make refresh-pipfilelock-files
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+          git add .
+          git commit -m "Update the pipfile.lock via the weekly workflow action"
+          git push
