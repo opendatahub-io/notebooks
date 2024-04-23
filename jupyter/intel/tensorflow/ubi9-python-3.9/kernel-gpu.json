@@ -1,9 +1,10 @@
 {
  "argv": [
-  "/opt/app-root/bin/start-gpu-kernel",
+  "/opt/app-root/bin/start-kernel",
   "-f",
   "{connection_file}"
  ],
+ "env": {"JUPYTER_ENV":"/opt/app-root"},
  "display_name": "tensorflow-gpu",
  "language": "python",
  "metadata": {
