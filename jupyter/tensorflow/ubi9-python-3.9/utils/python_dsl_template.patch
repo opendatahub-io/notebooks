@@ -1,0 +1,29 @@
+--- a/python_dsl_template.jinja2	2024-04-18 17:54:08.373533064 -0400
++++ b/python_dsl_template.jinja2	2024-04-18 18:01:30.152253439 -0400
+@@ -97,9 +97,6 @@
+     secret.use_secret_as_env({{ task_name }}, "{{ workflow_task.task_modifiers.object_storage_secret }}", { "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY" })
+ {%  endif %}
+     {{ task_name }}.set_display_name("{{ workflow_task.name | string_delimiter_safe }}")
+-{%  if workflow_task.doc %}
+-    add_pod_annotation({{ task_name }}, "elyra/node-user-doc","""{{ workflow_task.doc| string_delimiter_safe }}""")
+-{%  endif %}
+ {%  if workflow_task.task_modifiers.cpu_request %}
+     {{ task_name }}.set_cpu_request(cpu="{{ workflow_task.task_modifiers.cpu_request }}")
+ {%  endif %}
+@@ -126,16 +123,6 @@
+ {%  if workflow_task.task_modifiers.disable_node_caching %}
+     {{ task_name }}.execution_options.caching_strategy.max_cache_staleness = "P0D"
+ {%  endif %}
+-{%  if workflow_task.task_modifiers.pod_labels %}
+-{%    for pod_label_key, pod_label_value in workflow_task.task_modifiers.pod_labels.items() %}
+-    add_pod_label({{ task_name }}, "{{ pod_label_key }}", "{{ pod_label_value }}")
+-{%    endfor %}
+-{%  endif %}
+-{%  if workflow_task.task_modifiers.pod_annotations %}
+-{%    for pod_annotation_key, pod_annotation_value in workflow_task.task_modifiers.pod_annotations.items() %}
+-    add_pod_annotation({{ task_name }}, "{{ pod_annotation_key }}" , """{{ pod_annotation_value | string_delimiter_safe }}""")
+-{%    endfor %}
+-{%  endif %}
+ {%  if workflow_task.task_modifiers.kubernetes_secrets %}
+ {%    for env_var, secret_dict in workflow_task.task_modifiers.kubernetes_secrets.items() %}
+     secret.use_secret_as_env({{ task_name }}, "{{ secret_dict.name }}", { "{{ secret_dict.key }}" : "{{ env_var }}" })
