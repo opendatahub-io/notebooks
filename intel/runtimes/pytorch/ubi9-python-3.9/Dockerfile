@@ -17,8 +17,7 @@ ARG ONEAPI_VERSION=2024.0
 COPY oneAPI.repo /etc/yum.repos.d/oneAPI.repo
 
 RUN dnf update -y && \
-    dnf install -y intel-oneapi-dpcpp-cpp-${ONEAPI_VERSION} \
-        intel-oneapi-mkl-${ONEAPI_VERSION} && \
+    dnf install -y intel-basekit-${ONEAPI_VERSION} && \
     dnf clean all -y && \
     rm -rf /var/cache/dnf/* && \
     rm /etc/yum.repos.d/oneAPI.repo
@@ -41,6 +40,8 @@ RUN echo "Installing softwares and packages" && \
     fix-permissions /opt/app-root -P
 
 ENV CPU_ENV=/opt/app-root-cpu
+ENV GPU_ENV=/opt/app-root
+
 COPY --chown=1001:0 Pipfile.lock.cpu ${CPU_ENV}/Pipfile.lock
 
 #CPU env

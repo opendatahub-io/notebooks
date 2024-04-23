@@ -1,5 +1,5 @@
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
-RELEASE	 		 ?= 2023b
+RELEASE	 		 ?= 2024a
 
 # OS dependant: Generate date, select appropriate cmd to locate container engine
 ifeq ($(OS), Windows_NT)
