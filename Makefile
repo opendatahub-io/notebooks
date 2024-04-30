@@ -210,30 +210,25 @@ runtime-cuda-tensorflow-ubi9-python-3.9: cuda-ubi9-python-3.9
 codeserver-ubi9-python-3.9: base-ubi9-python-3.9
 	$(call image,$@,codeserver/ubi9-python-3.9,$<)
 
-# Build and push base-anaconda-python-3.9-intel-gpu image to the registry
-.PHONY: intel-base-gpu-ubi9-python-3.9
-intel-base-gpu-ubi9-python-3.9: base-ubi9-python-3.9
-	$(call image,$@,intel/base/gpu/ubi9-python-3.9,$<)
+# Build and push intel-runtime-tensorflow-cpu-ubi9-python-3.9 image to the registry
+.PHONY: intel-runtime-tensorflow-cpu-ubi9-python-3.9
+intel-runtime-tensorflow-cpu-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,intel/runtimes/tensorflow/cpu/ubi9-python-3.9,$<)
 
-# Build and push intel-runtime-tensorflow-ubi9-python-3.9 image to the registry
-.PHONY: intel-runtime-tensorflow-ubi9-python-3.9
-intel-runtime-tensorflow-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
-	$(call image,$@,intel/runtimes/tensorflow/ubi9-python-3.9,$<)
+# Build and push jupyter-intel-tensorflow-cpu-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-intel-tensorflow-cpu-ubi9-python-3.9
+jupyter-intel-tensorflow-cpu-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,jupyter/intel/tensorflow/cpu/ubi9-python-3.9,$<)
 
-# Build and push jupyter-intel-tensorflow-ubi9-python-3.9 image to the registry
-.PHONY: jupyter-intel-tensorflow-ubi9-python-3.9
-jupyter-intel-tensorflow-ubi9-python-3.9: intel-runtime-tensorflow-ubi9-python-3.9
-	$(call image,$@,jupyter/intel/tensorflow/ubi9-python-3.9,$<)
+# Build and push intel-runtime-pytorch-cpu-ubi9-python-3.9 image to the registry
+.PHONY: intel-runtime-pytorch-cpu-ubi9-python-3.9
+intel-runtime-pytorch-cpu-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,intel/runtimes/pytorch/cpu/ubi9-python-3.9,$<)
 
-# Build and push intel-runtime-pytorch-ubi9-python-3.9 image to the registry
-.PHONY: intel-runtime-pytorch-ubi9-python-3.9
-intel-runtime-pytorch-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
-	$(call image,$@,intel/runtimes/pytorch/ubi9-python-3.9,$<)
-
-# Build and push jupyter-intel-pytorch-ubi9-python-3.9 image to the registry
-.PHONY: jupyter-intel-pytorch-ubi9-python-3.9
-jupyter-intel-pytorch-ubi9-python-3.9: intel-runtime-pytorch-ubi9-python-3.9
-	$(call image,$@,jupyter/intel/pytorch/ubi9-python-3.9,$<)
+# Build and push jupyter-intel-pytorch-cpu-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-intel-pytorch-cpu-ubi9-python-3.9
+jupyter-intel-pytorch-cpu-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,jupyter/intel/pytorch/cpu/ubi9-python-3.9,$<)
 
 # Build and push intel-runtime-ml-ubi9-python-3.9 image to the registry
 .PHONY: intel-runtime-ml-ubi9-python-3.9
