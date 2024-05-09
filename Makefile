@@ -215,25 +215,45 @@ codeserver-ubi9-python-3.9: base-ubi9-python-3.9
 intel-base-gpu-ubi9-python-3.9: base-ubi9-python-3.9
 	$(call image,$@,intel/base/gpu/ubi9-python-3.9,$<)
 
-# Build and push intel-runtime-tensorflow-ubi9-python-3.9 image to the registry
-.PHONY: intel-runtime-tensorflow-ubi9-python-3.9
-intel-runtime-tensorflow-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
-	$(call image,$@,intel/runtimes/tensorflow/ubi9-python-3.9,$<)
+# Build and push intel-runtime-tensorflow-cpu-ubi9-python-3.9 image to the registry
+.PHONY: intel-runtime-tensorflow-cpu-ubi9-python-3.9
+intel-runtime-tensorflow-cpu-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,intel/runtimes/tensorflow/cpu/ubi9-python-3.9,$<)
 
-# Build and push jupyter-intel-tensorflow-ubi9-python-3.9 image to the registry
-.PHONY: jupyter-intel-tensorflow-ubi9-python-3.9
-jupyter-intel-tensorflow-ubi9-python-3.9: intel-runtime-tensorflow-ubi9-python-3.9
-	$(call image,$@,jupyter/intel/tensorflow/ubi9-python-3.9,$<)
+# Build and push jupyter-intel-tensorflow-cpu-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-intel-tensorflow-cpu-ubi9-python-3.9
+jupyter-intel-tensorflow-cpu-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,jupyter/intel/tensorflow/cpu/ubi9-python-3.9,$<)
 
-# Build and push intel-runtime-pytorch-ubi9-python-3.9 image to the registry
-.PHONY: intel-runtime-pytorch-ubi9-python-3.9
-intel-runtime-pytorch-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
-	$(call image,$@,intel/runtimes/pytorch/ubi9-python-3.9,$<)
+# Build and push intel-runtime-tensorflow-xpu-ubi9-python-3.9 image to the registry
+.PHONY: intel-runtime-tensorflow-xpu-ubi9-python-3.9
+intel-runtime-tensorflow-xpu-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
+	$(call image,$@,intel/runtimes/tensorflow/xpu/ubi9-python-3.9,$<)
 
-# Build and push jupyter-intel-pytorch-ubi9-python-3.9 image to the registry
-.PHONY: jupyter-intel-pytorch-ubi9-python-3.9
-jupyter-intel-pytorch-ubi9-python-3.9: intel-runtime-pytorch-ubi9-python-3.9
-	$(call image,$@,jupyter/intel/pytorch/ubi9-python-3.9,$<)
+# Build and push jupyter-intel-tensorflow-xpu-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-intel-tensorflow-xpu-ubi9-python-3.9
+jupyter-intel-tensorflow-xpu-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
+	$(call image,$@,jupyter/intel/tensorflow/xpu/ubi9-python-3.9,$<)
+
+# Build and push intel-runtime-pytorch-cpu-ubi9-python-3.9 image to the registry
+.PHONY: intel-runtime-pytorch-cpu-ubi9-python-3.9
+intel-runtime-pytorch-cpu-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,intel/runtimes/pytorch/cpu/ubi9-python-3.9,$<)
+
+# Build and push jupyter-intel-pytorch-cpu-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-intel-pytorch-cpu-ubi9-python-3.9
+jupyter-intel-pytorch-cpu-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,jupyter/intel/pytorch/cpu/ubi9-python-3.9,$<)
+
+# Build and push intel-runtime-pytorch-xpu-ubi9-python-3.9 image to the registry
+.PHONY: intel-runtime-pytorch-xpu-ubi9-python-3.9
+intel-runtime-pytorch-xpu-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
+	$(call image,$@,intel/runtimes/pytorch/xpu/ubi9-python-3.9,$<)
+
+# Build and push jupyter-intel-pytorch-xpu-ubi9-python-3.9 image to the registry
+.PHONY: jupyter-intel-pytorch-xpu-ubi9-python-3.9
+jupyter-intel-pytorch-xpu-ubi9-python-3.9: intel-base-gpu-ubi9-python-3.9
+	$(call image,$@,jupyter/intel/pytorch/xpu/ubi9-python-3.9,$<)
 
 # Build and push intel-runtime-ml-ubi9-python-3.9 image to the registry
 .PHONY: intel-runtime-ml-ubi9-python-3.9
@@ -393,10 +413,14 @@ test-%: bin/kubectl
 	# Tests notebook's functionalities 
 	if echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi9"; then \
 		$(call test_with_papermill,minimal,ubi9,python-3.9) \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-tensorflow-ubi9"; then \
-		$(call test_with_papermill,intel/tensorflow,ubi9,python-3.9) \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-pytorch-ubi9"; then \
-		$(call test_with_papermill,intel/pytorch,ubi9,python-3.9) \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-tf-cpu-ubi9"; then \
+		$(call test_with_papermill,intel/tensorflow/cpu,ubi9,python-3.9) \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-tf-xpu-ubi9"; then \
+		$(call test_with_papermill,intel/tensorflow/xpu,ubi9,python-3.9) \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-pt-cpu-ubi9"; then \
+		$(call test_with_papermill,intel/pytorch/cpu,ubi9,python-3.9) \
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-pt-xpu-ubi9"; then \
+		$(call test_with_papermill,intel/pytorch/xpu,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi9"; then \
 		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi9"; then \

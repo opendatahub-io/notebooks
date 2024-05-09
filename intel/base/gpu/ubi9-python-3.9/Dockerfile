@@ -11,13 +11,13 @@ LABEL name="odh-notebook-intel-base-gpu-ubi9-python-3.9" \
       io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/intel/base/gpu/ubi9-python-3.9" \
       io.openshift.build.image="quay.io/opendatahub/workbench-images:intel-base-gpu-ubi9-python-3.9"
 
-USER 0
+USER root
 WORKDIR /opt/app-root/src
 
 RUN . /etc/os-release && \
     dnf install -y 'dnf-command(config-manager)' && \
     dnf config-manager --add-repo \
-        https://repositories.intel.com/gpu/rhel/${VERSION_ID}/lts/2350/unified/intel-gpu-${VERSION_ID}.repo  && \
+        https://repositories.intel.com/gpu/rhel/9.3/lts/2350/unified/intel-gpu-9.3.repo  && \
     dnf install -y \
         intel-opencl \
         level-zero intel-level-zero-gpu level-zero-devel \
