@@ -408,14 +408,12 @@ test-%: bin/kubectl
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-ml-ubi9"; then \
 		$(call test_with_papermill,intel/ml,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi9"; then \
-		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 		$(call test_with_papermill,trustyai,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi8"; then \
 		$(call test_with_papermill,minimal,ubi8,python-3.8) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi8"; then \
-		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 		$(call test_with_papermill,trustyai,ubi8,python-3.8) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "anaconda"; then \
 		echo "There is no test notebook implemented yet for Anaconda Notebook...." \

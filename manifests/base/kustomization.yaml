@@ -123,48 +123,48 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-habana-notebook-image-n-1
-  - name: odh-codeserver-notebook-n
+  - name: odh-codeserver-notebook-image-n
     objref:
       kind: ConfigMap
       name: notebooks-parameters
       apiVersion: v1
     fieldref:
-      fieldpath: data.odh-codeserver-notebook-n
-  - name: odh-codeserver-notebook-n-1
+      fieldpath: data.odh-codeserver-notebook-image-n
+  - name: odh-codeserver-notebook-image-n-1
     objref:
       kind: ConfigMap
       name: notebooks-parameters
       apiVersion: v1
     fieldref:
-      fieldpath: data.odh-codeserver-notebook-n-1
-  - name: odh-rstudio-notebook-n
+      fieldpath: data.odh-codeserver-notebook-image-n-1
+  - name: odh-rstudio-notebook-image-n
     objref:
       kind: ConfigMap
       name: notebooks-parameters
       apiVersion: v1
     fieldref:
-      fieldpath: data.odh-rstudio-notebook-n
-  - name: odh-rstudio-notebook-n-1
+      fieldpath: data.odh-rstudio-notebook-image-n
+  - name: odh-rstudio-notebook-image-n-1
     objref:
       kind: ConfigMap
       name: notebooks-parameters
       apiVersion: v1
     fieldref:
-      fieldpath: data.odh-rstudio-notebook-n-1
-  - name: odh-rstudio-gpu-notebook-n
+      fieldpath: data.odh-rstudio-notebook-image-n-1
+  - name: odh-rstudio-gpu-notebook-image-n
     objref:
       kind: ConfigMap
       name: notebooks-parameters
       apiVersion: v1
     fieldref:
-      fieldpath: data.odh-rstudio-gpu-notebook-n
-  - name: odh-rstudio-gpu-notebook-n-1
+      fieldpath: data.odh-rstudio-gpu-notebook-image-n
+  - name: odh-rstudio-gpu-notebook-image-n-1
     objref:
       kind: ConfigMap
       name: notebooks-parameters
       apiVersion: v1
     fieldref:
-      fieldpath: data.odh-rstudio-gpu-notebook-n-1
+      fieldpath: data.odh-rstudio-gpu-notebook-image-n-1
   - name: odh-minimal-notebook-image-commit-n
     objref:
       kind: ConfigMap
