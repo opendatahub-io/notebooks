@@ -23,7 +23,7 @@ spec:
         opendatahub.io/notebook-build-commit: $(odh-rstudio-notebook-image-commit-n)
       from:
         kind: DockerImage
-        name: $(odh-rstudio-notebook-n)
+        name: $(odh-rstudio-notebook-image-n)
       name: "2024.1"
       referencePolicy:
         type: Source
@@ -36,7 +36,7 @@ spec:
         opendatahub.io/notebook-build-commit: $(odh-rstudio-notebook-image-commit-n-1)
       from:
         kind: DockerImage
-        name: $(odh-rstudio-notebook-n-1)
+        name: $(odh-rstudio-notebook-image-n-1)
       name: "2023.2"
       referencePolicy:
         type: Source

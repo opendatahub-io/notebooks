@@ -74,9 +74,9 @@ jobs:
                "odh-generic-data-science-notebook-image-n"
                "odh-tensorflow-gpu-notebook-image-n"
                "odh-trustyai-notebook-image-n"
-               "odh-codeserver-notebook-n"
-               "odh-rstudio-notebook-n"
-               "odh-rstudio-gpu-notebook-n")
+               "odh-codeserver-notebook-image-n"
+               "odh-rstudio-notebook-image-n"
+               "odh-rstudio-gpu-notebook-image-n")
 
               for ((i=0;i<${#IMAGES[@]};++i)); do
                 image=${IMAGES[$i]}
@@ -106,9 +106,9 @@ jobs:
              "odh-generic-data-science-notebook-image-commit-n"
              "odh-tensorflow-gpu-notebook-image-commit-n"
              "odh-trustyai-notebook-image-commit-n"
-             "odh-codeserver-notebook-n"
-             "odh-rstudio-notebook-n"
-             "odh-rstudio-gpu-notebook-n")
+             "odh-codeserver-notebook-image-commit-n"
+             "odh-rstudio-notebook-image-commit-n"
+             "odh-rstudio-gpu-notebook-image-commit-n")
 
             for val in "${COMMIT[@]}"; do
               echo $val
@@ -154,9 +154,9 @@ jobs:
                "odh-generic-data-science-notebook-image-n-1"
                "odh-tensorflow-gpu-notebook-image-n-1"
                "odh-trustyai-notebook-image-n-1"
-               "odh-codeserver-notebook-n-1"
-               "odh-rstudio-notebook-n-1"
-               "odh-rstudio-gpu-notebook-n-1")
+               "odh-codeserver-notebook-image-n-1"
+               "odh-rstudio-notebook-image-n-1"
+               "odh-rstudio-gpu-notebook-image-n-1")
 
               for ((i=0;i<${#IMAGES[@]};++i)); do
                 image=${IMAGES[$i]}
@@ -185,9 +185,9 @@ jobs:
                "odh-generic-data-science-notebook-image-commit-n-1"
                "odh-tensorflow-gpu-notebook-image-commit-n-1"
                "odh-trustyai-notebook-image-commit-n-1"
-               "odh-codeserver-notebook-n-1"
-               "odh-rstudio-notebook-n-1"
-               "odh-rstudio-gpu-notebook-n-1")
+               "odh-codeserver-notebook-image-commit-n-1"
+               "odh-rstudio-notebook-image-commit-n-1"
+               "odh-rstudio-gpu-notebook-image-commit-n-1")
 
               for val in "${COMMIT[@]}"; do
                 echo $val
