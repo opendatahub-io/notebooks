@@ -52,8 +52,8 @@ RUN chmod -R a+w /usr/lib64/R/library
 ENV LIBLOC /usr/lib64/R/library
 
 # set User R Library path
-RUN mkdir -p /opt/app-root/src/Rpackages/4.3 && chmod -R a+w /opt/app-root/src/Rpackages/4.3
-ENV R_LIBS_USER /opt/app-root/src/Rpackages/4.3
+RUN mkdir -p /opt/app-root/bin/Rpackages/4.3 && chmod -R a+w /opt/app-root/bin/Rpackages/4.3
+ENV R_LIBS_USER /opt/app-root/bin/Rpackages/4.3
 
 WORKDIR /tmp/
 
