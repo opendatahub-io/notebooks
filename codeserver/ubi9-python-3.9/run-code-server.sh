@@ -42,36 +42,56 @@ else
   fi
 fi
 
-# # Check if code-server folder exists
-if [ ! -f "/opt/app-root/src/.local/share/code-server" ]; then
-
-    # Check internet connection - this check is for disconected enviroments
-    if curl -Is http://www.google.com | head -n 1 | grep -q "200 OK"; then
-        # Internet connection is available
-        echo "Internet connection available. Installing specific extensions."
-
-        # Install specific extensions
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.python-2024.2.1.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-2023.9.100.vsix
-    else
-        # No internet connection
-        echo "No internet connection. Installing all extensions."
-
-        # Install all extensions
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.python-2024.2.1.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.debugpy-2024.2.0@linux-x64.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-2023.9.100.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-keymap-1.1.2.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-renderers-1.0.17.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.vscode-jupyter-cell-tags-0.1.8.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.vscode-jupyter-slideshow-0.1.5.vsix
-    fi
-fi
-
 # Start server
 start_process /usr/bin/code-server \
   --bind-addr 0.0.0.0:8787 \
   --disable-telemetry \
   --auth none \
   --disable-update-check \
-  /opt/app-root/src
+  /opt/app-root/src & code_server_pid=$!
+
+# Function to check if code-server is ready
+check_code_server_ready() {
+  if code-server --list-extensions > /dev/null 2>&1; then
+    echo "code-server is ready."
+    # Check if code-server folder exists
+    if [ ! -f "/opt/app-root/src/.local/share/code-server" ]; then
+
+        # Check internet connection - this check is for disconnected environments
+        if curl -Is http://www.google.com | head -n 1 | grep -q "200 OK"; then
+            # Internet connection is available
+            echo "Internet connection available. Installing specific extensions."
+
+            # Install specific extensions
+            code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.python-2024.2.1.vsix
+            code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-2023.9.100.vsix
+        else
+            # No internet connection
+            echo "No internet connection. Installing all extensions."
+
+            # Install all extensions
+            code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.python-2024.2.1.vsix
+            code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.debugpy-2024.2.0@linux-x64.vsix
+            code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-2023.9.100.vsix
+            code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-keymap-1.1.2.vsix
+            code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-renderers-1.0.17.vsix
+            code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.vscode-jupyter-cell-tags-0.1.8.vsix
+            code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.vscode-jupyter-slideshow-0.1.5.vsix
+        fi
+    fi
+    return 0
+  else
+    echo "code-server is not ready yet."
+    return 1
+  fi
+}
+
+# Poll code-server until it is ready
+until check_code_server_ready; do
+  echo "Waiting for code-server to be ready..."
+  sleep 5
+done
+
+# wait for code-server to finish or exit script
+wait $code_server_pid
+echo "code-server process has exited."
