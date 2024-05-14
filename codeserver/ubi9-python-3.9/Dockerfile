@@ -39,6 +39,13 @@ RUN yum install -y "https://github.com/coder/code-server/releases/download/${COD
 RUN chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
     fix-permissions /opt/app-root -P
 
+COPY --chown=1001:0 utils utils/
+
+# Create and intall the extensions though build-time on a temporary directory. Later this directory will copied on the `/opt/app-root/src/.local/share/code-server/extensions` via run-code-server.sh file when it starts up. 
+RUN mkdir -p /opt/app-root/extensions-temp && \
+    code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2024.2.1.vsix --extensions-dir /opt/app-root/extensions-temp && \
+    code-server --install-extension  /opt/app-root/bin/utils/ms-toolsai.jupyter-2023.9.100.vsix --extensions-dir /opt/app-root/extensions-temp
+
 # Install NGINX to proxy code-server and pass probes check
 ENV NGINX_VERSION=1.24 \
     NGINX_SHORT_VER=124 \
@@ -88,7 +95,13 @@ RUN sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH} && \
     chmod -R ug+rwX ${NGINX_APP_ROOT}/etc && \
     chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
     chmod -R ug+rwX /var/lib/nginx /var/log/nginx /run && \
-    rpm-file-permissions
+    rpm-file-permissions && \
+    # Ensure the temporary directory and target directory have the correct permissions
+    mkdir -p /opt/app-root/src/.local/share/code-server/extensions && \
+    mkdir -p /opt/app-root/src/.local/share/code-server/coder-logs && \
+    chown -R 1001:0 /opt/app-root/src/.local/share/code-server && \
+    chown -R 1001:0 /opt/app-root/extensions-temp && \
+    chown -R 1001:0 /opt/app-root/src/.config/code-server
 
 ## Configure nginx
 COPY nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
@@ -96,7 +109,6 @@ COPY nginx/httpconf/ /opt/app-root/etc/nginx.d/
 COPY nginx/api/ /opt/app-root/api/
 
 # Launcher
-COPY --chown=1001:0 utils utils/
 COPY --chown=1001:0 run-code-server.sh run-nginx.sh ./
 
 ENV SHELL /bin/bash
