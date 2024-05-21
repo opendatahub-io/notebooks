@@ -1,9 +1,10 @@
 ---
-name: Validation of params.env content (image SHAs)
+name: Validation of image references (image SHAs) in params.env and runtime images
 on:  # yamllint disable-line rule:truthy
   pull_request:
     paths:
       - 'manifests/base/params.env'
+      - 'ci/check-params-env.sh'
 
 permissions:
   contents: read
@@ -21,3 +22,8 @@ jobs:
       - name: Validate the 'manifests/base/params.env' file content
         run: |
           bash ./ci/check-params-env.sh
+
+      - name: Validate references for runtime images
+        id: validate-runtime-images-references
+        run: |
+          bash ./ci/check-runtime-images.sh
