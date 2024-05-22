@@ -15,6 +15,8 @@ USER 0
 WORKDIR /opt/app-root/src
 
 RUN . /etc/os-release && \
+    #TODO: Remove explicit declaration of VERSION_ID once available on version 9.4
+    VERSION_ID=9.3 && \
     dnf install -y 'dnf-command(config-manager)' && \
     dnf config-manager --add-repo \
         https://repositories.intel.com/gpu/rhel/${VERSION_ID}/lts/2350/unified/intel-gpu-${VERSION_ID}.repo  && \
