@@ -277,6 +277,20 @@ jupyter-datascience-anaconda-python-3.8: base-anaconda-python-3.8
 	$(call image,$@,jupyter/datascience/anaconda-python-3.8,$<)
 
 
+####################################### Buildchain for Habana SynapseAI #######################################
+# This is needed because SynapseAI 1.15+ currently requires a custom python, this builds it from their base image so future support should only require changing base image
+# Build and push base-habana-python-3.10 image to the registry
+.PHONY: base-habana-python-3.10
+base-habana-python-3.10:
+	$(call image,$@,base/habana-python-3.10)
+
+# Build and push habana-jupyter-1.15.1-ubi9-python-3.10 image to the registry
+.PHONY: habana-jupyter-1.15.1-ubi9-python-3.10
+habana-jupyter-1.15.1-ubi9-python-3.10: base-habana-python-3.10
+	$(call image,$@,habana/1.15.1/ubi9-python-3.10,$<)
+
+
+
 ####################################### Deployments #######################################
 
 # Download kubectl binary
