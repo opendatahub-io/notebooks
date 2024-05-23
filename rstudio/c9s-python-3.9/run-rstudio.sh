@@ -16,7 +16,13 @@ fi
 
 # Create lib folders if it does not exist
 mkdir -p  /opt/app-root/src/Rpackages/4.3
-cp -r /opt/app-root/bin/Rpackages/4.3/* /opt/app-root/src/Rpackages/4.3/
+for package in /opt/app-root/bin/Rpackages/4.3/*/;
+do
+  package_folder=$(basename "$package")
+  if [ ! -d "/opt/app-root/src/Rpackages/4.3/$package_folder" ]; then
+    cp -r /opt/app-root/bin/Rpackages/4.3/$package_folder /opt/app-root/src/Rpackages/4.3/
+  fi
+done  
 # rstudio terminal cant see environment variables set by the container runtime
 # (which breaks kubectl, to fix this we store the KUBERNETES_* env vars in Renviron.site)
 env | grep KUBERNETES_ >> /usr/lib64/R/etc/Renviron.site

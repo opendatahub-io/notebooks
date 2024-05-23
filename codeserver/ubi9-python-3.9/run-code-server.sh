@@ -42,30 +42,31 @@ else
   fi
 fi
 
-# # Check if code-server folder exists
-if [ ! -f "/opt/app-root/src/.local/share/code-server" ]; then
+# Ensure the extensions directory exists
+extensions_dir="/opt/app-root/src/.local/share/code-server/extensions"
+mkdir -p "$extensions_dir"
 
-    # Check internet connection - this check is for disconected enviroments
-    if curl -Is http://www.google.com | head -n 1 | grep -q "200 OK"; then
-        # Internet connection is available
-        echo "Internet connection available. Installing specific extensions."
-
-        # Install specific extensions
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.python-2024.2.1.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-2023.9.100.vsix
+# Copy installed extensions to the runtime extensions directory if they do not already exist
+if [ -d "/opt/app-root/extensions-temp" ]; then
+  for extension in /opt/app-root/extensions-temp/*/;
+  do
+    extension_folder=$(basename "$extension")
+    if [ ! -d "$extensions_dir/$extension_folder" ]; then
+      cp -r "$extension" "$extensions_dir"
+      echo "Debug: Extension '$extension_folder' copied to runtime directory."
     else
-        # No internet connection
-        echo "No internet connection. Installing all extensions."
-
-        # Install all extensions
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.python-2024.2.1.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-python.debugpy-2024.2.0@linux-x64.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-2023.9.100.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-keymap-1.1.2.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.jupyter-renderers-1.0.17.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.vscode-jupyter-cell-tags-0.1.8.vsix
-        code-server --install-extension ${SCRIPT_DIR}/utils/ms-toolsai.vscode-jupyter-slideshow-0.1.5.vsix
+      echo "Debug: Extension '$extension_folder' already exists in runtime directory, skipping."
     fi
+  done
+else
+  echo "Debug: Temporary extensions directory not found."
+fi
+
+# Ensure log directory exists
+logs_dir="/opt/app-root/src/.local/share/code-server/coder-logs"
+if [ ! -d "$logs_dir" ]; then
+  echo "Debug: Log directory not found, creating '$logs_dir'..."
+  mkdir -p "$logs_dir"
 fi
 
 # Start server
