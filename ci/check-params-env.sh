@@ -184,9 +184,8 @@ function check_image_variable_matches_name_and_commitref() {
             ;;
         odh-habana-notebook-image-n)
             expected_name="odh-notebook-habana-jupyter-1.13.0-ubi8-python-3.8"
-            # expected_commitref="2024a"
-            expected_commitref="main"
-            expected_build_name="habana-jupyter-1.13.0-ubi8-python-3.8"
+            expected_commitref="2024a"
+            expected_build_name="habana-jupyter-1.13.0-ubi8-python-3.8-amd64"
             ;;
         odh-habana-notebook-image-n-1)
             expected_name="odh-notebook-habana-jupyter-1.10.0-ubi8-python-3.8"
@@ -194,12 +193,12 @@ function check_image_variable_matches_name_and_commitref() {
             expected_commitref="rhods-1.34"
             expected_build_name="habana-jupyter-1.10.0-ubi8-python-3.8-amd64"
             ;;
-        odh-codeserver-notebook-n)
+        odh-codeserver-notebook-image-n)
             expected_name="odh-notebook-code-server-ubi9-python-3.9"
             expected_commitref="release-2024a"
             expected_build_name="codeserver-ubi9-python-3.9-amd64"
             ;;
-        odh-codeserver-notebook-n-1)
+        odh-codeserver-notebook-image-n-1)
             expected_name="odh-notebook-code-server-ubi9-python-3.9"
             expected_commitref="release-2023b"
             expected_build_name="codeserver-ubi9-python-3.9-amd64"
