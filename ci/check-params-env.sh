@@ -20,6 +20,7 @@
 
 # ----------------------------- GLOBAL VARIABLES ----------------------------- #
 
+COMMIT_ENV_PATH="manifests/base/commit.env"
 PARAMS_ENV_PATH="manifests/base/params.env"
 
 # This value needs to be updated everytime we deliberately change number of the
@@ -29,13 +30,13 @@ EXPECTED_NUM_RECORDS=27
 # ---------------------------- DEFINED FUNCTIONS ----------------------------- #
 
 function check_variables_uniq() {
-    local params_env_path="${1}"
+    local env_file_path="${1}"
     local ret_code=0
 
-    echo "Checking that all variables in the file '${params_env_path}' are unique and expected"
+    echo "Checking that all variables in the file '${env_file_path}' are unique and expected"
 
     local content
-    content=$(sed 's#\(.*\)=.*#\1#' "${params_env_path}" | sort)
+    content=$(sed 's#\(.*\)=.*#\1#' "${env_file_path}" | sort)
 
     local num_records
     num_records=$(echo "${content}" | wc -l)
@@ -223,6 +224,30 @@ function check_image_variable_matches_name_and_commitref() {
     }
 }
 
+function check_image_commit_id_matches_metadata() {
+    local image_variable="${1}"
+    local image_commit_id="${2}"
+
+    local short_image_commit_id
+    # We're interested only in the first 7 characters of the commit ID
+    short_image_commit_id=${image_commit_id:0:7}
+
+    local file_image_commit_id
+
+    file_image_commit_id=$(sed 's#-commit##' "${COMMIT_ENV_PATH}" | grep "${image_variable}=" | cut --delimiter "=" --field 2)
+    test -n "${file_image_commit_id}" || {
+        echo "Couldn't retrieve commit id for image variable '${image_variable}' in '${COMMIT_ENV_PATH}'!"
+        return 1
+    }
+
+    test "${short_image_commit_id}" = "${file_image_commit_id}" || {
+        echo "Image commit IDs for image variable '${image_variable}' don't equal!"
+        echo "Image commit ID gathered from image: '${short_image_commit_id}'"
+        echo "Image commit ID in '${COMMIT_ENV_PATH}': '${file_image_commit_id}'"
+        return 1
+    }
+}
+
 function check_image() {
     local image_variable="${1}"
     local image_url="${2}"
@@ -231,6 +256,7 @@ function check_image() {
 
     local image_metadata
     local image_name
+    local image_commit_id
     local image_commitref
 
     image_metadata="$(skopeo inspect --config "docker://${image_url}")" || {
@@ -239,6 +265,10 @@ function check_image() {
     }
     image_name=$(echo "${image_metadata}" | jq --raw-output '.config.Labels.name') ||  {
         echo "Couldn't parse '.config.Labels.name' from image metadata!"
+        return 1
+    }
+    image_commit_id=$(echo "${image_metadata}" | jq --raw-output '.config.Labels."io.openshift.build.commit.id"') ||  {
+        echo "Couldn't parse '.config.Labels."io.openshift.build.commit.id"' from image metadata!"
         return 1
     }
     image_commitref=$(echo "${image_metadata}" | jq --raw-output '.config.Labels."io.openshift.build.commit.ref"') ||  {
@@ -272,6 +302,8 @@ function check_image() {
 
     check_image_variable_matches_name_and_commitref "${image_variable}" "${image_name}" "${image_commitref}" "${openshift_build_name}" || return 1
 
+    check_image_commit_id_matches_metadata "${image_variable}" "${image_commit_id}" || return 1
+
     echo "---------------------------------------------"
 }
 
@@ -279,11 +311,17 @@ function check_image() {
 
 ret_code=0
 
-echo "Starting check for file: '${PARAMS_ENV_PATH}'"
+echo "Starting check of image references in files: '${COMMIT_ENV_PATH}' and '${PARAMS_ENV_PATH}'"
 echo "---------------------------------------------"
 
+check_variables_uniq "${COMMIT_ENV_PATH}" || {
+    echo "ERROR: Variable names in the '${COMMIT_ENV_PATH}' file failed validation!"
+    echo "----------------------------------------------------"
+    ret_code=1
+}
+
 check_variables_uniq "${PARAMS_ENV_PATH}" || {
-    echo "ERROR: Variable names in the file failed validation!"
+    echo "ERROR: Variable names in the '${PARAMS_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
     ret_code=1
 }
