@@ -51,3 +51,18 @@ jobs:
           echo "Starting Hadolint"
           find . -name "Dockerfile" | xargs ./hadolint --config ./ci/hadolint-config.yaml
           echo "Hadolint done"
+
+      # This simply checks that the manifests and respective kustomization.yaml finishes without an error.
+      - name: Check kustomize manifest
+        id: kustomize-manifests
+        run: |
+          kubectl version --client=true
+          echo "----------------------------------------------------------"
+          echo "Starting 'kubectl kustomize manifests/base'"
+          echo "----------------------------------------------------------"
+          kubectl kustomize manifests/base
+
+          echo "----------------------------------------------------------"
+          echo "Starting 'kubectl kustomize manifests/overlays/additional'"
+          echo "----------------------------------------------------------"
+          kubectl kustomize manifests/overlays/additional
