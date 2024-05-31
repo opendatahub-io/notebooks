@@ -13,7 +13,7 @@ LABEL name="rhoai-notebook-base-rhel9-python-3.9" \
 WORKDIR /opt/app-root/bin
 
 # Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install -U "micropipenv[toml]"
+RUN pip install --no-cache-dir -U "micropipenv[toml]"
 
 # Install Python dependencies from Pipfile.lock file
 
@@ -24,7 +24,7 @@ RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./P
 USER root
 
 # Install usefull OS packages
-RUN dnf install -y mesa-libGL
+RUN dnf install -y mesa-libGL && dnf clean all && rm -rf /var/cache/yum
 
 # Other apps and tools installed as default user
 USER 1001
