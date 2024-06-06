@@ -17,7 +17,9 @@ ARG ONEAPI_VERSION=2024.0
 COPY oneAPI.repo /etc/yum.repos.d/oneAPI.repo
 
 RUN dnf update -y && \
-    dnf install -y intel-basekit-${ONEAPI_VERSION} && \
+    dnf install -y intel-oneapi-compiler-dpcpp-cpp-runtime-${ONEAPI_VERSION} \
+        intel-oneapi-mkl-${ONEAPI_VERSION} \
+        intel-oneapi-dnnl-${ONEAPI_VERSION} && \
     dnf clean all -y && \
     rm -rf /var/cache/dnf/* && \
     rm /etc/yum.repos.d/oneAPI.repo

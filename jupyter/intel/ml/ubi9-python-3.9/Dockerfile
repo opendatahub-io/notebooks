@@ -16,6 +16,9 @@ WORKDIR /opt/app-root/bin
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY Pipfile.lock Pipfile.lock
 
+COPY --chown=1001:0 .patch_sklearn.py /opt/app-root/bin/.patch_sklearn.py
+ENV PYTHONSTARTUP="/opt/app-root/bin/.patch_sklearn.py"
+
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \
     rm -f ./Pipfile.lock && \
