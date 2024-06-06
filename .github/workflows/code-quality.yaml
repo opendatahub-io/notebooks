@@ -1,6 +1,9 @@
 ---
 name: Code static analysis
-on: [pull_request]  # yamllint disable-line rule:truthy
+on:  # yamllint disable-line rule:truthy
+  push:
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
