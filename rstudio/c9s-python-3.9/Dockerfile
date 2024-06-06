@@ -63,7 +63,7 @@ RUN yum -y module enable nginx:$NGINX_VERSION && \
     rpm -V $INSTALL_PKGS && \
     nginx -v 2>&1 | grep -qe "nginx/$NGINX_VERSION\." && echo "Found VERSION $NGINX_VERSION" && \
     # spawn-fcgi is not in epel9
-    rpm -i --nodocs https://www.rpmfind.net/linux/fedora/linux/releases/37/Everything/x86_64/os/Packages/s/spawn-fcgi-1.6.3-23.fc37.x86_64.rpm && \
+    rpm -i --nodocs https://kojipkgs.fedoraproject.org//packages/spawn-fcgi/1.6.3/23.fc37/x86_64/spawn-fcgi-1.6.3-23.fc37.x86_64.rpm && \
     yum -y clean all --enablerepo='*'
 
 # Copy extra files to the image.
