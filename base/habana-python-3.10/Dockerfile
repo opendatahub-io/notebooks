@@ -45,6 +45,9 @@ ENV BASH_ENV="${APP_ROOT}/bin/activate" \
     ENV="${APP_ROOT}/bin/activate" \
     PROMPT_COMMAND=". ${APP_ROOT}/bin/activate"
 
+# Squash a warning from the Habana runtime
+ENV TSAN_OPTIONS='ignore_noninstrumented_modules=1'
+
 WORKDIR /opt/app-root/bin
 
 # Install micropipenv to deploy packages from Pipfile.lock
