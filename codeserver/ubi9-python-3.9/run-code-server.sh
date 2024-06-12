@@ -16,29 +16,55 @@ fi
 # Initilize access logs for culling
 echo '[{"id":"code-server","name":"code-server","last_activity":"'$(date -Iseconds)'","execution_state":"running","connections":1}]' > /var/log/nginx/codeserver.access.log
 
-# Directory for settings file
-user_dir="/opt/app-root/src/.local/share/code-server/User/"
+# Add "/opt/app-root/src/.vscode/" directory to set default interpreter also for Run & Debug
+user_dir="/opt/app-root/src/.vscode/"
 settings_filepath="${user_dir}settings.json"
+launch_filepath="${user_dir}launch.json"
+
+json_launch_settings='{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "python": "/opt/app-root/bin/python3"
+        }
+    ]
+}'
 
 json_settings='{
   "python.defaultInterpreterPath": "/opt/app-root/bin/python3"
-}'
+  }'
 
 # Check if User directory exists
 if [ ! -d "$user_dir" ]; then
   echo "Debug: User directory not found, creating '$user_dir'..."
   mkdir -p "$user_dir"
+  echo "$json_launch_settings" > "$launch_filepath"
+  echo "Debug: '$launch_filepath' file created."
   echo "$json_settings" > "$settings_filepath"
   echo "Debug: '$settings_filepath' file created."
 else
   echo "Debug: User directory already exists."
-  # Add settings.json if not present
-  if [ ! -f "$settings_filepath" ]; then
+  # Add settings.json and launch.json if not present
+  if [ ! -f "$launch_filepath" ]; then
+    echo "Debug: '$launch_filepath' file not found, creating..."
+    echo "$json_launch_settings" > "$launch_filepath"
+    echo "Debug: '$launch_filepath' file created."
+  elif [ ! -f "$settings_filepath" ]; then
     echo "Debug: '$settings_filepath' file not found, creating..."
     echo "$json_settings" > "$settings_filepath"
     echo "Debug: '$settings_filepath' file created."
   else
+    echo "Debug: '$launch_filepath' file already exists."
     echo "Debug: '$settings_filepath' file already exists."
+
   fi
 fi
 
