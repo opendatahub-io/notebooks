@@ -1,0 +1,93 @@
+# inspired by
+# https://github.com/thesuperzapper/kubeflow/blob/master/.github/workflows/example_notebook_servers_publish_TEMPLATE.yaml
+---
+name: Build & Publish Notebook Servers (TEMPLATE)
+"on":
+  workflow_call:
+    inputs:
+      # https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
+      # https://docs.github.com/en/actions/learn-github-actions/contexts
+      target:
+        required: true
+        description: "make target to build"
+        type: string
+      github:
+        required: true
+        description: "top workflow's `github`"
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # GitHub image registry used for storing $(CONTAINER_ENGINE)'s cache
+      CACHE: "ghcr.io/${{ github.repository }}/workbench-images/build-cache"
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # https://github.com/containers/buildah/issues/2521#issuecomment-884779112
+      - name: Workaround https://github.com/containers/podman/issues/22152#issuecomment-2027705598
+        run: sudo apt-get -qq remove podman crun
+
+      - uses: actions/cache@v4
+        id: cached-linuxbrew
+        with:
+          path: /home/linuxbrew/.linuxbrew
+          key: linuxbrew
+
+      - name: Install podman
+        if: steps.cached-linuxbrew.outputs.cache-hit != 'true'
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          /home/linuxbrew/.linuxbrew/bin/brew install podman
+
+      - name: Add linuxbrew to PATH
+        run: echo "/home/linuxbrew/.linuxbrew/bin/" >> $GITHUB_PATH
+
+      - name: Configure Podman
+        run: |
+          mkdir -p $HOME/.config/containers/
+          cp ci/cached-builds/containers.conf $HOME/.config/containers/containers.conf
+          cp ci/cached-builds/storage.conf $HOME/.config/containers/storage.conf
+          # should at least reset storage when touching storage.conf
+          sudo mkdir -p /mnt/containers/
+          sudo chown -R $USER:$USER /mnt/containers
+          podman system reset --force
+          # podman bug? need to create this _after_ doing the reset
+          mkdir -p /mnt/containers/tmp
+
+      # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
+      - name: "push: make ${{ inputs.target }}"
+        run: "make ${{ inputs.target }}"
+        if: "${{ fromJson(inputs.github).event_name == 'push' }}"
+        env:
+          IMAGE_TAG: "${{ github.ref_name }}_${{ github.sha }}"
+          IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
+          CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
+
+      # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
+      - name: "pull_request: make ${{ inputs.target }}"
+        run: |
+          # start a black hole container registry as make target always does a push
+          mkdir -p $HOME/.config/containers/registries.conf.d/
+          cp ci/cached-builds/insecure_localhost_registry.conf $HOME/.config/containers/registries.conf.d/insecure_localhost_registry.conf
+          go run ci/cached-builds/dev_null_container_registry.go &
+          # build and push the image
+          make ${{ inputs.target }}
+        if: "${{ fromJson(inputs.github).event_name == 'pull_request' }}"
+        env:
+          IMAGE_TAG: "${{ github.sha }}"
+          IMAGE_REGISTRY: "localhost:5000/workbench-images"
+          CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }}"
+
+      - run: df -h
+        if: "${{ !cancelled() }}"
