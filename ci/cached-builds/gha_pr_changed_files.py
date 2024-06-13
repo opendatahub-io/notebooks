@@ -16,7 +16,7 @@ def get_github_token() -> str:
 
 
 # https://docs.github.com/en/graphql/guides/forming-calls-with-graphql
-def compose_gh_api_request(owner="opendatahub-io", repo="notebooks", pull_number=556, per_page=100, cursor=""):
+def compose_gh_api_request(pull_number: int, owner="opendatahub-io", repo="notebooks", per_page=100, cursor="") -> urllib.request.Request:
     github_token = get_github_token()
 
     return urllib.request.Request(
