@@ -1,9 +1,12 @@
 ---
 "name": "Build Notebooks"
-"permissions":
-  "packages": "read"
 "on":
   "pull_request":
+
+permissions:
+  contents: read
+  packages: read
+  pull-requests: read
 
 jobs:
   gen:
@@ -13,8 +16,16 @@ jobs:
       matrix: ${{ steps.gen.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
-      - run: python3 ci/cached-builds/gen_gha_matrix_jobs.py
+
+      - run: |
+          python3 ci/cached-builds/gen_gha_matrix_jobs.py \
+            --owner=${{ github.repository_owner }} \
+            --repo=${{ github.event.pull_request.base.repo.name }} \
+            --pr-number=${{ github.event.pull_request.number }} \
+            --skip-unchanged
         id: gen
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # base images
   build:

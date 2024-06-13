@@ -1,10 +1,15 @@
+import argparse
 import itertools
 import json
+import logging
 import os
 import pathlib
 import re
 import string
+import sys
 from typing import Iterable
+
+import gha_pr_changed_files
 
 """Trivial Makefile parser that extracts target dependencies so that we can build each Dockerfile image target in its
 own GitHub Actions job and handle dependencies between them.
@@ -140,6 +145,15 @@ def print_github_actions_pr_matrix(tree: dict[str, list[str]], leafs: list[str])
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
+
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("--owner", type=str, required=False, help="GitHub repo owner/org (for the --skip-unchanged feature)")
+    argparser.add_argument("--repo", type=str, required=False, help="GitHub repo name (for the --skip-unchanged feature)")
+    argparser.add_argument("--pr-number", type=int, required=False, help="PR number under owner/repo (for the --skip-unchanged feature)")
+    argparser.add_argument("--skip-unchanged", type=bool, required=False, default=False, action=argparse.BooleanOptionalAction)
+    args = argparser.parse_args()
+
     # https://www.gnu.org/software/make/manual/make.html#Reading-Makefiles
     with open("Makefile", "rt") as makefile:
         lines = read_makefile_lines(makefile)
@@ -148,6 +162,9 @@ def main() -> None:
     write_github_workflow_file(tree, project_dir / ".github" / "workflows" / "build-notebooks.yaml")
 
     leafs = compute_leafs_in_dependency_tree(tree)
+    if args.skip_unchanged:
+        logging.info(f"Skipping targets not modified in PR #{args.pr_number}")
+        leafs = gha_pr_changed_files.filter_out_unchanged(args.owner, args.repo, args.pr_number, leafs)
     output = print_github_actions_pr_matrix(tree, leafs)
 
     print("leafs", leafs)
