@@ -4,9 +4,9 @@
 SCRIPT_DIR=$(dirname -- "$0")
 source ${SCRIPT_DIR}/utils/*.sh
 
-# Start nginx and fastcgiwrap
+# Start nginx and supervisord
 run-nginx.sh &
-spawn-fcgi -s /var/run/fcgiwrap.socket -M 766 /usr/sbin/fcgiwrap 
+/usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf &
 
 # Add .bashrc for custom promt if not present
 if [ ! -f "/opt/app-root/src/.bashrc" ]; then
