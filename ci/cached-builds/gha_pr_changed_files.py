@@ -52,7 +52,7 @@ def list_changed_files(owner: str, repo: str, pr_number: int, per_page=100) -> l
 
     CURSOR = ""
     while CURSOR is not None:
-        request = compose_gh_api_request(owner, repo, pull_number=pr_number, per_page=per_page, cursor=CURSOR)
+        request = compose_gh_api_request(pull_number=pr_number, owner=owner, repo=repo, per_page=per_page, cursor=CURSOR)
         response = urllib.request.urlopen(request)
         data = json.loads(response.read().decode("utf-8"))
         response.close()
