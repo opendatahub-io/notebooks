@@ -59,6 +59,7 @@ endef
 #   ARG 2: Path of image context we want to build.
 #   ARG 3: Base image tag name (optional).
 define image
+	$(info #*# Image build directory: <$(2)> #(MACHINE-PARSED LINE)#*#...)
 	$(call build_image,$(1),$(2),$(3))
 	$(call push_image,$(1))
 endef
