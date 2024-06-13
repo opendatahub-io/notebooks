@@ -144,7 +144,8 @@ def print_github_actions_pr_matrix(tree: dict[str, list[str]], leafs: list[str])
         targets.append(leaf)
 
     matrix = {"target": targets}
-    return [f"matrix={json.dumps(matrix, separators=(',', ':'))}"]
+    return [f"matrix={json.dumps(matrix, separators=(',', ':'))}",
+            f"has_jobs={json.dumps(len(leafs) > 0, separators=(',', ':'))}"]
 
 
 def main() -> None:

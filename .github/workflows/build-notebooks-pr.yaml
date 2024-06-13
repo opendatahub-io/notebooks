@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
+      has_jobs: ${{ steps.gen.outputs.has_jobs }}
     steps:
       - uses: actions/checkout@v4
 
@@ -27,13 +28,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # base images
   build:
     needs: ["gen"]
     strategy:
       fail-fast: false
       matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
     uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
+    if: ${{ fromJson(needs.gen.outputs.has_jobs) }}
     with:
       target: "${{ matrix.target }}"
       github: "${{ toJSON(github) }}"
