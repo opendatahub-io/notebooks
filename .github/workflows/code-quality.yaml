@@ -1,11 +1,35 @@
 ---
 name: Code static analysis
-on: [pull_request]  # yamllint disable-line rule:truthy
+on:  # yamllint disable-line rule:truthy
+  push:
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  check-generated-code:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rerun all code generators we have
+        run: python3 ci/cached-builds/gen_gha_matrix_jobs.py
+
+      - name: Check there aren't any modified files present
+        run: |
+          if [[ $(git ls-files . -d -m -o --exclude-standard --full-name -v | tee modified.log | wc -l) -gt 0 ]]; then
+            echo "There are changed files"
+            exit 1
+          fi
+
+      - name: Print modified files
+        if: ${{ failure() }}
+        run: |
+          cat modified.log
+          git diff
+
   code-static-analysis:
     runs-on: ubuntu-latest
     steps:
