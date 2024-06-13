@@ -36,9 +36,9 @@ jobs:
       # Create a new branch
       - name: Create a new branch
         run: |
-         echo ${{ env.DIGEST_UPDATER_BRANCH }}
-         git checkout -b ${{ env.DIGEST_UPDATER_BRANCH }}
-         git push --set-upstream origin ${{ env.DIGEST_UPDATER_BRANCH }}
+          echo ${{ env.DIGEST_UPDATER_BRANCH }}
+          git checkout -b ${{ env.DIGEST_UPDATER_BRANCH }}
+          git push --set-upstream origin ${{ env.DIGEST_UPDATER_BRANCH }}
 
   update-n-version:
     needs: [initialize]
@@ -48,8 +48,8 @@ jobs:
     steps:
       - name: Configure Git
         run: |
-         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-         git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
 
         # Get latest build commit from the https://github.com/red-hat-data-services/notebooks/${release_branch} using this as identifier for the latest tag name
       - name: Retrive latest commit hash from the release branch
@@ -68,50 +68,59 @@ jobs:
       - name: Fetch digest, and update the params.env file
         shell: bash
         run: |
-              echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
-              IMAGES=("odh-minimal-notebook-image-n" "odh-minimal-gpu-notebook-image-n" "odh-pytorch-gpu-notebook-image-n" "odh-generic-data-science-notebook-image-n" "odh-tensorflow-gpu-notebook-image-n" "odh-trustyai-notebook-image-n" "odh-codeserver-notebook-image-n")
-              REGEXES=("v2-${{ env.RELEASE_VERSION_N }}-\d{8}+-${{ steps.hash-n.outputs.HASH_N }}" "cuda-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" "v2-${{ env.RELEASE_VERSION_N }}-\d{8}+-${{ steps.hash-n.outputs.HASH_N }}" \
-                       "v2-${{ env.RELEASE_VERSION_N }}-\d{8}+-${{ steps.hash-n.outputs.HASH_N }}" "cuda-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" "v2-${{ env.RELEASE_VERSION_N }}-\d{8}+-${{ steps.hash-n.outputs.HASH_N }}" \
-                       "codeserver-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}")
+          echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
+          IMAGES=("odh-minimal-notebook-image-n"
+            "odh-minimal-gpu-notebook-image-n"
+            "odh-pytorch-gpu-notebook-image-n"
+            "odh-generic-data-science-notebook-image-n"
+            "odh-tensorflow-gpu-notebook-image-n"
+            "odh-trustyai-notebook-image-n"
+            "odh-codeserver-notebook-image-n"
+            "odh-habana-notebook-image-n")
+          REGEXES=("v2-${{ env.RELEASE_VERSION_N }}-\d{8}+-${{ steps.hash-n.outputs.HASH_N }}" "cuda-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" "v2-${{ env.RELEASE_VERSION_N }}-\d{8}+-${{ steps.hash-n.outputs.HASH_N }}" \
+                   "v2-${{ env.RELEASE_VERSION_N }}-\d{8}+-${{ steps.hash-n.outputs.HASH_N }}" "cuda-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" "v2-${{ env.RELEASE_VERSION_N }}-\d{8}+-${{ steps.hash-n.outputs.HASH_N }}" \
+                   "codeserver-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}"
+                   "habana-[a-z]+-1.13.0-[a-z0-9]+-[a-z]+-3.8-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}")
 
-              for ((i=0;i<${#IMAGES[@]};++i)); do
-                image=${IMAGES[$i]}
-                echo "CHECKING: " $image
-                regex=${REGEXES[$i]}
-                img=$(cat manifests/base/params.env | grep -E "${image}=" | cut -d '=' -f2)
-                registry=$(echo $img | cut -d '@' -f1)
-                latest_tag=$(skopeo inspect docker://$img | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
-                digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
-                output=$registry@$digest
-                echo "NEW: " $output
-                sed -i "s|${image}=.*|${image}=$output|" manifests/base/params.env
-              done
-              if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-                git fetch origin ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/params.env && git commit -m "Update images for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin ${{ env.DIGEST_UPDATER_BRANCH }}
-              else
-                echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
-              fi
+          for ((i=0;i<${#IMAGES[@]};++i)); do
+            image=${IMAGES[$i]}
+            echo "CHECKING: " $image
+            regex=${REGEXES[$i]}
+            img=$(cat manifests/base/params.env | grep -E "${image}=" | cut -d '=' -f2)
+            registry=$(echo $img | cut -d '@' -f1)
+            latest_tag=$(skopeo inspect docker://$img | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+            digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
+            output=$registry@$digest
+            echo "NEW: " $output
+            sed -i "s|${image}=.*|${image}=$output|" manifests/base/params.env
+          done
+          if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
+            git fetch origin ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/params.env && git commit -m "Update images for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin ${{ env.DIGEST_UPDATER_BRANCH }}
+          else
+            echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
+          fi
 
       - name: Fetch digest, and update the commit.env file
         run: |
-            echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
-            COMMIT=("odh-minimal-notebook-image-commit-n"
-             "odh-minimal-gpu-notebook-image-commit-n"
-             "odh-pytorch-gpu-notebook-image-commit-n"
-             "odh-generic-data-science-notebook-image-commit-n"
-             "odh-tensorflow-gpu-notebook-image-commit-n"
-             "odh-trustyai-notebook-image-commit-n"
-             "odh-codeserver-notebook-image-commit-n")
+          echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
+          COMMIT=("odh-minimal-notebook-image-commit-n"
+           "odh-minimal-gpu-notebook-image-commit-n"
+           "odh-pytorch-gpu-notebook-image-commit-n"
+           "odh-generic-data-science-notebook-image-commit-n"
+           "odh-tensorflow-gpu-notebook-image-commit-n"
+           "odh-trustyai-notebook-image-commit-n"
+           "odh-codeserver-notebook-image-commit-n"
+           "odh-habana-notebook-image-commit-n")
 
-            for val in "${COMMIT[@]}"; do
-              echo $val
-              sed -i "s|${val}=.*|${val}=${{ steps.hash-n.outputs.HASH_N }}|" manifests/base/commit.env
-            done
-            if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-              git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/commit.env && git commit -m "Update image commits for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
-            else
-              echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
-            fi
+          for val in "${COMMIT[@]}"; do
+            echo $val
+            sed -i "s|${val}=.*|${val}=${{ steps.hash-n.outputs.HASH_N }}|" manifests/base/commit.env
+          done
+          if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
+            git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/commit.env && git commit -m "Update image commits for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
+          else
+            echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
+          fi
 
   update-n-1-version:
     needs: [initialize, update-n-version]
@@ -121,8 +130,8 @@ jobs:
     steps:
       - name: Configure Git
         run: |
-         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-         git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
 
       # Get latest build commit from the https://github.com/red-hat-data-services/notebooks/${release_branch} using this as identifier for the latest tag name
       - name: Retrive latest commit hash from the release branch
@@ -141,50 +150,59 @@ jobs:
       - name: Fetch digest, and update the params.env file
         shell: bash
         run: |
-              echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N_1 }} on ${{ env.RELEASE_VERSION_N_1}}
-              IMAGES=("odh-minimal-notebook-image-n-1" "odh-minimal-gpu-notebook-image-n-1" "odh-pytorch-gpu-notebook-image-n-1" "odh-generic-data-science-notebook-image-n-1" "odh-tensorflow-gpu-notebook-image-n-1" "odh-trustyai-notebook-image-n-1" "odh-codeserver-notebook-image-n-1")
-              REGEXES=("v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" "cuda-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}" "v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" \
-                       "v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" "cuda-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}" "v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" \
-                       "codeserver-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}")
+          echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N_1 }} on ${{ env.RELEASE_VERSION_N_1}}
+          IMAGES=("odh-minimal-notebook-image-n-1"
+          "odh-minimal-gpu-notebook-image-n-1"
+          "odh-pytorch-gpu-notebook-image-n-1"
+          "odh-generic-data-science-notebook-image-n-1"
+          "odh-tensorflow-gpu-notebook-image-n-1"
+          "odh-trustyai-notebook-image-n-1"
+          "odh-codeserver-notebook-image-n-1"
+          "odh-habana-notebook-image-n-1")
+          REGEXES=("v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" "cuda-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}" "v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" \
+                   "v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" "cuda-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}" "v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" \
+                   "codeserver-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}"
+                   "habana-[a-z]+-1.10.0-[a-z0-9]+-[a-z]+-3.8-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}")
 
-              for ((i=0;i<${#IMAGES[@]};++i)); do
-                image=${IMAGES[$i]}
-                echo "CHECKING: " $image
-                regex=${REGEXES[$i]}
-                img=$(cat manifests/base/params.env | grep -E "${image}=" | cut -d '=' -f2)
-                registry=$(echo $img | cut -d '@' -f1)
-                latest_tag=$(skopeo inspect docker://$img | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
-                digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
-                output=$registry@$digest
-                echo "NEW: " $output
-                sed -i "s|${image}=.*|${image}=$output|" manifests/base/params.env
-              done
-              if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-                git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/params.env && git commit -m "Update images for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
-              else
-                echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
-              fi
+          for ((i=0;i<${#IMAGES[@]};++i)); do
+            image=${IMAGES[$i]}
+            echo "CHECKING: " $image
+            regex=${REGEXES[$i]}
+            img=$(cat manifests/base/params.env | grep -E "${image}=" | cut -d '=' -f2)
+            registry=$(echo $img | cut -d '@' -f1)
+            latest_tag=$(skopeo inspect docker://$img | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+            digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
+            output=$registry@$digest
+            echo "NEW: " $output
+            sed -i "s|${image}=.*|${image}=$output|" manifests/base/params.env
+          done
+          if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
+            git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/params.env && git commit -m "Update images for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
+          else
+            echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
+          fi
 
       - name: Fetch digest, and update the commit.env file
         run: |
-              echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N_1 }} on ${{ env.RELEASE_VERSION_N_1}}
-              COMMIT=("odh-minimal-notebook-image-commit-n-1"
-               "odh-minimal-gpu-notebook-image-commit-n-1"
-               "odh-pytorch-gpu-notebook-image-commit-n-1"
-               "odh-generic-data-science-notebook-image-commit-n-1"
-               "odh-tensorflow-gpu-notebook-image-commit-n-1"
-               "odh-trustyai-notebook-image-commit-n-1"
-               "odh-codeserver-notebook-image-commit-n-1")
+          echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N_1 }} on ${{ env.RELEASE_VERSION_N_1}}
+          COMMIT=("odh-minimal-notebook-image-commit-n-1"
+           "odh-minimal-gpu-notebook-image-commit-n-1"
+           "odh-pytorch-gpu-notebook-image-commit-n-1"
+           "odh-generic-data-science-notebook-image-commit-n-1"
+           "odh-tensorflow-gpu-notebook-image-commit-n-1"
+           "odh-trustyai-notebook-image-commit-n-1"
+           "odh-codeserver-notebook-image-commit-n-1"
+           "odh-habana-notebook-image-commit-n-1")
 
-              for val in "${COMMIT[@]}"; do
-                echo $val
-                sed -i "s|${val}=.*|${val}=${{ steps.hash-n-1.outputs.HASH_N_1 }}|" manifests/base/commit.env
-              done
-              if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-                git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/commit.env && git commit -m "Update image commits for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
-              else
-                echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
-              fi
+          for val in "${COMMIT[@]}"; do
+            echo $val
+            sed -i "s|${val}=.*|${val}=${{ steps.hash-n-1.outputs.HASH_N_1 }}|" manifests/base/commit.env
+          done
+          if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
+            git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/commit.env && git commit -m "Update image commits for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
+          else
+            echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
+          fi
 
   open-pull-request:
     needs: [update-n-version, update-n-1-version]
