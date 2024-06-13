@@ -7,6 +7,7 @@ import pathlib
 import re
 import string
 import sys
+import unittest
 from typing import Iterable
 
 import gha_pr_changed_files
@@ -120,10 +121,12 @@ def write_github_workflow_file(tree: dict[str, list[str]], path: pathlib.Path) -
 def flatten(list_of_lists):
     return list(itertools.chain.from_iterable(list_of_lists))
 
+
 def compute_leafs_in_dependency_tree(tree: dict[str, list[str]]) -> list[str]:
     key_set = set(tree.keys())
     value_set = set(flatten(tree.values()))
     return [key for key in key_set if key not in value_set]
+
 
 def print_github_actions_pr_matrix(tree: dict[str, list[str]], leafs: list[str]) -> list[str]:
     """Outputs GitHub matrix definition Json
@@ -148,10 +151,14 @@ def main() -> None:
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
     argparser = argparse.ArgumentParser()
-    argparser.add_argument("--owner", type=str, required=False, help="GitHub repo owner/org (for the --skip-unchanged feature)")
-    argparser.add_argument("--repo", type=str, required=False, help="GitHub repo name (for the --skip-unchanged feature)")
-    argparser.add_argument("--pr-number", type=int, required=False, help="PR number under owner/repo (for the --skip-unchanged feature)")
-    argparser.add_argument("--skip-unchanged", type=bool, required=False, default=False, action=argparse.BooleanOptionalAction)
+    argparser.add_argument("--owner", type=str, required=False,
+                           help="GitHub repo owner/org (for the --skip-unchanged feature)")
+    argparser.add_argument("--repo", type=str, required=False,
+                           help="GitHub repo name (for the --skip-unchanged feature)")
+    argparser.add_argument("--pr-number", type=int, required=False,
+                           help="PR number under owner/repo (for the --skip-unchanged feature)")
+    argparser.add_argument("--skip-unchanged", type=bool, required=False, default=False,
+                           action=argparse.BooleanOptionalAction)
     args = argparser.parse_args()
 
     # https://www.gnu.org/software/make/manual/make.html#Reading-Makefiles
@@ -164,7 +171,8 @@ def main() -> None:
     leafs = compute_leafs_in_dependency_tree(tree)
     if args.skip_unchanged:
         logging.info(f"Skipping targets not modified in PR #{args.pr_number}")
-        leafs = gha_pr_changed_files.filter_out_unchanged(args.owner, args.repo, args.pr_number, leafs)
+        changed_files = gha_pr_changed_files.list_changed_files(args.owner, args.repo, args.pr_number)
+        leafs = gha_pr_changed_files.filter_out_unchanged(leafs, changed_files)
     output = print_github_actions_pr_matrix(tree, leafs)
 
     print("leafs", leafs)
@@ -176,3 +184,18 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+
+
+class SelfTests(unittest.TestCase):
+    def test_select_changed_targets(self):
+        with open(project_dir / "Makefile", "rt") as makefile:
+            lines = read_makefile_lines(makefile)
+        tree = extract_target_dependencies(lines)
+        leafs = compute_leafs_in_dependency_tree(tree)
+
+        changed_files = ["jupyter/datascience/ubi9-python-3.9/Dockerfile"]
+
+        leafs = gha_pr_changed_files.filter_out_unchanged(leafs, changed_files)
+        assert set(leafs) == {'cuda-jupyter-tensorflow-ubi9-python-3.9',
+                              'jupyter-trustyai-ubi9-python-3.9',
+                              'jupyter-pytorch-ubi9-python-3.9'}
