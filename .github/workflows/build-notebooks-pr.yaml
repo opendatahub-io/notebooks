@@ -1,0 +1,29 @@
+---
+"name": "Build Notebooks"
+"permissions":
+  "packages": "read"
+"on":
+  "pull_request":
+
+jobs:
+  gen:
+    name: Generate job matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 ci/cached-builds/gen_gha_matrix_jobs.py
+        id: gen
+
+  # base images
+  build:
+    needs: ["gen"]
+    strategy:
+      fail-fast: false
+      matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
+    uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
+    with:
+      target: "${{ matrix.target }}"
+      github: "${{ toJSON(github) }}"
+    secrets: inherit

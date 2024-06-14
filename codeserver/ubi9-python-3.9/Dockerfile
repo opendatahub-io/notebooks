@@ -44,6 +44,7 @@ COPY --chown=1001:0 utils utils/
 # Create and intall the extensions though build-time on a temporary directory. Later this directory will copied on the `/opt/app-root/src/.local/share/code-server/extensions` via run-code-server.sh file when it starts up. 
 RUN mkdir -p /opt/app-root/extensions-temp && \
     code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2024.2.1.vsix --extensions-dir /opt/app-root/extensions-temp && \
+    code-server --install-extension /opt/app-root/bin/utils/ms-python.debugpy-2024.2.0@linux-x64.vsix --extensions-dir /opt/app-root/extensions-temp && \
     code-server --install-extension  /opt/app-root/bin/utils/ms-toolsai.jupyter-2023.9.100.vsix --extensions-dir /opt/app-root/extensions-temp
 
 # Install NGINX to proxy code-server and pass probes check
@@ -112,6 +113,8 @@ COPY nginx/api/ /opt/app-root/api/
 COPY --chown=1001:0 run-code-server.sh run-nginx.sh ./
 
 ENV SHELL /bin/bash
+
+ENV PYTHONPATH=/opt/app-root/bin/python3
 
 WORKDIR /opt/app-root/src
 
