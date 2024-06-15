@@ -1,11 +1,13 @@
 ---
 name: Validation of image references (image SHAs) in params.env and runtime images
 on:  # yamllint disable-line rule:truthy
+  push:
   pull_request:
     paths:
       - 'manifests/base/commit.env'
       - 'manifests/base/params.env'
       - 'ci/check-params-env.sh'
+  workflow_dispatch:
 
 permissions:
   contents: read
