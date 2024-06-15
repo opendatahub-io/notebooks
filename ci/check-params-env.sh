@@ -31,6 +31,7 @@ EXPECTED_NUM_RECORDS=20
 
 function check_variables_uniq() {
     local env_file_path="${1}"
+    local allow_value_duplicity="${2:=false}"
     local ret_code=0
 
     echo "Checking that all variables in the file '${env_file_path}' are unique and expected"
@@ -45,9 +46,30 @@ function check_variables_uniq() {
     num_uniq_records=$(echo "${content}" | uniq | wc -l)
 
     test "${num_records}" -eq "${num_uniq_records}" || {
-        echo "Some of the records in the file aren't unique!"
+        echo "Some of the variables in the file aren't unique!"
         ret_code=1
     }
+
+    # ----
+    if test "${allow_value_duplicity}" = "false"; then
+        echo "Checking that all values assigned to variables in the file '${env_file_path}' are unique and expected"
+
+        content=$(sed 's#.*=\(.*\)#\1#' "${env_file_path}" | sort)
+
+        local num_values
+        num_values=$(echo "${content}" | wc -l)
+
+        local num_uniq_values
+        num_uniq_values=$(echo "${content}" | uniq | wc -l)
+
+        test "${num_values}" -eq "${num_uniq_values}" || {
+            echo "Some of the values in the file aren't unique!"
+            ret_code=1
+        }
+    fi
+
+    # ----
+    echo "Checking that there are expected number of records in the file '${env_file_path}'"
 
     test "${num_records}" -eq "${EXPECTED_NUM_RECORDS}" || {
         echo "Number of records in the file is incorrect - expected '${EXPECTED_NUM_RECORDS}' but got '${num_records}'!"
@@ -282,13 +304,13 @@ ret_code=0
 echo "Starting check of image references in files: '${COMMIT_ENV_PATH}' and '${PARAMS_ENV_PATH}'"
 echo "---------------------------------------------"
 
-check_variables_uniq "${COMMIT_ENV_PATH}" || {
+check_variables_uniq "${COMMIT_ENV_PATH}" "true" || {
     echo "ERROR: Variable names in the '${COMMIT_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
     ret_code=1
 }
 
-check_variables_uniq "${PARAMS_ENV_PATH}" || {
+check_variables_uniq "${PARAMS_ENV_PATH}" "false" || {
     echo "ERROR: Variable names in the '${PARAMS_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
     ret_code=1
