@@ -84,7 +84,7 @@ jobs:
                 img=$(cat manifests/base/params.env | grep -E "${image}=" | cut -d '=' -f2)
                 registry=$(echo $img | cut -d '@' -f1)
                 src_tag=$(skopeo inspect docker://$img | jq '.Env[] | select(startswith("OPENSHIFT_BUILD_NAME=")) | split("=")[1]' | tr -d '"' | sed 's/-amd64$//')
-                regex="$src_tag-${{ env.RELEASE_VERSION_N}}-\d+-${{ steps.hash-n.outputs.HASH_N }}"
+                regex="^$src_tag-${{ env.RELEASE_VERSION_N}}-\d+-${{ steps.hash-n.outputs.HASH_N }}\$"
                 latest_tag=$(skopeo inspect docker://$img | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
                 digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
                 output=$registry@$digest
@@ -164,7 +164,7 @@ jobs:
                 img=$(cat manifests/base/params.env | grep -E "${image}=" | cut -d '=' -f2)
                 registry=$(echo $img | cut -d '@' -f1)
                 src_tag=$(skopeo inspect docker://$img | jq '.Env[] | select(startswith("OPENSHIFT_BUILD_NAME=")) | split("=")[1]' | tr -d '"' | sed 's/-amd64$//')
-                regex="$src_tag-${{ env.RELEASE_VERSION_N_1}}-\d+-${{ steps.hash-n-1.outputs.HASH_N_1 }}"
+                regex="^$src_tag-${{ env.RELEASE_VERSION_N_1}}-\d+-${{ steps.hash-n-1.outputs.HASH_N_1 }}\$"
                 latest_tag=$(skopeo inspect docker://$img | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
                 digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
                 output=$registry@$digest
