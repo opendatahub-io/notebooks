@@ -68,19 +68,10 @@ jobs:
       - name: Update the param.env file
         run: |
               echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
-              IMAGES=("odh-minimal-notebook-image-n"
-               "odh-minimal-gpu-notebook-image-n"
-               "odh-pytorch-gpu-notebook-image-n"
-               "odh-generic-data-science-notebook-image-n"
-               "odh-tensorflow-gpu-notebook-image-n"
-               "odh-trustyai-notebook-image-n"
-               "odh-codeserver-notebook-image-n"
-               "odh-rstudio-notebook-image-n"
-               "odh-rstudio-gpu-notebook-image-n")
+              IMAGES=$(cat manifests/base/params.env | grep "\-n=" | cut -d "=" -f 1)
 
-              for ((i=0;i<${#IMAGES[@]};++i)); do
-                image=${IMAGES[$i]}
-                echo "CHECKING: " $image
+              for image in ${IMAGES}; do
+                echo "CHECKING: '${image}'"
                 img=$(cat manifests/base/params.env | grep -E "${image}=" | cut -d '=' -f2)
                 registry=$(echo $img | cut -d '@' -f1)
                 src_tag=$(skopeo inspect docker://$img | jq '.Env[] | select(startswith("OPENSHIFT_BUILD_NAME=")) | split("=")[1]' | tr -d '"' | sed 's/-amd64$//')
@@ -100,17 +91,10 @@ jobs:
       - name: Update the commit.env file
         run: |
             echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
-            COMMIT=("odh-minimal-notebook-image-commit-n"
-             "odh-minimal-gpu-notebook-image-commit-n"
-             "odh-pytorch-gpu-notebook-image-commit-n"
-             "odh-generic-data-science-notebook-image-commit-n"
-             "odh-tensorflow-gpu-notebook-image-commit-n"
-             "odh-trustyai-notebook-image-commit-n"
-             "odh-codeserver-notebook-image-commit-n"
-             "odh-rstudio-notebook-image-commit-n"
-             "odh-rstudio-gpu-notebook-image-commit-n")
+            # Get the complete list of images N-1-version to update
+            COMMIT=$(cat manifests/base/commit.env | grep "\-n=" | cut -d "=" -f 1)
 
-            for val in "${COMMIT[@]}"; do
+            for val in ${COMMIT}; do
               echo $val
               sed -i "s|${val}=.*|${val}=${{ steps.hash-n.outputs.HASH_N }}|" manifests/base/commit.env
             done
@@ -148,19 +132,10 @@ jobs:
       - name: Update the param.env file
         run: |
               echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N_1 }} on ${{ env.RELEASE_VERSION_N_1}}
-              IMAGES=("odh-minimal-notebook-image-n-1"
-               "odh-minimal-gpu-notebook-image-n-1"
-               "odh-pytorch-gpu-notebook-image-n-1"
-               "odh-generic-data-science-notebook-image-n-1"
-               "odh-tensorflow-gpu-notebook-image-n-1"
-               "odh-trustyai-notebook-image-n-1"
-               "odh-codeserver-notebook-image-n-1"
-               "odh-rstudio-notebook-image-n-1"
-               "odh-rstudio-gpu-notebook-image-n-1")
+              IMAGES=$(cat manifests/base/params.env | grep "\-n-1=" | cut -d "=" -f 1)
 
-              for ((i=0;i<${#IMAGES[@]};++i)); do
-                image=${IMAGES[$i]}
-                echo "CHECKING: " $image
+              for image in ${IMAGES}; do
+                echo "CHECKING: '${image}'"
                 img=$(cat manifests/base/params.env | grep -E "${image}=" | cut -d '=' -f2)
                 registry=$(echo $img | cut -d '@' -f1)
                 src_tag=$(skopeo inspect docker://$img | jq '.Env[] | select(startswith("OPENSHIFT_BUILD_NAME=")) | split("=")[1]' | tr -d '"' | sed 's/-amd64$//')
@@ -179,17 +154,10 @@ jobs:
       - name: Update the commit.env file
         run: |
               echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N_1 }} on ${{ env.RELEASE_VERSION_N_1}}
-              COMMIT=("odh-minimal-notebook-image-commit-n-1"
-               "odh-minimal-gpu-notebook-image-commit-n-1"
-               "odh-pytorch-gpu-notebook-image-commit-n-1"
-               "odh-generic-data-science-notebook-image-commit-n-1"
-               "odh-tensorflow-gpu-notebook-image-commit-n-1"
-               "odh-trustyai-notebook-image-commit-n-1"
-               "odh-codeserver-notebook-image-commit-n-1"
-               "odh-rstudio-notebook-image-commit-n-1"
-               "odh-rstudio-gpu-notebook-image-commit-n-1")
+              # Get the complete list of images N-1-version to update
+              COMMIT=$(cat manifests/base/commit.env | grep "\-n-1=" | cut -d "=" -f 1)
 
-              for val in "${COMMIT[@]}"; do
+              for val in ${COMMIT}; do
                 echo $val
                 sed -i "s|${val}=.*|${val}=${{ steps.hash-n-1.outputs.HASH_N_1 }}|" manifests/base/commit.env
               done
