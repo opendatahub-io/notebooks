@@ -13,8 +13,8 @@ name = "pytorch"
 [packages]
 # PyTorch packages
 tensorboard = "~=2.14.0"
-torch = {version = "~=2.0.0", index = "pytorch"}
-torchvision = {version = "~=0.15.2", index = "pytorch"}
+torch = {version = "~=2.2.2", index = "pytorch"}
+torchvision = {version = "~=0.17.2", index = "pytorch"}
 # Datascience and useful extensions
 kafka-python = "~=2.0.2"
 matplotlib = "~=3.6.3"
@@ -49,6 +49,7 @@ requests = "==2.31.0"
 tornado = "==6.3.3"
 traitlets = "==5.1.1"
 urllib3 = "==1.26.18"
+networkx = "==3.1"
 
 [requires]
 python_version = "3.8"
