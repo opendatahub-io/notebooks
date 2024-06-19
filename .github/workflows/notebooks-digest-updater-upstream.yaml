@@ -67,41 +67,61 @@ jobs:
 
       - name: Update the param.env file
         run: |
-              echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
-              IMAGES=$(cat manifests/base/params.env | grep "\-n=" | cut -d "=" -f 1)
+              PARAMS_ENV_PATH="manifests/base/params.env"
+
+              echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N }}
+
+              # Get the complete list of images N-version to update
+              IMAGES=$(cat "${PARAMS_ENV_PATH}" | grep "\-n=" | cut -d "=" -f 1)
 
               for image in ${IMAGES}; do
                 echo "CHECKING: '${image}'"
-                img=$(cat manifests/base/params.env | grep -E "${image}=" | cut -d '=' -f2)
-                registry=$(echo $img | cut -d '@' -f1)
-                src_tag=$(skopeo inspect docker://$img | jq '.Env[] | select(startswith("OPENSHIFT_BUILD_NAME=")) | split("=")[1]' | tr -d '"' | sed 's/-amd64$//')
+                img=$(grep -E "${image}=" "${PARAMS_ENV_PATH}" | cut -d '=' -f2)
+                registry=$(echo "${img}" | cut -d '@' -f1)
+
+                skopeo_metadata=$(skopeo inspect --retry-times 3 "docker://${img}")
+
+                src_tag=$(echo "${skopeo_metadata}" | jq '.Env[] | select(startswith("OPENSHIFT_BUILD_NAME=")) | split("=")[1]' | tr -d '"' | sed 's/-amd64$//')
                 regex="^$src_tag-${{ env.RELEASE_VERSION_N}}-\d+-${{ steps.hash-n.outputs.HASH_N }}\$"
-                latest_tag=$(skopeo inspect docker://$img | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
-                digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
-                output=$registry@$digest
-                echo "NEW:" $output
-                sed -i "s|${image}=.*|${image}=$output|" manifests/base/params.env
+                latest_tag=$(echo "${skopeo_metadata}" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+                # use `--no-tags` for skopeo once available in newer version
+                digest=$(skopeo inspect --retry-times 3 "docker://${registry}:${latest_tag}" | jq .Digest | tr -d '"')
+                output="${registry}@${digest}"
+                echo "NEW: ${output}"
+                sed -i "s|${image}=.*|${image}=${output}|" "${PARAMS_ENV_PATH}"
               done
+
               if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-                git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/params.env && git commit -m "Update images for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
+                git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && \
+                  git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && \
+                  git add "${PARAMS_ENV_PATH}" && \
+                  git commit -m "Update images for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && \
+                  git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
               else
-                echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
+                echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N }}"
               fi
 
       - name: Update the commit.env file
         run: |
-            echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
+            COMMIT_ENV_PATH="manifests/base/commit.env"
+
+            echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N }}
             # Get the complete list of images N-1-version to update
-            COMMIT=$(cat manifests/base/commit.env | grep "\-n=" | cut -d "=" -f 1)
+            COMMIT=$(grep "\-n=" "${COMMIT_ENV_PATH}" | cut -d "=" -f 1)
 
             for val in ${COMMIT}; do
-              echo $val
-              sed -i "s|${val}=.*|${val}=${{ steps.hash-n.outputs.HASH_N }}|" manifests/base/commit.env
+              echo "${val}"
+              sed -i "s|${val}=.*|${val}=${{ steps.hash-n.outputs.HASH_N }}|" "${COMMIT_ENV_PATH}"
             done
+
             if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-              git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/commit.env && git commit -m "Update image commits for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
+              git fetch origin ${{ env.DIGEST_UPDATER_BRANCH }} && \
+                git pull origin ${{ env.DIGEST_UPDATER_BRANCH }} && \
+                git add "${COMMIT_ENV_PATH}" && \
+                git commit -m "Update image commits for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && \
+                git push origin ${{ env.DIGEST_UPDATER_BRANCH }}
             else
-              echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
+              echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N }}"
             fi
 
   update-n-1-version:
@@ -131,40 +151,61 @@ jobs:
 
       - name: Update the param.env file
         run: |
-              echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N_1 }} on ${{ env.RELEASE_VERSION_N_1}}
-              IMAGES=$(cat manifests/base/params.env | grep "\-n-1=" | cut -d "=" -f 1)
+              PARAMS_ENV_PATH="manifests/base/params.env"
+
+              echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N_1 }} on ${{ env.RELEASE_VERSION_N_1 }}
+
+              # Get the complete list of images N-1-version to update
+              IMAGES=$(cat "${PARAMS_ENV_PATH}" | grep "\-n-1=" | cut -d "=" -f 1)
 
               for image in ${IMAGES}; do
                 echo "CHECKING: '${image}'"
-                img=$(cat manifests/base/params.env | grep -E "${image}=" | cut -d '=' -f2)
-                registry=$(echo $img | cut -d '@' -f1)
-                src_tag=$(skopeo inspect docker://$img | jq '.Env[] | select(startswith("OPENSHIFT_BUILD_NAME=")) | split("=")[1]' | tr -d '"' | sed 's/-amd64$//')
+                img=$(grep -E "${image}=" "${PARAMS_ENV_PATH}" | cut -d '=' -f2)
+                registry=$(echo "${img}" | cut -d '@' -f1)
+
+                skopeo_metadata=$(skopeo inspect --retry-times 3 "docker://${img}")
+
+                src_tag=$(echo "${skopeo_metadata}" | jq '.Env[] | select(startswith("OPENSHIFT_BUILD_NAME=")) | split("=")[1]' | tr -d '"' | sed 's/-amd64$//')
                 regex="^$src_tag-${{ env.RELEASE_VERSION_N_1}}-\d+-${{ steps.hash-n-1.outputs.HASH_N_1 }}\$"
-                latest_tag=$(skopeo inspect docker://$img | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
-                digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
-                output=$registry@$digest
-                echo "NEW:" $output
-                sed -i "s|${image}=.*|${image}=$output|" manifests/base/params.env
+                latest_tag=$(echo "${skopeo_metadata}" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+                # use `--no-tags` for skopeo once available in newer version
+                digest=$(skopeo inspect --retry-times 3 "docker://${registry}:${latest_tag}" | jq .Digest | tr -d '"')
+                output="${registry}@${digest}"
+                echo "NEW: ${output}"
+                sed -i "s|${image}=.*|${image}=${output}|" "${PARAMS_ENV_PATH}"
               done
+
               if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-                git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/params.env && git commit -m "Update images for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
+                git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && \
+                  git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && \
+                  git add "${PARAMS_ENV_PATH}" && \
+                  git commit -m "Update images for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && \
+                  git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
               else
-                  echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N_1}}"
+                  echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N_1 }}"
               fi
+
       - name: Update the commit.env file
         run: |
-              echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N_1 }} on ${{ env.RELEASE_VERSION_N_1}}
+              COMMIT_ENV_PATH="manifests/base/commit.env"
+
+              echo Latest commit is: ${{ steps.hash-n-1.outputs.HASH_N_1 }} on ${{ env.RELEASE_VERSION_N_1 }}
               # Get the complete list of images N-1-version to update
-              COMMIT=$(cat manifests/base/commit.env | grep "\-n-1=" | cut -d "=" -f 1)
+              COMMIT=$(grep "\-n-1=" "${COMMIT_ENV_PATH}" | cut -d "=" -f 1)
 
               for val in ${COMMIT}; do
-                echo $val
-                sed -i "s|${val}=.*|${val}=${{ steps.hash-n-1.outputs.HASH_N_1 }}|" manifests/base/commit.env
+                echo "${val}"
+                sed -i "s|${val}=.*|${val}=${{ steps.hash-n-1.outputs.HASH_N_1 }}|" "${COMMIT_ENV_PATH}"
               done
+
               if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-                git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add manifests/base/commit.env && git commit -m "Update image commits for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
+                git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && \
+                  git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && \
+                  git add "${COMMIT_ENV_PATH}" && \
+                  git commit -m "Update image commits for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && \
+                  git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
               else
-                echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
+                echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N }}"
               fi
 
   open-pull-request:
