@@ -33,7 +33,7 @@ psycopg = "~=3.1.18"
 pyodbc = "~=5.1.0"
 mysql-connector-python = "~=8.3.0"
 # JupyterLab packages
-odh-elyra = "~=3.16.6"
+odh-elyra = "~=3.16.7"
 jupyterlab = "~=3.6.7" # Wait on upgrade till plugins are ready
 jupyter-bokeh = "~=3.0.7" # Upgrade would bring in jupyterlab 4
 jupyter-server = "~=2.13.0"
@@ -45,6 +45,11 @@ jupyterlab-widgets = "~=3.0.10"
 jupyter-resource-usage = "~=0.7.2"
 nbdime = "~=3.2.1"
 nbgitpuller = "~=1.2.0"
+# pycodestyle is dependency of below packages 
+# and to achieve compatible of pycodestyle with python-lsp-server[all]
+# pinned the below packages
+autopep8 = "~=2.0.4"
+flake8 = "~=7.0.0"
 # Base packages
 wheel = "~=0.43.0"
 setuptools = "~=69.2.0"
