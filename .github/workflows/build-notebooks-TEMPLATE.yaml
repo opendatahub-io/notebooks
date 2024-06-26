@@ -34,6 +34,38 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Free up additional disk space
+        # https://docs.github.com/en/actions/learn-github-actions/expressions
+        if: "${{ contains(inputs.target, 'amd') || contains(inputs.target, 'cuda') || contains(inputs.target, 'intel') ||
+         contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') }}"
+        run: |
+          set -x
+
+          df -h
+
+          sudo rm -rf /usr/local/lib/android &
+          sudo rm -rf /usr/local/share/boost &
+          sudo rm -rf /usr/local/lib/node_modules &
+          sudo rm -rf /usr/share/dotnet &
+          sudo rm -rf /opt/ghc &
+          sudo rm -rf /opt/hostedtoolcache/CodeQL &
+
+          sudo docker image prune --all --force &
+
+          wait
+
+          df -h
+
+      - name: Mount lvm overlay for podman builds
+        run: |
+          df -h
+          free -h
+
+          bash ./ci/cached-builds/gha_lvm_overlay.bash
+
+          df -h
+          free -h
+
       # https://github.com/containers/buildah/issues/2521#issuecomment-884779112
       - name: Workaround https://github.com/containers/podman/issues/22152#issuecomment-2027705598
         run: sudo apt-get -qq remove podman crun
@@ -58,12 +90,10 @@ jobs:
           mkdir -p $HOME/.config/containers/
           cp ci/cached-builds/containers.conf $HOME/.config/containers/containers.conf
           cp ci/cached-builds/storage.conf $HOME/.config/containers/storage.conf
+
           # should at least reset storage when touching storage.conf
-          sudo mkdir -p /mnt/containers/
-          sudo chown -R $USER:$USER /mnt/containers
           podman system reset --force
-          # podman bug? need to create this _after_ doing the reset
-          mkdir -p /mnt/containers/tmp
+          mkdir -p $HOME/.local/share/containers/storage/tmp
 
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
       - name: "push: make ${{ inputs.target }}"
