@@ -1,0 +1,29 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/amd/tensorflow"
+    opendatahub.io/notebook-image-name: "AMD-TensorFlow"
+    opendatahub.io/notebook-image-desc: "Jupyter AMD optimized TensorFlow notebook image for ODH notebooks."
+    opendatahub.io/notebook-image-order: "15"
+  name: jupyter-amd-tensorflow
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    # N Version of the image
+    - annotations:
+        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"},{"name":"AMD-TensorFlow","version":"2.15"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"AMD-TensorFlow","version":"2.15"},{"name":"Tensorboard","version":"2.15"},{"name":"Kafka-Python","version":"2.0"},{"name":"Matplotlib","version":"3.8"},{"name":"Numpy","version":"1.26"},{"name":"Pandas","version":"2.2"},{"name":"Scikit-learn","version":"1.4"},{"name":"Scipy","version":"1.12"},{"name":"Elyra","version":"3.16"},{"name":"PyMongo","version":"4.6"},{"name":"Pyodbc","version":"5.1"}, {"name":"Codeflare-SDK","version":"0.15"}, {"name":"Sklearn-onnx","version":"1.16"}, {"name":"Psycopg","version":"3.1"}, {"name":"MySQL Connector/Python","version":"8.3"}]'
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: 'c010eb0'
+      from:
+        kind: DockerImage
+        name: quay.io/opendatahub/workbench-images@sha256:e5de7a0be0df0681d2c81cd69014252cc198e6594514f667af85303dd055b6e2
+      name: "2024.1"
+      referencePolicy:
+        type: Source
