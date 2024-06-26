@@ -25,7 +25,7 @@ PARAMS_ENV_PATH="manifests/base/params.env"
 
 # This value needs to be updated everytime we deliberately change number of the
 # images we want to have in the `params.env` file.
-EXPECTED_NUM_RECORDS=20
+EXPECTED_NUM_RECORDS=23
 
 # ---------------------------- DEFINED FUNCTIONS ----------------------------- #
 
@@ -192,6 +192,21 @@ function check_image_variable_matches_name_and_commitref() {
             expected_name="odh-notebook-rstudio-server-c9s-python-3.9"
             expected_commitref="2023b"
             expected_build_name="cuda-rstudio-c9s-python-3.9-amd64"
+            ;;
+        odh-rocm-minimal-notebook-image-n)
+            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
+            expected_commitref="2024a"
+            expected_build_name="rocm-jupyter-minimal-ubi9-python-3.9-amd64"
+            ;;
+        odh-rocm-pytorch-notebook-image-n)
+            expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.9"
+            expected_commitref="2024a"
+            expected_build_name="rocm-jupyter-pytorch-ubi9-python-3.9-amd64"
+            ;;
+        odh-rocm-tensorflow-notebook-image-n)
+            expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.9"
+            expected_commitref="2024a"
+            expected_build_name="rocm-jupyter-tensorflow-ubi9-python-3.9-amd64"
             ;;
         *)
             echo "Unimplemented variable name: '${image_variable}'"
