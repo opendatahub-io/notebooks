@@ -53,6 +53,12 @@ jupyter-resource-usage = "~=0.7.2"
 nbdime = "~=3.2.1"
 nbgitpuller = "~=1.2.0"
 
+# conflict between python-lsp-server and following packages
+# due to pycodestyle dependency, pinning this, till we get 
+# a fix from python-lsp-server 
+autopep8 = "~=2.0.4"
+flake8 = "~=7.0.0"
+
 # Base packages
 wheel = "~=0.43.0"
 setuptools = "~=69.2.0"
