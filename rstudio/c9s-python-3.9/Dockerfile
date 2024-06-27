@@ -73,13 +73,13 @@ ENV NGINX_VERSION=1.24 \
 
 # Modules does not exist
 RUN yum -y module enable nginx:$NGINX_VERSION && \
-    INSTALL_PKGS="nss_wrapper bind-utils gettext hostname nginx nginx-mod-stream nginx-mod-http-perl fcgiwrap initscripts chkconfig" && \
+    INSTALL_PKGS="nss_wrapper bind-utils gettext hostname nginx nginx-mod-stream nginx-mod-http-perl fcgiwrap initscripts chkconfig supervisor" && \
     yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
     nginx -v 2>&1 | grep -qe "nginx/$NGINX_VERSION\." && echo "Found VERSION $NGINX_VERSION" && \
-    # spawn-fcgi is not in epel9
-    rpm -i --nodocs https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/37/Everything/x86_64/os/Packages/s/spawn-fcgi-1.6.3-23.fc37.x86_64.rpm && \
     yum -y clean all --enablerepo='*'
+
+COPY --chown=1001:0 supervisord/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Copy extra files to the image.
 COPY nginx/root/ /

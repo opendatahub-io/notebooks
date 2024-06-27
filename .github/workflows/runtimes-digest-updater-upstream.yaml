@@ -92,7 +92,7 @@ jobs:
                   name="minimal-$name"
               fi
               registry=$(echo $img | cut -d '@' -f1)
-              regex="runtime-$name-$py_version-${{ env.RELEASE_VERSION_N}}-\d+-${{ steps.hash-n.outputs.HASH_N }}"
+              regex="^runtime-$name-$py_version-${{ env.RELEASE_VERSION_N}}-\d+-${{ steps.hash-n.outputs.HASH_N }}\$"
               echo "CHECKING: "  $regex
               latest_tag=$(skopeo inspect docker://$img | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
               digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
