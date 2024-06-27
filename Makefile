@@ -269,23 +269,25 @@ cuda-rstudio-c9s-python-3.9: cuda-c9s-python-3.9
 amd-c9s-python-3.9: base-c9s-python-3.9	
 	$(call image,$@,amd/c9s-python-3.9,$<)
 
+# We are only using c9s base image here onwards, 
+# DON'T confuse due to the ubi9 mention, it just directory name.
 .PHONY: amd-minimal-c9s-python-3.9
 amd-minimal-c9s-python-3.9: amd-c9s-python-3.9
 	$(call image,$@,jupyter/minimal/ubi9-python-3.9,$<)
 
 # Build and push cuda-jupyter-datascience-ubi9-python-3.9 image to the registry
-.PHONY: amd-jupyter-datascience-ubi9-python-3.9
-amd-jupyter-datascience-ubi9-python-3.9: amd-jupyter-minimal-ubi9-python-3.9
+.PHONY: amd-jupyter-datascience-c9s-python-3.9
+amd-jupyter-datascience-c9s-python-3.9: amd-jupyter-minimal-ubi9-python-3.9
 	$(call image,$@,jupyter/datascience/ubi9-python-3.9,$<)
 
 # Build and push cuda-jupyter-tensorflow-ubi9-python-3.9 image to the registry
-.PHONY: amd-jupyter-tensorflow-ubi9-python-3.9
-amd-jupyter-tensorflow-ubi9-python-3.9: amd-jupyter-datascience-ubi9-python-3.9
+.PHONY: amd-jupyter-tensorflow-c9s-python-3.9
+amd-jupyter-tensorflow-c9s-python-3.9: amd-jupyter-datascience-c9s-python-3.9
 	$(call image,$@,jupyter/amd/tensorflow/ubi9-python-3.9,$<)
 
 # Build and push jupyter-pytorch-ubi9-python-3.9 image to the registry
-.PHONY: amd-jupyter-pytorch-ubi9-python-3.9
-amd-jupyter-pytorch-ubi9-python-3.9: amd-jupyter-datascience-ubi9-python-3.9
+.PHONY: amd-jupyter-pytorch-c9s-python-3.9
+amd-jupyter-pytorch-c9s-python-3.9: amd-jupyter-datascience-c9s-python-3.9
 	$(call image,$@,jupyter/amd/pytorch/ubi9-python-3.9,$<)
 
 ####################################### Buildchain for Anaconda Python #######################################
