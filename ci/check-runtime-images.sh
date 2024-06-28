@@ -27,6 +27,7 @@ function check_image() {
     local img_tag
     local img_url
     local img_metadata
+    local img_created
 
     img_tag=$(jq -r '.metadata.tags[0]' "${runtime_image_file}") || {
         echo "ERROR: Couldn't parse image tags metadata for '${runtime_image_file}' runtime image file!"
@@ -42,12 +43,19 @@ function check_image() {
         return 1
     }
 
+    img_created=$(echo "${img_metadata}" | jq --raw-output '.created') ||  {
+        echo "Couldn't parse '.created' from image metadata!"
+        return 1
+    }
+
     local expected_string="runtime-${img_tag}-ubi"
     echo "Checking that '${expected_string}' is present in the image metadata"
     echo "${img_metadata}" | grep --quiet "${expected_string}" || {
         echo "ERROR: The string '${expected_string}' isn't present in the image metadata at all. Please check that the referenced image '${img_url}' is the correct one!"
         return 1
     }
+
+    echo "Image created: '${img_created}'"
 
     # TODO: we shall extend this check to check also Label "io.openshift.build.commit.ref" value (e.g. '2024a') or something similar
 }
