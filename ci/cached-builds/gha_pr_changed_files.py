@@ -1,11 +1,9 @@
-import json
 import logging
 import os
 import pathlib
 import re
 import subprocess
 import unittest
-import urllib.request
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent.parent.resolve()
 
@@ -15,57 +13,13 @@ def get_github_token() -> str:
     return github_token
 
 
-# https://docs.github.com/en/graphql/guides/forming-calls-with-graphql
-def compose_gh_api_request(pull_number: int, owner="opendatahub-io", repo="notebooks", per_page=100,
-                           cursor="") -> urllib.request.Request:
-    github_token = get_github_token()
+def list_changed_files(from_ref: str, to_ref: str) -> list[str]:
+    logging.debug("Getting list of changed files from git diff")
 
-    return urllib.request.Request(
-        url="https://api.github.com/graphql",
-        method="POST",
-        headers={
-            "Authorization": f"bearer {github_token}",
-        },
-        # https://docs.github.com/en/graphql/guides/using-the-explorer
-        data=json.dumps({"query": f"""
-{{
-  repository(owner:"{owner}", name:"{repo}") {{
-    pullRequest(number:{pull_number}) {{
-      files(first:{per_page}, after:"{cursor}") {{
-        edges {{
-          node {{
-            path
-          }}
-          cursor
-        }}
-      }}
-    }}
-  }}
-}}
-    """}).encode("utf-8"),
-    )
+    files = subprocess.check_output(["git", "diff", "--name-only", from_ref, to_ref],
+                                    encoding='utf-8').splitlines()
 
-
-def list_changed_files(owner: str, repo: str, pr_number: int, per_page=100) -> list[str]:
-    files = []
-
-    logging.debug("Getting list of changed files from GitHub API")
-
-    CURSOR = ""
-    while CURSOR is not None:
-        request = compose_gh_api_request(pull_number=pr_number, owner=owner, repo=repo, per_page=per_page,
-                                         cursor=CURSOR)
-        response = urllib.request.urlopen(request)
-        data = json.loads(response.read().decode("utf-8"))
-        response.close()
-        edges = data["data"]["repository"]["pullRequest"]["files"]["edges"]
-
-        CURSOR = None
-        for edge in edges:
-            files.append(edge["node"]["path"])
-            CURSOR = edge["cursor"]
-
-    logging.debug(f"Determined {len(files)} changed files: {files[:5]} (..., printing up to 5)")
+    logging.debug(f"Determined {len(files)} changed files: {files[:100]} (..., printing up to 100 files)")
     return files
 
 
@@ -110,12 +64,9 @@ def filter_out_unchanged(targets: list[str], changed_files: list[str]) -> list[s
 
 
 class SelfTests(unittest.TestCase):
-    def test_compose_gh_api_request__call_without_asserting(self):
-        request = compose_gh_api_request(pull_number=556, per_page=100, cursor="")
-        print(request.data)
-
-    def test_list_changed_files__pagination_works(self):
-        changed_files = list_changed_files(owner="opendatahub-io", repo="notebooks", pr_number=556, per_page=1)
+    def test_list_changed_files(self):
+        """This is PR #556 in opendatahub-io/notebooks"""
+        changed_files = list_changed_files(from_ref="4d4841f", to_ref="2c36c11")
         assert set(changed_files) == {'codeserver/ubi9-python-3.9/Dockerfile',
                                       'codeserver/ubi9-python-3.9/run-code-server.sh'}
 
