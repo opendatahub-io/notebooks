@@ -444,6 +444,61 @@
             },
             "secrets": "inherit"
         },
+        "amd-c9s-python-3_9": {
+            "needs": [
+                "base-c9s-python-3_9"
+            ],
+            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
+            "with": {
+                "target": "amd-c9s-python-3.9",
+                "github": "${{ toJSON(github) }}"
+            },
+            "secrets": "inherit"
+        },
+        "amd-jupyter-minimal-c9s-python-3_9": {
+            "needs": [
+                "amd-c9s-python-3_9"
+            ],
+            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
+            "with": {
+                "target": "amd-jupyter-minimal-c9s-python-3.9",
+                "github": "${{ toJSON(github) }}"
+            },
+            "secrets": "inherit"
+        },
+        "amd-jupyter-datascience-c9s-python-3_9": {
+            "needs": [
+                "amd-jupyter-minimal-c9s-python-3_9"
+            ],
+            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
+            "with": {
+                "target": "amd-jupyter-datascience-c9s-python-3.9",
+                "github": "${{ toJSON(github) }}"
+            },
+            "secrets": "inherit"
+        },
+        "amd-jupyter-tensorflow-c9s-python-3_9": {
+            "needs": [
+                "amd-jupyter-datascience-c9s-python-3_9"
+            ],
+            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
+            "with": {
+                "target": "amd-jupyter-tensorflow-c9s-python-3.9",
+                "github": "${{ toJSON(github) }}"
+            },
+            "secrets": "inherit"
+        },
+        "amd-jupyter-pytorch-c9s-python-3_9": {
+            "needs": [
+                "amd-jupyter-datascience-c9s-python-3_9"
+            ],
+            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
+            "with": {
+                "target": "amd-jupyter-pytorch-c9s-python-3.9",
+                "github": "${{ toJSON(github) }}"
+            },
+            "secrets": "inherit"
+        },
         "base-anaconda-python-3_8": {
             "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
