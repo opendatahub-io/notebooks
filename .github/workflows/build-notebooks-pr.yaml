@@ -1,5 +1,5 @@
 ---
-"name": "Build Notebooks"
+"name": "Build Notebooks (pr)"
 "on":
   "pull_request":
 
@@ -19,14 +19,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - run: |
+          set -x
+          git fetch --no-tags origin 'pull/${{ github.event.pull_request.number }}/head:${{ github.event.pull_request.head.ref }}'
+          git fetch --no-tags origin '+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}'
           python3 ci/cached-builds/gen_gha_matrix_jobs.py \
-            --owner=${{ github.repository_owner }} \
-            --repo=${{ github.event.pull_request.base.repo.name }} \
-            --pr-number=${{ github.event.pull_request.number }} \
-            --skip-unchanged
+            --from-ref 'origin/${{ github.event.pull_request.base.ref }}' \
+            --to-ref '${{ github.event.pull_request.head.ref }}'
         id: gen
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
 
   build:
     needs: ["gen"]
