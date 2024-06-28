@@ -4,69 +4,76 @@
 SCRIPT_DIR=$(dirname -- "$0")
 source ${SCRIPT_DIR}/utils/*.sh
 
-# Start nginx and fastcgiwrap
+# Start nginx and supervisord
 run-nginx.sh &
-spawn-fcgi -s /var/run/fcgiwrap.socket -M 766 /usr/sbin/fcgiwrap 
+/usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf &
 
 # Add .bashrc for custom promt if not present
 if [ ! -f "/opt/app-root/src/.bashrc" ]; then
   echo 'PS1="\[\033[34;1m\][\$(pwd)]\[\033[0m\]\n\[\033[1;0m\]$ \[\033[0m\]"' > /opt/app-root/src/.bashrc
 fi
 
-# Initilize access logs for culling
+# Initialize access logs for culling
 echo '[{"id":"code-server","name":"code-server","last_activity":"'$(date -Iseconds)'","execution_state":"running","connections":1}]' > /var/log/nginx/codeserver.access.log
 
-# Add "/opt/app-root/src/.vscode/" directory to set default interpreter also for Run & Debug
-user_dir="/opt/app-root/src/.vscode/"
-settings_filepath="${user_dir}settings.json"
-launch_filepath="${user_dir}launch.json"
+# Function to create directories and files if they do not exist
+create_dir_and_file() {
+  local dir=$1
+  local filepath=$2
+  local content=$3
 
-json_launch_settings='{
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Python Debugger: Current File",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "python": "/opt/app-root/bin/python3"
-        }
-    ]
+  if [ ! -d "$dir" ]; then
+    echo "Debug: Directory not found, creating '$dir'..."
+    mkdir -p "$dir"
+    echo "$content" > "$filepath"
+    echo "Debug: '$filepath' file created."
+  else
+    echo "Debug: Directory already exists."
+    if [ ! -f "$filepath" ]; then
+      echo "Debug: '$filepath' file not found, creating..."
+      echo "$content" > "$filepath"
+      echo "Debug: '$filepath' file created."
+    else
+      echo "Debug: '$filepath' file already exists."
+    fi
+  fi
+}
+
+# Define universal settings
+universal_dir="/opt/app-root/src/.local/share/code-server/User/"
+user_settings_filepath="${universal_dir}settings.json"
+universal_json_settings='{
+  "python.defaultInterpreterPath": "/opt/app-root/bin/python3",
+  "telemetry.telemetryLevel": "off",
+  "telemetry.enableTelemetry": false,
+  "workbench.enableExperiments": false
 }'
 
+# Define python debuger settings
+vscode_dir="/opt/app-root/src/.vscode/"
+settings_filepath="${vscode_dir}settings.json"
+launch_filepath="${vscode_dir}launch.json"
+json_launch_settings='{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python Debugger: Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "python": "/opt/app-root/bin/python3"
+    }
+  ]
+}'
 json_settings='{
   "python.defaultInterpreterPath": "/opt/app-root/bin/python3"
-  }'
+}'
 
-# Check if User directory exists
-if [ ! -d "$user_dir" ]; then
-  echo "Debug: User directory not found, creating '$user_dir'..."
-  mkdir -p "$user_dir"
-  echo "$json_launch_settings" > "$launch_filepath"
-  echo "Debug: '$launch_filepath' file created."
-  echo "$json_settings" > "$settings_filepath"
-  echo "Debug: '$settings_filepath' file created."
-else
-  echo "Debug: User directory already exists."
-  # Add settings.json and launch.json if not present
-  if [ ! -f "$launch_filepath" ]; then
-    echo "Debug: '$launch_filepath' file not found, creating..."
-    echo "$json_launch_settings" > "$launch_filepath"
-    echo "Debug: '$launch_filepath' file created."
-  elif [ ! -f "$settings_filepath" ]; then
-    echo "Debug: '$settings_filepath' file not found, creating..."
-    echo "$json_settings" > "$settings_filepath"
-    echo "Debug: '$settings_filepath' file created."
-  else
-    echo "Debug: '$launch_filepath' file already exists."
-    echo "Debug: '$settings_filepath' file already exists."
-
-  fi
-fi
+# Create necessary directories and files for python debuger and universal settings
+create_dir_and_file "$universal_dir" "$user_settings_filepath" "$universal_json_settings"
+create_dir_and_file "$vscode_dir" "$settings_filepath" "$json_settings"
+create_dir_and_file "$vscode_dir" "$launch_filepath" "$json_launch_settings"
 
 # Ensure the extensions directory exists
 extensions_dir="/opt/app-root/src/.local/share/code-server/extensions"
