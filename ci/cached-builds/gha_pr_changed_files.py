@@ -1,3 +1,4 @@
+import collections
 import json
 import logging
 import os
@@ -90,10 +91,32 @@ def analyze_build_directories(make_target) -> list[str]:
 def should_build_target(changed_files: list[str], target_directories: list[str]) -> str:
     """Returns truthy if there is at least one changed file necessitating a build.
     Falsy (empty) string is returned otherwise."""
+
+    # are the changed files in the directory of any docker image?
+    file_dirs = collections.defaultdict(list)
     for directory in target_directories:
         for changed_file in changed_files:
             if changed_file.startswith(directory):
-                return changed_file
+                relative_path = changed_file[len(directory):].lstrip("/")
+                file_dirs[directory].append(relative_path)
+
+    # are the changed files filtered out by .dockerignore?
+    for directory, files in file_dirs.items():
+        dockerignore = PROJECT_ROOT / directory / ".dockerignore"
+        if dockerignore.exists():
+            go_path = PROJECT_ROOT / "ci/cached-builds/gha_filter_dockerignored_files"
+            not_ignored = subprocess.check_output(["go", "run", str(go_path / "main.go"),
+                                                   str(dockerignore)],
+                                                  input="\n".join(files),
+                                                  cwd=go_path,
+                                                  encoding="utf-8").splitlines()
+            if not_ignored:
+                return not_ignored[0]
+            return ""
+
+    if file_dirs:
+        any_random_file = list(file_dirs.values())[0][0]
+        return any_random_file
     return ""
 
 
@@ -124,3 +147,11 @@ class SelfTests(unittest.TestCase):
         assert set(directories) == {"base/ubi9-python-3.9",
                                     "intel/base/gpu/ubi9-python-3.9",
                                     "jupyter/intel/pytorch/ubi9-python-3.9"}
+
+    def test_should_build_target(self):
+        directories = ["base/ubi9-python-3.9",
+                       "intel/base/gpu/ubi9-python-3.9",
+                       "jupyter/intel/pytorch/ubi9-python-3.9"]
+
+        assert should_build_target(["base/ubi9-python-3.9/Dockerfile"], directories)
+        assert not should_build_target(["base/ubi9-python-3.9/README.md"], directories)
