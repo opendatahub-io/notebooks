@@ -87,10 +87,10 @@ ENV RDMA_CORE_LIB=${RDMA_CORE_ROOT}/build/lib
 
 # Install python packages 
 # RUN python3.8 -m pip install hpu_media_loader=="${VERSION}"."${REVISION}"
-# Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY Pipfile.lock ./
+# Install Python packages and Jupyterlab extensions from pyproject.toml and poetry.lock files
+COPY pyproject.toml poetry.lock ./
 
-RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
+RUN echo "Installing softwares and packages" && micropipenv install --method poetry && rm -f ./pyproject.toml ./poetry.lock
 
 RUN echo "export LANG=en_US.UTF-8" >> /root/.bashrc
 RUN export LANG=en_US.UTF-8

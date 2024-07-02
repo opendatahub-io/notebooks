@@ -12,11 +12,11 @@ LABEL name="odh-notebook-base-centos-stream9-python-3.9" \
 
 WORKDIR /opt/app-root/bin
 
-# Install micropipenv to deploy packages from Pipfile.lock
+# Install micropipenv to deploy packages from pyproject.toml and poetry.lock
 RUN pip install --no-cache-dir -U "micropipenv[toml]"
 
-# Install Python dependencies from Pipfile.lock file
-COPY Pipfile.lock ./
+# Install Python dependencies from pyproject.toml and poetry.lock file
+COPY pyproject.toml poetry.lock ./
 
 # OS Packages needs to be installed as root
 USER root
@@ -27,7 +27,7 @@ RUN dnf install -y mesa-libGL && dnf clean all && rm -rf /var/cache/yum
 # Other apps and tools installed as default user
 USER 1001
 
-RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock && \
+RUN echo "Installing softwares and packages" && micropipenv install --method poetry && rm -f ./pyproject.toml ./poetry.lock && \
     # Install the oc client \
     curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
         -o /tmp/openshift-client-linux.tar.gz && \
