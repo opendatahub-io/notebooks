@@ -13,15 +13,15 @@ LABEL name="odh-notebook-jupyter-intel-ml-ubi9-python-3.9" \
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY Pipfile.lock Pipfile.lock
+# Install Python packages and Jupyterlab extensions from pyproject.toml and poetry.lock
+COPY pyproject.toml poetry.lock ./
 
 COPY --chown=1001:0 .patch_sklearn.py /opt/app-root/bin/.patch_sklearn.py
 ENV PYTHONSTARTUP="/opt/app-root/bin/.patch_sklearn.py"
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
+    micropipenv install --method poetry && \
+    rm -f ./pyproject.toml ./poetry.lock && \
     # Disable announcement plugin of jupyterlab \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
