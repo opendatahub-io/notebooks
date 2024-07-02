@@ -43,6 +43,14 @@ jobs:
 
           df -h
 
+          sudo apt-get update
+          sudo apt-get remove -y '^dotnet-.*'
+          sudo apt-get remove -y '^llvm-.*'
+          sudo apt-get remove -y 'php.*'
+          sudo apt-get remove -y '^mongodb-.*'
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          sudo rm -rf /usr/local/.ghcup &
           sudo rm -rf /usr/local/lib/android &
           sudo rm -rf /usr/local/share/boost &
           sudo rm -rf /usr/local/lib/node_modules &
@@ -96,13 +104,39 @@ jobs:
           mkdir -p $HOME/.local/share/containers/storage/tmp
 
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
-      - name: "push: make ${{ inputs.target }}"
+      - name: "push|schedule: make ${{ inputs.target }}"
         run: "make ${{ inputs.target }}"
-        if: "${{ fromJson(inputs.github).event_name == 'push' }}"
+        if: ${{ fromJson(inputs.github).event_name == 'push' || fromJson(inputs.github).event_name == 'schedule' }}
         env:
           IMAGE_TAG: "${{ github.ref_name }}_${{ github.sha }}"
           IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
           CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
+
+      - name: "schedule: run Trivy vulnerability scanner"
+        if: "${{ fromJson(inputs.github).event_name == 'schedule' }}"
+        run: |
+          TRIVY_VERSION=0.52.2
+          REPORT_FOLDER=${{ github.workspace }}/report
+          REPORT_FILE=trivy-report.md
+          REPORT_TEMPLATE=trivy-markdown.tpl
+
+          mkdir -p $REPORT_FOLDER
+          cp ci/$REPORT_TEMPLATE $REPORT_FOLDER
+
+          IMAGE_NAME=ghcr.io/${{ github.repository }}/workbench-images:${{ inputs.target }}-${{ github.ref_name }}_${{ github.sha }}
+          echo "Scanning $IMAGE_NAME"
+
+          podman run --rm \
+              -v $REPORT_FOLDER:/report \
+              docker.io/aquasec/trivy:$TRIVY_VERSION \
+                image \
+                --scanners vuln,secret \
+                --exit-code 0 --timeout 30m \
+                --severity CRITICAL,HIGH \
+                --format template --template "@/report/$REPORT_TEMPLATE" -o /report/$REPORT_FILE \
+                $IMAGE_NAME
+
+          cat $REPORT_FOLDER/$REPORT_FILE >> $GITHUB_STEP_SUMMARY
 
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
       - name: "pull_request: make ${{ inputs.target }}"
