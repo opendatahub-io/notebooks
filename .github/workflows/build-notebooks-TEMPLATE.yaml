@@ -103,6 +103,14 @@ jobs:
           podman system reset --force
           mkdir -p $HOME/.local/share/containers/storage/tmp
 
+          # start systemd user service
+          # since `brew services start podman` is buggy, let's do our own brew-compatible service
+          mkdir -p "${HOME}/.config/systemd/user/"
+          cp ci/cached-builds/homebrew.podman.service "${HOME}/.config/systemd/user/homebrew.podman.service"
+          systemctl --user daemon-reload
+          systemctl --user start homebrew.podman.service
+          echo "PODMAN_SOCK=/run/user/${UID}/podman/podman.sock" >> $GITHUB_ENV
+
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
       - name: "push|schedule: make ${{ inputs.target }}"
         run: "make ${{ inputs.target }}"
@@ -115,7 +123,7 @@ jobs:
       - name: "schedule: run Trivy vulnerability scanner"
         if: "${{ fromJson(inputs.github).event_name == 'schedule' }}"
         run: |
-          TRIVY_VERSION=0.52.2
+          TRIVY_VERSION=0.53.0
           REPORT_FOLDER=${{ github.workspace }}/report
           REPORT_FILE=trivy-report.md
           REPORT_TEMPLATE=trivy-markdown.tpl
@@ -126,10 +134,15 @@ jobs:
           IMAGE_NAME=ghcr.io/${{ github.repository }}/workbench-images:${{ inputs.target }}-${{ github.ref_name }}_${{ github.sha }}
           echo "Scanning $IMAGE_NAME"
 
+          # have trivy access podman socket,
+          # https://github.com/aquasecurity/trivy/issues/580#issuecomment-666423279
           podman run --rm \
-              -v $REPORT_FOLDER:/report \
+              -v ${PODMAN_SOCK}:/var/run/podman/podman.sock \
+              -v ${REPORT_FOLDER}:/report \
               docker.io/aquasec/trivy:$TRIVY_VERSION \
                 image \
+                --image-src podman \
+                --podman-host /var/run/podman/podman.sock \
                 --scanners vuln,secret \
                 --exit-code 0 --timeout 30m \
                 --severity CRITICAL,HIGH \
