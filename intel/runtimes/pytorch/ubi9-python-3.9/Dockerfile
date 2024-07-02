@@ -54,7 +54,7 @@ RUN python3.9 -m venv ${CPU_ENV} && \
     chown -R 1001:0 ${CPU_ENV} && \
     fix-permissions ${CPU_ENV} -P && \
     source ${CPU_ENV}/bin/activate && \
-    pip install --no-cache-dir -U "micropipenv[toml]" && \
+    pip install --no-cache-dir -U "micropipenv[toml]==1.7.0" && \
     micropipenv install --method poetry && \
     rm -f ./poetry.lock ./pyproject.toml && \
     # Fix permissions to support pip in Openshift environments \
