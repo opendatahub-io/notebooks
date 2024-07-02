@@ -55,8 +55,6 @@ jobs:
           ret_code=0
           echo "-- Checking a regular '*.json' files"
           for f in **/*.json; do echo "Checking: '${f}"; echo -n "  > "; cat $f | json_verify || ret_code=1; done
-          echo "-- Checking a 'Pipfile.lock' files"
-          for f in **/Pipfile.lock; do echo "Checking: '${f}"; echo -n "  > "; cat $f | json_verify || ret_code=1; done
           echo "-- Checking a '*.ipynb' Jupyter notebook files"
           for f in **/*.ipynb; do echo "Checking: '${f}"; echo -n "  > "; cat $f | json_verify || ret_code=1; done
           if test "${ret_code}" -ne 0; then
