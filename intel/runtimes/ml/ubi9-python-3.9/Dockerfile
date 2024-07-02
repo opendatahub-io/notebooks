@@ -13,8 +13,8 @@ LABEL name="odh-notebook-intel-runtime-ml-ubi9-python-3.9" \
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages from Pipfile.lock
-COPY Pipfile.lock Pipfile.lock
+# Install Python packages from pyproject.toml and poetry.lock files
+COPY pyproject.toml poetry.lock ./
 
 # Copy Elyra dependencies for air-gapped enviroment
 COPY utils utils
@@ -24,8 +24,8 @@ ENV PYTHONSTARTUP="/opt/app-root/bin/.patch_sklearn.py"
 
 #Virtualenv creates a symlink of lib to lib64. That causes issues with importing ITEX since both locations will have ITEX library and it will conflict.
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
+    micropipenv install --method poetry && \
+    rm -f ./pyproject.toml ./poetry.lock && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
     fix-permissions /opt/app-root -P
