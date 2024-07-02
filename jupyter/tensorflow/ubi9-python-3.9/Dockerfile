@@ -12,10 +12,9 @@ LABEL name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.9" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-tensorflow-ubi9-python-3.9"
 
 COPY utils ./utils/
-# Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY Pipfile.lock ./
-
-RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
+# Install Python dependencies from pyproject.toml and poetry.lock files
+COPY pyproject.toml poetry.lock ./
+RUN echo "Installing softwares and packages" && micropipenv install --method poetry && rm -f ./pyproject.toml ./poetry.lock
 
 # Temporary:Workaround for fixing the kfp-kubernetes 1.0.0 for elyra pipeline execution
 # TODO: Remove this patch once the issue is fixed with kfp-kubernetes upgrade.

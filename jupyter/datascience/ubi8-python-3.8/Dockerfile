@@ -13,14 +13,14 @@ LABEL name="odh-notebook-jupyter-datascience-ubi8-python-3.8" \
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY Pipfile.lock ./
+# Install Python packages and Jupyterlab extensions from pyproject.toml and poetry.lock
+COPY pyproject.toml poetry.lock ./
 # Copy Elyra setup to utils so that it's sourced at startup
 COPY setup-elyra.sh ./utils/
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock
+    micropipenv install --method poetry && \
+    rm -f ./pyproject.toml ./poetry.lock
 
 COPY utils ./utils/
 

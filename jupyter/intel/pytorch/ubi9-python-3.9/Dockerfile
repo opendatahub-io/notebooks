@@ -28,12 +28,13 @@ USER 1001
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY Pipfile.lock.gpu Pipfile.lock
+# Install Python packages and Jupyterlab extensions from poetry.lock and pyproject.toml
+COPY poetry.lock.gpu poetry.lock
+COPY pyproject.toml.gpu pyproject.toml
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
+    micropipenv install --method poetry && \
+    rm -f ./poetry.lock ./pyproject.toml && \
     # Disable announcement plugin of jupyterlab \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
@@ -50,7 +51,8 @@ COPY --chown=1001:0 utils /opt/app-root/bin/utils
 #CPU env
 ENV CPU_ENV=/opt/app-root-cpu
 ENV GPU_ENV=/opt/app-root
-COPY --chown=1001:0 Pipfile.lock.cpu ${CPU_ENV}/Pipfile.lock
+COPY --chown=1001:0 poetry.lock.cpu ${CPU_ENV}/poetry.lock
+COPY --chown=1001:0 pyproject.toml.cpu ${CPU_ENV}/pyproject.toml
 
 WORKDIR ${CPU_ENV} 
 RUN python3.9 -m venv ${CPU_ENV} && \
@@ -58,8 +60,8 @@ RUN python3.9 -m venv ${CPU_ENV} && \
     fix-permissions ${CPU_ENV} -P && \
     source ${CPU_ENV}/bin/activate && \
     pip install --no-cache-dir -U "micropipenv[toml]" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
+    micropipenv install --method poetry && \
+    rm -f ./poetry.lock ./pyproject.toml && \
     python -m ipykernel install --prefix=/opt/app-root --name 'pytorch-cpu' --display-name='pytorch-cpu' && \
     # Disable announcement plugin of jupyterlab \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \

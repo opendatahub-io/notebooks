@@ -15,10 +15,10 @@ WORKDIR /opt/app-root/bin
 
 COPY utils utils/
 
-COPY Pipfile.lock start-notebook.sh ./
+COPY pyproject.toml poetry.lock start-notebook.sh ./
 
-# Install Python dependencies from Pipfile.lock file
-RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock && \
+# Install Python dependencies from pyproject.toml and poetry.lock files
+RUN echo "Installing softwares and packages" && micropipenv install --method poetry && rm -f ./pyproject.toml ./poetry.lock && \
     # Disable announcement plugin of jupyterlab \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     # Fix permissions to support pip in Openshift environments \
