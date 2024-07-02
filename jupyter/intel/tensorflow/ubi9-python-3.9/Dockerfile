@@ -63,7 +63,7 @@ RUN python3.9 -m venv ${CPU_ENV} && \
     unlink ${CPU_ENV}/lib64 && \
     cp -r ${CPU_ENV}/lib ${CPU_ENV}/lib64 && \
     source ${CPU_ENV}/bin/activate && \
-    pip install --no-cache-dir -U "micropipenv[toml]" && \
+    pip install --no-cache-dir -U "micropipenv[toml]==1.7.0" && \
     micropipenv install --method poetry && \
     rm -f ./poetry.lock ./pyproject.toml && \
     python -m ipykernel install --prefix=/opt/app-root --name 'tensorflow-cpu' --display-name='tensorflow-cpu' && \

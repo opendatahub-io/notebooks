@@ -13,7 +13,7 @@ LABEL name="odh-notebook-base-ubi8-python-3.8" \
 WORKDIR /opt/app-root/bin
 
 # Install micropipenv to deploy packages from pyproject.toml and poetry.lock
-RUN pip install --no-cache-dir -U "micropipenv[toml]"
+RUN pip install --no-cache-dir -U "micropipenv[toml]==1.7.0"
 
 # Install Python dependencies from pyproject.toml and poetry.lock file
 COPY pyproject.toml poetry.lock ./
