@@ -1,0 +1,35 @@
+---
+name: "Purge old ghcr.io test images periodically"
+
+"on":
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        type: boolean
+        default: true
+        description: "Do a dry run?"
+  schedule:
+    - cron: "0 5 * * *"  # at 05:00 every day
+
+permissions:
+  packages: write
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    name: Delete old test images
+    steps:
+      # https://github.com/snok/container-retention-policy?tab=readme-ov-file#parameters
+      - uses: snok/container-retention-policy@4f22ef80902ad409ed55a99dc5133cc1250a0d03  # v3.0.0
+        with:
+          # account must be the gh org name when running for an org, and 'user' when running for a user
+          account: ${{ (github.repository_owner == github.actor) && 'user' || github.repository_owner }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          image-names: |
+            ${{ github.event.repository.name }}/workbench-images
+            ${{ github.event.repository.name }}/workbench-images/build-cache
+          image-tags: "*"
+          cut-off: "3w"
+          dry-run: ${{ inputs.dry_run || false }}
+        env:
+          RUST_BACKTRACE: 1
