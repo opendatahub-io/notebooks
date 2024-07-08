@@ -3,19 +3,12 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
-[[source]]
-url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.1/"
-verify_ssl = true
-name = "tensorflow"
-
 [dev-packages]
 
 [packages]
-# TensorFlow packages
-tensorflow = {version = "~=2.15.0", index = "tensorflow"}
-tensorboard = {version = "~=2.15.2", index = "tensorflow"}
+tensorflow_rocm = {file = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.1/tensorflow_rocm-2.15.0-cp39-cp39-manylinux2014_x86_64.whl"}
+tensorboard = "~=2.15.2"
 tf2onnx = "~= 1.16.1"
-
 
 # Datascience and useful extensions
 boto3 = "~=1.34.50"
