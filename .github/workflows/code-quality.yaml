@@ -19,16 +19,14 @@ jobs:
 
       - name: Check there aren't any modified files present
         run: |
-          if [[ $(git ls-files . -d -m -o --exclude-standard --full-name -v | tee modified.log | wc -l) -gt 0 ]]; then
-            echo "There are changed files"
-            exit 1
+          clean=$(git status --porcelain)
+          if [[ -z "$clean" ]]; then
+              echo "Empty git status --porcelain: $clean"
+          else
+              echo "Uncommitted file changes detected: $clean"
+              git diff
+              exit 1
           fi
-
-      - name: Print modified files
-        if: ${{ failure() }}
-        run: |
-          cat modified.log
-          git diff
 
   code-static-analysis:
     runs-on: ubuntu-latest
