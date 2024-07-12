@@ -41,8 +41,9 @@ ARG BASEURL_DEFAULT=""
 USER 0
 WORKDIR /opt/app-root/bin
 
-# Run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
-RUN SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFAULT}) && \
+# If necessary, run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
+RUN if [ -d "${SECRET_DIR}" ]; then \
+    SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFAULT}) && \
     BASEURL=$(cat ${SECRET_DIR}/BASEURL 2>/dev/null || echo ${BASEURL_DEFAULT}) && \
     USERNAME=$(cat ${SECRET_DIR}/USERNAME) && \
     PASSWORD=$(cat ${SECRET_DIR}/PASSWORD) && \
@@ -52,7 +53,8 @@ RUN SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFA
     --username=$USERNAME \
     --password=$PASSWORD \
     --force \
-    --auto-attach
+    --auto-attach; \
+  fi
 
 ENV NVARCH=x86_64
 ENV NVIDIA_REQUIRE_CUDA="cuda>=12.4 brand=tesla,driver>=470,driver<471 brand=unknown,driver>=470,driver<471 brand=nvidia,driver>=470,driver<471 brand=nvidiartx,driver>=470,driver<471 brand=geforce,driver>=470,driver<471 brand=geforcertx,driver>=470,driver<471 brand=quadro,driver>=470,driver<471 brand=quadrortx,driver>=470,driver<471 brand=titan,driver>=470,driver<471 brand=titanrtx,driver>=470,driver<471 brand=tesla,driver>=525,driver<526 brand=unknown,driver>=525,driver<526 brand=nvidia,driver>=525,driver<526 brand=nvidiartx,driver>=525,driver<526 brand=geforce,driver>=525,driver<526 brand=geforcertx,driver>=525,driver<526 brand=quadro,driver>=525,driver<526 brand=quadrortx,driver>=525,driver<526 brand=titan,driver>=525,driver<526 brand=titanrtx,driver>=525,driver<526 brand=tesla,driver>=535,driver<536 brand=unknown,driver>=535,driver<536 brand=nvidia,driver>=535,driver<536 brand=nvidiartx,driver>=535,driver<536 brand=geforce,driver>=535,driver<536 brand=geforcertx,driver>=535,driver<536 brand=quadro,driver>=535,driver<536 brand=quadrortx,driver>=535,driver<536 brand=titan,driver>=535,driver<536 brand=titanrtx,driver>=535,driver<536"
@@ -165,7 +167,9 @@ RUN yum -y install cuda-toolkit-12-4 && \
     yum -y clean all --enablerepo="*"
 
 # Unregister the system
-RUN subscription-manager remove --all && subscription-manager unregister && subscription-manager clean
+RUN if [ -d "${SECRET_DIR}" ]; then \
+    subscription-manager remove --all && subscription-manager unregister && subscription-manager clean; \
+  fi
 
 # Restore notebook user workspace
 USER 1001
@@ -197,8 +201,9 @@ USER 0
 # uncomment the below line if you fall on this error: subscription-manager is disabled when running inside a container. Please refer to your host system for subscription management.
 #RUN sed -i 's/\(def in_container():\)/\1\n    return False/g' /usr/lib64/python*/*-packages/rhsm/config.py
 
-# Run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
-RUN SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFAULT}) && \
+# If necessary, run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
+RUN if [ -d "${SECRET_DIR}" ]; then \
+    SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFAULT}) && \
     BASEURL=$(cat ${SECRET_DIR}/BASEURL 2>/dev/null || echo ${BASEURL_DEFAULT}) && \
     USERNAME=$(cat ${SECRET_DIR}/USERNAME) && \
     PASSWORD=$(cat ${SECRET_DIR}/PASSWORD) && \
@@ -208,7 +213,8 @@ RUN SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFA
     --username=$USERNAME \
     --password=$PASSWORD \
     --force \
-    --auto-attach
+    --auto-attach; \
+  fi
 
 ENV R_VERSION=4.4.1
 
@@ -315,7 +321,9 @@ COPY ${RSTUDIO_SOURCE_CODE}/utils utils/
 COPY ${RSTUDIO_SOURCE_CODE}/run-rstudio.sh ${RSTUDIO_SOURCE_CODE}/setup_rstudio.py ${RSTUDIO_SOURCE_CODE}/rsession.sh ${RSTUDIO_SOURCE_CODE}/run-nginx.sh ./
 
 # Unregister the system
-RUN subscription-manager remove --all && subscription-manager unregister && subscription-manager clean
+RUN if [ -d "${SECRET_DIR}" ]; then \
+    subscription-manager remove --all && subscription-manager unregister && subscription-manager clean; \
+  fi
 
 USER 1001
 

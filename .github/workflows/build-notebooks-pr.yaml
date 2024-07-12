@@ -33,7 +33,8 @@ jobs:
           git fetch --no-tags origin '+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}'
           python3 ci/cached-builds/gen_gha_matrix_jobs.py \
             --from-ref 'origin/${{ github.event.pull_request.base.ref }}' \
-            --to-ref '${{ github.event.pull_request.head.ref }}'
+            --to-ref '${{ github.event.pull_request.head.ref }}' \
+            --leave-out-rhel '${{ github.event_name == 'pull_request' }}'
         id: gen
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -49,4 +50,5 @@ jobs:
     with:
       target: "${{ matrix.target }}"
       github: "${{ toJSON(github) }}"
+      subscription: "${{ matrix.subscription }}"
     secrets: inherit

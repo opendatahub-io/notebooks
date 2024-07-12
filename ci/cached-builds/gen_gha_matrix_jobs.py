@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 import json
 import logging
@@ -6,7 +8,6 @@ import subprocess
 import os
 import pathlib
 import re
-import string
 import sys
 import unittest
 
@@ -21,7 +22,7 @@ Use https://pypi.org/project/py-make/ or https://github.com/JetBrains/intellij-p
 project_dir = pathlib.Path(__file__).parent.parent.parent.absolute()
 
 
-def parse_makefile(target: str, makefile_dir: str) -> str:
+def parse_makefile(target: str, makefile_dir: pathlib.Path | str) -> str:
     # Check if the operating system is macOS
     if platform.system() == 'Darwin':
         make_command = 'gmake'
@@ -30,7 +31,9 @@ def parse_makefile(target: str, makefile_dir: str) -> str:
 
     try:
         # Run the make (or gmake) command and capture the output
-        result = subprocess.run([make_command, '-nps', target], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, cwd=makefile_dir)
+        result = subprocess.run([make_command, '-nps', target],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                check=True, cwd=makefile_dir)
     except subprocess.CalledProcessError as e:
         # Handle errors if the make command fails
         print(f'{make_command} failed with return code: {e.returncode}:\n{e.stderr}', file=sys.stderr)
@@ -43,7 +46,7 @@ def parse_makefile(target: str, makefile_dir: str) -> str:
     return result.stdout
 
 
-def extract_image_targets(makefile_dir: str = os.getcwd()) -> list[str]:
+def extract_image_targets(makefile_dir: pathlib.Path | str = os.getcwd()) -> list[str]:
     makefile_all_target = 'all-images'
 
     output = parse_makefile(target=makefile_all_target, makefile_dir=makefile_dir)
@@ -68,8 +71,9 @@ def main() -> None:
                            help="Git ref of the base branch (to determine changed files)")
     argparser.add_argument("--to-ref", type=str, required=False,
                            help="Git ref of the PR branch (to determine changed files)")
+    argparser.add_argument("--leave-out-rhel", type=bool, required=False, default=False, action=argparse.BooleanOptionalAction,
+                           help="Does not output rhel-based images even when they have changed files")
     args = argparser.parse_args()
-
 
     targets = extract_image_targets()
 
@@ -78,9 +82,19 @@ def main() -> None:
         changed_files = gha_pr_changed_files.list_changed_files(args.from_ref, args.to_ref)
         targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
 
+    if args.leave_out_rhel:
+        targets = [target for target in targets if "rhel" not in target]
+
+    # https://stackoverflow.com/questions/66025220/paired-values-in-github-actions-matrix
     output = [
-        f"matrix={json.dumps({"target": targets}, separators=(',', ':'))}",
-        f"has_jobs={json.dumps(len(targets) > 0, separators=(',', ':'))}"
+        "matrix=" + json.dumps({
+            "include": [
+                {"target": target, "subscription": "rhel" in target} for target in targets
+            ],
+        }, separators=(',', ':')),
+        "has_jobs=" + json.dumps(
+            len(targets) > 0, separators=(',', ':')
+        ),
     ]
 
     print("targets", targets)

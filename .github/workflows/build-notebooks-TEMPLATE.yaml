@@ -15,6 +15,11 @@ name: Build & Publish Notebook Servers (TEMPLATE)
         required: true
         description: "top workflow's `github`"
         type: string
+      subscription:
+        required: false
+        default: false
+        description: "add RHEL subscription from github secret"
+        type: boolean
 
 jobs:
   build:
@@ -49,8 +54,39 @@ jobs:
           echo "CACHE=${CACHE,,}" >>${GITHUB_ENV}
 
       - uses: actions/checkout@v4
+        if: ${{ fromJson(inputs.github).event_name != 'pull_request_target' }}
+      # we need to checkout the pr branch, not pr target (the default for pull_request_target)
+      # user access check is done in calling workflow
+      - uses: actions/checkout@v4
+        if: ${{ fromJson(inputs.github).event_name == 'pull_request_target' }}
+        with:
+          ref: "refs/pull/${{ fromJson(inputs.github).event.number }}/merge"
 
       - run: mkdir -p $TMPDIR
+
+      # do this early because it's fast and why not
+      - name: Unlock encrypted secrets with git-crypt
+        if: ${{ inputs.subscription }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install git-crypt
+          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
+          git-crypt unlock ./git-crypt-key
+          rm ./git-crypt-key
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+
+      - name: Add subscriptions from GitHub secret
+        if: ${{ inputs.subscription }}
+        run: |
+          sudo mkdir -p /etc/pki/
+          sudo cp -R ${PWD}/ci/secrets/pki/* /etc/pki/
+          # https://access.redhat.com/solutions/5870841
+          # https://github.com/containers/common/issues/1735
+          printf "${PWD}/ci/secrets/run/secrets/rhsm:/etc/rhsm\n${PWD}/ci/secrets/run/secrets/etc-pki-entitlement:/etc/pki/entitlement\n${PWD}/ci/secrets/pki/consumer:/etc/pki/consumer\n" | sudo tee /usr/share/containers/mounts.conf
+
+          mkdir -p $HOME/.config/containers/
+          sudo cp ${PWD}/ci/secrets/pull-secret.json $HOME/.config/containers/auth.json
 
       # for bin/buildinputs in scripts/sandbox.py
       - uses: actions/setup-go@v5
@@ -257,7 +293,8 @@ jobs:
       - name: "pull_request: make ${{ inputs.target }}"
         run: |
           make ${{ inputs.target }}
-        if: "${{ fromJson(inputs.github).event_name == 'pull_request' }}"
+        if: "${{ fromJson(inputs.github).event_name == 'pull_request' ||
+          fromJson(inputs.github).event_name == 'pull_request_target' }}"
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
           CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }}"
