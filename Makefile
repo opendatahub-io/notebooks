@@ -394,8 +394,28 @@ undeploy-c9s-%-c9s-python-3.9: bin/kubectl
 #   ARG 1: UBI flavor
 #   ARG 1: Python kernel
 define test_with_papermill
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "python3 -m pip install papermill toml" ; \
+	$(call test_with_papermill_common,$(1),$(2),$(3)) ; \
+	$(call test_with_papermill_specific,$(1),$(2),$(3))
+endef
+
+define test_with_papermill_common
 	$(eval PREFIX_NAME := $(subst /,-,$(1)_$(2))) \
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "python3 -m pip install papermill" ; \
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/common/test/test_notebook_common.ipynb -O test_notebook_common.ipynb && python3 -m papermill test_notebook_common.ipynb $(PREFIX_NAME)_common_output.ipynb --kernel python3 --stderr-file $(PREFIX_NAME)_common_error.txt" ; \
+    if [ $$? -ne 0 ]; then \
+		echo "ERROR: The $(1) $(2) notebook common tests encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-$(1)-$(2)-$(3)-test-e2e' directory or run 'cat $(PREFIX_NAME)_common_error.txt' within your container. The make process has been aborted." ; \
+		exit 1 ; \
+	fi ; \
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_common_error.txt | grep --quiet FAILED" ; \
+	if [ $$? -eq 0 ]; then \
+		echo "ERROR: The $(1) $(2) notebook common tests encountered a failure. The make process has been aborted." ; \
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_common_error.txt" ; \
+		exit 1 ; \
+	fi
+endef
+
+define test_with_papermill_specific
+	$(eval PREFIX_NAME := $(subst /,-,$(1)_$(2))) \
 	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/$(1)/$(2)-$(3)/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb $(PREFIX_NAME)_output.ipynb --kernel python3 --stderr-file $(PREFIX_NAME)_error.txt" ; \
     if [ $$? -ne 0 ]; then \
 		echo "ERROR: The $(1) $(2) notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-$(1)-$(2)-$(3)-test-e2e' directory or run 'cat $(PREFIX_NAME)_error.txt' within your container. The make process has been aborted." ; \
