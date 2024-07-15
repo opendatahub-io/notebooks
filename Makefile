@@ -395,6 +395,7 @@ undeploy-c9s-%-c9s-python-3.9: bin/kubectl
 #   ARG 1: Python kernel
 define test_with_papermill
 	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "python3 -m pip install papermill toml" ; \
+	ls -la ; \
 	$(call test_with_papermill_common,$(1),$(2),$(3)) ; \
 	$(call test_with_papermill_specific,$(1),$(2),$(3))
 endef
