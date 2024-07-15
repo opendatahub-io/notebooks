@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: notebook
-          image: quay.io/opendatahub/workbench-images:jupyter-amd-pytorch-ubi9-python-3.9
+          image: quay.io/opendatahub/workbench-images:rocm-jupyter-tensorflow-ubi9-python-3.9
           imagePullPolicy: Always
           workingDir: /opt/app-root/src
           env:

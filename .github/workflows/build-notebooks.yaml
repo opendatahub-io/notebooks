@@ -416,57 +416,57 @@
             },
             "secrets": "inherit"
         },
-        "amd-c9s-python-3_9": {
+        "rocm-ubi9-python-3_9": {
             "needs": [
-                "base-c9s-python-3_9"
+                "base-ubi9-python-3_9"
             ],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
-                "target": "amd-c9s-python-3.9",
+                "target": "rocm-ubi9-python-3.9",
                 "github": "${{ toJSON(github) }}"
             },
             "secrets": "inherit"
         },
-        "amd-jupyter-minimal-c9s-python-3_9": {
+        "rocm-jupyter-minimal-ubi9-python-3_9": {
             "needs": [
-                "amd-c9s-python-3_9"
+                "rocm-ubi9-python-3_9"
             ],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
-                "target": "amd-jupyter-minimal-c9s-python-3.9",
+                "target": "rocm-jupyter-minimal-ubi9-python-3.9",
                 "github": "${{ toJSON(github) }}"
             },
             "secrets": "inherit"
         },
-        "amd-jupyter-datascience-c9s-python-3_9": {
+        "rocm-jupyter-datascience-ubi9-python-3_9": {
             "needs": [
-                "amd-jupyter-minimal-c9s-python-3_9"
+                "rocm-jupyter-minimal-ubi9-python-3_9"
             ],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
-                "target": "amd-jupyter-datascience-c9s-python-3.9",
+                "target": "rocm-jupyter-datascience-ubi9-python-3.9",
                 "github": "${{ toJSON(github) }}"
             },
             "secrets": "inherit"
         },
-        "amd-jupyter-tensorflow-c9s-python-3_9": {
+        "rocm-jupyter-tensorflow-ubi9-python-3_9": {
             "needs": [
-                "amd-jupyter-datascience-c9s-python-3_9"
+                "rocm-jupyter-datascience-ubi9-python-3_9"
             ],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
-                "target": "amd-jupyter-tensorflow-c9s-python-3.9",
+                "target": "rocm-jupyter-tensorflow-ubi9-python-3.9",
                 "github": "${{ toJSON(github) }}"
             },
             "secrets": "inherit"
         },
-        "amd-jupyter-pytorch-c9s-python-3_9": {
+        "rocm-jupyter-pytorch-ubi9-python-3_9": {
             "needs": [
-                "amd-jupyter-datascience-c9s-python-3_9"
+                "rocm-jupyter-datascience-ubi9-python-3_9"
             ],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
-                "target": "amd-jupyter-pytorch-c9s-python-3.9",
+                "target": "rocm-jupyter-pytorch-ubi9-python-3.9",
                 "github": "${{ toJSON(github) }}"
             },
             "secrets": "inherit"
