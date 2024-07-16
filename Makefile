@@ -97,25 +97,10 @@ cuda-jupyter-minimal-ubi8-python-3.8: cuda-ubi8-python-3.8
 cuda-jupyter-datascience-ubi8-python-3.8: cuda-jupyter-minimal-ubi8-python-3.8
 	$(call image,$@,jupyter/datascience/ubi8-python-3.8,$<)
 
-# Build and push jupyter-trustyai-ubi8-python-3.8 image to the registry
-.PHONY: jupyter-trustyai-ubi8-python-3.8
-jupyter-trustyai-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
-	$(call image,$@,jupyter/trustyai/ubi8-python-3.8,$<)
-
-# Build and push habana-jupyter-1.9.0-ubi8-python-3.8 image to the registry
-.PHONY: habana-jupyter-1.9.0-ubi8-python-3.8
-habana-jupyter-1.9.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
-	$(call image,$@,habana/1.9.0/ubi8-python-3.8,$<)
-
 # Build and push habana-jupyter-1.10.0-ubi8-python-3.8 image to the registry
 .PHONY: habana-jupyter-1.10.0-ubi8-python-3.8
 habana-jupyter-1.10.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
 	$(call image,$@,habana/1.10.0/ubi8-python-3.8,$<)
-
-# Build and push habana-jupyter-1.11.0-ubi8-python-3.8 image to the registry
-.PHONY: habana-jupyter-1.11.0-ubi8-python-3.8
-habana-jupyter-1.11.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
-	$(call image,$@,habana/1.11.0/ubi8-python-3.8,$<)
 
 # Build and push habana-jupyter-1.13.0-ubi8-python-3.8 image to the registry
 .PHONY: habana-jupyter-1.13.0-ubi8-python-3.8
@@ -573,8 +558,11 @@ refresh-pipfilelock-files:
 	cd jupyter/datascience/ubi9-python-3.9 && pipenv lock
 	cd jupyter/pytorch/ubi9-python-3.9 && pipenv lock
 	cd jupyter/tensorflow/ubi9-python-3.9 && pipenv lock
-	cd jupyter/trustyai/ubi8-python-3.8 && pipenv lock
 	cd jupyter/trustyai/ubi9-python-3.9 && pipenv lock
+	cd habana/1.10.0/ubi8-python-3.8 && pipenv lock
+	cd habana/1.13.0/ubi8-python-3.8 && pipenv lock
+	cd runtimes/minimal/ubi8-python-3.8 && pipenv lock
+	cd runtimes/minimal/ubi9-python-3.9 && pipenv lock
 	cd runtimes/datascience/ubi8-python-3.8 && pipenv lock
 	cd runtimes/datascience/ubi9-python-3.9 && pipenv lock
 	cd runtimes/pytorch/ubi9-python-3.9 && pipenv lock
