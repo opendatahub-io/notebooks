@@ -51,6 +51,17 @@ podman  run -it -p  8888:8888  quay.io/opendatahub/workbench-images:jupyter-mini
 
 ### Deploy & Test
 
+#### Running Python selftests in Pytest
+
+```shell
+pip install poetry
+poetry env use /usr/bin/python3.12
+poetry config virtualenvs.in-project true
+poetry install --sync
+
+poetry run pytest
+```
+
 #### Notebooks
 
 Deploy the notebook images in your Kubernetes environment using:
