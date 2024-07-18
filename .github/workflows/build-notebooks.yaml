@@ -79,28 +79,6 @@
             },
             "secrets": "inherit"
         },
-        "jupyter-trustyai-ubi8-python-3_8": {
-            "needs": [
-                "jupyter-datascience-ubi8-python-3_8"
-            ],
-            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
-            "with": {
-                "target": "jupyter-trustyai-ubi8-python-3.8",
-                "github": "${{ toJSON(github) }}"
-            },
-            "secrets": "inherit"
-        },
-        "habana-jupyter-1_9_0-ubi8-python-3_8": {
-            "needs": [
-                "jupyter-datascience-ubi8-python-3_8"
-            ],
-            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
-            "with": {
-                "target": "habana-jupyter-1.9.0-ubi8-python-3.8",
-                "github": "${{ toJSON(github) }}"
-            },
-            "secrets": "inherit"
-        },
         "habana-jupyter-1_10_0-ubi8-python-3_8": {
             "needs": [
                 "jupyter-datascience-ubi8-python-3_8"
@@ -108,17 +86,6 @@
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "habana-jupyter-1.10.0-ubi8-python-3.8",
-                "github": "${{ toJSON(github) }}"
-            },
-            "secrets": "inherit"
-        },
-        "habana-jupyter-1_11_0-ubi8-python-3_8": {
-            "needs": [
-                "jupyter-datascience-ubi8-python-3_8"
-            ],
-            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
-            "with": {
-                "target": "habana-jupyter-1.11.0-ubi8-python-3.8",
                 "github": "${{ toJSON(github) }}"
             },
             "secrets": "inherit"
