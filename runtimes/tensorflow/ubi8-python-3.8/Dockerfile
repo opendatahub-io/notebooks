@@ -13,14 +13,14 @@ LABEL name="odh-notebook-cuda-runtime-tensorflow-ubi8-python-3.8" \
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages from Pipfile.lock
-COPY Pipfile.lock ./
+# Install Python packages from pyproject.toml and poetry.lock files
+COPY pyproject.toml poetry.lock ./
 # Copy Elyra dependencies for air-gapped enviroment
 COPY utils ./utils/
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
+    micropipenv install --method poetry && \
+    rm -f ./pyproject.toml ./poetry.lock && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.8/site-packages && \
     fix-permissions /opt/app-root -P
