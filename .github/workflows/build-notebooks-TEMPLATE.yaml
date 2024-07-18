@@ -135,6 +135,9 @@ jobs:
           IMAGE_REGISTRY: "localhost:5000/workbench-images"
           CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }}"
 
+      - name: "Show podman images information"
+        run: podman images
+
       - name: "pull_request|schedule: resolve image name if Trivy scan should run"
         id: resolve-image
         if: ${{ fromJson(inputs.github).event_name == 'pull_request' || fromJson(inputs.github).event_name == 'schedule' }}
