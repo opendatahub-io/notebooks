@@ -23,7 +23,7 @@ jobs:
           if [[ -z "$clean" ]]; then
               echo "Empty git status --porcelain: $clean"
           else
-              echo "::error::Please run 'bash ci/generate_code.bash' (the command from the previous step) and commit the result."
+              echo "::error::Please run 'bash ci/generate_code.bash' (the command from the previous step), commit the result locally, and push again."
               echo "Uncommitted file changes detected: $clean"
               git diff
               exit 1
