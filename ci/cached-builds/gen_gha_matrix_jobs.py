@@ -175,9 +175,13 @@ def main() -> None:
 
     print("leafs", leafs)
     print(*output, sep="\n")
-    with open(os.environ["GITHUB_OUTPUT"], "at") as f:
-        for line in output:
-            print(line, file=f)
+
+    if "GITHUB_ACTIONS" in os.environ:
+        with open(os.environ["GITHUB_OUTPUT"], "at") as f:
+            for line in output:
+                print(line, file=f)
+    else:
+        logging.info(f"Not running on Github Actions, won't produce GITHUB_OUTPUT")
 
 
 if __name__ == '__main__':
