@@ -277,14 +277,14 @@ rocm-jupyter-tensorflow-ubi9-python-3.9: rocm-jupyter-datascience-ubi9-python-3.
 rocm-jupyter-pytorch-ubi9-python-3.9: rocm-jupyter-datascience-ubi9-python-3.9
 	$(call image,$@,jupyter/rocm/pytorch/ubi9-python-3.9,$<)
 
-# Build and push amd-jupyter-runtime-pytorch-ubi9-python-3.9 image to the registry
-.PHONY: amd-runtime-pytorch-ubi9-python-3.9
-amd-runtime-pytorch-ubi9-python-3.9: amd-ubi9-python-3.9
+# Build and push rocm-jupyter-runtime-pytorch-ubi9-python-3.9 image to the registry
+.PHONY: rocm-runtime-pytorch-ubi9-python-3.9
+rocm-runtime-pytorch-ubi9-python-3.9: rocm-ubi9-python-3.9
 	$(call image,$@,runtimes/rocm-pytorch/ubi9-python-3.9,$<)
 
-# Build and push amd-jupyter-runtime-tensorflow-ubi9-python-3.9 image to the registry
-.PHONY: amd-runtime-tensorflow-ubi9-python-3.9
-amd-runtime-tensorflow-ubi9-python-3.9: amd-ubi9-python-3.9
+# Build and push rocm-jupyter-runtime-tensorflow-ubi9-python-3.9 image to the registry
+.PHONY: rocm-runtime-tensorflow-ubi9-python-3.9
+rocm-runtime-tensorflow-ubi9-python-3.9: rocm-ubi9-python-3.9
 	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-3.9,$<)
 
 ####################################### Buildchain for Anaconda Python #######################################

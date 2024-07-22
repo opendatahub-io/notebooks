@@ -7,7 +7,7 @@ resources:
 images:
   - name: runtime-workbench
     newName: quay.io/opendatahub/workbench-images
-    newTag: runtime-amd-tensorflow-ubi9-python-3.9
+    newTag: runtime-rocm-tensorflow-ubi9-python-3.9
 configMapGenerator:
   - name: req-config
     files:

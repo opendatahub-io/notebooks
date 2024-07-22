@@ -471,24 +471,24 @@
             },
             "secrets": "inherit"
         },
-        "amd-runtime-pytorch-ubi9-python-3_9": {
+        "rocm-runtime-pytorch-ubi9-python-3_9": {
             "needs": [
-                "amd-ubi9-python-3_9"
+                "rocm-ubi9-python-3_9"
             ],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
-                "target": "amd-runtime-pytorch-ubi9-python-3.9",
+                "target": "rocm-runtime-pytorch-ubi9-python-3.9",
                 "github": "${{ toJSON(github) }}"
             },
             "secrets": "inherit"
         },
-        "amd-runtime-tensorflow-ubi9-python-3_9": {
+        "rocm-runtime-tensorflow-ubi9-python-3_9": {
             "needs": [
-                "amd-ubi9-python-3_9"
+                "rocm-ubi9-python-3_9"
             ],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
-                "target": "amd-runtime-tensorflow-ubi9-python-3.9",
+                "target": "rocm-runtime-tensorflow-ubi9-python-3.9",
                 "github": "${{ toJSON(github) }}"
             },
             "secrets": "inherit"

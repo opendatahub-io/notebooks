@@ -1,15 +1,15 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-LABEL name="odh-notebook-runtime-amd-pytorch-ubi9-python-3.9" \
-    summary="Runtime AMD pytorch notebook image for ODH notebooks" \
-    description="Runtime AMD pytorch notebook image with base Python 3.9 builder image based on UBI9 for ODH notebooks" \
-    io.k8s.display-name="Runtime AMD pytorch notebook image for ODH notebooks" \
-    io.k8s.description="Runtime AMD pytorch notebook image with base Python 3.9 builder image based on UBI9 for ODH notebooks" \
+LABEL name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.9" \
+    summary="Runtime ROCm pytorch notebook image for ODH notebooks" \
+    description="Runtime ROCm pytorch notebook image with base Python 3.9 builder image based on UBI9 for ODH notebooks" \
+    io.k8s.display-name="Runtime ROCm pytorch notebook image for ODH notebooks" \
+    io.k8s.description="Runtime ROCm pytorch notebook image with base Python 3.9 builder image based on UBI9 for ODH notebooks" \
     authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
     io.openshift.build.commit.ref="main" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/rocm-pytorch/ubi9-python-3.9" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:amd-runtime-pytorch-ubi9-python-3.9"
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:rocm-runtime-pytorch-ubi9-python-3.9"
 
 WORKDIR /opt/app-root/bin
 
