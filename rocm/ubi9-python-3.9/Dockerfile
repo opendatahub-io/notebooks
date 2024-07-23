@@ -18,8 +18,6 @@ WORKDIR /opt/app-root/bin
 ARG ROCM_VERSION=6.1
 ARG AMDGPU_VERSION=6.1
 
-# Enable epel-release repositories
-
 # Install the ROCm rpms
 RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
