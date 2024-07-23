@@ -31,7 +31,13 @@ RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "baseurl=https://repo.radeon.com/amdgpu/$AMDGPU_VERSION/rhel/9.4/main/x86_64" >> /etc/yum.repos.d/amdgpu.repo && \
     echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
-    yum install -y rocm && \
+    yum install -y \
+      rocm-utils rocm-smi \
+      rocm-language-runtime \
+      rocm-hip-runtime \
+      rocm-opencl-runtime \
+      rocm-hip-runtime \
+      hip-runtime-amd && \
     yum clean all && rm -rf /var/cache/yum
 
 # Restore notebook user workspace
