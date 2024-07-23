@@ -31,10 +31,11 @@ RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
     yum install -y \
       rocm-utils rocm-smi \
-      rocm-developer-tools \
       rocm-hip-runtime \
       rocm-opencl-runtime \
-      rocm-language-runtime && \
+      rocm-language-runtime \
+      rocblas-devel rocrand-devel hipfft-devel miopen-hip-devel \
+      rocm-device-libs && \
     yum clean all && rm -rf /var/cache/yum
 
 # Restore notebook user workspace
