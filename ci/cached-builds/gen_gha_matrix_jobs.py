@@ -198,8 +198,8 @@ class SelfTests(unittest.TestCase):
         changed_files = ["jupyter/datascience/ubi9-python-3.9/Dockerfile"]
 
         leafs = gha_pr_changed_files.filter_out_unchanged(leafs, changed_files)
-        assert set(leafs) == {'rocm-jupyter-pytorch-c9s-python-3.9',
-                              'rocm-jupyter-tensorflow-c9s-python-3.9',
+        assert set(leafs) == {'rocm-jupyter-pytorch-ubi9-python-3.9',
+                              'rocm-jupyter-tensorflow-ubi9-python-3.9',
                               'cuda-jupyter-tensorflow-ubi9-python-3.9',
                               'jupyter-trustyai-ubi9-python-3.9',
                               'jupyter-pytorch-ubi9-python-3.9'}
