@@ -3,13 +3,13 @@ FROM quay.io/centos/centos:stream9
 # perform the setup that python image used to do for us
 #  but this way it uses a lot less disk space (hundreds of megabytes less)
 ENV APP_ROOT="/opt/app-root"
-ENV HOME="${APP_ROOT}"
+ENV HOME="${APP_ROOT}/src"
 ENV VIRTUAL_ENV="${APP_ROOT}"
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 ENV PYTHON_VERSION=3.9
 ENV PIP_NO_CACHE_DIR=off
-RUN mkdir --parents "${APP_ROOT}/src" && chmod --recursive 0771 ${APP_ROOT} && chown --recursive 1001:0 ${APP_ROOT} && \
-    useradd --uid 1001 --gid 0 --no-create-home --home-dir "${APP_ROOT}/src" \
+RUN mkdir --parents "${HOME}" && chmod --recursive 0771 ${APP_ROOT} && chown --recursive 1001:0 ${APP_ROOT} && \
+    useradd --uid 1001 --gid 0 --no-create-home --home-dir "${HOME}" \
       --comment "Default Application User" --shell /bin/bash default && \
     dnf install -y python3-pip && dnf clean all && rm -rf /var/cache/yum/*
 COPY --from=quay.io/sclorg/s2i-core-c9s:latest /usr/bin/fix-permissions /usr/bin/rpm-file-permissions /usr/bin/
