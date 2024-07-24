@@ -18,13 +18,11 @@ COPY utils utils/
 COPY Pipfile.lock start-notebook.sh ./
 
 # Install Python dependencies from Pipfile.lock file
-RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
-
-# Disable announcement plugin of jupyterlab
-RUN jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
-
-# Fix permissions to support pip in Openshift environments
-RUN chmod -R g+w /opt/app-root/lib/python3.8/site-packages && \
+RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock && \
+    # Disable announcement plugin of jupyterlab \
+    jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
+    # Fix permissions to support pip in Openshift environments \
+    chmod -R g+w /opt/app-root/lib/python3.8/site-packages && \
       fix-permissions /opt/app-root -P
 
 WORKDIR /opt/app-root/src
