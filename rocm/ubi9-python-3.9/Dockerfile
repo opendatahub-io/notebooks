@@ -35,7 +35,7 @@ RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
       rocm-opencl-runtime \
       rocm-language-runtime \
       rocblas-devel rocrand-devel hipfft-devel miopen-hip-devel \
-      rocm-device-libs && \
+      rccl rocm-device-libs && \
     yum clean all && rm -rf /var/cache/yum
 
 # Restore notebook user workspace
