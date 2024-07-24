@@ -11,7 +11,7 @@ RUN mkdir --parents "${APP_ROOT}/src" && chmod --recursive 0771 ${APP_ROOT} && c
     useradd --uid 1001 --gid 0 --no-create-home --home-dir "${APP_ROOT}/src" \
       --comment "Default Application User" --shell /bin/bash default && \
     dnf install -y python311-pip && dnf clean all && rm -rf /var/cache/yum/* && \
-COPY --from=quay.io/sclorg/s2i-core-c9s:latest /usr/bin/fix-permissions /usr/bin/fix-permissions
+COPY --from=quay.io/sclorg/s2i-core-c9s:latest /usr/bin/fix-permissions /usr/bin/rpm-file-permissions /usr/bin/
 
 USER 1001
 RUN python${PYTHON_VERSION} -m venv "${VIRTUAL_ENV}"
