@@ -27,7 +27,7 @@ RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./P
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
     sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
     # Disable announcement plugin of jupyterlab \
-    RUN jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
+    jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     # Fix permissions to support pip in Openshift environments
     chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
     fix-permissions /opt/app-root -P
