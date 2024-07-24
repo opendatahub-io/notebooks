@@ -3,6 +3,7 @@ FROM quay.io/centos/centos:stream9
 # perform the setup that python image used to do for us
 #  but this way it uses a lot less disk space (hundreds of megabytes less)
 ENV APP_ROOT="/opt/app-root"
+ENV HOME="${APP_ROOT}"
 ENV VIRTUAL_ENV="${APP_ROOT}"
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 ENV PYTHON_VERSION=3.9
