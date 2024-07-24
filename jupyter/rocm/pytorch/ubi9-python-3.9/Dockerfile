@@ -14,14 +14,10 @@ LABEL name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.9" \
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY Pipfile.lock ./
 
-RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
-    # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
+RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock && \
+    # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
     sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
-    # Disable announcement plugin of jupyterlab \
-    jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
-
-# Fix permissions to support pip in Openshift environments
-RUN chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
-    fix-permissions /opt/app-root -P
+    # Disable announcement plugin of jupyterlab
+    jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
+    # Fix permissions to support pip in Openshift environments
+    chmod -R g+w /opt/app-root/lib/python3.9/site-packages && fix-permissions /opt/app-root -P
