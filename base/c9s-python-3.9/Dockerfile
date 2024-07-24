@@ -36,7 +36,10 @@ COPY Pipfile.lock ./
 USER root
 
 # Install usefull OS packages
-RUN dnf install -y mesa-libGL && dnf clean all && rm -rf /var/cache/yum
+RUN dnf install -y \
+      mesa-libGL \
+      wget \
+    && dnf clean all && rm -rf /var/cache/yum
 
 # Other apps and tools installed as default user
 USER 1001
