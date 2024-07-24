@@ -41,6 +41,7 @@ USER root
 # Install usefull OS packages
 RUN dnf install -y \
       mesa-libGL \
+      patch \
       wget \
     && dnf clean all && rm -rf /var/cache/yum
 
