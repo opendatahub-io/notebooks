@@ -1,4 +1,15 @@
-FROM registry.access.redhat.com/ubi9/python-311:latest
+FROM registry.access.redhat.com/ubi9/ubi:latest
+
+# perform the setup that python s2i image used to do for us
+#  but this way it uses a lot less disk space (hundreds of megabytes less)
+ENV VIRTUAL_ENV="/opt/app-root"
+ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+RUN useradd --uid 1001 --gid 0 --create-home --base-dir / --home-dir /opt/app-root/src \
+      --comment "Default Application User" --shell /bin/bash default && \
+    dnf install -y python311-pip && dnf clean all && rm -rf /var/cache/yum/* && \
+    python3.11 -m venv "${VIRTUAL_ENV}"
+
+USER 1001
 
 ARG SOURCE_CODE=base/ubi9-python-3.11
 
@@ -20,7 +31,7 @@ RUN pip install --no-cache-dir -U "micropipenv[toml]"
 # Install Python dependencies from Pipfile.lock file
 COPY ${SOURCE_CODE}/Pipfile.lock ./
 
-RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
+RUN echo "Installing software and packages" && micropipenv install && rm -f ./Pipfile.lock
 
 # OS Packages needs to be installed as root
 USER root
