@@ -8,10 +8,10 @@ RUN mkdir --parents --mode 0771 "${VIRTUAL_ENV}/src" && chown --recursive 1001:0
     useradd --uid 1001 --gid 0 --home-dir "${VIRTUAL_ENV}/src" \
       --comment "Default Application User" --shell /bin/bash default && \
     dnf install -y python311-pip && dnf clean all && rm -rf /var/cache/yum/* && \
-    python3.11 -m venv "${VIRTUAL_ENV}"
+COPY --from=quay.io/sclorg/s2i-core-c9s:latest /usr/bin/fix-permissions /usr/bin/fix-permissions
 
 USER 1001
-RUN python3.8 -m venv "${VIRTUAL_ENV}"
+RUN python3.11 -m venv "${VIRTUAL_ENV}"
 
 ARG SOURCE_CODE=base/ubi9-python-3.11
 
