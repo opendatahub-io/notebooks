@@ -6,10 +6,10 @@ ENV VIRTUAL_ENV="/opt/app-root"
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 RUN useradd --uid 1001 --gid 0 --create-home --base-dir / --home-dir /opt/app-root/src \
       --comment "Default Application User" --shell /bin/bash default && \
-    dnf install -y python38-pip && dnf clean all && rm -rf /var/cache/yum/* && \
-    python3.8 -m venv "${VIRTUAL_ENV}"
+    dnf install -y python38-pip && dnf clean all && rm -rf /var/cache/yum/*
 
 USER 1001
+RUN python3.8 -m venv "${VIRTUAL_ENV}"
 
 LABEL name="odh-notebook-base-ubi8-python-3.8" \
       summary="Python 3.8 base image for ODH notebooks" \
