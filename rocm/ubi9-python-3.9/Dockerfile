@@ -34,7 +34,7 @@ RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
       rocm-hip-runtime \
       rocm-opencl-runtime \
       rocm-language-runtime \
-      rocblas-devel rocrand-devel hipfft-devel miopen-hip-devel \
+      rocblas-devel rocrand-devel hipfft-devel miopen-hip-devel hipblaslt-devel \
       rccl rocm-device-libs && \
     yum clean all && rm -rf /var/cache/yum
 
