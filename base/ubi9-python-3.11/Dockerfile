@@ -3,6 +3,7 @@ FROM registry.access.redhat.com/ubi9/ubi:latest
 # perform the setup that python s2i image used to do for us
 #  but this way it uses a lot less disk space (hundreds of megabytes less)
 ENV APP_ROOT="/opt/app-root"
+ENV HOME="${APP_ROOT}"
 ENV VIRTUAL_ENV="${APP_ROOT}"
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 ENV PYTHON_VERSION=3.11
