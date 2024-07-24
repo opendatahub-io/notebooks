@@ -10,6 +10,7 @@ RUN useradd --uid 1001 --gid 0 --create-home --base-dir / --home-dir /opt/app-ro
     python3.11 -m venv "${VIRTUAL_ENV}"
 
 USER 1001
+RUN python3.8 -m venv "${VIRTUAL_ENV}"
 
 ARG SOURCE_CODE=base/ubi9-python-3.11
 
