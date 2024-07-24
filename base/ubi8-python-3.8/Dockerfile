@@ -1,4 +1,15 @@
-FROM registry.access.redhat.com/ubi8/python-38:latest
+FROM registry.access.redhat.com/ubi8/ubi:latest
+
+# perform the setup that python s2i image used to do for us
+#  but this way it uses a lot less disk space (hundreds of megabytes less)
+ENV VIRTUAL_ENV="/opt/app-root"
+ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+RUN useradd --uid 1001 --gid 0 --create-home --base-dir / --home-dir /opt/app-root/src \
+      --comment "Default Application User" --shell /bin/bash default && \
+    dnf install -y python38-pip && dnf clean all && rm -rf /var/cache/yum/* && \
+    python3.8 -m venv "${VIRTUAL_ENV}"
+
+USER 1001
 
 LABEL name="odh-notebook-base-ubi8-python-3.8" \
       summary="Python 3.8 base image for ODH notebooks" \

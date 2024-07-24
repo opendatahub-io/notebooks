@@ -1,4 +1,15 @@
-FROM quay.io/sclorg/python-39-c9s:c9s
+FROM quay.io/centos/centos:stream9
+
+# perform the setup that python image used to do for us
+#  but this way it uses a lot less disk space (hundreds of megabytes less)
+ENV VIRTUAL_ENV="/opt/app-root"
+ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+RUN useradd --uid 1001 --gid 0 --create-home --base-dir / --home-dir /opt/app-root/src \
+      --comment "Default Application User" --shell /bin/bash default && \
+    dnf install -y python3-pip && dnf clean all && rm -rf /var/cache/yum/* && \
+    python3.9 -m venv "${VIRTUAL_ENV}"
+
+USER 1001
 
 LABEL name="odh-notebook-base-centos-stream9-python-3.9" \
       summary="Python 3.9 CentOS Stream 9 base image for ODH notebooks" \
