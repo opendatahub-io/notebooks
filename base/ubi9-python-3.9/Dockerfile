@@ -6,10 +6,10 @@ ENV VIRTUAL_ENV="/opt/app-root"
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 RUN useradd --uid 1001 --gid 0 --create-home --base-dir / --home-dir /opt/app-root/src \
       --comment "Default Application User" --shell /bin/bash default && \
-    dnf install -y python3-pip && dnf clean all && rm -rf /var/cache/yum/* && \
-    python3.9 -m venv "${VIRTUAL_ENV}"
+    dnf install -y python3-pip && dnf clean all && rm -rf /var/cache/yum/*
 
 USER 1001
+python3.9 -m venv "${VIRTUAL_ENV}"
 
 LABEL name="odh-notebook-base-ubi9-python-3.9" \
       summary="Python 3.9 base image for ODH notebooks" \
