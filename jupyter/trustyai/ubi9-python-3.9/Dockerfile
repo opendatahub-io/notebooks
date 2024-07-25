@@ -28,6 +28,6 @@ RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./P
     sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
     # Disable announcement plugin of jupyterlab \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
-    # Fix permissions to support pip in Openshift environments
+    # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
     fix-permissions /opt/app-root -P
