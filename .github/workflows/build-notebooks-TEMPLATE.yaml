@@ -36,13 +36,21 @@ jobs:
 
       - name: Free up additional disk space
         # https://docs.github.com/en/actions/learn-github-actions/expressions
-        if: "${{ contains(inputs.target, 'amd') || contains(inputs.target, 'cuda') || contains(inputs.target, 'intel') ||
+        if: "${{ contains(inputs.target, 'rocm') || contains(inputs.target, 'cuda') || contains(inputs.target, 'intel') ||
          contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') }}"
         run: |
           set -x
 
           df -h
 
+          sudo apt-get update
+          sudo apt-get remove -y '^dotnet-.*'
+          sudo apt-get remove -y '^llvm-.*'
+          sudo apt-get remove -y 'php.*'
+          sudo apt-get remove -y '^mongodb-.*'
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          sudo rm -rf /usr/local/.ghcup &
           sudo rm -rf /usr/local/lib/android &
           sudo rm -rf /usr/local/share/boost &
           sudo rm -rf /usr/local/lib/node_modules &
@@ -61,7 +69,7 @@ jobs:
           df -h
           free -h
 
-          bash ./ci/cached-builds/gha_lvm_overlay.bash
+          bash ./ci/cached-builds/gha_lvm_overlay.sh
 
           df -h
           free -h
@@ -95,10 +103,18 @@ jobs:
           podman system reset --force
           mkdir -p $HOME/.local/share/containers/storage/tmp
 
+          # start systemd user service
+          # since `brew services start podman` is buggy, let's do our own brew-compatible service
+          mkdir -p "${HOME}/.config/systemd/user/"
+          cp ci/cached-builds/homebrew.podman.service "${HOME}/.config/systemd/user/homebrew.podman.service"
+          systemctl --user daemon-reload
+          systemctl --user start homebrew.podman.service
+          echo "PODMAN_SOCK=/run/user/${UID}/podman/podman.sock" >> $GITHUB_ENV
+
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
-      - name: "push: make ${{ inputs.target }}"
+      - name: "push|schedule: make ${{ inputs.target }}"
         run: "make ${{ inputs.target }}"
-        if: "${{ fromJson(inputs.github).event_name == 'push' }}"
+        if: ${{ fromJson(inputs.github).event_name == 'push' || fromJson(inputs.github).event_name == 'schedule' }}
         env:
           IMAGE_TAG: "${{ github.ref_name }}_${{ github.sha }}"
           IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
@@ -118,6 +134,58 @@ jobs:
           IMAGE_TAG: "${{ github.sha }}"
           IMAGE_REGISTRY: "localhost:5000/workbench-images"
           CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }}"
+
+      - name: "Show podman images information"
+        run: podman images
+
+      - name: "pull_request|schedule: resolve image name if Trivy scan should run"
+        id: resolve-image
+        if: ${{ fromJson(inputs.github).event_name == 'pull_request' || fromJson(inputs.github).event_name == 'schedule' }}
+        env:
+          EVENT_NAME: ${{ fromJson(inputs.github).event_name }}
+          HAS_TRIVY_LABEL: ${{ contains(fromJson(inputs.github).event.pull_request.labels.*.name, 'trivy-scan') }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" && "$HAS_TRIVY_LABEL" == "true" ]]; then
+            IMAGE_NAME="localhost:5000/workbench-images:${{ inputs.target }}-${{ github.sha }}"
+            echo "image=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          elif [[ "$EVENT_NAME" == "schedule" ]]; then
+            IMAGE_NAME="ghcr.io/${{ github.repository }}/workbench-images:${{ inputs.target }}-${{ github.ref_name }}_${{ github.sha }}"
+            echo "image=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          fi
+
+          if [[ -z "$IMAGE_NAME" ]]; then
+            echo "Trivy scan won't run"
+          fi
+
+      - name: Run Trivy vulnerability scanner
+        if: ${{ steps.resolve-image.outputs.image }}
+        run: |
+          TRIVY_VERSION=0.53.0
+          REPORT_FOLDER=${{ github.workspace }}/report
+          REPORT_FILE=trivy-report.md
+          REPORT_TEMPLATE=trivy-markdown.tpl
+
+          mkdir -p $REPORT_FOLDER
+          cp ci/$REPORT_TEMPLATE $REPORT_FOLDER
+
+          IMAGE_NAME=${{ steps.resolve-image.outputs.image }}
+          echo "Scanning $IMAGE_NAME"
+
+          # have trivy access podman socket,
+          # https://github.com/aquasecurity/trivy/issues/580#issuecomment-666423279
+          podman run --rm \
+              -v ${PODMAN_SOCK}:/var/run/podman/podman.sock \
+              -v ${REPORT_FOLDER}:/report \
+              docker.io/aquasec/trivy:$TRIVY_VERSION \
+                image \
+                --image-src podman \
+                --podman-host /var/run/podman/podman.sock \
+                --scanners vuln --ignore-unfixed \
+                --exit-code 0 --timeout 30m \
+                --format template --template "@/report/$REPORT_TEMPLATE" -o /report/$REPORT_FILE \
+                $IMAGE_NAME
+
+          cat $REPORT_FOLDER/$REPORT_FILE >> $GITHUB_STEP_SUMMARY
 
       - run: df -h
         if: "${{ !cancelled() }}"
