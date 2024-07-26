@@ -1,0 +1,11 @@
+[Unit]
+Description=Homebrew generated unit for podman
+
+[Install]
+WantedBy=default.target
+
+[Service]
+Type=simple
+ExecStart=/home/linuxbrew/.linuxbrew/opt/podman/bin/podman system service --time=0
+WorkingDirectory=/home/linuxbrew/.linuxbrew
+Environment="PATH=/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin"

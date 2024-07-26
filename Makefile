@@ -97,25 +97,10 @@ cuda-jupyter-minimal-ubi8-python-3.8: cuda-ubi8-python-3.8
 cuda-jupyter-datascience-ubi8-python-3.8: cuda-jupyter-minimal-ubi8-python-3.8
 	$(call image,$@,jupyter/datascience/ubi8-python-3.8,$<)
 
-# Build and push jupyter-trustyai-ubi8-python-3.8 image to the registry
-.PHONY: jupyter-trustyai-ubi8-python-3.8
-jupyter-trustyai-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
-	$(call image,$@,jupyter/trustyai/ubi8-python-3.8,$<)
-
-# Build and push habana-jupyter-1.9.0-ubi8-python-3.8 image to the registry
-.PHONY: habana-jupyter-1.9.0-ubi8-python-3.8
-habana-jupyter-1.9.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
-	$(call image,$@,habana/1.9.0/ubi8-python-3.8,$<)
-
 # Build and push habana-jupyter-1.10.0-ubi8-python-3.8 image to the registry
 .PHONY: habana-jupyter-1.10.0-ubi8-python-3.8
 habana-jupyter-1.10.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
 	$(call image,$@,habana/1.10.0/ubi8-python-3.8,$<)
-
-# Build and push habana-jupyter-1.11.0-ubi8-python-3.8 image to the registry
-.PHONY: habana-jupyter-1.11.0-ubi8-python-3.8
-habana-jupyter-1.11.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
-	$(call image,$@,habana/1.11.0/ubi8-python-3.8,$<)
 
 # Build and push habana-jupyter-1.13.0-ubi8-python-3.8 image to the registry
 .PHONY: habana-jupyter-1.13.0-ubi8-python-3.8
@@ -267,31 +252,30 @@ rstudio-c9s-python-3.9: base-c9s-python-3.9
 cuda-rstudio-c9s-python-3.9: cuda-c9s-python-3.9
 	$(call image,$@,rstudio/c9s-python-3.9,$<)
 
-####################################### Buildchain for AMD Python 3.9 using C9S #######################################
-.PHONY: amd-c9s-python-3.9
-amd-c9s-python-3.9: base-c9s-python-3.9	
-	$(call image,$@,amd/c9s-python-3.9,$<)
+####################################### Buildchain for AMD Python 3.9 using UBI9 #######################################
+.PHONY: rocm-ubi9-python-3.9
+rocm-ubi9-python-3.9: base-ubi9-python-3.9
+	$(call image,$@,rocm/ubi9-python-3.9,$<)
 
-# We are only using c9s base image here onwards, 
-# DON'T confuse due to the ubi9 mention, it just directory name.
-.PHONY: amd-jupyter-minimal-c9s-python-3.9
-amd-jupyter-minimal-c9s-python-3.9: amd-c9s-python-3.9
+# We are only using rocm-ubi9 base image here onwards
+.PHONY: rocm-jupyter-minimal-ubi9-python-3.9
+rocm-jupyter-minimal-ubi9-python-3.9: rocm-ubi9-python-3.9
 	$(call image,$@,jupyter/minimal/ubi9-python-3.9,$<)
 
-# Build and push jupyter-datascience-ubi9-python-3.9 image to the registry
-.PHONY: amd-jupyter-datascience-c9s-python-3.9
-amd-jupyter-datascience-c9s-python-3.9: amd-jupyter-minimal-c9s-python-3.9
+# Build and push rocm-jupyter-datascience-ubi9-python-3.9 image to the registry
+.PHONY: rocm-jupyter-datascience-ubi9-python-3.9
+rocm-jupyter-datascience-ubi9-python-3.9: rocm-jupyter-minimal-ubi9-python-3.9
 	$(call image,$@,jupyter/datascience/ubi9-python-3.9,$<)
 
-# Build and push jupyter-tensorflow-ubi9-python-3.9 image to the registry
-.PHONY: amd-jupyter-tensorflow-c9s-python-3.9
-amd-jupyter-tensorflow-c9s-python-3.9: amd-jupyter-datascience-c9s-python-3.9
-	$(call image,$@,jupyter/amd/tensorflow/ubi9-python-3.9,$<)
+# Build and push rocm-jupyter-tensorflow-ubi9-python-3.9 image to the registry
+.PHONY: rocm-jupyter-tensorflow-ubi9-python-3.9
+rocm-jupyter-tensorflow-ubi9-python-3.9: rocm-jupyter-datascience-ubi9-python-3.9
+	$(call image,$@,jupyter/rocm/tensorflow/ubi9-python-3.9,$<)
 
-# Build and push jupyter-pytorch-ubi9-python-3.9 image to the registry
-.PHONY: amd-jupyter-pytorch-c9s-python-3.9
-amd-jupyter-pytorch-c9s-python-3.9: amd-jupyter-datascience-c9s-python-3.9
-	$(call image,$@,jupyter/amd/pytorch/ubi9-python-3.9,$<)
+# Build and push rocm-jupyter-pytorch-ubi9-python-3.9 image to the registry
+.PHONY: rocm-jupyter-pytorch-ubi9-python-3.9
+rocm-jupyter-pytorch-ubi9-python-3.9: rocm-jupyter-datascience-ubi9-python-3.9
+	$(call image,$@,jupyter/rocm/pytorch/ubi9-python-3.9,$<)
 
 ####################################### Buildchain for Anaconda Python #######################################
 
@@ -442,8 +426,6 @@ test-%: bin/kubectl
 		$(call test_with_papermill,minimal,ubi8,python-3.8) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi8"; then \
 		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi8"; then \
-		$(call test_with_papermill,trustyai,ubi8,python-3.8) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "anaconda"; then \
 		echo "There is no test notebook implemented yet for Anaconda Notebook...." \
 	else \
@@ -573,8 +555,11 @@ refresh-pipfilelock-files:
 	cd jupyter/datascience/ubi9-python-3.9 && pipenv lock
 	cd jupyter/pytorch/ubi9-python-3.9 && pipenv lock
 	cd jupyter/tensorflow/ubi9-python-3.9 && pipenv lock
-	cd jupyter/trustyai/ubi8-python-3.8 && pipenv lock
 	cd jupyter/trustyai/ubi9-python-3.9 && pipenv lock
+	cd habana/1.10.0/ubi8-python-3.8 && pipenv lock
+	cd habana/1.13.0/ubi8-python-3.8 && pipenv lock
+	cd runtimes/minimal/ubi8-python-3.8 && pipenv lock
+	cd runtimes/minimal/ubi9-python-3.9 && pipenv lock
 	cd runtimes/datascience/ubi8-python-3.8 && pipenv lock
 	cd runtimes/datascience/ubi9-python-3.9 && pipenv lock
 	cd runtimes/pytorch/ubi9-python-3.9 && pipenv lock

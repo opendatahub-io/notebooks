@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "notebooks"
+version = "2024.1"
+authors = []
+description = "Open Data Hub / OpenShift AI Notebook / Workbench images, and tests for the same in Python."
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "~3.12"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.2"
+pytest-subtests = "^0.12.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
