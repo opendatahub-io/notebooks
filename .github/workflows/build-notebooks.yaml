@@ -471,6 +471,28 @@
             },
             "secrets": "inherit"
         },
+        "rocm-runtime-pytorch-ubi9-python-3_9": {
+            "needs": [
+                "rocm-ubi9-python-3_9"
+            ],
+            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
+            "with": {
+                "target": "rocm-runtime-pytorch-ubi9-python-3.9",
+                "github": "${{ toJSON(github) }}"
+            },
+            "secrets": "inherit"
+        },
+        "rocm-runtime-tensorflow-ubi9-python-3_9": {
+            "needs": [
+                "rocm-ubi9-python-3_9"
+            ],
+            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
+            "with": {
+                "target": "rocm-runtime-tensorflow-ubi9-python-3.9",
+                "github": "${{ toJSON(github) }}"
+            },
+            "secrets": "inherit"
+        },
         "base-anaconda-python-3_8": {
             "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",

@@ -1,0 +1,14 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namePrefix: runtime-
+resources:
+  - pod.yaml
+images:
+  - name: runtime-workbench
+    newName: quay.io/opendatahub/workbench-images
+    newTag: runtime-rocm-pytorch-ubi9-python-3.9
+configMapGenerator:
+  - name: req-config
+    files:
+      - requirements-elyra.txt
