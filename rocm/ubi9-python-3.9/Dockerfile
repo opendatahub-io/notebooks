@@ -19,6 +19,9 @@ WORKDIR /opt/app-root/bin
 ARG ROCM_VERSION=6.1
 ARG AMDGPU_VERSION=6.1
 
+# default: same targets and ROCm version as https://github.com/tiran/instructlab-containers/blob/main/containers/rocm/Containerfile.c9s#L47
+ARG AMDGPU_TARGETS=gfx900;gfx906:xnack-;gfx908:xnack-;gfx90a:xnack-;gfx90a:xnack+;gfx942;gfx1030;gfx1100
+
 # Enable epel-release repositories
 
 # Install the ROCm rpms
@@ -33,7 +36,15 @@ RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
     yum install -y rocm && \
-    yum clean all && rm -rf /var/cache/yum
+    yum clean all && rm -rf /var/cache/yum && \
+    # force remove 'rocm-llvm' from runtime, saves 3.6 GB on disk
+    rpm -e --nodeps rocm-llvm && \
+    # remove gfx files for unused ISAs, saves about 1.7 GB on disk
+    # sed creates regular expression '.*\(gfx900\|gfx906\|...\).*'
+    find /opt/rocm/lib/ -type f \
+        -and -name '*gfx*' \
+        -and -not -regex '.*\('$(echo $AMDGPU_TARGETS | sed -e 's/;/\\|/g' -e 's/:xnack[-+]//g')'\).*' \
+        -print0 | xargs -0 rm -v
 
 # Restore notebook user workspace
 USER 1001
