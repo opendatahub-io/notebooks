@@ -17,10 +17,15 @@ WORKDIR /opt/app-root/bin
 COPY Pipfile.lock ./
 # Copy Elyra dependencies for air-gapped enviroment
 COPY utils ./utils/
+# Copy utility script
+COPY de-vendor-torch.sh ./
 
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \
     rm -f ./Pipfile.lock && \
+    # De-vendor the ROCm libs that are embedded in Pytorch \
+    ./de-vendor-torch.sh && \
+    rm ./de-vendor-torch.sh && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
     fix-permissions /opt/app-root -P
