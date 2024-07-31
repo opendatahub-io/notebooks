@@ -113,10 +113,12 @@ jobs:
 
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
       - name: "push|schedule: make ${{ inputs.target }}"
-        run: "make ${{ inputs.target }}"
+        run: |
+          SANITIZED_REF_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/_/g')
+          export IMAGE_TAG="${SANITIZED_REF_NAME}_${{ github.sha }}"
+          make ${{ inputs.target }}
         if: ${{ fromJson(inputs.github).event_name == 'push' || fromJson(inputs.github).event_name == 'schedule' }}
         env:
-          IMAGE_TAG: "${{ github.ref_name }}_${{ github.sha }}"
           IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
           CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
 
