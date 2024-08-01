@@ -2,6 +2,10 @@ IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
 RELEASE	 		 ?= 2024a
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
+# whether to build all dependent images or just the one specified
+BUILD_DEPENDENT_IMAGES ?= yes
+# whether to push the images to a registry as they are built
+PUSH_IMAGES ?= yes
 
 # OS dependant: Generate date, select appropriate cmd to locate container engine
 ifeq ($(OS), Windows_NT)
@@ -58,10 +62,19 @@ endef
 #   ARG 1: Image tag name.
 #   ARG 2: Path of image context we want to build.
 #   ARG 3: Base image tag name (optional).
+#
+# BUILD_DEPENDENT_IMAGES: only build images that were explicitly given as a goal on command line
+# PUSH_IMAGES: allows skipping podman push
 define image
 	$(info #*# Image build directory: <$(2)> #(MACHINE-PARSED LINE)#*#...)
-	$(call build_image,$(1),$(2),$(3))
-	$(call push_image,$(1))
+
+	$(if $(or $(BUILD_DEPENDENT_IMAGES:no=), $(filter $@,$(MAKECMDGOALS))),
+		$(call build_image,$(1),$(2),$(3))
+
+		$(if $(PUSH_IMAGES:no=),
+			$(call push_image,$(1))
+		)
+	)
 endef
 
 ####################################### Buildchain for Python 3.8 using ubi8 #######################################
