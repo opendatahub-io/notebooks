@@ -246,6 +246,112 @@ intel-runtime-ml-ubi9-python-3.9: base-ubi9-python-3.9
 jupyter-intel-ml-ubi9-python-3.9: base-ubi9-python-3.9
 	$(call image,$@,jupyter/intel/ml/ubi9-python-3.9,$<)
 
+####################################### Buildchain for Python 3.11 using ubi9 #####################################
+
+# Build and push base-ubi9-python-3.11 image to the registry
+.PHONY: base-ubi9-python-3.11
+base-ubi9-python-3.11:
+	$(call image,$@,base/ubi9-python-3.11)
+
+# Build and push jupyter-minimal-ubi9-python-3.11 image to the registry
+.PHONY: jupyter-minimal-ubi9-python-3.11
+jupyter-minimal-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,jupyter/minimal/ubi9-python-3.11,$<)
+
+# Build and push jupyter-datascience-ubi9-python-3.11 image to the registry
+.PHONY: jupyter-datascience-ubi9-python-3.11
+jupyter-datascience-ubi9-python-3.11: jupyter-minimal-ubi9-python-3.11
+	$(call image,$@,jupyter/datascience/ubi9-python-3.11,$<)
+
+# Build and push cuda-ubi9-python-3.11 image to the registry
+.PHONY: cuda-ubi9-python-3.11
+cuda-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,cuda/ubi9-python-3.11,$<)
+
+# Build and push cuda-jupyter-minimal-ubi9-python-3.11 image to the registry
+.PHONY: cuda-jupyter-minimal-ubi9-python-3.11
+cuda-jupyter-minimal-ubi9-python-3.11: cuda-ubi9-python-3.11
+	$(call image,$@,jupyter/minimal/ubi9-python-3.11,$<)
+
+# Build and push cuda-jupyter-datascience-ubi9-python-3.11 image to the registry
+.PHONY: cuda-jupyter-datascience-ubi9-python-3.11
+cuda-jupyter-datascience-ubi9-python-3.11: cuda-jupyter-minimal-ubi9-python-3.11
+	$(call image,$@,jupyter/datascience/ubi9-python-3.11,$<)
+
+# Build and push cuda-jupyter-tensorflow-ubi9-python-3.11 image to the registry
+.PHONY: cuda-jupyter-tensorflow-ubi9-python-3.11
+cuda-jupyter-tensorflow-ubi9-python-3.11: cuda-jupyter-datascience-ubi9-python-3.11
+	$(call image,$@,jupyter/tensorflow/ubi9-python-3.11,$<)
+
+# Build and push jupyter-pytorch-ubi9-python-3.11 image to the registry
+.PHONY: jupyter-pytorch-ubi9-python-3.11
+jupyter-pytorch-ubi9-python-3.11: cuda-jupyter-datascience-ubi9-python-3.11
+	$(call image,$@,jupyter/pytorch/ubi9-python-3.11,$<)
+
+# Build and push jupyter-trustyai-ubi9-python-3.11 image to the registry
+.PHONY: jupyter-trustyai-ubi9-python-3.11
+jupyter-trustyai-ubi9-python-3.11: jupyter-datascience-ubi9-python-3.11
+	$(call image,$@,jupyter/trustyai/ubi9-python-3.11,$<)
+
+# Build and push runtime-minimal-ubi9-python-3.11 image to the registry
+.PHONY: runtime-minimal-ubi9-python-3.11
+runtime-minimal-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,runtimes/minimal/ubi9-python-3.11,$<)
+
+# Build and push runtime-datascience-ubi9-python-3.11 image to the registry
+.PHONY: runtime-datascience-ubi9-python-3.11
+runtime-datascience-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,runtimes/datascience/ubi9-python-3.11,$<)
+
+# Build and push runtime-pytorch-ubi9-python-3.11 image to the registry
+.PHONY: runtime-pytorch-ubi9-python-3.11
+runtime-pytorch-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,runtimes/pytorch/ubi9-python-3.11,$<)
+
+# Build and push runtime-cuda-tensorflow-ubi9-python-3.11 image to the registry
+.PHONY: runtime-cuda-tensorflow-ubi9-python-3.11
+runtime-cuda-tensorflow-ubi9-python-3.11: cuda-ubi9-python-3.11
+	$(call image,$@,runtimes/tensorflow/ubi9-python-3.11,$<)
+
+.PHONY: codeserver-ubi9-python-3.11
+codeserver-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,codeserver/ubi9-python-3.11,$<)
+
+# Build and push base-anaconda-python-3.11-intel-gpu image to the registry
+.PHONY: intel-base-gpu-ubi9-python-3.11
+intel-base-gpu-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,intel/base/gpu/ubi9-python-3.11,$<)
+
+# Build and push intel-runtime-tensorflow-ubi9-python-3.11 image to the registry
+.PHONY: intel-runtime-tensorflow-ubi9-python-3.11
+intel-runtime-tensorflow-ubi9-python-3.11: intel-base-gpu-ubi9-python-3.11
+	$(call image,$@,intel/runtimes/tensorflow/ubi9-python-3.11,$<)
+
+# Build and push jupyter-intel-tensorflow-ubi9-python-3.11 image to the registry
+.PHONY: jupyter-intel-tensorflow-ubi9-python-3.11
+jupyter-intel-tensorflow-ubi9-python-3.11: intel-base-gpu-ubi9-python-3.11
+	$(call image,$@,jupyter/intel/tensorflow/ubi9-python-3.11,$<)
+
+# Build and push intel-runtime-pytorch-ubi9-python-3.11 image to the registry
+.PHONY: intel-runtime-pytorch-ubi9-python-3.11
+intel-runtime-pytorch-ubi9-python-3.11: intel-base-gpu-ubi9-python-3.11
+	$(call image,$@,intel/runtimes/pytorch/ubi9-python-3.11,$<)
+
+# Build and push jupyter-intel-pytorch-ubi9-python-3.11 image to the registry
+.PHONY: jupyter-intel-pytorch-ubi9-python-3.11
+jupyter-intel-pytorch-ubi9-python-3.11: intel-base-gpu-ubi9-python-3.11
+	$(call image,$@,jupyter/intel/pytorch/ubi9-python-3.11,$<)
+
+# Build and push intel-runtime-ml-ubi9-python-3.11 image to the registry
+.PHONY: intel-runtime-ml-ubi9-python-3.11
+intel-runtime-ml-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,intel/runtimes/ml/ubi9-python-3.11,$<)
+
+# Build and push jupyter-intel-ml-ubi9-python-3.11 image to the registry
+.PHONY: jupyter-intel-ml-ubi9-python-3.11
+jupyter-intel-ml-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,jupyter/intel/ml/ubi9-python-3.11,$<)
+
 ####################################### Buildchain for Python 3.9 using C9S #######################################
 
 # Build and push base-c9s-python-3.9 image to the registry
@@ -264,6 +370,25 @@ rstudio-c9s-python-3.9: base-c9s-python-3.9
 .PHONY: cuda-rstudio-c9s-python-3.9
 cuda-rstudio-c9s-python-3.9: cuda-c9s-python-3.9
 	$(call image,$@,rstudio/c9s-python-3.9,$<)
+
+####################################### Buildchain for Python 3.11 using C9S #######################################
+
+# Build and push base-c9s-python-3.11 image to the registry
+.PHONY: base-c9s-python-3.11
+base-c9s-python-3.11:
+	$(call image,$@,base/c9s-python-3.11)
+
+.PHONY: cuda-c9s-python-3.11
+cuda-c9s-python-3.11: base-c9s-python-3.11
+	$(call image,$@,cuda/c9s-python-3.11,$<)
+
+.PHONY: rstudio-c9s-python-3.11
+rstudio-c9s-python-3.11: base-c9s-python-3.11
+	$(call image,$@,rstudio/c9s-python-3.11,$<)
+
+.PHONY: cuda-rstudio-c9s-python-3.11
+cuda-rstudio-c9s-python-3.11: cuda-c9s-python-3.11
+	$(call image,$@,rstudio/c9s-python-3.11,$<)
 
 ####################################### Buildchain for AMD Python 3.9 using UBI9 #######################################
 .PHONY: rocm-ubi9-python-3.9
@@ -299,6 +424,41 @@ rocm-runtime-pytorch-ubi9-python-3.9: rocm-ubi9-python-3.9
 .PHONY: rocm-runtime-tensorflow-ubi9-python-3.9
 rocm-runtime-tensorflow-ubi9-python-3.9: rocm-ubi9-python-3.9
 	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-3.9,$<)
+
+####################################### Buildchain for AMD Python 3.11 using UBI9 #######################################
+.PHONY: rocm-ubi9-python-3.11
+rocm-ubi9-python-3.11: base-ubi9-python-3.11
+	$(call image,$@,rocm/ubi9-python-3.11,$<)
+
+# We are only using rocm-ubi9 base image here onwards
+.PHONY: rocm-jupyter-minimal-ubi9-python-3.11
+rocm-jupyter-minimal-ubi9-python-3.11: rocm-ubi9-python-3.11
+	$(call image,$@,jupyter/minimal/ubi9-python-3.11,$<)
+
+# Build and push rocm-jupyter-datascience-ubi9-python-3.11 image to the registry
+.PHONY: rocm-jupyter-datascience-ubi9-python-3.11
+rocm-jupyter-datascience-ubi9-python-3.11: rocm-jupyter-minimal-ubi9-python-3.11
+	$(call image,$@,jupyter/datascience/ubi9-python-3.11,$<)
+
+# Build and push rocm-jupyter-tensorflow-ubi9-python-3.11 image to the registry
+.PHONY: rocm-jupyter-tensorflow-ubi9-python-3.11
+rocm-jupyter-tensorflow-ubi9-python-3.11: rocm-jupyter-datascience-ubi9-python-3.11
+	$(call image,$@,jupyter/rocm/tensorflow/ubi9-python-3.11,$<)
+
+# Build and push rocm-jupyter-pytorch-ubi9-python-3.11 image to the registry
+.PHONY: rocm-jupyter-pytorch-ubi9-python-3.11
+rocm-jupyter-pytorch-ubi9-python-3.11: rocm-jupyter-datascience-ubi9-python-3.11
+	$(call image,$@,jupyter/rocm/pytorch/ubi9-python-3.11,$<)
+
+# Build and push rocm-jupyter-runtime-pytorch-ubi9-python-3.11 image to the registry
+.PHONY: rocm-runtime-pytorch-ubi9-python-3.11
+rocm-runtime-pytorch-ubi9-python-3.11: rocm-ubi9-python-3.11
+	$(call image,$@,runtimes/rocm-pytorch/ubi9-python-3.11,$<)
+
+# Build and push rocm-jupyter-runtime-tensorflow-ubi9-python-3.11 image to the registry
+.PHONY: rocm-runtime-tensorflow-ubi9-python-3.11
+rocm-runtime-tensorflow-ubi9-python-3.11: rocm-ubi9-python-3.11
+	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-3.11,$<)
 
 ####################################### Buildchain for Anaconda Python #######################################
 
@@ -425,8 +585,8 @@ test-%: bin/kubectl
 	$(KUBECTL_BIN) wait --for=condition=ready pod -l app=$(NOTEBOOK_NAME) --timeout=600s
 	$(KUBECTL_BIN) port-forward svc/$(NOTEBOOK_NAME)-notebook 8888:8888 & curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:8888/notebook/opendatahub/jovyan/api ; EXIT_CODE=$$?; echo && pkill --full "^$(KUBECTL_BIN).*port-forward.*"; \
 	$(eval FULL_NOTEBOOK_NAME = $(shell ($(KUBECTL_BIN) get pods -l app=$(NOTEBOOK_NAME) -o custom-columns=":metadata.name" | tr -d '\n')))
-	
-	# Tests notebook's functionalities 
+
+	# Tests notebook's functionalities
 	if echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi9"; then \
 		$(call test_with_papermill,minimal,ubi9,python-3.9) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-tensorflow-ubi9"; then \
@@ -594,6 +754,7 @@ refresh-pipfilelock-files:
 
 
 	
+
 # This is only for the workflow action
 # For running manually, set the required environment variables
 .PHONY: scan-image-vulnerabilities
