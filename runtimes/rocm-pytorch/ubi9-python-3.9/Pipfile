@@ -4,6 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [[source]]
+# Please keep in sync with rocm/ubi9-python-3.9/Dockerfile
 url = "https://download.pytorch.org/whl/rocm6.1/"
 verify_ssl = true
 name = "pytorch"
