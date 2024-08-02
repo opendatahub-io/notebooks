@@ -22,6 +22,8 @@ jobs:
     env:
       # GitHub image registry used for storing $(CONTAINER_ENGINE)'s cache
       CACHE: "ghcr.io/${{ github.repository }}/workbench-images/build-cache"
+      # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
+      TRIVY_SCAN_FS_JSON: '{"rocm-jupyter-pytorch-ubi9-python-3.9": "jupyter/rocm/pytorch/ubi9-python-3.9"}'
 
     steps:
 
@@ -113,10 +115,12 @@ jobs:
 
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
       - name: "push|schedule: make ${{ inputs.target }}"
-        run: "make ${{ inputs.target }}"
+        run: |
+          SANITIZED_REF_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/_/g')
+          export IMAGE_TAG="${SANITIZED_REF_NAME}_${{ github.sha }}"
+          make ${{ inputs.target }}
         if: ${{ fromJson(inputs.github).event_name == 'push' || fromJson(inputs.github).event_name == 'schedule' }}
         env:
-          IMAGE_TAG: "${{ github.ref_name }}_${{ github.sha }}"
           IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
           CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
 
@@ -138,27 +142,42 @@ jobs:
       - name: "Show podman images information"
         run: podman images
 
-      - name: "pull_request|schedule: resolve image name if Trivy scan should run"
-        id: resolve-image
+      - name: "pull_request|schedule: resolve target if Trivy scan should run"
+        id: resolve-target
         if: ${{ fromJson(inputs.github).event_name == 'pull_request' || fromJson(inputs.github).event_name == 'schedule' }}
         env:
           EVENT_NAME: ${{ fromJson(inputs.github).event_name }}
           HAS_TRIVY_LABEL: ${{ contains(fromJson(inputs.github).event.pull_request.labels.*.name, 'trivy-scan') }}
+          FS_SCAN_FOLDER: ${{ fromJson(env.TRIVY_SCAN_FS_JSON)[inputs.target] }}
         run: |
           if [[ "$EVENT_NAME" == "pull_request" && "$HAS_TRIVY_LABEL" == "true" ]]; then
-            IMAGE_NAME="localhost:5000/workbench-images:${{ inputs.target }}-${{ github.sha }}"
-            echo "image=$IMAGE_NAME" >> $GITHUB_OUTPUT
+            if [[ -n "$FS_SCAN_FOLDER" ]]; then
+              TARGET="$FS_SCAN_FOLDER"
+              TYPE="fs"
+            else
+              TARGET="localhost:5000/workbench-images:${{ inputs.target }}-${{ github.sha }}"
+              TYPE="image"
+            fi
           elif [[ "$EVENT_NAME" == "schedule" ]]; then
-            IMAGE_NAME="ghcr.io/${{ github.repository }}/workbench-images:${{ inputs.target }}-${{ github.ref_name }}_${{ github.sha }}"
-            echo "image=$IMAGE_NAME" >> $GITHUB_OUTPUT
+            if [[ -n "$FS_SCAN_FOLDER" ]]; then
+              TARGET="$FS_SCAN_FOLDER"
+              TYPE="fs"
+            else
+              TARGET="ghcr.io/${{ github.repository }}/workbench-images:${{ inputs.target }}-${{ github.ref_name }}_${{ github.sha }}"
+              TYPE="image"
+            fi
           fi
 
-          if [[ -z "$IMAGE_NAME" ]]; then
+          if [[ -n "$TARGET" ]]; then
+            echo "target=$TARGET" >> $GITHUB_OUTPUT
+            echo "type=$TYPE" >> $GITHUB_OUTPUT
+            echo "Trivy scan will run on $TARGET ($TYPE)"
+          else
             echo "Trivy scan won't run"
           fi
 
       - name: Run Trivy vulnerability scanner
-        if: ${{ steps.resolve-image.outputs.image }}
+        if: ${{ steps.resolve-target.outputs.target }}
         run: |
           TRIVY_VERSION=0.53.0
           REPORT_FOLDER=${{ github.workspace }}/report
@@ -168,22 +187,31 @@ jobs:
           mkdir -p $REPORT_FOLDER
           cp ci/$REPORT_TEMPLATE $REPORT_FOLDER
 
-          IMAGE_NAME=${{ steps.resolve-image.outputs.image }}
-          echo "Scanning $IMAGE_NAME"
+          SCAN_TARGET=${{ steps.resolve-target.outputs.target }}
+          SCAN_TYPE=${{ steps.resolve-target.outputs.type }}
+          echo "Scanning $SCAN_TARGET ($SCAN_TYPE)"
+
+          if [[ "$SCAN_TYPE" == "image" ]]; then
+            SCAN_ARGS="--image-src podman --podman-host /var/run/podman/podman.sock"
+            PODMAN_ARGS="-v ${PODMAN_SOCK}:/var/run/podman/podman.sock"
+          elif [[ "$SCAN_TYPE" == "fs" ]]; then
+            WORKSPACE_FOLDER="/workspace"
+            SCAN_TARGET="$WORKSPACE_FOLDER/$SCAN_TARGET"
+            PODMAN_ARGS="-v ${{ github.workspace }}:$WORKSPACE_FOLDER"
+          fi
 
           # have trivy access podman socket,
           # https://github.com/aquasecurity/trivy/issues/580#issuecomment-666423279
           podman run --rm \
-              -v ${PODMAN_SOCK}:/var/run/podman/podman.sock \
+              $PODMAN_ARGS \
               -v ${REPORT_FOLDER}:/report \
               docker.io/aquasec/trivy:$TRIVY_VERSION \
-                image \
-                --image-src podman \
-                --podman-host /var/run/podman/podman.sock \
+                $SCAN_TYPE \
+                $SCAN_ARGS \
                 --scanners vuln --ignore-unfixed \
                 --exit-code 0 --timeout 30m \
                 --format template --template "@/report/$REPORT_TEMPLATE" -o /report/$REPORT_FILE \
-                $IMAGE_NAME
+                $SCAN_TARGET
 
           cat $REPORT_FOLDER/$REPORT_FILE >> $GITHUB_STEP_SUMMARY
 
