@@ -15,6 +15,7 @@ LABEL name="odh-notebook-rocm-python-3.9" \
 USER 0
 WORKDIR /opt/app-root/bin
 
+# Please keep in sync with ROCm/python3.9 dependent images
 ARG ROCM_VERSION=6.1
 ARG AMDGPU_VERSION=6.1
 
