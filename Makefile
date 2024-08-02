@@ -284,6 +284,16 @@ rocm-jupyter-tensorflow-ubi9-python-3.9: rocm-jupyter-datascience-ubi9-python-3.
 rocm-jupyter-pytorch-ubi9-python-3.9: rocm-jupyter-datascience-ubi9-python-3.9
 	$(call image,$@,jupyter/rocm/pytorch/ubi9-python-3.9,$<)
 
+# Build and push rocm-jupyter-runtime-pytorch-ubi9-python-3.9 image to the registry
+.PHONY: rocm-runtime-pytorch-ubi9-python-3.9
+rocm-runtime-pytorch-ubi9-python-3.9: rocm-ubi9-python-3.9
+	$(call image,$@,runtimes/rocm-pytorch/ubi9-python-3.9,$<)
+
+# Build and push rocm-jupyter-runtime-tensorflow-ubi9-python-3.9 image to the registry
+.PHONY: rocm-runtime-tensorflow-ubi9-python-3.9
+rocm-runtime-tensorflow-ubi9-python-3.9: rocm-ubi9-python-3.9
+	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-3.9,$<)
+
 ####################################### Buildchain for Anaconda Python #######################################
 
 # Build and push base-anaconda-python-3.8 image to the registry
@@ -553,13 +563,30 @@ validate-rstudio-image: bin/kubectl
 # This is only for the workflow action
 .PHONY: refresh-pipfilelock-files
 refresh-pipfilelock-files:
-	cd jupyter/rocm/tensorflow/ubi9-python-3.9 && rm -rf Pipfile.lock && pipenv lock
-	cd runtimes/datascience/ubi8-python-3.8 && rm -rf Pipfile.lock && pipenv lock
-	cd runtimes/datascience/ubi9-python-3.9 && rm -rf Pipfile.lock && pipenv lock
-	cd runtimes/pytorch/ubi9-python-3.9 && rm -rf Pipfile.lock && pipenv lock
-	cd runtimes/pytorch/ubi8-python-3.8 && rm -rf Pipfile.lock && pipenv lock
-	cd runtimes/tensorflow/ubi8-python-3.8 && rm -rf Pipfile.lock && pipenv lock
-	cd runtimes/tensorflow/ubi9-python-3.9 && rm -rf Pipfile.lock && pipenv lock
+	cd base/ubi8-python-3.8 && pipenv lock
+	cd base/ubi9-python-3.9 && pipenv lock
+	cd base/c9s-python-3.9 && pipenv lock
+	cd jupyter/minimal/ubi8-python-3.8 && pipenv lock
+	cd jupyter/minimal/ubi9-python-3.9 && pipenv lock
+	cd jupyter/datascience/ubi8-python-3.8 && pipenv lock
+	cd jupyter/datascience/ubi9-python-3.9 && pipenv lock
+	cd jupyter/pytorch/ubi9-python-3.9 && pipenv lock
+	cd jupyter/tensorflow/ubi9-python-3.9 && pipenv lock
+	cd jupyter/trustyai/ubi9-python-3.9 && pipenv lock
+	cd habana/1.10.0/ubi8-python-3.8 && pipenv lock
+	cd habana/1.13.0/ubi8-python-3.8 && pipenv lock
+	cd runtimes/minimal/ubi8-python-3.8 && pipenv lock
+	cd runtimes/minimal/ubi9-python-3.9 && pipenv lock
+	cd runtimes/datascience/ubi8-python-3.8 && pipenv lock
+	cd runtimes/datascience/ubi9-python-3.9 && pipenv lock
+	cd runtimes/pytorch/ubi9-python-3.9 && pipenv lock
+	cd runtimes/pytorch/ubi8-python-3.8 && pipenv lock
+	cd runtimes/tensorflow/ubi8-python-3.8 && pipenv lock
+	cd runtimes/tensorflow/ubi9-python-3.9 && pipenv lock
+	cd runtimes/rocm-tensorflow/ubi9-python-3.9 && pipenv lock
+	cd runtimes/rocm-pytorch/ubi9-python-3.9 && pipenv lock
+
+
 	
 # This is only for the workflow action
 # For running manually, set the required environment variables

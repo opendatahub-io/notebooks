@@ -21,7 +21,7 @@ scikit-learn = "~=1.4.0"
 scipy = "~=1.12.0"
 skl2onnx = "~=1.16.0"
 onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
-codeflare-sdk = "~=0.18.0"
+codeflare-sdk = "~=0.16.4"
 memray = "~=1.10.0"  # any version above this would cause issue with rich package
 
 # DB connectors
@@ -30,32 +30,25 @@ psycopg = "~=3.1.18"
 pyodbc = "~=5.1.0"
 mysql-connector-python = "~=8.3.0"
 
-# JupyterLab packages
-odh-elyra = "~=3.16.7"
-kfp = "~=2.5.0"
-kfp-kubernetes = "~=1.0.0"
-
-jupyterlab = "~=3.6.7" # Wait on upgrade till plugins are ready
-jupyter-bokeh = "~=3.0.7" # Upgrade would bring in jupyterlab 4
-jupyter-server = "~=2.13.0"
-jupyter-server-proxy = "~=4.0.0" # Upgrade would bring in jupyterlab 4
-jupyter-server-terminals = "~=0.5.3"
-jupyterlab-git = "~=0.44.0"
-jupyterlab-lsp = "~=4.2.0"
-jupyterlab-widgets = "~=3.0.10"
-jupyter-resource-usage = "~=0.7.2"
-nbdime = "~=3.2.1"
-nbgitpuller = "~=1.2.0"
-
-# conflict between python-lsp-server and following packages
-# due to pycodestyle dependency, pinning this, till we get 
-# a fix from python-lsp-server 
-autopep8 = "~=2.0.4"
-flake8 = "~=7.0.0"
-
-# Base packages
-wheel = "~=0.43.0"
-setuptools = "~=69.2.0"
+# This is a comprehensive list of python dependencies that Elyra requires to execute Jupyter notebooks.
+ipykernel = "==6.13.0"
+ipython = "==8.10.0"
+ipython-genutils = "==0.2.0"
+jinja2 = "==3.1.4"
+jupyter-client = "==7.3.1"
+jupyter-core = "==4.11.2"
+MarkupSafe = "==2.1.1"
+minio = "==7.1.15"
+nbclient = "==0.6.3"
+nbconvert = "==7.1.0"
+nbformat = "==5.4.0"
+papermill = "==2.3.4"
+pyzmq = "==24.0.1"
+prompt-toolkit = "==3.0.30"
+requests = "==2.31.0"
+tornado = "==6.3.3"
+traitlets = "==5.1.1"
+urllib3 = "==1.26.18"
 
 [requires]
 python_version = "3.9"
