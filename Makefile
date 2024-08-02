@@ -277,6 +277,16 @@ rocm-jupyter-tensorflow-ubi9-python-3.9: rocm-jupyter-datascience-ubi9-python-3.
 rocm-jupyter-pytorch-ubi9-python-3.9: rocm-jupyter-datascience-ubi9-python-3.9
 	$(call image,$@,jupyter/rocm/pytorch/ubi9-python-3.9,$<)
 
+# Build and push rocm-jupyter-runtime-pytorch-ubi9-python-3.9 image to the registry
+.PHONY: rocm-runtime-pytorch-ubi9-python-3.9
+rocm-runtime-pytorch-ubi9-python-3.9: rocm-ubi9-python-3.9
+	$(call image,$@,runtimes/rocm-pytorch/ubi9-python-3.9,$<)
+
+# Build and push rocm-jupyter-runtime-tensorflow-ubi9-python-3.9 image to the registry
+.PHONY: rocm-runtime-tensorflow-ubi9-python-3.9
+rocm-runtime-tensorflow-ubi9-python-3.9: rocm-ubi9-python-3.9
+	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-3.9,$<)
+
 ####################################### Buildchain for Anaconda Python #######################################
 
 # Build and push base-anaconda-python-3.8 image to the registry
@@ -566,6 +576,10 @@ refresh-pipfilelock-files:
 	cd runtimes/pytorch/ubi8-python-3.8 && pipenv lock
 	cd runtimes/tensorflow/ubi8-python-3.8 && pipenv lock
 	cd runtimes/tensorflow/ubi9-python-3.9 && pipenv lock
+	cd runtimes/rocm-tensorflow/ubi9-python-3.9 && pipenv lock
+	cd runtimes/rocm-pytorch/ubi9-python-3.9 && pipenv lock
+
+
 	
 # This is only for the workflow action
 # For running manually, set the required environment variables
