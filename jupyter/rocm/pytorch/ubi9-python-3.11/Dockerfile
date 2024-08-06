@@ -13,8 +13,13 @@ LABEL name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11" \
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY Pipfile.lock ./
+# Copy utility script
+COPY de-vendor-torch.sh ./
 
 RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock && \
+    # De-vendor the ROCm libs that are embedded in Pytorch \
+    ./de-vendor-torch.sh && \
+    rm ./de-vendor-torch.sh && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
     sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
     # Disable announcement plugin of jupyterlab
