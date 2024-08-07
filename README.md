@@ -37,7 +37,9 @@ To build a workbench image, you can execute the following command:
 make ${WORKBENCH_NAME} -e  IMAGE_REGISTRY=quay.io/${YOUR_USER}/workbench-images  -e  RELEASE=2023x
 ```
 
-Using  `IMAGE_REGISTRY` and `RELEASE` variables  you can overwrite the default values and use a different registry or release tag
+Using  `IMAGE_REGISTRY` and `RELEASE` variables you can overwrite the default values and use a different registry or release tag
+
+Using `CONTAINER_BUILD_CACHE_ARGS` (default: `--no-cache`), `BUILD_DEPENDENT_IMAGES`, and `PUSH_IMAGES` variables you can further customize the build process.
 
 ### Local Execution
 
