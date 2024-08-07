@@ -15,9 +15,9 @@ LABEL name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11" \
 COPY Pipfile.lock ./
 
 RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock && \
-    # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
+    # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
     sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
-    # Disable announcement plugin of jupyterlab
+    # Disable announcement plugin of jupyterlab \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
-    # Fix permissions to support pip in Openshift environments
+    # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && fix-permissions /opt/app-root -P
