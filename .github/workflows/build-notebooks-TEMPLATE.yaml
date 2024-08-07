@@ -139,7 +139,7 @@ jobs:
           PUSH_IMAGES: "no"
 
       - name: "Show podman images information"
-        run: podman images
+        run: podman images --digests
 
       - name: "pull_request|schedule: resolve target if Trivy scan should run"
         id: resolve-target
