@@ -23,7 +23,7 @@ jobs:
       # GitHub image registry used for storing $(CONTAINER_ENGINE)'s cache
       CACHE: "ghcr.io/${{ github.repository }}/workbench-images/build-cache"
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
-      TRIVY_SCAN_FS_JSON: '{"rocm-jupyter-pytorch-ubi9-python-3.9": "jupyter/rocm/pytorch/ubi9-python-3.9"}'
+      TRIVY_SCAN_FS_JSON: '{}'
 
     steps:
 
