@@ -23,7 +23,7 @@ jobs:
       # GitHub image registry used for storing $(CONTAINER_ENGINE)'s cache
       CACHE: "ghcr.io/${{ github.repository }}/workbench-images/build-cache"
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
-      TRIVY_SCAN_FS_JSON: '{"rocm-jupyter-pytorch-ubi9-python-3.9": "jupyter/rocm/pytorch/ubi9-python-3.9"}'
+      TRIVY_SCAN_FS_JSON: '{}'
 
     steps:
 
@@ -123,24 +123,23 @@ jobs:
         env:
           IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
           CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
+          # dependent images were already built and pushed, so just let podman pull it
+          BUILD_DEPENDENT_IMAGES: "no"
 
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
       - name: "pull_request: make ${{ inputs.target }}"
         run: |
-          # start a black hole container registry as make target always does a push
-          mkdir -p $HOME/.config/containers/registries.conf.d/
-          cp ci/cached-builds/insecure_localhost_registry.conf $HOME/.config/containers/registries.conf.d/insecure_localhost_registry.conf
-          go run ci/cached-builds/dev_null_container_registry.go &
-          # build and push the image
           make ${{ inputs.target }}
         if: "${{ fromJson(inputs.github).event_name == 'pull_request' }}"
         env:
           IMAGE_TAG: "${{ github.sha }}"
           IMAGE_REGISTRY: "localhost:5000/workbench-images"
           CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }}"
+          # We don't have access to image registry, so disable pushing
+          PUSH_IMAGES: "no"
 
       - name: "Show podman images information"
-        run: podman images
+        run: podman images --digests
 
       - name: "pull_request|schedule: resolve target if Trivy scan should run"
         id: resolve-target
