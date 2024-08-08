@@ -750,7 +750,6 @@ def main():
     input_params = OpUtil.parse_arguments(sys.argv[1:])
     OpUtil.log_operation_info("starting operation")
     t0 = time.time()
-    OpUtil.package_install(user_volume_path=input_params.get("user-volume-path"))
 
     # Create the appropriate instance, process dependencies and execute the operation
     file_op = FileOpBase.get_instance(**input_params)
