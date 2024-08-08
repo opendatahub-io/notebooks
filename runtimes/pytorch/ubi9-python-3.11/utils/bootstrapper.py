@@ -483,7 +483,7 @@ class PythonFileOp(FileOpBase):
             run_args = ["python3", python_script]
             if self.parameter_pass_method == "env":
                 self.set_parameters_in_env()
-            
+
             logger.info("----------------------Python logs start----------------------")
             # Removing support for the s3 storage of python script logs
             # with open(python_script_output, "w") as log_file:
@@ -492,7 +492,7 @@ class PythonFileOp(FileOpBase):
 
             for line in iter(process.stdout.readline, b''):
                 sys.stdout.write(line.decode())
-                
+
             process.stdout.close()
             return_code = process.wait()
             logger.info("----------------------Python logs ends----------------------")
@@ -537,7 +537,7 @@ class RFileOp(FileOpBase):
 
             for line in iter(process.stdout.readline, b''):
                 sys.stdout.write(line.decode())
-                
+
             process.stdout.close()
             return_code = process.wait()
             logger.info("----------------------R script logs ends----------------------")
@@ -750,7 +750,6 @@ def main():
     input_params = OpUtil.parse_arguments(sys.argv[1:])
     OpUtil.log_operation_info("starting operation")
     t0 = time.time()
-    OpUtil.package_install(user_volume_path=input_params.get("user-volume-path"))
 
     # Create the appropriate instance, process dependencies and execute the operation
     file_op = FileOpBase.get_instance(**input_params)
