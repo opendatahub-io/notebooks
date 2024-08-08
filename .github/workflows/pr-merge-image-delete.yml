@@ -109,8 +109,8 @@ jobs:
           skopeo delete docker://${QUAY_IMAGE_REPO}:rocm-jupyter-datascience-ubi9-python-3.9-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:rocm-jupyter-tensorflow-ubi9-python-3.9-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:rocm-jupyter-pytorch-ubi9-python-3.9-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:rocm-runtime-pytorch-ubi9-python-3.9-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:rocm-runtime-tensorflow-ubi9-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-rocm-pytorch-ubi9-python-3.9-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-rocm-tensorflow-ubi9-python-3.9-pr-${{ env.PR }}
 
           # Python 3.11
           skopeo delete docker://${QUAY_IMAGE_REPO}:base-ubi9-python-3.11-pr-${{ env.PR }}
@@ -143,5 +143,5 @@ jobs:
           skopeo delete docker://${QUAY_IMAGE_REPO}:rocm-jupyter-datascience-ubi9-python-3.11-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:rocm-jupyter-tensorflow-ubi9-python-3.11-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:rocm-jupyter-pytorch-ubi9-python-3.11-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:rocm-runtime-pytorch-ubi9-python-3.11-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:rocm-runtime-tensorflow-ubi9-python-3.11-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-rocm-pytorch-ubi9-python-3.11-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-rocm-tensorflow-ubi9-python-3.11-pr-${{ env.PR }}
