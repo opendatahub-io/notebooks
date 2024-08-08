@@ -1,0 +1,58 @@
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.8.1,<3.9.0"
+habana_media_loader = "==1.13.0.463"
+habana-tensorflow = "==1.13.0.463"
+tensorflow-cpu = "==2.12.1"
+tensorflow-io = "==0.32.0"
+tensorboard = "~=2.12.2"
+tf2onnx = "~= 1.13.0"
+habana-pyhlml = "==1.13.0.463"
+cffi = "==1.15.1"
+typing-extensions = ">=4.5.0"
+numpy = "==1.23.5"
+ninja = ">=1.11.1"
+pyyaml = "==6.0"
+pybind11 = "==2.10.4"
+mkl = "==2023.1"
+mkl-include = "==2023.1"
+boto3 = "~=1.34.50"
+kafka-python = "~=2.0.2"
+matplotlib = "~=3.7.5"
+pandas = "~=2.0.3"
+plotly = "~=5.20.0"
+scikit-learn = "~=1.3.2"
+scipy = "~=1.10.1"
+skl2onnx = "~=1.16.0"
+onnxconverter-common = "~=1.13.0" 
+codeflare-sdk = "~=0.16.3"
+pymongo = "~=4.6.2"
+psycopg = "~=3.1.18"
+pyodbc = "~=5.1.0"
+mysql-connector-python = "~=8.3.0"
+odh-elyra = "~=3.16.7"
+jupyterlab = "~=3.6.7" 
+jupyter-bokeh = "~=3.0.7" 
+jupyter-server = "~=2.13.0"
+jupyter-server-proxy = "~=4.0.0" 
+jupyter-server-terminals = "~=0.5.3"
+jupyterlab-git = "~=0.44.0"
+jupyterlab-lsp = "~=4.2.0"
+jupyterlab-widgets = "~=3.0.10"
+jupyter-resource-usage = "~=0.7.2"
+nbdime = "~=3.2.1"
+nbgitpuller = "~=1.2.0"
+autopep8 = "~=2.0.4"
+flake8 = "~=7.0.0"
+wheel = "~=0.43.0"
+setuptools = "~=69.2.0"
+
+
+[tool.poetry.group.dev.dependencies]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
