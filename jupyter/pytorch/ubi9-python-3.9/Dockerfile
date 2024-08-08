@@ -11,12 +11,12 @@ LABEL name="odh-notebook-jupyter-pytorch-ubi9-python-3.9" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/pytorch/ubi9-python-3.9" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:jupyter-pytorch-ubi9-python-3.9"
 
-# Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY Pipfile.lock ./
+# Install Python packages and Jupyterlab extensions from pyproject.toml and poetry.lock files
+COPY pyproject.toml poetry.lock ./
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
+    micropipenv install --method poetry && \
+    rm -f ./pyproject.toml ./poetry.lock && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
     sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
     # Disable announcement plugin of jupyterlab \
