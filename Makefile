@@ -510,10 +510,12 @@ endif
 	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
 
 .PHONY: deploy9
-deploy9-%-ubi9-python-3.9: bin/kubectl
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi9-python-3.9/kustomize/base)
+deploy9-%: bin/kubectl
+	$(eval TARGET := $(shell echo $* | sed 's/-ubi9-python.*//'))
+	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 ifndef NOTEBOOK_TAG
-	$(eval NOTEBOOK_TAG := $*-ubi9-python-3.9-$(IMAGE_TAG))
+	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
 endif
 	$(info # Deploying notebook from $(NOTEBOOK_DIR) directory...)
 	@sed -i 's,newName: .*,newName: $(IMAGE_REGISTRY),g' $(NOTEBOOK_DIR)/kustomization.yaml
@@ -534,16 +536,20 @@ undeploy8-%-anaconda-python-3.8: bin/kubectl
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
 .PHONY: undeploy9
-undeploy9-%-ubi9-python-3.9: bin/kubectl
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi9-python-3.9/kustomize/base)
+undeploy9-%: bin/kubectl
+	$(eval TARGET := $(shell echo $* | sed 's/-ubi9-python.*//'))
+	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
 .PHONY: deploy-c9s
-deploy-c9s-%-c9s-python-3.9: bin/kubectl
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/c9s-python-3.9/kustomize/base)
+deploy-c9s-%: bin/kubectl
+	$(eval TARGET := $(shell echo $* | sed 's/-c9s-python.*//'))
+	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/c9s-python-$(PYTHON_VERSION)/kustomize/base)
 ifndef NOTEBOOK_TAG
-	$(eval NOTEBOOK_TAG := $*-c9s-python-3.9-$(IMAGE_TAG))
+	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
 endif
 	$(info # Deploying notebook from $(NOTEBOOK_DIR) directory...)
 	@sed -i 's,newName: .*,newName: $(IMAGE_REGISTRY),g' $(NOTEBOOK_DIR)/kustomization.yaml
@@ -551,8 +557,10 @@ endif
 	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
 
 .PHONY: undeploy-c9s
-undeploy-c9s-%-c9s-python-3.9: bin/kubectl
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/c9s-python-3.9/kustomize/base)
+undeploy-c9s-%: bin/kubectl
+	$(eval TARGET := $(shell echo $* | sed 's/-c9s-python.*//'))
+	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/c9s-python-$(PYTHON_VERSION)/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
@@ -581,6 +589,7 @@ endef
 test-%: bin/kubectl
 	# Verify the notebook's readiness by pinging the /api endpoint
 	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
+	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
 	$(info # Running tests for $(NOTEBOOK_NAME) notebook...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod -l app=$(NOTEBOOK_NAME) --timeout=600s
 	$(KUBECTL_BIN) port-forward svc/$(NOTEBOOK_NAME)-notebook 8888:8888 & curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:8888/notebook/opendatahub/jovyan/api ; EXIT_CODE=$$?; echo && pkill --full "^$(KUBECTL_BIN).*port-forward.*"; \
@@ -588,23 +597,23 @@ test-%: bin/kubectl
 
 	# Tests notebook's functionalities
 	if echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi9"; then \
-		$(call test_with_papermill,minimal,ubi9,python-3.9) \
+		$(call test_with_papermill,minimal,ubi9,python-$(PYTHON_VERSION)) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-tensorflow-ubi9"; then \
-		$(call test_with_papermill,intel/tensorflow,ubi9,python-3.9) \
+		$(call test_with_papermill,intel/tensorflow,ubi9,python-$(PYTHON_VERSION)) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-pytorch-ubi9"; then \
-		$(call test_with_papermill,intel/pytorch,ubi9,python-3.9) \
+		$(call test_with_papermill,intel/pytorch,ubi9,python-$(PYTHON_VERSION)) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi9"; then \
-		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
+		$(MAKE) validate-ubi9-datascience PYTHON_VERSION=$(PYTHON_VERSION) -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi9"; then \
-		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(call test_with_papermill,pytorch,ubi9,python-3.9) \
+		$(MAKE) validate-ubi9-datascience PYTHON_VERSION=$(PYTHON_VERSION) -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
+		$(call test_with_papermill,pytorch,ubi9,python-$(PYTHON_VERSION)) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi9"; then \
-		$(MAKE) validate-ubi9-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(call test_with_papermill,tensorflow,ubi9,python-3.9) \
+		$(MAKE) validate-ubi9-datascience PYTHON_VERSION=$(PYTHON_VERSION) -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
+		$(call test_with_papermill,tensorflow,ubi9,python-$(PYTHON_VERSION)) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-ml-ubi9"; then \
-		$(call test_with_papermill,intel/ml,ubi9,python-3.9) \
+		$(call test_with_papermill,intel/ml,ubi9,python-$(PYTHON_VERSION)) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi9"; then \
-		$(call test_with_papermill,trustyai,ubi9,python-3.9) \
+		$(call test_with_papermill,trustyai,ubi9,python-$(PYTHON_VERSION)) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi8"; then \
 		$(call test_with_papermill,minimal,ubi8,python-3.8) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi8"; then \
@@ -617,8 +626,8 @@ test-%: bin/kubectl
 
 .PHONY: validate-ubi9-datascience
 validate-ubi9-datascience:
-	$(call test_with_papermill,minimal,ubi9,python-3.9)
-	$(call test_with_papermill,datascience,ubi9,python-3.9)
+	$(call test_with_papermill,minimal,ubi9,python-$(PYTHON_VERSION))
+	$(call test_with_papermill,datascience,ubi9,python-$(PYTHON_VERSION))
 
 .PHONY: validate-ubi8-datascience
 validate-ubi8-datascience:
@@ -685,7 +694,8 @@ validate-codeserver-image: bin/kubectl
 
 .PHONY: validate-rstudio-image
 validate-rstudio-image: bin/kubectl
-	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
+	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$(image))))
+	$(eval PYTHON_VERSION := $(shell echo $(image) | sed 's/.*-python-//'))
 	$(info # Running tests for $(NOTEBOOK_NAME) RStudio Server image...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod rstudio-pod --timeout=300s
 	@required_commands=$(REQUIRED_R_STUDIO_IMAGE_COMMANDS) ; \
@@ -713,7 +723,7 @@ validate-rstudio-image: bin/kubectl
 		fi; \
 	done ; \
 	echo "=> Fetching R script from URL and executing on the container..."; \
-	curl -sSL -o test_script.R "${NOTEBOOK_REPO_BRANCH_BASE}/rstudio/c9s-python-3.9/test/test_script.R" > /dev/null 2>&1 ; \
+	curl -sSL -o test_script.R "${NOTEBOOK_REPO_BRANCH_BASE}/rstudio/c9s-python-$(PYTHON_VERSION)/test/test_script.R" > /dev/null 2>&1 ; \
 	$(KUBECTL_BIN) cp test_script.R rstudio-pod:/opt/app-root/src/test_script.R > /dev/null 2>&1; \
 	$(KUBECTL_BIN) exec rstudio-pod -- Rscript /opt/app-root/src/test_script.R > /dev/null 2>&1 ; \
 	if [ $$? -eq 0 ]; then \
@@ -724,7 +734,6 @@ validate-rstudio-image: bin/kubectl
 		fail=1; \
 		continue; \
 	fi; \
-
 
 # This is only for the workflow action
 .PHONY: refresh-pipfilelock-files
