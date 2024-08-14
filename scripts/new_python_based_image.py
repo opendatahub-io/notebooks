@@ -1,11 +1,12 @@
 import argparse
-import os
-import shutil
-import sys
-import platform
-import subprocess
+import contextlib
 import logging
+import os
+import platform
 import re
+import shutil
+import subprocess
+import sys
 from dataclasses import dataclass
 
 
@@ -363,21 +364,17 @@ def list_to_str(lst: list, enumerate_lines=False):
         return "\n".join(lst)
 
 
-def with_logged_execution(fn: callable, title: str):
-    """
-    Executes a function and logs the start and end of the execution.
-
-    Args:
-        fn: The function to execute.
-        title: The title to log for the execution.
-
-    Returns:
-        The result of the executed function.
+@contextlib.contextmanager
+def logged_execution(title: str):
+    """Usage:
+            > with logged_execution("launching rockets"):
+            > ...     result = launch_rockets()
     """
     LOGGER.info(f"{title}...")
-    result = fn()
-    LOGGER.info(f"{title}... Done.")
-    return result
+    try:
+        yield None
+    finally:
+        LOGGER.info(f"{title}... Done.")
 
 
 def replace_version_in_directory(directory_path: str, source_version: str, target_version: str):
@@ -512,11 +509,11 @@ def main():
 
     configure_logger(args.log_level)
 
-    with_logged_execution(lambda: check_requirements(args),
-                          "Checking requirements")
+    with logged_execution("Checking requirements"):
+        check_requirements(args)
 
-    paths = with_logged_execution(lambda: find_matching_paths(args.context_dir, args.source, args.match),
-                                  f"Finding matching paths with '{args.match}' and Python {args.source}")
+    with logged_execution(f"Finding matching paths with '{args.match}' and Python {args.source}"):
+        paths = find_matching_paths(args.context_dir, args.source, args.match)
 
     paths_dict = replace_python_version_on_paths(paths,
                                                  args.source,
@@ -529,15 +526,15 @@ def main():
     LOGGER.info(
         f"New folders based on the input args:\n{dict_to_str(paths_dict, enumerate_lines=True)}")
 
-    success_paths, failed_paths = with_logged_execution(lambda: copy_paths(paths_dict),
-                                                        f"Trying to copy {len(paths_dict)} folders")
+    with logged_execution(f"Trying to copy {len(paths_dict)} folders"):
+        success_paths, failed_paths = copy_paths(paths_dict)
 
     LOGGER.info(
         f"{len(success_paths)} folders have been copied successfully whereas {len(failed_paths)} failed.")
 
     if len(success_paths) > 0:
-        with_logged_execution(lambda: process_paths(success_paths, args.source, args.target),
-                              "Processing copied folders")
+        with logged_execution("Processing copied folders"):
+            process_paths(success_paths, args.source, args.target)
 
     if len(failed_paths) > 0:
         LOGGER.warning(
