@@ -203,7 +203,13 @@ def find_matching_paths(context_dir: str, source_version: str, match: str):
     Returns:
         list: A list of directories that match the criteria and contain a Dockerfile.
     """
-    blocklist = [os.path.join(".", path) for path in [".git", ".github", "ci"]]
+    blocklist = [os.path.join(".", path) for path in [".git",
+                                                      ".github",
+                                                      "ci",
+                                                      "docs",
+                                                      "manifests",
+                                                      "scripts",
+                                                      "tests"]]
     matching_paths = []
     processed_dirs = set()
 
