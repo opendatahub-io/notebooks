@@ -75,7 +75,7 @@ def extract_input_args():
         help="The string to match with the paths to base the new image from.")
     parser.add_argument(
         "--log-level", default="INFO",
-        help="Set the logging level. Default: INFO.")
+        help="Set the logging level. Default: %(default)s).")
 
     args = parser.parse_args()
 
