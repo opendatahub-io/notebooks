@@ -13,7 +13,7 @@ from dataclasses import dataclass
 LOGGER = logging.getLogger(__name__)
 
 
-def configure_logger(log_level: str):
+def configure_logger(log_level: str) -> None:
     """
     Configures the logging settings based on the provided log level.
 
@@ -39,14 +39,6 @@ class Args:
     target: str
     match: str
     log_level: str
-
-    def __str__(self):
-        return (f"Arguments:\n"
-                f"Context Directory:  {self.context_dir}\n"
-                f"Source Version:     {self.source}\n"
-                f"Target Version:     {self.target}\n"
-                f"Match:              '{self.match}'\n"
-                f"Log Level:          {self.log_level}")
 
 
 def extract_input_args() -> Args:
@@ -75,7 +67,7 @@ def extract_input_args() -> Args:
         help="The string to match with the paths to base the new image from.")
     parser.add_argument(
         "--log-level", default="INFO",
-        help="Set the logging level. Default: %(default)s).")
+        help="Set the logging level. Default: %(default)s.")
 
     args = parser.parse_args()
 
@@ -88,7 +80,7 @@ def extract_input_args() -> Args:
     return Args(args.context_dir, args.source, args.target, args.match, args.log_level)
 
 
-def extract_python_version(version: str) -> list:
+def extract_python_version(version: str) -> list[str]:
     """
     Extracts the major and minor version components from a Python version string.
 
@@ -101,7 +93,7 @@ def extract_python_version(version: str) -> list:
     return version.split(".")[:2]
 
 
-def check_python_version(version: str):
+def check_python_version(version: str) -> None:
     """
     Validates the format of a Python version string.
 
@@ -114,7 +106,7 @@ def check_python_version(version: str):
         sys.exit(1)
 
 
-def check_target_python_version_installed(version: str):
+def check_target_python_version_installed(version: str) -> None:
     """
     Checks if the specified Python version is installed on the system.
 
@@ -127,7 +119,7 @@ def check_target_python_version_installed(version: str):
         sys.exit(1)
 
 
-def check_input_versions_not_equal(source_version: str, target_version: str):
+def check_input_versions_not_equal(source_version: str, target_version: str) -> None:
     """
     Ensures that the source and target Python versions are different.
 
@@ -140,7 +132,7 @@ def check_input_versions_not_equal(source_version: str, target_version: str):
         sys.exit(1)
 
 
-def check_os_linux():
+def check_os_linux() -> None:
     """
     Checks if the script is being run on a Linux operating system.
     """
@@ -151,7 +143,7 @@ def check_os_linux():
         sys.exit(1)
 
 
-def check_pipenv_installed():
+def check_pipenv_installed() -> None:
     """
     Checks if `pipenv` is installed on the system.
     """
@@ -160,7 +152,7 @@ def check_pipenv_installed():
         sys.exit(1)
 
 
-def check_requirements(args: Args):
+def check_requirements(args: Args) -> None:
     """
     Performs various checks to ensure that all requirements are met.
 
@@ -175,7 +167,7 @@ def check_requirements(args: Args):
     check_pipenv_installed()
 
 
-def find_matching_paths(context_dir: str, source_version: str, match: str) -> list:
+def find_matching_paths(context_dir: str, source_version: str, match: str) -> list[str]:
     """
     Finds directories in the context directory that match the specified source version and match criteria.
 
@@ -215,7 +207,7 @@ def find_matching_paths(context_dir: str, source_version: str, match: str) -> li
     return [p for p in matching_paths if source_version in p]
 
 
-def replace_python_version_on_paths(paths_list: list, source_version: str, target_version: str) -> dict:
+def replace_python_version_on_paths(paths_list: list, source_version: str, target_version: str) -> dict[str, str]:
     """
     Replaces occurrences of the source Python version with the target version in a list of paths.
 
@@ -230,7 +222,7 @@ def replace_python_version_on_paths(paths_list: list, source_version: str, targe
     return {path: path.replace(source_version, target_version) for path in paths_list}
 
 
-def copy_paths(paths_dict: dict) -> tuple:
+def copy_paths(paths_dict: dict) -> tuple[list[str], list[str]]:
     """
     Copies directories from source paths to destination paths.
 
@@ -261,7 +253,7 @@ def copy_paths(paths_dict: dict) -> tuple:
     return success_paths, failed_paths
 
 
-def replace_python_version_in_file(file_path: str, source_version: str, target_version: str):
+def replace_python_version_in_file(file_path: str, source_version: str, target_version: str) -> None:
     """
     Replaces occurrences of the source Python version with the target version in a file.
 
@@ -381,7 +373,7 @@ def replace_version_in_directory(directory_path: str, source_version: str, targe
     """
     LOGGER.debug(f"Replacing Python versions in '{directory_path}'")
 
-    def rename_file_and_replace_python_version(path, filename, source_version, target_version, is_file=True):
+    def rename_file_and_replace_python_version(path, filename, source_version, target_version, is_file=True) -> str:
         old_path = os.path.join(path, filename)
         new_filename = replace_python_version_in_content(filename,
                                                          source_version,
@@ -416,7 +408,7 @@ def replace_version_in_directory(directory_path: str, source_version: str, targe
                                                    is_file=False)
 
 
-def process_paths(copied_paths: list, source_version: str, target_version: str) -> tuple:
+def process_paths(copied_paths: list, source_version: str, target_version: str) -> tuple[list[str], list[str]]:
     """
     Processes the list of copied paths by replacing Python versions and running `pipenv lock` on Pipfiles.
 
@@ -442,7 +434,7 @@ def process_paths(copied_paths: list, source_version: str, target_version: str) 
     return success_processed, failed_processed
 
 
-def process_pipfiles(path: str, target_version: str) -> tuple:
+def process_pipfiles(path: str, target_version: str) -> tuple[list[str], list[str]]:
     """
     Processes Pipfiles in a given path by running `pipenv lock` on them.
 
@@ -496,7 +488,7 @@ def run_pipenv_lock(pipfile_path: str, target_version: str) -> bool:
         return False
 
 
-def manual_checks() -> list:
+def manual_checks() -> list[str]:
     """
     Provides a list of manual checks to perform after the script execution.
 
