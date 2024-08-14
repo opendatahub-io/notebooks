@@ -45,7 +45,7 @@ class Args:
                 f"Context Directory:  {self.context_dir}\n"
                 f"Source Version:     {self.source}\n"
                 f"Target Version:     {self.target}\n"
-                f"Match:              {self.match}\n"
+                f"Match:              '{self.match}'\n"
                 f"Log Level:          {self.log_level}")
 
 
@@ -349,7 +349,7 @@ def list_to_str(lst: list, enumerate_lines=False) -> str:
         The string representation of the list.
     """
     if enumerate_lines:
-        return "\n".join(f"{i + 1}. {item}" for i, item in enumerate(lst))
+        return "\n".join(f"{i + 1}. '{item}'" for i, item in enumerate(lst))
     else:
         return "\n".join(lst)
 
@@ -428,14 +428,17 @@ def process_paths(copied_paths: list, source_version: str, target_version: str) 
     Returns:
         A tuple of two lists for the successfully and failed processed lock files.
     """
+    success_processed = []
+    failed_processed = []
     for path in copied_paths:
         if not os.path.exists(path):
             LOGGER.warning(f"The path '{path}' does not exist.")
             continue
 
         replace_version_in_directory(path, source_version, target_version)
-        success_processed, failed_processed = process_pipfiles(path,
-                                                               target_version)
+        success, failed = process_pipfiles(path, target_version)
+        success_processed.extend(success)
+        failed_processed.extend(failed)
     return success_processed, failed_processed
 
 
@@ -511,9 +514,8 @@ def manual_checks() -> list:
 
 def main():
     args = extract_input_args()
-    LOGGER.info(args)
-
     configure_logger(args.log_level)
+    LOGGER.info(args)
 
     with logged_execution("Checking requirements"):
         check_requirements(args)
