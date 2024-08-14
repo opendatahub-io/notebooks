@@ -514,9 +514,6 @@ def manual_checks():
 
 
 def main():
-    """
-    Main function to execute the script.
-    """
     args = extract_input_args()
     LOGGER.info(args)
 
