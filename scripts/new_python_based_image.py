@@ -6,6 +6,7 @@ import platform
 import subprocess
 import logging
 import re
+from dataclasses import dataclass
 
 
 LOGGER = logging.getLogger(__name__)
@@ -27,24 +28,16 @@ def configure_logger(log_level: str):
     LOGGER.setLevel(log_level)
 
 
+@dataclass
 class Args:
     """
     Class to encapsulate command-line arguments.
-
-    Attributes:
-        context_dir: The directory to use as the context for searching.
-        source: The source Python version.
-        target: The target Python version.
-        match: The string to match with the paths.
-        log_level: The logging level.
     """
-
-    def __init__(self, context_dir: str, source: str, target: str, match: str, log_level: str):
-        self.context_dir = context_dir
-        self.source = source
-        self.target = target
-        self.match = match
-        self.log_level = log_level
+    context_dir: str
+    source: str
+    target: str
+    match: str
+    log_level: str
 
     def __str__(self):
         return (f"Arguments:\n"
