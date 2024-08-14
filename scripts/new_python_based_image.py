@@ -432,17 +432,15 @@ def process_paths(copied_paths: list, source_version: str, target_version: str):
         source_version: The source Python version.
         target_version: The target Python version.
     """
-    if copied_paths.count == 0:
-        LOGGER.info("No paths to process.")
-        return
-
     for path in copied_paths:
         if not os.path.exists(path):
             LOGGER.warning(f"The path '{path}' does not exist.")
             continue
 
         replace_version_in_directory(path, source_version, target_version)
-        process_pipfiles(path, target_version)
+        success_processed, failed_processed = process_pipfiles(path,
+                                                               target_version)
+    return success_processed, failed_processed
 
 
 def process_pipfiles(path: str, target_version: str):
@@ -453,11 +451,15 @@ def process_pipfiles(path: str, target_version: str):
         path: The path to search for Pipfiles.
         target_version: The target Python version to use with `pipenv lock`.
     """
+    success_processed = []
+    failed_processed = []
     for root, _, files in os.walk(path):
         for file_name in files:
             if file_name.startswith("Pipfile") and "lock" not in file_name:
                 pipfile_path = os.path.join(root, file_name)
-                run_pipenv_lock(pipfile_path, target_version)
+                result = run_pipenv_lock(pipfile_path, target_version)
+                (success_processed if result else failed_processed).append(pipfile_path)
+    return success_processed, failed_processed
 
 
 def run_pipenv_lock(pipfile_path: str, target_version: str):
@@ -483,9 +485,10 @@ def run_pipenv_lock(pipfile_path: str, target_version: str):
             encoding="utf-8"
         )
         LOGGER.debug(result.stdout)
+        return True
     except subprocess.CalledProcessError as e:
-        LOGGER.error(f"Error running pipenv lock for '{pipfile_path}'")
         LOGGER.debug(e.stderr)
+        return False
 
 
 def manual_checks():
@@ -522,27 +525,39 @@ def main():
 
     if len(paths_dict) == 0:
         LOGGER.info("No paths found to copy.")
-        return
+        sys.exit(1)
 
     LOGGER.info(
-        f"New folders based on the input args:\n{dict_to_str(paths_dict, enumerate_lines=True)}")
+        f"New folder(s) based on the input args:\n{dict_to_str(paths_dict, enumerate_lines=True)}")
 
-    with logged_execution(f"Trying to copy {len(paths_dict)} folders"):
-        success_paths, failed_paths = copy_paths(paths_dict)
+    with logged_execution(f"Trying to copy {len(paths_dict)} folder(s)"):
+        success_copied_paths, failed_copied_paths = copy_paths(paths_dict)
 
     LOGGER.info(
-        f"{len(success_paths)} folders have been copied successfully whereas {len(failed_paths)} failed.")
+        f"{len(success_copied_paths)} folder(s) have been copied successfully whereas {len(failed_copied_paths)} failed.")
 
-    if len(success_paths) > 0:
-        with logged_execution("Processing copied folders"):
-            process_paths(success_paths, args.source, args.target)
+    exit_code = 0
 
-    if len(failed_paths) > 0:
+    if len(failed_copied_paths) > 0:
         LOGGER.warning(
-            f"Failed to copy the following paths:\n{list_to_str(failed_paths)}")
+            f"Failed to copy the following folder(s):\n{list_to_str(failed_copied_paths, enumerate_lines=True)}")
+        exit_code = 1
+
+    if len(success_copied_paths) > 0:
+        with logged_execution("Processing copied folders"):
+            _, failed_processed = process_paths(success_copied_paths,
+                                                args.source,
+                                                args.target)
+
+        if len(failed_processed) > 0:
+            LOGGER.warning(
+                f"Failed to process the following lock files:\n{list_to_str(failed_processed, enumerate_lines=True)}")
+            exit_code = 1
 
     LOGGER.info(
         f"Manual checks to perform after the script execution:\n{list_to_str(manual_checks(), enumerate_lines=True)}")
+
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
