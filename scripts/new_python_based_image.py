@@ -11,12 +11,12 @@ import re
 LOGGER = logging.getLogger(__name__)
 
 
-def configure_logger(log_level):
+def configure_logger(log_level: str):
     """
     Configures the logging settings based on the provided log level.
 
     Args:
-        log_level (str): The logging level to set (e.g., 'INFO', 'DEBUG').
+        log_level: The logging level to set (e.g., 'INFO', 'DEBUG').
     """
     level = getattr(logging, log_level.upper(), logging.INFO)
     logging.basicConfig(
@@ -32,14 +32,14 @@ class Args:
     Class to encapsulate command-line arguments.
 
     Attributes:
-        context_dir (str): The directory to use as the context for searching.
-        source (str): The source Python version.
-        target (str): The target Python version.
-        match (str): The string to match with the paths.
-        log_level (str): The logging level.
+        context_dir: The directory to use as the context for searching.
+        source: The source Python version.
+        target: The target Python version.
+        match: The string to match with the paths.
+        log_level: The logging level.
     """
 
-    def __init__(self, context_dir, source, target, match, log_level):
+    def __init__(self, context_dir: str, source: str, target: str, match: str, log_level: str):
         self.context_dir = context_dir
         self.source = source
         self.target = target
@@ -94,12 +94,12 @@ def extract_input_args():
     return Args(args.context_dir, args.source, args.target, args.match, args.log_level)
 
 
-def extract_python_version(version):
+def extract_python_version(version: str):
     """
     Extracts the major and minor version components from a Python version string.
 
     Args:
-        version (str): The Python version string (e.g., '3.9').
+        version: The Python version string (e.g., '3.9').
 
     Returns:
         list: A list containing the major and minor version components as strings.
@@ -107,12 +107,12 @@ def extract_python_version(version):
     return version.split(".")[:2]
 
 
-def check_python_version(version):
+def check_python_version(version: str):
     """
     Validates the format of a Python version string.
 
     Args:
-        version (str): The Python version string to validate.
+        version: The Python version string to validate.
 
     Exits the program with an error if the format is invalid.
     """
@@ -122,12 +122,12 @@ def check_python_version(version):
         sys.exit(1)
 
 
-def check_target_python_version_installed(version):
+def check_target_python_version_installed(version: str):
     """
     Checks if the specified Python version is installed on the system.
 
     Args:
-        version (str): The Python version to check.
+        version: The Python version to check.
 
     Exits the program with an error if the version is not installed.
     """
@@ -137,13 +137,13 @@ def check_target_python_version_installed(version):
         sys.exit(1)
 
 
-def check_input_versions_not_equal(source_version, target_version):
+def check_input_versions_not_equal(source_version: str, target_version: str):
     """
     Ensures that the source and target Python versions are different.
 
     Args:
-        source_version (str): The source Python version.
-        target_version (str): The target Python version.
+        source_version: The source Python version.
+        target_version: The target Python version.
 
     Exits the program with an error if the versions are the same.
     """
@@ -176,12 +176,12 @@ def check_pipenv_installed():
         sys.exit(1)
 
 
-def check_requirements(args):
+def check_requirements(args: Args):
     """
     Performs various checks to ensure that all requirements are met.
 
     Args:
-        args (Args): An instance of the Args class containing the command-line arguments.
+        args: An instance of the Args class containing the command-line arguments.
     """
     check_os_linux()
     check_python_version(args.source)
@@ -191,14 +191,14 @@ def check_requirements(args):
     check_pipenv_installed()
 
 
-def find_matching_paths(context_dir, source_version, match):
+def find_matching_paths(context_dir: str, source_version: str, match: str):
     """
     Finds directories in the context directory that match the specified source version and match criteria.
 
     Args:
-        context_dir (str): The directory to search in.
-        source_version (str): The Python version to match.
-        match (str): The string to match with the paths.
+        context_dir: The directory to search in.
+        source_version: The Python version to match.
+        match: The string to match with the paths.
 
     Returns:
         list: A list of directories that match the criteria and contain a Dockerfile.
@@ -225,14 +225,14 @@ def find_matching_paths(context_dir, source_version, match):
     return [p for p in matching_paths if source_version in p]
 
 
-def replace_python_version_on_paths(paths_list, source_version, target_version):
+def replace_python_version_on_paths(paths_list: list, source_version: str, target_version: str):
     """
     Replaces occurrences of the source Python version with the target version in a list of paths.
 
     Args:
-        paths_list (list): The list of paths to modify.
-        source_version (str): The source Python version.
-        target_version (str): The target Python version.
+        paths_list: The list of paths to modify.
+        source_version: The source Python version.
+        target_version: The target Python version.
 
     Returns:
         dict: A dictionary where keys are original paths and values are modified paths with the target version.
@@ -240,12 +240,12 @@ def replace_python_version_on_paths(paths_list, source_version, target_version):
     return {path: path.replace(source_version, target_version) for path in paths_list}
 
 
-def copy_paths(paths_dict):
+def copy_paths(paths_dict: dict):
     """
     Copies directories from source paths to destination paths.
 
     Args:
-        paths_dict (dict): A dictionary where keys are source paths and values are destination paths.
+        paths_dict: A dictionary where keys are source paths and values are destination paths.
 
     Returns:
         tuple: A tuple containing two lists: success_paths and failed_paths.
@@ -271,14 +271,14 @@ def copy_paths(paths_dict):
     return success_paths, failed_paths
 
 
-def replace_python_version_in_file(file_path, source_version, target_version):
+def replace_python_version_in_file(file_path: str, source_version: str, target_version: str):
     """
     Replaces occurrences of the source Python version with the target version in a file.
 
     Args:
-        file_path (str): The path to the file.
-        source_version (str): The source Python version.
-        target_version (str): The target Python version.
+        file_path: The path to the file.
+        source_version: The source Python version.
+        target_version: The target Python version.
     """
     LOGGER.debug(f"Replacing Python versions in '{file_path}'")
 
@@ -295,14 +295,14 @@ def replace_python_version_in_file(file_path, source_version, target_version):
         LOGGER.debug(f"Error replacing Python versions in '{file_path}': {e}")
 
 
-def replace_python_version_in_content(content, source_version, target_version):
+def replace_python_version_in_content(content: str, source_version: str, target_version: str):
     """
     Replaces occurrences of the source Python version with the target version in a content string.
 
     Args:
-        content (str): The content to modify.
-        source_version (str): The source Python version.
-        target_version (str): The target Python version.
+        content: The content to modify.
+        source_version: The source Python version.
+        target_version: The target Python version.
 
     Returns:
         str: The modified content with the target Python version.
@@ -330,13 +330,13 @@ def replace_python_version_in_content(content, source_version, target_version):
     return result
 
 
-def dict_to_str(dictionary, enumerate_lines=False):
+def dict_to_str(dictionary: dict, enumerate_lines=False):
     """
     Converts a dictionary to a string representation.
 
     Args:
-        dictionary (dict): The dictionary to convert.
-        enumerate_lines (bool): Whether to enumerate lines in the output.
+        dictionary: The dictionary to convert.
+        enumerate_lines: Whether to enumerate lines in the output.
 
     Returns:
         str: The string representation of the dictionary.
@@ -347,13 +347,13 @@ def dict_to_str(dictionary, enumerate_lines=False):
         return '\n'.join(f"'{k}' -> '{v}'" for k, v in dictionary.items())
 
 
-def list_to_str(lst, enumerate_lines=False):
+def list_to_str(lst: list, enumerate_lines=False):
     """
     Converts a list to a string representation.
 
     Args:
-        lst (list): The list to convert.
-        enumerate_lines (bool): Whether to enumerate lines in the output.
+        lst: The list to convert.
+        enumerate_lines: Whether to enumerate lines in the output.
 
     Returns:
         str: The string representation of the list.
@@ -364,13 +364,13 @@ def list_to_str(lst, enumerate_lines=False):
         return "\n".join(lst)
 
 
-def with_logged_execution(fn, title):
+def with_logged_execution(fn: callable, title: str):
     """
     Executes a function and logs the start and end of the execution.
 
     Args:
-        fn (callable): The function to execute.
-        title (str): The title to log for the execution.
+        fn: The function to execute.
+        title: The title to log for the execution.
 
     Returns:
         The result of the executed function.
@@ -381,14 +381,14 @@ def with_logged_execution(fn, title):
     return result
 
 
-def replace_version_in_directory(directory_path, source_version, target_version):
+def replace_version_in_directory(directory_path: str, source_version: str, target_version: str):
     """
     Replaces occurrences of the source Python version with the target version in file and directory names within a directory.
 
     Args:
-        directory_path (str): The path to the directory.
-        source_version (str): The source Python version.
-        target_version (str): The target Python version.
+        directory_path: The path to the directory.
+        source_version: The source Python version.
+        target_version: The target Python version.
     """
     LOGGER.debug(f"Replacing Python versions in '{directory_path}'")
 
@@ -427,14 +427,14 @@ def replace_version_in_directory(directory_path, source_version, target_version)
                                                    is_file=False)
 
 
-def process_paths(copied_paths, source_version, target_version):
+def process_paths(copied_paths: list, source_version: str, target_version: str):
     """
     Processes the list of copied paths by replacing Python versions and running pipenv lock on Pipfiles.
 
     Args:
-        copied_paths (list): The list of copied paths to process.
-        source_version (str): The source Python version.
-        target_version (str): The target Python version.
+        copied_paths: The list of copied paths to process.
+        source_version: The source Python version.
+        target_version: The target Python version.
     """
     if copied_paths.count == 0:
         LOGGER.info("No paths to process.")
@@ -449,13 +449,13 @@ def process_paths(copied_paths, source_version, target_version):
         process_pipfiles(path, target_version)
 
 
-def process_pipfiles(path, target_version):
+def process_pipfiles(path: str, target_version: str):
     """
     Processes Pipfiles in a given path by running `pipenv lock` on them.
 
     Args:
-        path (str): The path to search for Pipfiles.
-        target_version (str): The target Python version to use with `pipenv lock`.
+        path: The path to search for Pipfiles.
+        target_version: The target Python version to use with `pipenv lock`.
     """
     for root, _, files in os.walk(path):
         for file_name in files:
@@ -464,13 +464,13 @@ def process_pipfiles(path, target_version):
                 run_pipenv_lock(pipfile_path, target_version)
 
 
-def run_pipenv_lock(pipfile_path, target_version):
+def run_pipenv_lock(pipfile_path: str, target_version: str):
     """
     Runs `pipenv lock` for a specified Pipfile to generate a new lock file.
 
     Args:
-        pipfile_path (str): The path to the Pipfile.
-        target_version (str): The target Python version to use with `pipenv lock`.
+        pipfile_path: The path to the Pipfile.
+        target_version: The target Python version to use with `pipenv lock`.
     """
     LOGGER.info(f"Running pipenv lock for '{pipfile_path}'")
     env = os.environ.copy()
