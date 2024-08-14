@@ -479,12 +479,13 @@ def run_pipenv_lock(pipfile_path: str, target_version: str):
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env=env
+            env=env,
+            encoding="utf-8"
         )
-        LOGGER.debug(result.stdout.decode())
+        LOGGER.debug(result.stdout)
     except subprocess.CalledProcessError as e:
         LOGGER.error(f"Error running pipenv lock for '{pipfile_path}'")
-        LOGGER.debug(e.stderr.decode())
+        LOGGER.debug(e.stderr)
 
 
 def manual_checks():
