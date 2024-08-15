@@ -108,38 +108,48 @@ update_library_version_pipfile() {
   fi
 
   # Extract the current version and qualifier from the Pipfile
-  current_line=$(grep -E "^\"?$lib\"? = " "$file")
+  current_line=$(grep -E "^\"?$lib\"?[[:space:]]*=[[:space:]]*" "$file")
+
   if [[ $current_line =~ ^\"?$lib\"?[[:space:]]*=[[:space:]]*\"?([=><!~]*)?([0-9]+(\.[0-9]+)*)\"?$ ]]; then
     current_qualifier="${BASH_REMATCH[1]}"
     current_ver="${BASH_REMATCH[2]}"
-
-    # Compare the current and new versions
-    is_version_higher "$new_ver" "$current_ver"
-    comparison_result=$?
-
-    if [ "$comparison_result" -eq 0 ]; then
-      # Keep the original qualifier and update to the new version if it is higher
-      new_line="${lib} = \"${current_qualifier}${new_ver}\""
-      sed -i -E "s/^\"?$lib\"?[[:space:]]*=[[:space:]]*\"?[=><!~]*[0-9]+(\.[0-9]+)*\"?/${new_line}/" "$file"
-      echo "Updated $lib in $file to version ${current_qualifier}${new_ver}"
-
-      # Handle renaming and pipenv lock, if necessary
-      if [ "$lock_files" == "true" ]; then
-        if [ "$is_specific" = true ]; then
-          mv "$file" "${directory}/Pipfile"
-          mv "${directory}/$lockfile" "${directory}/Pipfile.lock"
-          (cd "$directory" && pipenv lock)
-          mv "${directory}/Pipfile" "$file"
-          mv "${directory}/Pipfile.lock" "${directory}/$lockfile"
-        else
-          (cd "$directory" && pipenv lock)
-        fi
-      fi
-    else
-      echo "$lib in $file is already up-to-date or has a higher version ($current_ver)."
-    fi
+  elif [[ $current_line =~ version[[:space:]]*=[[:space:]]*\"?([=><!~]*)?([0-9]+(\.[0-9]+)*)\" ]]; then
+    current_qualifier="${BASH_REMATCH[1]}"
+    current_ver="${BASH_REMATCH[2]}"
   else
     echo "$lib not found in $file."
+    return
+  fi
+
+  # Compare the current and new versions
+  is_version_higher "$new_ver" "$current_ver"
+  comparison_result=$?
+
+  if [ "$comparison_result" -eq 0 ]; then
+    # Keep the original qualifier and update to the new version if it is higher
+    if [[ $current_line =~ ^\"?$lib\"?[[:space:]]*=[[:space:]]*\"?([=><!~]*)?[0-9]+(\.[0-9]+)*\"?$ ]]; then
+      new_line="${lib} = \"${current_qualifier}${new_ver}\""
+      sed -i -E "s|^\"?$lib\"?[[:space:]]*=[[:space:]]*\"?[=><!~]*[0-9]+(\.[0-9]+)*\"?|${new_line}|" "$file"
+    elif [[ $current_line =~ version[[:space:]]*=[[:space:]]*\"?([=><!~]*)?([0-9]+(\.[0-9]+)*)\" ]]; then
+      new_line=$(echo "$current_line" | sed -E "s|(version[[:space:]]*=[[:space:]]*\")([=><!~]*[0-9]+(\.[0-9]+)*)\"|\1${current_qualifier}${new_ver}\"|")
+      sed -i "s|^$current_line|$new_line|" "$file"
+    fi
+    echo "Updated $lib in $file to version ${current_qualifier}${new_ver}"
+
+    # Handle renaming and pipenv lock, if necessary
+    if [ "$lock_files" == "true" ]; then
+      if [ "$is_specific" = true ]; then
+        mv "$file" "${directory}/Pipfile"
+        mv "${directory}/$lockfile" "${directory}/Pipfile.lock"
+        (cd "$directory" && pipenv lock)
+        mv "${directory}/Pipfile" "$file"
+        mv "${directory}/Pipfile.lock" "${directory}/$lockfile"
+      else
+        (cd "$directory" && pipenv lock)
+      fi
+    fi
+  else
+    echo "$lib in $file is already up-to-date or has a higher version ($current_ver)."
   fi
 }
 
@@ -173,7 +183,7 @@ update_library_version_requirements() {
     if [ "$comparison_result" -eq 0 ]; then
       # Update to the new version if it is higher
       new_line="${lib}==${new_ver}"
-      sed -i -E "s/^$lib==[0-9]+(\.[0-9]+)*/${new_line}/" "$file"
+      sed -i -E "s|^$lib==[0-9]+(\.[0-9]+)*|${new_line}|" "$file"
       echo "Updated $lib in $file to version ${new_ver}"
     else
       echo "$lib in $file is already up-to-date or has a higher version ($current_ver)."
