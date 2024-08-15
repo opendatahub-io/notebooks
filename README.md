@@ -6,7 +6,7 @@
 
 Welcome to the OpenDataHub Notebooks repository! This repository provides a collection of notebooks tailored for data analysis, machine learning, research and coding within the OpenDataHub ecosystem. Designed to streamline data science workflows, these notebooks offer an integrated environment equipped with the latest tools and libraries. These notebooks were created to be used with OpenDataHub ecosystem with the ODH Notebook Controller as the launcher.
 
-These workbenches are available at: [quay.io/opendatahub/workbench-images](https://quay.io/opendatahub/workbench-images)
+These workbenches are available at: [quay.io/repository/opendatahub/workbench-images](https://quay.io/repository/opendatahub/workbench-images)
 
 ## Getting Started
 For a deeper understanding of the architecture underlying this repository, please explore our wiki page [Wiki](https://github.com/opendatahub-io/notebooks/wiki/Workbenches)
