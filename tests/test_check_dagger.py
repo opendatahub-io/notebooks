@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import os
 import pathlib
 import sys
 import logging
 
-import dagger
+import testcontainers.core.container
 
-from tests import ROOT_PATH
+import pytest
+
+from tests import ROOT_PATH, docker_utils
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from pyfakefs.fake_filesystem import FakeFilesystem
 
@@ -17,27 +21,41 @@ LOGGER = logging.getLogger(__name__)
 
 COMMAND_TIMEOUT = 10 * 60
 
-async def test_something_with_papermill():
-    async with (dagger.Connection(dagger.Config(log_output=sys.stderr)) as client):
-        # build = client.host().directory(".").docker_build()
-        # await build.publish("jeremyatdockerhub/myexample:latest")
-        notebook_name = "minimal"
-        ubi_flavor = "ubi9"
-        python_kernel = "python-3.9"
-        image = "ghcr.io/jiridanek/notebooks/workbench-images:jupyter-minimal-ubi9-python-3.9-jd_helpful_error_751147cd93fed327e940670edbc99c6f44a1ac24"
-        r = client.host().directory(str(ROOT_PATH / "jupyter" / notebook_name / f"{ubi_flavor}-{python_kernel}" / "test"))
-        c = (client.container()
-             .from_(image)
-             .with_directory("/test", r)
-             )
 
-        d = (c
-             .with_exec(["/bin/sh", "-c", "python3 -m pip install papermill"])
-             .with_workdir("/opt/app-data").with_exec(["python3", "-m", "papermill", "/test/test_notebook.ipynb", "output.ipynb", "--kernel", "python3", "--stderr-file", "error.txt"]))
-        out = await d.stdout()
-        print("baf", out)
+def test_something_with_papermill():
+    notebook_name = "minimal"
+    ubi_flavor = "ubi9"
+    python_kernel = "python-3.9"
 
-# https://archive.docs.dagger.io/0.9/421437/work-with-host-filesystem/#important-notes
+    uid = 123456
+    gid = 0
+    test_data_dir = str(ROOT_PATH / "jupyter" / notebook_name / f"{ubi_flavor}-{python_kernel}" / "test")
+    image = "ghcr.io/jiridanek/notebooks/workbench-images:jupyter-minimal-ubi9-python-3.9-jd_helpful_error_751147cd93fed327e940670edbc99c6f44a1ac24"
+
+    container = testcontainers.core.container.DockerContainer(image=image)
+    container.with_env("POETRY_PYPI_MIRROR_URL", "")
+    container.with_command("/bin/sh -c 'sleep infinity'")
+    with container.start():
+        docker_utils.container_cp(container.get_wrapped_container(),
+                                  src=test_data_dir, dst="/", group=gid)
+
+        result = docker_utils.container_exec(
+            container.get_wrapped_container(),
+            user=f"{uid}:{gid}",
+            stream=True,
+            cmd=["/bin/sh", "-c", "python3 -m pip install papermill"],
+        )
+        assert result.communicate() == 0
+
+        result = docker_utils.container_exec(
+            container.get_wrapped_container(),
+            user=f"{uid}:{gid}",
+            workdir="/opt/app-root",
+            stream=True,
+            cmd=["python3", "-m", "papermill", "/test/test_notebook.ipynb", "output.ipynb", "--kernel", "python3",
+                 "--stderr-file", "error.txt"],
+        )
+        assert result.communicate() == 0
 
 
 # def run_kubectl(args: list[str], check=True, background=False, stdout=None, stderr=None) -> subprocess.Popen | subprocess.CompletedProcess:
@@ -116,9 +134,10 @@ async def test_something_with_papermill():
 #
 #
 
-REQUIRED_RUNTIME_IMAGE_COMMANDS=["curl", "python3"]
-REQUIRED_CODE_SERVER_IMAGE_COMMANDS=["curl", "python", "oc", "code-server"]
-REQUIRED_R_STUDIO_IMAGE_COMMANDS=["curl", "python", "oc", "/usr/lib/rstudio-server/bin/rserver"]
+REQUIRED_RUNTIME_IMAGE_COMMANDS = ["curl", "python3"]
+REQUIRED_CODE_SERVER_IMAGE_COMMANDS = ["curl", "python", "oc", "code-server"]
+REQUIRED_R_STUDIO_IMAGE_COMMANDS = ["curl", "python", "oc", "/usr/lib/rstudio-server/bin/rserver"]
+
 
 #     # Function for testing a notebook with papermill
 # #   ARG 1: Notebook name
@@ -149,108 +168,119 @@ REQUIRED_R_STUDIO_IMAGE_COMMANDS=["curl", "python", "oc", "/usr/lib/rstudio-serv
 # def validate_ubi8_datascience(full_notebook_name):
 #     test_with_papermill(full_notebook_name,"minimal","ubi8","python-3.8")
 #     test_with_papermill(full_notebook_name,"datascience","ubi8","python-3.8")
-
-async def test_validate_runtime_image():
+#
+@pytest.mark.parametrize("cmd", REQUIRED_RUNTIME_IMAGE_COMMANDS)
+def test_validate_runtime_image(cmd: str):
     LOGGER.info("# Running tests for $(NOTEBOOK_NAME) runtime...")
-    # run_kubectl(["wait", "--for=condition=ready", "pod", "runtime-pod", "--timeout=300s"])
-    # LOGGER.error("Usage: make validate-runtime-image image=<container-image-name>")
-    # fail = False
+    #     # run_kubectl(["wait", "--for=condition=ready", "pod", "runtime-pod", "--timeout=300s"])
+    #     # LOGGER.error("Usage: make validate-runtime-image image=<container-image-name>")
+    #     # fail = False
     image = "ghcr.io/jiridanek/notebooks/workbench-images:runtime-minimal-ubi9-python-3.9-jd_helpful_error_751147cd93fed327e940670edbc99c6f44a1ac24"
-    async with dagger.Connection(dagger.Config(log_output=sys.stderr)) as client:
-        c = (client.container().from_(image))
+    #     async with dagger.Connection(dagger.Config(log_output=sys.stderr)) as client:
+    container = testcontainers.core.container.DockerContainer(image)
+    container.with_command("tail -f /dev/null")
+    with container.start():
+        #         c = (client.container().from_(image))
         for cmd in REQUIRED_RUNTIME_IMAGE_COMMANDS:
-            LOGGER.info("=> Checking container image $$image for $$cmd...")
-            # r = run_kubectl(["exec", f"runtime-pod", "which {cmd} > /dev/null 2>&1"], check=False)
-            await c.with_exec(["/bin/bash", "-c", f"which {cmd} > /dev/null 2>&1"])
-        # if r.returncode != 0:
-        #     LOGGER.error("ERROR: Container image $$image  does not meet criteria for command: $$cmd")
-        #     fail = True
-        #     continue
-        # if cmd == "python3":
+            LOGGER.info(f"=> Checking container image {image} for {cmd} command...")
+            #             # r = run_kubectl(["exec", f"runtime-pod", "which {cmd} > /dev/null 2>&1"], check=False)
+            r = docker_utils.container_exec(container.get_wrapped_container(),
+                                        cmd=["/bin/bash", "-c", f"which {cmd} > /dev/null 2>&1"],
+                                        stream=True)
+        #         # if r.returncode != 0:
+        #         #     LOGGER.error("ERROR: Container image $$image  does not meet criteria for command: $$cmd")
+        #         #     fail = True
+        #         #     continue
+            assert r.communicate() == 0
+            if cmd == "python3":
+                LOGGER.info("=> Checking notebook execution...")
 
-        LOGGER.info("=> Checking notebook execution...")
-        # await c.with_exec(use_entrypoint=True, args=[])
-        # print("default artgs", await c.default_args())
-        # TODO: I don't see elyra/ directory on the image
-        # await c.with_exec(["/bin/bash", "-c", "python3 -m pip install -r /opt/app-root/elyra/requirements-elyra.txt"
-        #                                       " && curl https://raw.githubusercontent.com/nteract/papermill/main/papermill/tests/notebooks/simple_execute.ipynb --output simple_execute.ipynb"
-        #                                       " && python3 -m papermill simple_execute.ipynb output.ipynb > /dev/null"])
-            # r = run_kubectl(["exec", "runtime-pod", "/bin/sh", "-c", , check=False)
-            # if r.returncode != 0:
-            #     LOGGER.error("ERROR: Image does not meet Python requirements criteria in requirements-elyra.txt")
-            #     fail = True
-    # assert not fail, "=> ERROR: Container image $$image is not a suitable Elyra runtime image"
-    # LOGGER.info(f"=> Container image {image} is a suitable Elyra runtime image")
 
-async def test_validate_codeserver_image():
-    # codeserver_pod_ready = run_kubectl(
-    #     ["wait", "--for=condition=ready", "pod", "codeserver-pod", "--timeout=300s"], check=False)
-    # assert codeserver_pod_ready.returncode == 0, "Code-server pod did not become ready within expected time"
-
-    # assert image, "Usage: make validate-codeserver-image image=<container-image-name>"
-
-    image = "ghcr.io/jiridanek/notebooks/workbench-images:codeserver-ubi9-python-3.9-jd_helpful_error_751147cd93fed327e940670edbc99c6f44a1ac24"
-    async with dagger.Connection(dagger.Config(log_output=sys.stderr)) as client:
-        c = (client.container().from_(image))
-        for cmd in REQUIRED_CODE_SERVER_IMAGE_COMMANDS:
-            await c.with_exec(["/bin/bash", "-c", f"which {cmd} > /dev/null 2>&1"])
-            # result = run_kubectl(["exec", "codeserver-pod", f"which {cmd} > /dev/null 2>&1"], check=False)
-            # assert result.returncode == 0, f"ERROR: Container image {image} does not meet criteria for command: {cmd}"
-
-# async def validate_rstudio_image(client: dagger.Client, c: dagger.Container):
-async def test_validate_rstudio_image():
-    image = "ghcr.io/jiridanek/notebooks/workbench-images:rstudio-c9s-python-3.9-jd_helpful_error_751147cd93fed327e940670edbc99c6f44a1ac24"
-
-    notebook_name = ""
-    ubi_flavor = "c9s"
-    python_kernel = "python-3.9"
-
-    async with (dagger.Connection(dagger.Config(log_output=sys.stderr)) as client):
-        c = (client.container()
-         .from_(image))
-
-        # $(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
-        LOGGER.info("# Running tests for $(NOTEBOOK_NAME) RStudio Server image...")
-        # rstudo_pod_ready = run_kubectl(["wait", "--for=condition=ready", "pod", "rstudio-pod", "--timeout=300s"], check=False)
-        # assert rstudo_pod_ready.returncode == 0, "Code-server pod did not become ready within expected time"
-        # assert image, "Usage: make validate-rstudio-image image=<container-image-name>"
-
-        LOGGER.info("=> Checking container image $$image for package intallation...")
-        c = c.with_exec(["/bin/bash", "-c", "mkdir -p /opt/app-root/src/R/temp-library > /dev/null 2>&1"])
-        c = c.with_exec(["/bin/bash", "-c", '''R -e "install.packages('tinytex', lib='/opt/app-root/src/R/temp-library')" > /dev/null 2>&1'''])
-        await c
-
-        for cmd in REQUIRED_R_STUDIO_IMAGE_COMMANDS:
-            LOGGER.info(f"=> Checking container image {image} for {cmd}...")
-            # which_cmd = run_kubectl(["exec", "rstudio-pod", f"which {cmd} > /dev/null 2>&1"], check=False)
-            await c.with_exec(["/bin/bash", "-c", f"which {cmd} > /dev/null 2>&1"])
-            # if which_cmd.returncode == 0:
-            #     LOGGER.info(f"{cmd} executed successfully!")
-            # else:
-            #     LOGGER.error("ERROR: Container image {image}  does not meet criteria for command: {cmd}")
-            #     fail = True
-            #     continue
-
-        LOGGER.info("=> Fetching R script from URL and executing on the container...")
-        # run_command(["curl", "-sSL", "-o", "test_script.R" f"{NOTEBOOK_REPO_BRANCH_BASE}/rstudio/c9s-python-3.9/test/test_script.R"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        # run_kubectl(["cp", "test_script.R", "rstudio-pod:/opt/app-root/src/test_script.R"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        # test_script = run_kubectl(["exec", "rstudio-pod", "--", "Rscript /opt/app-root/src/test_script.R > /dev/null 2>&1"])
-        r = client.host().directory(str(ROOT_PATH / "rstudio" / f"{ubi_flavor}-{python_kernel}" / "test"))
-        d = (c
-             .with_directory("/test", r)
-             .with_workdir("/opt/app-data")
-             .with_exec(["/bin/sh", "-c", "Rscript /test/test_script.R > /dev/null 2>&1"])
-             )
-        await d
-
-        # if test_script.returncode == 0:
-        #     LOGGER.info("R script executed successfully!")
-        #     os.unlink("test_script.R")
-        # else:
-        #     LOGGER.error("Error: R script failed.")
-        #     fail = True
-        #
-        # assert not fail
+#         # await c.with_exec(use_entrypoint=True, args=[])
+#         # print("default artgs", await c.default_args())
+#         # TODO: I don't see elyra/ directory on the image
+#         # await c.with_exec(["/bin/bash", "-c", "python3 -m pip install -r /opt/app-root/elyra/requirements-elyra.txt"
+#         #                                       " && curl https://raw.githubusercontent.com/nteract/papermill/main/papermill/tests/notebooks/simple_execute.ipynb --output simple_execute.ipynb"
+#         #                                       " && python3 -m papermill simple_execute.ipynb output.ipynb > /dev/null"])
+#         # r = run_kubectl(["exec", "runtime-pod", "/bin/sh", "-c", , check=False)
+#         # if r.returncode != 0:
+#         #     LOGGER.error("ERROR: Image does not meet Python requirements criteria in requirements-elyra.txt")
+#         #     fail = True
+#     # assert not fail, "=> ERROR: Container image $$image is not a suitable Elyra runtime image"
+#     # LOGGER.info(f"=> Container image {image} is a suitable Elyra runtime image")
+#
+#
+# async def test_validate_codeserver_image():
+#     # codeserver_pod_ready = run_kubectl(
+#     #     ["wait", "--for=condition=ready", "pod", "codeserver-pod", "--timeout=300s"], check=False)
+#     # assert codeserver_pod_ready.returncode == 0, "Code-server pod did not become ready within expected time"
+#
+#     # assert image, "Usage: make validate-codeserver-image image=<container-image-name>"
+#
+#     image = "ghcr.io/jiridanek/notebooks/workbench-images:codeserver-ubi9-python-3.9-jd_helpful_error_751147cd93fed327e940670edbc99c6f44a1ac24"
+#     async with dagger.Connection(dagger.Config(log_output=sys.stderr)) as client:
+#         c = (client.container().from_(image))
+#         for cmd in REQUIRED_CODE_SERVER_IMAGE_COMMANDS:
+#             await c.with_exec(["/bin/bash", "-c", f"which {cmd} > /dev/null 2>&1"])
+#             # result = run_kubectl(["exec", "codeserver-pod", f"which {cmd} > /dev/null 2>&1"], check=False)
+#             # assert result.returncode == 0, f"ERROR: Container image {image} does not meet criteria for command: {cmd}"
+#
+#
+# # async def validate_rstudio_image(client: dagger.Client, c: dagger.Container):
+# async def test_validate_rstudio_image():
+#     image = "ghcr.io/jiridanek/notebooks/workbench-images:rstudio-c9s-python-3.9-jd_helpful_error_751147cd93fed327e940670edbc99c6f44a1ac24"
+#
+#     notebook_name = ""
+#     ubi_flavor = "c9s"
+#     python_kernel = "python-3.9"
+#
+#     async with (dagger.Connection(dagger.Config(log_output=sys.stderr)) as client):
+#         c = (client.container()
+#              .from_(image))
+#
+#         # $(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
+#         LOGGER.info("# Running tests for $(NOTEBOOK_NAME) RStudio Server image...")
+#         # rstudo_pod_ready = run_kubectl(["wait", "--for=condition=ready", "pod", "rstudio-pod", "--timeout=300s"], check=False)
+#         # assert rstudo_pod_ready.returncode == 0, "Code-server pod did not become ready within expected time"
+#         # assert image, "Usage: make validate-rstudio-image image=<container-image-name>"
+#
+#         LOGGER.info("=> Checking container image $$image for package intallation...")
+#         c = c.with_exec(["/bin/bash", "-c", "mkdir -p /opt/app-root/src/R/temp-library > /dev/null 2>&1"])
+#         c = c.with_exec(["/bin/bash", "-c",
+#                          '''R -e "install.packages('tinytex', lib='/opt/app-root/src/R/temp-library')" > /dev/null 2>&1'''])
+#         await c
+#
+#         for cmd in REQUIRED_R_STUDIO_IMAGE_COMMANDS:
+#             LOGGER.info(f"=> Checking container image {image} for {cmd}...")
+#             # which_cmd = run_kubectl(["exec", "rstudio-pod", f"which {cmd} > /dev/null 2>&1"], check=False)
+#             await c.with_exec(["/bin/bash", "-c", f"which {cmd} > /dev/null 2>&1"])
+#             # if which_cmd.returncode == 0:
+#             #     LOGGER.info(f"{cmd} executed successfully!")
+#             # else:
+#             #     LOGGER.error("ERROR: Container image {image}  does not meet criteria for command: {cmd}")
+#             #     fail = True
+#             #     continue
+#
+#         LOGGER.info("=> Fetching R script from URL and executing on the container...")
+#         # run_command(["curl", "-sSL", "-o", "test_script.R" f"{NOTEBOOK_REPO_BRANCH_BASE}/rstudio/c9s-python-3.9/test/test_script.R"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+#         # run_kubectl(["cp", "test_script.R", "rstudio-pod:/opt/app-root/src/test_script.R"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+#         # test_script = run_kubectl(["exec", "rstudio-pod", "--", "Rscript /opt/app-root/src/test_script.R > /dev/null 2>&1"])
+#         r = client.host().directory(str(ROOT_PATH / "rstudio" / f"{ubi_flavor}-{python_kernel}" / "test"))
+#         d = (c
+#              .with_directory("/test", r)
+#              .with_workdir("/opt/app-data")
+#              .with_exec(["/bin/sh", "-c", "Rscript /test/test_script.R > /dev/null 2>&1"])
+#              )
+#         await d
+#
+#         # if test_script.returncode == 0:
+#         #     LOGGER.info("R script executed successfully!")
+#         #     os.unlink("test_script.R")
+#         # else:
+#         #     LOGGER.error("Error: R script failed.")
+#         #     fail = True
+#         #
+#         # assert not fail
 
 
 def blockinfile(filename: str | pathlib.Path, contents: str, *, prefix: str = None, suffix: str = None):
@@ -275,7 +305,7 @@ def blockinfile(filename: str | pathlib.Path, contents: str, *, prefix: str = No
         lines.extend(contents.splitlines(keepends=True))
         lines.append("\n# end\n")
     else:
-        lines[begin:end+1] = ["# begin\n"] + contents.splitlines(keepends=True) + ["\n# end\n"]
+        lines[begin:end + 1] = ["# begin\n"] + contents.splitlines(keepends=True) + ["\n# end\n"]
 
     with open("/config.txt", "wt") as fp:
         fp.writelines(lines)
@@ -287,6 +317,7 @@ def test_line_in_file(fs: FakeFilesystem):
     blockinfile("/config.txt", "key=value", prefix="# begin", suffix="# end")
 
     assert fs.get_object("/config.txt").contents == "hello\nworld\n# begin\nkey=value\n# end\n"
+
 
 def test_line_in_file_2(fs: FakeFilesystem):
     fs.create_file("/config.txt", contents="hello\nworld\n# begin\nkey=value1\n# end\n")
