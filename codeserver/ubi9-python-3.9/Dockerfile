@@ -17,13 +17,13 @@ USER 0
 
 WORKDIR /opt/app-root/bin
 
-# Install usefull packages from Pipfile.lock
-COPY Pipfile.lock ./
+# Install usefull packages from pyproject.toml and poetry.lock
+COPY pyproject.toml poetry.lock ./
 
 # Install packages and cleanup
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
+    micropipenv install --method poetry && \
+    rm -f ./pyproject.toml ./poetry.lock && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
     fix-permissions /opt/app-root -P

@@ -13,14 +13,14 @@ LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.9" \
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY Pipfile.lock ./
+# Install Python packages and Jupyterlab extensions from pyproject.toml and poetry.lock
+COPY pyproject.toml poetry.lock ./
 # Copy Elyra setup to utils so that it's sourced at startup
 COPY setup-elyra.sh ./utils/
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
+    micropipenv install --method poetry && \
+    rm -f ./pyproject.toml ./poetry.lock && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
     fix-permissions /opt/app-root -P
