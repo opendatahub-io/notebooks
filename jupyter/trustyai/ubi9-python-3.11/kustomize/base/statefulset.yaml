@@ -1,0 +1,58 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: notebook
+  annotations:
+    opendatahub.io/username: jovyan
+  labels:
+    opendatahub.io/user: jovyan
+spec:
+  replicas: 1
+  selector: {}
+  serviceName: notebook
+  template:
+    metadata:
+      labels: {}
+    spec:
+      containers:
+        - name: notebook
+          image: quay.io/opendatahub/workbench-images:jupyter-trustyai-ubi9-python-3.11
+          imagePullPolicy: Always
+          workingDir: /opt/app-root/src
+          env:
+            - name: NOTEBOOK_ARGS
+              value: |-
+                --ServerApp.port=8888
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/opendatahub/jovyan
+                --ServerApp.quit_button=False
+                --ServerApp.tornado_settings={"user":"jovyan","hub_host":"https://opendatahub.io","hub_prefix":"/notebookController/jovyan"}
+          ports:
+            - name: notebook-port
+              protocol: TCP
+              containerPort: 8888
+          livenessProbe:
+            tcpSocket:
+              port: notebook-port
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /notebook/opendatahub/jovyan/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            limits:
+              cpu: 500m
+              memory: 2Gi
+            requests:
+              cpu: 500m
+              memory: 2Gi
