@@ -1,0 +1,29 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/rocm"
+    opendatahub.io/notebook-image-name: "ROCM"
+    opendatahub.io/notebook-image-desc: "Jupyter ROCM notebook image for ODH notebooks."
+    opendatahub.io/notebook-image-order: "9"
+  name: jupyter-rocm-minimal
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    # N Version of the image
+    - annotations:
+        opendatahub.io/notebook-software: '[{"name":"ROCM","version":"6.1"},{"name":"Python","version":"v3.9"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version":"3.6"},{"name": "Notebook","version": "6.5"}]'
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: $(jupyter-rocm-minimal-notebook-image-commit-n)
+      from:
+        kind: DockerImage
+        name: $(jupyter-rocm-minimal-notebook-image-n)
+      name: "2024.1"
+      referencePolicy:
+        type: Source
