@@ -22,6 +22,7 @@ ARG AMDGPU_VERSION=6.1
 # Enable epel-release repositories
 
 # Install the ROCm rpms
+#  inspired by https://github.com/tiran/instructlab-containers/blob/main/containers/rocm/Containerfile.c9s#L47
 RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
     echo "baseurl=https://repo.radeon.com/rocm/rhel9/$ROCM_VERSION/main" >> /etc/yum.repos.d/rocm.repo && \
@@ -33,6 +34,8 @@ RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
     yum install -y rocm && \
+    # force remove 'rocm-llvm' from runtime, saves 3.6 GB on disk
+    rpm -e --nodeps rocm-llvm && \
     yum clean all && rm -rf /var/cache/yum
 
 # Restore notebook user workspace
