@@ -6,8 +6,8 @@ metadata:
     opendatahub.io/notebook-image: "true"
   annotations:
     opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/rocm/pytorch"
-    opendatahub.io/notebook-image-name: "ROCM-PyTorch"
-    opendatahub.io/notebook-image-desc: "Jupyter ROCM optimized PyTorch notebook image for ODH notebooks."
+    opendatahub.io/notebook-image-name: "ROCm-PyTorch"
+    opendatahub.io/notebook-image-desc: "Jupyter ROCm optimized PyTorch notebook image for ODH notebooks."
     opendatahub.io/notebook-image-order: "14"
   name: jupyter-rocm-pytorch
 spec:
@@ -16,8 +16,8 @@ spec:
   tags:
     # N Version of the image
     - annotations:
-        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"},{"name":"ROCM-PyTorch","version":"2.3"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"ROCM-PyTorch","version":"2.3"},{"name":"Tensorboard","version":"2.16"},{"name":"Kafka-Python","version":"2.0"},{"name":"Matplotlib","version":"3.8"},{"name":"Numpy","version":"1.26"},{"name":"Pandas","version":"2.2"},{"name":"Scikit-learn","version":"1.4"},{"name":"Scipy","version":"1.12"},{"name":"Elyra","version":"3.16"},{"name":"PyMongo","version":"4.6"},{"name":"Pyodbc","version":"5.1"}, {"name":"Codeflare-SDK","version":"0.19"}, {"name":"Sklearn-onnx","version":"1.16"}, {"name":"Psycopg","version":"3.1"}, {"name":"MySQL Connector/Python","version":"8.3"}]'
+        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"},{"name":"ROCm-PyTorch","version":"2.3"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"ROCm-PyTorch","version":"2.3"},{"name":"Tensorboard","version":"2.16"},{"name":"Kafka-Python","version":"2.0"},{"name":"Matplotlib","version":"3.8"},{"name":"Numpy","version":"1.26"},{"name":"Pandas","version":"2.2"},{"name":"Scikit-learn","version":"1.4"},{"name":"Scipy","version":"1.12"},{"name":"Elyra","version":"3.16"},{"name":"PyMongo","version":"4.6"},{"name":"Pyodbc","version":"5.1"}, {"name":"Codeflare-SDK","version":"0.19"}, {"name":"Sklearn-onnx","version":"1.16"}, {"name":"Psycopg","version":"3.1"}, {"name":"MySQL Connector/Python","version":"8.3"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: $(odh-rocm-pytorch-notebook-image-commit-n)
