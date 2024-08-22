@@ -8,43 +8,42 @@ fi
 
 # Detailed help message
 print_help() {
-  echo "Usage: $0 <directory> <library_name> <new_version> <include_paths_with> <exclude_paths_with> <lock_files>"
+  echo "Usage: $0 <directory> <libraries> <include_paths_with> <exclude_paths_with> <lock_files>"
   echo
   echo "Parameters:"
   echo "  directory           The root directory to start searching for Pipfile and requirements-elyra.txt files."
-  echo "  library_name        The name of the library to update."
-  echo "  new_version         The new version to set for the library."
+  echo "  libraries           JSON formatted array of objects with 'name' and 'version' fields to update."
   echo "  include_paths_with  A pipe-separated list of substrings; only files in directories containing at least one of these substrings will be processed."
   echo "  exclude_paths_with  A pipe-separated list of substrings; files in directories containing any of these substrings will be excluded."
   echo "  lock_files          Whether to run 'pipenv lock' after updating the library version (true or false)."
   echo
   echo "Examples:"
-  echo "  $0 ./myproject numpy 2.0.1 '' '' true"
-  echo "  $0 ./myproject pandas 2.2.2 'include|this' 'exclude|that' false"
+  echo "  $0 ./myproject '[{\"name\": \"numpy\", \"version\": \"2.0.1\"}, {\"name\": \"pandas\", \"version\": \"2.2.2\"}]' '' '' true"
 }
 
 # Check if the correct number of arguments are passed
-if [ "$#" -ne 6 ]; then
+if [ "$#" -ne 5 ]; then
   print_help
   exit 1
 fi
 
 # Arguments
 directory=$1
-library_name=$2
-new_version=$3
-include_paths_with=$4
-exclude_paths_with=$5
-lock_files=$6
+libraries_json=$2
+include_paths_with=$3
+exclude_paths_with=$4
+lock_files=$5
+
+# Storage for the directories that need to be locked at the end
+files_to_lock_temp_file=$(mktemp)
 
 # Print arguments
 echo "Arguments:"
-echo "  directory          = $directory"
-echo "  library_name       = $library_name"
-echo "  new_version        = $new_version"
-echo "  include_paths_with = $include_paths_with"
-echo "  exclude_paths_with = $exclude_paths_with"
-echo "  lock_files         = $lock_files"
+echo "  directory           = $directory"
+echo "  libraries           = $libraries_json"
+echo "  include_paths_with  = $include_paths_with"
+echo "  exclude_paths_with  = $exclude_paths_with"
+echo "  lock_files          = $lock_files"
 
 # Function to check if one version is higher than the other
 # Returns 0 if the first version is greater and 1 if the second is greater or equal
@@ -64,7 +63,7 @@ is_version_higher() {
     # Use 0 if a part is missing
     v1=${ver1_parts[i]:-0}
     v2=${ver2_parts[i]:-0}
-    
+
     # Compare the parts
     if ((v1 > v2)); then
       return 0
@@ -82,23 +81,11 @@ update_library_version_pipfile() {
   local include_paths_with=$4
   local exclude_paths_with=$5
   local lock_files=$6
+  local files_to_lock_temp_file=$7
   local directory=$(dirname "$file")
   local filename=$(basename "$file")
 
-  # Determine if this is an architecture-specific Pipfile (with the "gpu" or "cpu" suffixes) and determine the corresponding lock file name
-  local is_specific=false
-  local lockfile=""
-  if [[ "$filename" == Pipfile.gpu ]]; then
-    is_specific=true
-    lockfile="Pipfile.lock.gpu"
-  elif [[ "$filename" == Pipfile.cpu ]]; then
-    is_specific=true
-    lockfile="Pipfile.lock.cpu"
-  else
-    lockfile="Pipfile.lock"
-  fi
-  
-  # Check if the file directory has at least one of the substrings (separated by "|") in $include_paths_with 
+  # Check if the file directory has at least one of the substrings (separated by "|") in $include_paths_with
   # and does not contain any of the substrings (separated by "|") in $exclude_paths_with
   if { [[ -z "$include_paths_with" ]] || [[ "$directory" =~ $include_paths_with ]]; } && { [[ -z "$exclude_paths_with" ]] || [[ ! "$directory" =~ $exclude_paths_with ]]; }; then
     echo "Processing $file (directory matches the pattern)"
@@ -136,18 +123,7 @@ update_library_version_pipfile() {
     fi
     echo "Updated $lib in $file to version ${current_qualifier}${new_ver}"
 
-    # Handle renaming and pipenv lock, if necessary
-    if [ "$lock_files" == "true" ]; then
-      if [ "$is_specific" = true ]; then
-        mv "$file" "${directory}/Pipfile"
-        mv "${directory}/$lockfile" "${directory}/Pipfile.lock"
-        (cd "$directory" && pipenv lock)
-        mv "${directory}/Pipfile" "$file"
-        mv "${directory}/Pipfile.lock" "${directory}/$lockfile"
-      else
-        (cd "$directory" && pipenv lock)
-      fi
-    fi
+    echo "$file" >> "$files_to_lock_temp_file"
   else
     echo "$lib in $file is already up-to-date or has a higher version ($current_ver)."
   fi
@@ -161,8 +137,8 @@ update_library_version_requirements() {
   local include_paths_with=$4
   local exclude_paths_with=$5
   local directory=$(dirname "$file")
-  
-  # Check if the file directory has at least one of the substrings (separated by "|") in $include_paths_with 
+
+  # Check if the file directory has at least one of the substrings (separated by "|") in $include_paths_with
   # and does not contain any of the substrings (separated by "|") in $exclude_paths_with
   if { [[ -z "$include_paths_with" ]] || [[ "$directory" =~ $include_paths_with ]]; } && { [[ -z "$exclude_paths_with" ]] || [[ ! "$directory" =~ $exclude_paths_with ]]; }; then
     echo "Processing $file (directory matches the pattern)"
@@ -198,18 +174,48 @@ export -f is_version_higher
 export -f update_library_version_pipfile
 export -f update_library_version_requirements
 
+# Skip double quotes that were not skipped in the libraries parameter
+libraries_json=$(echo "$libraries_json" | sed -E 's/(^|[^\\])"/\1\\"/g')
+
 # Find and update Pipfile files and requirements-elyra.txt files
 find "$directory" -type f \( -name "Pipfile" -o -name "Pipfile.gpu" -o -name "Pipfile.cpu" -o -name "requirements-elyra.txt" \) -exec bash -c '
   file=$0
-  lib=$1
-  new_ver=$2
-  include_paths_with=$3
-  exclude_paths_with=$4
-  lock_files=$5
+  libraries_json=$1
+  include_paths_with=$2
+  exclude_paths_with=$3
+  lock_files=$4
+  files_to_lock_temp_file=$5
 
-  case "$file" in
-    *Pipfile* ) update_library_version_pipfile "$file" "$lib" "$new_ver" "$include_paths_with" "$exclude_paths_with" "$lock_files" ;;
-    *requirements-elyra.txt* ) update_library_version_requirements "$file" "$lib" "$new_ver" "$include_paths_with" "$exclude_paths_with" ;;
-  esac
-' {} "$library_name" "$new_version" "$include_paths_with" "$exclude_paths_with" "$lock_files" \;
+  echo "'$libraries_json'" | jq -c ".[]" | while IFS= read -r lib_info; do
+    lib_name=$(echo "$lib_info" | jq -r ".name")
+    lib_version=$(echo "$lib_info" | jq -r ".version")
 
+    case "$file" in
+      *Pipfile* ) update_library_version_pipfile "$file" "$lib_name" "$lib_version" "$include_paths_with" "$exclude_paths_with" "$lock_files" "$files_to_lock_temp_file" ;;
+      *requirements-elyra.txt* ) update_library_version_requirements "$file" "$lib_name" "$lib_version" "$include_paths_with" "$exclude_paths_with" ;;
+    esac
+  done
+' {} "$libraries_json" "$include_paths_with" "$exclude_paths_with" "$lock_files" "$files_to_lock_temp_file" \;
+
+# Lock the modified files if needed
+modified_files=($(cat "$files_to_lock_temp_file"))
+rm "$files_to_lock_temp_file"
+
+if [ "$lock_files" == "true" ]; then
+  for file in "${modified_files[@]}"; do
+    directory=$(dirname "$file")
+    filename=$(basename "$file")
+    echo "Locking dependencies for $directory..."
+    if [[ "$filename" == Pipfile* ]]; then
+      if [[ "$filename" == Pipfile.gpu || "$filename" == Pipfile.cpu ]]; then
+        mv "$file" "${directory}/Pipfile"
+        mv "${directory}/Pipfile.lock.${filename##*.}" "${directory}/Pipfile.lock"
+        (cd "$directory" && pipenv lock)
+        mv "${directory}/Pipfile" "$file"
+        mv "${directory}/Pipfile.lock" "${directory}/Pipfile.lock.${filename##*.}"
+      else
+        (cd "$directory" && pipenv lock)
+      fi
+    fi
+  done
+fi
