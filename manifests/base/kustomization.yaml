@@ -12,6 +12,9 @@ resources:
   - code-server-notebook-imagestream.yaml
   - rstudio-buildconfig.yaml
   - cuda-rstudio-buildconfig.yaml
+  - jupyter-rocm-minimal-notebook-imagestream.yaml
+  - jupyter-rocm-pytorch-notebook-imagestream.yaml
+  - jupyter-rocm-tensorflow-notebook-imagestream.yaml
 
 commonLabels:
   opendatahub.io/component: "true"
@@ -214,6 +217,27 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-codeserver-notebook-image-n-1
+  - name: odh-rocm-minimal-notebook-image-n
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rocm-minimal-notebook-image-n
+  - name: odh-rocm-pytorch-notebook-image-n
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rocm-pytorch-notebook-image-n
+  - name: odh-rocm-tensorflow-notebook-image-n
+    objref:
+      kind: ConfigMap
+      name: notebooks-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rocm-tensorflow-notebook-image-n
   - name: odh-minimal-notebook-image-commit-n
     objref:
       kind: ConfigMap
@@ -403,6 +427,27 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-codeserver-notebook-image-commit-n-1
+  - name: odh-rocm-minimal-notebook-image-commit-n
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rocm-minimal-notebook-image-commit-n
+  - name: odh-rocm-pytorch-notebook-image-commit-n
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rocm-pytorch-notebook-image-commit-n
+  - name: odh-rocm-tensorflow-notebook-image-commit-n
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rocm-tensorflow-notebook-image-commit-n
 configurations:
   - params.yaml
   - commit.yaml
