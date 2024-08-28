@@ -8,17 +8,17 @@ verify_ssl = true
 
 [packages]
 # JupyterLab packages
-jupyterlab = "~=3.6.7" # Wait on upgrade till plugins are ready
-jupyter-server = "~=2.13.0"
-jupyter-server-proxy = "~=4.0.0" # Upgrade would bring in jupyterlab 4
+jupyterlab = "~=4.2.4"
+jupyter-server = "~=2.14.2"
+jupyter-server-proxy = "~=4.3.0"
 jupyter-server-terminals = "~=0.5.3"
-jupyterlab-git = "~=0.44.0"
-nbdime = "~=3.2.1"
-nbgitpuller = "~=1.2.0"
+jupyterlab-git = "~=0.50.1"
+nbdime = "~=4.0.1"
+nbgitpuller = "~=1.2.1"
 
 # Base packages
-wheel = "~=0.43.0"
-setuptools = "~=69.2.0"
+wheel = "~=0.44.0"
+setuptools = "~=73.0.0"
 
 [requires]
 python_version = "3.11"
