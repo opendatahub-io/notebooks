@@ -352,6 +352,16 @@ intel-runtime-ml-ubi9-python-3.11: base-ubi9-python-3.11
 jupyter-intel-ml-ubi9-python-3.11: base-ubi9-python-3.11
 	$(call image,$@,jupyter/intel/ml/ubi9-python-3.11,$<)
 
+# Build and push base-habana-python-3.11 image to the registry
+.PHONY: base-habana-python-3.11
+base-habana-python-3.11:
+	$(call image,$@,base/habana-python-3.11)
+
+# Build and push habana-1.17.1-ubi9-python-3.11 image to the registry
+.PHONY: habana-jupyter-1.17.1-ubi9-python-3.11
+habana-jupyter-1.17.1-ubi9-python-3.11: base-habana-python-3.11
+	$(call image,$@,habana/1.17.1/ubi9-python-3.11,$<)
+
 ####################################### Buildchain for Python 3.9 using C9S #######################################
 
 # Build and push base-c9s-python-3.9 image to the registry
@@ -741,6 +751,7 @@ refresh-pipfilelock-files:
 	cd base/ubi8-python-3.8 && pipenv lock
 	cd base/ubi9-python-3.9 && pipenv lock
 	cd base/c9s-python-3.9 && pipenv lock
+	cd base/habana-python-3.11 && pipenv lock
 	cd jupyter/minimal/ubi8-python-3.8 && pipenv lock
 	cd jupyter/minimal/ubi9-python-3.9 && pipenv lock
 	cd jupyter/datascience/ubi8-python-3.8 && pipenv lock
@@ -750,6 +761,7 @@ refresh-pipfilelock-files:
 	cd jupyter/trustyai/ubi9-python-3.9 && pipenv lock
 	cd habana/1.10.0/ubi8-python-3.8 && pipenv lock
 	cd habana/1.13.0/ubi8-python-3.8 && pipenv lock
+	cd habana/1.17.1/ubi9-python-3.11 && pipenv lock
 	cd runtimes/minimal/ubi8-python-3.8 && pipenv lock
 	cd runtimes/minimal/ubi9-python-3.9 && pipenv lock
 	cd runtimes/datascience/ubi8-python-3.8 && pipenv lock

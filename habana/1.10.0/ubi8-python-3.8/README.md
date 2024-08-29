@@ -1,8 +1,7 @@
 # Habana Notebook Image
-This directory contains the Dockerfile to build a Notebook image compatible with 1.10.0 Habana Version.  
+This directory contains the Dockerfile to build a Notebook image compatible with 1.10.0 Habana Version.
 
-Currently supporting the support matrix:  
-https://docs.habana.ai/en/latest/Support_Matrix/Support_Matrix_v1.10.0.html   
+- [Habana 1.10.0 support matrix](https://docs.habana.ai/en/latest/Support_Matrix/Support_Matrix_v1.10.0.html#support-matrix-1-10-0)
 
 
 | Firmware                 | version          |
@@ -19,9 +18,8 @@ https://docs.habana.ai/en/latest/Support_Matrix/Support_Matrix_v1.10.0.html
 | numpy          | 1.23.5  |
 | scipy          | 1.10.1  |
 
-Reference:  
-https://github.com/HabanaAI/Setup_and_Install/tree/1.10.0 
+Reference:
+https://github.com/HabanaAI/Setup_and_Install/tree/1.10.0
 
-
-For further documentation related to HabanaAI, please refer:  
+For further documentation related to HabanaAI, please refer:
 https://docs.habana.ai/en/v1.10.0/Gaudi_Overview/index.html
