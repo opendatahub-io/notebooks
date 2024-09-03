@@ -12,8 +12,8 @@ LABEL name="odh-notebook-habana-jupyter-1.17.1-ubi9-python-3.11" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/habana/1.17.1/ubi9-python-3.11" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:habana-jupyter-1.17.1-ubi9-python-3.11"
 
-COPY --from=registry.access.redhat.com/ubi9/python-39:latest /usr/bin/fix-permissions /usr/bin
-COPY --from=registry.access.redhat.com/ubi9/python-39:latest /usr/bin/rpm-file-permissions /usr/bin
+COPY --from=registry.access.redhat.com/ubi9/python-311:latest /usr/bin/fix-permissions /usr/bin
+COPY --from=registry.access.redhat.com/ubi9/python-311:latest /usr/bin/rpm-file-permissions /usr/bin
 
 ENV PATH=/opt/app-root/src/bin:/opt/app-root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     APP_ROOT="/opt/app-root"
