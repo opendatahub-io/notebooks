@@ -2,15 +2,15 @@
 #  - https://vault.habana.ai/ui/repos/tree/General/gaudi-docker/1.17.1/rhel9.4/habanalabs/pytorch-installer-2.3.1/1.17.1-40
 FROM vault.habana.ai/gaudi-docker/1.17.1/rhel9.4/habanalabs/pytorch-installer-2.3.1:1.17.1-40 as base
 
-LABEL name="odh-notebook-habana-jupyter-1.17.1-ubi9-python-3.11" \
-    summary="Jupyter HabanaAI 1.17.1 notebook image for ODH notebooks" \
-    description="Jupyter HabanaAI 1.17.1 notebook image with base Python 3.11 builder image based on ubi9 for ODH notebooks" \
-    io.k8s.display-name="Jupyter HabanaAI 1.17.1 notebook image for ODH notebooks" \
-    io.k8s.description="Jupyter HabanaAI 1.17.1 notebook image with base Python 3.11 builder image based on ubi9 for ODH notebooks" \
+LABEL name="odh-notebook-base-habana-python-3.11" \
+    summary="HabanaAI 1.17.1 with Python 3.11 notebook image for ODH notebooks" \
+    description="HabanaAI 1.17.1 with Python 3.11 builder image based on ubi9 for ODH notebooks" \
+    io.k8s.display-name="HabanaAI 1.17.1 notebook image for ODH notebooks" \
+    io.k8s.description="HabanaAI 1.17.1 notebook image with base Python 3.11 builder image based on ubi9 for ODH notebooks" \
     authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
     io.openshift.build.commit.ref="main" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/habana/1.17.1/ubi9-python-3.11" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:habana-jupyter-1.17.1-ubi9-python-3.11"
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:base-habana-python-3.11"
 
 COPY --from=registry.access.redhat.com/ubi9/python-311:latest /usr/bin/fix-permissions /usr/bin
 COPY --from=registry.access.redhat.com/ubi9/python-311:latest /usr/bin/rpm-file-permissions /usr/bin
