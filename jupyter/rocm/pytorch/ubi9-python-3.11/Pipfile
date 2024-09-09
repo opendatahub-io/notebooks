@@ -19,7 +19,7 @@ torchvision = {version = "~=0.19.0", index = "pytorch"} # https://pytorch.org/ge
 pytorch-triton-rocm = {version = "~=3.0.0", index = "pytorch"}
 
 # Datascience and useful extensions
-boto3 = "~=1.35.5"
+boto3 = "~=1.35.14"
 kafka-python = "~=2.0.2"
 matplotlib = "~=3.9.2"
 numpy = "~=2.1.0"
@@ -30,7 +30,6 @@ scipy = "~=1.14.1"
 skl2onnx = "~=1.17.0"
 onnxconverter-common = "~=1.14.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
 codeflare-sdk = "~=0.18.0"
-memray = "~=1.10.0"  # any version above this would cause issue with rich package
 
 # DB connectors
 pymongo = "~=4.8.0"
@@ -54,15 +53,9 @@ jupyter-resource-usage = "~=1.1.0"
 nbdime = "~=4.0.1"
 nbgitpuller = "~=1.2.1"
 
-# pycodestyle is dependency of below packages
-# and to achieve compatible of pycodestyle with python-lsp-server[all]
-# pinned the below packages
-autopep8 = "~=2.3.1"
-flake8 = "~=7.1.1"
-
 # Base packages
 wheel = "~=0.44.0"
-setuptools = "~=73.0.0"
+setuptools = "~=74.1.2"
 
 [requires]
 python_version = "3.11"

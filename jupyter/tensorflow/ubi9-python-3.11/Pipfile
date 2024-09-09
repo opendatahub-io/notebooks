@@ -12,7 +12,7 @@ tensorboard = "~=2.17.1"
 tf2onnx = "~= 1.16.1"
 
 # Datascience and useful extensions
-boto3 = "~=1.35.5"
+boto3 = "~=1.35.14"
 kafka-python = "~=2.0.2"
 matplotlib = "~=3.9.2"
 numpy = "~=1.26.4"
@@ -22,8 +22,7 @@ scikit-learn = "~=1.5.1"
 scipy = "~=1.14.1"
 skl2onnx = "~=1.17.0"
 onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
-codeflare-sdk = "~=0.19.1"
-memray = "~=1.10.0"  # any version above this would cause issue with rich package
+codeflare-sdk = "~=0.18.0"
 
 # DB connectors
 pymongo = "~=4.8.0"
@@ -32,7 +31,6 @@ pyodbc = "~=5.1.0"
 mysql-connector-python = "~=9.0.0"
 
 # JupyterLab packages
-
 #odh-elyra = ">=3.16.7" # For the phase 1, exclude elyra installation. Till this Jira ticket is resolved. https://issues.redhat.com/browse/RHOAIENG-10143
 
 jupyterlab = "~=4.2.4"
@@ -49,7 +47,7 @@ nbgitpuller = "~=1.2.1"
 
 # Base packages
 wheel = "~=0.44.0"
-setuptools = "~=73.0.0"
+setuptools = "~=74.1.2"
 
 [requires]
 python_version = "3.11"
