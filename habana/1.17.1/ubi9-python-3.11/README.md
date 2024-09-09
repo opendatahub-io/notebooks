@@ -9,12 +9,11 @@ Currently supporting the support matrix: https://docs.habana.ai/en/v1.17.1/Suppo
 | Gaudi 2 Firmware          | 1.17.0-fw-51.2.0 |
 | Gaudi 3 Firmware          | 1.17.1-fw-51.5.0 |
 
-| Python-package | version |
-| -------------- | ------- |
-| torch          | 2.4.0   |
-| pandas         | 2.2.2   |
-| numpy          | 2.1.0   |
-| scipy          | 1.14.1  |
+| Python-package | version              |
+| -------------- | -------------------- |
+| torch          | 2.3.1a0+git4989238   |
+| pandas         | 2.0.1                |
+| numpy          | 1.23.5               |
 
 ### Build and execution commands
 
