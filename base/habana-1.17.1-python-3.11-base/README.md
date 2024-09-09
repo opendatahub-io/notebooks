@@ -23,7 +23,7 @@ The Habana repository follows the following structure (in the [HabanaAI/Setup_an
 
 We will replicate most of this structure inside the "habana-1.17.1-python-3.11-base" folder, in a way that this description remains consistent with what is provided by Habana.
 
-We will go through the list explaining the functioanlity of each script, so there is a clear understanding of why they are present here as well:
+We will go through the list explaining the functionality of each script, so there is a clear understanding of why they are present here as well:
 
 ### List of files and their functionalities
 
