@@ -1,7 +1,7 @@
 # Habana Notebook Image
 This directory contains the Dockerfile to build a Notebook image compatible with 1.17.1 Habana Version.
 
-Currently supporting the support matrix: https://docs.habana.ai/en/latest/Support_Matrix/Support_Matrix.html
+Currently supporting the support matrix: https://docs.habana.ai/en/v1.17.1/Support_Matrix/Support_Matrix.html
 
 | Firmware                  | version          |
 | ------------------------- | ---------------- |
