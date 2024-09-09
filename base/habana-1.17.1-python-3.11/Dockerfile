@@ -1,5 +1,5 @@
 # Reference:
-#  - https://vault.habana.ai/ui/repos/tree/General/gaudi-docker/1.17.1/rhel9.4/habanalabs/pytorch-installer-2.3.1/1.17.1-40
+#  - https://github.com/HabanaAI/Setup_and_Install/blob/r1.17.1/dockerfiles/pytorch/Dockerfile.rhel9.4
 FROM vault.habana.ai/gaudi-docker/1.17.1/rhel9.4/habanalabs/pytorch-installer-2.3.1:1.17.1-40 as base
 
 LABEL name="odh-notebook-base-habana-python-3.11" \
