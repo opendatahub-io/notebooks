@@ -3,11 +3,11 @@ This directory contains the Dockerfiles to build Notebook images compatible with
 
 Currently supporting the support matrix:
 
-| Habana version | URL                                                                                 |
-| -------------- | ----------------------------------------------------------------------------------- |
-| 1.10.0         | [link](https://docs.habana.ai/en/latest/Support_Matrix/Support_Matrix_v1.10.0.html) |
-| 1.13.0         | [link](https://docs.habana.ai/en/latest/Support_Matrix/Support_Matrix_v1.13.0.html) |
-| 1.17.1         | [link](https://docs.habana.ai/en/latest/Support_Matrix/Support_Matrix.html)         |
+| Habana version | URL                                                                          |
+| -------------- | ---------------------------------------------------------------------------- |
+| 1.10.0         | [link](https://docs.habana.ai/en/v1.10.0/Support_Matrix/Support_Matrix.html) |
+| 1.13.0         | [link](https://docs.habana.ai/en/v1.13.0/Support_Matrix/Support_Matrix.html) |
+| 1.17.1         | [link](https://docs.habana.ai/en/v1.17.1/Support_Matrix/Support_Matrix.html) |
 
 
 ### Setup Habana AI on Openshift.  
