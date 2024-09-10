@@ -16,8 +16,17 @@ PROJECT_ROOT = pathlib.Path(__file__).parent.parent
 def test_image_pipfiles(subtests: pytest_subtests.plugin.SubTests):
     for file in PROJECT_ROOT.glob("**/Pipfile"):
         with subtests.test(msg="checking Pipfile", pipfile=file):
-            directory = file.parent  # "ubi9-python-3.9"
-            ubi, lang, python = directory.name.split("-")
+            directory = file.parent  # "ubi9-python-3.9" or "habana-1.17.1-python-3.11-base"
+            parts = directory.name.split("-")
+
+            if len(parts) == 3:
+                ubi, lang, python = parts
+            elif len(parts) == 4:
+                _, habana_version, lang, python = parts
+            elif len(parts) == 5:
+                _, habana_version, lang, python, _ = parts
+            else:
+                raise ValueError("Unexpected number of parts, expecting 3 for non-Habana folders, 4 for Habana folders and 5 for Habana origin folders")
 
             with open(file, "rb") as fp:
                 pipfile = tomllib.load(fp)
