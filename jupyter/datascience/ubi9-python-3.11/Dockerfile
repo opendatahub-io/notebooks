@@ -18,7 +18,7 @@ COPY Pipfile.lock ./
 
 # TO DO: Uncomment this lines when elyra compatibility with jupyterlab 4.2 is done
 # Copy Elyra setup to utils so that it's sourced at startup
-# COPY setup-elyra.sh ./utils/
+COPY setup-elyra.sh ./utils/
 
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \
@@ -53,35 +53,16 @@ ENV PATH="$PATH:/opt/mssql-tools18/bin"
 # Other apps and tools installed as default user
 USER 1001
 
-# TO DO: Uncomment this lines when elyra compatibility with jupyterlab 4.2 is done
 # setup path for runtime configuration
-# RUN mkdir /opt/app-root/runtimes && \
-  #  # switch to Data Science Pipeline \
-  #  cp utils/pipeline-flow.svg /opt/app-root/lib/python3.11/site-packages/elyra/static/icons/kubeflow.svg && \
-  #  sed -i "s/Kubeflow Pipelines/Data Science/g" /opt/app-root/lib/python3.11/site-packages/elyra/pipeline/runtime_type.py && \
-  #  sed -i "s/Kubeflow Pipelines/Data Science Pipelines/g" /opt/app-root/lib/python3.11/site-packages/elyra/metadata/schemas/kfp.json && \
-  #  sed -i "s/kubeflow-service/data-science-pipeline-service/g" /opt/app-root/lib/python3.11/site-packages/elyra/metadata/schemas/kfp.json && \
-  #  # switch to Data Science Pipeline in component catalog \
-  #  DIR_COMPONENT="/opt/app-root/lib/python3.11/site-packages/elyra/metadata/schemas/local-directory-catalog.json" && \
-  #  FILE_COMPONENT="/opt/app-root/lib/python3.11/site-packages/elyra/metadata/schemas/local-file-catalog.json" && \
-  #  URL_COMPONENT="/opt/app-root/lib/python3.11/site-packages/elyra/metadata/schemas/url-catalog.json" && \
-  # tmp=$(mktemp) && \
-  #  jq '.properties.metadata.properties.runtime_type = input' $DIR_COMPONENT utils/component_runtime.json > "$tmp" && mv "$tmp" $DIR_COMPONENT && \
-  #  jq '.properties.metadata.properties.runtime_type = input' $FILE_COMPONENT utils/component_runtime.json > "$tmp" && mv "$tmp" $FILE_COMPONENT && \
-  #  jq '.properties.metadata.properties.runtime_type = input' $URL_COMPONENT utils/component_runtime.json > "$tmp" && mv "$tmp" $URL_COMPONENT && \
-  #  sed -i "s/metadata.metadata.runtime_type/\"DATA_SCIENCE_PIPELINES\"/g" /opt/app-root/share/jupyter/labextensions/@elyra/pipeline-editor-extension/static/lib_index_js.*.js && \
-  #  # Remove Elyra logo from JupyterLab because this is not a pure Elyra image \
-  #  sed -i 's/widget\.id === \x27jp-MainLogo\x27/widget\.id === \x27jp-MainLogo\x27 \&\& false/' /opt/app-root/share/jupyter/labextensions/@elyra/theme-extension/static/lib_index_js.*.js && \
-  #  # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
-RUN sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
-  # TO DO: Uncomment this lines when elyra compatibility with jupyterlab 4.2 is done
-  #  # Remove default Elyra runtime-images \
-  #  rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
-  #  # Fix permissions to support pip in Openshift environments \
+RUN mkdir /opt/app-root/runtimes && \
+    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
+    # Remove default Elyra runtime-images \
+    rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
+    # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
     fix-permissions /opt/app-root -P
 
-# # Copy Elyra runtime-images definitions and set the version
-# COPY runtime-images/ /opt/app-root/share/jupyter/metadata/runtime-images/
+# Copy Elyra runtime-images definitions and set the version
+COPY runtime-images/ /opt/app-root/share/jupyter/metadata/runtime-images/
 
 WORKDIR /opt/app-root/src
