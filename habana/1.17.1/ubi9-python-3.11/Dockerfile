@@ -104,15 +104,15 @@ RUN dnf install -y \
 COPY install_efa.sh .
 RUN ./install_efa.sh && rm install_efa.sh && rm -rf /etc/ld.so.conf.d/efa.conf /etc/profile.d/efa.sh
 
-ENV FI_EFA_USE_DEVICE_RDMA=1 \
-    LD_LIBRARY_PATH=$LIBFABRIC_ROOT/lib:${MPI_ROOT}/lib:/usr/lib/habanalabs:$LD_LIBRARY_PATH \
-    LIBFABRIC_ROOT="/opt/habanalabs/libfabric-${LIBFABRIC_VERSION}" \
-    LIBFABRIC_VERSION="1.20.0" \
-    MPI_ROOT=/opt/amazon/openmpi \
-    MPICC=${MPI_ROOT}/bin/mpicc \
-    OPAL_PREFIX=${MPI_ROOT} \
-    PATH=${LIBFABRIC_ROOT}/bin:${MPI_ROOT}/bin:$PATH \
-    RDMAV_FORK_SAFE=1
+ENV FI_EFA_USE_DEVICE_RDMA=1
+ENV LD_LIBRARY_PATH=$LIBFABRIC_ROOT/lib:${MPI_ROOT}/lib:/usr/lib/habanalabs:$LD_LIBRARY_PATH
+ENV LIBFABRIC_ROOT="/opt/habanalabs/libfabric-${LIBFABRIC_VERSION}"
+ENV LIBFABRIC_VERSION="1.20.0"
+ENV MPI_ROOT=/opt/amazon/openmpi
+ENV MPICC=${MPI_ROOT}/bin/mpicc
+ENV OPAL_PREFIX=${MPI_ROOT}
+ENV PATH=${LIBFABRIC_ROOT}/bin:${MPI_ROOT}/bin:$PATH
+ENV RDMAV_FORK_SAFE=1
 
 RUN echo "[habanalabs]" > /etc/yum.repos.d/habanalabs.repo && \
     echo "name=Habana RH9 Linux repo" >> /etc/yum.repos.d/habanalabs.repo && \
@@ -133,10 +133,10 @@ RUN dnf install -y habanalabs-rdma-core-"$VERSION"-"$REVISION".el9 \
 RUN rpm -V habanalabs-rdma-core && rpm -V habanalabs-thunk && rpm -V habanalabs-firmware-tools && rpm -V habanalabs-graph
 
 # There is no need to store pip installation files inside docker image
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=on \
-    RDMA_CORE_LIB=${RDMA_CORE_ROOT}/build/lib \
-    RDMA_CORE_ROOT=/opt/habanalabs/rdma-core/src
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_NO_CACHE_DIR=on
+ENV RDMA_CORE_LIB=${RDMA_CORE_ROOT}/build/lib
+ENV RDMA_CORE_ROOT=/opt/habanalabs/rdma-core/src
 
 RUN wget -nv -O /tmp/libfabric-${LIBFABRIC_VERSION}.tar.bz2 https://github.com/ofiwg/libfabric/releases/download/v${LIBFABRIC_VERSION}/libfabric-${LIBFABRIC_VERSION}.tar.bz2 && \
     cd /tmp/ && tar xf /tmp/libfabric-${LIBFABRIC_VERSION}.tar.bz2 --no-same-owner && \
@@ -177,21 +177,21 @@ RUN mkdir -p /var/run/sshd && \
 
 # 6. Install software and packages
 # -----------------------------
-ENV GC_KERNEL_PATH=/usr/lib/habanalabs/libtpc_kernels.so \
-    HABANA_LOGS=/var/log/habana_logs/ \
-    HABANA_SCAL_BIN_PATH=/opt/habanalabs/engines_fw \
-    HABANA_PLUGINS_LIB_PATH=/opt/habanalabs/habana_plugins \
-    LANG=en_US.UTF-8 \
-    LC_ALL=en_US.UTF-8 \
-    PIP_NO_CACHE_DIR=off \
-    PATH=$HOME/.local/bin/:$PATH \
-    PYTHON_VERSION=3.11 \
-    PYTHONIOENCODING=UTF-8 \
-    PYTHONUNBUFFERED=1
+ENV GC_KERNEL_PATH=/usr/lib/habanalabs/libtpc_kernels.so
+ENV HABANA_LOGS=/var/log/habana_logs/
+ENV HABANA_SCAL_BIN_PATH=/opt/habanalabs/engines_fw
+ENV HABANA_PLUGINS_LIB_PATH=/opt/habanalabs/habana_plugins
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+ENV PIP_NO_CACHE_DIR=off
+ENV PATH=$HOME/.local/bin/:$PATH
+ENV PYTHON_VERSION=3.11
+ENV PYTHONIOENCODING=UTF-8
+ENV PYTHONUNBUFFERED=1
 
-ENV BASH_ENV="${APP_ROOT}/bin/activate" \
-    ENV="${APP_ROOT}/bin/activate" \
-    PROMPT_COMMAND=". ${APP_ROOT}/bin/activate"
+ENV BASH_ENV="${APP_ROOT}/bin/activate"
+ENV ENV="${APP_ROOT}/bin/activate"
+ENV PROMPT_COMMAND=". ${APP_ROOT}/bin/activate"
 
 ENV HOME="${APP_ROOT}/src"
 
