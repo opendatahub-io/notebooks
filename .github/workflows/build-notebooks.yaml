@@ -101,6 +101,17 @@
             },
             "secrets": "inherit"
         },
+        "habana-jupyter-1_17_1-ubi9-python-3_11": {
+            "needs": [
+                "jupyter-datascience-ubi9-python-3_11"
+            ],
+            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
+            "with": {
+                "target": "habana-jupyter-1.17.1-ubi9-python-3.11",
+                "github": "${{ toJSON(github) }}"
+            },
+            "secrets": "inherit"
+        },
         "runtime-minimal-ubi8-python-3_8": {
             "needs": [
                 "base-ubi8-python-3_8"
@@ -599,37 +610,6 @@
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "jupyter-intel-ml-ubi9-python-3.11",
-                "github": "${{ toJSON(github) }}"
-            },
-            "secrets": "inherit"
-        },
-        "base-habana-1_17_1-python-3_11-base": {
-            "needs": [],
-            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
-            "with": {
-                "target": "base-habana-1.17.1-python-3.11-base",
-                "github": "${{ toJSON(github) }}"
-            },
-            "secrets": "inherit"
-        },
-        "base-habana-1_17_1-python-3_11": {
-            "needs": [
-                "base-habana-1_17_1-python-3_11-base"
-            ],
-            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
-            "with": {
-                "target": "base-habana-1.17.1-python-3.11",
-                "github": "${{ toJSON(github) }}"
-            },
-            "secrets": "inherit"
-        },
-        "habana-jupyter-1_17_1-ubi9-python-3_11": {
-            "needs": [
-                "base-habana-1_17_1-python-3_11"
-            ],
-            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
-            "with": {
-                "target": "habana-jupyter-1.17.1-ubi9-python-3.11",
                 "github": "${{ toJSON(github) }}"
             },
             "secrets": "inherit"
