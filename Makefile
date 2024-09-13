@@ -746,7 +746,6 @@ refresh-pipfilelock-files:
 	cd base/ubi8-python-3.8 && pipenv lock
 	cd base/ubi9-python-3.9 && pipenv lock
 	cd base/c9s-python-3.9 && pipenv lock
-	cd base/habana-python-3.11 && pipenv lock
 	cd jupyter/minimal/ubi8-python-3.8 && pipenv lock
 	cd jupyter/minimal/ubi9-python-3.9 && pipenv lock
 	cd jupyter/datascience/ubi8-python-3.8 && pipenv lock
