@@ -120,11 +120,6 @@ habana-jupyter-1.10.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
 habana-jupyter-1.13.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
 	$(call image,$@,habana/1.13.0/ubi8-python-3.8,$<)
 
-# Build and push habana-jupyter-1.17.1-ubi9-python-3.11 image to the registry
-.PHONY: habana-jupyter-1.17.1-ubi9-python-3.11
-habana-jupyter-1.17.1-ubi9-python-3.11: jupyter-datascience-ubi9-python-3.11
-	$(call image,$@,habana/1.17.1/ubi9-python-3.11,$<)
-
 # Build and push runtime-minimal-ubi8-python-3.8 image to the registry
 .PHONY: runtime-minimal-ubi8-python-3.8
 runtime-minimal-ubi8-python-3.8: base-ubi8-python-3.8
@@ -356,6 +351,11 @@ intel-runtime-ml-ubi9-python-3.11: base-ubi9-python-3.11
 .PHONY: jupyter-intel-ml-ubi9-python-3.11
 jupyter-intel-ml-ubi9-python-3.11: base-ubi9-python-3.11
 	$(call image,$@,jupyter/intel/ml/ubi9-python-3.11,$<)
+
+# Build and push habana-jupyter-1.17.1-ubi9-python-3.11 image to the registry
+.PHONY: habana-jupyter-1.17.1-ubi9-python-3.11
+habana-jupyter-1.17.1-ubi9-python-3.11: jupyter-datascience-ubi9-python-3.11
+	$(call image,$@,habana/1.17.1/ubi9-python-3.11,$<)
 
 ####################################### Buildchain for Python 3.9 using C9S #######################################
 
