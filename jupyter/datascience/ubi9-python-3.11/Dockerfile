@@ -16,7 +16,6 @@ WORKDIR /opt/app-root/bin
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY Pipfile.lock ./
 
-# TO DO: Uncomment this lines when elyra compatibility with jupyterlab 4.2 is done
 # Copy Elyra setup to utils so that it's sourced at startup
 COPY setup-elyra.sh ./utils/
 
@@ -55,6 +54,7 @@ USER 1001
 
 # setup path for runtime configuration
 RUN mkdir /opt/app-root/runtimes && \
+    # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
     sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
     # Remove default Elyra runtime-images \
     rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
