@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# HabanaLabs Dockerfile base installer layer for RedHat 8.6
-# Reference: https://github.com/HabanaAI/Setup_and_Install/blob/1.13.0/dockerfiles/base/Dockerfile.rhel8.6 
+# This Dockerfile contains our own setup for Notebokks and Habana's 1.17.1 base installer image
+# Reference: https://github.com/HabanaAI/Setup_and_Install/blob/1.17.1/dockerfiles/base/Dockerfile.rhel9.4
+#
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
