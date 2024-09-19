@@ -67,15 +67,7 @@ jobs:
       - name: Update Runtimes
         run: |
             echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
-            PATHS=("jupyter/datascience/anaconda-python-3.8/runtime-images/datascience-ubi8-py38.json"
-            "jupyter/datascience/anaconda-python-3.8/runtime-images/pytorch-ubi8-py38.json"
-            "jupyter/datascience/anaconda-python-3.8/runtime-images/tensorflow-ubi8-py38.json"
-            "jupyter/datascience/anaconda-python-3.8/runtime-images/ubi8-py38.json"
-            "jupyter/datascience/ubi8-python-3.8/runtime-images/datascience-ubi8-py38.json"
-            "jupyter/datascience/ubi8-python-3.8/runtime-images/pytorch-ubi8-py38.json"
-            "jupyter/datascience/ubi8-python-3.8/runtime-images/tensorflow-ubi8-py38.json"
-            "jupyter/datascience/ubi8-python-3.8/runtime-images/ubi8-py38.json"
-            "jupyter/datascience/ubi9-python-3.9/runtime-images/datascience-ubi9-py39.json"
+            PATHS=("jupyter/datascience/ubi9-python-3.9/runtime-images/datascience-ubi9-py39.json"
             "jupyter/datascience/ubi9-python-3.9/runtime-images/pytorch-ubi9-py39.json"
             "jupyter/datascience/ubi9-python-3.9/runtime-images/tensorflow-ubi9-py39.json"
             "jupyter/datascience/ubi9-python-3.9/runtime-images/ubi9-py39.json"
