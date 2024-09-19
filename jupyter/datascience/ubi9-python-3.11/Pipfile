@@ -9,6 +9,7 @@ name = "pypi"
 # Datascience and useful extensions
 boto3 = "~=1.35.14"
 kafka-python = "~=2.0.2"
+kfp = "~=2.9.0"
 matplotlib = "~=3.9.2"
 numpy = "~=2.1.0"
 pandas = "~=2.2.2"
@@ -16,7 +17,7 @@ plotly = "~=5.23.0"
 scikit-learn = "~=1.5.1"
 scipy = "~=1.14.1"
 skl2onnx = "~=1.17.0"
-onnxconverter-common = "~=1.14.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
+onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
 codeflare-sdk = "~=0.18.0"
 
 # DB connectors
