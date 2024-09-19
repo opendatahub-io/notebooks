@@ -25,7 +25,7 @@ PARAMS_ENV_PATH="manifests/base/params.env"
 
 # This value needs to be updated everytime we deliberately change number of the
 # images we want to have in the `params.env` file.
-EXPECTED_NUM_RECORDS=23
+EXPECTED_NUM_RECORDS=21
 
 # ---------------------------- DEFINED FUNCTIONS ----------------------------- #
 
