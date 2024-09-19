@@ -8,7 +8,6 @@ resources:
   - jupyter-pytorch-notebook-imagestream.yaml
   - jupyter-tensorflow-notebook-imagestream.yaml
   - jupyter-trustyai-notebook-imagestream.yaml
-  - jupyter-habana-notebook-imagestream.yaml
   - code-server-notebook-imagestream.yaml
   - rstudio-gpu-notebook-imagestream.yaml
   - rstudio-notebook-imagestream.yaml
@@ -109,20 +108,6 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-trustyai-notebook-image-n-1
-  - name: odh-habana-notebook-image-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-habana-notebook-image-n
-  - name: odh-habana-notebook-image-n-1
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-habana-notebook-image-n-1
   - name: odh-codeserver-notebook-image-n
     objref:
       kind: ConfigMap
@@ -249,20 +234,6 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-trustyai-notebook-image-commit-n-1
-  - name: odh-habana-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-habana-notebook-image-commit-n
-  - name: odh-habana-notebook-image-commit-n-1
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-habana-notebook-image-commit-n-1
   - name: odh-codeserver-notebook-image-commit-n
     objref:
       kind: ConfigMap
