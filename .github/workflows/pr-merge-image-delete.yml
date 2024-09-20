@@ -59,23 +59,10 @@ jobs:
 
           set +e # Don't abort if a delete operation fails as all images might not be available for the PR
 
-          skopeo delete docker://${QUAY_IMAGE_REPO}:base-ubi8-python-3.8-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:base-anaconda-python-3.8-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:base-ubi9-python-3.9-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:base-c9s-python-3.9-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-ubi8-python-3.8-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-ubi9-python-3.9-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-c9s-python-3.9-pr-${{ env.PR }}
-
-          skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-minimal-ubi8-python-3.8-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-datascience-ubi8-python-3.8-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-datascience-anaconda-python-3.8-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-jupyter-minimal-ubi8-python-3.8-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-jupyter-datascience-ubi8-python-3.8-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-minimal-ubi8-python-3.8-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-datascience-ubi8-python-3.8-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-pytorch-ubi8-python-3.8-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:runtime-cuda-tensorflow-ubi8-python-3.8-pr-${{ env.PR }}
 
           skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-minimal-ubi9-python-3.9-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-datascience-ubi9-python-3.9-pr-${{ env.PR }}
@@ -91,9 +78,6 @@ jobs:
           skopeo delete docker://${QUAY_IMAGE_REPO}:codeserver-ubi9-python-3.9-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:rstudio-c9s-python-3.9-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-rstudio-c9s-python-3.9-pr-${{ env.PR }}
-
-          skopeo delete docker://${QUAY_IMAGE_REPO}:habana-jupyter-1.10.0-ubi8-python-3.8-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:habana-jupyter-1.13.0-ubi8-python-3.8-pr-${{ env.PR }}
 
           skopeo delete docker://${QUAY_IMAGE_REPO}:intel-base-gpu-ubi9-python-3.9-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:intel-runtime-tensorflow-ubi9-python-3.9-pr-${{ env.PR }}
