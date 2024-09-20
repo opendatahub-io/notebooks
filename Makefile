@@ -501,8 +501,6 @@ test-%: bin/kubectl
 		$(call test_with_papermill,intel/ml,ubi9,python-$(PYTHON_VERSION)) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi9"; then \
 		$(call test_with_papermill,trustyai,ubi9,python-$(PYTHON_VERSION)) \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi8"; then \
-		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "anaconda"; then \
 		echo "There is no test notebook implemented yet for Anaconda Notebook...." \
 	else \
