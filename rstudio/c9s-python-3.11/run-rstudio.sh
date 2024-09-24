@@ -15,12 +15,12 @@ if [ ! -f "/opt/app-root/src/.bashrc" ]; then
 fi
 
 # Create lib folders if it does not exist
-mkdir -p  /opt/app-root/src/Rpackages/4.3
-for package in /opt/app-root/bin/Rpackages/4.3/*/;
+mkdir -p  /opt/app-root/src/Rpackages/4.4
+for package in /opt/app-root/bin/Rpackages/4.4/*/;
 do
   package_folder=$(basename "$package")
-  if [ ! -d "/opt/app-root/src/Rpackages/4.3/$package_folder" ]; then
-    cp -r /opt/app-root/bin/Rpackages/4.3/$package_folder /opt/app-root/src/Rpackages/4.3/
+  if [ ! -d "/opt/app-root/src/Rpackages/4.4/$package_folder" ]; then
+    cp -r /opt/app-root/bin/Rpackages/4.4/$package_folder /opt/app-root/src/Rpackages/4.4/
   fi
 done  
 # rstudio terminal cant see environment variables set by the container runtime
