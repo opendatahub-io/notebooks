@@ -21,4 +21,3 @@ export KF_PIPELINES_SA_TOKEN_PATH="/var/run/secrets/kubernetes.io/serviceaccount
 # Environment vars set for accessing following dependencies for air-gapped enviroment
 export ELYRA_BOOTSTRAP_SCRIPT_URL="file:///opt/app-root/bin/utils/bootstrapper.py"
 export ELYRA_PIP_CONFIG_URL="file:///opt/app-root/bin/utils/pip.conf"
-export ELYRA_REQUIREMENTS_URL="file:///opt/app-root/bin/utils/requirements-elyra.txt"
