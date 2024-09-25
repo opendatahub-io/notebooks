@@ -8,7 +8,3 @@ images:
   - name: runtime-workbench
     newName: quay.io/opendatahub/workbench-images
     newTag: runtime-minimal-ubi9-python-3.11
-configMapGenerator:
-  - name: req-config
-    files:
-      - requirements-elyra.txt
