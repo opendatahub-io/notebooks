@@ -16,7 +16,8 @@ def get_github_token() -> str:
 def list_changed_files(from_ref: str, to_ref: str) -> list[str]:
     logging.debug("Getting list of changed files from git diff")
 
-    files = subprocess.check_output(["git", "diff", "--name-only", from_ref, to_ref],
+    # https://github.com/red-hat-data-services/notebooks/pull/361: add -- in case to_ref matches a file name in the repo
+    files = subprocess.check_output(["git", "diff", "--name-only", from_ref, to_ref, '--'],
                                     encoding='utf-8').splitlines()
 
     logging.debug(f"Determined {len(files)} changed files: {files[:100]} (..., printing up to 100 files)")
