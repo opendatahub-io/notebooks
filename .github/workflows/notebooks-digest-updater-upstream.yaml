@@ -13,8 +13,8 @@ on:  # yamllint disable-line rule:truthy
 env:
   DIGEST_UPDATER_BRANCH: digest-updater-${{ github.run_id }}
   BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
-  RELEASE_VERSION_N: 2024a
-  RELEASE_VERSION_N_1: 2023b
+  RELEASE_VERSION_N: 2024b
+  RELEASE_VERSION_N_1: 2024a
 jobs:
   initialize:
     runs-on: ubuntu-latest
