@@ -12,13 +12,10 @@ name = "pytorch"
 [dev-packages]
 
 [packages]
-# ROCm PyTorch packages
 tensorboard = "~=2.16.2"
 torch = {version = "~=2.4.0", index = "pytorch"}
 torchvision = {version = "~=0.19.0", index = "pytorch"} # https://pytorch.org/get-started/previous-versions/#linux-and-windows-1
 pytorch-triton-rocm = {version = "~=3.0.0", index = "pytorch"}
-
-# Datascience and useful extensions
 boto3 = "~=1.35.14"
 kafka-python-ng = "~=2.2.2"
 kfp = "~=2.9.0"
@@ -30,18 +27,12 @@ scikit-learn = "~=1.5.1"
 scipy = "~=1.14.1"
 skl2onnx = "~=1.17.0"
 onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
-codeflare-sdk = "~=0.18.0"
-
-# DB connectors
+codeflare-sdk = "~=0.21.1"
 pymongo = "~=4.8.0"
 psycopg = "~=3.2.1"
 pyodbc = "~=5.1.0"
 mysql-connector-python = "~=9.0.0"
-
-# JupyterLab packages
-
 odh-elyra = "==4.0.0.dev1"
-
 jupyterlab = "~=4.2.4"
 jupyter-bokeh = "~=4.0.5"
 jupyter-server = "~=2.14.2"
@@ -53,8 +44,6 @@ jupyterlab-widgets = "~=3.0.13"
 jupyter-resource-usage = "~=1.1.0"
 nbdime = "~=4.0.1"
 nbgitpuller = "~=1.2.1"
-
-# Base packages
 wheel = "~=0.44.0"
 setuptools = "~=74.1.2"
 

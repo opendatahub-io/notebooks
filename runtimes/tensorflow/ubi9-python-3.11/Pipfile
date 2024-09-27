@@ -6,12 +6,9 @@ name = "pypi"
 [dev-packages]
 
 [packages]
-# TensorFlow packages
 tensorflow = "~=2.17.0"
 tensorboard = "~=2.17.1"
 tf2onnx = "~= 1.16.1"
-
-# Datascience and useful extensions
 boto3 = "~=1.35.14"
 kafka-python-ng = "~=2.2.2"
 matplotlib = "~=3.9.2"
@@ -22,15 +19,11 @@ scikit-learn = "~=1.5.1"
 scipy = "~=1.14.1"
 skl2onnx = "~=1.17.0"
 onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
-codeflare-sdk = "~=0.18.0"
-
-# DB connectors
+codeflare-sdk = "~=0.21.1"
 pymongo = "~=4.8.0"
 psycopg = "~=3.2.1"
 pyodbc = "~=5.1.0"
 mysql-connector-python = "~=9.0.0"
-
-# This is a comprehensive list of python dependencies that Elyra requires to execute Jupyter notebooks.
 ipykernel = "~=6.29.5"
 ipython = "~=8.27.0"
 ipython-genutils = "~=0.2.0"
