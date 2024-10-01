@@ -16,27 +16,27 @@ spec:
   tags:
     # N Version of the image
     - annotations:
-        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"code-server","version":"4.22"}]'
+        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.11"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"code-server","version":"4.92"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: $(odh-codeserver-notebook-image-commit-n)
       from:
         kind: DockerImage
         name: $(odh-codeserver-notebook-image-n)
-      name: "2024.1"
+      name: "2024.2"
       referencePolicy:
         type: Source
     # N-1 Version of the image
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"code-server","version":"4.16"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"code-server","version":"4.22"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: $(odh-codeserver-notebook-image-commit-n-1)
       from:
         kind: DockerImage
         name: $(odh-codeserver-notebook-image-n-1)
-      name: "2023.2"
+      name: "2024.1"
       referencePolicy:
         type: Source
