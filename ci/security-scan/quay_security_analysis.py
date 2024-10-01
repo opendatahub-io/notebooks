@@ -19,7 +19,6 @@ IMAGES_MAIN = [
     "odh-generic-data-science-notebook-image-main",
     "odh-tensorflow-gpu-notebook-image-main",
     "odh-trustyai-notebook-image-main",
-    "odh-habana-notebook-image-main",
     "odh-codeserver-notebook-image-main",
     "odh-rstudio-notebook-image-main",
     "odh-rstudio-gpu-notebook-image-main"
@@ -36,7 +35,6 @@ IMAGES = [
     "odh-tensorflow-gpu-notebook-image-n",
     "odh-runtime-tensorflow-notebook-image-n",
     "odh-trustyai-notebook-image-n",
-    "odh-habana-notebook-image-n",
     "odh-codeserver-notebook-image-n",
     "odh-rstudio-notebook-image-n",
     "odh-rstudio-gpu-notebook-image-n"

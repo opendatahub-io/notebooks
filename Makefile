@@ -1,5 +1,5 @@
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
-RELEASE	 		 ?= 2024a
+RELEASE	 		 ?= 2024b
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
 # whether to build all dependent images or just the one specified
@@ -76,69 +76,6 @@ define image
 		)
 	)
 endef
-
-####################################### Buildchain for Python 3.8 using ubi8 #######################################
-
-# Build and push base-ubi8-python-3.8 image to the registry
-.PHONY: base-ubi8-python-3.8
-base-ubi8-python-3.8:
-	$(call image,$@,base/ubi8-python-3.8)
-
-# Build and push jupyter-minimal-ubi8-python-3.8 image to the registry
-.PHONY: jupyter-minimal-ubi8-python-3.8
-jupyter-minimal-ubi8-python-3.8: base-ubi8-python-3.8
-	$(call image,$@,jupyter/minimal/ubi8-python-3.8,$<)
-
-# Build and push jupyter-datascience-ubi8-python-3.8 image to the registry
-.PHONY: jupyter-datascience-ubi8-python-3.8
-jupyter-datascience-ubi8-python-3.8: jupyter-minimal-ubi8-python-3.8
-	$(call image,$@,jupyter/datascience/ubi8-python-3.8,$<)
-
-# Build and push cuda-ubi8-python-3.8 image to the registry
-.PHONY: cuda-ubi8-python-3.8
-cuda-ubi8-python-3.8: base-ubi8-python-3.8
-	$(eval $(call generate_image_tag,IMAGE_TAG))
-	$(call image,$@,cuda/ubi8-python-3.8,$<)
-
-# Build and push cuda-jupyter-minimal-ubi8-python-3.8 image to the registry
-.PHONY: cuda-jupyter-minimal-ubi8-python-3.8
-cuda-jupyter-minimal-ubi8-python-3.8: cuda-ubi8-python-3.8
-	$(call image,$@,jupyter/minimal/ubi8-python-3.8,$<)
-
-# Build and push cuda-jupyter-datascience-ubi8-python-3.8 image to the registry
-.PHONY: cuda-jupyter-datascience-ubi8-python-3.8
-cuda-jupyter-datascience-ubi8-python-3.8: cuda-jupyter-minimal-ubi8-python-3.8
-	$(call image,$@,jupyter/datascience/ubi8-python-3.8,$<)
-
-# Build and push habana-jupyter-1.10.0-ubi8-python-3.8 image to the registry
-.PHONY: habana-jupyter-1.10.0-ubi8-python-3.8
-habana-jupyter-1.10.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
-	$(call image,$@,habana/1.10.0/ubi8-python-3.8,$<)
-
-# Build and push habana-jupyter-1.13.0-ubi8-python-3.8 image to the registry
-.PHONY: habana-jupyter-1.13.0-ubi8-python-3.8
-habana-jupyter-1.13.0-ubi8-python-3.8: jupyter-datascience-ubi8-python-3.8
-	$(call image,$@,habana/1.13.0/ubi8-python-3.8,$<)
-
-# Build and push runtime-minimal-ubi8-python-3.8 image to the registry
-.PHONY: runtime-minimal-ubi8-python-3.8
-runtime-minimal-ubi8-python-3.8: base-ubi8-python-3.8
-	$(call image,$@,runtimes/minimal/ubi8-python-3.8,$<)
-
-# Build and push runtime-datascience-ubi8-python-3.8 image to the registry
-.PHONY: runtime-datascience-ubi8-python-3.8
-runtime-datascience-ubi8-python-3.8: base-ubi8-python-3.8
-	$(call image,$@,runtimes/datascience/ubi8-python-3.8,$<)
-
-# Build and push runtime-pytorch-ubi8-python-3.8 image to the registry
-.PHONY: runtime-pytorch-ubi8-python-3.8
-runtime-pytorch-ubi8-python-3.8: base-ubi8-python-3.8
-	$(call image,$@,runtimes/pytorch/ubi8-python-3.8,$<)
-
-# Build and push runtime-cuda-tensorflow-ubi8-python-3.8 image to the registry
-.PHONY: runtime-cuda-tensorflow-ubi8-python-3.8
-runtime-cuda-tensorflow-ubi8-python-3.8: cuda-ubi8-python-3.8
-	$(call image,$@,runtimes/tensorflow/ubi8-python-3.8,$<)
 
 ####################################### Buildchain for Python 3.9 using ubi9 #######################################
 
@@ -460,19 +397,6 @@ rocm-runtime-pytorch-ubi9-python-3.11: rocm-ubi9-python-3.11
 rocm-runtime-tensorflow-ubi9-python-3.11: rocm-ubi9-python-3.11
 	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-3.11,$<)
 
-####################################### Buildchain for Anaconda Python #######################################
-
-# Build and push base-anaconda-python-3.8 image to the registry
-.PHONY: base-anaconda-python-3.8
-base-anaconda-python-3.8:
-	$(call image,$@,base/anaconda-python-3.8)
-
-# Build and push jupyter-datascience-anaconda-python-3.8 image to the registry
-.PHONY: jupyter-datascience-anaconda-python-3.8
-jupyter-datascience-anaconda-python-3.8: base-anaconda-python-3.8
-	$(call image,$@,jupyter/datascience/anaconda-python-3.8,$<)
-
-
 ####################################### Deployments #######################################
 
 # Download kubectl binary
@@ -484,30 +408,6 @@ ifeq (,$(wildcard $(KUBECTL_BIN)))
 		$(KUBECTL_BIN)
 	@chmod +x $(KUBECTL_BIN)
 endif
-
-# Deploy a notebook image using kustomize
-.PHONY: deploy8
-deploy8-%-ubi8-python-3.8: bin/kubectl
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi8-python-3.8/kustomize/base)
-ifndef NOTEBOOK_TAG
-	$(eval NOTEBOOK_TAG := $*-ubi8-python-3.8-$(IMAGE_TAG))
-endif
-	$(info # Deploying notebook from $(NOTEBOOK_DIR) directory...)
-	@sed -i 's,newName: .*,newName: $(IMAGE_REGISTRY),g' $(NOTEBOOK_DIR)/kustomization.yaml
-	@sed -i 's,newTag: .*,newTag: $(NOTEBOOK_TAG),g' $(NOTEBOOK_DIR)/kustomization.yaml
-	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
-
-# Deploy a notebook image using kustomize
-.PHONY: deploy-anaconda8
-deploy8-%-anaconda-python-3.8: bin/kubectl
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/anaconda-python-3.8/kustomize/base)
-ifndef NOTEBOOK_TAG
-	$(eval NOTEBOOK_TAG := $*-anaconda-python-3.8-$(IMAGE_TAG))
-endif
-	$(info # Deploying notebook from $(NOTEBOOK_DIR) directory...)
-	@sed -i 's,newName: .*,newName: $(IMAGE_REGISTRY),g' $(NOTEBOOK_DIR)/kustomization.yaml
-	@sed -i 's,newTag: .*,newTag: $(NOTEBOOK_TAG),g' $(NOTEBOOK_DIR)/kustomization.yaml
-	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
 
 .PHONY: deploy9
 deploy9-%: bin/kubectl
@@ -521,19 +421,6 @@ endif
 	@sed -i 's,newName: .*,newName: $(IMAGE_REGISTRY),g' $(NOTEBOOK_DIR)/kustomization.yaml
 	@sed -i 's,newTag: .*,newTag: $(NOTEBOOK_TAG),g' $(NOTEBOOK_DIR)/kustomization.yaml
 	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
-
-# Undeploy a notebook image using kustomize
-.PHONY: undeploy8
-undeploy8-%-ubi8-python-3.8: bin/kubectl
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/ubi8-python-3.8/kustomize/base)
-	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
-	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
-
-.PHONY: undeploy-anaconda8
-undeploy8-%-anaconda-python-3.8: bin/kubectl
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$*))/anaconda-python-3.8/kustomize/base)
-	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
-	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
 .PHONY: undeploy9
 undeploy9-%: bin/kubectl
@@ -614,10 +501,6 @@ test-%: bin/kubectl
 		$(call test_with_papermill,intel/ml,ubi9,python-$(PYTHON_VERSION)) \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi9"; then \
 		$(call test_with_papermill,trustyai,ubi9,python-$(PYTHON_VERSION)) \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi8"; then \
-		$(call test_with_papermill,minimal,ubi8,python-3.8) \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi8"; then \
-		$(MAKE) validate-ubi8-datascience -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
 	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "anaconda"; then \
 		echo "There is no test notebook implemented yet for Anaconda Notebook...." \
 	else \
@@ -628,11 +511,6 @@ test-%: bin/kubectl
 validate-ubi9-datascience:
 	$(call test_with_papermill,minimal,ubi9,python-$(PYTHON_VERSION))
 	$(call test_with_papermill,datascience,ubi9,python-$(PYTHON_VERSION))
-
-.PHONY: validate-ubi8-datascience
-validate-ubi8-datascience:
-	$(call test_with_papermill,minimal,ubi8,python-3.8)
-	$(call test_with_papermill,datascience,ubi8,python-3.8)
 
 # Validate that runtime image meets minimum criteria
 # This validation is created from subset of https://github.com/elyra-ai/elyra/blob/9c417d2adc9d9f972de5f98fd37f6945e0357ab9/Makefile#L325
@@ -738,25 +616,16 @@ validate-rstudio-image: bin/kubectl
 # This is only for the workflow action
 .PHONY: refresh-pipfilelock-files
 refresh-pipfilelock-files:
-	cd base/ubi8-python-3.8 && pipenv lock
 	cd base/ubi9-python-3.9 && pipenv lock
 	cd base/c9s-python-3.9 && pipenv lock
-	cd jupyter/minimal/ubi8-python-3.8 && pipenv lock
 	cd jupyter/minimal/ubi9-python-3.9 && pipenv lock
-	cd jupyter/datascience/ubi8-python-3.8 && pipenv lock
 	cd jupyter/datascience/ubi9-python-3.9 && pipenv lock
 	cd jupyter/pytorch/ubi9-python-3.9 && pipenv lock
 	cd jupyter/tensorflow/ubi9-python-3.9 && pipenv lock
 	cd jupyter/trustyai/ubi9-python-3.9 && pipenv lock
-	cd habana/1.10.0/ubi8-python-3.8 && pipenv lock
-	cd habana/1.13.0/ubi8-python-3.8 && pipenv lock
-	cd runtimes/minimal/ubi8-python-3.8 && pipenv lock
 	cd runtimes/minimal/ubi9-python-3.9 && pipenv lock
-	cd runtimes/datascience/ubi8-python-3.8 && pipenv lock
 	cd runtimes/datascience/ubi9-python-3.9 && pipenv lock
 	cd runtimes/pytorch/ubi9-python-3.9 && pipenv lock
-	cd runtimes/pytorch/ubi8-python-3.8 && pipenv lock
-	cd runtimes/tensorflow/ubi8-python-3.8 && pipenv lock
 	cd runtimes/tensorflow/ubi9-python-3.9 && pipenv lock
 	cd runtimes/rocm-tensorflow/ubi9-python-3.9 && pipenv lock
 	cd runtimes/rocm-pytorch/ubi9-python-3.9 && pipenv lock
