@@ -82,7 +82,6 @@ jobs:
                   "cuda-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
                   "v2-${{ env.RELEASE_VERSION_N }}-\d{8}-+${{ steps.hash-n.outputs.HASH_N }}" \
                   "codeserver-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
-                  "habana-[a-z]+-1.13.0-[a-z0-9]+-[a-z]+-3.8-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
                   "rocm-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
                   "rocm-[a-z]+-pytorch-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
                   "rocm-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}")
@@ -178,7 +177,6 @@ jobs:
                   "cuda-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}" \
                   "v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" \
                   "codeserver-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}" \
-                  "habana-[a-z]+-1.10.0-[a-z0-9]+-[a-z]+-3.8-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}")
 
           i=0
           for image in ${IMAGES}; do
