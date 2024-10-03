@@ -14,9 +14,9 @@ spec:
   lookupPolicy:
     local: true
   tags:
-    # N Version of the image
+  # N Version of the image
     - annotations:
-        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
+        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.11"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version": "3.6"}, {"name": "Notebook","version": "6.5"}]'
         openshift.io/imported-from: quay.io/modh/odh-minimal-notebook-container
         opendatahub.io/workbench-image-recommended: "true"
@@ -25,10 +25,8 @@ spec:
       from:
         kind: DockerImage
         name: $(odh-minimal-notebook-image-n)
-      name: "2024.1"
-      referencePolicy:
-        type: Source
-    # N Version of the image
+      name: "2024.2"
+    # N-1 Version of the image
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version": "3.6"}, {"name": "Notebook","version": "6.5"}]'
@@ -38,32 +36,45 @@ spec:
       from:
         kind: DockerImage
         name: $(odh-minimal-notebook-image-n-1)
-      name: "2023.2"
+      name: "2024.1"
       referencePolicy:
         type: Source
     # N-2 Version of the image
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version": "3.5"}, {"name": "Notebook","version": "6.5"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version": "3.6"}, {"name": "Notebook","version": "6.5"}]'
         openshift.io/imported-from: quay.io/modh/odh-minimal-notebook-container
-        opendatahub.io/image-tag-outdated: "true"
+        opendatahub.io/image-tag-outdated: "false"
         opendatahub.io/notebook-build-commit: $(odh-minimal-notebook-image-commit-n-2)
       from:
         kind: DockerImage
         name: $(odh-minimal-notebook-image-n-2)
-      name: "2023.1"
+      name: "2023.2"
       referencePolicy:
         type: Source
     # N-3 Version of the image
+    - annotations:
+        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version": "3.5"}, {"name": "Notebook","version": "6.5"}]'
+        openshift.io/imported-from: quay.io/modh/odh-minimal-notebook-container
+        opendatahub.io/image-tag-outdated: "true"
+        opendatahub.io/notebook-build-commit: $(odh-minimal-notebook-image-commit-n-3)
+      from:
+        kind: DockerImage
+        name: $(odh-minimal-notebook-image-n-3)
+      name: "2023.1"
+      referencePolicy:
+        type: Source
+    # N-4 Version of the image
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.8"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version": "3.2"}, {"name": "Notebook","version": "6.4"}]'
         openshift.io/imported-from: quay.io/modh/odh-minimal-notebook-container
         opendatahub.io/image-tag-outdated: 'true'
-        opendatahub.io/notebook-build-commit: $(odh-minimal-notebook-image-commit-n-3)
+        opendatahub.io/notebook-build-commit: $(odh-minimal-notebook-image-commit-n-4)
       from:
         kind: DockerImage
-        name: $(odh-minimal-notebook-image-n-3)
+        name: $(odh-minimal-notebook-image-n-4)
       name: "1.2"
       referencePolicy:
         type: Source
