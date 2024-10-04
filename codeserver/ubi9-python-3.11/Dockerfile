@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG CODESERVER_VERSION=v4.22.0
+ARG CODESERVER_VERSION=v4.92.2
 
 LABEL name="odh-notebook-code-server-ubi9-python-3.11" \
       summary="code-server image with python 3.11 based on UBI 9" \
@@ -43,9 +43,8 @@ COPY --chown=1001:0 utils utils/
 
 # Create and intall the extensions though build-time on a temporary directory. Later this directory will copied on the `/opt/app-root/src/.local/share/code-server/extensions` via run-code-server.sh file when it starts up.
 RUN mkdir -p /opt/app-root/extensions-temp && \
-    code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2024.2.1.vsix --extensions-dir /opt/app-root/extensions-temp && \
-    code-server --install-extension /opt/app-root/bin/utils/ms-python.debugpy-2024.2.0@linux-x64.vsix --extensions-dir /opt/app-root/extensions-temp && \
-    code-server --install-extension  /opt/app-root/bin/utils/ms-toolsai.jupyter-2023.11.100.vsix --extensions-dir /opt/app-root/extensions-temp
+    code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2024.14.1.vsix --extensions-dir /opt/app-root/extensions-temp && \
+    code-server --install-extension /opt/app-root/bin/utils/ms-toolsai.jupyter-2024.7.0.vsix --extensions-dir /opt/app-root/extensions-temp
 
 # Install NGINX to proxy code-server and pass probes check
 ENV NGINX_VERSION=1.24 \

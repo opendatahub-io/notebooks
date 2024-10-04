@@ -18,7 +18,7 @@ spec:
     # N Version of the image
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.11"},{"name":"ROCm-TensorFlow","version":"2.14"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"ROCm-TensorFlow","version":"2.14"},{"name":"Tensorboard","version":"2.14"},{"name":"Kafka-Python","version":"2.0"},{"name":"Matplotlib","version":"3.8"},{"name":"Numpy","version":"1.26"},{"name":"Pandas","version":"2.2"},{"name":"Scikit-learn","version":"1.4"},{"name":"Scipy","version":"1.12"},{"name":"Elyra","version":"3.16"},{"name":"PyMongo","version":"4.6"},{"name":"Pyodbc","version":"5.1"}, {"name":"Codeflare-SDK","version":"0.19"}, {"name":"Sklearn-onnx","version":"1.16"}, {"name":"Psycopg","version":"3.1"}, {"name":"MySQL Connector/Python","version":"8.3"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"ROCm-TensorFlow","version":"2.14"},{"name":"Tensorboard","version":"2.14"},{"name":"Kafka-Python","version":"2.2"},{"name":"Matplotlib","version":"3.9"},{"name":"Numpy","version":"1.26"},{"name":"Pandas","version":"2.2"},{"name":"Scikit-learn","version":"1.5"},{"name":"Scipy","version":"1.14"},{"name":"Elyra","version":"4.0"},{"name":"PyMongo","version":"4.8"},{"name":"Pyodbc","version":"5.1"}, {"name":"Codeflare-SDK","version":"0.18"}, {"name":"Sklearn-onnx","version":"1.17"}, {"name":"Psycopg","version":"3.2"}, {"name":"MySQL Connector/Python","version":"9.0"}]'
         openshift.io/imported-from: quay.io/modh/rocm-notebooks
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: $(odh-rocm-tensorflow-notebook-image-commit-n)

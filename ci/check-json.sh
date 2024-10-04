@@ -54,7 +54,7 @@ ret_code=0
 # Some yaml files can contain more definitions.
 # This is a problem for `yq` tool so we need to split these into separate files.
 tmp_dir=$(mktemp --directory --suffix=-check-json)
-for f in **/*.yml **/*.yaml; do
+for f in **/*.yaml; do
     echo "Splitting the '${f}' file."
     split_yaml_file "${f}" "${tmp_dir}" || ret_code="${?}"
 done

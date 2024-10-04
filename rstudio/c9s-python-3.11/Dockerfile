@@ -13,7 +13,7 @@ LABEL name="odh-notebook-rstudio-server-c9s-python-3.11" \
 
 USER 0
 
-ENV R_VERSION=4.3.3
+ENV R_VERSION=4.4.1
 
 # Install R
 RUN yum install -y yum-utils && \
@@ -31,15 +31,15 @@ RUN chmod -R a+w /usr/lib64/R/library
 ENV LIBLOC /usr/lib64/R/library
 
 # set User R Library path
-RUN mkdir -p /opt/app-root/bin/Rpackages/4.3 && chmod -R a+w /opt/app-root/bin/Rpackages/4.3
-ENV R_LIBS_USER /opt/app-root/bin/Rpackages/4.3
+RUN mkdir -p /opt/app-root/bin/Rpackages/4.4 && chmod -R a+w /opt/app-root/bin/Rpackages/4.4
+ENV R_LIBS_USER /opt/app-root/bin/Rpackages/4.4
 
 WORKDIR /tmp/
 
 # Install RStudio
-RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/rstudio-server-rhel-2023.12.1-402-x86_64.rpm && \
-    yum install -y rstudio-server-rhel-2023.12.1-402-x86_64.rpm && \
-    rm rstudio-server-rhel-2023.12.1-402-x86_64.rpm && \
+RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/rstudio-server-rhel-2024.04.2-764-x86_64.rpm && \
+    yum install -y rstudio-server-rhel-2024.04.2-764-x86_64.rpm && \
+    rm rstudio-server-rhel-2024.04.2-764-x86_64.rpm && \
     yum -y clean all  --enablerepo='*'
 
 # Specific RStudio config and fixes
@@ -53,10 +53,10 @@ RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel har
 # Install R packages
 RUN R -e "install.packages('remotes')"
 RUN R -e "require('remotes'); \
-    remotes::install_version('Rcpp','1.0.12'); \
+    remotes::install_version('Rcpp','1.0.13'); \
     remotes::install_version('tidyverse','2.0.0'); \
-    remotes::install_version('tidymodels','1.1.1'); \
-    remotes::install_version('plumber','1.2.1'); \
+    remotes::install_version('tidymodels','1.2.0'); \
+    remotes::install_version('plumber','1.2.2'); \
     remotes::install_version('vetiver','0.2.5'); \
     remotes::install_version('devtools','2.4.5');"
 
