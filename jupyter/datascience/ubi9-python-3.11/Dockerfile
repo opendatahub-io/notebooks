@@ -20,6 +20,9 @@ RUN echo "Installing elyra" && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/opt/lib/python${PYTHON_VERSION}/site-packages && \
     fix-permissions /opt/app-root -P
+USER root
+RUN ln -s /opt/app-root/opt/bin/jupyter-elyra /usr/local/bin/jupyter-elyra
+USER default
 
 WORKDIR /opt/app-root/bin
 
