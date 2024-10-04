@@ -32,11 +32,6 @@ CUDA provides a browser-based integrated development environment where you can w
 
 [2023b Packages](https://github.com/opendatahub-io/notebooks/blob/2023b/jupyter/minimal/ubi9-python-3.9/Pipfile) || [2023a Packages](https://github.com/opendatahub-io/notebooks/blob/2023a/jupyter/minimal/ubi9-python-3.9/Pipfile) 
 
-## HabanaAI 
-
-HabanaAI provides a browser-based integrated development environment where you can write, edit, and debug code using the familiar interface and features of JupyterLab. The HabanaAI notebook image optimizes high-performance deep learning (DL) with Habana Gaudi devices. Habana Gaudi devices accelerate DL training workloads and maximize training throughput and efficiency.
-
-[2023b Packages](https://github.com/opendatahub-io/notebooks/blob/2023b/habana/1.11.0/ubi8-python-3.8/Pipfile) || [2023a Packages](https://github.com/opendatahub-io/notebooks/blob/2023a/habana/1.10.0/ubi8-python-3.8/Pipfile) 
 
 ## Jupyter Data Science
 

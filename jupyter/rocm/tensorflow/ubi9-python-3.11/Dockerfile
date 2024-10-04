@@ -14,7 +14,11 @@ LABEL name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11" \
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY Pipfile.lock ./
 
-RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock && \
+# Temporary:Workaround for fixing the kfp-kubernetes 1.0.0 for elyra pipeline execution
+# TODO: Remove this patch once the issue is fixed with kfp-kubernetes upgrade.
+COPY utils ./utils/
+RUN patch /opt/app-root/lib/python3.11/site-packages/elyra/templates/kubeflow/v2/python_dsl_template.jinja2 -i utils/python_dsl_template.patch && \
+    echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
     sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
     # Disable announcement plugin of jupyterlab \

@@ -37,7 +37,7 @@ spec:
         opendatahub.io/notebook-build-commit: $(odh-minimal-gpu-notebook-image-commit-n-1)
       from:
         kind: DockerImage
-        name: $(odh-minimal-gpu-notebook-image-n)
+        name: $(odh-minimal-gpu-notebook-image-n-1)
       name: "2024.1"
       referencePolicy:
         type: Source
@@ -50,7 +50,7 @@ spec:
         opendatahub.io/notebook-build-commit: $(odh-minimal-gpu-notebook-image-commit-n-2)
       from:
         kind: DockerImage
-        name: $(odh-minimal-gpu-notebook-image-n-1)
+        name: $(odh-minimal-gpu-notebook-image-n-2)
       name: "2023.2"
       referencePolicy:
         type: Source
