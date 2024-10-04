@@ -8,7 +8,8 @@ metadata:
     opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/rocm/pytorch"
     opendatahub.io/notebook-image-name: "ROCm-PyTorch"
     opendatahub.io/notebook-image-desc: "Jupyter ROCm optimized PyTorch notebook image for ODH notebooks."
-    opendatahub.io/notebook-image-order: "14"
+    opendatahub.io/notebook-image-order: "12"
+    opendatahub.io/recommended-accelerators: '["amd.com/gpu"]'
   name: jupyter-rocm-pytorch
 spec:
   lookupPolicy:
@@ -23,7 +24,7 @@ spec:
         opendatahub.io/notebook-build-commit: $(odh-rocm-pytorch-notebook-image-commit-n)
       from:
         kind: DockerImage
-        name: $(odh-rocm-pytorch-notebook-image-commit-n)
+        name: $(odh-rocm-pytorch-notebook-image-n)
       name: "2024.2"
       referencePolicy:
         type: Source

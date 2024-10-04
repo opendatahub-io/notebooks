@@ -8,7 +8,8 @@ metadata:
     opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/rocm"
     opendatahub.io/notebook-image-name: "ROCm"
     opendatahub.io/notebook-image-desc: "Jupyter ROCm notebook image for ODH notebooks."
-    opendatahub.io/notebook-image-order: "9"
+    opendatahub.io/notebook-image-order: "11"
+    opendatahub.io/recommended-accelerators: '["amd.com/gpu"]'
   name: jupyter-rocm-minimal
 spec:
   lookupPolicy:
@@ -20,10 +21,10 @@ spec:
         opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version":"3.6"},{"name": "Notebook","version": "6.5"}]'
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/notebook-build-commit: $(jupyter-rocm-minimal-notebook-image-commit-n)
+        opendatahub.io/notebook-build-commit: $(odh-rocm-minimal-notebook-image-commit-n)
       from:
         kind: DockerImage
-        name: $(jupyter-rocm-minimal-notebook-image-n)
+        name: $(odh-rocm-minimal-notebook-image-n)
       name: "2024.2"
       referencePolicy:
         type: Source
