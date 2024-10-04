@@ -13,7 +13,7 @@ on:  # yamllint disable-line rule:truthy
 env:
   DIGEST_UPDATER_BRANCH: digest-updater-${{ github.run_id }}
   BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
-  RELEASE_VERSION_N: 2024a
+  RELEASE_VERSION_N: 2024b
 jobs:
   initialize:
     runs-on: ubuntu-latest
@@ -66,48 +66,42 @@ jobs:
 
       - name: Update Runtimes
         run: |
-            echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
-            PATHS=("jupyter/datascience/ubi9-python-3.9/runtime-images/datascience-ubi9-py39.json"
-            "jupyter/datascience/ubi9-python-3.9/runtime-images/pytorch-ubi9-py39.json"
-            "jupyter/datascience/ubi9-python-3.9/runtime-images/tensorflow-ubi9-py39.json"
-            "jupyter/datascience/ubi9-python-3.9/runtime-images/ubi9-py39.json"
-            "jupyter/datascience/ubi9-python-3.9/runtime-images/rocm-tensorflow-ubi9-py39.json"
-            "jupyter/datascience/ubi9-python-3.9/runtime-images/rocm-pytorch-ubi9-py39.json")
+            echo "Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N }}"
 
-            for ((i=0;i<${#PATHS[@]};++i)); do
-              path=${PATHS[$i]}
+            find . -name runtime-images -type d -exec find {} -type f -print \; | grep python-3.11 | while read -r path; do
+              echo "Processing the '${path}' file."
 
-              if [[ ! -f "$path" ]]; then
-                echo "File $path does not exist. Skipping..."
-                continue
-              fi
-
-              img=$(cat ${path} | jq -r '.metadata.image_name')
+              img=$(jq -r '.metadata.image_name' "${path}")
               name=$(echo "$path" | sed 's#.*runtime-images/\(.*\)-py.*#\1#')
-              py_version=$(echo "$path" | grep -o 'python-[0-9]\.[0-9]')
+              py_version=$(echo "$path" | grep -o 'python-[0-9]\.[0-9]*')
               # Handling specific cases
               if [[ $name == tensorflow* ]]; then
-                  name="cuda-$name"
+                name="cuda-$name"
               elif [[ $name == ubi* ]]; then
-                  name="minimal-$name"
+                name="minimal-$name"
               fi
-              registry=$(echo $img | cut -d '@' -f1)
-              regex="^runtime-$name-$py_version-${{ env.RELEASE_VERSION_N}}-\d+-${{ steps.hash-n.outputs.HASH_N }}\$"
-              latest_tag=$(skopeo inspect docker://$img | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
-              echo "CHECKING: "  $latest_tag
-              if [[ -z "$latest_tag" ]]; then
+              registry=$(echo "$img" | cut -d '@' -f1)
+              regex="^runtime-$name-$py_version-${{ env.RELEASE_VERSION_N }}-\d+-${{ steps.hash-n.outputs.HASH_N }}\$"
+              latest_tag=$(skopeo inspect --retry-times 3 "docker://$img" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+              echo "CHECKING: ${latest_tag}"
+              if [[ -z "${latest_tag}" ]]; then
                 echo "No matching tag found"
                 exit 1
               fi
-              digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
-              output=$registry@$digest
-              echo "NEW: " $output
+              digest=$(skopeo inspect --retry-times 3 "docker://$registry:$latest_tag" | jq .Digest | tr -d '"')
+              output="${registry}@${digest}"
+              echo "NEW: ${output}"
               jq --arg output "$output" '.metadata.image_name = $output' "$path" > "$path.tmp" && mv "$path.tmp" "$path"
             done
+
             if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-              git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && git add jupyter/datascience/* && git commit -m "Update file via  ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
+              git fetch origin "${{ env.DIGEST_UPDATER_BRANCH }}" && \
+                git pull origin "${{ env.DIGEST_UPDATER_BRANCH }}" && \
+                git add jupyter/datascience/* && \
+                git commit -m "Update file via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && \
+                git push origin "${{ env.DIGEST_UPDATER_BRANCH }}"
             else
-              echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
+              echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N }}"
             fi
 
   open-pull-request:
@@ -123,7 +117,7 @@ jobs:
         uses: repo-sync/pull-request@v2
         with:
           source_branch: ${{ env.DIGEST_UPDATER_BRANCH }}
-          destination_branch: ${{ env.BRANCH_NAME}}
+          destination_branch: ${{ env.BRANCH_NAME }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_label: "automated pr"
           pr_title: "[Digest Updater Action] Update Runtimes Images"
