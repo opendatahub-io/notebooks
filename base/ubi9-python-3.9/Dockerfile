@@ -35,7 +35,7 @@ RUN pip install --no-cache-dir -U "micropipenv[toml]"
 # Install Python dependencies from Pipfile.lock file
 COPY Pipfile.lock ./
 
-RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
+RUN echo "Installing software and packages" && micropipenv install && rm -f ./Pipfile.lock
 
 # OS Packages needs to be installed as root
 USER root
@@ -57,7 +57,7 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
     rm -f /tmp/openshift-client-linux.tar.gz
 
 # Fix permissions to support pip in Openshift environments
-RUN chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
+RUN chmod -R g+w /opt/app-root/lib/python${PYTHON_VERSION}/site-packages && \
       fix-permissions /opt/app-root -P
 
 WORKDIR /opt/app-root/src

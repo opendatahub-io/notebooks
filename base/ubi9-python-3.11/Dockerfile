@@ -11,7 +11,7 @@ ENV PIP_NO_CACHE_DIR=off
 RUN mkdir --parents "${HOME}" && chmod --recursive 0771 ${APP_ROOT} && chown --recursive 1001:0 ${APP_ROOT} && \
     useradd --uid 1001 --gid 0 --no-create-home --home-dir "${HOME}" \
       --comment "Default Application User" --shell /bin/bash default && \
-    dnf install -y python311-pip && dnf clean all && rm -rf /var/cache/yum/* && \
+    dnf install -y python${PYTHON_VERSION}-pip && dnf clean all && rm -rf /var/cache/yum/* && \
 COPY --from=quay.io/sclorg/s2i-core-c9s:latest /usr/bin/fix-permissions /usr/bin/rpm-file-permissions /usr/bin/
 
 USER 1001

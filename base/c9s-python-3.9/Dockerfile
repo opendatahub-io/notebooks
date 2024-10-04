@@ -55,7 +55,7 @@ RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./P
     tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
     rm -f /tmp/openshift-client-linux.tar.gz && \
     # Fix permissions to support pip in Openshift environments \
-    chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
+    chmod -R g+w /opt/app-root/lib/python${PYTHON_VERSION}/site-packages && \
     fix-permissions /opt/app-root -P
 
 WORKDIR /opt/app-root/src
