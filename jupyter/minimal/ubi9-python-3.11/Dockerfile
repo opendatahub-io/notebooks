@@ -11,6 +11,22 @@ LABEL name="odh-notebook-jupyter-minimal-ubi9-python-3.11" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/minimal/ubi9-python-3.11" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:jupyter-minimal-ubi9-python-3.11"
 
+RUN python${PYTHON_VERSION} -m venv /opt/app-root/opt
+WORKDIR /opt/app-root/opt
+COPY pyproject.toml poetry.lock ./
+RUN echo "Installing jupyterlab" && \
+    export VIRTUAL_ENV=/opt/app-root/opt && \
+    (source $VIRTUAL_ENV/bin/activate && micropipenv install --method=poetry) && \
+    rm -f ./pyproject.toml ./poetry.lock && \
+    # Fix permissions to support pip in Openshift environments \
+    chmod -R g+w /opt/app-root/opt/lib/python${PYTHON_VERSION}/site-packages && \
+    fix-permissions /opt/app-root -P
+USER root
+RUN ln -s /opt/app-root/opt/bin/jupyter /usr/local/bin/jupyter
+RUN ln -s /opt/app-root/opt/bin/jupyter-lab /usr/local/bin/jupyter-lab
+RUN ln -s /opt/app-root/opt/bin/jupyter-labextension /usr/local/bin/jupyter-labextension
+USER default
+
 WORKDIR /opt/app-root/bin
 
 COPY utils utils/
@@ -28,7 +44,7 @@ RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./P
 WORKDIR /opt/app-root/src
 
 # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
-RUN sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
+RUN python${PYTHON_VERSION} -m ipykernel install --prefix /opt/app-root/opt --name python3 --display-name "$(python -c 'import sys; major, minor, *_ = sys.version_info; print(f"Python {major}.{minor}")')"
 
 ENTRYPOINT ["start-notebook.sh"]
 

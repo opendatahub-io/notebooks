@@ -11,6 +11,16 @@ LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.11" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/datascience/ubi9-python-3.11" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.11"
 
+WORKDIR /opt/app-root/opt
+COPY requirements-elyra.txt ./
+RUN echo "Installing elyra" && \
+    export VIRTUAL_ENV=/opt/app-root/opt && \
+    (source $VIRTUAL_ENV/bin/activate && pip install --require-hashes -r requirements-elyra.txt) && \
+    rm -f ./requirements-elyra.txt && \
+    # Fix permissions to support pip in Openshift environments \
+    chmod -R g+w /opt/app-root/opt/lib/python${PYTHON_VERSION}/site-packages && \
+    fix-permissions /opt/app-root -P
+
 WORKDIR /opt/app-root/bin
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
@@ -54,15 +64,13 @@ USER 1001
 
 # setup path for runtime configuration
 RUN mkdir /opt/app-root/runtimes && \
-    # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
-    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
     # Remove default Elyra runtime-images \
-    rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
+    rm /opt/app-root/opt/share/jupyter/metadata/runtime-images/*.json && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
     fix-permissions /opt/app-root -P
 
 # Copy Elyra runtime-images definitions and set the version
-COPY runtime-images/ /opt/app-root/share/jupyter/metadata/runtime-images/
+COPY runtime-images/ /opt/app-root/opt/share/jupyter/metadata/runtime-images/
 
 WORKDIR /opt/app-root/src
