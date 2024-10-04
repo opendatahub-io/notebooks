@@ -6,6 +6,9 @@ resources:
   - jupyter-datascience-notebook-imagestream.yaml
   - jupyter-minimal-gpu-notebook-imagestream.yaml
   - jupyter-pytorch-notebook-imagestream.yaml
+  - jupyter-rocm-minimal-notebook-imagestream.yaml
+  - jupyter-rocm-pytorch-notebook-imagestream.yaml
+  - jupyter-rocm-tensorflow-notebook-imagestream.yaml
   - jupyter-tensorflow-notebook-imagestream.yaml
   - jupyter-trustyai-notebook-imagestream.yaml
   - code-server-notebook-imagestream.yaml
@@ -206,6 +209,27 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.odh-generic-data-science-notebook-image-commit-n-1
+  - name: odh-rocm-minimal-notebook-image-commit-n
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rocm-minimal-notebook-image-commit-n
+  - name: odh-rocm-pytorch-notebook-image-commit-n
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rocm-pytorch-notebook-image-commit-n
+  - name: odh-rocm-tensorflow-notebook-image-commit-n
+    objref:
+      kind: ConfigMap
+      name: notebook
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.odh-rocm-tensorflow-notebook-image-commit-n
   - name: odh-tensorflow-gpu-notebook-image-commit-n
     objref:
       kind: ConfigMap
