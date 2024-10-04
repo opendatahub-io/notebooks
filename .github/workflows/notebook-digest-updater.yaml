@@ -6,15 +6,15 @@ on:  # yamllint disable-line rule:truthy
     inputs:
       branch:
         required: true
-        description: "Provide branch name: "
-# Put the scheduler on comment until automate the full release procedure
-#   schedule:
-#     - cron:  "0 0 * * 5" #Scheduled every Friday
+        description: "Provide the name of the branch you want to update ex main, vYYYYx etc: "
+        # Put the scheduler on comment until automate the full release procedure
+        # schedule:
+        #   - cron: "0 0 * * 5"  #Scheduled every Friday
 env:
   DIGEST_UPDATER_BRANCH: digest-updater-${{ github.run_id }}
   BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
-  RELEASE_VERSION_N: 2024a
-  RELEASE_VERSION_N_1: 2023b
+  RELEASE_VERSION_N: 2024b
+  RELEASE_VERSION_N_1: 2024a
 jobs:
   initialize:
     runs-on: ubuntu-latest
@@ -68,7 +68,7 @@ jobs:
       - name: Update the params.env file
         shell: bash
         run: |
-          echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
+          echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N }}
 
           # Get the complete list of images N-version to update
           PARAMS_ENV_PATH="manifests/base/params.env"
@@ -108,12 +108,12 @@ jobs:
             git commit -m "Update images for release N via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && \
             git push origin ${{ env.DIGEST_UPDATER_BRANCH }}
           else
-            echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N}}"
+            echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N }}"
           fi
 
       - name: Update the commit.env file
         run: |
-          echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N}}
+          echo Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N }}
 
           COMMIT_ENV_PATH="manifests/base/commit.env"
 
@@ -167,7 +167,7 @@ jobs:
 
           # Get the complete list of images N-1-version to update
           PARAMS_ENV_PATH="manifests/base/params.env"
-          IMAGES=$(cat "${PARAMS_ENV_PATH}" | grep "\-n-1=" | cut -d "=" -f 1)
+          IMAGES=$(grep "\-n-1=" "${PARAMS_ENV_PATH}" | cut -d "=" -f 1)
 
           # The order of the regexes array should match with the params.env file
           REGEXES=("v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" \
@@ -192,14 +192,15 @@ jobs:
             sed -i "s|${image}=.*|${image}=${output}|" "${PARAMS_ENV_PATH}"
             i=$((i+1))
           done
+
           if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-            git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && \
-            git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && \
-            git add manifests/base/params.env && \
+            git fetch origin ${{ env.DIGEST_UPDATER_BRANCH }} && \
+            git pull origin ${{ env.DIGEST_UPDATER_BRANCH }} && \
+            git add "${PARAMS_ENV_PATH}" && \
             git commit -m "Update images for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && \
-            git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
+            git push origin ${{ env.DIGEST_UPDATER_BRANCH }}
           else
-            echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N_1}}"
+            echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N_1 }}"
           fi
 
       - name: Update the commit.env file
@@ -214,13 +215,15 @@ jobs:
             echo "${val}"
             sed -i "s|${val}=.*|${val}=${{ steps.hash-n-1.outputs.HASH_N_1 }}|" "${COMMIT_ENV_PATH}"
           done
+
           if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-            git fetch origin  ${{ env.DIGEST_UPDATER_BRANCH }} && \
-            git pull origin  ${{ env.DIGEST_UPDATER_BRANCH }} && \
-            git add manifests/base/commit.env && \
-            git commit -m "Update image commits for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && git push origin  ${{ env.DIGEST_UPDATER_BRANCH }}
+            git fetch origin ${{ env.DIGEST_UPDATER_BRANCH }} && \
+            git pull origin ${{ env.DIGEST_UPDATER_BRANCH }} && \
+            git add "${COMMIT_ENV_PATH}" && \
+            git commit -m "Update image commits for release N-1 via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && \
+            git push origin ${{ env.DIGEST_UPDATER_BRANCH }}
           else
-            echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N_1}}"
+            echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N_1 }}"
           fi
 
   open-pull-request:
@@ -236,7 +239,7 @@ jobs:
         uses: repo-sync/pull-request@v2
         with:
           source_branch: ${{ env.DIGEST_UPDATER_BRANCH }}
-          destination_branch: ${{ env.BRANCH_NAME}}
+          destination_branch: ${{ env.BRANCH_NAME }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_label: "automated pr"
           pr_title: "[Digest Updater Action] Update Notebook Images"
@@ -248,4 +251,4 @@ jobs:
             - `manifests/base/params.env` file with the latest updated SHA digests of the notebooks (N & N-1).
             - `manifests/base/commit.env` file with the latest commit (N & N-1).
 
-            :exclamation: **IMPORTANT NOTE**: Remember to delete the ` ${{ env.DIGEST_UPDATER_BRANCH }}` branch after merging the changes
+            :exclamation: **IMPORTANT NOTE**: Remember to delete the `${{ env.DIGEST_UPDATER_BRANCH }}` branch after merging the changes
