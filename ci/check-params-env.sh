@@ -93,7 +93,7 @@ function check_image_variable_matches_name_and_commitref() {
         odh-minimal-notebook-image-n)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
             expected_commitref="release-2024b"
-            expected_build_name="jupyter-minimal-ubi9-python-3.9-amd64"
+            expected_build_name="jupyter-minimal-ubi9-python-3.11-amd64"
             ;;
         odh-minimal-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
@@ -118,7 +118,7 @@ function check_image_variable_matches_name_and_commitref() {
         odh-minimal-gpu-notebook-image-n)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
             expected_commitref="release-2024b"
-            expected_build_name="cuda-jupyter-minimal-ubi9-python-3.9-amd64"
+            expected_build_name="cuda-jupyter-minimal-ubi9-python-3.11-amd64"
             ;;
         odh-minimal-gpu-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
@@ -143,7 +143,7 @@ function check_image_variable_matches_name_and_commitref() {
         odh-pytorch-gpu-notebook-image-n)
             expected_name="odh-notebook-jupyter-pytorch-ubi9-python-3.11"
             expected_commitref="release-2024b"
-            expected_build_name="jupyter-pytorch-ubi9-python-3.9-amd64"
+            expected_build_name="jupyter-pytorch-ubi9-python-3.11-amd64"
             ;;
         odh-pytorch-gpu-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-pytorch-ubi9-python-3.9"
@@ -168,7 +168,7 @@ function check_image_variable_matches_name_and_commitref() {
         odh-generic-data-science-notebook-image-n)
             expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.11"
             expected_commitref="release-2024b"
-            expected_build_name="jupyter-datascience-ubi9-python-3.9-amd64"
+            expected_build_name="jupyter-datascience-ubi9-python-3.11-amd64"
             ;;
         odh-generic-data-science-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.9"
@@ -193,7 +193,7 @@ function check_image_variable_matches_name_and_commitref() {
         odh-tensorflow-gpu-notebook-image-n)
             expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.11"
             expected_commitref="release-2024b"
-            expected_build_name="cuda-jupyter-tensorflow-ubi9-python-3.9-amd64"
+            expected_build_name="cuda-jupyter-tensorflow-ubi9-python-3.11-amd64"
             ;;
         odh-tensorflow-gpu-notebook-image-n-1)
             expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.9"
@@ -217,8 +217,8 @@ function check_image_variable_matches_name_and_commitref() {
             ;;
         odh-trustyai-notebook-image-n)
             expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.11"
-            expected_commitref="release-2024a"
-            expected_build_name="jupyter-trustyai-ubi9-python-3.9-amd64"
+            expected_commitref="release-2024b"
+            expected_build_name="jupyter-trustyai-ubi9-python-3.11-amd64"
             ;;
         odh-trustyai-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.9"
@@ -238,7 +238,7 @@ function check_image_variable_matches_name_and_commitref() {
         odh-codeserver-notebook-image-n)
             expected_name="odh-notebook-code-server-ubi9-python-3.11"
             expected_commitref="release-2024b"
-            expected_build_name="codeserver-ubi9-python-3.9-amd64"
+            expected_build_name="codeserver-ubi9-python-3.11-amd64"
             ;;
         odh-codeserver-notebook-image-n-1)
             expected_name="odh-notebook-code-server-ubi9-python-3.9"
