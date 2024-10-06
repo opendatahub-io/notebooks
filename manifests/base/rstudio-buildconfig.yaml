@@ -36,7 +36,7 @@ spec:
     dockerStrategy:
       from:
         kind: "DockerImage"
-        name: "quay.io/modh/odh-base-rhel9:base-rhel9-python-3.9-20240131-378dafd"
+        name: "quay.io/modh/odh-base-rhel9@sha256:1d6f2e3c0ee7962d92c3b933f3bbfabeee24d314a2ce5f8ec2d9f18d5b6723d4"
       dockerfilePath: "rstudio/rhel9-python-3.11/Dockerfile"
       volumes:
         - name: secret-mvn
