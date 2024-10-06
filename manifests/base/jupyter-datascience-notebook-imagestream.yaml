@@ -36,7 +36,7 @@ spec:
         opendatahub.io/notebook-build-commit: $(odh-generic-data-science-notebook-image-commit-n-1)
       from:
         kind: DockerImage
-        name: $(odh-generic-data-science-notebook-image-n)
+        name: $(odh-generic-data-science-notebook-image-n-1)
       name: "2024.1"
       referencePolicy:
         type: Source
@@ -49,7 +49,7 @@ spec:
         opendatahub.io/notebook-build-commit: $(odh-generic-data-science-notebook-image-commit-n-2)
       from:
         kind: DockerImage
-        name: $(odh-generic-data-science-notebook-image-n-1)
+        name: $(odh-generic-data-science-notebook-image-n-2)
       name: "2023.2"
       referencePolicy:
         type: Source
@@ -62,7 +62,7 @@ spec:
         opendatahub.io/notebook-build-commit: $(odh-generic-data-science-notebook-image-commit-n-3)
       from:
         kind: DockerImage
-        name: $(odh-generic-data-science-notebook-image-n-2)
+        name: $(odh-generic-data-science-notebook-image-n-3)
       name: "2023.1"
       referencePolicy:
         type: Source
@@ -75,7 +75,7 @@ spec:
         opendatahub.io/notebook-build-commit: $(odh-generic-data-science-notebook-image-commit-n-4)
       from:
         kind: DockerImage
-        name: $(odh-generic-data-science-notebook-image-n-3)
+        name: $(odh-generic-data-science-notebook-image-n-4)
       name: "1.2"
       referencePolicy:
         type: Source
