@@ -1,6 +1,6 @@
 ---
-# The aim of this GitHub workflow is to update the params.env file with the latest digest.
-name: Update notebook image build commit hashes
+# The aim of this GitHub workflow is to update the params.env and commit.env files with the latest builds.
+name: Update notebook image build references (downstream)
 on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:
@@ -75,16 +75,16 @@ jobs:
           IMAGES=$(grep "\-n=" "${PARAMS_ENV_PATH}" | cut -d "=" -f 1)
 
           # The order of the regexes array should match with the params.env file
-          REGEXES=("v2-${{ env.RELEASE_VERSION_N }}-\d{8}-+${{ steps.hash-n.outputs.HASH_N }}" \
-                  "cuda-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
-                  "v2-${{ env.RELEASE_VERSION_N }}-\d{8}-+${{ steps.hash-n.outputs.HASH_N }}" \
-                  "v2-${{ env.RELEASE_VERSION_N }}-\d{8}-+${{ steps.hash-n.outputs.HASH_N }}" \
-                  "cuda-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
-                  "v2-${{ env.RELEASE_VERSION_N }}-\d{8}-+${{ steps.hash-n.outputs.HASH_N }}" \
-                  "codeserver-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
-                  "rocm-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
-                  "rocm-[a-z]+-pytorch-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
-                  "rocm-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}")
+          REGEXES=("v3-${{ env.RELEASE_VERSION_N }}-\d{8}-+${{ steps.hash-n.outputs.HASH_N }}" \
+                  "cuda-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.11-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
+                  "v3-${{ env.RELEASE_VERSION_N }}-\d{8}-+${{ steps.hash-n.outputs.HASH_N }}" \
+                  "v3-${{ env.RELEASE_VERSION_N }}-\d{8}-+${{ steps.hash-n.outputs.HASH_N }}" \
+                  "cuda-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.11-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
+                  "v3-${{ env.RELEASE_VERSION_N }}-\d{8}-+${{ steps.hash-n.outputs.HASH_N }}" \
+                  "codeserver-[a-z0-9]+-[a-z]+-3.11-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
+                  "rocm-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.11-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
+                  "rocm-[a-z]+-pytorch-[a-z0-9]+-[a-z]+-3.11-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}" \
+                  "rocm-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.11-${{ env.RELEASE_VERSION_N }}-\d{8}-${{ steps.hash-n.outputs.HASH_N }}")
 
           i=0
           for image in ${IMAGES}; do
@@ -176,7 +176,7 @@ jobs:
                   "v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" \
                   "cuda-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}" \
                   "v2-${{ env.RELEASE_VERSION_N_1 }}-\d{8}+-${{ steps.hash-n-1.outputs.HASH_N_1 }}" \
-                  "codeserver-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}" \
+                  "codeserver-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION_N_1 }}-\d{8}-${{ steps.hash-n-1.outputs.HASH_N_1 }}" )
 
           i=0
           for image in ${IMAGES}; do
