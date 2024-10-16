@@ -4,6 +4,9 @@
 apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
+  labels:
+    # This label specifies whether the workbench image should be displayed in the UI. Setting it to 'false' disables the image
+    opendatahub.io/notebook-image: "false"
   annotations:
     opendatahub.io/notebook-image-url: "https://github.com/red-hat-data-services/notebooks/tree/main/habana"
     opendatahub.io/notebook-image-name: "HabanaAI"
