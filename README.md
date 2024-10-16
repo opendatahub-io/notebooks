@@ -64,6 +64,20 @@ poetry install --sync
 poetry run pytest
 ```
 
+##### Container selftests
+
+We're using [Dagger.io](https://dagger.io) to run containers from Python tests.
+It has very nice verbose logging by default for every action that is running.
+
+**TODO** need to decide which is more suitable;
+ideally the tests should allow switching between Kubernetes and Docker/Podman.
+That means tying it to this fancy Dagger thing may not be the smartest thing to do.
+
+We also considered [Testcontainers.com](https://testcontainers.com/).
+The main difference between the two is that Dagger creates more abstractions over the container engine.
+Especially Dagger [does not allow bind-mounting local directories](https://docs.dagger.io/cookbook/#modify-a-copied-directory-or-remote-repository-in-a-container)
+directly to the container but always copies files in and out.
+
 #### Notebooks
 
 Deploy the notebook images in your Kubernetes environment using:
