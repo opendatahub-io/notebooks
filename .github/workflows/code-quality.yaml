@@ -45,7 +45,13 @@ jobs:
 
       - name: Install poetry
         if: steps.cache-poetry-restore.outputs.cache-hit != 'true'
-        run: pip install poetry==${{ env.poetry_version }}
+        run: pipx install poetry==${{ env.poetry_version }}
+        env:
+          PIPX_HOME: /home/runner/.local/pipx
+          PIPX_BIN_DIR: /home/runner/.local/bin
+
+      - name: Check poetry is installed correctly
+        run: poetry env info
 
       - name: Save cache
         if: steps.cache-poetry-restore.outputs.cache-hit != 'true'

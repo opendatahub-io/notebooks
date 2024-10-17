@@ -82,8 +82,7 @@ jobs:
             skopeo_metadata=$(skopeo inspect --retry-times 3 "docker://${img}")
 
             src_tag=$(echo "${skopeo_metadata}" | jq '.Env[] | select(startswith("OPENSHIFT_BUILD_NAME=")) | split("=")[1]' | tr -d '"' | sed 's/-amd64$//')
-            src_tag2=$(echo $src_tag | sed 's/python-3.9/python-3.11/')
-            regex="^$src_tag2-${{ env.RELEASE_VERSION_N}}-\d+-${{ steps.hash-n.outputs.HASH_N }}\$"
+            regex="^$src_tag-${{ env.RELEASE_VERSION_N}}-\d+-${{ steps.hash-n.outputs.HASH_N }}\$"
             latest_tag=$(echo "${skopeo_metadata}" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
             # use `--no-tags` for skopeo once available in newer version
             digest=$(skopeo inspect --retry-times 3 "docker://${registry}:${latest_tag}" | jq .Digest | tr -d '"')

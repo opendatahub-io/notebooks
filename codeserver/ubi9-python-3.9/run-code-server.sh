@@ -46,7 +46,9 @@ universal_json_settings='{
   "python.defaultInterpreterPath": "/opt/app-root/bin/python3",
   "telemetry.telemetryLevel": "off",
   "telemetry.enableTelemetry": false,
-  "workbench.enableExperiments": false
+  "workbench.enableExperiments": false,
+  "extensions.autoCheckUpdates": false,
+  "extensions.autoUpdate": false
 }'
 
 # Define python debuger settings
