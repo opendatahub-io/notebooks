@@ -72,7 +72,7 @@ function getProjects() {
         connectCDP: 9222,  // false | number: connect to an existing browser running at given port
         codeServerSource: {  // prefers url if specified, otherwise will start the specified docker image
           // url: "",  // not-present | string
-          image: "quay.io/modh/codeserver:codeserver-ubi9-python-3.11-2024b-20241018",  // string
+          image: "quay.io/modh/codeserver:codeserver-ubi9-python-3.9-20241114-aed66a4",  // string
         }
       },
     }
