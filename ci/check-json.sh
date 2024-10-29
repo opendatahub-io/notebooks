@@ -34,14 +34,17 @@ function check_json() {
     echo "Checking: '${f}' - for '${string}':"
 
     if grep --quiet --extended-regexp "${string}" "${f}"; then
-    #if $(grep -e "${string}" "${f}"); then
-        jsons=$(yq -r ".spec.tags[].annotations.\"${string}\"" "${f}")
-        
-        while IFS= read -r json; do
-            echo "    ${json}"
-            echo -n "  > "; echo "${json}" | json_verify || ret_code="${?}"
-        done <<< "${jsons}"
-        tmp_dir=$(mktemp --directory -t=check-jsons-in-file-)
+        local tmp_dir
+        tmp_dir=$(mktemp --directory -t check-jsons-in-file-XXXXXXXXXX-)
+        if ! (cd "${tmp_dir}"; yq --split-exp "\$index" --unwrapScalar ".spec.tags[].annotations.\"${string}\"" "${f}"); then
+          echo "yq failed to run"
+          return 1
+        fi
+
+        for json in "${tmp_dir}"/*.yml; do
+            echo "    "; cat "${json}"
+            echo -n "  > "; json_verify < "${json}" || ret_code="${?}"
+        done
     else
         echo "    Ignoring as this file doesn't contain necessary key field '${string}' for check"
     fi
