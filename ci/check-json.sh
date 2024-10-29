@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # This script serves to check YAML files in this repository that contain particular
 # key fields where JSON string is expected. Such JSON strings are extracted and
@@ -10,7 +10,19 @@
 # In case of the PR on GitHub, this check is tied to GitHub actions automatically,
 # see `.github/workflows` directory.
 
-shopt -s globstar
+if ! shopt -s globstar; then
+  echo "macOS ships bash-3.2 that does not know shopt -s globstar; install newer bash from homebrew"
+  exit 1
+fi
+
+# yq: `brew install yq` or `apt-get install yq`
+# json_verify: `brew install yajl` or `apt-get install yajl-tools`
+for dep in yq json_verify; do
+  if ! which -- ${dep} >/dev/null; then
+    echo "the dependency ${dep} is not installed; install it now"
+    exit 1
+  fi
+done
 
 function check_json() {
     local f="${1}"
@@ -29,8 +41,9 @@ function check_json() {
             echo "    ${json}"
             echo -n "  > "; echo "${json}" | json_verify || ret_code="${?}"
         done <<< "${jsons}"
+        tmp_dir=$(mktemp --directory -t=check-jsons-in-file-)
     else
-	echo "    Ignoring as this file doesn't contain necessary key field '${string}' for check"
+        echo "    Ignoring as this file doesn't contain necessary key field '${string}' for check"
     fi
 
     return "${ret_code}"
@@ -48,20 +61,27 @@ function split_yaml_file() {
     return 0
 }
 
-ret_code=0
+function main() {
+    local ret_code=0
 
+    # Some yaml files can contain more definitions.
+    # This is a problem for `yq` tool so we need to split these into separate files.
+    local tmp_dir
+    tmp_dir=$(mktemp --directory -t check-json-XXXXXXXXXX-)
+    for f in **/*.yaml; do
+        echo "Splitting the '${f}' file."
+        split_yaml_file "${f}" "${tmp_dir}" || ret_code="${?}"
+    done
 
-# Some yaml files can contain more definitions.
-# This is a problem for `yq` tool so we need to split these into separate files.
-tmp_dir=$(mktemp --directory --suffix=-check-json)
-for f in **/*.yaml; do
-    echo "Splitting the '${f}' file."
-    split_yaml_file "${f}" "${tmp_dir}" || ret_code="${?}"
-done
+    for f in "${tmp_dir}"/*; do
+        check_json "${f}" "opendatahub.io/notebook-software" || ret_code="${?}"
+        check_json "${f}" "opendatahub.io/notebook-python-dependencies" || ret_code="${?}"
+    done
 
-for f in "${tmp_dir}"/*; do
-    check_json "${f}" "opendatahub.io/notebook-software" || ret_code="${?}"
-    check_json "${f}" "opendatahub.io/notebook-python-dependencies" || ret_code="${?}"
-done
+    exit "${ret_code}"
+}
 
-exit "${ret_code}"
+# allows sourcing the script into interactive session without executing it
+if [[ "${0}" == "${BASH_SOURCE[0]}" ]]; then
+    main
+fi
