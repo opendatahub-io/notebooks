@@ -17,8 +17,17 @@ spec:
   tags:
     # N Version of the image
     - annotations:
-        opendatahub.io/notebook-software: '[{"name":"ROCm","version":"6.1"},{"name":"Python","version":"v3.11"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version":"4.2"}]'
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "ROCm", "version": "6.1"},
+            {"name": "Python", "version": "v3.11"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.2"}
+          ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: $(odh-rocm-minimal-notebook-image-commit-n)
