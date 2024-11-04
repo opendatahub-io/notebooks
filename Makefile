@@ -534,11 +534,11 @@ validate-runtime-image: bin/kubectl
 		fi; \
 		if [ $$cmd == "python3" ]; then \
 			echo "=> Checking notebook execution..." ; \
-			$(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "python3 -m pip install -r /opt/app-root/elyra/requirements-elyra.txt && \
+			$(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "python3 -m pip install -r /opt/app-root/notebooks/runtimes/datascience/ubi9-python-3.11/pipfile && \
 				curl https://raw.githubusercontent.com/nteract/papermill/main/papermill/tests/notebooks/simple_execute.ipynb --output simple_execute.ipynb && \
 				python3 -m papermill simple_execute.ipynb output.ipynb > /dev/null" ; \
 			if [ $$? -ne 0 ]; then \
-				echo "ERROR: Image does not meet Python requirements criteria in requirements-elyra.txt" ; \
+				echo "ERROR: Image does not meet Python requirements criteria in pipfile" ; \
 				fail=1; \
 			fi; \
 		fi; \
