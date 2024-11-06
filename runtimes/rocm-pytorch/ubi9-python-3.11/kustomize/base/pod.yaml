@@ -23,7 +23,4 @@ spec:
       volumeMounts:
         - name: config
           mountPath: /opt/app-root/elyra
-  volumes:
-    - name: config
-      configMap:
-        name: req-config
+
