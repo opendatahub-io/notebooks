@@ -16,8 +16,16 @@ spec:
   tags:
     # N Version of the image
     - annotations:
-        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.11"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version": "4.2"}]'
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.11"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab","version": "4.2"}
+          ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/default-image: "true"
@@ -30,8 +38,17 @@ spec:
         type: Source
     # N Version of the image
     - annotations:
-        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version": "3.6"}, {"name": "Notebook","version": "6.5"}]'
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.9"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab","version": "3.6"},
+            {"name": "Notebook","version": "6.5"}
+          ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/default-image: "true"
