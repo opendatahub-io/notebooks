@@ -16,10 +16,32 @@ spec:
   tags:
     # N Version of the image
     - annotations:
-        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.11"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"Boto3","version":"1.35"},{"name":"Kafka-Python-ng","version":"2.2"},{"name":"Kfp","version":"2.9"},{"name":"Matplotlib","version":"3.9"},{"name":"Numpy","version":"2.1"},{"name":"Pandas","version":"2.2"},{"name":"Scikit-learn","version":"1.5"},{"name":"Scipy","version":"1.14"},{"name":"Odh-Elyra","version":"4.1"},{"name":"PyMongo","version":"4.8"},{"name":"Pyodbc","version":"5.1"}, {"name":"Codeflare-SDK","version":"0.22"}, {"name":"Sklearn-onnx","version":"1.17"}, {"name":"Psycopg","version":"3.2"}, {"name":"MySQL Connector/Python","version":"9.0"}]'
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.11"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "Boto3", "version": "1.35"},
+            {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Kfp", "version": "2.9"},
+            {"name": "Matplotlib", "version": "3.9"},
+            {"name": "Numpy", "version": "2.1"},
+            {"name": "Pandas", "version": "2.2"},
+            {"name": "Scikit-learn", "version": "1.5"},
+            {"name": "Scipy", "version": "1.14"},
+            {"name": "Odh-Elyra", "version": "4.2"},
+            {"name": "PyMongo", "version": "4.8"},
+            {"name": "Pyodbc", "version": "5.1"},
+            {"name": "Codeflare-SDK", "version": "0.23"},
+            {"name": "Sklearn-onnx", "version": "1.17"},
+            {"name": "Psycopg", "version": "3.2"},
+            {"name": "MySQL Connector/Python", "version": "9.0"}
+          ]
         openshift.io/imported-from: quay.io/modh/odh-generic-data-science-notebook
-        opendatahub.io/workbench-image-recommended: "true"
+        opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: $(odh-generic-data-science-notebook-image-commit-n)
       from:
         kind: DockerImage
@@ -29,10 +51,32 @@ spec:
         type: Source
     # N-1 Version of the image
     - annotations:
-        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"Boto3","version":"1.34"},{"name":"Kafka-Python","version":"2.0"},{"name":"Kfp","version":"2.8"},{"name":"Matplotlib","version":"3.8"},{"name":"Numpy","version":"1.26"},{"name":"Pandas","version":"2.2"},{"name":"Scikit-learn","version":"1.4"},{"name":"Scipy","version":"1.12"},{"name":"Odh-Elyra","version":"3.16"},{"name":"PyMongo","version":"4.6"},{"name":"Pyodbc","version":"5.1"}, {"name":"Codeflare-SDK","version":"0.21"}, {"name":"Sklearn-onnx","version":"1.16"}, {"name":"Psycopg","version":"3.1"}, {"name":"MySQL Connector/Python","version":"8.3"}]'
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.9"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "Boto3", "version": "1.34"},
+            {"name": "Kafka-Python", "version": "2.0"},
+            {"name": "Kfp", "version": "2.8"},
+            {"name": "Matplotlib", "version": "3.8"},
+            {"name": "Numpy", "version": "1.26"},
+            {"name": "Pandas", "version": "2.2"},
+            {"name": "Scikit-learn", "version": "1.4"},
+            {"name": "Scipy", "version": "1.12"},
+            {"name": "Odh-Elyra", "version": "3.16"},
+            {"name": "PyMongo", "version": "4.6"},
+            {"name": "Pyodbc", "version": "5.1"},
+            {"name": "Codeflare-SDK", "version": "0.19"},
+            {"name": "Sklearn-onnx", "version": "1.16"},
+            {"name": "Psycopg", "version": "3.1"},
+            {"name": "MySQL Connector/Python", "version": "8.3"}
+          ]
         openshift.io/imported-from: quay.io/modh/odh-generic-data-science-notebook
-        opendatahub.io/workbench-image-recommended: "false"
+        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: $(odh-generic-data-science-notebook-image-commit-n-1)
       from:
         kind: DockerImage
