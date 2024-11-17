@@ -249,14 +249,14 @@ jobs:
               pnpm exec playwright test
               exit 0
           EOF
-        working-directory: codeserver/e2e
+        working-directory: tests/browser
         env:
           TEST_TARGET: "ghcr.io/${{ github.repository }}/workbench-images:${{ inputs.target }}-${{ github.sha }}"
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && fromJson(inputs.github).event_name == 'pull_request' && contains(inputs.target, 'codeserver') }}
         with:
           name: "${{ inputs.target }}_playwright-report"
-          path: codeserver/e2e/playwright-report/
+          path: tests/browser/playwright-report/
           retention-days: 30
 
       - run: df -h
