@@ -38,7 +38,10 @@ const test = base.extend<MyFixtures>({
     if (codeServerSource?.url) {
       await use(new CodeServer(page, codeServerSource.url))
     } else {
-      const container = await new GenericContainer(codeServerSource.image)
+      const image = codeServerSource.image ?? (() => {
+        throw new Error("invalid config: codeserver image not specified")
+      })()
+      const container = await new GenericContainer(image)
           .withExposedPorts(8787)
           .withWaitStrategy(new HttpWaitStrategy('/', 8787, {abortOnContainerExit: true}))
           .start();
