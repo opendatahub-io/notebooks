@@ -9,7 +9,7 @@ import {CodeServer} from "./models/codeserver"
 
 import {setupTestcontainers} from "./testcontainers";
 
-import * as utils from './utlis'
+import * as utils from './utils'
 
 // Declare the types of your fixtures.
 type MyFixtures = {
