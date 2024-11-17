@@ -1,4 +1,3 @@
-
 # codeserver-ubi9-python-3.11
 
 To run the following image, you can use the following command:
