@@ -234,8 +234,9 @@ jobs:
             --interactive --rm \
             --ipc=host \
             --net=host \
-            --env "DEBUG=testcontainers:*" \
             --env "CI=true" \
+            --env "NPM_CONFIG_fund=false" \
+            --env "DEBUG=testcontainers:*" \
             --env "PODMAN_SOCK=/var/run/docker.sock" \
             --env "TEST_TARGET" \
             --volume ${PODMAN_SOCK}:/var/run/docker.sock \
