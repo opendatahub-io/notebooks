@@ -32,6 +32,9 @@ COPY --chown=1001:0 start-notebook.sh /opt/app-root/bin
 COPY --chown=1001:0 builder /opt/app-root/builder
 COPY --chown=1001:0 utils /opt/app-root/bin/utils
 
+# Apply JupyterLab addons
+RUN /opt/app-root/bin/utils/addons/apply.sh
+
 WORKDIR /opt/app-root/src
 
 ENV JUPYTER_PRELOAD_REPOS="https://github.com/IntelAI/oneAPI-samples"
