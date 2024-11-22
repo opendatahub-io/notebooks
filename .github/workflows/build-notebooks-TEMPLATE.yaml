@@ -133,7 +133,7 @@ jobs:
         if: "${{ fromJson(inputs.github).event_name == 'pull_request' }}"
         env:
           IMAGE_TAG: "${{ github.sha }}"
-          IMAGE_REGISTRY: "localhost:5000/workbench-images"
+          IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
           CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }}"
           # We don't have access to image registry, so disable pushing
           PUSH_IMAGES: "no"
@@ -154,7 +154,7 @@ jobs:
               TARGET="$FS_SCAN_FOLDER"
               TYPE="fs"
             else
-              TARGET="localhost:5000/workbench-images:${{ inputs.target }}-${{ github.sha }}"
+              TARGET="ghcr.io/${{ github.repository }}/workbench-images:${{ inputs.target }}-${{ github.sha }}"
               TYPE="image"
             fi
           elif [[ "$EVENT_NAME" == "schedule" ]]; then
@@ -213,6 +213,51 @@ jobs:
                 $SCAN_TARGET
 
           cat $REPORT_FOLDER/$REPORT_FILE >> $GITHUB_STEP_SUMMARY
+
+      # https://playwright.dev/docs/ci
+      # https://playwright.dev/docs/docker
+      # we leave little free disk space after we mount LVM for podman storage
+      # not enough to install playwright; running playwright in podman uses the space we have
+      - name: Run Playwright tests
+        if: ${{ fromJson(inputs.github).event_name == 'pull_request' && contains(inputs.target, 'codeserver') }}
+        # --ipc=host because Microsoft says so in Playwright docs
+        # --net=host because testcontainers connects to the Reaper container's exposed port
+        # we need to pass through the relevant environment variables
+        #  DEBUG configures nodejs debuggers, sets different verbosity as needed
+        #  CI=true is set on every CI nowadays
+        #  PODMAN_SOCK should be mounted to /var/run/docker.sock, other likely mounting locations may not exist (mkdir -p)
+        #  TEST_TARGET is the workbench image the test will run
+        # --volume(s) let us access docker socket and not clobber host's node_modules
+        run: |
+          podman run \
+            --interactive --rm \
+            --ipc=host \
+            --net=host \
+            --env "CI=true" \
+            --env "NPM_CONFIG_fund=false" \
+            --env "DEBUG=testcontainers:*" \
+            --env "PODMAN_SOCK=/var/run/docker.sock" \
+            --env "TEST_TARGET" \
+            --volume ${PODMAN_SOCK}:/var/run/docker.sock \
+            --volume ${PWD}:/mnt \
+            --volume /mnt/node_modules \
+            mcr.microsoft.com/playwright:v1.48.1-noble \
+            /bin/bash <<EOF
+              set -Eeuxo pipefail
+              cd /mnt
+              npm install -g pnpm && pnpm install
+              pnpm exec playwright test
+              exit 0
+          EOF
+        working-directory: tests/browser
+        env:
+          TEST_TARGET: "ghcr.io/${{ github.repository }}/workbench-images:${{ inputs.target }}-${{ github.sha }}"
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && fromJson(inputs.github).event_name == 'pull_request' && contains(inputs.target, 'codeserver') }}
+        with:
+          name: "${{ inputs.target }}_playwright-report"
+          path: tests/browser/playwright-report/
+          retention-days: 30
 
       - run: df -h
         if: "${{ !cancelled() }}"
