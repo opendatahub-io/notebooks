@@ -2,14 +2,6 @@ import { defineConfig, devices } from '@playwright/test';
 import * as process from "node:process";
 
 /**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-// import dotenv from 'dotenv';
-// import path from 'path';
-// dotenv.config({ path: path.resolve(__dirname, '.env') });
-
-/**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
@@ -69,10 +61,10 @@ function getProjects() {
       use: { ...devices['Desktop Chrome'], channel: 'chrome',
         headless: false,  // the CDP browser configured below is not affected by this
         /* custom properties, comment out as needed */
-        connectCDP: 9222,  // false | number: connect to an existing browser running at given port
+        connectCDP: false,  // false | number: connect to an existing browser running at given port (e.g. 9222)
         codeServerSource: {  // prefers url if specified, otherwise will start the specified docker image
           // url: "",  // not-present | string
-          image: "quay.io/modh/codeserver:codeserver-ubi9-python-3.11-2024b-20241018",  // string
+          image: "quay.io/modh/codeserver:codeserver-ubi9-python-3.9-20241114-aed66a4",  // string
         }
       },
     }
