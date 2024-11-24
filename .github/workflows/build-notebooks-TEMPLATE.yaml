@@ -235,6 +235,121 @@ jobs:
       - name: "Show podman images information"
         run: podman images --digests
 
+      - name: "Check if we have tests or not"
+        id: have-tests
+        run: "ci/cached-builds/has_tests.py --target ${{ inputs.target }}"
+
+      # https://cri-o.io/
+      - name: Install cri-o
+        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        run: |
+          set -Eeuxo pipefail
+
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common curl
+
+          curl -fsSL https://pkgs.k8s.io/core:/stable:/$KUBERNETES_VERSION/deb/Release.key | \
+            sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+          echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/$KUBERNETES_VERSION/deb/ /" | \
+            sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+          curl -fsSL https://pkgs.k8s.io/addons:/cri-o:/stable:/$CRIO_VERSION/deb/Release.key | \
+            sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
+
+          echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://pkgs.k8s.io/addons:/cri-o:/stable:/$CRIO_VERSION/deb/ /" | \
+            sudo tee /etc/apt/sources.list.d/cri-o.list
+
+          sudo apt-get update
+          sudo apt-get install -y cri-o kubelet kubeadm kubectl
+
+          # meke use of /etc/cni/net.d/11-crio-ipv4-bridge.conflist so we don't
+          # need a pod network and just use the default bridge
+          sudo rm -rf /etc/cni/net.d/*
+          # cat /etc/cni/net.d/11-crio-ipv4-bridge.conflist
+          # https://github.com/containerd/containerd/blob/main/script%2Fsetup%2Finstall-cni
+          # https://www.cni.dev/plugins/current/main/bridge/
+          sudo cp ci/cached-builds/11-crio-ipv4-bridge.conflist /etc/cni/net.d/11-crio-ipv4-bridge.conflist
+
+          sudo cp ci/cached-builds/crio.conf /etc/crio/crio.conf.d/
+
+          sudo systemctl start crio.service
+        env:
+          CRIO_VERSION: v1.30
+          KUBERNETES_VERSION: v1.30
+
+      - name: Show crio debug data (on failure)
+        if: ${{ failure() && steps.have-tests.outputs.tests == 'true' }}
+        run: |
+          set -Eeuxo pipefail
+
+          sudo systemctl status crio.service || true
+          sudo journalctl -xeu crio.service
+
+      # do this early, it's a good check that cri-o is not completely broken
+      - name: "Show crio images information"
+        if: ${{ steps.have-tests.outputs.tests == 'true'  }}
+        run: sudo crictl images
+
+      - name: Install Kubernetes cluster
+        if: ${{ steps.have-tests.outputs.tests == 'true'  }}
+        run: |
+          set -Eeuxo pipefail
+
+          sudo swapoff -a
+          sudo modprobe br_netfilter
+          sudo sysctl -w net.ipv4.ip_forward=1
+
+          # Was getting strange DNS resolution errors from pods that don't seem to want to go away sometimes:
+          #  Resolving raw.githubusercontent.com (raw.githubusercontent.com)... failed: Name or service not known.
+          #  wget: unable to resolve host address ‘raw.githubusercontent.com’
+          # Here's what helped:
+          #  https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/#known-issues
+          #  https://github.com/kubernetes/kubernetes/blob/e4c1f980b76fecece30c2f77885a7117192170a6/CHANGELOG/CHANGELOG-1.30.md?plain=1#L1454
+          #  https://github.com/canonical/microk8s/issues/68#issuecomment-404923563
+          sudo ufw allow in on cni0
+          sudo ufw allow out on cni0
+          sudo ufw default allow routed
+          sudo iptables -P FORWARD ACCEPT
+          sudo iptables -t nat -A POSTROUTING -s 10.85.0.0/16 -o eth0 -j MASQUERADE
+
+          # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm
+          sudo kubeadm init --config=ci/cached-builds/kubeadm.yaml
+
+          mkdir -p $HOME/.kube
+          sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+          sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+      - name: Show kubelet debug data (on failure)
+        if: ${{ failure() && steps.have-tests.outputs.tests == 'true' }}
+        run: |
+          set -Eeuxo pipefail
+
+          sudo systemctl status kubelet || true
+          sudo journalctl -xeu kubelet
+
+          # Here is one example how you may list all running Kubernetes containers by using crictl:
+          sudo crictl --runtime-endpoint unix:///var/run/crio/crio.sock ps -a | grep kube | grep -v pause
+          # Once you have found the failing container, you can inspect its logs with:
+          # crictl --runtime-endpoint unix:///var/run/crio/crio.sock logs CONTAINERID
+
+      - name: Untaint the master
+        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        run: kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+
+      - name: Show nodes status and wait for readiness
+        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        run: |
+          kubectl describe nodes
+          kubectl wait --for=condition=Ready nodes --all --timeout=100s || (kubectl describe nodes && false)
+
+      - name: Wait for pods to be running
+        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        run: |
+          set -Eeuxo pipefail
+          kubectl wait deployments --all --all-namespaces --for=condition=Available --timeout=100s
+          kubectl wait pods --all --all-namespaces --for=condition=Ready --timeout=100s
+
       - name: Run Trivy vulnerability scanner
         if: ${{ steps.resolve-target.outputs.target }}
         run: |
