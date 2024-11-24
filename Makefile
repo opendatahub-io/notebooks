@@ -1,3 +1,18 @@
+# https://tech.davis-hansson.com/p/make/
+SHELL := bash
+# todo: do not set .ONESHELL: for now
+# http://redsymbol.net/articles/unofficial-bash-strict-mode/
+#.SHELLFLAGS := -eu -o pipefail -c
+.DELETE_ON_ERROR:
+MAKEFLAGS += --warn-undefined-variables
+MAKEFLAGS += --no-builtin-rules
+
+# todo: leave the default recipe prefix for now
+ifeq ($(origin .RECIPEPREFIX), undefined)
+  $(error This Make does not support .RECIPEPREFIX. Please use GNU Make 4.0 or later)
+endif
+.RECIPEPREFIX =
+
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
 RELEASE	 		 ?= 2024b
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
