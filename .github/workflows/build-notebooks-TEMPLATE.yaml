@@ -25,6 +25,7 @@ jobs:
       # GitHub image registry used for storing $(CONTAINER_ENGINE)'s cache
       CACHE: "ghcr.io/${{ github.repository }}/workbench-images/build-cache"
       TRIVY_VERSION: 0.57.1
+      TRIVY_VULNDB: "/home/runner/.local/share/containers/trivy_db"
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
       TRIVY_SCAN_FS_JSON: '{}'
 
@@ -163,17 +164,17 @@ jobs:
       - name: Pre-pull Trivy vulnerabilities DB
         if: ${{ steps.resolve-target.outputs.target }}
         run: |
-          mkdir trivy_db
+          mkdir ${TRIVY_VULNDB}
           podman run --rm \
             --env PODMAN_SOCK \
-            -v ${PWD}/trivy_db:/cache \
+            -v ${TRIVY_VULNDB}:/cache \
             docker.io/aquasec/trivy:$TRIVY_VERSION \
               --cache-dir /cache \
               image \
               --download-db-only
           podman run --rm \
             --env PODMAN_SOCK \
-            -v ${PWD}/trivy_db:/cache \
+            -v ${TRIVY_VULNDB}:/cache \
             docker.io/aquasec/trivy:$TRIVY_VERSION \
               --cache-dir /cache \
               image \
@@ -232,7 +233,7 @@ jobs:
           podman run --rm \
               $PODMAN_ARGS \
               -v ${REPORT_FOLDER}:/report \
-              -v ${PWD}/trivy_db:/cache \
+              -v ${TRIVY_VULNDB}:/cache \
               docker.io/aquasec/trivy:$TRIVY_VERSION \
                 --cache-dir /cache \
                 $SCAN_TYPE \
