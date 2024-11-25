@@ -16,6 +16,9 @@ else
 	WHERE_WHICH ?= which
 endif
 
+# linux/amd64 or darwin/arm64
+OS_ARCH=$(shell go env GOOS)/$(shell go env GOARCH)
+
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
@@ -320,7 +323,7 @@ jupyter-datascience-anaconda-python-3.8: base-anaconda-python-3.8
 bin/kubectl:
 ifeq (,$(wildcard $(KUBECTL_BIN)))
 	@mkdir -p bin
-	@curl -sSL https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/linux/amd64/kubectl > \
+	@curl -sSL https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/$(OS_ARCH)/kubectl > \
 		$(KUBECTL_BIN)
 	@chmod +x $(KUBECTL_BIN)
 endif
