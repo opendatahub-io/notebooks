@@ -115,9 +115,43 @@ jobs:
           systemctl --user start homebrew.podman.service
           echo "PODMAN_SOCK=/run/user/${UID}/podman/podman.sock" >> $GITHUB_ENV
 
+      - name: "pull_request|schedule: resolve target if Trivy scan should run"
+        id: resolve-target
+        if: ${{ fromJson(inputs.github).event_name == 'pull_request' || fromJson(inputs.github).event_name == 'schedule' }}
+        env:
+          EVENT_NAME: ${{ fromJson(inputs.github).event_name }}
+          HAS_TRIVY_LABEL: ${{ contains(fromJson(inputs.github).event.pull_request.labels.*.name, 'trivy-scan') }}
+          FS_SCAN_FOLDER: ${{ fromJson(env.TRIVY_SCAN_FS_JSON)[inputs.target] }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" && "$HAS_TRIVY_LABEL" == "true" ]]; then
+            if [[ -n "$FS_SCAN_FOLDER" ]]; then
+              TARGET="$FS_SCAN_FOLDER"
+              TYPE="fs"
+            else
+              TARGET="ghcr.io/${{ github.repository }}/workbench-images:${{ inputs.target }}-${{ github.sha }}"
+              TYPE="image"
+            fi
+          elif [[ "$EVENT_NAME" == "schedule" ]]; then
+            if [[ -n "$FS_SCAN_FOLDER" ]]; then
+              TARGET="$FS_SCAN_FOLDER"
+              TYPE="fs"
+            else
+              TARGET="ghcr.io/${{ github.repository }}/workbench-images:${{ inputs.target }}-${{ github.ref_name }}_${{ github.sha }}"
+              TYPE="image"
+            fi
+          fi
+
+          if [[ -n "$TARGET" ]]; then
+            echo "target=$TARGET" >> $GITHUB_OUTPUT
+            echo "type=$TYPE" >> $GITHUB_OUTPUT
+            echo "Trivy scan will run on $TARGET ($TYPE)"
+          else
+            echo "Trivy scan won't run"
+          fi
+
       # only one db can be downloaded in one call https://github.com/aquasecurity/trivy/issues/3616
       - name: Pre-pull Trivy vulnerabilities DB
-        if: ${{ contains(fromJson(inputs.github).event.pull_request.labels.*.name, 'trivy-scan') }}
+        if: ${{ steps.resolve-target.outputs.target }}
         run: |
           mkdir trivy_db
           podman run --rm \
@@ -162,40 +196,6 @@ jobs:
 
       - name: "Show podman images information"
         run: podman images --digests
-
-      - name: "pull_request|schedule: resolve target if Trivy scan should run"
-        id: resolve-target
-        if: ${{ fromJson(inputs.github).event_name == 'pull_request' || fromJson(inputs.github).event_name == 'schedule' }}
-        env:
-          EVENT_NAME: ${{ fromJson(inputs.github).event_name }}
-          HAS_TRIVY_LABEL: ${{ contains(fromJson(inputs.github).event.pull_request.labels.*.name, 'trivy-scan') }}
-          FS_SCAN_FOLDER: ${{ fromJson(env.TRIVY_SCAN_FS_JSON)[inputs.target] }}
-        run: |
-          if [[ "$EVENT_NAME" == "pull_request" && "$HAS_TRIVY_LABEL" == "true" ]]; then
-            if [[ -n "$FS_SCAN_FOLDER" ]]; then
-              TARGET="$FS_SCAN_FOLDER"
-              TYPE="fs"
-            else
-              TARGET="ghcr.io/${{ github.repository }}/workbench-images:${{ inputs.target }}-${{ github.sha }}"
-              TYPE="image"
-            fi
-          elif [[ "$EVENT_NAME" == "schedule" ]]; then
-            if [[ -n "$FS_SCAN_FOLDER" ]]; then
-              TARGET="$FS_SCAN_FOLDER"
-              TYPE="fs"
-            else
-              TARGET="ghcr.io/${{ github.repository }}/workbench-images:${{ inputs.target }}-${{ github.ref_name }}_${{ github.sha }}"
-              TYPE="image"
-            fi
-          fi
-
-          if [[ -n "$TARGET" ]]; then
-            echo "target=$TARGET" >> $GITHUB_OUTPUT
-            echo "type=$TYPE" >> $GITHUB_OUTPUT
-            echo "Trivy scan will run on $TARGET ($TYPE)"
-          else
-            echo "Trivy scan won't run"
-          fi
 
       - name: Run Trivy vulnerability scanner
         if: ${{ steps.resolve-target.outputs.target }}
