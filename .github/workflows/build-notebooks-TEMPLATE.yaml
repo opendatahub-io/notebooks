@@ -263,7 +263,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cri-o kubelet kubeadm kubectl
 
-          # meke use of /etc/cni/net.d/11-crio-ipv4-bridge.conflist so we don't
+          # make use of /etc/cni/net.d/11-crio-ipv4-bridge.conflist so we don't
           # need a pod network and just use the default bridge
           sudo rm -rf /etc/cni/net.d/*
           # cat /etc/cni/net.d/11-crio-ipv4-bridge.conflist
