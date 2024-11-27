@@ -520,7 +520,7 @@ validate-runtime-image: bin/kubectl
 	$(info # Running tests for $(NOTEBOOK_NAME) runtime...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod runtime-pod --timeout=300s
 	@required_commands=$(REQUIRED_RUNTIME_IMAGE_COMMANDS) ; \
-		fail=0 ; \
+	fail=0 ; \
 	if [[ $$image == "" ]] ; then \
 		echo "Usage: make validate-runtime-image image=<container-image-name>" ; \
 		exit 1 ; \
