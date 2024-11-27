@@ -538,6 +538,7 @@ validate-runtime-image: bin/kubectl
 	$(info # Running tests for $(NOTEBOOK_NAME) runtime...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod runtime-pod --timeout=300s
 	@required_commands=$(REQUIRED_RUNTIME_IMAGE_COMMANDS) ; \
+	fail=0 ; \
 	if [[ $$image == "" ]] ; then \
 		echo "Usage: make validate-runtime-image image=<container-image-name>" ; \
 		exit 1 ; \
@@ -552,11 +553,12 @@ validate-runtime-image: bin/kubectl
 		fi; \
 		if [ $$cmd == "python3" ]; then \
 			echo "=> Checking notebook execution..." ; \
-			$(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "python3 -m pip install -r /opt/app-root/elyra/requirements-elyra.txt && \
+			$(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "curl https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/etc/generic/requirements-elyra.txt --output req.txt && \ 
+				python3 -m pip install -r req.txt > /dev/null && \
 				curl https://raw.githubusercontent.com/nteract/papermill/main/papermill/tests/notebooks/simple_execute.ipynb --output simple_execute.ipynb && \
 				python3 -m papermill simple_execute.ipynb output.ipynb > /dev/null" ; \
 			if [ $$? -ne 0 ]; then \
-				echo "ERROR: Image does not meet Python requirements criteria in requirements-elyra.txt" ; \
+				echo "ERROR: Image does not meet Python requirements criteria in pipfile" ; \
 				fail=1; \
 			fi; \
 		fi; \
