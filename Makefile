@@ -553,7 +553,7 @@ validate-runtime-image: bin/kubectl
 		fi; \
 		if [ $$cmd == "python3" ]; then \
 			echo "=> Checking notebook execution..." ; \
-			$(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "curl https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/etc/generic/requirements-elyra.txt --output req.txt && \ 
+			$(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "curl https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/etc/generic/requirements-elyra.txt --output req.txt && \
 				python3 -m pip install -r req.txt > /dev/null && \
 				curl https://raw.githubusercontent.com/nteract/papermill/main/papermill/tests/notebooks/simple_execute.ipynb --output simple_execute.ipynb && \
 				python3 -m papermill simple_execute.ipynb output.ipynb > /dev/null" ; \
