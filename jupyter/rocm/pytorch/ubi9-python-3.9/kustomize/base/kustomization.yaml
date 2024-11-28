@@ -1,9 +1,9 @@
 ---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namePrefix: rocm-jupyter-pytorch-ubi9-python-3-9-
+namePrefix: jupyter-rocm-pytorch-ubi9-python-3-9-
 commonLabels:
-  app: rocm-jupyter-pytorch-ubi9-python-3-9
+  app: jupyter-rocm-pytorch-ubi9-python-3-9
 resources:
   - service.yaml
   - statefulset.yaml
