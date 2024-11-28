@@ -69,7 +69,9 @@ RUN python3.9 -m venv ${CPU_ENV} && \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     chmod -R g+w ${CPU_ENV}/lib/python3.9/site-packages && \
     fix-permissions ${CPU_ENV} -P && \
-    chmod -R g+w /opt/app-root/src
+    chmod -R g+w /opt/app-root/src && \
+    # Apply JupyterLab addons
+    /opt/app-root/bin/utils/addons/apply.sh
 
 COPY --chown=1001:0 kernel-cpu.json /opt/app-root/share/jupyter/kernels/tensorflow-cpu/kernel.json
 

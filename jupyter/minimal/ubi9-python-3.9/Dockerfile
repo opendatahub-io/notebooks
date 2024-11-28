@@ -23,7 +23,9 @@ RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./P
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
-    fix-permissions /opt/app-root -P
+    fix-permissions /opt/app-root -P && \
+    # Apply JupyterLab addons
+    /opt/app-root/bin/utils/addons/apply.sh
 
 WORKDIR /opt/app-root/src
 
