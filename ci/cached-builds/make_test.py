@@ -10,7 +10,11 @@ import typing
 import unittest
 import unittest.mock
 
-"""Runs the make commands used to deploy, test, and undeploy image in Kubernetes"""
+"""Runs the make commands used to deploy, test, and undeploy image in Kubernetes
+
+The make commands this runs are intended to reproduce the commands we define in our OpenShift CI config at
+https://github.com/openshift/release/blob/master/ci-operator/config/opendatahub-io/notebooks/opendatahub-io-notebooks-main.yaml#L1485
+"""
 
 
 class Args(argparse.Namespace):
