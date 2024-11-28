@@ -46,7 +46,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      #region Free up disk space
+      # region Free up disk space
 
       - name: Free up additional disk space
         # https://docs.github.com/en/actions/learn-github-actions/expressions
@@ -88,9 +88,9 @@ jobs:
           df -h
           free -h
 
-      #endregion
+      # endregion
 
-      #region Podman setup
+      # region Podman setup
 
       # https://github.com/containers/buildah/issues/2521#issuecomment-884779112
       - name: Workaround https://github.com/containers/podman/issues/22152#issuecomment-2027705598
@@ -162,9 +162,9 @@ jobs:
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           echo "OUTPUT_IMAGE=${{ env.IMAGE_REGISTRY}}:${{ inputs.target }}-${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
 
-      #endregion
+      # endregion
 
-      #region Trivy init & DB pre-pull
+      # region Trivy init & DB pre-pull
 
       - name: "pull_request|schedule: resolve target if Trivy scan should run"
         id: resolve-target
@@ -220,9 +220,9 @@ jobs:
               image \
               --download-java-db-only
 
-      #endregion
+      # endregion
 
-      #region Image build
+      # region Image build
 
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
       - name: "push|schedule: make ${{ inputs.target }}"
@@ -249,9 +249,9 @@ jobs:
       - name: "Show podman images information"
         run: podman images --digests
 
-      #endregion
+      # endregion
 
-      #region Makefile image tests
+      # region Makefile image tests
 
       - name: "Check if we have tests or not"
         id: have-tests
@@ -376,9 +376,9 @@ jobs:
           # for make deploy, mandatory to specify for the more exotic cases
           NOTEBOOK_TAG: "${{ inputs.target }}-${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
 
-      #endregion
+      # endregion
 
-      #region Trivy vulnerability scan
+      # region Trivy vulnerability scan
 
       - name: Run Trivy vulnerability scanner
         if: ${{ steps.resolve-target.outputs.target }}
@@ -421,9 +421,9 @@ jobs:
 
           cat $REPORT_FOLDER/$REPORT_FILE >> $GITHUB_STEP_SUMMARY
 
-      #endregion
+      # endregion
 
-      #region Typescript (browser) image tests
+      # region Typescript (browser) image tests
 
       # https://playwright.dev/docs/ci
       # https://playwright.dev/docs/docker
@@ -470,7 +470,7 @@ jobs:
           path: tests/browser/playwright-report/
           retention-days: 30
 
-      #endregion
+      # endregion
 
       - run: df -h
         if: "${{ !cancelled() }}"
