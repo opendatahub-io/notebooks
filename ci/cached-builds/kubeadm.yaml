@@ -1,0 +1,45 @@
+---
+# kubeadm config print init-defaults > kubeadm.yaml
+# kubeadm init --cri-socket=/var/run/crio/crio.sock
+
+# https://kubernetes.io/docs/reference/config-api/kubeadm-config.v1beta3/
+# https://kubernetes.io/docs/reference/config-api/kubeadm-config.v1beta4/
+apiVersion: kubeadm.k8s.io/v1beta3
+bootstrapTokens:
+  - groups:
+      - system:bootstrappers:kubeadm:default-node-token
+    token: abcdef.0123456789abcdef
+    ttl: 24h0m0s
+    usages:
+      - signing
+      - authentication
+kind: InitConfiguration
+localAPIEndpoint:
+  bindPort: 6443
+nodeRegistration:
+  kubeletExtraArgs:
+    # Need to have enough disk space for Kubelet, so move root-dir on the LVM volume
+    # Note: the internets discourage from changing the default because storage plugins may then struggle
+    #  https://cep.dev/posts/adventure-trying-change-kubelet-rootdir/
+    root-dir: "/home/runner/.local/share/containers/kubelet-root-dir"
+  criSocket: unix:///var/run/crio/crio.sock
+  imagePullPolicy: IfNotPresent
+  taints: null
+---
+apiServer:
+  timeoutForControlPlane: 4m0s
+apiVersion: kubeadm.k8s.io/v1beta3
+certificatesDir: /etc/kubernetes/pki
+clusterName: kubernetes
+controllerManager: {}
+dns: {}
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+imageRepository: registry.k8s.io
+kind: ClusterConfiguration
+networking:
+  dnsDomain: cluster.local
+  # this matches the default in /etc/cni/net.d/11-crio-ipv4-bridge.conflist
+  podSubnet: 10.85.0.0/16
+scheduler: {}
