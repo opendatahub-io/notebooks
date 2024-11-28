@@ -38,7 +38,6 @@ RUN echo "Installing softwares and packages" && \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
     fix-permissions /opt/app-root -P
-    
 
 #Replacing kernel manually with oneapi variable setting script
 COPY --chown=1001:0 start-kernel /opt/app-root/bin/start-kernel
@@ -52,7 +51,7 @@ ENV CPU_ENV=/opt/app-root-cpu
 ENV GPU_ENV=/opt/app-root
 COPY --chown=1001:0 Pipfile.lock.cpu ${CPU_ENV}/Pipfile.lock
 
-WORKDIR ${CPU_ENV} 
+WORKDIR ${CPU_ENV}
 RUN python3.9 -m venv ${CPU_ENV} && \
     chown -R 1001:0 ${CPU_ENV} && \
     fix-permissions ${CPU_ENV} -P && \
@@ -65,7 +64,9 @@ RUN python3.9 -m venv ${CPU_ENV} && \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     chmod -R g+w ${CPU_ENV}/lib/python3.9/site-packages && \
     fix-permissions ${CPU_ENV} -P && \
-    chmod -R g+w /opt/app-root/src
+    chmod -R g+w /opt/app-root/src && \
+    # Apply JupyterLab addons
+    /opt/app-root/bin/utils/addons/apply.sh
 
 COPY --chown=1001:0 kernel-cpu.json /opt/app-root/share/jupyter/kernels/pytorch-cpu/kernel.json
 

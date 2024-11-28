@@ -1,3 +1,18 @@
+# https://tech.davis-hansson.com/p/make/
+SHELL := bash
+# todo: do not set .ONESHELL: for now
+# http://redsymbol.net/articles/unofficial-bash-strict-mode/
+#.SHELLFLAGS := -eu -o pipefail -c
+.DELETE_ON_ERROR:
+MAKEFLAGS += --warn-undefined-variables
+MAKEFLAGS += --no-builtin-rules
+
+# todo: leave the default recipe prefix for now
+ifeq ($(origin .RECIPEPREFIX), undefined)
+  $(error This Make does not support .RECIPEPREFIX. Please use GNU Make 4.0 or later)
+endif
+.RECIPEPREFIX =
+
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
 RELEASE	 		 ?= 2024b
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
@@ -15,6 +30,9 @@ else
 	DATE 		?= $(shell date +'%Y%m%d')
 	WHERE_WHICH ?= which
 endif
+
+# linux/amd64 or darwin/arm64
+OS_ARCH=$(shell go env GOOS)/$(shell go env GOARCH)
 
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
@@ -392,7 +410,7 @@ rocm-runtime-tensorflow-ubi9-python-3.11: rocm-ubi9-python-3.11
 bin/kubectl:
 ifeq (,$(wildcard $(KUBECTL_BIN)))
 	@mkdir -p bin
-	@curl -sSL https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/linux/amd64/kubectl > \
+	@curl -sSL https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/$(OS_ARCH)/kubectl > \
 		$(KUBECTL_BIN)
 	@chmod +x $(KUBECTL_BIN)
 endif
@@ -508,6 +526,7 @@ validate-runtime-image: bin/kubectl
 	$(info # Running tests for $(NOTEBOOK_NAME) runtime...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod runtime-pod --timeout=300s
 	@required_commands=$(REQUIRED_RUNTIME_IMAGE_COMMANDS) ; \
+	fail=0 ; \
 	if [[ $$image == "" ]] ; then \
 		echo "Usage: make validate-runtime-image image=<container-image-name>" ; \
 		exit 1 ; \
@@ -522,11 +541,12 @@ validate-runtime-image: bin/kubectl
 		fi; \
 		if [ $$cmd == "python3" ]; then \
 			echo "=> Checking notebook execution..." ; \
-			$(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "python3 -m pip install -r /opt/app-root/elyra/requirements-elyra.txt && \
+			$(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "curl https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/etc/generic/requirements-elyra.txt --output req.txt && \ 
+				python3 -m pip install -r req.txt > /dev/null && \
 				curl https://raw.githubusercontent.com/nteract/papermill/main/papermill/tests/notebooks/simple_execute.ipynb --output simple_execute.ipynb && \
 				python3 -m papermill simple_execute.ipynb output.ipynb > /dev/null" ; \
 			if [ $$? -ne 0 ]; then \
-				echo "ERROR: Image does not meet Python requirements criteria in requirements-elyra.txt" ; \
+				echo "ERROR: Image does not meet Python requirements criteria in pipfile" ; \
 				fail=1; \
 			fi; \
 		fi; \
