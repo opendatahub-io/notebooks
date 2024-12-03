@@ -4,9 +4,9 @@ SELF ::= $(firstword $(MAKEFILE_LIST))
 
 # https://tech.davis-hansson.com/p/make/
 SHELL := bash
-# todo: do not set .ONESHELL: for now
+.ONESHELL:
 # http://redsymbol.net/articles/unofficial-bash-strict-mode/
-#.SHELLFLAGS := -eu -o pipefail -c
+.SHELLFLAGS := -eu -o pipefail -c
 .DELETE_ON_ERROR:
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
