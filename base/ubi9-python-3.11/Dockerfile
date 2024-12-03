@@ -1,5 +1,7 @@
 FROM registry.access.redhat.com/ubi9/python-311:latest
 
+ARG SOURCE_CODE=.
+
 LABEL name="odh-notebook-base-ubi9-python-3.11" \
       summary="Python 3.11 base image for ODH notebooks" \
       description="Base Python 3.11 builder image based on UBI9 for ODH notebooks" \
@@ -16,7 +18,7 @@ WORKDIR /opt/app-root/bin
 RUN pip install --no-cache-dir -U "micropipenv[toml]"
 
 # Install Python dependencies from Pipfile.lock file
-COPY Pipfile.lock ./
+COPY ${SOURCE_CODE}/Pipfile.lock ./
 
 RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
 

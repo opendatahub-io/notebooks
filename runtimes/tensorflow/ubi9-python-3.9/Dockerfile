@@ -1,6 +1,8 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG SOURCE_CODE=.
+
 LABEL name="odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.9" \
     summary="Runtime CUDA tensorflow notebook image for ODH notebooks" \
     description="Runtime CUDA tensorflow notebook image with base Python 3.9 builder image based on UBI9 for ODH notebooks" \
@@ -14,9 +16,9 @@ LABEL name="odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.9" \
 WORKDIR /opt/app-root/bin
 
 # Install Python packages from Pipfile.lock
-COPY Pipfile.lock ./
+COPY ${SOURCE_CODE}/Pipfile.lock ./
 # Copy Elyra dependencies for air-gapped enviroment
-COPY utils ./utils/
+COPY ${SOURCE_CODE}/utils ./utils/
 
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \
