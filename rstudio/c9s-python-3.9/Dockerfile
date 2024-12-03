@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=rstudio/c9s-python-3.9
 
 LABEL name="odh-notebook-rstudio-server-c9s-python-3.9" \
       summary="RStudio Server image with python 3.9 based on CentOS Stream 9" \

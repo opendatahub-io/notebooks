@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=intel/runtimes/ml/ubi9-python-3.11
 
 LABEL name="odh-notebook-intel-runtime-ml-ubi9-python-3.11" \
     summary="Runtime Intel® optimized ML notebook image for ODH notebooks" \

@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=jupyter/datascience/ubi9-python-3.11
 
 LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.11" \
     summary="Jupyter data science notebook image for ODH notebooks" \

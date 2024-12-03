@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=runtimes/datascience/ubi9-python-3.11
 
 LABEL name="odh-notebook-runtime-datascience-ubi9-python-3.11" \
     summary="Runtime data science notebook image for ODH notebooks" \

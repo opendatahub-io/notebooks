@@ -1,6 +1,6 @@
 FROM registry.access.redhat.com/ubi9/python-39:latest
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=base/ubi9-python-3.9
 
 LABEL name="odh-notebook-base-ubi9-python-3.9" \
       summary="Python 3.9 base image for ODH notebooks" \

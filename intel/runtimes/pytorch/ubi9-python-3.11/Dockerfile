@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=intel/runtimes/pytorch/ubi9-python-3.11
 
 LABEL name="odh-notebook-intel-runtime-pytorch-ubi9-python-3.11" \
     summary="Runtime Intel® optimized pytorch notebook image for ODH notebooks" \

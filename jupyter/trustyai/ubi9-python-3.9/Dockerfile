@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=jupyter/trustyai/ubi9-python-3.9
 
 LABEL name="odh-notebook-jupyter-trustyai-ubi9-python-3.9" \
     summary="Jupyter trustyai notebook image for ODH notebooks" \

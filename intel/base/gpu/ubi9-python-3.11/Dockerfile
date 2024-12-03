@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=intel/base/gpu/ubi9-python-3.11
 
 LABEL name="odh-notebook-intel-base-gpu-ubi9-python-3.11" \
       summary="Intel® XPU base image for ODH notebooks based on ubi9" \

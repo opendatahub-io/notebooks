@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=jupyter/rocm/pytorch/ubi9-python-3.9
 
 LABEL name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.9" \
     summary="Jupyter AMD pytorch notebook image for ODH notebooks" \

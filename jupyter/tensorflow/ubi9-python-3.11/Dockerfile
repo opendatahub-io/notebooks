@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=jupyter/tensorflow/ubi9-python-3.11
 
 LABEL name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.11" \
     summary="Jupyter CUDA tensorflow notebook image for ODH notebooks" \

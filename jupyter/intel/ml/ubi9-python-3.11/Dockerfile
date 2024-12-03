@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=jupyter/intel/ml/ubi9-python-3.11
 
 LABEL name="odh-notebook-jupyter-intel-ml-ubi9-python-3.11" \
     summary="Jupyter Intel® optimized ML notebook image for ODH notebooks." \

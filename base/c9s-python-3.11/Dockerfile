@@ -1,6 +1,6 @@
 FROM quay.io/sclorg/python-311-c9s:c9s
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=base/c9s-python-3.11
 
 LABEL name="odh-notebook-base-centos-stream9-python-3.11" \
       summary="Python 3.11 CentOS Stream 9 base image for ODH notebooks" \

@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=intel/runtimes/tensorflow/ubi9-python-3.9
 
 LABEL name="odh-notebook-intel-runtime-tensorflow-ubi9-python-3.9" \
     summary="Runtime Intel® optimized TensorFlow notebook image for ODH notebooks" \

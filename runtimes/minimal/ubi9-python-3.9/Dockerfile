@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=runtimes/minimal/ubi9-python-3.9
 
 LABEL name="odh-notebook-runtime-minimal-ubi9-python-3.9" \
     summary="Runtime minimal image for ODH notebooks" \

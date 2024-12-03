@@ -3,7 +3,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=rocm/ubi9-python-3.11
 
 LABEL name="odh-notebook-rocm-python-3.11" \
       summary="ROCm Python 3.11 base image for ODH notebooks" \

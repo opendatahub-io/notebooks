@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=cuda/ubi9-python-3.9
 
 LABEL name="odh-notebook-cuda-ubi9-python-3.9" \
       summary="CUDA Python 3.9 base image for ODH notebooks" \

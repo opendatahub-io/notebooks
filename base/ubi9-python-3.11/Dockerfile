@@ -1,6 +1,6 @@
 FROM registry.access.redhat.com/ubi9/python-311:latest
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=base/ubi9-python-3.11
 
 LABEL name="odh-notebook-base-ubi9-python-3.11" \
       summary="Python 3.11 base image for ODH notebooks" \

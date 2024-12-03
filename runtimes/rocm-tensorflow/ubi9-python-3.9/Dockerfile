@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=runtimes/rocm-tensorflow/ubi9-python-3.9
 
 LABEL name="odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.9" \
     summary="Runtime ROCm tensorflow notebook image for ODH notebooks" \

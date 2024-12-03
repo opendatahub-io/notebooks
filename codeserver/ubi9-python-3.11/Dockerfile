@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SOURCE_CODE=.
+ARG SOURCE_CODE=codeserver/ubi9-python-3.11
 ARG CODESERVER_VERSION=v4.92.2
 
 LABEL name="odh-notebook-code-server-ubi9-python-3.11" \
