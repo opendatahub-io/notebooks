@@ -1,3 +1,6 @@
+# https://stackoverflow.com/questions/18136918/how-to-get-current-relative-directory-of-your-makefile
+ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+
 # https://tech.davis-hansson.com/p/make/
 SHELL := bash
 # todo: do not set .ONESHELL: for now
@@ -65,7 +68,7 @@ define build_image
 		$(eval BUILD_ARGS := --build-arg BASE_IMAGE=$(BASE_IMAGE_NAME)),
 		$(eval BUILD_ARGS :=)
 	)
-	$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS)  -t $(IMAGE_NAME) $(BUILD_ARGS)  $(2)
+	$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --tag $(IMAGE_NAME) --file $(2)/Dockerfile $(BUILD_ARGS) $(ROOT_DIR)/
 endef
 
 # Push function for the notebok image:
