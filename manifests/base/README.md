@@ -8,7 +8,6 @@ Listing the order in which each imagestreams are introduced.
 4. jupyter-pytorch-notebook-imagestream.yaml
 5. jupyter-tensorflow-notebook-imagestream.yaml
 6. jupyter-trustyai-notebook-imagestream.yaml
-7. ~~jupyter-habana-notebook-imagestream.yaml~~ # Deprecated 
 8. code-server-notebook-imagestream.yaml
 9. rstudio-notebook-imagestream.yaml
 10. rstudio-gpu-notebook-imagestream.yaml

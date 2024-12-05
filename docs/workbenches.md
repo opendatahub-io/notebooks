@@ -7,7 +7,6 @@ Open Data Hub contains the following workbench images with different variations:
 | -------------------------- | ------- | ------------ | ------ | ------- | -------- |
 | Jupyter Minimal            | &#9745; | &#9745;      | UBI8/9 | &#9746; | &#9746;  |
 | CUDA                       | &#9745; | &#9745;      | UBI8/9 | &#9745; | &#9746;  |
-| HabanaAI                   | &#9745; | &#9746;      | UBI8/9 | &#9745; | &#9746;  |
 | Jupyter Data Science       | &#9745; | &#9745;      | UBI8/9 | &#9746; | &#9745;  |
 | Jupyter Tensorflow         | &#9745; | &#9745;      | UBI8/9 | &#9745; | &#9745;  |
 | Jupyter PyTorch            | &#9745; | &#9745;      | UBI8/9 | &#9745; | &#9745;  |
