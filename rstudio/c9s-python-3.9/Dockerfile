@@ -60,6 +60,9 @@ RUN R -e "require('remotes'); \
     remotes::install_version('vetiver','0.2.5'); \
     remotes::install_version('devtools','2.4.5');"
 
+# install necessary OS package to make Knit R markup to PDF rendering possible
+RUN yum install -y texlive-framed
+
 # Install NGINX to proxy RStudio and pass probes check
 ENV NGINX_VERSION=1.24 \
     NGINX_SHORT_VER=124 \
