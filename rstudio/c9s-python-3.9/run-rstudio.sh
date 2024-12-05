@@ -25,7 +25,11 @@ do
 done  
 # rstudio terminal cant see environment variables set by the container runtime
 # (which breaks kubectl, to fix this we store the KUBERNETES_* env vars in Renviron.site)
-env | grep KUBERNETES_ >> /usr/lib64/R/etc/Renviron.site
+# Also, we store proxy-related env vars lowercased by key so RStudio projects work with proxy by default
+env | grep "^KUBERNETES_" >> /usr/lib64/R/etc/Renviron.site
+env | grep "^HTTP_PROXY=" | tr '[:upper:]' '[:lower:]' >> /usr/lib64/R/etc/Renviron.site
+env | grep "^HTTPS_PROXY=" | tr '[:upper:]' '[:lower:]' >> /usr/lib64/R/etc/Renviron.site
+env | grep "^NO_PROXY=" | tr '[:upper:]' '[:lower:]' >> /usr/lib64/R/etc/Renviron.site
 
 export USER=$(whoami)
 
