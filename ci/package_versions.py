@@ -17,19 +17,9 @@ import package_versions_selftestdata
 """Generates the workbench software listings for https://access.redhat.com/articles/rhoai-supported-configs 
 using the Markdown variant described at https://access.redhat.com/articles/7056942"""
 
-"""
-TODO:
-    * separate reading data and printing output
-        so that output can be properly sorted (by opendatahub.io/notebook-image-order probably)
-    * don't repeat image name when printing multiple tags for it
-    * run this in red-hat-data-services repo so we also have (or not have) Habana image
-    * diff it with what's in the knowledge base now, to check if outputs match
-"""
-
 ROOT_DIR = pathlib.Path(__file__).parent.parent
 
 
-# unused for now
 @dataclasses.dataclass
 class Manifest:
     _data: any
