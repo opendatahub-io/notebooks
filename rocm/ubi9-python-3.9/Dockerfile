@@ -2,6 +2,9 @@
 # https://github.com/ROCm/ROCm-docker/blob/master/dev/Dockerfile-centos-7-complete
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
+
+ARG SOURCE_CODE=rocm/ubi9-python-3.9
+
 LABEL name="odh-notebook-rocm-python-3.9" \
       summary="ROCm Python 3.9 base image for ODH notebooks" \
       description="ROCm Python 3.9 builder image based on UBI9 for ODH notebooks" \

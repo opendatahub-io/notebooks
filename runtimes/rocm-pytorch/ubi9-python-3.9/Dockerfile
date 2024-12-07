@@ -1,6 +1,8 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG SOURCE_CODE=runtimes/rocm-pytorch/ubi9-python-3.9
+
 LABEL name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.9" \
     summary="Runtime ROCm pytorch notebook image for ODH notebooks" \
     description="Runtime ROCm pytorch notebook image with base Python 3.9 builder image based on UBI9 for ODH notebooks" \
@@ -14,11 +16,11 @@ LABEL name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.9" \
 WORKDIR /opt/app-root/bin
 
 # Install Python packages from Pipfile.lock
-COPY Pipfile.lock ./
+COPY ${SOURCE_CODE}/Pipfile.lock ./
 # Copy Elyra dependencies for air-gapped enviroment
-COPY utils ./utils/
+COPY ${SOURCE_CODE}/utils ./utils/
 # Copy utility script
-COPY de-vendor-torch.sh ./
+COPY ${SOURCE_CODE}/de-vendor-torch.sh ./
 
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \

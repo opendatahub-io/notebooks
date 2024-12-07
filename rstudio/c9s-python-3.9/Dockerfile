@@ -1,6 +1,8 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG SOURCE_CODE=rstudio/c9s-python-3.9
+
 LABEL name="odh-notebook-rstudio-server-c9s-python-3.9" \
       summary="RStudio Server image with python 3.9 based on CentOS Stream 9" \
       description="RStudio server image with python 3.9 based on CentOS Stream 9" \
@@ -45,7 +47,7 @@ RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/r
 # Specific RStudio config and fixes
 RUN chmod 1777 /var/run/rstudio-server && \
     mkdir -p /usr/share/doc/R
-COPY rsession.conf /etc/rstudio/rsession.conf
+COPY ${SOURCE_CODE}/rsession.conf /etc/rstudio/rsession.conf
 
 # package installation 
 RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" \
@@ -79,10 +81,10 @@ RUN yum -y module enable nginx:$NGINX_VERSION && \
     nginx -v 2>&1 | grep -qe "nginx/$NGINX_VERSION\." && echo "Found VERSION $NGINX_VERSION" && \
     yum -y clean all --enablerepo='*'
 
-COPY --chown=1001:0 supervisord/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY --chown=1001:0 ${SOURCE_CODE}/supervisord/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Copy extra files to the image.
-COPY nginx/root/ /
+COPY ${SOURCE_CODE}/nginx/root/ /
 
 # Changing ownership and user rights to support following use-cases:
 # 1) running container on OpenShift, whose default security model
@@ -113,15 +115,15 @@ RUN sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH} && \
     rpm-file-permissions
 
 # Configure nginx
-COPY nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
-COPY nginx/httpconf/ /opt/app-root/etc/nginx.d/
-COPY nginx/api/ /opt/app-root/api/
+COPY ${SOURCE_CODE}/nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
+COPY ${SOURCE_CODE}/nginx/httpconf/ /opt/app-root/etc/nginx.d/
+COPY ${SOURCE_CODE}/nginx/api/ /opt/app-root/api/
 
 # Launcher
 WORKDIR /opt/app-root/bin
 
-COPY utils utils/
-COPY run-rstudio.sh setup_rstudio.py rsession.sh run-nginx.sh ./
+COPY ${SOURCE_CODE}/utils utils/
+COPY ${SOURCE_CODE}/run-rstudio.sh ${SOURCE_CODE}/setup_rstudio.py ${SOURCE_CODE}/rsession.sh ${SOURCE_CODE}/run-nginx.sh ./
 
 WORKDIR /opt/app-root/src
 

@@ -1,5 +1,7 @@
 FROM quay.io/sclorg/python-39-c9s:c9s
 
+ARG SOURCE_CODE=base/c9s-python-3.9
+
 LABEL name="odh-notebook-base-centos-stream9-python-3.9" \
       summary="Python 3.9 CentOS Stream 9 base image for ODH notebooks" \
       description="Base Python 3.9 builder image based on CentOS Stream 9 for ODH notebooks" \
@@ -16,7 +18,7 @@ WORKDIR /opt/app-root/bin
 RUN pip install --no-cache-dir -U "micropipenv[toml]"
 
 # Install Python dependencies from Pipfile.lock file
-COPY Pipfile.lock ./
+COPY ${SOURCE_CODE}/Pipfile.lock ./
 
 # OS Packages needs to be installed as root
 USER root
