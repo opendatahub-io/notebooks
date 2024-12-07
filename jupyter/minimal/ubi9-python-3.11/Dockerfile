@@ -1,6 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG REUSABLE_UTILS=jupyter/utils
 ARG SOURCE_CODE=jupyter/minimal/ubi9-python-3.11
 
 LABEL name="odh-notebook-jupyter-minimal-ubi9-python-3.11" \
@@ -15,7 +16,7 @@ LABEL name="odh-notebook-jupyter-minimal-ubi9-python-3.11" \
 
 WORKDIR /opt/app-root/bin
 
-COPY ${SOURCE_CODE}/utils utils/
+COPY ${REUSABLE_UTILS} utils/
 
 COPY ${SOURCE_CODE}/Pipfile.lock ${SOURCE_CODE}/start-notebook.sh ./
 
