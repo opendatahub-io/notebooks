@@ -47,3 +47,15 @@ Create a Python 3.11 version based on the Python 3.9 version for each one in the
 ```sh
 python scripts/new_python_based_image.py --context-dir . --source 3.9 --target 3.11 --match ./ --log-level DEBUG
 ```
+
+## buildinputs/
+
+CLI tool written in Go that computes the list of input files required to build a Dockerfile.
+This is useful to determine what images need to be built on CI when testing a GitHub Pull Request.
+
+### Examples
+
+```shell
+make bin/buildinputs
+bin/buildinputs jupyter/datascience/ubi9-python-3.11/Dockerfile 2>/dev/null
+```
