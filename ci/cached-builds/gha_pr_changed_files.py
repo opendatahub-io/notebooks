@@ -2,10 +2,12 @@ import logging
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import unittest
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent.parent.resolve()
+MAKE = shutil.which("gmake") or shutil.which("make")
 
 
 def get_github_token() -> str:
@@ -30,7 +32,7 @@ def analyze_build_directories(make_target) -> list[str]:
     pattern = re.compile(r"#\*# Image build directory: <(?P<dir>[^>]+)> #\(MACHINE-PARSED LINE\)#\*#\.\.\.")
     try:
         logging.debug(f"Running make in --just-print mode for target {make_target}")
-        for line in subprocess.check_output(["make", make_target, "--just-print"], encoding="utf-8",
+        for line in subprocess.check_output([MAKE, make_target, "--just-print"], encoding="utf-8",
                                             cwd=PROJECT_ROOT).splitlines():
             if m := pattern.match(line):
                 directories.append(m["dir"])
