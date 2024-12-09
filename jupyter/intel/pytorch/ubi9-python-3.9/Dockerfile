@@ -1,6 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG REUSABLE_UTILS=jupyter/utils
 ARG SOURCE_CODE=jupyter/intel/pytorch/ubi9-python-3.9
 
 LABEL name="odh-notebook-jupyter-intel-pytorch-ubi9-python-3.9" \
@@ -46,7 +47,7 @@ COPY --chown=1001:0 ${SOURCE_CODE}/start-kernel /opt/app-root/bin/start-kernel
 COPY --chown=1001:0 ${SOURCE_CODE}/kernel-gpu.json /opt/app-root/share/jupyter/kernels/python3/kernel.json
 COPY --chown=1001:0 ${SOURCE_CODE}/start-notebook.sh /opt/app-root/bin
 COPY --chown=1001:0 ${SOURCE_CODE}/builder /opt/app-root/builder
-COPY --chown=1001:0 ${SOURCE_CODE}/utils /opt/app-root/bin/utils
+COPY --chown=1001:0 ${REUSABLE_UTILS} /opt/app-root/bin/utils
 
 #CPU env
 ENV CPU_ENV=/opt/app-root-cpu
