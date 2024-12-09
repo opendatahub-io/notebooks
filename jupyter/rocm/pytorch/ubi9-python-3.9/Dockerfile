@@ -1,6 +1,8 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG SOURCE_CODE=jupyter/rocm/pytorch/ubi9-python-3.9
+
 LABEL name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.9" \
     summary="Jupyter AMD pytorch notebook image for ODH notebooks" \
     description="Jupyter AMD pytorch notebook image with base Python 3.9 builder image based on UBI9 for ODH notebooks" \
@@ -12,9 +14,9 @@ LABEL name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.9" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:rocm-jupyter-pytorch-ubi9-python-3.9"
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY Pipfile.lock ./
+COPY ${SOURCE_CODE}/Pipfile.lock ./
 # Copy utility script
-COPY de-vendor-torch.sh ./
+COPY ${SOURCE_CODE}/de-vendor-torch.sh ./
 
 RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock && \
     # De-vendor the ROCm libs that are embedded in Pytorch \

@@ -1,6 +1,8 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG SOURCE_CODE=jupyter/trustyai/ubi9-python-3.9
+
 LABEL name="odh-notebook-jupyter-trustyai-ubi9-python-3.9" \
     summary="Jupyter trustyai notebook image for ODH notebooks" \
     description="Jupyter trustyai notebook image with base Python 3.9 builder image based on UBI9 for ODH notebooks" \
@@ -21,7 +23,7 @@ RUN INSTALL_PKGS="java-17-openjdk" && \
 USER 1001
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY Pipfile.lock ./
+COPY ${SOURCE_CODE}/Pipfile.lock ./
 
 RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \

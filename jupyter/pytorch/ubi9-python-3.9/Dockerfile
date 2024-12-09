@@ -1,6 +1,8 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG SOURCE_CODE=jupyter/pytorch/ubi9-python-3.9
+
 LABEL name="odh-notebook-jupyter-pytorch-ubi9-python-3.9" \
     summary="Jupyter pytorch notebook image for ODH notebooks" \
     description="Jupyter pytorch notebook image with base Python 3.9 builder image based on UBI9 for ODH notebooks" \
@@ -12,7 +14,7 @@ LABEL name="odh-notebook-jupyter-pytorch-ubi9-python-3.9" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:jupyter-pytorch-ubi9-python-3.9"
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY Pipfile.lock ./
+COPY ${SOURCE_CODE}/Pipfile.lock ./
 
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \

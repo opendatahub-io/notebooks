@@ -1,6 +1,8 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG SOURCE_CODE=intel/runtimes/ml/ubi9-python-3.9
+
 LABEL name="odh-notebook-intel-runtime-ml-ubi9-python-3.9" \
     summary="Runtime Intel® optimized ML notebook image for ODH notebooks" \
     description="Runtime Intel® optimized ML notebook image with base Python 3.9 builder image based on UBI9 for ODH notebooks" \
@@ -14,12 +16,12 @@ LABEL name="odh-notebook-intel-runtime-ml-ubi9-python-3.9" \
 WORKDIR /opt/app-root/bin
 
 # Install Python packages from Pipfile.lock
-COPY Pipfile.lock Pipfile.lock
+COPY ${SOURCE_CODE}/Pipfile.lock Pipfile.lock
 
 # Copy Elyra dependencies for air-gapped enviroment
-COPY utils utils
+COPY ${SOURCE_CODE}/utils utils
 
-COPY --chown=1001:0 .patch_sklearn.py /opt/app-root/bin/.patch_sklearn.py
+COPY --chown=1001:0 ${SOURCE_CODE}/.patch_sklearn.py /opt/app-root/bin/.patch_sklearn.py
 ENV PYTHONSTARTUP="/opt/app-root/bin/.patch_sklearn.py"
 
 #Virtualenv creates a symlink of lib to lib64. That causes issues with importing ITEX since both locations will have ITEX library and it will conflict.
