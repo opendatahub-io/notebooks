@@ -1,6 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG REUSABLE_UTILS=jupyter/utils
 ARG SOURCE_CODE=jupyter/intel/ml/ubi9-python-3.11
 
 LABEL name="odh-notebook-jupyter-intel-ml-ubi9-python-3.11" \
@@ -32,7 +33,7 @@ RUN echo "Installing softwares and packages" && \
 #Replacing kernel manually with oneapi variable setting script
 COPY --chown=1001:0 ${SOURCE_CODE}/start-notebook.sh /opt/app-root/bin
 COPY --chown=1001:0 ${SOURCE_CODE}/builder /opt/app-root/builder
-COPY --chown=1001:0 ${SOURCE_CODE}/utils /opt/app-root/bin/utils
+COPY --chown=1001:0 ${REUSABLE_UTILS} /opt/app-root/bin/utils
 
 # Apply JupyterLab addons
 RUN /opt/app-root/bin/utils/addons/apply.sh
