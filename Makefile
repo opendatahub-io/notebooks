@@ -1,5 +1,6 @@
 # https://stackoverflow.com/questions/18136918/how-to-get-current-relative-directory-of-your-makefile
 ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+SELF ::= $(firstword $(MAKEFILE_LIST))
 
 # https://tech.davis-hansson.com/p/make/
 SHELL := bash
@@ -97,6 +98,18 @@ define image
 		)
 	)
 endef
+
+#######################################        Build helpers                 #######################################
+
+# https://stackoverflow.com/questions/78899903/how-to-create-a-make-target-which-is-an-implicit-dependency-for-all-other-target
+skip-init-for := deploy% undeploy% test% scan-image-vulnerabilities
+ifneq (,$(filter-out $(skip-init-for),$(MAKECMDGOALS) $(.DEFAULT_GOAL)))
+$(SELF): bin/buildinputs
+endif
+
+bin/buildinputs: scripts/buildinputs/buildinputs.go scripts/buildinputs/go.mod scripts/buildinputs/go.sum
+	$(info Building a Go helper for Dockerfile dependency analysis...)
+	go build -C "scripts/buildinputs" -o "$(ROOT_DIR)/$@" ./...
 
 ####################################### Buildchain for Python 3.9 using ubi9 #######################################
 
