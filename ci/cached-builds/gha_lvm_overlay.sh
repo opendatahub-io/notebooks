@@ -7,7 +7,8 @@ set -Eeuo pipefail
 # This script creates file-backed volumes on /dev/root and /dev/sda1, then creates ext4 over both, and mounts it for our use
 # https://github.com/easimon/maximize-build-space/blob/master/action.yml
 
-root_reserve_mb=2048
+# root_reserve_mb=2048 was running out of disk space building cuda images
+root_reserve_mb=4096
 temp_reserve_mb=100
 swap_size_mb=4096
 
