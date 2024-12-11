@@ -650,41 +650,63 @@ validate-rstudio-image: bin/kubectl
 		continue; \
 	fi; \
 
-# This is only for the workflow action
+# This recipe used mainly from the Pipfile.locks Renewal Action
+# Default Python version
+PYTHON_VERSION ?= 3.11
+ROOT_DIR := $(shell pwd)
+BASE_DIRS := base/c9s-python-$(PYTHON_VERSION) \
+		base/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/trustyai/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		codeserver/ubi9-python-$(PYTHON_VERSION) \
+		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
+		runtimes/datascience/ubi9-python-$(PYTHON_VERSION) \
+		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+		runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION) \
+		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION)
+
+# Default value is false, can be overiden
+# The below directories are not supported on tier-1
+INCLUDE_OPT_DIRS ?= false
+OPT_DIRS := jupyter/intel/ml/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/intel/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/intel/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+		intel/runtimes/ml/ubi9-python-$(PYTHON_VERSION) \
+		intel/runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		intel/runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION)
+
+# This recipe gets args, can be used like
+# make refresh-pipfilelock-files PYTHON_VERSION=3.11 INCLUDE_OPT_DIRS=false
 .PHONY: refresh-pipfilelock-files
 refresh-pipfilelock-files:
-	cd base/ubi9-python-3.9 && pipenv lock
-	cd base/c9s-python-3.9 && pipenv lock
-	cd jupyter/minimal/ubi9-python-3.9 && pipenv lock
-	cd jupyter/datascience/ubi9-python-3.9 && pipenv lock
-	cd jupyter/pytorch/ubi9-python-3.9 && pipenv lock
-	cd jupyter/tensorflow/ubi9-python-3.9 && pipenv lock
-	cd jupyter/trustyai/ubi9-python-3.9 && pipenv lock
-	cd runtimes/minimal/ubi9-python-3.9 && pipenv lock
-	cd runtimes/datascience/ubi9-python-3.9 && pipenv lock
-	cd runtimes/pytorch/ubi9-python-3.9 && pipenv lock
-	cd runtimes/tensorflow/ubi9-python-3.9 && pipenv lock
-	cd runtimes/rocm-tensorflow/ubi9-python-3.9 && pipenv lock
-	cd runtimes/rocm-pytorch/ubi9-python-3.9 && pipenv lock
-	cd base/c9s-python-3.11 && pipenv lock
-	cd base/ubi9-python-3.11 && pipenv lock
-	cd codeserver/ubi9-python-3.11 && pipenv lock
-	cd jupyter/minimal/ubi9-python-3.11 && pipenv lock
-	cd jupyter/datascience/ubi9-python-3.11 && pipenv lock
-	cd jupyter/pytorch/ubi9-python-3.11 && pipenv lock
-	cd jupyter/tensorflow/ubi9-python-3.11 && pipenv lock
-	cd jupyter/trustyai/ubi9-python-3.11 && pipenv lock
-	cd jupyter/rocm/tensorflow/ubi9-python-3.11 && pipenv lock
-	cd jupyter/rocm/pytorch/ubi9-python-3.11 && pipenv lock
-	cd runtimes/minimal/ubi9-python-3.11 && pipenv lock
-	cd runtimes/datascience/ubi9-python-3.11 && pipenv lock
-	cd runtimes/pytorch/ubi9-python-3.11 && pipenv lock
-	cd runtimes/tensorflow/ubi9-python-3.11 && pipenv lock
-	cd runtimes/rocm-tensorflow/ubi9-python-3.11 && pipenv lock
-	cd runtimes/rocm-pytorch/ubi9-python-3.11 && pipenv lock
-
-
-	
+	@echo "Updating Pipfile.lock files for Python $(PYTHON_VERSION)"
+	@if [ "$(INCLUDE_OPT_DIRS)" = "true" ]; then \
+		echo "Including optional directories"; \
+		DIRS="$(BASE_DIRS) $(OPT_DIRS)"; \
+	else \
+		DIRS="$(BASE_DIRS)"; \
+	fi; \
+	for dir in $$DIRS; do \
+		echo "Processing directory: $$dir"; \
+		cd $(ROOT_DIR); \
+		if [ -d "$$dir" ]; then \
+			echo "Updating $(PYTHON_VERSION) Pipfile.lock in $$dir"; \
+			cd $$dir; \
+			if [ -f "Pipfile" ]; then \
+				pipenv lock; \
+			else \
+				echo "No Pipfile found in $$dir, skipping."; \
+			fi; \
+		else \
+			echo "Skipping $$dir as it does not exist"; \
+		fi; \
+	done
 
 # This is only for the workflow action
 # For running manually, set the required environment variables
