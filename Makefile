@@ -69,7 +69,8 @@ define build_image
 		$(eval BUILD_ARGS := --build-arg BASE_IMAGE=$(BASE_IMAGE_NAME)),
 		$(eval BUILD_ARGS :=)
 	)
-	$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --tag $(IMAGE_NAME) --file $(2)/Dockerfile $(BUILD_ARGS) $(ROOT_DIR)/
+	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)/Dockerfile' -- \
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --tag $(IMAGE_NAME) --file '$(2)/Dockerfile' $(BUILD_ARGS) {}\;
 endef
 
 # Push function for the notebok image:
