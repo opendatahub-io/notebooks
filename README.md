@@ -51,6 +51,12 @@ Use podman/docker to execute the workbench images as container.
 podman  run -it -p  8888:8888  quay.io/opendatahub/workbench-images:jupyter-minimal-ubi9-python-3.9-2024a-20240317-6f4c36b
 ```
 
+### Pipfile.lock Generation
+
+Users can update Pipfile.lock files using the [piplock-renewal.yaml](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/piplock-renewal.yaml) GitHub Action. This workflow enables users to specify a target branch for updating and automerging Pipfile.lock files, select the desired Python version for the update as well as to choose whether to include optional directories in the update process. After the action completes, the updated files can be retrieved with a simple git pull.
+
+Note: To ensure the GitHub Action runs successfully, users must add a `GH_ACCESS_TOKEN` secret in their fork.
+
 ### Deploy & Test
 
 #### Running Python selftests in Pytest

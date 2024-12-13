@@ -1,0 +1,68 @@
+---
+# This GitHub action is meant to update the pipfile.locks
+name: Pipfile.locks Renewal Action
+
+on:  # yamllint disable-line rule:truthy
+  # Triggers the workflow every Monday at 22pm UTC am 0 22 * * 1
+  schedule:
+    - cron: "0 22 * * 1"
+  workflow_dispatch:  # for manual trigger workflow from GH Web UI
+    inputs:
+      branch:
+        description: 'Specify branch'
+        required: false
+        default: 'main'
+      python_version:
+        description: 'Select Python version to update Pipfile.lock'
+        required: false
+        default: '3.11'
+        type: choice
+        options:
+          - '3.11'
+          - '3.9'
+          - '3.8'
+      update_optional_dirs:
+        description: 'Include optional directories in update'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # Checkout the specified branch from the specified organization
+      - name: Checkout code from the specified branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+
+      # Configure Git
+      - name: Configure Git
+        run: |
+         git config --global user.email "github-actions[bot]@users.noreply.github.com"
+         git config --global user.name "GitHub Actions"
+
+      # Setup Python environment with the specified version (or default to '3.11')
+      - name: Setup Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ github.event.inputs.python_version }}
+
+      # Install pipenv
+      - name: Install pipenv
+        run: pip install pipenv
+
+      # Run makefile recipe to refresh Pipfile.lock and push changes back to the branch
+      - name: Run make refresh-pipfilelock-files and push the changes back to the branch
+        run: |
+          make refresh-pipfilelock-files PYTHON_VERSION=${{ github.event.inputs.python_version }} INCLUDE_OPT_DIRS=${{ github.event.inputs.update_optional_dirs }}
+          git add .
+          git commit -m "Update Pipfile.lock files by piplock-renewal.yaml action"
+          git push origin ${{ github.event.inputs.branch }}
