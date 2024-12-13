@@ -14,7 +14,7 @@ MAKEFLAGS += --no-builtin-rules
 
 # todo: leave the default recipe prefix for now
 ifeq ($(origin .RECIPEPREFIX), undefined)
-  $(error This Make does not support .RECIPEPREFIX. Please use GNU Make 4.0 or later)
+$(error This Make does not support .RECIPEPREFIX. Please use GNU Make 4.0 or later)
 endif
 .RECIPEPREFIX =
 
@@ -617,16 +617,16 @@ validate-rstudio-image: bin/kubectl
 	echo "=> Checking container image $$image for package installation..."
 	$(KUBECTL_BIN) exec -it rstudio-pod -- mkdir -p /opt/app-root/src/R/temp-library > /dev/null 2>&1
 	if $(KUBECTL_BIN) exec rstudio-pod -- R -e "install.packages('tinytex', lib='/opt/app-root/src/R/temp-library')" > /dev/null 2>&1 ; then
-        echo "Tinytex installation successful!"
-    else
-        echo "Error: Tinytex installation failed."
+		echo "Tinytex installation successful!"
+	else
+		echo "Error: Tinytex installation failed."
 	fi
 	for cmd in $$required_commands ; do
 		echo "=> Checking container image $$image for $$cmd..."
 		if $(KUBECTL_BIN) exec rstudio-pod which $$cmd > /dev/null 2>&1 ; then
-        	echo "$$cmd executed successfully!"
+			echo "$$cmd executed successfully!"
 		else
-        	echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd"
+			echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd"
 			fail=1
 			continue
 		fi
@@ -635,10 +635,10 @@ validate-rstudio-image: bin/kubectl
 	curl -sSL -o test_script.R "${NOTEBOOK_REPO_BRANCH_BASE}/rstudio/c9s-python-$(PYTHON_VERSION)/test/test_script.R" > /dev/null 2>&1
 	$(KUBECTL_BIN) cp test_script.R rstudio-pod:/opt/app-root/src/test_script.R > /dev/null 2>&1
 	if $(KUBECTL_BIN) exec rstudio-pod -- Rscript /opt/app-root/src/test_script.R > /dev/null 2>&1 ; then
-        echo "R script executed successfully!"
+		echo "R script executed successfully!"
 		rm test_script.R
 	else
-        echo "Error: R script failed."
+		echo "Error: R script failed."
 		fail=1
 		continue
 	fi
