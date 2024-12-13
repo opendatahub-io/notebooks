@@ -492,16 +492,16 @@ undeploy-c9s-%: bin/kubectl
 #   ARG 1: UBI flavor
 #   ARG 1: Python kernel
 define test_with_papermill
-	$(eval PREFIX_NAME := $(subst /,-,$(1)_$(2))) \
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "python3 -m pip install papermill" ; \
-	if ! $(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/$(1)/$(2)-$(3)/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb $(PREFIX_NAME)_output.ipynb --kernel python3 --stderr-file $(PREFIX_NAME)_error.txt" ; then \
-		echo "ERROR: The $(1) $(2) notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-$(1)-$(2)-$(3)-test-e2e' directory or run 'cat $(PREFIX_NAME)_error.txt' within your container. The make process has been aborted." ; \
-		exit 1 ; \
-	fi ; \
-	if $(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_error.txt | grep --quiet FAILED" ; then \
-		echo "ERROR: The $(1) $(2) notebook encountered a failure. The make process has been aborted." ; \
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_error.txt" ; \
-		exit 1 ; \
+	$(eval PREFIX_NAME := $(subst /,-,$(1)_$(2)))
+	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "python3 -m pip install papermill"
+	if ! $(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/$(1)/$(2)-$(3)/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb $(PREFIX_NAME)_output.ipynb --kernel python3 --stderr-file $(PREFIX_NAME)_error.txt" ; then
+		echo "ERROR: The $(1) $(2) notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-$(1)-$(2)-$(3)-test-e2e' directory or run 'cat $(PREFIX_NAME)_error.txt' within your container. The make process has been aborted."
+		exit 1
+	fi
+	if $(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_error.txt | grep --quiet FAILED" ; then
+		echo "ERROR: The $(1) $(2) notebook encountered a failure. The make process has been aborted."
+		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_error.txt"
+		exit 1
 	fi
 endef
 
@@ -513,32 +513,32 @@ test-%: bin/kubectl
 	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
 	$(info # Running tests for $(NOTEBOOK_NAME) notebook...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod -l app=$(NOTEBOOK_NAME) --timeout=600s
-	$(KUBECTL_BIN) port-forward svc/$(NOTEBOOK_NAME)-notebook 8888:8888 & curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:8888/notebook/opendatahub/jovyan/api ; EXIT_CODE=$$?; echo && pkill --full "^$(KUBECTL_BIN).*port-forward.*"; \
+	$(KUBECTL_BIN) port-forward svc/$(NOTEBOOK_NAME)-notebook 8888:8888 & curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:8888/notebook/opendatahub/jovyan/api ; EXIT_CODE=$$?; echo && pkill --full "^$(KUBECTL_BIN).*port-forward.*"
 	$(eval FULL_NOTEBOOK_NAME = $(shell ($(KUBECTL_BIN) get pods -l app=$(NOTEBOOK_NAME) -o custom-columns=":metadata.name" | tr -d '\n')))
 
 	# Tests notebook's functionalities
-	if echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi9"; then \
-		$(call test_with_papermill,minimal,ubi9,python-$(PYTHON_VERSION)) \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-tensorflow-ubi9"; then \
-		$(call test_with_papermill,intel/tensorflow,ubi9,python-$(PYTHON_VERSION)) \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-pytorch-ubi9"; then \
-		$(call test_with_papermill,intel/pytorch,ubi9,python-$(PYTHON_VERSION)) \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi9"; then \
-		$(MAKE) validate-ubi9-datascience PYTHON_VERSION=$(PYTHON_VERSION) -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi9"; then \
-		$(MAKE) validate-ubi9-datascience PYTHON_VERSION=$(PYTHON_VERSION) -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(call test_with_papermill,pytorch,ubi9,python-$(PYTHON_VERSION)) \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi9"; then \
-		$(MAKE) validate-ubi9-datascience PYTHON_VERSION=$(PYTHON_VERSION) -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME); \
-		$(call test_with_papermill,tensorflow,ubi9,python-$(PYTHON_VERSION)) \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-ml-ubi9"; then \
-		$(call test_with_papermill,intel/ml,ubi9,python-$(PYTHON_VERSION)) \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi9"; then \
-		$(call test_with_papermill,trustyai,ubi9,python-$(PYTHON_VERSION)) \
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "anaconda"; then \
-		echo "There is no test notebook implemented yet for Anaconda Notebook...." \
-	else \
-		echo "No matching condition found for $(FULL_NOTEBOOK_NAME)." ; \
+	if echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi9"; then
+		$(call test_with_papermill,minimal,ubi9,python-$(PYTHON_VERSION))
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-tensorflow-ubi9"; then
+		$(call test_with_papermill,intel/tensorflow,ubi9,python-$(PYTHON_VERSION))
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-pytorch-ubi9"; then
+		$(call test_with_papermill,intel/pytorch,ubi9,python-$(PYTHON_VERSION))
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi9"; then
+		$(MAKE) validate-ubi9-datascience PYTHON_VERSION=$(PYTHON_VERSION) -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME)
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi9"; then
+		$(MAKE) validate-ubi9-datascience PYTHON_VERSION=$(PYTHON_VERSION) -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME)
+		$(call test_with_papermill,pytorch,ubi9,python-$(PYTHON_VERSION))
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi9"; then
+		$(MAKE) validate-ubi9-datascience PYTHON_VERSION=$(PYTHON_VERSION) -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME)
+		$(call test_with_papermill,tensorflow,ubi9,python-$(PYTHON_VERSION))
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-ml-ubi9"; then
+		$(call test_with_papermill,intel/ml,ubi9,python-$(PYTHON_VERSION))
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi9"; then
+		$(call test_with_papermill,trustyai,ubi9,python-$(PYTHON_VERSION))
+	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "anaconda"; then
+		echo "There is no test notebook implemented yet for Anaconda Notebook...."
+	else
+		echo "No matching condition found for $(FULL_NOTEBOOK_NAME)."
 	fi
 
 .PHONY: validate-ubi9-datascience
@@ -553,35 +553,35 @@ validate-runtime-image: bin/kubectl
 	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
 	$(info # Running tests for $(NOTEBOOK_NAME) runtime...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod runtime-pod --timeout=300s
-	@required_commands=$(REQUIRED_RUNTIME_IMAGE_COMMANDS) ; \
-	fail=0 ; \
-	if [[ $$image == "" ]] ; then \
-		echo "Usage: make validate-runtime-image image=<container-image-name>" ; \
-		exit 1 ; \
-	fi ; \
-	for cmd in $$required_commands ; do \
-		echo "=> Checking container image $$image for $$cmd..." ; \
-		if ! $(KUBECTL_BIN) exec runtime-pod which $$cmd > /dev/null 2>&1 ; then \
-			echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd" ; \
-			fail=1; \
-			continue; \
-		fi; \
-		if [ $$cmd == "python3" ]; then \
-			echo "=> Checking notebook execution..." ; \
+	@required_commands=$(REQUIRED_RUNTIME_IMAGE_COMMANDS)
+	fail=0
+	if [[ $$image == "" ]] ; then
+		echo "Usage: make validate-runtime-image image=<container-image-name>"
+		exit 1
+	fi
+	for cmd in $$required_commands ; do
+		echo "=> Checking container image $$image for $$cmd..."
+		if ! $(KUBECTL_BIN) exec runtime-pod which $$cmd > /dev/null 2>&1 ; then
+			echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd"
+			fail=1
+			continue
+		fi
+		if [ $$cmd == "python3" ]; then
+			echo "=> Checking notebook execution..."
 			if ! $(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "curl https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/etc/generic/requirements-elyra.txt --output req.txt && \
 					python3 -m pip install -r req.txt > /dev/null && \
 					curl https://raw.githubusercontent.com/nteract/papermill/main/papermill/tests/notebooks/simple_execute.ipynb --output simple_execute.ipynb && \
-					python3 -m papermill simple_execute.ipynb output.ipynb > /dev/null" ; then \
-				echo "ERROR: Image does not meet Python requirements criteria in pipfile" ; \
-				fail=1; \
-			fi; \
-		fi; \
-	done ; \
-	if [ $$fail -eq 1 ]; then \
-		echo "=> ERROR: Container image $$image is not a suitable Elyra runtime image" ; \
-		exit 1 ; \
-	else \
-		echo "=> Container image $$image is a suitable Elyra runtime image" ; \
+					python3 -m papermill simple_execute.ipynb output.ipynb > /dev/null" ; then
+				echo "ERROR: Image does not meet Python requirements criteria in pipfile"
+				fail=1
+			fi
+		fi
+	done
+	if [ $$fail -eq 1 ]; then
+		echo "=> ERROR: Container image $$image is not a suitable Elyra runtime image"
+		exit 1
+	else
+		echo "=> Container image $$image is a suitable Elyra runtime image"
 	fi;
 
 .PHONY: validate-codeserver-image
@@ -589,19 +589,19 @@ validate-codeserver-image: bin/kubectl
 	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
 	$(info # Running tests for $(NOTEBOOK_NAME) code-server image...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod codeserver-pod --timeout=300s
-	@required_commands=$(REQUIRED_CODE_SERVER_IMAGE_COMMANDS) ; \
-	if [[ $$image == "" ]] ; then \
-		echo "Usage: make validate-codeserver-image image=<container-image-name>" ; \
-		exit 1 ; \
-	fi ; \
-	for cmd in $$required_commands ; do \
-		echo "=> Checking container image $$image for $$cmd..." ; \
-		if ! $(KUBECTL_BIN) exec codeserver-pod which $$cmd > /dev/null 2>&1 ; then \
-			echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd" ; \
-			fail=1; \
-			continue; \
-		fi; \
-	done ; \
+	@required_commands=$(REQUIRED_CODE_SERVER_IMAGE_COMMANDS)
+	if [[ $$image == "" ]] ; then
+		echo "Usage: make validate-codeserver-image image=<container-image-name>"
+		exit 1
+	fi
+	for cmd in $$required_commands ; do
+		echo "=> Checking container image $$image for $$cmd..."
+		if ! $(KUBECTL_BIN) exec codeserver-pod which $$cmd > /dev/null 2>&1 ; then
+			echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd"
+			fail=1
+			continue
+		fi
+	done
 
 .PHONY: validate-rstudio-image
 validate-rstudio-image: bin/kubectl
@@ -609,39 +609,39 @@ validate-rstudio-image: bin/kubectl
 	$(eval PYTHON_VERSION := $(shell echo $(image) | sed 's/.*-python-//'))
 	$(info # Running tests for $(NOTEBOOK_NAME) RStudio Server image...)
 	$(KUBECTL_BIN) wait --for=condition=ready pod rstudio-pod --timeout=300s
-	@required_commands=$(REQUIRED_R_STUDIO_IMAGE_COMMANDS) ; \
-	if [[ $$image == "" ]] ; then \
-		echo "Usage: make validate-rstudio-image image=<container-image-name>" ; \
-		exit 1 ; \
-	fi ; \
-	echo "=> Checking container image $$image for package installation..." ; \
-	$(KUBECTL_BIN) exec -it rstudio-pod -- mkdir -p /opt/app-root/src/R/temp-library > /dev/null 2>&1 ; \
-	if $(KUBECTL_BIN) exec rstudio-pod -- R -e "install.packages('tinytex', lib='/opt/app-root/src/R/temp-library')" > /dev/null 2>&1 ; then \
-        echo "Tinytex installation successful!"; \
-    else \
-        echo "Error: Tinytex installation failed."; \
-	fi; \
-	for cmd in $$required_commands ; do \
-		echo "=> Checking container image $$image for $$cmd..." ; \
-		if $(KUBECTL_BIN) exec rstudio-pod which $$cmd > /dev/null 2>&1 ; then \
-        	echo "$$cmd executed successfully!"; \
-		else \
-        	echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd" ; \
-			fail=1; \
-			continue; \
-		fi; \
-	done ; \
-	echo "=> Fetching R script from URL and executing on the container..."; \
-	curl -sSL -o test_script.R "${NOTEBOOK_REPO_BRANCH_BASE}/rstudio/c9s-python-$(PYTHON_VERSION)/test/test_script.R" > /dev/null 2>&1 ; \
-	$(KUBECTL_BIN) cp test_script.R rstudio-pod:/opt/app-root/src/test_script.R > /dev/null 2>&1; \
-	if $(KUBECTL_BIN) exec rstudio-pod -- Rscript /opt/app-root/src/test_script.R > /dev/null 2>&1 ; then \
-        echo "R script executed successfully!"; \
-		rm test_script.R ; \
-	else \
-        echo "Error: R script failed."; \
-		fail=1; \
-		continue; \
-	fi; \
+	@required_commands=$(REQUIRED_R_STUDIO_IMAGE_COMMANDS)
+	if [[ $$image == "" ]] ; then
+		echo "Usage: make validate-rstudio-image image=<container-image-name>"
+		exit 1
+	fi
+	echo "=> Checking container image $$image for package installation..."
+	$(KUBECTL_BIN) exec -it rstudio-pod -- mkdir -p /opt/app-root/src/R/temp-library > /dev/null 2>&1
+	if $(KUBECTL_BIN) exec rstudio-pod -- R -e "install.packages('tinytex', lib='/opt/app-root/src/R/temp-library')" > /dev/null 2>&1 ; then
+        echo "Tinytex installation successful!"
+    else
+        echo "Error: Tinytex installation failed."
+	fi
+	for cmd in $$required_commands ; do
+		echo "=> Checking container image $$image for $$cmd..."
+		if $(KUBECTL_BIN) exec rstudio-pod which $$cmd > /dev/null 2>&1 ; then
+        	echo "$$cmd executed successfully!"
+		else
+        	echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd"
+			fail=1
+			continue
+		fi
+	done
+	echo "=> Fetching R script from URL and executing on the container..."
+	curl -sSL -o test_script.R "${NOTEBOOK_REPO_BRANCH_BASE}/rstudio/c9s-python-$(PYTHON_VERSION)/test/test_script.R" > /dev/null 2>&1
+	$(KUBECTL_BIN) cp test_script.R rstudio-pod:/opt/app-root/src/test_script.R > /dev/null 2>&1
+	if $(KUBECTL_BIN) exec rstudio-pod -- Rscript /opt/app-root/src/test_script.R > /dev/null 2>&1 ; then
+        echo "R script executed successfully!"
+		rm test_script.R
+	else
+        echo "Error: R script failed."
+		fail=1
+		continue
+	fi
 
 # This recipe used mainly from the Pipfile.locks Renewal Action
 # Default Python version
@@ -679,26 +679,26 @@ OPT_DIRS := jupyter/intel/ml/ubi9-python-$(PYTHON_VERSION) \
 .PHONY: refresh-pipfilelock-files
 refresh-pipfilelock-files:
 	@echo "Updating Pipfile.lock files for Python $(PYTHON_VERSION)"
-	@if [ "$(INCLUDE_OPT_DIRS)" = "true" ]; then \
-		echo "Including optional directories"; \
-		DIRS="$(BASE_DIRS) $(OPT_DIRS)"; \
-	else \
-		DIRS="$(BASE_DIRS)"; \
-	fi; \
-	for dir in $$DIRS; do \
-		echo "Processing directory: $$dir"; \
-		cd $(ROOT_DIR); \
-		if [ -d "$$dir" ]; then \
-			echo "Updating $(PYTHON_VERSION) Pipfile.lock in $$dir"; \
-			cd $$dir; \
-			if [ -f "Pipfile" ]; then \
-				pipenv lock; \
-			else \
-				echo "No Pipfile found in $$dir, skipping."; \
-			fi; \
-		else \
-			echo "Skipping $$dir as it does not exist"; \
-		fi; \
+	@if [ "$(INCLUDE_OPT_DIRS)" = "true" ]; then
+		echo "Including optional directories"
+		DIRS="$(BASE_DIRS) $(OPT_DIRS)"
+	else
+		DIRS="$(BASE_DIRS)"
+	fi
+	for dir in $$DIRS; do
+		echo "Processing directory: $$dir"
+		cd $(ROOT_DIR)
+		if [ -d "$$dir" ]; then
+			echo "Updating $(PYTHON_VERSION) Pipfile.lock in $$dir"
+			cd $$dir
+			if [ -f "Pipfile" ]; then
+				pipenv lock
+			else
+				echo "No Pipfile found in $$dir, skipping."
+			fi
+		else
+			echo "Skipping $$dir as it does not exist"
+		fi
 	done
 
 # This is only for the workflow action
