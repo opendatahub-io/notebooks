@@ -6,7 +6,8 @@ SELF ::= $(firstword $(MAKEFILE_LIST))
 SHELL := bash
 .ONESHELL:
 # http://redsymbol.net/articles/unofficial-bash-strict-mode/
-.SHELLFLAGS := -eu -o pipefail -c
+# https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
+.SHELLFLAGS := -Eeux -o pipefail -c
 .DELETE_ON_ERROR:
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
@@ -493,13 +494,11 @@ undeploy-c9s-%: bin/kubectl
 define test_with_papermill
 	$(eval PREFIX_NAME := $(subst /,-,$(1)_$(2))) \
 	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "python3 -m pip install papermill" ; \
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/$(1)/$(2)-$(3)/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb $(PREFIX_NAME)_output.ipynb --kernel python3 --stderr-file $(PREFIX_NAME)_error.txt" ; \
-    if [ $$? -ne 0 ]; then \
+	if ! $(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/$(1)/$(2)-$(3)/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb $(PREFIX_NAME)_output.ipynb --kernel python3 --stderr-file $(PREFIX_NAME)_error.txt" ; then \
 		echo "ERROR: The $(1) $(2) notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-$(1)-$(2)-$(3)-test-e2e' directory or run 'cat $(PREFIX_NAME)_error.txt' within your container. The make process has been aborted." ; \
 		exit 1 ; \
 	fi ; \
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_error.txt | grep --quiet FAILED" ; \
-	if [ $$? -eq 0 ]; then \
+	if $(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_error.txt | grep --quiet FAILED" ; then \
 		echo "ERROR: The $(1) $(2) notebook encountered a failure. The make process has been aborted." ; \
 		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_error.txt" ; \
 		exit 1 ; \
@@ -562,19 +561,17 @@ validate-runtime-image: bin/kubectl
 	fi ; \
 	for cmd in $$required_commands ; do \
 		echo "=> Checking container image $$image for $$cmd..." ; \
-		$(KUBECTL_BIN) exec runtime-pod which $$cmd > /dev/null 2>&1 ; \
-		if [ $$? -ne 0 ]; then \
+		if ! $(KUBECTL_BIN) exec runtime-pod which $$cmd > /dev/null 2>&1 ; then \
 			echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd" ; \
 			fail=1; \
 			continue; \
 		fi; \
 		if [ $$cmd == "python3" ]; then \
 			echo "=> Checking notebook execution..." ; \
-			$(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "curl https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/etc/generic/requirements-elyra.txt --output req.txt && \
-				python3 -m pip install -r req.txt > /dev/null && \
-				curl https://raw.githubusercontent.com/nteract/papermill/main/papermill/tests/notebooks/simple_execute.ipynb --output simple_execute.ipynb && \
-				python3 -m papermill simple_execute.ipynb output.ipynb > /dev/null" ; \
-			if [ $$? -ne 0 ]; then \
+			if ! $(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "curl https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/etc/generic/requirements-elyra.txt --output req.txt && \
+					python3 -m pip install -r req.txt > /dev/null && \
+					curl https://raw.githubusercontent.com/nteract/papermill/main/papermill/tests/notebooks/simple_execute.ipynb --output simple_execute.ipynb && \
+					python3 -m papermill simple_execute.ipynb output.ipynb > /dev/null" ; then \
 				echo "ERROR: Image does not meet Python requirements criteria in pipfile" ; \
 				fail=1; \
 			fi; \
@@ -599,8 +596,7 @@ validate-codeserver-image: bin/kubectl
 	fi ; \
 	for cmd in $$required_commands ; do \
 		echo "=> Checking container image $$image for $$cmd..." ; \
-		$(KUBECTL_BIN) exec codeserver-pod which $$cmd > /dev/null 2>&1 ; \
-		if [ $$? -ne 0 ]; then \
+		if ! $(KUBECTL_BIN) exec codeserver-pod which $$cmd > /dev/null 2>&1 ; then \
 			echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd" ; \
 			fail=1; \
 			continue; \
@@ -618,19 +614,17 @@ validate-rstudio-image: bin/kubectl
 		echo "Usage: make validate-rstudio-image image=<container-image-name>" ; \
 		exit 1 ; \
 	fi ; \
-	echo "=> Checking container image $$image for package intallation..." ; \
+	echo "=> Checking container image $$image for package installation..." ; \
 	$(KUBECTL_BIN) exec -it rstudio-pod -- mkdir -p /opt/app-root/src/R/temp-library > /dev/null 2>&1 ; \
-	$(KUBECTL_BIN) exec rstudio-pod -- R -e "install.packages('tinytex', lib='/opt/app-root/src/R/temp-library')" > /dev/null 2>&1 ; \
-	if [ $$? -eq 0 ]; then \
+	if $(KUBECTL_BIN) exec rstudio-pod -- R -e "install.packages('tinytex', lib='/opt/app-root/src/R/temp-library')" > /dev/null 2>&1 ; then \
         echo "Tinytex installation successful!"; \
     else \
         echo "Error: Tinytex installation failed."; \
 	fi; \
 	for cmd in $$required_commands ; do \
 		echo "=> Checking container image $$image for $$cmd..." ; \
-		$(KUBECTL_BIN) exec rstudio-pod which $$cmd > /dev/null 2>&1 ; \
-		if [ $$? -eq 0 ]; then \
-        	echo "$$cmd executed successfuly!"; \
+		if $(KUBECTL_BIN) exec rstudio-pod which $$cmd > /dev/null 2>&1 ; then \
+        	echo "$$cmd executed successfully!"; \
 		else \
         	echo "ERROR: Container image $$image  does not meet criteria for command: $$cmd" ; \
 			fail=1; \
@@ -640,8 +634,7 @@ validate-rstudio-image: bin/kubectl
 	echo "=> Fetching R script from URL and executing on the container..."; \
 	curl -sSL -o test_script.R "${NOTEBOOK_REPO_BRANCH_BASE}/rstudio/c9s-python-$(PYTHON_VERSION)/test/test_script.R" > /dev/null 2>&1 ; \
 	$(KUBECTL_BIN) cp test_script.R rstudio-pod:/opt/app-root/src/test_script.R > /dev/null 2>&1; \
-	$(KUBECTL_BIN) exec rstudio-pod -- Rscript /opt/app-root/src/test_script.R > /dev/null 2>&1 ; \
-	if [ $$? -eq 0 ]; then \
+	if $(KUBECTL_BIN) exec rstudio-pod -- Rscript /opt/app-root/src/test_script.R > /dev/null 2>&1 ; then \
         echo "R script executed successfully!"; \
 		rm test_script.R ; \
 	else \
