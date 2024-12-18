@@ -88,10 +88,10 @@ class SelfTests(unittest.TestCase):
                                       'codeserver/ubi9-python-3.9/run-code-server.sh'}
 
     def test_analyze_build_directories(self):
-        directories = analyze_build_directories("jupyter-intel-pytorch-ubi9-python-3.9")
-        assert set(directories) == {"base/ubi9-python-3.9",
-                                    "intel/base/gpu/ubi9-python-3.9",
-                                    "jupyter/intel/pytorch/ubi9-python-3.9"}
+        directories = analyze_build_directories("jupyter-intel-pytorch-ubi9-python-3.11")
+        assert set(directories) == {"base/ubi9-python-3.11",
+                                    "intel/base/gpu/ubi9-python-3.11",
+                                    "jupyter/intel/pytorch/ubi9-python-3.11"}
 
     def test_should_build_target(self):
         assert "" == should_build_target(["README.md"], ["jupyter/datascience/ubi9-python-3.11"])
