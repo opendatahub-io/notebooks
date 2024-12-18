@@ -580,16 +580,9 @@ BASE_DIRS := base/anaconda-python-$(PYTHON_VERSION) \
 		cuda/ubi9-python-$(PYTHON_VERSION) \
 		habana/1.10.0/ubi8-python-$(PYTHON_VERSION) \
 		habana/1.13.0/ubi8-python-$(PYTHON_VERSION) \
-		intel/base/gpu/ubi9-python-$(PYTHON_VERSION) \
-		intel/runtimes/ml/ubi9-python-$(PYTHON_VERSION) \
-		intel/runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		intel/runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/datascience/anaconda-python-$(PYTHON_VERSION) \
 		jupyter/datascience/ubi8-python-$(PYTHON_VERSION) \
 		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/intel/ml/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/intel/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/intel/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/minimal/ubi8-python-$(PYTHON_VERSION) \
 		jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
@@ -614,12 +607,13 @@ BASE_DIRS := base/anaconda-python-$(PYTHON_VERSION) \
 # Default value is false, can be overiden
 # The below directories are not supported on tier-1
 INCLUDE_OPT_DIRS ?= false
-OPT_DIRS := jupyter/intel/ml/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/intel/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/intel/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+OPT_DIRS := intel/base/gpu/ubi9-python-$(PYTHON_VERSION) \
 		intel/runtimes/ml/ubi9-python-$(PYTHON_VERSION) \
 		intel/runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		intel/runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION)
+		intel/runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/intel/ml/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/intel/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/intel/tensorflow/ubi9-python-$(PYTHON_VERSION)
 
 # This recipe gets args, can be used like
 # make refresh-pipfilelock-files PYTHON_VERSION=3.11 INCLUDE_OPT_DIRS=false
