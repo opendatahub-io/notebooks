@@ -568,24 +568,48 @@ validate-rstudio-image: bin/kubectl
 
 # This recipe used mainly from the Pipfile.locks Renewal Action
 # Default Python version
-PYTHON_VERSION ?= 3.11
+PYTHON_VERSION ?= 3.9
 ROOT_DIR := $(shell pwd)
-BASE_DIRS := base/c9s-python-$(PYTHON_VERSION) \
+BASE_DIRS := base/anaconda-python-$(PYTHON_VERSION) \
+		base/c9s-python-$(PYTHON_VERSION) \
+		base/ubi8-python-$(PYTHON_VERSION) \
 		base/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
+		codeserver/ubi9-python-$(PYTHON_VERSION) \
+		cuda/c9s-python-$(PYTHON_VERSION) \
+		cuda/ubi8-python-$(PYTHON_VERSION) \
+		cuda/ubi9-python-$(PYTHON_VERSION) \
+		habana/1.10.0/ubi8-python-$(PYTHON_VERSION) \
+		habana/1.13.0/ubi8-python-$(PYTHON_VERSION) \
+		intel/base/gpu/ubi9-python-$(PYTHON_VERSION) \
+		intel/runtimes/ml/ubi9-python-$(PYTHON_VERSION) \
+		intel/runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		intel/runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/datascience/anaconda-python-$(PYTHON_VERSION) \
+		jupyter/datascience/ubi8-python-$(PYTHON_VERSION) \
 		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/intel/ml/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/intel/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/intel/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/minimal/ubi8-python-$(PYTHON_VERSION) \
+		jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/trustyai/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		codeserver/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
+		rocm/ubi9-python-$(PYTHON_VERSION) \
+		rstudio/c9s-python-$(PYTHON_VERSION) \
+		rstudio/rhel9-python-3$(PYTHON_VERSION) \
+		runtimes/datascience/ubi8-python-$(PYTHON_VERSION) \
 		runtimes/datascience/ubi9-python-$(PYTHON_VERSION) \
+		runtimes/minimal/ubi8-python-$(PYTHON_VERSION) \
+		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
+		runtimes/pytorch/ubi8-python-$(PYTHON_VERSION) \
 		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION)
+		runtimes/tensorflow/ubi8-python-$(PYTHON_VERSION) \
+		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION)
 
 # Default value is false, can be overiden
 # The below directories are not supported on tier-1
