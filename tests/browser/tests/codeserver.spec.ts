@@ -79,6 +79,11 @@ test('use the terminal to run command', async ({codeServer, page}, testInfo) => 
     expect(await codeServer.isEditorVisible()).toBe(true)
   })
 
+  await test.step("should accept the workspace trust dialog", async () => {
+    await expect(page.getByText("Do you trust the authors of the files in this folder?")).toBeVisible()
+    await page.getByRole('button', { name: 'Yes, I trust the authors' }).click();
+  })
+
   await test.step("should show the Integrated Terminal", async () => {
     await codeServer.focusTerminal()
     expect(await page.isVisible("#terminal")).toBe(true)
