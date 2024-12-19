@@ -1,3 +1,18 @@
+# https://tech.davis-hansson.com/p/make/
+SHELL := bash
+# todo: do not set .ONESHELL: for now
+# http://redsymbol.net/articles/unofficial-bash-strict-mode/
+#.SHELLFLAGS := -eu -o pipefail -c
+.DELETE_ON_ERROR:
+MAKEFLAGS += --warn-undefined-variables
+MAKEFLAGS += --no-builtin-rules
+
+# todo: leave the default recipe prefix for now
+ifeq ($(origin .RECIPEPREFIX), undefined)
+  $(error This Make does not support .RECIPEPREFIX. Please use GNU Make 4.0 or later)
+endif
+.RECIPEPREFIX =
+
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
 RELEASE	 		 ?= 2024a
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
@@ -16,10 +31,13 @@ else
 	WHERE_WHICH ?= which
 endif
 
+# linux/amd64 or darwin/arm64
+OS_ARCH=$(shell go env GOOS)/$(shell go env GOARCH)
+
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
-NOTEBOOK_REPO_BRANCH_BASE ?= https://raw.githubusercontent.com/opendatahub-io/notebooks/main
+NOTEBOOK_REPO_BRANCH_BASE ?= https://raw.githubusercontent.com/opendatahub-io/notebooks/2024a
 REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
 REQUIRED_CODE_SERVER_IMAGE_COMMANDS="curl python oc code-server"
 REQUIRED_R_STUDIO_IMAGE_COMMANDS="curl python oc /usr/lib/rstudio-server/bin/rserver"
@@ -320,7 +338,7 @@ jupyter-datascience-anaconda-python-3.8: base-anaconda-python-3.8
 bin/kubectl:
 ifeq (,$(wildcard $(KUBECTL_BIN)))
 	@mkdir -p bin
-	@curl -sSL https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/linux/amd64/kubectl > \
+	@curl -sSL https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/$(OS_ARCH)/kubectl > \
 		$(KUBECTL_BIN)
 	@chmod +x $(KUBECTL_BIN)
 endif
