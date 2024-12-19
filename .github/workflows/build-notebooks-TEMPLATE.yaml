@@ -450,7 +450,7 @@ jobs:
       # we leave little free disk space after we mount LVM for podman storage
       # not enough to install playwright; running playwright in podman uses the space we have
       - name: Run Playwright tests
-        if: ${{ fromJson(inputs.github).event_name == 'pull_request' && contains(inputs.target, 'codeserver') }}
+        if: ${{ contains(inputs.target, 'codeserver') }}
         # --ipc=host because Microsoft says so in Playwright docs
         # --net=host because testcontainers connects to the Reaper container's exposed port
         # we need to pass through the relevant environment variables
