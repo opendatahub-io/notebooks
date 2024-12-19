@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import logging
 import pathlib
+import shutil
 import subprocess
 import tomllib
 from typing import TYPE_CHECKING
@@ -11,7 +12,7 @@ if TYPE_CHECKING:
     import pytest_subtests
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent
-
+MAKE = shutil.which("gmake") or shutil.which("make")
 
 def test_image_pipfiles(subtests: pytest_subtests.plugin.SubTests):
     for file in PROJECT_ROOT.glob("**/Pipfile"):
@@ -59,7 +60,7 @@ def dryrun_make(make_args: list[str], env: dict[str, str] | None = None) -> list
 
     try:
         logging.info(f"Running make in --just-print mode for target(s) {make_args} with env {env}")
-        lines = subprocess.check_output(["make", "--just-print", *make_args], encoding="utf-8",
+        lines = subprocess.check_output([MAKE, "--just-print", *make_args], encoding="utf-8",
                                         env={**os.environ, **env},
                                         cwd=PROJECT_ROOT).splitlines()
         for line in lines:
