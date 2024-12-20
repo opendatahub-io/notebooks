@@ -14,7 +14,7 @@ name = "pytorch"
 # PyTorch packages
 torch = {version = "~=2.2.1", index = "pytorch"}
 # TrustyAI packages
-transformers = "~=4.36.2"
+transformers = "~=4.38.0"
 datasets = "~=2.21.0"
 accelerate = "~=0.34.2"
 trustyai = "~=0.6.1"
@@ -30,7 +30,8 @@ scikit-learn = "~=1.2.1" # Should be pinned down to this version in order to be 
 scipy = "~=1.14.1"
 skl2onnx = "~=1.17.0"
 onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
-codeflare-sdk = "~=0.24.0"
+codeflare-sdk = "~=0.24.3"
+kubeflow-training = {extras = ["huggingface"], version = "==1.8.1"}
 
 # DB connectors
 pymongo = "~=4.8.0"
