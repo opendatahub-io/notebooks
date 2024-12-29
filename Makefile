@@ -42,6 +42,8 @@ OS_ARCH=$(shell go env GOOS)/$(shell go env GOARCH)
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
+YQ_BIN      ?= bin/yq
+YQ_VERSION  ?= v4.44.6
 NOTEBOOK_REPO_BRANCH_BASE ?= https://raw.githubusercontent.com/opendatahub-io/notebooks/main
 REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
 REQUIRED_CODE_SERVER_IMAGE_COMMANDS="curl python oc code-server"
@@ -285,8 +287,19 @@ ifeq (,$(wildcard $(KUBECTL_BIN)))
 	@chmod +x $(KUBECTL_BIN)
 endif
 
+# Download yq binary
+.PHONY: bin/yq
+bin/yq:
+	$(eval YQ_RELEASE_FILE := yq_$(subst /,_,$(OS_ARCH)))
+ifeq (,$(wildcard $(YQ_BIN)))
+	@mkdir -p bin
+	@curl -sSL https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/${YQ_RELEASE_FILE} > \
+		$(YQ_BIN)
+	@chmod +x $(YQ_BIN)
+endif
+
 .PHONY: deploy9
-deploy9-%: bin/kubectl
+deploy9-%: bin/kubectl bin/yq
 	$(eval TARGET := $(shell echo $* | sed 's/-ubi9-python.*//'))
 	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
@@ -294,8 +307,8 @@ ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
 endif
 	$(info # Deploying notebook from $(NOTEBOOK_DIR) directory...)
-	@sed -i 's,newName: .*,newName: $(IMAGE_REGISTRY),g' $(NOTEBOOK_DIR)/kustomization.yaml
-	@sed -i 's,newTag: .*,newTag: $(NOTEBOOK_TAG),g' $(NOTEBOOK_DIR)/kustomization.yaml
+	@arg=$(IMAGE_REGISTRY) $(YQ_BIN) e -i '.images[].newName = strenv(arg)' $(NOTEBOOK_DIR)/kustomization.yaml
+	@arg=$(NOTEBOOK_TAG) $(YQ_BIN) e -i '.images[].newTag = strenv(arg)' $(NOTEBOOK_DIR)/kustomization.yaml
 	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
 
 .PHONY: undeploy9
@@ -307,7 +320,7 @@ undeploy9-%: bin/kubectl
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
 .PHONY: deploy-c9s
-deploy-c9s-%: bin/kubectl
+deploy-c9s-%: bin/kubectl bin/yq
 	$(eval TARGET := $(shell echo $* | sed 's/-c9s-python.*//'))
 	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/c9s-python-$(PYTHON_VERSION)/kustomize/base)
@@ -315,8 +328,8 @@ ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
 endif
 	$(info # Deploying notebook from $(NOTEBOOK_DIR) directory...)
-	@sed -i 's,newName: .*,newName: $(IMAGE_REGISTRY),g' $(NOTEBOOK_DIR)/kustomization.yaml
-	@sed -i 's,newTag: .*,newTag: $(NOTEBOOK_TAG),g' $(NOTEBOOK_DIR)/kustomization.yaml
+	@arg=$(IMAGE_REGISTRY) $(YQ_BIN) e -i '.images[].newName = strenv(arg)' $(NOTEBOOK_DIR)/kustomization.yaml
+	@arg=$(NOTEBOOK_TAG) $(YQ_BIN) e -i '.images[].newTag = strenv(arg)' $(NOTEBOOK_DIR)/kustomization.yaml
 	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
 
 .PHONY: undeploy-c9s
