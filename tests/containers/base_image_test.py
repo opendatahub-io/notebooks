@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import functools
 import logging
 import pathlib
 import tempfile
+import urllib.error
+import urllib.request
 from typing import TYPE_CHECKING
 
 import testcontainers.core.container
@@ -19,6 +22,19 @@ if TYPE_CHECKING:
 
 class TestBaseImage:
     """Tests that are applicable for all images we have in this repository."""
+
+    # actually, this does not work for base images ;(
+    def test_image_entrypoint_starts(self, image: str) -> None:
+        container = WorkbenchContainer(image=image, user=123456, group_add=[0], sysctls={"net.ipv6.conf.all.disable_ipv6": "1"})
+
+        try:
+            container.start()
+            stdout, stderr = container.get_logs()
+            for line in stdout.splitlines() + stderr.splitlines():
+                logging.debug(line)
+
+        finally:
+            docker_utils.NotebookContainer(container).stop(timeout=0)
 
     def test_oc_command_runs(self, image: str):
         container = testcontainers.core.container.DockerContainer(image=image, user=123456, group_add=[0])
@@ -78,3 +94,37 @@ class TestBaseImage:
                     assert ecode == 0, output.decode()
             finally:
                 docker_utils.NotebookContainer(container).stop(timeout=0)
+
+
+class WorkbenchContainer(testcontainers.core.container.DockerContainer):
+    @functools.wraps(testcontainers.core.container.DockerContainer.__init__)
+    def __init__(
+            self,
+            port: int = 8888,
+            **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+
+        self.port = port
+        self.with_exposed_ports(self.port)
+
+    @testcontainers.core.waiting_utils.wait_container_is_ready(urllib.error.URLError)
+    def _connect(self) -> None:
+        # connect
+        try:
+            result = urllib.request.urlopen(
+                urllib.request.Request(f"http://{self.get_container_host_ip()}:{self.get_exposed_port(self.port)}"),
+                timeout=1)
+        except urllib.error.URLError as e:
+            raise e
+        # get /
+        try:
+            if result.status != 200:
+                raise (ConnectionError("Failed to connect to container"))
+        finally:
+            result.close()
+
+    def start(self):
+        super().start()
+        self._connect()
+        return self
