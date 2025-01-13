@@ -26,13 +26,14 @@ class TestBaseImage:
     # actually, this does not work for base images ;(
     def test_image_entrypoint_starts(self, image: str) -> None:
         container = WorkbenchContainer(image=image, user=123456, group_add=[0], sysctls={"net.ipv6.conf.all.disable_ipv6": "1"})
-
         try:
-            container.start()
-            stdout, stderr = container.get_logs()
-            for line in stdout.splitlines() + stderr.splitlines():
-                logging.debug(line)
-
+            try:
+                container.start()
+            finally:
+                # try to grab logs regardless of whether container started or not
+                stdout, stderr = container.get_logs()
+                for line in stdout.splitlines() + stderr.splitlines():
+                    logging.debug(line)
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
