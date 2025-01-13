@@ -296,7 +296,7 @@ jobs:
             if podman pull --retry 10 "${RYUK_CONTAINER_IMAGE}"; then break; fi
           done
           # now run the tests
-          poetry run pytest tests/containers --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          poetry run pytest --capture=fd tests/containers --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
