@@ -36,8 +36,20 @@ class TestBaseImage:
     def test_image_entrypoint_starts(self, image: str, sysctls) -> None:
         skip_if_not_ide_image(image)
 
-        container = WorkbenchContainer(image=image, user=123456, group_add=[0],
-                                       sysctls=sysctls)
+        container = WorkbenchContainer(image=image, user=1000, group_add=[0],
+                                       sysctls=sysctls,
+                                       # because rstudio only prints out errors when TTY is present
+                                       # > TTY detected. Printing informational message about logging configuration.
+                                       tty=True,
+                                       # another rstudio speciality, without this, it gives
+                                       # > system error 13 (Permission denied) [path: /opt/app-root/src/.cache/rstudio
+                                       # equivalent podman command may include
+                                       # > --mount type=tmpfs,dst=/opt/app-root/src,notmpcopyup
+                                       # can't use mounts= because testcontainers already sets volumes=
+                                       # mounts=[docker.types.Mount(target="/opt/app-root/src/", source="", type="volume", no_copy=True)],
+                                       # can use tmpfs=, keep in mind `notmpcopyup` opt is podman specific
+                                       tmpfs={"/opt/app-root/src": "rw,notmpcopyup"},
+        )
         try:
             try:
                 container.start()
@@ -123,22 +135,35 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
 
     @testcontainers.core.waiting_utils.wait_container_is_ready(urllib.error.URLError)
     def _connect(self) -> None:
+        # are we still alive?
+        self.get_wrapped_container().reload()
+        assert self.get_wrapped_container().status != "exited"
+
         # connect
         try:
             result = urllib.request.urlopen(
                 urllib.request.Request(f"http://{self.get_container_host_ip()}:{self.get_exposed_port(self.port)}"),
                 timeout=1)
+        except urllib.error.HTTPError as e:
+            if e.code == 302:
+                # redirect is good too
+                return
+            raise e
         except urllib.error.URLError as e:
             raise e
+
         # get /
         try:
             if result.status != 200:
-                raise (ConnectionError("Failed to connect to container"))
+                raise (ConnectionError(f"Failed to connect to container, {result.status=}"))
         finally:
             result.close()
 
     def start(self):
         super().start()
+        container_id = self.get_wrapped_container().id
+        docker_client = testcontainers.core.container.DockerClient().client
+        logging.debug(docker_client.api.inspect_container(container_id)['HostConfig'])
         self._connect()
         return self
 
