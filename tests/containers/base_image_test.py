@@ -8,8 +8,14 @@ import urllib.error
 import urllib.request
 from typing import TYPE_CHECKING
 
+import docker.client
+import docker.errors
+import docker.models.images
+
 import testcontainers.core.container
 import testcontainers.core.waiting_utils
+
+import pytest
 
 from tests.containers import docker_utils
 
@@ -23,9 +29,15 @@ if TYPE_CHECKING:
 class TestBaseImage:
     """Tests that are applicable for all images we have in this repository."""
 
-    # actually, this does not work for base images ;(
-    def test_image_entrypoint_starts(self, image: str) -> None:
-        container = WorkbenchContainer(image=image, user=123456, group_add=[0], sysctls={"net.ipv6.conf.all.disable_ipv6": "1"})
+    @pytest.mark.parametrize('sysctls', [
+        {},
+        {"net.ipv6.conf.all.disable_ipv6": "1"}
+    ])
+    def test_image_entrypoint_starts(self, image: str, sysctls) -> None:
+        skip_if_not_ide_image(image)
+
+        container = WorkbenchContainer(image=image, user=123456, group_add=[0],
+                                       sysctls=sysctls)
         try:
             try:
                 container.start()
@@ -129,3 +141,19 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         super().start()
         self._connect()
         return self
+
+
+def skip_if_not_ide_image(image: str) -> docker.models.images.Image:
+    client = testcontainers.core.container.DockerClient()
+    try:
+        image_metadata = client.client.images.get(image)
+    except docker.errors.ImageNotFound:
+        image_metadata = client.client.images.pull(image)
+        assert isinstance(image_metadata, docker.models.images.Image)
+
+    ide_server_label_fragments = ('-code-server-', '-jupyter-', '-rstudio-')
+    if not any(ide in image_metadata.labels['name'] for ide in ide_server_label_fragments):
+        pytest.skip(
+            f"Image {image} does not have any of '{ide_server_label_fragments=} in {image_metadata.labels['name']=}'")
+
+    return image_metadata
