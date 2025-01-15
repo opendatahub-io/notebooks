@@ -69,7 +69,8 @@ RUN chmod 1777 /var/run/rstudio-server && \
 COPY rstudio/rhel9-python-3.11/rsession.conf /etc/rstudio/rsession.conf
 
 # package installation
-RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" \
+# install necessary texlive-framed package to make Knit R markup to PDF rendering possible
+RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed \
     && dnf clean all && rm -rf /var/cache/yum
 # Install R packages
 RUN R -e "install.packages('Rcpp')"
