@@ -1,6 +1,8 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG SOURCE_CODE=intel/runtimes/pytorch/ubi9-python-3.11
+
 LABEL name="odh-notebook-intel-runtime-pytorch-ubi9-python-3.11" \
     summary="Runtime Intel® optimized pytorch notebook image for ODH notebooks" \
     description="Runtime Intel® optimized pytorch notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
@@ -14,7 +16,7 @@ LABEL name="odh-notebook-intel-runtime-pytorch-ubi9-python-3.11" \
 USER root
 
 ARG ONEAPI_VERSION=2024.0
-COPY oneAPI.repo /etc/yum.repos.d/oneAPI.repo
+COPY ${SOURCE_CODE}/oneAPI.repo /etc/yum.repos.d/oneAPI.repo
 
 RUN dnf update -y && \
     dnf install -y intel-oneapi-compiler-dpcpp-cpp-runtime-${ONEAPI_VERSION} \
@@ -29,10 +31,10 @@ USER 1001
 WORKDIR /opt/app-root/bin
 
 # Install Python packages from Pipfile.lock
-COPY Pipfile.lock.gpu Pipfile.lock
+COPY ${SOURCE_CODE}/Pipfile.lock.gpu Pipfile.lock
 
 # Copy Elyra dependencies for air-gapped enviroment
-COPY utils utils
+COPY ${SOURCE_CODE}/utils utils
 
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \
@@ -44,7 +46,7 @@ RUN echo "Installing softwares and packages" && \
 ENV CPU_ENV=/opt/app-root-cpu
 ENV GPU_ENV=/opt/app-root
 
-COPY --chown=1001:0 Pipfile.lock.cpu ${CPU_ENV}/Pipfile.lock
+COPY --chown=1001:0 ${SOURCE_CODE}/Pipfile.lock.cpu ${CPU_ENV}/Pipfile.lock
 
 #CPU env
 WORKDIR ${CPU_ENV}

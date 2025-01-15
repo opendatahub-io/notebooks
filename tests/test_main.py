@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import logging
 import pathlib
+import shutil
 import subprocess
 import tomllib
 from typing import TYPE_CHECKING
@@ -11,11 +12,12 @@ if TYPE_CHECKING:
     import pytest_subtests
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent
-
+MAKE = shutil.which("gmake") or shutil.which("make")
 
 def test_image_pipfiles(subtests: pytest_subtests.plugin.SubTests):
     for file in PROJECT_ROOT.glob("**/Pipfile"):
         with subtests.test(msg="checking Pipfile", pipfile=file):
+            print(file)
             directory = file.parent  # "ubi9-python-3.9"
             ubi, lang, python = directory.name.split("-")
 
@@ -28,8 +30,8 @@ def test_image_pipfiles(subtests: pytest_subtests.plugin.SubTests):
 def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.SubTests):
     file_groups = {
         "ROCm de-vendor script":
-            [PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.9/de-vendor-torch.sh",
-             PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.9/de-vendor-torch.sh"]
+            [PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.11/de-vendor-torch.sh",
+             PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.11/de-vendor-torch.sh"]
     }
     for group_name, (first_file, *rest) in file_groups.items():
         with subtests.test(msg=f"Checking {group_name}"):
@@ -38,7 +40,7 @@ def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.Sub
 
 
 def test_make_building_only_specified_images(subtests: pytest_subtests.plugin.SubTests):
-    for goals in (["rocm-jupyter-tensorflow-ubi9-python-3.9"], ["rocm-jupyter-tensorflow-ubi9-python-3.9", "base-ubi9-python-3.9"]):
+    for goals in (["rocm-jupyter-tensorflow-ubi9-python-3.11"], ["rocm-jupyter-tensorflow-ubi9-python-3.11", "base-ubi9-python-3.11"]):
         with subtests.test(msg="Running goals", goals=goals):
             lines = dryrun_make(goals, env={"BUILD_DEPENDENT_IMAGES": "no"})
             builds_number = 0
@@ -49,7 +51,7 @@ def test_make_building_only_specified_images(subtests: pytest_subtests.plugin.Su
 
 
 def test_make_disable_pushing():
-    lines = dryrun_make(["rocm-jupyter-tensorflow-ubi9-python-3.9"], env={"PUSH_IMAGES": ""})
+    lines = dryrun_make(["rocm-jupyter-tensorflow-ubi9-python-3.11"], env={"PUSH_IMAGES": ""})
     for line in lines:
         assert "podman push" not in line
 
@@ -59,7 +61,7 @@ def dryrun_make(make_args: list[str], env: dict[str, str] | None = None) -> list
 
     try:
         logging.info(f"Running make in --just-print mode for target(s) {make_args} with env {env}")
-        lines = subprocess.check_output(["make", "--just-print", *make_args], encoding="utf-8",
+        lines = subprocess.check_output([MAKE, "--just-print", *make_args], encoding="utf-8",
                                         env={**os.environ, **env},
                                         cwd=PROJECT_ROOT).splitlines()
         for line in lines:
