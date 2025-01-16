@@ -39,12 +39,21 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      - run: mkdir -p $TMPDIR
+
+      # for bin/buildinputs in scripts/sandbox.py
+      - uses: actions/setup-go@v5
+        with:
+          cache-dependency-path: "**/*.sum"
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      # region Free up disk space
 
       - name: Free up additional disk space
         # https://docs.github.com/en/actions/learn-github-actions/expressions
@@ -85,6 +94,10 @@ jobs:
 
           df -h
           free -h
+
+      # endregion
+
+      # region Podman setup
 
       # https://github.com/containers/buildah/issues/2521#issuecomment-884779112
       - name: Workaround https://github.com/containers/podman/issues/22152#issuecomment-2027705598
@@ -156,6 +169,10 @@ jobs:
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           echo "OUTPUT_IMAGE=${{ env.IMAGE_REGISTRY}}:${{ inputs.target }}-${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
 
+      # endregion
+
+      # region Trivy init & DB pre-pull
+
       - name: "pull_request|schedule: resolve target if Trivy scan should run"
         id: resolve-target
         if: ${{ fromJson(inputs.github).event_name == 'pull_request' || fromJson(inputs.github).event_name == 'schedule' }}
@@ -210,6 +227,10 @@ jobs:
               image \
               --download-java-db-only
 
+      # endregion
+
+      # region Image build
+
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
       - name: "push|schedule: make ${{ inputs.target }}"
         run: |
@@ -235,9 +256,33 @@ jobs:
       - name: "Show podman images information"
         run: podman images --digests
 
+      # endregion
+
+      # region Makefile image tests
+
       - name: "Check if we have tests or not"
         id: have-tests
         run: "ci/cached-builds/has_tests.py --target ${{ inputs.target }}"
+
+      - name: "Change pull policy to IfNotPresent"
+        run: |
+          set -Eeuxo pipefail
+
+          find . \( -name "statefulset.yaml" -o -name "pod.yaml" \) -type f -exec \
+            sed -i'' 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/g' {} \;
+          git diff
+
+      # [INFO] Running command (('make deploy9-runtimes-rocm-tensorflow-ubi9-python-3.11',), {'shell': True})
+      # Deploying notebook from runtimes/rocm/tensorflow/ubi9-python-3.11/kustomize/base directory...
+      # sed: can't read runtimes/rocm/tensorflow/ubi9-python-3.11/kustomize/base/kustomization.yaml: No such file or directory
+      - name: "Fixup paths that prevent us from running rocm tests"
+        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        run: |
+          set -Eeuxo pipefail
+
+          mkdir -p runtimes/rocm
+          ln -s ../rocm-tensorflow runtimes/rocm/tensorflow
+          ln -s ../rocm-pytorch runtimes/rocm/pytorch
 
       # https://cri-o.io/
       - name: Install cri-o
@@ -288,11 +333,11 @@ jobs:
 
       # do this early, it's a good check that cri-o is not completely broken
       - name: "Show crio images information"
-        if: ${{ steps.have-tests.outputs.tests == 'true'  }}
+        if: ${{ steps.have-tests.outputs.tests == 'true' }}
         run: sudo crictl images
 
       - name: Install Kubernetes cluster
-        if: ${{ steps.have-tests.outputs.tests == 'true'  }}
+        if: ${{ steps.have-tests.outputs.tests == 'true' }}
         run: |
           set -Eeuxo pipefail
 
@@ -350,6 +395,18 @@ jobs:
           kubectl wait deployments --all --all-namespaces --for=condition=Available --timeout=100s
           kubectl wait pods --all --all-namespaces --for=condition=Ready --timeout=100s
 
+      - name: "Run image tests"
+        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        run: python3 ci/cached-builds/make_test.py --target ${{ inputs.target }}
+        env:
+          IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
+          # for make deploy, mandatory to specify for the more exotic cases
+          NOTEBOOK_TAG: "${{ inputs.target }}-${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
+
+      # endregion
+
+      # region Trivy vulnerability scan
+
       - name: Run Trivy vulnerability scanner
         if: ${{ steps.resolve-target.outputs.target }}
         run: |
@@ -391,12 +448,16 @@ jobs:
 
           cat $REPORT_FOLDER/$REPORT_FILE >> $GITHUB_STEP_SUMMARY
 
+      # endregion
+
+      # region Typescript (browser) image tests
+
       # https://playwright.dev/docs/ci
       # https://playwright.dev/docs/docker
       # we leave little free disk space after we mount LVM for podman storage
       # not enough to install playwright; running playwright in podman uses the space we have
       - name: Run Playwright tests
-        if: ${{ fromJson(inputs.github).event_name == 'pull_request' && contains(inputs.target, 'codeserver') }}
+        if: ${{ contains(inputs.target, 'codeserver') }}
         # --ipc=host because Microsoft says so in Playwright docs
         # --net=host because testcontainers connects to the Reaper container's exposed port
         # we need to pass through the relevant environment variables
@@ -435,6 +496,8 @@ jobs:
           name: "${{ inputs.target }}_playwright-report"
           path: tests/browser/playwright-report/
           retention-days: 30
+
+      # endregion
 
       - run: df -h
         if: "${{ !cancelled() }}"

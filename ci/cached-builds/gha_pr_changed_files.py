@@ -1,11 +1,14 @@
+import json
 import logging
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import unittest
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent.parent.resolve()
+MAKE = shutil.which("gmake") or shutil.which("make")
 
 
 def get_github_token() -> str:
@@ -30,7 +33,7 @@ def analyze_build_directories(make_target) -> list[str]:
     pattern = re.compile(r"#\*# Image build directory: <(?P<dir>[^>]+)> #\(MACHINE-PARSED LINE\)#\*#\.\.\.")
     try:
         logging.debug(f"Running make in --just-print mode for target {make_target}")
-        for line in subprocess.check_output(["make", make_target, "--just-print"], encoding="utf-8",
+        for line in subprocess.check_output([MAKE, make_target, "--just-print"], encoding="utf-8",
                                             cwd=PROJECT_ROOT).splitlines():
             if m := pattern.match(line):
                 directories.append(m["dir"])
@@ -46,9 +49,22 @@ def should_build_target(changed_files: list[str], target_directories: list[str])
     """Returns truthy if there is at least one changed file necessitating a build.
     Falsy (empty) string is returned otherwise."""
     for directory in target_directories:
+        # detect change in the Dockerfile directory
         for changed_file in changed_files:
             if changed_file.startswith(directory):
                 return changed_file
+        # detect change in any of the files outside
+        stdout = subprocess.check_output([PROJECT_ROOT / "bin/buildinputs", directory + "/Dockerfile"],
+                                         text=True, cwd=PROJECT_ROOT)
+        logging.debug(f"{directory=} {stdout=}")
+        if stdout == "\n":
+            # no dependencies
+            continue
+        dependencies: list[str] = json.loads(stdout)
+        for dependency in dependencies:
+            for changed_file in changed_files:
+                if changed_file.startswith(dependency):
+                    return changed_file
     return ""
 
 
@@ -72,7 +88,10 @@ class SelfTests(unittest.TestCase):
                                       'codeserver/ubi9-python-3.9/run-code-server.sh'}
 
     def test_analyze_build_directories(self):
-        directories = analyze_build_directories("jupyter-intel-pytorch-ubi9-python-3.9")
-        assert set(directories) == {"base/ubi9-python-3.9",
-                                    "intel/base/gpu/ubi9-python-3.9",
-                                    "jupyter/intel/pytorch/ubi9-python-3.9"}
+        directories = analyze_build_directories("jupyter-intel-pytorch-ubi9-python-3.11")
+        assert set(directories) == {"base/ubi9-python-3.11",
+                                    "intel/base/gpu/ubi9-python-3.11",
+                                    "jupyter/intel/pytorch/ubi9-python-3.11"}
+
+    def test_should_build_target(self):
+        assert "" == should_build_target(["README.md"], ["jupyter/datascience/ubi9-python-3.11"])

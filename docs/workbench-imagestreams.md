@@ -63,7 +63,7 @@ metadata:
     opendatahub.io/notebook-image-name: "Example Jupyter Notebook"
     opendatahub.io/notebook-image-desc: "Exemplary Jupyter notebook image just for demonstrative purposes"
     opendatahub.io/notebook-image-order: "1"
-    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu", "habana.com/gen1"]'
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu", "amd.com/gpu"]'
   name: example-jupyter-notebook
 spec:
   lookupPolicy:
