@@ -1,6 +1,9 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG REUSABLE_UTILS=jupyter/utils
+ARG SOURCE_CODE=jupyter/minimal/ubi9-python-3.11
+
 LABEL name="odh-notebook-jupyter-minimal-ubi9-python-3.11" \
     summary="Minimal Jupyter notebook image for ODH notebooks" \
     description="Minimal Jupyter notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
@@ -13,9 +16,9 @@ LABEL name="odh-notebook-jupyter-minimal-ubi9-python-3.11" \
 
 WORKDIR /opt/app-root/bin
 
-COPY utils utils/
+COPY ${REUSABLE_UTILS} utils/
 
-COPY Pipfile.lock start-notebook.sh ./
+COPY ${SOURCE_CODE}/Pipfile.lock ${SOURCE_CODE}/start-notebook.sh ./
 
 # Install Python dependencies from Pipfile.lock file
 RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock && \
@@ -33,4 +36,3 @@ WORKDIR /opt/app-root/src
 RUN sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
 
 ENTRYPOINT ["start-notebook.sh"]
-

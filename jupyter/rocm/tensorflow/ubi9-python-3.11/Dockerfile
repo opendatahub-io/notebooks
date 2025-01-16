@@ -1,6 +1,8 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+ARG SOURCE_CODE=jupyter/rocm/tensorflow/ubi9-python-3.11
+
 LABEL name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11" \
     summary="Jupyter AMD tensorflow notebook image for ODH notebooks" \
     description="Jupyter AMD tensorflow notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
@@ -12,11 +14,11 @@ LABEL name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:rocm-jupyter-tensorflow-ubi9-python-3.11"
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY Pipfile.lock ./
+COPY ${SOURCE_CODE}/Pipfile.lock ./
 
 # Temporary:Workaround for fixing the kfp-kubernetes 1.0.0 for elyra pipeline execution
 # TODO: Remove this patch once the issue is fixed with kfp-kubernetes upgrade.
-COPY utils ./utils/
+COPY ${SOURCE_CODE}/utils ./utils/
 RUN patch /opt/app-root/lib/python3.11/site-packages/elyra/templates/kubeflow/v2/python_dsl_template.jinja2 -i utils/python_dsl_template.patch && \
     echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
