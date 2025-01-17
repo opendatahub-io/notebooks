@@ -263,7 +263,7 @@ spec:
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       runAfter:
-      - build-container-chain-base
+      - prefetch-dependencies
       taskRef:
         params:
         - name: name
