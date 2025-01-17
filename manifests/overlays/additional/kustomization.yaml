@@ -4,9 +4,6 @@ kind: Kustomization
 
 resources:
   - ../../base
-  - jupyter-intel-ml-notebook-imagestream.yaml
-  - jupyter-intel-pytorch-notebook-imagestream.yaml
-  - jupyter-intel-tensorflow-notebook-imagestream.yaml
 
 commonLabels:
   opendatahub.io/component: "true"

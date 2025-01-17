@@ -57,7 +57,7 @@ jobs:
 
       - name: Free up additional disk space
         # https://docs.github.com/en/actions/learn-github-actions/expressions
-        if: "${{ contains(inputs.target, 'rocm') || contains(inputs.target, 'cuda') || contains(inputs.target, 'intel') ||
+        if: "${{ contains(inputs.target, 'rocm') || contains(inputs.target, 'cuda') ||
          contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') }}"
         run: |
           set -x
