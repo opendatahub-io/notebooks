@@ -188,41 +188,6 @@ runtime-cuda-tensorflow-ubi9-python-3.11: cuda-ubi9-python-3.11
 codeserver-ubi9-python-3.11: base-ubi9-python-3.11
 	$(call image,$@,codeserver/ubi9-python-3.11,$<)
 
-# Build and push base-anaconda-python-3.11-intel-gpu image to the registry
-.PHONY: intel-base-gpu-ubi9-python-3.11
-intel-base-gpu-ubi9-python-3.11: base-ubi9-python-3.11
-	$(call image,$@,intel/base/gpu/ubi9-python-3.11,$<)
-
-# Build and push intel-runtime-tensorflow-ubi9-python-3.11 image to the registry
-.PHONY: intel-runtime-tensorflow-ubi9-python-3.11
-intel-runtime-tensorflow-ubi9-python-3.11: intel-base-gpu-ubi9-python-3.11
-	$(call image,$@,intel/runtimes/tensorflow/ubi9-python-3.11,$<)
-
-# Build and push jupyter-intel-tensorflow-ubi9-python-3.11 image to the registry
-.PHONY: jupyter-intel-tensorflow-ubi9-python-3.11
-jupyter-intel-tensorflow-ubi9-python-3.11: intel-base-gpu-ubi9-python-3.11
-	$(call image,$@,jupyter/intel/tensorflow/ubi9-python-3.11,$<)
-
-# Build and push intel-runtime-pytorch-ubi9-python-3.11 image to the registry
-.PHONY: intel-runtime-pytorch-ubi9-python-3.11
-intel-runtime-pytorch-ubi9-python-3.11: intel-base-gpu-ubi9-python-3.11
-	$(call image,$@,intel/runtimes/pytorch/ubi9-python-3.11,$<)
-
-# Build and push jupyter-intel-pytorch-ubi9-python-3.11 image to the registry
-.PHONY: jupyter-intel-pytorch-ubi9-python-3.11
-jupyter-intel-pytorch-ubi9-python-3.11: intel-base-gpu-ubi9-python-3.11
-	$(call image,$@,jupyter/intel/pytorch/ubi9-python-3.11,$<)
-
-# Build and push intel-runtime-ml-ubi9-python-3.11 image to the registry
-.PHONY: intel-runtime-ml-ubi9-python-3.11
-intel-runtime-ml-ubi9-python-3.11: base-ubi9-python-3.11
-	$(call image,$@,intel/runtimes/ml/ubi9-python-3.11,$<)
-
-# Build and push jupyter-intel-ml-ubi9-python-3.11 image to the registry
-.PHONY: jupyter-intel-ml-ubi9-python-3.11
-jupyter-intel-ml-ubi9-python-3.11: base-ubi9-python-3.11
-	$(call image,$@,jupyter/intel/ml/ubi9-python-3.11,$<)
-
 ####################################### Buildchain for Python 3.11 using C9S #######################################
 
 # Build and push base-c9s-python-3.11 image to the registry
@@ -469,12 +434,7 @@ BASE_DIRS := base/c9s-python-$(PYTHON_VERSION) \
 # Default value is false, can be overiden
 # The below directories are not supported on tier-1
 INCLUDE_OPT_DIRS ?= false
-OPT_DIRS := jupyter/intel/ml/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/intel/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/intel/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		intel/runtimes/ml/ubi9-python-$(PYTHON_VERSION) \
-		intel/runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		intel/runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION)
+OPT_DIRS :=
 
 # This recipe gets args, can be used like
 # make refresh-pipfilelock-files PYTHON_VERSION=3.11 INCLUDE_OPT_DIRS=false
