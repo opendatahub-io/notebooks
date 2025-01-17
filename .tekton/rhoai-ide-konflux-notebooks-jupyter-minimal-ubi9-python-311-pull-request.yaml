@@ -253,7 +253,8 @@ spec:
         value: $(tasks.clone-repository.results.commit)
       - name: BUILD_ARGS
         value:
-        - "--build-arg BASE_IMAGE=$(tasks.build-container-chain-base.results.IMAGE_URL)@$(tasks.build-container-chain-base.results.IMAGE_DIGEST)"
+        - "BASE_IMAGE=$(tasks.build-container-chain-base.results.IMAGE_REF)"
+        #- "BASE_IMAGE=$(tasks.build-container-chain-base.results.IMAGE_URL)@$(tasks.build-container-chain-base.results.IMAGE_DIGEST)"
       - name: BUILD_ARGS_FILE
         value: $(params.build-args-file)
       - name: SOURCE_ARTIFACT
