@@ -32,7 +32,9 @@ spec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
 
-      _Uses `buildah` to create a container image leveraging [trusted artifacts](https://konflux-ci.dev/architecture/ADR/0036-trusted-artifacts.html). It also optionally creates a source image and runs some build-time tests. Information is shared between tasks using OCI artifacts instead of PVCs. EC will pass the [`trusted_task.trusted`](https://enterprisecontract.dev/docs/ec-policies/release_policy.html#trusted_task__trusted) policy as long as all data used to build the artifact is generated from trusted tasks.
+      _Uses `buildah` to create a container image leveraging [trusted artifacts](https://konflux-ci.dev/architecture/ADR/0036-trusted-artifacts.html).
+      It also optionally creates a source image and runs some build-time tests. Information is shared between tasks using OCI artifacts instead of PVCs.
+      EC will pass the [`trusted_task.trusted`](https://enterprisecontract.dev/docs/ec-policies/release_policy.html#trusted_task__trusted) policy as long as all data used to build the artifact is generated from trusted tasks.
       This pipeline is pushed as a Tekton bundle to [quay.io](https://quay.io/repository/konflux-ci/tekton-catalog/pipeline-docker-build-oci-ta?tab=tags)_
     finally:
     - name: show-sbom
@@ -191,6 +193,50 @@ spec:
         workspace: git-auth
       - name: netrc
         workspace: netrc
+
+    # gmake jupyter-minimal-ubi9-python-3.11 --just-print | grep '#*# Image build directory'
+    - name: build-container-chain-base
+      params:
+        - name: IMAGE
+          value: $(params.output-image)-chain-base
+        - name: DOCKERFILE
+          value: base/ubi9-python-3.11
+        - name: CONTEXT
+          value: $(params.path-context)
+        - name: HERMETIC
+          value: $(params.hermetic)
+        - name: PREFETCH_INPUT
+          value: $(params.prefetch-input)
+        - name: IMAGE_EXPIRES_AFTER
+          value: $(params.image-expires-after)
+        - name: COMMIT_SHA
+          value: $(tasks.clone-repository.results.commit)
+        - name: BUILD_ARGS
+          value:
+            - $(params.build-args[*])
+        - name: BUILD_ARGS_FILE
+          value: $(params.build-args-file)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+        - name: CACHI2_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      runAfter:
+        - prefetch-dependencies
+      taskRef:
+        params:
+          - name: name
+            value: buildah-oci-ta
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-buildah-oci-ta:0.3@sha256:11b9ce26fd2933ccc81ca3f983e094ec54326a2e0aaf8bdcc4c0b8fea1a42c53
+          - name: kind
+            value: task
+        resolver: bundles
+      when:
+        - input: $(tasks.init.results.build)
+          operator: in
+          values:
+            - "true"
+
     - name: build-container
       params:
       - name: IMAGE
@@ -209,7 +255,7 @@ spec:
         value: $(tasks.clone-repository.results.commit)
       - name: BUILD_ARGS
         value:
-        - $(params.build-args[*])
+        - "--build-arg BASE_IMAGE=$(tasks.build-container.results.IMAGE_URL)@$(tasks.build-container.results.IMAGE_DIGEST)"
       - name: BUILD_ARGS_FILE
         value: $(params.build-args-file)
       - name: SOURCE_ARTIFACT
@@ -217,7 +263,7 @@ spec:
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       runAfter:
-      - prefetch-dependencies
+      - build-container-chain-base
       taskRef:
         params:
         - name: name
