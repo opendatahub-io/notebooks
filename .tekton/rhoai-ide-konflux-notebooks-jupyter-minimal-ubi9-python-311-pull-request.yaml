@@ -198,7 +198,7 @@ spec:
         - name: IMAGE
           value: $(params.output-image)-chain-base
         - name: DOCKERFILE
-          value: base/ubi9-python-3.11
+          value: base/ubi9-python-3.11/Dockerfile
         - name: CONTEXT
           value: $(params.path-context)
         - name: HERMETIC
