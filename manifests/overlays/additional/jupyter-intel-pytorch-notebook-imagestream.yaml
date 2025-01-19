@@ -19,13 +19,16 @@ spec:
         # language=json
         opendatahub.io/notebook-software: |
           [
-            {"name": "Python", "version": "v3.9"},
+            {"name": "Python", "version": "v3.11"},
             {"name": "Intel-PyTorch", "version": "2.1"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
+            {"name": "JupyterLab","version": "4.2"},
             {"name": "Intel-PyTorch", "version": "2.1"},
+            {"name": "Intel-PyTorch-Vision", "version": "0.16"},
+            {"name": "Intel-PyTorch-Audio", "version": "2.1"},
             {"name": "Tensorboard", "version": "2.14"},
             {"name": "Kafka-Python", "version": "2.0"},
             {"name": "Matplotlib", "version": "3.6"},
