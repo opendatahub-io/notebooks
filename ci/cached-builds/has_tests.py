@@ -36,8 +36,6 @@ def main() -> None:
 def check_tests(target: str) -> bool:
     if target.startswith("rocm-jupyter-minimal-") or target.startswith("rocm-jupyter-datascience-"):
         return False  # we don't have specific tests for -minimal-, ... in ci-operator/config
-    if '-intel-' in target:
-        return False  # RHOAIENG-8388: Intel tensorflow notebook failed to get tested on OCP-CI
 
     has_tests = False
     dirs = gha_pr_changed_files.analyze_build_directories(target)

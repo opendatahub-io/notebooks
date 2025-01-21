@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 
 ## Description:
-## 
+##
 ## This script is intended to be invoked via the Makefile test-% target of the notebooks repository and assumes the deploy9-% target
 ## has been previously executed.  It replaces the legacy 'test_with_papermill' function previously defined in the Makefile.
 ##
@@ -16,7 +16,7 @@
 ##
 ## Currently this script only supports jupyter notebooks running on ubi9.
 ##
-## Dependencies: 
+## Dependencies:
 ##
 ##    - git:        https://www.man7.org/linux/man-pages/man1/git.1.html
 ##    - kubectl:    https://kubernetes.io/docs/reference/kubectl/
@@ -27,27 +27,27 @@
 ##    - curl:       https://www.man7.org/linux/man-pages/man1/curl.1.html
 ##    - kill:       https://www.man7.org/linux/man-pages/man1/kill.1.html
 ##
-## Usage: 
+## Usage:
 ##
 ##      test_jupyter_with_papermill.sh <makefile test target>
 ##          - Intended to be invoked from the test-% target of the Makefile
 ##          - Arguments
 ##              - <makefile test target>
 ##                  - the resolved wildcard value from the Makefile test-% pattern-matching rule
-##  
+##
 ##
 
 
 set -uxo pipefail
 
-# Description: 
+# Description:
 #   Returns the underlying operating system of the notebook based on the notebook name
 #		- presently, all jupyter notebooks run on ubi9
 #
-# Arguments: 
+# Arguments:
 #   $1 : Name of the notebook workload running on the cluster
 #
-# Returns: 
+# Returns:
 #   Name of operating system for the notebook or empty string if not recognized
 function _get_os_flavor()
 {
@@ -56,57 +56,54 @@ function _get_os_flavor()
     local os_flavor=
     case "${full_notebook_name}" in
         *ubi9-*)
-            os_flavor='ubi9' 
+            os_flavor='ubi9'
             ;;
-        *) 
+        *)
             ;;
     esac
 
     printf '%s' "${os_flavor}"
 }
 
-# Description: 
+# Description:
 #   Returns the accelerator of the notebook based on the notebook name
 #		- Due to existing build logic, cuda- prefix missing on pytorch target name
 #
 #	Note: intel notebooks being deprecated soon
 #
-# Arguments: 
+# Arguments:
 #   $1 : Name of the notebook workload running on the cluster
 #
-# Returns: 
-#   Name of accelerator required for the notebook or empty string if none required 
+# Returns:
+#   Name of accelerator required for the notebook or empty string if none required
 function _get_accelerator_flavor()
 {
     local full_notebook_name="${1:-}"
 
     local accelerator_flavor=
     case "${full_notebook_name}" in
-        *intel-*)
-            accelerator_flavor='intel' 
+        *cuda-* | jupyter-pytorch-*)
+            accelerator_flavor='cuda'
             ;;
-        *cuda-* | jupyter-pytorch-*) 
-            accelerator_flavor='cuda' 
+        *rocm-*)
+            accelerator_flavor='rocm'
             ;;
-        *rocm-*) 
-            accelerator_flavor='rocm' 
-            ;;
-        *) 
+        *)
             ;;
     esac
 
     printf '%s' "${accelerator_flavor}"
 }
 
-# Description: 
+# Description:
 #   Returns the absolute path of notebook resources in the notebooks/ repo based on the notebook name
 #
-# Arguments: 
+# Arguments:
 #   $1 : Name of the notebook identifier
 #   $2 : [optional] Subdirectory to append to computed absolute path
 #		- path should NOT start with a leading /
 #
-# Returns: 
+# Returns:
 #   Absolute path to the jupyter notebook directory for the given notebook test target
 function _get_jupyter_notebook_directory()
 {
@@ -119,15 +116,15 @@ function _get_jupyter_notebook_directory()
     printf '%s' "${directory}"
 }
 
-# Description: 
+# Description:
 #   Returns the notebook name as defined by the app label of the relevant kustomization.yaml
 #   Unfortunately a necessary preprocessing function due to numerous naming inconsistencies
 #   with the Makefile targets and notebooks repo
 #
-# Arguments: 
+# Arguments:
 #   $1 : Value of the test-% wildcard from the notebooks repo Makefile
 #
-# Returns: 
+# Returns:
 #   Name of the notebook as defined by the workload app label
 function _get_notebook_name()
 {
@@ -151,51 +148,48 @@ function _get_notebook_name()
         *)
             notebook_name="${raw_notebook_name}"
             ;;
-    esac    
+    esac
 
     printf '%s' "${notebook_name}"
 }
 
-# Description: 
+# Description:
 #   A blocking function that queries the cluster to until the notebook workload enters a Ready state
 #	Once the workload is Ready, the function will port-forward to the relevant Service resource and attempt
 #   to ping the Jupyterlab API endpoint.  Upon success, the port-forward process is terminated.
 #
-# Arguments: 
+# Arguments:
 #   $1 : Name of the notebook as defined by the workload app label
 #
-# Returns: 
+# Returns:
 #   Name of the notebook as defined by the workload app label
 function _wait_for_workload()
 {
     local notebook_name="${1:-}"
 
     "${kbin}" wait --for=condition=ready pod -l app="${notebook_name}" --timeout=600s
-    "${kbin}" port-forward "svc/${notebook_name}-notebook" 8888:8888 & 
+    "${kbin}" port-forward "svc/${notebook_name}-notebook" 8888:8888 &
     local pf_pid=$!
-    curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:8888/notebook/opendatahub/jovyan/api ; 
+    curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:8888/notebook/opendatahub/jovyan/api ;
     kill ${pf_pid}
 }
 
-# Description: 
+# Description:
 #   Computes the absolute path of the imagestream manifest for the notebook under test
 #   Note: intel notebooks being deprecated soon
 #
 #
-# Arguments: 
+# Arguments:
 #   $1 : Name of the notebook identifier
 #
-# Returns: 
+# Returns:
 #   Absolute path to the iamgestream manifest file corresponding to the notebook under test
 function _get_source_of_truth_filepath()
-{ 
+{
     local notebook_id="${1##*/}"
 
     local manifest_directory="${root_repo_directory}/manifests"
     local imagestream_directory="${manifest_directory}/base"
-    if [ "${accelerator_flavor}" = 'intel' ];  then
-        imagestream_directory="${manifest_directory}/overlays/additional"
-    fi
 
     local file_suffix='notebook-imagestream.yaml'
     local filename=
@@ -205,19 +199,16 @@ function _get_source_of_truth_filepath()
             if [ "${accelerator_flavor}" = 'cuda' ]; then
                 filename="jupyter-${notebook_id}-gpu-${file_suffix}"
             fi
-            ;;  
+            ;;
         *$jupyter_datascience_notebook_id* | *$jupyter_trustyai_notebook_id*)
             filename="jupyter-${notebook_id}-${file_suffix}"
-            ;;     
-        *$jupyter_ml_notebook_id*)
-            filename="jupyter-intel-ml-${file_suffix}"
-            ;;     
+            ;;
         *$jupyter_pytorch_notebook_id* | *$jupyter_tensorflow_notebook_id*)
             filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
             if [ "${accelerator_flavor}" = 'cuda' ]; then
                 filename="jupyter-${notebook_id}-${file_suffix}"
             fi
-            ;;                                                                              
+            ;;
     esac
 
     local filepath="${imagestream_directory}/${filename}"
@@ -230,18 +221,18 @@ function _get_source_of_truth_filepath()
     printf '%s' "${filepath}"
 }
 
-# Description: 
-#   Creates an 'expected_version.json' file based on the relevant imagestream manifest within the notebooks repo relevant to the notebook under test on the 
+# Description:
+#   Creates an 'expected_version.json' file based on the relevant imagestream manifest within the notebooks repo relevant to the notebook under test on the
 #   running pod to be used as the "source of truth" for test_notebook.ipynb tests that assert on package version.
 #
-#	Each test suite that asserts against package versions must include necessary logic to honor this file.	
+#	Each test suite that asserts against package versions must include necessary logic to honor this file.
 #
 #	Note: intel notebooks being deprecated soon
 #
-# Arguments: 
+# Arguments:
 #   $1 : Name of the notebook identifier
 function _create_test_versions_source_of_truth()
-{ 
+{
     local notebook_id="${1:-}"
 
     local version_filename='expected_versions.json'
@@ -250,13 +241,10 @@ function _create_test_versions_source_of_truth()
     test_version_truth_filepath="$( _get_source_of_truth_filepath "${notebook_id}" )"
 
     local nbdime_version='4.0'
-    if [ "${accelerator_flavor}" = 'intel' ]; then
-        nbdime_version='3.2'
-    fi
     local nbgitpuller_version='1.2'
 
     expected_versions=$("${yqbin}" '.spec.tags[0].annotations | .["opendatahub.io/notebook-software"] + .["opendatahub.io/notebook-python-dependencies"]' "${test_version_truth_filepath}" |
-        "${yqbin}" -N -p json -o yaml | 
+        "${yqbin}" -N -p json -o yaml |
         nbdime_version=${nbdime_version} nbgitpuller_version=${nbgitpuller_version} "${yqbin}" '. + [{"name": "nbdime", "version": strenv(nbdime_version)},{"name": "nbgitpuller", "version": strenv(nbgitpuller_version)}]' |
         "${yqbin}" -N -o json '[ .[] | (.name | key) = "key" | (.version | key) = "value" ] | from_entries')
 
@@ -265,14 +253,14 @@ function _create_test_versions_source_of_truth()
     "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c 'touch "${1}"; printf "%s\n" "${2}" > "${1}"' -- "${version_filename}" "${expected_versions}"
 }
 
-# Description: 
+# Description:
 #   Main "test runner" function that copies the relevant test_notebook.ipynb file for the notebook under test into
 #	the running pod and then invokes papermill within the pod to actually execute test suite.
 #
 #	Script will return non-zero exit code in the event all unit tests were not successfully executed.  Diagnostic messages
 #	are printed in the event of a failure.
 #
-# Arguments: 
+# Arguments:
 #   $1 : Name of the notebook identifier
 function _run_test()
 {
@@ -284,12 +272,12 @@ function _run_test()
     local output_file_prefix=
     output_file_prefix=$(tr '/' '-' <<< "${notebook_id}_${os_flavor}")
 
-    "${kbin}" cp "${repo_test_directory}/${test_notebook_file}" "${notebook_workload_name}:./${test_notebook_file}"  
+    "${kbin}" cp "${repo_test_directory}/${test_notebook_file}" "${notebook_workload_name}:./${test_notebook_file}"
 
 	if ! "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "python3 -m papermill ${test_notebook_file} ${output_file_prefix}_output.ipynb --kernel python3 --stderr-file ${output_file_prefix}_error.txt" ; then
 		echo "ERROR: The ${notebook_id} ${os_flavor} notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-${notebook_id}-${os_flavor}-${python_flavor}-test-e2e' directory or run 'cat ${output_file_prefix}_error.txt' within your container. The make process has been aborted."
 		exit 1
-	fi  
+	fi
 
     local test_result=
     test_result=$("${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "grep FAILED ${output_file_prefix}_error.txt" 2>&1)
@@ -301,26 +289,26 @@ function _run_test()
             ;;
         1)
             printf '\n%s\n\n' "The ${notebook_id} ${os_flavor} notebook tests ran successfully"
-            ;; 
+            ;;
         2)
             printf '\n\n%s\n' "ERROR: The ${notebook_id} ${os_flavor} notebook encountered an unexpected failure. The make process has been aborted."
             printf '%s\n\n' "${test_result}"
             exit 1
             ;;
         *)
-    esac                        
+    esac
 }
 
-# Description: 
+# Description:
 #	Checks if the notebook under test is derived from the datasciences notebook.  This determination is subsequently used to know whether or not
 #	additional papermill tests should be invoked against the running notebook resource.
 #
 #	The notebook_id argument provided to the function is simply checked against a hard-coded array of notebook ids known to inherit from the
 # 	datascience notebook.
-#	  
+#
 #	Returns successful exit code if the notebook inherits from the datascience image.
 #
-# Arguments: 
+# Arguments:
 #   $1 : Name of the notebook identifier
 function _image_derived_from_datascience()
 {
@@ -331,7 +319,7 @@ function _image_derived_from_datascience()
     printf '%s\0' "${datascience_derived_images[@]}" | grep -Fz -- "${notebook_id}"
 }
 
-# Description: 
+# Description:
 #	Convenience function that will invoke the minimal and datascience papermill tests against the running notebook workload
 function _test_datascience_notebook()
 {
@@ -339,7 +327,7 @@ function _test_datascience_notebook()
     _run_test "${jupyter_datascience_notebook_id}"
 }
 
-# Description: 
+# Description:
 # 	"Orchestration" function computes necessary parameters and prepares the running notebook workload for papermill tests to be invoked
 #		- notebook_id is calculated based on the workload name and computed accelerator value
 #		- Appropriate "source of truth" file to be used in asserting package version is copied into the running pod
@@ -348,7 +336,7 @@ function _test_datascience_notebook()
 function _handle_test()
 {
     local notebook_id=
-    
+
     # Due to existing logic - cuda accelerator value needs to be treated as empty string
     local accelerator_flavor="${accelerator_flavor}"
     accelerator_flavor="${accelerator_flavor##'cuda'}"
@@ -358,22 +346,22 @@ function _handle_test()
         *${jupyter_minimal_notebook_id}-*)
             notebook_id="${jupyter_minimal_notebook_id}"
             ;;
-        *${jupyter_datascience_notebook_id}-*) 
+        *${jupyter_datascience_notebook_id}-*)
             notebook_id="${jupyter_datascience_notebook_id}"
-            ;;      
-        *-${jupyter_trustyai_notebook_id}-*) 
+            ;;
+        *-${jupyter_trustyai_notebook_id}-*)
             notebook_id="${jupyter_trustyai_notebook_id}"
-            ;;   
-        *-${jupyter_ml_notebook_id}-*) 
+            ;;
+        *-${jupyter_ml_notebook_id}-*)
             notebook_id="${accelerator_flavor:+$accelerator_flavor/}${jupyter_ml_notebook_id}"
-            ;;                                  
-        *${jupyter_tensorflow_notebook_id}-*) 
+            ;;
+        *${jupyter_tensorflow_notebook_id}-*)
             notebook_id="${accelerator_flavor:+$accelerator_flavor/}${jupyter_tensorflow_notebook_id}"
             ;;
-        *${jupyter_pytorch_notebook_id}-*) 
+        *${jupyter_pytorch_notebook_id}-*)
             notebook_id="${accelerator_flavor:+$accelerator_flavor/}${jupyter_pytorch_notebook_id}"
-            ;;  
-        *) 
+            ;;
+        *)
             printf '%s\n' "No matching condition found for ${notebook_workload_name}."
             exit 1
             ;;
@@ -389,7 +377,7 @@ function _handle_test()
 
     if [ -n "${notebook_id}" ] && ! [ "${notebook_id}" = "${jupyter_datascience_notebook_id}" ]; then
         _run_test "${notebook_id}"
-    fi    
+    fi
 }
 
 test_target="${1:-}"
@@ -398,14 +386,13 @@ test_target="${1:-}"
 jupyter_minimal_notebook_id='minimal'
 jupyter_datascience_notebook_id='datascience'
 jupyter_trustyai_notebook_id='trustyai'
-jupyter_ml_notebook_id='ml'						    # Note: intel notebooks being deprecated soon
 jupyter_pytorch_notebook_id='pytorch'
 jupyter_tensorflow_notebook_id='tensorflow'
 
 notebook_name=$( _get_notebook_name "${test_target}" )
-python_flavor="python-${test_target//*-python-/}"  
+python_flavor="python-${test_target//*-python-/}"
 os_flavor=$(_get_os_flavor "${test_target}")
-accelerator_flavor=$(_get_accelerator_flavor "${test_target}") 
+accelerator_flavor=$(_get_accelerator_flavor "${test_target}")
 
 root_repo_directory=$(readlink -f "$(git rev-parse --show-toplevel)")
 
