@@ -21,7 +21,7 @@ import testcontainers.core.waiting_utils
 import pytest
 import pytest_subtests
 
-from tests.containers import docker_utils, podman_machine_utils
+from tests.containers import docker_utils, podman_machine_utils, kubernetes_utils
 
 
 class TestWorkbenchImage:
@@ -106,6 +106,18 @@ class TestWorkbenchImage:
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
+    @pytest.mark.openshift
+    def test_image_run_on_openshift(self, image: str):
+        skip_if_not_workbench_image(image)
+
+        client = kubernetes_utils.get_client()
+        print(client)
+
+        username = kubernetes_utils.get_username(client)
+        print(username)
+
+        with kubernetes_utils.ImageDeployment(client, image) as image:
+            image.deploy(container_name="notebook-tests-pod")
 
 class WorkbenchContainer(testcontainers.core.container.DockerContainer):
     @functools.wraps(testcontainers.core.container.DockerContainer.__init__)
