@@ -3,6 +3,7 @@ from __future__ import annotations
 import binascii
 import inspect
 import json
+import io
 import logging
 import pathlib
 import re
@@ -14,14 +15,22 @@ import pytest
 import testcontainers.core.container
 import testcontainers.core.waiting_utils
 
+import kubernetes
+import kubernetes.dynamic.exceptions
+import ocp_resources.pod
+import ocp_resources.deployment
+import yaml
+
 from tests.containers import docker_utils
+from tests.containers import kubernetes_utils
+
+import pytest
 
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     import pytest_subtests
-
 
 class TestBaseImage:
     """Tests that are applicable for all images we have in this repository."""
@@ -105,6 +114,62 @@ class TestBaseImage:
                     pytest.fail(f"{dlib=} has unsatisfied dependencies {deps=}")
 
     def test_oc_command_runs(self, image: str):
+        client = kubernetes_utils.get_client()
+        print(client)
+
+        username = kubernetes_utils.get_username(client)
+        print(username)
+
+        # kont = kubernetes.client.models.v1_container.V1Container()
+        # deployment = ocp_resources.deployment.Deployment(client=client, name="some-deployment", namespace="default",
+        #                                                  selector={"matchLabels": {"app": "nginx"}},
+        #                                                  template=yaml.safe_load(io.StringIO("""
+        # metadata:
+        #   labels:
+        #     app: nginx
+        # spec:
+        #   containers:
+        #   - name: nginx
+        #     image: nginx:1.14.2
+        #     ports:
+        #     - containerPort: 80
+        # """)))
+
+        container_name = "nginx"
+        deployment = ocp_resources.deployment.Deployment(client=client, yaml_file=io.StringIO(
+            #language=yaml
+            f"""
+# no nk8s
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: default
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: {container_name}
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+"""))
+
+        print (deployment)
+        with kubernetes_utils.TestFrame() as tf:
+            tf.push(deployment, wait=True)
+
+
+
         container = testcontainers.core.container.DockerContainer(image=image, user=23456, group_add=[0])
         container.with_command("/bin/sh -c 'sleep infinity'")
         try:
@@ -116,6 +181,7 @@ class TestBaseImage:
         logging.debug(output.decode())
         assert ecode == 0
 
+    # @pytest.mark.environmentss("docker")
     def test_oc_command_runs_fake_fips(self, image: str, subtests: pytest_subtests.SubTests):
         """Establishes a best-effort fake FIPS environment and attempts to execute `oc` binary in it.
 
