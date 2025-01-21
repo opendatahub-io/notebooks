@@ -352,9 +352,6 @@ function _handle_test()
         *-${jupyter_trustyai_notebook_id}-*)
             notebook_id="${jupyter_trustyai_notebook_id}"
             ;;
-        *-${jupyter_ml_notebook_id}-*)
-            notebook_id="${accelerator_flavor:+$accelerator_flavor/}${jupyter_ml_notebook_id}"
-            ;;
         *${jupyter_tensorflow_notebook_id}-*)
             notebook_id="${accelerator_flavor:+$accelerator_flavor/}${jupyter_tensorflow_notebook_id}"
             ;;
