@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Iterable, TYPE_CHECKING
 
@@ -66,6 +67,14 @@ def pytest_sessionstart(session: Session) -> None:
     # second preflight check: start the Reaper container
     if not testcontainers.core.config.testcontainers_config.ryuk_disabled:
         assert testcontainers.core.container.Reaper.get_instance() is not None, "Failed to start Reaper container"
+    if not testcontainers.core.config.testcontainers_config.ryuk_disabled:
+        try:
+            _ = testcontainers.core.container.Reaper.get_instance()
+        except RuntimeError as e:
+            # when running on rootless podman, ryuk fails to start and needs to be disabled
+            # https://java.testcontainers.org/supported_docker_environment/#podman
+            logging.warning(str(e))
+            testcontainers.core.config.testcontainers_config.ryuk_disabled = True
 
 
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_sessionfinish
