@@ -69,8 +69,6 @@ function _get_os_flavor()
 #   Returns the accelerator of the notebook based on the notebook name
 #		- Due to existing build logic, cuda- prefix missing on pytorch target name
 #
-#	Note: intel notebooks being deprecated soon
-#
 # Arguments:
 #   $1 : Name of the notebook workload running on the cluster
 #
@@ -176,8 +174,6 @@ function _wait_for_workload()
 
 # Description:
 #   Computes the absolute path of the imagestream manifest for the notebook under test
-#   Note: intel notebooks being deprecated soon
-#
 #
 # Arguments:
 #   $1 : Name of the notebook identifier
@@ -226,8 +222,6 @@ function _get_source_of_truth_filepath()
 #   running pod to be used as the "source of truth" for test_notebook.ipynb tests that assert on package version.
 #
 #	Each test suite that asserts against package versions must include necessary logic to honor this file.
-#
-#	Note: intel notebooks being deprecated soon
 #
 # Arguments:
 #   $1 : Name of the notebook identifier
