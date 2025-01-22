@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 class TestRStudioImage:
     """Tests for RStudio Workbench images in this repository."""
 
+    APP_ROOT_HOME = "/opt/app-root/src/"
+
     @allure.issue("RHOAIENG-17256")
     def test_rmd_to_pdf_rendering(self, image: str) -> None:
         """
@@ -77,19 +79,17 @@ class TestRStudioImage:
                 tmpdir = pathlib.Path(tmpdir)
                 (tmpdir / "script.R").write_text(script)
                 docker_utils.container_cp(container.get_wrapped_container(), src=str(tmpdir / "script.R"),
-                                          dst="/scripts")
+                                          dst=self.APP_ROOT_HOME)
                 (tmpdir / "document.Rmd").write_text(document)
                 docker_utils.container_cp(container.get_wrapped_container(), src=str(tmpdir / "document.Rmd"),
-                                          dst="/scripts")
+                                          dst=self.APP_ROOT_HOME)
 
-            # copy to a (writable) working directory
-            check_call(container, "bash -c 'cp /scripts/document.Rmd ./'")
             # https://stackoverflow.com/questions/28432607/pandoc-version-1-12-3-or-higher-is-required-and-was-not-found-r-shiny
             check_call(container,
-                         "bash -c 'RSTUDIO_PANDOC=/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64 Rscript /scripts/script.R'")
+                       f"bash -c 'RSTUDIO_PANDOC=/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64 Rscript {self.APP_ROOT_HOME}/script.R'")
 
             with tempfile.TemporaryDirectory() as tmpdir:
-                docker_utils.from_container_cp(container.get_wrapped_container(), src="/opt/app-root/src/", dst=tmpdir)
+                docker_utils.from_container_cp(container.get_wrapped_container(), src=self.APP_ROOT_HOME, dst=tmpdir)
                 allure.attach.file(
                     pathlib.Path(tmpdir) / "src/document.pdf",
                     name="rendered-pdf",
