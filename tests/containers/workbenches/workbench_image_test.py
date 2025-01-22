@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import http.cookiejar
 import logging
@@ -92,12 +94,13 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         finally:
             result.close()
 
-    def start(self):
+    def start(self, wait_for_readiness: bool = True) -> WorkbenchContainer:
         super().start()
         container_id = self.get_wrapped_container().id
         docker_client = testcontainers.core.container.DockerClient().client
         logging.debug(docker_client.api.inspect_container(container_id)['HostConfig'])
-        self._connect()
+        if wait_for_readiness:
+            self._connect()
         return self
 
 
