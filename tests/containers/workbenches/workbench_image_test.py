@@ -30,19 +30,7 @@ class TestWorkbenchImage:
         skip_if_not_workbench_image(image)
 
         container = WorkbenchContainer(image=image, user=1000, group_add=[0],
-                                       sysctls=sysctls,
-                                       # because rstudio only prints out errors when TTY is present
-                                       # > TTY detected. Printing informational message about logging configuration.
-                                       tty=True,
-                                       # another rstudio speciality, without this, it gives
-                                       # > system error 13 (Permission denied) [path: /opt/app-root/src/.cache/rstudio
-                                       # equivalent podman command may include
-                                       # > --mount type=tmpfs,dst=/opt/app-root/src,notmpcopyup
-                                       # can't use mounts= because testcontainers already sets volumes=
-                                       # > mounts=[docker.types.Mount(target="/opt/app-root/src/", source="", type="volume", no_copy=True)],
-                                       # can use tmpfs=, keep in mind `notmpcopyup` opt is podman specific
-                                       tmpfs={"/opt/app-root/src": "rw,notmpcopyup"},
-                                       )
+                                       sysctls=sysctls)
         try:
             try:
                 container.start()
@@ -64,7 +52,22 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
             port: int = 8888,
             **kwargs,
     ) -> None:
-        super().__init__(**kwargs)
+        defaults = dict(
+            # because rstudio only prints out errors when TTY is present
+            # > TTY detected. Printing informational message about logging configuration.
+            tty=True,
+            # another rstudio speciality, without this, it gives
+            # > system error 13 (Permission denied) [path: /opt/app-root/src/.cache/rstudio
+            # equivalent podman command may include
+            # > --mount type=tmpfs,dst=/opt/app-root/src,notmpcopyup
+            # can't use mounts= because testcontainers already sets volumes=
+            # > mounts=[docker.types.Mount(target="/opt/app-root/src/", source="", type="volume", no_copy=True)],
+            # can use tmpfs=, keep in mind `notmpcopyup` opt is podman specific
+            tmpfs={"/opt/app-root/src": "rw,notmpcopyup"},
+        )
+        if not kwargs.keys().isdisjoint(defaults.keys()):
+            raise TypeError(f"Keyword arguments in {defaults.keys()=} are not allowed, for good reasons")
+        super().__init__(**defaults, **kwargs)
 
         self.port = port
         self.with_exposed_ports(self.port)
