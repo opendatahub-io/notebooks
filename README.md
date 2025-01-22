@@ -59,16 +59,50 @@ Note: To ensure the GitHub Action runs successfully, users must add a `GH_ACCESS
 
 ### Deploy & Test
 
-#### Running Python selftests in Pytest
+#### Prepare Python + poetry + pytest env
 
 ```shell
-pip install poetry
-poetry env use /usr/bin/python3.12
-poetry config virtualenvs.in-project true
-poetry install --sync
+# Linux
+sudo dnf install python3.12
+pip install --user poetry
+# MacOS
+brew install python@3.12 poetry
 
+poetry env use $(which python3.12)
+poetry config virtualenvs.in-project true
+poetry env info
+poetry install --sync
+```
+
+#### Running Python selftests in Pytest
+By completing configuration in previous section, you are able to run any tests that don't need to start a container using following command:
+
+```
 poetry run pytest
 ```
+
+#### Running testcontainers tests in Pytest
+```
+# Podman/Docker config
+# Linux
+sudo dnf install podman
+systemctl --user start podman.service
+systemctl --user status podman.service
+systemctl --user status podman.socket
+DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock poetry run pytest tests/containers --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
+
+# Mac OS
+brew install podman
+podman machine init
+podman machine set --rootful
+sudo podman-mac-helper install
+podman machine start
+poetry run pytest tests/containers --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
+```
+
+#### Running Playwright tests in Pytest
+
+[tests/browser/README.md](tests/browser/README.md)
 
 #### Notebooks
 
