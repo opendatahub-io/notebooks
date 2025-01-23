@@ -66,6 +66,20 @@ def container_cp(container: Container, src: str, dst: str,
     container.put_archive(dst, fh)
 
 
+def from_container_cp(container: Container, src: str, dst: str) -> None:
+    fh = io.BytesIO()
+    bits, stat = container.get_archive(src, encode_stream=True)
+    for chunk in bits:
+        fh.write(chunk)
+    fh.seek(0)
+    tar = tarfile.open(fileobj=fh, mode="r")
+    try:
+        tar.extractall(path=dst, filter=tarfile.data_filter)
+    finally:
+        tar.close()
+        fh.close()
+
+
 def container_exec(
         container: Container,
         cmd: str | list[str],
