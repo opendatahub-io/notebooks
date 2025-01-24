@@ -291,16 +291,12 @@ jobs:
       - name: Run container tests (in PyTest)
         run: |
           set -Eeuxo pipefail
-          # retry to increase CI reliability
-          for i in {1..5}; do
-            if podman pull --retry 10 "${RYUK_CONTAINER_IMAGE}"; then break; fi
-          done
-          # now run the tests
           poetry run pytest --capture=fd tests/containers --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
-          RYUK_CONTAINER_IMAGE: "testcontainers/ryuk:0.8.1"
+          # pulling the Ryuk container from docker.io introduces CI flakiness
+          TESTCONTAINERS_RYUK_DISABLED: "true"
 
       # endregion Pytest image tests
 
