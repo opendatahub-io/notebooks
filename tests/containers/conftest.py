@@ -66,15 +66,15 @@ def pytest_sessionstart(session: Session) -> None:
 
     # second preflight check: start the Reaper container
     if not testcontainers.core.config.testcontainers_config.ryuk_disabled:
-        assert testcontainers.core.container.Reaper.get_instance() is not None, "Failed to start Reaper container"
-    if not testcontainers.core.config.testcontainers_config.ryuk_disabled:
+        # when running on rootless podman, ryuk fails to start and may need to be disabled
+        # https://java.testcontainers.org/supported_docker_environment/#podman
+        logging.warning("Ryuk is enabled. This may not work with rootless podman.")
         try:
-            _ = testcontainers.core.container.Reaper.get_instance()
-        except RuntimeError as e:
-            # when running on rootless podman, ryuk fails to start and needs to be disabled
-            # https://java.testcontainers.org/supported_docker_environment/#podman
-            logging.warning(str(e))
-            testcontainers.core.config.testcontainers_config.ryuk_disabled = True
+            assert testcontainers.core.container.Reaper.get_instance() is not None, "Failed to start Reaper container"
+        except Exception as e:
+            logging.exception("Failed to start the Ryuk Reaper container", exc_info=e)
+            logging.error(f"Set env variable 'export TESTCONTAINERS_RYUK_DISABLED=true' and try again.")
+            raise RuntimeError("Consider disabling Ryuk as per the log messages above.") from e
 
 
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_sessionfinish
