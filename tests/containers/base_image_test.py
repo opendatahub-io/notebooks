@@ -21,7 +21,7 @@ class TestBaseImage:
     """Tests that are applicable for all images we have in this repository."""
 
     def test_oc_command_runs(self, image: str):
-        container = testcontainers.core.container.DockerContainer(image=image, user=123456, group_add=[0])
+        container = testcontainers.core.container.DockerContainer(image=image, user=23456, group_add=[0])
         container.with_command("/bin/sh -c 'sleep infinity'")
         try:
             container.start()
@@ -50,8 +50,8 @@ class TestBaseImage:
             # tmpdir is by-default created with perms restricting access to user only
             tmp_crypto.chmod(0o777)
 
-            container = testcontainers.core.container.DockerContainer(image=image, user=654321, group_add=[0])
-            container.with_volume_mapping(str(tmp_crypto), "/proc/sys")
+            container = testcontainers.core.container.DockerContainer(image=image, user=54321, group_add=[0])
+            container.with_volume_mapping(str(tmp_crypto), "/proc/sys", mode="ro,z")
             container.with_command("/bin/sh -c 'sleep infinity'")
 
             try:
