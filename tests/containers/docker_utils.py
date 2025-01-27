@@ -6,7 +6,9 @@ import os.path
 import sys
 import tarfile
 import time
-from typing import TYPE_CHECKING
+from typing import Iterable, TYPE_CHECKING
+
+import docker.client
 
 import testcontainers.core.container
 
@@ -133,10 +135,10 @@ class ContainerExec:
     def inspect(self):
         return self.client.api.exec_inspect(self.id)
 
-    def poll(self):
+    def poll(self) -> int:
         return self.inspect()["ExitCode"]
 
-    def communicate(self, line_prefix=b""):
+    def communicate(self, line_prefix=b"") -> int:
         for data in self.output:
             if not data:
                 continue
@@ -155,3 +157,31 @@ class ContainerExec:
         while self.poll() is None:
             raise RuntimeError("Hm could that really happen?")
         return self.poll()
+
+def get_socket_path(client: docker.client.DockerClient) -> str:
+    """Determine the local socket path.
+    This works even when `podman machine` with its own host-mounts is involved
+    NOTE: this will not work for remote docker, but we will cross the bridge when we come to it"""
+    socket_path = _the_one(adapter.socket_path for adapter in client.api.adapters.values())
+    return socket_path
+
+def get_container_pid(container: Container) -> int | None:
+    """Get the network namespace of a Docker container."""
+    container.reload()
+    container_pid = container.attrs['State']['Pid']
+    return container_pid
+
+
+# https://docs.python.org/3/library/functions.html#iter
+def _the_one[T](iterable: Iterable[T]) -> T:
+    """Checks that there is exactly one element in the iterable, and returns it."""
+    it = iter(iterable)
+    try:
+        v = next(it)
+    except StopIteration:
+        raise ValueError("No elements in iterable")
+    try:
+        next(it)
+    except StopIteration:
+        return v
+    raise ValueError("More than one element in iterable")
