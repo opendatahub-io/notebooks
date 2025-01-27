@@ -18,7 +18,7 @@ import testcontainers.core.waiting_utils
 
 import pytest
 
-from tests.containers import docker_utils
+from tests.containers import docker_utils, podman_machine_utils
 
 
 class TestWorkbenchImage:
@@ -53,10 +53,6 @@ class TestWorkbenchImage:
         Workarounds for macOS will be needed, so that's why it's a separate test."""
         skip_if_not_workbench_image(image)
 
-        if platform.system().lower() == 'darwin':
-            pytest.skip("Podman on macOS does not support exposing IPv6 ports,"
-                        " see https://github.com/containers/podman/issues/15140")
-
         # network is made ipv6 by only defining the ipv6 subnet for it
         # do _not_ set the ipv6=true option, that would actually make it dual-stack
         # https://github.com/containers/podman/issues/22359#issuecomment-2196817604
@@ -87,8 +83,19 @@ class TestWorkbenchImage:
                     container.get_wrapped_container().reload()
                     ipv6_address = (container.get_wrapped_container().attrs
                         ["NetworkSettings"]["Networks"][network.name]["GlobalIPv6Address"])
+                    if platform.system().lower() == 'darwin':
+                        # the container host is a podman machine, we need to expose port on podman machine first
+                        host = "localhost"
+                        port = podman_machine_utils.find_free_port()
+                        process = podman_machine_utils.open_ssh_tunnel("podman-machine-default",
+                                                                       local_port=port, remote_port=container.port,
+                                                                       remote_interface=f"[{ipv6_address}]")
+                        test_frame.append(process, lambda p: p.kill())
+                    else:
+                        host = ipv6_address
+                        port = container.port
 
-                    container._connect(container_host=ipv6_address, container_port=container.port)
+                    container._connect(container_host=host, container_port=port)
             finally:
                 # try to grab logs regardless of whether container started or not
                 stdout, stderr = container.get_logs()
