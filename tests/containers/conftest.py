@@ -10,6 +10,8 @@ import testcontainers.core.docker_client
 
 import pytest
 
+from tests.containers import docker_utils
+
 if TYPE_CHECKING:
     from pytest import ExitCode, Session, Parser, Metafunc
 
@@ -58,7 +60,7 @@ def pytest_sessionstart(session: Session) -> None:
 
     # determine the local socket path
     # NOTE: this will not work for remote docker, but we will cross the bridge when we come to it
-    socket_path = the_one(adapter.socket_path for adapter in client.client.api.adapters.values())
+    socket_path = docker_utils.get_socket_path(client.client)
 
     # set that socket path for ryuk's use, unless user overrode that
     if TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE not in os.environ:
@@ -82,21 +84,6 @@ def pytest_sessionfinish(session: Session, exitstatus: int | ExitCode) -> None:
     # resolves a shutdown resource leak warning that would be otherwise reported
     if SHUTDOWN_RYUK:
         testcontainers.core.container.Reaper.delete_instance()
-
-
-# https://docs.python.org/3/library/functions.html#iter
-def the_one[T](iterable: Iterable[T]) -> T:
-    """Checks that there is exactly one element in the iterable, and returns it."""
-    it = iter(iterable)
-    try:
-        v = next(it)
-    except StopIteration:
-        raise ValueError("No elements in iterable")
-    try:
-        next(it)
-    except StopIteration:
-        return v
-    raise ValueError("More than one element in iterable")
 
 
 @pytest.fixture(scope="function")

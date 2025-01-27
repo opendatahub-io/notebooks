@@ -2,19 +2,22 @@ import json
 import logging
 import socket
 import subprocess
-from tests.containers.schemas import PodmanMachineInspect
+from typing import Callable
+
+import tests.containers.schemas
 
 logging.basicConfig(level=logging.DEBUG)
 
-def open_ssh_tunnel(machine_name: str, local_port: int, remote_port: int, remote_interface: str = "localhost") -> subprocess.Popen:
+def open_ssh_tunnel(machine_predicate: Callable[[tests.containers.schemas.PodmanMachine], bool],
+                    local_port: int, remote_port: int, remote_interface: str = "localhost") -> subprocess.Popen:
     # Load and parse the Podman machine data
-    json_data = subprocess.check_output(["podman", "machine", "inspect", machine_name], text=True)
-    inspect = PodmanMachineInspect(machines=json.loads(json_data))
+    json_data = subprocess.check_output(["podman", "machine", "inspect"], text=True)
+    inspect = tests.containers.schemas.PodmanMachineInspect(machines=json.loads(json_data))
     machines = inspect.machines
 
-    machine = next((m for m in machines if m.Name == machine_name), None)
+    machine = next((m for m in machines if machine_predicate(m)), None)
     if not machine:
-        raise ValueError(f"Machine '{machine_name}' not found")
+        raise ValueError(f"Machine matching given predicate not found")
 
     ssh_command = [
         "ssh",
@@ -30,7 +33,7 @@ def open_ssh_tunnel(machine_name: str, local_port: int, remote_port: int, remote
     # Open the SSH tunnel
     process = subprocess.Popen(ssh_command)
 
-    logging.info(f"SSH tunnel opened for {machine_name}: {remote_interface}:{local_port} -> localhost:{remote_port}")
+    logging.info(f"SSH tunnel opened for {machine.Name}: {remote_interface}:{local_port} -> localhost:{remote_port}")
     return process
 
 def find_free_port() -> int:
@@ -46,8 +49,8 @@ def find_free_port() -> int:
 # Usage example
 if __name__ == "__main__":
     tunnel_process = open_ssh_tunnel(
-        "podman-machine-default",
-        8080, 8080,
+        machine_predicate=lambda m: m.Name == "podman-machine-default",
+        local_port=8080, remote_port=8080,
         remote_interface="[fc00::2]"
     )
 

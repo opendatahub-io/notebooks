@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools
 import http.cookiejar
 import logging
+import os
 import platform
 import urllib.error
 import urllib.request
@@ -87,9 +88,11 @@ class TestWorkbenchImage:
                         # the container host is a podman machine, we need to expose port on podman machine first
                         host = "localhost"
                         port = podman_machine_utils.find_free_port()
-                        process = podman_machine_utils.open_ssh_tunnel("podman-machine-default",
-                                                                       local_port=port, remote_port=container.port,
-                                                                       remote_interface=f"[{ipv6_address}]")
+                        socket_path = os.path.realpath(docker_utils.get_socket_path(client.client))
+                        process = podman_machine_utils.open_ssh_tunnel(
+                            machine_predicate=lambda m: os.path.realpath(m.ConnectionInfo.PodmanSocket.Path) == socket_path,
+                            local_port=port, remote_port=container.port,
+                            remote_interface=f"[{ipv6_address}]")
                         test_frame.append(process, lambda p: p.kill())
                     else:
                         host = ipv6_address
