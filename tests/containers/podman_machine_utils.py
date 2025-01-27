@@ -11,11 +11,10 @@ logging.basicConfig(level=logging.DEBUG)
 def open_ssh_tunnel(machine_predicate: Callable[[tests.containers.schemas.PodmanMachine], bool],
                     local_port: int, remote_port: int, remote_interface: str = "localhost") -> subprocess.Popen:
     # Load and parse the Podman machine data
-    machines = []
-    for machine_name in subprocess.check_output(["podman", "machine", "list", "--quiet"], text=True).splitlines():
-        json_data = subprocess.check_output(["podman", "machine", "inspect", machine_name], text=True)
-        inspect = tests.containers.schemas.PodmanMachineInspect(machines=json.loads(json_data))
-        machines.extend(inspect.machines)
+    machine_names = subprocess.check_output(["podman", "machine", "list", "--quiet"], text=True).splitlines()
+    json_data = subprocess.check_output(["podman", "machine", "inspect", *machine_names], text=True)
+    inspect = tests.containers.schemas.PodmanMachineInspect(machines=json.loads(json_data))
+    machines = inspect.machines
 
     machine = next((m for m in machines if machine_predicate(m)), None)
     if not machine:
