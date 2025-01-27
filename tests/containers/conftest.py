@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Iterable, TYPE_CHECKING
+from typing import Iterable, Callable, TYPE_CHECKING
 
 import testcontainers.core.config
 import testcontainers.core.container
@@ -97,3 +97,47 @@ def the_one[T](iterable: Iterable[T]) -> T:
     except StopIteration:
         return v
     raise ValueError("More than one element in iterable")
+
+
+@pytest.fixture(scope="function")
+def test_frame():
+    class TestFrame:
+        """Helper class to manage resources in tests.
+        Example:
+        >>> import subprocess
+        >>> import testcontainers.core.network
+        >>>
+        >>> def test_something(test_frame: TestFrame):
+        >>>     # this will create/destroy the network as it enters/leaves the test_frame
+        >>>    network = testcontainers.core.network.Network(...)
+        >>>    test_frame.append(network)
+        >>>
+        >>>    # some resources require additional cleanup function
+        >>>    test_frame.append(subprocess.Popen(...), lambda p: p.kill())
+        """
+
+        def __init__(self):
+            self.resources: list[tuple[any, callable]] = []
+
+        def append[T](self, resource: T, cleanup_func: Callable[[T], None] = None) -> T:
+            """Runs the Context manager lifecycle on the resource,
+            without actually using the `with` structured resource management thing.
+
+            For some resources, the __exit__ method does not force termination.
+            subprocess.Popen is one such resource, its __exit__ only `wait()`s.
+            Use the cleanup_func argument to terminate resources that need it.
+
+            This is somewhat similar to Go's `defer`."""
+            self.resources.append((resource, cleanup_func))
+            return resource.__enter__()
+
+        def destroy(self):
+            """Runs __exit__() on the registered resources as a cleanup."""
+            for resource, cleanup_func in reversed(self.resources):
+                if cleanup_func is not None:
+                    cleanup_func(resource)
+                resource.__exit__(None, None, None)  # don't use named args, there are inconsistencies
+
+    t = TestFrame()
+    yield t
+    t.destroy()

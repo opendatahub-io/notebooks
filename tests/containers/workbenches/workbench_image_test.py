@@ -3,13 +3,17 @@ from __future__ import annotations
 import functools
 import http.cookiejar
 import logging
+import platform
 import urllib.error
 import urllib.request
 
 import docker.errors
 import docker.models.images
+import docker.types
 
 import testcontainers.core.container
+import testcontainers.core.docker_client
+import testcontainers.core.network
 import testcontainers.core.waiting_utils
 
 import pytest
@@ -36,6 +40,55 @@ class TestWorkbenchImage:
                 container.start()
                 # check explicitly that we can connect to the ide running in the workbench
                 container._connect()
+            finally:
+                # try to grab logs regardless of whether container started or not
+                stdout, stderr = container.get_logs()
+                for line in stdout.splitlines() + stderr.splitlines():
+                    logging.debug(line)
+        finally:
+            docker_utils.NotebookContainer(container).stop(timeout=0)
+
+    def test_ipv6_only(self, image: str, test_frame):
+        """Test that workbench image is accessible via IPv6.
+        Workarounds for macOS will be needed, so that's why it's a separate test."""
+        skip_if_not_workbench_image(image)
+
+        if platform.system().lower() == 'darwin':
+            pytest.skip("Podman on macOS does not support exposing IPv6 ports,"
+                        " see https://github.com/containers/podman/issues/15140")
+
+        # network is made ipv6 by only defining the ipv6 subnet for it
+        # do _not_ set the ipv6=true option, that would actually make it dual-stack
+        # https://github.com/containers/podman/issues/22359#issuecomment-2196817604
+        network = testcontainers.core.network.Network(docker_network_kw={
+            "ipam": docker.types.IPAMConfig(
+                pool_configs=[
+                    docker.types.IPAMPool(subnet="fd00::/64"),
+                ]
+            )
+        })
+        test_frame.append(network)
+
+        container = WorkbenchContainer(image=image)
+        container.with_network(network)
+        try:
+            try:
+                client = testcontainers.core.docker_client.DockerClient()
+                rootless: bool = client.client.info()['Rootless']
+                # with rootful podman, --publish does not expose IPv6-only ports
+                # see https://github.com/containers/podman/issues/14491 and friends
+                container.start(wait_for_readiness=rootless)
+                # check explicitly that we can connect to the ide running in the workbench
+                if rootless:
+                    container._connect()
+                else:
+                    # rootful containers have an IP assigned, so we can connect to that
+                    # NOTE: this is only reachable from the host machine, so remote podman won't work
+                    container.get_wrapped_container().reload()
+                    ipv6_address = (container.get_wrapped_container().attrs
+                        ["NetworkSettings"]["Networks"][network.name]["GlobalIPv6Address"])
+
+                    container._connect(container_host=ipv6_address, container_port=container.port)
             finally:
                 # try to grab logs regardless of whether container started or not
                 stdout, stderr = container.get_logs()
@@ -73,20 +126,26 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         self.with_exposed_ports(self.port)
 
     @testcontainers.core.waiting_utils.wait_container_is_ready(urllib.error.URLError)
-    def _connect(self) -> None:
+    def _connect(self, container_host: str | None = None, container_port: int | None = None) -> None:
+        """
+        :param container_host: overrides the container host IP in connection check to use direct access
+        """
         # are we still alive?
         self.get_wrapped_container().reload()
         assert self.get_wrapped_container().status != "exited"
 
         # connect
+        host = container_host or self.get_container_host_ip()
+        port = container_port or self.get_exposed_port(self.port)
         try:
             # if we did not enable cookies support here, with RStudio we'd end up looping and getting
             # HTTP 302 (i.e. `except urllib.error.HTTPError as e: assert e.code == 302`) every time
             cookie_jar = http.cookiejar.CookieJar()
             opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
-            result = opener.open(
-                urllib.request.Request(f"http://{self.get_container_host_ip()}:{self.get_exposed_port(self.port)}"),
-                timeout=1)
+            # host may be an ipv6 address, need to be careful with formatting this
+            if ":" in host:
+                host = f"[{host}]"
+            result = opener.open(urllib.request.Request(f"http://{host}:{port}"), timeout=1)
         except urllib.error.URLError as e:
             raise e
 
