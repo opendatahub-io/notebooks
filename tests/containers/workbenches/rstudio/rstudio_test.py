@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 class TestRStudioImage:
     """Tests for RStudio Workbench images in this repository."""
 
-    APP_ROOT_HOME = "/opt/app-root/src/"
+    APP_ROOT_HOME = "/opt/app-root/src"
 
     @allure.issue("RHOAIENG-17256")
     def test_rmd_to_pdf_rendering(self, image: str) -> None:
