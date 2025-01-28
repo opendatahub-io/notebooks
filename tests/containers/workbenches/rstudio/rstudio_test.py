@@ -3,10 +3,11 @@ from __future__ import annotations
 import json
 import logging
 import pathlib
+import pytest_subtests
 import subprocess
 import tempfile
 import textwrap
-from typing import TYPE_CHECKING
+from typing import NamedTuple, TYPE_CHECKING
 
 import allure
 import pytest
@@ -96,6 +97,43 @@ class TestRStudioImage:
                     attachment_type=allure.attachment_type.PDF
                 )
 
+        finally:
+            docker_utils.NotebookContainer(container).stop(timeout=0)
+
+    @allure.issue("RHOAIENG-16604")
+    def test_http_proxy_env_propagates(self, image: str, subtests: pytest_subtests.plugin.SubTests) -> None:
+        """
+        This checks that the lowercased proxy configuration is propagated into the RStudio
+        environment so that the appropriate values are then accepted and followed.
+        """
+        skip_if_not_rstudio_image(image)
+
+        class TestCase(NamedTuple):
+            name: str
+            name_lc: str
+            value: str
+
+        test_cases: list[TestCase] = [
+            TestCase("HTTP_PROXY", "http_proxy", "http://localhost:8080"),
+            TestCase("HTTPS_PROXY", "https_proxy", "https://localhost:8443"),
+            TestCase("NO_PROXY", "no_proxy", "google.com"),
+        ]
+
+        container = WorkbenchContainer(image=image, user=1000, group_add=[0])
+        for tc in test_cases:
+            container.with_env(tc.name, tc.value)
+
+        try:
+            # We need to wait for the IDE to be completely loaded so that the envs are processed properly.
+            container.start(wait_for_readiness=True)
+
+            # Once the RStudio IDE is fully up and running, the processed envs should includ also lowercased proxy configs.
+            for tc in test_cases:
+                with subtests.test(tc.name):
+                    output = check_output(
+                        container,
+                        f"/usr/bin/R --quiet --no-echo -e 'Sys.getenv(\"{tc.name_lc}\")'")
+                    assert '"' + tc.value + '"' in output
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
