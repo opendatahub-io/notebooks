@@ -81,6 +81,22 @@ By completing configuration in previous section, you are able to run any tests t
 poetry run pytest
 ```
 
+##### Container selftests
+
+We're using [Testcontainers.com](https://testcontainers.com/) to run containers from Python tests.
+
+Ideally, these tests should allow switching between Kubernetes and Docker/Podman.
+Running on Kubernetes (OpenShift) is the easiest way to manage GPU access for testing TensorFlow/Pytorch images.
+This improvement is tracked as a future work.
+
+We also considered [Dagger.io](https://dagger.io).
+It has very nice verbose logging by default for every action that is running.
+The main difference between the two is that Dagger creates more abstractions over the container engine.
+Dagger limitations that stem from tight [BuildKit](https://github.com/moby/buildkit) integration discouraged us from using it.
+Images present in a local store cannot be directly used in Dagger, they have to be imported into its BuildKit container first.
+In addition, Dagger [does not allow bind-mounting local directories](https://docs.dagger.io/cookbook/#modify-a-copied-directory-or-remote-repository-in-a-container)
+to the container but always copies files in and out.
+
 #### Running testcontainers tests in Pytest
 ```
 # Podman/Docker config
@@ -100,7 +116,16 @@ podman machine start
 poetry run pytest tests/containers --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
 ```
 
-#### Running Playwright tests in Pytest
+When using lima on macOS, it might be useful to give yourself access to rootful podman socket
+
+```shell
+lima sudo systemctl start podman
+lima sudo dnf install acl
+lima sudo setfacl -m u:${USER}:x /var/run/podman
+lima sudo setfacl -m u:${USER}:rw /var/run/podman/podman.sock
+```
+
+#### Running Playwright tests
 
 [tests/browser/README.md](tests/browser/README.md)
 
