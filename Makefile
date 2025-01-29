@@ -463,6 +463,11 @@ refresh-pipfilelock-files:
 		fi
 	done
 
+	echo "Regenerating requirements.txt files"
+	pushd $(ROOT_DIR)
+		bash $(ROOT_DIR)/scripts/sync-requirements-txt.sh
+	popd
+
 # This is only for the workflow action
 # For running manually, set the required environment variables
 .PHONY: scan-image-vulnerabilities
