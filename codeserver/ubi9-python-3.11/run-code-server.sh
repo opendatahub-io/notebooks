@@ -110,20 +110,10 @@ if [ ! -d "$logs_dir" ]; then
   mkdir -p "$logs_dir"
 fi
 
-# IPv6 support
-echo "Checking IPv6 support..."
-if [ -f /proc/net/if_inet6 ]; then
-    BIND_ADDR="[::]:8787"  # IPv6/dual-stack
-    echo "IPv6 detected: binding to all interfaces (IPv4 + IPv6)"
-else
-    BIND_ADDR="0.0.0.0:8787"  # IPv4 only
-    echo "IPv6 not detected: falling back to IPv4 only"
-fi
-
 # Start server
 start_process /usr/bin/code-server \
-    --bind-addr "${BIND_ADDR}" \
-    --disable-telemetry \
-    --auth none \
-    --disable-update-check \
-    /opt/app-root/src
+  --bind-addr 0.0.0.0:8787 \
+  --disable-telemetry \
+  --auth none \
+  --disable-update-check \
+  /opt/app-root/src
