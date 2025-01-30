@@ -1,0 +1,107 @@
+---
+# This GitHub Action aims to sync the downstream branch with the corresponding upstream, resolve known conflicts, and generates a pull request
+name: Sync downstream branch from upstream
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+    inputs:
+      branch_name:
+        description: "Provide name of the branch want to sync:"
+        required: true
+        default: "main"
+        type: string
+env:
+  RUNTIME_IMAGES_DIR: "jupyter/datascience/ubi9-python-3.11/runtime-images/*.json"
+  MANIFEST_FILES: "manifests/base/*.env"
+  BRANCH_NAME: ${{ inputs.branch_name }}
+  TEMP_BRANCH: sync-${{ inputs.branch_name }}-${{ github.run_id }}
+  DOWNSTREAM_OWNER: "red-hat-data-services"
+  UPSTREAM_OWNER: "opendatahub-io"
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add upstream and downstream remotes
+        run: |
+          git remote add upstream https://github.com/${{ env.UPSTREAM_OWNER }}/notebooks.git
+          git fetch --all
+
+      - name: Determine Downstream Branch
+        id: determine_branch
+        run: |
+          # Check if the branch follows the YYYYx pattern
+          if [[ "${{ env.BRANCH_NAME }}" =~ ^[0-9]{4}[a-zA-Z]$ ]]; then
+            DOWNSTREAM_BRANCH="release-${{ env.BRANCH_NAME }}"
+          else
+            # For 'main', keep it as 'main'
+            DOWNSTREAM_BRANCH="${{ env.BRANCH_NAME }}"
+          fi
+          echo "DOWNSTREAM_BRANCH=$DOWNSTREAM_BRANCH" >> $GITHUB_ENV
+          echo "Temporary downstream branch will be: $DOWNSTREAM_BRANCH"
+
+      - name: Sync and resolve conflicts
+        run: |
+          set -e
+
+          echo "Syncing '${{ env.DOWNSTREAM_OWNER }}'/'${{ env.DOWNSTREAM_BRANCH }}' from '${{ env.UPSTREAM_OWNER}}'/'${{ env.BRANCH_NAME }}'"
+
+          # Ensure the downstream branch exists locally
+          git checkout -b ${{ env.TEMP_BRANCH }} origin/${{ env.DOWNSTREAM_BRANCH }} || exit 1
+
+          # Pull changes from the upstream branch
+          git pull upstream ${{ env.BRANCH_NAME }} --no-rebase || true
+
+          # Resolve known conflicts
+          FILES_TO_RESOLVE=($RUNTIME_IMAGES_DIR $MANIFEST_FILES)
+          for FILE in "${FILES_TO_RESOLVE[@]}"; do
+            if [[ -f "$FILE" && "$(git status --porcelain=v1 2>/dev/null | grep -c "$FILE")" -gt 0 ]]; then
+              echo "Resolving conflict for $FILE by keeping downstream changes."
+              git checkout --ours "$FILE"
+              git add "$FILE"
+            fi
+          done
+
+          # Check for unresolved conflicts
+          if [[ -n "$(git ls-files -u)" ]]; then
+            echo "Unresolved conflicts detected in the following files:"
+            git ls-files -u
+            echo "Aborting merge due to unexpected conflicts."
+            exit 1
+          fi
+
+          # Commit changes if any
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git commit -m "Merge upstream/${{ env.BRANCH_NAME }} into downstream/${{ env.DOWNSTREAM_BRANCH }} with resolved conflicts"
+          else
+            echo "No changes to commit. Exiting workflow."
+            exit 0
+          fi
+
+          # Push the temporary branch to downstream
+          git push origin ${{ env.TEMP_BRANCH }}
+
+      - name: Creates PR
+        run: |
+            gh pr create --repo https://github.com/${{ env.DOWNSTREAM_OWNER }}/notebooks.git \
+              --title "$pr_title" \
+              --body "$pr_body" \
+              --head ${{ env.DOWNSTREAM_OWNER }}:${{ env.TEMP_BRANCH }} \
+              --base ${{ env.DOWNSTREAM_BRANCH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          pr_title: "Sync '${{ env.DOWNSTREAM_BRANCH }}' from opendatahub-io:'${{ env.BRANCH_NAME }}'"
+          pr_body: |
+              :robot: This is an automated Pull Request created by /.github/workflows/sync-downstream.yaml
