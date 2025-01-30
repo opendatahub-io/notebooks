@@ -17,15 +17,6 @@ import package_versions_selftestdata
 """Generates the workbench software listings for https://access.redhat.com/articles/rhoai-supported-configs
 using the Markdown variant described at https://access.redhat.com/articles/7056942"""
 
-"""
-TODO:
-    * separate reading data and printing output
-        so that output can be properly sorted (by opendatahub.io/notebook-image-order probably)
-    * don't repeat image name when printing multiple tags for it
-    * run this in red-hat-data-services repo so we also have (or not have) Habana image
-    * diff it with what's in the knowledge base now, to check if outputs match
-"""
-
 ROOT_DIR = pathlib.Path(__file__).parent.parent
 
 
@@ -130,7 +121,8 @@ def main():
                 sw_version = sw_version.lstrip("v")
                 software.append(f"{sw_name}: {sw_version}")
 
-            maybe_techpreview = "" if name not in ('code-server',) else " (Technology Preview)"
+            # in 2.16.1 we only have RStudio as tech preview, and that is not a prebuilt image we ship
+            maybe_techpreview = "" if name not in () else " (Technology Preview)"
             maybe_recommended = "" if not recommended or len(imagestream.tags) == 1 else ' (Recommended)'
 
             tabular_data.append((
@@ -158,6 +150,7 @@ def main():
     for row in tabular_data:
         print(f'{row[0]} | {row[1]} | {row[2]}')
     print('```')
+
 
 class TestManifest(unittest.TestCase):
     _data = yaml.safe_load(io.StringIO(package_versions_selftestdata.imagestream))
