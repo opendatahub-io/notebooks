@@ -50,7 +50,6 @@ class TestWorkbenchImage:
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
-    @pytest.mark.skip(reason="RHOAIENG-17305: currently our Workbench images don't tolerate IPv6")
     def test_ipv6_only(self, subtests: pytest_subtests.SubTests, image: str, test_frame):
         """Test that workbench image is accessible via IPv6.
         Workarounds for macOS will be needed, so that's why it's a separate test."""
