@@ -18,7 +18,10 @@ name: Build & Publish Notebook Servers (TEMPLATE)
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+    runs-on: ${{matrix.os}}
     env:
       # Some pieces of code (image pulls for example) in podman consult TMPDIR or default to /var/tmp
       TMPDIR: /home/runner/.local/share/containers/tmpdir
@@ -34,6 +37,8 @@ jobs:
       TRIVY_VULNDB: "/home/runner/.local/share/containers/trivy_db"
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
       TRIVY_SCAN_FS_JSON: '{}'
+      # Poetry version for use in running tests
+      POETRY_VERSION: '2.0.0'
 
     steps:
 
@@ -57,7 +62,7 @@ jobs:
 
       - name: Free up additional disk space
         # https://docs.github.com/en/actions/learn-github-actions/expressions
-        if: "${{ contains(inputs.target, 'rocm') || contains(inputs.target, 'cuda') || contains(inputs.target, 'intel') ||
+        if: "${{ contains(inputs.target, 'rocm') || contains(inputs.target, 'cuda') ||
          contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') }}"
         run: |
           set -x
@@ -257,6 +262,43 @@ jobs:
         run: podman images --digests
 
       # endregion
+
+      # region Pytest image tests
+
+      - name: Install poetry
+        if: steps.cache-poetry-restore.outputs.cache-hit != 'true'
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+        env:
+          PIPX_HOME: /home/runner/.local/pipx
+          PIPX_BIN_DIR: /home/runner/.local/bin
+
+      - name: Check poetry is installed correctly
+        run: poetry env info
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'poetry'
+
+      - name: Configure poetry
+        run: poetry env use "${{ steps.setup-python.outputs.python-path }}"
+
+      - name: Install deps
+        run: poetry install --sync
+
+      - name: Run container tests (in PyTest)
+        run: |
+          set -Eeuxo pipefail
+          poetry run pytest --capture=fd tests/containers --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+        env:
+          DOCKER_HOST: "unix:///var/run/podman/podman.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
+          # pulling the Ryuk container from docker.io introduces CI flakiness
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+
+      # endregion Pytest image tests
 
       # region Makefile image tests
 
