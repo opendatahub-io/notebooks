@@ -163,6 +163,23 @@ class TestBaseImage:
             finally:
                 docker_utils.NotebookContainer(container).stop(timeout=0)
 
+    def test_pip_install_cowsay_runs(self, image: str):
+        """Checks that the Python virtualenv in the image is writable."""
+        container = testcontainers.core.container.DockerContainer(image=image, user=23456, group_add=[0])
+        container.with_command("/bin/sh -c 'sleep infinity'")
+        try:
+            container.start()
+
+            ecode, output = container.exec(["python3", "-m", "pip", "install", "cowsay"])
+            logging.debug(output.decode())
+            assert ecode == 0
+
+            ecode, output = container.exec(["python3", "-m", "cowsay", "--text", "Hello world"])
+            logging.debug(output.decode())
+            assert ecode == 0
+        finally:
+            docker_utils.NotebookContainer(container).stop(timeout=0)
+
 
 def encode_python_function_execution_command_interpreter(python: str, function: Callable[..., Any], *args: list[Any]) -> list[str]:
     """Returns a cli command that will run the given Python function encoded inline.
