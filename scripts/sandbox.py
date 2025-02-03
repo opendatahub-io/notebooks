@@ -19,12 +19,14 @@ logging.root.name = pathlib.Path(__file__).name
 
 class Args(argparse.Namespace):
     dockerfile: pathlib.Path
+    build_context: pathlib.Path
     remaining: list[str]
 
 
 def main() -> int:
     p = argparse.ArgumentParser(allow_abbrev=False)
     p.add_argument("--dockerfile", type=pathlib.Path, required=True)
+    p.add_argument("--build-context", type=pathlib.Path, required=True)
     p.add_argument('remaining', nargs=argparse.REMAINDER)
 
     args = cast(Args, p.parse_args())
@@ -42,12 +44,14 @@ def main() -> int:
         subprocess.check_call([MAKE, "bin/buildinputs"], cwd=ROOT_DIR)
     stdout = subprocess.check_output([ROOT_DIR / "bin/buildinputs", str(args.dockerfile)],
                                      text=True, cwd=ROOT_DIR)
-    prereqs = [pathlib.Path(file) for file in json.loads(stdout)] if stdout != "\n" else []
+    prereqs = [args.build_context / pathlib.Path(file) for file in json.loads(stdout)] if stdout != "\n" else []
     print(f"{prereqs=}")
 
     with tempfile.TemporaryDirectory(delete=True) as tmpdir:
+        # in case there are no prereqs to put into sandbox, build_context dir still needs to exist
+        (tmpdir / args.build_context).mkdir(exist_ok=True)
         setup_sandbox(prereqs, pathlib.Path(tmpdir))
-        command = [arg if arg != "{};" else tmpdir for arg in args.remaining[1:]]
+        command = [arg if arg != "{};" else tmpdir / args.build_context for arg in args.remaining[1:]]
         print(f"running {command=}")
         try:
             subprocess.check_call(command)

@@ -62,23 +62,24 @@ else
 	CONTAINER_ENGINE := podman
 endif
 
-# Build function for the notebok image:
+# Build function for the notebook image:
 #   ARG 1: Image tag name.
-#   ARG 2: Path of image context we want to build.
-#   ARG 3: Base image tag name (optional).
+#   ARG 2: Path of container engine build context.
+#   ARG 3: Path of image context we want to build.
+#   ARG 4: Base image tag name (optional).
 define build_image
 	$(eval IMAGE_NAME := $(IMAGE_REGISTRY):$(1)-$(IMAGE_TAG))
 	$(info # Building $(IMAGE_NAME) image...)
 	$(if $(3),
-		$(eval BASE_IMAGE_NAME := $(IMAGE_REGISTRY):$(3)-$(IMAGE_TAG))
+		$(eval BASE_IMAGE_NAME := $(IMAGE_REGISTRY):$(4)-$(IMAGE_TAG))
 		$(eval BUILD_ARGS := --build-arg BASE_IMAGE=$(BASE_IMAGE_NAME)),
 		$(eval BUILD_ARGS :=)
 	)
-	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)/Dockerfile' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --tag $(IMAGE_NAME) --file '$(2)/Dockerfile' $(BUILD_ARGS) {}\;
+	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)/$(3)/Dockerfile' --build-context '$(2)' -- \
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --tag $(IMAGE_NAME) --file '$(2)/$(3)/Dockerfile' $(BUILD_ARGS) {}\;
 endef
 
-# Push function for the notebok image:
+# Push function for the notebook image:
 # 	ARG 1: Path of image context we want to build.
 define push_image
 	$(eval IMAGE_NAME := $(IMAGE_REGISTRY):$(subst /,-,$(1))-$(IMAGE_TAG))
@@ -94,10 +95,10 @@ endef
 # BUILD_DEPENDENT_IMAGES: only build images that were explicitly given as a goal on command line
 # PUSH_IMAGES: allows skipping podman push
 define image
-	$(info #*# Image build directory: <$(2)> #(MACHINE-PARSED LINE)#*#...)
+	$(info #*# Image build directory: <$(RELEASE)/$(2)> #(MACHINE-PARSED LINE)#*#...)
 
 	$(if $(or $(BUILD_DEPENDENT_IMAGES:no=), $(filter $@,$(MAKECMDGOALS))),
-		$(call build_image,$(1),$(2),$(3))
+		$(call build_image,$(1),$(RELEASE),$(2),$(3))
 
 		$(if $(PUSH_IMAGES:no=),
 			$(call push_image,$(1))
@@ -269,7 +270,7 @@ endif
 deploy9-%: bin/kubectl bin/yq
 	$(eval TARGET := $(shell echo $* | sed 's/-ubi9-python.*//'))
 	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
+	$(eval NOTEBOOK_DIR := $(RELEASE)/$(subst -,/,$(subst cuda-,,$(TARGET)))/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
 endif
@@ -282,7 +283,7 @@ endif
 undeploy9-%: bin/kubectl
 	$(eval TARGET := $(shell echo $* | sed 's/-ubi9-python.*//'))
 	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
+	$(eval NOTEBOOK_DIR := $(RELEASE)/$(subst -,/,$(subst cuda-,,$(TARGET)))/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
@@ -290,7 +291,7 @@ undeploy9-%: bin/kubectl
 deploy-c9s-%: bin/kubectl bin/yq
 	$(eval TARGET := $(shell echo $* | sed 's/-c9s-python.*//'))
 	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/c9s-python-$(PYTHON_VERSION)/kustomize/base)
+	$(eval NOTEBOOK_DIR := $(RELEASE)/$(subst -,/,$(subst cuda-,,$(TARGET)))/c9s-python-$(PYTHON_VERSION)/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
 endif
@@ -303,7 +304,7 @@ endif
 undeploy-c9s-%: bin/kubectl
 	$(eval TARGET := $(shell echo $* | sed 's/-c9s-python.*//'))
 	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
-	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/c9s-python-$(PYTHON_VERSION)/kustomize/base)
+	$(eval NOTEBOOK_DIR := $(RELEASE)/$(subst -,/,$(subst cuda-,,$(TARGET)))/c9s-python-$(PYTHON_VERSION)/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
@@ -311,7 +312,7 @@ undeploy-c9s-%: bin/kubectl
 .PHONY: test
 test-%: bin/kubectl
 	$(info # Running tests for $* notebook...)
-	@./scripts/test_jupyter_with_papermill.sh $*
+	@./scripts/test_jupyter_with_papermill.sh $(RELEASE) $*
 
 # Validate that runtime image meets minimum criteria
 # This validation is created from subset of https://github.com/elyra-ai/elyra/blob/9c417d2adc9d9f972de5f98fd37f6945e0357ab9/Makefile#L325

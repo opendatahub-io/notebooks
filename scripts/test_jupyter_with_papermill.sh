@@ -99,18 +99,20 @@ function _get_accelerator_flavor()
 #   Returns the absolute path of notebook resources in the notebooks/ repo based on the notebook name
 #
 # Arguments:
-#   $1 : Name of the notebook identifier
-#   $2 : [optional] Subdirectory to append to computed absolute path
+#   $1 : Release to test (2024a, 2024n, ...)
+#   $2 : Name of the notebook identifier
+#   $3 : [optional] Subdirectory to append to computed absolute path
 #		- path should NOT start with a leading /
 #
 # Returns:
 #   Absolute path to the jupyter notebook directory for the given notebook test target
 function _get_jupyter_notebook_directory()
 {
-    local notebook_id="${1:-}"
-    local subpath="${2:-}"
+    local release="${1:-}"
+    local notebook_id="${2:-}"
+    local subpath="${3:-}"
 
-    local jupyter_base="${root_repo_directory}/jupyter"
+    local jupyter_base="${root_repo_directory}/${release}/jupyter"
     local directory="${jupyter_base}/${notebook_id}/${os_flavor}-${python_flavor}${subpath:+"/$subpath"}"
 
     printf '%s' "${directory}"
@@ -264,11 +266,12 @@ function _create_test_versions_source_of_truth()
 #   $1 : Name of the notebook identifier
 function _run_test()
 {
-    local notebook_id="${1:-}"
+    local release="${1:-}"
+    local notebook_id="${2:-}"
 
     local test_notebook_file='test_notebook.ipynb'
     local repo_test_directory=
-    repo_test_directory="$(_get_jupyter_notebook_directory "${notebook_id}" "test")"
+    repo_test_directory="$(_get_jupyter_notebook_directory "${release}" "${notebook_id}" "test")"
     local output_file_prefix=
     output_file_prefix=$(tr '/' '-' <<< "${notebook_id}_${os_flavor}")
 
@@ -323,8 +326,10 @@ function _image_derived_from_datascience()
 #	Convenience function that will invoke the minimal and datascience papermill tests against the running notebook workload
 function _test_datascience_notebook()
 {
-    _run_test "${jupyter_minimal_notebook_id}"
-    _run_test "${jupyter_datascience_notebook_id}"
+    local release="${1:-}"
+
+    _run_test "${release}" "${jupyter_minimal_notebook_id}"
+    _run_test "${release}" "${jupyter_datascience_notebook_id}"
 }
 
 # Description:
@@ -335,6 +340,7 @@ function _test_datascience_notebook()
 #		- All relevant tests based on the notebook_id are invoked
 function _handle_test()
 {
+    local release="${1:-}"
     local notebook_id=
 
     # Due to existing logic - cuda accelerator value needs to be treated as empty string
@@ -369,15 +375,16 @@ function _handle_test()
     "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "python3 -m pip install papermill"
 
     if _image_derived_from_datascience "${notebook_id}" ; then
-        _test_datascience_notebook
+        _test_datascience_notebook "${release}"
     fi
 
     if [ -n "${notebook_id}" ] && ! [ "${notebook_id}" = "${jupyter_datascience_notebook_id}" ]; then
-        _run_test "${notebook_id}"
+        _run_test "${release}" "${notebook_id}"
     fi
 }
 
-test_target="${1:-}"
+release="${1:-}"
+test_target="${2:-}"
 
 # Hard-coded list of supported "notebook_id" values - based on notebooks/ repo Makefile
 jupyter_minimal_notebook_id='minimal'
@@ -410,5 +417,5 @@ _wait_for_workload "${notebook_name}"
 
 notebook_workload_name=$("${kbin}" get pods -l app="${notebook_name}" -o jsonpath='{.items[0].metadata.name}')
 
-_handle_test
+_handle_test "${release}"
 
