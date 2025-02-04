@@ -237,17 +237,19 @@ jobs:
       # region Image build
 
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
-      - name: "push|schedule: make ${{ inputs.target }}"
+      # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
+
+      - name: "push|schedule|workflow_dispatch: make ${{ inputs.target }}"
         run: |
           make ${{ inputs.target }}
-        if: ${{ fromJson(inputs.github).event_name == 'push' || fromJson(inputs.github).event_name == 'schedule' }}
+        if: ${{ fromJson(inputs.github).event_name == 'push' ||
+          fromJson(inputs.github).event_name == 'schedule' ||
+          fromJson(inputs.github).event_name == 'workflow_dispatch' }}
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
           CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
           # dependent images were already built and pushed, so just let podman pull it
           BUILD_DEPENDENT_IMAGES: "no"
-
-      # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
       - name: "pull_request: make ${{ inputs.target }}"
         run: |
           make ${{ inputs.target }}
