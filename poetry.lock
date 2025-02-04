@@ -270,6 +270,25 @@ dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
+name = "podman"
+version = "5.2.0"
+description = "Bindings for Podman RESTful API"
+optional = false
+python-versions = ">=3.6"
+groups = ["dev"]
+files = [
+    {file = "podman-5.2.0-py3-none-any.whl", hash = "sha256:e42e907b44af3e8578ac3bd4838040f7dd6b4af091f787e51462b979746703eb"},
+    {file = "podman-5.2.0.tar.gz", hash = "sha256:6a064a3e9dbfc4ee0ee0c51604164e1f58d9d00b10f702c3e570651aee722ec7"},
+]
+
+[package.dependencies]
+requests = ">=2.24"
+urllib3 = "*"
+
+[package.extras]
+progress-bar = ["rich (>=12.5.1)"]
+
+[[package]]
 name = "pydantic"
 version = "2.10.6"
 description = "Data validation using Python type hints"
@@ -694,4 +713,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.12"
-content-hash = "f525d20baef6a062a045c13772f17d8e30b7fa14609069a13872ce570191240f"
+content-hash = "29d9a9933892cb8c8d8d8c969a70acb157d49b748c93723afe20c25eab69297d"
