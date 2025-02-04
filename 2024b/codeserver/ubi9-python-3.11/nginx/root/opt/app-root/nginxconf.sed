@@ -1,9 +1,6 @@
 # Change port
 /listen/s%80%8888 default_server%
 
-# Remove listening on IPv6
-/\[::\]/d
-
 # One worker only
 /worker_processes/s%auto%1%
 
