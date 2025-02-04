@@ -30,9 +30,9 @@ def test_image_pipfiles(subtests: pytest_subtests.plugin.SubTests):
 
 def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.SubTests):
     file_groups = {
-        "ROCm de-vendor script":
-            [PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.11/de-vendor-torch.sh",
-             PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.11/de-vendor-torch.sh"]
+        "2024b ROCm de-vendor script":
+            [PROJECT_ROOT / "2024b/jupyter/rocm/pytorch/ubi9-python-3.11/de-vendor-torch.sh",
+             PROJECT_ROOT / "2024b/runtimes/rocm-pytorch/ubi9-python-3.11/de-vendor-torch.sh"],
     }
     for group_name, (first_file, *rest) in file_groups.items():
         with subtests.test(msg=f"Checking {group_name}"):

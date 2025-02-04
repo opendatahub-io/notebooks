@@ -322,9 +322,13 @@ jobs:
         run: |
           set -Eeuxo pipefail
 
-          mkdir -p runtimes/rocm
-          ln -s ../rocm-tensorflow runtimes/rocm/tensorflow
-          ln -s ../rocm-pytorch runtimes/rocm/pytorch
+          mkdir -p 2024a/runtimes/rocm
+          ln -s ../rocm-tensorflow 2024a/runtimes/rocm/tensorflow
+          ln -s ../rocm-pytorch 2024a/runtimes/rocm/pytorch
+
+          mkdir -p 2024b/runtimes/rocm
+          ln -s ../rocm-tensorflow 2024b/runtimes/rocm/tensorflow
+          ln -s ../rocm-pytorch 2024b/runtimes/rocm/pytorch
 
       # https://cri-o.io/
       - name: Install cri-o
