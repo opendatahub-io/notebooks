@@ -110,7 +110,7 @@ DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock poetry run pytest tests/con
 # Mac OS
 brew install podman
 podman machine init
-podman machine set --rootful
+podman machine set --rootful=false
 sudo podman-mac-helper install
 podman machine start
 poetry run pytest tests/containers --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
