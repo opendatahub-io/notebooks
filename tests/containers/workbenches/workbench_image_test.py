@@ -18,6 +18,7 @@ import testcontainers.core.network
 import testcontainers.core.waiting_utils
 
 import pytest
+import pytest_subtests
 
 from tests.containers import docker_utils, podman_machine_utils
 
@@ -31,8 +32,20 @@ class TestWorkbenchImage:
         # disable ipv6 https://danwalsh.livejournal.com/47118.html
         {"net.ipv6.conf.all.disable_ipv6": "1"}
     ])
-    def test_image_entrypoint_starts(self, image: str, sysctls) -> None:
+    def test_image_entrypoint_starts(self, subtests: pytest_subtests.SubTests, image: str, sysctls) -> None:
         skip_if_not_workbench_image(image)
+
+        # Here is a list of blocked keywords we don't want to see in the log messages during the container/workbench
+        # startup (e.g. log messages from Jupyter IDE, code-server IDE or RStudio IDE).
+        blocked_keywords = ["Error", "error", "Warning", "warning", "Failed", "failed", "[W ", "[E ", "Traceback"]
+        # Here is a list of allowed messages that match some block keyword from the list above, but we allow them
+        # for some reason.
+        allowed_messages = [
+            # We don't touch this - it should be fixed in the future by the package upgrade.
+            "JupyterEventsVersionWarning: The `version` property of an event schema must be a string. It has been type coerced, but in a future version of this library, it will fail to validate.",
+            # This is a message from our reverse proxy nginx caused by the fact that we attempt to connect to the code-server before it's actually running (container.start(wait_for_readiness=True)).
+            "[error] 19#19: *2 connect() failed (111: Connection refused) while connecting to upstream, client",
+        ]
 
         container = WorkbenchContainer(image=image, user=1000, group_add=[0],
                                        sysctls=sysctls)
@@ -40,12 +53,30 @@ class TestWorkbenchImage:
             try:
                 container.start()
                 # check explicitly that we can connect to the ide running in the workbench
-                container._connect()
+                with subtests.test("Attempting to connect to the workbench..."):
+                    container._connect()
             finally:
                 # try to grab logs regardless of whether container started or not
+                # TODO - do we want to enforce couple of seconds wait to be sure nothing extra suspicious is logged for the workbench???
                 stdout, stderr = container.get_logs()
+                full_logs = ""
                 for line in stdout.splitlines() + stderr.splitlines():
-                    logging.debug(line)
+                    full_logs = "\n".join([full_logs, line.decode()])
+                    logging.debug(line.decode())
+
+                # let's check that logs don't contain any error or unexpected warning message
+                with subtests.test("Checking the log in the workbench..."):
+                    failed_lines = 0
+                    for line in full_logs.splitlines():
+                        for keyword in blocked_keywords:
+                            if keyword in line:
+                                if not any(allowed in line for allowed in allowed_messages):
+                                    logging.debug(f"Unexpected keyword '{keyword}' in the following message: '{line}'")
+                                    failed_lines += 1
+                                    # Let's go on another line now as we don't care if multiple blocked keywords are present in this line
+                                    break
+                    if failed_lines > 0:
+                        pytest.fail(f"There were {failed_lines} line(s) during the workbench startup that violate our checks, see debug messages.")
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
