@@ -1,0 +1,40 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/runtime-image: "true"
+  annotations:
+    # TODO: once the restraction takes a final shape need to update that url
+    opendatahub.io/runtime-image-url: "https://github.com//opendatahub-io/notebooks/tree/main/runtimes"
+    opendatahub.io/runtime-image-name: "Datascience with Python 3.11 (UBI9)"
+    opendatahub.io/runtime-image-desc: "Datascience runtime image for Elyra, enabling pipeline execution from Workbenches with a set of advanced AI/ML data science libraries, supporting different runtimes for various pipeline nodes."
+  name: runtime-datascience
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - annotations:
+        # language=json
+        opendatahub.io/runtime-image-metadata: |
+          [
+            {
+              "display_name": "Datascience with Python 3.11 (UBI9)",
+              "metadata": {
+                "tags": [
+                  "datascience"
+                ],
+                "display_name": "Datascience with Python 3.11 (UBI9)",
+                "image_name": "quay.io/opendatahub/workbench-images@sha256:304d3b2ea846832f27312ef6776064a1bf3797c645b6fea0b292a7ef6416458e",
+                "pull_policy": "IfNotPresent"
+              },
+              "schema_name": "runtime-image"
+            }
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+      from:
+        kind: DockerImage
+        name: quay.io/opendatahub/workbench-images@sha256:304d3b2ea846832f27312ef6776064a1bf3797c645b6fea0b292a7ef6416458e
+      name: "datascience"
+      referencePolicy:
+        type: Source
