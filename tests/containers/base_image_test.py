@@ -32,6 +32,23 @@ LOGGER = logging.getLogger(__name__)
 if TYPE_CHECKING:
     import pytest_subtests
 
+class ImageDeployment:
+    def __init__(self, image: str):
+        self.image = image
+
+    def __enter__(self) -> ImageDeployment:
+        self.deploy()
+        return self
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.undeploy()
+
+    def deploy(self) -> None:
+        LOGGER.debug(f"Deploying {self.image}")
+        ocp_resources.deployment.Deployment(
+            image=self.image,
+            template=
+        ).deploy()
+
 class TestBaseImage:
     """Tests that are applicable for all images we have in this repository."""
 
@@ -167,6 +184,11 @@ spec:
         print (deployment)
         with kubernetes_utils.TestFrame() as tf:
             tf.push(deployment, wait=True)
+
+            pods = list(ocp_resources.pod.Pod.get(namespace="default", label_selector="app=nginx"))
+            assert len(pods) == 3
+            kubernetes_utils.PodUtils.wait_for_pods_ready(client, "default",
+                                                          label_selector="app=nginx", expect_pods_count=3)
 
 
 
