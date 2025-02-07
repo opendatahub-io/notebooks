@@ -5,6 +5,7 @@ import http.cookiejar
 import logging
 import os
 import platform
+import time
 import urllib.error
 import urllib.request
 
@@ -18,6 +19,7 @@ import testcontainers.core.network
 import testcontainers.core.waiting_utils
 
 import pytest
+import pytest_subtests
 
 from tests.containers import docker_utils, podman_machine_utils
 
@@ -31,7 +33,7 @@ class TestWorkbenchImage:
         # disable ipv6 https://danwalsh.livejournal.com/47118.html
         {"net.ipv6.conf.all.disable_ipv6": "1"}
     ])
-    def test_image_entrypoint_starts(self, image: str, sysctls) -> None:
+    def test_image_entrypoint_starts(self, subtests: pytest_subtests.SubTests, image: str, sysctls) -> None:
         skip_if_not_workbench_image(image)
 
         container = WorkbenchContainer(image=image, user=1000, group_add=[0],
@@ -40,17 +42,16 @@ class TestWorkbenchImage:
             try:
                 container.start()
                 # check explicitly that we can connect to the ide running in the workbench
-                container._connect()
+                with subtests.test("Attempting to connect to the workbench..."):
+                    container._connect()
             finally:
                 # try to grab logs regardless of whether container started or not
-                stdout, stderr = container.get_logs()
-                for line in stdout.splitlines() + stderr.splitlines():
-                    logging.debug(line)
+                grab_and_check_logs(subtests, container)
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
     @pytest.mark.skip(reason="RHOAIENG-17305: currently our Workbench images don't tolerate IPv6")
-    def test_ipv6_only(self, image: str, test_frame):
+    def test_ipv6_only(self, subtests: pytest_subtests.SubTests, image: str, test_frame):
         """Test that workbench image is accessible via IPv6.
         Workarounds for macOS will be needed, so that's why it's a separate test."""
         skip_if_not_workbench_image(image)
@@ -103,9 +104,7 @@ class TestWorkbenchImage:
                     container._connect(container_host=host, container_port=port)
             finally:
                 # try to grab logs regardless of whether container started or not
-                stdout, stderr = container.get_logs()
-                for line in stdout.splitlines() + stderr.splitlines():
-                    logging.debug(line)
+                grab_and_check_logs(subtests, container)
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
@@ -192,3 +191,39 @@ def skip_if_not_workbench_image(image: str) -> docker.models.images.Image:
             f"Image {image} does not have any of '{ide_server_label_fragments=} in {image_metadata.labels['name']=}'")
 
     return image_metadata
+
+def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: WorkbenchContainer) -> None:
+    # Here is a list of blocked keywords we don't want to see in the log messages during the container/workbench
+    # startup (e.g. log messages from Jupyter IDE, code-server IDE or RStudio IDE).
+    blocked_keywords = ["Error", "error", "Warning", "warning", "Failed", "failed", "[W ", "[E ", "Traceback"]
+    # Here is a list of allowed messages that match some block keyword from the list above, but we allow them
+    # for some reason.
+    allowed_messages = [
+        # We don't touch this - it should be fixed in the future by the package upgrade.
+        "JupyterEventsVersionWarning: The `version` property of an event schema must be a string. It has been type coerced, but in a future version of this library, it will fail to validate.",
+        # This is a message from our reverse proxy nginx caused by the fact that we attempt to connect to the code-server before it's actually running (container.start(wait_for_readiness=True)).
+        "connect() failed (111: Connection refused) while connecting to upstream, client",
+    ]
+
+    # Let's wait couple of seconds to give a chance to log eventual extra startup messages just to be sure we don't
+    # miss anytihng important in this test.
+    time.sleep(3)
+
+    stdout, stderr = container.get_logs()
+    full_logs = ""
+    for line in stdout.splitlines() + stderr.splitlines():
+        full_logs = "\n".join([full_logs, line.decode()])
+        logging.debug(line.decode())
+
+    # let's check that logs don't contain any error or unexpected warning message
+    with subtests.test("Checking the log in the workbench..."):
+        failed_lines: list[str] = []
+        for line in full_logs.splitlines():
+            if any(keyword in line for keyword in blocked_keywords):
+                    if any(allowed in line for allowed in allowed_messages):
+                        logging.debug(f"Waived message: '{line}'")
+                    else:
+                        logging.error(f"Unexpected keyword in the following message: '{line}'")
+                        failed_lines.append(line)
+        if len(failed_lines) > 0:
+            pytest.fail(f"Log message(s) ({len(failed_lines)}) that violate our checks occurred during the workbench startup:\n{"\n".join(failed_lines)}")
