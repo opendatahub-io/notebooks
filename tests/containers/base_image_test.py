@@ -5,6 +5,7 @@ import inspect
 import json
 import logging
 import pathlib
+import platform
 import re
 import tempfile
 import textwrap
@@ -135,16 +136,23 @@ class TestBaseImage:
             tmp_crypto.chmod(0o777)
 
             container = testcontainers.core.container.DockerContainer(image=image, user=54321, group_add=[0])
-            container.with_volume_mapping(str(tmp_crypto), "/proc/sys", mode="ro,z")
+
+            # if /proc/sys/crypto/fips_enabled exists, only replace this file,
+            # otherwise (Ubuntu case), assume entire /proc/sys/crypto does not exist
+            if platform.system().lower() == "darwin" or pathlib.Path("/proc/sys/crypto/fips_enabled").exists():
+                container.with_volume_mapping(str(tmp_crypto / 'crypto' / 'fips_enabled'), "/proc/sys/crypto/fips_enabled", mode="ro,z")
+            else:
+                container.with_volume_mapping(str(tmp_crypto), "/proc/sys", mode="ro,z")
+
             container.with_command("/bin/sh -c 'sleep infinity'")
 
             try:
                 container.start()
 
                 with subtests.test("/proc/sys/crypto/fips_enabled is 1"):
-                    ecode, output = container.exec(["/bin/sh", "-c", "sysctl crypto.fips_enabled"])
+                    ecode, output = container.exec(["/bin/sh", "-c", "cat /proc/sys/crypto/fips_enabled"])
                     assert ecode == 0, output.decode()
-                    assert "crypto.fips_enabled = 1\n" == output.decode(), output.decode()
+                    assert "1\n" == output.decode(), f"Unexpected crypto/fips_enabled content: {output.decode()}"
 
                 # 0: enabled, 1: partial success, 2: not enabled
                 with subtests.test("/fips-mode-setup --is-enabled reports 1"):
