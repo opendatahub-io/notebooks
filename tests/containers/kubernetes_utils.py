@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import logging
+import time
+import traceback
+from typing import Any, Callable
 
 import kubernetes
 import kubernetes.dynamic.exceptions
+from kubernetes.dynamic import DynamicClient, ResourceField
+
 import ocp_resources.deployment
 import ocp_resources.resource
 
+
+class TestFrameConstants:
+    GLOBAL_POLL_INTERVAL_MEDIUM = 10
 
 # https://github.com/RedHatQE/openshift-python-wrapper/tree/main/examples
 
@@ -15,6 +23,7 @@ def get_client() -> kubernetes.dynamic.DynamicClient:
         # client = kubernetes.dynamic.DynamicClient(client=kubernetes.config.new_client_from_config())
         # probably same as above
         client = ocp_resources.resource.get_client()
+        return client
     except kubernetes.config.ConfigException as e:
         # probably bad config
         logging.error(e)
@@ -28,7 +37,7 @@ def get_client() -> kubernetes.dynamic.DynamicClient:
         # unexpected error, assert here
         logging.error(e)
 
-    return client
+    raise RuntimeError("Failed to instantiate client")
 
 
 def get_username(client: kubernetes.dynamic.DynamicClient) -> str:
@@ -56,9 +65,9 @@ class TestFrame:
     def __init__(self):
         self.stack: list[ocp_resources.resource.Resource] = []
 
-    def push(self, resource: ocp_resources.resource.Resource, wait=False):
+    def push[T: ocp_resources.resource.Resource](self, resource: T, wait=False) -> T:
         self.stack.append(resource)
-        resource.deploy(wait=wait)
+        return resource.deploy(wait=wait)
 
     def destroy(self, wait=False):
         while self.stack:
@@ -69,4 +78,184 @@ class TestFrame:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.destroy()
+        self.destroy(wait=True)
+
+class PodUtils:
+    READINESS_TIMEOUT = 10 * 60
+
+    # consider using timeout_sampler
+    @staticmethod
+    def wait_for_pods_ready(
+            client: DynamicClient, namespace_name: str, label_selector: str, expect_pods_count: int
+    ) -> None:
+        """Wait for all pods in namespace to be ready
+        :param client:
+        :param namespace_name: name of the namespace
+        :param label_selector:
+        :param expect_pods_count:
+        """
+
+        # it's a dynamic client with the `resource` parameter already filled in
+        class ResourceType(kubernetes.dynamic.Resource, kubernetes.dynamic.DynamicClient):
+            pass
+
+        resource: ResourceType = client.resources.get(
+            kind=ocp_resources.pod.Pod.kind,
+            api_version=ocp_resources.pod.Pod.api_version,
+        )
+
+        def ready() -> bool:
+            pods = resource.get(namespace=namespace_name, label_selector=label_selector).items
+            if not pods and expect_pods_count == 0:
+                logging.debug("All expected Pods %s in Namespace %s are ready", label_selector, namespace_name)
+                return True
+            if not pods:
+                logging.debug("Pods matching %s/%s are not ready", namespace_name, label_selector)
+                return False
+            if len(pods) != expect_pods_count:
+                logging.debug("Expected Pods %s/%s are not ready", namespace_name, label_selector)
+                return False
+            pod: ResourceField
+            for pod in pods:
+                if not Readiness.is_pod_ready(pod) and not Readiness.is_pod_succeeded(pod):
+                    logging.debug("Pod is not ready: %s/%s (%s)",
+                                  namespace_name, pod.metadata.name,
+                                  {cs.name: cs.state for cs in pod.status.containerStatuses})
+                    return False
+                else:
+                    # check all containers in pods are ready
+                    for cs in pod.status.containerStatuses:
+                        if not (cs.ready or cs.state.get("terminated", {}).get("reason", "") == "Completed"):
+                            logging.debug(
+                                f"Container {cs.getName()} of Pod {namespace_name}/{pod.metadata.name} not ready ({cs.state=})"
+                            )
+                            return False
+            logging.info("Pods matching %s/%s are ready", namespace_name, label_selector)
+            return True
+
+        Wait.until(
+            description=f"readiness of all Pods matching {label_selector} in Namespace {namespace_name}",
+            poll_interval=TestFrameConstants.GLOBAL_POLL_INTERVAL_MEDIUM,
+            timeout=PodUtils.READINESS_TIMEOUT,
+            ready=ready,
+        )
+
+
+class Wait:
+    @staticmethod
+    def until(
+            description: str,
+            poll_interval: float,
+            timeout: float,
+            ready: Callable[[], bool],
+            on_timeout: Callable[[], None] | None = None,
+    ) -> None:
+        """For every poll (happening once each {@code pollIntervalMs}) checks if supplier {@code ready} is true.
+
+        If yes, the wait is closed. Otherwise, waits another {@code pollIntervalMs} and tries again.
+        Once the wait timeout (specified by {@code timeoutMs} is reached and supplier wasn't true until that time,
+        runs the {@code onTimeout} (f.e. print of logs, showing the actual value that was checked inside {@code ready}),
+        and finally throws {@link WaitException}.
+        @param description    information about on what we are waiting
+        @param pollIntervalMs poll interval in milliseconds
+        @param timeoutMs      timeout specified in milliseconds
+        @param ready          {@link BooleanSupplier} containing code, which should be executed each poll,
+                               verifying readiness of the particular thing
+        @param onTimeout      {@link Runnable} executed once timeout is reached and
+                               before the {@link WaitException} is thrown."""
+        logging.info("Waiting for: %s", description)
+        deadline = time.monotonic() + timeout
+
+        exception_message: str | None = None
+        previous_exception_message: str | None = None
+
+        # in case we are polling every 1s, we want to print exception after x tries, not on the first try
+        # for minutes poll interval will 2 be enough
+        exception_appearance_count: int = 2 if (poll_interval // 60) > 0 else max(int(timeout // poll_interval // 4), 2)
+        exception_count: int = 0
+        new_exception_appearance: int = 0
+
+        stack_trace_error: str | None = None
+
+        while True:
+            try:
+                result: bool = ready()
+            except KeyboardInterrupt:
+                raise  # quick exit if the user gets tired of waiting
+            except Exception as e:
+                exception_message = str(e)
+
+                exception_count += 1
+                new_exception_appearance += 1
+                if (
+                        exception_count == exception_appearance_count
+                        and exception_message is not None
+                        and exception_message == previous_exception_message
+                ):
+                    logging.info(f"While waiting for: {description} exception occurred: {exception_message}")
+                    # log the stacktrace
+                    stack_trace_error = traceback.format_exc()
+                elif (
+                        exception_message is not None
+                        and exception_message != previous_exception_message
+                        and new_exception_appearance == 2
+                ):
+                    previous_exception_message = exception_message
+
+                result = False
+
+            time_left: float = deadline - time.monotonic()
+            if result:
+                return
+            if time_left <= 0:
+                if exception_count > 1:
+                    logging.error("Exception waiting for: %s, %s", description, exception_message)
+
+                    if stack_trace_error is not None:
+                        # printing handled stacktrace
+                        logging.error(stack_trace_error)
+                if on_timeout is not None:
+                    on_timeout()
+                wait_exception: WaitException = WaitException(f"Timeout after {timeout} s waiting for {description}")
+                logging.error(wait_exception)
+                raise wait_exception
+
+            sleep_time: float = min(poll_interval, time_left)
+            time.sleep(sleep_time)  # noqa: FCN001
+
+
+class WaitException(Exception):
+    pass
+
+
+class Readiness:
+    @staticmethod
+    def is_pod_ready(pod: ResourceField) -> bool:
+        Utils.check_not_none(value=pod, message="Pod can't be null.")
+
+        condition = ocp_resources.pod.Pod.Condition.READY
+        status = ocp_resources.pod.Pod.Condition.Status.TRUE
+        for cond in pod.get("status", {}).get("conditions", []):
+            if cond["type"] == condition and cond["status"].casefold() == status.casefold():
+                return True
+        return False
+
+    @staticmethod
+    def is_pod_succeeded(pod: ResourceField) -> bool:
+        Utils.check_not_none(value=pod, message="Pod can't be null.")
+        return pod.status is not None and "Succeeded" == pod.status.phase
+
+
+class Utils:
+    @staticmethod
+    def check_not_none(value: Any, message: str) -> None:
+        if value is None:
+            raise ValueError(message)
+
+__all__ = [
+    get_client,
+    get_username,
+    PodUtils,
+    TestFrame,
+    TestFrameConstants,
+]
