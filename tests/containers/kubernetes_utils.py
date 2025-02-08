@@ -69,10 +69,19 @@ class TestFrame:
         self.stack.append(resource)
         return resource.deploy(wait=wait)
 
+    def add[T](self, resource: T, destructor: Callable[[T], None] = None) -> T:
+        if destructor:
+            resource.destructor = destructor
+        self.stack.append(resource)
+        return resource
+
     def destroy(self, wait=False):
         while self.stack:
             resource = self.stack.pop()
-            resource.clean_up(wait=wait)
+            if hasattr(resource, "destructor"):
+                resource.destructor(resource)
+            else:
+                resource.clean_up(wait=wait)
 
     def __enter__(self) -> TestFrame:
         return self
