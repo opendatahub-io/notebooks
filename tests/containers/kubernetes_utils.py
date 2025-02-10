@@ -142,7 +142,9 @@ class ImageDeployment:
         #  default, kube-system, kube-public, openshift-node, openshift-infra, openshift.
         # https://docs.openshift.com/container-platform/4.17/authentication/managing-security-context-constraints.html#role-based-access-to-ssc_configuring-internal-oauth
 
-        ns = create_namespace(privileged_client=False, name=f"test-ns-{container_name}")
+        # TODO(jdanek): sort out how we want to work with privileged/unprivileged client
+        #  take inspiration from odh-tests
+        ns = create_namespace(privileged_client=True, name=f"test-ns-{container_name}")
         self.tf.defer_resource(ns)
 
         pvc = ocp_resources.persistent_volume_claim.PersistentVolumeClaim(
