@@ -110,6 +110,8 @@ class TestWorkbenchImage:
 
     @pytest.mark.openshift
     def test_image_run_on_openshift(self, image: str):
+        skip_if_not_workbench_image(image)
+
         client = kubernetes_utils.get_client()
         print(client)
 
