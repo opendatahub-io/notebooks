@@ -1,46 +1,21 @@
 from __future__ import annotations
 
 import binascii
-import functools
 import inspect
 import json
-import io
 import logging
 import pathlib
 import re
 import tempfile
 import textwrap
-import threading
 from typing import TYPE_CHECKING, Any, Callable
 
-import pytest
-import requests
 import testcontainers.core.container
 import testcontainers.core.waiting_utils
 
-import kubernetes
-import kubernetes.dynamic.exceptions
-import kubernetes.stream.ws_client
-import kubernetes.client.api.core_v1_api
-
-import ocp_resources.pod
-import ocp_resources.deployment
-import ocp_resources.service
-import ocp_resources.persistent_volume_claim
-import ocp_resources.project_request
-import ocp_resources.namespace
-import ocp_resources.project_project_openshift_io
-
-import yaml
-import time
-
-from tests.containers import docker_utils, socket_proxy
-from tests.containers import kubernetes_utils
+from tests.containers import docker_utils
 
 import pytest
-
-from tests.containers.kubernetes_utils import TestFrame, PodUtils
-from tests.containers.socket_proxy import SubprocessProxy
 
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -48,159 +23,6 @@ LOGGER = logging.getLogger(__name__)
 if TYPE_CHECKING:
     import pytest_subtests
 
-
-TIMEOUT_2MIN = 2 * 60
-
-@functools.wraps(ocp_resources.namespace.Namespace.__init__)
-def create_namespace(privileged_client: bool = False, *args, **kwargs) -> ocp_resources.project_project_openshift_io.Project:
-    if not privileged_client:
-        with ocp_resources.project_request.ProjectRequest(*args, **kwargs):
-            project = ocp_resources.project_project_openshift_io.Project(*args, **kwargs)
-            project.wait_for_status(status=project.Status.ACTIVE, timeout=TIMEOUT_2MIN)
-            return project
-    else:
-        with ocp_resources.namespace.Namespace(*args, **kwargs) as ns:
-            ns.wait_for_status(status=ocp_resources.namespace.Namespace.Status.ACTIVE, timeout=TIMEOUT_2MIN)
-            return ns
-
-
-class ImageDeployment:
-    def __init__(self, client: kubernetes.dynamic.DynamicClient, image: str):
-        self.client = client
-        self.image = image
-        self.tf = TestFrame()
-
-    def __enter__(self) -> ImageDeployment:
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.tf.destroy()
-
-    def deploy(self, container_name: str) -> None:
-        LOGGER.debug(f"Deploying {self.image}")
-        # custom namespace is necessary, because we cannot assign a SCC to pods created in one of the default namespaces:
-        #  default, kube-system, kube-public, openshift-node, openshift-infra, openshift.
-        # https://docs.openshift.com/container-platform/4.17/authentication/managing-security-context-constraints.html#role-based-access-to-ssc_configuring-internal-oauth
-
-        ns = create_namespace(privileged_client=False, name="jdanek2")
-        self.tf.push(ns)
-
-        pvc = ocp_resources.persistent_volume_claim.PersistentVolumeClaim(
-            name=container_name,
-            namespace=ns.name,
-            accessmodes=ocp_resources.persistent_volume_claim.PersistentVolumeClaim.AccessMode.RWO,
-            volume_mode=ocp_resources.persistent_volume_claim.PersistentVolumeClaim.VolumeMode.FILE,
-            size="1Gi",
-        )
-        self.tf.push(pvc, wait=True)
-        deployment = ocp_resources.deployment.Deployment(
-            client=self.client,
-            name=container_name,
-            namespace=ns.name,
-            selector={"matchLabels": {"app": container_name}},
-            replicas=1,
-            template={
-                "metadata": {
-                    "annotations": {
-                        # This will result in the container spec having something like below,
-                        # regardless of what kind of namespace this is being run in.
-                        # For example, `default` is a privileged ns.
-                        # ```
-                        # spec:
-                        #   securityContext:
-                        #     seLinuxOptions:
-                        #       level: 's0:c34,c4'
-                        #     fsGroup: 1001130000
-                        #     seccompProfile:
-                        #       type: RuntimeDefault
-                        # ```
-                        "openshift.io/scc": "restricted-v2"
-                    },
-                    "labels": {
-                        "app": container_name,
-                    }
-                },
-                "spec": {
-                    "containers": [
-                        {
-                            "name": container_name,
-                            "image": self.image,
-                            # "command": ["/bin/sh", "-c", "while true ; do date; sleep 5; done;"],
-                            "ports": [
-                                {
-                                    "containerPort": 8888,
-                                    "name": "notebook-port",
-                                    "protocol": "TCP",
-                                }
-                            ],
-                            # rstudio will not start without its volume mount and it does not log the error for it
-                            # see the testcontainers implementation of this (the tty=True part)
-                            "volumeMounts": [
-                                {
-                                    "mountPath": "/opt/app-root/src",
-                                    "name": "my-workbench"
-                                }
-                            ],
-                        },
-                    ],
-                    "volumes": [
-                        {
-                            "name": "my-workbench",
-                            "persistentVolumeClaim": {
-                                "claimName": container_name,
-                            }
-                        }
-                    ]
-                }
-            }
-        )
-        self.tf.push(deployment)
-        LOGGER.debug(f"Waiting for pods to become ready...")
-        PodUtils.wait_for_pods_ready(self.client, namespace_name=ns.name, label_selector=f"app={container_name}",
-                                     expect_pods_count=1)
-        # ocp_resources.service.Service(
-        #     name=container_name,
-        #     namespace="default",
-        #     labels={"app": container_name},
-        #     type=ocp_resources.service.Service.Type.ClusterIP,
-        #     selector={"app": container_name},
-        #     ports=[
-        #         {
-        #             "port": 8888,
-        #             "targetPort": "notebook-port"
-        #         }
-        #     ],
-        # )
-
-        # sample code from
-        # https://github.com/kubernetes-client/python/blob/master/examples/pod_portforward.py
-
-        core_v1_api = kubernetes.client.api.core_v1_api.CoreV1Api(api_client=self.client.client)
-        pod_name: kubernetes.client.models.v1_pod_list.V1PodList = core_v1_api.list_namespaced_pod(
-            namespace=ns.name,
-            label_selector=f"app={container_name}"
-        )
-        assert len(pod_name.items) == 1
-        pod: kubernetes.client.models.v1_pod.V1Pod = pod_name.items[0]
-
-        p = socket_proxy.SocketProxy("localhost", 0, core_v1_api, pod)
-        t = threading.Thread(target=p.start)
-        t.start()
-        port = p.get_actual_port()
-        LOGGER.debug(f"Listening on port {port}")
-        resp = requests.get(f"http://localhost:{port}")
-        assert resp.status_code == 200
-        LOGGER.debug(f"Done with portforward")
-
-        self.tf.add(p.cancellation_token, lambda t: t.cancel())
-
-
-def create_session_with_socket(sock):
-    session = requests.Session()
-    adapter = CustomAdapter(socket=sock)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
-    return session
 
 class TestBaseImage:
     """Tests that are applicable for all images we have in this repository."""
@@ -283,82 +105,6 @@ class TestBaseImage:
 
                 with subtests.test(f"{dlib=}"):
                     pytest.fail(f"{dlib=} has unsatisfied dependencies {deps=}")
-
-    def test_oc_command_runs(self, image: str):
-        client = kubernetes_utils.get_client()
-        print(client)
-
-        username = kubernetes_utils.get_username(client)
-        print(username)
-
-        with ImageDeployment(client, image) as image:
-            image.deploy("some-container")
-
-        return
-
-        # kont = kubernetes.client.models.v1_container.V1Container()
-        # deployment = ocp_resources.deployment.Deployment(client=client, name="some-deployment", namespace="default",
-        #                                                  selector={"matchLabels": {"app": "nginx"}},
-        #                                                  template=yaml.safe_load(io.StringIO("""
-        # metadata:
-        #   labels:
-        #     app: nginx
-        # spec:
-        #   containers:
-        #   - name: nginx
-        #     image: nginx:1.14.2
-        #     ports:
-        #     - containerPort: 80
-        # """)))
-
-        container_name = "nginx"
-        deployment = ocp_resources.deployment.Deployment(client=client, yaml_file=io.StringIO(
-            # language=yaml
-            f"""
-# no nk8s
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  namespace: default
-  name: nginx-deployment
-  labels:
-    app: nginx
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: nginx
-  template:
-    metadata:
-      labels:
-        app: nginx
-    spec:
-      containers:
-      - name: {container_name}
-        image: nginx:1.14.2
-        ports:
-        - containerPort: 80
-"""))
-
-        print(deployment)
-        with kubernetes_utils.TestFrame() as tf:
-            tf.push(deployment, wait=True)
-
-            pods = list(ocp_resources.pod.Pod.get(namespace="default", label_selector="app=nginx"))
-            assert len(pods) == 3
-            kubernetes_utils.PodUtils.wait_for_pods_ready(client, "default",
-                                                          label_selector="app=nginx", expect_pods_count=3)
-
-        container = testcontainers.core.container.DockerContainer(image=image, user=23456, group_add=[0])
-        container.with_command("/bin/sh -c 'sleep infinity'")
-        try:
-            container.start()
-            ecode, output = container.exec(["/bin/sh", "-c", "oc version"])
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)
-
-        logging.debug(output.decode())
-        assert ecode == 0
 
     # @pytest.mark.environmentss("docker")
     def test_oc_command_runs_fake_fips(self, image: str, subtests: pytest_subtests.SubTests):

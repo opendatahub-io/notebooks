@@ -1,20 +1,51 @@
 from __future__ import annotations
 
+import contextlib
+import functools
 import logging
+import threading
 import time
 import traceback
-from typing import Any, Callable
+import typing
+import socket
+from socket import socket
+from typing import Any, Callable, Generator
+
+import requests
 
 import kubernetes
 import kubernetes.dynamic.exceptions
+import kubernetes.stream.ws_client
+import kubernetes.dynamic.exceptions
+import kubernetes.stream.ws_client
+import kubernetes.client.api.core_v1_api
 from kubernetes.dynamic import DynamicClient, ResourceField
 
+import ocp_resources.pod
+import ocp_resources.deployment
+import ocp_resources.service
+import ocp_resources.persistent_volume_claim
+import ocp_resources.project_request
+import ocp_resources.namespace
+import ocp_resources.project_project_openshift_io
 import ocp_resources.deployment
 import ocp_resources.resource
+import ocp_resources.pod
+import ocp_resources.namespace
+import ocp_resources.project_project_openshift_io
+import ocp_resources.project_request
+
+from tests.containers import socket_proxy
 
 
 class TestFrameConstants:
     GLOBAL_POLL_INTERVAL_MEDIUM = 10
+    TIMEOUT_2MIN = 2 * 60
+
+
+logging.basicConfig(level=logging.DEBUG)
+LOGGER = logging.getLogger(__name__)
+
 
 # https://github.com/RedHatQE/openshift-python-wrapper/tree/main/examples
 
@@ -62,24 +93,27 @@ class TestKubernetesUtils:
 
 
 class TestFrame:
-    def __init__(self):
-        self.stack: list[ocp_resources.resource.Resource] = []
+    def __init__[T](self):
+        self.stack: list[tuple[T, Callable[[T], None] | None]] = []
 
-    def push[T: ocp_resources.resource.Resource](self, resource: T, wait=False) -> T:
-        self.stack.append(resource)
-        return resource.deploy(wait=wait)
+    def defer_resource[T: ocp_resources.resource.Resource](self, resource: T, wait=False,
+                                                           destructor: Callable[[T], None] | None = None) -> T:
+        result = resource.deploy(wait=wait)
+        self.defer(resource, destructor)
+        return result
 
     def add[T](self, resource: T, destructor: Callable[[T], None] = None) -> T:
-        if destructor:
-            resource.destructor = destructor
-        self.stack.append(resource)
+        self.defer(resource, destructor)
         return resource
+
+    def defer[T](self, resource: T, destructor: Callable[[T], None] = None) -> T:
+        self.stack.append((resource, destructor))
 
     def destroy(self, wait=False):
         while self.stack:
-            resource = self.stack.pop()
-            if hasattr(resource, "destructor"):
-                resource.destructor(resource)
+            resource, destructor = self.stack.pop()
+            if destructor is not None:
+                destructor(resource)
             else:
                 resource.clean_up(wait=wait)
 
@@ -88,6 +122,123 @@ class TestFrame:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.destroy(wait=True)
+
+
+class ImageDeployment:
+    def __init__(self, client: kubernetes.dynamic.DynamicClient, image: str):
+        self.client = client
+        self.image = image
+        self.tf = TestFrame()
+
+    def __enter__(self) -> ImageDeployment:
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.tf.destroy()
+
+    def deploy(self, container_name: str) -> None:
+        LOGGER.debug(f"Deploying {self.image}")
+        # custom namespace is necessary, because we cannot assign a SCC to pods created in one of the default namespaces:
+        #  default, kube-system, kube-public, openshift-node, openshift-infra, openshift.
+        # https://docs.openshift.com/container-platform/4.17/authentication/managing-security-context-constraints.html#role-based-access-to-ssc_configuring-internal-oauth
+
+        ns = create_namespace(privileged_client=False, name=f"test-ns-{container_name}")
+        self.tf.defer_resource(ns)
+
+        pvc = ocp_resources.persistent_volume_claim.PersistentVolumeClaim(
+            name=container_name,
+            namespace=ns.name,
+            accessmodes=ocp_resources.persistent_volume_claim.PersistentVolumeClaim.AccessMode.RWO,
+            volume_mode=ocp_resources.persistent_volume_claim.PersistentVolumeClaim.VolumeMode.FILE,
+            size="1Gi",
+        )
+        self.tf.defer_resource(pvc, wait=True)
+        deployment = ocp_resources.deployment.Deployment(
+            client=self.client,
+            name=container_name,
+            namespace=ns.name,
+            selector={"matchLabels": {"app": container_name}},
+            replicas=1,
+            template={
+                "metadata": {
+                    "annotations": {
+                        # This will result in the container spec having something like below,
+                        # regardless of what kind of namespace this is being run in.
+                        # Keep in mind that `default` is a privileged namespace and this annotation has no effect there.
+                        # ```
+                        # spec:
+                        #   securityContext:
+                        #     seLinuxOptions:
+                        #       level: 's0:c34,c4'
+                        #     fsGroup: 1001130000
+                        #     seccompProfile:
+                        #       type: RuntimeDefault
+                        # ```
+                        "openshift.io/scc": "restricted-v2"
+                    },
+                    "labels": {
+                        "app": container_name,
+                    }
+                },
+                "spec": {
+                    "containers": [
+                        {
+                            "name": container_name,
+                            "image": self.image,
+                            # "command": ["/bin/sh", "-c", "while true ; do date; sleep 5; done;"],
+                            "ports": [
+                                {
+                                    "containerPort": 8888,
+                                    "name": "notebook-port",
+                                    "protocol": "TCP",
+                                }
+                            ],
+                            # rstudio will not start without its volume mount and it does not log the error for it
+                            # See the testcontainers implementation of this (the tty=True part)
+                            "volumeMounts": [
+                                {
+                                    "mountPath": "/opt/app-root/src",
+                                    "name": "my-workbench"
+                                }
+                            ],
+                        },
+                    ],
+                    "volumes": [
+                        {
+                            "name": "my-workbench",
+                            "persistentVolumeClaim": {
+                                "claimName": container_name,
+                            }
+                        }
+                    ]
+                }
+            }
+        )
+        self.tf.defer_resource(deployment)
+        LOGGER.debug(f"Waiting for pods to become ready...")
+        PodUtils.wait_for_pods_ready(self.client, namespace_name=ns.name, label_selector=f"app={container_name}",
+                                     expect_pods_count=1)
+
+        core_v1_api = kubernetes.client.api.core_v1_api.CoreV1Api(api_client=self.client.client)
+        pod_name: kubernetes.client.models.v1_pod_list.V1PodList = core_v1_api.list_namespaced_pod(
+            namespace=ns.name,
+            label_selector=f"app={container_name}"
+        )
+        assert len(pod_name.items) == 1
+        pod: kubernetes.client.models.v1_pod.V1Pod = pod_name.items[0]
+
+        p = socket_proxy.SocketProxy(exposing_contextmanager(core_v1_api, pod), "localhost", 0)
+        t = threading.Thread(target=p.listen_and_serve_until_canceled)
+        t.start()
+        self.tf.defer(t, lambda thread: thread.join())
+        self.tf.defer(p.cancellation_token, lambda token: token.cancel())
+
+        self.port = p.get_actual_port()
+        LOGGER.debug(f"Listening on port {self.port}")
+        resp = requests.get(f"http://localhost:{self.port}")
+        assert resp.status_code == 200
+        LOGGER.debug(f"Done with portforward")
+
 
 class PodUtils:
     READINESS_TIMEOUT = 10 * 60
@@ -261,10 +412,56 @@ class Utils:
         if value is None:
             raise ValueError(message)
 
+
+@contextlib.contextmanager
+def exposing_contextmanager(
+        core_v1_api: kubernetes.client.CoreV1Api,
+        pod: kubernetes.client.models.V1Pod
+) -> Generator[socket, None, None]:
+    # If we e.g., specify the wrong port, the pf = portforward() call succeeds,
+    # but pf.connected will later flip to False
+    # we need to check that _everything_ works before moving on
+    pf = None
+    s = None
+    while not pf or not pf.connected or not s:
+        pf: kubernetes.stream.ws_client.PortForward = kubernetes.stream.portforward(
+            api_method=core_v1_api.connect_get_namespaced_pod_portforward,
+            name=pod.metadata.name,
+            namespace=pod.metadata.namespace,
+            ports=",".join(str(p) for p in [8888]),
+        )
+        s: typing.Union[kubernetes.stream.ws_client.PortForward._Port._Socket, socket.socket] | None = pf.socket(8888)
+    assert s, "Failed to establish connection"
+
+    try:
+        yield s
+    finally:
+        s.close()
+        pf.close()
+
+
+@functools.wraps(ocp_resources.namespace.Namespace.__init__)
+def create_namespace(privileged_client: bool = False, *args,
+                     **kwargs) -> ocp_resources.project_project_openshift_io.Project:
+    if not privileged_client:
+        with ocp_resources.project_request.ProjectRequest(*args, **kwargs):
+            project = ocp_resources.project_project_openshift_io.Project(*args, **kwargs)
+            project.wait_for_status(status=project.Status.ACTIVE, timeout=TestFrameConstants.TIMEOUT_2MIN)
+            return project
+    else:
+        with ocp_resources.namespace.Namespace(*args, **kwargs) as ns:
+            ns.wait_for_status(status=ocp_resources.namespace.Namespace.Status.ACTIVE,
+                               timeout=TestFrameConstants.TIMEOUT_2MIN)
+            return ns
+
+
 __all__ = [
     get_client,
     get_username,
+    exposing_contextmanager,
+    create_namespace,
     PodUtils,
     TestFrame,
     TestFrameConstants,
+    ImageDeployment,
 ]

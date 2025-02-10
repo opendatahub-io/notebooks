@@ -1,19 +1,12 @@
 from __future__ import annotations
-import asyncio
+
+import contextlib
 import logging
-import os
 import socket
 import select
 import threading
-import time
-import sys
 import subprocess
 import typing
-
-from kubernetes.client.rest import ApiException
-
-import kubernetes.stream.ws_client
-import kubernetes.stream
 
 from tests.containers.cancellation_token import CancellationToken
 
@@ -43,6 +36,7 @@ Out of these, the oc port-forward subprocess is a very good solution.
         # self.tf.add(t, lambda _: p.stop())
 """
 
+
 class SubprocessProxy:
     #
     def __init__(self, namespace: str, name: str, port: int):
@@ -62,31 +56,42 @@ class SubprocessProxy:
 
 
 class SocketProxy:
-    def __init__(self, local_host: str, local_port: int, core_v1_api, pod, buffer_size: int = 4096):
+    def __init__(
+            self,
+            remote_socket_factory: typing.ContextManager[socket.socket],
+            local_host: str = "localhost",
+            local_port: int = 0,
+            buffer_size: int = 4096
+    ) -> None:
+        """
+
+        :param local_host: probably "localhost" would make most sense here
+        :param local_port: usually leave as to 0, which will make the OS choose a free port
+        :param remote_socket_factory: this is a context manager for kubernetes port forwarding
+        :param buffer_size: do not poke it, leave this at the default value
+        """
         self.local_host = local_host
         self.local_port = local_port
-        self.core_v1_api = core_v1_api
-        self.pod = pod
-        # self.remote_namespace = remote_namespace
-        # self.remote_name = remote_name
-        # self.remote_port = remote_port
         self.buffer_size = buffer_size
+        self.remote_socket_factory = remote_socket_factory
 
-    def start(self, cancellation_token: CancellationToken = CancellationToken()):
+        self.cancellation_token = CancellationToken()
+
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server_socket.bind((self.local_host, self.local_port))
+        self.server_socket.listen(1)
+        logging.info(f"Proxy listening on {self.local_host}:{self.local_port}")
+
+    def listen_and_serve_until_canceled(self):
+        """Accepts the client, creates a new socket to the remote, and proxies the data.
+
+        Handles at most one client at a time. """
         try:
-            self.cancellation_token = cancellation_token
-
-            self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.server_socket.bind((self.local_host, self.local_port))
-            self.server_socket.listen(1)
-            logging.info(f"Proxy listening on {self.local_host}:{self.local_port}")
-
-            while True:
+            while not self.cancellation_token.cancelled:
                 client_socket, addr = self.server_socket.accept()
                 logging.info(f"Accepted connection from {addr[0]}:{addr[1]}")
-                self.handle_client(client_socket)
-
+                self._handle_client(client_socket)
         except Exception as e:
             logging.exception(f"Proxying failed to listen", exc_info=e)
             raise
@@ -94,57 +99,83 @@ class SocketProxy:
             self.server_socket.close()
 
     def get_actual_port(self) -> int:
+        """Returns the port that the proxy is listening on.
+        When port number 0 was passed in, this will return the actual randomly assigned port."""
         return self.server_socket.getsockname()[1]
 
-    def establish_connection(self, core_v1_api, pod: kubernetes.client.models.V1Pod) -> socket.socket:
-        # if we e.g. specify wrong port, the pf = portforward() call succeeds,
-        # but pf.connected will later flip to False
-        # we need to check that _everything_ works before moving on
-        pf = None
-        s = None
-        while not pf or not pf.connected or not s:
-            pf: kubernetes.stream.ws_client.PortForward = kubernetes.stream.portforward(
-                # api_method=
-                core_v1_api.connect_get_namespaced_pod_portforward,
-                # name=
-                pod.metadata.name,
-                # namespace=
-                pod.metadata.namespace,
-                ports=",".join(str(p) for p in [8888]),
-            )
-            s: typing.Union[kubernetes.stream.ws_client.PortForward._Port._Socket, socket.socket] | None = pf.socket(8888)
-        assert s, "Failed to establish connection"
-        return s
+    def _handle_client(self, client_socket):
+        with client_socket as _, self.remote_socket_factory as remote_socket:
+            while True:
+                readable, _, _ = select.select([client_socket, remote_socket, self.cancellation_token], [], [])
 
-    def handle_client(self, client_socket):
-        remote_socket = self.establish_connection(self.core_v1_api, self.pod)
-
-        while True:
-            readable, _, _ = select.select([client_socket, remote_socket, self.cancellation_token], [], [])
-
-            if self.cancellation_token.cancelled:
-                break
-
-            if client_socket in readable:
-                data = client_socket.recv(self.buffer_size)
-                if not data:
+                if self.cancellation_token.cancelled:
                     break
-                remote_socket.send(data)
 
-            if remote_socket in readable:
-                data = remote_socket.recv(self.buffer_size)
-                if not data:
-                    break
-                client_socket.send(data)
+                if client_socket in readable:
+                    data = client_socket.recv(self.buffer_size)
+                    if not data:
+                        break
+                    remote_socket.send(data)
+
+                if remote_socket in readable:
+                    data = remote_socket.recv(self.buffer_size)
+                    if not data:
+                        break
+                    client_socket.send(data)
+
+
+if __name__ == "__main__":
+    """Sample application to show how this can work."""
+
+
+    @contextlib.contextmanager
+    def remote_socket_factory():
+        class MockServer(threading.Thread):
+            def __init__(self, local_host: str = "localhost", local_port: int = 0):
+                self.local_host = local_host
+                self.local_port = local_port
+
+                self.is_socket_bound = threading.Event()
+
+                super().__init__()
+
+            def run(self):
+                self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                self.server_socket.bind((self.local_host, self.local_port))
+                self.server_socket.listen(1)
+                print(f"MockServer listening on {self.local_host}:{self.local_port}")
+                self.is_socket_bound.set()
+
+                client_socket, addr = self.server_socket.accept()
+                logging.info(f"MockServer accepted connection from {addr[0]}:{addr[1]}")
+
+                client_socket.send(b"Hello World\n")
+                client_socket.close()
+
+            def get_actual_port(self):
+                self.is_socket_bound.wait()
+                return self.server_socket.getsockname()[1]
+
+        server = MockServer()
+        server.start()
+
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect(("localhost", server.get_actual_port()))
+
+        yield client_socket
 
         client_socket.close()
-        remote_socket.close()
+        server.join()
 
-# if __name__ == "__main__":
-#     local_host = "127.0.0.1"
-#     local_port = 8080
-#     remote_host = "example.com"
-#     remote_port = 80
-#
-#     proxy = SocketProxy(local_host, local_port, remote_host, remote_port)
-#     proxy.start()
+
+    proxy = SocketProxy(remote_socket_factory(), "localhost", 0)
+    thread = threading.Thread(target=proxy.listen_and_serve_until_canceled)
+    thread.start()
+
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect(("localhost", proxy.get_actual_port()))
+
+    print(client_socket.recv(1024))  # prints Hello World
+
+    thread.join()

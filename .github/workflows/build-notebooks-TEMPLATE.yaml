@@ -290,10 +290,10 @@ jobs:
       - name: Install deps
         run: poetry install --sync
 
-      - name: Run container tests (in PyTest)
+      - name: Run Testcontainers container tests (in PyTest)
         run: |
           set -Eeuxo pipefail
-          poetry run pytest --capture=fd tests/containers --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          poetry run pytest --capture=fd tests/containers -m 'not openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
@@ -452,6 +452,17 @@ jobs:
           NOTEBOOK_TAG: "${{ inputs.target }}-${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
 
       # endregion
+
+      - name: Run OpenShift container tests (in PyTest)
+        run: |
+          set -Eeuxo pipefail
+          poetry run pytest --capture=fd tests/containers -m 'openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+        env:
+          # TODO(jdanek): this should not be necessary but currently
+          DOCKER_HOST: "unix:///var/run/podman/podman.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
+          # pulling the Ryuk container from docker.io introduces CI flakiness
+          TESTCONTAINERS_RYUK_DISABLED: "true"
 
       # region Trivy vulnerability scan
 
