@@ -454,6 +454,7 @@ jobs:
       # endregion
 
       - name: Run OpenShift container tests (in PyTest)
+        if: ${{ steps.have-tests.outputs.tests == 'true' }}
         run: |
           set -Eeuxo pipefail
           poetry run pytest --capture=fd tests/containers -m 'openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
