@@ -458,7 +458,7 @@ jobs:
           set -Eeuxo pipefail
           poetry run pytest --capture=fd tests/containers -m 'openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
-          # TODO(jdanek): this should not be necessary but currently
+          # TODO(jdanek): this Testcontainers stuff should not be necessary but currently it has to be there
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
           # pulling the Ryuk container from docker.io introduces CI flakiness
