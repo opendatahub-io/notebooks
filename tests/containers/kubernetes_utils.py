@@ -243,7 +243,7 @@ class ImageDeployment:
 
 
 class PodUtils:
-    READINESS_TIMEOUT = 10 * 60
+    READINESS_TIMEOUT = TestFrameConstants.TIMEOUT_2MIN
 
     # consider using timeout_sampler
     @staticmethod
