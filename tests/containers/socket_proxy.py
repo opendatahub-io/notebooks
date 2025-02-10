@@ -26,16 +26,8 @@ There are alternative implementations for this.
 * There are advantages to asyncio, but since we don't have Python asyncio anywhere else yet,
   it is probably best to avoid using asyncio.
 
-Out of these, the oc port-forward subprocess is a very good solution.
+Out of these, the oc port-forward subprocess is a decent alternative solution.
 """
-
-"""
-        # p = SubprocessProxy(pod.metadata.namespace, pod.metadata.name, 8080)
-        # t = threading.Thread(target=SubprocessProxy.start)
-        # t.start()
-        # self.tf.add(t, lambda _: p.stop())
-"""
-
 
 class SubprocessProxy:
     #
