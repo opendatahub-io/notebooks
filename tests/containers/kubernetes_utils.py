@@ -280,9 +280,13 @@ class PodUtils:
             pod: ResourceField
             for pod in pods:
                 if not Readiness.is_pod_ready(pod) and not Readiness.is_pod_succeeded(pod):
+                    if not pod.status.containerStatuses:
+                        pod_status = pod.status
+                    else:
+                        pod_status = {cs.name: cs.state for cs in pod.status.containerStatuses}
+
                     logging.debug("Pod is not ready: %s/%s (%s)",
-                                  namespace_name, pod.metadata.name,
-                                  {cs.name: cs.state for cs in pod.status.containerStatuses})
+                                  namespace_name, pod.metadata.name, pod_status)
                     return False
                 else:
                     # check all containers in pods are ready
