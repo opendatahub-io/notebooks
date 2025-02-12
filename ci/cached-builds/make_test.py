@@ -39,9 +39,6 @@ def run_tests(target: str) -> None:
     if target.startswith("runtime-"):
         deploy = "deploy9"
         deploy_target = target.replace("runtime-", "runtimes-")
-    elif target.startswith("intel-runtime-"):
-        deploy = "deploy9"
-        deploy_target = target.replace("intel-runtime-", "intel-runtimes-")
     elif target.startswith("rocm-runtime-"):
         deploy = "deploy9"
         deploy_target = target.replace("rocm-runtime-", "runtimes-rocm-")
@@ -75,7 +72,7 @@ def run_tests(target: str) -> None:
     wait_for_stability(pod)
 
     try:
-        if target.startswith("runtime-") or target.startswith("intel-runtime-"):
+        if target.startswith("runtime-"):
             check_call(f"make validate-runtime-image image={target}", shell=True)
         elif target.startswith("rocm-runtime-"):
             check_call(f"make validate-runtime-image image={target
@@ -218,15 +215,6 @@ class TestMakeTest(unittest.TestCase):
         assert "make deploy9-runtimes-datascience-ubi9-python-3.11" in commands
         assert "make validate-runtime-image image=runtime-datascience-ubi9-python-3.11" in commands
         assert "make undeploy9-runtimes-datascience-ubi9-python-3.11" in commands
-
-    @unittest.mock.patch("make_test.execute")
-    def test_make_commands_intel_runtime(self, mock_execute: unittest.mock.Mock) -> None:
-        """Compares the commands with what we had in the openshift/release yaml"""
-        run_tests("intel-runtime-ml-ubi9-python-3.11")
-        commands: list[str] = [c[0][1][0] for c in mock_execute.call_args_list]
-        assert "make deploy9-intel-runtimes-ml-ubi9-python-3.11" in commands
-        assert "make validate-runtime-image image=intel-runtime-ml-ubi9-python-3.11" in commands
-        assert "make undeploy9-intel-runtimes-ml-ubi9-python-3.11" in commands
 
     @unittest.mock.patch("make_test.execute")
     def test_make_commands_rocm_runtime(self, mock_execute: unittest.mock.Mock) -> None:
