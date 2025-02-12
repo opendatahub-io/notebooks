@@ -28,13 +28,15 @@ BUILD_DEPENDENT_IMAGES ?= yes
 PUSH_IMAGES ?= yes
 
 # OS dependant: Generate date, select appropriate cmd to locate container engine
-ifeq ($(OS), Windows_NT)
-	DATE 		?= $(shell powershell -Command "Get-Date -Format 'yyyyMMdd'")
-	WHERE_WHICH ?= where
-else
-	DATE 		?= $(shell date +'%Y%m%d')
-	WHERE_WHICH ?= which
+ifdef OS
+	ifeq ($(OS), Windows_NT)
+		DATE 		?= $(shell powershell -Command "Get-Date -Format 'yyyyMMdd'")
+		WHERE_WHICH ?= where
+	endif
 endif
+DATE 		?= $(shell date +'%Y%m%d')
+WHERE_WHICH ?= which
+
 
 # linux/amd64 or darwin/arm64
 OS_ARCH=$(shell go env GOOS)/$(shell go env GOARCH)
@@ -186,41 +188,6 @@ runtime-cuda-tensorflow-ubi9-python-3.11: cuda-ubi9-python-3.11
 codeserver-ubi9-python-3.11: base-ubi9-python-3.11
 	$(call image,$@,codeserver/ubi9-python-3.11,$<)
 
-# Build and push base-anaconda-python-3.11-intel-gpu image to the registry
-.PHONY: intel-base-gpu-ubi9-python-3.11
-intel-base-gpu-ubi9-python-3.11: base-ubi9-python-3.11
-	$(call image,$@,intel/base/gpu/ubi9-python-3.11,$<)
-
-# Build and push intel-runtime-tensorflow-ubi9-python-3.11 image to the registry
-.PHONY: intel-runtime-tensorflow-ubi9-python-3.11
-intel-runtime-tensorflow-ubi9-python-3.11: intel-base-gpu-ubi9-python-3.11
-	$(call image,$@,intel/runtimes/tensorflow/ubi9-python-3.11,$<)
-
-# Build and push jupyter-intel-tensorflow-ubi9-python-3.11 image to the registry
-.PHONY: jupyter-intel-tensorflow-ubi9-python-3.11
-jupyter-intel-tensorflow-ubi9-python-3.11: intel-base-gpu-ubi9-python-3.11
-	$(call image,$@,jupyter/intel/tensorflow/ubi9-python-3.11,$<)
-
-# Build and push intel-runtime-pytorch-ubi9-python-3.11 image to the registry
-.PHONY: intel-runtime-pytorch-ubi9-python-3.11
-intel-runtime-pytorch-ubi9-python-3.11: intel-base-gpu-ubi9-python-3.11
-	$(call image,$@,intel/runtimes/pytorch/ubi9-python-3.11,$<)
-
-# Build and push jupyter-intel-pytorch-ubi9-python-3.11 image to the registry
-.PHONY: jupyter-intel-pytorch-ubi9-python-3.11
-jupyter-intel-pytorch-ubi9-python-3.11: intel-base-gpu-ubi9-python-3.11
-	$(call image,$@,jupyter/intel/pytorch/ubi9-python-3.11,$<)
-
-# Build and push intel-runtime-ml-ubi9-python-3.11 image to the registry
-.PHONY: intel-runtime-ml-ubi9-python-3.11
-intel-runtime-ml-ubi9-python-3.11: base-ubi9-python-3.11
-	$(call image,$@,intel/runtimes/ml/ubi9-python-3.11,$<)
-
-# Build and push jupyter-intel-ml-ubi9-python-3.11 image to the registry
-.PHONY: jupyter-intel-ml-ubi9-python-3.11
-jupyter-intel-ml-ubi9-python-3.11: base-ubi9-python-3.11
-	$(call image,$@,jupyter/intel/ml/ubi9-python-3.11,$<)
-
 ####################################### Buildchain for Python 3.11 using C9S #######################################
 
 # Build and push base-c9s-python-3.11 image to the registry
@@ -340,64 +307,11 @@ undeploy-c9s-%: bin/kubectl
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
-# Function for testing a notebook with papermill
-#   ARG 1: Notebook name
-#   ARG 1: UBI flavor
-#   ARG 1: Python kernel
-define test_with_papermill
-	$(eval PREFIX_NAME := $(subst /,-,$(1)_$(2)))
-	$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "python3 -m pip install papermill"
-	if ! $(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "wget ${NOTEBOOK_REPO_BRANCH_BASE}/jupyter/$(1)/$(2)-$(3)/test/test_notebook.ipynb -O test_notebook.ipynb && python3 -m papermill test_notebook.ipynb $(PREFIX_NAME)_output.ipynb --kernel python3 --stderr-file $(PREFIX_NAME)_error.txt" ; then
-		echo "ERROR: The $(1) $(2) notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-$(1)-$(2)-$(3)-test-e2e' directory or run 'cat $(PREFIX_NAME)_error.txt' within your container. The make process has been aborted."
-		exit 1
-	fi
-	if $(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_error.txt | grep --quiet FAILED" ; then
-		echo "ERROR: The $(1) $(2) notebook encountered a failure. The make process has been aborted."
-		$(KUBECTL_BIN) exec $(FULL_NOTEBOOK_NAME) -- /bin/sh -c "cat $(PREFIX_NAME)_error.txt"
-		exit 1
-	fi
-endef
-
 # Verify the notebook's readiness by pinging the /api endpoint and executing the corresponding test_notebook.ipynb file in accordance with the build chain logic.
 .PHONY: test
 test-%: bin/kubectl
-	# Verify the notebook's readiness by pinging the /api endpoint
-	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
-	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
-	$(info # Running tests for $(NOTEBOOK_NAME) notebook...)
-	$(KUBECTL_BIN) wait --for=condition=ready pod -l app=$(NOTEBOOK_NAME) --timeout=600s
-	$(KUBECTL_BIN) port-forward svc/$(NOTEBOOK_NAME)-notebook 8888:8888 & curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:8888/notebook/opendatahub/jovyan/api ; EXIT_CODE=$$?; echo && pkill --full "^$(KUBECTL_BIN).*port-forward.*"
-	$(eval FULL_NOTEBOOK_NAME = $(shell ($(KUBECTL_BIN) get pods -l app=$(NOTEBOOK_NAME) -o custom-columns=":metadata.name" | tr -d '\n')))
-
-	# Tests notebook's functionalities
-	if echo "$(FULL_NOTEBOOK_NAME)" | grep -q "minimal-ubi9"; then
-		$(call test_with_papermill,minimal,ubi9,python-$(PYTHON_VERSION))
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-tensorflow-ubi9"; then
-		$(call test_with_papermill,intel/tensorflow,ubi9,python-$(PYTHON_VERSION))
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-pytorch-ubi9"; then
-		$(call test_with_papermill,intel/pytorch,ubi9,python-$(PYTHON_VERSION))
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "datascience-ubi9"; then
-		$(MAKE) validate-ubi9-datascience PYTHON_VERSION=$(PYTHON_VERSION) -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME)
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "pytorch-ubi9"; then
-		$(MAKE) validate-ubi9-datascience PYTHON_VERSION=$(PYTHON_VERSION) -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME)
-		$(call test_with_papermill,pytorch,ubi9,python-$(PYTHON_VERSION))
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "tensorflow-ubi9"; then
-		$(MAKE) validate-ubi9-datascience PYTHON_VERSION=$(PYTHON_VERSION) -e FULL_NOTEBOOK_NAME=$(FULL_NOTEBOOK_NAME)
-		$(call test_with_papermill,tensorflow,ubi9,python-$(PYTHON_VERSION))
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "intel-ml-ubi9"; then
-		$(call test_with_papermill,intel/ml,ubi9,python-$(PYTHON_VERSION))
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "trustyai-ubi9"; then
-		$(call test_with_papermill,trustyai,ubi9,python-$(PYTHON_VERSION))
-	elif echo "$(FULL_NOTEBOOK_NAME)" | grep -q "anaconda"; then
-		echo "There is no test notebook implemented yet for Anaconda Notebook...."
-	else
-		echo "No matching condition found for $(FULL_NOTEBOOK_NAME)."
-	fi
-
-.PHONY: validate-ubi9-datascience
-validate-ubi9-datascience:
-	$(call test_with_papermill,minimal,ubi9,python-$(PYTHON_VERSION))
-	$(call test_with_papermill,datascience,ubi9,python-$(PYTHON_VERSION))
+	$(info # Running tests for $* notebook...)
+	@./scripts/test_jupyter_with_papermill.sh $*
 
 # Validate that runtime image meets minimum criteria
 # This validation is created from subset of https://github.com/elyra-ai/elyra/blob/9c417d2adc9d9f972de5f98fd37f6945e0357ab9/Makefile#L325
@@ -520,12 +434,7 @@ BASE_DIRS := base/c9s-python-$(PYTHON_VERSION) \
 # Default value is false, can be overiden
 # The below directories are not supported on tier-1
 INCLUDE_OPT_DIRS ?= false
-OPT_DIRS := jupyter/intel/ml/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/intel/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/intel/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		intel/runtimes/ml/ubi9-python-$(PYTHON_VERSION) \
-		intel/runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		intel/runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION)
+OPT_DIRS :=
 
 # This recipe gets args, can be used like
 # make refresh-pipfilelock-files PYTHON_VERSION=3.11 INCLUDE_OPT_DIRS=false
@@ -553,6 +462,11 @@ refresh-pipfilelock-files:
 			echo "Skipping $$dir as it does not exist"
 		fi
 	done
+
+	echo "Regenerating requirements.txt files"
+	pushd $(ROOT_DIR)
+		bash $(ROOT_DIR)/scripts/sync-requirements-txt.sh
+	popd
 
 # This is only for the workflow action
 # For running manually, set the required environment variables

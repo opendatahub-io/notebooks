@@ -1,5 +1,0 @@
-#!/bin/bash
-
-source /opt/intel/oneapi/setvars.sh
-
-exec ${JUPYTER_ENV}/bin/python -m ipykernel_launcher $@
