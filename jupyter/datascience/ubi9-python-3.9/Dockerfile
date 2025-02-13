@@ -25,6 +25,9 @@ RUN echo "Installing softwares and packages" && \
     chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
     fix-permissions /opt/app-root -P
 
+# Disable announcement plugin of jupyterlab
+RUN jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+
 COPY utils ./utils/
 
 # OS Packages needs to be installed as root
@@ -32,9 +35,6 @@ USER root
 
 # Install usefull OS packages
 RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile && dnf clean all && rm -rf /var/cache/yum
-
-# Disable announcement plugin of jupyterlab
-RUN jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 
 # Install MongoDB Client, We need a special repo for MongoDB as they do their own distribution
 COPY mongodb-org-6.0.repo-x86_64 /etc/yum.repos.d/mongodb-org-6.0.repo
