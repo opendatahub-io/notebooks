@@ -193,6 +193,67 @@ class TestBaseImage:
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
+    # There are two ways how the image is being updated
+    # 1. A change to the image is being done (e.g. package update, Dockerfile update etc.). This is what this test does.
+    #    In this case, we need to check the size of the build image that contains these updates. We're checking the compressed image size.
+    # 2. A change is done to the params.env file or runtimes images definitions, where we update manifest references to a new image.
+    #    Check for this scenario is being done in 'ci/[check-params-env.sh|check-runtime-images.sh]'.
+    size_treshold: int = 100 # in MBs
+    percent_treshold: int = 10
+    def test_image_size_change(self, image: str):
+        f"""Checks the image size didn't change extensively - treshold is {self.percent_treshold}% or {self.size_treshold} MB."""
+
+        # Map of image label names with expected size in MBs.
+        expected_image_name_size_map = {
+            "odh-notebook-base-centos-stream9-python-3.11": 1350,
+            "odh-notebook-base-ubi9-python-3.11": 1262,
+            "odh-notebook-cuda-c9s-python-3.11": 11519,
+            "odh-notebook-cuda-ubi9-python-3.11": 9070, # TODO
+            "odh-notebook-jupyter-datascience-ubi9-python-3.11": 2845,
+            "odh-notebook-jupyter-minimal-ubi9-python-3.11": 1472, # gpu 9070; rocm 26667 ???
+            "odh-notebook-jupyter-pytorch-ubi9-python-3.11": 15444,
+            "odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.11": 15218,
+            "odh-notebook-jupyter-trustyai-ubi9-python-3.11": 8613,
+            "odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11": 33001,
+            "odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11": 30241,
+            "odh-notebook-rstudio-server-c9s-python-3.11": 13201, # 3221 ??
+            "odh-notebook-runtime-datascience-ubi9-python-3.11": 2518,
+            "odh-notebook-runtime-minimal-ubi9-python-3.11": 1362,
+            "odh-notebook-runtime-pytorch-ubi9-python-3.11": 7487,
+            "odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.11": 14572,
+            "odh-notebook-runtime-rocm-pytorch-ubi9-python-3.11": 32682,
+            "odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.11": 29805,
+            "odh-notebook-code-server-ubi9-python-3.11": 2598,
+            "odh-notebook-rocm-python-3.11": 26667, # TODO
+        }
+
+        import docker
+        client = testcontainers.core.container.DockerClient()
+        try:
+            image_metadata = client.client.images.get(image)
+        except docker.errors.ImageNotFound:
+            image_metadata = client.client.images.pull(image)
+            assert isinstance(image_metadata, docker.models.images.Image)
+
+        actual_img_size = image_metadata.attrs["Size"]
+        actual_img_size = round(actual_img_size / 1024 / 1024)
+        logging.info(f"The size of the image is {actual_img_size} MBs.")
+        logging.debug(f"The image metadata: {image_metadata}")
+
+        img_label_name = image_metadata.labels["name"]
+        if img_label_name in expected_image_name_size_map:
+            expected_img_size = expected_image_name_size_map[img_label_name]
+            logging.debug(f"Expected size of the '{img_label_name}' image is {expected_img_size} MBs.")
+        else:
+            pytest.fail(f"Image name label '{img_label_name}' is not in the expected image size map {expected_image_name_size_map}")
+
+        # Check the size change constraints now
+        # 1. Percentual size change
+        abs_percent_change = abs(actual_img_size / expected_img_size * 100 - 100)
+        assert abs_percent_change < self.percent_treshold, f"Image size of '{img_label_name}' changed by {abs_percent_change}% (expected: {expected_img_size} MB; actual: {actual_img_size} MB; treshold: {self.percent_treshold}%)."
+        # 2. Absolute size change
+        abs_size_difference = abs(actual_img_size - expected_img_size)
+        assert abs_size_difference < self.size_treshold, f"Image size of '{img_label_name}' changed by {abs_size_difference} MB (expected: {expected_img_size} MB; actual: {actual_img_size} MB; treshold: {self.size_treshold} MB)."
 
 def encode_python_function_execution_command_interpreter(python: str, function: Callable[..., Any], *args: list[Any]) -> list[str]:
     """Returns a cli command that will run the given Python function encoded inline.
