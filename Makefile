@@ -94,6 +94,7 @@ endef
 #
 # PUSH_IMAGES: allows skipping podman push
 define image
+	$(info #*# Image build Dockerfile: <$(2)> #(MACHINE-PARSED LINE)#*#...)
 	$(eval BUILD_DIRECTORY := $(shell echo $(2) | sed 's/\/Dockerfile.*//'))
 	$(info #*# Image build directory: <$(BUILD_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
 
