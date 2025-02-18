@@ -1,0 +1,97 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "https://konflux.pages.redhat.com/docs/users/mintmaker/user.html",
+    "https://github.com/konflux-ci/mintmaker/blob/main/config/renovate/renovate.json"
+  ],
+  "extends": [
+    "config:recommended",
+    ":gitSignOff",
+    ":disableDependencyDashboard"
+  ],
+  "ignorePresets": [
+    ":dependencyDashboard"
+  ],
+  "onboarding": false,
+  "requireConfig": "optional",
+  "inheritConfig": true,
+  "platformCommit": "enabled",
+  "autodiscover": false,
+  "pruneStaleBranches": false,
+  "branchConcurrentLimit": 0,
+  "customEnvVariables": {
+    "GOTOOLCHAIN": "auto"
+  },
+  "vulnerabilityAlerts": {
+    "enabled": false
+  },
+  "additionalBranchPrefix": "{{baseBranch}}/",
+  "branchPrefix": "konflux/mintmaker/",
+  "enabledManagers": [
+    "tekton",
+    "dockerfile"
+  ],
+  "tekton": {
+    "additionalBranchPrefix": "",
+    "fileMatch": [
+      "\\.yaml$",
+      "\\.yml$"
+    ],
+    "includePaths": [
+      ".tekton/**"
+    ],
+    "packageRules": [
+      {
+        "matchPackageNames": [
+          "/^quay.io/redhat-appstudio-tekton-catalog//",
+          "/^quay.io/konflux-ci/tekton-catalog//"
+        ],
+        "enabled": true,
+        "groupName": "Konflux references",
+        "branchPrefix": "konflux/references/",
+        "group": {
+          "branchTopic": "{{{baseBranch}}}",
+          "commitMessageTopic": "{{{groupName}}}"
+        },
+        "commitMessageTopic": "Konflux references",
+        "semanticCommits": "enabled",
+        "prBodyColumns": [
+          "Package",
+          "Change",
+          "Notes"
+        ],
+        "prBodyDefinitions": {
+          "Notes": "{{#if (or (containsString updateType 'minor') (containsString updateType 'major'))}}:warning:[migration](https://github.com/redhat-appstudio/build-definitions/blob/main/task/{{{replace '^quay.io/(redhat-appstudio-tekton-catalog|konflux-ci/tekton-catalog)/task-' '' packageName}}}/{{{newVersion}}}/MIGRATION.md):warning:{{/if}}"
+        },
+        "prBodyTemplate": "{{{header}}}{{{table}}}{{{notes}}}{{{changelogs}}}{{{configDescription}}}{{{controls}}}{{{footer}}}",
+        "recreateWhen": "always",
+        "rebaseWhen": "behind-base-branch"
+      },
+      {
+        "matchManagers": [
+          "gomod"
+        ],
+        "matchDepTypes": [
+          "indirect"
+        ],
+        "enabled": true
+      }
+    ],
+    "schedule": [
+      "after 5am on saturday"
+    ]
+  },
+  "dockerfile": {
+    "enabled": true,
+    "schedule": [
+      "before 5am"
+    ]
+  },
+  "forkProcessing": "enabled",
+  "allowedCommands": [
+    "^rpm-lockfile-prototype rpms.in.yaml$"
+  ],
+  "updateNotScheduled": false,
+  "dependencyDashboard": false,
+  "stopUpdatingLabel": "konflux-nudge"
+}
