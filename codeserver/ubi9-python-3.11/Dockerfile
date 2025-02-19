@@ -48,7 +48,7 @@ RUN mkdir -p /opt/app-root/extensions-temp && \
     code-server --install-extension /opt/app-root/bin/utils/ms-toolsai.jupyter-2024.7.0.vsix --extensions-dir /opt/app-root/extensions-temp
 
 # Install NGINX to proxy code-server and pass probes check
-ENV NGINX_VERSION=1.24 \
+ENV NGINX_VERSION=1.24=\
     NGINX_SHORT_VER=124 \
     NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_CONF_PATH=/etc/nginx/nginx.conf \
@@ -112,7 +112,7 @@ COPY ${SOURCE_CODE}/nginx/api/ /opt/app-root/api/
 # Launcher
 COPY --chown=1001:0 ${SOURCE_CODE}/run-code-server.sh ${SOURCE_CODE}/run-nginx.sh ./
 
-ENV SHELL /bin/bash
+ENV SHELL=/bin/bash
 
 ENV PYTHONPATH=/opt/app-root/bin/python3
 

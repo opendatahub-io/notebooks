@@ -30,11 +30,11 @@ RUN yum install -y yum-utils && \
 
 # set R library to default (used in install.r from littler)
 RUN chmod -R a+w /usr/lib64/R/library
-ENV LIBLOC /usr/lib64/R/library
+ENV LIBLOC=/usr/lib64/R/library
 
 # set User R Library path
 RUN mkdir -p /opt/app-root/bin/Rpackages/4.4 && chmod -R a+w /opt/app-root/bin/Rpackages/4.4
-ENV R_LIBS_USER /opt/app-root/bin/Rpackages/4.4
+ENV R_LIBS_USER=/opt/app-root/bin/Rpackages/4.4
 
 WORKDIR /tmp/
 
@@ -64,7 +64,7 @@ RUN R -e "require('remotes'); \
     remotes::install_version('devtools','2.4.5');"
 
 # Install NGINX to proxy RStudio and pass probes check
-ENV NGINX_VERSION=1.24 \
+ENV NGINX_VERSION=1.24=\
     NGINX_SHORT_VER=124 \
     NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_CONF_PATH=/etc/nginx/nginx.conf \
