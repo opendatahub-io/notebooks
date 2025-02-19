@@ -11,7 +11,7 @@ if [ ! -d $(jupyter --data-dir)/metadata/runtimes/ ]; then
 fi
 # Set elyra runtime config from volume mount
 if [ "$(ls -A /opt/app-root/runtimes/)" ]; then
-  cp -r /opt/app-root/runtimes/..data/*.json $(jupyter --data-dir)/metadata/runtimes/
+  cp -r /opt/app-root/runtimes/..data/*.json /opt/app-root/share/jupyter/metadata/runtime-images/
 fi
 
 # Environment vars set for accessing ssl_sa_certs and sa_token

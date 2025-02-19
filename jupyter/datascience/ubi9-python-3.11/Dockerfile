@@ -64,7 +64,4 @@ RUN mkdir /opt/app-root/runtimes && \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
     fix-permissions /opt/app-root -P
 
-# Copy Elyra runtime-images definitions and set the version
-COPY ${SOURCE_CODE}/runtime-images/ /opt/app-root/share/jupyter/metadata/runtime-images/
-
 WORKDIR /opt/app-root/src
