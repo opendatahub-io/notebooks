@@ -8,7 +8,10 @@ import allure
 import pytest
 
 from tests.containers import docker_utils
-from tests.containers.workbenches.workbench_image_test import WorkbenchContainer, skip_if_not_workbench_image
+from tests.containers.workbenches.workbench_image_test import (
+    WorkbenchContainer,
+    skip_if_not_workbench_image,
+)
 
 if TYPE_CHECKING:
     import docker.models.images
@@ -20,7 +23,9 @@ class TestJupyterLabImage:
     APP_ROOT_HOME = "/opt/app-root/src"
 
     @allure.issue("RHOAIENG-11156")
-    @allure.description("Check that the HTML for the spinner is contained in the initial page.")
+    @allure.description(
+        "Check that the HTML for the spinner is contained in the initial page."
+    )
     def test_spinner_html_loaded(self, image: str) -> None:
         skip_if_not_jupyterlab_image(image)
 
@@ -32,13 +37,19 @@ class TestJupyterLabImage:
 
         # These NOTEBOOK_ARGS are what ODH Dashboard uses,
         # and we also have them in the Kustomize test files for Makefile tests
-        container.with_env("NOTEBOOK_ARGS", "\n".join([
-            "--ServerApp.port=8888",
-            "--ServerApp.token=''",
-            "--ServerApp.password=''",
-            "--ServerApp.base_url=/notebook/opendatahub/jovyan",
-            "--ServerApp.quit_button=False",
-            """--ServerApp.tornado_settings={"user":"jovyan","hub_host":"https://opendatahub.io","hub_prefix":"/notebookController/jovyan"}"""]))
+        container.with_env(
+            "NOTEBOOK_ARGS",
+            "\n".join(
+                [
+                    "--ServerApp.port=8888",
+                    "--ServerApp.token=''",
+                    "--ServerApp.password=''",
+                    "--ServerApp.base_url=/notebook/opendatahub/jovyan",
+                    "--ServerApp.quit_button=False",
+                    """--ServerApp.tornado_settings={"user":"jovyan","hub_host":"https://opendatahub.io","hub_prefix":"/notebookController/jovyan"}""",
+                ]
+            ),
+        )
         try:
             # we changed base_url, and wait_for_readiness=True would attempt connections to /
             container.start(wait_for_readiness=False)
@@ -46,18 +57,21 @@ class TestJupyterLabImage:
 
             host_ip = container.get_container_host_ip()
             host_port = container.get_exposed_port(container.port)
-            response = requests.get(f"http://{host_ip}:{host_port}/notebook/opendatahub/jovyan")
+            response = requests.get(
+                f"http://{host_ip}:{host_port}/notebook/opendatahub/jovyan"
+            )
             assert response.status_code == 200
             assert "text/html" in response.headers["content-type"]
-            assert 'class="pf-v6-c-spinner"' in response.text
+            assert 'data-testid="loading-spinner-initial"' in response.text
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
 
 def skip_if_not_jupyterlab_image(image: str) -> docker.models.images.Image:
     image_metadata = skip_if_not_workbench_image(image)
-    if "-jupyter-" not in image_metadata.labels['name']:
+    if "-jupyter-" not in image_metadata.labels["name"]:
         pytest.skip(
-            f"Image {image} does not have '-jupyter-' in {image_metadata.labels['name']=}'")
+            f"Image {image} does not have '-jupyter-' in {image_metadata.labels['name']=}'"
+        )
 
     return image_metadata
