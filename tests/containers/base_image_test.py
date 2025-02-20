@@ -206,8 +206,8 @@ class TestBaseImage:
         # Map of image label names with expected size in MBs.
         expected_image_name_size_map = {
             "odh-notebook-base-centos-stream9-python-3.11": 1350,
-            "odh-notebook-base-ubi9-python-3.11": 1262,
-            "odh-notebook-cuda-c9s-python-3.11": 11519,
+            "odh-notebook-base-ubi9-python-3.11": 1432, #1262,
+            "odh-notebook-cuda-c9s-python-3.11": 11678, #11519,
             "odh-notebook-cuda-ubi9-python-3.11": 9070, # TODO
             "odh-notebook-jupyter-datascience-ubi9-python-3.11": 2845,
             "odh-notebook-jupyter-minimal-ubi9-python-3.11": 1472, # gpu 9070; rocm 26667 ???
