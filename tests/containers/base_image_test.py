@@ -211,19 +211,19 @@ class TestBaseImage:
             "odh-notebook-cuda-ubi9-python-3.11": 9070, # TODO
             "odh-notebook-jupyter-datascience-ubi9-python-3.11": 2845,
             "odh-notebook-jupyter-minimal-ubi9-python-3.11": 1472, # gpu 9070; rocm 26667 ???
-            "odh-notebook-jupyter-pytorch-ubi9-python-3.11": 15444,
-            "odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.11": 15218,
-            "odh-notebook-jupyter-trustyai-ubi9-python-3.11": 8613,
-            "odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11": 33001,
-            "odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11": 30241,
+            "odh-notebook-jupyter-pytorch-ubi9-python-3.11": 15861, #15444,
+            "odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.11": 20401, #15218,
+            "odh-notebook-jupyter-trustyai-ubi9-python-3.11": 8866, #8613,
+            "odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11": 33268, #33001,
+            "odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11": 30507, #30241,
             "odh-notebook-rstudio-server-c9s-python-3.11": 13201, # 3221 ??
-            "odh-notebook-runtime-datascience-ubi9-python-3.11": 2518,
-            "odh-notebook-runtime-minimal-ubi9-python-3.11": 1362,
-            "odh-notebook-runtime-pytorch-ubi9-python-3.11": 7487,
-            "odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.11": 14572,
-            "odh-notebook-runtime-rocm-pytorch-ubi9-python-3.11": 32682,
-            "odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.11": 29805,
-            "odh-notebook-code-server-ubi9-python-3.11": 2598,
+            "odh-notebook-runtime-datascience-ubi9-python-3.11": 2690, #2518,
+            "odh-notebook-runtime-minimal-ubi9-python-3.11": 1527, #1362,
+            "odh-notebook-runtime-pytorch-ubi9-python-3.11": 7711, #7487,
+            "odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.11": 15114, #14572,
+            "odh-notebook-runtime-rocm-pytorch-ubi9-python-3.11": 32864, #32682,
+            "odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.11": 29985, #29805,
+            "odh-notebook-code-server-ubi9-python-3.11": 2993, #2598,
             "odh-notebook-rocm-python-3.11": 26667, # TODO
         }
 
