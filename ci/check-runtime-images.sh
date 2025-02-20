@@ -18,6 +18,62 @@
 
 # ---------------------------- DEFINED FUNCTIONS ----------------------------- #
 
+# Expected commit reference for the runtime images
+EXPECTED_COMMIT_REF="2024b"
+
+# Size change tresholds:
+# Max percentual change
+SIZE_PERCENTUAL_TRESHOLD=10
+# Max absolute change in MB
+SIZE_ABSOLUTE_TRESHOLD=100
+
+function check_image_size() {
+    local img_name="${1}"
+    local actual_img_size="${2}"
+
+    local expected_img_size
+
+    case "${img_name}" in
+        odh-notebook-runtime-datascience-ubi9-python-3.11)
+            expected_img_size=866
+            ;;
+        odh-notebook-runtime-pytorch-ubi9-python-3.11)
+            expected_img_size=3829
+            ;;
+        odh-notebook-runtime-rocm-pytorch-ubi9-python-3.11)
+            expected_img_size=6477
+            ;;
+        odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.11)
+            expected_img_size=5660
+            ;;
+        odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.11)
+            expected_img_size=7992
+            ;;
+        odh-notebook-runtime-minimal-ubi9-python-3.11)
+            expected_img_size=494
+            ;;
+        *)
+            echo "Unimplemented image name: '${img_name}'"
+            return 1
+    esac
+
+    # Check the size change constraints now
+    # 1. Percentual size change
+    percent_change=$((100 * actual_img_size / expected_img_size - 100))
+    abs_percent_change=${percent_change#-*}
+    test ${abs_percent_change} -le ${SIZE_PERCENTUAL_TRESHOLD} || {
+        echo "Image size changed by ${abs_percent_change}% (expected: ${expected_img_size} MB; actual: ${actual_img_size} MB; treshold: ${SIZE_PERCENTUAL_TRESHOLD}%)."
+        return 1
+    }
+    # 2. Absolute size change
+    size_difference=$((actual_img_size - expected_img_size))
+    abs_size_difference=${size_difference#-*}
+    test ${abs_size_difference} -le ${SIZE_ABSOLUTE_TRESHOLD} || {
+        echo "Image size changed by ${abs_size_difference} MB (expected: ${expected_img_size} MB; actual: ${actual_img_size} MB; treshold: ${SIZE_ABSOLUTE_TRESHOLD} MB)."
+        return 1
+    }
+}
+
 function check_image() {
     local runtime_image_file="${1}"
 
@@ -26,38 +82,81 @@ function check_image() {
 
     local img_tag
     local img_url
-    local img_metadata
+    local img_metadata_config
     local img_created
+    local img_commit_ref
+    local img_name
 
     img_tag=$(jq -r '.metadata.tags[0]' "${runtime_image_file}") || {
         echo "ERROR: Couldn't parse image tags metadata for '${runtime_image_file}' runtime image file!"
         return 1
     }
+    echo "Image tag: '${img_tag}'"
+
     img_url=$(jq -r '.metadata.image_name' "${runtime_image_file}") || {
         echo "ERROR: Couldn't parse image URL metadata for '${runtime_image_file}' runtime image file!"
         return 1
     }
+    echo "Image URL: '${img_url}'"
 
-    img_metadata="$(skopeo inspect --config "docker://${img_url}")" || {
-        echo "ERROR: Couldn't download '${img_url}' image metadata with skopeo tool!"
+    img_metadata_config="$(skopeo inspect --config "docker://${img_url}")" || {
+        echo "ERROR: Couldn't download '${img_url}' image config metadata with skopeo tool!"
         return 1
     }
 
-    img_created=$(echo "${img_metadata}" | jq --raw-output '.created') ||  {
+    img_created=$(echo "${img_metadata_config}" | jq --raw-output '.created') ||  {
         echo "Couldn't parse '.created' from image metadata!"
         return 1
     }
+    echo "Image created: '${img_created}'"
+
+    img_commit_ref=$(echo "${img_metadata_config}" | jq --raw-output '.config.Labels."io.openshift.build.commit.ref"') ||  {
+        echo "Couldn't parse '.Labels."io.openshift.build.commit.ref"' from image metadata!"
+        return 1
+    }
+    echo "Image commit ref: '${img_commit_ref}'"
+
+    img_name=$(echo "${img_metadata_config}" | jq --raw-output '.config.Labels.name') ||  {
+        echo "Couldn't parse '.Labels.name' from image metadata!"
+        return 1
+    }
+    echo "Image name: '${img_name}'"
 
     local expected_string="runtime-${img_tag}-ubi"
     echo "Checking that '${expected_string}' is present in the image metadata"
-    echo "${img_metadata}" | grep --quiet "${expected_string}" || {
+    echo "${img_metadata_config}" | grep --quiet "${expected_string}" || {
         echo "ERROR: The string '${expected_string}' isn't present in the image metadata at all. Please check that the referenced image '${img_url}' is the correct one!"
         return 1
     }
 
-    echo "Image created: '${img_created}'"
+    test "${EXPECTED_COMMIT_REF}" == "${img_commit_ref}" || {
+        echo "ERROR: The image 'io.openshift.build.commit.ref' label is '${img_commit_ref}' but should be '${EXPECTED_COMMIT_REF}' instead!"
+        return 1
+    }
 
-    # TODO: we shall extend this check to check also Label "io.openshift.build.commit.ref" value (e.g. '2024a') or something similar
+    local img_metadata
+    local img_size
+    local img_size_mb
+
+    img_metadata="$(skopeo inspect --raw "docker://${img_url}")" || {
+        echo "ERROR: Couldn't download '${img_url}' image metadata with skopeo tool!"
+        return 1
+    }
+    # Here we get the image size as a compressed image. This differs to what we gather in
+    # 'tests/containers/base_image_test.py#test_image_size_change' where we check against the extracted image size.
+    # There is no actual reason to compare these different sizes except that in this case we want to do check the
+    # image remotely, whereas in the othe test, we have the image present locally on the machine.
+    img_size=$(echo "${img_metadata}" | jq '[ .layers[].size ] | add') ||  {
+        echo "Couldn't count image size from image metadata!"
+        return 1
+    }
+    img_size_mb=$((img_size / 1024 / 1024)) ||  {
+        echo "Couldn't count image size from image metadata!"
+        return 1
+    }
+    echo "Image size: ${img_size_mb} MB"
+
+    check_image_size "${img_name}" "${img_size_mb}" || return 1
 }
 
 function main() {
