@@ -27,6 +27,12 @@ PARAMS_ENV_PATH="manifests/base/params.env"
 # images we want to have in the `params.env` file.
 EXPECTED_NUM_RECORDS=21
 
+# Size change tresholds:
+# Max percentual change
+SIZE_PERCENTUAL_TRESHOLD=10
+# Max absolute change in MB
+SIZE_ABSOLUTE_TRESHOLD=100
+
 # ---------------------------- DEFINED FUNCTIONS ----------------------------- #
 
 function check_variables_uniq() {
@@ -80,95 +86,114 @@ function check_variables_uniq() {
     return "${ret_code}"
 }
 
-function check_image_variable_matches_name_and_commitref() {
+function check_image_variable_matches_name_and_commitref_and_size() {
     local image_variable="${1}"
     local image_name="${2}"
     local image_commitref="${3}"
     local openshift_build_name="${4}"
+    local actual_img_size="${5}"
 
     local expected_name
     local expected_commitref
-    local expected_build_name  # Why some of the images has `-amd64` suffix and others not?
+    local expected_build_name
+    local expected_img_size
+
     case "${image_variable}" in
         odh-minimal-notebook-image-n)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="jupyter-minimal-ubi9-python-3.11-amd64"
+            expected_img_size=520
             ;;
         odh-minimal-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
             expected_commitref="2024a"
             expected_build_name="jupyter-minimal-ubi9-python-3.9-amd64"
+            expected_img_size=503
             ;;
         odh-minimal-gpu-notebook-image-n)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="cuda-jupyter-minimal-ubi9-python-3.11-amd64"
+            expected_img_size=5157
             ;;
         odh-minimal-gpu-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
             expected_commitref="2024a"
             expected_build_name="cuda-jupyter-minimal-ubi9-python-3.9-amd64"
+            expected_img_size=5718
             ;;
         odh-pytorch-gpu-notebook-image-n)
             expected_name="odh-notebook-jupyter-pytorch-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="jupyter-pytorch-ubi9-python-3.11-amd64"
+            expected_img_size=8571
             ;;
         odh-pytorch-gpu-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-pytorch-ubi9-python-3.9"
             expected_commitref="2024a"
             expected_build_name="jupyter-pytorch-ubi9-python-3.9-amd64"
+            expected_img_size=9037
             ;;
         odh-generic-data-science-notebook-image-n)
             expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="jupyter-datascience-ubi9-python-3.11-amd64"
+            expected_img_size=961
             ;;
         odh-generic-data-science-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.9"
             expected_commitref="2024a"
             expected_build_name="jupyter-datascience-ubi9-python-3.9-amd64"
+            expected_img_size=904
             ;;
         odh-tensorflow-gpu-notebook-image-n)
             expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="cuda-jupyter-tensorflow-ubi9-python-3.11-amd64"
+            expected_img_size=8211
             ;;
         odh-tensorflow-gpu-notebook-image-n-1)
             expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.9"
             expected_commitref="2024a"
             expected_build_name="cuda-jupyter-tensorflow-ubi9-python-3.9-amd64"
+            expected_img_size=6667
             ;;
         odh-trustyai-notebook-image-n)
             expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="jupyter-trustyai-ubi9-python-3.11-amd64"
+            expected_img_size=4197
             ;;
         odh-trustyai-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.9"
             expected_commitref="2024a"
             expected_build_name="jupyter-trustyai-ubi9-python-3.9-amd64"
+            expected_img_size=1158
             ;;
         odh-codeserver-notebook-image-n)
             expected_name="odh-notebook-code-server-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="codeserver-ubi9-python-3.11-amd64"
+            expected_img_size=893
             ;;
         odh-codeserver-notebook-image-n-1)
             expected_name="odh-notebook-code-server-ubi9-python-3.9"
             expected_commitref="2024a"
             expected_build_name="codeserver-ubi9-python-3.9-amd64"
+            expected_img_size=850
             ;;
         odh-rstudio-notebook-image-n)
             expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
             expected_commitref="2024b"
             expected_build_name="rstudio-c9s-python-3.11-amd64"
+            expected_img_size=1242
             ;;
         odh-rstudio-notebook-image-n-1)
             expected_name="odh-notebook-rstudio-server-c9s-python-3.9"
             expected_commitref="2024a"
             expected_build_name="rstudio-c9s-python-3.9-amd64"
+            expected_img_size=1208
             ;;
         # For both RStudio GPU workbenches - the final name labels are identical to plain RStudio ones
         # This is because the very same RStudio Dockerfile is used but different base images in both cases
@@ -177,26 +202,31 @@ function check_image_variable_matches_name_and_commitref() {
             expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
             expected_commitref="2024b"
             expected_build_name="cuda-rstudio-c9s-python-3.11-amd64"
+            expected_img_size=7184
             ;;
         odh-rstudio-gpu-notebook-image-n-1)
             expected_name="odh-notebook-rstudio-server-c9s-python-3.9"
             expected_commitref="2024a"
             expected_build_name="cuda-rstudio-c9s-python-3.9-amd64"
+            expected_img_size=7129
             ;;
         odh-rocm-minimal-notebook-image-n)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="rocm-jupyter-minimal-ubi9-python-3.11-amd64"
+            expected_img_size=4830
             ;;
         odh-rocm-pytorch-notebook-image-n)
             expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="rocm-jupyter-pytorch-ubi9-python-3.11-amd64"
+            expected_img_size=6571
             ;;
         odh-rocm-tensorflow-notebook-image-n)
             expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="rocm-jupyter-tensorflow-ubi9-python-3.11-amd64"
+            expected_img_size=5782
             ;;
         *)
             echo "Unimplemented variable name: '${image_variable}'"
@@ -215,6 +245,22 @@ function check_image_variable_matches_name_and_commitref() {
 
     test "${openshift_build_name}" = "${expected_build_name}" || {
         echo "Image URL points to an incorrect image: expected OPENSHIFT_BUILD_NAME '${expected_build_name}'; actual '${openshift_build_name}'"
+        return 1
+    }
+
+    # Check the size change constraints now
+    # 1. Percentual size change
+    percent_change=$((100 * actual_img_size / expected_img_size - 100))
+    abs_percent_change=${percent_change#-*}
+    test ${abs_percent_change} -le ${SIZE_PERCENTUAL_TRESHOLD} || {
+        echo "Image size changed by ${abs_percent_change}% (expected: ${expected_img_size} MB; actual: ${actual_img_size} MB; treshold: ${SIZE_PERCENTUAL_TRESHOLD}%)."
+        return 1
+    }
+    # 2. Absolute size change
+    size_difference=$((actual_img_size - expected_img_size))
+    abs_size_difference=${size_difference#-*}
+    test ${abs_size_difference} -le ${SIZE_ABSOLUTE_TRESHOLD} || {
+        echo "Image size changed by ${abs_size_difference} MB (expected: ${expected_img_size} MB; actual: ${actual_img_size} MB; treshold: ${SIZE_ABSOLUTE_TRESHOLD} MB)."
         return 1
     }
 }
@@ -249,29 +295,29 @@ function check_image() {
 
     echo "Checking metadata for image '${image_variable}' with URL '${image_url}'"
 
-    local image_metadata
+    local image_metadata_config
     local image_name
     local image_commit_id
     local image_commitref
     local image_created
 
-    image_metadata="$(skopeo inspect --config "docker://${image_url}")" || {
-        echo "Couldn't download image metadata with skopeo tool!"
+    image_metadata_config="$(skopeo inspect --config "docker://${image_url}")" || {
+        echo "Couldn't download image config metadata with skopeo tool!"
         return 1
     }
-    image_name=$(echo "${image_metadata}" | jq --raw-output '.config.Labels.name') ||  {
+    image_name=$(echo "${image_metadata_config}" | jq --raw-output '.config.Labels.name') ||  {
         echo "Couldn't parse '.config.Labels.name' from image metadata!"
         return 1
     }
-    image_commit_id=$(echo "${image_metadata}" | jq --raw-output '.config.Labels."io.openshift.build.commit.id"') ||  {
+    image_commit_id=$(echo "${image_metadata_config}" | jq --raw-output '.config.Labels."io.openshift.build.commit.id"') ||  {
         echo "Couldn't parse '.config.Labels."io.openshift.build.commit.id"' from image metadata!"
         return 1
     }
-    image_commitref=$(echo "${image_metadata}" | jq --raw-output '.config.Labels."io.openshift.build.commit.ref"') ||  {
+    image_commitref=$(echo "${image_metadata_config}" | jq --raw-output '.config.Labels."io.openshift.build.commit.ref"') ||  {
         echo "Couldn't parse '.config.Labels."io.openshift.build.commit.ref"' from image metadata!"
         return 1
     }
-    image_created=$(echo "${image_metadata}" | jq --raw-output '.created') ||  {
+    image_created=$(echo "${image_metadata_config}" | jq --raw-output '.created') ||  {
         echo "Couldn't parse '.created' from image metadata!"
         return 1
     }
@@ -280,7 +326,7 @@ function check_image() {
     local build_name_raw
     local openshift_build_name
 
-    config_env=$(echo "${image_metadata}" | jq --raw-output '.config.Env') || {
+    config_env=$(echo "${image_metadata_config}" | jq --raw-output '.config.Env') || {
         echo "Couldn't parse '.config.Env' from image metadata!"
         return 1
     }
@@ -293,6 +339,27 @@ function check_image() {
         return 1
     }
 
+    local image_metadata
+    local image_size
+    local image_size_mb
+
+    image_metadata="$(skopeo inspect --raw "docker://${image_url}")" || {
+        echo "Couldn't download image metadata with skopeo tool!"
+        return 1
+    }
+    # Here we get the image size as a compressed image. This differs to what we gather in
+    # 'tests/containers/base_image_test.py#test_image_size_change' where we check against the extracted image size.
+    # There is no actual reason to compare these different sizes except that in this case we want to do check the
+    # image remotely, whereas in the othe test, we have the image present locally on the machine.
+    image_size=$(echo "${image_metadata}" | jq '[ .layers[].size ] | add') ||  {
+        echo "Couldn't count image size from image metadata!"
+        return 1
+    }
+    image_size_mb=$((image_size / 1024 / 1024)) ||  {
+        echo "Couldn't count image size from image metadata!"
+        return 1
+    }
+
     test -n "${image_name}" || {
         echo "Couldn't retrieve the name of the image - got empty value!"
         return 1
@@ -300,8 +367,10 @@ function check_image() {
 
     echo "Image name retrieved: '${image_name}'"
     echo "Image created: '${image_created}'"
+    echo "Image size: ${image_size_mb} MB"
 
-    check_image_variable_matches_name_and_commitref "${image_variable}" "${image_name}" "${image_commitref}" "${openshift_build_name}" || return 1
+    check_image_variable_matches_name_and_commitref_and_size "${image_variable}" "${image_name}" "${image_commitref}" \
+        "${openshift_build_name}" "${image_size_mb}" || return 1
 
     check_image_commit_id_matches_metadata "${image_variable}" "${image_commit_id}" || return 1
 
