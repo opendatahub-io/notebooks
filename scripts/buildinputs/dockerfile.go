@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
+	"strings"
+
 	"github.com/containerd/platforms"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/client/llb/sourceresolver"
@@ -14,9 +18,6 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
-	"log"
-	"os"
-	"strings"
 )
 
 func getDockerfileDeps(dockerfile string) string {
@@ -61,6 +62,7 @@ func getOpSourceFollowPaths(definition *llb.Definition) string {
 		ops = append(ops, ent)
 	}
 
+	var result string = ""
 	for _, op := range ops {
 		switch op := op.Op.Op.(type) {
 		case *pb.Op_Source:
@@ -68,13 +70,17 @@ func getOpSourceFollowPaths(definition *llb.Definition) string {
 				// no-op
 			} else if strings.HasPrefix(op.Source.Identifier, "local://") {
 				paths := op.Source.Attrs[pb.AttrFollowPaths]
-				return paths
+				// TODO treat result as a set of strings to get unique set across all layers
+				// this code "works" as is because it seems the terminal layer is the last one processed - which
+				// contains all the referenced files - but treating this as a set seems safer (?)
+				result = paths
+				log.Printf("found paths: %s", paths)
 			} else {
 				panic(fmt.Errorf("unexpected prefix %v", op.Source.Identifier))
 			}
 		}
 	}
-	return ""
+	return result
 }
 
 // llbOp holds data for a single loaded LLB op

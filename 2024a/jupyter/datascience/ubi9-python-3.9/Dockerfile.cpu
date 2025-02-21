@@ -1,5 +1,52 @@
-ARG BASE_IMAGE
-FROM ${BASE_IMAGE}
+########################
+# base                 #
+########################
+FROM registry.access.redhat.com/ubi9/python-39:latest AS base
+
+WORKDIR /opt/app-root/bin
+
+# OS Packages needs to be installed as root
+USER root
+
+# Install useful OS packages
+RUN dnf install -y mesa-libGL && dnf clean all && rm -rf /var/cache/yum
+
+# Other apps and tools installed as default user
+USER 1001
+
+# Install micropipenv to deploy packages from Pipfile.lock
+RUN pip install --no-cache-dir -U "micropipenv[toml]"
+
+# Install the oc client
+RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+        -o /tmp/openshift-client-linux.tar.gz && \
+    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
+    rm -f /tmp/openshift-client-linux.tar.gz
+
+####################
+# jupytyer-minimal #
+####################
+FROM base AS jupyter-minimal
+
+ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.9
+
+WORKDIR /opt/app-root/bin
+
+COPY ${MINIMAL_SOURCE_CODE}/utils utils/
+
+COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
+
+WORKDIR /opt/app-root/src
+
+ENTRYPOINT ["start-notebook.sh"]
+
+
+########################
+# jupytyer-datascience #
+########################
+FROM jupyter-minimal AS jupyter-datascience
+
+ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.9
 
 LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.9" \
     summary="Jupyter data science notebook image for ODH notebooks" \
@@ -14,18 +61,11 @@ LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.9" \
 WORKDIR /opt/app-root/bin
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY Pipfile.lock ./
+COPY ${DATASCIENCE_SOURCE_CODE}/Pipfile.lock ./
 # Copy Elyra setup to utils so that it's sourced at startup
-COPY setup-elyra.sh ./utils/
+COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ./utils/
 
-RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
-    # Fix permissions to support pip in Openshift environments \
-    chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
-    fix-permissions /opt/app-root -P
-
-COPY utils ./utils/
+COPY ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
 # OS Packages needs to be installed as root
 USER root
@@ -33,16 +73,13 @@ USER root
 # Install usefull OS packages
 RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile && dnf clean all && rm -rf /var/cache/yum
 
-# Disable announcement plugin of jupyterlab
-RUN jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
-
 # Install MongoDB Client, We need a special repo for MongoDB as they do their own distribution
-COPY mongodb-org-6.0.repo-x86_64 /etc/yum.repos.d/mongodb-org-6.0.repo
+COPY ${DATASCIENCE_SOURCE_CODE}/mongodb-org-6.0.repo-x86_64 /etc/yum.repos.d/mongodb-org-6.0.repo
 
 RUN dnf install -y mongocli && dnf clean all && rm -rf /var/cache/yum
 
 # Install MSSQL Client, We need a special repo for MSSQL as they do their own distribution
-COPY mssql-2022.repo-x86_64 /etc/yum.repos.d/mssql-2022.repo
+COPY ${DATASCIENCE_SOURCE_CODE}/mssql-2022.repo-x86_64 /etc/yum.repos.d/mssql-2022.repo
 
 RUN ACCEPT_EULA=Y dnf install -y mssql-tools18 unixODBC-devel && dnf clean all && rm -rf /var/cache/yum
 
@@ -52,7 +89,10 @@ ENV PATH="$PATH:/opt/mssql-tools18/bin"
 USER 1001
 
 # setup path for runtime configuration
-RUN mkdir /opt/app-root/runtimes && \
+RUN echo "Installing softwares and packages" && \
+    micropipenv install && \
+    rm -f ./Pipfile.lock && \
+    mkdir /opt/app-root/runtimes && \
     # switch to Data Science Pipeline \
     cp utils/pipeline-flow.svg /opt/app-root/lib/python3.9/site-packages/elyra/static/icons/kubeflow.svg && \
     sed -i "s/Kubeflow Pipelines/Data Science/g" /opt/app-root/lib/python3.9/site-packages/elyra/pipeline/runtime_type.py && \
@@ -69,15 +109,17 @@ RUN mkdir /opt/app-root/runtimes && \
     sed -i "s/metadata.metadata.runtime_type/\"DATA_SCIENCE_PIPELINES\"/g" /opt/app-root/share/jupyter/labextensions/@elyra/pipeline-editor-extension/static/lib_index_js.*.js && \
     # Remove Elyra logo from JupyterLab because this is not a pure Elyra image \
     sed -i 's/widget\.id === \x27jp-MainLogo\x27/widget\.id === \x27jp-MainLogo\x27 \&\& false/' /opt/app-root/share/jupyter/labextensions/@elyra/theme-extension/static/lib_index_js.*.js && \
-    # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
-    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
     # Remove default Elyra runtime-images \
     rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
+    # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
+    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \    
+    # Disable announcement plugin of jupyterlab \
+    jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \    
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
     fix-permissions /opt/app-root -P
 
 # Copy Elyra runtime-images definitions and set the version
-COPY runtime-images/ /opt/app-root/share/jupyter/metadata/runtime-images/
+COPY ${DATASCIENCE_SOURCE_CODE}/runtime-images/ /opt/app-root/share/jupyter/metadata/runtime-images/
 
 WORKDIR /opt/app-root/src
