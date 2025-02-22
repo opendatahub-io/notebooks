@@ -196,6 +196,8 @@ def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: Workbench
         "JupyterEventsVersionWarning: The `version` property of an event schema must be a string. It has been type coerced, but in a future version of this library, it will fail to validate.",
         # This is a message from our reverse proxy nginx caused by the fact that we attempt to connect to the code-server before it's actually running (container.start(wait_for_readiness=True)).
         "connect() failed (111: Connection refused) while connecting to upstream, client",
+        # We use oauth-proxy to give us authentication, and we use OpenShift route to get HTTPS
+        "WARNING: The Jupyter server is listening on all IP addresses and not using encryption. This is not recommended.",
     ]
 
     # Let's wait a couple of seconds to give a chance to log eventual extra startup messages just to be sure we don't
