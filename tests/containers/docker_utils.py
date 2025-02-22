@@ -8,9 +8,12 @@ import tarfile
 import time
 from typing import Iterable, TYPE_CHECKING
 
+import podman
 import docker.client
 
 import testcontainers.core.container
+
+import tests.containers.pydantic_schemas
 
 if TYPE_CHECKING:
     from docker.models.containers import Container
@@ -158,12 +161,28 @@ class ContainerExec:
             raise RuntimeError("Hm could that really happen?")
         return self.poll()
 
+
 def get_socket_path(client: docker.client.DockerClient) -> str:
     """Determine the local socket path.
     This works even when `podman machine` with its own host-mounts is involved
     NOTE: this will not work for remote docker, but we will cross the bridge when we come to it"""
     socket_path = _the_one(adapter.socket_path for adapter in client.api.adapters.values())
     return socket_path
+
+
+def get_podman_machine_socket_path(docker_client: docker.client.DockerClient) -> str:
+    """Determine the podman socket path that's valid from inside Podman Machine.
+    * rootful podman: both the host (`ls`) and podman machine (`podman machine ssh ls`) have it at `/var/run/docker.sock`.
+    * rootless podman: the location on host is still the same while podman machine has it in `/var/run/user/${PID}/podman/podman.sock`.
+    """
+    socket_path = get_socket_path(docker_client)
+    podman_client = podman.PodmanClient(base_url="http+unix://" + socket_path)
+    info = tests.containers.pydantic_schemas.PodmanInfo.model_validate(podman_client.info())
+    assert info.host.remoteSocket.exists, "Failed to determine the podman remote socket"
+    assert info.host.remoteSocket.path.startswith("unix://"), "Unexpected remote socket path"
+    machine_socket_path = info.host.remoteSocket.path[len("unix://"):]
+    return machine_socket_path
+
 
 def get_container_pid(container: Container) -> int | None:
     """Get the network namespace of a Docker container."""
