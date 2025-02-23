@@ -10,7 +10,7 @@ import gha_pr_changed_files
 This script is used to configure a Konflux Application with component definitions.
 We have very many components, and clicking them one by one in the UI is too inefficient.
 
-$ poetry run ci/cached-builds/konflux_generate_component_definitions.py > konflux_components.yaml
+$ uv run ci/cached-builds/konflux_generate_component_definitions.py > konflux_components.yaml
 $ oc apply -f konflux_components.yaml
 
 Open https://console.redhat.com/application-pipeline/workspaces/rhoai-ide-konflux/applications
