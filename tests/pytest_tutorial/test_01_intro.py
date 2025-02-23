@@ -82,7 +82,7 @@ class LegacyThing(unittest.TestCase):
 
 
 """Pytest runs in two phases: test collection and then test execution.
-In the collection phase, all files matching the patter (test_*.py or *_test.py) are imported and scanned
+In the collection phase, all files matching the pattern (test_*.py or *_test.py) are imported and scanned
  for test functions and methods, and then pytest runs what it discovered.
 
 # Only perform collection (test discovery), do not execute anything:
