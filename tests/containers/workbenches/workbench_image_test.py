@@ -135,9 +135,12 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         self.with_exposed_ports(self.port)
 
     @testcontainers.core.waiting_utils.wait_container_is_ready(urllib.error.URLError)
-    def _connect(self, container_host: str | None = None, container_port: int | None = None) -> None:
+    def _connect(self, container_host: str | None = None, container_port: int | None = None,
+                 base_url: str = "") -> None:
         """
         :param container_host: overrides the container host IP in connection check to use direct access
+        :param container_port: overrides the container port
+        :param base_url: needs to be with a leading /
         """
         # are we still alive?
         self.get_wrapped_container().reload()
@@ -154,7 +157,7 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
             # host may be an ipv6 address, need to be careful with formatting this
             if ":" in host:
                 host = f"[{host}]"
-            result = opener.open(urllib.request.Request(f"http://{host}:{port}"), timeout=1)
+            result = opener.open(urllib.request.Request(f"http://{host}:{port}{base_url}"), timeout=1)
         except urllib.error.URLError as e:
             raise e
 
