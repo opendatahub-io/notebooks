@@ -102,19 +102,15 @@ class TestFrame:
         self.defer(resource, destructor)
         return result
 
-    def add[T](self, resource: T, destructor: Callable[[T], None] = None) -> T:
-        self.defer(resource, destructor)
-        return resource
-
-    def defer[T](self, resource: T, destructor: Callable[[T], None] = None) -> T:
-        self.stack.append((resource, destructor))
+    def defer[T](self, obj: T, destructor: Callable[[T], None] = None) -> T:
+        self.stack.append((obj, destructor))
 
     def destroy(self, wait=False):
         while self.stack:
             resource, destructor = self.stack.pop()
             if destructor is not None:
                 destructor(resource)
-            else:
+            elif isinstance(resource, ocp_resources.resource.Resource):
                 resource.clean_up(wait=wait)
 
     def __enter__(self) -> TestFrame:
