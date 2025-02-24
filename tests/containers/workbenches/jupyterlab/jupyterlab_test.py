@@ -8,7 +8,7 @@ import allure
 import pytest
 
 from tests.containers import docker_utils
-from tests.containers.workbenches.workbench_image_test import WorkbenchContainer, skip_if_not_workbench_image
+from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 if TYPE_CHECKING:
     import docker.models.images
@@ -21,10 +21,9 @@ class TestJupyterLabImage:
 
     @allure.issue("RHOAIENG-11156")
     @allure.description("Check that the HTML for the spinner is contained in the initial page.")
-    def test_spinner_html_loaded(self, image: str) -> None:
-        skip_if_not_jupyterlab_image(image)
+    def test_spinner_html_loaded(self, jupyterlab_image: str) -> None:
 
-        container = WorkbenchContainer(image=image, user=4321, group_add=[0])
+        container = WorkbenchContainer(image=jupyterlab_image, user=4321, group_add=[0])
         # if no env is specified, the image will run
         # > 4321        3334    3319  0 10:36 pts/0    00:00:01 /mnt/rosetta /opt/app-root/bin/python3.11 /opt/app-root/bin/jupyter-lab
         # > --ServerApp.root_dir=/opt/app-root/src --ServerApp.ip= --ServerApp.allow_origin=* --ServerApp.open_browser=False
@@ -53,11 +52,3 @@ class TestJupyterLabImage:
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
-
-def skip_if_not_jupyterlab_image(image: str) -> docker.models.images.Image:
-    image_metadata = skip_if_not_workbench_image(image)
-    if "-jupyter-" not in image_metadata.labels['name']:
-        pytest.skip(
-            f"Image {image} does not have '-jupyter-' in {image_metadata.labels['name']=}'")
-
-    return image_metadata
