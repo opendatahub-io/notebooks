@@ -46,10 +46,7 @@ jobs:
 
       - run: mkdir -p $TMPDIR
 
-      - name: downcase repo
-        run: |
-          echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
-
+ 
 
       # for bin/buildinputs in scripts/sandbox.py
       - uses: actions/setup-go@v5
