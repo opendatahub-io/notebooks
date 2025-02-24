@@ -29,7 +29,7 @@ scipy = "~=1.14.1"
 skl2onnx = "~=1.17.0"
 onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
 codeflare-sdk = "~=0.26.0"
-kubeflow-training = {extras = ["huggingface"], version = "==1.8.1"}
+kubeflow-training = "==1.8.1"
 
 # DB connectors
 pymongo = "~=4.8.0"
@@ -41,7 +41,7 @@ mysql-connector-python = "~=9.0.0"
 
 odh-elyra = "==4.2.0"
 
-jupyterlab = "==4.2.6"
+jupyterlab = "==4.2.7"
 jupyter-bokeh = "~=4.0.5"
 jupyter-server = "~=2.14.2"
 jupyter-server-proxy = "~=4.3.0"
