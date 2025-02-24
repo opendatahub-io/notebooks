@@ -46,6 +46,11 @@ jobs:
 
       - run: mkdir -p $TMPDIR
 
+      - name: downcase IMAGE_REGISTRY and CACHE
+        run: |
+          echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >>${GITHUB_ENV}
+          echo "CACHE=${CACHE,,}" >>${GITHUB_ENV}
+
       # for bin/buildinputs in scripts/sandbox.py
       - uses: actions/setup-go@v5
         with:
