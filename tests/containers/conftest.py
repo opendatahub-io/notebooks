@@ -49,12 +49,6 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
         metafunc.parametrize(image.__name__, metafunc.config.getoption("--image"))
 
 
-# https://docs.pytest.org/en/stable/how-to/fixtures.html#parametrizing-fixtures
-# indirect parametrization https://stackoverflow.com/questions/18011902/how-to-pass-a-parameter-to-a-fixture-function-in-pytest
-@pytest.fixture(scope="session")
-def image(request):
-    yield request.param
-
 def skip_if_not_workbench_image(image: str) -> docker.models.images.Image:
     client = testcontainers.core.container.DockerClient()
     try:
@@ -69,7 +63,21 @@ def skip_if_not_workbench_image(image: str) -> docker.models.images.Image:
             f"Image {image} does not have any of '{ide_server_label_fragments=} in {image_metadata.labels['name']=}'")
 
     return image_metadata
-    
+
+
+# https://docs.pytest.org/en/stable/how-to/fixtures.html#parametrizing-fixtures
+# indirect parametrization https://stackoverflow.com/questions/18011902/how-to-pass-a-parameter-to-a-fixture-function-in-pytest
+@pytest.fixture(scope="session")
+def image(request):
+    yield request.param
+
+
+@pytest.fixture(scope="function")
+def workbench_image(image: str):
+    skip_if_not_workbench_image(image)
+    yield image
+
+
 @pytest.fixture(scope="function")
 def jupyterlab_image(image: str):
     image_metadata = skip_if_not_workbench_image(image)
@@ -89,10 +97,6 @@ def rstudio_image(image: str):
 
     return image_metadata
 
-@pytest.fixture(scope="function")
-def workbench_image(image: str):
-    skip_if_not_workbench_image(image)
-    yield image
 
 @pytest.fixture(scope="function")
 def codeserver_image(image: str):
@@ -102,6 +106,7 @@ def codeserver_image(image: str):
             f"Image {image} does not have '-code-server-' in {image_metadata.labels['name']=}'")
 
     return image_metadata
+
 
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_sessionstart
 def pytest_sessionstart(session: Session) -> None:
