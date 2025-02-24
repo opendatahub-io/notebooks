@@ -51,4 +51,3 @@ class TestJupyterLabImage:
             assert 'class="pf-v6-c-spinner"' in response.text
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
-
