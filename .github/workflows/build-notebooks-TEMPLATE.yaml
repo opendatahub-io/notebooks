@@ -42,14 +42,14 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v4
-
-      - run: mkdir -p $TMPDIR
-
       - name: downcase IMAGE_REGISTRY and CACHE
         run: |
           echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >>${GITHUB_ENV}
           echo "CACHE=${CACHE,,}" >>${GITHUB_ENV}
+      
+      - uses: actions/checkout@v4
+
+      - run: mkdir -p $TMPDIR
 
       # for bin/buildinputs in scripts/sandbox.py
       - uses: actions/setup-go@v5
