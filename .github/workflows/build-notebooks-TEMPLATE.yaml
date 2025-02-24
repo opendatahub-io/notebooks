@@ -52,8 +52,6 @@ jobs:
 
       - run: mkdir -p $TMPDIR
 
- 
-
       # for bin/buildinputs in scripts/sandbox.py
       - uses: actions/setup-go@v5
         with:
