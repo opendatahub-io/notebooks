@@ -10,6 +10,10 @@ import testcontainers.core.docker_client
 
 import pytest
 
+import docker.errors
+import docker.models.images
+import docker.types
+
 from tests.containers import docker_utils
 
 if TYPE_CHECKING:
@@ -51,6 +55,53 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
 def image(request):
     yield request.param
 
+def skip_if_not_workbench_image(image: str) -> docker.models.images.Image:
+    client = testcontainers.core.container.DockerClient()
+    try:
+        image_metadata = client.client.images.get(image)
+    except docker.errors.ImageNotFound:
+        image_metadata = client.client.images.pull(image)
+        assert isinstance(image_metadata, docker.models.images.Image)
+
+    ide_server_label_fragments = ('-code-server-', '-jupyter-', '-rstudio-')
+    if not any(ide in image_metadata.labels['name'] for ide in ide_server_label_fragments):
+        pytest.skip(
+            f"Image {image} does not have any of '{ide_server_label_fragments=} in {image_metadata.labels['name']=}'")
+
+    return image_metadata
+    
+@pytest.fixture(scope="function")
+def jupyterlab_image(image: str):
+    image_metadata = skip_if_not_workbench_image(image)
+    if "-jupyter-" not in image_metadata.labels['name']:
+        pytest.skip(
+            f"Image {image} does not have '-jupyter-' in {image_metadata.labels['name']=}'")
+
+    return image_metadata
+
+
+@pytest.fixture(scope="function")
+def rstudio_image(image: str):
+    image_metadata = skip_if_not_workbench_image(image)
+    if "-rstudio-" not in image_metadata.labels['name']:
+        pytest.skip(
+            f"Image {image} does not have '-rstudio-' in {image_metadata.labels['name']=}'")
+
+    return image_metadata
+
+@pytest.fixture(scope="function")
+def workbench_image(image: str):
+    skip_if_not_workbench_image(image)
+    yield image
+
+@pytest.fixture(scope="function")
+def codeserver_image(image: str):
+    image_metadata = skip_if_not_workbench_image(image)
+    if "-code-server-" not in image_metadata.labels['name']:
+        pytest.skip(
+            f"Image {image} does not have '-code-server-' in {image_metadata.labels['name']=}'")
+
+    return image_metadata
 
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_sessionstart
 def pytest_sessionstart(session: Session) -> None:
