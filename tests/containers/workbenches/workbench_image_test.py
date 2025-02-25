@@ -33,10 +33,9 @@ class TestWorkbenchImage:
         # disable ipv6 https://danwalsh.livejournal.com/47118.html
         {"net.ipv6.conf.all.disable_ipv6": "1"}
     ])
-    def test_image_entrypoint_starts(self, subtests: pytest_subtests.SubTests, image: str, sysctls) -> None:
-        skip_if_not_workbench_image(image)
+    def test_image_entrypoint_starts(self, subtests: pytest_subtests.SubTests, workbench_image: str, sysctls) -> None:
 
-        container = WorkbenchContainer(image=image, user=1000, group_add=[0],
+        container = WorkbenchContainer(image=workbench_image, user=1000, group_add=[0],
                                        sysctls=sysctls)
         try:
             try:
@@ -51,10 +50,9 @@ class TestWorkbenchImage:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
     @pytest.mark.skip(reason="RHOAIENG-17305: currently our Workbench images don't tolerate IPv6")
-    def test_ipv6_only(self, subtests: pytest_subtests.SubTests, image: str, test_frame):
+    def test_ipv6_only(self, subtests: pytest_subtests.SubTests, workbench_image: str, test_frame):
         """Test that workbench image is accessible via IPv6.
         Workarounds for macOS will be needed, so that's why it's a separate test."""
-        skip_if_not_workbench_image(image)
 
         # network is made ipv6 by only defining the ipv6 subnet for it
         # do _not_ set the ipv6=true option, that would actually make it dual-stack
@@ -68,7 +66,7 @@ class TestWorkbenchImage:
         })
         test_frame.append(network)
 
-        container = WorkbenchContainer(image=image)
+        container = WorkbenchContainer(image=workbench_image)
         container.with_network(network)
         try:
             try:
@@ -180,20 +178,6 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         return self
 
 
-def skip_if_not_workbench_image(image: str) -> docker.models.images.Image:
-    client = testcontainers.core.container.DockerClient()
-    try:
-        image_metadata = client.client.images.get(image)
-    except docker.errors.ImageNotFound:
-        image_metadata = client.client.images.pull(image)
-        assert isinstance(image_metadata, docker.models.images.Image)
-
-    ide_server_label_fragments = ('-code-server-', '-jupyter-', '-rstudio-')
-    if not any(ide in image_metadata.labels['name'] for ide in ide_server_label_fragments):
-        pytest.skip(
-            f"Image {image} does not have any of '{ide_server_label_fragments=} in {image_metadata.labels['name']=}'")
-
-    return image_metadata
 
 def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: WorkbenchContainer) -> None:
     # Here is a list of blocked keywords we don't want to see in the log messages during the container/workbench
