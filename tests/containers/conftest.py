@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import platform
 from typing import Iterable, Callable, TYPE_CHECKING
 
 import testcontainers.core.config
@@ -120,7 +121,16 @@ def pytest_sessionstart(session: Session) -> None:
 
     # set that socket path for ryuk's use, unless user overrode that
     if TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE not in os.environ:
-        testcontainers.core.config.testcontainers_config.ryuk_docker_socket = socket_path
+        logging.info(f"Env variable TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE not set, setting it now")
+        if platform.system().lower() == 'linux':
+            logging.info(f"We are on Linux, setting {socket_path=} for TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE")
+            testcontainers.core.config.testcontainers_config.ryuk_docker_socket = socket_path
+        elif platform.system().lower() == 'darwin':
+            podman_machine_socket_path = docker_utils.get_podman_machine_socket_path(client.client)
+            logging.info(f"We are on macOS, setting {podman_machine_socket_path=} for TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE")
+            testcontainers.core.config.testcontainers_config.ryuk_docker_socket = podman_machine_socket_path
+        else:
+            raise RuntimeError(f"Unsupported platform {platform.system()=}, cannot set TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE")
 
     # second preflight check: start the Reaper container
     if not testcontainers.core.config.testcontainers_config.ryuk_disabled:

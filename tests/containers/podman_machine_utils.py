@@ -4,16 +4,16 @@ import socket
 import subprocess
 from typing import Callable
 
-import tests.containers.schemas
+import tests.containers.pydantic_schemas
 
 logging.basicConfig(level=logging.DEBUG)
 
-def open_ssh_tunnel(machine_predicate: Callable[[tests.containers.schemas.PodmanMachine], bool],
+def open_ssh_tunnel(machine_predicate: Callable[[tests.containers.pydantic_schemas.PodmanMachine], bool],
                     local_port: int, remote_port: int, remote_interface: str = "localhost") -> subprocess.Popen:
     # Load and parse the Podman machine data
     machine_names = subprocess.check_output(["podman", "machine", "list", "--quiet"], text=True).splitlines()
     json_data = subprocess.check_output(["podman", "machine", "inspect", *machine_names], text=True)
-    inspect = tests.containers.schemas.PodmanMachineInspect(machines=json.loads(json_data))
+    inspect = tests.containers.pydantic_schemas.PodmanMachineInspect(machines=json.loads(json_data))
     machines = inspect.machines
 
     machine = next((m for m in machines if machine_predicate(m)), None)
