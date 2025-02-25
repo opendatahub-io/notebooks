@@ -11,11 +11,12 @@ import tempfile
 import textwrap
 from typing import TYPE_CHECKING, Any, Callable
 
-import pytest
 import testcontainers.core.container
 import testcontainers.core.waiting_utils
 
 from tests.containers import docker_utils
+
+import pytest
 
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -72,7 +73,8 @@ class TestBaseImage:
                         if "not found" in line:
                             unsatisfied_deps.append((dlib, line.strip()))
                     assert output
-                print("OUTPUT>", json.dumps({"dir": path, "count_scanned": count_scanned, "unsatisfied": unsatisfied_deps}))
+                print("OUTPUT>",
+                      json.dumps({"dir": path, "count_scanned": count_scanned, "unsatisfied": unsatisfied_deps}))
 
         try:
             container.start()
@@ -117,6 +119,7 @@ class TestBaseImage:
         logging.debug(output.decode())
         assert ecode == 0
 
+    # @pytest.mark.environmentss("docker")
     def test_oc_command_runs_fake_fips(self, image: str, subtests: pytest_subtests.SubTests):
         """Establishes a best-effort fake FIPS environment and attempts to execute `oc` binary in it.
 
@@ -140,7 +143,8 @@ class TestBaseImage:
             # if /proc/sys/crypto/fips_enabled exists, only replace this file,
             # otherwise (Ubuntu case), assume entire /proc/sys/crypto does not exist
             if platform.system().lower() == "darwin" or pathlib.Path("/proc/sys/crypto/fips_enabled").exists():
-                container.with_volume_mapping(str(tmp_crypto / 'crypto' / 'fips_enabled'), "/proc/sys/crypto/fips_enabled", mode="ro,z")
+                container.with_volume_mapping(str(tmp_crypto / 'crypto' / 'fips_enabled'),
+                                              "/proc/sys/crypto/fips_enabled", mode="ro,z")
             else:
                 container.with_volume_mapping(str(tmp_crypto), "/proc/sys", mode="ro,z")
 

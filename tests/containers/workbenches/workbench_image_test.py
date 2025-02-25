@@ -21,7 +21,7 @@ import testcontainers.core.waiting_utils
 import pytest
 import pytest_subtests
 
-from tests.containers import docker_utils, podman_machine_utils
+from tests.containers import docker_utils, podman_machine_utils, kubernetes_utils
 
 
 class TestWorkbenchImage:
@@ -82,8 +82,7 @@ class TestWorkbenchImage:
                     # rootful containers have an IP assigned, so we can connect to that
                     # NOTE: this is only reachable from the host machine, so remote podman won't work
                     container.get_wrapped_container().reload()
-                    ipv6_address = (container.get_wrapped_container().attrs
-                        ["NetworkSettings"]["Networks"][network.name]["GlobalIPv6Address"])
+                    ipv6_address = container.get_wrapped_container().attrs["NetworkSettings"]["Networks"][network.name]["GlobalIPv6Address"]
                     if platform.system().lower() == 'darwin':
                         # the container host is a podman machine, we need to expose port on podman machine first
                         host = "localhost"
@@ -105,6 +104,17 @@ class TestWorkbenchImage:
                 grab_and_check_logs(subtests, container)
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
+
+    @pytest.mark.openshift
+    def test_image_run_on_openshift(self, workbench_image: str):
+        client = kubernetes_utils.get_client()
+        print(client)
+
+        username = kubernetes_utils.get_username(client)
+        print(username)
+
+        with kubernetes_utils.ImageDeployment(client, workbench_image) as image:
+            image.deploy(container_name="notebook-tests-pod")
 
 
 class WorkbenchContainer(testcontainers.core.container.DockerContainer):
@@ -178,7 +188,6 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         return self
 
 
-
 def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: WorkbenchContainer) -> None:
     # Here is a list of blocked keywords we don't want to see in the log messages during the container/workbench
     # startup (e.g., log messages from Jupyter IDE, code-server IDE or RStudio IDE).
@@ -214,10 +223,10 @@ def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: Workbench
         failed_lines: list[str] = []
         for line in full_logs.splitlines():
             if any(keyword in line for keyword in blocked_keywords):
-                    if any(allowed in line for allowed in allowed_messages):
-                        logging.debug(f"Waived message: '{line}'")
-                    else:
-                        logging.error(f"Unexpected keyword in the following message: '{line}'")
-                        failed_lines.append(line)
+                if any(allowed in line for allowed in allowed_messages):
+                    logging.debug(f"Waived message: '{line}'")
+                else:
+                    logging.error(f"Unexpected keyword in the following message: '{line}'")
+                    failed_lines.append(line)
         if len(failed_lines) > 0:
             pytest.fail(f"Log message(s) ({len(failed_lines)}) that violate our checks occurred during the workbench startup:\n{"\n".join(failed_lines)}")

@@ -296,10 +296,10 @@ jobs:
       - name: Install deps
         run: poetry install --sync
 
-      - name: Run container tests (in PyTest)
+      - name: Run Testcontainers container tests (in PyTest)
         run: |
           set -Eeuxo pipefail
-          poetry run pytest --capture=fd tests/containers --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          poetry run pytest --capture=fd tests/containers -m 'not openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
@@ -445,6 +445,16 @@ jobs:
           kubectl wait deployments --all --all-namespaces --for=condition=Available --timeout=100s
           kubectl wait pods --all --all-namespaces --for=condition=Ready --timeout=100s
 
+      - name: "Install local-path provisioner"
+        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        run: |
+          set -Eeuxo pipefail
+          kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.31/deploy/local-path-storage.yaml
+          kubectl wait deployments --all --namespace=local-path-storage --for=condition=Available --timeout=100s
+          # https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/
+          kubectl get storageclass
+          kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+
       - name: "Run image tests"
         if: ${{ steps.have-tests.outputs.tests == 'true' }}
         run: python3 ci/cached-builds/make_test.py --target ${{ inputs.target }}
@@ -454,6 +464,18 @@ jobs:
           NOTEBOOK_TAG: "${{ inputs.target }}-${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
 
       # endregion
+
+      - name: Run OpenShift container tests (in PyTest)
+        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        run: |
+          set -Eeuxo pipefail
+          poetry run pytest --capture=fd tests/containers -m 'openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+        env:
+          # TODO(jdanek): this Testcontainers stuff should not be necessary but currently it has to be there
+          DOCKER_HOST: "unix:///var/run/podman/podman.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
+          # pulling the Ryuk container from docker.io introduces CI flakiness
+          TESTCONTAINERS_RYUK_DISABLED: "true"
 
       # region Trivy vulnerability scan
 
