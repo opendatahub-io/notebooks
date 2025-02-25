@@ -150,7 +150,7 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         host = container_host or self.get_container_host_ip()
         port = container_port or self.get_exposed_port(self.port)
         try:
-            # if we did not enable cookies support here, with RStudio we'd end up looping and getting
+            # if we did not enable cookie support here, with RStudio we'd end up looping and getting
             # HTTP 302 (i.e. `except urllib.error.HTTPError as e: assert e.code == 302`) every time
             cookie_jar = http.cookiejar.CookieJar()
             opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
@@ -181,8 +181,15 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
 
 def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: WorkbenchContainer) -> None:
     # Here is a list of blocked keywords we don't want to see in the log messages during the container/workbench
-    # startup (e.g. log messages from Jupyter IDE, code-server IDE or RStudio IDE).
-    blocked_keywords = ["Error", "error", "Warning", "warning", "Failed", "failed", "[W ", "[E ", "Traceback"]
+    # startup (e.g., log messages from Jupyter IDE, code-server IDE or RStudio IDE).
+    blocked_keywords = [
+        "Error", "error", "Warning", "warning", "Failed", "failed",
+        "[W ", "[E ",
+        # https://docs.nginx.com/nginx/admin-guide/monitoring/logging/
+        "[warn] ", "[error] ", "[crit] ", "[alert] ", "[emerg] ",
+        # https://docs.python.org/3/tutorial/errors.html#exceptions
+        "Traceback",
+    ]
     # Here is a list of allowed messages that match some block keyword from the list above, but we allow them
     # for some reason.
     allowed_messages = [
@@ -192,8 +199,8 @@ def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: Workbench
         "connect() failed (111: Connection refused) while connecting to upstream, client",
     ]
 
-    # Let's wait couple of seconds to give a chance to log eventual extra startup messages just to be sure we don't
-    # miss anytihng important in this test.
+    # Let's wait a couple of seconds to give a chance to log eventual extra startup messages just to be sure we don't
+    # miss anything important in this test.
     time.sleep(3)
 
     stdout, stderr = container.get_logs()
