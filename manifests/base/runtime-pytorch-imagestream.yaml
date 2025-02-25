@@ -1,0 +1,39 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/runtime-image: "true"
+  annotations:
+    opendatahub.io/runtime-image-url: "https://github.com//opendatahub-io/notebooks/tree/main/runtimes"
+    opendatahub.io/runtime-image-name: "Pytorch with CUDA and Python 3.11 (UBI9)"
+    opendatahub.io/runtime-image-desc: "PyTorch runtime image for Elyra, enabling pipeline execution from Workbenches with PyTorch libraries and dependencies, supporting different runtimes for various pipeline nodes."
+  name: runtime-pytorch
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - annotations:
+        # language=json
+        opendatahub.io/runtime-image-metadata: |
+          [
+            {
+              "display_name": "Pytorch with CUDA and Python 3.11 (UBI9)",
+              "metadata": {
+                "tags": [
+                  "pytorch"
+                ],
+                "display_name": "Pytorch with CUDA and Python 3.11 (UBI9)",
+                "image_name": "quay.io/opendatahub/workbench-images@sha256:6a2806bf3cd9b00f60f3c7fe907727fb954c9776a075d9d58df26b5119d7afe6",
+                "pull_policy": "IfNotPresent"
+              },
+              "schema_name": "runtime-image"
+            }
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+      from:
+        kind: DockerImage
+        name: quay.io/opendatahub/workbench-images@sha256:6a2806bf3cd9b00f60f3c7fe907727fb954c9776a075d9d58df26b5119d7afe6
+      name: "pytorch"
+      referencePolicy:
+        type: Source
