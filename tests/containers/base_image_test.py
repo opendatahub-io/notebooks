@@ -107,6 +107,18 @@ class TestBaseImage:
                 with subtests.test(f"{dlib=}"):
                     pytest.fail(f"{dlib=} has unsatisfied dependencies {deps=}")
 
+    def test_oc_command_runs(self, image: str):
+        container = testcontainers.core.container.DockerContainer(image=image, user=23456, group_add=[0])
+        container.with_command("/bin/sh -c 'sleep infinity'")
+        try:
+            container.start()
+            ecode, output = container.exec(["/bin/sh", "-c", "oc version"])
+        finally:
+            docker_utils.NotebookContainer(container).stop(timeout=0)
+
+        logging.debug(output.decode())
+        assert ecode == 0
+
     # @pytest.mark.environmentss("docker")
     def test_oc_command_runs_fake_fips(self, image: str, subtests: pytest_subtests.SubTests):
         """Establishes a best-effort fake FIPS environment and attempts to execute `oc` binary in it.
@@ -131,7 +143,8 @@ class TestBaseImage:
             # if /proc/sys/crypto/fips_enabled exists, only replace this file,
             # otherwise (Ubuntu case), assume entire /proc/sys/crypto does not exist
             if platform.system().lower() == "darwin" or pathlib.Path("/proc/sys/crypto/fips_enabled").exists():
-                container.with_volume_mapping(str(tmp_crypto / 'crypto' / 'fips_enabled'), "/proc/sys/crypto/fips_enabled", mode="ro,z")
+                container.with_volume_mapping(str(tmp_crypto / 'crypto' / 'fips_enabled'),
+                                              "/proc/sys/crypto/fips_enabled", mode="ro,z")
             else:
                 container.with_volume_mapping(str(tmp_crypto), "/proc/sys", mode="ro,z")
 
@@ -181,8 +194,7 @@ class TestBaseImage:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
 
-def encode_python_function_execution_command_interpreter(python: str, function: Callable[..., Any], *args: list[Any]) -> \
-        list[str]:
+def encode_python_function_execution_command_interpreter(python: str, function: Callable[..., Any], *args: list[Any]) -> list[str]:
     """Returns a cli command that will run the given Python function encoded inline.
     All dependencies (imports, ...) must be part of function body."""
     code = textwrap.dedent(inspect.getsource(function))
