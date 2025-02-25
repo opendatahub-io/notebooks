@@ -82,8 +82,7 @@ class TestWorkbenchImage:
                     # rootful containers have an IP assigned, so we can connect to that
                     # NOTE: this is only reachable from the host machine, so remote podman won't work
                     container.get_wrapped_container().reload()
-                    ipv6_address = (container.get_wrapped_container().attrs
-                    ["NetworkSettings"]["Networks"][network.name]["GlobalIPv6Address"])
+                    ipv6_address = container.get_wrapped_container().attrs["NetworkSettings"]["Networks"][network.name]["GlobalIPv6Address"]
                     if platform.system().lower() == 'darwin':
                         # the container host is a podman machine, we need to expose port on podman machine first
                         host = "localhost"
@@ -91,8 +90,7 @@ class TestWorkbenchImage:
                         socket_path = os.path.realpath(docker_utils.get_socket_path(client.client))
                         logging.debug(f"{socket_path=}")
                         process = podman_machine_utils.open_ssh_tunnel(
-                            machine_predicate=lambda m: os.path.realpath(
-                                m.ConnectionInfo.PodmanSocket.Path) == socket_path,
+                            machine_predicate=lambda m: os.path.realpath(m.ConnectionInfo.PodmanSocket.Path) == socket_path,
                             local_port=port, remote_port=container.port,
                             remote_interface=f"[{ipv6_address}]")
                         test_frame.append(process, lambda p: p.kill())
@@ -231,5 +229,4 @@ def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: Workbench
                     logging.error(f"Unexpected keyword in the following message: '{line}'")
                     failed_lines.append(line)
         if len(failed_lines) > 0:
-            pytest.fail(
-                f"Log message(s) ({len(failed_lines)}) that violate our checks occurred during the workbench startup:\n{"\n".join(failed_lines)}")
+            pytest.fail(f"Log message(s) ({len(failed_lines)}) that violate our checks occurred during the workbench startup:\n{"\n".join(failed_lines)}")
