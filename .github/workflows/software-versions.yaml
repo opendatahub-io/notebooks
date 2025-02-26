@@ -1,0 +1,24 @@
+---
+name: Validation of software versions referenced in ImageStream manifests
+on:  # yamllint disable-line rule:truthy
+  push:
+  pull_request:
+    paths:
+      - 'manifests/base/params.env'
+      - 'manifests/base/*-imagestream.yaml'
+      - 'ci/check-software-versions.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validation-of-params-env:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check software versions in manifest referencing the images
+        id: software-versions-check
+        run: |
+          python ./ci/check-software-versions.py
