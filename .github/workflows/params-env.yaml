@@ -7,6 +7,7 @@ on:  # yamllint disable-line rule:truthy
       - 'manifests/base/commit.env'
       - 'manifests/base/params.env'
       - 'ci/check-params-env.sh'
+      - 'ci/check-runtime-images.sh'
   workflow_dispatch:
 
 permissions:
