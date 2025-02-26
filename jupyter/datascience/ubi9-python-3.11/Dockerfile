@@ -56,6 +56,7 @@ USER 1001
 
 # setup path for runtime configuration
 RUN mkdir /opt/app-root/runtimes && \
+    mkdir /opt/app-root/pipeline-runtimes && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
     sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
     # Remove default Elyra runtime-images \
@@ -63,8 +64,5 @@ RUN mkdir /opt/app-root/runtimes && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
     fix-permissions /opt/app-root -P
-
-# Copy Elyra runtime-images definitions and set the version
-COPY ${SOURCE_CODE}/runtime-images/ /opt/app-root/share/jupyter/metadata/runtime-images/
 
 WORKDIR /opt/app-root/src
