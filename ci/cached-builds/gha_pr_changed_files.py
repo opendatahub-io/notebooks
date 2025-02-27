@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import fnmatch
 import pathlib
 import re
 import shutil
@@ -27,7 +28,7 @@ def list_changed_files(from_ref: str, to_ref: str) -> list[str]:
     return files
 
 
-def analyze_build_directories(make_target) -> list[str]:
+def get_build_directory(make_target) -> str:
     directories = []
 
     pattern = re.compile(r"#\*# Image build directory: <(?P<dir>[^>]+)> #\(MACHINE-PARSED LINE\)#\*#\.\.\.")
@@ -41,22 +42,36 @@ def analyze_build_directories(make_target) -> list[str]:
         print(e.stderr, e.stdout)
         raise
 
-    logging.debug(f"Target {make_target} depends on files in directories {directories}")
-    return directories
+    if len(directories) != 1:
+        raise Exception(f"Expected a single build directory for target '{make_target}': {directories}")
+
+    logging.debug(f"Target {make_target} buildes from {directories[0]}")
+    return directories[0]
+
+def find_dockerfiles(directory: str) -> list:
+    """Finds and returns a list of files matching the pattern 'Dockerfile*' in the specified directory."""
+    matching_files = []
+    for filename in os.listdir(directory):
+        if fnmatch.fnmatch(filename, 'Dockerfile*') and filename != 'Dockerfile.konflux':
+            matching_files.append(filename)
+    return matching_files
 
 
-def should_build_target(changed_files: list[str], target_directories: list[str]) -> str:
+def should_build_target(changed_files: list[str], target_directory: str) -> str:
     """Returns truthy if there is at least one changed file necessitating a build.
     Falsy (empty) string is returned otherwise."""
-    for directory in target_directories:
-        # detect change in the Dockerfile directory
-        for changed_file in changed_files:
-            if changed_file.startswith(directory):
-                return changed_file
-        # detect change in any of the files outside
-        stdout = subprocess.check_output([PROJECT_ROOT / "bin/buildinputs", directory + "/Dockerfile"],
-                                         text=True, cwd=PROJECT_ROOT)
-        logging.debug(f"{directory=} {stdout=}")
+
+    # detect change in the Dockerfile directory
+    for changed_file in changed_files:
+        if changed_file.startswith(target_directory):
+            return changed_file
+    # detect change in any of the files outside
+    dockerfiles = find_dockerfiles(target_directory)
+    results = ""
+    for dockerfile in dockerfiles:
+        stdout = subprocess.check_output([PROJECT_ROOT / "bin/buildinputs", target_directory + "/" + dockerfile],
+                                        text=True, cwd=PROJECT_ROOT)
+        logging.debug(f"{target_directory=} {dockerfile=} {stdout=}")
         if stdout == "\n":
             # no dependencies
             continue
@@ -71,8 +86,8 @@ def should_build_target(changed_files: list[str], target_directories: list[str])
 def filter_out_unchanged(targets: list[str], changed_files: list[str]) -> list[str]:
     changed = []
     for target in targets:
-        target_directories = analyze_build_directories(target)
-        if reason := should_build_target(changed_files, target_directories):
+        build_directory = get_build_directory(target)
+        if reason := should_build_target(changed_files, build_directory):
             logging.info(f"✅ Will build {target} because file {reason} has been changed")
             changed.append(target)
         else:
@@ -87,13 +102,9 @@ class SelfTests(unittest.TestCase):
         assert set(changed_files) == {'codeserver/ubi9-python-3.9/Dockerfile',
                                       'codeserver/ubi9-python-3.9/run-code-server.sh'}
 
-    def test_analyze_build_directories(self):
-        directories = analyze_build_directories("rocm-jupyter-pytorch-ubi9-python-3.11")
-        assert set(directories) == {"base/ubi9-python-3.11",
-                                    "rocm/ubi9-python-3.11",
-                                    "jupyter/minimal/ubi9-python-3.11",
-                                    "jupyter/datascience/ubi9-python-3.11",
-                                    "jupyter/rocm/pytorch/ubi9-python-3.11"}
+    def test_get_build_directory(self):
+        directory = get_build_directory("rocm-jupyter-pytorch-ubi9-python-3.11")
+        assert directory == "jupyter/rocm/pytorch/ubi9-python-3.11"
 
     def test_should_build_target(self):
-        assert "" == should_build_target(["README.md"], ["jupyter/datascience/ubi9-python-3.11"])
+        assert "" == should_build_target(["README.md"], "jupyter/datascience/ubi9-python-3.11")

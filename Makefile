@@ -370,9 +370,7 @@ validate-rstudio-image: bin/kubectl
 # Default Python version
 PYTHON_VERSION ?= 3.11
 ROOT_DIR := $(shell pwd)
-BASE_DIRS := base/c9s-python-$(PYTHON_VERSION) \
-		base/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
+BASE_DIRS := jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
@@ -429,3 +427,24 @@ refresh-pipfilelock-files:
 .PHONY: scan-image-vulnerabilities
 scan-image-vulnerabilities:
 	python ci/security-scan/quay_security_analysis.py
+
+# This is used primarly for gen_gha_matrix_jobs.py to we know the set of all possible images we may want to build
+.PHONY: all-images
+all-images: jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
+	rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
