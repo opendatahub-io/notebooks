@@ -20,6 +20,7 @@ endif
 
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
 RELEASE	 		 ?= 2024b
+RELEASE_PYTHON_VERSION	 ?= 3.11
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
 # whether to build all dependent images or just the one specified
@@ -36,6 +37,12 @@ ifdef OS
 endif
 DATE 		?= $(shell date +'%Y%m%d')
 WHERE_WHICH ?= which
+
+ifeq ($(RELEASE), 2025a)
+	RELEASE_PYTHON_VERSION = 3.12
+else ifeq ($(RELEASE), 2024a)
+	RELEASE_PYTHON_VERSION = 3.9
+endif
 
 
 # linux/amd64 or darwin/arm64
@@ -62,23 +69,20 @@ else
 	CONTAINER_ENGINE := podman
 endif
 
-# Build function for the notebok image:
+# Build function for the notebook image:
 #   ARG 1: Image tag name.
-#   ARG 2: Path of image context we want to build.
-#   ARG 3: Base image tag name (optional).
+#   ARG 2: Path of Dockerfile we want to build.
 define build_image
 	$(eval IMAGE_NAME := $(IMAGE_REGISTRY):$(1)-$(IMAGE_TAG))
+	$(eval BUILD_ARGS :=)
+
 	$(info # Building $(IMAGE_NAME) image...)
-	$(if $(3),
-		$(eval BASE_IMAGE_NAME := $(IMAGE_REGISTRY):$(3)-$(IMAGE_TAG))
-		$(eval BUILD_ARGS := --build-arg BASE_IMAGE=$(BASE_IMAGE_NAME)),
-		$(eval BUILD_ARGS :=)
-	)
-	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)/Dockerfile' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --tag $(IMAGE_NAME) --file '$(2)/Dockerfile' $(BUILD_ARGS) {}\;
+
+	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' -- \
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
-# Push function for the notebok image:
+# Push function for the notebook image:
 # 	ARG 1: Path of image context we want to build.
 define push_image
 	$(eval IMAGE_NAME := $(IMAGE_REGISTRY):$(subst /,-,$(1))-$(IMAGE_TAG))
@@ -88,16 +92,16 @@ endef
 
 # Build and push the notebook images:
 #   ARG 1: Image tag name.
-#   ARG 2: Path of image context we want to build.
-#   ARG 3: Base image tag name (optional).
+#   ARG 2: Path of Dockerfile we want to build.
 #
 # BUILD_DEPENDENT_IMAGES: only build images that were explicitly given as a goal on command line
 # PUSH_IMAGES: allows skipping podman push
 define image
-	$(info #*# Image build directory: <$(2)> #(MACHINE-PARSED LINE)#*#...)
+	$(eval BUILD_DIRECTORY := $(shell echo $(2) | sed 's/\/Dockerfile.*//'))
+	$(info #*# Image build directory: <$(BUILD_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
 
 	$(if $(or $(BUILD_DEPENDENT_IMAGES:no=), $(filter $@,$(MAKECMDGOALS))),
-		$(call build_image,$(1),$(2),$(3))
+		$(call build_image,$(1),$(2))
 
 		$(if $(PUSH_IMAGES:no=),
 			$(call push_image,$(1))
@@ -117,130 +121,82 @@ bin/buildinputs: scripts/buildinputs/buildinputs.go scripts/buildinputs/go.mod s
 	$(info Building a Go helper for Dockerfile dependency analysis...)
 	go build -C "scripts/buildinputs" -o "$(ROOT_DIR)/$@" ./...
 
-####################################### Buildchain for Python 3.11 using ubi9 #####################################
+####################################### Buildchain for Python using ubi9 #####################################
 
-# Build and push base-ubi9-python-3.11 image to the registry
-.PHONY: base-ubi9-python-3.11
-base-ubi9-python-3.11:
-	$(call image,$@,base/ubi9-python-3.11)
+.PHONY: jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
+jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
 
-# Build and push jupyter-minimal-ubi9-python-3.11 image to the registry
-.PHONY: jupyter-minimal-ubi9-python-3.11
-jupyter-minimal-ubi9-python-3.11: base-ubi9-python-3.11
-	$(call image,$@,jupyter/minimal/ubi9-python-3.11,$<)
+.PHONY: jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION)
+jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/datascience/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
 
-# Build and push jupyter-datascience-ubi9-python-3.11 image to the registry
-.PHONY: jupyter-datascience-ubi9-python-3.11
-jupyter-datascience-ubi9-python-3.11: jupyter-minimal-ubi9-python-3.11
-	$(call image,$@,jupyter/datascience/ubi9-python-3.11,$<)
+.PHONY: cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
+cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
 
-# Build and push cuda-ubi9-python-3.11 image to the registry
-.PHONY: cuda-ubi9-python-3.11
-cuda-ubi9-python-3.11: base-ubi9-python-3.11
-	$(call image,$@,cuda/ubi9-python-3.11,$<)
+.PHONY: cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
 
-# Build and push cuda-jupyter-minimal-ubi9-python-3.11 image to the registry
-.PHONY: cuda-jupyter-minimal-ubi9-python-3.11
-cuda-jupyter-minimal-ubi9-python-3.11: cuda-ubi9-python-3.11
-	$(call image,$@,jupyter/minimal/ubi9-python-3.11,$<)
+.PHONY: cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
+cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
 
-# Build and push cuda-jupyter-datascience-ubi9-python-3.11 image to the registry
-.PHONY: cuda-jupyter-datascience-ubi9-python-3.11
-cuda-jupyter-datascience-ubi9-python-3.11: cuda-jupyter-minimal-ubi9-python-3.11
-	$(call image,$@,jupyter/datascience/ubi9-python-3.11,$<)
+.PHONY: jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION)
+jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/trustyai/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
 
-# Build and push cuda-jupyter-tensorflow-ubi9-python-3.11 image to the registry
-.PHONY: cuda-jupyter-tensorflow-ubi9-python-3.11
-cuda-jupyter-tensorflow-ubi9-python-3.11: cuda-jupyter-datascience-ubi9-python-3.11
-	$(call image,$@,jupyter/tensorflow/ubi9-python-3.11,$<)
+.PHONY: runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
+runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,runtimes/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
 
-# Build and push jupyter-pytorch-ubi9-python-3.11 image to the registry
-.PHONY: jupyter-pytorch-ubi9-python-3.11
-jupyter-pytorch-ubi9-python-3.11: cuda-jupyter-datascience-ubi9-python-3.11
-	$(call image,$@,jupyter/pytorch/ubi9-python-3.11,$<)
+.PHONY: runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION)
+runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,runtimes/datascience/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
 
-# Build and push jupyter-trustyai-ubi9-python-3.11 image to the registry
-.PHONY: jupyter-trustyai-ubi9-python-3.11
-jupyter-trustyai-ubi9-python-3.11: jupyter-datascience-ubi9-python-3.11
-	$(call image,$@,jupyter/trustyai/ubi9-python-3.11,$<)
+.PHONY: runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
+runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,runtimes/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
 
-# Build and push runtime-minimal-ubi9-python-3.11 image to the registry
-.PHONY: runtime-minimal-ubi9-python-3.11
-runtime-minimal-ubi9-python-3.11: base-ubi9-python-3.11
-	$(call image,$@,runtimes/minimal/ubi9-python-3.11,$<)
+.PHONY: runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,runtimes/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
 
-# Build and push runtime-datascience-ubi9-python-3.11 image to the registry
-.PHONY: runtime-datascience-ubi9-python-3.11
-runtime-datascience-ubi9-python-3.11: base-ubi9-python-3.11
-	$(call image,$@,runtimes/datascience/ubi9-python-3.11,$<)
+.PHONY: codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION)
+codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,codeserver/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
 
-# Build and push runtime-pytorch-ubi9-python-3.11 image to the registry
-.PHONY: runtime-pytorch-ubi9-python-3.11
-runtime-pytorch-ubi9-python-3.11: base-ubi9-python-3.11
-	$(call image,$@,runtimes/pytorch/ubi9-python-3.11,$<)
+####################################### Buildchain for Python using C9S #######################################
 
-# Build and push runtime-cuda-tensorflow-ubi9-python-3.11 image to the registry
-.PHONY: runtime-cuda-tensorflow-ubi9-python-3.11
-runtime-cuda-tensorflow-ubi9-python-3.11: cuda-ubi9-python-3.11
-	$(call image,$@,runtimes/tensorflow/ubi9-python-3.11,$<)
+.PHONY: rstudio-c9s-python-$(RELEASE_PYTHON_VERSION)
+rstudio-c9s-python-$(RELEASE_PYTHON_VERSION): 
+	$(call image,$@,rstudio/c9s-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
 
-.PHONY: codeserver-ubi9-python-3.11
-codeserver-ubi9-python-3.11: base-ubi9-python-3.11
-	$(call image,$@,codeserver/ubi9-python-3.11,$<)
+.PHONY: cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION)
+cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION): 
+	$(call image,$@,rstudio/c9s-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
 
-####################################### Buildchain for Python 3.11 using C9S #######################################
+####################################### Buildchain for AMD Python using UBI9 #######################################
+.PHONY: rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
+rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
 
-# Build and push base-c9s-python-3.11 image to the registry
-.PHONY: base-c9s-python-3.11
-base-c9s-python-3.11:
-	$(call image,$@,base/c9s-python-3.11)
+.PHONY: rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/rocm/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
 
-.PHONY: cuda-c9s-python-3.11
-cuda-c9s-python-3.11: base-c9s-python-3.11
-	$(call image,$@,cuda/c9s-python-3.11,$<)
+.PHONY: rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
+rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/rocm/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
 
-.PHONY: rstudio-c9s-python-3.11
-rstudio-c9s-python-3.11: base-c9s-python-3.11
-	$(call image,$@,rstudio/c9s-python-3.11,$<)
+.PHONY: rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
+rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,runtimes/rocm-pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
 
-.PHONY: cuda-rstudio-c9s-python-3.11
-cuda-rstudio-c9s-python-3.11: cuda-c9s-python-3.11
-	$(call image,$@,rstudio/c9s-python-3.11,$<)
-
-####################################### Buildchain for AMD Python 3.11 using UBI9 #######################################
-.PHONY: rocm-ubi9-python-3.11
-rocm-ubi9-python-3.11: base-ubi9-python-3.11
-	$(call image,$@,rocm/ubi9-python-3.11,$<)
-
-# We are only using rocm-ubi9 base image here onwards
-.PHONY: rocm-jupyter-minimal-ubi9-python-3.11
-rocm-jupyter-minimal-ubi9-python-3.11: rocm-ubi9-python-3.11
-	$(call image,$@,jupyter/minimal/ubi9-python-3.11,$<)
-
-# Build and push rocm-jupyter-datascience-ubi9-python-3.11 image to the registry
-.PHONY: rocm-jupyter-datascience-ubi9-python-3.11
-rocm-jupyter-datascience-ubi9-python-3.11: rocm-jupyter-minimal-ubi9-python-3.11
-	$(call image,$@,jupyter/datascience/ubi9-python-3.11,$<)
-
-# Build and push rocm-jupyter-tensorflow-ubi9-python-3.11 image to the registry
-.PHONY: rocm-jupyter-tensorflow-ubi9-python-3.11
-rocm-jupyter-tensorflow-ubi9-python-3.11: rocm-jupyter-datascience-ubi9-python-3.11
-	$(call image,$@,jupyter/rocm/tensorflow/ubi9-python-3.11,$<)
-
-# Build and push rocm-jupyter-pytorch-ubi9-python-3.11 image to the registry
-.PHONY: rocm-jupyter-pytorch-ubi9-python-3.11
-rocm-jupyter-pytorch-ubi9-python-3.11: rocm-jupyter-datascience-ubi9-python-3.11
-	$(call image,$@,jupyter/rocm/pytorch/ubi9-python-3.11,$<)
-
-# Build and push rocm-jupyter-runtime-pytorch-ubi9-python-3.11 image to the registry
-.PHONY: rocm-runtime-pytorch-ubi9-python-3.11
-rocm-runtime-pytorch-ubi9-python-3.11: rocm-ubi9-python-3.11
-	$(call image,$@,runtimes/rocm-pytorch/ubi9-python-3.11,$<)
-
-# Build and push rocm-jupyter-runtime-tensorflow-ubi9-python-3.11 image to the registry
-.PHONY: rocm-runtime-tensorflow-ubi9-python-3.11
-rocm-runtime-tensorflow-ubi9-python-3.11: rocm-ubi9-python-3.11
-	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-3.11,$<)
+.PHONY: rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
 
 ####################################### Deployments #######################################
 

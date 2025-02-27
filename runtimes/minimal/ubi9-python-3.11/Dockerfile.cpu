@@ -1,7 +1,34 @@
-ARG BASE_IMAGE
-FROM ${BASE_IMAGE}
+####################
+# base             #
+####################
+FROM registry.access.redhat.com/ubi9/python-311:latest AS base
 
-ARG SOURCE_CODE=runtimes/minimal/ubi9-python-3.11
+WORKDIR /opt/app-root/bin
+
+# OS Packages needs to be installed as root
+USER 0
+
+# Install useful OS packages
+RUN dnf install -y mesa-libGL && dnf clean all && rm -rf /var/cache/yum
+
+# Other apps and tools installed as default user
+USER 1001
+
+# Install micropipenv to deploy packages from Pipfile.lock
+RUN pip install --no-cache-dir -U "micropipenv[toml]"
+
+# Install the oc client
+RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+        -o /tmp/openshift-client-linux.tar.gz && \
+    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
+    rm -f /tmp/openshift-client-linux.tar.gz
+
+####################
+# runtime-minimal  #
+####################
+FROM base AS runtime-minimal  
+
+ARG MINIMAL_SOURCE_CODE=runtimes/minimal/ubi9-python-3.11
 
 LABEL name="odh-notebook-runtime-minimal-ubi9-python-3.11" \
     summary="Runtime minimal image for ODH notebooks" \
@@ -16,9 +43,9 @@ LABEL name="odh-notebook-runtime-minimal-ubi9-python-3.11" \
 WORKDIR /opt/app-root/bin
 
 # Install Python packages from Pipfile.lock
-COPY ${SOURCE_CODE}/Pipfile.lock ./
+COPY ${MINIMAL_SOURCE_CODE}/Pipfile.lock ./
 # Copy Elyra dependencies for air-gapped enviroment
-COPY ${SOURCE_CODE}/utils ./utils/
+COPY ${MINIMAL_SOURCE_CODE}/utils ./utils/
 
 RUN echo "Installing softwares and packages" && \
     micropipenv install && \
