@@ -29,7 +29,7 @@ spec:
   - name: image-expires-after
     value: 5d
   - name: dockerfile
-    value: jupyter/datascience/ubi9-python-3.11/Dockerfile
+    value: jupyter/datascience/ubi9-python-3.11/Dockerfile.cpu
   pipelineSpec:
     description: 'This pipeline is ideal for building container images from a Containerfile
       while maintaining trust after pipeline customization.
@@ -202,88 +202,6 @@ spec:
         workspace: git-auth
       - name: netrc
         workspace: netrc
-    - name: build-container-0
-      params:
-      - name: IMAGE
-        value: quay.io/redhat-user-workloads/rhoai-ide-konflux-tenant/base-ubi9-python-3-11:on-pr-{{revision}}
-      - name: DOCKERFILE
-        value: base/ubi9-python-3.11/Dockerfile
-      - name: CONTEXT
-        value: $(params.path-context)
-      - name: HERMETIC
-        value: $(params.hermetic)
-      - name: PREFETCH_INPUT
-        value: $(params.prefetch-input)
-      - name: IMAGE_EXPIRES_AFTER
-        value: $(params.image-expires-after)
-      - name: COMMIT_SHA
-        value: $(tasks.clone-repository.results.commit)
-      - name: BUILD_ARGS
-        value:
-        - $(params.build-args[*])
-      - name: BUILD_ARGS_FILE
-        value: $(params.build-args-file)
-      - name: SOURCE_ARTIFACT
-        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
-      - name: CACHI2_ARTIFACT
-        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
-      runAfter:
-      - prefetch-dependencies
-      taskRef:
-        params:
-        - name: name
-          value: buildah-oci-ta
-        - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-buildah-oci-ta:0.3@sha256:11b9ce26fd2933ccc81ca3f983e094ec54326a2e0aaf8bdcc4c0b8fea1a42c53
-        - name: kind
-          value: task
-        resolver: bundles
-      when:
-      - input: $(tasks.init.results.build)
-        operator: in
-        values:
-        - 'true'
-    - name: build-container-1
-      params:
-      - name: IMAGE
-        value: quay.io/redhat-user-workloads/rhoai-ide-konflux-tenant/jupyter-minimal-ubi9-python-3-11:on-pr-{{revision}}
-      - name: DOCKERFILE
-        value: jupyter/minimal/ubi9-python-3.11/Dockerfile
-      - name: CONTEXT
-        value: $(params.path-context)
-      - name: HERMETIC
-        value: $(params.hermetic)
-      - name: PREFETCH_INPUT
-        value: $(params.prefetch-input)
-      - name: IMAGE_EXPIRES_AFTER
-        value: $(params.image-expires-after)
-      - name: COMMIT_SHA
-        value: $(tasks.clone-repository.results.commit)
-      - name: BUILD_ARGS
-        value:
-        - BASE_IMAGE=$(tasks.build-container-0.results.IMAGE_REF)
-      - name: BUILD_ARGS_FILE
-        value: $(params.build-args-file)
-      - name: SOURCE_ARTIFACT
-        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
-      - name: CACHI2_ARTIFACT
-        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
-      runAfter:
-      - prefetch-dependencies
-      taskRef:
-        params:
-        - name: name
-          value: buildah-oci-ta
-        - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-buildah-oci-ta:0.3@sha256:11b9ce26fd2933ccc81ca3f983e094ec54326a2e0aaf8bdcc4c0b8fea1a42c53
-        - name: kind
-          value: task
-        resolver: bundles
-      when:
-      - input: $(tasks.init.results.build)
-        operator: in
-        values:
-        - 'true'
     - name: build-container
       params:
       - name: IMAGE
@@ -302,7 +220,7 @@ spec:
         value: $(tasks.clone-repository.results.commit)
       - name: BUILD_ARGS
         value:
-        - BASE_IMAGE=$(tasks.build-container-1.results.IMAGE_REF)
+        - $(params.build-args[*])
       - name: BUILD_ARGS_FILE
         value: $(params.build-args-file)
       - name: SOURCE_ARTIFACT
