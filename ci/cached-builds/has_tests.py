@@ -37,19 +37,20 @@ def check_tests(target: str) -> bool:
     if target.startswith("rocm-jupyter-minimal-") or target.startswith("rocm-jupyter-datascience-"):
         return False  # we don't have specific tests for -minimal-, ... in ci-operator/config
 
-    has_tests = False
-    dirs = gha_pr_changed_files.analyze_build_directories(target)
-    for d in reversed(dirs):  # (!)
-        kustomization = pathlib.Path(gha_pr_changed_files.PROJECT_ROOT) / d / "kustomize/base/kustomization.yaml"
-        has_tests = has_tests or kustomization.is_file()
-        break  # TODO: check only the last directory (the top level layer) for now
-    return has_tests
+    build_directory = gha_pr_changed_files.get_build_directory(target)
+    kustomization = pathlib.Path(gha_pr_changed_files.PROJECT_ROOT) / build_directory / "kustomize/base/kustomization.yaml"
+
+    return kustomization.is_file()
 
 
 class TestCheckTests(unittest.TestCase):
     def test_has_tests(self):
-        assert check_tests("base-c9s-python-3.11") is False
-        assert check_tests("jupyter-minimal-ubi9-python-3.9") is True
+        # This is a overly simplistic test - but with chained build removals - we don't have any targets that don't contain a kustomization.yaml file now
+        # So relying on the internal validation of check_tests to return a Falsy value even if the argument doesn't belond to an actual target
+        assert check_tests("rocm-jupyter-minimal-dummy") is False
+
+        # TODO: figure out a way to dynamically seed this target so we don't need to change if/when python version updates
+        assert check_tests("jupyter-minimal-ubi9-python-3.11") is True
 
 
 if __name__ == "__main__":

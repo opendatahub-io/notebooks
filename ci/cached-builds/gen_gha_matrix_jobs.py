@@ -1,14 +1,14 @@
 import argparse
-import itertools
 import json
 import logging
+import platform
+import subprocess
 import os
 import pathlib
 import re
 import string
 import sys
 import unittest
-from typing import Iterable
 
 import gha_pr_changed_files
 
@@ -21,77 +21,57 @@ Use https://pypi.org/project/py-make/ or https://github.com/JetBrains/intellij-p
 project_dir = pathlib.Path(__file__).parent.parent.parent.absolute()
 
 
-def read_makefile_lines(lines: Iterable[str]) -> list[str]:
-    """Processes line continuations lines and line comments
-    Note that this does not handle escaped backslash and escaped hash, or hash inside literals, ..."""
-    output = []
-    current = ""
-    for line in lines:
-        # remove comment
-        if (i := line.find("#")) != -1:
-            line = line[:i]
+def parse_makefile(target: str, makefile_dir: str) -> str:
+    # Check if the operating system is macOS
+    if platform.system() == 'Darwin':
+        make_command = 'gmake'
+    else:
+        make_command = 'make'
 
-        # line continuation
-        if line.endswith("\\\n"):
-            current += line[:-2]
-        else:
-            current += line[:-1]
-            output.append(current)
-            current = ""
-    if current:
-        output.append(current)
-    return output
+    try:
+        # Run the make (or gmake) command and capture the output
+        result = subprocess.run([make_command, '-nps', target], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, cwd=makefile_dir)
+    except subprocess.CalledProcessError as e:
+        # Handle errors if the make command fails
+        print(f'{make_command} failed with return code: {e.returncode}:\n{e.stderr}', file=sys.stderr)
+        raise
+    except Exception as e:
+        # Handle any other exceptions
+        print(f'Error occurred attempting to parse Makefile:\n{str(e)}', file=sys.stderr)
+        raise
 
-
-def extract_target_dependencies(lines: Iterable[str]) -> dict[str, list[str]]:
-    tree = {}
-    for line in lines:
-        # not a target
-        if line.startswith("\t"):
-            continue
-        # .PHONY targets and such
-        if line.startswith("."):
-            continue
-
-        r = re.compile(r"""
-        ^                     # match from beginning
-        ([-A-Za-z0-9.]+)\s*:  # target name
-        (?:\s*                # any number of spaces between dependent targets
-            ([-A-Za-z0-9.]+)  #     dependent target name(s)
-        )*                    # ...
-        \s*$                  # any whitespace at the end of the line
-        """, re.VERBOSE)
-        if m := re.match(r, line):
-            target, *deps = m.groups()
-            if deps == [None]:
-                deps = []
-            tree[target] = deps
-    return tree
+    return result.stdout
 
 
-def write_github_workflow_file(tree: dict[str, list[str]], path: pathlib.Path) -> None:
+def extract_image_targets(makefile_dir: str = os.getcwd()) -> list[str]:
+    makefile_all_target = 'all-images'
+
+    output = parse_makefile(target=makefile_all_target, makefile_dir=makefile_dir)
+
+    # Extract the 'all-images' entry and its values
+    all_images = []
+    match = re.search(rf'^{makefile_all_target}:\s+(.*)$', output, re.MULTILINE)
+    if match:
+        all_images = match.group(1).split()
+
+    if len(all_images) < 1:
+        raise Exception("No image dependencies found for 'all-images' Makefile target")
+
+    return all_images 
+
+def write_github_workflow_file(targets: list[str], path: pathlib.Path) -> None:
     jobs = {}
 
     # IDs may only contain alphanumeric characters, '_', and '-'. IDs must start with a letter or '_' and must be less than 100 characters.
     allowed_github_chars = string.ascii_letters + string.digits + "_-"
 
-    for task, deps in tree.items():
-        # in level 0, we only want base images, not other utility tasks
-        if not deps:
-            if not task.startswith("base-"):
-                continue
-
-        # we won't build rhel-based images because they need subscription
-        if "rhel" in task:
-            continue
-
-        task_name = re.sub(r"[^-_0-9A-Za-z]", "_", task)
-        deps_names = [re.sub(r"[^-_0-9A-Za-z]", "_", dep) for dep in deps]
+    for target in targets:
+        task_name = re.sub(r"[^-_0-9A-Za-z]", "_", target)
         jobs[task_name] = {
-            "needs": deps_names,
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
-                "target": task,
+                "target": target,
                 "github": "${{ toJSON(github) }}",
             },
             "secrets": "inherit",
@@ -119,36 +99,6 @@ def write_github_workflow_file(tree: dict[str, list[str]], path: pathlib.Path) -
         print(file=f)
 
 
-def flatten(list_of_lists):
-    return list(itertools.chain.from_iterable(list_of_lists))
-
-
-def compute_leafs_in_dependency_tree(tree: dict[str, list[str]]) -> list[str]:
-    key_set = set(tree.keys())
-    value_set = set(flatten(tree.values()))
-    return [key for key in key_set if key not in value_set]
-
-
-def print_github_actions_pr_matrix(tree: dict[str, list[str]], leafs: list[str]) -> list[str]:
-    """Outputs GitHub matrix definition Json
-    """
-    targets = []
-    for leaf in leafs:
-        # in level 0, we only want base images, not other utility tasks
-        if not tree[leaf] and not leaf.startswith("base-"):
-            continue
-
-        # we won't build rhel-based images because they need a subscription
-        if "rhel" in leaf:
-            continue
-
-        targets.append(leaf)
-
-    matrix = {"target": targets}
-    return [f"matrix={json.dumps(matrix, separators=(',', ':'))}",
-            f"has_jobs={json.dumps(len(leafs) > 0, separators=(',', ':'))}"]
-
-
 def main() -> None:
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
@@ -159,27 +109,28 @@ def main() -> None:
                            help="Git ref of the PR branch (to determine changed files)")
     args = argparser.parse_args()
 
-    # https://www.gnu.org/software/make/manual/make.html#Reading-Makefiles
-    with open("Makefile", "rt") as makefile:
-        lines = read_makefile_lines(makefile)
-    tree = extract_target_dependencies(lines)
 
-    write_github_workflow_file(tree, project_dir / ".github" / "workflows" / "build-notebooks.yaml")
+    targets = extract_image_targets()
 
-    leafs = compute_leafs_in_dependency_tree(tree)
+    write_github_workflow_file(targets, project_dir / ".github" / "workflows" / "build-notebooks.yaml")
+
     if args.from_ref:
         logging.info(f"Skipping targets not modified in the PR")
         changed_files = gha_pr_changed_files.list_changed_files(args.from_ref, args.to_ref)
-        leafs = gha_pr_changed_files.filter_out_unchanged(leafs, changed_files)
-    output = print_github_actions_pr_matrix(tree, leafs)
+        targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
 
-    print("leafs", leafs)
+    output = [
+        f"matrix={json.dumps({"target": targets}, separators=(',', ':'))}",
+        f"has_jobs={json.dumps(len(targets) > 0, separators=(',', ':'))}"
+    ]
+
+    print("targets", targets)
     print(*output, sep="\n")
 
     if "GITHUB_ACTIONS" in os.environ:
         with open(os.environ["GITHUB_OUTPUT"], "at") as f:
-            for line in output:
-                print(line, file=f)
+            for entry in output:
+                print(entry, file=f)
     else:
         logging.info(f"Not running on Github Actions, won't produce GITHUB_OUTPUT")
 
@@ -189,17 +140,29 @@ if __name__ == '__main__':
 
 
 class SelfTests(unittest.TestCase):
-    def test_select_changed_targets(self):
-        with open(project_dir / "Makefile", "rt") as makefile:
-            lines = read_makefile_lines(makefile)
-        tree = extract_target_dependencies(lines)
-        leafs = compute_leafs_in_dependency_tree(tree)
+    def test_select_changed_targets_dockerfile(self):
+        targets = extract_image_targets(makefile_dir=project_dir)
 
-        changed_files = ["jupyter/datascience/ubi9-python-3.11/Dockerfile"]
+        changed_files = ["jupyter/datascience/ubi9-python-3.11/Dockerfile.cpu"]
 
-        leafs = gha_pr_changed_files.filter_out_unchanged(leafs, changed_files)
-        assert set(leafs) == {'rocm-jupyter-pytorch-ubi9-python-3.11',
-                              'rocm-jupyter-tensorflow-ubi9-python-3.11',
-                              'cuda-jupyter-tensorflow-ubi9-python-3.11',
-                              'jupyter-trustyai-ubi9-python-3.11',
-                              'jupyter-pytorch-ubi9-python-3.11'}
+        targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
+        assert set(targets) == {'jupyter-datascience-ubi9-python-3.11'}
+
+    def test_select_changed_targets_shared_file(self):
+        targets = extract_image_targets(makefile_dir=project_dir)
+
+        changed_files = ["cuda/ubi9-python-3.11/NGC-DL-CONTAINER-LICENSE"]
+
+        # With the removal of chained builds - which now potentially has multiple Dockerfiles defined in a given
+        # directory, there is an inefficiency introduced to 'gha_pr_changed_files' as demonstrated by this unit test.
+        # Even though this test only changes a (shared) CUDA file - you will notice the 'cpu' and 'rocm' targets
+        # also being returned.  Odds of this inefficiency noticably "hurting us" is low - so of the opinion we can
+        # simply treat this as technical debt.
+        targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
+        assert set(targets) == {'jupyter-minimal-ubi9-python-3.11',
+                                'cuda-jupyter-minimal-ubi9-python-3.11',
+                                'cuda-jupyter-pytorch-ubi9-python-3.11',
+                                'runtime-cuda-pytorch-ubi9-python-3.11',
+                                'cuda-jupyter-tensorflow-ubi9-python-3.11',
+                                'rocm-jupyter-minimal-ubi9-python-3.11',
+                                'runtime-cuda-tensorflow-ubi9-python-3.11'}        

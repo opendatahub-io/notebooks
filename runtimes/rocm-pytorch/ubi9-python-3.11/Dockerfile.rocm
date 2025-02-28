@@ -1,0 +1,93 @@
+####################
+# base             #
+####################
+FROM registry.access.redhat.com/ubi9/python-311:latest AS base
+
+WORKDIR /opt/app-root/bin
+
+# OS Packages needs to be installed as root
+USER 0
+
+# Install useful OS packages
+RUN dnf install -y mesa-libGL && dnf clean all && rm -rf /var/cache/yum
+
+# Other apps and tools installed as default user
+USER 1001
+
+# Install micropipenv to deploy packages from Pipfile.lock
+RUN pip install --no-cache-dir -U "micropipenv[toml]"
+
+# Install the oc client
+RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+        -o /tmp/openshift-client-linux.tar.gz && \
+    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
+    rm -f /tmp/openshift-client-linux.tar.gz
+
+#############
+# rocm-base #
+#############
+FROM base AS rocm-base
+
+USER 0
+WORKDIR /opt/app-root/bin
+
+# Please keep in sync with ROCm/python3.11 dependent images
+ARG ROCM_VERSION=6.1
+ARG AMDGPU_VERSION=6.1
+
+# Install the ROCm rpms
+# ref: https://github.com/ROCm/ROCm-docker/blob/master/dev/Dockerfile-centos-7-complete
+RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
+    echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
+    echo "baseurl=https://repo.radeon.com/rocm/rhel9/$ROCM_VERSION/main" >> /etc/yum.repos.d/rocm.repo && \
+    echo "enabled=1" >> /etc/yum.repos.d/rocm.repo && \
+    echo "gpgcheck=0" >> /etc/yum.repos.d/rocm.repo && \
+    echo "[amdgpu]" > /etc/yum.repos.d/amdgpu.repo && \
+    echo "name=amdgpu" >> /etc/yum.repos.d/amdgpu.repo && \
+    echo "baseurl=https://repo.radeon.com/amdgpu/$AMDGPU_VERSION/rhel/9.4/main/x86_64" >> /etc/yum.repos.d/amdgpu.repo && \
+    echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo && \
+    echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
+    yum install -y rocm && \
+    yum clean all && rm -rf /var/cache/yum
+
+# Restore notebook user workspace
+USER 1001
+WORKDIR /opt/app-root/src
+
+########################
+# rocm-runtime-pytorch #
+########################
+FROM rocm-base AS rocm-runtime-pytorch
+
+ARG PYTORCH_SOURCE_CODE=runtimes/rocm-pytorch/ubi9-python-3.11
+
+LABEL name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.11" \
+    summary="Runtime ROCm pytorch notebook image for ODH notebooks" \
+    description="Runtime ROCm pytorch notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
+    io.k8s.display-name="Runtime ROCm pytorch notebook image for ODH notebooks" \
+    io.k8s.description="Runtime ROCm pytorch notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
+    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+    io.openshift.build.commit.ref="main" \
+    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/rocm-pytorch/ubi9-python-3.11" \
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:rocm-runtime-pytorch-ubi9-python-3.11"
+
+WORKDIR /opt/app-root/bin
+
+# Install Python packages from Pipfile.lock
+COPY ${PYTORCH_SOURCE_CODE}/Pipfile.lock ./
+# Copy Elyra dependencies for air-gapped enviroment
+COPY ${PYTORCH_SOURCE_CODE}/utils ./utils/
+# Copy utility script
+COPY ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
+
+RUN echo "Installing softwares and packages" && \
+    micropipenv install && \
+    rm -f ./Pipfile.lock && \
+    # De-vendor the ROCm libs that are embedded in Pytorch \
+    ./de-vendor-torch.sh && \
+    rm ./de-vendor-torch.sh && \
+    # Fix permissions to support pip in Openshift environments \
+    chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
+    fix-permissions /opt/app-root -P
+
+WORKDIR /opt/app-root/src

@@ -15,19 +15,8 @@
         ]
     },
     "jobs": {
-        "base-ubi9-python-3_11": {
-            "needs": [],
-            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
-            "with": {
-                "target": "base-ubi9-python-3.11",
-                "github": "${{ toJSON(github) }}"
-            },
-            "secrets": "inherit"
-        },
         "jupyter-minimal-ubi9-python-3_11": {
-            "needs": [
-                "base-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "jupyter-minimal-ubi9-python-3.11",
@@ -36,9 +25,7 @@
             "secrets": "inherit"
         },
         "jupyter-datascience-ubi9-python-3_11": {
-            "needs": [
-                "jupyter-minimal-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "jupyter-datascience-ubi9-python-3.11",
@@ -46,21 +33,8 @@
             },
             "secrets": "inherit"
         },
-        "cuda-ubi9-python-3_11": {
-            "needs": [
-                "base-ubi9-python-3_11"
-            ],
-            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
-            "with": {
-                "target": "cuda-ubi9-python-3.11",
-                "github": "${{ toJSON(github) }}"
-            },
-            "secrets": "inherit"
-        },
         "cuda-jupyter-minimal-ubi9-python-3_11": {
-            "needs": [
-                "cuda-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "cuda-jupyter-minimal-ubi9-python-3.11",
@@ -68,21 +42,8 @@
             },
             "secrets": "inherit"
         },
-        "cuda-jupyter-datascience-ubi9-python-3_11": {
-            "needs": [
-                "cuda-jupyter-minimal-ubi9-python-3_11"
-            ],
-            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
-            "with": {
-                "target": "cuda-jupyter-datascience-ubi9-python-3.11",
-                "github": "${{ toJSON(github) }}"
-            },
-            "secrets": "inherit"
-        },
         "cuda-jupyter-tensorflow-ubi9-python-3_11": {
-            "needs": [
-                "cuda-jupyter-datascience-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "cuda-jupyter-tensorflow-ubi9-python-3.11",
@@ -90,21 +51,17 @@
             },
             "secrets": "inherit"
         },
-        "jupyter-pytorch-ubi9-python-3_11": {
-            "needs": [
-                "cuda-jupyter-datascience-ubi9-python-3_11"
-            ],
+        "cuda-jupyter-pytorch-ubi9-python-3_11": {
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
-                "target": "jupyter-pytorch-ubi9-python-3.11",
+                "target": "cuda-jupyter-pytorch-ubi9-python-3.11",
                 "github": "${{ toJSON(github) }}"
             },
             "secrets": "inherit"
         },
         "jupyter-trustyai-ubi9-python-3_11": {
-            "needs": [
-                "jupyter-datascience-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "jupyter-trustyai-ubi9-python-3.11",
@@ -113,9 +70,7 @@
             "secrets": "inherit"
         },
         "runtime-minimal-ubi9-python-3_11": {
-            "needs": [
-                "base-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "runtime-minimal-ubi9-python-3.11",
@@ -124,9 +79,7 @@
             "secrets": "inherit"
         },
         "runtime-datascience-ubi9-python-3_11": {
-            "needs": [
-                "base-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "runtime-datascience-ubi9-python-3.11",
@@ -134,21 +87,17 @@
             },
             "secrets": "inherit"
         },
-        "runtime-pytorch-ubi9-python-3_11": {
-            "needs": [
-                "base-ubi9-python-3_11"
-            ],
+        "runtime-cuda-pytorch-ubi9-python-3_11": {
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
-                "target": "runtime-pytorch-ubi9-python-3.11",
+                "target": "runtime-cuda-pytorch-ubi9-python-3.11",
                 "github": "${{ toJSON(github) }}"
             },
             "secrets": "inherit"
         },
         "runtime-cuda-tensorflow-ubi9-python-3_11": {
-            "needs": [
-                "cuda-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "runtime-cuda-tensorflow-ubi9-python-3.11",
@@ -157,9 +106,7 @@
             "secrets": "inherit"
         },
         "codeserver-ubi9-python-3_11": {
-            "needs": [
-                "base-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "codeserver-ubi9-python-3.11",
@@ -167,30 +114,8 @@
             },
             "secrets": "inherit"
         },
-        "base-c9s-python-3_11": {
-            "needs": [],
-            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
-            "with": {
-                "target": "base-c9s-python-3.11",
-                "github": "${{ toJSON(github) }}"
-            },
-            "secrets": "inherit"
-        },
-        "cuda-c9s-python-3_11": {
-            "needs": [
-                "base-c9s-python-3_11"
-            ],
-            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
-            "with": {
-                "target": "cuda-c9s-python-3.11",
-                "github": "${{ toJSON(github) }}"
-            },
-            "secrets": "inherit"
-        },
         "rstudio-c9s-python-3_11": {
-            "needs": [
-                "base-c9s-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "rstudio-c9s-python-3.11",
@@ -199,9 +124,7 @@
             "secrets": "inherit"
         },
         "cuda-rstudio-c9s-python-3_11": {
-            "needs": [
-                "cuda-c9s-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "cuda-rstudio-c9s-python-3.11",
@@ -209,21 +132,8 @@
             },
             "secrets": "inherit"
         },
-        "rocm-ubi9-python-3_11": {
-            "needs": [
-                "base-ubi9-python-3_11"
-            ],
-            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
-            "with": {
-                "target": "rocm-ubi9-python-3.11",
-                "github": "${{ toJSON(github) }}"
-            },
-            "secrets": "inherit"
-        },
         "rocm-jupyter-minimal-ubi9-python-3_11": {
-            "needs": [
-                "rocm-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "rocm-jupyter-minimal-ubi9-python-3.11",
@@ -231,21 +141,8 @@
             },
             "secrets": "inherit"
         },
-        "rocm-jupyter-datascience-ubi9-python-3_11": {
-            "needs": [
-                "rocm-jupyter-minimal-ubi9-python-3_11"
-            ],
-            "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
-            "with": {
-                "target": "rocm-jupyter-datascience-ubi9-python-3.11",
-                "github": "${{ toJSON(github) }}"
-            },
-            "secrets": "inherit"
-        },
         "rocm-jupyter-tensorflow-ubi9-python-3_11": {
-            "needs": [
-                "rocm-jupyter-datascience-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "rocm-jupyter-tensorflow-ubi9-python-3.11",
@@ -254,9 +151,7 @@
             "secrets": "inherit"
         },
         "rocm-jupyter-pytorch-ubi9-python-3_11": {
-            "needs": [
-                "rocm-jupyter-datascience-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "rocm-jupyter-pytorch-ubi9-python-3.11",
@@ -265,9 +160,7 @@
             "secrets": "inherit"
         },
         "rocm-runtime-pytorch-ubi9-python-3_11": {
-            "needs": [
-                "rocm-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "rocm-runtime-pytorch-ubi9-python-3.11",
@@ -276,9 +169,7 @@
             "secrets": "inherit"
         },
         "rocm-runtime-tensorflow-ubi9-python-3_11": {
-            "needs": [
-                "rocm-ubi9-python-3_11"
-            ],
+            "needs": [],
             "uses": "./.github/workflows/build-notebooks-TEMPLATE.yaml",
             "with": {
                 "target": "rocm-runtime-tensorflow-ubi9-python-3.11",
