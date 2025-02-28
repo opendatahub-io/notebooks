@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import pathlib
 import re
 import yaml
 
@@ -16,6 +16,8 @@ $ oc apply -f konflux_components.yaml
 Open https://console.redhat.com/application-pipeline/workspaces/rhoai-ide-konflux/applications
 and see the result in the "Components" tab.
 """
+
+ROOT_DIR = pathlib.Path(__file__).parent.parent.parent
 
 workspace_name = "rhoai-ide-konflux-tenant"
 application_name = "notebooks"
@@ -74,27 +76,15 @@ def konflux_component(component_name, dockerfile_path) -> dict:
 
 
 def main():
-    with open("Makefile", "rt") as makefile:
-        lines = gen_gha_matrix_jobs.read_makefile_lines(makefile)
-    tree: dict[str, list[str]] = gen_gha_matrix_jobs.extract_target_dependencies(lines)
-
-    for task, deps in tree.items():
-        # in level 0, we only want base images, not other utility tasks
-        if not deps:
-            if not task.startswith("base-"):
-                continue
-
-        # we won't build rhel-based images because they need a subscription
-        if "rhel" in task:
-            continue
-
+    images = gen_gha_matrix_jobs.extract_image_targets(makefile_dir=str(ROOT_DIR))
+    for task in images:
         task_name = re.sub(r"[^-_0-9A-Za-z]", "-", task)
-        dirs = gha_pr_changed_files.analyze_build_directories(task)
+        dockerfile = gha_pr_changed_files.get_build_dockerfile(task)
 
         print("---")
         print(
             yaml.dump(
-                konflux_component(task_name, dockerfile_path=dirs[-1] + "/Dockerfile")
+                konflux_component(task_name, dockerfile_path=dockerfile)
             )
         )
 
