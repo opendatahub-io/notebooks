@@ -21,7 +21,7 @@ USER 1001
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
         -o /tmp/openshift-client-linux.tar.gz && \
     tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
-    rm -f /tmp/openshift-client-linux.tar.gz 
+    rm -f /tmp/openshift-client-linux.tar.gz
 
 WORKDIR /opt/app-root/src
 
@@ -87,7 +87,7 @@ RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel har
 # Install R packages
 RUN R -e "install.packages('remotes')"
 RUN R -e "require('remotes'); \
-    remotes::install_version('Rcpp','1.0.13'); \
+    remotes::install_version('Rcpp','1.0.14'); \
     remotes::install_version('tidyverse','2.0.0'); \
     remotes::install_version('tidymodels','1.2.0'); \
     remotes::install_version('plumber','1.2.2'); \
