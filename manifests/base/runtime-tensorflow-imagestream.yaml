@@ -25,7 +25,7 @@ spec:
                   "tensorflow"
                 ],
                 "display_name": "TensorFlow with CUDA and Python 3.11 (UBI9)",
-                "image_name": "quay.io/opendatahub/workbench-images@sha256:5d695b2e5dc76fc07a138644e2cd507c73eb9b26a47596734169c0b313e733f9",
+                "image_name": "quay.io/opendatahub/workbench-images@sha256:242224879f6253bb4ac89101b24971c5322adbe031bf2833c6d371b2e4f566e6",
                 "pull_policy": "IfNotPresent"
               },
               "schema_name": "runtime-image"
@@ -34,7 +34,7 @@ spec:
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
       from:
         kind: DockerImage
-        name: quay.io/opendatahub/workbench-images@sha256:5d695b2e5dc76fc07a138644e2cd507c73eb9b26a47596734169c0b313e733f9
+        name: quay.io/opendatahub/workbench-images@sha256:242224879f6253bb4ac89101b24971c5322adbe031bf2833c6d371b2e4f566e6
       name: "tensorflow"
       referencePolicy:
         type: Source
