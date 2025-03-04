@@ -23,8 +23,6 @@ RELEASE	 		 ?= 2024b
 RELEASE_PYTHON_VERSION	 ?= 3.11
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
-# whether to build all dependent images or just the one specified
-BUILD_DEPENDENT_IMAGES ?= yes
 # whether to push the images to a registry as they are built
 PUSH_IMAGES ?= yes
 
@@ -94,18 +92,15 @@ endef
 #   ARG 1: Image tag name.
 #   ARG 2: Path of Dockerfile we want to build.
 #
-# BUILD_DEPENDENT_IMAGES: only build images that were explicitly given as a goal on command line
 # PUSH_IMAGES: allows skipping podman push
 define image
 	$(eval BUILD_DIRECTORY := $(shell echo $(2) | sed 's/\/Dockerfile.*//'))
 	$(info #*# Image build directory: <$(BUILD_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
 
-	$(if $(or $(BUILD_DEPENDENT_IMAGES:no=), $(filter $@,$(MAKECMDGOALS))),
-		$(call build_image,$(1),$(2))
+	$(call build_image,$(1),$(2))
 
-		$(if $(PUSH_IMAGES:no=),
-			$(call push_image,$(1))
-		)
+	$(if $(PUSH_IMAGES:no=),
+		$(call push_image,$(1))
 	)
 endef
 
@@ -170,11 +165,11 @@ codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION):
 ####################################### Buildchain for Python using C9S #######################################
 
 .PHONY: rstudio-c9s-python-$(RELEASE_PYTHON_VERSION)
-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION): 
+rstudio-c9s-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,rstudio/c9s-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
 
 .PHONY: cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION)
-cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION): 
+cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,rstudio/c9s-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
 
 ####################################### Buildchain for AMD Python using UBI9 #######################################
