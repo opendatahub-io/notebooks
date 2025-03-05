@@ -196,7 +196,6 @@ rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
 ####################################### Deployments #######################################
 
 # Download kubectl binary
-.PHONY: bin/kubectl
 bin/kubectl:
 ifeq (,$(wildcard $(KUBECTL_BIN)))
 	@mkdir -p bin
@@ -206,7 +205,6 @@ ifeq (,$(wildcard $(KUBECTL_BIN)))
 endif
 
 # Download yq binary
-.PHONY: bin/yq
 bin/yq:
 	$(eval YQ_RELEASE_FILE := yq_$(subst /,_,$(OS_ARCH)))
 ifeq (,$(wildcard $(YQ_BIN)))
