@@ -13,7 +13,7 @@ import allure
 import pytest
 
 from tests.containers import docker_utils
-from tests.containers.workbenches.workbench_image_test import WorkbenchContainer, skip_if_not_workbench_image
+from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 if TYPE_CHECKING:
     import docker.models.images
@@ -25,15 +25,13 @@ class TestRStudioImage:
     APP_ROOT_HOME = "/opt/app-root/src"
 
     @allure.issue("RHOAIENG-17256")
-    def test_rmd_to_pdf_rendering(self, image: str) -> None:
+    def test_rmd_to_pdf_rendering(self, rstudio_image: str) -> None:
         """
         References:
             https://stackoverflow.com/questions/40563479/relationship-between-r-markdown-knitr-pandoc-and-bookdown
             https://www.earthdatascience.org/courses/earth-analytics/document-your-science/knit-rmarkdown-document-to-pdf/
         """
-        skip_if_not_rstudio_image(image)
-
-        container = WorkbenchContainer(image=image, user=1000, group_add=[0])
+        container = WorkbenchContainer(image=rstudio_image, user=1000, group_add=[0])
         try:
             container.start(wait_for_readiness=False)
 
@@ -101,12 +99,11 @@ class TestRStudioImage:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
     @allure.issue("RHOAIENG-16604")
-    def test_http_proxy_env_propagates(self, image: str, subtests: pytest_subtests.plugin.SubTests) -> None:
+    def test_http_proxy_env_propagates(self, rstudio_image: str, subtests: pytest_subtests.plugin.SubTests) -> None:
         """
         This checks that the lowercased proxy configuration is propagated into the RStudio
         environment so that the appropriate values are then accepted and followed.
         """
-        skip_if_not_rstudio_image(image)
 
         class TestCase(NamedTuple):
             name: str
@@ -119,7 +116,7 @@ class TestRStudioImage:
             TestCase("NO_PROXY", "no_proxy", "google.com"),
         ]
 
-        container = WorkbenchContainer(image=image, user=1000, group_add=[0])
+        container = WorkbenchContainer(image=rstudio_image, user=1000, group_add=[0])
         for tc in test_cases:
             container.with_env(tc.name, tc.value)
 
@@ -158,15 +155,6 @@ def check_output(container: WorkbenchContainer, cmd: str) -> str:
     if rc != 0:
         raise subprocess.CalledProcessError(rc, cmd, output=result)
     return result
-
-
-def skip_if_not_rstudio_image(image: str) -> docker.models.images.Image:
-    image_metadata = skip_if_not_workbench_image(image)
-    if "-rstudio-" not in image_metadata.labels['name']:
-        pytest.skip(
-            f"Image {image} does not have '-rstudio-' in {image_metadata.labels['name']=}'")
-
-    return image_metadata
 
 
 class StructuredMessage:

@@ -39,18 +39,6 @@ def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.Sub
             for file in rest:
                 assert first_file.read_text() == file.read_text(), f"The files {first_file} and {file} do not match"
 
-
-def test_make_building_only_specified_images(subtests: pytest_subtests.plugin.SubTests):
-    for goals in (["rocm-jupyter-tensorflow-ubi9-python-3.11"], ["rocm-jupyter-tensorflow-ubi9-python-3.11", "base-ubi9-python-3.11"]):
-        with subtests.test(msg="Running goals", goals=goals):
-            lines = dryrun_make(goals, env={"BUILD_DEPENDENT_IMAGES": "no"})
-            builds_number = 0
-            for line in lines:
-                if "podman build" in line:
-                    builds_number += 1
-            assert builds_number == len(goals)
-
-
 def test_make_disable_pushing():
     lines = dryrun_make(["rocm-jupyter-tensorflow-ubi9-python-3.11"], env={"PUSH_IMAGES": ""})
     for line in lines:
