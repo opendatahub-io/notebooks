@@ -19,7 +19,7 @@
 # ---------------------------- DEFINED FUNCTIONS ----------------------------- #
 
 # Expected commit reference for the runtime images
-EXPECTED_COMMIT_REF="2024b"
+EXPECTED_COMMIT_REF="release-2024b"
 
 # Size change tresholds:
 # Max percentual change
@@ -163,7 +163,11 @@ function main() {
     ret_code=0
 
     # If name of the directory isn't good enough, maybe we can improve this to search for the: `"schema_name": "runtime-image"` string.
-    runtime_image_files=$(find . -name "*.json" | grep "runtime-images" | sort --unique)
+    runtime_image_files_all=$(find . -name "*.json" | grep "runtime-images" | sort --unique)
+
+    # TODO: for now let's exclude runtime images for 2024a branch.
+    # We shall consider whether we want to include check of these (N-1) in the future, but probably not.
+    runtime_image_files=$(echo "${runtime_image_files_all}" | grep -v "python-3.9")
 
     IFS=$'\n'
     for file in ${runtime_image_files}; do
