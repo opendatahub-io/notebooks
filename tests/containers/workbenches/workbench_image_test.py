@@ -21,7 +21,7 @@ import testcontainers.core.waiting_utils
 import pytest
 import pytest_subtests
 
-from tests.containers import docker_utils, podman_machine_utils
+from tests.containers import docker_utils, podman_machine_utils, kubernetes_utils
 
 
 class TestWorkbenchImage:
@@ -33,10 +33,9 @@ class TestWorkbenchImage:
         # disable ipv6 https://danwalsh.livejournal.com/47118.html
         {"net.ipv6.conf.all.disable_ipv6": "1"}
     ])
-    def test_image_entrypoint_starts(self, subtests: pytest_subtests.SubTests, image: str, sysctls) -> None:
-        skip_if_not_workbench_image(image)
+    def test_image_entrypoint_starts(self, subtests: pytest_subtests.SubTests, workbench_image: str, sysctls) -> None:
 
-        container = WorkbenchContainer(image=image, user=1000, group_add=[0],
+        container = WorkbenchContainer(image=workbench_image, user=1000, group_add=[0],
                                        sysctls=sysctls)
         try:
             try:
@@ -50,11 +49,9 @@ class TestWorkbenchImage:
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
-    @pytest.mark.skip(reason="RHOAIENG-17305: currently our Workbench images don't tolerate IPv6")
-    def test_ipv6_only(self, subtests: pytest_subtests.SubTests, image: str, test_frame):
+    def test_ipv6_only(self, subtests: pytest_subtests.SubTests, workbench_image: str, test_frame):
         """Test that workbench image is accessible via IPv6.
         Workarounds for macOS will be needed, so that's why it's a separate test."""
-        skip_if_not_workbench_image(image)
 
         # network is made ipv6 by only defining the ipv6 subnet for it
         # do _not_ set the ipv6=true option, that would actually make it dual-stack
@@ -68,7 +65,7 @@ class TestWorkbenchImage:
         })
         test_frame.append(network)
 
-        container = WorkbenchContainer(image=image)
+        container = WorkbenchContainer(image=workbench_image)
         container.with_network(network)
         try:
             try:
@@ -84,8 +81,7 @@ class TestWorkbenchImage:
                     # rootful containers have an IP assigned, so we can connect to that
                     # NOTE: this is only reachable from the host machine, so remote podman won't work
                     container.get_wrapped_container().reload()
-                    ipv6_address = (container.get_wrapped_container().attrs
-                        ["NetworkSettings"]["Networks"][network.name]["GlobalIPv6Address"])
+                    ipv6_address = container.get_wrapped_container().attrs["NetworkSettings"]["Networks"][network.name]["GlobalIPv6Address"]
                     if platform.system().lower() == 'darwin':
                         # the container host is a podman machine, we need to expose port on podman machine first
                         host = "localhost"
@@ -107,6 +103,17 @@ class TestWorkbenchImage:
                 grab_and_check_logs(subtests, container)
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
+
+    @pytest.mark.openshift
+    def test_image_run_on_openshift(self, workbench_image: str):
+        client = kubernetes_utils.get_client()
+        print(client)
+
+        username = kubernetes_utils.get_username(client)
+        print(username)
+
+        with kubernetes_utils.ImageDeployment(client, workbench_image) as image:
+            image.deploy(container_name="notebook-tests-pod")
 
 
 class WorkbenchContainer(testcontainers.core.container.DockerContainer):
@@ -137,9 +144,12 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         self.with_exposed_ports(self.port)
 
     @testcontainers.core.waiting_utils.wait_container_is_ready(urllib.error.URLError)
-    def _connect(self, container_host: str | None = None, container_port: int | None = None) -> None:
+    def _connect(self, container_host: str | None = None, container_port: int | None = None,
+                 base_url: str = "") -> None:
         """
         :param container_host: overrides the container host IP in connection check to use direct access
+        :param container_port: overrides the container port
+        :param base_url: needs to be with a leading /
         """
         # are we still alive?
         self.get_wrapped_container().reload()
@@ -149,14 +159,14 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         host = container_host or self.get_container_host_ip()
         port = container_port or self.get_exposed_port(self.port)
         try:
-            # if we did not enable cookies support here, with RStudio we'd end up looping and getting
+            # if we did not enable cookie support here, with RStudio we'd end up looping and getting
             # HTTP 302 (i.e. `except urllib.error.HTTPError as e: assert e.code == 302`) every time
             cookie_jar = http.cookiejar.CookieJar()
             opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
             # host may be an ipv6 address, need to be careful with formatting this
             if ":" in host:
                 host = f"[{host}]"
-            result = opener.open(urllib.request.Request(f"http://{host}:{port}"), timeout=1)
+            result = opener.open(urllib.request.Request(f"http://{host}:{port}{base_url}"), timeout=1)
         except urllib.error.URLError as e:
             raise e
 
@@ -177,25 +187,17 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         return self
 
 
-def skip_if_not_workbench_image(image: str) -> docker.models.images.Image:
-    client = testcontainers.core.container.DockerClient()
-    try:
-        image_metadata = client.client.images.get(image)
-    except docker.errors.ImageNotFound:
-        image_metadata = client.client.images.pull(image)
-        assert isinstance(image_metadata, docker.models.images.Image)
-
-    ide_server_label_fragments = ('-code-server-', '-jupyter-', '-rstudio-')
-    if not any(ide in image_metadata.labels['name'] for ide in ide_server_label_fragments):
-        pytest.skip(
-            f"Image {image} does not have any of '{ide_server_label_fragments=} in {image_metadata.labels['name']=}'")
-
-    return image_metadata
-
 def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: WorkbenchContainer) -> None:
     # Here is a list of blocked keywords we don't want to see in the log messages during the container/workbench
-    # startup (e.g. log messages from Jupyter IDE, code-server IDE or RStudio IDE).
-    blocked_keywords = ["Error", "error", "Warning", "warning", "Failed", "failed", "[W ", "[E ", "Traceback"]
+    # startup (e.g., log messages from Jupyter IDE, code-server IDE or RStudio IDE).
+    blocked_keywords = [
+        "Error", "error", "Warning", "warning", "Failed", "failed",
+        "[W ", "[E ",
+        # https://docs.nginx.com/nginx/admin-guide/monitoring/logging/
+        "[warn] ", "[error] ", "[crit] ", "[alert] ", "[emerg] ",
+        # https://docs.python.org/3/tutorial/errors.html#exceptions
+        "Traceback",
+    ]
     # Here is a list of allowed messages that match some block keyword from the list above, but we allow them
     # for some reason.
     allowed_messages = [
@@ -203,10 +205,12 @@ def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: Workbench
         "JupyterEventsVersionWarning: The `version` property of an event schema must be a string. It has been type coerced, but in a future version of this library, it will fail to validate.",
         # This is a message from our reverse proxy nginx caused by the fact that we attempt to connect to the code-server before it's actually running (container.start(wait_for_readiness=True)).
         "connect() failed (111: Connection refused) while connecting to upstream, client",
+        # We use oauth-proxy to give us authentication, and we use OpenShift route to get HTTPS
+        "WARNING: The Jupyter server is listening on all IP addresses and not using encryption. This is not recommended.",
     ]
 
-    # Let's wait couple of seconds to give a chance to log eventual extra startup messages just to be sure we don't
-    # miss anytihng important in this test.
+    # Let's wait a couple of seconds to give a chance to log eventual extra startup messages just to be sure we don't
+    # miss anything important in this test.
     time.sleep(3)
 
     stdout, stderr = container.get_logs()
@@ -220,10 +224,10 @@ def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: Workbench
         failed_lines: list[str] = []
         for line in full_logs.splitlines():
             if any(keyword in line for keyword in blocked_keywords):
-                    if any(allowed in line for allowed in allowed_messages):
-                        logging.debug(f"Waived message: '{line}'")
-                    else:
-                        logging.error(f"Unexpected keyword in the following message: '{line}'")
-                        failed_lines.append(line)
+                if any(allowed in line for allowed in allowed_messages):
+                    logging.debug(f"Waived message: '{line}'")
+                else:
+                    logging.error(f"Unexpected keyword in the following message: '{line}'")
+                    failed_lines.append(line)
         if len(failed_lines) > 0:
             pytest.fail(f"Log message(s) ({len(failed_lines)}) that violate our checks occurred during the workbench startup:\n{"\n".join(failed_lines)}")

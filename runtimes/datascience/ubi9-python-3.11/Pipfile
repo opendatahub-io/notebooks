@@ -17,7 +17,7 @@ scikit-learn = "~=1.5.1"
 scipy = "~=1.14.1"
 skl2onnx = "~=1.17.0"
 onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
-codeflare-sdk = "~=0.26.0"
+codeflare-sdk = "~=0.27.0"
 
 # DB connectors
 pymongo = "~=4.8.0"
@@ -44,6 +44,10 @@ requests = "~=2.32.3"
 tornado = "~=6.4.1"
 traitlets = "~=5.14.3"
 urllib3 = "~=1.26.20"
+
+# Base packages
+setuptools = "==74.1.3"
+wheel = "==0.44.0"
 
 [requires]
 python_version = "3.11"

@@ -1,0 +1,158 @@
+####################
+# base             #
+####################
+FROM registry.access.redhat.com/ubi9/python-311:latest AS base
+
+WORKDIR /opt/app-root/bin
+
+# OS Packages needs to be installed as root
+USER 0
+
+# Install useful OS packages
+RUN dnf install -y mesa-libGL && dnf clean all && rm -rf /var/cache/yum
+
+# Other apps and tools installed as default user
+USER 1001
+
+# Install micropipenv to deploy packages from Pipfile.lock
+RUN pip install --no-cache-dir -U "micropipenv[toml]"
+
+# Install the oc client
+RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+        -o /tmp/openshift-client-linux.tar.gz && \
+    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
+    rm -f /tmp/openshift-client-linux.tar.gz
+
+########################
+# rocm-base #
+########################
+FROM base AS rocm-base
+
+USER 0
+WORKDIR /opt/app-root/bin
+
+# Please keep in sync with ROCm/python3.11 dependent images
+ARG ROCM_VERSION=6.1
+ARG AMDGPU_VERSION=6.1
+
+# Install the ROCm rpms
+# ref: https://github.com/ROCm/ROCm-docker/blob/master/dev/Dockerfile-centos-7-complete
+RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
+    echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
+    echo "baseurl=https://repo.radeon.com/rocm/rhel9/$ROCM_VERSION/main" >> /etc/yum.repos.d/rocm.repo && \
+    echo "enabled=1" >> /etc/yum.repos.d/rocm.repo && \
+    echo "gpgcheck=0" >> /etc/yum.repos.d/rocm.repo && \
+    echo "[amdgpu]" > /etc/yum.repos.d/amdgpu.repo && \
+    echo "name=amdgpu" >> /etc/yum.repos.d/amdgpu.repo && \
+    echo "baseurl=https://repo.radeon.com/amdgpu/$AMDGPU_VERSION/rhel/9.4/main/x86_64" >> /etc/yum.repos.d/amdgpu.repo && \
+    echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo && \
+    echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
+    yum install -y rocm && \
+    yum clean all && rm -rf /var/cache/yum
+
+# Restore notebook user workspace
+USER 1001
+WORKDIR /opt/app-root/src
+
+########################
+# rocm-jupyter-minimal #
+########################
+FROM rocm-base AS rocm-jupyter-minimal  
+
+ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
+ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.11
+
+WORKDIR /opt/app-root/bin
+
+COPY ${JUPYTER_REUSABLE_UTILS} utils/
+
+COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
+    
+WORKDIR /opt/app-root/src
+
+ENTRYPOINT ["start-notebook.sh"]
+
+############################
+# rocm-jupyter-datascience #
+############################
+FROM rocm-jupyter-minimal AS rocm-jupyter-datascience  
+
+ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.11
+
+WORKDIR /opt/app-root/bin
+
+# OS Packages needs to be installed as root
+USER root
+
+# Install useful OS packages
+RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile && dnf clean all && rm -rf /var/cache/yum
+
+# Install MongoDB Client, We need a special repo for MongoDB as they do their own distribution
+COPY ${DATASCIENCE_SOURCE_CODE}/mongodb-org-6.0.repo-x86_64 /etc/yum.repos.d/mongodb-org-6.0.repo
+
+RUN dnf install -y mongocli && dnf clean all && rm -rf /var/cache/yum
+
+# Install MSSQL Client, We need a special repo for MSSQL as they do their own distribution
+COPY ${DATASCIENCE_SOURCE_CODE}/mssql-2022.repo-x86_64 /etc/yum.repos.d/mssql-2022.repo
+
+RUN ACCEPT_EULA=Y dnf install -y mssql-tools18 unixODBC-devel && dnf clean all && rm -rf /var/cache/yum
+
+ENV PATH="$PATH:/opt/mssql-tools18/bin"
+
+# Other apps and tools installed as default user
+USER 1001
+
+# Copy Elyra setup to utils so that it's sourced at startup
+COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
+
+WORKDIR /opt/app-root/src
+
+
+###########################
+# rocm-jupyter-tensorflow #
+###########################
+FROM rocm-jupyter-datascience AS rocm-jupyter-tensorflow  
+
+ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.11
+ARG TENSORFLOW_SOURCE_CODE=jupyter/rocm/tensorflow/ubi9-python-3.11
+
+WORKDIR /opt/app-root/bin
+
+LABEL name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11" \
+    summary="Jupyter AMD tensorflow notebook image for ODH notebooks" \
+    description="Jupyter AMD tensorflow notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
+    io.k8s.display-name="Jupyter AMD tensorflow notebook image for ODH notebooks" \
+    io.k8s.description="Jupyter AMD tensorflow notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
+    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+    io.openshift.build.commit.ref="main" \
+    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/rocm/tensorflow/ubi9-python-3.11" \
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:rocm-jupyter-tensorflow-ubi9-python-3.11"
+
+COPY ${TENSORFLOW_SOURCE_CODE}/Pipfile.lock  ./
+COPY ${TENSORFLOW_SOURCE_CODE}/utils ./utils/
+
+RUN echo "Installing softwares and packages" && \
+    micropipenv install && \
+    rm -f ./Pipfile.lock && \    
+    # setup path for runtime configuration
+    mkdir /opt/app-root/runtimes && \
+    # Remove default Elyra runtime-images \
+    rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \    
+    # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
+    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
+    # Disable announcement plugin of jupyterlab \
+    jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
+    # Apply JupyterLab addons \
+    /opt/app-root/bin/utils/addons/apply.sh && \    
+    # Temporary:Workaround for fixing the kfp-kubernetes 1.0.0 for elyra pipeline execution
+    # TODO: Remove this patch once the issue is fixed with kfp-kubernetes upgrade.    
+    patch /opt/app-root/lib/python3.11/site-packages/elyra/templates/kubeflow/v2/python_dsl_template.jinja2 -i utils/python_dsl_template.patch && \  
+    # Fix permissions to support pip in Openshift environments \
+    chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
+    fix-permissions /opt/app-root -P
+
+
+# Copy Elyra runtime-images definitions and set the version
+COPY ${DATASCIENCE_SOURCE_CODE}/runtime-images/ /opt/app-root/share/jupyter/metadata/runtime-images/
+
+WORKDIR /opt/app-root/src
