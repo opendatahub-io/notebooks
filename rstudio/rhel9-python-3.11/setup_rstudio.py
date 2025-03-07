@@ -46,6 +46,30 @@ def _support_arg(arg):
     ret = subprocess.check_output([get_rstudio_executable('rserver'), '--help'])
     return ret.decode().find(arg) != -1
 
+def detect_env():
+    import socket
+    supports_ipv4 = supports_ipv6 = False
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('127.0.0.1', 0))
+            supports_ipv4 = True
+    except OSError:
+        pass
+    try:
+        with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as s:
+            s.bind(('::1', 0))
+            supports_ipv6 = True
+    except OSError:
+        pass
+    if supports_ipv4 and supports_ipv6:
+        return '::'  # Dual-stack
+    elif supports_ipv6:
+        return '::'
+    elif supports_ipv4:
+        return '0.0.0.0'
+    else:
+        raise EnvironmentError('No IPv4 or IPv6 support detected.')
+
 def _get_cmd(port):
     ntf = tempfile.NamedTemporaryFile()
 
@@ -60,7 +84,7 @@ def _get_cmd(port):
         '--server-working-dir=' + os.getenv('HOME'),
         '--auth-none=1',
         '--www-frame-origin=same',
-        #'--www-address=0.0.0.0',
+        '--www-address='+ detect_env(),
         '--www-port=' + str(port),
         '--www-verify-user-agent=0',
         '--rsession-which-r=' + get_rstudio_executable('R'),
@@ -76,7 +100,7 @@ def _get_cmd(port):
         cmd.append(f'--server-data-dir={server_data_dir}')
     if _support_arg('database-config-file'):
         cmd.append(f'--database-config-file={database_config_file}')
-    
+
     return(' '.join(cmd))
 
 if __name__ == "__main__":
