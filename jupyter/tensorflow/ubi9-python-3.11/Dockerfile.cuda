@@ -215,12 +215,11 @@ LABEL name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.11" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/tensorflow/ubi9-python-3.11" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-tensorflow-ubi9-python-3.11"
 
-COPY ${TENSORFLOW_SOURCE_CODE}/utils ./utils/
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY ${TENSORFLOW_SOURCE_CODE}/Pipfile.lock ./
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
+    micropipenv install --dev && \
     rm -f ./Pipfile.lock && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \
@@ -232,9 +231,6 @@ RUN echo "Installing softwares and packages" && \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \    
     # Apply JupyterLab addons \
     /opt/app-root/bin/utils/addons/apply.sh && \
-    # Temporary:Workaround for fixing the kfp-kubernetes 1.0.0 for elyra pipeline execution
-    # TODO: Remove this patch once the issue is fixed with kfp-kubernetes upgrade.        
-    patch /opt/app-root/lib/python3.11/site-packages/elyra/templates/kubeflow/v2/python_dsl_template.jinja2 -i utils/python_dsl_template.patch && \    
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
     fix-permissions /opt/app-root -P
