@@ -19,7 +19,7 @@ def test_image_pipfiles(subtests: pytest_subtests.plugin.SubTests):
     for file in PROJECT_ROOT.glob("**/Pipfile"):
         with subtests.test(msg="checking Pipfile", pipfile=file):
             print(file)
-            directory = file.parent  # "ubi9-python-3.9"
+            directory = file.parent  # "ubi9-python-3.11"
             ubi, lang, python = directory.name.split("-")
 
             with open(file, "rb") as fp:

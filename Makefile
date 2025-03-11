@@ -193,11 +193,6 @@ rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
 rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
 
-####################################### Buildchain for Python using RHEL9 (DEPRECATED) #######################################
-.PHONY: base-rhel9-python-3.9
-base-rhel9-python-3.9:
-	$(call image,$@,base/rhel9-python-3.9/Dockerfile)
-
 ####################################### Deployments #######################################
 
 # Download kubectl binary
