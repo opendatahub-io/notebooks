@@ -1,6 +1,7 @@
 ---
-# The aim of this GitHub workflow is to update the runtimes across `/jupyter/datascience/ubi*-python-*/runtime-images/*.json` paths.
-name: Update Runtime JSON Files (old structure this GHA will be deprecated soon)
+# The aim of this GitHub workflow is to update the params.env and commit.env files
+# This GHA works for both orgs and it checks for the tags generated from the main branch.
+name: Update Notebook Images and Commits With New SHAs
 on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:
@@ -11,11 +12,11 @@ on:  # yamllint disable-line rule:truthy
 env:
   USER_HASH: ${{ github.event.inputs.user-hash }}
   REPO_ORG: ${{ github.repository_owner }}
-  TMP_BRANCH: tmp-runtimes-sync-${{ github.run_id }}
-  BRANCH_NAME: 'update-digets-updater'
+  TMP_BRANCH: tmp-digest-sync-${{ github.run_id }}
+  BRANCH_NAME: 'main'
 
 jobs:
-  update-runtimes:
+  update-images:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -49,23 +50,25 @@ jobs:
           ref: ${{ env.TMP_BRANCH }}
           fetch-depth: 0
 
-      - name: Invoke runtimes-updater script to handle the updates
+      - name: Invoke script to handle the updates
         shell: bash
         run: |
-          bash "${GITHUB_WORKSPACE}/ci/ci/update-runtimes-old-structure.sh" "${{ env.USER_HASH }}" "opendatahub-io"
+          bash "${GITHUB_WORKSPACE}/ci/notebooks-digest-updater.sh" "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}"
 
       - name: Commit Changes
         run: |
 
-            if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-              git fetch origin "${{ env.TMP_BRANCH }}" && \
-                git pull origin "${{ env.TMP_BRANCH }}" && \
-                git add jupyter/datascience/* && \
-                git commit -m "Update file via ${{ env.TMP_BRANCH }} GitHub action" && \
-                git push origin "${{ env.TMP_BRANCH }}"
-            else
-              echo "There were no changes detected in the images for the ${{ env.BRANCH_NAME }}"
-            fi
+          if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
+            git fetch origin ${{ env.TMP_BRANCH }} && \
+            git pull origin ${{ env.TMP_BRANCH }} && \
+            git add "${GITHUB_WORKSPACE}/manifests/base/params.env" && \
+            git commit -m "Update images digest hashes via ${{ env.TMP_BRANCH }} GitHub action" && \
+            git add ""${GITHUB_WORKSPACE}/manifests/base/commit.env"" && \
+            git commit -m "Update image commits via ${{ env.TMP_BRANCH }} GitHub action" &&\
+            git push origin ${{ env.TMP_BRANCH }}
+          else
+            echo "There were no changes detected in the images for the ${{ env.BRANCH_NAME }}"
+          fi
 
       - name: pull-request
         uses: repo-sync/pull-request@v2
@@ -74,13 +77,12 @@ jobs:
           destination_branch: ${{ env.BRANCH_NAME }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_label: "automated pr"
-          pr_title: "[Digest Updater Action] Update Runtimes Images"
+          pr_title: "[Digest Updater Action] Update Notebook Images and commit with new SHAs"
           pr_body: |
             :rocket: This is an automated Pull Request.
-            Created by `/.github/workflows/runtimes-digest-updater-upstream.yaml`
-
+            Created by `/.github/workflows/notebooks-digest-updater-upstream.yaml`
             This PR updates the following files:
-            - All the runtime images across `/jupyter/datascience/ubi*-python-*/runtime-images/*.json` paths
+            - `manifests/base/params.env` file with the latest updated SHA digests of the notebooks.
+            - `manifests/base/commit.env` file with the latest commit.
 
-            :exclamation: **IMPORTANT NOTE**: Remember to delete the ` ${{ env.TMP_BRANCH }}` branch after merging the changes
-
+            :exclamation: **IMPORTANT NOTE**: Remember to delete the `${{ env.TMP_BRANCH }}` branch after merging the changes

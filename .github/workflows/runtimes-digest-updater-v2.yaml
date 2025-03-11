@@ -1,36 +1,36 @@
 ---
 # The aim of this GitHub workflow is to update the runtimes ImageStreams
-name: Update runtime ImageStreams SHA digests
+name: Update Runtime ImageStreams SHA digests
 on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:
-      branch:
-        required: true
-        description: "Which branch do you want to update?"
-      tag_version:
-        required: true
-        description: "Provide tag version: main or YYYYx"
       user-hash:
         required: false
-        description: "Optional: Specify a Git hash (it should exist in the provided branch's history)"
+        description: "Optional: Specify a Git hash (it should exists on the main branch history)"
 
 env:
-  TMP_BRANCH: tmp-branch-${{ github.run_id }}
-  BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
-  TAG_VERSION: ${{ github.event.inputs.tag_version || 'main' }}
   USER_HASH: ${{ github.event.inputs.user-hash }}
+  REPO_ORG: ${{ github.repository_owner }}
+  TMP_BRANCH: tmp-runtimes-sync-${{ github.run_id }}
+  BRANCH_NAME: 'main'
 
 jobs:
-  initialize:
+  update-runtimes:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Install Skopeo CLI
         shell: bash
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install skopeo yq jq
+          sudo apt-get -y install skopeo
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
 
       - name: Checkout branch
         uses: actions/checkout@v4
@@ -43,17 +43,6 @@ jobs:
          git checkout -b ${{ env.TMP_BRANCH }}
          git push --set-upstream origin ${{ env.TMP_BRANCH }}
 
-  update-runtimes:
-    needs: [initialize]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Configure Git
-        run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "GitHub Actions"
-
       - name: Checkout release branch
         uses: actions/checkout@v4
         with:
@@ -63,7 +52,7 @@ jobs:
       - name: Invoke script to handle the update
         shell: bash
         run: |
-          bash ${GITHUB_WORKSPACE}/ci/runtimes-digest-updater.sh ${{ env.TAG_VERSION }} ${{ env.USER_HASH }}
+          bash ${GITHUB_WORKSPACE}/ci/runtimes-digest-updater.sh "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}"
 
       - name: Commit the changes
         run: |
@@ -76,15 +65,6 @@ jobs:
           else
               echo "There were no changes detected in the images for the ${{ env.BRANCH_NAME }}"
           fi
-
-  open-pull-request:
-    needs: [update-runtimes]
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
 
       - name: pull-request
         uses: repo-sync/pull-request@v2

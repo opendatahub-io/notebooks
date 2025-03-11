@@ -22,54 +22,43 @@ fetch_latest_hash() {
 
 # Function to process runtime images
 update_runtime_images() {
-    REPO_ROOT=$(git rev-parse --show-toplevel)
-    MANIFEST_DIR="$REPO_ROOT/manifests/base"
+    find . -name runtime-images -type d -exec find {} -type f -print \; | grep python-3.11 | while read -r path; do
+        echo "Processing the '${path}' file."
 
-    # Find matching files
-    files=$(find "$MANIFEST_DIR" -type f -name "runtime-*.yaml")
-    for file in $files; do
-        echo "PROCESSING: $file"
-
-        # Extract values
-        img=$(yq e '.spec.tags[].annotations."opendatahub.io/runtime-image-metadata" | fromjson | .[].metadata.image_name' "$file" 2>/dev/null)
-        name=$(yq e '.spec.tags[].name' "$file" 2>/dev/null)
-        ubi=$(yq e '.metadata.annotations."opendatahub.io/runtime-image-name"' "$file" 2>/dev/null | grep -oE 'UBI[0-9]+' | tr '[:upper:]' '[:lower:]')
-        py_version=$(yq e '.metadata.annotations."opendatahub.io/runtime-image-name"' "$file" 2>/dev/null | grep -oE 'Python [0-9]+\.[0-9]+' | sed 's/ /-/g' | tr '[:upper:]' '[:lower:]')
+        img=$(jq -r '.metadata.image_name' "${path}")
+        name=$(echo "$path" | sed 's#.*runtime-images/\(.*\)-py.*#\1#')
+        py_version=$(echo "$path" | grep -o 'python-[0-9]\.[0-9]*')
         registry=$(echo "$img" | cut -d '@' -f1)
 
-        # Handling specific cases
-        if [[ $name == tensorflow || $name == pytorch ]]; then
+        # Handling specific name cases
+        if [[ $name == tensorflow* || $name == pytorch* ]]; then
             name="cuda-$name"
-        elif [[ $name == ubi ]]; then
+        elif [[ $name == ubi* ]]; then
             name="minimal-$name"
-        elif [[ $name == rocm-pytorch ]]; then
+        elif [[ $name == rocm-pytorch* ]]; then
             name="${name/rocm-pytorch/rocm-runtime-pytorch}"
-        elif [[ $name == rocm-tensorflow ]]; then
+        elif [[ $name == rocm-tensorflow* ]]; then
             name="${name/rocm-tensorflow/rocm-runtime-tensorflow}"
         fi
 
         # Construct regex pattern
         prefix="runtime-"
         [[ $name == rocm-* ]] && prefix=""
-        regex="^${prefix}$name-$ubi-$py_version-[0-9]{8}-$HASH$"
+        regex="^${prefix}${name}-${py_version}-[0-9]{8}-$HASH$"
 
         latest_tag=$(skopeo inspect --retry-times 3 "docker://$img" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
         echo "CHECKING: ${latest_tag}"
 
         if [[ -z "$latest_tag" || "$latest_tag" == "null" ]]; then
-            echo "No matching tag found on registry for $file. Skipping."
-            continue
+        echo "No matching tag found on registry for $file. Skipping."
+        continue
         fi
 
-        # Extract the digest sha from the latest tag
         digest=$(skopeo inspect --retry-times 3 "docker://$registry:$latest_tag" | jq .Digest | tr -d '"')
         output="${registry}@${digest}"
         echo "NEW: ${output}"
 
-        # Updates the ImageStream with the new SHAs
-        yq e -i '(.spec.tags[] | .from.name) = "'"$output"'"' "$file"
-        sed -i "s|\(\"image_name\": \"\)[^\"]*|\1${output}|" "$file"
-
+        jq --arg output "$output" '.metadata.image_name = $output' "$path" > "$path.tmp" && mv "$path.tmp" "$path"
     done
 }
 
@@ -86,3 +75,4 @@ elif [[ "$REPO_OWNER" == "red-hat-data-services" ]]; then
 else
     echo "This script runs exclusively for the 'opendatahub-io' and 'red-hat-datascience' organizations, as it verifies/updates their corresponding quay.io registries."
 fi
+
