@@ -13,8 +13,8 @@ name = "pytorch"
 [packages]
 # PyTorch packages
 tensorboard = "~=2.19.0"
-torch = {version = "~=2.6.0+cu126", index = "pytorch"}
-torchvision = {version = "~=0.21.0+cu126", index = "pytorch"}
+torch = {version = "==2.6.0+cu126", index = "pytorch"}
+torchvision = {version = "==0.21.0+cu126", index = "pytorch"}
 
 # Datascience and useful extensions
 boto3 = "~=1.37.8"
