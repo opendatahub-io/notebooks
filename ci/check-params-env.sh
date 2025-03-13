@@ -249,6 +249,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
     }
 
     # Check the size change constraints now
+    if test -z "${expected_img_size}" || test "${expected_img_size}" -eq 0; then
+        echo "Expected image size is undefined or empty, please check the pre-defined values!"
+        return 1
+    fi
+
     # 1. Percentual size change
     percent_change=$((100 * actual_img_size / expected_img_size - 100))
     abs_percent_change=${percent_change#-*}
