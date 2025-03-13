@@ -25,6 +25,8 @@ spec:
     value: '{{revision}}'
   - name: output-image
     value: quay.io/redhat-user-workloads/rhoai-ide-konflux-tenant/jupyter-minimal-ubi9-python-3-11:{{revision}}
+  - name: image-expires-after
+    value: 28d
   - name: build-platforms
     value:
     - linux/x86_64
