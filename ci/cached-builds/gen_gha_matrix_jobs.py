@@ -63,6 +63,16 @@ def extract_image_targets(makefile_dir: pathlib.Path | str = os.getcwd()) -> lis
     return all_images
 
 
+def _str_to_bool(value: str) -> bool:
+    value = value.lower()
+    if value in ('true', 't', 'yes', 'y', '1'):
+        return True
+    elif value in ('false', 'f', 'no', 'n', '0'):
+        return False
+    else:
+        raise ValueError(f"Invalid boolean string: '{value}'")
+
+
 def main() -> None:
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
@@ -71,7 +81,7 @@ def main() -> None:
                            help="Git ref of the base branch (to determine changed files)")
     argparser.add_argument("--to-ref", type=str, required=False,
                            help="Git ref of the PR branch (to determine changed files)")
-    argparser.add_argument("--leave-out-rhel", type=bool, required=False, default=False, action=argparse.BooleanOptionalAction,
+    argparser.add_argument("--leave-out-rhel", type=_str_to_bool, required=False, default=False, nargs='?',
                            help="Does not output rhel-based images even when they have changed files")
     args = argparser.parse_args()
 
