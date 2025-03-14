@@ -1,0 +1,60 @@
+---
+name: Validation of software versions referenced in ImageStream manifests
+on:  # yamllint disable-line rule:truthy
+  push:
+    # Since this check is so resource demanding, let's restrict also push action here.
+    paths:
+      - 'manifests/base/params.env'
+      - 'manifests/base/*-imagestream.yaml'
+      - 'ci/check-software-versions.py'
+  pull_request:
+    paths:
+      - 'manifests/base/params.env'
+      - 'manifests/base/*-imagestream.yaml'
+      - 'ci/check-software-versions.py'
+  workflow_dispatch:
+  release:
+
+permissions:
+  contents: read
+
+jobs:
+  validation-of-sw-versions-in-imagestreams:
+    runs-on: ubuntu-latest
+    env:
+      # Some pieces of code (image pulls for example) in podman consult TMPDIR or default to /var/tmp
+      TMPDIR: /home/runner/.local/share/containers/tmpdir
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Mount lvm overlay for podman operations
+        run: |
+          df -h
+          free -h
+
+          bash ./ci/cached-builds/gha_lvm_overlay.sh
+
+          df -h
+          free -h
+
+      - name: Configure Podman
+        run: |
+          set -Eeuxo pipefail
+
+          sudo cp ci/cached-builds/storage.conf /etc/containers/storage.conf
+
+          # should reset storage when changing storage.conf
+          sudo mkdir -p $HOME/.local/share/containers/storage/tmp
+          # remote (CONTAINER_HOST) podman does not do reset (and refuses --force option)
+          sudo podman system reset --force
+          # podman running as service ignores the TMPDIR env var here, let's give it a bind-mount to /var/tmp
+          sudo mkdir -p $TMPDIR
+          sudo mount --bind -o rw,noexec,nosuid,nodev,bind $TMPDIR /var/tmp
+
+          # quick check that podman works
+          sudo podman info
+
+      - name: Check software versions in manifest referencing the images
+        id: software-versions-check
+        run: |
+          sudo ./ci/check-software-versions.py --prune-podman-data
