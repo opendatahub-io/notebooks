@@ -52,7 +52,7 @@ jobs:
       - name: Invoke runtimes-updater script to handle the updates
         shell: bash
         run: |
-          bash "${GITHUB_WORKSPACE}/ci/ci/update-runtimes-old-structure.sh" "${{ env.USER_HASH }}" "opendatahub-io"
+          bash "${GITHUB_WORKSPACE}/ci/update-runtimes-old-structure.sh" "${{ env.USER_HASH }}" "opendatahub-io"
 
       - name: Commit Changes
         run: |
@@ -74,7 +74,7 @@ jobs:
           destination_branch: ${{ env.BRANCH_NAME }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_label: "automated pr"
-          pr_title: "[Digest Updater Action] Update Runtimes Images"
+          pr_title: "[Runtimes Updater Action] Update Runtimes json files"
           pr_body: |
             :rocket: This is an automated Pull Request.
             Created by `/.github/workflows/runtimes-digest-updater-upstream.yaml`

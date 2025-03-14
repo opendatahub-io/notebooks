@@ -13,7 +13,7 @@ env:
   USER_HASH: ${{ github.event.inputs.user-hash }}
   REPO_ORG: ${{ github.repository_owner }}
   TMP_BRANCH: tmp-digest-sync-${{ github.run_id }}
-  BRANCH_NAME: 'main'
+  BRANCH_NAME: 'update-digets-updater'
 
 jobs:
   update-images:
@@ -53,7 +53,7 @@ jobs:
       - name: Invoke script to handle the updates
         shell: bash
         run: |
-          bash "${GITHUB_WORKSPACE}/ci/notebooks-digest-updater.sh" "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}"
+          bash "${GITHUB_WORKSPACE}/ci/notebooks-digest-updater.sh" "${{ env.USER_HASH }}" "opendatahub-io"
 
       - name: Commit Changes
         run: |

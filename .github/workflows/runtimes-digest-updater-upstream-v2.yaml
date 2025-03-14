@@ -12,7 +12,7 @@ env:
   USER_HASH: ${{ github.event.inputs.user-hash }}
   REPO_ORG: ${{ github.repository_owner }}
   TMP_BRANCH: tmp-runtimes-sync-${{ github.run_id }}
-  BRANCH_NAME: 'main'
+  BRANCH_NAME: 'update-digets-updater'
 
 jobs:
   update-runtimes:
@@ -52,7 +52,7 @@ jobs:
       - name: Invoke script to handle the update
         shell: bash
         run: |
-          bash ${GITHUB_WORKSPACE}/ci/runtimes-digest-updater.sh "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}"
+          bash ${GITHUB_WORKSPACE}/ci/runtimes-digest-updater.sh "${{ env.USER_HASH }}" "opendatahub-io"
 
       - name: Commit the changes
         run: |
@@ -73,7 +73,7 @@ jobs:
           destination_branch: ${{ env.BRANCH_NAME }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_label: "automated pr"
-          pr_title: "[Digest Updater Action] Update Runtimes ImageStreams"
+          pr_title: "[Runtimes Updater Action] Update Runtimes ImageStream files"
           pr_body: |
             :rocket: This is an automated Pull Request.
             Created by `/.github/workflows/runtimes-digest-updater-upstream.yaml`
