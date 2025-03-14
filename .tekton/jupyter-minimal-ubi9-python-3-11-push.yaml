@@ -9,7 +9,7 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main"
+      == "main" && has(body.repository) && body.repository.full_name == "opendatahub-io/notebooks"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: notebooks
@@ -25,6 +25,8 @@ spec:
     value: '{{revision}}'
   - name: output-image
     value: quay.io/redhat-user-workloads/rhoai-ide-konflux-tenant/jupyter-minimal-ubi9-python-3-11:{{revision}}
+  - name: image-expires-after
+    value: 28d
   - name: build-platforms
     value:
     - linux/x86_64
