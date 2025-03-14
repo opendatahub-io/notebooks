@@ -268,7 +268,7 @@ function _run_test()
 
     "${kbin}" cp "${repo_test_directory}/${test_notebook_file}" "${notebook_workload_name}:./${test_notebook_file}"
 
-	if ! "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "python3 -m papermill ${test_notebook_file} ${output_file_prefix}_output.ipynb --kernel python3 --stderr-file ${output_file_prefix}_error.txt" ; then
+	if ! "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "export IPY_KERNEL_LOG_LEVEL=DEBUG; python3 -m papermill ${test_notebook_file} ${output_file_prefix}_output.ipynb --kernel python3 --log-level DEBUG --stderr-file ${output_file_prefix}_error.txt" ; then
 		echo "ERROR: The ${notebook_id} ${os_flavor} notebook encountered a failure. To investigate the issue, you can review the logs located in the ocp-ci cluster on 'artifacts/notebooks-e2e-tests/jupyter-${notebook_id}-${os_flavor}-${python_flavor}-test-e2e' directory or run 'cat ${output_file_prefix}_error.txt' within your container. The make process has been aborted."
 		exit 1
 	fi
