@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import enum
 import json
 import logging
 import platform
@@ -63,14 +64,10 @@ def extract_image_targets(makefile_dir: pathlib.Path | str = os.getcwd()) -> lis
     return all_images
 
 
-def _str_to_bool(value: str) -> bool:
-    value = value.lower()
-    if value in ('true', 't', 'yes', 'y', '1'):
-        return True
-    elif value in ('false', 'f', 'no', 'n', '0'):
-        return False
-    else:
-        raise ValueError(f"Invalid boolean string: '{value}'")
+class RhelImages(enum.Enum):
+    EXCLUDE = "exclude"
+    INCLUDE = "include"
+    INCLUDE_ONLY = "include-only"
 
 
 def main() -> None:
@@ -81,8 +78,8 @@ def main() -> None:
                            help="Git ref of the base branch (to determine changed files)")
     argparser.add_argument("--to-ref", type=str, required=False,
                            help="Git ref of the PR branch (to determine changed files)")
-    argparser.add_argument("--leave-out-rhel", type=_str_to_bool, required=False, default=False, nargs='?',
-                           help="Does not output rhel-based images even when they have changed files")
+    argparser.add_argument("--rhel-images", type=RhelImages, required=False, default=RhelImages.INCLUDE, nargs='?',
+                           help="Whether to `include` rhel images or `exclude` them or `include-only` them")
     args = argparser.parse_args()
 
     targets = extract_image_targets()
@@ -92,8 +89,14 @@ def main() -> None:
         changed_files = gha_pr_changed_files.list_changed_files(args.from_ref, args.to_ref)
         targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
 
-    if args.leave_out_rhel:
+    if args.rhel_images == RhelImages.INCLUDE:
+        pass
+    elif args.rhel_images == RhelImages.EXCLUDE:
         targets = [target for target in targets if "rhel" not in target]
+    elif args.rhel_images == RhelImages.INCLUDE_ONLY:
+        targets = [target for target in targets if "rhel" in target]
+    else:
+        raise Exception(f"Unknown value for --rhel-images: {args.rhel_images}")
 
     # https://stackoverflow.com/questions/66025220/paired-values-in-github-actions-matrix
     output = [
