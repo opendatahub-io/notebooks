@@ -6,6 +6,8 @@ metadata:
   labels:
     app: runtime-image
 spec:
+  nodeSelector:
+    accelerator: cuda
   containers:
     - name: runtime
       image: runtime-workbench
@@ -16,7 +18,8 @@ spec:
       resources:
         limits:
           cpu: 500m
-          memory: 500Mi
+          memory: 6Gi
+          nvidia.com/gpu: '1'
         requests:
           cpu: 500m
-          memory: 500Mi
+          memory: 6Gi

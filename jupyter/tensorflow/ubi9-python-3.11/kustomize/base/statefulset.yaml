@@ -15,6 +15,8 @@ spec:
     metadata:
       labels: {}
     spec:
+      nodeSelector:
+        accelerator: cuda    
       containers:
         - name: notebook
           image: quay.io/opendatahub/workbench-images:cuda-jupyter-tensorflow-ubi9-python-3.11
@@ -52,7 +54,8 @@ spec:
           resources:
             limits:
               cpu: 500m
-              memory: 2Gi
+              memory: 6Gi
+              nvidia.com/gpu: '1'
             requests:
               cpu: 500m
-              memory: 2Gi
+              memory: 6Gi

@@ -20,7 +20,7 @@ spec:
         # language=json
         opendatahub.io/notebook-software: |
           [
-            {"name": "CUDA", "version": "12.4"},
+            {"name": "CUDA", "version": "12.6"},
             {"name": "Python", "version": "v3.11"},
             {"name": "TensorFlow", "version": "2.18"}
           ]
@@ -69,24 +69,24 @@ spec:
         opendatahub.io/notebook-python-dependencies: |
           [
             {"name": "JupyterLab","version": "4.2"},
-            {"name": "TensorFlow", "version": "2.17"},
-            {"name": "Tensorboard", "version": "2.17"},
-            {"name": "Nvidia-CUDA-CU12-Bundle", "version": "12.3"},
-            {"name": "Boto3", "version": "1.35"},
+            {"name": "TensorFlow", "version": "2.18"},
+            {"name": "Tensorboard", "version": "2.18"},
+            {"name": "Nvidia-CUDA-CU12-Bundle", "version": "12.5"},
+            {"name": "Boto3", "version": "1.37"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
-            {"name": "Kfp", "version": "2.5"},
-            {"name": "Matplotlib", "version": "3.9"},
-            {"name": "Numpy", "version": "1.26"},
+            {"name": "Kfp", "version": "2.12"},
+            {"name": "Matplotlib", "version": "3.10"},
+            {"name": "Numpy", "version": "2.0"},
             {"name": "Pandas", "version": "2.2"},
-            {"name": "Scikit-learn", "version": "1.5"},
-            {"name": "Scipy", "version": "1.14"},
+            {"name": "Scikit-learn", "version": "1.6"},
+            {"name": "Scipy", "version": "1.15"},
             {"name": "Odh-Elyra", "version": "4.2"},
-            {"name": "PyMongo", "version": "4.8"},
-            {"name": "Pyodbc", "version": "5.1"},
-            {"name": "Codeflare-SDK", "version": "0.24"},
-            {"name": "Sklearn-onnx", "version": "1.17"},
+            {"name": "PyMongo", "version": "4.11"},
+            {"name": "Pyodbc", "version": "5.2"},
+            {"name": "Codeflare-SDK", "version": "0.27"},
+            {"name": "Sklearn-onnx", "version": "1.18"},
             {"name": "Psycopg", "version": "3.2"},
-            {"name": "MySQL Connector/Python", "version": "9.0"}
+            {"name": "MySQL Connector/Python", "version": "9.2"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
