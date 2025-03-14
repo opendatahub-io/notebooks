@@ -28,25 +28,34 @@ def list_changed_files(from_ref: str, to_ref: str) -> list[str]:
     return files
 
 
-def get_build_directory(make_target) -> str:
-    directories = []
+def _query_build(make_target: str, query: str) -> str:
+    results = []
 
-    pattern = re.compile(r"#\*# Image build directory: <(?P<dir>[^>]+)> #\(MACHINE-PARSED LINE\)#\*#\.\.\.")
+    pattern = re.compile(r"#\*# " + query + r": <(?P<result>[^>]+)> #\(MACHINE-PARSED LINE\)#\*#\.\.\.")
     try:
         logging.debug(f"Running make in --just-print mode for target {make_target}")
         for line in subprocess.check_output([MAKE, make_target, "--just-print"], encoding="utf-8",
                                             cwd=PROJECT_ROOT).splitlines():
             if m := pattern.match(line):
-                directories.append(m["dir"])
+                results.append(m["result"])
     except subprocess.CalledProcessError as e:
         print(e.stderr, e.stdout)
         raise
 
-    if len(directories) != 1:
-        raise Exception(f"Expected a single build directory for target '{make_target}': {directories}")
+    if len(results) != 1:
+        raise Exception(f"Expected a single query result for target '{make_target}': {results}")
 
-    logging.debug(f"Target {make_target} buildes from {directories[0]}")
-    return directories[0]
+    logging.debug(f"Target {make_target} builds from {results[0]}")
+    return results[0]
+
+
+def get_build_directory(make_target) -> str:
+    return _query_build(make_target, "Image build directory")
+
+
+def get_build_dockerfile(make_target) -> str:
+    return _query_build(make_target, "Image build Dockerfile")
+
 
 def find_dockerfiles(directory: str) -> list:
     """Finds and returns a list of files matching the pattern 'Dockerfile*' in the specified directory."""
@@ -105,6 +114,10 @@ class SelfTests(unittest.TestCase):
     def test_get_build_directory(self):
         directory = get_build_directory("rocm-jupyter-pytorch-ubi9-python-3.11")
         assert directory == "jupyter/rocm/pytorch/ubi9-python-3.11"
+
+    def test_get_build_dockerfile(self):
+        directory = get_build_dockerfile("rocm-jupyter-pytorch-ubi9-python-3.11")
+        assert directory == "jupyter/rocm/pytorch/ubi9-python-3.11/Dockerfile.rocm"
 
     def test_should_build_target(self):
         assert "" == should_build_target(["README.md"], "jupyter/datascience/ubi9-python-3.11")
