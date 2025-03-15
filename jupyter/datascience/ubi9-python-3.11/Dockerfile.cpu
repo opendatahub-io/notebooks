@@ -27,8 +27,8 @@ RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 # Other apps and tools installed as default user
 USER 1001
 
-# Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install --no-cache-dir -U "micropipenv[toml]"
+# Install micropipenv and uv to deploy packages from Pipfile.lock
+RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
 
 # Install the oc client begin
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
@@ -107,7 +107,7 @@ COPY ${DATASCIENCE_SOURCE_CODE}/Pipfile.lock ./
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
+    micropipenv requirements | uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy unsafe-best-match --requirements - && \
     rm -f ./Pipfile.lock && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \

@@ -5,8 +5,8 @@ FROM quay.io/sclorg/python-311-c9s:c9s AS base
 
 WORKDIR /opt/app-root/bin
 
-# Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install --no-cache-dir -U "micropipenv[toml]"
+# Install micropipenv and uv to deploy packages from Pipfile.lock
+RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
 
 # OS Packages needs to be installed as root
 USER root
@@ -298,7 +298,7 @@ USER 1001
 COPY ${RSTUDIO_SOURCE_CODE}/Pipfile.lock ./
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
+    micropipenv requirements | uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy unsafe-best-match --requirements - && \
     rm -f ./Pipfile.lock && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
