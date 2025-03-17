@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: notebook
+spec:
+  template:
+    spec:
+      nodeSelector:
+        accelerator: cuda    
+      containers:
+        - name: runtime
+          resources:
+            limits:
+              nvidia.com/gpu: '1'    

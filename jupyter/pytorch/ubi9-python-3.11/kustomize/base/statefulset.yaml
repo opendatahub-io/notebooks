@@ -61,3 +61,10 @@ spec:
             requests:
               cpu: 500m
               memory: 6Gi
+          volumeMounts:
+            - mountPath: /opt/app-root/src
+              name: tmp-volume
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory              
