@@ -1,3 +1,4 @@
+---
 apiVersion: v1
 kind: Pod
 metadata:
@@ -8,7 +9,6 @@ spec:
       resources:
         limits:
           memory: 6Gi
-          nvidia.com/gpu: '1'
         requests:
           memory: 6Gi
       volumeMounts:
@@ -17,4 +17,4 @@ spec:
   volumes:
     - name: tmp-volume
       emptyDir:
-        medium: Memory 
+        medium: Memory

@@ -37,7 +37,7 @@ spec:
         name: $(odh-rstudio-gpu-notebook-image-n)
       name: "2025.1"
       referencePolicy:
-        type: Source  
+        type: Source
     # N-1 Version of the image
     - annotations:
         # language=json
@@ -59,28 +59,5 @@ spec:
         kind: DockerImage
         name: $(odh-rstudio-gpu-notebook-image-n-1)
       name: "2024.2"
-      referencePolicy:
-        type: Source
-    # N-2 Version of the image
-    - annotations:
-        # language=json
-        opendatahub.io/notebook-software: |
-          [
-            {"name": "CUDA", "version": "12.1"},
-            {"name": "R", "version": "v4.4"},
-            {"name": "Python", "version": "v3.9"}
-          ]
-        # language=json
-        opendatahub.io/notebook-python-dependencies: |
-          [
-            {"name": "rstudio-server", "version": "2023.12"}
-          ]
-        openshift.io/imported-from: quay.io/opendatahub/workbench-images
-        opendatahub.io/workbench-image-recommended: 'false'
-        opendatahub.io/notebook-build-commit: $(odh-rstudio-gpu-notebook-image-commit-n-2)
-      from:
-        kind: DockerImage
-        name: $(odh-rstudio-gpu-notebook-image-n-2)
-      name: "2024.1"
       referencePolicy:
         type: Source

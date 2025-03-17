@@ -15,8 +15,6 @@ spec:
     metadata:
       labels: {}
     spec:
-      nodeSelector:
-        accelerator: cuda    
       containers:
         - name: notebook
           image: quay.io/opendatahub/workbench-images:jupyter-pytorch-ubi9-python-3.11
@@ -56,15 +54,7 @@ spec:
           resources:
             limits:
               cpu: 500m
-              memory: 6Gi
-              nvidia.com/gpu: '1'
+              memory: 2Gi
             requests:
               cpu: 500m
-              memory: 6Gi
-          volumeMounts:
-            - mountPath: /opt/app-root/src
-              name: tmp-volume
-      volumes:
-        - name: tmp-volume
-          emptyDir:
-            medium: Memory              
+              memory: 2Gi
