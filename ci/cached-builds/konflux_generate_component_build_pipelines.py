@@ -2,10 +2,15 @@
 
 import re
 import pathlib
+
 import yaml
 
 import gen_gha_matrix_jobs
 import gha_pr_changed_files
+import scripts.sandbox
+
+# test dependencies
+import pyfakefs.fake_filesystem
 
 ROOT_DIR = pathlib.Path(__file__).parent.parent.parent
 
@@ -21,7 +26,7 @@ This script creates the Tekton pipelines under /.tekton
 
 Usage:
 
-$ poetry run ci/cached-builds/konflux_generate_component_build_pipelines.py
+$ PYTHONPATH=. poetry run ci/cached-builds/konflux_generate_component_build_pipelines.py
 """
 
 
@@ -108,6 +113,13 @@ def component_build_pipeline(component_name, dockerfile_path,
     This is general enough to create PR pipeline as well as push pipeline.
     """
     name = component_name + ("-on-pull-request" if is_pr else "-on-push")
+    files_changed_cel_expression = ""
+    if is_pr:
+        files_changed_cel_expression = ' || '.join((
+            compute_cel_expression(dockerfile_path),
+            f'".tekton/{component_name}-pull-request.yaml".pathChanged()',
+            f'"{dockerfile_path}".pathChanged()'
+        ))
     return {
         "apiVersion": "tekton.dev/v1",
         "kind": "PipelineRun",
@@ -121,6 +133,7 @@ def component_build_pipeline(component_name, dockerfile_path,
                 "pipelinesascode.tekton.dev/max-keep-runs": "3",
                 "pipelinesascode.tekton.dev/on-cel-expression": (
                     f'event == "{"pull_request" if is_pr else "push"}" && target_branch == "main"'
+                    + (' && ( ' + files_changed_cel_expression + ' )' if files_changed_cel_expression else "")
                     + ' && has(body.repository) && body.repository.full_name == "opendatahub-io/notebooks"'
                 ),
             },
@@ -813,5 +826,48 @@ def main():
                   file=yaml_file)
 
 
+def compute_cel_expression(dockerfile: pathlib.Path) -> str:
+    return cel_expression(root_dir=ROOT_DIR, files=scripts.sandbox.buildinputs(dockerfile))
+
+
+def cel_expression(root_dir: pathlib.Path, files: list[pathlib.Path]) -> str:
+    """
+    Generate a CEL expression for file change detection.
+
+    Args:
+        root_dir (pathlib.Path): Docker build context.
+        files (list[pathlib.Path]): List of file paths to check for changes.
+
+    Returns:
+        str: A CEL expression that checks if any of the given files have changed.
+    """
+    expressions = []
+    for file in files:
+        relative_path = file.relative_to(root_dir) if file.is_absolute() else file
+        if file.is_dir():
+            expressions.append(f'"{relative_path}/***".pathChanged()')
+        else:
+            expressions.append(f'"{relative_path}".pathChanged()')
+
+    return " || ".join(expressions)
+
+
 if __name__ == "__main__":
     main()
+
+
+class Tests:
+
+    def test_compute_cel_expression(self, fs: pyfakefs.fake_filesystem.FakeFilesystem):
+        fs.cwd = ROOT_DIR
+        ROOT_DIR.mkdir(parents=True)
+        pathlib.Path("a/").mkdir()
+        pathlib.Path("b/").mkdir()
+        pathlib.Path("b/c.txt").write_text("")
+
+        assert cel_expression(
+            ROOT_DIR,
+            files=[
+                pathlib.Path("a"),
+                pathlib.Path("b") / "c.txt"
+            ]) == '"a/***".pathChanged() || "b/c.txt".pathChanged()'
