@@ -7,7 +7,7 @@ spec:
   nodeSelector:
     accelerator: cuda
   containers:
-    - name: runtime
+    - name: rstudio
       resources:
         limits:
           nvidia.com/gpu: '1'
