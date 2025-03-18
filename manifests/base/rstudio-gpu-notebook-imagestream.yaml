@@ -53,7 +53,7 @@ spec:
             {"name": "rstudio-server", "version": "2024.04"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
-        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: $(odh-rstudio-gpu-notebook-image-commit-n-1)
       from:
         kind: DockerImage

@@ -90,7 +90,7 @@ spec:
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
-        opendatahub.io/notebook-build-commit: $(odh-tensorflow-gpu-notebook-image-commit-n-2)
+        opendatahub.io/notebook-build-commit: $(odh-tensorflow-gpu-notebook-image-commit-n-1)
       from:
         kind: DockerImage
         name: $(odh-tensorflow-gpu-notebook-image-n-1)
