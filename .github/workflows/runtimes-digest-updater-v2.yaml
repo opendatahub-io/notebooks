@@ -1,6 +1,6 @@
 ---
-# The aim of this GitHub workflow is to update the runtimes across `/jupyter/datascience/ubi*-python-*/runtime-images/*.json` paths.
-name: Update Runtime JSON Files (old structure this GHA will be deprecated soon)
+# The aim of this GitHub workflow is to update the runtimes ImageStreams
+name: Update Runtime ImageStreams SHA digests
 on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:
@@ -12,7 +12,7 @@ env:
   USER_HASH: ${{ github.event.inputs.user-hash }}
   REPO_ORG: ${{ github.repository_owner }}
   TMP_BRANCH: tmp-runtimes-sync-${{ github.run_id }}
-  BRANCH_NAME: 'update-digets-updater'
+  BRANCH_NAME: 'main'
 
 jobs:
   update-runtimes:
@@ -49,23 +49,22 @@ jobs:
           ref: ${{ env.TMP_BRANCH }}
           fetch-depth: 0
 
-      - name: Invoke runtimes-updater script to handle the updates
+      - name: Invoke script to handle the update
         shell: bash
         run: |
-          bash "${GITHUB_WORKSPACE}/ci/update-runtimes-old-structure.sh" "${{ env.USER_HASH }}" "opendatahub-io"
+          bash ${GITHUB_WORKSPACE}/ci/runtimes-digest-updater.sh "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}"
 
-      - name: Commit Changes
+      - name: Commit the changes
         run: |
-
-            if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
+          if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
               git fetch origin "${{ env.TMP_BRANCH }}" && \
-                git pull origin "${{ env.TMP_BRANCH }}" && \
-                git add jupyter/datascience/* && \
-                git commit -m "Update file via ${{ env.TMP_BRANCH }} GitHub action" && \
-                git push origin "${{ env.TMP_BRANCH }}"
-            else
+              git pull origin "${{ env.TMP_BRANCH }}" && \
+              git add "manifests/base/runtime-*" && \
+              git commit -m "Update file via ${{ env.TMP_BRANCH }} GitHub action" && \
+              git push origin "${{ env.TMP_BRANCH }}"
+          else
               echo "There were no changes detected in the images for the ${{ env.BRANCH_NAME }}"
-            fi
+          fi
 
       - name: pull-request
         uses: repo-sync/pull-request@v2
@@ -74,13 +73,9 @@ jobs:
           destination_branch: ${{ env.BRANCH_NAME }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_label: "automated pr"
-          pr_title: "[Runtimes Updater Action] Update Runtimes json files"
+          pr_title: "[Runtimes Updater Action] Update Runtimes ImageStream files"
           pr_body: |
             :rocket: This is an automated Pull Request.
             Created by `/.github/workflows/runtimes-digest-updater-upstream.yaml`
 
-            This PR updates the following files:
-            - All the runtime images across `/jupyter/datascience/ubi*-python-*/runtime-images/*.json` paths
-
             :exclamation: **IMPORTANT NOTE**: Remember to delete the ` ${{ env.TMP_BRANCH }}` branch after merging the changes
-
