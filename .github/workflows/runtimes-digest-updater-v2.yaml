@@ -4,15 +4,19 @@ name: Update Runtime ImageStreams SHA digests
 on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:
+      branch:
+        required: false
+        description: "Optional: Provide branch name"
       user-hash:
         required: false
-        description: "Optional: Specify a Git hash (it should exists on the main branch history)"
+        description: "Optional: Specify a Git hash (it should exists on the branch history)"
 
 env:
   USER_HASH: ${{ github.event.inputs.user-hash }}
   REPO_ORG: ${{ github.repository_owner }}
+  REPO_NAME: 'notebooks'
   TMP_BRANCH: tmp-runtimes-sync-${{ github.run_id }}
-  BRANCH_NAME: 'main'
+  BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
 
 jobs:
   update-runtimes:
@@ -52,7 +56,7 @@ jobs:
       - name: Invoke script to handle the update
         shell: bash
         run: |
-          bash ${GITHUB_WORKSPACE}/ci/runtimes-digest-updater.sh "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}"
+          bash ${GITHUB_WORKSPACE}/ci/runtimes-digest-updater.sh "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}" "${{ env.BRANCH_NAME }}" "${{ env.REPO_NAME }}"
 
       - name: Commit the changes
         run: |
@@ -67,15 +71,17 @@ jobs:
           fi
 
       - name: pull-request
-        uses: repo-sync/pull-request@v2
-        with:
-          source_branch: ${{ env.TMP_BRANCH }}
-          destination_branch: ${{ env.BRANCH_NAME }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          pr_label: "automated pr"
+        run: |
+            gh pr create --repo https://github.com/$REPO_ORG/$REPO_NAME.git \
+              --title "$pr_title" \
+              --body "$pr_body" \
+              --head $REPO_ORG:${{ env.TMP_BRANCH }} \
+              --base ${{ env.BRANCH_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           pr_title: "[Runtimes Updater Action] Update Runtimes ImageStream files"
           pr_body: |
             :rocket: This is an automated Pull Request.
-            Created by `/.github/workflows/runtimes-digest-updater-upstream.yaml`
+            Created by `/.github/workflows/runtimes-digest-updater.yaml`
 
             :exclamation: **IMPORTANT NOTE**: Remember to delete the ` ${{ env.TMP_BRANCH }}` branch after merging the changes

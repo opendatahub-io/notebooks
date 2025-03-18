@@ -2,8 +2,8 @@
 
 USER_HASH=$1
 REPO_OWNER=$2
-REPO_NAME="notebooks"
-BRANCH=main
+BRANCH=$3
+REPO_NAME=$4
 
 # Fetch the latest commit hash (or use the user-provided one)
 fetch_latest_hash() {
@@ -50,8 +50,8 @@ update_runtime_images() {
         echo "CHECKING: ${latest_tag}"
 
         if [[ -z "$latest_tag" || "$latest_tag" == "null" ]]; then
-        echo "No matching tag found on registry for $file. Skipping."
-        continue
+            echo "No matching tag found on registry for $path. Skipping."
+            continue
         fi
 
         digest=$(skopeo inspect --retry-times 3 "docker://$registry:$latest_tag" | jq .Digest | tr -d '"')
@@ -74,5 +74,7 @@ elif [[ "$REPO_OWNER" == "red-hat-data-services" ]]; then
 
 else
     echo "This script runs exclusively for the 'opendatahub-io' and 'red-hat-datascience' organizations, as it verifies/updates their corresponding quay.io registries."
+    exit 1
+
 fi
 

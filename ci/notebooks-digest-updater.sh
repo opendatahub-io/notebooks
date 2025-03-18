@@ -2,8 +2,8 @@
 
 USER_HASH=$1
 REPO_OWNER=$2
-REPO_NAME="notebooks"
-BRANCH=main
+BRANCH=$3
+REPO_NAME=$4
 
 # Fetch the latest commit hash (or use the user-provided one)
 fetch_latest_hash() {
@@ -37,7 +37,6 @@ update_commits() {
 }
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
-MANIFEST_DIR="$REPO_ROOT/manifests/base"
 PARAMS_ENV_PATH="$REPO_ROOT/manifests/base/params.env"
 
 # In case the digest updater function is triggered upstream.
@@ -111,5 +110,7 @@ elif [[ "$REPO_OWNER" == "red-hat-data-services" ]]; then
 
 else
     echo "This script runs exclusively for the 'opendatahub-io' and 'red-hat-datascience' organizations, as it verifies/updates their corresponding quay.io registries."
+    exit 1
+
 fi
 
