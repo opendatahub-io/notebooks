@@ -9,7 +9,6 @@ import gen_gha_matrix_jobs
 import gha_pr_changed_files
 import scripts.sandbox
 
-
 ROOT_DIR = pathlib.Path(__file__).parent.parent.parent
 
 workspace_name = "rhoai-ide-konflux-tenant"
@@ -80,9 +79,9 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                 "pipelinesascode.tekton.dev/cancel-in-progress": "true" if is_pr else "false",
                 "pipelinesascode.tekton.dev/max-keep-runs": "3",
                 "pipelinesascode.tekton.dev/on-cel-expression": (
-                    f'event == "{"pull_request" if is_pr else "push"}" && target_branch == "main"'
-                    + (' && ( ' + files_changed_cel_expression + ' )' if files_changed_cel_expression else "")
-                    + ' && has(body.repository) && body.repository.full_name == "opendatahub-io/notebooks"'
+                        f'event == "{"pull_request" if is_pr else "push"}" && target_branch == "main"'
+                        + (' && ( ' + files_changed_cel_expression + ' )' if files_changed_cel_expression else "")
+                        + ' && has(body.repository) && body.repository.full_name == "opendatahub-io/notebooks"'
                 ),
             },
             "creationTimestamp": None,
@@ -95,6 +94,11 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
             "namespace": workspace_name,
         },
         "spec": {
+            # https://konflux-ci.dev/docs/building/customizing-the-build/#configuring-timeouts
+            "timeouts": {
+                # https://tekton.dev/docs/pipelines/pipelineruns/#configuring-a-failure-timeout
+                "pipeline": "4h",
+            },
             "params": [
                 {"name": "git-url", "value": "{{source_url}}"},
                 {"name": "revision", "value": "{{revision}}"},
@@ -728,6 +732,22 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                     {"name": "netrc", "optional": True},
                 ],
             },
+            # https://github.com/tektoncd/pipeline/blob/main/docs/compute-resources.md
+            # https://konflux.pages.redhat.com/docs/users/how-tos/configuring/overriding-compute-resources.html
+            # https://github.com/red-hat-data-services/distributed-workloads/blob/face046a631a1ac9b0fc51bcd2984628e9f3db05/.tekton/training-rocm-push.yaml#L36-L42
+            "taskRunSpecs": [
+                {
+                    "pipelineTaskName": task_name,
+                    "computeResources": {
+                        # the problem is going over limits, so requests need not be touched at all
+                        "limits": {
+                            "memory": "8Gi",
+                        },
+                    },
+                    # leaving out "prefetch-dependencies" because we don't do hermetic build yet
+                    # leaving out "build-images" for now, it already has a limit of 8Gi by default
+                } for task_name in ("ecosystem-cert-preflight-checks", "clair-scan")
+            ],
             "taskRunTemplate": {},
             "workspaces": [
                 {"name": "git-auth", "secret": {"secretName": "{{ git_auth_secret }}"}}
@@ -735,6 +755,22 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
         },
         "status": {},
     }
+
+
+def when[T: any](condition: bool, if_true: T, if_false: T) -> T:
+    """Returns either if_true or if_false depending on condition.
+    The if_true and if_false expressions are always evaluated.
+
+    Example usage:
+
+        "limits": {
+            "memory": "16Gi",
+            **when(task_name == "build-images", if_true={"ephemeral-storage": "120Gi"}, if_false={}),
+        },
+
+    The advantage over using `if_true if condition else if_false` directly is that
+    the parentheses in the expression are less distracting."""
+    return if_true if condition else if_false
 
 
 # https://stackoverflow.com/questions/20805418/pyyaml-dump-format
