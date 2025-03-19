@@ -11,14 +11,15 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
-      == "main" && ( "rstudio/c9s-python-3.11/Pipfile.lock".pathChanged() || "rstudio/c9s-python-3.11/nginx/api/***".pathChanged()
-      || "rstudio/c9s-python-3.11/nginx/httpconf/***".pathChanged() || "rstudio/c9s-python-3.11/nginx/root/***".pathChanged()
-      || "rstudio/c9s-python-3.11/nginx/serverconf/***".pathChanged() || "rstudio/c9s-python-3.11/rsession.conf".pathChanged()
-      || "rstudio/c9s-python-3.11/rsession.sh".pathChanged() || "rstudio/c9s-python-3.11/run-nginx.sh".pathChanged()
-      || "rstudio/c9s-python-3.11/run-rstudio.sh".pathChanged() || "rstudio/c9s-python-3.11/setup_rstudio.py".pathChanged()
-      || "rstudio/c9s-python-3.11/supervisord/supervisord.conf".pathChanged() || "rstudio/c9s-python-3.11/utils/***".pathChanged()
-      || ".tekton/rstudio-c9s-python-3-11-pull-request.yaml".pathChanged() || "rstudio/c9s-python-3.11/Dockerfile.cpu".pathChanged()
-      ) && has(body.repository) && body.repository.full_name == "opendatahub-io/notebooks"
+      == "main" && ( "rstudio/c9s-python-3.11/Pipfile.lock".pathChanged() || "rstudio/c9s-python-3.11/install_packages.R".pathChanged()
+      || "rstudio/c9s-python-3.11/nginx/api/***".pathChanged() || "rstudio/c9s-python-3.11/nginx/httpconf/***".pathChanged()
+      || "rstudio/c9s-python-3.11/nginx/root/***".pathChanged() || "rstudio/c9s-python-3.11/nginx/serverconf/***".pathChanged()
+      || "rstudio/c9s-python-3.11/rsession.conf".pathChanged() || "rstudio/c9s-python-3.11/rsession.sh".pathChanged()
+      || "rstudio/c9s-python-3.11/run-nginx.sh".pathChanged() || "rstudio/c9s-python-3.11/run-rstudio.sh".pathChanged()
+      || "rstudio/c9s-python-3.11/setup_rstudio.py".pathChanged() || "rstudio/c9s-python-3.11/supervisord/supervisord.conf".pathChanged()
+      || "rstudio/c9s-python-3.11/utils/***".pathChanged() || ".tekton/rstudio-c9s-python-3-11-pull-request.yaml".pathChanged()
+      || "rstudio/c9s-python-3.11/Dockerfile.cpu".pathChanged() ) && has(body.repository)
+      && body.repository.full_name == "opendatahub-io/notebooks"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: notebooks
@@ -606,7 +607,18 @@ spec:
       optional: true
     - name: netrc
       optional: true
+  taskRunSpecs:
+  - computeResources:
+      limits:
+        memory: 8Gi
+    pipelineTaskName: ecosystem-cert-preflight-checks
+  - computeResources:
+      limits:
+        memory: 8Gi
+    pipelineTaskName: clair-scan
   taskRunTemplate: {}
+  timeouts:
+    pipeline: 4h
   workspaces:
   - name: git-auth
     secret:

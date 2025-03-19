@@ -11,9 +11,9 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
-      == "main" && ( "cuda/ubi9-python-3.11/NGC-DL-CONTAINER-LICENSE".pathChanged()
-      || "cuda/ubi9-python-3.11/cuda.repo-x86_64".pathChanged() || "runtimes/pytorch/ubi9-python-3.11/Pipfile.lock".pathChanged()
-      || "runtimes/pytorch/ubi9-python-3.11/utils/***".pathChanged() || ".tekton/runtime-cuda-pytorch-ubi9-python-3-11-pull-request.yaml".pathChanged()
+      == "main" && ( "cuda/NGC-DL-CONTAINER-LICENSE".pathChanged() || "cuda/cuda.repo-x86_64".pathChanged()
+      || "runtimes/pytorch/ubi9-python-3.11/Pipfile.lock".pathChanged() || "runtimes/pytorch/ubi9-python-3.11/utils/***".pathChanged()
+      || ".tekton/runtime-cuda-pytorch-ubi9-python-3-11-pull-request.yaml".pathChanged()
       || "runtimes/pytorch/ubi9-python-3.11/Dockerfile.cuda".pathChanged() ) && has(body.repository)
       && body.repository.full_name == "opendatahub-io/notebooks"
   creationTimestamp: null
@@ -603,7 +603,18 @@ spec:
       optional: true
     - name: netrc
       optional: true
+  taskRunSpecs:
+  - computeResources:
+      limits:
+        memory: 8Gi
+    pipelineTaskName: ecosystem-cert-preflight-checks
+  - computeResources:
+      limits:
+        memory: 8Gi
+    pipelineTaskName: clair-scan
   taskRunTemplate: {}
+  timeouts:
+    pipeline: 4h
   workspaces:
   - name: git-auth
     secret:
