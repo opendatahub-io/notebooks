@@ -598,7 +598,18 @@ spec:
       optional: true
     - name: netrc
       optional: true
+  taskRunSpecs:
+  - computeResources:
+      limits:
+        memory: 8Gi
+    pipelineTaskName: ecosystem-cert-preflight-checks
+  - computeResources:
+      limits:
+        memory: 8Gi
+    pipelineTaskName: clair-scan
   taskRunTemplate: {}
+  timeouts:
+    pipeline: 4h
   workspaces:
   - name: git-auth
     secret:
