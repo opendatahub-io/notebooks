@@ -1,0 +1,91 @@
+---
+# The aim of this GitHub workflow is to update the runtimes across `/jupyter/datascience/ubi*-python-*/runtime-images/*.json` paths.
+name: Update Runtime JSON Files (old structure this GHA will be deprecated soon)
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+    inputs:
+      branch:
+        required: false
+        description: "Optional: Provide branch name"
+      user-hash:
+        required: false
+        description: "Optional: Specify a Git hash (it should exists on the branch history)"
+
+env:
+  USER_HASH: ${{ github.event.inputs.user-hash }}
+  REPO_ORG: ${{ github.repository_owner }}
+  REPO_NAME: 'notebooks'
+  TMP_BRANCH: tmp-runtimes-sync-${{ github.run_id }}
+  BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
+
+jobs:
+  update-runtimes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Install Skopeo CLI
+        shell: bash
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install skopeo
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH_NAME }}
+
+      - name: Create a new branch
+        run: |
+         echo ${{ env.TMP_BRANCH }}
+         git checkout -b ${{ env.TMP_BRANCH }}
+         git push --set-upstream origin ${{ env.TMP_BRANCH }}
+
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TMP_BRANCH }}
+          fetch-depth: 0
+
+      - name: Invoke runtimes-updater script to handle the updates
+        shell: bash
+        run: |
+          bash "${GITHUB_WORKSPACE}/ci/runtimes-digest-updater-old-structure.sh" "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}" "${{ env.BRANCH_NAME }}" "${{ env.REPO_NAME }}"
+
+      - name: Commit Changes
+        run: |
+
+            if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
+              git fetch origin "${{ env.TMP_BRANCH }}" && \
+                git pull origin "${{ env.TMP_BRANCH }}" && \
+                git add jupyter/datascience/* && \
+                git commit -m "Update file via ${{ env.TMP_BRANCH }} GitHub action" && \
+                git push origin "${{ env.TMP_BRANCH }}"
+            else
+              echo "There were no changes detected in the images for the ${{ env.BRANCH_NAME }}"
+            fi
+
+      - name: pull-request
+        run: |
+            gh pr create --repo https://github.com/$REPO_ORG/$REPO_NAME.git \
+              --title "$pr_title" \
+              --body "$pr_body" \
+              --head $REPO_ORG:${{ env.TMP_BRANCH }} \
+              --base ${{ env.BRANCH_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          pr_title: "[Runtimes Updater Action] Update Runtimes json files"
+          pr_body: |
+            :rocket: This is an automated Pull Request.
+            Created by `/.github/workflows/runtimes-digest-updater-upstream.yaml`
+
+            This PR updates the following files:
+            - All the runtime images across `/jupyter/datascience/ubi*-python-*/runtime-images/*.json` paths
+
+            :exclamation: **IMPORTANT NOTE**: Remember to delete the ` ${{ env.TMP_BRANCH }}` branch after merging the changes
