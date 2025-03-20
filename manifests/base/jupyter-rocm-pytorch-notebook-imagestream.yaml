@@ -44,7 +44,7 @@ spec:
             {"name": "MySQL Connector/Python", "version": "9.2"},
             {"name": "Kubeflow-Training", "version": "1.9"}
           ]
-        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        openshift.io/imported-from: quay.io/modh/rocm-notebooks
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: $(odh-rocm-pytorch-notebook-image-commit-n)
       from:
@@ -53,7 +53,7 @@ spec:
       name: "2025.1"
       referencePolicy:
         type: Source
-    # N-1 Version of the image
+    # N - 1 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -83,8 +83,8 @@ spec:
             {"name": "Kubeflow-Training", "version": "1.8"}
           ]
         openshift.io/imported-from: quay.io/modh/rocm-notebooks
-        opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/notebook-build-commit: $(odh-rocm-pytorch-notebook-image-commit-n)
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: $(odh-rocm-pytorch-notebook-image-commit-n-1)
       from:
         kind: DockerImage
         name: $(odh-rocm-pytorch-notebook-image-n-1)

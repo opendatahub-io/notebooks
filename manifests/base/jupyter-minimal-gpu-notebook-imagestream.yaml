@@ -37,7 +37,7 @@ spec:
       name: "2025.1"
       referencePolicy:
         type: Source
-    # N-1 Version of the image
+    # N -1  Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -59,7 +59,30 @@ spec:
       name: "2024.2"
       referencePolicy:
         type: Source
-    # N-2 Version of the image
+    # N - 2 Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "CUDA", "version": "12.1"},
+            {"name": "Python", "version": "v3.9"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "3.6"},
+            {"name": "Notebook","version": "6.5"}
+          ]
+        openshift.io/imported-from: quay.io/modh/cuda-notebooks
+        opendatahub.io/image-tag-outdated: 'true'
+        opendatahub.io/notebook-build-commit: $(odh-minimal-gpu-notebook-image-commit-n-2)
+      from:
+        kind: DockerImage
+        name: $(odh-minimal-gpu-notebook-image-n-2)
+      name: "2024.1"
+      referencePolicy:
+        type: Source
+    # N - 3 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -75,14 +98,14 @@ spec:
           ]
         openshift.io/imported-from: quay.io/modh/cuda-notebooks
         opendatahub.io/image-tag-outdated: "true"
-        opendatahub.io/notebook-build-commit: $(odh-minimal-gpu-notebook-image-commit-n-2)
+        opendatahub.io/notebook-build-commit: $(odh-minimal-gpu-notebook-image-commit-n-3)
       from:
         kind: DockerImage
-        name: $(odh-minimal-gpu-notebook-image-n-2)
+        name: $(odh-minimal-gpu-notebook-image-n-3)
       name: "2023.2"
       referencePolicy:
         type: Source
-    # N-3 Version of the image
+    # N - 4 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -98,14 +121,14 @@ spec:
           ]
         openshift.io/imported-from: quay.io/modh/cuda-notebooks
         opendatahub.io/image-tag-outdated: "true"
-        opendatahub.io/notebook-build-commit: $(odh-minimal-gpu-notebook-image-commit-n-3)
+        opendatahub.io/notebook-build-commit: $(odh-minimal-gpu-notebook-image-commit-n-4)
       from:
         kind: DockerImage
-        name: $(odh-minimal-gpu-notebook-image-n-3)
+        name: $(odh-minimal-gpu-notebook-image-n-4)
       name: "2023.1"
       referencePolicy:
         type: Source
-    # N-4 Version of the image
+    # N - 5 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -121,10 +144,10 @@ spec:
           ]
         openshift.io/imported-from: quay.io/modh/cuda-notebooks
         opendatahub.io/image-tag-outdated: 'true'
-        opendatahub.io/notebook-build-commit: $(odh-minimal-gpu-notebook-image-commit-n-4)
+        opendatahub.io/notebook-build-commit: $(odh-minimal-gpu-notebook-image-commit-n-5)
       from:
         kind: DockerImage
-        name: $(odh-minimal-gpu-notebook-image-n-4)
+        name: $(odh-minimal-gpu-notebook-image-n-5)
       name: "1.2"
       referencePolicy:
         type: Source

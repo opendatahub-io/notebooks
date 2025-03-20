@@ -36,7 +36,7 @@ spec:
             {"name": "ipykernel", "version": "6.29"},
             {"name": "Kubeflow-Training", "version": "1.9"}
           ]
-        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        openshift.io/imported-from: quay.io/modh/codeserver
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: $(odh-codeserver-notebook-image-commit-n)
       from:
@@ -45,7 +45,7 @@ spec:
       name: "2025.1"
       referencePolicy:
         type: Source
-    # N-1 Version of the image
+    # N - 1 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -68,15 +68,15 @@ spec:
             {"name": "Kubeflow-Training", "version": "1.8"}
           ]
         openshift.io/imported-from: quay.io/modh/codeserver
-        opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/notebook-build-commit: $(odh-codeserver-notebook-image-commit-n)
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: $(odh-codeserver-notebook-image-commit-n-1)
       from:
         kind: DockerImage
-        name: $(odh-codeserver-notebook-image-n)
+        name: $(odh-codeserver-notebook-image-n-1)
       name: "2024.2"
       referencePolicy:
         type: Source
-    # N - 1 Version of the image
+    # N - 2 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -99,24 +99,24 @@ spec:
             {"name": "ipykernel", "version": "6.29"}
           ]
         openshift.io/imported-from: quay.io/modh/codeserver
-        opendatahub.io/workbench-image-recommended: 'false'
-        opendatahub.io/notebook-build-commit: $(odh-codeserver-notebook-image-commit-n-1)
+        opendatahub.io/image-tag-outdated: "true"
+        opendatahub.io/notebook-build-commit: $(odh-codeserver-notebook-image-commit-n-2)
       from:
         kind: DockerImage
-        name: $(odh-codeserver-notebook-image-n-1)
-      name: "2024.2"
+        name: $(odh-codeserver-notebook-image-n-2)
+      name: "2024.1"
       referencePolicy:
         type: Source
-    # N - 2 Version of the image
+    # N - 3 Version of the image
     - annotations:
         opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
         opendatahub.io/notebook-python-dependencies: '[{"name":"code-server","version":"4.16"}]'
         openshift.io/imported-from: quay.io/modh/codeserver
         opendatahub.io/image-tag-outdated: 'true'
-        opendatahub.io/notebook-build-commit: $(odh-codeserver-notebook-image-commit-n-2)
+        opendatahub.io/notebook-build-commit: $(odh-codeserver-notebook-image-commit-n-3)
       from:
         kind: DockerImage
-        name: $(odh-codeserver-notebook-image-n-2)
+        name: $(odh-codeserver-notebook-image-n-3)
       name: "2023.2"
       referencePolicy:
         type: Source
