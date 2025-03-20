@@ -25,12 +25,15 @@ class TestRStudioImage:
     APP_ROOT_HOME = "/opt/app-root/src"
 
     @allure.issue("RHOAIENG-17256")
-    def test_rmd_to_pdf_rendering(self, rstudio_image: str) -> None:
+    def test_rmd_to_pdf_rendering(self, rstudio_image: docker.models.images.Image) -> None:
         """
         References:
             https://stackoverflow.com/questions/40563479/relationship-between-r-markdown-knitr-pandoc-and-bookdown
             https://www.earthdatascience.org/courses/earth-analytics/document-your-science/knit-rmarkdown-document-to-pdf/
         """
+        if "rhel" in rstudio_image.labels['name']:
+            pytest.skip("ISSUE-957, RHOAIENG-17256(comments): RStudio workbench on RHEL does not come with knitr preinstalled")
+
         container = WorkbenchContainer(image=rstudio_image, user=1000, group_add=[0])
         try:
             container.start(wait_for_readiness=False)
