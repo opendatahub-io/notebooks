@@ -26,6 +26,48 @@ spec:
           [
             {"name": "JupyterLab","version": "4.2"},
             {"name": "TrustyAI", "version": "0.6"},
+            {"name": "Transformers", "version": "4.49"},
+            {"name": "Datasets", "version": "3.4"},
+            {"name": "Accelerate", "version": "1.5"},
+            {"name": "Torch", "version": "2.6"},
+            {"name": "Boto3", "version": "1.37"},
+            {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Kfp", "version": "2.12"},
+            {"name": "Matplotlib", "version": "3.6"},
+            {"name": "Numpy", "version": "1.24"},
+            {"name": "Pandas", "version": "1.5"},
+            {"name": "Scikit-learn", "version": "1.2"},
+            {"name": "Scipy", "version": "1.15"},
+            {"name": "Odh-Elyra", "version": "4.2"},
+            {"name": "PyMongo", "version": "4.11"},
+            {"name": "Pyodbc", "version": "5.2"},
+            {"name": "Codeflare-SDK", "version": "0.27"},
+            {"name": "Sklearn-onnx", "version": "1.18"},
+            {"name": "Psycopg", "version": "3.2"},
+            {"name": "MySQL Connector/Python", "version": "9.2"},
+            {"name": "Kubeflow-Training", "version": "1.9"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: $(odh-trustyai-notebook-image-commit-n)
+      from:
+        kind: DockerImage
+        name: $(odh-trustyai-notebook-image-n)
+      name: "2025.1"
+      referencePolicy:
+        type: Source
+    # N-1 Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.11"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab","version": "4.2"},
+            {"name": "TrustyAI", "version": "0.6"},
             {"name": "Transformers", "version": "4.38"},
             {"name": "Datasets", "version": "2.21"},
             {"name": "Accelerate", "version": "0.34"},
@@ -89,7 +131,7 @@ spec:
       from:
         kind: DockerImage
         name: $(odh-trustyai-notebook-image-n-1)
-      name: "2024.1"
+      name: "2024.2"
       referencePolicy:
         type: Source
     # N-2 Version of the image

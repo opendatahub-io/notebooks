@@ -39,7 +39,7 @@ spec:
         # language=json
         opendatahub.io/notebook-software: |
           [
-            {"name": "Python", "version": "v3.9"}
+            {"name": "Python", "version": "v3.11"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
@@ -54,7 +54,7 @@ spec:
       from:
         kind: DockerImage
         name: $(odh-minimal-notebook-image-n-1)
-      name: "2024.1"
+      name: "2024.2"
       referencePolicy:
         type: Source
     # N-2 Version of the image
