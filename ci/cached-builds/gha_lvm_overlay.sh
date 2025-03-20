@@ -17,7 +17,6 @@ build_mount_path_ownership="runner:runner"
 
 pv_loop_path=/pv.img
 tmp_pv_loop_path=/mnt/tmp-pv.img
-overprovision_lvm=false
 
 VG_NAME=buildvg
 
@@ -60,14 +59,16 @@ sudo swapon "/dev/mapper/${VG_NAME}-swap"
 echo "Creating build volume"
 # create and mount build volume
 sudo lvcreate --type raid0 --stripes 2 --stripesize 4 --alloc anywhere --extents 100%FREE --name buildlv "${VG_NAME}"
-if [[ ${overprovision_lvm} == 'true' ]]; then
-  sudo mkfs.ext4 -m0 "/dev/mapper/${VG_NAME}-buildlv"
-else
-  sudo mkfs.ext4 -Enodiscard -m0 "/dev/mapper/${VG_NAME}-buildlv"
-fi
+# https://btrfs.readthedocs.io/en/latest/mkfs.btrfs.html
+# https://btrfs.readthedocs.io/en/latest/Administration.html
+sudo mkfs.btrfs "/dev/mapper/${VG_NAME}-buildlv"
+
 mkdir -p "${build_mount_path}"
-# https://www.alibabacloud.com/help/en/ecs/use-cases/mount-parameters-for-ext4-file-systems?spm=a2c63.p38356.help-menu-25365.d_5_10_12.48ce3be5RixoUB#8e740ed072m5o
-sudo mount -o defaults,noatime,nodiratime,nobarrier,nodelalloc,data=writeback "/dev/mapper/${VG_NAME}-buildlv" "${build_mount_path}"
+
+# https://github.com/btrfs/btrfs-todo/issues/29
+# https://fedoramagazine.org/working-with-btrfs-compression/
+sudo mount -t btrfs -o defaults,noatime,noautodefrag,nobarrier,compress=zstd:3,nodatasum,nodiscard,nodatacow,space_cache=v2 "/dev/mapper/${VG_NAME}-buildlv" "${build_mount_path}"
+findmnt -vno OPTIONS "${build_mount_path}"
 sudo chown -R "${build_mount_path_ownership}" "${build_mount_path}"
 
 # if build mount path is a parent of $GITHUB_WORKSPACE, and has been deleted, recreate it

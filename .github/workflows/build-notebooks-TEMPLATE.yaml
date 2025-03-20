@@ -54,6 +54,8 @@ jobs:
         with:
           cache-dependency-path: "**/*.sum"
 
+      - run: sudo apt-get update
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -92,6 +94,8 @@ jobs:
           wait
 
           df -h
+
+      - run: sudo apt-get install -y btrfs-compsize
 
       - name: Mount lvm overlay for podman builds
         run: |
@@ -244,6 +248,9 @@ jobs:
 
       - name: "push|schedule|workflow_dispatch: make ${{ inputs.target }}"
         run: |
+          # print running stats on disk occupancy
+          (while true; do df -h | grep "${HOME}/.local/share/containers"; sleep 30; done) &
+
           make ${{ inputs.target }}
         if: ${{ fromJson(inputs.github).event_name == 'push' ||
           fromJson(inputs.github).event_name == 'schedule' ||
@@ -253,6 +260,9 @@ jobs:
           CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
       - name: "pull_request: make ${{ inputs.target }}"
         run: |
+          # print running stats on disk occupancy
+          (while true; do df -h | grep "${HOME}/.local/share/containers"; sleep 30; done) &
+
           make ${{ inputs.target }}
         if: "${{ fromJson(inputs.github).event_name == 'pull_request' }}"
         env:
@@ -567,4 +577,7 @@ jobs:
       # endregion
 
       - run: df -h
+        if: "${{ !cancelled() }}"
+
+      - run: sudo compsize -x "${HOME}/.local/share/containers"
         if: "${{ !cancelled() }}"
