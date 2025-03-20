@@ -25,7 +25,7 @@ spec:
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
-            {"name": "rstudio-server", "version": "2024.04"}
+            {"name": "rstudio-server", "version": "2024.12"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
@@ -33,7 +33,7 @@ spec:
       from:
         kind: DockerImage
         name: $(odh-rstudio-notebook-image-n)
-      name: "2024.2"
+      name: "2025.1"
       referencePolicy:
         type: Source
     # N-1 Version of the image
@@ -47,7 +47,7 @@ spec:
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
-            {"name": "rstudio-server", "version": "2023.12"}
+            {"name": "rstudio-server", "version": "2024.04"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'

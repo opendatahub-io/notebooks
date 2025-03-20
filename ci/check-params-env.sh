@@ -25,7 +25,7 @@ PARAMS_ENV_PATH="manifests/base/params.env"
 
 # This value needs to be updated everytime we deliberately change number of the
 # images we want to have in the `params.env` file.
-EXPECTED_NUM_RECORDS=21
+EXPECTED_NUM_RECORDS=24
 
 # Size change tresholds:
 # Max percentual change
@@ -101,14 +101,14 @@ function check_image_variable_matches_name_and_commitref_and_size() {
     case "${image_variable}" in
         odh-minimal-notebook-image-n)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
-            expected_commitref="2024b"
+            expected_commitref="main"
             expected_build_name="jupyter-minimal-ubi9-python-3.11-amd64"
             expected_img_size=520
             ;;
         odh-minimal-notebook-image-n-1)
-            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
-            expected_commitref="2024a"
-            expected_build_name="jupyter-minimal-ubi9-python-3.9-amd64"
+            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
+            expected_commitref="2024b"
+            expected_build_name="jupyter-minimal-ubi9-python-3.11-amd64"
             expected_img_size=503
             ;;
         odh-minimal-gpu-notebook-image-n)
@@ -137,14 +137,14 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             ;;
         odh-generic-data-science-notebook-image-n)
             expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.11"
-            expected_commitref="2024b"
+            expected_commitref="main"
             expected_build_name="jupyter-datascience-ubi9-python-3.11-amd64"
             expected_img_size=961
             ;;
         odh-generic-data-science-notebook-image-n-1)
-            expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.9"
-            expected_commitref="2024a"
-            expected_build_name="jupyter-datascience-ubi9-python-3.9-amd64"
+            expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.11"
+            expected_commitref="2024b"
+            expected_build_name="jupyter-datascience-ubi9-python-3.11-amd64"
             expected_img_size=904
             ;;
         odh-tensorflow-gpu-notebook-image-n)
@@ -161,38 +161,38 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             ;;
         odh-trustyai-notebook-image-n)
             expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.11"
-            expected_commitref="2024b"
+            expected_commitref="main"
             expected_build_name="jupyter-trustyai-ubi9-python-3.11-amd64"
             expected_img_size=4197
             ;;
         odh-trustyai-notebook-image-n-1)
-            expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.9"
-            expected_commitref="2024a"
-            expected_build_name="jupyter-trustyai-ubi9-python-3.9-amd64"
-            expected_img_size=1158
+            expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.11"
+            expected_commitref="2024b"
+            expected_build_name="jupyter-trustyai-ubi9-python-3.11-amd64"
+            expected_img_size=4197
             ;;
         odh-codeserver-notebook-image-n)
             expected_name="odh-notebook-code-server-ubi9-python-3.11"
-            expected_commitref="2024b"
+            expected_commitref="main"
             expected_build_name="codeserver-ubi9-python-3.11-amd64"
             expected_img_size=893
             ;;
         odh-codeserver-notebook-image-n-1)
-            expected_name="odh-notebook-code-server-ubi9-python-3.9"
-            expected_commitref="2024a"
-            expected_build_name="codeserver-ubi9-python-3.9-amd64"
+            expected_name="odh-notebook-code-server-ubi9-python-3.11"
+            expected_commitref="2024b"
+            expected_build_name="codeserver-ubi9-python-3.11-amd64"
             expected_img_size=850
             ;;
         odh-rstudio-notebook-image-n)
             expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
-            expected_commitref="2024b"
+            expected_commitref="main"
             expected_build_name="rstudio-c9s-python-3.11-amd64"
             expected_img_size=1242
             ;;
         odh-rstudio-notebook-image-n-1)
-            expected_name="odh-notebook-rstudio-server-c9s-python-3.9"
-            expected_commitref="2024a"
-            expected_build_name="rstudio-c9s-python-3.9-amd64"
+            expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
+            expected_commitref="2024b"
+            expected_build_name="rstudio-c9s-python-3.11-amd64"
             expected_img_size=1208
             ;;
         # For both RStudio GPU workbenches - the final name labels are identical to plain RStudio ones
@@ -212,17 +212,35 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             ;;
         odh-rocm-minimal-notebook-image-n)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
+            expected_commitref="main"
+            expected_build_name="rocm-jupyter-minimal-ubi9-python-3.11-amd64"
+            expected_img_size=4830
+            ;;
+        odh-rocm-minimal-notebook-image-n-1)
+            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="rocm-jupyter-minimal-ubi9-python-3.11-amd64"
             expected_img_size=4830
             ;;
         odh-rocm-pytorch-notebook-image-n)
             expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11"
+            expected_commitref="main"
+            expected_build_name="rocm-jupyter-pytorch-ubi9-python-3.11-amd64"
+            expected_img_size=6571
+            ;;
+        odh-rocm-pytorch-notebook-image-n-1)
+            expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="rocm-jupyter-pytorch-ubi9-python-3.11-amd64"
             expected_img_size=6571
             ;;
         odh-rocm-tensorflow-notebook-image-n)
+            expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11"
+            expected_commitref="main"
+            expected_build_name="rocm-jupyter-tensorflow-ubi9-python-3.11-amd64"
+            expected_img_size=5782
+            ;;
+        odh-rocm-tensorflow-notebook-image-n-1)
             expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="rocm-jupyter-tensorflow-ubi9-python-3.11-amd64"
