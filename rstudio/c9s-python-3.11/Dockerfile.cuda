@@ -137,7 +137,7 @@ RUN yum install -y \
     ${NV_CUDNN_PACKAGE_DEV} \
     && yum clean all \
     && rm -rf /var/cache/yum/*
-    
+
 # Set this flag so that libraries can find the location of CUDA
 ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 
@@ -170,7 +170,7 @@ LABEL name="odh-notebook-rstudio-server-cuda-c9s-python-3.11" \
 
 USER 0
 
-ENV R_VERSION=4.4.1
+ENV R_VERSION=4.4.3
 
 # Install R
 RUN yum install -y yum-utils && \
@@ -184,39 +184,38 @@ RUN yum install -y yum-utils && \
     yum -y clean all --enablerepo='*'
 
 # set R library to default (used in install.r from littler)
-RUN chmod -R a+w /usr/lib64/R/library
 ENV LIBLOC=/usr/lib64/R/library
-
-# set User R Library path
-RUN mkdir -p /opt/app-root/bin/Rpackages/4.4 && chmod -R a+w /opt/app-root/bin/Rpackages/4.4
 ENV R_LIBS_USER=/opt/app-root/bin/Rpackages/4.4
+
+RUN chmod -R a+w ${LIBLOC} && \
+    # create User R Library path
+    mkdir -p ${R_LIBS_USER} && \
+    chmod -R a+w ${R_LIBS_USER}
 
 WORKDIR /tmp/
 
 # Install RStudio
-RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/rstudio-server-rhel-2024.04.2-764-x86_64.rpm && \
-    yum install -y rstudio-server-rhel-2024.04.2-764-x86_64.rpm && \
-    rm rstudio-server-rhel-2024.04.2-764-x86_64.rpm && \
-    yum -y clean all  --enablerepo='*'
+ARG RSTUDIO_RPM=rstudio-server-rhel-2024.12.1-563-x86_64.rpm
+RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel8/x86_64/${RSTUDIO_RPM} && \
+    yum install -y ${RSTUDIO_RPM} && \
+    rm ${RSTUDIO_RPM} && \
+    yum -y clean all  --enablerepo='*' && \
+    # Specific RStudio config and fixes
+    chmod 1777 /var/run/rstudio-server && \
+    mkdir -p /usr/share/doc/R && \
+    # package installation
+    # install necessary texlive-framed package to make Knit R markup to PDF rendering possible
+    dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed && \
+    dnf clean all && \
+    rm -rf /var/cache/yum
 
-# Specific RStudio config and fixes
-RUN chmod 1777 /var/run/rstudio-server && \
-    mkdir -p /usr/share/doc/R
 COPY ${RSTUDIO_SOURCE_CODE}/rsession.conf /etc/rstudio/rsession.conf
 
-# package installation
-# install necessary texlive-framed package to make Knit R markup to PDF rendering possible
-RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed \
-    && dnf clean all && rm -rf /var/cache/yum
 # Install R packages
-RUN R -e "install.packages('remotes')"
-RUN R -e "require('remotes'); \
-    remotes::install_version('Rcpp','1.0.14'); \
-    remotes::install_version('tidyverse','2.0.0'); \
-    remotes::install_version('tidymodels','1.2.0'); \
-    remotes::install_version('plumber','1.2.2'); \
-    remotes::install_version('vetiver','0.2.5'); \
-    remotes::install_version('devtools','2.4.5');"
+# https://cran.r-project.org/web/packages
+COPY ${RSTUDIO_SOURCE_CODE}/install_packages.R ./
+RUN R -f ./install_packages.R && \
+    rm ./install_packages.R
 
 # Install NGINX to proxy RStudio and pass probes check
 ENV NGINX_VERSION=1.24 \
