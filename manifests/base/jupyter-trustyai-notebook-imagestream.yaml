@@ -56,7 +56,7 @@ spec:
       name: "2025.1"
       referencePolicy:
         type: Source
-    # N-1 Version of the image
+    # N - 1 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -90,15 +90,15 @@ spec:
             {"name": "Kubeflow-Training", "version": "1.8"}
           ]
         openshift.io/imported-from: quay.io/modh/odh-trustyai-notebook
-        opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/notebook-build-commit: $(odh-trustyai-notebook-image-commit-n)
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: $(odh-trustyai-notebook-image-commit-n-1)
       from:
         kind: DockerImage
-        name: $(odh-trustyai-notebook-image-n)
+        name: $(odh-trustyai-notebook-image-n-1)
       name: "2024.2"
       referencePolicy:
         type: Source
-    # N-1 Version of the image
+    # N - 2 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -126,15 +126,15 @@ spec:
             {"name": "MySQL Connector/Python", "version": "8.3"}
           ]
         openshift.io/imported-from: quay.io/modh/odh-trustyai-notebook
-        opendatahub.io/workbench-image-recommended: 'false'
-        opendatahub.io/notebook-build-commit: $(odh-trustyai-notebook-image-commit-n-1)
+        opendatahub.io/image-tag-outdated: "true"
+        opendatahub.io/notebook-build-commit: $(odh-trustyai-notebook-image-commit-n-2)
       from:
         kind: DockerImage
-        name: $(odh-trustyai-notebook-image-n-1)
-      name: "2024.2"
+        name: $(odh-trustyai-notebook-image-n-2)
+      name: "2024.1"
       referencePolicy:
         type: Source
-    # N-2 Version of the image
+    # N - 3 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -163,14 +163,14 @@ spec:
           ]
         openshift.io/imported-from: quay.io/modh/odh-trustyai-notebook
         opendatahub.io/image-tag-outdated: "true"
-        opendatahub.io/notebook-build-commit: $(odh-trustyai-notebook-image-commit-n-2)
+        opendatahub.io/notebook-build-commit: $(odh-trustyai-notebook-image-commit-n-3)
       from:
         kind: DockerImage
-        name: $(odh-trustyai-notebook-image-n-2)
+        name: $(odh-trustyai-notebook-image-n-3)
       name: "2023.2"
       referencePolicy:
         type: Source
-    # N-3 Version of the image
+    # N - 4 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -193,10 +193,10 @@ spec:
           ]
         openshift.io/imported-from: quay.io/modh/odh-trustyai-notebook
         opendatahub.io/image-tag-outdated: "true"
-        opendatahub.io/notebook-build-commit: $(odh-trustyai-notebook-image-commit-n-3)
+        opendatahub.io/notebook-build-commit: $(odh-trustyai-notebook-image-commit-n-4)
       from:
         kind: DockerImage
-        name: $(odh-trustyai-notebook-image-n-3)
+        name: $(odh-trustyai-notebook-image-n-4)
       name: "2023.1"
       referencePolicy:
         type: Source
