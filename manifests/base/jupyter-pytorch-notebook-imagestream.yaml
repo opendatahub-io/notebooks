@@ -20,6 +20,47 @@ spec:
         # language=json
         opendatahub.io/notebook-software: |
           [
+            {"name": "CUDA", "version": "12.6"},
+            {"name": "Python", "version": "v3.11"},
+            {"name": "PyTorch", "version": "2.6"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab","version": "4.2"},
+            {"name": "PyTorch", "version": "2.6"},
+            {"name": "Tensorboard", "version": "2.19"},
+            {"name": "Boto3", "version": "1.37"},
+            {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Kfp", "version": "2.12"},
+            {"name": "Matplotlib", "version": "3.10"},
+            {"name": "Numpy", "version": "2.2"},
+            {"name": "Pandas", "version": "2.2"},
+            {"name": "Scikit-learn", "version": "1.6"},
+            {"name": "Scipy", "version": "1.15"},
+            {"name": "Odh-Elyra", "version": "4.2"},
+            {"name": "PyMongo", "version": "4.11"},
+            {"name": "Pyodbc", "version": "5.2"},
+            {"name": "Codeflare-SDK", "version": "0.27"},
+            {"name": "Sklearn-onnx", "version": "1.18"},
+            {"name": "Psycopg", "version": "3.2"},
+            {"name": "MySQL Connector/Python", "version": "9.2"},
+            {"name": "Kubeflow-Training", "version": "1.9"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: $(odh-pytorch-gpu-notebook-image-commit-n)
+      from:
+        kind: DockerImage
+        name: $(odh-pytorch-gpu-notebook-image-n)
+      name: "2025.1"
+      referencePolicy:
+        type: Source
+    # N-1 Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
             {"name": "CUDA", "version": "12.4"},
             {"name": "Python", "version": "v3.11"},
             {"name": "PyTorch", "version": "2.4"}
@@ -93,7 +134,7 @@ spec:
       from:
         kind: DockerImage
         name: $(odh-pytorch-gpu-notebook-image-n-1)
-      name: "2024.1"
+      name: "2024.2"
       referencePolicy:
         type: Source
     # N-2 Version of the image

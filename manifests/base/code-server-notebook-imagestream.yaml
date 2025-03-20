@@ -19,6 +19,37 @@ spec:
         # language=json
         opendatahub.io/notebook-software: |
           [
+            {"name": "code-server", "version": "4.98"},
+            {"name": "Python", "version": "v3.11"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "Boto3", "version": "1.37"},
+            {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Matplotlib", "version": "3.10"},
+            {"name": "Numpy", "version": "2.2"},
+            {"name": "Pandas", "version": "2.2"},
+            {"name": "Scikit-learn", "version": "1.6"},
+            {"name": "Scipy", "version": "1.15"},
+            {"name": "Sklearn-onnx", "version": "1.18"},
+            {"name": "ipykernel", "version": "6.29"},
+            {"name": "Kubeflow-Training", "version": "1.9"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: $(odh-codeserver-notebook-image-commit-n)
+      from:
+        kind: DockerImage
+        name: $(odh-codeserver-notebook-image-n)
+      name: "2025.1"
+      referencePolicy:
+        type: Source
+    # N-1 Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
             {"name": "code-server", "version": "4.92"},
             {"name": "Python", "version": "v3.11"}
           ]
@@ -73,7 +104,7 @@ spec:
       from:
         kind: DockerImage
         name: $(odh-codeserver-notebook-image-n-1)
-      name: "2024.1"
+      name: "2024.2"
       referencePolicy:
         type: Source
     # N - 2 Version of the image

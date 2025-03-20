@@ -1,24 +1,29 @@
 ---
-# The aim of this GitHub workflow is to update the runtime images across `/jupyter/datascience/ubi*-python-*/runtime-images/*.json` paths.
-name: Update runtime images
+# The aim of this GitHub workflow is to update the runtimes across `/jupyter/datascience/ubi*-python-*/runtime-images/*.json` paths.
+name: Update Runtime JSON Files (old structure this GHA will be deprecated soon)
 on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:
       branch:
-        required: true
-        description: "Provide the name of the branch you want to update ex main, vYYYYx etc: "
-        # Put the scheduler on comment until automate the full release procedure
-        # schedule:
-        #   - cron: "0 0 * * 5"  #Scheduled every Friday
+        required: false
+        description: "Optional: Provide branch name"
+      user-hash:
+        required: false
+        description: "Optional: Specify a Git hash (it should exists on the branch history)"
+
 env:
-  DIGEST_UPDATER_BRANCH: digest-updater-${{ github.run_id }}
+  USER_HASH: ${{ github.event.inputs.user-hash }}
+  REPO_ORG: ${{ github.repository_owner }}
+  REPO_NAME: 'notebooks'
+  TMP_BRANCH: tmp-runtimes-sync-${{ github.run_id }}
   BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
-  RELEASE_VERSION_N: 2024b
+
 jobs:
-  initialize:
+  update-runtimes:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Install Skopeo CLI
         shell: bash
@@ -26,106 +31,61 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install skopeo
 
-      # Checkout the branch
-      - name: Checkout branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.BRANCH_NAME }}
-
-      # Create a new branch
-      - name: Create a new branch
-        run: |
-         echo ${{ env.DIGEST_UPDATER_BRANCH }}
-         git checkout -b ${{ env.DIGEST_UPDATER_BRANCH }}
-         git push --set-upstream origin ${{ env.DIGEST_UPDATER_BRANCH }}
-
-  update-runtimes:
-    needs: [initialize]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
       - name: Configure Git
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "GitHub Actions"
 
-      # Get latest build commit from the https://github.com/red-hat-data-services/notebooks/${release_branch} using this as identifier for the latest tag name
-      - name: Retrive latest commit hash from the release branch
-        id: hash-n
-        shell: bash
-        run: |
-          PAYLOAD=$(curl --silent -H 'Accept: application/vnd.github.v4.raw' https://api.github.com/repos/red-hat-data-services/notebooks/commits?sha=release-$RELEASE_VERSION_N&per_page=1)
-          echo "HASH_N=$(echo $PAYLOAD | jq -r '.[0].sha[0:7]')" >> ${GITHUB_OUTPUT}
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH_NAME }}
 
-      # Checkout the release branch to apply the updates
+      - name: Create a new branch
+        run: |
+         echo ${{ env.TMP_BRANCH }}
+         git checkout -b ${{ env.TMP_BRANCH }}
+         git push --set-upstream origin ${{ env.TMP_BRANCH }}
+
       - name: Checkout release branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.DIGEST_UPDATER_BRANCH }}
+          ref: ${{ env.TMP_BRANCH }}
+          fetch-depth: 0
 
-      - name: Update Runtimes
+      - name: Invoke runtimes-updater script to handle the updates
+        shell: bash
         run: |
-            echo "Latest commit is: ${{ steps.hash-n.outputs.HASH_N }} on ${{ env.RELEASE_VERSION_N }}"
+          bash "${GITHUB_WORKSPACE}/ci/runtimes-digest-updater-old-structure.sh" "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}" "${{ env.BRANCH_NAME }}" "${{ env.REPO_NAME }}"
 
-            find . -name runtime-images -type d -exec find {} -type f -print \; | grep python-3.11 | while read -r path; do
-              echo "Processing the '${path}' file."
-
-              img=$(jq -r '.metadata.image_name' "${path}")
-              name=$(echo "$path" | sed 's#.*runtime-images/\(.*\)-py.*#\1#')
-              py_version=$(echo "$path" | grep -o 'python-[0-9]\.[0-9]*')
-              # Handling specific cases
-              if [[ $name == tensorflow* ]]; then
-                name="cuda-$name"
-              elif [[ $name == ubi* ]]; then
-                name="minimal-$name"
-              fi
-              registry=$(echo "$img" | cut -d '@' -f1)
-              regex="^runtime-$name-$py_version-${{ env.RELEASE_VERSION_N }}-\d+-${{ steps.hash-n.outputs.HASH_N }}\$"
-              latest_tag=$(skopeo inspect --retry-times 3 "docker://$img" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
-              echo "CHECKING: ${latest_tag}"
-              if [[ -z "${latest_tag}" ]]; then
-                echo "No matching tag found"
-                exit 1
-              fi
-              digest=$(skopeo inspect --retry-times 3 "docker://$registry:$latest_tag" | jq .Digest | tr -d '"')
-              output="${registry}@${digest}"
-              echo "NEW: ${output}"
-              jq --arg output "$output" '.metadata.image_name = $output' "$path" > "$path.tmp" && mv "$path.tmp" "$path"
-            done
+      - name: Commit Changes
+        run: |
 
             if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-              git fetch origin "${{ env.DIGEST_UPDATER_BRANCH }}" && \
-                git pull origin "${{ env.DIGEST_UPDATER_BRANCH }}" && \
+              git fetch origin "${{ env.TMP_BRANCH }}" && \
+                git pull origin "${{ env.TMP_BRANCH }}" && \
                 git add jupyter/datascience/* && \
-                git commit -m "Update file via ${{ env.DIGEST_UPDATER_BRANCH }} GitHub action" && \
-                git push origin "${{ env.DIGEST_UPDATER_BRANCH }}"
+                git commit -m "Update file via ${{ env.TMP_BRANCH }} GitHub action" && \
+                git push origin "${{ env.TMP_BRANCH }}"
             else
-              echo "There were no changes detected in the images for the ${{ env.RELEASE_VERSION_N }}"
+              echo "There were no changes detected in the images for the ${{ env.BRANCH_NAME }}"
             fi
 
-  open-pull-request:
-    needs: [update-runtimes]
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
       - name: pull-request
-        uses: repo-sync/pull-request@v2
-        with:
-          source_branch: ${{ env.DIGEST_UPDATER_BRANCH }}
-          destination_branch: ${{ env.BRANCH_NAME }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          pr_label: "automated pr"
-          pr_title: "[Digest Updater Action] Update Runtime Images"
+        run: |
+            gh pr create --repo https://github.com/$REPO_ORG/$REPO_NAME.git \
+              --title "$pr_title" \
+              --body "$pr_body" \
+              --head $REPO_ORG:${{ env.TMP_BRANCH }} \
+              --base ${{ env.BRANCH_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          pr_title: "[Runtimes Updater Action] Update Runtimes json files"
           pr_body: |
             :rocket: This is an automated Pull Request.
-            Created by `/.github/workflows/runtime-digest-updater.yaml`
+            Created by `/.github/workflows/runtimes-digest-updater-upstream.yaml`
 
             This PR updates the following files:
             - All the runtime images across `/jupyter/datascience/ubi*-python-*/runtime-images/*.json` paths
 
-            :exclamation: **IMPORTANT NOTE**: Remember to delete the ` ${{ env.DIGEST_UPDATER_BRANCH }}` branch after merging the changes
+            :exclamation: **IMPORTANT NOTE**: Remember to delete the ` ${{ env.TMP_BRANCH }}` branch after merging the changes
