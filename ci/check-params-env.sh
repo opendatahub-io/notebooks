@@ -106,9 +106,9 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_img_size=520
             ;;
         odh-minimal-notebook-image-n-1)
-            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.9"
+            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
             expected_commitref="2024b"
-            expected_build_name="jupyter-minimal-ubi9-python-3.9-amd64"
+            expected_build_name="jupyter-minimal-ubi9-python-3.11-amd64"
             expected_img_size=503
             ;;
         odh-minimal-gpu-notebook-image-n)
@@ -142,9 +142,9 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_img_size=961
             ;;
         odh-generic-data-science-notebook-image-n-1)
-            expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.9"
+            expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.11"
             expected_commitref="2024b"
-            expected_build_name="jupyter-datascience-ubi9-python-3.9-amd64"
+            expected_build_name="jupyter-datascience-ubi9-python-3.11-amd64"
             expected_img_size=904
             ;;
         odh-tensorflow-gpu-notebook-image-n)
@@ -169,7 +169,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.11"
             expected_commitref="2024b"
             expected_build_name="jupyter-trustyai-ubi9-python-3.11-amd64"
-            expected_img_size=1158
+            expected_img_size=4197
             ;;
         odh-codeserver-notebook-image-n)
             expected_name="odh-notebook-code-server-ubi9-python-3.11"
