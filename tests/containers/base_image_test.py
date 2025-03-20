@@ -29,7 +29,7 @@ class TestBaseImage:
 
     """Tests that are applicable for all images we have in this repository."""
 
-    def _run_test(self, image: str, test_fn: Callable[[DockerContainer],_]):
+    def _run_test(self, image: str, test_fn: Callable[[testcontainers.core.container.DockerContainer], None]):
         container = testcontainers.core.container.DockerContainer(image=image, user=23456, group_add=[0])
         container.with_command("/bin/sh -c 'sleep infinity'")
         try:
@@ -37,17 +37,17 @@ class TestBaseImage:
             test_fn(container)
             return
         except Exception as e:
-            pytest.fail(f"Unexpected exception in test: {e}")        
+            pytest.fail(f"Unexpected exception in test: {e}")
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
         # If the return doesn't happen in the try block, fail the test
         pytest.fail("The test did not pass as expected.")
-    
+
 
     def test_elf_files_can_link_runtime_libs(self, subtests: pytest_subtests.SubTests, image):
-        
-        def test_fn(container: DockerContainer):
+
+        def test_fn(container: testcontainers.core.container.DockerContainer):
             def check_elf_file():
                 """This python function will be executed on the image itself.
                 That's why it has to have here all imports it needs."""
@@ -123,13 +123,13 @@ class TestBaseImage:
                         continue  # it's in ../
 
                     with subtests.test(f"{dlib=}"):
-                        pytest.fail(f"{dlib=} has unsatisfied dependencies {deps=}")                
+                        pytest.fail(f"{dlib=} has unsatisfied dependencies {deps=}")
 
         self._run_test(image=image, test_fn=test_fn)
 
     def test_oc_command_runs(self, image: str):
 
-        def test_fn(container: DockerContainer):
+        def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["/bin/sh", "-c", "oc version"])
 
             logging.debug(output.decode())
@@ -139,19 +139,19 @@ class TestBaseImage:
 
     def test_skopeo_command_runs(self, image: str):
 
-        def test_fn(container: DockerContainer):
+        def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["/bin/sh", "-c", "skopeo --version"])
 
             logging.debug(output.decode())
             assert ecode == 0
 
-        self._run_test(image=image, test_fn=test_fn)        
+        self._run_test(image=image, test_fn=test_fn)
 
     def test_pip_install_cowsay_runs(self, image: str):
         """Checks that the Python virtualenv in the image is writable."""
 
 
-        def test_fn(container: DockerContainer):
+        def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["python3", "-m", "pip", "install", "cowsay"])
             logging.debug(output.decode())
             assert ecode == 0
