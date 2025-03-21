@@ -1,0 +1,63 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[[source]]
+url = "https://download.pytorch.org/whl/cu126"
+verify_ssl = true
+name = "pytorch"
+
+[dev-packages]
+
+[packages]
+# PyTorch packages
+tensorboard = "~=2.19.0"
+torch = {version = "==2.6.0+cu126", index = "pytorch"}
+torchvision = {version = "==0.21.0+cu126", index = "pytorch"}
+llmcompressor = "~=0.4.1"
+
+# Datascience and useful extensions
+boto3 = "~=1.37.8"
+kafka-python-ng = "~=2.2.3"
+matplotlib = "~=3.10.1"
+numpy = "<2.0.0"
+pandas = "~=2.2.3"
+plotly = "~=6.0.0"
+scikit-learn = "~=1.6.1"
+scipy = "~=1.15.2"
+skl2onnx = "~=1.18.0"
+onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
+
+# DB connectors
+pymongo = "~=4.11.2"
+psycopg = "~=3.2.5"
+pyodbc = "~=5.2.0"
+mysql-connector-python = "~=9.2.0"
+
+# This is a comprehensive list of python dependencies that Elyra requires to execute Jupyter notebooks.
+ipykernel = "~=6.29.5"
+ipython = "~=9.0.1"
+ipython-genutils = "~=0.2.0"
+jinja2 = "~=3.1.6"
+jupyter-client = "~=8.6.3"
+jupyter-core = "~=5.7.2"
+MarkupSafe = "~=3.0.2"
+minio = "~=7.2.15"
+nbclient = "~=0.10.2"
+nbconvert = "~=7.16.6"
+nbformat = "~=5.10.4"
+papermill = "~=2.6.0"
+pyzmq = "~=26.2.1"
+prompt-toolkit = "~=3.0.50"
+requests = "~=2.32.3"
+tornado = "~=6.4.2"
+traitlets = "~=5.14.3"
+urllib3 = "~=2.3.0"
+
+# Base packages
+setuptools = "==75.8.2"
+wheel = "==0.45.1"
+
+[requires]
+python_version = "3.11"
