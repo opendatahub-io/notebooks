@@ -1,0 +1,61 @@
+---
+"name": "Docs (release notes)"
+"on":
+  "push":
+  "pull_request":
+  "workflow_dispatch":
+
+permissions:
+  contents: read
+
+env:
+  poetry_version: '1.8.3'
+
+jobs:
+  generate-releasenotes:
+    name: Generate list of images for release notes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache poetry in ~/.local
+        uses: actions/cache/restore@v4
+        id: cache-poetry-restore
+        with:
+          path: ~/.local
+          key: "${{ runner.os }}-local-${{ env.poetry_version }}"
+
+      - name: Install poetry
+        if: steps.cache-poetry-restore.outputs.cache-hit != 'true'
+        run: pipx install poetry==${{ env.poetry_version }}
+        env:
+          PIPX_HOME: /home/runner/.local/pipx
+          PIPX_BIN_DIR: /home/runner/.local/bin
+
+      - name: Check poetry is installed correctly
+        run: poetry env info
+
+      - name: Save cache
+        if: steps.cache-poetry-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.local
+          key: ${{ steps.cache-poetry-restore.outputs.cache-primary-key }}
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'poetry'
+
+      - name: Configure poetry
+        run: poetry env use "${{ steps.setup-python.outputs.python-path }}"
+
+      - name: Install deps
+        run: poetry install --sync
+
+      - name: Run the release notes script
+        run: |
+          set -Eeuxo pipefail
+          poetry run ci/package_versions.py | tee ${GITHUB_STEP_SUMMARY}
