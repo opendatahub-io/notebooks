@@ -5,10 +5,10 @@ metadata:
   labels:
     opendatahub.io/notebook-image: "true"
   annotations:
-    opendatahub.io/notebook-image-url: "https://github.com/red-hat-data-services/notebooks/blob/main/jupyter/rocm/tensorflow"
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/rocm/tensorflow"
     opendatahub.io/notebook-image-name: "ROCm-TensorFlow"
     opendatahub.io/notebook-image-desc: "Jupyter ROCm optimized TensorFlow notebook image for ODH notebooks."
-    opendatahub.io/notebook-image-order: "92"
+    opendatahub.io/notebook-image-order: "13"
     opendatahub.io/recommended-accelerators: '["amd.com/gpu"]'
   name: jupyter-rocm-tensorflow
 spec:
@@ -43,7 +43,7 @@ spec:
             {"name": "Psycopg", "version": "3.2"},
             {"name": "MySQL Connector/Python", "version": "9.2"}
           ]
-        openshift.io/imported-from: quay.io/modh/rocm-notebooks
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: $(odh-rocm-tensorflow-notebook-image-commit-n)
       from:
@@ -80,7 +80,7 @@ spec:
             {"name": "Psycopg", "version": "3.2"},
             {"name": "MySQL Connector/Python", "version": "9.0"}
           ]
-        openshift.io/imported-from: quay.io/modh/rocm-notebooks
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: $(odh-rocm-tensorflow-notebook-image-commit-n-1)
       from:
