@@ -148,7 +148,7 @@ def process_dependency_item(item, container_id, annotation_type):
 
     command_mapping = {
         "PyTorch": ["/bin/bash", "-c", f"pip show torch | grep 'Version: '"],
-        "ROCm": ["/bin/bash", "-c", "rpm -q --queryformat '%{VERSION}\n' rocm"],
+        "ROCm": ["/bin/bash", "-c", "rpm -q --queryformat '%{VERSION}\n' rocm-core"],
         "ROCm-PyTorch": ["/bin/bash", "-c", "pip show torch | grep 'Version: ' | grep rocm"],
         "ROCm-TensorFlow": ["/bin/bash", "-c", "pip show tensorflow-rocm | grep 'Version: '"],
         "TensorFlow": ["/bin/bash", "-c", "pip show tensorflow | grep 'Version: '"],
