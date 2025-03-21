@@ -14,8 +14,8 @@ RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 # Other apps and tools installed as default user
 USER 1001
 
-# Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install --no-cache-dir -U "micropipenv[toml]"
+# Install micropipenv and uv to deploy packages from Pipfile.lock
+RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
 
 # Install the oc client
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
@@ -146,7 +146,7 @@ WORKDIR /opt/app-root/src
 #########################
 # cuda-jupyter-minimal  #
 #########################
-FROM cuda-base AS cuda-jupyter-minimal  
+FROM cuda-base AS cuda-jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.11
@@ -156,7 +156,7 @@ WORKDIR /opt/app-root/bin
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
-    
+
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
@@ -220,18 +220,18 @@ LABEL name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.11" \
 COPY ${PYTORCH_SOURCE_CODE}/Pipfile.lock ./
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
+    micropipenv requirements | uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy unsafe-best-match --requirements - && \
     rm -f ./Pipfile.lock && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \
     # Remove default Elyra runtime-images \
     rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
-    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \    
+    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
     # Disable announcement plugin of jupyterlab \
-    jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \    
+    jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     # Apply JupyterLab addons \
-    /opt/app-root/bin/utils/addons/apply.sh && \    
+    /opt/app-root/bin/utils/addons/apply.sh && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
     fix-permissions /opt/app-root -P
