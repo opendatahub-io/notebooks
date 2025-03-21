@@ -21,7 +21,7 @@ class TestJupyterLabImage:
 
     @allure.issue("RHOAIENG-11156")
     @allure.description("Check that the HTML for the spinner is contained in the initial page.")
-    def test_spinner_html_loaded(self, jupyterlab_image: str) -> None:
+    def test_spinner_html_loaded(self, jupyterlab_image: docker.models.images.Image) -> None:
 
         container = WorkbenchContainer(image=jupyterlab_image, user=4321, group_add=[0])
         # if no env is specified, the image will run

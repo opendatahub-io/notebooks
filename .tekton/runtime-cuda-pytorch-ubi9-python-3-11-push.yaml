@@ -14,9 +14,9 @@ metadata:
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: notebooks
-    appstudio.openshift.io/component: jupyter-minimal-ubi9-python-3-11
+    appstudio.openshift.io/component: runtime-cuda-pytorch-ubi9-python-3-11
     pipelines.appstudio.openshift.io/type: build
-  name: jupyter-minimal-ubi9-python-3-11-on-push
+  name: runtime-cuda-pytorch-ubi9-python-3-11-on-push
   namespace: rhoai-ide-konflux-tenant
 spec:
   params:
@@ -25,14 +25,14 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: 'quay.io/redhat-user-workloads/rhoai-ide-konflux-tenant/jupyter-minimal-ubi9-python-3-11:{{revision}}'
+    value: 'quay.io/redhat-user-workloads/rhoai-ide-konflux-tenant/runtime-cuda-pytorch-ubi9-python-3-11:{{revision}}'
   - name: image-expires-after
     value: 28d
   - name: build-platforms
     value:
     - linux/x86_64
   - name: dockerfile
-    value: jupyter/minimal/ubi9-python-3.11/Dockerfile.cpu
+    value: runtimes/pytorch/ubi9-python-3.11/Dockerfile.cuda
   pipelineSpec:
     description: |
       This pipeline is ideal for building multi-arch container images from a Containerfile while maintaining trust after pipeline customization.
