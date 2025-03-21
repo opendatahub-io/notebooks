@@ -6,17 +6,22 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: 'https://github.com/opendatahub-io/notebooks?rev={{revision}}'
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: '3'
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main" && has(body.repository) && body.repository.full_name == "opendatahub-io/notebooks"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
+      == "main" && ( "jupyter/minimal/ubi9-python-3.11/Pipfile.lock".pathChanged()
+      || "jupyter/minimal/ubi9-python-3.11/start-notebook.sh".pathChanged() || "jupyter/utils/***".pathChanged()
+      || ".tekton/rocm-jupyter-minimal-ubi9-python-3-11-pull-request.yaml".pathChanged()
+      || "jupyter/minimal/ubi9-python-3.11/Dockerfile.rocm".pathChanged() ) && has(body.repository)
+      && body.repository.full_name == "opendatahub-io/notebooks"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: notebooks
-    appstudio.openshift.io/component: jupyter-minimal-ubi9-python-3-11
+    appstudio.openshift.io/component: rocm-jupyter-minimal-ubi9-python-3-11
     pipelines.appstudio.openshift.io/type: build
-  name: jupyter-minimal-ubi9-python-3-11-on-push
+  name: rocm-jupyter-minimal-ubi9-python-3-11-on-pull-request
   namespace: rhoai-ide-konflux-tenant
 spec:
   params:
@@ -25,14 +30,14 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: 'quay.io/redhat-user-workloads/rhoai-ide-konflux-tenant/jupyter-minimal-ubi9-python-3-11:{{revision}}'
+    value: 'quay.io/redhat-user-workloads/rhoai-ide-konflux-tenant/rocm-jupyter-minimal-ubi9-python-3-11:on-pr-{{revision}}'
   - name: image-expires-after
-    value: 28d
+    value: 5d
   - name: build-platforms
     value:
     - linux/x86_64
   - name: dockerfile
-    value: jupyter/minimal/ubi9-python-3.11/Dockerfile.cpu
+    value: jupyter/minimal/ubi9-python-3.11/Dockerfile.rocm
   pipelineSpec:
     description: |
       This pipeline is ideal for building multi-arch container images from a Containerfile while maintaining trust after pipeline customization.

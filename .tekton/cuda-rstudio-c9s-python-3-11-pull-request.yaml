@@ -6,17 +6,27 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: 'https://github.com/opendatahub-io/notebooks?rev={{revision}}'
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: '3'
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main" && has(body.repository) && body.repository.full_name == "opendatahub-io/notebooks"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
+      == "main" && ( "cuda/NGC-DL-CONTAINER-LICENSE".pathChanged() || "cuda/cuda.repo-x86_64".pathChanged()
+      || "rstudio/c9s-python-3.11/Pipfile.lock".pathChanged() || "rstudio/c9s-python-3.11/install_packages.R".pathChanged()
+      || "rstudio/c9s-python-3.11/nginx/api/***".pathChanged() || "rstudio/c9s-python-3.11/nginx/httpconf/***".pathChanged()
+      || "rstudio/c9s-python-3.11/nginx/root/***".pathChanged() || "rstudio/c9s-python-3.11/nginx/serverconf/***".pathChanged()
+      || "rstudio/c9s-python-3.11/rsession.conf".pathChanged() || "rstudio/c9s-python-3.11/rsession.sh".pathChanged()
+      || "rstudio/c9s-python-3.11/run-nginx.sh".pathChanged() || "rstudio/c9s-python-3.11/run-rstudio.sh".pathChanged()
+      || "rstudio/c9s-python-3.11/setup_rstudio.py".pathChanged() || "rstudio/c9s-python-3.11/supervisord/supervisord.conf".pathChanged()
+      || "rstudio/c9s-python-3.11/utils/***".pathChanged() || ".tekton/cuda-rstudio-c9s-python-3-11-pull-request.yaml".pathChanged()
+      || "rstudio/c9s-python-3.11/Dockerfile.cuda".pathChanged() ) && has(body.repository)
+      && body.repository.full_name == "opendatahub-io/notebooks"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: notebooks
-    appstudio.openshift.io/component: jupyter-minimal-ubi9-python-3-11
+    appstudio.openshift.io/component: cuda-rstudio-c9s-python-3-11
     pipelines.appstudio.openshift.io/type: build
-  name: jupyter-minimal-ubi9-python-3-11-on-push
+  name: cuda-rstudio-c9s-python-3-11-on-pull-request
   namespace: rhoai-ide-konflux-tenant
 spec:
   params:
@@ -25,14 +35,14 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: 'quay.io/redhat-user-workloads/rhoai-ide-konflux-tenant/jupyter-minimal-ubi9-python-3-11:{{revision}}'
+    value: 'quay.io/redhat-user-workloads/rhoai-ide-konflux-tenant/cuda-rstudio-c9s-python-3-11:on-pr-{{revision}}'
   - name: image-expires-after
-    value: 28d
+    value: 5d
   - name: build-platforms
     value:
     - linux/x86_64
   - name: dockerfile
-    value: jupyter/minimal/ubi9-python-3.11/Dockerfile.cpu
+    value: rstudio/c9s-python-3.11/Dockerfile.cuda
   pipelineSpec:
     description: |
       This pipeline is ideal for building multi-arch container images from a Containerfile while maintaining trust after pipeline customization.

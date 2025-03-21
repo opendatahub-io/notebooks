@@ -80,7 +80,7 @@ def workbench_image(image: str):
 
 
 @pytest.fixture(scope="function")
-def jupyterlab_image(image: str):
+def jupyterlab_image(image: str) -> docker.models.images.Image:
     image_metadata = skip_if_not_workbench_image(image)
     if "-jupyter-" not in image_metadata.labels['name']:
         pytest.skip(
@@ -90,7 +90,7 @@ def jupyterlab_image(image: str):
 
 
 @pytest.fixture(scope="function")
-def rstudio_image(image: str):
+def rstudio_image(image: str) -> docker.models.images.Image:
     image_metadata = skip_if_not_workbench_image(image)
     if "-rstudio-" not in image_metadata.labels['name']:
         pytest.skip(
@@ -100,7 +100,7 @@ def rstudio_image(image: str):
 
 
 @pytest.fixture(scope="function")
-def codeserver_image(image: str):
+def codeserver_image(image: str) -> docker.models.images.Image:
     image_metadata = skip_if_not_workbench_image(image)
     if "-code-server-" not in image_metadata.labels['name']:
         pytest.skip(
