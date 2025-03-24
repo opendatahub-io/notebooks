@@ -225,7 +225,7 @@ class ImageDeployment:
         assert len(pod_name.items) == 1
         pod: kubernetes.client.models.v1_pod.V1Pod = pod_name.items[0]
 
-        p = socket_proxy.SocketProxy(exposing_contextmanager(core_v1_api, pod), "localhost", 0)
+        p = socket_proxy.SocketProxy(lambda: exposing_contextmanager(core_v1_api, pod), "localhost", 0)
         t = threading.Thread(target=p.listen_and_serve_until_canceled)
         t.start()
         self.tf.defer(t, lambda thread: thread.join())
@@ -233,8 +233,8 @@ class ImageDeployment:
 
         self.port = p.get_actual_port()
         LOGGER.debug(f"Listening on port {self.port}")
-        resp = requests.get(f"http://localhost:{self.port}")
-        assert resp.status_code == 200
+        Wait.until("Connecting to pod succeeds", 1, 30,
+                   lambda: requests.get(f"http://localhost:{self.port}").status_code == 200)
         LOGGER.debug(f"Done with portforward")
 
 
@@ -344,6 +344,8 @@ class Wait:
                 result: bool = ready()
             except KeyboardInterrupt:
                 raise  # quick exit if the user gets tired of waiting
+            except SyntaxError:  # this actually won't happen, but it's good to keep in mind
+                raise  # quick exit in cases developer obviously screwed up
             except Exception as e:
                 exception_message = str(e)
 
