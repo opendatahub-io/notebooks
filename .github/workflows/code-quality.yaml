@@ -31,49 +31,26 @@ jobs:
 
   pytest-tests:
     runs-on: ubuntu-latest
-    env:
-      poetry_version: '1.8.3'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache poetry in ~/.local
-        uses: actions/cache/restore@v4
-        id: cache-poetry-restore
+      # https://github.com/astral-sh/setup-uv
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v5
         with:
-          path: ~/.local
-          key: "${{ runner.os }}-local-${{ env.poetry_version }}"
+          version: "latest"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          pyproject-file: "pyproject.toml"
 
-      - name: Install poetry
-        if: steps.cache-poetry-restore.outputs.cache-hit != 'true'
-        run: pipx install poetry==${{ env.poetry_version }}
-        env:
-          PIPX_HOME: /home/runner/.local/pipx
-          PIPX_BIN_DIR: /home/runner/.local/bin
-
-      - name: Check poetry is installed correctly
-        run: poetry env info
-
-      - name: Save cache
-        if: steps.cache-poetry-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ~/.local
-          key: ${{ steps.cache-poetry-restore.outputs.cache-primary-key }}
-
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'poetry'
-
-      - name: Configure poetry
-        run: poetry env use "${{ steps.setup-python.outputs.python-path }}"
+      - name: Check uv is installed correctly
+        run: uv version
 
       - name: Install deps
-        run: poetry install --sync
+        run: uv sync --locked
 
-      - run: poetry run pytest
+      - run: uv run pytest
 
   code-static-analysis:
     runs-on: ubuntu-latest
