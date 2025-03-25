@@ -80,6 +80,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Do not check secrets, they are encrypted
+        run: rm -rf ./ci/secrets
+
       - name: Validate YAML files (best code practices check included)
         id: validate-yaml-files
         run: |

@@ -173,6 +173,16 @@ rstudio-c9s-python-$(RELEASE_PYTHON_VERSION):
 cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,rstudio/c9s-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
 
+####################################### Buildchain for Python using rhel9 #######################################
+
+.PHONY: rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
+rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,rstudio/rhel9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+
+.PHONY: cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
+cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,rstudio/rhel9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+
 ####################################### Buildchain for AMD Python using UBI9 #######################################
 .PHONY: rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
@@ -439,6 +449,8 @@ all-images: jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
+	rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
