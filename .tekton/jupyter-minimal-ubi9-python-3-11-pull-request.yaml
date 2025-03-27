@@ -619,8 +619,10 @@ spec:
   - pipelineTaskName: clamav-scan
     stepSpecs:
     - computeResources:
+        limits:
+          cpu: '10'
         requests:
-          cpu: '2'
+          cpu: '8'
       name: extract-and-scan-image
   taskRunTemplate: {}
   timeouts:
