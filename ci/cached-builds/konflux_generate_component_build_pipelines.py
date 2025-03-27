@@ -517,14 +517,6 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                     },
                     {
                         "name": "clamav-scan",
-                        "podTemplate": {
-                            "env": [
-                                {
-                                    "name": "CLAMD_CONF_MaxThreads",
-                                    "value": "10"
-                                },
-                            ],
-                        },
                         "params": [
                             {
                                 "name": "image-digest",
@@ -761,11 +753,14 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                     # clamav is memory intensive and by default runs single-threaded
                     # https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1739535522748909?thread_ts=1739441464.370119&cid=C04PZ7H0VA8
                     "pipelineTaskName": "clamav-scan",
-                    # "computeResources": {
-                    #     "requests": {
-                    #         "cpu": "2",
-                    #     },
-                    # },
+                    "podTemplate": {
+                        "env": [
+                            {
+                                "name": "CLAMD_CONF_MaxThreads",
+                                "value": "10"
+                            },
+                        ],
+                    },
                     "stepSpecs": [
                         {
                             "name": "extract-and-scan-image",
@@ -789,7 +784,12 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
             ],
             "taskRunTemplate": {},
             "workspaces": [
-                {"name": "git-auth", "secret": {"secretName": "{{ git_auth_secret }}"}}
+                {
+                    "name": "git-auth",
+                    "secret": {
+                        "secretName": "{{ git_auth_secret }}",
+                    },
+                },
             ],
         },
         "status": {},
