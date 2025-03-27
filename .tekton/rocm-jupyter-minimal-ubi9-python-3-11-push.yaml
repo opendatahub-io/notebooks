@@ -403,6 +403,10 @@ spec:
         value: $(tasks.build-image-index.results.IMAGE_DIGEST)
       - name: image-url
         value: $(tasks.build-image-index.results.IMAGE_URL)
+      podTemplate:
+        env:
+        - name: CLAMD_CONF_MaxThreads
+          value: '10'
       runAfter:
       - build-image-index
       taskRef:
@@ -607,6 +611,14 @@ spec:
       limits:
         memory: 8Gi
     pipelineTaskName: clair-scan
+  - pipelineTaskName: clamav-scan
+    stepSpecs:
+    - computeResources:
+        limits:
+          cpu: '10'
+        requests:
+          cpu: '8'
+      name: extract-and-scan-image
   taskRunTemplate: {}
   timeouts:
     pipeline: 4h

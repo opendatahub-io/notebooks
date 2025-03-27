@@ -517,6 +517,14 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                     },
                     {
                         "name": "clamav-scan",
+                        "podTemplate": {
+                            "env": [
+                                {
+                                    "name": "CLAMD_CONF_MaxThreads",
+                                    "value": "10"
+                                },
+                            ],
+                        },
                         "params": [
                             {
                                 "name": "image-digest",
@@ -734,12 +742,13 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
             },
             # https://github.com/tektoncd/pipeline/blob/main/docs/compute-resources.md
             # https://konflux.pages.redhat.com/docs/users/how-tos/configuring/overriding-compute-resources.html
-            # https://github.com/red-hat-data-services/distributed-workloads/blob/face046a631a1ac9b0fc51bcd2984628e9f3db05/.tekton/training-rocm-push.yaml#L36-L42
             "taskRunSpecs": [
+                # https://tekton.dev/docs/pipelines/taskruns/#overriding-task-steps-and-sidecars
                 {
                     "pipelineTaskName": task_name,
                     "computeResources": {
                         # the problem is going over limits, so requests need not be touched at all
+                        # https://github.com/red-hat-data-services/distributed-workloads/blob/face046a631a1ac9b0fc51bcd2984628e9f3db05/.tekton/training-rocm-push.yaml#L36-L42
                         "limits": {
                             "memory": "8Gi",
                         },
@@ -747,6 +756,36 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                     # leaving out "prefetch-dependencies" because we don't do hermetic build yet
                     # leaving out "build-images" for now, it already has a limit of 8Gi by default
                 } for task_name in ("ecosystem-cert-preflight-checks", "clair-scan")
+            ] + [
+                {
+                    # clamav is memory intensive and by default runs single-threaded
+                    # https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1739535522748909?thread_ts=1739441464.370119&cid=C04PZ7H0VA8
+                    "pipelineTaskName": "clamav-scan",
+                    # "computeResources": {
+                    #     "requests": {
+                    #         "cpu": "2",
+                    #     },
+                    # },
+                    "stepSpecs": [
+                        {
+                            "name": "extract-and-scan-image",
+                            "computeResources": {
+                                "requests": {
+                                    "cpu": "8",
+                                },
+                                "limits": {
+                                    "cpu": "10",
+                                }
+                            },
+                    #         "env": [
+                    #             {
+                    #                 "name": "CLAMD_CONF_MaxThreads",
+                    #                 "value": "4"
+                    #             }
+                    #         ],
+                        },
+                    ],
+                },
             ],
             "taskRunTemplate": {},
             "workspaces": [
