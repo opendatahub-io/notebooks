@@ -2,18 +2,6 @@
 kind: ImageStream
 apiVersion: image.openshift.io/v1
 metadata:
-  name: cuda-rhel9
-spec:
-  lookupPolicy:
-    local: true
-  tags:
-    - name: latest
-      referencePolicy:
-        type: Source
----
-kind: ImageStream
-apiVersion: image.openshift.io/v1
-metadata:
   annotations:
     opendatahub.io/notebook-image-creator: RHOAI
     opendatahub.io/notebook-image-url: "https://github.com/red-hat-data-services/notebooks/tree/main/rstudio"
@@ -45,51 +33,6 @@ spec:
 kind: BuildConfig
 apiVersion: build.openshift.io/v1
 metadata:
-  name: cuda-rhel9
-  labels:
-    app: buildchain
-    component: cuda-rhel9
-spec:
-  source:
-    type: Git
-    git:
-      uri: "https://github.com/red-hat-data-services/notebooks"
-      ref: rhoai-2.19
-  strategy:
-    type: Docker
-    dockerStrategy:
-      dockerfilePath: "rstudio/rhel9-python-3.11/Dockerfile.cuda"
-      noCache: true
-      volumes:
-        - name: secret-mvn
-          source:
-            type: Secret
-            secret:
-              secretName: rhel-subscription-secret
-              defaultMode: 420
-          mounts:
-            - destinationPath: /opt/app-root/src/.sec
-  output:
-    to:
-      kind: ImageStreamTag
-      name: "cuda-rhel9:latest"
-  resources:
-    limits:
-      cpu: "1"
-      memory: 8Gi
-    requests:
-      cpu: "1"
-      memory: 8Gi
-  successfulBuildsHistoryLimit: 2
-  failedBuildsHistoryLimit: 2
-  runPolicy: Serial
-  triggers:
-    - imageChange: {}
-      type: ImageChange
----
-kind: BuildConfig
-apiVersion: build.openshift.io/v1
-metadata:
   name: cuda-rstudio-server-rhel9
   labels:
     app: buildchain
@@ -105,9 +48,6 @@ spec:
     dockerStrategy:
       dockerfilePath: "rstudio/rhel9-python-3.11/Dockerfile.cuda"
       noCache: true
-      from:
-        kind: "ImageStreamTag"
-        name: "cuda-rhel9:latest"
       volumes:
         - name: secret-mvn
           source:
