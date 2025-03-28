@@ -15,6 +15,7 @@ import testcontainers.core.container
 import testcontainers.core.waiting_utils
 
 from tests.containers import docker_utils
+from tests.containers import utils
 
 import pytest
 
@@ -218,6 +219,30 @@ class TestBaseImage:
                     assert ecode == 0, output.decode()
             finally:
                 docker_utils.NotebookContainer(container).stop(timeout=0)
+
+    def test_file_permissions(self, image: str, subtests: pytest_subtests.SubTests):
+        """Checks the permissions and ownership for some selected files/directories."""
+
+        app_root_path = "/opt/app-root"
+        expected_uid = "1001" # default
+        expected_gid = "0" # root
+        # Directories to assert permissions and ownerships as we did in ODS-CI
+        directories_to_check: list[str] = [
+            [f"{app_root_path}/lib", "775", expected_gid, expected_uid],
+        ]
+        if not utils.is_rstudio_image(image):
+            # RStudio image doesn't have '/opt/app-root/share' directory
+            directories_to_check.append([f"{app_root_path}/share", "775", expected_gid, expected_uid])
+
+        def test_fn(container: testcontainers.core.container.DockerContainer):
+            for item in directories_to_check:
+                with subtests.test(f"Checking permissions of the: {item[0]}"):
+                    _, output = container.exec(["stat", "--format='%a:%g:%u'", f"{item[0]}"])
+                    logging.debug(output.decode())
+                    cleaned_output = output.decode().strip().strip("'")
+                    assert cleaned_output == f"{item[1]}:{item[2]}:{item[3]}"
+
+        self._run_test(image=image, test_fn=test_fn)
 
 def encode_python_function_execution_command_interpreter(python: str, function: Callable[..., Any], *args: list[Any]) -> list[str]:
     """Returns a cli command that will run the given Python function encoded inline.

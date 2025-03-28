@@ -16,6 +16,7 @@ import docker.models.images
 import docker.types
 
 from tests.containers import docker_utils
+from tests.containers import utils
 
 if TYPE_CHECKING:
     from pytest import ExitCode, Session, Parser, Metafunc
@@ -92,7 +93,7 @@ def jupyterlab_image(image: str) -> docker.models.images.Image:
 @pytest.fixture(scope="function")
 def rstudio_image(image: str) -> docker.models.images.Image:
     image_metadata = skip_if_not_workbench_image(image)
-    if "-rstudio-" not in image_metadata.labels['name']:
+    if not utils.is_rstudio_image(image):
         pytest.skip(
             f"Image {image} does not have '-rstudio-' in {image_metadata.labels['name']=}'")
 
