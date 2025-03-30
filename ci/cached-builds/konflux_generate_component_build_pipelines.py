@@ -83,6 +83,9 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                         + (' && ( ' + files_changed_cel_expression + ' )' if files_changed_cel_expression else "")
                         + ' && has(body.repository) && body.repository.full_name == "opendatahub-io/notebooks"'
                 ),
+                # https://konflux-ci.dev/docs/building/component-nudges/#customizing-nudging-prs
+                # https://docs.renovatebot.com/string-pattern-matching/
+                **when(is_pr, {}, {"build.appstudio.openshift.io/build-nudge-files": "manifests/base/params.env"}),
             },
             "creationTimestamp": None,
             "labels": {
