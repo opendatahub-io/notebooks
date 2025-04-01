@@ -21,6 +21,9 @@
 # Expected commit reference for the runtime images
 EXPECTED_COMMIT_REF="2024b"
 
+# Number of attempts for the skopeo tool to gather data from the repository.
+SKOPEO_RETRY=3
+
 # Size change tresholds:
 # Max percentual change
 SIZE_PERCENTUAL_TRESHOLD=10
@@ -104,7 +107,7 @@ function check_image() {
     }
     echo "Image URL: '${img_url}'"
 
-    img_metadata_config="$(skopeo inspect --config "docker://${img_url}")" || {
+    img_metadata_config="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --config "docker://${img_url}")" || {
         echo "ERROR: Couldn't download '${img_url}' image config metadata with skopeo tool!"
         return 1
     }
@@ -143,7 +146,7 @@ function check_image() {
     local img_size
     local img_size_mb
 
-    img_metadata="$(skopeo inspect --raw "docker://${img_url}")" || {
+    img_metadata="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --raw "docker://${img_url}")" || {
         echo "ERROR: Couldn't download '${img_url}' image metadata with skopeo tool!"
         return 1
     }
