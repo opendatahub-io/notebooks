@@ -125,23 +125,7 @@ jobs:
           echo "Hadolint done"
 
       # This simply checks that the manifests and respective kustomization.yaml finishes without an error.
-      # Version of the kustomize that operator use in runtime to apply these changes is determined by:
-      # https://github.com/red-hat-data-services/rhods-operator/blob/7ccc405135f99c014982d7e297b8949e970dd750/go.mod#L28-L29
-      # and then to match appropriate kustomize release https://github.com/kubernetes-sigs/kustomize/releases/tag/kustomize%2Fv5.0.2
       - name: Check kustomize manifest
         id: kustomize-manifests
         run: |
-          KUSTOMIZE_VERSION=5.0.2
-          wget "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
-          tar -xvf kustomize*
-
-          ./kustomize version
-          echo "----------------------------------------------------------"
-          echo "Starting './kustomize build manifests/base'"
-          echo "----------------------------------------------------------"
-          ./kustomize build manifests/base
-
-          echo "----------------------------------------------------------"
-          echo "Starting './kustomize build manifests/overlays/additional'"
-          echo "----------------------------------------------------------"
-          ./kustomize build manifests/overlays/additional
+          ./ci/kustomize.sh
