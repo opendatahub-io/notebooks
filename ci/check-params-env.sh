@@ -27,6 +27,9 @@ PARAMS_ENV_PATH="manifests/base/params.env"
 # images we want to have in the `params.env` file.
 EXPECTED_NUM_RECORDS=24
 
+# Number of attempts for the skopeo tool to gather data from the repository.
+SKOPEO_RETRY=3
+
 # Size change tresholds:
 # Max percentual change
 SIZE_PERCENTUAL_TRESHOLD=10
@@ -324,7 +327,7 @@ function check_image() {
     local image_commitref
     local image_created
 
-    image_metadata_config="$(skopeo inspect --config "docker://${image_url}")" || {
+    image_metadata_config="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --config "docker://${image_url}")" || {
         echo "Couldn't download image config metadata with skopeo tool!"
         return 1
     }
@@ -366,7 +369,7 @@ function check_image() {
     local image_size
     local image_size_mb
 
-    image_metadata="$(skopeo inspect --raw "docker://${image_url}")" || {
+    image_metadata="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --raw "docker://${image_url}")" || {
         echo "Couldn't download image metadata with skopeo tool!"
         return 1
     }
