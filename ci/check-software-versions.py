@@ -14,7 +14,6 @@ import argparse
 import json
 import logging
 import os
-import re
 import subprocess
 import uuid
 
@@ -60,10 +59,9 @@ def load_yaml(filepath):
         return None
 
 def extract_variable(reference):
-    """Extracts a variable name from a string (e.g.: '$(odh-rstudio-notebook-image-commit-n-1)') using regex."""
+    """Extracts a variable name from a string (e.g.: 'odh-rstudio-notebook-image-commit-n-1_PLACEHOLDER') using regex."""
 
-    match = re.search(r"\((.*?)\)", reference)
-    return match.group(1) if match else None
+    return reference.replace("_PLACEHOLDER", "")
 
 def get_variable_value(variable_name, params_file_path=PARAMS_ENV_PATH):
     """Retrieves the value of a variable from a parameters file."""
