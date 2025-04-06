@@ -39,8 +39,6 @@ jobs:
       TRIVY_VULNDB: "/home/runner/.local/share/containers/trivy_db"
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
       TRIVY_SCAN_FS_JSON: '{}'
-      # Poetry version for use in running tests
-      POETRY_VERSION: '2.0.0'
 
     steps:
 
@@ -315,33 +313,26 @@ jobs:
 
       # region Pytest image tests
 
-      - name: Install poetry
-        if: steps.cache-poetry-restore.outputs.cache-hit != 'true'
-        run: pipx install poetry==${{ env.POETRY_VERSION }}
-        env:
-          PIPX_HOME: /home/runner/.local/pipx
-          PIPX_BIN_DIR: /home/runner/.local/bin
-
-      - name: Check poetry is installed correctly
-        run: poetry env info
-
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v5
+      # https://github.com/astral-sh/setup-uv
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.12'
-          cache: 'poetry'
+          version: "latest"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          pyproject-file: "pyproject.toml"
 
-      - name: Configure poetry
-        run: poetry env use "${{ steps.setup-python.outputs.python-path }}"
+      - name: Check uv is installed correctly
+        run: uv version
 
       - name: Install deps
-        run: poetry install --sync
+        run: uv sync --locked
 
       - name: Run Testcontainers container tests (in PyTest)
         run: |
           set -Eeuxo pipefail
-          poetry run pytest --capture=fd tests/containers -m 'not openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          uv run pytest --capture=fd tests/containers -m 'not openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
@@ -511,7 +502,7 @@ jobs:
         if: ${{ steps.have-tests.outputs.tests == 'true' }}
         run: |
           set -Eeuxo pipefail
-          poetry run pytest --capture=fd tests/containers -m 'openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          uv run pytest --capture=fd tests/containers -m 'openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           # TODO(jdanek): this Testcontainers stuff should not be necessary but currently it has to be there
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"

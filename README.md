@@ -59,26 +59,24 @@ Note: To ensure the GitHub Action runs successfully, users must add a `GH_ACCESS
 
 ### Deploy & Test
 
-#### Prepare Python + poetry + pytest env
+#### Prepare Python + uv + pytest env
 
 ```shell
 # Linux
 sudo dnf install python3.12
-pip install --user poetry
+pip install --user uv
 # MacOS
-brew install python@3.12 poetry
+brew install python@3.12 uv
 
-poetry env use $(which python3.12)
-poetry config virtualenvs.in-project true
-poetry env info
-poetry install --sync
+uv venv --python $(which python3.12)
+uv sync --locked
 ```
 
 #### Running Python selftests in Pytest
 By completing configuration in previous section, you are able to run any tests that don't need to start a container using following command:
 
 ```
-poetry run pytest
+uv run pytest
 ```
 
 ##### Container selftests
@@ -105,7 +103,7 @@ sudo dnf install podman
 systemctl --user start podman.service
 systemctl --user status podman.service
 systemctl --user status podman.socket
-DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock poetry run pytest tests/containers -m 'not openshift' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
+DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock uv run pytest tests/containers -m 'not openshift' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
 
 # Mac OS
 brew install podman
@@ -113,7 +111,7 @@ podman machine init
 podman machine set --rootful=false
 sudo podman-mac-helper install
 podman machine start
-poetry run pytest tests/containers -m 'not openshift' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
+uv run pytest tests/containers -m 'not openshift' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
 ```
 
 When using lima on macOS, it might be useful to give yourself access to rootful podman socket

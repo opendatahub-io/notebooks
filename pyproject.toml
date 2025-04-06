@@ -1,30 +1,41 @@
-[tool.poetry]
+# https://docs.astral.sh/uv/concepts/projects/config/
+[project]
 name = "notebooks"
-version = "2024.1"
-authors = []
+version = "2025.1"
 description = "Open Data Hub / OpenShift AI Notebook / Workbench images, and tests for the same in Python."
 readme = "README.md"
 package-mode = false
+requires-python = ">=3.12,<3.13"
 
-[tool.poetry.dependencies]
-python = "~3.12"
-pyyaml = "^6.0.2"
-requests = "^2.32.3"
+# https://docs.astral.sh/uv/concepts/projects/dependencies/#managing-dependencies
+dependencies = []
 
+[dependency-groups]
+dev = [
+    "pytest",
+    "allure-pytest",
+    "pytest-subtests",
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.4"
-allure-pytest = "^2.13.5"
-pytest-subtests = "^0.14.1"
-pyfakefs = "^5.7.4"
-testcontainers = "^4.9.1"
-docker = "^7.1.0"
-podman = "^5.2.0"
-kubernetes = "^31.0.0"
-openshift-python-wrapper = "^11.0.19"
-pydantic = "^2.10.6"
-requests = "^2.32.3"
+    "pyfakefs",
+    "pydantic",
+    "requests",
+    "pyyaml",
 
+    "testcontainers",
+    "docker",
+    "podman",
+    "kubernetes",
+    "openshift-python-wrapper",
+]
+
+[tool.uv]
+package = false
+environments = [
+    "sys_platform == 'darwin'",
+    "sys_platform == 'linux'",
+]
+
+# https://github.com/astral-sh/uv/issues/3957#issuecomment-2659350181
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv-build"]
+build-backend = "uv_build"

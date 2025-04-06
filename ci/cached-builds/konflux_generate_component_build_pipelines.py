@@ -23,7 +23,7 @@ This script creates the Tekton pipelines under /.tekton
 
 Usage:
 
-$ PYTHONPATH=. poetry run ci/cached-builds/konflux_generate_component_build_pipelines.py
+$ PYTHONPATH=. uv run ci/cached-builds/konflux_generate_component_build_pipelines.py
 """
 
 
