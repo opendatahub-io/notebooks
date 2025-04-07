@@ -608,6 +608,73 @@ spec:
         operator: in
         values:
         - "false"
+    - name: check-image-software
+      params:
+      - name: IMAGE_URL
+        value: $(tasks.build-image-index.results.IMAGE_URL)
+      # - name: PLATFORM
+      #   value: $(tasks.build-image-index.results.IMAGE_URL)
+      - name: CHAINS-GIT_URL
+        value: $(tasks.clone-repository.results.url)
+      - name: CHAINS-GIT_COMMIT
+        value: $(tasks.clone-repository.results.commit)
+      - name: COSIGN_VERSION
+        value: v2.4.3
+      runAfter:
+      # - show-sbom
+      - build-image-index
+      # taskRef:
+      #   params:
+      #   - name: name
+      #     value: show-sbom
+      #   - name: bundle
+      #     value: quay.io/konflux-ci/tekton-catalog/task-show-sbom:0.1@sha256:04f15cbce548e1db7770eee3f155ccb2cc0140a6c371dc67e9a34d83673ea0c0
+      #   - name: kind
+      #     value: task
+      #   resolver: bundles
+      taskSpec:
+        params:
+        - name: IMAGE_URL
+        # - name: PLATFORM
+        - name: CHAINS-GIT_URL
+        - name: CHAINS-GIT_COMMIT
+        - name: COSIGN_VERSION
+        results:
+        - name: CHECK_OUTPUT
+          description: Check output
+        steps:
+        - name: check-image-software
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          env:
+          - name: IMAGE_URL
+            value: $(params.IMAGE_URL)
+          # - name: PLATFORM
+          #   value: $(params.PLATFORM)
+          - name: GIT_URL
+            value: $(params.CHAINS-GIT_URL)
+          - name: GIT_COMMIT
+            value: $(params.CHAINS-GIT_COMMIT)
+          - name: COSIGN_VERSION
+            value: $(params.COSIGN_VERSION)
+          script: |
+            #!/bin/bash
+            env
+
+            set -x
+            REPO_SPACE=$(echo "${GIT_URL}" | sed 's#.*github.com/\(.*\)#\1#')
+            FILE_NAME="konflux-check-software.sh"
+            FILE_PATH="ci/${FILE_NAME}"
+
+            wget --progress=bar "https://raw.githubusercontent.com/${REPO_SPACE}/${GIT_COMMIT}/${FILE_PATH}"
+            chmod a+x "${FILE_NAME}"
+            set +x
+
+            wget --progress=bar --output-document=cosign "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64"
+            chmod a+x cosign
+
+            dnf install -y jq skopeo
+
+            ./${FILE_NAME}
     workspaces:
     - name: git-auth
       optional: true
