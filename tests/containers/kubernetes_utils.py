@@ -109,7 +109,7 @@ class TestFrame[S]:
             elif isinstance(resource, ocp_resources.resource.Resource):
                 resource.clean_up(wait=wait)
 
-    def __enter__(self) -> TestFrame:
+    def __enter__(self) -> TestFrame[S]:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
