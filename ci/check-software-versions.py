@@ -26,7 +26,7 @@ import yaml
 PARAMS_ENV_PATH = "manifests/base/params.env"
 
 
-class ANNOTATION_TYPE(Enum):
+class AnnotationType(Enum):
     SOFTWARE = "software"
     PYTHON_DEPS = "python-deps"
 
@@ -176,7 +176,7 @@ def process_dependency_item(item, container_id, annotation_type):
 
     command = command_mapping.get(name)
     if not command:
-        if annotation_type == ANNOTATION_TYPE.SOFTWARE:
+        if annotation_type == AnnotationType.SOFTWARE:
             command = ["/bin/bash", "-c", f"{name.lower()} --version"]
         else:
             command = ["/bin/bash", "-c", f"pip show {name.lower()} | grep 'Version: '"]
@@ -240,12 +240,12 @@ def process_tag(tag):
             return 1
 
         for item in parse_json_string(software) or []:
-            if process_dependency_item(item, container_id, ANNOTATION_TYPE.SOFTWARE) != 0:
+            if process_dependency_item(item, container_id, AnnotationType.SOFTWARE) != 0:
                 log.error(f"Failed check for the '{image_ref}' tag!")
                 ret_code = 1
 
         for item in parse_json_string(python_deps) or []:
-            if process_dependency_item(item, container_id, ANNOTATION_TYPE.PYTHON_DEPS) != 0:
+            if process_dependency_item(item, container_id, AnnotationType.PYTHON_DEPS) != 0:
                 log.error(f"Failed check for the '{image_ref}' tag!")
                 ret_code = 1
     finally:
