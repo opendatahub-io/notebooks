@@ -19,13 +19,14 @@ https://github.com/openshift/release/blob/master/ci-operator/config/opendatahub-
 
 class Args(argparse.Namespace):
     """Type annotation to have autocompletion for args"""
+
     target: str
 
 
 def main() -> None:
     parser = argparse.ArgumentParser("make_test.py")
     parser.add_argument("--target", type=str)
-    args = typing.cast(Args, parser.parse_args())
+    args = typing.cast("Args", parser.parse_args())
 
     run_tests(args.target)
 
@@ -66,7 +67,7 @@ def run_tests(target: str) -> None:
     # configmap/runtime-req-config-9hhb2bhhmd created
     # Error from server (Forbidden): error when creating "runtimes/minimal/ubi9-python-3.9/kustomize/base": pods "runtime-pod" is forbidden: error looking up service account ns-runtime-minimal-ubi9-python-3-9/default: serviceaccount "default" not found
     # See https://github.com/kubernetes/kubernetes/issues/66689
-    check_call(f"timeout 10s bash -c 'until kubectl get serviceaccount/default; do sleep 1; done'", shell=True)
+    check_call("timeout 10s bash -c 'until kubectl get serviceaccount/default; do sleep 1; done'", shell=True)
 
     check_call(f"make {deploy}-{deploy_target}", shell=True)
     wait_for_stability(pod)
@@ -75,38 +76,38 @@ def run_tests(target: str) -> None:
         if target.startswith("runtime-"):
             check_call(f"make validate-runtime-image image={target}", shell=True)
         elif target.startswith("rocm-runtime-"):
-            check_call(f"make validate-runtime-image image={target
-                       .replace("rocm-runtime-", "runtime-rocm-")}", shell=True)
-        elif target.startswith("rstudio-") or target.startswith("cuda-rstudio-"):
+            check_call(
+                f"make validate-runtime-image image={target.replace('rocm-runtime-', 'runtime-rocm-')}", shell=True
+            )
+        elif target.startswith(("rstudio-", "cuda-rstudio-")):
             check_call(f"make validate-rstudio-image image={target}", shell=True)
         elif target.startswith("codeserver-"):
             check_call(f"make validate-codeserver-image image={target}", shell=True)
         elif target.startswith("rocm-jupyter"):
-            check_call(f"make test-{target
-                       .replace("rocm-jupyter-", "jupyter-rocm-")}", shell=True)
+            check_call(f"make test-{target.replace('rocm-jupyter-', 'jupyter-rocm-')}", shell=True)
         else:
             check_call(f"make test-{target}", shell=True)
     finally:
         # dump a lot of info to the GHA logs
         with gha_log_group("pod and statefulset info"):
-            call(f"kubectl get statefulsets", shell=True)
-            call(f"kubectl describe statefulsets", shell=True)
-            call(f"kubectl get pods", shell=True)
-            call(f"kubectl describe pods", shell=True)
+            call("kubectl get statefulsets", shell=True)
+            call("kubectl describe statefulsets", shell=True)
+            call("kubectl get pods", shell=True)
+            call("kubectl describe pods", shell=True)
             # describe does not show everything about the pod
-            call(f"kubectl get pods -o yaml", shell=True)
+            call("kubectl get pods -o yaml", shell=True)
 
         with gha_log_group("kubernetes namespace events"):
             # events aren't all that useful, but it can tell what was happening in the current namespace
-            call(f"kubectl get events", shell=True)
+            call("kubectl get events", shell=True)
 
         with gha_log_group("previous pod logs"):
             # relevant if the pod is crashlooping, this shows the final lines
             # use the negative label selector as a trick to match all pods (as we don't have any pods with nosuchlabel)
-            call(f"kubectl logs --selector=nosuchlabel!=nosuchvalue --all-pods --timestamps --previous", shell=True)
+            call("kubectl logs --selector=nosuchlabel!=nosuchvalue --all-pods --timestamps --previous", shell=True)
         with gha_log_group("current pod logs"):
             # regular logs from a running (or finished) pod
-            call(f"kubectl logs --selector=nosuchlabel!=nosuchvalue --all-pods --timestamps", shell=True)
+            call("kubectl logs --selector=nosuchlabel!=nosuchvalue --all-pods --timestamps", shell=True)
 
     check_call(f"make un{deploy}-{deploy_target}", shell=True)
 
@@ -142,7 +143,8 @@ def wait_for_stability(pod: str) -> None:
     for _ in range(3):
         call(
             f"timeout {timeout}s bash -c 'until kubectl wait --for=condition=Ready pods --all --timeout 5s; do sleep 1; done'",
-            shell=True)
+            shell=True,
+        )
         timeout = 50
         time.sleep(3)
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import os
 import logging
+import os
 import shutil
 import subprocess
 import tomllib
@@ -20,24 +20,28 @@ def test_image_pipfiles(subtests: pytest_subtests.plugin.SubTests):
         with subtests.test(msg="checking Pipfile", pipfile=file):
             print(file)
             directory = file.parent  # "ubi9-python-3.11"
-            ubi, lang, python = directory.name.split("-")
+            _ubi, _lang, python = directory.name.split("-")
 
             with open(file, "rb") as fp:
                 pipfile = tomllib.load(fp)
             assert "requires" in pipfile, "Pipfile is missing a [[requires]] section"
-            assert pipfile["requires"]["python_version"] == python, "Pipfile does not declare the expected Python version"
+            assert pipfile["requires"]["python_version"] == python, (
+                "Pipfile does not declare the expected Python version"
+            )
 
 
 def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.SubTests):
     file_groups = {
-        "ROCm de-vendor script":
-            [PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.11/de-vendor-torch.sh",
-             PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.11/de-vendor-torch.sh"]
+        "ROCm de-vendor script": [
+            PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.11/de-vendor-torch.sh",
+            PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.11/de-vendor-torch.sh",
+        ]
     }
     for group_name, (first_file, *rest) in file_groups.items():
         with subtests.test(msg=f"Checking {group_name}"):
             for file in rest:
                 assert first_file.read_text() == file.read_text(), f"The files {first_file} and {file} do not match"
+
 
 def test_make_disable_pushing():
     lines = dryrun_make(["rocm-jupyter-tensorflow-ubi9-python-3.11"], env={"PUSH_IMAGES": ""})
@@ -50,9 +54,9 @@ def dryrun_make(make_args: list[str], env: dict[str, str] | None = None) -> list
 
     try:
         logging.info(f"Running make in --just-print mode for target(s) {make_args} with env {env}")
-        lines = subprocess.check_output([MAKE, "--just-print", *make_args], encoding="utf-8",
-                                        env={**os.environ, **env},
-                                        cwd=PROJECT_ROOT).splitlines()
+        lines = subprocess.check_output(
+            [MAKE, "--just-print", *make_args], encoding="utf-8", env={**os.environ, **env}, cwd=PROJECT_ROOT
+        ).splitlines()
         for line in lines:
             logging.debug(line)
         return lines

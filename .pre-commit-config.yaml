@@ -6,18 +6,18 @@ repos:
     rev: 0.6.13
     hooks:
       - id: uv-lock
-      #  # https://github.com/astral-sh/ruff-pre-commit
-      #  - repo: https://github.com/astral-sh/ruff-pre-commit
-      #    rev: v0.11.4
-      #    hooks:
-      #      - id: ruff
-      #        types_or: [python, pyi]
-      #        args: [ --fix ]
-      #        files: 'ci/.*|tests/.*'
-      #      - id: ruff-format
-      #        types_or: [python, pyi]
-      #        files: 'ci/.*|tests/.*'
-      #  # https://pre-commit.com/#new-hooks
+  # https://github.com/astral-sh/ruff-pre-commit
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.4
+    hooks:
+      - id: ruff
+        types_or: [python, pyi]
+        args: [--fix]
+        files: 'ci/.*|tests/.*'
+      - id: ruff-format
+        types_or: [python, pyi]
+        files: 'ci/.*|tests/.*'
+  # https://pre-commit.com/#new-hooks
   - repo: local
     hooks:
       # https://github.com/microsoft/pyright/issues/3612
