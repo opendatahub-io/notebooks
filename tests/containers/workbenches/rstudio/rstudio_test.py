@@ -10,13 +10,13 @@ from typing import TYPE_CHECKING, NamedTuple
 
 import allure
 import pytest
-import pytest_subtests
 
 from tests.containers import docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 if TYPE_CHECKING:
     import docker.models.images
+    import pytest_subtests
 
 
 class TestRStudioImage:

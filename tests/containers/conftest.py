@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import os
 import platform
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import docker.errors
@@ -17,6 +16,8 @@ import testcontainers.core.docker_client
 from tests.containers import docker_utils, utils
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from pytest import ExitCode, Metafunc, Parser, Session
 
 SECURITY_OPTION_ROOTLESS = "name=rootless"
@@ -172,7 +173,7 @@ def test_frame():
         def __init__(self):
             self.resources: list[tuple[Any, Callable]] = []
 
-        def append[T](self, resource: T, cleanup_func: Callable[[T], None] = None) -> T:
+        def append[T](self, resource: T, cleanup_func: Callable[[T], None] | None = None) -> T:
             """Runs the Context manager lifecycle on the resource,
             without actually using the `with` structured resource management thing.
 

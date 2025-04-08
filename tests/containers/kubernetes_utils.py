@@ -7,9 +7,7 @@ import socket
 import threading
 import time
 import traceback
-from collections.abc import Callable, Generator
-from socket import socket
-from typing import Any
+from typing import TYPE_CHECKING, Any, Self
 
 import kubernetes
 import kubernetes.client.api.core_v1_api
@@ -24,9 +22,14 @@ import ocp_resources.project_request
 import ocp_resources.resource
 import ocp_resources.service
 import requests
-from kubernetes.dynamic import DynamicClient, ResourceField
 
 from tests.containers import socket_proxy
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+    from socket import socket
+
+    from kubernetes.dynamic import DynamicClient, ResourceField
 
 
 class TestFrameConstants:
@@ -95,7 +98,7 @@ class TestFrame[S]:
         self.defer(resource, destructor)
         return result
 
-    def defer[T](self, obj: T, destructor: Callable[[T], None] = None) -> T:
+    def defer[T](self, obj: T, destructor: Callable[[T], None] | None = None) -> T:
         self.stack.append((obj, destructor))
 
     def destroy(self, wait=False):
@@ -119,7 +122,7 @@ class ImageDeployment:
         self.image = image
         self.tf = TestFrame()
 
-    def __enter__(self) -> ImageDeployment:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

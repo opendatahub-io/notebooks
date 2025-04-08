@@ -35,7 +35,7 @@ def main() -> None:
 
 
 def check_tests(target: str) -> bool:
-    if target.startswith("rocm-jupyter-minimal-") or target.startswith("rocm-jupyter-datascience-"):
+    if target.startswith(("rocm-jupyter-minimal-", "rocm-jupyter-datascience-")):
         return False  # we don't have specific tests for -minimal-, ... in ci-operator/config
 
     build_directory = gha_pr_changed_files.get_build_directory(target)

@@ -133,7 +133,7 @@ d2 = today.strftime("%B %d, %Y")
 
 LATEST_MAIN_COMMIT = os.environ["LATEST_MAIN_COMMIT"]
 
-for i, image in enumerate(IMAGES_MAIN):
+for _i, image in enumerate(IMAGES_MAIN):
     process_image(image, commit_id_path, "", LATEST_MAIN_COMMIT)
 
 branch_main_data = generate_markdown_table(branch_dictionary)
@@ -142,7 +142,7 @@ branch_dictionary = {}
 RELEASE_VERSION_N = os.environ["RELEASE_VERSION_N"]
 HASH_N = os.environ["HASH_N"]
 
-for i, image in enumerate(IMAGES):
+for _i, image in enumerate(IMAGES):
     process_image(image, commit_id_path, RELEASE_VERSION_N, HASH_N)
 
 branch_n_data = generate_markdown_table(branch_dictionary)
@@ -151,7 +151,7 @@ branch_dictionary = {}
 RELEASE_VERSION_N_1 = os.environ["RELEASE_VERSION_N_1"]
 HASH_N_1 = os.environ["HASH_N_1"]
 
-for i, image in enumerate(IMAGES_N_1):
+for _i, image in enumerate(IMAGES_N_1):
     process_image(image, commit_id_path, RELEASE_VERSION_N_1, HASH_N_1)
 
 branch_n_1_data = generate_markdown_table(branch_dictionary)

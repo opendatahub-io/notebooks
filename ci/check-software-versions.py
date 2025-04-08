@@ -16,6 +16,7 @@ import logging
 import os
 import re
 import subprocess
+import sys
 import uuid
 from enum import Enum
 
@@ -111,7 +112,7 @@ def execute_command_in_container(container_id, command):
     """Executes a command inside a running Podman container."""
 
     try:
-        result = subprocess.run(["podman", "exec", container_id] + command, capture_output=True, text=True, check=True)
+        result = subprocess.run(["podman", "exec", container_id, *command], capture_output=True, text=True, check=True)
         log.debug(result.stdout.strip())
         return result.stdout.strip()
     except (subprocess.CalledProcessError, Exception) as e:
@@ -307,7 +308,7 @@ def main():
 
     if not imagestreams or len(imagestreams) == 0:
         log.error("Failed to detect any ImageStream manifest files!")
-        exit(1)
+        sys.exit(1)
 
     print_delimiter()
 
@@ -323,7 +324,7 @@ def main():
     else:
         log.error("The software version check failed, see errors above in the log for more information!")
 
-    exit(ret_code)
+    sys.exit(ret_code)
 
 
 if __name__ == "__main__":

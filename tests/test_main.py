@@ -20,7 +20,7 @@ def test_image_pipfiles(subtests: pytest_subtests.plugin.SubTests):
         with subtests.test(msg="checking Pipfile", pipfile=file):
             print(file)
             directory = file.parent  # "ubi9-python-3.11"
-            ubi, lang, python = directory.name.split("-")
+            _ubi, _lang, python = directory.name.split("-")
 
             with open(file, "rb") as fp:
                 pipfile = tomllib.load(fp)

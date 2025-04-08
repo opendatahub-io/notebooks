@@ -7,10 +7,12 @@ import socket
 import struct
 import subprocess
 import threading
-from collections.abc import Callable
-from typing import ContextManager
+from typing import TYPE_CHECKING, ContextManager
 
 from tests.containers.cancellation_token import CancellationToken
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 """Proxies kubernetes portforwards to a local port.
 

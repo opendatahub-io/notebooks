@@ -8,18 +8,21 @@ import platform
 import time
 import urllib.error
 import urllib.request
+from typing import TYPE_CHECKING
 
 import docker.errors
 import docker.models.images
 import docker.types
 import pytest
-import pytest_subtests
 import testcontainers.core.container
 import testcontainers.core.docker_client
 import testcontainers.core.network
 import testcontainers.core.waiting_utils
 
 from tests.containers import docker_utils, kubernetes_utils, podman_machine_utils
+
+if TYPE_CHECKING:
+    import pytest_subtests
 
 
 class TestWorkbenchImage:
@@ -129,10 +132,10 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         port: int = 8888,
         **kwargs,
     ) -> None:
-        defaults = dict(
+        defaults = {
             # because rstudio only prints out errors when TTY is present
             # > TTY detected. Printing informational message about logging configuration.
-            tty=True,
+            "tty": True,
             # another rstudio speciality, without this, it gives
             # > system error 13 (Permission denied) [path: /opt/app-root/src/.cache/rstudio
             # equivalent podman command may include
@@ -140,8 +143,8 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
             # can't use mounts= because testcontainers already sets volumes=
             # > mounts=[docker.types.Mount(target="/opt/app-root/src/", source="", type="volume", no_copy=True)],
             # can use tmpfs=, keep in mind `notmpcopyup` opt is podman specific
-            tmpfs={"/opt/app-root/src": "rw,notmpcopyup"},
-        )
+            "tmpfs": {"/opt/app-root/src": "rw,notmpcopyup"},
+        }
         if not kwargs.keys().isdisjoint(defaults.keys()):
             raise TypeError(f"Keyword arguments in {defaults.keys()=} are not allowed, for good reasons")
         super().__init__(**defaults, **kwargs)
@@ -233,7 +236,7 @@ def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: Workbench
     stdout, stderr = container.get_logs()
     full_logs = ""
     for line in stdout.splitlines() + stderr.splitlines():
-        full_logs = "\n".join([full_logs, line.decode()])
+        full_logs = f"{full_logs}\n{line.decode()}"
         logging.debug(line.decode())
 
     # let's check that logs don't contain any error or unexpected warning message

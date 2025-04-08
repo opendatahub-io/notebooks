@@ -30,16 +30,7 @@ class TestJupyterLabImage:
         # and we also have them in the Kustomize test files for Makefile tests
         container.with_env(
             "NOTEBOOK_ARGS",
-            "\n".join(
-                [
-                    "--ServerApp.port=8888",
-                    "--ServerApp.token=''",
-                    "--ServerApp.password=''",
-                    "--ServerApp.base_url=/notebook/opendatahub/jovyan",
-                    "--ServerApp.quit_button=False",
-                    """--ServerApp.tornado_settings={"user":"jovyan","hub_host":"https://opendatahub.io","hub_prefix":"/notebookController/jovyan"}""",
-                ]
-            ),
+            '--ServerApp.port=8888\n--ServerApp.token=\'\'\n--ServerApp.password=\'\'\n--ServerApp.base_url=/notebook/opendatahub/jovyan\n--ServerApp.quit_button=False\n--ServerApp.tornado_settings={"user":"jovyan","hub_host":"https://opendatahub.io","hub_prefix":"/notebookController/jovyan"}',
         )
         try:
             # we changed base_url, and wait_for_readiness=True would attempt connections to /

@@ -9,7 +9,6 @@ import platform
 import re
 import tempfile
 import textwrap
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -22,6 +21,8 @@ logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import pytest_subtests
 
 
@@ -95,7 +96,7 @@ class TestBaseImage:
                 logging.debug(output.decode())
                 assert ecode == 0
 
-            ecode, output = container.exec(
+            _ecode, output = container.exec(
                 encode_python_function_execution_command_interpreter("/usr/bin/python3", check_elf_file)
             )
 

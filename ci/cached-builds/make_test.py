@@ -79,7 +79,7 @@ def run_tests(target: str) -> None:
             check_call(
                 f"make validate-runtime-image image={target.replace('rocm-runtime-', 'runtime-rocm-')}", shell=True
             )
-        elif target.startswith("rstudio-") or target.startswith("cuda-rstudio-"):
+        elif target.startswith(("rstudio-", "cuda-rstudio-")):
             check_call(f"make validate-rstudio-image image={target}", shell=True)
         elif target.startswith("codeserver-"):
             check_call(f"make validate-codeserver-image image={target}", shell=True)

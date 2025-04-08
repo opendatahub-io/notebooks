@@ -34,8 +34,7 @@ def parse_makefile(target: str, makefile_dir: pathlib.Path | str) -> str:
         # Run the make (or gmake) command and capture the output
         result = subprocess.run(
             [make_command, "-nps", target],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             check=True,
             cwd=makefile_dir,

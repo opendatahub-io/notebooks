@@ -118,7 +118,7 @@ def main():
                 sw_version = sw_version.lstrip("v")
 
                 # do not allow duplicates when general and python lists both contain e.g. TensorFlow
-                if sw_name in set(item["name"] for item in sw_python):
+                if sw_name in {item["name"] for item in sw_python}:
                     continue
                 software.append(f"{sw_name} {sw_version}")
             for item in sw_python:

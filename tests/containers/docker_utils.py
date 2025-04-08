@@ -6,16 +6,17 @@ import os.path
 import sys
 import tarfile
 import time
-from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
-import docker.client
 import podman
-import testcontainers.core.container
 
 import tests.containers.pydantic_schemas
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    import docker.client
+    import testcontainers.core.container
     from docker.models.containers import Container
 
 
@@ -73,7 +74,7 @@ def container_cp(container: Container, src: str, dst: str, user: int | None = No
 
 def from_container_cp(container: Container, src: str, dst: str) -> None:
     fh = io.BytesIO()
-    bits, stat = container.get_archive(src, encode_stream=True)
+    bits, _stat = container.get_archive(src, encode_stream=True)
     for chunk in bits:
         fh.write(chunk)
     fh.seek(0)
