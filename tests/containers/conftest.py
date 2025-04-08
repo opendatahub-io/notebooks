@@ -3,23 +3,21 @@ from __future__ import annotations
 import logging
 import os
 import platform
-from typing import Any, Callable, TYPE_CHECKING
-
-import testcontainers.core.config
-import testcontainers.core.container
-import testcontainers.core.docker_client
-
-import pytest
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import docker.errors
 import docker.models.images
 import docker.types
+import pytest
+import testcontainers.core.config
+import testcontainers.core.container
+import testcontainers.core.docker_client
 
-from tests.containers import docker_utils
-from tests.containers import utils
+from tests.containers import docker_utils, utils
 
 if TYPE_CHECKING:
-    from pytest import ExitCode, Session, Parser, Metafunc
+    from pytest import ExitCode, Metafunc, Parser, Session
 
 SECURITY_OPTION_ROOTLESS = "name=rootless"
 TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE"
@@ -41,8 +39,7 @@ testcontainers.core.config.testcontainers_config.ryuk_privileged = True
 
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_addoption
 def pytest_addoption(parser: Parser) -> None:
-    parser.addoption("--image", action="append", default=[],
-                     help="Image to use, can be specified multiple times")
+    parser.addoption("--image", action="append", default=[], help="Image to use, can be specified multiple times")
 
 
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_generate_tests
@@ -59,10 +56,11 @@ def skip_if_not_workbench_image(image: str) -> docker.models.images.Image:
         image_metadata = client.client.images.pull(image)
         assert isinstance(image_metadata, docker.models.images.Image)
 
-    ide_server_label_fragments = ('-code-server-', '-jupyter-', '-rstudio-')
-    if not any(ide in image_metadata.labels['name'] for ide in ide_server_label_fragments):
+    ide_server_label_fragments = ("-code-server-", "-jupyter-", "-rstudio-")
+    if not any(ide in image_metadata.labels["name"] for ide in ide_server_label_fragments):
         pytest.skip(
-            f"Image {image} does not have any of '{ide_server_label_fragments=} in {image_metadata.labels['name']=}'")
+            f"Image {image} does not have any of '{ide_server_label_fragments=} in {image_metadata.labels['name']=}'"
+        )
 
     return image_metadata
 
@@ -83,9 +81,8 @@ def workbench_image(image: str):
 @pytest.fixture(scope="function")
 def jupyterlab_image(image: str) -> docker.models.images.Image:
     image_metadata = skip_if_not_workbench_image(image)
-    if "-jupyter-" not in image_metadata.labels['name']:
-        pytest.skip(
-            f"Image {image} does not have '-jupyter-' in {image_metadata.labels['name']=}'")
+    if "-jupyter-" not in image_metadata.labels["name"]:
+        pytest.skip(f"Image {image} does not have '-jupyter-' in {image_metadata.labels['name']=}'")
 
     return image_metadata
 
@@ -94,8 +91,7 @@ def jupyterlab_image(image: str) -> docker.models.images.Image:
 def rstudio_image(image: str) -> docker.models.images.Image:
     image_metadata = skip_if_not_workbench_image(image)
     if not utils.is_rstudio_image(image):
-        pytest.skip(
-            f"Image {image} does not have '-rstudio-' in {image_metadata.labels['name']=}'")
+        pytest.skip(f"Image {image} does not have '-rstudio-' in {image_metadata.labels['name']=}'")
 
     return image_metadata
 
@@ -103,9 +99,8 @@ def rstudio_image(image: str) -> docker.models.images.Image:
 @pytest.fixture(scope="function")
 def codeserver_image(image: str) -> docker.models.images.Image:
     image_metadata = skip_if_not_workbench_image(image)
-    if "-code-server-" not in image_metadata.labels['name']:
-        pytest.skip(
-            f"Image {image} does not have '-code-server-' in {image_metadata.labels['name']=}'")
+    if "-code-server-" not in image_metadata.labels["name"]:
+        pytest.skip(f"Image {image} does not have '-code-server-' in {image_metadata.labels['name']=}'")
 
     return image_metadata
 
@@ -122,16 +117,20 @@ def pytest_sessionstart(session: Session) -> None:
 
     # set that socket path for ryuk's use, unless user overrode that
     if TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE not in os.environ:
-        logging.info(f"Env variable TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE not set, setting it now")
-        if platform.system().lower() == 'linux':
+        logging.info("Env variable TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE not set, setting it now")
+        if platform.system().lower() == "linux":
             logging.info(f"We are on Linux, setting {socket_path=} for TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE")
             testcontainers.core.config.testcontainers_config.ryuk_docker_socket = socket_path
-        elif platform.system().lower() == 'darwin':
+        elif platform.system().lower() == "darwin":
             podman_machine_socket_path = docker_utils.get_podman_machine_socket_path(client.client)
-            logging.info(f"We are on macOS, setting {podman_machine_socket_path=} for TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE")
+            logging.info(
+                f"We are on macOS, setting {podman_machine_socket_path=} for TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE"
+            )
             testcontainers.core.config.testcontainers_config.ryuk_docker_socket = podman_machine_socket_path
         else:
-            raise RuntimeError(f"Unsupported platform {platform.system()=}, cannot set TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE")
+            raise RuntimeError(
+                f"Unsupported platform {platform.system()=}, cannot set TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE"
+            )
 
     # second preflight check: start the Reaper container
     if not testcontainers.core.config.testcontainers_config.ryuk_disabled:
@@ -142,7 +141,7 @@ def pytest_sessionstart(session: Session) -> None:
             assert testcontainers.core.container.Reaper.get_instance() is not None, "Failed to start Reaper container"
         except Exception as e:
             logging.exception("Failed to start the Ryuk Reaper container", exc_info=e)
-            logging.error(f"Set env variable 'export TESTCONTAINERS_RYUK_DISABLED=true' and try again.")
+            logging.error("Set env variable 'export TESTCONTAINERS_RYUK_DISABLED=true' and try again.")
             raise RuntimeError("Consider disabling Ryuk as per the log messages above.") from e
 
 
@@ -162,11 +161,11 @@ def test_frame():
         >>> import testcontainers.core.network
         >>>
         >>> def test_something(test_frame: TestFrame):
-        >>>     # this will create/destroy the network as it enters/leaves the test_frame
+        >>> # this will create/destroy the network as it enters/leaves the test_frame
         >>>    network = testcontainers.core.network.Network(...)
         >>>    test_frame.append(network)
         >>>
-        >>>    # some resources require additional cleanup function
+        >>> # some resources require additional cleanup function
         >>>    test_frame.append(subprocess.Popen(...), lambda p: p.kill())
         """
 

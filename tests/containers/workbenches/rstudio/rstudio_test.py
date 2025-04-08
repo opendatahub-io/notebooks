@@ -3,14 +3,14 @@ from __future__ import annotations
 import json
 import logging
 import pathlib
-import pytest_subtests
 import subprocess
 import tempfile
 import textwrap
-from typing import NamedTuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import allure
 import pytest
+import pytest_subtests
 
 from tests.containers import docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
@@ -31,8 +31,10 @@ class TestRStudioImage:
             https://stackoverflow.com/questions/40563479/relationship-between-r-markdown-knitr-pandoc-and-bookdown
             https://www.earthdatascience.org/courses/earth-analytics/document-your-science/knit-rmarkdown-document-to-pdf/
         """
-        if "rhel" in rstudio_image.labels['name']:
-            pytest.skip("ISSUE-957, RHOAIENG-17256(comments): RStudio workbench on RHEL does not come with knitr preinstalled")
+        if "rhel" in rstudio_image.labels["name"]:
+            pytest.skip(
+                "ISSUE-957, RHOAIENG-17256(comments): RStudio workbench on RHEL does not come with knitr preinstalled"
+            )
 
         container = WorkbenchContainer(image=rstudio_image, user=1000, group_add=[0])
         try:
@@ -80,22 +82,26 @@ class TestRStudioImage:
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir = pathlib.Path(tmpdir)
                 (tmpdir / "script.R").write_text(script)
-                docker_utils.container_cp(container.get_wrapped_container(), src=str(tmpdir / "script.R"),
-                                          dst=self.APP_ROOT_HOME)
+                docker_utils.container_cp(
+                    container.get_wrapped_container(), src=str(tmpdir / "script.R"), dst=self.APP_ROOT_HOME
+                )
                 (tmpdir / "document.Rmd").write_text(document)
-                docker_utils.container_cp(container.get_wrapped_container(), src=str(tmpdir / "document.Rmd"),
-                                          dst=self.APP_ROOT_HOME)
+                docker_utils.container_cp(
+                    container.get_wrapped_container(), src=str(tmpdir / "document.Rmd"), dst=self.APP_ROOT_HOME
+                )
 
             # https://stackoverflow.com/questions/28432607/pandoc-version-1-12-3-or-higher-is-required-and-was-not-found-r-shiny
-            check_call(container,
-                       f"bash -c 'RSTUDIO_PANDOC=/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64 Rscript {self.APP_ROOT_HOME}/script.R'")
+            check_call(
+                container,
+                f"bash -c 'RSTUDIO_PANDOC=/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64 Rscript {self.APP_ROOT_HOME}/script.R'",
+            )
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 docker_utils.from_container_cp(container.get_wrapped_container(), src=self.APP_ROOT_HOME, dst=tmpdir)
                 allure.attach.file(
                     pathlib.Path(tmpdir) / "src/document.pdf",
                     name="rendered-pdf",
-                    attachment_type=allure.attachment_type.PDF
+                    attachment_type=allure.attachment_type.PDF,
                 )
 
         finally:
@@ -130,9 +136,7 @@ class TestRStudioImage:
             # Once the RStudio IDE is fully up and running, the processed envs should includ also lowercased proxy configs.
             for tc in test_cases:
                 with subtests.test(tc.name):
-                    output = check_output(
-                        container,
-                        f"/usr/bin/R --quiet --no-echo -e 'Sys.getenv(\"{tc.name_lc}\")'")
+                    output = check_output(container, f"/usr/bin/R --quiet --no-echo -e 'Sys.getenv(\"{tc.name_lc}\")'")
                     assert '"' + tc.value + '"' in output
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
@@ -169,7 +173,7 @@ class StructuredMessage:
 
     def __str__(self):
         s = Encoder().encode(self.kwargs)
-        return '%s >>> %s' % (self.message, s)
+        return "%s >>> %s" % (self.message, s)
 
 
 class Encoder(json.JSONEncoder):
@@ -177,7 +181,7 @@ class Encoder(json.JSONEncoder):
         if isinstance(o, set):
             return tuple(o)
         elif isinstance(o, str):
-            return o.encode('unicode_escape').decode('ascii')
+            return o.encode("unicode_escape").decode("ascii")
         return super().default(o)
 
 

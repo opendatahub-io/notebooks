@@ -6,11 +6,11 @@ import os.path
 import sys
 import tarfile
 import time
-from typing import Iterable, TYPE_CHECKING
+from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
-import podman
 import docker.client
-
+import podman
 import testcontainers.core.container
 
 import tests.containers.pydantic_schemas
@@ -43,8 +43,7 @@ class NotebookContainer:
         return container.attrs["State"]["ExitCode"]
 
 
-def container_cp(container: Container, src: str, dst: str,
-                 user: int | None = None, group: int | None = None) -> None:
+def container_cp(container: Container, src: str, dst: str, user: int | None = None, group: int | None = None) -> None:
     """
     Copies a directory into a container
     From https://stackoverflow.com/questions/46390309/how-to-copy-a-file-from-host-to-container-using-docker-py-docker-sdk
@@ -54,6 +53,7 @@ def container_cp(container: Container, src: str, dst: str,
 
     tar_filter = None
     if user or group:
+
         def tar_filter(f: tarfile.TarInfo) -> tarfile.TarInfo:
             if user:
                 f.uid = user
@@ -86,19 +86,19 @@ def from_container_cp(container: Container, src: str, dst: str) -> None:
 
 
 def container_exec(
-        container: Container,
-        cmd: str | list[str],
-        stdout: bool = True,
-        stderr: bool = True,
-        stdin: bool = False,
-        tty: bool = False,
-        privileged: bool = False,
-        user: str = "",
-        detach: bool = False,
-        stream: bool = False,
-        socket: bool = False,
-        environment: dict[str, str] | None = None,
-        workdir: str | None = None,
+    container: Container,
+    cmd: str | list[str],
+    stdout: bool = True,
+    stderr: bool = True,
+    stdin: bool = False,
+    tty: bool = False,
+    privileged: bool = False,
+    user: str = "",
+    detach: bool = False,
+    stream: bool = False,
+    socket: bool = False,
+    environment: dict[str, str] | None = None,
+    workdir: str | None = None,
 ) -> ContainerExec:
     """
     An enhanced version of #docker.Container.exec_run() which returns an object
@@ -150,7 +150,7 @@ class ContainerExec:
                 sys.stdout.buffer.write(line_prefix)
                 nl = data.find(b"\n", offset)
                 if nl >= 0:
-                    slice = data[offset: nl + 1]
+                    slice = data[offset : nl + 1]
                     offset = nl + 1
                 else:
                     slice = data[offset:]
@@ -180,14 +180,14 @@ def get_podman_machine_socket_path(docker_client: docker.client.DockerClient) ->
     info = tests.containers.pydantic_schemas.PodmanInfo.model_validate(podman_client.info())
     assert info.host.remoteSocket.exists, "Failed to determine the podman remote socket"
     assert info.host.remoteSocket.path.startswith("unix://"), "Unexpected remote socket path"
-    machine_socket_path = info.host.remoteSocket.path[len("unix://"):]
+    machine_socket_path = info.host.remoteSocket.path[len("unix://") :]
     return machine_socket_path
 
 
 def get_container_pid(container: Container) -> int | None:
     """Get the network namespace of a Docker container."""
     container.reload()
-    container_pid = container.attrs['State']['Pid']
+    container_pid = container.attrs["State"]["Pid"]
     return container_pid
 
 

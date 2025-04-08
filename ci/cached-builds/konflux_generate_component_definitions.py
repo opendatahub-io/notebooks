@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import pathlib
 import re
-import yaml
 
 import gen_gha_matrix_jobs
 import gha_pr_changed_files
+import yaml
 
 """
 This script is used to configure a Konflux Application with component definitions.
@@ -38,7 +38,6 @@ def konflux_component(component_name, dockerfile_path) -> dict:
                 # this annotation looks useful, but I don't know what it does
                 # https://github.com/openshift-knative/hack/blob/a3a641238bab181b48e8cd8957f499402071d163/pkg/konfluxgen/dockerfile-component.template.yaml#L6
                 # "build.appstudio.openshift.io/request": "configure-pac-no-mr",
-
                 "build.appstudio.openshift.io/status": '{"pac":{"state":"enabled","merge-url":"https://github.com/opendatahub-io/notebooks/pull/903","configuration-time":"Tue, 18 Feb 2025 12:39:27 UTC"},"message":"done"}',
                 "build.appstudio.openshift.io/pipeline": '{"name":"docker-build-oci-ta","bundle":"latest"}',
                 "git-provider": "github",
@@ -61,12 +60,9 @@ def konflux_component(component_name, dockerfile_path) -> dict:
         },
         "spec": {
             "application": application_name,
-            "build-nudges-ref": [ "manifests" ],
+            "build-nudges-ref": ["manifests"],
             "componentName": component_name,
-            "containerImage": "quay.io/redhat-user-workloads/"
-                              + workspace_name
-                              + "/"
-                              + component_name,
+            "containerImage": "quay.io/redhat-user-workloads/" + workspace_name + "/" + component_name,
             "resources": {},
             "source": {
                 "git": {
@@ -86,11 +82,7 @@ def main():
         dockerfile = gha_pr_changed_files.get_build_dockerfile(task)
 
         print("---")
-        print(
-            yaml.dump(
-                konflux_component(task_name, dockerfile_path=dockerfile)
-            )
-        )
+        print(yaml.dump(konflux_component(task_name, dockerfile_path=dockerfile)))
 
 
 if __name__ == "__main__":
