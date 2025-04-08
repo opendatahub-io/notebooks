@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import platform
-from typing import Iterable, Callable, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 
 import testcontainers.core.config
 import testcontainers.core.container
@@ -171,7 +171,7 @@ def test_frame():
         """
 
         def __init__(self):
-            self.resources: list[tuple[any, callable]] = []
+            self.resources: list[tuple[Any, Callable]] = []
 
         def append[T](self, resource: T, cleanup_func: Callable[[T], None] = None) -> T:
             """Runs the Context manager lifecycle on the resource,
