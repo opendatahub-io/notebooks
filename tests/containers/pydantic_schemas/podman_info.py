@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+# ruff: noqa: N815 Variable `volumePath` in class scope should not be mixedCase
+
 
 class Conmon(BaseModel):
     package: str
