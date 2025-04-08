@@ -92,9 +92,9 @@ class TestKubernetesUtils:
         assert username is not None and len(username) > 0
 
 
-class TestFrame:
-    def __init__[T](self):
-        self.stack: list[tuple[T, Callable[[T], None] | None]] = []
+class TestFrame[S]:
+    def __init__(self):
+        self.stack: list[tuple[S, Callable[[S], None] | None]] = []
 
     def defer_resource[T: ocp_resources.resource.Resource](self, resource: T, wait=False,
                                                            destructor: Callable[[T], None] | None = None) -> T:
