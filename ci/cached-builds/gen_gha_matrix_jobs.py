@@ -51,7 +51,7 @@ def parse_makefile(target: str, makefile_dir: pathlib.Path | str) -> str:
     return result.stdout
 
 
-def extract_image_targets(makefile_dir: pathlib.Path | str = None) -> list[str]:
+def extract_image_targets(makefile_dir: pathlib.Path | str | None = None) -> list[str]:
     if makefile_dir is None:
         makefile_dir = os.getcwd()
 
