@@ -311,14 +311,14 @@ class Wait:
         If yes, the wait is closed. Otherwise, waits another {@code pollIntervalMs} and tries again.
         Once the wait timeout (specified by {@code timeoutMs} is reached and supplier wasn't true until that time,
         runs the {@code onTimeout} (f.e. print of logs, showing the actual value that was checked inside {@code ready}),
-        and finally throws {@link WaitException}.
+        and finally throws {@link WaitError}.
         @param description    information about on what we are waiting
         @param pollIntervalMs poll interval in milliseconds
         @param timeoutMs      timeout specified in milliseconds
         @param ready          {@link BooleanSupplier} containing code, which should be executed each poll,
                                verifying readiness of the particular thing
         @param onTimeout      {@link Runnable} executed once timeout is reached and
-                               before the {@link WaitException} is thrown."""
+                               before the {@link WaitError} is thrown."""
         logging.info("Waiting for: %s", description)
         deadline = time.monotonic() + timeout
 
@@ -374,7 +374,7 @@ class Wait:
                         logging.error(stack_trace_error)
                 if on_timeout is not None:
                     on_timeout()
-                wait_exception: WaitException = WaitException(f"Timeout after {timeout} s waiting for {description}")
+                wait_exception: WaitError = WaitError(f"Timeout after {timeout} s waiting for {description}")
                 logging.error(wait_exception)
                 raise wait_exception
 
@@ -382,7 +382,7 @@ class Wait:
             time.sleep(sleep_time)
 
 
-class WaitException(Exception):
+class WaitError(Exception):
     pass
 
 
