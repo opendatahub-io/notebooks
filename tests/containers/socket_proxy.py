@@ -7,7 +7,7 @@ import socket
 import struct
 import subprocess
 import threading
-from typing import TYPE_CHECKING, ContextManager
+from typing import TYPE_CHECKING
 
 from tests.containers.cancellation_token import CancellationToken
 
@@ -54,7 +54,7 @@ class SubprocessProxy:
 class SocketProxy:
     def __init__(
         self,
-        remote_socket_factory: Callable[..., ContextManager[socket.socket]],
+        remote_socket_factory: Callable[..., contextlib.AbstractContextManager[socket.socket]],
         local_host: str = "localhost",
         local_port: int = 0,
         buffer_size: int = 4096,
