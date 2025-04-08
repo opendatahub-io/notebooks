@@ -455,12 +455,12 @@ def create_namespace(
 
 
 __all__ = [
-    "get_client",
-    "get_username",
-    "exposing_contextmanager",
-    "create_namespace",
+    "ImageDeployment",
     "PodUtils",
     "TestFrame",
     "TestFrameConstants",
-    "ImageDeployment",
+    "create_namespace",
+    "exposing_contextmanager",
+    "get_client",
+    "get_username",
 ]
