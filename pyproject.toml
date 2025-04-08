@@ -105,6 +105,7 @@ ignore = [
     # intentionally disabled
     "E203", # space before : (needed for how black formats slicing)
     "ISC001", # single-line-implicit-string-concatenation (ruff format wants this disabled)
+    "G004", # Logging statement uses f-string (convenient, and we don't care about performance too much)
     # various limits and unimportant warnings
     "E501", # Line too long
     "E741", # Ambiguous variable name: `l`
