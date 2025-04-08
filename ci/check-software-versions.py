@@ -252,7 +252,7 @@ def process_tag(tag):
         if stop_and_remove_container(container_id) != 0:
             log.error(f"Failed to stop/remove the container '{container_id}' for the '{image_ref}' tag!")
             print_delimiter()
-            return 1
+            return 1  # noqa: B012 `return` inside `finally` blocks cause exceptions to be silenced
         print_delimiter()
 
     return ret_code
@@ -295,7 +295,7 @@ def main():
     )
 
     args = parser.parse_args()
-    global prune_podman_data
+    global prune_podman_data  # noqa: PLW0603 Using the global statement to update `prune_podman_data` is discouraged
     prune_podman_data = args.prune_podman_data
 
     ret_code = 0

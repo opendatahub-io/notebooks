@@ -111,7 +111,7 @@ def process_image(image, commit_id_path, release_version_n, hash_n):
     for feature in data["data"]["Layer"]["Features"]:
         if len(feature["Vulnerabilities"]) > 0:
             for vulnerability in feature["Vulnerabilities"]:
-                vulnerabilities.append(vulnerability)
+                vulnerabilities.append(vulnerability)  # noqa: PERF402 Use `list` or `list.copy` to create a copy of a list
 
     severity_levels = [entry.get("Severity", "Unknown") for entry in vulnerabilities]
     severity_counts = Counter(severity_levels)

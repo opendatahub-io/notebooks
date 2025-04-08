@@ -183,7 +183,7 @@ def test_frame():
 
             This is somewhat similar to Go's `defer`."""
             self.resources.append((resource, cleanup_func))
-            return resource.__enter__()  # ruff: noqa: PLC2801 Unnecessary dunder call to `__enter__`
+            return resource.__enter__()  # noqa: PLC2801 Unnecessary dunder call to `__enter__`
 
         def destroy(self):
             """Runs __exit__() on the registered resources as a cleanup."""
