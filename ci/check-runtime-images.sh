@@ -19,7 +19,7 @@
 # ---------------------------- DEFINED FUNCTIONS ----------------------------- #
 
 # Expected commit reference for the runtime images
-EXPECTED_COMMIT_REF="2024b"
+EXPECTED_COMMIT_REF="main"
 
 # Number of attempts for the skopeo tool to gather data from the repository.
 SKOPEO_RETRY=3
@@ -38,22 +38,22 @@ function check_image_size() {
 
     case "${img_name}" in
         odh-notebook-runtime-datascience-ubi9-python-3.11)
-            expected_img_size=866
+            expected_img_size=973
             ;;
         odh-notebook-runtime-pytorch-ubi9-python-3.11)
-            expected_img_size=3829
+            expected_img_size=8530
             ;;
         odh-notebook-runtime-rocm-pytorch-ubi9-python-3.11)
-            expected_img_size=6477
+            expected_img_size=7439
             ;;
         odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.11)
-            expected_img_size=5660
+            expected_img_size=6731
             ;;
         odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.11)
             expected_img_size=7992
             ;;
         odh-notebook-runtime-minimal-ubi9-python-3.11)
-            expected_img_size=494
+            expected_img_size=589
             ;;
         *)
             echo "Unimplemented image name: '${img_name}'"
@@ -131,6 +131,11 @@ function check_image() {
     echo "Image name: '${img_name}'"
 
     local expected_string="runtime-${img_tag}-ubi"
+    # workaround as we have a mismatch in the naming in the dockerfile:
+    # https://github.com/opendatahub-io/notebooks/blob/6d0d410abfcf91b42962acce15fe2c80d056912d/runtimes/rocm-tensorflow/ubi9-python-3.11/Dockerfile.rocm#L67
+    if test "${expected_string}" == "runtime-rocm-tensorflow-ubi"; then
+        expected_string="rocm-runtime-tensorflow-ubi"
+    fi
     echo "Checking that '${expected_string}' is present in the image metadata"
     echo "${img_metadata_config}" | grep --quiet "${expected_string}" || {
         echo "ERROR: The string '${expected_string}' isn't present in the image metadata at all. Please check that the referenced image '${img_url}' is the correct one!"
