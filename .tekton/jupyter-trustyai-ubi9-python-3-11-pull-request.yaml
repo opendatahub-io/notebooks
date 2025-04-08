@@ -13,8 +13,7 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
       == "main" && ( "jupyter/datascience/ubi9-python-3.11/mongodb-org-6.0.repo-x86_64".pathChanged()
       || "jupyter/datascience/ubi9-python-3.11/mssql-2022.repo-x86_64".pathChanged()
-      || "jupyter/datascience/ubi9-python-3.11/runtime-images/***".pathChanged() ||
-      "jupyter/datascience/ubi9-python-3.11/setup-elyra.sh".pathChanged() || "jupyter/datascience/ubi9-python-3.11/utils/***".pathChanged()
+      || "jupyter/datascience/ubi9-python-3.11/setup-elyra.sh".pathChanged() || "jupyter/datascience/ubi9-python-3.11/utils/***".pathChanged()
       || "jupyter/minimal/ubi9-python-3.11/start-notebook.sh".pathChanged() || "jupyter/trustyai/ubi9-python-3.11/Pipfile.lock".pathChanged()
       || "jupyter/utils/***".pathChanged() || ".tekton/jupyter-trustyai-ubi9-python-3-11-pull-request.yaml".pathChanged()
       || "jupyter/trustyai/ubi9-python-3.11/Dockerfile.cpu".pathChanged() ) && has(body.repository)
