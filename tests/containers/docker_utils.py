@@ -199,7 +199,7 @@ def _the_one[T](iterable: Iterable[T]) -> T:
     try:
         v = next(it)
     except StopIteration:
-        raise ValueError("No elements in iterable")
+        raise ValueError("No elements in iterable") from None
     try:
         next(it)
     except StopIteration:
