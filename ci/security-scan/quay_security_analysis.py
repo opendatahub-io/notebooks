@@ -69,7 +69,7 @@ def generate_markdown_table(branch_dictionary):
     return markdown_data
 
 
-def process_image(image, commit_id_path, RELEASE_VERSION_N, HASH_N):
+def process_image(image, commit_id_path, release_version_n, hash_n):
     with open(commit_id_path, "r") as params_file:
         img_line = next(line for line in params_file if re.search(f"{image}=", line))
         img = img_line.split("=")[1].strip()
@@ -83,10 +83,10 @@ def process_image(image, commit_id_path, RELEASE_VERSION_N, HASH_N):
 
     regex = ""
 
-    if RELEASE_VERSION_N == "":
-        regex = f"^{src_tag}-(\\d+-)?{HASH_N}$"
+    if release_version_n == "":
+        regex = f"^{src_tag}-(\\d+-)?{hash_n}$"
     else:
-        regex = f"^{src_tag}-{RELEASE_VERSION_N}-\\d+-{HASH_N}$"
+        regex = f"^{src_tag}-{release_version_n}-\\d+-{hash_n}$"
 
     latest_tag_cmd = f"skopeo inspect docker://{img} | jq -r --arg regex \"{regex}\" '.RepoTags | map(select(. | test($regex))) | .[0]'"
     latest_tag = subprocess.check_output(latest_tag_cmd, shell=True, text=True).strip()
