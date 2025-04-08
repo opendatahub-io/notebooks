@@ -39,6 +39,11 @@ class Manifest:
         return [Tag(tag) for tag in self._data['spec']['tags']]
 
 
+class _Software(typing.TypedDict):
+    name: str
+    version: str
+
+
 @dataclasses.dataclass()
 class Tag:
     _data: Any
@@ -60,11 +65,11 @@ class Tag:
         return self._data['annotations']['opendatahub.io/image-tag-outdated'] == 'true'
 
     @property
-    def sw_general(self) -> list[typing.TypedDict["Software", {"name": str, "version": str}]]:
+    def sw_general(self) -> list[_Software]:
         return json.loads(self._data['annotations']['opendatahub.io/notebook-software'])
 
     @property
-    def sw_python(self) -> list[typing.TypedDict("Software", {"name": str, "version": str})]:
+    def sw_python(self) -> list[_Software]:
         return json.loads(self._data['annotations']['opendatahub.io/notebook-python-dependencies'])
 
 
