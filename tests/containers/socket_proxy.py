@@ -126,7 +126,7 @@ class SocketProxy:
                     client_socket.send(data)
 
 
-def _rst_socket(s: socket):
+def _rst_socket(s: socket.socket) -> None:
     """Closing a SO_LINGER socket will RST it
     https://stackoverflow.com/questions/46264404/how-can-i-reset-a-tcp-socket-in-python
     """
