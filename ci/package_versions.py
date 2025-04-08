@@ -9,6 +9,7 @@ import json
 import pathlib
 import typing
 import unittest
+from typing import Any
 
 import yaml
 
@@ -23,7 +24,7 @@ ROOT_DIR = pathlib.Path(__file__).parent.parent
 # unused for now
 @dataclasses.dataclass
 class Manifest:
-    _data: any
+    _data: Any
 
     @property
     def name(self) -> str:
@@ -40,7 +41,7 @@ class Manifest:
 
 @dataclasses.dataclass()
 class Tag:
-    _data: any
+    _data: Any
 
     @property
     def name(self) -> str:
@@ -59,7 +60,7 @@ class Tag:
         return self._data['annotations']['opendatahub.io/image-tag-outdated'] == 'true'
 
     @property
-    def sw_general(self) -> list[typing.TypedDict("Software", {"name": str, "version": str})]:
+    def sw_general(self) -> list[typing.TypedDict["Software", {"name": str, "version": str}]]:
         return json.loads(self._data['annotations']['opendatahub.io/notebook-software'])
 
     @property

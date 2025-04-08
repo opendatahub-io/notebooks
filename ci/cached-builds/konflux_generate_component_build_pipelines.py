@@ -2,6 +2,7 @@
 
 import re
 import pathlib
+from typing import Any
 
 import yaml
 
@@ -760,7 +761,7 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
     }
 
 
-def when[T: any](condition: bool, if_true: T, if_false: T) -> T:
+def when[T: Any](condition: bool, if_true: T, if_false: T) -> T:
     """Returns either if_true or if_false depending on condition.
     The if_true and if_false expressions are always evaluated.
 
