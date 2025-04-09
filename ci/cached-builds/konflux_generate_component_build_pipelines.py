@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
+import os
 import pathlib
 import re
 from typing import Any
 
 import gen_gha_matrix_jobs
 import gha_pr_changed_files
+import makefile_helper
 import yaml
 
 import scripts.sandbox
@@ -55,7 +57,7 @@ def bundle_task_ref(name) -> dict:
     }
 
 
-def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True) -> dict:
+def component_build_pipeline(component_name, dockerfile_path, release, is_pr: bool = True) -> dict:
     """Returns a component build pipeline definition.
 
     This is general enough to create PR pipeline as well as push pipeline.
@@ -119,6 +121,7 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                     + "{{revision}}",
                 },
                 {"name": "image-expires-after", "value": "5d" if is_pr else "28d"},
+                {"name": "image-labels", "value": [f"release={release}"]},
                 {"name": "build-platforms", "value": ["linux/x86_64"]},
                 {"name": "dockerfile", "value": dockerfile_path},
             ],
@@ -193,6 +196,12 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                         "default": "",
                         "description": "Image tag expiration time, time values could be something like 1h, 2d, 3w for hours, days, and weeks, respectively.",
                         "name": "image-expires-after",
+                    },
+                    {
+                        "default": [],
+                        "description": 'Array of --labels values ("label=value" strings) for buildah.',
+                        "name": "image-labels",
+                        "type": "array",
                     },
                     {
                         "default": "false",
@@ -313,6 +322,7 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                             {"name": "HERMETIC", "value": "$(params.hermetic)"},
                             {"name": "PREFETCH_INPUT", "value": "$(params.prefetch-input)"},
                             {"name": "IMAGE_EXPIRES_AFTER", "value": "$(params.image-expires-after)"},
+                            {"name": "LABELS", "value": ["$(params.image-labels[*])"]},
                             {"name": "COMMIT_SHA", "value": "$(tasks.clone-repository.results.commit)"},
                             {"name": "BUILD_ARGS", "value": ["$(params.build-args[*])"]},
                             {"name": "BUILD_ARGS_FILE", "value": "$(params.build-args-file)"},
@@ -750,10 +760,25 @@ def represent_str(self, data):
     return self.represent_scalar("tag:yaml.org,2002:str", data, style=style)
 
 
+def extract_image_release(makefile_dir: pathlib.Path | str | None = None) -> str:
+    if makefile_dir is None:
+        makefile_dir = os.getcwd()
+
+    makefile_all_target = "print-release"
+
+    output = makefile_helper.exec_makefile(target=makefile_all_target, makefile_dir=makefile_dir)
+
+    if len(output) < 1:
+        raise Exception("No release version got for the 'print-release' Makefile target")
+
+    return output
+
+
 def main():
     yaml_line_width = None
     yaml.add_representer(str, represent_str)
 
+    release = extract_image_release(makefile_dir=str(ROOT_DIR)).strip()
     images = gen_gha_matrix_jobs.extract_image_targets(makefile_dir=str(ROOT_DIR))
     for task in images:
         task_name = re.sub(r"[^-_0-9A-Za-z]", "-", task)
@@ -766,7 +791,9 @@ def main():
             )
             print(
                 yaml.dump(
-                    component_build_pipeline(component_name=task_name, dockerfile_path=dockerfile, is_pr=False),
+                    component_build_pipeline(
+                        component_name=task_name, dockerfile_path=dockerfile, release=release, is_pr=False
+                    ),
                     width=yaml_line_width,
                 ),
                 end="",
@@ -780,7 +807,9 @@ def main():
             )
             print(
                 yaml.dump(
-                    component_build_pipeline(component_name=task_name, dockerfile_path=dockerfile, is_pr=True),
+                    component_build_pipeline(
+                        component_name=task_name, dockerfile_path=dockerfile, release=release, is_pr=True
+                    ),
                     width=yaml_line_width,
                 ),
                 end="",

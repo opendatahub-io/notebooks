@@ -71,7 +71,7 @@ define build_image
 	$(info # Building $(IMAGE_NAME) image...)
 
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --label release=${RELEASE} --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
 # Push function for the notebook image:
@@ -102,7 +102,7 @@ endef
 #######################################        Build helpers                 #######################################
 
 # https://stackoverflow.com/questions/78899903/how-to-create-a-make-target-which-is-an-implicit-dependency-for-all-other-target
-skip-init-for := all-images deploy% undeploy% test% validate% refresh-pipfilelock-files scan-image-vulnerabilities
+skip-init-for := all-images deploy% undeploy% test% validate% refresh-pipfilelock-files scan-image-vulnerabilities print-release
 ifneq (,$(filter-out $(skip-init-for),$(MAKECMDGOALS) $(.DEFAULT_GOAL)))
 $(SELF): bin/buildinputs
 endif
@@ -471,3 +471,8 @@ all-images: jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+
+# This is used primarly for konflux_generate_component_build_pipelines.py to we know the build release version
+.PHONY: print-release
+print-release:
+	@echo "$(RELEASE)"
