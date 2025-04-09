@@ -29,6 +29,9 @@ spec:
     value: 'quay.io/redhat-user-workloads/rhoai-ide-konflux-tenant/rocm-runtime-tensorflow-ubi9-python-3-11:{{revision}}'
   - name: image-expires-after
     value: 28d
+  - name: image-labels
+    value:
+    - release=2025a
   - name: build-platforms
     value:
     - linux/x86_64
@@ -95,6 +98,10 @@ spec:
       description: Image tag expiration time, time values could be something like
         1h, 2d, 3w for hours, days, and weeks, respectively.
       name: image-expires-after
+    - default: []
+      description: Array of --labels values ("label=value" strings) for buildah.
+      name: image-labels
+      type: array
     - default: "false"
       description: Build a source image.
       name: build-source-image
@@ -222,6 +229,9 @@ spec:
         value: $(params.prefetch-input)
       - name: IMAGE_EXPIRES_AFTER
         value: $(params.image-expires-after)
+      - name: LABELS
+        value:
+        - $(params.image-labels[*])
       - name: COMMIT_SHA
         value: $(tasks.clone-repository.results.commit)
       - name: BUILD_ARGS

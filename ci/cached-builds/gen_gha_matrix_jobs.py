@@ -6,13 +6,12 @@ import json
 import logging
 import os
 import pathlib
-import platform
 import re
-import subprocess
 import sys
 import unittest
 
 import gha_pr_changed_files
+import makefile_helper
 
 """Trivial Makefile parser that extracts target dependencies so that we can build each Dockerfile image target in its
 own GitHub Actions job.
@@ -23,41 +22,13 @@ Use https://pypi.org/project/py-make/ or https://github.com/JetBrains/intellij-p
 project_dir = pathlib.Path(__file__).parent.parent.parent.absolute()
 
 
-def parse_makefile(target: str, makefile_dir: pathlib.Path | str) -> str:
-    # Check if the operating system is macOS
-    if platform.system() == "Darwin":
-        make_command = "gmake"
-    else:
-        make_command = "make"
-
-    try:
-        # Run the make (or gmake) command and capture the output
-        result = subprocess.run(
-            [make_command, "-nps", target],
-            capture_output=True,
-            text=True,
-            check=True,
-            cwd=makefile_dir,
-        )
-    except subprocess.CalledProcessError as e:
-        # Handle errors if the make command fails
-        print(f"{make_command} failed with return code: {e.returncode}:\n{e.stderr}", file=sys.stderr)
-        raise
-    except Exception as e:
-        # Handle any other exceptions
-        print(f"Error occurred attempting to parse Makefile:\n{e!s}", file=sys.stderr)
-        raise
-
-    return result.stdout
-
-
 def extract_image_targets(makefile_dir: pathlib.Path | str | None = None) -> list[str]:
     if makefile_dir is None:
         makefile_dir = os.getcwd()
 
     makefile_all_target = "all-images"
 
-    output = parse_makefile(target=makefile_all_target, makefile_dir=makefile_dir)
+    output = makefile_helper.dry_run_makefile(target=makefile_all_target, makefile_dir=makefile_dir)
 
     # Extract the 'all-images' entry and its values
     all_images = []
