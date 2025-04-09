@@ -129,6 +129,12 @@ class ContainerStore(BaseModel):
     stopped: int
 
 
+class GraphOptions(BaseModel, extra="allow"):
+    overlay_additional_image_stores: list[str] | None = Field(None, alias="overlay.additionalImageStores")
+    overlay_imagestore: str | None = Field(None, alias="overlay.imagestore")
+    overlay_mountopt: str | None = Field(None, alias="overlay.mountopt")
+
+
 class GraphStatus(BaseModel):
     backing_filesystem: str = Field(..., alias="Backing Filesystem")
     native_overlay_diff: str = Field(..., alias="Native Overlay Diff")
@@ -146,7 +152,7 @@ class Store(BaseModel):
     configFile: str
     containerStore: ContainerStore
     graphDriverName: str
-    graphOptions: dict[str, str]
+    graphOptions: GraphOptions
     graphRoot: str
     graphRootAllocated: int
     graphRootUsed: int
@@ -284,6 +290,7 @@ def test_podman_info():
                 "containerStore": {"number": 0, "paused": 0, "running": 0, "stopped": 0},
                 "graphDriverName": "overlay",
                 "graphOptions": {
+                    "overlay.additionalImageStores": ["/usr/lib/containers/storage"],
                     "overlay.imagestore": "/usr/lib/containers/storage",
                     "overlay.mountopt": "nodev,metacopy=on",
                 },
