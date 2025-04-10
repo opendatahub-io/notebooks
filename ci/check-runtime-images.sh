@@ -88,6 +88,7 @@ function check_image() {
     echo "---------------------------------------------"
     echo "Checking file: '${runtime_image_file}'"
 
+    local runtime_image_metadata
     local img_tag
     local img_url
     local img_metadata_config
@@ -95,17 +96,35 @@ function check_image() {
     local img_commit_ref
     local img_name
 
-    img_tag=$(jq -r '.metadata.tags[0]' "${runtime_image_file}") || {
+    runtime_image_metadata=$(yq -r '.spec.tags[0].annotations."opendatahub.io/runtime-image-metadata"' "${runtime_image_file}") || {
+        echo "ERROR: Couldn't parse runtime image metadata for '${runtime_image_file}' file!"
+        return 1
+    }
+    echo "Runtime image metadata: '${runtime_image_metadata}'"
+
+    # There are 2 places in the current runtime imagestreams where the image url is saved today.
+    img_url_from=$(yq -r '.spec.tags[0].from.name' "${runtime_image_file}") || {
+        echo "ERROR: Couldn't parse image URL from '.spec.tags[0].from.name' field for '${runtime_image_file}' file!"
+        return 1
+    }
+    echo "Image URL from '.spec.tags[0].from.name' field: '${img_url_from}'"
+
+    img_tag=$(echo "${runtime_image_metadata}" | jq -r '.[0].metadata.tags[0]') || {
         echo "ERROR: Couldn't parse image tags metadata for '${runtime_image_file}' runtime image file!"
         return 1
     }
     echo "Image tag: '${img_tag}'"
 
-    img_url=$(jq -r '.metadata.image_name' "${runtime_image_file}") || {
-        echo "ERROR: Couldn't parse image URL metadata for '${runtime_image_file}' runtime image file!"
+    img_url=$(echo "${runtime_image_metadata}" | jq -r '.[0].metadata.image_name') || {
+        echo "ERROR: Couldn't parse image URL from image JSON metadata for '${runtime_image_file}' runtime image file!"
         return 1
     }
-    echo "Image URL: '${img_url}'"
+    echo "Image URL from JSON metadata: '${img_url}'"
+
+    test "${img_url_from}" == "${img_url}" || {
+        echo "ERROR: The image URL in '.spec.tags[0].from.name' doesn't match what is provide in JSON metadata in '${runtime_image_file}' runtime image file!"
+        return 1
+    }
 
     img_metadata_config="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --config "docker://${img_url}")" || {
         echo "ERROR: Couldn't download '${img_url}' image config metadata with skopeo tool!"
@@ -175,8 +194,7 @@ function check_image() {
 function main() {
     ret_code=0
 
-    # If name of the directory isn't good enough, maybe we can improve this to search for the: `"schema_name": "runtime-image"` string.
-    runtime_image_files=$(find . -name "*.json" | grep "runtime-images" | sort --unique)
+    runtime_image_files=$(find . -name "*imagestream.yaml" | grep "runtime" | sort --unique)
 
     IFS=$'\n'
     for file in ${runtime_image_files}; do
