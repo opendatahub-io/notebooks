@@ -19,7 +19,7 @@ endif
 .RECIPEPREFIX =
 
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
-RELEASE	 		 ?= 2024b
+RELEASE	 		 ?= 2025a
 RELEASE_PYTHON_VERSION	 ?= 3.11
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
@@ -35,12 +35,6 @@ ifdef OS
 endif
 DATE 		?= $(shell date +'%Y%m%d')
 WHERE_WHICH ?= which
-
-ifeq ($(RELEASE), 2025a)
-	RELEASE_PYTHON_VERSION = 3.12
-else ifeq ($(RELEASE), 2024a)
-	RELEASE_PYTHON_VERSION = 3.9
-endif
 
 
 # linux/amd64 or darwin/arm64
