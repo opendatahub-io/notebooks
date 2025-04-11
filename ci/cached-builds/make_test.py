@@ -33,30 +33,7 @@ def main() -> None:
 
 def run_tests(target: str) -> None:
     prefix = target.translate(str.maketrans(".", "-"))
-    # this is a pod name in statefulset, some tests deploy individual unmanaged pods, though
-    pod = prefix + "-notebook-0"  # `$(kubectl get statefulset -o name | head -n 1)` would work too
     namespace = "ns-" + prefix
-
-    if target.startswith("runtime-"):
-        deploy = "deploy9"
-        deploy_target = target.replace("runtime-", "runtimes-")
-    elif target.startswith("rocm-runtime-"):
-        deploy = "deploy9"
-        deploy_target = target.replace("rocm-runtime-", "runtimes-rocm-")
-    elif target.startswith("rocm-jupyter-"):
-        deploy = "deploy9"
-        deploy_target = target.replace("rocm-jupyter-", "jupyter-rocm-")
-    elif target.startswith("cuda-rstudio-"):
-        deploy = "deploy"
-        os = re.match(r"^cuda-rstudio-([^-]+-).*", target)
-        deploy_target = os.group(1) + target.removeprefix("cuda-")
-    elif target.startswith("rstudio-"):
-        deploy = "deploy"
-        os = re.match(r"^rstudio-([^-]+-).*", target)
-        deploy_target = os.group(1) + target
-    else:
-        deploy = "deploy9"
-        deploy_target = target
 
     check_call(f"kubectl create namespace {namespace}", shell=True)
     check_call(f"kubectl config set-context --current --namespace={namespace}", shell=True)
@@ -69,24 +46,10 @@ def run_tests(target: str) -> None:
     # See https://github.com/kubernetes/kubernetes/issues/66689
     check_call("timeout 10s bash -c 'until kubectl get serviceaccount/default; do sleep 1; done'", shell=True)
 
-    check_call(f"make {deploy}-{deploy_target}", shell=True)
-    wait_for_stability(pod)
+    check_call(f"make deploy-{target}", shell=True)
 
     try:
-        if target.startswith("runtime-"):
-            check_call(f"make validate-runtime-image image={target}", shell=True)
-        elif target.startswith("rocm-runtime-"):
-            check_call(
-                f"make validate-runtime-image image={target.replace('rocm-runtime-', 'runtime-rocm-')}", shell=True
-            )
-        elif target.startswith(("rstudio-", "cuda-rstudio-")):
-            check_call(f"make validate-rstudio-image image={target}", shell=True)
-        elif target.startswith("codeserver-"):
-            check_call(f"make validate-codeserver-image image={target}", shell=True)
-        elif target.startswith("rocm-jupyter"):
-            check_call(f"make test-{target.replace('rocm-jupyter-', 'jupyter-rocm-')}", shell=True)
-        else:
-            check_call(f"make test-{target}", shell=True)
+        check_call(f"make test-{target}", shell=True)
     finally:
         # dump a lot of info to the GHA logs
         with gha_log_group("pod and statefulset info"):
@@ -109,7 +72,7 @@ def run_tests(target: str) -> None:
             # regular logs from a running (or finished) pod
             call("kubectl logs --selector=nosuchlabel!=nosuchvalue --all-pods --timestamps", shell=True)
 
-    check_call(f"make un{deploy}-{deploy_target}", shell=True)
+    check_call(f"make undeploy-{target}", shell=True)
 
     print(f"[INFO] Finished testing {target}")
 
@@ -133,22 +96,6 @@ def execute(executor: typing.Callable, args: tuple, kwargs: dict) -> int:
     return result
 
 
-# TODO(jdanek) this is a dumb impl, needs to be improved
-def wait_for_stability(pod: str) -> None:
-    """Waits for the pod to be stable. Often I'm seeing that the probes initially fail.
-    > error: Internal error occurred: error executing command in container: container is not created or running
-    > error: unable to upgrade connection: container not found ("notebook")
-    """
-    timeout = 100
-    for _ in range(3):
-        call(
-            f"timeout {timeout}s bash -c 'until kubectl wait --for=condition=Ready pods --all --timeout 5s; do sleep 1; done'",
-            shell=True,
-        )
-        timeout = 50
-        time.sleep(3)
-
-
 # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#grouping-log-lines
 @contextlib.contextmanager
 def gha_log_group(title):
@@ -170,81 +117,81 @@ class TestMakeTest(unittest.TestCase):
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("jupyter-minimal-ubi9-python-3.11")
         commands: list[str] = [c[0][1][0] for c in mock_execute.call_args_list]
-        assert "make deploy9-jupyter-minimal-ubi9-python-3.11" in commands
+        assert "make deploy-jupyter-minimal-ubi9-python-3.11" in commands
         assert "make test-jupyter-minimal-ubi9-python-3.11" in commands
-        assert "make undeploy9-jupyter-minimal-ubi9-python-3.11" in commands
+        assert "make undeploy-jupyter-minimal-ubi9-python-3.11" in commands
 
     @unittest.mock.patch("make_test.execute")
     def test_make_commands_jupyter_rocm(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("rocm-jupyter-tensorflow-ubi9-python-3.11")
         commands: list[str] = [c[0][1][0] for c in mock_execute.call_args_list]
-        assert "make deploy9-jupyter-rocm-tensorflow-ubi9-python-3.11" in commands
-        assert "make test-jupyter-rocm-tensorflow-ubi9-python-3.11" in commands
-        assert "make undeploy9-jupyter-rocm-tensorflow-ubi9-python-3.11" in commands
+        assert "make deploy-rocm-jupyter-tensorflow-ubi9-python-3.11" in commands
+        assert "make test-rocm-jupyter-tensorflow-ubi9-python-3.11" in commands
+        assert "make undeploy-rocm-jupyter-tensorflow-ubi9-python-3.11" in commands
 
     @unittest.mock.patch("make_test.execute")
     def test_make_commands_codeserver(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("codeserver-ubi9-python-3.11")
         commands: list[str] = [c[0][1][0] for c in mock_execute.call_args_list]
-        assert "make deploy9-codeserver-ubi9-python-3.11" in commands
-        assert "make validate-codeserver-image image=codeserver-ubi9-python-3.11" in commands
-        assert "make undeploy9-codeserver-ubi9-python-3.11" in commands
+        assert "make deploy-codeserver-ubi9-python-3.11" in commands
+        assert "make test-codeserver-ubi9-python-3.11" in commands
+        assert "make undeploy-codeserver-ubi9-python-3.11" in commands
 
     @unittest.mock.patch("make_test.execute")
     def test_make_commands_rstudio(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("rstudio-c9s-python-3.11")
         commands: list[str] = [c[0][1][0] for c in mock_execute.call_args_list]
-        assert "make deploy-c9s-rstudio-c9s-python-3.11" in commands
-        assert "make validate-rstudio-image image=rstudio-c9s-python-3.11" in commands
-        assert "make undeploy-c9s-rstudio-c9s-python-3.11" in commands
+        assert "make deploy-rstudio-c9s-python-3.11" in commands
+        assert "make test-rstudio-c9s-python-3.11" in commands
+        assert "make undeploy-rstudio-c9s-python-3.11" in commands
 
     @unittest.mock.patch("make_test.execute")
     def test_make_commands_rsudio_rhel(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("rstudio-rhel9-python-3.11")
         commands: list[str] = [c[0][1][0] for c in mock_execute.call_args_list]
-        assert "make deploy-rhel9-rstudio-rhel9-python-3.11" in commands
-        assert "make validate-rstudio-image image=rstudio-rhel9-python-3.11" in commands
-        assert "make undeploy-rhel9-rstudio-rhel9-python-3.11" in commands
+        assert "make deploy-rstudio-rhel9-python-3.11" in commands
+        assert "make test-rstudio-rhel9-python-3.11" in commands
+        assert "make undeploy-rstudio-rhel9-python-3.11" in commands
 
     @unittest.mock.patch("make_test.execute")
     def test_make_commands_cuda_rstudio(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("cuda-rstudio-c9s-python-3.11")
         commands: list[str] = [c[0][1][0] for c in mock_execute.call_args_list]
-        assert "make deploy-c9s-rstudio-c9s-python-3.11" in commands
-        assert "make validate-rstudio-image image=cuda-rstudio-c9s-python-3.11" in commands
-        assert "make undeploy-c9s-rstudio-c9s-python-3.11" in commands
+        assert "make deploy-cuda-rstudio-c9s-python-3.11" in commands
+        assert "make test-cuda-rstudio-c9s-python-3.11" in commands
+        assert "make undeploy-cuda-rstudio-c9s-python-3.11" in commands
 
     @unittest.mock.patch("make_test.execute")
     def test_make_commands_cuda_rstudio_rhel(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("cuda-rstudio-rhel9-python-3.11")
         commands: list[str] = [c[0][1][0] for c in mock_execute.call_args_list]
-        assert "make deploy-rhel9-rstudio-rhel9-python-3.11" in commands
-        assert "make validate-rstudio-image image=cuda-rstudio-rhel9-python-3.11" in commands
-        assert "make undeploy-rhel9-rstudio-rhel9-python-3.11" in commands
+        assert "make deploy-cuda-rstudio-rhel9-python-3.11" in commands
+        assert "make test-cuda-rstudio-rhel9-python-3.11" in commands
+        assert "make undeploy-cuda-rstudio-rhel9-python-3.11" in commands
 
     @unittest.mock.patch("make_test.execute")
     def test_make_commands_runtime(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("runtime-datascience-ubi9-python-3.11")
         commands: list[str] = [c[0][1][0] for c in mock_execute.call_args_list]
-        assert "make deploy9-runtimes-datascience-ubi9-python-3.11" in commands
-        assert "make validate-runtime-image image=runtime-datascience-ubi9-python-3.11" in commands
-        assert "make undeploy9-runtimes-datascience-ubi9-python-3.11" in commands
+        assert "make deploy-runtime-datascience-ubi9-python-3.11" in commands
+        assert "make test-runtime-datascience-ubi9-python-3.11" in commands
+        assert "make undeploy-runtime-datascience-ubi9-python-3.11" in commands
 
     @unittest.mock.patch("make_test.execute")
     def test_make_commands_rocm_runtime(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("rocm-runtime-pytorch-ubi9-python-3.11")
         commands: list[str] = [c[0][1][0] for c in mock_execute.call_args_list]
-        assert "make deploy9-runtimes-rocm-pytorch-ubi9-python-3.11" in commands
-        assert "make validate-runtime-image image=runtime-rocm-pytorch-ubi9-python-3.11" in commands
-        assert "make undeploy9-runtimes-rocm-pytorch-ubi9-python-3.11" in commands
+        assert "make deploy-rocm-runtime-pytorch-ubi9-python-3.11" in commands
+        assert "make test-rocm-runtime-pytorch-ubi9-python-3.11" in commands
+        assert "make undeploy-rocm-runtime-pytorch-ubi9-python-3.11" in commands
 
 
 if __name__ == "__main__":

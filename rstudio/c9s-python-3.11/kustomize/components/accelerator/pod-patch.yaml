@@ -5,16 +5,10 @@ metadata:
   name: pod
 spec:
   containers:
-    - name: rstudio
+    - name: workbench
       resources:
         limits:
           memory: 6Gi
         requests:
           memory: 6Gi
-      volumeMounts:
-        - mountPath: /opt/app-root/src
-          name: tmp-volume
-  volumes:
-    - name: tmp-volume
-      emptyDir:
-        medium: Memory
+

@@ -2,17 +2,16 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: pod
-  labels:
-    app: codeserver-image
+  name: workbench
 spec:
   containers:
-    - name: codeserver
-      image: codeserver-workbench
-      command: ["/bin/sh", "-c", "while true ; do date; sleep 5; done;"]
+    - name: workbench
+      image: quay.io/opendatahub/workbench-images
       imagePullPolicy: Always
       ports:
-        - containerPort: 8585
+        - name: workbench-port
+          protocol: TCP
+          containerPort: 8787
       resources:
         limits:
           cpu: 500m

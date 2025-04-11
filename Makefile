@@ -20,7 +20,6 @@ endif
 
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
 RELEASE	 		 ?= 2025a
-RELEASE_PYTHON_VERSION	 ?= 3.11
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
 # whether to push the images to a registry as they are built
@@ -36,19 +35,26 @@ endif
 DATE 		?= $(shell date +'%Y%m%d')
 WHERE_WHICH ?= which
 
-
 # linux/amd64 or darwin/arm64
 OS_ARCH=$(shell go env GOOS)/$(shell go env GOARCH)
 
+PYTHON_VERSION ?= 3.11
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
 YQ_BIN      ?= bin/yq
 YQ_VERSION  ?= v4.44.6
+
 NOTEBOOK_REPO_BRANCH_BASE ?= https://raw.githubusercontent.com/opendatahub-io/notebooks/main
 REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
 REQUIRED_CODE_SERVER_IMAGE_COMMANDS="curl python oc code-server"
 REQUIRED_R_STUDIO_IMAGE_COMMANDS="curl python oc /usr/lib/rstudio-server/bin/rserver"
+
+SUPPORTED_WORKBENCH_ACCELERATORS := cuda rocm
+SUPPORTED_WORKBENCH_FEATURES := jupyter codeserver rstudio runtime
+SUPPORTED_WORKBENCH_SCOPES := minimal datascience trustyai pytorch tensorflow
+
+KUSTOMIZE_OVERLAY ?= base
 
 # Detect and select the system's available container engine
 ifeq (, $(shell $(WHERE_WHICH) podman))
@@ -60,6 +66,32 @@ ifeq (, $(shell $(WHERE_WHICH) podman))
 else
 	CONTAINER_ENGINE := podman
 endif
+
+# Helper function to parse an image build target from the Makefile and extract the meaningful bits:
+#   ARG 1: Image build Makefile target
+define parse_workbench_target
+	$(eval TARGET_PARTS := $(subst -, ,$(1)))
+	$(eval WORKBENCH_ACCELERATOR := $(filter $(firstword $(TARGET_PARTS)), $(SUPPORTED_WORKBENCH_ACCELERATORS)))
+	$(eval TARGET_PARTS := $(if $(WORKBENCH_ACCELERATOR),$(wordlist 2, 100, $(TARGET_PARTS)),$(TARGET_PARTS)))
+	$(eval WORKBENCH_FEATURE := $(firstword $(TARGET_PARTS)))
+	$(eval WORKBENCH_SCOPE := $(if $(filter $(WORKBENCH_FEATURE), jupyter runtime),$(word 2, $(TARGET_PARTS)),))
+	$(eval TARGET_PARTS := $(if $(WORKBENCH_SCOPE),$(wordlist 3, 100, $(TARGET_PARTS)),$(wordlist 2, 100, $(TARGET_PARTS))))
+	$(eval WORKBENCH_OS := $(firstword $(TARGET_PARTS)))
+	$(eval WORKBENCH_PYTHON := $(word 2, $(TARGET_PARTS))-$(word 3, $(TARGET_PARTS)))
+	@echo "WORKBENCH_ACCELERATOR: $(WORKBENCH_ACCELERATOR)"
+	@echo "WORKBENCH_FEATURE: $(WORKBENCH_FEATURE)"
+	@echo "WORKBENCH_SCOPE: $(WORKBENCH_SCOPE)"
+	@echo "WORKBENCH_OS: $(WORKBENCH_OS)"
+	@echo "WORKBENCH_PYTHON: $(WORKBENCH_PYTHON)"
+endef
+
+# Helper function to construct the relative filepath to the workbench image resources based on target name
+#   ARG 1: Image build Makefile target
+define get_workbench_target_directory
+	$(call parse_workbench_target,$(1))
+	$(eval WORKBENCH_DIRECTORY := $(WORKBENCH_FEATURE)$(if $(WORKBENCH_SCOPE),$(if $(WORKBENCH_ACCELERATOR),$(if $(wildcard $(WORKBENCH_FEATURE)/$(WORKBENCH_SCOPE)/$(WORKBENCH_OS)-$(WORKBENCH_PYTHON)/Dockerfile.$(WORKBENCH_ACCELERATOR)),/$(WORKBENCH_SCOPE),/$(WORKBENCH_ACCELERATOR)/$(WORKBENCH_SCOPE)),/$(WORKBENCH_SCOPE)),)/$(WORKBENCH_OS)-$(WORKBENCH_PYTHON))
+	@echo "WORKBENCH_DIRECTORY: $(WORKBENCH_DIRECTORY)"
+endef
 
 # Build function for the notebook image:
 #   ARG 1: Image tag name.
@@ -79,7 +111,7 @@ endef
 define push_image
 	$(eval IMAGE_NAME := $(IMAGE_REGISTRY):$(subst /,-,$(1))-$(IMAGE_TAG))
 	$(info # Pushing $(IMAGE_NAME) image...)
-	$(CONTAINER_ENGINE) push $(IMAGE_NAME)
+	$(CONTAINER_ENGINE) push $(if $(filter $(CONTAINER_ENGINE),podman),--retry 5,) $(IMAGE_NAME)
 endef
 
 # Build and push the notebook images:
@@ -88,11 +120,12 @@ endef
 #
 # PUSH_IMAGES: allows skipping podman push
 define image
-	$(info #*# Image build Dockerfile: <$(2)> #(MACHINE-PARSED LINE)#*#...)
-	$(eval BUILD_DIRECTORY := $(shell echo $(2) | sed 's/\/Dockerfile.*//'))
-	$(info #*# Image build directory: <$(BUILD_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
+	$(call get_workbench_target_directory,$(1))
+	$(info #*# Image build directory: <$(WORKBENCH_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
 
-	$(call build_image,$(1),$(2))
+	$(eval DOCKERFILE_PATH := $(WORKBENCH_DIRECTORY)/Dockerfile.$(if $(WORKBENCH_ACCELERATOR),$(WORKBENCH_ACCELERATOR),cpu))
+
+	$(call build_image,$(1),$(DOCKERFILE_PATH))
 
 	$(if $(PUSH_IMAGES:no=),
 		$(call push_image,$(1))
@@ -113,90 +146,90 @@ bin/buildinputs: scripts/buildinputs/buildinputs.go scripts/buildinputs/go.mod s
 
 ####################################### Buildchain for Python using ubi9 #####################################
 
-.PHONY: jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+.PHONY: jupyter-minimal-ubi9-python-$(PYTHON_VERSION)
+jupyter-minimal-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
-.PHONY: jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION)
-jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/datascience/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+.PHONY: jupyter-datascience-ubi9-python-$(PYTHON_VERSION)
+jupyter-datascience-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
-.PHONY: cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
-cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+.PHONY: jupyter-trustyai-ubi9-python-$(PYTHON_VERSION)
+jupyter-trustyai-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
-.PHONY: cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
-cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+.PHONY: cuda-jupyter-minimal-ubi9-python-$(PYTHON_VERSION)
+cuda-jupyter-minimal-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
-.PHONY: cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
-cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+.PHONY: rocm-jupyter-minimal-ubi9-python-$(PYTHON_VERSION)
+rocm-jupyter-minimal-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
-.PHONY: jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION)
-jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/trustyai/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+.PHONY: cuda-jupyter-tensorflow-ubi9-python-$(PYTHON_VERSION)
+cuda-jupyter-tensorflow-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
-.PHONY: runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
-runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+.PHONY: cuda-jupyter-pytorch-ubi9-python-$(PYTHON_VERSION)
+cuda-jupyter-pytorch-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
-.PHONY: runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION)
-runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/datascience/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+.PHONY: rocm-jupyter-pytorch-ubi9-python-$(PYTHON_VERSION)
+rocm-jupyter-pytorch-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
-.PHONY: runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
-runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+.PHONY: rocm-jupyter-tensorflow-ubi9-python-$(PYTHON_VERSION)
+rocm-jupyter-tensorflow-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
-.PHONY: runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
-runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+.PHONY: runtime-minimal-ubi9-python-$(PYTHON_VERSION)
+runtime-minimal-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
-.PHONY: codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION)
-codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,codeserver/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+.PHONY: runtime-datascience-ubi9-python-$(PYTHON_VERSION)
+runtime-datascience-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
+
+.PHONY: cuda-runtime-pytorch-ubi9-python-$(PYTHON_VERSION)
+cuda-runtime-pytorch-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
+
+.PHONY: rocm-runtime-pytorch-ubi9-python-$(PYTHON_VERSION)
+rocm-runtime-pytorch-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
+
+.PHONY: cuda-runtime-tensorflow-ubi9-python-$(PYTHON_VERSION)
+cuda-runtime-tensorflow-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
+
+.PHONY: rocm-runtime-tensorflow-ubi9-python-$(PYTHON_VERSION)
+rocm-runtime-tensorflow-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
+
+.PHONY: codeserver-ubi9-python-$(PYTHON_VERSION)
+codeserver-ubi9-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
 ####################################### Buildchain for Python using C9S #######################################
 
-.PHONY: rstudio-c9s-python-$(RELEASE_PYTHON_VERSION)
-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,rstudio/c9s-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+.PHONY: rstudio-c9s-python-$(PYTHON_VERSION)
+rstudio-c9s-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
-.PHONY: cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION)
-cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,rstudio/c9s-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+.PHONY: cuda-rstudio-c9s-python-$(PYTHON_VERSION)
+cuda-rstudio-c9s-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
 ####################################### Buildchain for Python using rhel9 #######################################
 
-.PHONY: rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,rstudio/rhel9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+.PHONY: rstudio-rhel9-python-$(PYTHON_VERSION)
+rstudio-rhel9-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
-.PHONY: cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
-cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,rstudio/rhel9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+.PHONY: cuda-rstudio-rhel9-python-$(PYTHON_VERSION)
+cuda-rstudio-rhel9-python-$(PYTHON_VERSION):
+	$(call image,$@)
 
-####################################### Buildchain for AMD Python using UBI9 #######################################
-.PHONY: rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
-rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
-
-.PHONY: rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
-rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/rocm/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
-
-.PHONY: rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
-rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/rocm/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
-
-.PHONY: rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
-rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/rocm-pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
-
-.PHONY: rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
-rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
 
 ####################################### Deployments #######################################
 
@@ -221,10 +254,27 @@ ifeq (,$(wildcard $(YQ_BIN)))
 	@chmod +x $(YQ_BIN)
 endif
 
+.PHONY: deploy-%
+deploy-%: bin/kubectl bin/yq
+	$(call get_workbench_target_directory,$*)
+	$(info # Deploying workbench from $(WORKBENCH_DIRECTORY) directory...)
+ifndef NOTEBOOK_TAG
+	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
+endif
+	$(KUBECTL_BIN) kustomize $(WORKBENCH_DIRECTORY)/kustomize/$(KUSTOMIZE_OVERLAY) \
+		| image_registry=$(IMAGE_REGISTRY) notebook_tag=$(NOTEBOOK_TAG) $(YQ_BIN) eval '(.. | select(has("image") and .image | test("^quay.io/opendatahub/workbench-images")).image) = (strenv(image_registry) + ":" + strenv(notebook_tag))' \
+		| $(KUBECTL_BIN) apply -f -
+
+.PHONY: undeploy-%
+undeploy-%: bin/kubectl bin/yq
+	$(call get_workbench_target_directory,$*)
+	$(info # Undeploying workbench from $(WORKBENCH_DIRECTORY) directory...)
+	$(KUBECTL_BIN) kustomize $(WORKBENCH_DIRECTORY)/kustomize/$(KUSTOMIZE_OVERLAY) \
+		| $(KUBECTL_BIN) delete -f -
+
 .PHONY: deploy9
 deploy9-%: bin/kubectl bin/yq
 	$(eval TARGET := $(shell echo $* | sed 's/-ubi9-python.*//'))
-	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
@@ -237,7 +287,6 @@ endif
 .PHONY: undeploy9
 undeploy9-%: bin/kubectl
 	$(eval TARGET := $(shell echo $* | sed 's/-ubi9-python.*//'))
-	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/ubi9-python-$(PYTHON_VERSION)/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
@@ -245,7 +294,6 @@ undeploy9-%: bin/kubectl
 .PHONY: deploy-c9s
 deploy-c9s-%: bin/kubectl bin/yq
 	$(eval TARGET := $(shell echo $* | sed 's/-c9s-python.*//'))
-	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/c9s-python-$(PYTHON_VERSION)/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
@@ -258,7 +306,6 @@ endif
 .PHONY: undeploy-c9s
 undeploy-c9s-%: bin/kubectl
 	$(eval TARGET := $(shell echo $* | sed 's/-c9s-python.*//'))
-	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/c9s-python-$(PYTHON_VERSION)/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
@@ -266,7 +313,6 @@ undeploy-c9s-%: bin/kubectl
 .PHONY: deploy-rhel9
 deploy-rhel9-%: bin/kubectl bin/yq
 	$(eval TARGET := $(shell echo $* | sed 's/-rhel9-python.*//'))
-	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/rhel9-python-$(PYTHON_VERSION)/kustomize/base)
 ifndef NOTEBOOK_TAG
 	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
@@ -279,16 +325,24 @@ endif
 .PHONY: undeploy-rhel9
 undeploy-rhel9-%: bin/kubectl
 	$(eval TARGET := $(shell echo $* | sed 's/-rhel9-python.*//'))
-	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/rhel9-python-$(PYTHON_VERSION)/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
-# Verify the notebook's readiness by pinging the /api endpoint and executing the corresponding test_notebook.ipynb file in accordance with the build chain logic.
-.PHONY: test
+.PHONY: test-%
 test-%: bin/kubectl
+	$(call get_workbench_target_directory,$*)
 	$(info # Running tests for $* notebook...)
-	@./scripts/test_jupyter_with_papermill.sh $*
+	@./scripts/makefile_utils/test_workbench_container.sh "$(WORKBENCH_ACCELERATOR)" "$(WORKBENCH_FEATURE)" "$(WORKBENCH_SCOPE)" "$(WORKBENCH_OS)" "$(WORKBENCH_PYTHON)" "$(WORKBENCH_DIRECTORY)"
+
+.PHONY: e2e-%
+e2e-%:
+	$(info # Executing build -> deploy -> test -> undeploy lifecycle for $* notebook...)
+	$(MAKE) $*
+	$(MAKE) deploy-$*
+	$(MAKE) test-$*
+	$(MAKE) undeploy-$*
+
 
 # Validate that runtime image meets minimum criteria
 # This validation is created from subset of https://github.com/elyra-ai/elyra/blob/9c417d2adc9d9f972de5f98fd37f6945e0357ab9/Makefile#L325
@@ -389,7 +443,6 @@ validate-rstudio-image: bin/kubectl
 
 # This recipe used mainly from the Pipfile.locks Renewal Action
 # Default Python version
-PYTHON_VERSION ?= 3.11
 ROOT_DIR := $(shell pwd)
 BASE_DIRS := jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
@@ -451,26 +504,26 @@ scan-image-vulnerabilities:
 
 # This is used primarly for gen_gha_matrix_jobs.py to we know the set of all possible images we may want to build
 .PHONY: all-images
-all-images: jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
-	cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
-	rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION) \
-	cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+all-images: jupyter-minimal-ubi9-python-$(PYTHON_VERSION) \
+	jupyter-datascience-ubi9-python-$(PYTHON_VERSION) \
+	cuda-jupyter-minimal-ubi9-python-$(PYTHON_VERSION) \
+	cuda-jupyter-tensorflow-ubi9-python-$(PYTHON_VERSION) \
+	cuda-jupyter-pytorch-ubi9-python-$(PYTHON_VERSION) \
+	jupyter-trustyai-ubi9-python-$(PYTHON_VERSION) \
+	runtime-minimal-ubi9-python-$(PYTHON_VERSION) \
+	runtime-datascience-ubi9-python-$(PYTHON_VERSION) \
+	cuda-runtime-pytorch-ubi9-python-$(PYTHON_VERSION) \
+	cuda-runtime-tensorflow-ubi9-python-$(PYTHON_VERSION) \
+	codeserver-ubi9-python-$(PYTHON_VERSION) \
+	rstudio-c9s-python-$(PYTHON_VERSION) \
+	cuda-rstudio-c9s-python-$(PYTHON_VERSION) \
+	rstudio-rhel9-python-$(PYTHON_VERSION) \
+	cuda-rstudio-rhel9-python-$(PYTHON_VERSION) \
+	rocm-jupyter-minimal-ubi9-python-$(PYTHON_VERSION) \
+	rocm-jupyter-tensorflow-ubi9-python-$(PYTHON_VERSION) \
+	rocm-jupyter-pytorch-ubi9-python-$(PYTHON_VERSION) \
+	rocm-runtime-pytorch-ubi9-python-$(PYTHON_VERSION) \
+	rocm-runtime-tensorflow-ubi9-python-$(PYTHON_VERSION)
 
 # This is used primarly for konflux_generate_component_build_pipelines.py to we know the build release version
 .PHONY: print-release

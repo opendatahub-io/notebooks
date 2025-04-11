@@ -1,0 +1,11 @@
+apiVersion: builtin
+kind: LabelTransformer
+metadata:
+  name: add-labels
+labels:
+  app: rocm-runtime-tensorflow-ubi9-python-3-11
+fieldSpecs:
+  - path: metadata/labels
+    create: true
+  - path: spec/template/metadata/labels
+    create: false

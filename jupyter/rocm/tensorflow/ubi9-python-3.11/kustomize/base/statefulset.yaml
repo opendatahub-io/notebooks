@@ -2,21 +2,22 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: notebook
+  name: workbench
   annotations:
     opendatahub.io/username: jovyan
   labels:
     opendatahub.io/user: jovyan
 spec:
   replicas: 1
-  selector: {}
-  serviceName: notebook
+  selector:
+    matchLabels: {}
+  serviceName: workbench
   template:
     metadata:
       labels: {}
     spec:
       containers:
-        - name: notebook
+        - name: workbench
           image: quay.io/opendatahub/workbench-images:rocm-jupyter-tensorflow-ubi9-python-3.11
           imagePullPolicy: Always
           workingDir: /opt/app-root/src
@@ -30,12 +31,12 @@ spec:
                 --ServerApp.quit_button=False
                 --ServerApp.tornado_settings={"user":"jovyan","hub_host":"https://opendatahub.io","hub_prefix":"/notebookController/jovyan"}
           ports:
-            - name: notebook-port
+            - name: workbench-port
               protocol: TCP
               containerPort: 8888
           livenessProbe:
             tcpSocket:
-              port: notebook-port
+              port: workbench-port
             initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 5
@@ -44,7 +45,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /notebook/opendatahub/jovyan/api
-              port: notebook-port
+              port: workbench-port
               scheme: HTTP
             initialDelaySeconds: 15
             periodSeconds: 10
@@ -58,3 +59,10 @@ spec:
             requests:
               cpu: 500m
               memory: 2Gi
+          volumeMounts:
+            - mountPath: /opt/app-root/src
+              name: tmp-volume
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
