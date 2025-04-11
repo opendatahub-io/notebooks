@@ -30,7 +30,7 @@ spec:
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/default-image: "true"
-        opendatahub.io/notebook-build-commit: $(odh-minimal-notebook-image-commit-n)
+        opendatahub.io/notebook-build-commit: odh-minimal-notebook-image-commit-n_PLACEHOLDER
       from:
         kind: DockerImage
         name: $(odh-minimal-notebook-image-n)
@@ -53,7 +53,7 @@ spec:
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/default-image: "true"
-        opendatahub.io/notebook-build-commit: $(odh-minimal-notebook-image-commit-n-1)
+        opendatahub.io/notebook-build-commit: odh-minimal-notebook-image-commit-n-1_PLACEHOLDER
       from:
         kind: DockerImage
         name: $(odh-minimal-notebook-image-n-1)
