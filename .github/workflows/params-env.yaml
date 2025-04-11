@@ -8,6 +8,7 @@ on:  # yamllint disable-line rule:truthy
       - 'manifests/base/params.env'
       - 'ci/check-params-env.sh'
       - 'ci/check-runtime-images.sh'
+      - 'manifests/base/runtime-*-imagestream.yaml'
   workflow_dispatch:
 
 permissions:
