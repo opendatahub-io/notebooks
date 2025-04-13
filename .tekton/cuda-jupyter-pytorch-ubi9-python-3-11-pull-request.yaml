@@ -12,13 +12,13 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
       == "main" && ( "cuda/NGC-DL-CONTAINER-LICENSE".pathChanged() || "cuda/cuda.repo-x86_64".pathChanged()
-      || "jupyter/datascience/ubi9-python-3.11/mongodb-org-6.0.repo-x86_64".pathChanged()
+      || "jupyter/cuda/pytorch/ubi9-python-3.11/Pipfile.lock".pathChanged() || "jupyter/datascience/ubi9-python-3.11/mongodb-org-6.0.repo-x86_64".pathChanged()
       || "jupyter/datascience/ubi9-python-3.11/mssql-2022.repo-x86_64".pathChanged()
       || "jupyter/datascience/ubi9-python-3.11/setup-elyra.sh".pathChanged() || "jupyter/datascience/ubi9-python-3.11/utils/***".pathChanged()
-      || "jupyter/minimal/ubi9-python-3.11/start-notebook.sh".pathChanged() || "jupyter/pytorch/ubi9-python-3.11/Pipfile.lock".pathChanged()
-      || "jupyter/utils/***".pathChanged() || ".tekton/cuda-jupyter-pytorch-ubi9-python-3-11-pull-request.yaml".pathChanged()
-      || "jupyter/pytorch/ubi9-python-3.11/Dockerfile.cuda".pathChanged() ) && has(body.repository)
-      && body.repository.full_name == "opendatahub-io/notebooks"
+      || "jupyter/minimal/ubi9-python-3.11/start-notebook.sh".pathChanged() || "jupyter/utils/***".pathChanged()
+      || ".tekton/cuda-jupyter-pytorch-ubi9-python-3-11-pull-request.yaml".pathChanged()
+      || "jupyter/cuda/pytorch/ubi9-python-3.11/Dockerfile.cuda".pathChanged() ) &&
+      has(body.repository) && body.repository.full_name == "opendatahub-io/notebooks"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: notebooks
@@ -43,7 +43,7 @@ spec:
     value:
     - linux/x86_64
   - name: dockerfile
-    value: jupyter/pytorch/ubi9-python-3.11/Dockerfile.cuda
+    value: jupyter/cuda/pytorch/ubi9-python-3.11/Dockerfile.cuda
   pipelineSpec:
     description: |
       This pipeline is ideal for building multi-arch container images from a Containerfile while maintaining trust after pipeline customization.
