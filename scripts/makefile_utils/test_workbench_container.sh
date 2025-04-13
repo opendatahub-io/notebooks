@@ -248,8 +248,8 @@ function _test_rstudio()
     local temp_library_directory="${target_directory}/R/temp-library"
 
     local fail=
-	${kbin} exec "${workload_name}" -- mkdir -p "${temp_library_directory}" > /dev/null 2>&1
-	if ${kbin} exec "${workload_name}" -- R -e "install.packages('tinytex', lib='${temp_library_directory}')" > /dev/null 2>&1 ; then
+	${kbin} exec "${workload_name}" -- mkdir -p "${temp_library_directory}" > /dev/null
+	if ${kbin} exec "${workload_name}" -- R -e "install.packages('tinytex', lib='${temp_library_directory}')" > /dev/null; then
 		printf '%s\n' "Tinytex installation successful!"
 	else
 		printf '%s\n' "**ERROR**: Tinytex installation failed."
@@ -257,9 +257,8 @@ function _test_rstudio()
 	fi
 
     local test_filename="test_script.R"
-    local target_directory="/opt/app-root/src/"
-	${kbin} cp "${root_repo_directory}/${workbench_directory}/test/${test_filename}" "${workload_name}:${target_directory}/${test_filename}" > /dev/null 2>&1
-	if ${kbin} exec "${workload_name}" -- Rscript "${target_directory}/${test_filename}" > /dev/null 2>&1 ; then
+	${kbin} cp "${root_repo_directory}/${workbench_directory}/test/${test_filename}" "${workload_name}:${target_directory}/${test_filename}" > /dev/null
+	if ${kbin} exec "${workload_name}" -- Rscript "${target_directory}/${test_filename}" > /dev/null; then
 		printf '%s\n' "R script executed successfully!"
 	else
 		printf '%s\n' "**ERROR**: R script failed."
