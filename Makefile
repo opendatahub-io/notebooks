@@ -124,6 +124,7 @@ define image
 	$(info #*# Image build directory: <$(WORKBENCH_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
 
 	$(eval DOCKERFILE_PATH := $(WORKBENCH_DIRECTORY)/Dockerfile.$(if $(WORKBENCH_ACCELERATOR),$(WORKBENCH_ACCELERATOR),cpu))
+	$(info #*# Image build Dockerfile: <$(DOCKERFILE_PATH)> #(MACHINE-PARSED LINE)#*#...)
 
 	$(call build_image,$(1),$(DOCKERFILE_PATH))
 
