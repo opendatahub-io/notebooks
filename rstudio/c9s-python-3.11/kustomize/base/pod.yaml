@@ -15,10 +15,10 @@ spec:
       resources:
         limits:
           cpu: 500m
-          memory: 500Mi
+          memory: 2Gi
         requests:
           cpu: 500m
-          memory: 500Mi
+          memory: 1Gi
       volumeMounts:
         - mountPath: /opt/app-root/src
           name: tmp-volume
