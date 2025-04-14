@@ -11,9 +11,9 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
-      == "main" && ( "runtimes/minimal/ubi9-python-3.11/Pipfile.lock".pathChanged()
-      || "runtimes/minimal/ubi9-python-3.11/utils/***".pathChanged() || ".tekton/runtime-minimal-ubi9-python-3-11-pull-request.yaml".pathChanged()
-      || "runtimes/minimal/ubi9-python-3.11/Dockerfile.cpu".pathChanged() ) && has(body.repository)
+      == "main" && ( "runtime/minimal/ubi9-python-3.11/Pipfile.lock".pathChanged()
+      || "runtime/minimal/ubi9-python-3.11/utils/***".pathChanged() || ".tekton/runtime-minimal-ubi9-python-3-11-pull-request.yaml".pathChanged()
+      || "runtime/minimal/ubi9-python-3.11/Dockerfile.cpu".pathChanged() ) && has(body.repository)
       && body.repository.full_name == "opendatahub-io/notebooks"
   creationTimestamp: null
   labels:
@@ -39,7 +39,7 @@ spec:
     value:
     - linux/x86_64
   - name: dockerfile
-    value: runtimes/minimal/ubi9-python-3.11/Dockerfile.cpu
+    value: runtime/minimal/ubi9-python-3.11/Dockerfile.cpu
   pipelineSpec:
     description: |
       This pipeline is ideal for building multi-arch container images from a Containerfile while maintaining trust after pipeline customization.

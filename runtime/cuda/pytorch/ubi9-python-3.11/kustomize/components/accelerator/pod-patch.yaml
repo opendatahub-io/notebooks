@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: runtime
+spec:
+  containers:
+    - name: runtime
+      resources:
+        limits:
+          memory: 6Gi
+        requests:
+          memory: 6Gi

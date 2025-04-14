@@ -1,0 +1,27 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: runtime
+spec:
+  containers:
+    - name: runtime
+      image: quay.io/opendatahub/workbench-images
+      command: ["/bin/sh", "-c", "while true ; do date; sleep 1; done;"]
+      imagePullPolicy: Always
+      ports:
+        - containerPort: 8080
+      resources:
+        limits:
+          cpu: 500m
+          memory: 500Mi
+        requests:
+          cpu: 500m
+          memory: 500Mi
+      volumeMounts:
+        - mountPath: /opt/app-root/src
+          name: tmp-volume
+  volumes:
+    - name: tmp-volume
+      emptyDir:
+        medium: Memory

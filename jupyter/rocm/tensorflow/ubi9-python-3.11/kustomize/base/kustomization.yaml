@@ -1,13 +1,13 @@
 ---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namePrefix: jupyter-rocm-tensorflow-ubi9-python-3-11-
-commonLabels:
-  app: jupyter-rocm-tensorflow-ubi9-python-3-11
+namePrefix: rocm-jupyter-tensorflow-ubi9-python-3-11-
 resources:
   - service.yaml
   - statefulset.yaml
+transformers:
+  - labels.yaml
 images:
   - name: quay.io/opendatahub/workbench-images
     newName: quay.io/opendatahub/workbench-images
-    newTag: jupyter-pytorch-ubi9-python-3.11-2023a-20231002-4e9bbb3
+    newTag: rocm-jupyter-pytorch-ubi9-python-3.11

@@ -1,9 +1,11 @@
 ---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namePrefix: rstudio-
+namePrefix: rstudio-rhel9-python-3-11-
 resources:
   - pod.yaml
+transformers:
+  - labels.yaml
 images:
   - name: rstudio-workbench
     newName: quay.io/opendatahub/workbench-images

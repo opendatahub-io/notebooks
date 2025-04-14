@@ -34,7 +34,7 @@ def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.Sub
     file_groups = {
         "ROCm de-vendor script": [
             PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.11/de-vendor-torch.sh",
-            PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.11/de-vendor-torch.sh",
+            PROJECT_ROOT / "runtime/rocm/pytorch/ubi9-python-3.11/de-vendor-torch.sh",
         ]
     }
     for group_name, (first_file, *rest) in file_groups.items():
