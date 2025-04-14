@@ -2,10 +2,8 @@
 import argparse
 import contextlib
 import functools
-import re
 import subprocess
 import sys
-import time
 import typing
 import unittest
 import unittest.mock
