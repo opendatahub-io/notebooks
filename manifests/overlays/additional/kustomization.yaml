@@ -5,6 +5,5 @@ kind: Kustomization
 resources:
   - ../../base
 
-commonLabels:
-  opendatahub.io/component: "true"
-  component.opendatahub.io/name: notebooks
+transformers:
+  - labels.yaml

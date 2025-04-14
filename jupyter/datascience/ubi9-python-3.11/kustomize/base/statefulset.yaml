@@ -9,7 +9,8 @@ metadata:
     opendatahub.io/user: jovyan
 spec:
   replicas: 1
-  selector: {}
+  selector:
+    matchLabels: {}
   serviceName: notebook
   template:
     metadata:

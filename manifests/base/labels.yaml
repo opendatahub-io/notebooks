@@ -1,0 +1,11 @@
+---
+apiVersion: builtin
+kind: LabelTransformer
+metadata:
+  name: add-labels
+labels:
+  opendatahub.io/component: "true"
+  component.opendatahub.io/name: notebooks
+fieldSpecs:
+  - path: metadata/labels
+    create: true

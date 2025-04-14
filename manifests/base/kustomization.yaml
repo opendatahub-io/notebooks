@@ -21,9 +21,8 @@ resources:
   - runtime-rocm-tensorflow-imagestream.yaml
   - runtime-tensorflow-imagestream.yaml
 
-commonLabels:
-  opendatahub.io/component: "true"
-  component.opendatahub.io/name: notebooks
+transformers:
+  - labels.yaml
 
 configMapGenerator:
   - name: notebooks-parameters

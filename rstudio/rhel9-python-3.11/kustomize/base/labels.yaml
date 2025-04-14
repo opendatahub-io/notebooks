@@ -1,0 +1,17 @@
+---
+apiVersion: builtin
+kind: LabelTransformer
+metadata:
+  name: add-labels
+labels:
+  app: rstudio-image
+fieldSpecs:
+  - path: metadata/labels
+    create: true
+  - path: spec/template/metadata/labels
+    create: false
+  - path: spec/selector
+    kind: Service
+    create: true
+  - path: spec/selector/matchLabels
+    create: false

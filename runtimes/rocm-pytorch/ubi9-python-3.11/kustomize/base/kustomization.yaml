@@ -4,6 +4,8 @@ kind: Kustomization
 namePrefix: runtime-
 resources:
   - pod.yaml
+transformers:
+  - labels.yaml
 images:
   - name: runtime-workbench
     newName: quay.io/opendatahub/workbench-images

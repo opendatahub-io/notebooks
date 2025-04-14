@@ -4,6 +4,8 @@ kind: Kustomization
 namePrefix: rstudio-
 resources:
   - pod.yaml
+transformers:
+  - labels.yaml
 images:
   - name: rstudio-workbench
     newName: quay.io/opendatahub/workbench-images

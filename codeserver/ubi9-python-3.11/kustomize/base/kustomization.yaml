@@ -4,6 +4,8 @@ kind: Kustomization
 namePrefix: codeserver-
 resources:
   - pod.yaml
+transformers:
+  - labels.yaml
 images:
   - name: codeserver-workbench
     newName: quay.io/opendatahub/workbench-images
