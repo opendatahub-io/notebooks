@@ -40,6 +40,10 @@ log = logging.getLogger(__name__)
 prune_podman_data = False
 
 
+def raise_exception(error_msg):
+    log.error(error_msg)
+    raise Exception(error_msg)
+
 def find_imagestream_files(directory="."):
     """Finds all ImageStream YAML files in the given directory and its subdirectories."""
 
@@ -122,8 +126,7 @@ def stop_and_remove_container(container_id):
     """Stops and removes a Podman container."""
 
     if not container_id:
-        log.error("Given undefined value in 'container_id' argument!")
-        return 1
+        raise_exception("Given undefined value in 'container_id' argument!")
     try:
         subprocess.run(["podman", "stop", container_id], check=True)
         subprocess.run(["podman", "rm", container_id], check=True)
@@ -131,10 +134,7 @@ def stop_and_remove_container(container_id):
             subprocess.run(["podman", "system", "prune", "--all", "--force"], check=True)
         log.info(f"Container {container_id} stopped and removed.")
     except (subprocess.CalledProcessError, Exception) as e:
-        log.error(f"Error stopping/removing container '{container_id}': {e}")
-        return 1
-
-    return 0
+        raise_exception(f"Error stopping/removing container '{container_id}': {e}")
 
 
 def parse_json_string(json_string):
@@ -143,8 +143,7 @@ def parse_json_string(json_string):
     try:
         return json.loads(json_string)
     except (json.JSONDecodeError, Exception) as e:
-        log.error(f"Error parsing JSON: {e}")
-        return None
+        raise_exception(f"Error parsing JSON: {e}")
 
 
 def process_dependency_item(item, container_id, annotation_type):
@@ -152,8 +151,7 @@ def process_dependency_item(item, container_id, annotation_type):
 
     name, version = item.get("name"), item.get("version")
     if not name or not version:
-        log.error(f"Missing name or version in item: {item}")
-        return 1
+        raise_exception(f"Missing name or version in item: {item}")
 
     log.info(f"Checking {name} (version {version}) in container...")
 
@@ -184,20 +182,61 @@ def process_dependency_item(item, container_id, annotation_type):
     if output and version.lstrip("v") in output:
         log.info(f"{name} version check passed.")
     else:
-        log.error(f"{name} version check failed. Expected '{version}', found '{output}'.")
-        return 1
-
-    return 0
+        raise_exception(f"{name} version check failed. Expected '{version}', found '{output}'.")
 
 
-def process_tag(tag):
-    ret_code = 0
+def check_against_image(tag, tag_annotations, tag_name, image):
+    # Check if the sbom for the image is available
+    # If yes, process it directly
+    # If not, then run the image and gather the data from it directly
 
+    container_id = run_podman_container(f{tag_name}-container, image)
+    if not container_id:
+        raise_exception(f"Failed to start a container from image '{image}' for the '{tag_name}' tag!")
+
+    ntb_sw_annotation = "opendatahub.io/notebook-software"
+    python_dep_annotation = "opendatahub.io/notebook-python-dependencies"
+
+    errors = []
+    try:
+        software = tag_annotations.get(ntb_sw_annotation)
+        if not software:
+            raise_exception(f"Missing '{ntb_sw_annotation}' in ImageStream tag '{tag}'!")
+
+        python_deps = tag_annotations.get(python_dep_annotation)
+        if not python_deps:
+            raise_exception(f"Missing '{python_dep_annotation}' in ImageStream tag '{tag}'!")
+
+        try:
+            for item in parse_json_string(software) or []:
+                process_dependency_item(item, container_id, AnnotationType.SOFTWARE)
+        except Exception as e:
+            log.error(f"Failed check for the '{tag_name}' tag!")
+            errors.append(str(e))
+
+        try:
+            for item in parse_json_string(python_deps) or []:
+                process_dependency_item(item, container_id, AnnotationType.PYTHON_DEPS)
+        except Exception as e:
+            log.error(f"Failed check for the '{tag_name}' tag!")
+            errors.append(str(e))
+    finally:
+        print_delimiter()
+        try:
+            stop_and_remove_container(container_id)
+        except Exception as e:
+            log.error(f"Failed to stop/remove the container '{container_id}' for the '{tag_name}' tag!")
+            errors.append(str(e))
+
+    if errors:
+        raise Exception(errors)
+
+
+def process_tag(tag, image):
     tag_annotations = tag.get("annotations", {})
 
     if "name" not in tag:
-        log.error(f"Missing 'name' field for {tag}!")
-        return 1
+        raise_exception(f"Missing 'name' field for {tag}!")
 
     log.info(f"Processing tag: {tag['name']}.")
     outdated_annotation = "opendatahub.io/image-tag-outdated"
@@ -206,76 +245,51 @@ def process_tag(tag):
         print_delimiter()
         return 0
     if "from" not in tag or "name" not in tag["from"]:
-        log.error(f"Missing 'from.name' in tag {tag['name']}")
-        return 1
+        raise_exception(f"Missing 'from.name' in tag {tag['name']}")
 
-    image_ref = tag["from"]["name"]
-    image_var = extract_variable(image_ref)
-    image_val = get_variable_value(image_var)
-    log.debug(f"Retrieved image link: '{image_val}'")
+    tag_name = tag["from"]["name"]
+    if (image == None):
+        image_var = extract_variable(tag_name)
+        image_val = get_variable_value(image_var)
+        log.debug(f"Retrieved image link: '{image_val}'")
 
-    if not image_val:
-        log.error(f"Failed to parse image value reference pointing by '{image_ref}'!")
-        return 1
+        if not image_val:
+            raise_exception(f"Failed to parse image value reference pointing by '{tag_name}'!")
+    else:
+        image_val = image
+        log.debug(f"Using the given image link: '{image_val}'")
 
-    container_id = run_podman_container(image_var, image_val)
-    if not container_id:
-        log.error(f"Failed to start a container from image '{image_val}' for the '{image_ref}' tag!")
-        return 1
-
-    ntb_sw_annotation = "opendatahub.io/notebook-software"
-    python_dep_annotation = "opendatahub.io/notebook-python-dependencies"
-
-    try:
-        software = tag_annotations.get(ntb_sw_annotation)
-        if not software:
-            log.error(f"Missing '{ntb_sw_annotation}' in ImageStream tag '{tag}'!")
-            return 1
-
-        python_deps = tag_annotations.get(python_dep_annotation)
-        if not python_deps:
-            log.error(f"Missing '{python_dep_annotation}' in ImageStream tag '{tag}'!")
-            return 1
-
-        for item in parse_json_string(software) or []:
-            if process_dependency_item(item, container_id, AnnotationType.SOFTWARE) != 0:
-                log.error(f"Failed check for the '{image_ref}' tag!")
-                ret_code = 1
-
-        for item in parse_json_string(python_deps) or []:
-            if process_dependency_item(item, container_id, AnnotationType.PYTHON_DEPS) != 0:
-                log.error(f"Failed check for the '{image_ref}' tag!")
-                ret_code = 1
-    finally:
-        if stop_and_remove_container(container_id) != 0:
-            log.error(f"Failed to stop/remove the container '{container_id}' for the '{image_ref}' tag!")
-            print_delimiter()
-            return 1  # noqa: B012 `return` inside `finally` blocks cause exceptions to be silenced
-        print_delimiter()
-
-    return ret_code
+    # Now, with the image known and the tag with the manifest data, let's compare what is on the image
+    check_against_image(tag, tag_annotations, tag_name, image_val)
 
 
-def process_imagestream(imagestream):
+def process_imagestream(imagestream, image, given_tag):
     """Processes a single ImageStream file and check images that it is referencing."""
 
-    ret_code = 0
     log.info(f"Processing ImageStream: {imagestream}.")
 
     yaml_data = load_yaml(imagestream)
     if not yaml_data or "spec" not in yaml_data or "tags" not in yaml_data["spec"]:
-        log.error(f"Invalid YAML in {imagestream} as ImageStream file!")
-        return 1
+        raise_exception(f"Invalid YAML content in {imagestream} as ImageStream file!")
+
+    if (given_tag == None):
+        tags = yaml_data["spec"]["tags"]
+    else:
+        tags = given_tag
 
     # Process each image version in the ImageStream:
-    for tag in yaml_data["spec"]["tags"]:
-        if process_tag(tag) != 0:
+    errors = []
+    for tag in tags:
+        try:
+            process_tag(tag, image)
+        except Exception as e:
+            # We want to continue to process the next tag if possible
             log.error(f"Failed to process tag {tag} in ImageStream {imagestream}!")
-            # Let's move on the next tag if any
-            ret_code = 1
-            continue
+            # errors.append(f"{tag}:" + str(e))
+            errors.append(f"///:" + str(e))
 
-    return ret_code
+    if (len(errors) > 0):
+        raise Exception(errors)
 
 
 def print_delimiter():
@@ -283,7 +297,7 @@ def print_delimiter():
     log.info("")
 
 
-def main():
+def parse_arguments():
     parser = argparse.ArgumentParser(description="Process command-line arguments.")
     parser.add_argument(
         "-p",
@@ -291,16 +305,60 @@ def main():
         action="store_true",
         help="Prune Podman data after each image is processed. This is useful when running in GHA workers.",
     )
+    group_required = parser.add_argument_group("Explicit image and manifest tag information")
+    group_required.add_argument(
+        "-i",
+        "--image",
+        type=str,
+        help="Particular image to check.",
+    )
+    group_required.add_argument(
+        "-s",
+        "--image-stream",
+        type=str,
+        help="Particular ImageStream definition selected to check.",
+    )
+    group_required.add_argument(
+        "-t",
+        "--tag",
+        type=str,
+        help="Particular tag name to process from the given ImageStream.",
+    )
 
     args = parser.parse_args()
-    global prune_podman_data  # noqa: PLW0603 Using the global statement to update `prune_podman_data` is discouraged
     prune_podman_data = args.prune_podman_data
+
+    image = args.image
+    image_stream = args.image_stream
+    tag = args.tag
+    # Enforce that image, image_stream and tag arguments are either all set or none are set
+    if (image and image_stream and tag) or (not image and not image_stream and not tag):
+        if image:
+            print(f"Processing the explicitly given image and ImageStream/tag: {image}, {image_stream}, {tag}")
+        else:
+            print("Running the check against all ImageStreams we'll find.")
+    else:
+        parser.error("The arguments --image, --image-stream, and --tag must be either all set or none of them should be set.")
+
+    return prune_podman_data, image, image_stream, tag
+
+
+def main():
+    global prune_podman_data  # noqa: PLW0603 Using the global statement to update `prune_podman_data` is discouraged
+    prune_podman_data, image, image_stream, tag = parse_arguments()
+
+
+    log.info(f"{prune_podman_data}, {tag}, {image}, {image_stream}")
 
     ret_code = 0
     log.info("Starting the check ImageStream software version references.")
 
-    imagestreams = find_imagestream_files()
-    log.info("Following list of ImageStream manifests has been found:")
+    if (image_stream == None):
+        imagestreams = find_imagestream_files()
+    else:
+        imagestreams = [image_stream]
+
+    log.info("Following list of ImageStream manifests will be processed:")
     for imagestream in imagestreams:
         log.info(imagestream)
 
@@ -310,16 +368,22 @@ def main():
 
     print_delimiter()
 
+    errors = []
     for imagestream in imagestreams:
-        if process_imagestream(imagestream) != 0:
+        try:
+            process_imagestream(imagestream, image, tag)
+        except Exception as e:
             log.error(f"Failed to process {imagestream} ImageStream manifest file!")
-            # Let's move on the next imagestream if any
-            ret_code = 1
-            continue
+            errors.append(f"ImageStream path: {imagestream} --- " + str(e))
 
-    if ret_code == 0:
+    print_delimiter()
+    log.info("Test results:")
+
+    if len(errors) == 0:
         log.info("The software versions check in manifests was successful. Congrats! :)")
     else:
+        for error in errors:
+            log.error(error)
         log.error("The software version check failed, see errors above in the log for more information!")
 
     sys.exit(ret_code)
