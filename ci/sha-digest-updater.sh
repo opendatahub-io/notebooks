@@ -6,10 +6,18 @@ BRANCH=$3
 REPO_NAME=$4
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
-# Declare and initialize the image-skipping-logger.sh 
-export SKIPPED_LOG_PATH="$REPO_ROOT/skipped-images.txt"
-source "$REPO_ROOT/ci/image-skipping-logger.sh"
-init_skipped_log
+# Declare and initialize the image skipping log file (This does not commit)
+export SKIPPED_LOG="$REPO_ROOT/skipped-images.txt"
+
+init_skipped_log() {
+    mkdir -p "$(dirname "$SKIPPED_LOG")"
+    touch "$SKIPPED_LOG"
+}
+
+log_skipped_image() {
+    local image_name="$1"
+    echo ":x: — No matching sha for $image_name" >> "$SKIPPED_LOG"
+}
 
 # Fetch the latest commit hash (or use the user-provided one)
 fetch_latest_hash() {
@@ -109,6 +117,8 @@ update_runtime_images() {
     done
 }
 
+init_skipped_log
+
 PARAMS_ENV_PATH="$REPO_ROOT/manifests/base/params.env"
 # In case the digest updater function is triggered upstream.
 if [[ "$REPO_OWNER" == "opendatahub-io" ]]; then
@@ -136,7 +146,7 @@ if [[ "$REPO_OWNER" == "opendatahub-io" ]]; then
         # Check for latest_tag validity (maybe the new image is not yet build)
         if [[ -z "$latest_tag" || "$latest_tag" == "null" ]]; then
             echo "No matching tag found on registry for $file. Skipping."
-            # calls log_skipped_image funtion from image-skipping-logger.sh script
+            # calls log_skipped_image to log missing updates
             log_skipped_image "$image"
             continue
         fi
@@ -191,7 +201,7 @@ elif [[ "$REPO_OWNER" == "red-hat-data-services" ]]; then
         # Check for latest_tag validity (maybe the new image is not yet built)
         if [[ -z "$latest_tag" || "$latest_tag" == "null" ]]; then
             echo "No matching tag found on registry for $file. Skipping."
-            # calls log_skipped_image funtion from image-skipping-logger.sh script
+            # calls log_skipped_image to log missing updates
             log_skipped_image "$image"
             continue
         fi

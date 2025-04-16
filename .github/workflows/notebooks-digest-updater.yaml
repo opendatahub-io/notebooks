@@ -66,7 +66,7 @@ jobs:
             git fetch origin ${{ env.TMP_BRANCH }} && \
             git pull origin ${{ env.TMP_BRANCH }} && \
             git add manifests/base/  && \
-            git commit -m "Update image-related related sha digests via notebooks-digest-updater GitHub action" && \
+            git commit -m "Update image related sha digests via notebooks-digest-updater GitHub action" && \
             git push origin ${{ env.TMP_BRANCH }}
           else
             echo "There were no changes detected in the images for the ${{ env.BRANCH_NAME }}"
@@ -92,7 +92,7 @@ jobs:
             if [[ -n "${{ steps.skipped_log.outputs.log }}" ]]; then
               body+="
 
-              :warning: The following images were skipped during update, please push them manually or retriger the GitHub action: 
+              :warning: The following images were skipped during update, please push them manually or retriger the GitHub action:
               ${{ steps.skipped_log.outputs.log }}
               "
             fi
