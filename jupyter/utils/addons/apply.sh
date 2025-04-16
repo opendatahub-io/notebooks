@@ -6,7 +6,7 @@
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-pf_url="https://unpkg.com/@patternfly/patternfly@6.0.0/patternfly.min.css"
+pf_url="https://unpkg.com/@patternfly/patternfly@6.0.0/patternfly-no-globals.css"
 
 static_dir="/opt/app-root/share/jupyter/lab/static"
 index_file="$static_dir/index.html"
@@ -30,12 +30,6 @@ if [ ! -f "$body_file" ]; then
 fi
 
 curl -o "$static_dir/pf.css" "$pf_url"
-
-# Patternfly implemented some changes, setting the default height on iframe objects to "auto", which
-# excluded the default 800px height of Tensorboard's IFrame object. This stylesheet will simply search
-# for all IFrames that contain `tensorboard` on its URL and add a default height of 800px to it, and only
-# on it.
-echo "iframe[id*=\"tensorboard\"] { height: 800px !important }" >> "$static_dir/pf.css"
 
 head_content=$(tr -d '\n' <"$head_file" | sed 's/@/\\@/g')
 body_content=$(tr -d '\n' <"$body_file" | sed 's/@/\\@/g')
