@@ -4,8 +4,8 @@ USER_HASH=$1
 REPO_OWNER=$2
 BRANCH=$3
 REPO_NAME=$4
-
 REPO_ROOT=$(git rev-parse --show-toplevel)
+
 # Declare and initialize the image skipping log file (This does not commit)
 export SKIPPED_LOG="$REPO_ROOT/skipped-images.txt"
 
@@ -34,20 +34,16 @@ fetch_latest_hash() {
     fi
 }
 
-# Updates the commits in commit.env
-update_commits() {
-    local REPO_ROOT="$1"
-    local HASH="$2"
-    local COMMIT_ENV_PATH="$REPO_ROOT/manifests/base/commit.env"
+# Updates a corresponding image commit in commit.env
+update_image_commit() {
+    local image_name="$1"
+    local hash="$2"
+    local commit_env_path="$REPO_ROOT/manifests/base/commit.env"
 
-    # Get the complete list of commits N-version to update
-    local COMMITS
-    COMMITS=$(grep "\-n=" "$COMMIT_ENV_PATH" | cut -d "=" -f 1)
-
-    for val in $COMMITS; do
-        echo "Updating commit '${val}' to $HASH"
-        sed -i "s|${val}=.*|${val}=${HASH}|" "$COMMIT_ENV_PATH"
-    done
+    # Convert image name to match with commit variable name
+    commit_var=$(echo "$image_name" | sed 's/-n$/-commit-n/')
+    echo "Updating commit '${commit_var}' to $hash"
+    sed -i "s|^${commit_var}=.*|${commit_var}=${hash}|" "$commit_env_path"
 }
 
 # Function to process runtime images
@@ -150,10 +146,8 @@ if [[ "$REPO_OWNER" == "opendatahub-io" ]]; then
             log_skipped_image "$image"
             continue
         fi
-
         # use `--no-tags` for skopeo once available in newer version
         digest=$(skopeo inspect --retry-times 3 "docker://${registry}:${latest_tag}" | jq .Digest | tr -d '"')
-
         # Check for digest validity
         if [[ -z "$digest" || "$digest" == "null" ]]; then
             echo "Failed to get digest for $latest_tag. Skipping."
@@ -164,9 +158,8 @@ if [[ "$REPO_OWNER" == "opendatahub-io" ]]; then
         output="${registry}@${digest}"
         echo "NEW: ${output}"
         sed -i "s|${image}=.*|${image}=${output}|" "${PARAMS_ENV_PATH}"
+        update_image_commit "$image" "$HASH"
     done
-
-    update_commits "$REPO_ROOT" "$HASH"
     update_runtime_images
 
 # In case the digest updater function is triggered downstream.
@@ -205,9 +198,7 @@ elif [[ "$REPO_OWNER" == "red-hat-data-services" ]]; then
             log_skipped_image "$image"
             continue
         fi
-
         digest=$(skopeo inspect --retry-times 3 "docker://${registry}:${latest_tag}" | jq .Digest | tr -d '"')
-
         # Check for digest validity
         if [[ -z "$digest" || "$digest" == "null" ]]; then
             echo "Failed to get digest for $latest_tag. Skipping."
@@ -218,10 +209,9 @@ elif [[ "$REPO_OWNER" == "red-hat-data-services" ]]; then
         output="${registry}@${digest}"
         echo "NEW: ${output}"
         sed -i "s|${image}=.*|${image}=${output}|" "${PARAMS_ENV_PATH}"
+        update_image_commit "$image" "$HASH"
         i=$((i+1))
     done
-
-    update_commits "$REPO_ROOT" "$HASH"
     update_runtime_images
 
 else
