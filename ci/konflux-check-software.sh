@@ -40,11 +40,12 @@ select_manifest() {
     done
 }
 
+
 process_the_software_versions() {
     local manifest_file="${1}"
     local sbom="${2}"
 
-    for 
+    for
 
     jq -r '.packages[] | select(.name == "boto3") | .versionInfo' ./sbom.json
 
