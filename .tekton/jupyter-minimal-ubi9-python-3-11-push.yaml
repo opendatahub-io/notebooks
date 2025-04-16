@@ -669,10 +669,11 @@ spec:
 
             wget --progress=bar --output-document=cosign "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64"
             chmod a+x cosign
+            export PATH="${PWD}:${PATH}"
 
             dnf install -y jq skopeo
 
-            ./${FILE_PATH}/${FILE_NAME}
+            ./${FILE_PATH}
     workspaces:
     - name: git-auth
       optional: true

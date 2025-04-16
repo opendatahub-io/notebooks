@@ -146,6 +146,74 @@ def parse_json_string(json_string):
         raise_exception(f"Error parsing JSON: {e}")
 
 
+import subprocess
+import time
+import sys
+import os
+
+def download_sbom_with_retry(platform_arg: str, image_url: str, sbom: str):
+    """
+    Downloads an SBOM with retry logic
+
+    Args:
+        platform_arg: The platform argument for the cosign command.
+        image_url: The URL of the image to download the SBOM for.
+        sbom: The path to the file where the SBOM should be saved.
+    """
+    # TODO improve by ./cosign tree image and check for the "SBOMs" string - if present, the sboms is there, if missing it's not there
+    max_try = 5
+    wait_sec = 2
+    status = -1
+    err_file = "err"  # Temporary file to store stderr
+    command_bin = "cosign"
+
+    for run in range(1, max_try + 1):
+        status = 0
+        command = [
+            command_bin,
+            "download",
+            "sbom",
+            platform_arg,
+            image_url,
+        ]
+
+        try:
+            with open(sbom, "w") as outfile, open(err_file, "w") as errfile:
+                result = subprocess.run(
+                    command,
+                    stdout=outfile,
+                    stderr=errfile,
+                    check=False  # Don't raise an exception on non-zero exit code
+                )
+                status = result.returncode
+        except FileNotFoundError:
+            print(f"Error: The '{command_bin}' command was not found. Make sure it's in your PATH or the current directory.", file=sys.stderr)
+            return
+
+        if status == 0:
+            break
+        else:
+            print(f"Attempt {run} failed with status {status}. Retrying in {wait_sec} seconds...", file=sys.stderr)
+            time.sleep(wait_sec)
+
+    if status != 0:
+        print(f"Failed to get SBOM after {max_try} tries", file=sys.stderr)
+        try:
+            with open(err_file, "r") as f:
+                error_output = f.read()
+                print(error_output, file=sys.stderr)
+        except FileNotFoundError:
+            print(f"Error file '{err_file}' not found.", file=sys.stderr)
+        # finally:
+        #     raise_exception(f"Invalid item: {item}")
+    else:
+        print(f"Successfully downloaded SBOM to: {sbom}")
+
+    # Clean up the temporary error file
+    if os.path.exists(err_file):
+        os.remove(err_file)
+
+
 def process_dependency_item(item, container_id, annotation_type):
     """Processes a single item (dictionary) from the JSON data."""
 
@@ -185,51 +253,66 @@ def process_dependency_item(item, container_id, annotation_type):
         raise_exception(f"{name} version check failed. Expected '{version}', found '{output}'.")
 
 
+def check_sbom_available(image):
+    # TODO
+    return None
+
+
+def check_sbom_content(software, python_deps, sbom):
+    # TODO
+    return None
+
 def check_against_image(tag, tag_annotations, tag_name, image):
     # Check if the sbom for the image is available
-    # If yes, process it directly
-    # If not, then run the image and gather the data from it directly
+    if check_sbom_available:
+        log.info(f"SBOM for image '{image}' is available.")
+        platform = "--platform=linux/amd64"
+        output_file = "sbom.json"
+        download_sbom_with_retry(platform, image, output_file)
+        # TODO check the sbom against the expected data
+        # check_sbom_content()
+    else:
+        # SBOM not available -> gather data directly from the running image
+        container_id = run_podman_container(f"{tag_name}-container", image)
+        if not container_id:
+            raise_exception(f"Failed to start a container from image '{image}' for the '{tag_name}' tag!")
 
-    container_id = run_podman_container(f{tag_name}-container, image)
-    if not container_id:
-        raise_exception(f"Failed to start a container from image '{image}' for the '{tag_name}' tag!")
+        ntb_sw_annotation = "opendatahub.io/notebook-software"
+        python_dep_annotation = "opendatahub.io/notebook-python-dependencies"
 
-    ntb_sw_annotation = "opendatahub.io/notebook-software"
-    python_dep_annotation = "opendatahub.io/notebook-python-dependencies"
-
-    errors = []
-    try:
-        software = tag_annotations.get(ntb_sw_annotation)
-        if not software:
-            raise_exception(f"Missing '{ntb_sw_annotation}' in ImageStream tag '{tag}'!")
-
-        python_deps = tag_annotations.get(python_dep_annotation)
-        if not python_deps:
-            raise_exception(f"Missing '{python_dep_annotation}' in ImageStream tag '{tag}'!")
-
+        errors = []
         try:
-            for item in parse_json_string(software) or []:
-                process_dependency_item(item, container_id, AnnotationType.SOFTWARE)
-        except Exception as e:
-            log.error(f"Failed check for the '{tag_name}' tag!")
-            errors.append(str(e))
+            software = tag_annotations.get(ntb_sw_annotation)
+            if not software:
+                raise_exception(f"Missing '{ntb_sw_annotation}' in ImageStream tag '{tag}'!")
 
-        try:
-            for item in parse_json_string(python_deps) or []:
-                process_dependency_item(item, container_id, AnnotationType.PYTHON_DEPS)
-        except Exception as e:
-            log.error(f"Failed check for the '{tag_name}' tag!")
-            errors.append(str(e))
-    finally:
-        print_delimiter()
-        try:
-            stop_and_remove_container(container_id)
-        except Exception as e:
-            log.error(f"Failed to stop/remove the container '{container_id}' for the '{tag_name}' tag!")
-            errors.append(str(e))
+            python_deps = tag_annotations.get(python_dep_annotation)
+            if not python_deps:
+                raise_exception(f"Missing '{python_dep_annotation}' in ImageStream tag '{tag}'!")
 
-    if errors:
-        raise Exception(errors)
+            try:
+                for item in parse_json_string(software) or []:
+                    process_dependency_item(item, container_id, AnnotationType.SOFTWARE)
+            except Exception as e:
+                log.error(f"Failed check for the '{tag_name}' tag!")
+                errors.append(str(e))
+
+            try:
+                for item in parse_json_string(python_deps) or []:
+                    process_dependency_item(item, container_id, AnnotationType.PYTHON_DEPS)
+            except Exception as e:
+                log.error(f"Failed check for the '{tag_name}' tag!")
+                errors.append(str(e))
+        finally:
+            print_delimiter()
+            try:
+                stop_and_remove_container(container_id)
+            except Exception as e:
+                log.error(f"Failed to stop/remove the container '{container_id}' for the '{tag_name}' tag!")
+                errors.append(str(e))
+
+        if errors:
+            raise Exception(errors)
 
 
 def process_tag(tag, image):

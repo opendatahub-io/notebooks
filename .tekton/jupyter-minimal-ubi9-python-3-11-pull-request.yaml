@@ -665,16 +665,19 @@ spec:
             FILE_NAME="konflux-check-software.sh"
             FILE_PATH="ci/${FILE_NAME}"
 
-            wget --progress=bar "https://raw.githubusercontent.com/${REPO_SPACE}/${GIT_COMMIT}/${FILE_PATH}"
-            chmod a+x "${FILE_NAME}"
+            #wget --progress=bar "https://raw.githubusercontent.com/${REPO_SPACE}/${GIT_COMMIT}/${FILE_PATH}"
+            git clone --single-branch --branch "GIT_COMMIT" -- "${GIT_URL}" notebooks
+            cd notebooks
+            #chmod a+x "${FILE_NAME}"
             set +x
 
             wget --progress=bar --output-document=cosign "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64"
             chmod a+x cosign
+            export PATH="${PWD}:${PATH}"
 
             dnf install -y jq skopeo
 
-            ./${FILE_NAME}
+            ./${FILE_PATH}
     workspaces:
     - name: git-auth
       optional: true
