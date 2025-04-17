@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 import pathlib
 import re
-import yaml
 
 import gen_gha_matrix_jobs
 import gha_pr_changed_files
+import yaml
 
 """
 This script is used to configure a Konflux Application with component definitions.
 We have very many components, and clicking them one by one in the UI is too inefficient.
 
-$ poetry run ci/cached-builds/konflux_generate_component_definitions.py > konflux_components.yaml
+$ uv run ci/cached-builds/konflux_generate_component_definitions.py > konflux_components.yaml
 $ oc apply -f konflux_components.yaml
 
 Open https://console.redhat.com/application-pipeline/workspaces/rhoai-ide-konflux/applications
@@ -35,7 +35,9 @@ def konflux_component(component_name, dockerfile_path) -> dict:
                 # this annotation will create imagerepository in quay,
                 # https://redhat-internal.slack.com/archives/C07S8637ELR/p1736436093726049?thread_ts=1736420157.217379&cid=C07S8637ELR
                 "image.redhat.com/generate": '{"visibility": "public"}',
-
+                # this annotation looks useful, but I don't know what it does
+                # https://github.com/openshift-knative/hack/blob/a3a641238bab181b48e8cd8957f499402071d163/pkg/konfluxgen/dockerfile-component.template.yaml#L6
+                # "build.appstudio.openshift.io/request": "configure-pac-no-mr",
                 "build.appstudio.openshift.io/status": '{"pac":{"state":"enabled","merge-url":"https://github.com/opendatahub-io/notebooks/pull/903","configuration-time":"Tue, 18 Feb 2025 12:39:27 UTC"},"message":"done"}',
                 "build.appstudio.openshift.io/pipeline": '{"name":"docker-build-oci-ta","bundle":"latest"}',
                 "git-provider": "github",
@@ -58,11 +60,9 @@ def konflux_component(component_name, dockerfile_path) -> dict:
         },
         "spec": {
             "application": application_name,
+            "build-nudges-ref": ["manifests"],
             "componentName": component_name,
-            "containerImage": "quay.io/redhat-user-workloads/"
-                              + workspace_name
-                              + "/"
-                              + component_name,
+            "containerImage": "quay.io/redhat-user-workloads/" + workspace_name + "/" + component_name,
             "resources": {},
             "source": {
                 "git": {
@@ -82,11 +82,7 @@ def main():
         dockerfile = gha_pr_changed_files.get_build_dockerfile(task)
 
         print("---")
-        print(
-            yaml.dump(
-                konflux_component(task_name, dockerfile_path=dockerfile)
-            )
-        )
+        print(yaml.dump(konflux_component(task_name, dockerfile_path=dockerfile)))
 
 
 if __name__ == "__main__":

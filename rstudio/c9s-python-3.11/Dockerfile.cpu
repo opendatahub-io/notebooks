@@ -115,7 +115,7 @@ RUN yum -y module enable nginx:$NGINX_VERSION && \
 COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/supervisord/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Copy extra files to the image.
-COPY ${RSTUDIO_SOURCE_CODE}/nginx/root/ /
+COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/nginx/root/ /
 
 # Changing ownership and user rights to support following use-cases:
 # 1) running container on OpenShift, whose default security model

@@ -6,7 +6,7 @@
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-pf_url="https://unpkg.com/@patternfly/patternfly@6.0.0/patternfly.min.css"
+pf_url="https://unpkg.com/@patternfly/patternfly@6.0.0/patternfly-no-globals.css"
 
 static_dir="/opt/app-root/share/jupyter/lab/static"
 index_file="$static_dir/index.html"

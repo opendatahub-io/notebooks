@@ -3,39 +3,33 @@ from __future__ import annotations
 import contextlib
 import functools
 import logging
+import socket
 import threading
 import time
 import traceback
-import typing
-import socket
-from socket import socket
-from typing import Any, Callable, Generator
-
-import requests
+from typing import TYPE_CHECKING, Any, Self
 
 import kubernetes
-import kubernetes.dynamic.exceptions
-import kubernetes.stream.ws_client
-import kubernetes.dynamic.exceptions
-import kubernetes.stream.ws_client
 import kubernetes.client.api.core_v1_api
-from kubernetes.dynamic import DynamicClient, ResourceField
-
-import ocp_resources.pod
+import kubernetes.dynamic.exceptions
+import kubernetes.stream.ws_client
 import ocp_resources.deployment
-import ocp_resources.service
+import ocp_resources.namespace
 import ocp_resources.persistent_volume_claim
-import ocp_resources.project_request
-import ocp_resources.namespace
-import ocp_resources.project_project_openshift_io
-import ocp_resources.deployment
-import ocp_resources.resource
 import ocp_resources.pod
-import ocp_resources.namespace
 import ocp_resources.project_project_openshift_io
 import ocp_resources.project_request
+import ocp_resources.resource
+import ocp_resources.service
+import requests
 
 from tests.containers import socket_proxy
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+    from socket import socket
+
+    from kubernetes.dynamic import DynamicClient, ResourceField
 
 
 class TestFrameConstants:
@@ -48,6 +42,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 # https://github.com/RedHatQE/openshift-python-wrapper/tree/main/examples
+
 
 def get_client() -> kubernetes.dynamic.DynamicClient:
     try:
@@ -92,17 +87,18 @@ class TestKubernetesUtils:
         assert username is not None and len(username) > 0
 
 
-class TestFrame:
-    def __init__[T](self):
-        self.stack: list[tuple[T, Callable[[T], None] | None]] = []
+class TestFrame[S]:
+    def __init__(self):
+        self.stack: list[tuple[S, Callable[[S], None] | None]] = []
 
-    def defer_resource[T: ocp_resources.resource.Resource](self, resource: T, wait=False,
-                                                           destructor: Callable[[T], None] | None = None) -> T:
+    def defer_resource[T: ocp_resources.resource.Resource](
+        self, resource: T, wait=False, destructor: Callable[[T], None] | None = None
+    ) -> T:
         result = resource.deploy(wait=wait)
         self.defer(resource, destructor)
         return result
 
-    def defer[T](self, obj: T, destructor: Callable[[T], None] = None) -> T:
+    def defer[T](self, obj: T, destructor: Callable[[T], None] | None = None) -> T:
         self.stack.append((obj, destructor))
 
     def destroy(self, wait=False):
@@ -113,7 +109,7 @@ class TestFrame:
             elif isinstance(resource, ocp_resources.resource.Resource):
                 resource.clean_up(wait=wait)
 
-    def __enter__(self) -> TestFrame:
+    def __enter__(self) -> TestFrame[S]:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -126,7 +122,7 @@ class ImageDeployment:
         self.image = image
         self.tf = TestFrame()
 
-    def __enter__(self) -> ImageDeployment:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -176,7 +172,7 @@ class ImageDeployment:
                     },
                     "labels": {
                         "app": container_name,
-                    }
+                    },
                 },
                 "spec": {
                     "containers": [
@@ -193,12 +189,7 @@ class ImageDeployment:
                             ],
                             # rstudio will not start without its volume mount and it does not log the error for it
                             # See the testcontainers implementation of this (the tty=True part)
-                            "volumeMounts": [
-                                {
-                                    "mountPath": "/opt/app-root/src",
-                                    "name": "my-workbench"
-                                }
-                            ],
+                            "volumeMounts": [{"mountPath": "/opt/app-root/src", "name": "my-workbench"}],
                         },
                     ],
                     "volumes": [
@@ -206,26 +197,26 @@ class ImageDeployment:
                             "name": "my-workbench",
                             "persistentVolumeClaim": {
                                 "claimName": container_name,
-                            }
+                            },
                         }
-                    ]
-                }
-            }
+                    ],
+                },
+            },
         )
         self.tf.defer_resource(deployment)
-        LOGGER.debug(f"Waiting for pods to become ready...")
-        PodUtils.wait_for_pods_ready(self.client, namespace_name=ns.name, label_selector=f"app={container_name}",
-                                     expect_pods_count=1)
+        LOGGER.debug("Waiting for pods to become ready...")
+        PodUtils.wait_for_pods_ready(
+            self.client, namespace_name=ns.name, label_selector=f"app={container_name}", expect_pods_count=1
+        )
 
         core_v1_api = kubernetes.client.api.core_v1_api.CoreV1Api(api_client=self.client.client)
         pod_name: kubernetes.client.models.v1_pod_list.V1PodList = core_v1_api.list_namespaced_pod(
-            namespace=ns.name,
-            label_selector=f"app={container_name}"
+            namespace=ns.name, label_selector=f"app={container_name}"
         )
         assert len(pod_name.items) == 1
         pod: kubernetes.client.models.v1_pod.V1Pod = pod_name.items[0]
 
-        p = socket_proxy.SocketProxy(exposing_contextmanager(core_v1_api, pod), "localhost", 0)
+        p = socket_proxy.SocketProxy(lambda: exposing_contextmanager(core_v1_api, pod), "localhost", 0)
         t = threading.Thread(target=p.listen_and_serve_until_canceled)
         t.start()
         self.tf.defer(t, lambda thread: thread.join())
@@ -233,9 +224,13 @@ class ImageDeployment:
 
         self.port = p.get_actual_port()
         LOGGER.debug(f"Listening on port {self.port}")
-        resp = requests.get(f"http://localhost:{self.port}")
-        assert resp.status_code == 200
-        LOGGER.debug(f"Done with portforward")
+        Wait.until(
+            "Connecting to pod succeeds",
+            1,
+            30,
+            lambda: requests.get(f"http://localhost:{self.port}").status_code == 200,
+        )
+        LOGGER.debug("Done with portforward")
 
 
 class PodUtils:
@@ -244,7 +239,7 @@ class PodUtils:
     # consider using timeout_sampler
     @staticmethod
     def wait_for_pods_ready(
-            client: DynamicClient, namespace_name: str, label_selector: str, expect_pods_count: int
+        client: DynamicClient, namespace_name: str, label_selector: str, expect_pods_count: int
     ) -> None:
         """Wait for all pods in namespace to be ready
         :param client:
@@ -281,8 +276,7 @@ class PodUtils:
                     else:
                         pod_status = {cs.name: cs.state for cs in pod.status.containerStatuses}
 
-                    logging.debug("Pod is not ready: %s/%s (%s)",
-                                  namespace_name, pod.metadata.name, pod_status)
+                    logging.debug("Pod is not ready: %s/%s (%s)", namespace_name, pod.metadata.name, pod_status)
                     return False
                 else:
                     # check all containers in pods are ready
@@ -306,25 +300,25 @@ class PodUtils:
 class Wait:
     @staticmethod
     def until(
-            description: str,
-            poll_interval: float,
-            timeout: float,
-            ready: Callable[[], bool],
-            on_timeout: Callable[[], None] | None = None,
+        description: str,
+        poll_interval: float,
+        timeout: float,
+        ready: Callable[[], bool],
+        on_timeout: Callable[[], None] | None = None,
     ) -> None:
         """For every poll (happening once each {@code pollIntervalMs}) checks if supplier {@code ready} is true.
 
         If yes, the wait is closed. Otherwise, waits another {@code pollIntervalMs} and tries again.
         Once the wait timeout (specified by {@code timeoutMs} is reached and supplier wasn't true until that time,
         runs the {@code onTimeout} (f.e. print of logs, showing the actual value that was checked inside {@code ready}),
-        and finally throws {@link WaitException}.
+        and finally throws {@link WaitError}.
         @param description    information about on what we are waiting
         @param pollIntervalMs poll interval in milliseconds
         @param timeoutMs      timeout specified in milliseconds
         @param ready          {@link BooleanSupplier} containing code, which should be executed each poll,
                                verifying readiness of the particular thing
         @param onTimeout      {@link Runnable} executed once timeout is reached and
-                               before the {@link WaitException} is thrown."""
+                               before the {@link WaitError} is thrown."""
         logging.info("Waiting for: %s", description)
         deadline = time.monotonic() + timeout
 
@@ -344,23 +338,25 @@ class Wait:
                 result: bool = ready()
             except KeyboardInterrupt:
                 raise  # quick exit if the user gets tired of waiting
+            except SyntaxError:  # this actually won't happen, but it's good to keep in mind
+                raise  # quick exit in cases developer obviously screwed up
             except Exception as e:
                 exception_message = str(e)
 
                 exception_count += 1
                 new_exception_appearance += 1
                 if (
-                        exception_count == exception_appearance_count
-                        and exception_message is not None
-                        and exception_message == previous_exception_message
+                    exception_count == exception_appearance_count
+                    and exception_message is not None
+                    and exception_message == previous_exception_message
                 ):
                     logging.info(f"While waiting for: {description} exception occurred: {exception_message}")
                     # log the stacktrace
                     stack_trace_error = traceback.format_exc()
                 elif (
-                        exception_message is not None
-                        and exception_message != previous_exception_message
-                        and new_exception_appearance == 2
+                    exception_message is not None
+                    and exception_message != previous_exception_message
+                    and new_exception_appearance == 2
                 ):
                     previous_exception_message = exception_message
 
@@ -378,15 +374,15 @@ class Wait:
                         logging.error(stack_trace_error)
                 if on_timeout is not None:
                     on_timeout()
-                wait_exception: WaitException = WaitException(f"Timeout after {timeout} s waiting for {description}")
+                wait_exception: WaitError = WaitError(f"Timeout after {timeout} s waiting for {description}")
                 logging.error(wait_exception)
                 raise wait_exception
 
             sleep_time: float = min(poll_interval, time_left)
-            time.sleep(sleep_time)  # noqa: FCN001
+            time.sleep(sleep_time)
 
 
-class WaitException(Exception):
+class WaitError(Exception):
     pass
 
 
@@ -417,8 +413,7 @@ class Utils:
 
 @contextlib.contextmanager
 def exposing_contextmanager(
-        core_v1_api: kubernetes.client.CoreV1Api,
-        pod: kubernetes.client.models.V1Pod
+    core_v1_api: kubernetes.client.CoreV1Api, pod: kubernetes.client.models.V1Pod
 ) -> Generator[socket, None, None]:
     # If we e.g., specify the wrong port, the pf = portforward() call succeeds,
     # but pf.connected will later flip to False
@@ -432,7 +427,7 @@ def exposing_contextmanager(
             namespace=pod.metadata.namespace,
             ports=",".join(str(p) for p in [8888]),
         )
-        s: typing.Union[kubernetes.stream.ws_client.PortForward._Port._Socket, socket.socket] | None = pf.socket(8888)
+        s: kubernetes.stream.ws_client.PortForward._Port._Socket | socket.socket | None = pf.socket(8888)
     assert s, "Failed to establish connection"
 
     try:
@@ -443,8 +438,9 @@ def exposing_contextmanager(
 
 
 @functools.wraps(ocp_resources.namespace.Namespace.__init__)
-def create_namespace(privileged_client: bool = False, *args,
-                     **kwargs) -> ocp_resources.project_project_openshift_io.Project:
+def create_namespace(
+    privileged_client: bool = False, *args, **kwargs
+) -> ocp_resources.project_project_openshift_io.Project:
     if not privileged_client:
         with ocp_resources.project_request.ProjectRequest(*args, **kwargs):
             project = ocp_resources.project_project_openshift_io.Project(*args, **kwargs)
@@ -452,18 +448,19 @@ def create_namespace(privileged_client: bool = False, *args,
             return project
     else:
         with ocp_resources.namespace.Namespace(*args, **kwargs) as ns:
-            ns.wait_for_status(status=ocp_resources.namespace.Namespace.Status.ACTIVE,
-                               timeout=TestFrameConstants.TIMEOUT_2MIN)
+            ns.wait_for_status(
+                status=ocp_resources.namespace.Namespace.Status.ACTIVE, timeout=TestFrameConstants.TIMEOUT_2MIN
+            )
             return ns
 
 
 __all__ = [
-    get_client,
-    get_username,
-    exposing_contextmanager,
-    create_namespace,
-    PodUtils,
-    TestFrame,
-    TestFrameConstants,
-    ImageDeployment,
+    "ImageDeployment",
+    "PodUtils",
+    "TestFrame",
+    "TestFrameConstants",
+    "create_namespace",
+    "exposing_contextmanager",
+    "get_client",
+    "get_username",
 ]

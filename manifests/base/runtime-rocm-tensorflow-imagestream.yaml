@@ -25,7 +25,7 @@ spec:
                   "rocm-tensorflow"
                 ],
                 "display_name": "TensorFlow with ROCm and Python 3.11 (UBI9)",
-                "image_name": "quay.io/opendatahub/workbench-images@sha256:6a2da12a8bdc9cfcda27f4189827be5fbde4b4b4c4f7d92ac694d9360e3562dc",
+                "image_name": "quay.io/opendatahub/workbench-images@sha256:7711bce783a52b259ba7e5f679d753c2f4e7868755350d612226f5c2ef267dbd",
                 "pull_policy": "IfNotPresent"
               },
               "schema_name": "runtime-image"
@@ -34,7 +34,7 @@ spec:
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
       from:
         kind: DockerImage
-        name: quay.io/opendatahub/workbench-images@sha256:6a2da12a8bdc9cfcda27f4189827be5fbde4b4b4c4f7d92ac694d9360e3562dc
+        name: quay.io/opendatahub/workbench-images@sha256:7711bce783a52b259ba7e5f679d753c2f4e7868755350d612226f5c2ef267dbd
       name: "rocm-tensorflow"
       referencePolicy:
         type: Source

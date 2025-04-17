@@ -16,13 +16,14 @@ https://github.com/openshift/release/blob/master/ci-operator/config/opendatahub-
 
 class Args(argparse.Namespace):
     """Type annotation to have autocompletion for args"""
+
     target: str
 
 
 def main() -> None:
     parser = argparse.ArgumentParser("make_test.py")
     parser.add_argument("--target", type=str)
-    args = typing.cast(Args, parser.parse_args())
+    args = typing.cast("Args", parser.parse_args())
 
     has_tests = check_tests(args.target)
 
@@ -34,11 +35,13 @@ def main() -> None:
 
 
 def check_tests(target: str) -> bool:
-    if target.startswith("rocm-jupyter-minimal-") or target.startswith("rocm-jupyter-datascience-"):
+    if target.startswith(("rocm-jupyter-minimal-", "rocm-jupyter-datascience-")):
         return False  # we don't have specific tests for -minimal-, ... in ci-operator/config
 
     build_directory = gha_pr_changed_files.get_build_directory(target)
-    kustomization = pathlib.Path(gha_pr_changed_files.PROJECT_ROOT) / build_directory / "kustomize/base/kustomization.yaml"
+    kustomization = (
+        pathlib.Path(gha_pr_changed_files.PROJECT_ROOT) / build_directory / "kustomize/base/kustomization.yaml"
+    )
 
     return kustomization.is_file()
 

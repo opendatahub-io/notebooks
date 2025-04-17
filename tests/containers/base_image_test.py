@@ -9,24 +9,24 @@ import platform
 import re
 import tempfile
 import textwrap
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
+import pytest
 import testcontainers.core.container
 import testcontainers.core.waiting_utils
 
-from tests.containers import docker_utils
-
-import pytest
+from tests.containers import docker_utils, utils
 
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import pytest_subtests
 
 
 class TestBaseImage:
-
     """Tests that are applicable for all images we have in this repository."""
 
     def _run_test(self, image: str, test_fn: Callable[[testcontainers.core.container.DockerContainer], None]):
@@ -44,25 +44,19 @@ class TestBaseImage:
         # If the return doesn't happen in the try block, fail the test
         pytest.fail("The test did not pass as expected.")
 
-
     def test_elf_files_can_link_runtime_libs(self, subtests: pytest_subtests.SubTests, image):
-
         def test_fn(container: testcontainers.core.container.DockerContainer):
             def check_elf_file():
                 """This python function will be executed on the image itself.
                 That's why it has to have here all imports it needs."""
+                # ruff: noqa: PLC0415 `import` should be at the top-level of a file
                 import glob
-                import os
                 import json
-                import subprocess
+                import os
                 import stat
+                import subprocess
 
-                dirs = [
-                    "/bin",
-                    "/lib",
-                    "/lib64",
-                    "/opt/app-root"
-                ]
+                dirs = ["/bin", "/lib", "/lib64", "/opt/app-root"]
                 for path in dirs:
                     count_scanned = 0
                     unsatisfied_deps: list[tuple[str, str]] = []
@@ -74,39 +68,45 @@ class TestBaseImage:
                         executable = bool(s.st_mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
                         if isdirectory or not executable or not isfile:
                             continue
-                        with open(dlib, mode='rb') as fp:
+                        with open(dlib, mode="rb") as fp:
                             magic = fp.read(4)
-                        if magic != b'\x7fELF':
+                        if magic != b"\x7fELF":
                             continue
 
                         count_scanned += 1
-                        ld_library_path = os.environ.get("LD_LIBRARY_PATH", "") + os.path.pathsep + os.path.dirname(dlib)
-                        output = subprocess.check_output(["ldd", dlib],
-                                                        # search the $ORIGIN, essentially; most python libs expect this
-                                                        env={**os.environ, "LD_LIBRARY_PATH": ld_library_path},
-                                                        text=True)
+                        ld_library_path = (
+                            os.environ.get("LD_LIBRARY_PATH", "") + os.path.pathsep + os.path.dirname(dlib)
+                        )
+                        output = subprocess.check_output(
+                            ["ldd", dlib],
+                            # search the $ORIGIN, essentially; most python libs expect this
+                            env={**os.environ, "LD_LIBRARY_PATH": ld_library_path},
+                            text=True,
+                        )
                         for line in output.splitlines():
                             if "not found" in line:
                                 unsatisfied_deps.append((dlib, line.strip()))
                         assert output
-                    print("OUTPUT>",
-                        json.dumps({"dir": path, "count_scanned": count_scanned, "unsatisfied": unsatisfied_deps}))
-
+                    print(
+                        "OUTPUT>",
+                        json.dumps({"dir": path, "count_scanned": count_scanned, "unsatisfied": unsatisfied_deps}),
+                    )
 
                 ecode, output = container.exec(["/bin/sh", "-c", "oc version"])
 
                 logging.debug(output.decode())
                 assert ecode == 0
 
-            ecode, output = container.exec(
-                encode_python_function_execution_command_interpreter("/usr/bin/python3", check_elf_file))
+            _ecode, output = container.exec(
+                encode_python_function_execution_command_interpreter("/usr/bin/python3", check_elf_file)
+            )
 
             for line in output.decode().splitlines():
                 logging.debug(line)
                 if not line.startswith("OUTPUT> "):
                     continue
-                data = json.loads(line[len("OUTPUT> "):])
-                assert data['count_scanned'] > 0
+                data = json.loads(line[len("OUTPUT> ") :])
+                assert data["count_scanned"] > 0
                 for dlib, deps in data["unsatisfied"]:
                     # here goes the allowlist
                     if re.search(r"^/lib64/python3.\d+/site-packages/hawkey/test/_hawkey_test.so", dlib) is not None:
@@ -128,7 +128,6 @@ class TestBaseImage:
         self._run_test(image=image, test_fn=test_fn)
 
     def test_oc_command_runs(self, image: str):
-
         def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["/bin/sh", "-c", "oc version"])
 
@@ -138,7 +137,6 @@ class TestBaseImage:
         self._run_test(image=image, test_fn=test_fn)
 
     def test_skopeo_command_runs(self, image: str):
-
         def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["/bin/sh", "-c", "skopeo --version"])
 
@@ -149,7 +147,6 @@ class TestBaseImage:
 
     def test_pip_install_cowsay_runs(self, image: str):
         """Checks that the Python virtualenv in the image is writable."""
-
 
         def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["python3", "-m", "pip", "install", "cowsay"])
@@ -174,10 +171,10 @@ class TestBaseImage:
             #  * https://issues.redhat.com/browse/RHOAIENG-4350
             #  * https://github.com/junaruga/fips-mode-user-space/blob/main/fips-mode-user-space-setup
             tmp_crypto = pathlib.Path(tmp_crypto)
-            (tmp_crypto / 'crypto').mkdir()
-            (tmp_crypto / 'crypto' / 'fips_enabled').write_text("1\n")
-            (tmp_crypto / 'crypto' / 'fips_name').write_text("Linux Kernel Cryptographic API\n")
-            (tmp_crypto / 'crypto' / 'fips_version').write_text("6.10.10-200.fc40.aarch64\n")
+            (tmp_crypto / "crypto").mkdir()
+            (tmp_crypto / "crypto" / "fips_enabled").write_text("1\n")
+            (tmp_crypto / "crypto" / "fips_name").write_text("Linux Kernel Cryptographic API\n")
+            (tmp_crypto / "crypto" / "fips_version").write_text("6.10.10-200.fc40.aarch64\n")
             # tmpdir is by-default created with perms restricting access to user only
             tmp_crypto.chmod(0o777)
 
@@ -186,8 +183,9 @@ class TestBaseImage:
             # if /proc/sys/crypto/fips_enabled exists, only replace this file,
             # otherwise (Ubuntu case), assume entire /proc/sys/crypto does not exist
             if platform.system().lower() == "darwin" or pathlib.Path("/proc/sys/crypto/fips_enabled").exists():
-                container.with_volume_mapping(str(tmp_crypto / 'crypto' / 'fips_enabled'),
-                                              "/proc/sys/crypto/fips_enabled", mode="ro,z")
+                container.with_volume_mapping(
+                    str(tmp_crypto / "crypto" / "fips_enabled"), "/proc/sys/crypto/fips_enabled", mode="ro,z"
+                )
             else:
                 container.with_volume_mapping(str(tmp_crypto), "/proc/sys", mode="ro,z")
 
@@ -219,16 +217,43 @@ class TestBaseImage:
             finally:
                 docker_utils.NotebookContainer(container).stop(timeout=0)
 
-def encode_python_function_execution_command_interpreter(python: str, function: Callable[..., Any], *args: list[Any]) -> list[str]:
+    def test_file_permissions(self, image: str, subtests: pytest_subtests.SubTests):
+        """Checks the permissions and ownership for some selected files/directories."""
+
+        app_root_path = "/opt/app-root"
+        expected_uid = "1001"  # default
+        expected_gid = "0"  # root
+        # Directories to assert permissions and ownerships as we did in ODS-CI
+        directories_to_check: list[str] = [
+            [f"{app_root_path}/lib", "775", expected_gid, expected_uid],
+        ]
+        if not utils.is_rstudio_image(image):
+            # RStudio image doesn't have '/opt/app-root/share' directory
+            directories_to_check.append([f"{app_root_path}/share", "775", expected_gid, expected_uid])
+
+        def test_fn(container: testcontainers.core.container.DockerContainer):
+            for item in directories_to_check:
+                with subtests.test(f"Checking permissions of the: {item[0]}"):
+                    _, output = container.exec(["stat", "--format='%a:%g:%u'", f"{item[0]}"])
+                    logging.debug(output.decode())
+                    cleaned_output = output.decode().strip().strip("'")
+                    assert cleaned_output == f"{item[1]}:{item[2]}:{item[3]}"
+
+        self._run_test(image=image, test_fn=test_fn)
+
+
+def encode_python_function_execution_command_interpreter(
+    python: str, function: Callable[..., Any], *args: list[Any]
+) -> list[str]:
     """Returns a cli command that will run the given Python function encoded inline.
     All dependencies (imports, ...) must be part of function body."""
     code = textwrap.dedent(inspect.getsource(function))
     ccode = binascii.b2a_base64(code.encode())
     name = function.__name__
-    parameters = ', '.join(repr(arg) for arg in args)
+    parameters = ", ".join(repr(arg) for arg in args)
     program = textwrap.dedent(f"""
         import binascii;
-        s=binascii.a2b_base64("{ccode.decode('ascii').strip()}");
+        s=binascii.a2b_base64("{ccode.decode("ascii").strip()}");
         exec(s.decode());
         print({name}({parameters}));""")
     int_cmd = [python, "-c", program]
