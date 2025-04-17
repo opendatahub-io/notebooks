@@ -30,10 +30,10 @@ spec:
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/notebook-build-commit: $(odh-rocm-minimal-notebook-image-commit-n)
+        opendatahub.io/notebook-build-commit: odh-rocm-minimal-notebook-image-commit-n_PLACEHOLDER
       from:
         kind: DockerImage
-        name: $(odh-rocm-minimal-notebook-image-n)
+        name: odh-rocm-minimal-notebook-image-n_PLACEHOLDER
       name: "2025.1"
       referencePolicy:
         type: Source
@@ -52,10 +52,10 @@ spec:
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
-        opendatahub.io/notebook-build-commit: $(odh-rocm-minimal-notebook-image-commit-n-1)
+        opendatahub.io/notebook-build-commit: odh-rocm-minimal-notebook-image-commit-n-1_PLACEHOLDER
       from:
         kind: DockerImage
-        name: $(odh-rocm-minimal-notebook-image-n-1)
+        name: odh-rocm-minimal-notebook-image-n-1_PLACEHOLDER
       name: "2024.2"
       referencePolicy:
         type: Source
