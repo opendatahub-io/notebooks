@@ -1,8 +1,7 @@
 import json
+from datetime import datetime
 
 from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
 
 
 class ConfigDir(BaseModel):
@@ -15,7 +14,7 @@ class PodmanSocket(BaseModel):
 
 class ConnectionInfo(BaseModel):
     PodmanSocket: PodmanSocket
-    PodmanPipe: Optional[str] = None
+    PodmanPipe: str | None = None
 
 
 class Resources(BaseModel):
@@ -52,7 +51,8 @@ class PodmanMachineInspect(BaseModel):
 
 def test_podman_machine_inspect():
     # given
-    podman_machine_inspect = PodmanMachineInspect(machines=json.loads("""\
+    podman_machine_inspect = PodmanMachineInspect(
+        machines=json.loads("""\
 [
      {
           "ConfigDir": {
@@ -84,6 +84,7 @@ def test_podman_machine_inspect():
           "Rosetta": true
      }
 ]
-"""))
+""")
+    )
 
     assert podman_machine_inspect.machines[0].Name == "podman-machine-default"

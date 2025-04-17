@@ -44,6 +44,9 @@ Pull requests are the best way to propose changes to the notebooks repository:
 ### Some basic instructions how to apply the new tests into [openshift-ci](https://github.com/openshift/release)
 
 - Fork the [openshift-ci](https://github.com/openshift/release) repo and create your branch from master.
+  - Definition and configuration of jobs used by this repository is on these places:
+    - [jobs](https://github.com/openshift/release/tree/master/ci-operator/jobs/opendatahub-io/notebooks)
+    - [config](https://github.com/openshift/release/tree/master/ci-operator/config/opendatahub-io/notebooks)
 - Issue a pull request there by adding the following.
 - Get navigated into [opendatahub-io-notebooks-main.yaml](https://github.com/openshift/release/blob/master/ci-operator/config/opendatahub-io/notebooks/opendatahub-io-notebooks-main.yaml) file.
   - Under `images` option, add build instructions (directory path, from(parent image) and to(new notebook name))

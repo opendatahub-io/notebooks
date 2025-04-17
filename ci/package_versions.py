@@ -9,10 +9,10 @@ import json
 import pathlib
 import typing
 import unittest
-
-import yaml
+from typing import Any
 
 import package_versions_selftestdata
+import yaml
 
 """Generates the workbench software listings for https://access.redhat.com/articles/rhoai-supported-configs
 using the Markdown variant described at https://access.redhat.com/articles/7056942"""
@@ -23,64 +23,71 @@ ROOT_DIR = pathlib.Path(__file__).parent.parent
 # unused for now
 @dataclasses.dataclass
 class Manifest:
-    _data: any
+    _data: Any
 
     @property
     def name(self) -> str:
-        return self._data['metadata']['annotations']['opendatahub.io/notebook-image-name']
+        return self._data["metadata"]["annotations"]["opendatahub.io/notebook-image-name"]
 
     @property
     def order(self) -> int:
-        return int(self._data['metadata']['annotations']['opendatahub.io/notebook-image-order'])
+        return int(self._data["metadata"]["annotations"]["opendatahub.io/notebook-image-order"])
 
     @property
     def tags(self) -> list[Tag]:
-        return [Tag(tag) for tag in self._data['spec']['tags']]
+        return [Tag(tag) for tag in self._data["spec"]["tags"]]
+
+
+class _Software(typing.TypedDict):
+    name: str
+    version: str
 
 
 @dataclasses.dataclass()
 class Tag:
-    _data: any
+    _data: Any
 
     @property
     def name(self) -> str:
-        return self._data['name']
+        return self._data["name"]
 
     @property
     def recommended(self) -> bool:
-        if 'opendatahub.io/workbench-image-recommended' not in self._data['annotations']:
+        if "opendatahub.io/workbench-image-recommended" not in self._data["annotations"]:
             return False
-        return self._data['annotations']['opendatahub.io/workbench-image-recommended'] == 'true'
+        return self._data["annotations"]["opendatahub.io/workbench-image-recommended"] == "true"
 
     @property
     def outdated(self) -> bool:
-        if 'opendatahub.io/image-tag-outdated' not in self._data['annotations']:
+        if "opendatahub.io/image-tag-outdated" not in self._data["annotations"]:
             return False
-        return self._data['annotations']['opendatahub.io/image-tag-outdated'] == 'true'
+        return self._data["annotations"]["opendatahub.io/image-tag-outdated"] == "true"
 
     @property
-    def sw_general(self) -> list[typing.TypedDict("Software", {"name": str, "version": str})]:
-        return json.loads(self._data['annotations']['opendatahub.io/notebook-software'])
+    def sw_general(self) -> list[_Software]:
+        return json.loads(self._data["annotations"]["opendatahub.io/notebook-software"])
 
     @property
-    def sw_python(self) -> list[typing.TypedDict("Software", {"name": str, "version": str})]:
-        return json.loads(self._data['annotations']['opendatahub.io/notebook-python-dependencies'])
+    def sw_python(self) -> list[_Software]:
+        return json.loads(self._data["annotations"]["opendatahub.io/notebook-python-dependencies"])
 
 
 def main():
-    pathname = 'manifests/base/*.yaml'
+    pathname = "manifests/base/*.yaml"
     # pathname = 'manifests/overlays/additional/*.yaml'
     imagestreams: list[Manifest] = []
     for fn in glob.glob(pathname, root_dir=ROOT_DIR):
         # there may be more than one yaml document in a file (e.g. rstudio buildconfigs)
-        with (open(ROOT_DIR / fn, 'rt') as fp):
+        with open(ROOT_DIR / fn, "rt") as fp:
             for data in yaml.safe_load_all(fp):
-                if 'kind' not in data or data['kind'] != 'ImageStream':
+                if "kind" not in data or data["kind"] != "ImageStream":
                     continue
-                if 'labels' not in data['metadata']:
+                if "labels" not in data["metadata"]:
                     continue
-                if ('opendatahub.io/notebook-image' not in data['metadata']['labels'] or
-                        data['metadata']['labels']['opendatahub.io/notebook-image'] != 'true'):
+                if (
+                    "opendatahub.io/notebook-image" not in data["metadata"]["labels"]
+                    or data["metadata"]["labels"]["opendatahub.io/notebook-image"] != "true"
+                ):
                     continue
                 imagestream = Manifest(data)
                 imagestreams.append(imagestream)
@@ -107,49 +114,51 @@ def main():
             for item in sw_general:
                 sw_name: str
                 sw_version: str
-                sw_name, sw_version = item['name'], item['version']
+                sw_name, sw_version = item["name"], item["version"]
                 sw_version = sw_version.lstrip("v")
 
                 # do not allow duplicates when general and python lists both contain e.g. TensorFlow
-                if sw_name in set(item['name'] for item in sw_python):
+                if sw_name in {item["name"] for item in sw_python}:
                     continue
                 software.append(f"{sw_name} {sw_version}")
             for item in sw_python:
                 sw_name: str
                 sw_version: str
-                sw_name, sw_version = item['name'], item['version']
+                sw_name, sw_version = item["name"], item["version"]
                 sw_version = sw_version.lstrip("v")
                 software.append(f"{sw_name}: {sw_version}")
 
             # in 2.16.1 we only have RStudio as tech preview, and that is not a prebuilt image we ship
             maybe_techpreview = "" if name not in () else " (Technology Preview)"
-            maybe_recommended = "" if not recommended or len(imagestream.tags) == 1 else ' (Recommended)'
+            maybe_recommended = "" if not recommended or len(imagestream.tags) == 1 else " (Recommended)"
 
-            tabular_data.append((
-                f'{name}{maybe_techpreview}' if not prev_tag else '',
-                f'{tag_name}{maybe_recommended}',
-                ', '.join(software)
-            ))
+            tabular_data.append(
+                (
+                    f"{name}{maybe_techpreview}" if not prev_tag else "",
+                    f"{tag_name}{maybe_recommended}",
+                    ", ".join(software),
+                )
+            )
 
             prev_tag = tag
 
-    print('| Image name | Image version | Preinstalled packages |')
-    print('|------------|---------------|-----------------------|')
+    print("| Image name | Image version | Preinstalled packages |")
+    print("|------------|---------------|-----------------------|")
     for row in tabular_data:
-        print(f'| {row[0]} | {row[1]} | {row[2]} |')
+        print(f"| {row[0]} | {row[1]} | {row[2]} |")
 
     print()
 
-    print('## Source')
+    print("## Source")
     print()
-    print('_mouse hover reveals copy button in top right corner of the box_')
+    print("_mouse hover reveals copy button in top right corner of the box_")
     print()
-    print('```markdown')
-    print('Image name | Image version | Preinstalled packages')
-    print('--------- | ---------')
+    print("```markdown")
+    print("Image name | Image version | Preinstalled packages")
+    print("--------- | ---------")
     for row in tabular_data:
-        print(f'{row[0]} | {row[1]} | {row[2]}')
-    print('```')
+        print(f"{row[0]} | {row[1]} | {row[2]}")
+    print("```")
 
 
 class TestManifest(unittest.TestCase):
@@ -169,11 +178,11 @@ class TestManifest(unittest.TestCase):
         assert self.manifest.tags[0].recommended is True
 
     def test_tag_sw_general(self):
-        assert self.manifest.tags[0].sw_general == [{'name': 'Python', 'version': 'v3.11'}]
+        assert self.manifest.tags[0].sw_general == [{"name": "Python", "version": "v3.11"}]
 
     def test_tag_sw_python(self):
-        assert self.manifest.tags[0].sw_python == [{'name': 'JupyterLab', 'version': '4.2'}]
+        assert self.manifest.tags[0].sw_python == [{"name": "JupyterLab", "version": "4.2"}]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

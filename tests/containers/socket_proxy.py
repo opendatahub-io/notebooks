@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import contextlib
 import logging
-import socket
 import select
-import threading
+import socket
+import struct
 import subprocess
-import typing
+import threading
+from typing import TYPE_CHECKING
 
 from tests.containers.cancellation_token import CancellationToken
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 """Proxies kubernetes portforwards to a local port.
 
@@ -29,8 +33,8 @@ There are alternative implementations for this.
 Out of these, the oc port-forward subprocess is a decent alternative solution.
 """
 
+
 class SubprocessProxy:
-    #
     def __init__(self, namespace: str, name: str, port: int):
         self.namespace = namespace
         self.name = name
@@ -49,11 +53,11 @@ class SubprocessProxy:
 
 class SocketProxy:
     def __init__(
-            self,
-            remote_socket_factory: typing.ContextManager[socket.socket],
-            local_host: str = "localhost",
-            local_port: int = 0,
-            buffer_size: int = 4096
+        self,
+        remote_socket_factory: Callable[..., contextlib.AbstractContextManager[socket.socket]],
+        local_host: str = "localhost",
+        local_port: int = 0,
+        buffer_size: int = 4096,
     ) -> None:
         """
 
@@ -78,14 +82,19 @@ class SocketProxy:
     def listen_and_serve_until_canceled(self):
         """Accepts the client, creates a new socket to the remote, and proxies the data.
 
-        Handles at most one client at a time. """
+        Handles at most one client at a time."""
         try:
             while not self.cancellation_token.cancelled:
-                client_socket, addr = self.server_socket.accept()
-                logging.info(f"Accepted connection from {addr[0]}:{addr[1]}")
-                self._handle_client(client_socket)
+                readable, _, _ = select.select([self.server_socket, self.cancellation_token], [], [])
+
+                # ISSUE-922: socket.accept() blocks, so if cancel() did not come very fast, we'd loop over and block
+                if self.server_socket in readable:
+                    client_socket, addr = self.server_socket.accept()
+                    logging.info(f"Accepted connection from {addr[0]}:{addr[1]}")
+                    # handle client synchronously, which means that there can be at most one at a time
+                    self._handle_client(client_socket)
         except Exception as e:
-            logging.exception(f"Proxying failed to listen", exc_info=e)
+            logging.exception("Proxying failed to listen", exc_info=e)
             raise
         finally:
             self.server_socket.close()
@@ -96,12 +105,9 @@ class SocketProxy:
         return self.server_socket.getsockname()[1]
 
     def _handle_client(self, client_socket):
-        with client_socket as _, self.remote_socket_factory as remote_socket:
-            while True:
+        with client_socket as _, self.remote_socket_factory() as remote_socket:
+            while not self.cancellation_token.cancelled:
                 readable, _, _ = select.select([client_socket, remote_socket, self.cancellation_token], [], [])
-
-                if self.cancellation_token.cancelled:
-                    break
 
                 if client_socket in readable:
                     data = client_socket.recv(self.buffer_size)
@@ -110,15 +116,31 @@ class SocketProxy:
                     remote_socket.send(data)
 
                 if remote_socket in readable:
-                    data = remote_socket.recv(self.buffer_size)
+                    try:
+                        data = remote_socket.recv(self.buffer_size)
+                    except ConnectionResetError:
+                        # ISSUE-922: it seems best to propagate the error and let the client retry
+                        # alternatively it would be necessary to resend anything already received from client_socket
+                        logging.info(
+                            f"Reading from remote socket failed, client {client_socket.getpeername()} has been disconnected"
+                        )
+                        _rst_socket(client_socket)
+                        break
                     if not data:
                         break
                     client_socket.send(data)
 
 
-if __name__ == "__main__":
-    """Sample application to show how this can work."""
+def _rst_socket(s: socket.socket) -> None:
+    """Closing a SO_LINGER socket will RST it
+    https://stackoverflow.com/questions/46264404/how-can-i-reset-a-tcp-socket-in-python
+    """
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+    s.close()
 
+
+def main() -> None:
+    """Sample application to show how this can work."""
 
     @contextlib.contextmanager
     def remote_socket_factory():
@@ -160,14 +182,21 @@ if __name__ == "__main__":
         client_socket.close()
         server.join()
 
-
-    proxy = SocketProxy(remote_socket_factory(), "localhost", 0)
+    proxy = SocketProxy(remote_socket_factory, "localhost", 0)
     thread = threading.Thread(target=proxy.listen_and_serve_until_canceled)
     thread.start()
 
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect(("localhost", proxy.get_actual_port()))
+    for _ in range(2):
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect(("localhost", proxy.get_actual_port()))
 
-    print(client_socket.recv(1024))  # prints Hello World
+        print(client_socket.recv(1024))  # prints Hello World
+        print(client_socket.recv(1024))  # prints nothing
+        client_socket.close()
+    proxy.cancellation_token.cancel()
 
     thread.join()
+
+
+if __name__ == "__main__":
+    main()
