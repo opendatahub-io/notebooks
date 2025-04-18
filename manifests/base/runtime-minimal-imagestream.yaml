@@ -24,16 +24,16 @@ spec:
                   "minimal"
                 ],
                 "display_name": "Python 3.11 (UBI9)",
-                "image_name": "quay.io/opendatahub/workbench-images@sha256:ab6b1973d4f761a73ca340bec71089bc8efd4abd16bfb3984682a56c4f7770ff",
+                "image_name": "quay.io/modh/runtime-images@sha256:c938190b9e562f995cced83465c3ab809099301107664170e9cddb1554c9912c",
                 "pull_policy": "IfNotPresent"
               },
               "schema_name": "runtime-image"
             }
           ]
-        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        openshift.io/imported-from: quay.io/modh/runtime-images
       from:
         kind: DockerImage
-        name: quay.io/opendatahub/workbench-images@sha256:ab6b1973d4f761a73ca340bec71089bc8efd4abd16bfb3984682a56c4f7770ff
+        name: quay.io/modh/runtime-images@sha256:c938190b9e562f995cced83465c3ab809099301107664170e9cddb1554c9912c
       name: "minimal"
       referencePolicy:
         type: Source

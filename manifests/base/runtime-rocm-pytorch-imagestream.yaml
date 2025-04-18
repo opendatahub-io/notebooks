@@ -24,16 +24,16 @@ spec:
                   "rocm-pytorch"
                 ],
                 "display_name": "PyTorch with ROCm and Python 3.11 (UBI9)",
-                "image_name": "quay.io/opendatahub/workbench-images@sha256:26bea8ea229b8d9e3edaa06ae8d27da73e05f396b310c10eef7c377e3a18328b",
+                "image_name": "quay.io/modh/runtime-images@sha256:15652f6c1b6e048c77d8384220a13c5339135eec59233082c5f4b305ce5ffb01",
                 "pull_policy": "IfNotPresent"
               },
               "schema_name": "runtime-image"
             }
           ]
-        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        openshift.io/imported-from: quay.io/modh/runtime-images
       from:
         kind: DockerImage
-        name: quay.io/opendatahub/workbench-images@sha256:26bea8ea229b8d9e3edaa06ae8d27da73e05f396b310c10eef7c377e3a18328b
+        name: quay.io/modh/runtime-images@sha256:15652f6c1b6e048c77d8384220a13c5339135eec59233082c5f4b305ce5ffb01
       name: "rocm-pytorch"
       referencePolicy:
         type: Source
