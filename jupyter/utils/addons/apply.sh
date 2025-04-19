@@ -5,13 +5,12 @@
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-pf_url="https://unpkg.com/@patternfly/patternfly@6.0.0/patternfly-no-globals.css"
-
 static_dir="/opt/app-root/share/jupyter/lab/static"
 index_file="$static_dir/index.html"
 
 head_file="$script_dir/partial-head.html"
 body_file="$script_dir/partial-body.html"
+css_file="$script_dir/dist/pf.css"
 
 if [ ! -f "$index_file" ]; then
   echo "File '$index_file' not found"
@@ -28,7 +27,17 @@ if [ ! -f "$body_file" ]; then
   exit 1
 fi
 
-curl -o "$static_dir/pf.css" "$pf_url"
+if [ ! -f "$css_file" ]; then
+  echo "Tree-shaken CSS file not found. Building it now..."
+  cd "$script_dir" && pnpm build
+  if [ ! -f "$css_file" ]; then
+    echo "Failed to build CSS file"
+    exit 1
+  fi
+fi
+
+# Copy the tree-shaken CSS file to the static directory
+cp "$css_file" "$static_dir/pf.css"
 
 head_content=$(tr -d '\n' <"$head_file" | sed 's/@/\\@/g')
 body_content=$(tr -d '\n' <"$body_file" | sed 's/@/\\@/g')
