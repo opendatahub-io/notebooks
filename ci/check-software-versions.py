@@ -204,8 +204,8 @@ def download_sbom_with_retry(platform_arg: str, image_url: str, sbom: str):
                 print(error_output, file=sys.stderr)
         except FileNotFoundError:
             print(f"Error file '{err_file}' not found.", file=sys.stderr)
-        # finally:
-        #     raise_exception(f"Invalid item: {item}")
+        finally:
+            raise_exception(f"SBOM download failed!")
     else:
         print(f"Successfully downloaded SBOM to: {sbom}")
 
@@ -255,64 +255,144 @@ def process_dependency_item(item, container_id, annotation_type):
 
 def check_sbom_available(image):
     # TODO
-    return None
+    return True
 
 
-def check_sbom_content(software, python_deps, sbom):
-    # TODO
-    return None
+def load_json_file(filepath):
+    """
+    Loads data from a JSON file.
+
+    Args:
+        filepath (str): The path to the JSON file.
+
+    Returns:
+        dict or list: The data loaded from the JSON file,
+                    or None if an error occurs.
+    """
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+            return data
+    except FileNotFoundError:
+        print(f"Error: File not found at {filepath}")
+        return None
+    except json.JSONDecodeError:
+        print(f"Error: Could not decode JSON from {filepath}")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return None
+
+
+def find_item_in_array_by_name(json_data, array_key, target_name):
+  """
+  Finds an item in a JSON array (list of dictionaries) by matching a 'name' value.
+
+  Args:
+    json_data (dict or list): The loaded JSON data.
+    array_key (str): The key in json_data that holds the array.
+    target_name (str): The value of the 'name' key to search for.
+
+  Returns:
+    dict or None: The dictionary item if found, otherwise None.
+  """
+  if isinstance(json_data, dict) and array_key in json_data:
+    data_array = json_data[array_key]
+    if isinstance(data_array, list):
+      for item in data_array:
+        # Check if the item is a dictionary and has a 'name' key
+        if isinstance(item, dict) and 'name' in item:
+          if item['name'] == target_name:
+            return item  # Return the first matching item
+  return None # Return None if the array or item is not found
+
+
+def check_sbom_item(item, sbom_file):
+    name, version = item.get("name"), item.get("version")
+    if not name or not version:
+        raise_exception(f"Missing name or version in item: {item}")
+
+    log.info(f"Checking {name} (version {version}) in given SBOM file: {sbom_file}")
+    sbom_data = load_json_file(sbom_file)
+
+    if sbom_data:
+        print(f"Successfully loaded JSON data from {sbom_file}")
+    else:
+        raise_exception(f"Can't load JSON data from {sbom_file}!")
+
+    sbom_item = find_item_in_array_by_name(sbom_data, "packages", name)
+
+    if sbom_item == None:
+        raise_exception(f"Can't find the package record for the {name} in the SBOM file!")
+
+    sbom_version = sbom_item["versionInfo"]
+    if version not in sbom_version:
+        raise_exception(f"The version in the manifest ({version}) doesn't match the data in the SBOM file ({sbom_version})!")
+
 
 def check_against_image(tag, tag_annotations, tag_name, image):
+    ntb_sw_annotation = "opendatahub.io/notebook-software"
+    python_dep_annotation = "opendatahub.io/notebook-python-dependencies"
+
+    try:
+        software = tag_annotations.get(ntb_sw_annotation)
+        if not software:
+            raise_exception(f"Missing '{ntb_sw_annotation}' in ImageStream tag '{tag}'!")
+
+        python_deps = tag_annotations.get(python_dep_annotation)
+        if not python_deps:
+            raise_exception(f"Missing '{python_dep_annotation}' in ImageStream tag '{tag}'!")
+    finally:
+        print_delimiter()
+
     # Check if the sbom for the image is available
+    sbom_downloaded = False
+    output_file = "sbom.json"
     if check_sbom_available:
         log.info(f"SBOM for image '{image}' is available.")
         platform = "--platform=linux/amd64"
-        output_file = "sbom.json"
         download_sbom_with_retry(platform, image, output_file)
-        # TODO check the sbom against the expected data
-        # check_sbom_content()
-    else:
+        sbom_downloaded = True
+
+    container_id = 0
+    if sbom_downloaded == False:
         # SBOM not available -> gather data directly from the running image
         container_id = run_podman_container(f"{tag_name}-container", image)
         if not container_id:
             raise_exception(f"Failed to start a container from image '{image}' for the '{tag_name}' tag!")
 
-        ntb_sw_annotation = "opendatahub.io/notebook-software"
-        python_dep_annotation = "opendatahub.io/notebook-python-dependencies"
-
-        errors = []
+    errors = []
+    try:
         try:
-            software = tag_annotations.get(ntb_sw_annotation)
-            if not software:
-                raise_exception(f"Missing '{ntb_sw_annotation}' in ImageStream tag '{tag}'!")
-
-            python_deps = tag_annotations.get(python_dep_annotation)
-            if not python_deps:
-                raise_exception(f"Missing '{python_dep_annotation}' in ImageStream tag '{tag}'!")
-
-            try:
-                for item in parse_json_string(software) or []:
+            for item in parse_json_string(software) or []:
+                if sbom_downloaded == True:
+                    check_sbom_content(software, python_deps, output_file)
+                else:
                     process_dependency_item(item, container_id, AnnotationType.SOFTWARE)
-            except Exception as e:
-                log.error(f"Failed check for the '{tag_name}' tag!")
-                errors.append(str(e))
+        except Exception as e:
+            log.error(f"Failed check for the '{tag_name}' tag!")
+            errors.append(str(e))
 
-            try:
-                for item in parse_json_string(python_deps) or []:
+        try:
+            for item in parse_json_string(python_deps) or []:
+                if sbom_downloaded == True:
+                    check_sbom_content(software, python_deps, output_file)
+                else:
                     process_dependency_item(item, container_id, AnnotationType.PYTHON_DEPS)
-            except Exception as e:
-                log.error(f"Failed check for the '{tag_name}' tag!")
-                errors.append(str(e))
-        finally:
-            print_delimiter()
+        except Exception as e:
+            log.error(f"Failed check for the '{tag_name}' tag!")
+            errors.append(str(e))
+    finally:
+        print_delimiter()
+        if sbom_downloaded == False:
             try:
                 stop_and_remove_container(container_id)
             except Exception as e:
                 log.error(f"Failed to stop/remove the container '{container_id}' for the '{tag_name}' tag!")
                 errors.append(str(e))
 
-        if errors:
-            raise Exception(errors)
+    if errors:
+        raise Exception(errors)
 
 
 def process_tag(tag, image):
