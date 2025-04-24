@@ -1,7 +1,8 @@
 module dockerfile
 
-go 1.22.0
-toolchain go1.24.1
+go 1.23.0
+
+toolchain go1.23.6
 
 require (
 	github.com/containerd/platforms v0.2.1
