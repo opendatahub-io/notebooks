@@ -209,7 +209,10 @@ jobs:
       - name: Calculate image name and tag
         id: calculated_vars
         run: |
-          SANITIZED_REF_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/_/g')
+          # Need for sanitization explained in https://github.com/opendatahub-io/notebooks/issues/631
+          # For length, Docker image tags have 128-character limit, and we form them as <inputs.target>-<ref_name>_<sha>
+          # therefore since sha is 40 characters, and our target names are <40 chars, we should cut ref_name at 40
+          SANITIZED_REF_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/_/g') | cut -c 1-40
           IMAGE_TAG="${SANITIZED_REF_NAME}_${{ github.sha }}"
 
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
