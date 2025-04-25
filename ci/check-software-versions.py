@@ -161,11 +161,13 @@ def download_sbom_with_retry(platform_arg: str, image_url: str, sbom: str):
         sbom: The path to the file where the SBOM should be saved.
     """
     # TODO improve by ./cosign tree image and check for the "SBOMs" string - if present, the sboms is there, if missing it's not there
-    max_try = 5
+    # max_try = 5
+    max_try = 1
     wait_sec = 2
     status = -1
     err_file = "err"  # Temporary file to store stderr
-    command_bin = "cosign"
+    # command_bin = "cosign"
+    command_bin = "/tmp/cosign-linux-amd64"
 
     for run in range(1, max_try + 1):
         status = 0
@@ -173,7 +175,7 @@ def download_sbom_with_retry(platform_arg: str, image_url: str, sbom: str):
             command_bin,
             "download",
             "sbom",
-            platform_arg,
+            # platform_arg,
             image_url,
         ]
 
@@ -435,14 +437,16 @@ def process_imagestream(imagestream, image, given_tag):
     if not yaml_data or "spec" not in yaml_data or "tags" not in yaml_data["spec"]:
         raise_exception(f"Invalid YAML content in {imagestream} as ImageStream file!")
 
-    if (given_tag == None):
-        tags = yaml_data["spec"]["tags"]
-    else:
-        tags = given_tag
+    tags = yaml_data["spec"]["tags"]
 
     # Process each image version in the ImageStream:
     errors = []
     for tag in tags:
+        tag_name = tag["name"]
+        if (given_tag != None) and given_tag != tag_name:
+            log.info(f"Skipping the processing of the {tag_name}.")
+            continue
+
         try:
             process_tag(tag, image)
         except Exception as e:
