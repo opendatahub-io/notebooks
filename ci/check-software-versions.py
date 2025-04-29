@@ -223,7 +223,7 @@ def process_dependency_item(item, container_id, annotation_type):
     if not name or not version:
         raise_exception(f"Missing name or version in item: {item}")
 
-    log.info(f"Checking {name} (version {version}) in container...")
+    log.info(f"Checking '{name}' (version '{version}') in container...")
 
     command_mapping = {
         "PyTorch": ["/bin/bash", "-c", "pip show torch | grep 'Version: '"],
@@ -309,27 +309,40 @@ def find_item_in_array_by_name(json_data, array_key, target_name):
   return None # Return None if the array or item is not found
 
 
-def check_sbom_item(item, sbom_file):
+def check_sbom_item(item, sbom_data):
     name, version = item.get("name"), item.get("version")
     if not name or not version:
         raise_exception(f"Missing name or version in item: {item}")
 
-    log.info(f"Checking {name} (version {version}) in given SBOM file: {sbom_file}")
-    sbom_data = load_json_file(sbom_file)
+    log.info(f"Checking '{name}' (version '{version}') in given SBOM data.")
 
-    if sbom_data:
-        print(f"Successfully loaded JSON data from {sbom_file}")
-    else:
-        raise_exception(f"Can't load JSON data from {sbom_file}!")
+    item_mapping = {
+        "Python": ["python3.11", "3.11"],
+        "ROCm-TensorFlow": ["tensorflow-rocm", version],
+        # "PyTorch": ["/bin/bash", "-c", "pip show torch | grep 'Version: '"],
+        # "ROCm": ["/bin/bash", "-c", "rpm -q --queryformat '%{VERSION}\n' rocm-core"],
+        # "ROCm-PyTorch": ["/bin/bash", "-c", "pip show torch | grep 'Version: ' | grep rocm"],
+        # "TensorFlow": ["/bin/bash", "-c", "pip show tensorflow | grep 'Version: '"],
+        # "R": ["/bin/bash", "-c", "R --version"],
+        # "rstudio-server": ["/bin/bash", "-c", "rpm -q --queryformat '%{VERSION}\n' rstudio-server"],
+        # "Sklearn-onnx": ["/bin/bash", "-c", "pip show skl2onnx | grep 'Version: '"],
+        # "MySQL Connector/Python": ["/bin/bash", "-c", "pip show mysql-connector-python | grep 'Version: '"],
+        # "Nvidia-CUDA-CU12-Bundle": ["/bin/bash", "-c", "pip show nvidia-cuda-runtime-cu12 | grep 'Version: '"],
+        # "CUDA": ["/bin/bash", "-c", "nvcc --version"],
+    }
 
-    sbom_item = find_item_in_array_by_name(sbom_data, "packages", name)
+    mapped_item = item_mapping.get(name)
+    if not mapped_item:
+        mapped_item = [name.lower(), version]
+
+    sbom_item = find_item_in_array_by_name(sbom_data, "packages", mapped_item[0])
 
     if sbom_item == None:
-        raise_exception(f"Can't find the package record for the {name} in the SBOM file!")
+        raise_exception(f"Can't find the package record for the '{mapped_item[0]}' in the SBOM file!")
 
     sbom_version = sbom_item["versionInfo"]
-    if version not in sbom_version:
-        raise_exception(f"The version in the manifest ({version}) doesn't match the data in the SBOM file ({sbom_version})!")
+    if mapped_item[1] not in sbom_version:
+        raise_exception(f"The expected version '{mapped_item[1]}' doesn't match the data in the SBOM file '{sbom_version}'!")
 
 
 def check_against_image(tag, tag_annotations, tag_name, image):
@@ -365,10 +378,17 @@ def check_against_image(tag, tag_annotations, tag_name, image):
 
     errors = []
     try:
+        if sbom_downloaded == True:
+            sbom_data = load_json_file(output_file)
+            if sbom_data:
+                print(f"Successfully loaded JSON data from {output_file}")
+            else:
+                raise_exception(f"Can't load JSON data from {output_file}!")
+
         try:
             for item in parse_json_string(software) or []:
                 if sbom_downloaded == True:
-                    check_sbom_content(software, python_deps, output_file)
+                    check_sbom_item(item, sbom_data)
                 else:
                     process_dependency_item(item, container_id, AnnotationType.SOFTWARE)
         except Exception as e:
@@ -378,7 +398,7 @@ def check_against_image(tag, tag_annotations, tag_name, image):
         try:
             for item in parse_json_string(python_deps) or []:
                 if sbom_downloaded == True:
-                    check_sbom_content(software, python_deps, output_file)
+                    check_sbom_item(item, sbom_data)
                 else:
                     process_dependency_item(item, container_id, AnnotationType.PYTHON_DEPS)
         except Exception as e:
