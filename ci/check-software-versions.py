@@ -372,7 +372,7 @@ def check_against_image(tag, tag_annotations, tag_name, image):
                 else:
                     process_dependency_item(item, container_id, AnnotationType.SOFTWARE)
         except Exception as e:
-            log.error(f"Failed check for the '{tag_name}' tag!")
+            log.error(f"Failed check for the '{tag_name}' tag: {str(e)}")
             errors.append(str(e))
 
         try:
@@ -382,7 +382,7 @@ def check_against_image(tag, tag_annotations, tag_name, image):
                 else:
                     process_dependency_item(item, container_id, AnnotationType.PYTHON_DEPS)
         except Exception as e:
-            log.error(f"Failed check for the '{tag_name}' tag!")
+            log.error(f"Failed check for the '{tag_name}' tag: {str(e)}")
             errors.append(str(e))
     finally:
         print_delimiter()
@@ -390,7 +390,7 @@ def check_against_image(tag, tag_annotations, tag_name, image):
             try:
                 stop_and_remove_container(container_id)
             except Exception as e:
-                log.error(f"Failed to stop/remove the container '{container_id}' for the '{tag_name}' tag!")
+                log.error(f"Failed to stop/remove the container '{container_id}' for the '{tag_name}' tag: {str(e)}")
                 errors.append(str(e))
 
     if errors:
@@ -451,7 +451,7 @@ def process_imagestream(imagestream, image, given_tag):
             process_tag(tag, image)
         except Exception as e:
             # We want to continue to process the next tag if possible
-            log.error(f"Failed to process tag {tag} in ImageStream {imagestream}!")
+            log.error(f"Failed to process tag {tag} in ImageStream '{imagestream}': {str(e)}")
             # errors.append(f"{tag}:" + str(e))
             errors.append(f"///:" + str(e))
 
@@ -540,7 +540,7 @@ def main():
         try:
             process_imagestream(imagestream, image, tag)
         except Exception as e:
-            log.error(f"Failed to process {imagestream} ImageStream manifest file!")
+            log.error(f"Failed to process {imagestream} ImageStream manifest file: {str(e)}")
             errors.append(f"ImageStream path: {imagestream} --- " + str(e))
 
     print_delimiter()
