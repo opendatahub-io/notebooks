@@ -4,20 +4,23 @@ verify_ssl = true
 name = "pypi"
 
 [[source]]
-url = "https://download.pytorch.org/whl/cu126"
+url = "https://download.pytorch.org/whl/cu124"
 verify_ssl = true
 name = "pytorch"
 
 [dev-packages]
+# vllm is requirement, however as compressed-tensors is pinned, this cant be installed in same system.
+vllm = "~=0.8.5"
 
 [packages]
 # PyTorch packages
 tensorboard = "~=2.19.0"
-torch = {version = "==2.6.0+cu126", index = "pytorch"}
-torchvision = {version = "==0.21.0+cu126", index = "pytorch"}
+torch = {version = "==2.6.0", index = "pytorch"}
+torchvision = {version = "==0.21.0", index = "pytorch"}
 
 # llmcompressor packages
-llmcompressor = "~=0.5"
+llmcompressor = "~=0.5.1"
+lm-eval = "~=0.4.8"
 loguru = "*"
 pyyaml = ">=5.0.0"
 requests = ">=2.0.0"
