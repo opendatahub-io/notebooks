@@ -8,6 +8,9 @@ if [ -f "${SCRIPT_DIR}/utils/setup-elyra.sh" ]; then
   source ${SCRIPT_DIR}/utils/setup-elyra.sh
 fi
 
+export PATH=/usr/local/texlive/2025/bin/x86_64-linux:$PATH
+
+
 # Initialize notebooks arguments variable
 NOTEBOOK_PROGRAM_ARGS=""
 
