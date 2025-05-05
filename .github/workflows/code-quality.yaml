@@ -31,54 +31,39 @@ jobs:
 
   pytest-tests:
     runs-on: ubuntu-latest
-    env:
-      poetry_version: '1.8.3'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache poetry in ~/.local
-        uses: actions/cache/restore@v4
-        id: cache-poetry-restore
+      # https://github.com/astral-sh/setup-uv
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v5
         with:
-          path: ~/.local
-          key: "${{ runner.os }}-local-${{ env.poetry_version }}"
+          version: "latest"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          pyproject-file: "pyproject.toml"
 
-      - name: Install poetry
-        if: steps.cache-poetry-restore.outputs.cache-hit != 'true'
-        run: pipx install poetry==${{ env.poetry_version }}
-        env:
-          PIPX_HOME: /home/runner/.local/pipx
-          PIPX_BIN_DIR: /home/runner/.local/bin
-
-      - name: Check poetry is installed correctly
-        run: poetry env info
-
-      - name: Save cache
-        if: steps.cache-poetry-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ~/.local
-          key: ${{ steps.cache-poetry-restore.outputs.cache-primary-key }}
-
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'poetry'
-
-      - name: Configure poetry
-        run: poetry env use "${{ steps.setup-python.outputs.python-path }}"
+      - name: Check uv is installed correctly
+        run: uv version
 
       - name: Install deps
-        run: poetry install --sync
+        run: uv sync --locked
 
-      - run: poetry run pytest
+      # https://github.com/pre-commit/action
+      - name: Run pre-commit on all files
+        run: |
+          uv run pre-commit run --all-files
+
+      - run: uv run pytest
 
   code-static-analysis:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Do not check secrets, they are encrypted
+        run: rm -rf ./ci/secrets
 
       - name: Validate YAML files (best code practices check included)
         id: validate-yaml-files
@@ -122,23 +107,7 @@ jobs:
           echo "Hadolint done"
 
       # This simply checks that the manifests and respective kustomization.yaml finishes without an error.
-      # Version of the kustomize that operator use in runtime to apply these changes is determined by:
-      # https://github.com/red-hat-data-services/rhods-operator/blob/7ccc405135f99c014982d7e297b8949e970dd750/go.mod#L28-L29
-      # and then to match appropriate kustomize release https://github.com/kubernetes-sigs/kustomize/releases/tag/kustomize%2Fv5.0.2
       - name: Check kustomize manifest
         id: kustomize-manifests
         run: |
-          KUSTOMIZE_VERSION=5.0.2
-          wget "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
-          tar -xvf kustomize*
-
-          ./kustomize version
-          echo "----------------------------------------------------------"
-          echo "Starting './kustomize build manifests/base'"
-          echo "----------------------------------------------------------"
-          ./kustomize build manifests/base
-
-          echo "----------------------------------------------------------"
-          echo "Starting './kustomize build manifests/overlays/additional'"
-          echo "----------------------------------------------------------"
-          ./kustomize build manifests/overlays/additional
+          ./ci/kustomize.sh

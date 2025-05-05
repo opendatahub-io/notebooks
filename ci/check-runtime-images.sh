@@ -19,7 +19,10 @@
 # ---------------------------- DEFINED FUNCTIONS ----------------------------- #
 
 # Expected commit reference for the runtime images
-EXPECTED_COMMIT_REF="2024b"
+EXPECTED_COMMIT_REF="main"
+
+# Number of attempts for the skopeo tool to gather data from the repository.
+SKOPEO_RETRY=3
 
 # Size change tresholds:
 # Max percentual change
@@ -35,22 +38,22 @@ function check_image_size() {
 
     case "${img_name}" in
         odh-notebook-runtime-datascience-ubi9-python-3.11)
-            expected_img_size=866
+            expected_img_size=973
             ;;
         odh-notebook-runtime-pytorch-ubi9-python-3.11)
-            expected_img_size=3829
+            expected_img_size=8530
             ;;
         odh-notebook-runtime-rocm-pytorch-ubi9-python-3.11)
-            expected_img_size=6477
+            expected_img_size=7439
             ;;
         odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.11)
-            expected_img_size=5660
+            expected_img_size=6731
             ;;
         odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.11)
             expected_img_size=7992
             ;;
         odh-notebook-runtime-minimal-ubi9-python-3.11)
-            expected_img_size=494
+            expected_img_size=589
             ;;
         *)
             echo "Unimplemented image name: '${img_name}'"
@@ -85,6 +88,7 @@ function check_image() {
     echo "---------------------------------------------"
     echo "Checking file: '${runtime_image_file}'"
 
+    local runtime_image_metadata
     local img_tag
     local img_url
     local img_metadata_config
@@ -92,19 +96,37 @@ function check_image() {
     local img_commit_ref
     local img_name
 
-    img_tag=$(jq -r '.metadata.tags[0]' "${runtime_image_file}") || {
+    runtime_image_metadata=$(yq -r '.spec.tags[0].annotations."opendatahub.io/runtime-image-metadata"' "${runtime_image_file}") || {
+        echo "ERROR: Couldn't parse runtime image metadata for '${runtime_image_file}' file!"
+        return 1
+    }
+    echo "Runtime image metadata: '${runtime_image_metadata}'"
+
+    # There are 2 places in the current runtime imagestreams where the image url is saved today.
+    img_url_from=$(yq -r '.spec.tags[0].from.name' "${runtime_image_file}") || {
+        echo "ERROR: Couldn't parse image URL from '.spec.tags[0].from.name' field for '${runtime_image_file}' file!"
+        return 1
+    }
+    echo "Image URL from '.spec.tags[0].from.name' field: '${img_url_from}'"
+
+    img_tag=$(echo "${runtime_image_metadata}" | jq -r '.[0].metadata.tags[0]') || {
         echo "ERROR: Couldn't parse image tags metadata for '${runtime_image_file}' runtime image file!"
         return 1
     }
     echo "Image tag: '${img_tag}'"
 
-    img_url=$(jq -r '.metadata.image_name' "${runtime_image_file}") || {
-        echo "ERROR: Couldn't parse image URL metadata for '${runtime_image_file}' runtime image file!"
+    img_url=$(echo "${runtime_image_metadata}" | jq -r '.[0].metadata.image_name') || {
+        echo "ERROR: Couldn't parse image URL from image JSON metadata for '${runtime_image_file}' runtime image file!"
         return 1
     }
-    echo "Image URL: '${img_url}'"
+    echo "Image URL from JSON metadata: '${img_url}'"
 
-    img_metadata_config="$(skopeo inspect --config "docker://${img_url}")" || {
+    test "${img_url_from}" == "${img_url}" || {
+        echo "ERROR: The image URL in '.spec.tags[0].from.name' doesn't match what is provide in JSON metadata in '${runtime_image_file}' runtime image file!"
+        return 1
+    }
+
+    img_metadata_config="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --config "docker://${img_url}")" || {
         echo "ERROR: Couldn't download '${img_url}' image config metadata with skopeo tool!"
         return 1
     }
@@ -128,6 +150,11 @@ function check_image() {
     echo "Image name: '${img_name}'"
 
     local expected_string="runtime-${img_tag}-ubi"
+    # workaround as we have a mismatch in the naming in the dockerfile:
+    # https://github.com/opendatahub-io/notebooks/blob/6d0d410abfcf91b42962acce15fe2c80d056912d/runtimes/rocm-tensorflow/ubi9-python-3.11/Dockerfile.rocm#L67
+    if test "${expected_string}" == "runtime-rocm-tensorflow-ubi"; then
+        expected_string="rocm-runtime-tensorflow-ubi"
+    fi
     echo "Checking that '${expected_string}' is present in the image metadata"
     echo "${img_metadata_config}" | grep --quiet "${expected_string}" || {
         echo "ERROR: The string '${expected_string}' isn't present in the image metadata at all. Please check that the referenced image '${img_url}' is the correct one!"
@@ -143,7 +170,7 @@ function check_image() {
     local img_size
     local img_size_mb
 
-    img_metadata="$(skopeo inspect --raw "docker://${img_url}")" || {
+    img_metadata="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --raw "docker://${img_url}")" || {
         echo "ERROR: Couldn't download '${img_url}' image metadata with skopeo tool!"
         return 1
     }
@@ -167,8 +194,7 @@ function check_image() {
 function main() {
     ret_code=0
 
-    # If name of the directory isn't good enough, maybe we can improve this to search for the: `"schema_name": "runtime-image"` string.
-    runtime_image_files=$(find . -name "*.json" | grep "runtime-images" | sort --unique)
+    runtime_image_files=$(find . -name "*imagestream.yaml" | grep "runtime" | sort --unique)
 
     IFS=$'\n'
     for file in ${runtime_image_files}; do

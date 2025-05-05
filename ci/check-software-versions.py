@@ -14,20 +14,21 @@ import argparse
 import json
 import logging
 import os
-import re
 import subprocess
+import sys
 import uuid
+from enum import Enum
 
 import yaml
-
-from enum import Enum
 
 # Path to the file with image references to the image registry
 PARAMS_ENV_PATH = "manifests/base/params.env"
 
-class ANNOTATION_TYPE(Enum):
+
+class AnnotationType(Enum):
     SOFTWARE = "software"
     PYTHON_DEPS = "python-deps"
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,6 +38,7 @@ logging.basicConfig(
 
 log = logging.getLogger(__name__)
 prune_podman_data = False
+
 
 def find_imagestream_files(directory="."):
     """Finds all ImageStream YAML files in the given directory and its subdirectories."""
@@ -49,6 +51,7 @@ def find_imagestream_files(directory="."):
     imagestreams.sort()
     return imagestreams
 
+
 def load_yaml(filepath):
     """Loads and parses a YAML file."""
 
@@ -59,11 +62,12 @@ def load_yaml(filepath):
         log.error(f"Loading YAML from '{filepath}': {e}")
         return None
 
-def extract_variable(reference):
-    """Extracts a variable name from a string (e.g.: '$(odh-rstudio-notebook-image-commit-n-1)') using regex."""
 
-    match = re.search(r"\((.*?)\)", reference)
-    return match.group(1) if match else None
+def extract_variable(reference):
+    """Extracts a variable name from a string (e.g.: 'odh-rstudio-notebook-image-commit-n-1_PLACEHOLDER') using regex."""
+
+    return reference.replace("_PLACEHOLDER", "")
+
 
 def get_variable_value(variable_name, params_file_path=PARAMS_ENV_PATH):
     """Retrieves the value of a variable from a parameters file."""
@@ -82,6 +86,7 @@ def get_variable_value(variable_name, params_file_path=PARAMS_ENV_PATH):
         log.error(f"An unexpected error occurred: {e}")
         return None
 
+
 def run_podman_container(image_name, image_link, detach=True):
     """Runs a Podman container in detached mode and returns the container ID."""
 
@@ -90,7 +95,9 @@ def run_podman_container(image_name, image_link, detach=True):
             # Since we're pruning the data, we're probably interested about current disk space usage.
             subprocess.run(["df", "-h"], check=True)
         container_name = f"tmp-{image_name}-{uuid.uuid4()}"
-        result = subprocess.run(["podman", "run", "-d", "--name", container_name, image_link], capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ["podman", "run", "-d", "--name", container_name, image_link], capture_output=True, text=True, check=True
+        )
         container_id = result.stdout.strip()
         log.info(f"Container '{container_id}' started (detached).")
         return container_id
@@ -98,22 +105,24 @@ def run_podman_container(image_name, image_link, detach=True):
         log.error(f"Error running Podman container '{image_link}': {e}")
         return None
 
+
 def execute_command_in_container(container_id, command):
     """Executes a command inside a running Podman container."""
 
     try:
-        result = subprocess.run(["podman", "exec", container_id] + command, capture_output=True, text=True, check=True)
+        result = subprocess.run(["podman", "exec", container_id, *command], capture_output=True, text=True, check=True)
         log.debug(result.stdout.strip())
         return result.stdout.strip()
     except (subprocess.CalledProcessError, Exception) as e:
         log.error(f"Error executing command '{command}' in container '{container_id}': {e}")
         return None
 
+
 def stop_and_remove_container(container_id):
     """Stops and removes a Podman container."""
 
     if not container_id:
-        log.error(f"Given undefined value in 'container_id' argument!")
+        log.error("Given undefined value in 'container_id' argument!")
         return 1
     try:
         subprocess.run(["podman", "stop", container_id], check=True)
@@ -127,6 +136,7 @@ def stop_and_remove_container(container_id):
 
     return 0
 
+
 def parse_json_string(json_string):
     """Parses a JSON string and returns the data as a list of dictionaries."""
 
@@ -135,6 +145,7 @@ def parse_json_string(json_string):
     except (json.JSONDecodeError, Exception) as e:
         log.error(f"Error parsing JSON: {e}")
         return None
+
 
 def process_dependency_item(item, container_id, annotation_type):
     """Processes a single item (dictionary) from the JSON data."""
@@ -147,8 +158,8 @@ def process_dependency_item(item, container_id, annotation_type):
     log.info(f"Checking {name} (version {version}) in container...")
 
     command_mapping = {
-        "PyTorch": ["/bin/bash", "-c", f"pip show torch | grep 'Version: '"],
-        "ROCm": ["/bin/bash", "-c", "rpm -q --queryformat '%{VERSION}\n' rocm"],
+        "PyTorch": ["/bin/bash", "-c", "pip show torch | grep 'Version: '"],
+        "ROCm": ["/bin/bash", "-c", "rpm -q --queryformat '%{VERSION}\n' rocm-core"],
         "ROCm-PyTorch": ["/bin/bash", "-c", "pip show torch | grep 'Version: ' | grep rocm"],
         "ROCm-TensorFlow": ["/bin/bash", "-c", "pip show tensorflow-rocm | grep 'Version: '"],
         "TensorFlow": ["/bin/bash", "-c", "pip show tensorflow | grep 'Version: '"],
@@ -163,20 +174,21 @@ def process_dependency_item(item, container_id, annotation_type):
 
     command = command_mapping.get(name)
     if not command:
-        if annotation_type == ANNOTATION_TYPE.SOFTWARE:
+        if annotation_type == AnnotationType.SOFTWARE:
             command = ["/bin/bash", "-c", f"{name.lower()} --version"]
         else:
             command = ["/bin/bash", "-c", f"pip show {name.lower()} | grep 'Version: '"]
 
     output = execute_command_in_container(container_id, command)
 
-    if output and version.lstrip('v') in output:
+    if output and version.lstrip("v") in output:
         log.info(f"{name} version check passed.")
     else:
         log.error(f"{name} version check failed. Expected '{version}', found '{output}'.")
         return 1
 
     return 0
+
 
 def process_tag(tag):
     ret_code = 0
@@ -190,7 +202,7 @@ def process_tag(tag):
     log.info(f"Processing tag: {tag['name']}.")
     outdated_annotation = "opendatahub.io/image-tag-outdated"
     if tag_annotations.get(outdated_annotation) == "true":
-        log.info(f"Skipping processing of this tag as it is marked as outdated.")
+        log.info("Skipping processing of this tag as it is marked as outdated.")
         print_delimiter()
         return 0
     if "from" not in tag or "name" not in tag["from"]:
@@ -226,22 +238,23 @@ def process_tag(tag):
             return 1
 
         for item in parse_json_string(software) or []:
-            if process_dependency_item(item, container_id, ANNOTATION_TYPE.SOFTWARE) != 0:
+            if process_dependency_item(item, container_id, AnnotationType.SOFTWARE) != 0:
                 log.error(f"Failed check for the '{image_ref}' tag!")
                 ret_code = 1
 
         for item in parse_json_string(python_deps) or []:
-            if process_dependency_item(item, container_id, ANNOTATION_TYPE.PYTHON_DEPS) != 0:
+            if process_dependency_item(item, container_id, AnnotationType.PYTHON_DEPS) != 0:
                 log.error(f"Failed check for the '{image_ref}' tag!")
                 ret_code = 1
     finally:
         if stop_and_remove_container(container_id) != 0:
             log.error(f"Failed to stop/remove the container '{container_id}' for the '{image_ref}' tag!")
             print_delimiter()
-            return 1
+            return 1  # noqa: B012 `return` inside `finally` blocks cause exceptions to be silenced
         print_delimiter()
 
     return ret_code
+
 
 def process_imagestream(imagestream):
     """Processes a single ImageStream file and check images that it is referencing."""
@@ -264,17 +277,23 @@ def process_imagestream(imagestream):
 
     return ret_code
 
+
 def print_delimiter():
     log.info("----------------------------------------------------------------------")
     log.info("")
 
-def main():
 
+def main():
     parser = argparse.ArgumentParser(description="Process command-line arguments.")
-    parser.add_argument("-p", "--prune-podman-data", action="store_true", help="Prune Podman data after each image is processed. This is useful when running in GHA workers.")
+    parser.add_argument(
+        "-p",
+        "--prune-podman-data",
+        action="store_true",
+        help="Prune Podman data after each image is processed. This is useful when running in GHA workers.",
+    )
 
     args = parser.parse_args()
-    global prune_podman_data
+    global prune_podman_data  # noqa: PLW0603 Using the global statement to update `prune_podman_data` is discouraged
     prune_podman_data = args.prune_podman_data
 
     ret_code = 0
@@ -282,11 +301,12 @@ def main():
 
     imagestreams = find_imagestream_files()
     log.info("Following list of ImageStream manifests has been found:")
-    for imagestream in imagestreams: log.info(imagestream)
+    for imagestream in imagestreams:
+        log.info(imagestream)
 
     if not imagestreams or len(imagestreams) == 0:
         log.error("Failed to detect any ImageStream manifest files!")
-        exit(1)
+        sys.exit(1)
 
     print_delimiter()
 
@@ -302,7 +322,8 @@ def main():
     else:
         log.error("The software version check failed, see errors above in the log for more information!")
 
-    exit(ret_code)
+    sys.exit(ret_code)
+
 
 if __name__ == "__main__":
     main()

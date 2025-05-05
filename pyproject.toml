@@ -1,29 +1,158 @@
-[tool.poetry]
+# https://docs.astral.sh/uv/concepts/projects/config/
+[project]
 name = "notebooks"
-version = "2024.1"
-authors = []
+version = "2025.1"
 description = "Open Data Hub / OpenShift AI Notebook / Workbench images, and tests for the same in Python."
 readme = "README.md"
 package-mode = false
+requires-python = ">=3.12,<3.13"
 
-[tool.poetry.dependencies]
-python = "~3.12"
-requests = "^2.32.3"
+# https://docs.astral.sh/uv/concepts/projects/dependencies/#managing-dependencies
+dependencies = []
 
+[dependency-groups]
+dev = [
+    "pre-commit",
+    "pyright",
+    "ruff",
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.4"
-allure-pytest = "^2.13.5"
-pytest-subtests = "^0.14.1"
-pyfakefs = "^5.7.4"
-testcontainers = "^4.9.1"
-docker = "^7.1.0"
-podman = "^5.2.0"
-kubernetes = "^31.0.0"
-openshift-python-wrapper = "^11.0.19"
-pydantic = "^2.10.6"
-requests = "^2.32.3"
+    "pytest",
+    "allure-pytest",
+    "pytest-subtests",
 
+    "pyfakefs",
+    "pydantic",
+    "requests",
+    "pyyaml",
+
+    "testcontainers",
+    "docker",
+    "podman",
+    "kubernetes",
+    "openshift-python-wrapper",
+]
+
+[tool.uv]
+package = false
+environments = [
+    "sys_platform == 'darwin'",
+    "sys_platform == 'linux'",
+]
+
+# https://github.com/astral-sh/uv/issues/3957#issuecomment-2659350181
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv-build"]
+build-backend = "uv_build"
+
+# inspired from https://github.com/red-hat-data-services/ods-ci/blob/master/pyproject.toml
+
+# https://microsoft.github.io/pyright/#/configuration
+[tool.pyright]
+typeCheckingMode = "off"
+reportMissingImports = "error"
+reportUnboundVariable = "error"
+reportGeneralTypeIssues = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+reportPossiblyUnboundVariable = "warning"
+reportOptionalMemberAccess = "none"
+reportOptionalSubscript = "none"
+include = ["ci/", "tests/"]
+ignore = [ ]
+pythonVersion = "3.12"
+pythonPlatform = "Linux"
+
+# https://docs.astral.sh/ruff/configuration
+[tool.ruff]
+include = ["pyproject.toml", "ci/**/*.py", "tests/**/*.py"]
+exclude = [ ]
+target-version = "py312"
+line-length = 120
+
+# https://docs.astral.sh/ruff/rules
+[tool.ruff.lint]
+preview = true
+select = [
+    "B", # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "COM", # flake8-commas
+    "E", "W", # pycodestyle errors/warnings
+    "F", # Pyflakes
+    "FA", # flake8-future-annotations
+    "FLY", # flynt
+    "G", # flake8-logging-format
+    "I", # isort
+    "INP", # flake8-no-pep420
+    "INT", # flake8-gettext
+    "ISC", # flake8-implicit-str-concat
+    "N", # pep8-naming
+    "NPY002", # numpy-legacy-random
+    "PERF", # Perflint
+    "PGH", # pygrep-hooks
+    "PIE", # misc lints
+    "PL", # pylint
+    "PYI", # flake8-pyi
+    "Q", # flake8-quotes
+    "RET", # flake8-return
+    "RUF", # Ruff-specific
+    "S102", # flake8-bandit: exec-builtin
+    "T10", # flake8-debugger
+    "TCH", # type-checking imports
+    "TID", # flake8-tidy-imports
+    "UP", # pyupgrade
+    "YTT", # flake8-2020
+]
+ignore = [
+    # intentionally disabled
+    "E203", # space before : (needed for how black formats slicing)
+    "ISC001", # single-line-implicit-string-concatenation (ruff format wants this disabled)
+    "G004", # Logging statement uses f-string (convenient, and we don't care about performance too much)
+    # various limits and unimportant warnings
+    "E501", # Line too long
+    "E741", # Ambiguous variable name: `l`
+    "PLR0904", # Too many public methods (56 > 20)
+    "PLR0912", # Too many branches
+    "PLR0913", # Too many arguments in function definition (6 > 5)
+    "PLR0915", # Too many statements
+    "PLR0917", # Too many positional arguments (10/5)
+    "PLR0917", # Too many positional arguments (7/5)
+    "PLR0911", # Too many return statements (9 > 6)
+    "PLR0914", # Too many local variables (19/15)
+    "PLR2004", # Magic value used in comparison
+    # "W503", # not yet implemented; line break before binary operator
+    # "W504", # not yet implemented; line break after binary operator
+    # TODO
+    "B006", # Do not use mutable data structures for argument defaults
+    "COM812", # Trailing comma missing
+    "INP001", # File `ods_ci/tests/Resources/Page/ODH/JupyterHub/jupyter-helper.py` is part of an implicit namespace package. Add an `__init__.py`.
+    "N806", # Variable `outputText` in function should be lowercase
+    "N813", # Camelcase `ElementTree` imported as lowercase `et`
+    "N816", # Variable `rotatingHandler` in global scope should not be mixedCase
+    "N999", # Invalid module name: 'createPolarionTestRun'
+    "PERF401", # Use a list comprehension to create a transformed list
+    "PLC1901", # `filter_value != ""` can be simplified to `filter_value` as an empty string is falsey
+    "PLR6201", # Use a `set` literal when testing for membership
+    "PLR6301", # Method `_render_template` could be a function, class method, or static method
+    "PLW1514", # `codecs.open` in text mode without explicit `encoding` argument
+    "PLW2901", # `for` loop variable `tag_it` overwritten by assignment target
+    "RET501", # Do not explicitly `return None` in function if it is the only possible return value
+    "RET504", # Unnecessary assignment to `names` before `return` statement
+    "RET505", # Unnecessary `else` after `return` statement
+    "UP015", # Unnecessary open mode parameters
+    "UP031", # format specifiers instead of percent format
+    "UP032", # Use f-string instead of `format` call
+    "RET507", # Unnecessary `else` after `continue` statement
+    "RET508", # Unnecessary `elif` after `break` statement
+]
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# https://docs.astral.sh/ruff/formatter
+[tool.ruff.format]
+line-ending = "lf"
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+docstring-code-format = true
+docstring-code-line-length = "dynamic"

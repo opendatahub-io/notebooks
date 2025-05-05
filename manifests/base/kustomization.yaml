@@ -21,313 +21,644 @@ resources:
   - runtime-rocm-tensorflow-imagestream.yaml
   - runtime-tensorflow-imagestream.yaml
 
-commonLabels:
-  opendatahub.io/component: "true"
-  component.opendatahub.io/name: notebooks
 
 configMapGenerator:
-  - name: notebooks-parameters
-    env: params.env
-  - name: notebook
-    env: commit.env
+  - envs:
+      - params.env
+    name: notebooks-parameters
+  - envs:
+      - commit.env
+    name: notebook
 generatorOptions:
   disableNameSuffixHash: true
-vars:
-  - name: odh-minimal-notebook-image-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-minimal-notebook-image-n
-  - name: odh-minimal-notebook-image-n-1
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-minimal-notebook-image-n-1
-  - name: odh-generic-data-science-notebook-image-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-generic-data-science-notebook-image-n
-  - name: odh-generic-data-science-notebook-image-n-1
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-generic-data-science-notebook-image-n-1
-  - name: odh-minimal-gpu-notebook-image-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-minimal-gpu-notebook-image-n
-  - name: odh-minimal-gpu-notebook-image-n-1
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-minimal-gpu-notebook-image-n-1
-  - name: odh-pytorch-gpu-notebook-image-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-pytorch-gpu-notebook-image-n
-  - name: odh-pytorch-gpu-notebook-image-n-1
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-pytorch-gpu-notebook-image-n-1
-  - name: odh-tensorflow-gpu-notebook-image-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-tensorflow-gpu-notebook-image-n
-  - name: odh-tensorflow-gpu-notebook-image-n-1
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-tensorflow-gpu-notebook-image-n-1
-  - name: odh-trustyai-notebook-image-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-trustyai-notebook-image-n
-  - name: odh-trustyai-notebook-image-n-1
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-trustyai-notebook-image-n-1
-  - name: odh-codeserver-notebook-image-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-codeserver-notebook-image-n
-  - name: odh-codeserver-notebook-image-n-1
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-codeserver-notebook-image-n-1
-  - name: odh-rstudio-notebook-image-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-notebook-image-n
-  - name: odh-rstudio-notebook-image-n-1
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-notebook-image-n-1
-  - name: odh-rstudio-gpu-notebook-image-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-gpu-notebook-image-n
-  - name: odh-rstudio-gpu-notebook-image-n-1
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-gpu-notebook-image-n-1
-  - name: odh-rocm-minimal-notebook-image-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rocm-minimal-notebook-image-n
-  - name: odh-rocm-pytorch-notebook-image-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rocm-pytorch-notebook-image-n
-  - name: odh-rocm-tensorflow-notebook-image-n
-    objref:
-      kind: ConfigMap
-      name: notebooks-parameters
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rocm-tensorflow-notebook-image-n
-  - name: odh-minimal-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-minimal-notebook-image-commit-n
-  - name: odh-minimal-notebook-image-commit-n-1
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-minimal-notebook-image-commit-n-1
-  - name: odh-generic-data-science-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-generic-data-science-notebook-image-commit-n
-  - name: odh-generic-data-science-notebook-image-commit-n-1
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-generic-data-science-notebook-image-commit-n-1
-  - name: odh-minimal-gpu-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-minimal-gpu-notebook-image-commit-n
-  - name: odh-minimal-gpu-notebook-image-commit-n-1
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-minimal-gpu-notebook-image-commit-n-1
-  - name: odh-pytorch-gpu-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-pytorch-gpu-notebook-image-commit-n
-  - name: odh-pytorch-gpu-notebook-image-commit-n-1
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-pytorch-gpu-notebook-image-commit-n-1
-  - name: odh-tensorflow-gpu-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-tensorflow-gpu-notebook-image-commit-n
-  - name: odh-tensorflow-gpu-notebook-image-commit-n-1
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-tensorflow-gpu-notebook-image-commit-n-1
-  - name: odh-trustyai-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-trustyai-notebook-image-commit-n
-  - name: odh-trustyai-notebook-image-commit-n-1
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-trustyai-notebook-image-commit-n-1
-  - name: odh-codeserver-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-codeserver-notebook-image-commit-n
-  - name: odh-codeserver-notebook-image-commit-n-1
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-codeserver-notebook-image-commit-n-1
-  - name: odh-rstudio-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-notebook-image-commit-n
-  - name: odh-rstudio-notebook-image-commit-n-1
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-notebook-image-commit-n-1
-  - name: odh-rstudio-gpu-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-gpu-notebook-image-commit-n
-  - name: odh-rstudio-gpu-notebook-image-commit-n-1
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rstudio-gpu-notebook-image-commit-n-1
-  - name: odh-rocm-minimal-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rocm-minimal-notebook-image-commit-n
-  - name: odh-rocm-pytorch-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rocm-pytorch-notebook-image-commit-n
-  - name: odh-rocm-tensorflow-notebook-image-commit-n
-    objref:
-      kind: ConfigMap
-      name: notebook
-      apiVersion: v1
-    fieldref:
-      fieldpath: data.odh-rocm-tensorflow-notebook-image-commit-n
 
-configurations:
-  - params.yaml
-  - commit.yaml
+labels:
+  - includeSelectors: true
+    pairs:
+      component.opendatahub.io/name: notebooks
+      opendatahub.io/component: "true"
+replacements:
+  - source:
+      fieldPath: data.odh-minimal-notebook-image-n
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-minimal-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-minimal-notebook-image-n-1
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-minimal-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-generic-data-science-notebook-image-n
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-datascience-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-generic-data-science-notebook-image-n-1
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-datascience-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-minimal-gpu-notebook-image-n
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-minimal-gpu-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-minimal-gpu-notebook-image-n-1
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-minimal-gpu-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-pytorch-gpu-notebook-image-n
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-pytorch-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-pytorch-gpu-notebook-image-n-1
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-pytorch-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-tensorflow-gpu-notebook-image-n
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-tensorflow-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-tensorflow-gpu-notebook-image-n-1
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-tensorflow-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-trustyai-notebook-image-n
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-trustyai-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-trustyai-notebook-image-n-1
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-trustyai-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-codeserver-notebook-image-n
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: code-server-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-codeserver-notebook-image-n-1
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: code-server-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-rstudio-notebook-image-n
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: rstudio-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-rstudio-notebook-image-n-1
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: rstudio-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-rstudio-gpu-notebook-image-n
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: rstudio-gpu-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-rstudio-gpu-notebook-image-n-1
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: rstudio-gpu-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-rocm-minimal-notebook-image-n
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-rocm-minimal
+          version: v1
+  - source:
+      fieldPath: data.odh-rocm-minimal-notebook-image-n-1
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-rocm-minimal
+          version: v1
+  - source:
+      fieldPath: data.odh-rocm-pytorch-notebook-image-n
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-rocm-pytorch
+          version: v1
+  - source:
+      fieldPath: data.odh-rocm-pytorch-notebook-image-n-1
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-rocm-pytorch
+          version: v1
+  - source:
+      fieldPath: data.odh-rocm-tensorflow-notebook-image-n
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-rocm-tensorflow
+          version: v1
+  - source:
+      fieldPath: data.odh-rocm-tensorflow-notebook-image-n-1
+      kind: ConfigMap
+      name: notebooks-parameters
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-rocm-tensorflow
+          version: v1
+  - source:
+      fieldPath: data.odh-minimal-notebook-image-commit-n
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-minimal-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-minimal-notebook-image-commit-n-1
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-minimal-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-generic-data-science-notebook-image-commit-n
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-datascience-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-generic-data-science-notebook-image-commit-n-1
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-datascience-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-minimal-gpu-notebook-image-commit-n
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-minimal-gpu-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-minimal-gpu-notebook-image-commit-n-1
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-minimal-gpu-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-pytorch-gpu-notebook-image-commit-n
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-pytorch-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-pytorch-gpu-notebook-image-commit-n-1
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-pytorch-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-tensorflow-gpu-notebook-image-commit-n
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-tensorflow-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-tensorflow-gpu-notebook-image-commit-n-1
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-tensorflow-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-trustyai-notebook-image-commit-n
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-trustyai-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-trustyai-notebook-image-commit-n-1
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-trustyai-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-codeserver-notebook-image-commit-n
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: code-server-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-codeserver-notebook-image-commit-n-1
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: code-server-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-rstudio-notebook-image-commit-n
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: rstudio-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-rstudio-notebook-image-commit-n-1
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: rstudio-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-rstudio-gpu-notebook-image-commit-n
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: rstudio-gpu-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-rstudio-gpu-notebook-image-commit-n-1
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: rstudio-gpu-notebook
+          version: v1
+  - source:
+      fieldPath: data.odh-rocm-minimal-notebook-image-commit-n
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-rocm-minimal
+          version: v1
+  - source:
+      fieldPath: data.odh-rocm-minimal-notebook-image-commit-n-1
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-rocm-minimal
+          version: v1
+  - source:
+      fieldPath: data.odh-rocm-pytorch-notebook-image-commit-n
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-rocm-pytorch
+          version: v1
+  - source:
+      fieldPath: data.odh-rocm-pytorch-notebook-image-commit-n-1
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-rocm-pytorch
+          version: v1
+  - source:
+      fieldPath: data.odh-rocm-tensorflow-notebook-image-commit-n
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-rocm-tensorflow
+          version: v1
+  - source:
+      fieldPath: data.odh-rocm-tensorflow-notebook-image-commit-n-1
+      kind: ConfigMap
+      name: notebook
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.1.annotations.[opendatahub.io/notebook-build-commit]
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: jupyter-rocm-tensorflow
+          version: v1

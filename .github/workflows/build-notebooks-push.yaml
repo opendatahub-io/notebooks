@@ -39,4 +39,5 @@ jobs:
     with:
       target: "${{ matrix.target }}"
       github: "${{ toJSON(github) }}"
+      subscription: "${{ matrix.subscription }}"
     secrets: inherit

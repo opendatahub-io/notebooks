@@ -25,21 +25,21 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 
 WORKDIR /opt/app-root/src
 
-##################
-# base-cuda      #
-##################
+####################
+# cuda-base        #
+####################
 FROM base AS cuda-base
 
-ARG CUDA_SOURCE_CODE=cuda/c9s-python-3.11
+ARG CUDA_SOURCE_CODE=cuda
 
 # Install CUDA base from:
-# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.1.1/ubi9/base/Dockerfile
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubi9/base/Dockerfile
 USER 0
 WORKDIR /opt/app-root/bin
 
 ENV NVARCH=x86_64
-ENV NVIDIA_REQUIRE_CUDA="cuda>=12.1 brand=tesla,driver>=470,driver<471 brand=unknown,driver>=470,driver<471 brand=nvidia,driver>=470,driver<471 brand=nvidiartx,driver>=470,driver<471 brand=geforce,driver>=470,driver<471 brand=geforcertx,driver>=470,driver<471 brand=quadro,driver>=470,driver<471 brand=quadrortx,driver>=470,driver<471 brand=titan,driver>=470,driver<471 brand=titanrtx,driver>=470,driver<471 brand=tesla,driver>=525,driver<526 brand=unknown,driver>=525,driver<526 brand=nvidia,driver>=525,driver<526 brand=nvidiartx,driver>=525,driver<526 brand=geforce,driver>=525,driver<526 brand=geforcertx,driver>=525,driver<526 brand=quadro,driver>=525,driver<526 brand=quadrortx,driver>=525,driver<526 brand=titan,driver>=525,driver<526 brand=titanrtx,driver>=525,driver<526"
-ENV NV_CUDA_CUDART_VERSION=12.1.105-1
+ENV NVIDIA_REQUIRE_CUDA="cuda>=12.6 brand=unknown,driver>=470,driver<471 brand=grid,driver>=470,driver<471 brand=tesla,driver>=470,driver<471 brand=nvidia,driver>=470,driver<471 brand=quadro,driver>=470,driver<471 brand=quadrortx,driver>=470,driver<471 brand=nvidiartx,driver>=470,driver<471 brand=vapps,driver>=470,driver<471 brand=vpc,driver>=470,driver<471 brand=vcs,driver>=470,driver<471 brand=vws,driver>=470,driver<471 brand=cloudgaming,driver>=470,driver<471 brand=unknown,driver>=535,driver<536 brand=grid,driver>=535,driver<536 brand=tesla,driver>=535,driver<536 brand=nvidia,driver>=535,driver<536 brand=quadro,driver>=535,driver<536 brand=quadrortx,driver>=535,driver<536 brand=nvidiartx,driver>=535,driver<536 brand=vapps,driver>=535,driver<536 brand=vpc,driver>=535,driver<536 brand=vcs,driver>=535,driver<536 brand=vws,driver>=535,driver<536 brand=cloudgaming,driver>=535,driver<536 brand=unknown,driver>=550,driver<551 brand=grid,driver>=550,driver<551 brand=tesla,driver>=550,driver<551 brand=nvidia,driver>=550,driver<551 brand=quadro,driver>=550,driver<551 brand=quadrortx,driver>=550,driver<551 brand=nvidiartx,driver>=550,driver<551 brand=vapps,driver>=550,driver<551 brand=vpc,driver>=550,driver<551 brand=vcs,driver>=550,driver<551 brand=vws,driver>=550,driver<551 brand=cloudgaming,driver>=550,driver<551"
+ENV NV_CUDA_CUDART_VERSION=12.6.77-1
 
 COPY ${CUDA_SOURCE_CODE}/cuda.repo-x86_64 /etc/yum.repos.d/cuda.repo
 COPY ${CUDA_SOURCE_CODE}/NGC-DL-CONTAINER-LICENSE /
@@ -48,12 +48,12 @@ RUN NVIDIA_GPGKEY_SUM=d0664fbbdb8c32356d45de36c5984617217b2d0bef41b93ccecd326ba3
     curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/rhel9/${NVARCH}/D42D0685.pub | sed '/^Version/d' > /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA && \
     echo "$NVIDIA_GPGKEY_SUM  /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA" | sha256sum -c --strict -
 
-ENV CUDA_VERSION=12.1.1
+ENV CUDA_VERSION=12.6.3
 
 # For libraries in the cuda-compat-* package: https://docs.nvidia.com/cuda/eula/index.html#attachment-a
 RUN yum upgrade -y && yum install -y \
-    cuda-cudart-12-1-${NV_CUDA_CUDART_VERSION} \
-    cuda-compat-12-1 \
+    cuda-cudart-12-6-${NV_CUDA_CUDART_VERSION} \
+    cuda-compat-12-6 \
     && yum clean all \
     && rm -rf /var/cache/yum/*
 
@@ -69,56 +69,53 @@ ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 # Install CUDA runtime from:
-# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.1.1/ubi9/runtime/Dockerfile
-ENV NV_CUDA_LIB_VERSION=12.1.1-1
-ENV NV_NVTX_VERSION=12.1.105-1
-ENV NV_LIBNPP_VERSION=12.1.0.40-1
-ENV NV_LIBNPP_PACKAGE=libnpp-12-1-${NV_LIBNPP_VERSION}
-ENV NV_LIBCUBLAS_VERSION=12.1.3.1-1
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubi9/runtime/Dockerfile
+ENV NV_CUDA_LIB_VERSION=12.6.3-1
+ENV NV_NVTX_VERSION=12.6.77-1
+ENV NV_LIBNPP_VERSION=12.3.1.54-1
+ENV NV_LIBNPP_PACKAGE=libnpp-12-6-${NV_LIBNPP_VERSION}
+ENV NV_LIBCUBLAS_VERSION=12.6.4.1-1
 ENV NV_LIBNCCL_PACKAGE_NAME=libnccl
-ENV NV_LIBNCCL_PACKAGE_VERSION=2.17.1-1
-ENV NV_LIBNCCL_VERSION=2.17.1
-ENV NCCL_VERSION=2.17.1
-ENV NV_LIBNCCL_PACKAGE=${NV_LIBNCCL_PACKAGE_NAME}-${NV_LIBNCCL_PACKAGE_VERSION}+cuda12.1
+ENV NV_LIBNCCL_PACKAGE_VERSION=2.23.4-1
+ENV NV_LIBNCCL_VERSION=2.23.4
+ENV NCCL_VERSION=2.23.4
+ENV NV_LIBNCCL_PACKAGE=${NV_LIBNCCL_PACKAGE_NAME}-${NV_LIBNCCL_PACKAGE_VERSION}+cuda12.6
 
 RUN yum install -y \
-    cuda-libraries-12-1-${NV_CUDA_LIB_VERSION} \
-    cuda-nvtx-12-1-${NV_NVTX_VERSION} \
+    cuda-libraries-12-6-${NV_CUDA_LIB_VERSION} \
+    cuda-nvtx-12-6-${NV_NVTX_VERSION} \
     ${NV_LIBNPP_PACKAGE} \
-    libcublas-12-1-${NV_LIBCUBLAS_VERSION} \
+    libcublas-12-6-${NV_LIBCUBLAS_VERSION} \
     ${NV_LIBNCCL_PACKAGE} \
     && yum clean all \
     && rm -rf /var/cache/yum/*
 
-# Set this flag so that libraries can find the location of CUDA
-ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
-
 # Install CUDA devel from:
-# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.1.1/ubi9/devel/Dockerfile
-ENV NV_NVPROF_VERSION=12.1.105-1
-ENV NV_NVPROF_DEV_PACKAGE=cuda-nvprof-12-1-${NV_NVPROF_VERSION}
-ENV NV_CUDA_CUDART_DEV_VERSION=12.1.105-1
-ENV NV_NVML_DEV_VERSION=12.1.105-1
-ENV NV_LIBCUBLAS_DEV_VERSION=12.1.3.1-1
-ENV NV_LIBNPP_DEV_VERSION=12.1.0.40-1
-ENV NV_LIBNPP_DEV_PACKAGE=libnpp-devel-12-1-${NV_LIBNPP_DEV_VERSION}
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubi9/devel/Dockerfile
+ENV NV_NVPROF_VERSION=12.6.80-1
+ENV NV_NVPROF_DEV_PACKAGE=cuda-nvprof-12-6-${NV_NVPROF_VERSION}
+ENV NV_CUDA_CUDART_DEV_VERSION=12.6.77-1
+ENV NV_NVML_DEV_VERSION=12.6.77-1
+ENV NV_LIBCUBLAS_DEV_VERSION=12.6.4.1-1
+ENV NV_LIBNPP_DEV_VERSION=12.3.1.54-1
+ENV NV_LIBNPP_DEV_PACKAGE=libnpp-devel-12-6-${NV_LIBNPP_DEV_VERSION}
 ENV NV_LIBNCCL_DEV_PACKAGE_NAME=libnccl-devel
-ENV NV_LIBNCCL_DEV_PACKAGE_VERSION=2.17.1-1
-ENV NCCL_VERSION=2.17.1
-ENV NV_LIBNCCL_DEV_PACKAGE=${NV_LIBNCCL_DEV_PACKAGE_NAME}-${NV_LIBNCCL_DEV_PACKAGE_VERSION}+cuda12.1
-ENV NV_CUDA_NSIGHT_COMPUTE_VERSION=12.1.1-1
-ENV NV_CUDA_NSIGHT_COMPUTE_DEV_PACKAGE=cuda-nsight-compute-12-1-${NV_CUDA_NSIGHT_COMPUTE_VERSION}
+ENV NV_LIBNCCL_DEV_PACKAGE_VERSION=2.23.4-1
+ENV NCCL_VERSION=2.23.4
+ENV NV_LIBNCCL_DEV_PACKAGE=${NV_LIBNCCL_DEV_PACKAGE_NAME}-${NV_LIBNCCL_DEV_PACKAGE_VERSION}+cuda12.6
+ENV NV_CUDA_NSIGHT_COMPUTE_VERSION=12.6.3-1
+ENV NV_CUDA_NSIGHT_COMPUTE_DEV_PACKAGE=cuda-nsight-compute-12-6-${NV_CUDA_NSIGHT_COMPUTE_VERSION}
 
 RUN yum install -y \
     make \
     findutils \
-    cuda-command-line-tools-12-1-${NV_CUDA_LIB_VERSION} \
-    cuda-libraries-devel-12-1-${NV_CUDA_LIB_VERSION} \
-    cuda-minimal-build-12-1-${NV_CUDA_LIB_VERSION} \
-    cuda-cudart-devel-12-1-${NV_CUDA_CUDART_DEV_VERSION} \
+    cuda-command-line-tools-12-6-${NV_CUDA_LIB_VERSION} \
+    cuda-libraries-devel-12-6-${NV_CUDA_LIB_VERSION} \
+    cuda-minimal-build-12-6-${NV_CUDA_LIB_VERSION} \
+    cuda-cudart-devel-12-6-${NV_CUDA_CUDART_DEV_VERSION} \
     ${NV_NVPROF_DEV_PACKAGE} \
-    cuda-nvml-devel-12-1-${NV_NVML_DEV_VERSION} \
-    libcublas-devel-12-1-${NV_LIBCUBLAS_DEV_VERSION} \
+    cuda-nvml-devel-12-6-${NV_NVML_DEV_VERSION} \
+    libcublas-devel-12-6-${NV_LIBCUBLAS_DEV_VERSION} \
     ${NV_LIBNPP_DEV_PACKAGE} \
     ${NV_LIBNCCL_DEV_PACKAGE} \
     ${NV_CUDA_NSIGHT_COMPUTE_DEV_PACKAGE} \
@@ -127,11 +124,11 @@ RUN yum install -y \
 
 ENV LIBRARY_PATH=/usr/local/cuda/lib64/stubs
 
-# Install CUDA devel cudnn8 from:
-# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.1.1/ubi9/devel/cudnn8/Dockerfile
-ENV NV_CUDNN_VERSION=8.9.0.131-1
-ENV NV_CUDNN_PACKAGE=libcudnn8-${NV_CUDNN_VERSION}.cuda12.1
-ENV NV_CUDNN_PACKAGE_DEV=libcudnn8-devel-${NV_CUDNN_VERSION}.cuda12.1
+# Install CUDA devel cudnn9 from:
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubi9/devel/cudnn/Dockerfile
+ENV NV_CUDNN_VERSION=9.5.1.17-1
+ENV NV_CUDNN_PACKAGE=libcudnn9-cuda-12-${NV_CUDNN_VERSION}
+ENV NV_CUDNN_PACKAGE_DEV=libcudnn9-devel-cuda-12-${NV_CUDNN_VERSION}
 
 LABEL com.nvidia.cudnn.version="${NV_CUDNN_VERSION}"
 
@@ -141,8 +138,11 @@ RUN yum install -y \
     && yum clean all \
     && rm -rf /var/cache/yum/*
 
-# Install CUDA toolkit 12.1
-RUN yum -y install cuda-toolkit-12-1 && \
+# Set this flag so that libraries can find the location of CUDA
+ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
+
+# Install CUDA toolkit 12.6
+RUN yum -y install cuda-toolkit-12-6 && \
     yum -y clean all --enablerepo="*"
 
 # Restore notebook user workspace
@@ -170,7 +170,7 @@ LABEL name="odh-notebook-rstudio-server-cuda-c9s-python-3.11" \
 
 USER 0
 
-ENV R_VERSION=4.4.1
+ENV R_VERSION=4.4.3
 
 # Install R
 RUN yum install -y yum-utils && \
@@ -184,39 +184,38 @@ RUN yum install -y yum-utils && \
     yum -y clean all --enablerepo='*'
 
 # set R library to default (used in install.r from littler)
-RUN chmod -R a+w /usr/lib64/R/library
 ENV LIBLOC=/usr/lib64/R/library
-
-# set User R Library path
-RUN mkdir -p /opt/app-root/bin/Rpackages/4.4 && chmod -R a+w /opt/app-root/bin/Rpackages/4.4
 ENV R_LIBS_USER=/opt/app-root/bin/Rpackages/4.4
+
+RUN chmod -R a+w ${LIBLOC} && \
+    # create User R Library path
+    mkdir -p ${R_LIBS_USER} && \
+    chmod -R a+w ${R_LIBS_USER}
 
 WORKDIR /tmp/
 
 # Install RStudio
-RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/rstudio-server-rhel-2024.04.2-764-x86_64.rpm && \
-    yum install -y rstudio-server-rhel-2024.04.2-764-x86_64.rpm && \
-    rm rstudio-server-rhel-2024.04.2-764-x86_64.rpm && \
-    yum -y clean all  --enablerepo='*'
+ARG RSTUDIO_RPM=rstudio-server-rhel-2024.12.1-563-x86_64.rpm
+RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel8/x86_64/${RSTUDIO_RPM} && \
+    yum install -y ${RSTUDIO_RPM} && \
+    rm ${RSTUDIO_RPM} && \
+    yum -y clean all  --enablerepo='*' && \
+    # Specific RStudio config and fixes
+    chmod 1777 /var/run/rstudio-server && \
+    mkdir -p /usr/share/doc/R && \
+    # package installation
+    # install necessary texlive-framed package to make Knit R markup to PDF rendering possible
+    dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed && \
+    dnf clean all && \
+    rm -rf /var/cache/yum
 
-# Specific RStudio config and fixes
-RUN chmod 1777 /var/run/rstudio-server && \
-    mkdir -p /usr/share/doc/R
 COPY ${RSTUDIO_SOURCE_CODE}/rsession.conf /etc/rstudio/rsession.conf
 
-# package installation
-# install necessary texlive-framed package to make Knit R markup to PDF rendering possible
-RUN dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed \
-    && dnf clean all && rm -rf /var/cache/yum
 # Install R packages
-RUN R -e "install.packages('remotes')"
-RUN R -e "require('remotes'); \
-    remotes::install_version('Rcpp','1.0.14'); \
-    remotes::install_version('tidyverse','2.0.0'); \
-    remotes::install_version('tidymodels','1.2.0'); \
-    remotes::install_version('plumber','1.2.2'); \
-    remotes::install_version('vetiver','0.2.5'); \
-    remotes::install_version('devtools','2.4.5');"
+# https://cran.r-project.org/web/packages
+COPY ${RSTUDIO_SOURCE_CODE}/install_packages.R ./
+RUN R -f ./install_packages.R && \
+    rm ./install_packages.R
 
 # Install NGINX to proxy RStudio and pass probes check
 ENV NGINX_VERSION=1.24 \
@@ -240,7 +239,7 @@ RUN yum -y module enable nginx:$NGINX_VERSION && \
 COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/supervisord/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Copy extra files to the image.
-COPY ${RSTUDIO_SOURCE_CODE}/nginx/root/ /
+COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/nginx/root/ /
 
 # Changing ownership and user rights to support following use-cases:
 # 1) running container on OpenShift, whose default security model

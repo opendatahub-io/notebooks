@@ -32,11 +32,14 @@ USER 0
 WORKDIR /opt/app-root/bin
 
 # Please keep in sync with ROCm/python3.11 dependent images
-ARG ROCM_VERSION=6.1
-ARG AMDGPU_VERSION=6.1
+ARG ROCM_VERSION=6.2.4
+ARG AMDGPU_VERSION=6.2.4
 
 # Install the ROCm rpms
 # ref: https://github.com/ROCm/ROCm-docker/blob/master/dev/Dockerfile-centos-7-complete
+# Note: Based on 6.2 above new package mivisionx is a pre-requistes, which bring in more dependent packages
+# so we are only installing meta packages of rocm 
+# ref: https://rocm.docs.amd.com/projects/install-on-linux/en/develop/reference/package-manager-integration.html#packages-in-rocm-programming-models
 RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
     echo "baseurl=https://repo.radeon.com/rocm/rhel9/$ROCM_VERSION/main" >> /etc/yum.repos.d/rocm.repo && \
@@ -47,7 +50,7 @@ RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "baseurl=https://repo.radeon.com/amdgpu/$AMDGPU_VERSION/rhel/9.4/main/x86_64" >> /etc/yum.repos.d/amdgpu.repo && \
     echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
-    yum install -y rocm && \
+    yum install -y rocm-developer-tools rocm-ml-sdk rocm-opencl-sdk rocm-openmp-sdk rocm-utils && \
     yum clean all && rm -rf /var/cache/yum
 
 # Restore notebook user workspace
@@ -149,9 +152,5 @@ RUN echo "Installing softwares and packages" && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
     fix-permissions /opt/app-root -P
-
-
-# Copy Elyra runtime-images definitions and set the version
-COPY ${DATASCIENCE_SOURCE_CODE}/runtime-images/ /opt/app-root/share/jupyter/metadata/runtime-images/
 
 WORKDIR /opt/app-root/src

@@ -19,7 +19,7 @@ endif
 .RECIPEPREFIX =
 
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
-RELEASE	 		 ?= 2024b
+RELEASE	 		 ?= 2025a
 RELEASE_PYTHON_VERSION	 ?= 3.11
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
@@ -35,12 +35,6 @@ ifdef OS
 endif
 DATE 		?= $(shell date +'%Y%m%d')
 WHERE_WHICH ?= which
-
-ifeq ($(RELEASE), 2025a)
-	RELEASE_PYTHON_VERSION = 3.12
-else ifeq ($(RELEASE), 2024a)
-	RELEASE_PYTHON_VERSION = 3.9
-endif
 
 
 # linux/amd64 or darwin/arm64
@@ -77,7 +71,7 @@ define build_image
 	$(info # Building $(IMAGE_NAME) image...)
 
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --label release=${RELEASE} --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
 # Push function for the notebook image:
@@ -108,7 +102,7 @@ endef
 #######################################        Build helpers                 #######################################
 
 # https://stackoverflow.com/questions/78899903/how-to-create-a-make-target-which-is-an-implicit-dependency-for-all-other-target
-skip-init-for := all-images deploy% undeploy% test% validate% refresh-pipfilelock-files scan-image-vulnerabilities
+skip-init-for := all-images deploy% undeploy% test% validate% refresh-pipfilelock-files scan-image-vulnerabilities print-release
 ifneq (,$(filter-out $(skip-init-for),$(MAKECMDGOALS) $(.DEFAULT_GOAL)))
 $(SELF): bin/buildinputs
 endif
@@ -172,6 +166,16 @@ rstudio-c9s-python-$(RELEASE_PYTHON_VERSION):
 .PHONY: cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION)
 cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,rstudio/c9s-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+
+####################################### Buildchain for Python using rhel9 #######################################
+
+.PHONY: rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
+rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,rstudio/rhel9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+
+.PHONY: cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
+cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,rstudio/rhel9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
 
 ####################################### Buildchain for AMD Python using UBI9 #######################################
 .PHONY: rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
@@ -256,6 +260,27 @@ undeploy-c9s-%: bin/kubectl
 	$(eval TARGET := $(shell echo $* | sed 's/-c9s-python.*//'))
 	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
 	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/c9s-python-$(PYTHON_VERSION)/kustomize/base)
+	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
+	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
+
+.PHONY: deploy-rhel9
+deploy-rhel9-%: bin/kubectl bin/yq
+	$(eval TARGET := $(shell echo $* | sed 's/-rhel9-python.*//'))
+	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/rhel9-python-$(PYTHON_VERSION)/kustomize/base)
+ifndef NOTEBOOK_TAG
+	$(eval NOTEBOOK_TAG := $*-$(IMAGE_TAG))
+endif
+	$(info # Deploying notebook from $(NOTEBOOK_DIR) directory...)
+	@arg=$(IMAGE_REGISTRY) $(YQ_BIN) e -i '.images[].newName = strenv(arg)' $(NOTEBOOK_DIR)/kustomization.yaml
+	@arg=$(NOTEBOOK_TAG) $(YQ_BIN) e -i '.images[].newTag = strenv(arg)' $(NOTEBOOK_DIR)/kustomization.yaml
+	$(KUBECTL_BIN) apply -k $(NOTEBOOK_DIR)
+
+.PHONY: undeploy-rhel9
+undeploy-rhel9-%: bin/kubectl
+	$(eval TARGET := $(shell echo $* | sed 's/-rhel9-python.*//'))
+	$(eval PYTHON_VERSION := $(shell echo $* | sed 's/.*-python-//'))
+	$(eval NOTEBOOK_DIR := $(subst -,/,$(subst cuda-,,$(TARGET)))/rhel9-python-$(PYTHON_VERSION)/kustomize/base)
 	$(info # Undeploying notebook from $(NOTEBOOK_DIR) directory...)
 	$(KUBECTL_BIN) delete -k $(NOTEBOOK_DIR)
 
@@ -439,8 +464,15 @@ all-images: jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
+	rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+
+# This is used primarly for konflux_generate_component_build_pipelines.py to we know the build release version
+.PHONY: print-release
+print-release:
+	@echo "$(RELEASE)"

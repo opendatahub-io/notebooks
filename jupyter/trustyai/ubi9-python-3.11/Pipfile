@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [[source]]
-url = "https://download.pytorch.org/whl/cu121"
+url = "https://download.pytorch.org/whl/cu126"
 verify_ssl = true
 name = "pytorch"
 
@@ -12,51 +12,54 @@ name = "pytorch"
 
 [packages]
 # PyTorch packages
-torch = {version = "~=2.2.1", index = "pytorch"}
+torch = {version = "==2.6.0+cu126", index = "pytorch"}
 # TrustyAI packages
-transformers = "~=4.38.0"
-datasets = "~=2.21.0"
-accelerate = "~=0.34.2"
+# More information available at:
+#   - https://pypi.org/project/trustyai/
+#   - https://github.com/trustyai-explainability/trustyai-explainability-python/blob/main/requirements.txt
+transformers = "~=4.49.0"
+datasets = "~=3.4.1"
+accelerate = "~=1.5.2"
 trustyai = "~=0.6.1"
 # Datascience and useful extensions
-boto3 = "~=1.35.14"
-kafka-python-ng = "~=2.2.2"
-kfp = "~=2.9.0"
+boto3 = "~=1.37.8"
+kafka-python-ng = "~=2.2.3"
+kfp = "~=2.12.1"
 matplotlib = "~=3.6.3" # Should be pinned down to this version in order to be compatible with trustyai
 numpy = "~=1.24.1" # Should be pinned down to this version in order to be compatible with trustyai
 pandas = "~=1.5.3" # Should be pinned down to this version in order to be compatible with trustyai
-plotly = "~=5.23.0"
+plotly = "~=6.0.0"
 scikit-learn = "~=1.2.1" # Should be pinned down to this version in order to be compatible with trustyai
-scipy = "~=1.14.1"
-skl2onnx = "~=1.17.0"
+scipy = "~=1.15.2"
+skl2onnx = "~=1.18.0"
 onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
 codeflare-sdk = "~=0.27.0"
-kubeflow-training = "==1.9.0"
+kubeflow-training = "==1.9.1"
 
 # DB connectors
-pymongo = "~=4.8.0"
-psycopg = "~=3.2.1"
-pyodbc = "~=5.1.0"
-mysql-connector-python = "~=9.0.0"
+pymongo = "~=4.11.2"
+psycopg = "~=3.2.5"
+pyodbc = "~=5.2.0"
+mysql-connector-python = "~=9.2.0"
 
 # JupyterLab packages
 odh-elyra = "==4.2.0"
 
 jupyterlab = "==4.2.7"
 jupyter-bokeh = "~=3.0.5" # Should be pinned down to this version in order to be compatible with trustyai
-jupyter-server = "~=2.14.2"
-jupyter-server-proxy = "~=4.3.0"
+jupyter-server = "~=2.15.0"
+jupyter-server-proxy = "~=4.4.0"
 jupyter-server-terminals = "~=0.5.3"
 jupyterlab-git = "~=0.50.1"
 jupyterlab-lsp = "~=5.1.0"
 jupyterlab-widgets = "~=3.0.13"
-jupyter-resource-usage = "~=1.1.0"
-nbdime = "~=4.0.1"
-nbgitpuller = "~=1.2.1"
+jupyter-resource-usage = "~=1.1.1"
+nbdime = "~=4.0.2"
+nbgitpuller = "~=1.2.2"
 
 # Base packages
-wheel = "~=0.44.0"
-setuptools = "~=74.1.2"
+wheel = "~=0.45.1"
+setuptools = "~=75.8.2"
 
 [requires]
 python_version = "3.11"

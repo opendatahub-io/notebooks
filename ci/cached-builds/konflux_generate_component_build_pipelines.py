@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 
-import re
+import os
 import pathlib
-import yaml
+import re
+from typing import Any
 
 import gen_gha_matrix_jobs
 import gha_pr_changed_files
+import makefile_helper
+import yaml
+
+import scripts.sandbox
 
 ROOT_DIR = pathlib.Path(__file__).parent.parent.parent
 
@@ -21,7 +26,7 @@ This script creates the Tekton pipelines under /.tekton
 
 Usage:
 
-$ poetry run ci/cached-builds/konflux_generate_component_build_pipelines.py
+$ PYTHONPATH=. uv run ci/cached-builds/konflux_generate_component_build_pipelines.py
 """
 
 
@@ -31,9 +36,9 @@ def bundle_task_ref(name) -> dict:
     Uses the `image-registry.yaml` file as an up-to-date source for the digests."""
     with open(ROOT_DIR / ".tekton/image-registry.yaml") as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
-        images: list[str] = [image['spec']['taskRef']['bundle'] for image in data['items']]
+        images: list[str] = [image["spec"]["taskRef"]["bundle"] for image in data["items"]]
         for image in images:
-            if re.search(f'^quay.io/konflux-ci/tekton-catalog/task-{name}:', image):
+            if re.search(f"^quay.io/konflux-ci/tekton-catalog/task-{name}:", image):
                 bundle = image
                 break
         else:
@@ -52,12 +57,21 @@ def bundle_task_ref(name) -> dict:
     }
 
 
-def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True) -> dict:
+def component_build_pipeline(component_name, dockerfile_path, release, is_pr: bool = True) -> dict:
     """Returns a component build pipeline definition.
 
     This is general enough to create PR pipeline as well as push pipeline.
     """
     name = component_name + ("-on-pull-request" if is_pr else "-on-push")
+    files_changed_cel_expression = ""
+    if is_pr:
+        files_changed_cel_expression = " || ".join(
+            (
+                compute_cel_expression(dockerfile_path),
+                f'".tekton/{component_name}-pull-request.yaml".pathChanged()',
+                f'"{dockerfile_path}".pathChanged()',
+            )
+        )
     return {
         "apiVersion": "tekton.dev/v1",
         "kind": "PipelineRun",
@@ -71,8 +85,12 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                 "pipelinesascode.tekton.dev/max-keep-runs": "3",
                 "pipelinesascode.tekton.dev/on-cel-expression": (
                     f'event == "{"pull_request" if is_pr else "push"}" && target_branch == "main"'
+                    + (" && ( " + files_changed_cel_expression + " )" if files_changed_cel_expression else "")
                     + ' && has(body.repository) && body.repository.full_name == "opendatahub-io/notebooks"'
                 ),
+                # https://konflux-ci.dev/docs/building/component-nudges/#customizing-nudging-prs
+                # https://docs.renovatebot.com/string-pattern-matching/
+                **when(is_pr, {}, {"build.appstudio.openshift.io/build-nudge-files": "manifests/base/params.env"}),
             },
             "creationTimestamp": None,
             "labels": {
@@ -84,15 +102,26 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
             "namespace": workspace_name,
         },
         "spec": {
+            # https://konflux-ci.dev/docs/building/customizing-the-build/#configuring-timeouts
+            "timeouts": {
+                # https://tekton.dev/docs/pipelines/pipelineruns/#configuring-a-failure-timeout
+                "pipeline": "4h",
+            },
             "params": [
                 {"name": "git-url", "value": "{{source_url}}"},
                 {"name": "revision", "value": "{{revision}}"},
                 {
                     "name": "output-image",
-                    "value": "quay.io/redhat-user-workloads/" + workspace_name + "/" + component_name + ":" + (
-                        "on-pr-" if is_pr else "") + "{{revision}}",
+                    "value": "quay.io/redhat-user-workloads/"
+                    + workspace_name
+                    + "/"
+                    + component_name
+                    + ":"
+                    + ("on-pr-" if is_pr else "")
+                    + "{{revision}}",
                 },
                 {"name": "image-expires-after", "value": "5d" if is_pr else "28d"},
+                {"name": "image-labels", "value": [f"release={release}"]},
                 {"name": "build-platforms", "value": ["linux/x86_64"]},
                 {"name": "dockerfile", "value": dockerfile_path},
             ],
@@ -107,7 +136,7 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                                 "value": "$(tasks.build-image-index.results.IMAGE_URL)",
                             }
                         ],
-                        "taskRef": bundle_task_ref("show-sbom")
+                        "taskRef": bundle_task_ref("show-sbom"),
                     }
                 ],
                 "params": [
@@ -167,6 +196,12 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                         "default": "",
                         "description": "Image tag expiration time, time values could be something like 1h, 2d, 3w for hours, days, and weeks, respectively.",
                         "name": "image-expires-after",
+                    },
+                    {
+                        "default": [],
+                        "description": 'Array of --labels values ("label=value" strings) for buildah.',
+                        "name": "image-labels",
+                        "type": "array",
                     },
                     {
                         "default": "false",
@@ -278,74 +313,32 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                         ],
                     },
                     {
-                        "matrix": {
-                            "params": [
-                                {
-                                    "name": "PLATFORM",
-                                    "value": ["$(params.build-platforms)"]
-                                }
-                            ]
-                        },
+                        "matrix": {"params": [{"name": "PLATFORM", "value": ["$(params.build-platforms)"]}]},
                         "name": "build-images",
                         "params": [
-                            {
-                                "name": "IMAGE",
-                                "value": "$(params.output-image)"
-                            },
-                            {
-                                "name": "DOCKERFILE",
-                                "value": "$(params.dockerfile)"
-                            },
-                            {
-                                "name": "CONTEXT",
-                                "value": "$(params.path-context)"
-                            },
-                            {
-                                "name": "HERMETIC",
-                                "value": "$(params.hermetic)"
-                            },
-                            {
-                                "name": "PREFETCH_INPUT",
-                                "value": "$(params.prefetch-input)"
-                            },
-                            {
-                                "name": "IMAGE_EXPIRES_AFTER",
-                                "value": "$(params.image-expires-after)"
-                            },
-                            {
-                                "name": "COMMIT_SHA",
-                                "value": "$(tasks.clone-repository.results.commit)"
-                            },
-                            {
-                                "name": "BUILD_ARGS",
-                                "value": ["$(params.build-args[*])"]
-                            },
-                            {
-                                "name": "BUILD_ARGS_FILE",
-                                "value": "$(params.build-args-file)"
-                            },
+                            {"name": "IMAGE", "value": "$(params.output-image)"},
+                            {"name": "DOCKERFILE", "value": "$(params.dockerfile)"},
+                            {"name": "CONTEXT", "value": "$(params.path-context)"},
+                            {"name": "HERMETIC", "value": "$(params.hermetic)"},
+                            {"name": "PREFETCH_INPUT", "value": "$(params.prefetch-input)"},
+                            {"name": "IMAGE_EXPIRES_AFTER", "value": "$(params.image-expires-after)"},
+                            {"name": "LABELS", "value": ["$(params.image-labels[*])"]},
+                            {"name": "COMMIT_SHA", "value": "$(tasks.clone-repository.results.commit)"},
+                            {"name": "BUILD_ARGS", "value": ["$(params.build-args[*])"]},
+                            {"name": "BUILD_ARGS_FILE", "value": "$(params.build-args-file)"},
                             {
                                 "name": "SOURCE_ARTIFACT",
-                                "value": "$(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)"
+                                "value": "$(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)",
                             },
                             {
                                 "name": "CACHI2_ARTIFACT",
-                                "value": "$(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)"
+                                "value": "$(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)",
                             },
-                            {
-                                "name": "IMAGE_APPEND_PLATFORM",
-                                "value": "true"
-                            }
+                            {"name": "IMAGE_APPEND_PLATFORM", "value": "true"},
                         ],
                         "runAfter": ["prefetch-dependencies"],
                         "taskRef": bundle_task_ref("buildah-remote-oci-ta"),
-                        "when": [
-                            {
-                                "input": "$(tasks.init.results.build)",
-                                "operator": "in",
-                                "values": ["true"]
-                            }
-                        ]
+                        "when": [{"input": "$(tasks.init.results.build)", "operator": "in", "values": ["true"]}],
                     },
                     {
                         "name": "build-image-index",
@@ -365,9 +358,7 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                             },
                             {
                                 "name": "IMAGES",
-                                "value": [
-                                    "$(tasks.build-images.results.IMAGE_REF[*])"
-                                ],
+                                "value": ["$(tasks.build-images.results.IMAGE_REF[*])"],
                             },
                         ],
                         "runAfter": ["build-images"],
@@ -717,49 +708,156 @@ def component_build_pipeline(component_name, dockerfile_path, is_pr: bool = True
                     {"name": "netrc", "optional": True},
                 ],
             },
-            "taskRunTemplate": {},
-            "workspaces": [
-                {"name": "git-auth", "secret": {"secretName": "{{ git_auth_secret }}"}}
+            # https://github.com/tektoncd/pipeline/blob/main/docs/compute-resources.md
+            # https://konflux.pages.redhat.com/docs/users/how-tos/configuring/overriding-compute-resources.html
+            # https://github.com/red-hat-data-services/distributed-workloads/blob/face046a631a1ac9b0fc51bcd2984628e9f3db05/.tekton/training-rocm-push.yaml#L36-L42
+            "taskRunSpecs": [
+                {
+                    "pipelineTaskName": task_name,
+                    "computeResources": {
+                        # the problem is going over limits, so requests need not be touched at all
+                        "limits": {
+                            "memory": "8Gi",
+                        },
+                    },
+                    # leaving out "prefetch-dependencies" because we don't do hermetic build yet
+                    # leaving out "build-images" for now, it already has a limit of 8Gi by default
+                }
+                for task_name in ("ecosystem-cert-preflight-checks", "clair-scan")
             ],
+            "taskRunTemplate": {},
+            "workspaces": [{"name": "git-auth", "secret": {"secretName": "{{ git_auth_secret }}"}}],
         },
         "status": {},
     }
 
 
+def when[T: Any](condition: bool, if_true: T, if_false: T) -> T:
+    """Returns either if_true or if_false depending on condition.
+    The if_true and if_false expressions are always evaluated.
+
+    Example usage:
+
+        "limits": {
+            "memory": "16Gi",
+            **when(task_name == "build-images", if_true={"ephemeral-storage": "120Gi"}, if_false={}),
+        },
+
+    The advantage over using `if_true if condition else if_false` directly is that
+    the parentheses in the expression are less distracting."""
+    return if_true if condition else if_false
+
+
 # https://stackoverflow.com/questions/20805418/pyyaml-dump-format
 def represent_str(self, data):
     style = None
-    if '{' in data or '}' in data:
+    if "{" in data or "}" in data:
         style = "'"
     if "\n" in data:
-        style = '|'
+        style = "|"
     if data in ["true", "false", ""]:
         style = '"'
-    return self.represent_scalar(u'tag:yaml.org,2002:str', data, style=style)
+    return self.represent_scalar("tag:yaml.org,2002:str", data, style=style)
+
+
+def extract_image_release(makefile_dir: pathlib.Path | str | None = None) -> str:
+    if makefile_dir is None:
+        makefile_dir = os.getcwd()
+
+    makefile_all_target = "print-release"
+
+    output = makefile_helper.exec_makefile(target=makefile_all_target, makefile_dir=makefile_dir)
+
+    if len(output) < 1:
+        raise Exception("No release version got for the 'print-release' Makefile target")
+
+    return output
 
 
 def main():
+    yaml_line_width = None
     yaml.add_representer(str, represent_str)
 
+    release = extract_image_release(makefile_dir=str(ROOT_DIR)).strip()
     images = gen_gha_matrix_jobs.extract_image_targets(makefile_dir=str(ROOT_DIR))
     for task in images:
         task_name = re.sub(r"[^-_0-9A-Za-z]", "-", task)
         dockerfile = gha_pr_changed_files.get_build_dockerfile(task)
         with open(ROOT_DIR / ".tekton" / (task_name + "-push.yaml"), "w") as yaml_file:
             print("# yamllint disable-file", file=yaml_file)
-            print("# This file is autogenerated by ci/cached-builds/konflux_generate_component_build_pipelines.py",
-                  file=yaml_file)
-            print(yaml.dump(component_build_pipeline(component_name=task_name, dockerfile_path=dockerfile, is_pr=False)),
-                  end="",
-                  file=yaml_file)
+            print(
+                "# This file is autogenerated by ci/cached-builds/konflux_generate_component_build_pipelines.py",
+                file=yaml_file,
+            )
+            print(
+                yaml.dump(
+                    component_build_pipeline(
+                        component_name=task_name, dockerfile_path=dockerfile, release=release, is_pr=False
+                    ),
+                    width=yaml_line_width,
+                ),
+                end="",
+                file=yaml_file,
+            )
         with open(ROOT_DIR / ".tekton" / (task_name + "-pull-request.yaml"), "w") as yaml_file:
             print("# yamllint disable-file", file=yaml_file)
-            print("# This file is autogenerated by ci/cached-builds/konflux_generate_component_build_pipelines.py",
-                  file=yaml_file)
-            print(yaml.dump(component_build_pipeline(component_name=task_name, dockerfile_path=dockerfile, is_pr=True)),
-                  end="",
-                  file=yaml_file)
+            print(
+                "# This file is autogenerated by ci/cached-builds/konflux_generate_component_build_pipelines.py",
+                file=yaml_file,
+            )
+            print(
+                yaml.dump(
+                    component_build_pipeline(
+                        component_name=task_name, dockerfile_path=dockerfile, release=release, is_pr=True
+                    ),
+                    width=yaml_line_width,
+                ),
+                end="",
+                file=yaml_file,
+            )
+
+
+def compute_cel_expression(dockerfile: pathlib.Path) -> str:
+    return cel_expression(root_dir=ROOT_DIR, files=scripts.sandbox.buildinputs(dockerfile))
+
+
+def cel_expression(root_dir: pathlib.Path, files: list[pathlib.Path]) -> str:
+    """
+    Generate a CEL expression for file change detection.
+
+    Args:
+        root_dir (pathlib.Path): Docker build context.
+        files (list[pathlib.Path]): List of file paths to check for changes.
+
+    Returns:
+        str: A CEL expression that checks if any of the given files have changed.
+    """
+    expressions = []
+    for file in files:
+        relative_path = file.relative_to(root_dir) if file.is_absolute() else file
+        if file.is_dir():
+            expressions.append(f'"{relative_path}/***".pathChanged()')
+        else:
+            expressions.append(f'"{relative_path}".pathChanged()')
+
+    return " || ".join(expressions)
 
 
 if __name__ == "__main__":
     main()
+else:
+    # test dependencies
+    import pyfakefs.fake_filesystem
+
+    class Tests:
+        def test_compute_cel_expression(self, fs: pyfakefs.fake_filesystem.FakeFilesystem):
+            fs.cwd = ROOT_DIR
+            ROOT_DIR.mkdir(parents=True)
+            pathlib.Path("a/").mkdir()
+            pathlib.Path("b/").mkdir()
+            pathlib.Path("b/c.txt").write_text("")
+
+            assert (
+                cel_expression(ROOT_DIR, files=[pathlib.Path("a"), pathlib.Path("b") / "c.txt"])
+                == '"a/***".pathChanged() || "b/c.txt".pathChanged()'
+            )

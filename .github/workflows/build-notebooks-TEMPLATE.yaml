@@ -15,13 +15,15 @@ name: Build & Publish Notebook Servers (TEMPLATE)
         required: true
         description: "top workflow's `github`"
         type: string
+      subscription:
+        required: false
+        default: false
+        description: "add RHEL subscription from github secret"
+        type: boolean
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [ubuntu-22.04]
-    runs-on: ${{matrix.os}}
+    runs-on: ubuntu-24.04
     env:
       # Some pieces of code (image pulls for example) in podman consult TMPDIR or default to /var/tmp
       TMPDIR: /home/runner/.local/share/containers/tmpdir
@@ -37,8 +39,6 @@ jobs:
       TRIVY_VULNDB: "/home/runner/.local/share/containers/trivy_db"
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
       TRIVY_SCAN_FS_JSON: '{}'
-      # Poetry version for use in running tests
-      POETRY_VERSION: '2.0.0'
 
     steps:
 
@@ -49,13 +49,46 @@ jobs:
           echo "CACHE=${CACHE,,}" >>${GITHUB_ENV}
 
       - uses: actions/checkout@v4
+        if: ${{ fromJson(inputs.github).event_name != 'pull_request_target' }}
+      # we need to checkout the pr branch, not pr target (the default for pull_request_target)
+      # user access check is done in calling workflow
+      - uses: actions/checkout@v4
+        if: ${{ fromJson(inputs.github).event_name == 'pull_request_target' }}
+        with:
+          ref: "refs/pull/${{ fromJson(inputs.github).event.number }}/merge"
 
       - run: mkdir -p $TMPDIR
+
+      # do this early because it's fast and why not
+      - name: Unlock encrypted secrets with git-crypt
+        if: ${{ inputs.subscription }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install git-crypt
+          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
+          git-crypt unlock ./git-crypt-key
+          rm ./git-crypt-key
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+
+      - name: Add subscriptions from GitHub secret
+        if: ${{ inputs.subscription }}
+        run: |
+          sudo mkdir -p /etc/pki/
+          sudo cp -R ${PWD}/ci/secrets/pki/* /etc/pki/
+          # https://access.redhat.com/solutions/5870841
+          # https://github.com/containers/common/issues/1735
+          printf "${PWD}/ci/secrets/run/secrets/rhsm:/etc/rhsm\n${PWD}/ci/secrets/run/secrets/etc-pki-entitlement:/etc/pki/entitlement\n${PWD}/ci/secrets/pki/consumer:/etc/pki/consumer\n" | sudo tee /usr/share/containers/mounts.conf
+
+          mkdir -p $HOME/.config/containers/
+          sudo cp ${PWD}/ci/secrets/pull-secret.json $HOME/.config/containers/auth.json
 
       # for bin/buildinputs in scripts/sandbox.py
       - uses: actions/setup-go@v5
         with:
           cache-dependency-path: "**/*.sum"
+
+      - run: sudo apt-get update
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -95,6 +128,8 @@ jobs:
           wait
 
           df -h
+
+      - run: sudo apt-get install -y btrfs-compsize
 
       - name: Mount lvm overlay for podman builds
         run: |
@@ -174,7 +209,10 @@ jobs:
       - name: Calculate image name and tag
         id: calculated_vars
         run: |
-          SANITIZED_REF_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/_/g')
+          # Need for sanitization explained in https://github.com/opendatahub-io/notebooks/issues/631
+          # For length, Docker image tags have 128-character limit, and we form them as <inputs.target>-<ref_name>_<sha>
+          # therefore since sha is 40 characters, and our target names are <40 chars, we should cut ref_name at 40
+          SANITIZED_REF_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/_/g') | cut -c 1-40
           IMAGE_TAG="${SANITIZED_REF_NAME}_${{ github.sha }}"
 
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
@@ -247,6 +285,9 @@ jobs:
 
       - name: "push|schedule|workflow_dispatch: make ${{ inputs.target }}"
         run: |
+          # print running stats on disk occupancy
+          (while true; do df -h | grep "${HOME}/.local/share/containers"; sleep 30; done) &
+
           make ${{ inputs.target }}
         if: ${{ fromJson(inputs.github).event_name == 'push' ||
           fromJson(inputs.github).event_name == 'schedule' ||
@@ -256,8 +297,12 @@ jobs:
           CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
       - name: "pull_request: make ${{ inputs.target }}"
         run: |
+          # print running stats on disk occupancy
+          (while true; do df -h | grep "${HOME}/.local/share/containers"; sleep 30; done) &
+
           make ${{ inputs.target }}
-        if: "${{ fromJson(inputs.github).event_name == 'pull_request' }}"
+        if: "${{ fromJson(inputs.github).event_name == 'pull_request' ||
+          fromJson(inputs.github).event_name == 'pull_request_target' }}"
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
           CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }}"
@@ -271,33 +316,26 @@ jobs:
 
       # region Pytest image tests
 
-      - name: Install poetry
-        if: steps.cache-poetry-restore.outputs.cache-hit != 'true'
-        run: pipx install poetry==${{ env.POETRY_VERSION }}
-        env:
-          PIPX_HOME: /home/runner/.local/pipx
-          PIPX_BIN_DIR: /home/runner/.local/bin
-
-      - name: Check poetry is installed correctly
-        run: poetry env info
-
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v5
+      # https://github.com/astral-sh/setup-uv
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.12'
-          cache: 'poetry'
+          version: "latest"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          pyproject-file: "pyproject.toml"
 
-      - name: Configure poetry
-        run: poetry env use "${{ steps.setup-python.outputs.python-path }}"
+      - name: Check uv is installed correctly
+        run: uv version
 
       - name: Install deps
-        run: poetry install --sync
+        run: uv sync --locked
 
       - name: Run Testcontainers container tests (in PyTest)
         run: |
           set -Eeuxo pipefail
-          poetry run pytest --capture=fd tests/containers -m 'not openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          uv run pytest --capture=fd tests/containers -m 'not openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
@@ -467,7 +505,7 @@ jobs:
         if: ${{ steps.have-tests.outputs.tests == 'true' }}
         run: |
           set -Eeuxo pipefail
-          poetry run pytest --capture=fd tests/containers -m 'openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          uv run pytest --capture=fd tests/containers -m 'openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           # TODO(jdanek): this Testcontainers stuff should not be necessary but currently it has to be there
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
@@ -570,4 +608,7 @@ jobs:
       # endregion
 
       - run: df -h
+        if: "${{ !cancelled() }}"
+
+      - run: sudo compsize -x "${HOME}/.local/share/containers"
         if: "${{ !cancelled() }}"

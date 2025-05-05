@@ -38,12 +38,7 @@ def main() -> int:
         print("must give a `{};` parameter that will be replaced with new build context")
         return 1
 
-    if not (ROOT_DIR / "bin/buildinputs").exists():
-        subprocess.check_call([MAKE, "bin/buildinputs"], cwd=ROOT_DIR)
-    stdout = subprocess.check_output([ROOT_DIR / "bin/buildinputs", str(args.dockerfile)],
-                                     text=True, cwd=ROOT_DIR)
-    prereqs = [pathlib.Path(file) for file in json.loads(stdout)] if stdout != "\n" else []
-    print(f"{prereqs=}")
+    prereqs = buildinputs(dockerfile=args.dockerfile)
 
     with tempfile.TemporaryDirectory(delete=True) as tmpdir:
         setup_sandbox(prereqs, pathlib.Path(tmpdir))
@@ -55,6 +50,16 @@ def main() -> int:
             logging.error("Failed to execute process, see errors logged above ^^^")
             return err.returncode
     return 0
+
+
+def buildinputs(dockerfile: pathlib.Path | str) -> list[pathlib.Path]:
+    if not (ROOT_DIR / "bin/buildinputs").exists():
+        subprocess.check_call([MAKE, "bin/buildinputs"], cwd=ROOT_DIR)
+    stdout = subprocess.check_output([ROOT_DIR / "bin/buildinputs", str(dockerfile)],
+                                     text=True, cwd=ROOT_DIR)
+    prereqs = [pathlib.Path(file) for file in json.loads(stdout)] if stdout != "\n" else []
+    print(f"{prereqs=}")
+    return prereqs
 
 
 def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):

@@ -27,7 +27,7 @@ class CancellationToken:
 
     def cancel(self):
         with self._lock:
-            os.write(self._write_fd, b'x')
+            os.write(self._write_fd, b"x")
             self._canceled = True
 
     def __del__(self):

@@ -30,6 +30,43 @@ spec:
             {"name": "ROCm-TensorFlow", "version": "2.14"},
             {"name": "Tensorboard", "version": "2.14"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Matplotlib", "version": "3.10"},
+            {"name": "Numpy", "version": "1.26"},
+            {"name": "Pandas", "version": "2.2"},
+            {"name": "Scikit-learn", "version": "1.6"},
+            {"name": "Scipy", "version": "1.15"},
+            {"name": "Odh-Elyra", "version": "4.2"},
+            {"name": "PyMongo", "version": "4.11"},
+            {"name": "Pyodbc", "version": "5.2"},
+            {"name": "Codeflare-SDK", "version": "0.27"},
+            {"name": "Sklearn-onnx", "version": "1.17"},
+            {"name": "Psycopg", "version": "3.2"},
+            {"name": "MySQL Connector/Python", "version": "9.2"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: odh-rocm-tensorflow-notebook-image-commit-n_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-rocm-tensorflow-notebook-image-n_PLACEHOLDER
+      name: "2025.1"
+      referencePolicy:
+        type: Source
+    # N - 1 Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.11"},
+            {"name": "ROCm-TensorFlow", "version": "2.14"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab","version": "4.2"},
+            {"name": "ROCm-TensorFlow", "version": "2.14"},
+            {"name": "Tensorboard", "version": "2.14"},
+            {"name": "Kafka-Python-ng", "version": "2.2"},
             {"name": "Matplotlib", "version": "3.9"},
             {"name": "Numpy", "version": "1.26"},
             {"name": "Pandas", "version": "2.2"},
@@ -44,11 +81,11 @@ spec:
             {"name": "MySQL Connector/Python", "version": "9.0"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
-        opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/notebook-build-commit: $(odh-rocm-tensorflow-notebook-image-commit-n)
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: odh-rocm-tensorflow-notebook-image-commit-n-1_PLACEHOLDER
       from:
         kind: DockerImage
-        name: $(odh-rocm-tensorflow-notebook-image-n)
+        name: odh-rocm-tensorflow-notebook-image-n-1_PLACEHOLDER
       name: "2024.2"
       referencePolicy:
         type: Source
