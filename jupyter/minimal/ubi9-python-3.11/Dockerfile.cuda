@@ -165,6 +165,13 @@ WORKDIR /opt/app-root/bin
 
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
+USER 0
+
+# TexLive dependency for PDF export
+RUN ./utils/install_text_live.sh
+
+USER 1001
+
 COPY ${MINIMAL_SOURCE_CODE}/Pipfile.lock ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 # Install Python dependencies from Pipfile.lock file
