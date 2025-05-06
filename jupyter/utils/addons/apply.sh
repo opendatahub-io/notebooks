@@ -2,7 +2,6 @@
 
 # See https://github.com/jupyterlab/jupyterlab/issues/5463
 # This is a hack to apply partial HTML code to JupyterLab's `index.html` file
-# Look for the other duplicates in case a change is needed to this file
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
