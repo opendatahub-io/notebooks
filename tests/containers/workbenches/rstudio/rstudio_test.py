@@ -107,6 +107,25 @@ class TestRStudioImage:
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
+    @allure.issue("RHOAIENG-23584")
+    def test_arbitrary_env_propagates_unchanged(self, rstudio_image: str) -> None:
+        """
+        Checks that environment variables are propagated into the RStudio environment.
+        """
+
+        container = WorkbenchContainer(image=rstudio_image, user=1000, group_add=[0])
+        container.with_env("SOME_VARIABLE", "Some Value")
+
+        try:
+            # We need to wait for the IDE to be completely loaded so that the envs are processed properly.
+            container.start(wait_for_readiness=True)
+
+            # Once the RStudio IDE is fully up and running, the processed envs should include the variable.
+            assert_has_env_variable(container, "SOME_VARIABLE", "Some Value")
+
+        finally:
+            docker_utils.NotebookContainer(container).stop(timeout=0)
+
     @allure.issue("RHOAIENG-16604")
     def test_http_proxy_env_propagates(self, rstudio_image: str, subtests: pytest_subtests.plugin.SubTests) -> None:
         """
@@ -133,13 +152,23 @@ class TestRStudioImage:
             # We need to wait for the IDE to be completely loaded so that the envs are processed properly.
             container.start(wait_for_readiness=True)
 
-            # Once the RStudio IDE is fully up and running, the processed envs should includ also lowercased proxy configs.
+            # Once the RStudio IDE is fully up and running, the processed envs should include also lowercased proxy configs.
             for tc in test_cases:
                 with subtests.test(tc.name):
-                    output = check_output(container, f"/usr/bin/R --quiet --no-echo -e 'Sys.getenv(\"{tc.name_lc}\")'")
-                    assert '"' + tc.value + '"' in output
+                    assert_has_env_variable(container, tc.name_lc, tc.value)
+
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
+
+
+def assert_has_env_variable(container: WorkbenchContainer, name: str, value: str) -> None:
+    """Checks that the given env variable is present in the RStudio environment."""
+    output = check_output(
+        container,
+        # ignore the environment coming in and let R to set up environment from scratch
+        f"/usr/bin/env --ignore-environment /usr/bin/R --quiet --no-echo -e 'Sys.getenv(\"{name}\")'",
+    )
+    assert f'"{value}"' in output
 
 
 def check_call(container: WorkbenchContainer, cmd: str) -> int:
