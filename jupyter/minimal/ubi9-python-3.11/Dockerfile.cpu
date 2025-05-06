@@ -52,6 +52,9 @@ USER 0
 # TexLive dependency for PDF export
 RUN ./utils/install_text_live.sh
 
+ENV PATH="/usr/local/texlive/2025/bin/x86_64-linux:$PATH"
+
+
 USER 1001
 
 COPY ${MINIMAL_SOURCE_CODE}/Pipfile.lock ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
