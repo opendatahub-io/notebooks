@@ -50,7 +50,7 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 USER 0
 
 # TexLive dependency for PDF export
-RUN ./utils/install_text_live.sh
+RUN ./utils/install_tex_live.sh
 
 ENV PATH="/usr/local/texlive/2025/bin/x86_64-linux:$PATH"
 
