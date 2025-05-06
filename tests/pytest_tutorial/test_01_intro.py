@@ -50,10 +50,10 @@ class TestSomething:
 
     def test_something(self):
         """Individual tests are methods in this class, and they are named test_* as usual."""
-        assert True is not False
+        assert True is not False  # noqa: PLR0133 Two constants compared in a comparison
 
 
-import unittest
+import unittest  # noqa: E402 Module level import not at top of file
 
 
 class LegacyThing(unittest.TestCase):
