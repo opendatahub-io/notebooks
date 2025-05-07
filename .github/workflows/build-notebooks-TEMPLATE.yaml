@@ -346,20 +346,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y software-properties-common curl
 
+          # https://github.com/cri-o/packaging?tab=readme-ov-file#distributions-using-deb-packages
+
           curl -fsSL https://pkgs.k8s.io/core:/stable:/$KUBERNETES_VERSION/deb/Release.key | \
             sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
           echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/$KUBERNETES_VERSION/deb/ /" | \
             sudo tee /etc/apt/sources.list.d/kubernetes.list
 
-          curl -fsSL https://pkgs.k8s.io/addons:/cri-o:/stable:/$CRIO_VERSION/deb/Release.key | \
+          curl -fsSL https://download.opensuse.org/repositories/isv:/cri-o:/stable:/$CRIO_VERSION/deb/Release.key | \
             sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
 
-          echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://pkgs.k8s.io/addons:/cri-o:/stable:/$CRIO_VERSION/deb/ /" | \
+          echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://download.opensuse.org/repositories/isv:/cri-o:/stable:/$CRIO_VERSION/deb/ /" | \
             sudo tee /etc/apt/sources.list.d/cri-o.list
 
           sudo apt-get update
-          sudo apt-get install -y cri-o kubelet kubeadm kubectl
+          # [ERROR FileExisting-conntrack]: conntrack not found in system path
+          sudo apt-get install -y cri-o kubelet kubeadm kubectl conntrack
 
           # make use of /etc/cni/net.d/11-crio-ipv4-bridge.conflist so we don't
           # need a pod network and just use the default bridge
@@ -373,8 +376,12 @@ jobs:
 
           sudo systemctl start crio.service
         env:
-          CRIO_VERSION: v1.30
-          KUBERNETES_VERSION: v1.30
+          CRIO_VERSION: v1.32
+          # This has to be kept in sync with the packages above, otherwise
+          # [ERROR KubeletVersion]: the kubelet version is higher than the control plane version.
+          #  This is not a supported version skew and may lead to a malfunctional cluster.
+          #  Kubelet version: "1.33.0" Control plane version: "1.30.12"
+          KUBERNETES_VERSION: v1.33
 
       - name: Show crio debug data (on failure)
         if: ${{ failure() && steps.have-tests.outputs.tests == 'true' }}
