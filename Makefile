@@ -470,7 +470,8 @@ all-images: jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+        jupyter-minimal-ubi9-python-3.12
 
 # This is used primarly for konflux_generate_component_build_pipelines.py to we know the build release version
 .PHONY: print-release
