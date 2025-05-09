@@ -26,35 +26,35 @@ IMAGES_MAIN = [
 ]
 
 IMAGES = [
-    "odh-minimal-notebook-image-n",
+    "odh-workbench-jupyter-minimal-cpu-py311-ubi9-n",
     "odh-runtime-minimal-notebook-image-n",
     "odh-runtime-data-science-notebook-image-n",
-    "odh-minimal-gpu-notebook-image-n",
-    "odh-pytorch-gpu-notebook-image-n",
+    "odh-workbench-jupyter-minimal-cuda-py311-ubi9-n",
+    "odh-workbench-jupyter-pytorch-cuda-py311-ubi9-n",
     "odh-runtime-pytorch-notebook-image-n",
-    "odh-generic-data-science-notebook-image-n",
-    "odh-tensorflow-gpu-notebook-image-n",
+    "odh-workbench-jupyter-datascience-cpu-py311-ubi9-n",
+    "odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-n",
     "odh-runtime-tensorflow-notebook-image-n",
-    "odh-trustyai-notebook-image-n",
-    "odh-codeserver-notebook-image-n",
-    "odh-rstudio-notebook-image-n",
-    "odh-rstudio-gpu-notebook-image-n",
+    "odh-workbench-jupyter-trustyai-cpu-py311-ubi9-n",
+    "odh-workbench-codeserver-datascience-cpu-py311-ubi9-n",
+    "odh-workbench-rstudio-minimal-cpu-py311-c9s-n",
+    "odh-workbench-rstudio-minimal-cuda-py311-c9s-n",
 ]
 
 IMAGES_N_1 = [
-    "odh-minimal-notebook-image-n-1",
+    "odh-workbench-jupyter-minimal-cpu-py311-ubi9-n-1",
     "odh-runtime-minimal-notebook-image-n-1",
-    "odh-minimal-gpu-notebook-image-n-1",
-    "odh-pytorch-gpu-notebook-image-n-1",
+    "odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-1",
+    "odh-workbench-jupyter-pytorch-cuda-py311-ubi9-n-1",
     "odh-runtime-pytorch-notebook-image-n-1",
     "odh-runtime-data-science-notebook-image-n-1",
-    "odh-generic-data-science-notebook-image-n-1",
-    "odh-tensorflow-gpu-notebook-image-n-1",
+    "odh-workbench-jupyter-datascience-cpu-py311-ubi9-n-1",
+    "odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-n-1",
     "odh-runtime-tensorflow-notebook-image-n-1",
-    "odh-trustyai-notebook-image-n-1",
-    "odh-codeserver-notebook-image-n-1",
-    "odh-rstudio-notebook-image-n-1",
-    "odh-rstudio-gpu-notebook-image-n-1",
+    "odh-workbench-jupyter-trustyai-cpu-py311-ubi9-n-1",
+    "odh-workbench-codeserver-datascience-cpu-py311-ubi9-n-1",
+    "odh-workbench-rstudio-minimal-cpu-py311-c9s-n-1",
+    "odh-workbench-rstudio-minimal-cuda-py311-c9s-n-1",
 ]
 
 

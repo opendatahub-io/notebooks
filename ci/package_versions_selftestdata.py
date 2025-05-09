@@ -30,10 +30,10 @@ spec:
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/default-image: "true"
-        opendatahub.io/notebook-build-commit: odh-minimal-notebook-image-commit-n_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cpu-py311-ubi9-commit-n_PLACEHOLDER
       from:
         kind: DockerImage
-        name: $(odh-minimal-notebook-image-n)
+        name: $(odh-workbench-jupyter-minimal-cpu-py311-ubi9-n)
       name: "2024.2"
       referencePolicy:
         type: Source
@@ -53,10 +53,10 @@ spec:
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/default-image: "true"
-        opendatahub.io/notebook-build-commit: odh-minimal-notebook-image-commit-n-1_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cpu-py311-ubi9-commit-n-1_PLACEHOLDER
       from:
         kind: DockerImage
-        name: $(odh-minimal-notebook-image-n-1)
+        name: $(odh-workbench-jupyter-minimal-cpu-py311-ubi9-n-1)
       name: "2024.1"
       referencePolicy:
         type: Source
