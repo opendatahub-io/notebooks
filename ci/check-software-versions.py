@@ -64,7 +64,7 @@ def load_yaml(filepath):
 
 
 def extract_variable(reference):
-    """Extracts a variable name from a string (e.g.: 'odh-rstudio-notebook-image-commit-n-1_PLACEHOLDER') using regex."""
+    """Extracts a variable name from a string (e.g.: 'odh-workbench-rstudio-minimal-cpu-py311-ubi9-commit-n-1_PLACEHOLDER') using regex."""
 
     return reference.replace("_PLACEHOLDER", "")
 

@@ -15,7 +15,7 @@ spec:
   tags:
     - annotations:
         # language=json
-        opendatahub.io/runtime-image-metadata: |
+        opendatahub.io/runtime-image-metadata:
           [
             {
               "display_name": "Python 3.11 (UBI9)",
@@ -24,7 +24,7 @@ spec:
                   "minimal"
                 ],
                 "display_name": "Python 3.11 (UBI9)",
-                "image_name": "quay.io/opendatahub/workbench-images@sha256:e9cfdf68eb2b3150b4c4bf11f11efc8430172900f990b59d128ba830173137e3",
+                "image_name": odh-runtime-minimal-cpu-py311-ubi9-n_PLACEHOLDER,
                 "pull_policy": "IfNotPresent"
               },
               "schema_name": "runtime-image"
@@ -33,7 +33,7 @@ spec:
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
       from:
         kind: DockerImage
-        name: quay.io/opendatahub/workbench-images@sha256:e9cfdf68eb2b3150b4c4bf11f11efc8430172900f990b59d128ba830173137e3
+        name: odh-runtime-minimal-cpu-py311-ubi9-n_PLACEHOLDER
       name: "minimal"
       referencePolicy:
         type: Source

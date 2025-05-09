@@ -29,10 +29,10 @@ spec:
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/notebook-build-commit: odh-rstudio-notebook-image-commit-n_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-rstudio-minimal-cpu-py311-ubi9-commit-n_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-rstudio-notebook-image-n_PLACEHOLDER
+        name: odh-workbench-rstudio-minimal-cpu-py311-ubi9-n_PLACEHOLDER
       name: "2025.1"
       referencePolicy:
         type: Source
@@ -51,10 +51,10 @@ spec:
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
-        opendatahub.io/notebook-build-commit: odh-rstudio-notebook-image-commit-n-1_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-rstudio-minimal-cpu-py311-ubi9-commit-n-1_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-rstudio-notebook-image-n-1_PLACEHOLDER
+        name: odh-workbench-rstudio-minimal-cpu-py311-ubi9-n-1_PLACEHOLDER
       name: "2024.1"
       referencePolicy:
         type: Source
