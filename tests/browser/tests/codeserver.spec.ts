@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { test as base, expect, chromium } from '@playwright/test';
 
 import {GenericContainer} from "testcontainers";
-import {HttpWaitStrategy} from "testcontainers/build/wait-strategies/http-wait-strategy";
+import {HttpWaitStrategy} from "testcontainers/build/wait-strategies/http-wait-strategy.js";
 
 import {CodeServer} from "./models/codeserver"
 
