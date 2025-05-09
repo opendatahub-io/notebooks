@@ -471,10 +471,6 @@ jobs:
           # Once you have found the failing container, you can inspect its logs with:
           # crictl --runtime-endpoint unix:///var/run/crio/crio.sock logs CONTAINERID
 
-      - name: Untaint the master
-        if: ${{ steps.have-tests.outputs.tests == 'true' }}
-        run: kubectl taint nodes --all node-role.kubernetes.io/control-plane-
-
       - name: Show nodes status and wait for readiness
         if: ${{ steps.have-tests.outputs.tests == 'true' }}
         run: |
