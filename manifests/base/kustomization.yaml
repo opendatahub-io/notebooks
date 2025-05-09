@@ -222,7 +222,7 @@ replacements:
           name: code-server-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py311-ubi9-n
+      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py311-c9s-n
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -235,7 +235,7 @@ replacements:
           name: rstudio-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py311-ubi9-n-1
+      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py311-c9s-n-1
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -248,7 +248,7 @@ replacements:
           name: rstudio-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py311-ubi9-n
+      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py311-c9s-n
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -261,7 +261,7 @@ replacements:
           name: rstudio-gpu-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py311-ubi9-n-1
+      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py311-c9s-n-1
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -534,7 +534,7 @@ replacements:
           name: code-server-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py311-ubi9-commit-n
+      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py311-c9s-commit-n
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -547,7 +547,7 @@ replacements:
           name: rstudio-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py311-ubi9-commit-n-1
+      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py311-c9s-commit-n-1
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -560,7 +560,7 @@ replacements:
           name: rstudio-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py311-ubi9-commit-n
+      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py311-c9s-commit-n
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -573,7 +573,7 @@ replacements:
           name: rstudio-gpu-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py311-ubi9-commit-n-1
+      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py311-c9s-commit-n-1
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1

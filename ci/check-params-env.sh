@@ -186,13 +186,13 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="codeserver-ubi9-python-3.11-amd64"
             expected_img_size=850
             ;;
-        odh-workbench-rstudio-minimal-cpu-py311-ubi9-n)
+        odh-workbench-rstudio-minimal-cpu-py311-c9s-n)
             expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
             expected_commitref="main"
             expected_build_name="rstudio-c9s-python-3.11-amd64"
             expected_img_size=1349
             ;;
-        odh-workbench-rstudio-minimal-cpu-py311-ubi9-n-1)
+        odh-workbench-rstudio-minimal-cpu-py311-c9s-n-1)
             expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
             expected_commitref="2024b"
             expected_build_name="rstudio-c9s-python-3.11-amd64"
@@ -201,13 +201,13 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         # For both RStudio GPU workbenches - the final name labels are identical to plain RStudio ones
         # This is because the very same RStudio Dockerfile is used but different base images in both cases
         # We should consider what to do with this - in ideal case, we should have different labels for these cases.
-        odh-workbench-rstudio-minimal-cuda-py311-ubi9-n)
+        odh-workbench-rstudio-minimal-cuda-py311-c9s-n)
             expected_name="odh-notebook-rstudio-server-cuda-c9s-python-3.11"
             expected_commitref="main"
             expected_build_name="cuda-rstudio-c9s-python-3.11-amd64"
             expected_img_size=6473
             ;;
-        odh-workbench-rstudio-minimal-cuda-py311-ubi9-n-1)
+        odh-workbench-rstudio-minimal-cuda-py311-c9s-n-1)
             expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
             expected_commitref="2024b"
             expected_build_name="cuda-rstudio-c9s-python-3.11-amd64"
