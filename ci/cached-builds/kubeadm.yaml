@@ -21,9 +21,7 @@ nodeRegistration:
   criSocket: unix:///var/run/crio/crio.sock
   imagePullPolicy: IfNotPresent
   imagePullSerial: true
-  taints:
-    - effect: NoSchedule
-      key: node-role.kubernetes.io/control-plane
+  taints: []
   kubeletExtraArgs:
     # Need to have enough disk space for Kubelet, so move root-dir on the LVM volume
     # Note: the internets discourage from changing the default because storage plugins may then struggle
