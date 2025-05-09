@@ -1,0 +1,24 @@
+
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+# JupyterLab packages
+jupyterlab = "==4.2.7"
+jupyter-server = "~=2.15.0"
+jupyter-server-proxy = "~=4.4.0"
+jupyter-server-terminals = "~=0.5.3"
+jupyterlab-git = "~=0.50.1"
+nbdime = "~=4.0.2"
+nbgitpuller = "~=1.2.2"
+
+# Base packages
+wheel = "~=0.45.1"
+setuptools = "~=75.8.2"
+
+[requires]
+python_version = "3.12"
