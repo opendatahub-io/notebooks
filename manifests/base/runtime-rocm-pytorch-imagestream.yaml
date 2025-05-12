@@ -15,7 +15,7 @@ spec:
   tags:
     - annotations:
         # language=json
-        opendatahub.io/runtime-image-metadata: 
+        opendatahub.io/runtime-image-metadata: | 
           [
             {
               "display_name": "PyTorch with ROCm and Python 3.11 (UBI9)",
@@ -24,7 +24,6 @@ spec:
                   "rocm-pytorch"
                 ],
                 "display_name": "PyTorch with ROCm and Python 3.11 (UBI9)",
-                "image_name": odh-runtime-pytorch-rocm-py311-ubi9-n_PLACEHOLDER,
                 "pull_policy": "IfNotPresent"
               },
               "schema_name": "runtime-image"
