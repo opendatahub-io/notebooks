@@ -11,7 +11,6 @@ import urllib.request
 from typing import TYPE_CHECKING
 
 import docker.errors
-import docker.models.images
 import docker.types
 import pytest
 import testcontainers.core.container
