@@ -592,8 +592,7 @@ jobs:
       - name: Check image with check-payload
         run: |
           set -Eeuxo pipefail
-          # don't fail the build if the check fails, at least for now
-          sudo --preserve-env=PATH go run github.com/openshift/check-payload scan image --spec "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}" || true
+          sudo --preserve-env=PATH go run github.com/openshift/check-payload scan image --spec "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         working-directory: scripts/check-payload
         env:
           GOPATH: ${{ steps.check-payload-vars.outputs.GOPATH }}
