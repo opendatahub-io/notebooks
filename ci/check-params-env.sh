@@ -20,12 +20,15 @@
 
 # ----------------------------- GLOBAL VARIABLES ----------------------------- #
 
+COMMIT_LATEST_ENV_PATH="manifests/base/commit-latest.env"
 COMMIT_ENV_PATH="manifests/base/commit.env"
+PARAMS_LATEST_ENV_PATH="manifests/base/params-latest.env"
 PARAMS_ENV_PATH="manifests/base/params.env"
 
 # This value needs to be updated everytime we deliberately change number of the
-# images we want to have in the `params.env` file.
+# images we want to have in the `params.env` or `params-latest.env` file.
 EXPECTED_NUM_RECORDS=24
+EXPECTED_ADDI_RUNTIME_RECORDS=6
 
 # Number of attempts for the skopeo tool to gather data from the repository.
 SKOPEO_RETRY=3
@@ -39,14 +42,17 @@ SIZE_ABSOLUTE_TRESHOLD=100
 # ---------------------------- DEFINED FUNCTIONS ----------------------------- #
 
 function check_variables_uniq() {
-    local env_file_path="${1}"
-    local allow_value_duplicity="${2:=false}"
+    local env_file_path_1="${1}"
+    local env_file_path_2="${2}"
+    local allow_value_duplicity="${3:=false}"
+    local is_params_env="${4:=false}"
     local ret_code=0
+    
 
-    echo "Checking that all variables in the file '${env_file_path}' are unique and expected"
+    echo "Checking that all variables in the file '${env_file_path_1}' & '${env_file_path_2}' are unique and expected"
 
     local content
-    content=$(sed 's#\(.*\)=.*#\1#' "${env_file_path}" | sort)
+    content=$(sed 's#\(.*\)=.*#\1#' "${env_file_path_1}"; sed 's#\(.*\)=.*#\1#' "${env_file_path_2}" | sort)
 
     local num_records
     num_records=$(echo "${content}" | wc -l)
@@ -61,9 +67,9 @@ function check_variables_uniq() {
 
     # ----
     if test "${allow_value_duplicity}" = "false"; then
-        echo "Checking that all values assigned to variables in the file '${env_file_path}' are unique and expected"
+        echo "Checking that all values assigned to variables in the file '${env_file_path_1}' & '${env_file_path_2}' are unique and expected"
 
-        content=$(sed 's#.*=\(.*\)#\1#' "${env_file_path}" | sort)
+        content=$(sed 's#\(.*\)=.*#\1#' "${env_file_path_1}"; sed 's#\(.*\)=.*#\1#' "${env_file_path_2}" | sort)
 
         local num_values
         num_values=$(echo "${content}" | wc -l)
@@ -78,8 +84,13 @@ function check_variables_uniq() {
     fi
 
     # ----
-    echo "Checking that there are expected number of records in the file '${env_file_path}'"
+    echo "Checking that there are expected number of records in the file '${env_file_path_1}' + '${env_file_path_2}'"
 
+    if test "${is_params_env}" = "true"; then
+        # In case of params.env file, we need to additionally the number of
+        # runtime images that are defined in the file
+        EXPECTED_NUM_RECORDS=$((EXPECTED_NUM_RECORDS + EXPECTED_ADDI_RUNTIME_RECORDS))
+    fi
     test "${num_records}" -eq "${EXPECTED_NUM_RECORDS}" || {
         echo "Number of records in the file is incorrect - expected '${EXPECTED_NUM_RECORDS}' but got '${num_records}'!"
         ret_code=1
@@ -249,6 +260,43 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="rocm-jupyter-tensorflow-ubi9-python-3.11-amd64"
             expected_img_size=5782
             ;;
+        # The following are pipeline runtime images
+        odh-runtime-minimal-cpu-py311-ubi9-n)
+            expected_name="odh-notebook-runtime-minimal-ubi9-python-3.11"
+            expected_commitref="main"
+            expected_build_name="runtime-minimal-ubi9-python-3.11-amd64"
+            expected_img_size=570
+            ;;
+        odh-runtime-datascience-cpu-py311-ubi9-n)
+            expected_name="odh-notebook-runtime-datascience-ubi9-python-3.11"
+            expected_commitref="main"
+            expected_build_name="runtime-datascience-ubi9-python-3.11-amd64"
+            expected_img_size=954
+            ;;
+        odh-runtime-pytorch-cuda-py311-ubi9-n)
+            expected_name="odh-notebook-runtime-pytorch-ubi9-python-3.11"
+            expected_commitref="main"
+            expected_build_name="runtime-cuda-pytorch-ubi9-python-3.11-amd64"
+            expected_img_size=8506
+            ;;
+        odh-runtime-pytorch-rocm-py311-ubi9-n)
+            expected_name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.11"
+            expected_commitref="main"
+            expected_build_name="rocm-runtime-pytorch-ubi9-python-3.11-amd64"
+            expected_img_size=7413
+            ;;
+        odh-runtime-tensorflow-cuda-py311-ubi9-n)
+            expected_name="odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.11"
+            expected_commitref="main"
+            expected_build_name="runtime-cuda-tensorflow-ubi9-python-3.11-amd64"
+            expected_img_size=7917
+            ;;
+        odh-runtime-tensorflow-rocm-py311-ubi9-n)
+            expected_name="odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.11"
+            expected_commitref="main"
+            expected_build_name="rocm-runtime-tensorflow-ubi9-python-3.11-amd64"
+            expected_img_size=6705
+            ;;
         *)
             echo "Unimplemented variable name: '${image_variable}'"
             return 1
@@ -294,23 +342,28 @@ function check_image_variable_matches_name_and_commitref_and_size() {
 function check_image_commit_id_matches_metadata() {
     local image_variable="${1}"
     local image_commit_id="${2}"
+    local is_pipeline_runtime="false"
 
     local short_image_commit_id
     # We're interested only in the first 7 characters of the commit ID
     short_image_commit_id=${image_commit_id:0:7}
 
     local file_image_commit_id
+    # Check if the image variable is a pipeline runtime image
+    if [[ "${image_variable}" == *"odh-runtime-"* ]]; then
+        is_pipeline_runtime="true"
+    fi
+    file_image_commit_id=$(cat "${COMMIT_ENV_PATH}"  "${COMMIT_LATEST_ENV_PATH}" | sed 's#-commit##' | grep "${image_variable}=" | cut --delimiter "=" --field 2)
 
-    file_image_commit_id=$(sed 's#-commit##' "${COMMIT_ENV_PATH}" | grep "${image_variable}=" | cut --delimiter "=" --field 2)
-    test -n "${file_image_commit_id}" || {
-        echo "Couldn't retrieve commit id for image variable '${image_variable}' in '${COMMIT_ENV_PATH}'!"
+    test -n "${file_image_commit_id}" || test "${is_pipeline_runtime}" = "true" || {
+        echo "Couldn't retrieve commit id for image variable '${image_variable}' in '${COMMIT_ENV_PATH}' or '${COMMIT_LATEST_ENV_PATH}'!"
         return 1
     }
 
-    test "${short_image_commit_id}" = "${file_image_commit_id}" || {
+    test "${short_image_commit_id}" = "${file_image_commit_id}" || test "${is_pipeline_runtime}" = "true" || {
         echo "Image commit IDs for image variable '${image_variable}' don't equal!"
         echo "Image commit ID gathered from image: '${short_image_commit_id}'"
-        echo "Image commit ID in '${COMMIT_ENV_PATH}': '${file_image_commit_id}'"
+        echo "Image commit ID in '${COMMIT_ENV_PATH}'or '${COMMIT_LATEST_ENV_PATH}': '${file_image_commit_id}'"
         return 1
     }
 }
@@ -407,66 +460,75 @@ function check_image() {
 
 ret_code=0
 
-echo "Starting check of image references in files: '${COMMIT_ENV_PATH}' and '${PARAMS_ENV_PATH}'"
+echo "Starting check of image references in files: '${COMMIT_LATEST_ENV_PATH}', '${COMMIT_ENV_PATH}' , '${PARAMS_LATEST_ENV_PATH}' and '${PARAMS_ENV_PATH}'"
 echo "---------------------------------------------"
 
-check_variables_uniq "${COMMIT_ENV_PATH}" "true" || {
-    echo "ERROR: Variable names in the '${COMMIT_ENV_PATH}' file failed validation!"
+check_variables_uniq "${COMMIT_ENV_PATH}" "${COMMIT_LATEST_ENV_PATH}" "true" "false" || {
+    echo "ERROR: Variable names in the '${COMMIT_ENV_PATH}' & '${COMMIT_LATEST_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
     ret_code=1
 }
 
-check_variables_uniq "${PARAMS_ENV_PATH}" "false" || {
-    echo "ERROR: Variable names in the '${PARAMS_ENV_PATH}' file failed validation!"
+check_variables_uniq "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" "false" "true" || {
+    echo "ERROR: Variable names in the '${PARAMS_ENV_PATH}' & '${PARAMS_LATEST_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
     ret_code=1
 }
 
-while IFS= read -r LINE; do
-    echo "Checking format of: '${LINE}'"
-    [[ "${LINE}" = *[[:space:]]* ]] && {
-        echo "ERROR: Line contains white-space and it shouldn't!"
-        echo "--------------------------------------------------"
-        ret_code=1
-        continue
-    }
-    [[ "${LINE}" != *=* ]] && {
-        echo "ERROR: Line doesn't contain '=' and it should!"
-        echo "----------------------------------------------"
-        ret_code=1
-        continue
-    }
+process_file() {
+    while IFS= read -r LINE; do
+        echo "Checking format of: '${LINE}'"
+        [[ "${LINE}" = *[[:space:]]* ]] && {
+            echo "ERROR: Line contains white-space and it shouldn't!"
+            echo "--------------------------------------------------"
+            ret_code=1
+            continue
+        }
+        [[ "${LINE}" != *=* ]] && {
+            echo "ERROR: Line doesn't contain '=' and it should!"
+            echo "----------------------------------------------"
+            ret_code=1
+            continue
+        }
 
-    IMAGE_VARIABLE=$(echo "${LINE}" | cut --delimiter '=' --field 1)
-    IMAGE_URL=$(echo "${LINE}" | cut --delimiter '=' --field 2)
+        IMAGE_VARIABLE=$(echo "${LINE}" | cut --delimiter '=' --field 1)
+        IMAGE_URL=$(echo "${LINE}" | cut --delimiter '=' --field 2)
 
-    test -n "${IMAGE_VARIABLE}" || {
-        echo "ERROR: Couldn't parse image variable - got empty value!"
-        echo "-------------------------------------------------------"
-        ret_code=1
-        continue
-    }
+        test -n "${IMAGE_VARIABLE}" || {
+            echo "ERROR: Couldn't parse image variable - got empty value!"
+            echo "-------------------------------------------------------"
+            ret_code=1
+            continue
+        }
 
-    test -n "${IMAGE_URL}" || {
-        echo "ERROR: Couldn't parse image URL - got empty value!"
-        echo "--------------------------------------------------"
-        ret_code=1
-        continue
-    }
+        test -n "${IMAGE_URL}" || {
+            echo "ERROR: Couldn't parse image URL - got empty value!"
+            echo "--------------------------------------------------"
+            ret_code=1
+            continue
+        }
 
-    check_image "${IMAGE_VARIABLE}" "${IMAGE_URL}" || {
-        echo "ERROR: Image definition for '${IMAGE_VARIABLE}' isn't okay!"
-        echo "------------------------"
-        ret_code=1
-        continue
-    }
-done < "${PARAMS_ENV_PATH}"
+        check_image "${IMAGE_VARIABLE}" "${IMAGE_URL}" || {
+            echo "ERROR: Image definition for '${IMAGE_VARIABLE}' isn't okay!"
+            echo "------------------------"
+            ret_code=1
+            continue
+        }
+    done < "${1}"
+}
 
-echo ""
+# process_file "${PARAMS_ENV_PATH}" || {ret_code=1}
+# if test "${ret_code}" -eq 0; then
+#     echo "Validation of '${PARAMS_ENV_PATH}' was successful! Congrats :)"
+# else
+#     echo "The '${PARAMS_ENV_PATH}' file isn't valid, please check above!"
+# fi
+
+process_file "${PARAMS_LATEST_ENV_PATH}" || {ret_code=1}
 if test "${ret_code}" -eq 0; then
-    echo "Validation of '${PARAMS_ENV_PATH}' was successful! Congrats :)"
+    echo "Validation of '${PARAMS_LATEST_ENV_PATH}' was successful! Congrats :)"
 else
-    echo "The '${PARAMS_ENV_PATH}' file isn't valid, please check above!"
+    echo "The '${PARAMS_LATEST_ENV_PATH}' file isn't valid, please check above!"
 fi
 
 exit "${ret_code}"

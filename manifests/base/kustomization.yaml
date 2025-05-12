@@ -671,7 +671,6 @@ replacements:
     targets:
       - fieldPaths:
           - spec.tags.0.from.name
-          - spec.tags.0.annotations.[opendatahub.io/runtime-image-metadata].0.metadata.image_name
         select:
           group: image.openshift.io
           kind: ImageStream
@@ -685,7 +684,6 @@ replacements:
     targets:
       - fieldPaths:
           - spec.tags.0.from.name
-          - spec.tags.0.annotations.[opendatahub.io/runtime-image-metadata].0.metadata.image_name
         select:
           group: image.openshift.io
           kind: ImageStream
@@ -699,7 +697,6 @@ replacements:
     targets:
       - fieldPaths:
           - spec.tags.0.from.name
-          - spec.tags.0.annotations.[opendatahub.io/runtime-image-metadata].0.metadata.image_name
         select:
           group: image.openshift.io
           kind: ImageStream
@@ -713,7 +710,6 @@ replacements:
     targets:
       - fieldPaths:
           - spec.tags.0.from.name
-          - spec.tags.0.annotations.[opendatahub.io/runtime-image-metadata].0.metadata.image_name
         select:
           group: image.openshift.io
           kind: ImageStream
@@ -727,7 +723,6 @@ replacements:
     targets:
       - fieldPaths:
           - spec.tags.0.from.name
-          - spec.tags.0.annotations.[opendatahub.io/runtime-image-metadata].0.metadata.image_name
         select:
           group: image.openshift.io
           kind: ImageStream
@@ -741,7 +736,6 @@ replacements:
     targets:
       - fieldPaths:
           - spec.tags.0.from.name
-          - spec.tags.0.annotations.[opendatahub.io/runtime-image-metadata].0.metadata.image_name
         select:
           group: image.openshift.io
           kind: ImageStream
