@@ -49,19 +49,44 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
         metafunc.parametrize(image.__name__, metafunc.config.getoption("--image"))
 
 
-def skip_if_not_workbench_image(image: str) -> docker.models.images.Image:
+def get_image_metadata(image: str) -> docker.models.images.Image:
     client = testcontainers.core.container.DockerClient()
     try:
         image_metadata = client.client.images.get(image)
     except docker.errors.ImageNotFound:
+        # todo(jdanek): this means that even when image is to be run remotely (on openshift),
+        #  it has to be pulled locally first so that we can check its metadata
         image_metadata = client.client.images.pull(image)
         assert isinstance(image_metadata, docker.models.images.Image)
+
+    return image_metadata
+
+
+def skip_if_not_workbench_image(image: str) -> docker.models.images.Image:
+    image_metadata = get_image_metadata(image)
 
     ide_server_label_fragments = ("-code-server-", "-jupyter-", "-rstudio-")
     if not any(ide in image_metadata.labels["name"] for ide in ide_server_label_fragments):
         pytest.skip(
             f"Image {image} does not have any of '{ide_server_label_fragments=} in {image_metadata.labels['name']=}'"
         )
+
+    return image_metadata
+
+
+def skip_if_not_cuda_image(image: str) -> docker.models.images.Image:
+    image_metadata = get_image_metadata(image)
+
+    if "-cuda-" not in image_metadata.labels["name"]:
+        pytest.skip(f"Image {image} does not have any of '-cuda-' in {image_metadata.labels['name']=}")
+
+    return image_metadata
+
+
+def skip_if_not_rocm_image(image: str) -> docker.models.images.Image:
+    image_metadata = get_image_metadata(image)
+    if "-rocm-" not in image_metadata.labels["name"]:
+        pytest.skip(f"Image {image} does not have any of '-rocm-' in {image_metadata.labels['name']=}")
 
     return image_metadata
 
@@ -77,6 +102,18 @@ def image(request):
 def workbench_image(image: str):
     skip_if_not_workbench_image(image)
     yield image
+
+
+@pytest.fixture(scope="function")
+def cuda_workbench_image(workbench_image: str):
+    skip_if_not_cuda_image(workbench_image)
+    yield workbench_image
+
+
+@pytest.fixture(scope="function")
+def rocm_workbench_image(workbench_image: str):
+    skip_if_not_rocm_image(workbench_image)
+    yield workbench_image
 
 
 @pytest.fixture(scope="function")
