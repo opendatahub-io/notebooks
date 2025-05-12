@@ -589,7 +589,7 @@ jobs:
       #  (stderr=Error: cannot use command "podman image mount" with the remote podman client
       # and use --preserve-env=PATH to avoid
       #  F0512 16:31:58.425584    9911 main.go:294] Error: exec: "podman": executable file not found in $PATH
-      - name: Check image with check-payload
+      - name: Check image with check-payload for FIPS compliance
         run: |
           set -Eeuxo pipefail
           sudo --preserve-env=PATH go run github.com/openshift/check-payload scan image --spec "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
