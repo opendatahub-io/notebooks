@@ -561,7 +561,7 @@ jobs:
 
       # endregion
 
-      # region Trivy vulnerability scan
+      # region check-payload for FIPS compliance
 
       - id: check-payload-vars
         run: |
@@ -584,6 +584,11 @@ jobs:
           rm -f /tmp/openshift-client-linux.tar.gz
           sudo mv ./oc /usr/local/bin
 
+      # perform `podman image mount` ourselves, and then follow the scenario from
+      # https://github.com/openshift/check-payload/pull/154, that is because
+      # `check-payload scan image --spec` insists on pulling the image, even if already present,
+      #  that causes trouble when checking PRs (image not pushed) and requires `podman login` as root
+      #  (we run podman as root in the GHA to reuse container storage in Kubernetes)
       # use sudo to avoid
       #  podman error (args=[image mount ghcr.io/...])
       #  (stderr=Error: cannot use command "podman image mount" with the remote podman client
@@ -592,7 +597,14 @@ jobs:
       - name: Check image with check-payload for FIPS compliance
         run: |
           set -Eeuxo pipefail
-          sudo --preserve-env=PATH go run github.com/openshift/check-payload scan image --spec "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          # resolve podman under current user, not under sudo/root
+          PODMAN="$(which podman)"
+          # mount the image
+          IMAGE_MOUNT_DIR=$(sudo "${PODMAN}" image mount "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}")
+          # run the check-payload scan
+          sudo --preserve-env=PATH go run github.com/openshift/check-payload scan local --path "${IMAGE_MOUNT_DIR}"
+          # unmount the image
+          sudo "${PODMAN}" image unmount --all
         working-directory: scripts/check-payload
         env:
           GOPATH: ${{ steps.check-payload-vars.outputs.GOPATH }}
