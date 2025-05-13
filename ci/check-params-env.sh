@@ -350,7 +350,7 @@ function check_image_commit_id_matches_metadata() {
 
     local file_image_commit_id
     # Check if the image variable is a pipeline runtime image
-    if [[ "${image_variable}" == *"odh-runtime-"* ]]; then
+    if [[ "${image_variable}" == *"odh-pipeline-runtime-"* ]]; then
         is_pipeline_runtime="true"
     fi
     file_image_commit_id=$(cat "${COMMIT_ENV_PATH}"  "${COMMIT_LATEST_ENV_PATH}" | sed 's#-commit##' | grep "${image_variable}=" | cut --delimiter "=" --field 2)
