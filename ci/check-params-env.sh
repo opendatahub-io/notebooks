@@ -261,37 +261,37 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_img_size=5782
             ;;
         # The following are pipeline runtime images
-        odh-runtime-minimal-cpu-py311-ubi9-n)
+        odh-pipeline-runtime-minimal-cpu-py311-ubi9-n)
             expected_name="odh-notebook-runtime-minimal-ubi9-python-3.11"
             expected_commitref="main"
             expected_build_name="runtime-minimal-ubi9-python-3.11-amd64"
             expected_img_size=570
             ;;
-        odh-runtime-datascience-cpu-py311-ubi9-n)
+        odh-pipeline-runtime-datascience-cpu-py311-ubi9-n)
             expected_name="odh-notebook-runtime-datascience-ubi9-python-3.11"
             expected_commitref="main"
             expected_build_name="runtime-datascience-ubi9-python-3.11-amd64"
             expected_img_size=954
             ;;
-        odh-runtime-pytorch-cuda-py311-ubi9-n)
+        odh-pipeline-runtime-pytorch-cuda-py311-ubi9-n)
             expected_name="odh-notebook-runtime-pytorch-ubi9-python-3.11"
             expected_commitref="main"
             expected_build_name="runtime-cuda-pytorch-ubi9-python-3.11-amd64"
             expected_img_size=8506
             ;;
-        odh-runtime-pytorch-rocm-py311-ubi9-n)
+        odh-pipeline-runtime-pytorch-rocm-py311-ubi9-n)
             expected_name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.11"
             expected_commitref="main"
             expected_build_name="rocm-runtime-pytorch-ubi9-python-3.11-amd64"
             expected_img_size=7413
             ;;
-        odh-runtime-tensorflow-cuda-py311-ubi9-n)
+        odh-pipeline-runtime-tensorflow-cuda-py311-ubi9-n)
             expected_name="odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.11"
             expected_commitref="main"
             expected_build_name="runtime-cuda-tensorflow-ubi9-python-3.11-amd64"
             expected_img_size=7917
             ;;
-        odh-runtime-tensorflow-rocm-py311-ubi9-n)
+        odh-pipeline-runtime-tensorflow-rocm-py311-ubi9-n)
             expected_name="odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.11"
             expected_commitref="main"
             expected_build_name="rocm-runtime-tensorflow-ubi9-python-3.11-amd64"

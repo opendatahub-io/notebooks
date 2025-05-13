@@ -17,3 +17,9 @@ Listing the order in which each imagestreams are introduced.
 
 The order would also be same as `opendatahub.io/notebook-image-order` listed in each imagestreams.  
 *Note*: On deprecation/removal of imagestream, the index of that image is retired with it.
+
+
+## Params file
+
+Please read workbench-naming for the name convention to follow in params.env.  
+[Workbench Naming](../../docs/workbenches-naming.md)
