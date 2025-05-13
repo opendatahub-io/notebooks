@@ -17,6 +17,8 @@ metadata:
   name: rocm-runtime-pytorch-odh-poc-on-push
   namespace: open-data-hub-tenant
 spec:
+  timeouts:
+    pipeline: 8h
   params:
   - name: git-url
     value: '{{source_url}}'
