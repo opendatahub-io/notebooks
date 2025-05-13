@@ -183,6 +183,8 @@ RUN echo "Installing softwares and packages" && \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
     sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
+    # copy jupyter configuration
+    cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
     fix-permissions /opt/app-root -P && \
