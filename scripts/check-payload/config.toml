@@ -234,7 +234,15 @@ files = [
 
 # https://issues.redhat.com/browse/RHOAIENG-24290
 
+# when scanning with `scan image --spec`
 [[payload.python-311-container.ignore]]
+error = "ErrNotDynLinked"
+files = [
+    # executable is not dynamically linked
+    "/opt/app-root/bin/py-spy",
+]
+# when scanning with `scan local --path`, the above does not apply
+[[ignore]]
 error = "ErrNotDynLinked"
 files = [
     # executable is not dynamically linked
