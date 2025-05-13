@@ -285,10 +285,3 @@ files = [
     # go binary does not contain required symbol(s)
     "/usr/bin/mongocli",
 ]
-
-[[payload.openshift-ai-workbenches.ignore]]
-error = "ErrLibcryptoSoMissing"
-files = [
-    # could not find dependent openssl version within container image: libcrypto.so.1.1
-    "/opt/app-root/bin/oc",
-]
