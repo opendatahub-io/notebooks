@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pathlib
 import tempfile
-from typing import TYPE_CHECKING
 
 import allure
 import requests
@@ -56,7 +55,7 @@ class TestJupyterLabImage:
 
     @allure.issue("RHOAIENG-16568")
     @allure.description("Check that PDF export is working correctly")
-    def test_pdf_export(self, jupyterlab_image: docker.models.images.Image) -> None:
+    def test_pdf_export(self, jupyterlab_image: conftest.Image) -> None:
         container = WorkbenchContainer(image=jupyterlab_image, user=4321, group_add=[0])
         test_file_name = "test.ipybn"
         try:
