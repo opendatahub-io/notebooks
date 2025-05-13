@@ -1,15 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import allure
 import requests
 
-from tests.containers import docker_utils
+from tests.containers import conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
-
-if TYPE_CHECKING:
-    import docker.models.images
 
 
 class TestJupyterLabImage:
@@ -19,8 +14,8 @@ class TestJupyterLabImage:
 
     @allure.issue("RHOAIENG-11156")
     @allure.description("Check that the HTML for the spinner is contained in the initial page.")
-    def test_spinner_html_loaded(self, jupyterlab_image: docker.models.images.Image) -> None:
-        container = WorkbenchContainer(image=jupyterlab_image, user=4321, group_add=[0])
+    def test_spinner_html_loaded(self, jupyterlab_image: conftest.Image) -> None:
+        container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
         # if no env is specified, the image will run
         # > 4321        3334    3319  0 10:36 pts/0    00:00:01 /mnt/rosetta /opt/app-root/bin/python3.11 /opt/app-root/bin/jupyter-lab
         # > --ServerApp.root_dir=/opt/app-root/src --ServerApp.ip= --ServerApp.allow_origin=* --ServerApp.open_browser=False
