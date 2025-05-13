@@ -103,7 +103,7 @@ sudo dnf install podman
 systemctl --user start podman.service
 systemctl --user status podman.service
 systemctl --user status podman.socket
-DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock uv run pytest tests/containers -m 'not openshift' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
+DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock uv run pytest tests/containers -m 'not openshift and not cuda and not rocm' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
 
 # Mac OS
 brew install podman

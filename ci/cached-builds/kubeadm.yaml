@@ -1,10 +1,12 @@
 ---
 # kubeadm config print init-defaults > kubeadm.yaml
 # kubeadm init --cri-socket=/var/run/crio/crio.sock
+# kubeadm config migrate --old-config kubeadm.yaml.old --new-config kubeadm.yaml
 
 # https://kubernetes.io/docs/reference/config-api/kubeadm-config.v1beta3/
 # https://kubernetes.io/docs/reference/config-api/kubeadm-config.v1beta4/
-apiVersion: kubeadm.k8s.io/v1beta3
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: InitConfiguration
 bootstrapTokens:
   - groups:
       - system:bootstrappers:kubeadm:default-node-token
@@ -13,33 +15,47 @@ bootstrapTokens:
     usages:
       - signing
       - authentication
-kind: InitConfiguration
 localAPIEndpoint:
   bindPort: 6443
 nodeRegistration:
+  criSocket: unix:///var/run/crio/crio.sock
+  imagePullPolicy: IfNotPresent
+  imagePullSerial: true
+  taints: []
   kubeletExtraArgs:
     # Need to have enough disk space for Kubelet, so move root-dir on the LVM volume
     # Note: the internets discourage from changing the default because storage plugins may then struggle
     #  https://cep.dev/posts/adventure-trying-change-kubelet-rootdir/
-    root-dir: "/home/runner/.local/share/containers/kubelet-root-dir"
-  criSocket: unix:///var/run/crio/crio.sock
-  imagePullPolicy: IfNotPresent
-  taints: null
+    - name: root-dir
+      value: /home/runner/.local/share/containers/kubelet-root-dir
+timeouts:
+  controlPlaneComponentHealthCheck: 4m0s
+  discovery: 5m0s
+  etcdAPICall: 2m0s
+  kubeletHealthCheck: 4m0s
+  kubernetesAPICall: 1m0s
+  tlsBootstrap: 5m0s
+  upgradeManifests: 5m0s
 ---
-apiServer:
-  timeoutForControlPlane: 4m0s
-apiVersion: kubeadm.k8s.io/v1beta3
-certificatesDir: /etc/kubernetes/pki
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+kubernetesVersion: 1.33.0
 clusterName: kubernetes
-controllerManager: {}
-dns: {}
+caCertificateValidityPeriod: 87600h0m0s
+certificateValidityPeriod: 8760h0m0s
+certificatesDir: /etc/kubernetes/pki
+encryptionAlgorithm: RSA-2048
 etcd:
   local:
     dataDir: /var/lib/etcd
 imageRepository: registry.k8s.io
-kind: ClusterConfiguration
 networking:
   dnsDomain: cluster.local
   # this matches the default in /etc/cni/net.d/11-crio-ipv4-bridge.conflist
   podSubnet: 10.85.0.0/16
+  serviceSubnet: 10.96.0.0/12
+apiServer: {}
+controllerManager: {}
+dns: {}
+proxy: {}
 scheduler: {}
