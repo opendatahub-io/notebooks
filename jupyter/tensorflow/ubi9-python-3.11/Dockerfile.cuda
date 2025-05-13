@@ -1,3 +1,16 @@
+######################################################
+# mongocli-builder (build stage only, not published) #
+######################################################
+FROM registry.access.redhat.com/ubi9/go-toolset:latest AS mongocli-builder
+
+ARG MONGOCLI_VERSION=2.0.3
+
+WORKDIR /tmp/
+RUN curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
+RUN unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
+RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
+    CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
+
 ####################
 # base             #
 ####################
@@ -135,7 +148,7 @@ RUN yum install -y \
     ${NV_CUDNN_PACKAGE_DEV} \
     && yum clean all \
     && rm -rf /var/cache/yum/*
-    
+
 # Set this flag so that libraries can find the location of CUDA
 ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 
@@ -146,7 +159,7 @@ WORKDIR /opt/app-root/src
 #########################
 # cuda-jupyter-minimal  #
 #########################
-FROM cuda-base AS cuda-jupyter-minimal  
+FROM cuda-base AS cuda-jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.11
@@ -156,7 +169,7 @@ WORKDIR /opt/app-root/bin
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
-    
+
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
@@ -176,10 +189,8 @@ USER root
 # Install useful OS packages
 RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile && dnf clean all && rm -rf /var/cache/yum
 
-# Install MongoDB Client, We need a special repo for MongoDB as they do their own distribution
-COPY ${DATASCIENCE_SOURCE_CODE}/mongodb-org-6.0.repo-x86_64 /etc/yum.repos.d/mongodb-org-6.0.repo
-
-RUN dnf install -y mongocli && dnf clean all && rm -rf /var/cache/yum
+# Copy dynamically-linked mongocli built in earlier build stage
+COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 
 # Install MSSQL Client, We need a special repo for MSSQL as they do their own distribution
 COPY ${DATASCIENCE_SOURCE_CODE}/mssql-2022.repo-x86_64 /etc/yum.repos.d/mssql-2022.repo
@@ -227,9 +238,9 @@ RUN echo "Installing softwares and packages" && \
     # Remove default Elyra runtime-images \
     rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
-    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \    
+    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
     # Disable announcement plugin of jupyterlab \
-    jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \    
+    jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     # Apply JupyterLab addons \
     /opt/app-root/bin/utils/addons/apply.sh && \
     # Fix permissions to support pip in Openshift environments \
