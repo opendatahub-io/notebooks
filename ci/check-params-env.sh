@@ -476,6 +476,7 @@ check_variables_uniq "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" "false" "t
 }
 
 process_file() {
+    ret_code=0
     while IFS= read -r LINE; do
         echo "Checking format of: '${LINE}'"
         [[ "${LINE}" = *[[:space:]]* ]] && {
@@ -517,18 +518,16 @@ process_file() {
     done < "${1}"
 }
 
-# process_file "${PARAMS_ENV_PATH}" || {ret_code=1}
-# if test "${ret_code}" -eq 0; then
-#     echo "Validation of '${PARAMS_ENV_PATH}' was successful! Congrats :)"
-# else
-#     echo "The '${PARAMS_ENV_PATH}' file isn't valid, please check above!"
-# fi
-
-process_file "${PARAMS_LATEST_ENV_PATH}" || {ret_code=1}
-if test "${ret_code}" -eq 0; then
-    echo "Validation of '${PARAMS_LATEST_ENV_PATH}' was successful! Congrats :)"
-else
-    echo "The '${PARAMS_LATEST_ENV_PATH}' file isn't valid, please check above!"
-fi
+for file_ in  "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}"; do
+    echo "Checking file: '${file_}'"
+    process_file "${file_}"
+    if test "${ret_code}" -eq 0; then
+        echo "Validation of '${PARAMS_LATEST_ENV_PATH}' was successful! Congrats :)"
+        echo "------------------------"
+    else
+        echo "The '${PARAMS_LATEST_ENV_PATH}' file isn't valid, please check above!"
+        echo "------------------------"
+    fi
+done
 
 exit "${ret_code}"

@@ -13,14 +13,14 @@ odh-<image type>-<image-feature>-<image-scope>-<accelerator>-<python version>-<o
 - Image feature:
   - jupyter
   - codeserver
-  - Rstudio
+  - rstudio
   - runtime
 - Image scope:
-  - Minimal
-  - DataScience
-  - TensorFlow
-  - PyTorch
-  - Trustyai
+  - minimal
+  - datascience
+  - tensorflow
+  - pytorch
+  - trustyai
 - Accelerator: cpu, cuda, rocm
 - Python version: 3.11, 3.9, ?3.12
 - Image suffix: rhel8, rhel9
