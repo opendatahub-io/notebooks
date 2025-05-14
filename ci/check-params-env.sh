@@ -476,19 +476,19 @@ check_variables_uniq "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" "false" "t
 }
 
 process_file() {
-    ret_code=0
+    local_ret_code=0
     while IFS= read -r LINE; do
         echo "Checking format of: '${LINE}'"
         [[ "${LINE}" = *[[:space:]]* ]] && {
             echo "ERROR: Line contains white-space and it shouldn't!"
             echo "--------------------------------------------------"
-            ret_code=1
+            local_ret_code=1
             continue
         }
         [[ "${LINE}" != *=* ]] && {
             echo "ERROR: Line doesn't contain '=' and it should!"
             echo "----------------------------------------------"
-            ret_code=1
+            local_ret_code=1
             continue
         }
 
@@ -498,35 +498,36 @@ process_file() {
         test -n "${IMAGE_VARIABLE}" || {
             echo "ERROR: Couldn't parse image variable - got empty value!"
             echo "-------------------------------------------------------"
-            ret_code=1
+            local_ret_code=1
             continue
         }
 
         test -n "${IMAGE_URL}" || {
             echo "ERROR: Couldn't parse image URL - got empty value!"
             echo "--------------------------------------------------"
-            ret_code=1
+            local_ret_code=1
             continue
         }
 
         check_image "${IMAGE_VARIABLE}" "${IMAGE_URL}" || {
             echo "ERROR: Image definition for '${IMAGE_VARIABLE}' isn't okay!"
             echo "------------------------"
-            ret_code=1
+            local_ret_code=1
             continue
         }
     done < "${1}"
+    return "${local_ret_code}"
 }
 
 for file_ in  "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}"; do
     echo "Checking file: '${file_}'"
-    process_file "${file_}"
-    if test "${ret_code}" -eq 0; then
+    if process_file "${file_}" -eq 0; then
         echo "Validation of '${file_}' was successful! Congrats :)"
         echo "------------------------"
     else
         echo "The '${file_}' file isn't valid, please check above!"
         echo "------------------------"
+        ret_code=1
     fi
 done
 
