@@ -22,6 +22,7 @@ from enum import Enum
 import yaml
 
 # Path to the file with image references to the image registry
+PARAMS_LATEST_ENV_PATH = "manifests/base/params-latest.env"
 PARAMS_ENV_PATH = "manifests/base/params.env"
 
 
@@ -64,16 +65,20 @@ def load_yaml(filepath):
 
 
 def extract_variable(reference):
-    """Extracts a variable name from a string (e.g.: 'odh-rstudio-notebook-image-commit-n-1_PLACEHOLDER') using regex."""
+    """Extracts a variable name from a string (e.g.: 'odh-workbench-rstudio-minimal-cpu-py311-c9s-commit-n-1_PLACEHOLDER') using regex."""
 
     return reference.replace("_PLACEHOLDER", "")
 
 
-def get_variable_value(variable_name, params_file_path=PARAMS_ENV_PATH):
+def get_variable_value(variable_name, params_file_path=[PARAMS_LATEST_ENV_PATH, PARAMS_ENV_PATH]):
     """Retrieves the value of a variable from a parameters file."""
 
     try:
-        with open(params_file_path, "r") as params_file:
+        with open(params_file_path[0], "r") as params_file:
+            for line in params_file:
+                if variable_name in line:
+                    return line.split("=")[1].strip()
+        with open(params_file_path[1], "r") as params_file:
             for line in params_file:
                 if variable_name in line:
                     return line.split("=")[1].strip()

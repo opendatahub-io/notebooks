@@ -4,10 +4,11 @@ import contextlib
 import functools
 import logging
 import socket
+import subprocess
 import threading
 import time
 import traceback
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 import kubernetes
 import kubernetes.client.api.core_v1_api
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
 class TestFrameConstants:
     GLOBAL_POLL_INTERVAL_MEDIUM = 10
     TIMEOUT_2MIN = 2 * 60
+    TIMEOUT_5MIN = 5 * 60
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -120,6 +122,8 @@ class ImageDeployment:
     def __init__(self, client: kubernetes.dynamic.DynamicClient, image: str):
         self.client = client
         self.image = image
+        self.pod = None
+        self.port = None
         self.tf = TestFrame()
 
     def __enter__(self) -> Self:
@@ -128,7 +132,9 @@ class ImageDeployment:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.tf.destroy()
 
-    def deploy(self, container_name: str) -> None:
+    def deploy(
+        self, container_name: str, accelerator: Literal["amd.com/gpu", "nvidia.com/gpu"] | None = None
+    ) -> kubernetes.client.models.v1_pod.V1Pod:
         LOGGER.debug(f"Deploying {self.image}")
         # custom namespace is necessary, because we cannot assign a SCC to pods created in one of the default namespaces:
         #  default, kube-system, kube-public, openshift-node, openshift-infra, openshift.
@@ -187,6 +193,20 @@ class ImageDeployment:
                                     "protocol": "TCP",
                                 }
                             ],
+                            **(
+                                {
+                                    "resources": {
+                                        "limits": {
+                                            accelerator: "1",
+                                        },
+                                        "requests": {
+                                            accelerator: "1",
+                                        },
+                                    }
+                                }
+                                if accelerator
+                                else {}
+                            ),
                             # rstudio will not start without its volume mount and it does not log the error for it
                             # See the testcontainers implementation of this (the tty=True part)
                             "volumeMounts": [{"mountPath": "/opt/app-root/src", "name": "my-workbench"}],
@@ -214,9 +234,9 @@ class ImageDeployment:
             namespace=ns.name, label_selector=f"app={container_name}"
         )
         assert len(pod_name.items) == 1
-        pod: kubernetes.client.models.v1_pod.V1Pod = pod_name.items[0]
+        self.pod: kubernetes.client.models.v1_pod.V1Pod = pod_name.items[0]
 
-        p = socket_proxy.SocketProxy(lambda: exposing_contextmanager(core_v1_api, pod), "localhost", 0)
+        p = socket_proxy.SocketProxy(lambda: exposing_contextmanager(core_v1_api, self.pod), "localhost", 0)
         t = threading.Thread(target=p.listen_and_serve_until_canceled)
         t.start()
         self.tf.defer(t, lambda thread: thread.join())
@@ -230,11 +250,55 @@ class ImageDeployment:
             30,
             lambda: requests.get(f"http://localhost:{self.port}").status_code == 200,
         )
-        LOGGER.debug("Done with portforward")
+        LOGGER.debug("Done setting up portforward")
+
+        return self.pod
+
+    # https://github.com/kubernetes-client/python/blob/master/examples/pod_exec.py
+    def exec(self, command: str) -> subprocess.CompletedProcess:
+        if not self.pod or not self.pod.metadata or not self.pod.metadata.name or not self.pod.metadata.namespace:
+            raise RuntimeError("Pod information is not available for exec operation.")
+        LOGGER.debug(f"Executing command {command}")
+        core_v1_api = kubernetes.client.api.core_v1_api.CoreV1Api(api_client=self.client.client)
+
+        # Uses kubernetes.stream.stream to handle WebSocket upgrade.
+        # E   HTTP response body: {"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Upgrade request required","reason":"BadRequest","code":400}
+        try:
+            resp: kubernetes.stream.ws_client.WSClient = kubernetes.stream.stream(
+                core_v1_api.connect_get_namespaced_pod_exec,
+                self.pod.metadata.name,
+                self.pod.metadata.namespace,
+                command=["/bin/sh", "-c", command],
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False,
+                # _preload_content=False is important for streaming
+                _preload_content=False,
+            )
+        except Exception as e:
+            LOGGER.error(f"Error during pod exec: {e}")
+            LOGGER.error(traceback.format_exc())
+            raise
+        stdout = []
+        stderr = []
+        while resp.is_open():
+            resp.update(timeout=1)
+            if resp.peek_stdout():
+                stdout.append(resp.read_stdout())
+            if resp.peek_stderr():
+                stderr.append(resp.read_stderr())
+        returncode = resp.returncode
+        resp.close()
+
+        return subprocess.CompletedProcess(
+            args=command, returncode=returncode, stdout="\n".join(stdout), stderr="\n".join(stderr)
+        )
 
 
 class PodUtils:
-    READINESS_TIMEOUT = TestFrameConstants.TIMEOUT_2MIN
+    # this includes potentially pulling the image, and cuda images are huge
+    READINESS_TIMEOUT = TestFrameConstants.TIMEOUT_5MIN
 
     # consider using timeout_sampler
     @staticmethod
