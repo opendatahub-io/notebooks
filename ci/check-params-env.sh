@@ -525,7 +525,7 @@ for file_ in  "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}"; do
         echo "Validation of '${file_}' was successful! Congrats :)"
         echo "------------------------"
     else
-        echo "The '${PARAMS_LATEST_ENV_PATH}' file isn't valid, please check above!"
+        echo "The '${file_}' file isn't valid, please check above!"
         echo "------------------------"
     fi
 done
