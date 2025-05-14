@@ -522,7 +522,7 @@ for file_ in  "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}"; do
     echo "Checking file: '${file_}'"
     process_file "${file_}"
     if test "${ret_code}" -eq 0; then
-        echo "Validation of '${PARAMS_LATEST_ENV_PATH}' was successful! Congrats :)"
+        echo "Validation of '${file_}' was successful! Congrats :)"
         echo "------------------------"
     else
         echo "The '${PARAMS_LATEST_ENV_PATH}' file isn't valid, please check above!"
