@@ -216,6 +216,8 @@ files = [
     "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
 ]
 
+# valgrind is waived since it doesn't do anything with crypto in a
+# security context
 [[rpm.valgrind.ignore]]
 error = "ErrNotDynLinked"
 files = [
@@ -232,7 +234,8 @@ files = [
     "/usr/libexec/valgrind/none-amd64-linux",
 ]
 
-# https://issues.redhat.com/browse/RHOAIENG-24290
+# py-spy is waived since it doesn't do anything with crypto in a
+# security context
 
 # when scanning with `scan image --spec`
 [[payload.python-311-container.ignore]]
@@ -254,34 +257,4 @@ error = "ErrNotDynLinked"
 files = [
     # executable is not dynamically linked
     "/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg",
-]
-
-# https://issues.redhat.com/browse/RHOAIENG-24340
-
-[[rpm.mongocli.ignore]]
-error = "ErrNotDynLinked"
-files = [
-    # executable is not dynamically linked
-    "/usr/bin/mongocli",
-]
-
-[[rpm.mongocli.ignore]]
-error = "ErrGoNotCgoEnabled"
-files = [
-    # go binary is not CGO_ENABLED
-    "/usr/bin/mongocli",
-]
-
-[[rpm.mongocli.ignore]]
-error = "ErrGoNoCgoInit"
-files = [
-    # x_cgo_init or _cgo_topofstack not found
-    "/usr/bin/mongocli",
-]
-
-[[rpm.mongocli.ignore]]
-error = "ErrGoMissingSymbols"
-files = [
-    # go binary does not contain required symbol(s)
-    "/usr/bin/mongocli",
 ]
