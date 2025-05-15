@@ -66,9 +66,9 @@ replacements:
           name: s2i-minimal-notebook
           version: v1
   - source:
-      fieldPath: data.odh-minimal-notebook-image-n-2
+      fieldPath: data.odh-workbench-jupyter-minimal-cpu-py311-ubi9-n-2
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -79,9 +79,9 @@ replacements:
           name: s2i-minimal-notebook
           version: v1
   - source:
-      fieldPath: data.odh-minimal-notebook-image-n-3
+      fieldPath: data.odh-workbench-jupyter-minimal-cpu-py311-ubi9-n-3
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -92,9 +92,9 @@ replacements:
           name: s2i-minimal-notebook
           version: v1
   - source:
-      fieldPath: data.odh-minimal-notebook-image-n-4
+      fieldPath: data.odh-workbench-jupyter-minimal-cpu-py311-ubi9-n-4
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -105,9 +105,9 @@ replacements:
           name: s2i-minimal-notebook
           version: v1
   - source:
-      fieldPath: data.odh-minimal-notebook-image-n-5
+      fieldPath: data.odh-workbench-jupyter-minimal-cpu-py311-ubi9-n-5
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -144,9 +144,9 @@ replacements:
           name: s2i-generic-data-science-notebook
           version: v1
   - source:
-      fieldPath: data.odh-generic-data-science-notebook-image-n-2
+      fieldPath: data.odh-workbench-jupyter-datascience-cpu-py311-ubi9-n-2
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -157,9 +157,9 @@ replacements:
           name: s2i-generic-data-science-notebook
           version: v1
   - source:
-      fieldPath: data.odh-generic-data-science-notebook-image-n-3
+      fieldPath: data.odh-workbench-jupyter-datascience-cpu-py311-ubi9-n-3
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -170,9 +170,9 @@ replacements:
           name: s2i-generic-data-science-notebook
           version: v1
   - source:
-      fieldPath: data.odh-generic-data-science-notebook-image-n-4
+      fieldPath: data.odh-workbench-jupyter-datascience-cpu-py311-ubi9-n-4
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -183,9 +183,9 @@ replacements:
           name: s2i-generic-data-science-notebook
           version: v1
   - source:
-      fieldPath: data.odh-generic-data-science-notebook-image-n-5
+      fieldPath: data.odh-workbench-jupyter-datascience-cpu-py311-ubi9-n-5
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -222,9 +222,9 @@ replacements:
           name: minimal-gpu
           version: v1
   - source:
-      fieldPath: data.odh-minimal-gpu-notebook-image-n-2
+      fieldPath: data.odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-2
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -235,9 +235,9 @@ replacements:
           name: minimal-gpu
           version: v1
   - source:
-      fieldPath: data.odh-minimal-gpu-notebook-image-n-3
+      fieldPath: data.odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-3
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -248,9 +248,9 @@ replacements:
           name: minimal-gpu
           version: v1
   - source:
-      fieldPath: data.odh-minimal-gpu-notebook-image-n-4
+      fieldPath: data.odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-4
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -261,9 +261,9 @@ replacements:
           name: minimal-gpu
           version: v1
   - source:
-      fieldPath: data.odh-minimal-gpu-notebook-image-n-5
+      fieldPath: data.odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-5
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -300,9 +300,9 @@ replacements:
           name: pytorch
           version: v1
   - source:
-      fieldPath: data.odh-pytorch-gpu-notebook-image-n-2
+      fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py311-ubi9-n-2
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -313,9 +313,9 @@ replacements:
           name: pytorch
           version: v1
   - source:
-      fieldPath: data.odh-pytorch-gpu-notebook-image-n-3
+      fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py311-ubi9-n-3
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -326,9 +326,9 @@ replacements:
           name: pytorch
           version: v1
   - source:
-      fieldPath: data.odh-pytorch-gpu-notebook-image-n-4
+      fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py311-ubi9-n-4
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -339,9 +339,9 @@ replacements:
           name: pytorch
           version: v1
   - source:
-      fieldPath: data.odh-pytorch-gpu-notebook-image-n-5
+      fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py311-ubi9-n-5
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -378,9 +378,9 @@ replacements:
           name: tensorflow
           version: v1
   - source:
-      fieldPath: data.odh-tensorflow-gpu-notebook-image-n-2
+      fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-n-2
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -391,9 +391,9 @@ replacements:
           name: tensorflow
           version: v1
   - source:
-      fieldPath: data.odh-tensorflow-gpu-notebook-image-n-3
+      fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-n-3
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -404,9 +404,9 @@ replacements:
           name: tensorflow
           version: v1
   - source:
-      fieldPath: data.odh-tensorflow-gpu-notebook-image-n-4
+      fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-n-4
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -417,9 +417,9 @@ replacements:
           name: tensorflow
           version: v1
   - source:
-      fieldPath: data.odh-tensorflow-gpu-notebook-image-n-5
+      fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-n-5
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -456,9 +456,9 @@ replacements:
           name: odh-trustyai-notebook
           version: v1
   - source:
-      fieldPath: data.odh-trustyai-notebook-image-n-2
+      fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py311-ubi9-n-2
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -469,9 +469,9 @@ replacements:
           name: odh-trustyai-notebook
           version: v1
   - source:
-      fieldPath: data.odh-trustyai-notebook-image-n-3
+      fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py311-ubi9-n-3
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -482,9 +482,9 @@ replacements:
           name: odh-trustyai-notebook
           version: v1
   - source:
-      fieldPath: data.odh-trustyai-notebook-image-n-4
+      fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py311-ubi9-n-4
       kind: ConfigMap
-      name: notebooks-parameters
+      name: notebook-image-params
       version: v1
     targets:
       - fieldPaths:
@@ -521,7 +521,7 @@ replacements:
           name: code-server-notebook
           version: v1
   - source:
-      fieldPath: data.odh-codeserver-notebook-image-n-2
+      fieldPath: data.odh-workbench-codeserver-datascience-cpu-py311-ubi9-n-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -534,7 +534,7 @@ replacements:
           name: code-server-notebook
           version: v1
   - source:
-      fieldPath: data.odh-codeserver-notebook-image-n-3
+      fieldPath: data.odh-workbench-codeserver-datascience-cpu-py311-ubi9-n-3
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -651,9 +651,9 @@ replacements:
           name: s2i-minimal-notebook
           version: v1
   - source:
-      fieldPath: data.odh-minimal-notebook-image-commit-n-2
+      fieldPath: data.odh-workbench-jupyter-minimal-cpu-py311-ubi9-commit-n-2
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -664,9 +664,9 @@ replacements:
           name: s2i-minimal-notebook
           version: v1
   - source:
-      fieldPath: data.odh-minimal-notebook-image-commit-n-3
+      fieldPath: data.odh-workbench-jupyter-minimal-cpu-py311-ubi9-commit-n-3
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -677,9 +677,9 @@ replacements:
           name: s2i-minimal-notebook
           version: v1
   - source:
-      fieldPath: data.odh-minimal-notebook-image-commit-n-4
+      fieldPath: data.odh-workbench-jupyter-minimal-cpu-py311-ubi9-commit-n-4
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -690,9 +690,9 @@ replacements:
           name: s2i-minimal-notebook
           version: v1
   - source:
-      fieldPath: data.odh-minimal-notebook-image-commit-n-5
+      fieldPath: data.odh-workbench-jupyter-minimal-cpu-py311-ubi9-commit-n-5
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -729,9 +729,9 @@ replacements:
           name: s2i-generic-data-science-notebook
           version: v1
   - source:
-      fieldPath: data.odh-generic-data-science-notebook-image-commit-n-2
+      fieldPath: data.odh-workbench-jupyter-datascience-cpu-py311-ubi9-commit-n-2
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -742,9 +742,9 @@ replacements:
           name: s2i-generic-data-science-notebook
           version: v1
   - source:
-      fieldPath: data.odh-generic-data-science-notebook-image-commit-n-3
+      fieldPath: data.odh-workbench-jupyter-datascience-cpu-py311-ubi9-commit-n-3
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -755,9 +755,9 @@ replacements:
           name: s2i-generic-data-science-notebook
           version: v1
   - source:
-      fieldPath: data.odh-generic-data-science-notebook-image-commit-n-4
+      fieldPath: data.odh-workbench-jupyter-datascience-cpu-py311-ubi9-commit-n-4
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -768,9 +768,9 @@ replacements:
           name: s2i-generic-data-science-notebook
           version: v1
   - source:
-      fieldPath: data.odh-generic-data-science-notebook-image-commit-n-5
+      fieldPath: data.odh-workbench-jupyter-datascience-cpu-py311-ubi9-commit-n-5
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -807,9 +807,9 @@ replacements:
           name: minimal-gpu
           version: v1
   - source:
-      fieldPath: data.odh-minimal-gpu-notebook-image-commit-n-2
+      fieldPath: data.odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-n-2
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -820,9 +820,9 @@ replacements:
           name: minimal-gpu
           version: v1
   - source:
-      fieldPath: data.odh-minimal-gpu-notebook-image-commit-n-3
+      fieldPath: data.odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-n-3
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -833,9 +833,9 @@ replacements:
           name: minimal-gpu
           version: v1
   - source:
-      fieldPath: data.odh-minimal-gpu-notebook-image-commit-n-4
+      fieldPath: data.odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-n-4
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -846,9 +846,9 @@ replacements:
           name: minimal-gpu
           version: v1
   - source:
-      fieldPath: data.odh-minimal-gpu-notebook-image-commit-n-5
+      fieldPath: data.odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-n-5
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -885,9 +885,9 @@ replacements:
           name: pytorch
           version: v1
   - source:
-      fieldPath: data.odh-pytorch-gpu-notebook-image-commit-n-2
+      fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py311-ubi9-commit-n-2
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -898,9 +898,9 @@ replacements:
           name: pytorch
           version: v1
   - source:
-      fieldPath: data.odh-pytorch-gpu-notebook-image-commit-n-3
+      fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py311-ubi9-commit-n-3
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -911,9 +911,9 @@ replacements:
           name: pytorch
           version: v1
   - source:
-      fieldPath: data.odh-pytorch-gpu-notebook-image-commit-n-4
+      fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py311-ubi9-commit-n-4
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -924,9 +924,9 @@ replacements:
           name: pytorch
           version: v1
   - source:
-      fieldPath: data.odh-pytorch-gpu-notebook-image-commit-n-5
+      fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py311-ubi9-commit-n-5
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -963,9 +963,9 @@ replacements:
           name: tensorflow
           version: v1
   - source:
-      fieldPath: data.odh-tensorflow-gpu-notebook-image-commit-n-2
+      fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-commit-n-2
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -976,9 +976,9 @@ replacements:
           name: tensorflow
           version: v1
   - source:
-      fieldPath: data.odh-tensorflow-gpu-notebook-image-commit-n-3
+      fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-commit-n-3
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -989,9 +989,9 @@ replacements:
           name: tensorflow
           version: v1
   - source:
-      fieldPath: data.odh-tensorflow-gpu-notebook-image-commit-n-4
+      fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-commit-n-4
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -1002,9 +1002,9 @@ replacements:
           name: tensorflow
           version: v1
   - source:
-      fieldPath: data.odh-tensorflow-gpu-notebook-image-commit-n-5
+      fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-commit-n-5
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -1041,9 +1041,9 @@ replacements:
           name: odh-trustyai-notebook
           version: v1
   - source:
-      fieldPath: data.odh-trustyai-notebook-image-commit-n-2
+      fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py311-ubi9-commit-n-2
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -1054,9 +1054,9 @@ replacements:
           name: odh-trustyai-notebook
           version: v1
   - source:
-      fieldPath: data.odh-trustyai-notebook-image-commit-n-3
+      fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py311-ubi9-commit-n-3
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -1067,9 +1067,9 @@ replacements:
           name: odh-trustyai-notebook
           version: v1
   - source:
-      fieldPath: data.odh-trustyai-notebook-image-commit-n-4
+      fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py311-ubi9-commit-n-4
       kind: ConfigMap
-      name: notebook
+      name: notebook-image-commithash
       version: v1
     targets:
       - fieldPaths:
@@ -1106,7 +1106,7 @@ replacements:
           name: code-server-notebook
           version: v1
   - source:
-      fieldPath: data.odh-codeserver-notebook-image-commit-n-2
+      fieldPath: data.odh-workbench-codeserver-datascience-cpu-py311-ubi9-commit-n-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -1119,7 +1119,7 @@ replacements:
           name: code-server-notebook
           version: v1
   - source:
-      fieldPath: data.odh-codeserver-notebook-image-commit-n-3
+      fieldPath: data.odh-workbench-codeserver-datascience-cpu-py311-ubi9-commit-n-3
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
