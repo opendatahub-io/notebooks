@@ -6,9 +6,9 @@ on:  # yamllint disable-line rule:truthy
     paths:
       - 'manifests/base/commit.env'
       - 'manifests/base/params.env'
+      - 'manifests/base/commit-latest.env'
+      - 'manifests/base/params-latest.env'
       - 'ci/check-params-env.sh'
-      - 'ci/check-runtime-images.sh'
-      - 'manifests/base/runtime-*-imagestream.yaml'
   workflow_dispatch:
 
 permissions:
@@ -27,8 +27,3 @@ jobs:
       - name: Validate the 'manifests/base/params.env' file content
         run: |
           bash ./ci/check-params-env.sh
-
-      - name: Validate references for runtime images
-        id: validate-runtime-images-references
-        run: |
-          bash ./ci/check-runtime-images.sh

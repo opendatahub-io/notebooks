@@ -41,7 +41,7 @@ spec:
             {"name": "Odh-Elyra", "version": "4.2"},
             {"name": "PyMongo", "version": "4.11"},
             {"name": "Pyodbc", "version": "5.2"},
-            {"name": "Codeflare-SDK", "version": "0.27"},
+            {"name": "Codeflare-SDK", "version": "0.28"},
             {"name": "Sklearn-onnx", "version": "1.18"},
             {"name": "Psycopg", "version": "3.2"},
             {"name": "MySQL Connector/Python", "version": "9.2"},
@@ -49,10 +49,10 @@ spec:
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/notebook-build-commit: odh-pytorch-gpu-notebook-image-commit-n_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-pytorch-cuda-py311-ubi9-commit-n_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-pytorch-gpu-notebook-image-n_PLACEHOLDER
+        name: odh-workbench-jupyter-pytorch-cuda-py311-ubi9-n_PLACEHOLDER
       name: "2025.1"
       referencePolicy:
         type: Source
@@ -90,10 +90,10 @@ spec:
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
-        opendatahub.io/notebook-build-commit: odh-pytorch-gpu-notebook-image-commit-n-1_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-pytorch-cuda-py311-ubi9-commit-n-1_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-pytorch-gpu-notebook-image-n-1_PLACEHOLDER
+        name: odh-workbench-jupyter-pytorch-cuda-py311-ubi9-n-1_PLACEHOLDER
       name: "2024.2"
       referencePolicy:
         type: Source
