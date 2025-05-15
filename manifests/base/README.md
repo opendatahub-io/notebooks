@@ -16,4 +16,15 @@ Listing the order in which each imagestreams are introduced.
 13. jupyter-rocm-tensorflow-notebook-imagestream.yaml
 
 The order would also be same as `opendatahub.io/notebook-image-order` listed in each imagestreams.  
-*Note*: On deprecation/removal of imagestream, the index of that image is retired with it.
+_Note_: On deprecation/removal of imagestream, the index of that image is retired with it.
+
+## Params file
+
+Please read workbench-naming for the name convention to follow in params.env.  
+[Workbench Naming](../../docs/workbenches-naming.md)
+
+- params-latest.env: This file contains references to latest versions of workbench images that are updated by konflux nudges.
+- params.env: This file contains references to older versions of workbench images.
+
+Image names follow the established IDE format:
+`odh-<image type>-<image-feature>-<image-scope>-<accelerator>-<python-version>-<os-version>`
