@@ -11,8 +11,8 @@ metadata:
       == "odh-poc"
       && (
       ".tekton/odh-minimal-notebook-kpoc-push.yaml".pathChanged() ||
-      "jupyter/minimal/ubi9-python-3.11".pathChanged() ||
-      "jupyter/utils".pathChanged())
+      "jupyter/minimal/ubi9-python-3.11/**".pathChanged() ||
+      "jupyter/utils/**".pathChanged())
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: odh-release
