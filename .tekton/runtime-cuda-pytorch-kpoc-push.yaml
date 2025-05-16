@@ -32,6 +32,17 @@ spec:
     value: runtimes/pytorch/ubi9-python-3.11/Dockerfile.cuda
   - name: path-context
     value: .
+  taskRunSpecs:
+    - pipelineTaskName: build-container
+      stepSpecs:
+        - name: build
+          computeResources:
+            requests:
+              cpu: '8'
+              memory: 16Gi
+            limits:
+              cpu: '16'
+              memory: 32Gi
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
