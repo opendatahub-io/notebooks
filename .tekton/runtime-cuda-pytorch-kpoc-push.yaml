@@ -9,6 +9,10 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
       == "odh-poc"
+      && (
+      ".tekton/runtime-cuda-pytorch-kpoc-push.yaml".pathChanged() ||
+      "runtimes/pytorch/ubi9-python-3.11/**".pathChanged() ||
+      "jupyter/utils/**".pathChanged())
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: odh-release
