@@ -21,6 +21,8 @@ metadata:
   name: odh-rocm-minimal-notebook-kpoc-on-push
   namespace: open-data-hub-tenant
 spec:
+  timeouts:
+    pipeline: 8h
   params:
   - name: git-url
     value: '{{source_url}}'
