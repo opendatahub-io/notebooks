@@ -21,6 +21,8 @@ metadata:
   name: runtime-cuda-pytorch-kpoc-on-push
   namespace: open-data-hub-tenant
 spec:
+  timeouts:
+    pipeline: 8h
   params:
   - name: git-url
     value: '{{source_url}}'
@@ -32,6 +34,17 @@ spec:
     value: runtimes/pytorch/ubi9-python-3.11/Dockerfile.cuda
   - name: path-context
     value: .
+  taskRunSpecs:
+    - pipelineTaskName: build-container
+      stepSpecs:
+        - name: build
+          computeResources:
+            requests:
+              cpu: '8'
+              memory: 16Gi
+            limits:
+              cpu: '16'
+              memory: 32Gi
   taskRunSpecs:
     - pipelineTaskName: build-container
       stepSpecs:
