@@ -186,6 +186,10 @@ jobs:
           # remote (CONTAINER_HOST) podman does not do reset (and refuses --force option)
           sudo /home/linuxbrew/.linuxbrew/opt/podman/bin/podman system reset --force
 
+          # https://github.com/containers/podman/pull/25504
+          # podman 5.5.0: The podman system reset command no longer removes the user's podman.sock API socket
+          sudo rm -rf /var/run/podman
+
           # https://github.com/containers/podman/blob/main/docs/tutorials/socket_activation.md
           # since `brew services start podman` is buggy, let's do our own brew-compatible service
           # Regarding directory paths, see https://unix.stackexchange.com/questions/224992/where-do-i-put-my-systemd-unit-file
@@ -204,7 +208,12 @@ jobs:
 
       - name: Show error logs (on failure)
         if: ${{ failure() }}
-        run: journalctl -xe
+        run: |
+          set -Eeuxo pipefail
+
+          journalctl -xe
+          ls -AlF /var/run/podman/podman.sock || echo "Socket /var/run/podman/podman.sock not found"
+          sudo ss -xlpn | grep 'podman.sock' || echo "No active listener found for podman.sock via ss"
 
       - name: Calculate image name and tag
         id: calculated_vars
