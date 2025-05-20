@@ -69,8 +69,9 @@ jobs:
         id: validate-yaml-files
         run: |
           type yamllint || sudo apt-get -y install yamllint
-          find . -name "*.yaml" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
-          find . -name "*.yml" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
+          # We ignore the .tekton directory with the konflux pipelines definitions as it's managed by devops (and usually violates rules...).
+          find . -name "*.yaml" | grep -v "./.tekton/" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
+          find . -name "*.yml" | grep -v "./.tekton/" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
 
       # In some YAML files we use JSON strings, let's check these
       - name: Validate JSON strings in YAML files (just syntax)
