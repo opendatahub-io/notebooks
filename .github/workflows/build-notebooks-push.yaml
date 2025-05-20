@@ -2,6 +2,12 @@
 "name": "Build Notebooks (push)"
 "on":
   "push":
+    "paths-ignore":
+      # Don't build images if the only thing that changed is image digests in manifests
+      - manifests/base/params-latest.env
+      - manifests/base/params.env
+      # In fact, skip the build if there are only changes in manifests and nowhere else
+      - manifests/**
   "workflow_dispatch":
   "schedule":
     - "cron": "0 2 * * *"
