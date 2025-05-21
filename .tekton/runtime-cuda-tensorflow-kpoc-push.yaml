@@ -36,16 +36,6 @@ spec:
   - name: path-context
     value: .
   taskRunSpecs:
-    - pipelineTaskName: build-container
-      stepSpecs:
-        - name: build
-          computeResources:
-            requests:
-              cpu: '8'
-              memory: 16Gi
-            limits:
-              cpu: '16'
-              memory: 32Gi
     - pipelineTaskName: ecosystem-cert-preflight-checks
       computeResources:
         requests:
@@ -53,7 +43,7 @@ spec:
           memory: 16Gi
         limits:
           cpu: '16'
-          memory: 32Gi      
+          memory: 32Gi
     - pipelineTaskName: clair-scan
       computeResources:
         requests:
@@ -61,7 +51,7 @@ spec:
           memory: 16Gi
         limits:
           cpu: '16'
-          memory: 32Gi 
+          memory: 32Gi
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
