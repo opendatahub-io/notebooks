@@ -56,7 +56,7 @@ spec:
             limits:
               cpu: '16'
               memory: 32Gi
-     - pipelineTaskName: clair-scan
+    - pipelineTaskName: clair-scan
       stepSpecs:
         - name: build
           computeResources:
