@@ -9,7 +9,14 @@ WORKDIR /opt/app-root/bin
 USER 0
 
 # Install useful OS packages
-RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+RUN ARCH=$(uname -m) && \
+    echo "Detected architecture: $ARCH" && \
+    if [ "$ARCH" = "s390x" ]; then \
+        dnf install -y mesa-libGL skopeo gcc g++ make openssl-devel autoconf automake libtool cmake; \
+    else \
+        dnf install -y mesa-libGL skopeo; \
+    fi && \
+    dnf clean all && rm -rf /var/cache/yum
 
 # Other apps and tools installed as default user
 USER 1001
