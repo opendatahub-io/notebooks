@@ -433,7 +433,7 @@ function check_image() {
         echo "Couldn't get 'OPENSHIFT_BUILD_NAME' from set of the image environment variables, maybe this is a Konflux build?"
         # Let's keep this check here until we have all images on konflux - just to keep this check for older releases.
         # For konflux images, the name of the repository should be now good enough as a check instead of this variable.
-        build_name_raw="OPENSHIFT_BUILD_NAME=konflux"
+        build_name_raw="\"OPENSHIFT_BUILD_NAME=konflux\""
     }
     openshift_build_name=$(echo "${build_name_raw}" | sed 's/.*"OPENSHIFT_BUILD_NAME=\(.*\)".*/\1/') || {
         echo "Couldn't parse value of the 'OPENSHIFT_BUILD_NAME' variable from '${build_name_raw}'!"
