@@ -491,6 +491,23 @@ function check_image_commit_id_matches_metadata() {
     }
 }
 
+function check_image_repo_name() {
+    local image_variable="${1}"
+    local image_url="${2}"
+    local image_variable_filtered=""
+    local repository_name=""
+
+    # Line record example:
+    # odh-pipeline-runtime-tensorflow-rocm-py311-ubi9-n=quay.io/modh/odh-pipeline-runtime-tensorflow-rocm-py311-ubi9@sha256:ae1ebd1f0b3dd444b5271101a191eb16ec4cc9735c8cab7f836aae5dfe31ae89
+    image_variable_filtered=$(echo "${image_variable}" | sed 's/\(.*\)-n.*/\1/')
+    repository_name=$(echo "${image_url}" | sed 's#.*/\(.*\)@.*#\1#')
+
+    test "${image_variable_filtered}" == "${repository_name}" || {
+        echo "The image repository name '${repository_name}' doesn't match the filtered image variable value '${image_variable_filtered}'!"
+        return 1
+    }
+}
+
 function check_image() {
     local image_variable="${1}"
     local image_url="${2}"
@@ -507,19 +524,22 @@ function check_image() {
         echo "Couldn't download image config metadata with skopeo tool!"
         return 1
     }
-    image_name=$(echo "${image_metadata_config}" | jq --raw-output '.config.Labels.name') ||  {
+    image_name=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Labels.name') || {
         echo "Couldn't parse '.config.Labels.name' from image metadata!"
         return 1
     }
-    image_commit_id=$(echo "${image_metadata_config}" | jq --raw-output '.config.Labels."io.openshift.build.commit.id"') ||  {
-        echo "Couldn't parse '.config.Labels."io.openshift.build.commit.id"' from image metadata!"
-        return 1
+    image_commit_id=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Labels."io.openshift.build.commit.id"') || {
+        echo "Couldn't parse '.config.Labels."io.openshift.build.commit.id"' from image metadata, maybe this is a Konflux build?"
+        image_commit_id=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Labels."git.commit"') || {
+            echo "Couldn't parse '.config.Labels."git.commit"' from image metadata!"
+            return 1
+        }
     }
-    image_commitref=$(echo "${image_metadata_config}" | jq --raw-output '.config.Labels."io.openshift.build.commit.ref"') ||  {
+    image_commitref=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Labels."io.openshift.build.commit.ref"') || {
         echo "Couldn't parse '.config.Labels."io.openshift.build.commit.ref"' from image metadata!"
         return 1
     }
-    image_created=$(echo "${image_metadata_config}" | jq --raw-output '.created') ||  {
+    image_created=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.created') || {
         echo "Couldn't parse '.created' from image metadata!"
         return 1
     }
@@ -528,13 +548,15 @@ function check_image() {
     local build_name_raw
     local openshift_build_name
 
-    config_env=$(echo "${image_metadata_config}" | jq --raw-output '.config.Env') || {
+    config_env=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Env') || {
         echo "Couldn't parse '.config.Env' from image metadata!"
         return 1
     }
     build_name_raw=$(echo "${config_env}" | grep '"OPENSHIFT_BUILD_NAME=') || {
-        echo "Couldn't get 'OPENSHIFT_BUILD_NAME' from set of the image environment variables!"
-        return 1
+        echo "Couldn't get 'OPENSHIFT_BUILD_NAME' from set of the image environment variables, maybe this is a Konflux build?"
+        # Let's keep this check here until we have all images on konflux - just to keep this check for older releases.
+        # For konflux images, the name of the repository should be now good enough as a check instead of this variable.
+        build_name_raw="OPENSHIFT_BUILD_NAME=konflux"
     }
     openshift_build_name=$(echo "${build_name_raw}" | sed 's/.*"OPENSHIFT_BUILD_NAME=\(.*\)".*/\1/') || {
         echo "Couldn't parse value of the 'OPENSHIFT_BUILD_NAME' variable from '${build_name_raw}'!"
@@ -553,7 +575,7 @@ function check_image() {
     # 'tests/containers/base_image_test.py#test_image_size_change' where we check against the extracted image size.
     # There is no actual reason to compare these different sizes except that in this case we want to do check the
     # image remotely, whereas in the othe test, we have the image present locally on the machine.
-    image_size=$(echo "${image_metadata}" | jq '[ .layers[].size ] | add') ||  {
+    image_size=$(echo "${image_metadata}" | jq --exit-status '[ .layers[].size ] | add') ||  {
         echo "Couldn't count image size from image metadata!"
         return 1
     }
@@ -575,6 +597,11 @@ function check_image() {
         "${openshift_build_name}" "${image_size_mb}" || return 1
 
     check_image_commit_id_matches_metadata "${image_variable}" "${image_commit_id}" || return 1
+
+    if test "${openshift_build_name}" == "konflux"; then
+        # We presume the image is build on Konflux and as such we are using explicit repository name for each image type.
+        check_image_repo_name "${image_variable}" "${image_url}" || return 1
+    fi
 
     echo "---------------------------------------------"
 }
