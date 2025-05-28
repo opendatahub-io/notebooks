@@ -86,7 +86,7 @@ COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 USER 0
 
-# TexLive dependency for PDF export
+# Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
 ENV PATH="/usr/local/texlive/bin/x86_64-linux:/usr/local/pandoc/bin:$PATH"
 
