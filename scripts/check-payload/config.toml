@@ -173,6 +173,13 @@ dirs = ["/assets/downloads/cli"]
 # Temporary supprsssions for workbenches
 # https://github.com/openshift/check-payload/blob/main/internal/types/errors.go
 
+[[rpm.pandoc.ignore]]
+error = "ErrNotDynLinked"
+files = [
+    # executable is not dynamically linked
+    "/usr/local/pandoc/bin/pandoc",
+]
+
 [[rpm.rstudio-server.ignore]]
 error = "ErrNotDynLinked"
 files = [

@@ -12,7 +12,7 @@ cd /usr/local/texlive/bin/x86_64-linux
 ./tlmgr install tcolorbox pdfcol adjustbox titling enumitem soul ucs collection-fontsrecommended
 
 # pandoc installation
-curl -L https://github.com/jgm/pandoc/releases/download/3.6.4/pandoc-3.6.4-linux-amd64.tar.gz  -o /tmp/pandoc.tar.gz
+curl -L https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-amd64.tar.gz  -o /tmp/pandoc.tar.gz
 mkdir -p /usr/local/pandoc
 tar xvzf /tmp/pandoc.tar.gz --strip-components 1 -C /usr/local/pandoc/
 rm -f /tmp/pandoc.tar.gz
