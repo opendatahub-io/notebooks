@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 import tempfile
-import textwrap
+
 import allure
 import pytest
 import requests
@@ -84,7 +84,7 @@ class TestJupyterLabImage:
                 "nbformat": 4,
                 "nbformat_minor": 5
             }
-        """.replace('\n', '')
+        """.replace("\n", "")
         try:
             container.start(wait_for_readiness=True)
             with tempfile.TemporaryDirectory() as tmpdir:
