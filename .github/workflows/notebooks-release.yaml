@@ -1,11 +1,6 @@
 ---
 name: Notebooks Release
 on:
-  pull_request:
-    branches:
-      - test
-    types: 
-      - closed
   workflow_dispatch:
     inputs:
       tag:
@@ -121,6 +116,7 @@ jobs:
   create-release:
     needs: [check-pr-merged, create-pull-request]
     if: needs.check-pr-merged.outputs.pr_merged == 'true'
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
