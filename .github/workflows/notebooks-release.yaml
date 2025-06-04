@@ -65,7 +65,7 @@ jobs:
             - `manifests/base/runtime-*.yamls` file with the latest updated SHA digests of the runtimes.
             - `manifests/base/commit.env` file with the latest commit.
         
-  manifests-merged:
+  Manifests-merged:
     needs: Update-manifests
     runs-on: ubuntu-latest
     outputs:
@@ -117,7 +117,7 @@ jobs:
           exit 1
   
   Verify-buidConfigs:
-    needs: [Update-manifests, manifests-merged]
+    needs: [Update-manifests, Manifests-merged]
     if: needs.check-pr-merged.outputs.pr_merged_m == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -136,7 +136,7 @@ jobs:
           done < ./manifests/base/rstudio-buildconfig.yaml
 
   Generate-release:
-    needs: [Update-manifests, manifests-merged, Verify-buidConfigs]
+    needs: [Update-manifests, Manifests-merged, Verify-buidConfigs]
     if: needs.check-pr-merged.outputs.pr_merged_m == 'true'
     runs-on: ubuntu-latest
     steps:
