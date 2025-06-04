@@ -40,6 +40,11 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      - name: Store Environment Variables
+        run: |
+          echo "RELEASE_TAG=${{ env.RELEASE_TAG }}" >> $GITHUB_ENV
+          echo "RELEASE_NAME=${{ env.RELEASE_NAME }}" >> $GITHUB_ENV
+
       - name: Check out repository
         uses: actions/checkout@v4
         with:
@@ -69,6 +74,7 @@ jobs:
             - `manifests/base/commit.env` file with the latest commit.
         
   release:
+    needs: create-pull-request
     name: Release Notebooks
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && contains(github.event.pull_request.head.ref, 'tmp-digest-sync-')
@@ -82,4 +88,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          gh release create "v1.32.0" --title="2025a-v1.32.0" --generate-notes --target ${{ github.event.pull_request.base.ref }}
+          gh release create "${{env.RELEASE_TAG}}" --title="${{env.RELEASE_NAME}}-${{env.RELEASE_TAG}}" --generate-notes --target ${{ github.event.pull_request.base.ref }}
