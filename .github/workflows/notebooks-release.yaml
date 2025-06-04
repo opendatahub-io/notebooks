@@ -87,5 +87,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          gh release list --repo ${{ github.event.repository }} --exclude-drafts --exclude-pre-releases --json tagName,publishedAt --jq 'sort_by(.publishedAt) | reverse | .[0].tagName'
+          gh release list --repo $GITHUB_REPOSITORY --exclude-drafts --exclude-pre-releases --json tagName,publishedAt --jq 'sort_by(.publishedAt) | reverse | .[0].tagName'
           gh release create "${{env.RELEASE_TAG}}" --title="${{env.RELEASE_NAME}}-${{env.RELEASE_TAG}}" --generate-notes --target ${{ github.event.pull_request.base.ref }}
