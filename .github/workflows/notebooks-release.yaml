@@ -71,7 +71,7 @@ jobs:
   release:
     name: Release Notebooks
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && contains(github.event.pull_request.head.ref, 'tmp-digest-sync-')
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && contains(github.event.pull_request.head.ref, 'tmp-digest-sync-*')
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -82,4 +82,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          gh release create "v1.32.0" --title="$2025a-v1.32.0" --generate-notes --target ${{ github.event.pull_request.base.ref }}
+          gh release create "${{env.RELEASE_TAG}}" --title="$2025a-v1.32.0" --generate-notes --target ${{ github.event.pull_request.base.ref }}
