@@ -30,7 +30,7 @@ env:
   REPO_NAME: notebooks
 
 jobs:
-  Update the manifests directory:
+  Update-manifests:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
@@ -65,8 +65,8 @@ jobs:
             - `manifests/base/runtime-*.yamls` file with the latest updated SHA digests of the runtimes.
             - `manifests/base/commit.env` file with the latest commit.
         
-  Check manifests pr merged:
-    needs: create-pull-request
+  manifests-merged:
+    needs: Update-manifests
     runs-on: ubuntu-latest
     outputs:
       pr_merged_m: ${{ steps.check_pr.outputs.pr_merged_m }}
@@ -116,8 +116,8 @@ jobs:
           echo "pr_merged_m=false" >> $GITHUB_OUTPUT
           exit 1
   
-  Verify downstream BuidConfigs:
-    needs: [Check manifests pr merged, Update the manifests directory]
+  Verify-buidConfigs:
+    needs: [Update-manifests, manifests-merged]
     if: needs.check-pr-merged.outputs.pr_merged_m == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -135,8 +135,8 @@ jobs:
             echo "$line"
           done < ./manifests/base/rstudio-buildconfig.yaml
 
-  Generate a new release:
-    needs: [Check manifests pr merged, Update the manifests directory, Verify downstream BuidConfigs]
+  Generate-release:
+    needs: [Update-manifests, manifests-merged, Verify-buidConfigs]
     if: needs.check-pr-merged.outputs.pr_merged_m == 'true'
     runs-on: ubuntu-latest
     steps:
