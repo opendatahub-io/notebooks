@@ -94,7 +94,7 @@ jobs:
           fi
 
           MAX_ATTEMPTS=30
-
+          SLEEP_DURATION=1
           for (( i=1; i<=MAX_ATTEMPTS; i++ )); do
             for (( j=1; i<=600; j++ )); do
               echo "Checking if PR #$PR_NUMBER is merged (Attempt $i/$MAX_ATTEMPTS)..."
@@ -109,7 +109,7 @@ jobs:
                 echo "pr_merged_m=true" >> $GITHUB_OUTPUT
                 exit 0
               fi
-              sleep 1
+              sleep $SLEEP_DURATION
             done
           done
 
