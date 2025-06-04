@@ -82,4 +82,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
+          echo ${env.RELEASE_TAG}
+          echo ${env.RELEASE_NAME}
           gh release create "${{env.RELEASE_TAG}}" --title="$2025a-v1.32.0" --generate-notes --target ${{ github.event.pull_request.base.ref }}
