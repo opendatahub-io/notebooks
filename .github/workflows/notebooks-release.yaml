@@ -19,6 +19,11 @@ on:
         description: 'Base branch for the release'
         required: true
         default: 'test'
+    
+    pull_request:
+      branches:
+        - test
+      types: [closed]
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -29,6 +34,7 @@ env:
 
 jobs:
   create-pull-request:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -53,3 +59,19 @@ jobs:
             - `manifests/base/params.env` file with the latest updated SHA digests of the notebooks.
             - `manifests/base/runtime-*.yamls` file with the latest updated SHA digests of the runtimes.
             - `manifests/base/commit.env` file with the latest commit.
+        
+  release:
+    name: Release Notebooks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && contains(github.event.pull_request.head.ref, 'tmp-digest-sync-')
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Invoke Script to handle creating a release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          gh release create "${{env.RELEASE_TAG}}" --title="${{env.RELEASE_NAME}}-${{env.RELEASE_TAG}}" --generate-notes
