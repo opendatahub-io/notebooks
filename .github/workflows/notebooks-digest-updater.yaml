@@ -8,16 +8,28 @@ on:  # yamllint disable-line rule:truthy
       branch:
         required: false
         description: "Optional: Provide branch name"
+        type: string
       user-hash:
         required: false
         description: "Optional: Specify a Git hash (it should exists on the branch history)"
+        type: string
+  workflow_call:
+    inputs:
+      branch:
+        required: false
+        description: "Optional: Provide branch name"
+        type: string
+      user-hash:
+        required: false
+        description: "Optional: Specify a Git hash (it should exists on the branch history)"
+        type: string
 
 env:
-  USER_HASH: ${{ github.event.inputs.user-hash }}
-  REPO_ORG: ${{ github.repository_owner }}
+  USER_HASH: ${{ inputs.user-hash }}
+  REPO_ORG: opendatahub-io
   REPO_NAME: 'notebooks'
   TMP_BRANCH: tmp-digest-sync-${{ github.run_id }}
-  BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
+  BRANCH_NAME: ${{ inputs.branch || 'main' }}
 
 jobs:
   update-images:
@@ -100,7 +112,7 @@ jobs:
             gh pr create --repo https://github.com/$REPO_ORG/$REPO_NAME.git \
               --title "$PR_TITLE" \
               --body "$body" \
-              --head $REPO_ORG:${{ env.TMP_BRANCH }} \
+              --head ${{ env.TMP_BRANCH }} \
               --base ${{ env.BRANCH_NAME }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
