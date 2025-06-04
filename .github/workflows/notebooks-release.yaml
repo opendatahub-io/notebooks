@@ -101,7 +101,7 @@ jobs:
 
               if [ "$PR_STATE" = "null" ] || [ -z "$PR_STATE" ]; then
                 echo "PR #$PR_NUMBER is not merged yet. Waiting..."
-                sleep 5
+                sleep 1
               else
                 echo "PR #$PR_NUMBER is merged!"
                 echo "pr_merged_m=true" >> $GITHUB_ENV
@@ -115,28 +115,9 @@ jobs:
           echo "pr_merged_m=false" >> $GITHUB_ENV
           echo "pr_merged_m=false" >> $GITHUB_OUTPUT
           exit 1
-  
-  Verify-buidConfigs:
-    needs: [Update-manifests, Manifests-merged]
-    if: needs.check-pr-merged.outputs.pr_merged_m == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Invoke Script to handle verifying downstream BuildConfigs
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: ${{env.GITHUB_WORKSPACE}}
-        run: |
-          while IFS= read -r line; do
-            echo "$line"
-          done < ./manifests/base/rstudio-buildconfig.yaml
 
   Generate-release:
-    needs: [Update-manifests, Manifests-merged, Verify-buidConfigs]
+    needs: [Update-manifests, Manifests-merged]
     if: needs.check-pr-merged.outputs.pr_merged_m == 'true'
     runs-on: ubuntu-latest
     steps:
