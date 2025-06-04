@@ -26,6 +26,8 @@ env:
   RELEASE_NAME: ${{ github.event.inputs.release_name }}
   BASE_BRANCH: ${{ github.event.inputs.base_branch }}
   HEAD_BRANCH: ${{ github.event.inputs.head_branch }}
+  REPO_OWNER: mtchoum1
+  REPO_NAME: notebooks
 
 jobs:
   create-pull-request:
