@@ -6,7 +6,7 @@ on:
       tag:
         description: 'Release tag for the notebooks release'
         required: true
-        default: 'v1.30.0'
+        default: 'v1.32.0'
       release_name:
         description: 'Name of the release'
         required: true
@@ -85,7 +85,7 @@ jobs:
           PR_TITLE="[Updater Action] Update Notebook and Runtime Images as well as the Commits With New SHAs"
 
           #Fetch matching PRs
-          PR_NUMBERS=$(gh pr list "$REPO_OWNER/$REPO_NAME" --state all --search "$PR_TITLE" --json number,title --jq '.[].number')
+          PR_NUMBERS=$(gh pr list --repo "$REPO_OWNER/$REPO_NAME" --state all --search "$PR_TITLE" --json number,title | jq -r '.[0].number')
           echo "PR Numbers: $PR_NUMBERS"
 
           if [ -z "$PR_NUMBERS" ]; then
