@@ -36,11 +36,19 @@ jobs:
   create-pull-request:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
       
       - name: Create Target Branch
         run: |
@@ -74,4 +82,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          gh release create "${{env.RELEASE_TAG}}" --title="${{env.RELEASE_NAME}}-${{env.RELEASE_TAG}}" --generate-notes
+          gh release create "v1.30.0" --title="2025a-v1.30.0" --generate-notes
