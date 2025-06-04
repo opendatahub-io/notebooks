@@ -82,4 +82,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          gh release create "v1.32.0" --title="2025a-v1.32.0" --generate-notes --target ${{ github.event.pull_request.head.ref }}
+          gh release create "v1.32.0" --title="2025a-v1.32.0" --generate-notes --target ${{ github.event.pull_request.base.ref }}
