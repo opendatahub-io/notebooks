@@ -1,0 +1,204 @@
+---
+name: Notebooks Release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag for the notebooks release'
+        required: true
+        default: 'v1.32.0'
+        type: string
+      release_name:
+        description: 'Name of the release'
+        required: true
+        default: '2025a'
+        type: string
+      buildconfigs_version:
+        description: 'Version to update the BuildConfigs to (if applicable)'
+        required: false
+        type: string
+      update_buildconfigs:
+        description: 'Update BuildConfigs for CUDA RStudio and RStudio'
+        required: true
+        default: 'true'
+        type: boolean
+      branch:
+        description: "Optional: Provide branch name"
+        required: false
+        type: string
+      user-hash:
+        description: "Optional: Specify a Git hash (it should exists on the branch history)"
+        required: false
+        type: string
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag }}
+  RELEASE_NAME: ${{ github.event.inputs.release_name }}
+  BRANCH: ${{ github.event.inputs.branch }}
+  USER_HASH: ${{ github.event.inputs.user-hash }}
+  REPO_OWNER: opendatahub-io
+  REPO_NAME: notebooks
+  VERSION: ${{ github.event.inputs.buildconfigs_version}}
+
+jobs:
+  #1. Update the params.env and commit.env files with new SHAs
+  Update-manifests:
+    uses: opendatahub-io/notebooks/.github/workflows/notebooks-digest-updater.yaml@main
+    with:
+      branch: ${{ github.event.inputs.branch }}
+      user-hash: ${{ github.event.inputs.user_hash }}
+
+  # 2. Check if the Manifest PR is merged      
+  Manifests-merged:
+    needs: Update-manifests
+    runs-on: ubuntu-latest
+    outputs:
+      pr_merged_m: ${{ steps.check_pr.outputs.pr_merged_m }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if PR is merged
+        id: check_pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # PR to look for
+          PR_TITLE="[Updater Action] Update Notebook and Runtime Images as well as the Commits With New SHAs"
+
+          #Fetch matching PRs
+          PR_NUMBER=$(gh pr list --repo "$REPO_OWNER/$REPO_NAME" --state all --search "$PR_TITLE" --json number,title | jq -r '.[0].number')
+          echo "PR Numbers: $PR_NUMBER"
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No PR found with title: $PR_TITLE"
+            exit 1
+          fi
+
+          MAX_ATTEMPTS=30
+          for (( i=1; i<=MAX_ATTEMPTS; i++ )); do
+            echo "Checking if PR #$PR_NUMBER is merged (Attempt $i/$MAX_ATTEMPTS)..."
+            for (( j=1; i<=600; j++ )); do
+              PR_STATE=$(gh pr view --repo "$REPO_OWNER/$REPO_NAME" $PR_NUMBER --json mergedAt --jq '.mergedAt')
+
+              if [ "$PR_STATE" = "null" ] || [ -z "$PR_STATE" ]; then
+                echo "PR #$PR_NUMBER is not merged yet. Waiting..."
+                sleep 1
+              else
+                echo "PR #$PR_NUMBER is merged!"
+                echo "pr_merged_m=true" >> $GITHUB_ENV
+                echo "pr_merged_m=true" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            done
+          done
+
+          echo "Timed out waiting for PR #$PR_NUMBER to be merged."
+          echo "pr_merged_m=false" >> $GITHUB_ENV
+          echo "pr_merged_m=false" >> $GITHUB_OUTPUT
+          exit 1
+
+  # 3. Update the BuildConfigs for CUDA RStudio and RStudio
+  Update-buildConfigs:
+    if: github.event.inputs.update_buildconfigs == 'true'
+    uses: opendatahub-io/notebooks/.github/workflows/update-buildconfigs.yaml@main
+    with:
+      branch: ${{ github.event.inputs.branch }}
+      version: ${{ github.event.inputs.buildconfigs_version }}
+
+  # 4. Check if the BuildConfigs PR is merged
+  BuildConfigs-merged:
+    if: github.event.inputs.update_buildconfigs == 'true'
+    needs: Update-buildConfigs
+    runs-on: ubuntu-latest
+    outputs:
+      pr_merged_b: ${{ steps.check_pr.outputs.pr_merged_b }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if PR is merged
+        id: check_pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # PR to look for
+          PR_TITLE="[Updater Action] Update BuildConfigs for CUDA RStudio and RStudio"
+
+          #Fetch matching PRs
+          PR_NUMBER=$(gh pr list --repo "$REPO_OWNER/$REPO_NAME" --state all --search "$PR_TITLE" --json number,title | jq -r '.[0].number')
+          echo "PR Numbers: $PR_NUMBER"
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No PR found with title: $PR_TITLE"
+            exit 1
+          fi
+
+          MAX_ATTEMPTS=30
+          for (( i=1; i<=MAX_ATTEMPTS; i++ )); do
+            echo "Checking if PR #$PR_NUMBER is merged (Attempt $i/$MAX_ATTEMPTS)..."
+            for (( j=1; i<=600; j++ )); do
+              PR_STATE=$(gh pr view --repo "$REPO_OWNER/$REPO_NAME" $PR_NUMBER --json mergedAt --jq '.mergedAt')
+
+              if [ "$PR_STATE" = "null" ] || [ -z "$PR_STATE" ]; then
+                echo "PR #$PR_NUMBER is not merged yet. Waiting..."
+                sleep 1
+              else
+                echo "PR #$PR_NUMBER is merged!"
+                echo "pr_merged_b=true" >> $GITHUB_ENV
+                echo "pr_merged_b=true" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            done
+          done
+
+          echo "Timed out waiting for PR #$PR_NUMBER to be merged."
+          echo "pr_merged_b=false" >> $GITHUB_ENV
+          echo "pr_merged_b=false" >> $GITHUB_OUTPUT
+          exit 1
+
+  # 5. Generate the release with BuildConfigs if needed
+  Generate-release_with_buildconfigs:
+    needs: [Update-manifests, Manifests-merged, Update-buildConfigs, BuildConfigs-merged]
+    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs-merged.outputs.pr_merged_b == 'true' && github.event.inputs.update_buildconfigs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Invoke Script to handle creating a release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target $BRANCH
+
+  # 6. Generate the release without BuildConfigs
+  Generate-release:
+    needs: [Update-manifests, Manifests-merged]
+    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && github.event.inputs.update_buildconfigs == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Create Source Branch
+        run: |
+          git checkout -b $SOURCE_BRANCH
+          git push origin $SOURCE_BRANCH
+      
+      - name: create pull request
+        run: |
+          gh pr create -B $SOURCE_BRANCH -H $TARGET_BRANCH --title 'Merge branch_to_merge into base_branch' --body 'Created by Github action'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target $BRANCH

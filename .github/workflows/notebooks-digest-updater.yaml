@@ -8,16 +8,28 @@ on:  # yamllint disable-line rule:truthy
       branch:
         required: false
         description: "Optional: Provide branch name"
+        type: string
       user-hash:
         required: false
         description: "Optional: Specify a Git hash (it should exists on the branch history)"
+        type: string
+  workflow_call:
+    inputs:
+      branch:
+        required: false
+        description: "Optional: Provide branch name"
+        type: string
+      user-hash:
+        required: false
+        description: "Optional: Specify a Git hash (it should exists on the branch history)"
+        type: string
 
 env:
-  USER_HASH: ${{ github.event.inputs.user-hash }}
+  USER_HASH: ${{ inputs.user-hash }}
   REPO_ORG: ${{ github.repository_owner }}
   REPO_NAME: 'notebooks'
   TMP_BRANCH: tmp-digest-sync-${{ github.run_id }}
-  BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
+  BRANCH_NAME: ${{ inputs.branch || 'main' }}
 
 jobs:
   update-images:
