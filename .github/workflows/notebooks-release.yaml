@@ -58,10 +58,6 @@ jobs:
         run: |
           set -e
 
-          # Fetch and checkout target branch
-          git fetch origin ${{ env.BASE_BRANCH }}:${{ env.BASE_BRANCH }}
-          git checkout ${{ env.BASE_BRANCH }}
-
           # Fetch and merge source branch
           git fetch origin ${{ env.HEAD_BRANCH }}:${{ env.HEAD_BRANCH }}
           git merge --no-commit origin/${{ env.HEAD_BRANCH }} || true
