@@ -1,0 +1,30 @@
+---
+name: Notebooks Release
+on:
+  pull_request:
+    branches:
+      - test
+    types: [closed]
+
+env:
+  RELEASE_TAG: "v1.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release Notebooks
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.head.ref, 'tmp-digest-sync-')
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Invoke Script to handle creating a release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          gh release create "${{env.RELEASE_TAG}}" --generate-notes
