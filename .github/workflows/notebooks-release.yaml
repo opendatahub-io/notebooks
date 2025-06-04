@@ -11,21 +11,21 @@ on:
         description: 'Name of the release'
         required: true
         default: '2025a'
-      source_branch:
-        description: 'Source branch for the release'
-        required: true
-        default: 'test'
-      target_branch:
-        description: 'Target branch for the release'
+      head_branch:
+        description: 'head branch for the release'
         required: true
         default: 'tmp-digest-sync-14488482962'
+      base_branch:
+        description: 'Base branch for the release'
+        required: true
+        default: 'test'
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   RELEASE_TAG: ${{ github.event.inputs.tag }}
   RELEASE_NAME: ${{ github.event.inputs.release_name }}
-  SOURCE_BRANCH: ${{ github.event.inputs.source_branch }}
-  TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
+  BASE_BRANCH: ${{ github.event.inputs.base_branch }}
+  HEAD_BRANCH: ${{ github.event.inputs.head_branch }}
 
 jobs:
   create-pull-request:
@@ -36,14 +36,14 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Create Source Branch
+      - name: Create Target Branch
         run: |
-          git checkout -b $SOURCE_BRANCH
-          git push origin $SOURCE_BRANCH
+          git checkout -b $BASE_BRANCH
+          git push origin $BASE_BRANCH
       
       - name: create pull request
         run: |
-          gh pr create -B $SOURCE_BRANCH -H $TARGET_BRANCH --title '$PR_TITLE' --body '$PR_BODY'
+          gh pr create -B $BASE_BRANCH -H $HEAD_BRANCH --title "$PR_TITLE" --body "$PR_BODY"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_TITLE: "[Updater Action] Update Notebook and Runtime Images as well as the Commits With New SHAs"
@@ -59,12 +59,12 @@ jobs:
           set -e
 
           # Fetch and checkout target branch
-          git fetch origin ${{ env.TARGET_BRANCH }}:${{ env.TARGET_BRANCH }}
-          git checkout ${{ env.TARGET_BRANCH }}
+          git fetch origin ${{ env.BASE_BRANCH }}:${{ env.BASE_BRANCH }}
+          git checkout ${{ env.BASE_BRANCH }}
 
           # Fetch and merge source branch
-          git fetch origin ${{ env.SOURCE_BRANCH }}:${{ env.SOURCE_BRANCH }}
-          git merge --no-commit origin/${{ env.SOURCE_BRANCH }} || true
+          git fetch origin ${{ env.HEAD_BRANCH }}:${{ env.HEAD_BRANCH }}
+          git merge --no-commit origin/${{ env.HEAD_BRANCH }} || true
 
           # Known files to resolve the conflicts
           FILES=(
@@ -97,11 +97,11 @@ jobs:
 
           # Commit changes if any
           if [[ -n "$(git status --porcelain)" ]]; then
-            git commit -m "Merge ${{ env.SOURCE_BRANCH }} into ${{ env.TARGET_BRANCH }} with known resolved conflicts"
+            git commit -m "Merge ${{ env.HEAD_BRANCH }} into ${{ env.BASE_BRANCH }} with known resolved conflicts"
           else
             echo "No changes to commit. Skipping push."
             exit 0
           fi
 
           # Push changes directly to target branch
-          git push origin ${{ env.TARGET_BRANCH }}
+          git push origin ${{ env.BASE_BRANCH }}
