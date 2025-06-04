@@ -42,6 +42,7 @@ jobs:
           git push origin ${{ SOURCE_BRANCH}}
       
       - name: create pull request
-        run: gh pr create -B ${{ SOURCE_BRANCH}} -H ${{ TARGET_BRANCH }} --title 'Merge branch_to_merge into base_branch' --body 'Created by Github action'
+        run: |
+          gh pr create -B ${{ SOURCE_BRANCH}} -H ${{ TARGET_BRANCH }} --title 'Merge branch_to_merge into base_branch' --body 'Created by Github action'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
