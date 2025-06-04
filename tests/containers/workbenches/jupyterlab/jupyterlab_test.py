@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import pathlib
+import tempfile
+
 import allure
 import pytest
 import requests
@@ -48,6 +51,51 @@ class TestJupyterLabImage:
             assert response.status_code == 200
             assert "text/html" in response.headers["content-type"]
             assert 'class="pf-v6-c-spinner"' in response.text
+        finally:
+            docker_utils.NotebookContainer(container).stop(timeout=0)
+
+    @allure.issue("RHOAIENG-16568")
+    @allure.description("Check that PDF export is working correctly")
+    def test_pdf_export(self, jupyterlab_image: conftest.Image) -> None:
+        container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
+        test_file_name = "test.ipybn"
+        test_file_content = """{
+                "cells": [
+                    {
+                        "cell_type": "markdown",
+                        "metadata": {},
+                        "source": [ "# Hello World" ]
+                    },
+                    {
+                        "cell_type": "code",
+                        "execution_count": 1,
+                        "metadata": {},
+                        "outputs": [
+                            {
+                                "name": "stdout",
+                                "output_type": "stream",
+                                "text": [ "Hello World\n" ]
+                            }
+                        ],
+                        "source": [ "print('Hello World')" ]
+                    }
+                ],
+                "metadata": {},
+                "nbformat": 4,
+                "nbformat_minor": 5
+            }
+        """.replace("\n", "")
+        try:
+            container.start(wait_for_readiness=True)
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmpdir = pathlib.Path(tmpdir)
+                (tmpdir / test_file_name).write_text(test_file_content)
+                docker_utils.container_cp(
+                    container.get_wrapped_container(), src=str(tmpdir / test_file_name), dst=self.APP_ROOT_HOME
+                )
+            exit_code, convert_output = container.exec(["jupyter", "nbconvert", test_file_name, "--to", "pdf"])
+            assert "PDF successfully created" in convert_output.decode()
+            assert 0 == exit_code
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
