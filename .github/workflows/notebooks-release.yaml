@@ -30,7 +30,7 @@ env:
   REPO_NAME: notebooks
 
 jobs:
-  create-pull-request:
+  Update the manifests directory:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
@@ -65,11 +65,11 @@ jobs:
             - `manifests/base/runtime-*.yamls` file with the latest updated SHA digests of the runtimes.
             - `manifests/base/commit.env` file with the latest commit.
         
-  check-pr-merged:
+  Check manifests pr merged:
     needs: create-pull-request
     runs-on: ubuntu-latest
     outputs:
-      pr_merged: ${{ steps.check_pr.outputs.pr_merged }}
+      pr_merged_m: ${{ steps.check_pr.outputs.pr_merged_m }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -105,19 +105,39 @@ jobs:
               sleep $SLEEP_DURATION
             else
               echo "PR #$PR_NUMBER is merged!"
-              echo "pr_merged=true" >> $GITHUB_ENV
-              echo "pr_merged=true" >> $GITHUB_OUTPUT
+              echo "pr_merged_m=true" >> $GITHUB_ENV
+              echo "pr_merged_m=true" >> $GITHUB_OUTPUT
               exit 0
             fi
           done
 
           echo "Timed out waiting for PR #$PR_NUMBER to be merged."
-          echo "pr_merged=false" >> $GITHUB_ENV
-          echo "pr_merged=false" >> $GITHUB_OUTPUT
+          echo "pr_merged_m=false" >> $GITHUB_ENV
+          echo "pr_merged_m=false" >> $GITHUB_OUTPUT
           exit 1
-  create-release:
-    needs: [check-pr-merged, create-pull-request]
-    if: needs.check-pr-merged.outputs.pr_merged == 'true'
+  
+  Verify downstream BuidConfigs:
+    needs: [Check manifests pr merged, Update the manifests directory]
+    if: needs.check-pr-merged.outputs.pr_merged_m == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Invoke Script to handle verifying downstream BuildConfigs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          while IFS= read -r line; do
+            echo "$line"
+          done < ./manifests/base/rstudio-buildconfig.yaml
+
+  Generate a new release:
+    needs: [Check manifests pr merged, Update the manifests directory]
+    if: needs.check-pr-merged.outputs.pr_merged_m == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
