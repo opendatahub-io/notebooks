@@ -85,10 +85,10 @@ jobs:
           PR_TITLE="[Updater Action] Update Notebook and Runtime Images as well as the Commits With New SHAs"
 
           #Fetch matching PRs
-          PR_NUMBERS=$(gh pr list --repo "$REPO_OWNER/$REPO_NAME" --state all --search "$PR_TITLE" --json number,title | jq -r '.[0].number')
-          echo "PR Numbers: $PR_NUMBERS"
+          PR_NUMBER=$(gh pr list --repo "$REPO_OWNER/$REPO_NAME" --state all --search "$PR_TITLE" --json number,title | jq -r '.[0].number')
+          echo "PR Numbers: $PR_NUMBER"
 
-          if [ -z "$PR_NUMBERS" ]; then
+          if [ -z "$PR_NUMBER" ]; then
             echo "No PR found with title: $PR_TITLE"
             exit 1
           fi
