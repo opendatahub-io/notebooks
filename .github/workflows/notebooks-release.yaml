@@ -40,15 +40,15 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - name: Store Environment Variables
-        run: |
-          echo "RELEASE_TAG=${{ env.RELEASE_TAG }}" >> $GITHUB_ENV
-          echo "RELEASE_NAME=${{ env.RELEASE_NAME }}" >> $GITHUB_ENV
-
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          
+      - name: Store Environment Variables
+        run: |
+          echo "${{ env.RELEASE_TAG }}" > ./RELEASE_TAG
+          echo "${{ env.RELEASE_NAME }}" > ./RELEASE_NAME
       
       - name: Configure Git
         run: |
