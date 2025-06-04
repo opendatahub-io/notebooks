@@ -43,6 +43,65 @@ jobs:
       
       - name: create pull request
         run: |
-          gh pr create -B $SOURCE_BRANCH -H $TARGET_BRANCH --title 'Merge branch_to_merge into base_branch' --body 'Created by Github action'
+          gh pr create -B $SOURCE_BRANCH -H $TARGET_BRANCH --title '$PR_TITLE' --body '$PR_BODY'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: "[Updater Action] Update Notebook and Runtime Images as well as the Commits With New SHAs"
+          PR_BODY: |
+            :rocket: This is an automated Pull Request.
+            Created by `/.github/workflows/notebooks-digest-updater.yaml`
+            - `manifests/base/params.env` file with the latest updated SHA digests of the notebooks.
+            - `manifests/base/runtime-*.yamls` file with the latest updated SHA digests of the runtimes.
+            - `manifests/base/commit.env` file with the latest commit.
+
+      - name: Merge source branch into target
+        run: |
+          set -e
+
+          # Fetch and checkout target branch
+          git fetch origin ${{ env.TARGET_BRANCH }}:${{ env.TARGET_BRANCH }}
+          git checkout ${{ env.TARGET_BRANCH }}
+
+          # Fetch and merge source branch
+          git fetch origin ${{ env.SOURCE_BRANCH }}:${{ env.SOURCE_BRANCH }}
+          git merge --no-commit origin/${{ env.SOURCE_BRANCH }} || true
+
+          # Known files to resolve the conflicts
+          FILES=(
+            "manifests/base/commit.env"
+            "manifests/base/params.env"
+            "manifests/base/runtime-datascience-imagestream.yaml"
+            "manifests/base/runtime-minimal-imagestream.yaml"
+            "manifests/base/runtime-pytorch-imagestream.yaml"
+            "manifests/base/runtime-rocm-pytorch-imagestream.yaml"
+            "manifests/base/runtime-rocm-tensorflow-imagestream.yaml"
+            "manifests/base/runtime-tensorflow-imagestream.yaml"
+          )
+
+          # Resolve conflicts for known files
+          for FILE in "${FILES[@]}"; do
+            if [[ -f "$FILE" && "$(git status --porcelain=v1 2>/dev/null | grep -c "$FILE")" -gt 0 ]]; then
+              echo "Resolving conflict for $FILE by keeping target branch version."
+              git checkout --ours "$FILE"
+              git add "$FILE"
+            fi
+          done
+
+          # Check for potential unresolved conflicts
+          if [[ -n "$(git ls-files -u)" ]]; then
+            echo "Unresolved conflicts detected in the following files:"
+            git ls-files -u
+            echo "Aborting merge due to unexpected conflicts."
+            exit 1
+          fi
+
+          # Commit changes if any
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git commit -m "Merge ${{ env.SOURCE_BRANCH }} into ${{ env.TARGET_BRANCH }} with known resolved conflicts"
+          else
+            echo "No changes to commit. Skipping push."
+            exit 0
+          fi
+
+          # Push changes directly to target branch
+          git push origin ${{ env.TARGET_BRANCH }}
