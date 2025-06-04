@@ -136,7 +136,7 @@ jobs:
           done < ./manifests/base/rstudio-buildconfig.yaml
 
   Generate a new release:
-    needs: [Check manifests pr merged, Update the manifests directory]
+    needs: [Check manifests pr merged, Update the manifests directory, Verify downstream BuidConfigs]
     if: needs.check-pr-merged.outputs.pr_merged_m == 'true'
     runs-on: ubuntu-latest
     steps:
