@@ -1,6 +1,11 @@
 ---
 name: Notebooks Release
 on:
+  pull_request:
+    branches:
+      - test
+    types: 
+      - closed
   workflow_dispatch:
     inputs:
       tag:
@@ -19,11 +24,6 @@ on:
         description: 'Base branch for the release'
         required: true
         default: 'test'
-    
-    pull_request:
-      branches:
-        - test
-      types: [closed]
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
