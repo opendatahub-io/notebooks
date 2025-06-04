@@ -1,6 +1,11 @@
 ---
 name: Notebooks Release
 on:
+  pull_request:
+    branches:
+      - test
+    types: 
+      - closed
   workflow_dispatch:
     inputs:
       tag:
@@ -11,57 +16,62 @@ on:
         description: 'Name of the release'
         required: true
         default: '2025a'
-      source_branch:
-        description: 'Source branch for the release'
-        required: true
-        default: 'test'
-      target_branch:
-        description: 'Target branch for the release'
+      head_branch:
+        description: 'head branch for the release'
         required: true
         default: 'tmp-digest-sync-14488482962'
+      base_branch:
+        description: 'Base branch for the release'
+        required: true
+        default: 'test'
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   RELEASE_TAG: ${{ github.event.inputs.tag }}
   RELEASE_NAME: ${{ github.event.inputs.release_name }}
-  SOURCE_BRANCH: ${{ github.event.inputs.source_branch }}
-  TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
+  BASE_BRANCH: ${{ github.event.inputs.base_branch }}
+  HEAD_BRANCH: ${{ github.event.inputs.head_branch }}
 
 jobs:
   create-pull-request:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
-      - name: Create Source Branch
+      - name: Configure Git
         run: |
-          git checkout -b ${{ SOURCE_BRANCH}}
-          git push origin ${{ SOURCE_BRANCH}}
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Create Target Branch
+        run: |
+          git checkout -b $BASE_BRANCH
+          git push origin $BASE_BRANCH
       
       - name: create pull request
-        run: gh pr create -B ${{ SOURCE_BRANCH}} -H ${{ TARGET_BRANCH }} --title 'Merge branch_to_merge into base_branch' --body 'Created by Github action'
+        run: |
+          gh pr create -B $BASE_BRANCH -H $HEAD_BRANCH --title "$PR_TITLE" --body "$PR_BODY"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-pull_request:
-    branches:
-      - test
-    types: [closed]
-
-env:
-  RELEASE_TAG: "v1.0.0"
-
-permissions:
-  contents: write
-
-jobs:
+          PR_TITLE: "[Updater Action] Update Notebook and Runtime Images as well as the Commits With New SHAs"
+          PR_BODY: |
+            :rocket: This is an automated Pull Request.
+            Created by `/.github/workflows/notebooks-digest-updater.yaml`
+            - `manifests/base/params.env` file with the latest updated SHA digests of the notebooks.
+            - `manifests/base/runtime-*.yamls` file with the latest updated SHA digests of the runtimes.
+            - `manifests/base/commit.env` file with the latest commit.
+        
   release:
     name: Release Notebooks
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true && contains(github.event.pull_request.head.ref, 'tmp-digest-sync-')
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && contains(github.event.pull_request.head.ref, 'tmp-digest-sync-')
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -72,5 +82,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          gh release create "${{env.RELEASE_TAG}}" --generate-notes
-
+          gh release create "v1.32.0" --title="$2025a-v1.32.0" --generate-notes --target ${{ github.event.pull_request.base.ref }}
