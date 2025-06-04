@@ -74,7 +74,6 @@ jobs:
             - `manifests/base/commit.env` file with the latest commit.
         
   release:
-    needs: create-pull-request
     name: Release Notebooks
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && contains(github.event.pull_request.head.ref, 'tmp-digest-sync-')
