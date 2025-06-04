@@ -44,11 +44,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          
+
       - name: Store Environment Variables
         run: |
-          echo "${{ env.RELEASE_TAG }}" > ./RELEASE_TAG
-          echo "${{ env.RELEASE_NAME }}" > ./RELEASE_NAME
+          echo "${{ env.RELEASE_TAG }}" > ./RELEASE_TAG.txt
+          echo "${{ env.RELEASE_NAME }}" > ./RELEASE_NAME.txt
       
       - name: Configure Git
         run: |
