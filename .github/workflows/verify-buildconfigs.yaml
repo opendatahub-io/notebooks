@@ -6,11 +6,13 @@ on:
       branch:
         description: "Optional: Provide branch name"
         required: false
+        type: string
   workflow_call:
     inputs:
       branch:
         description: "Optional: Provide branch name"
         required: false
+        type: string
 env:
   TMP_BRANCH: tmp-verify-${{ github.run_id }}
   BRANCH: ${{ github.event.inputs.branch || 'test' }}
