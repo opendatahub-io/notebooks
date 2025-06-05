@@ -106,7 +106,7 @@ jobs:
             - `manifests/base/cuda-rstudio-buildconfig.yaml` File that points to the latest CUDA RStudio version
             - `manifests/base/rstudio-buildconfig.yaml` File that points to the latest RStudio version
     
-    buidConfigs_with_version:
+  buidConfigs_with_version:
     runs-on: ubuntu-latest
     if: github.event.inputs.version != 'n/a'
     steps:
