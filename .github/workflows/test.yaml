@@ -2,14 +2,6 @@
 name: Verify BuildConfigs
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version of the release'
-        required: true
-        default: 'rhoai-2.22'
-  
-env:
-  VERSION: ${{ github.event.inputs.version }}
 
 jobs:
   Verify-buidConfigs:
@@ -29,7 +21,7 @@ jobs:
             if [[ "$line" == *"ref: rhoai-"* ]]; then
               numstr=${line#*2.}
               num=$(expr "$numstr" + 1)
-              echo " ref: rhoai-2.$num" >> tmp.yaml
+              echo "   ref: rhoai-2.$num" >> tmp.yaml
             else
               echo "$line" >> tmp.yaml
             fi
