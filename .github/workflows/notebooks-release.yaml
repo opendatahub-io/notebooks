@@ -117,7 +117,7 @@ jobs:
           exit 1
 
   Verify-buidConfigs:
-    use: ./.github/workflows/verify-buildconfigs.yaml
+    use: ./.github/workflows/verify-buildconfigs.yaml@notebooks-release-branch
   
   Verify-merged:
     needs: Verify-buidConfigs
