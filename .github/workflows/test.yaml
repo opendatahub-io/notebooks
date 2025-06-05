@@ -13,8 +13,6 @@ env:
 
 jobs:
   Verify-buidConfigs:
-    needs: [Update-manifests, Manifests-merged]
-    if: needs.Manifests-merged.outputs.pr_merged_m == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
