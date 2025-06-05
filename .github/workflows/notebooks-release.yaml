@@ -126,12 +126,12 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Invoke Script to handle verifying downstream BuildConfigs
+      - name: change buildConfigs to point to next version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          sed -i '/ref: rhoai-/c \t\tref: ${{ env.RELEASE_TAG }}' ./manifests/base/rstudio-buildconfig.yaml
+          sed -i '/rhoai-/c ${{ env.RELEASE_TAG }}' ./manifests/base/rstudio-buildconfig.yaml
           cat ./manifests/base/rstudio-buildconfig.yaml
 
   Generate-release:
