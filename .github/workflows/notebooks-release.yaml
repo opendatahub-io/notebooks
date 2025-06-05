@@ -125,18 +125,18 @@ jobs:
           echo "pr_merged_m=false" >> $GITHUB_OUTPUT
           exit 1
 
-  Verify-buidConfigs:
+  Update-buildConfigs:
     if: github.event.inputs.update_buildconfigs == 'true'
     uses: ./.github/workflows/update-buildconfigs.yaml
     with:
       branch: $BASE_BRANCH
 
-  Verify-merged:
+  BuildConfigs-merged:
     if: github.event.inputs.update_buildconfigs == 'true'
-    needs: Verify-buidConfigs
+    needs: Update-buidConfigs
     runs-on: ubuntu-latest
     outputs:
-      pr_merged_v: ${{ steps.check_pr.outputs.pr_merged_v }}
+      pr_merged_v: ${{ steps.check_pr.outputs.pr_merged_b }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -171,21 +171,21 @@ jobs:
                 sleep 1
               else
                 echo "PR #$PR_NUMBER is merged!"
-                echo "pr_merged_v=true" >> $GITHUB_ENV
-                echo "pr_merged_v=true" >> $GITHUB_OUTPUT
+                echo "pr_merged_b=true" >> $GITHUB_ENV
+                echo "pr_merged_b=true" >> $GITHUB_OUTPUT
                 exit 0
               fi
             done
           done
 
           echo "Timed out waiting for PR #$PR_NUMBER to be merged."
-          echo "pr_merged_v=false" >> $GITHUB_ENV
-          echo "pr_merged_v=false" >> $GITHUB_OUTPUT
+          echo "pr_merged_b=false" >> $GITHUB_ENV
+          echo "pr_merged_b=false" >> $GITHUB_OUTPUT
           exit 1
 
   Generate-release_with_buildconfigs:
-    needs: [Update-manifests, Manifests-merged, Verify-buidConfigs, Verify-merged]
-    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.Verify-merged.outputs.pr_merged_v == 'true' && github.event.inputs.update_buildconfigs == 'true'
+    needs: [Update-manifests, Manifests-merged, Update-buildConfigs, BuildConfigs-merged]
+    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs-merged.outputs.pr_merged_b == 'true' && github.event.inputs.update_buildconfigs == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -201,7 +201,7 @@ jobs:
   
   Generate-release:
     needs: [Update-manifests, Manifests-merged]
-    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.Verify-merged.outputs.pr_merged_v == 'true' && github.event.inputs.update_buildconfigs == 'false'
+    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && github.event.inputs.update_buildconfigs == 'false'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
