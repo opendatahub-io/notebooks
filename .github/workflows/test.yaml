@@ -25,5 +25,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          sed -i "/ref: rhoai-/c  $(echo z ref:${{ env.VERSION }} | tr 'z' '\t')" ./manifests/base/rstudio-buildconfig.yaml
+          sed -i "/ref: rhoai-/c $(echo zzz ref:${{ env.VERSION }} | tr 'z' '\t')" ./manifests/base/rstudio-buildconfig.yaml
           cat ./manifests/base/rstudio-buildconfig.yaml
