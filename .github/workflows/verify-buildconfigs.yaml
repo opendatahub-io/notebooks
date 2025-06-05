@@ -6,7 +6,7 @@ env:
   TMP_BRANCH: tmp-verify-${{ github.run_id }}
 
 jobs:
-  Verify-buidConfigs:
+  buidConfigs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
