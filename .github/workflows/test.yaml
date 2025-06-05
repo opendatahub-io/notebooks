@@ -6,7 +6,7 @@ on:
       version:
         description: 'Version of the release'
         required: true
-        default: '2.22'
+        default: 'rhoai-2.22'
   
 env:
   VERSION: ${{ github.event.inputs.version }}
@@ -25,5 +25,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          sed -i '/ref: rhoai-/c a ref: ${{ env.VERSION }}' ./manifests/base/rstudio-buildconfig.yaml | tr 'a' '\t'
+          sed -i '/ref: rhoai-/c s/$(echo a ref: ${{ env.VERSION }} | tr 'a' '\t')/  /' ./manifests/base/rstudio-buildconfig.yaml
           cat ./manifests/base/rstudio-buildconfig.yaml
