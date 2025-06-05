@@ -11,7 +11,8 @@ on:
 env:
   VERSION: ${{ github.event.inputs.version }}
 
-Verify-buidConfigs:
+jobs:
+  Verify-buidConfigs:
     needs: [Update-manifests, Manifests-merged]
     if: needs.Manifests-merged.outputs.pr_merged_m == 'true'
     runs-on: ubuntu-latest
