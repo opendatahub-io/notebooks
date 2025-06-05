@@ -28,7 +28,7 @@ jobs:
           while IFS= read -r line; do
             # Your code to process each line goes here
             if [[ "$line" == *"ref: rhoai-"* ]]; then
-              (echo "zzzref: ${VERSION}" | tr 'z' '\t') >> tmp.yaml
+              (echo "zref: ${VERSION}" | tr 'z' '\t') >> tmp.yaml
             else
               echo "$line" >> tmp.yaml
             fi
