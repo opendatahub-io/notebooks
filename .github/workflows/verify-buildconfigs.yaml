@@ -2,6 +2,9 @@
 name: Verify BuildConfigs
 on: [workflow_call, workflow_dispatch]
 
+env:
+  TMP_BRANCH: tmp-verify-${{ github.run_id }}
+
 jobs:
   Verify-buidConfigs:
     runs-on: ubuntu-latest
@@ -21,8 +24,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          git checkout -b tmp_BRANCH
-          git push origin tmp_BRANCH
+          git checkout -b $TMP_BRANCH
+          git push origin $TMP_BRANCH
         
       
       - name: Update BuildConfig for CUDA RStudio
@@ -67,13 +70,6 @@ jobs:
           git add ./manifests/base/cuda-rstudio-buildconfig.yaml
           git add ./manifests/base/rstudio-buildconfig.yaml
           git commit -m "Update BuildConfigs for CUDA RStudio and RStudio"
-          git push origin tmp_BRANCH
-          gh pr create -B test -H tmp_BRANCH --title "Update BuildConfigs for CUDA RStudio and RStudio" --body "This is an automated Pull Request to update the BuildConfigs for CUDA RStudio and RStudio."
-
-      - name: Clean up
-        run: |
-          git checkout main
-          git branch -D tmp_BRANCH
-          git push origin --delete tmp_BRANCH || true
-          echo "Temporary branch deleted."
+          git push origin $TMP_BRANCH
+          gh pr create -B test -H $TMP_BRANCH --title "Update BuildConfigs for CUDA RStudio and RStudio" --body "This is an automated Pull Request to update the BuildConfigs for CUDA RStudio and RStudio."
           
