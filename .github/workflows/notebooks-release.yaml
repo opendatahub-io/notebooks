@@ -133,7 +133,7 @@ jobs:
 
   BuildConfigs-merged:
     if: github.event.inputs.update_buildconfigs == 'true'
-    needs: Update-buidConfigs
+    needs: Update-buildConfigs
     runs-on: ubuntu-latest
     outputs:
       pr_merged_v: ${{ steps.check_pr.outputs.pr_merged_b }}
