@@ -7,18 +7,27 @@ on:
         description: 'Release tag for the notebooks release'
         required: true
         default: 'v1.32.0'
+        type: string
       release_name:
         description: 'Name of the release'
         required: true
         default: '2025a'
+        type: string
+      update_buildconfigs:
+        description: 'Update BuildConfigs for CUDA RStudio and RStudio'
+        required: true
+        default: 'true'
+        type: boolean
       head_branch:
         description: 'head branch for the release'
         required: true
         default: 'tmp-digest-sync-14488482962'
+        type: string
       base_branch:
         description: 'Base branch for the release'
         required: true
         default: 'test'
+        type: string
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -117,11 +126,13 @@ jobs:
           exit 1
 
   Verify-buidConfigs:
+    if: github.event.inputs.update_buildconfigs == 'true'
     uses: ./.github/workflows/verify-buildconfigs.yaml
     with:
       branch: $BASE_BRANCH
 
   Verify-merged:
+    if: github.event.inputs.update_buildconfigs == 'true'
     needs: Verify-buidConfigs
     runs-on: ubuntu-latest
     outputs:
@@ -172,8 +183,26 @@ jobs:
           echo "pr_merged_v=false" >> $GITHUB_OUTPUT
           exit 1
 
-  Generate-release:
+  Generate-release_with_buildconfigs:
+    if: github.event.inputs.update_buildconfigs == 'true'
     needs: [Update-manifests, Manifests-merged, Verify-buidConfigs, Verify-merged]
+    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.Verify-merged.outputs.pr_merged_v == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Invoke Script to handle creating a release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target $BASE_BRANCH
+  
+  Generate-release:
+    if: github.event.inputs.update_buildconfigs == 'false'
+    needs: [Update-manifests, Manifests-merged]
     if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.Verify-merged.outputs.pr_merged_v == 'true'
     runs-on: ubuntu-latest
     steps:
