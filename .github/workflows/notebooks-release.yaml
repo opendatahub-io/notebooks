@@ -39,6 +39,7 @@ env:
   REPO_NAME: notebooks
 
 jobs:
+  #1. Update the params.env and commit.env files with new SHAs
   Update-manifests:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -73,7 +74,8 @@ jobs:
             - `manifests/base/params.env` file with the latest updated SHA digests of the notebooks.
             - `manifests/base/runtime-*.yamls` file with the latest updated SHA digests of the runtimes.
             - `manifests/base/commit.env` file with the latest commit.
-        
+
+  # 2. Check if the Manifest PR is merged      
   Manifests-merged:
     needs: Update-manifests
     runs-on: ubuntu-latest
@@ -125,12 +127,14 @@ jobs:
           echo "pr_merged_m=false" >> $GITHUB_OUTPUT
           exit 1
 
+  # 3. Update the BuildConfigs for CUDA RStudio and RStudio
   Update-buildConfigs:
     if: github.event.inputs.update_buildconfigs == 'true'
     uses: ./.github/workflows/update-buildconfigs.yaml
     with:
       branch: $BASE_BRANCH
 
+  # 4. Check if the BuildConfigs PR is merged
   BuildConfigs-merged:
     if: github.event.inputs.update_buildconfigs == 'true'
     needs: Update-buildConfigs
@@ -149,7 +153,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # PR to look for
-          PR_TITLE="Update BuildConfigs for CUDA RStudio and RStudio"
+          PR_TITLE="[Updater Action] Update BuildConfigs for CUDA RStudio and RStudio"
 
           #Fetch matching PRs
           PR_NUMBER=$(gh pr list --repo "$REPO_OWNER/$REPO_NAME" --state all --search "$PR_TITLE" --json number,title | jq -r '.[0].number')
@@ -183,6 +187,7 @@ jobs:
           echo "pr_merged_b=false" >> $GITHUB_OUTPUT
           exit 1
 
+  # 5. Generate the release with BuildConfigs if needed
   Generate-release_with_buildconfigs:
     needs: [Update-manifests, Manifests-merged, Update-buildConfigs, BuildConfigs-merged]
     if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs-merged.outputs.pr_merged_b == 'true' && github.event.inputs.update_buildconfigs == 'true'
@@ -198,7 +203,8 @@ jobs:
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
           gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target $BASE_BRANCH
-  
+
+  # 6. Generate the release without BuildConfigs
   Generate-release:
     needs: [Update-manifests, Manifests-merged]
     if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && github.event.inputs.update_buildconfigs == 'false'

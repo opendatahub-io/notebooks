@@ -47,9 +47,9 @@ jobs:
         run: |
           while IFS= read -r line; do
             if [[ "$line" == *"ref: rhoai-"* ]]; then
-              numstr=${line#*2.}
-              num=$(expr "$numstr" + 1)
-              echo "      ref: rhoai-2.$num" >> tmp.yaml
+              numstrc=${line#*2.}
+              numc=$(expr "$numstrc" + 1)
+              echo "      ref: rhoai-2.$numc" >> tmp.yaml
             else
               echo "$line" >> tmp.yaml
             fi
@@ -74,7 +74,7 @@ jobs:
           cat tmp.yaml > ./manifests/base/rstudio-buildconfig.yaml
           rm tmp.yaml
       
-      - name: create pull request
+      - name: Add Files and Commit Changes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -83,5 +83,16 @@ jobs:
           git add ./manifests/base/rstudio-buildconfig.yaml
           git commit -m "Update BuildConfigs for CUDA RStudio and RStudio"
           git push origin $TMP_BRANCH
-          gh pr create -B $BRANCH -H $TMP_BRANCH --title "Update BuildConfigs for CUDA RStudio and RStudio" --body "This is an automated Pull Request to update the BuildConfigs for CUDA RStudio and RStudio."
+      
+      - name: Create Pull Request
+        run: |
+          gh pr create -B $BRANCH -H $TMP_BRANCH --title "$PR_TITLE" --body "$PR_BODY"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: "[Updater Action] Update BuildConfigs for CUDA RStudio and RStudio"
+          PR_BODY: |
+            :rocket: This is an automated Pull Request.
+            Created by `/.github/workflows/update-buildconfigs.yaml`
+            - `manifests/base/cuda-rstudio-buildconfig.yaml` Change ref: rhoai-2.$numstrc to ref: rhoai-2.$numc
+            - `manifests/base/rstudio-buildconfig.yaml` Change ref: rhoai-2.$numstr to ref: rhoai-2.$num
           
