@@ -2,6 +2,8 @@
 
 # Install dependencies required for Notebooks PDF exports
 
+set -e
+
 # tex live installation
 echo "Installing TexLive to allow PDf export from Notebooks" 
 curl -L https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz -o install-tl-unx.tar.gz 
