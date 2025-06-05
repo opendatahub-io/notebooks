@@ -132,7 +132,7 @@ jobs:
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
           sed -i '/ref: rhoai-/c ref: $RELEASE_TAG' ./manifests/base/rstudio-buildconfig.yaml
-          cat manifests/base/buildconfigs.yaml
+          cat ./manifests/base/rstudio-buildconfig.yaml
 
   Generate-release:
     needs: [Update-manifests, Manifests-merged, Verify-buidConfigs]
