@@ -26,5 +26,5 @@ jobs:
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
           TAB=$(printf '\t')
-          sed -i.bak "/ref: rhoai-/c${TAB}ref: ${{ env.VERSION }}" ./manifests/base/rstudio-buildconfig.yaml
+          sed -i.bak "/ref: rhoai-/c${{TAB}}ref: ${{ env.VERSION }}" ./manifests/base/rstudio-buildconfig.yaml
           cat ./manifests/base/rstudio-buildconfig.yaml
