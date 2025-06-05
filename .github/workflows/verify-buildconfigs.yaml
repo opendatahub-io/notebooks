@@ -70,4 +70,11 @@ jobs:
           git commit -m "Update BuildConfigs for CUDA RStudio and RStudio"
           git push origin tmp_BRANCH
           gh pr create -B test -H tmp_BRANCH --title "Update BuildConfigs for CUDA RStudio and RStudio" --body "This is an automated Pull Request to update the BuildConfigs for CUDA RStudio and RStudio."
+
+      - name: Clean up
+        run: |
+          git checkout main
+          git branch -D tmp_BRANCH
+          git push origin --delete tmp_BRANCH || true
+          echo "Temporary branch deleted."
           
