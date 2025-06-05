@@ -13,6 +13,7 @@ on:
         required: false
 env:
   TMP_BRANCH: tmp-verify-${{ github.run_id }}
+  BRANCH: ${{ github.event.inputs.branch || 'test' }}
 
 jobs:
   buidConfigs:
@@ -80,5 +81,5 @@ jobs:
           git add ./manifests/base/rstudio-buildconfig.yaml
           git commit -m "Update BuildConfigs for CUDA RStudio and RStudio"
           git push origin $TMP_BRANCH
-          gh pr create -B test -H $TMP_BRANCH --title "Update BuildConfigs for CUDA RStudio and RStudio" --body "This is an automated Pull Request to update the BuildConfigs for CUDA RStudio and RStudio."
+          gh pr create -B $BRANCH -H $TMP_BRANCH --title "Update BuildConfigs for CUDA RStudio and RStudio" --body "This is an automated Pull Request to update the BuildConfigs for CUDA RStudio and RStudio."
           
