@@ -26,4 +26,6 @@ jobs:
               echo "$line" >> tmp.yaml
             fi
           done < ./manifests/base/cuda-rstudio-buildconfig.yaml
-          cat tmp.yaml
+          cat tmp.yaml > ./manifests/base/cuda-rstudio-buildconfig.yaml
+          rm tmp.yaml
+          cat ./manifests/base/cuda-rstudio-buildconfig.yaml
