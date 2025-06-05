@@ -29,7 +29,7 @@ jobs:
             if [[ "$line" == *"ref: rhoai-"* ]]; then
               numstr=${line#*2.}
               num=$(expr "$numstr" + 1)
-              (echo "zref: rhoai-2.$num" | tr 'z' '\t') >> tmp.yaml
+              echo " ref: rhoai-2.$num" >> tmp.yaml
             else
               echo "$line" >> tmp.yaml
             fi
