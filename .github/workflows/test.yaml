@@ -28,8 +28,8 @@ jobs:
           while IFS= read -r line; do
             # Your code to process each line goes here
             if [[ "$line" == "ref: rhoai-"* ]]; then
-              echo "ref: rhoai-${VERSION}" > tmp.yaml
+              echo "ref: rhoai-${VERSION}" >> tmp.yaml
             fi
-            echo "$line" > tmp.yaml
+            echo "$line" >> tmp.yaml
           done < ./manifests/base/cuda-rstudio-buildconfig.yaml
           cat tmp.yaml
