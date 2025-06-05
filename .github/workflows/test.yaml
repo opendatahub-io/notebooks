@@ -26,9 +26,10 @@ jobs:
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
           while IFS= read -r line; do
-            # Your code to process each line goes here
             if [[ "$line" == *"ref: rhoai-"* ]]; then
-              echo "ref: ${VERSION}" >> tmp.yaml
+              num=${$line#*2.}
+              num=${num + 1}
+              (echo "zref: rhoai-2.$num" | tr 'z' '\t') >> tmp.yaml
             else
               echo "$line" >> tmp.yaml
             fi
