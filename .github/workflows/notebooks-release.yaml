@@ -119,7 +119,7 @@ jobs:
   Verify-buidConfigs:
     uses: ./.github/workflows/verify-buildconfigs.yaml
     with:
-      branch: ${{BASE_BRANCH }}
+      branch: $BASE_BRANCH
 
   Verify-merged:
     needs: Verify-buidConfigs
