@@ -136,7 +136,7 @@ jobs:
         run: |
           while IFS= read -r line; do
             if [[ "$line" == *"ref: rhoai-"* ]]; then
-              echo "      ref: rhoai-2.$VERSION" >> tmp.yaml
+              echo "      ref: rhoai-$VERSION" >> tmp.yaml
             else
               echo "$line" >> tmp.yaml
             fi
@@ -151,7 +151,7 @@ jobs:
         run: |
           while IFS= read -r line; do
             if [[ "$line" == *"ref: rhoai-"* ]]; then
-              echo "      rhoai-2.$VERSION" >> tmp.yaml
+              echo "      rhoai-$VERSION" >> tmp.yaml
             else
               echo "$line" >> tmp.yaml
             fi
