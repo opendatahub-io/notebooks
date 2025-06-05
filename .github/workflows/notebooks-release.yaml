@@ -127,7 +127,7 @@ jobs:
 
   Verify-buidConfigs:
     if: github.event.inputs.update_buildconfigs == 'true'
-    uses: ./.github/workflows/verify-buildconfigs.yaml
+    uses: ./.github/workflows/update-buildconfigs.yaml
     with:
       branch: $BASE_BRANCH
 
@@ -184,9 +184,8 @@ jobs:
           exit 1
 
   Generate-release_with_buildconfigs:
-    if: github.event.inputs.update_buildconfigs == 'true'
     needs: [Update-manifests, Manifests-merged, Verify-buidConfigs, Verify-merged]
-    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.Verify-merged.outputs.pr_merged_v == 'true'
+    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.Verify-merged.outputs.pr_merged_v == 'true' && github.event.inputs.update_buildconfigs == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -201,9 +200,8 @@ jobs:
           gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target $BASE_BRANCH
   
   Generate-release:
-    if: github.event.inputs.update_buildconfigs == 'false'
     needs: [Update-manifests, Manifests-merged]
-    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.Verify-merged.outputs.pr_merged_v == 'true'
+    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.Verify-merged.outputs.pr_merged_v == 'true' && github.event.inputs.update_buildconfigs == 'false'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
