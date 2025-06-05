@@ -93,6 +93,6 @@ jobs:
           PR_BODY: |
             :rocket: This is an automated Pull Request.
             Created by `/.github/workflows/update-buildconfigs.yaml`
-            - `manifests/base/cuda-rstudio-buildconfig.yaml` Change ref: rhoai-2.$numstrc to ref: rhoai-2.$numc
-            - `manifests/base/rstudio-buildconfig.yaml` Change ref: rhoai-2.$numstr to ref: rhoai-2.$num
+            - `manifests/base/cuda-rstudio-buildconfig.yaml` File that points to the latest CUDA RStudio version
+            - `manifests/base/rstudio-buildconfig.yaml` File that points to the latest RStudio version
           
