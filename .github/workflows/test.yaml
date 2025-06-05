@@ -27,7 +27,7 @@ jobs:
         run: |
           while IFS= read -r line; do
             # Your code to process each line goes here
-            if [[ "$line" == "ref: rhoai-"* ]]; then
+            if [[ "$line" == *"ref: rhoai-"* ]]; then
               echo "ref: rhoai-${VERSION}" >> tmp.yaml
             fi
             echo "$line" >> tmp.yaml
