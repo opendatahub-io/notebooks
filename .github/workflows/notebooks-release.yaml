@@ -117,7 +117,7 @@ jobs:
           exit 1
 
   Verify-buidConfigs:
-    uses: ./.github/workflows/verify-buildconfigs.yaml@main
+    uses: ./.github/workflows/verify-buildconfigs.yaml
     with:
       branch: ${{ env.BASE_BRANCH }}
 
