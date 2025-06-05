@@ -131,9 +131,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          while IFS= read -r line; do
-            echo "$line"
-          done < ./manifests/base/rstudio-buildconfig.yaml
+          sed -i '/ref: rhoai-/c ref: $RELEASE_TAG' manifests/base/buildconfigs.yaml
+          cat manifests/base/buildconfigs.yaml
 
   Generate-release:
     needs: [Update-manifests, Manifests-merged, Verify-buidConfigs]
