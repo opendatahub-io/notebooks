@@ -27,7 +27,8 @@ jobs:
         run: |
           while IFS= read -r line; do
             if [[ "$line" == *"ref: rhoai-"* ]]; then
-              num=${line#*2.}
+              numstr=${line#*2.}
+              num=$(expr "$numstr" + 1)
               (echo "zref: rhoai-2.$num" | tr 'z' '\t') >> tmp.yaml
             else
               echo "$line" >> tmp.yaml
