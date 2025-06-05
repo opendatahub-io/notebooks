@@ -51,8 +51,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          git checkout -b $tmp_BRANCH
-          git push origin $tmp_BRANCH
+          git checkout -b tmp_BRANCH
+          git push origin tmp_BRANCH
       
       - name: create pull request
         env:
@@ -62,6 +62,6 @@ jobs:
           git add ./manifests/base/cuda-rstudio-buildconfig.yaml
           git add ./manifests/base/rstudio-buildconfig.yaml
           git commit -m "Update BuildConfigs for CUDA RStudio and RStudio"
-          git push origin $tmp_BRANCH
-          gh pr create -B $test -H $tmp_BRANCH --title "$PR_TITLE" --body "$PR_BODY"
+          git push origin tmp_BRANCH
+          gh pr create -B test -H tmp_BRANCH --title "Update BuildConfigs for CUDA RStudio and RStudio" --body "This is an automated Pull Request to update the BuildConfigs for CUDA RStudio and RStudio."
           
