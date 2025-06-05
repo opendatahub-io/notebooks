@@ -1,7 +1,16 @@
 ---
 name: Verify BuildConfigs
-on: [workflow_call, workflow_dispatch]
-
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Optional: Provide branch name"
+        required: false
+  workflow_call:
+    inputs:
+      branch:
+        description: "Optional: Provide branch name"
+        required: false
 env:
   TMP_BRANCH: tmp-verify-${{ github.run_id }}
 

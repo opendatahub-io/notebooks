@@ -118,7 +118,9 @@ jobs:
 
   Verify-buidConfigs:
     uses: ./.github/workflows/verify-buildconfigs.yaml
-  
+    with:
+      branch: ${{ env.BASE_BRANCH }}
+      
   Verify-merged:
     needs: Verify-buidConfigs
     runs-on: ubuntu-latest
