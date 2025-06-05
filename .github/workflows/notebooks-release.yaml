@@ -136,7 +136,7 @@ jobs:
     needs: Update-buildConfigs
     runs-on: ubuntu-latest
     outputs:
-      pr_merged_v: ${{ steps.check_pr.outputs.pr_merged_b }}
+      pr_merged_b: ${{ steps.check_pr.outputs.pr_merged_b }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
