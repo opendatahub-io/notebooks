@@ -12,8 +12,7 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: change buildConfigs to point to next version
-        env:
+      - name: Update BuildConfig for CUDA RStudio
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
@@ -28,4 +27,34 @@ jobs:
           done < ./manifests/base/cuda-rstudio-buildconfig.yaml
           cat tmp.yaml > ./manifests/base/cuda-rstudio-buildconfig.yaml
           rm tmp.yaml
-          cat ./manifests/base/cuda-rstudio-buildconfig.yaml
+        
+      - name: Update BuildConfig for RStudio
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          while IFS= read -r line; do
+            if [[ "$line" == *"ref: rhoai-"* ]]; then
+              numstr=${line#*2.}
+              num=$(expr "$numstr" + 1)
+              echo "      ref: rhoai-2.$num" >> tmp.yaml
+            else
+              echo "$line" >> tmp.yaml
+            fi
+          done < ./manifests/base/rstudio-buildconfig.yaml
+          cat tmp.yaml > ./manifests/base/rstudio-buildconfig.yaml
+          rm tmp.yaml
+      
+      - name: Create Target Branch
+        run: |
+          git checkout -b $tmp_BRANCH
+          git push origin $tmp_BRANCH
+      
+      - name: create pull request
+        run: |
+          git add ./manifests/base/cuda-rstudio-buildconfig.yaml
+          git add ./manifests/base/rstudio-buildconfig.yaml
+          git commit -m "Update BuildConfigs for CUDA RStudio and RStudio"
+          git push origin $tmp_BRANCH
+          gh pr create -B $test -H $tmp_BRANCH --title "$PR_TITLE" --body "$PR_BODY"
+        env:
+          
