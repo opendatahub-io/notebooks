@@ -115,24 +115,6 @@ jobs:
           echo "pr_merged_m=false" >> $GITHUB_ENV
           echo "pr_merged_m=false" >> $GITHUB_OUTPUT
           exit 1
-  
-  Verify-buidConfigs:
-    needs: [Update-manifests, Manifests-merged]
-    if: needs.Manifests-merged.outputs.pr_merged_m == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: change buildConfigs to point to next version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: ${{env.GITHUB_WORKSPACE}}
-        run: |
-          sed -i '/rhoai-/c ${{ env.RELEASE_TAG }}' ./manifests/base/rstudio-buildconfig.yaml
-          cat ./manifests/base/rstudio-buildconfig.yaml
 
   Generate-release:
     needs: [Update-manifests, Manifests-merged, Verify-buidConfigs]
