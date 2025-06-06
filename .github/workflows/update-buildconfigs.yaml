@@ -27,7 +27,7 @@ env:
 jobs:
   buidConfigs:
     runs-on: ubuntu-latest
-    if: github.event.inputs.version == 'n/a'
+    if: inputs.version == 'n/a'
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -106,7 +106,7 @@ jobs:
     
   buidConfigs_with_version:
     runs-on: ubuntu-latest
-    if: github.event.inputs.version != 'n/a'
+    if: inputs.version != 'n/a'
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
