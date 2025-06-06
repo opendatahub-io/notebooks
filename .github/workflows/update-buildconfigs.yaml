@@ -14,16 +14,14 @@ on:
   workflow_call:
     inputs:
       branch:
-        description: "Optional: Provide branch name"
         required: false
         type: string
       version:
-        description: "Optional: Provide version to update BuildConfigs to"
         required: false
         type: string
 env:
   TMP_BRANCH: tmp-verify-${{ github.run_id }}
-  BRANCH: ${{ github.event.inputs.branch || 'test' }}
+  BRANCH: ${{ github.event.inputs.branch }}
   VERSION: ${{ github.event.inputs.version || 'n/a' }}
 
 jobs:
