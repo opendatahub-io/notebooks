@@ -16,6 +16,7 @@ on:
       buildconfigs_version:
         description: 'Version to update the BuildConfigs to (if applicable)'
         required: false
+        default: 'n/a'
         type: string
       update_buildconfigs:
         description: 'Update BuildConfigs for CUDA RStudio and RStudio'
