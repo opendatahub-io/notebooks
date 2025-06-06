@@ -17,6 +17,11 @@ on:
         description: 'Version to update the BuildConfigs to (if applicable)'
         required: false
         type: string
+      update_buildconfigs:
+        description: 'Update BuildConfigs for CUDA RStudio and RStudio'
+        required: true
+        default: 'true'
+        type: boolean
       head_branch:
         description: 'head branch for the release'
         required: true
@@ -129,7 +134,7 @@ jobs:
 
   # 3. Update the BuildConfigs for CUDA RStudio and RStudio
   Update-buildConfigs:
-    if: github.event.inputs.update_buildconfigs != 'n/a'
+    if: github.event.inputs.update_buildconfigs == 'true'
     uses: ./.github/workflows/update-buildconfigs.yaml
     with:
       branch: $BASE_BRANCH
@@ -137,7 +142,7 @@ jobs:
 
   # 4. Check if the BuildConfigs PR is merged
   BuildConfigs-merged:
-    if: github.event.inputs.update_buildconfigs != 'n/a'
+    if: github.event.inputs.update_buildconfigs == 'true'
     needs: Update-buildConfigs
     runs-on: ubuntu-latest
     outputs:
@@ -191,7 +196,7 @@ jobs:
   # 5. Generate the release with BuildConfigs if needed
   Generate-release_with_buildconfigs:
     needs: [Update-manifests, Manifests-merged, Update-buildConfigs, BuildConfigs-merged]
-    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs-merged.outputs.pr_merged_b == 'true' && github.event.inputs.update_buildconfigs != 'n/a'
+    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs-merged.outputs.pr_merged_b == 'true' && github.event.inputs.update_buildconfigs == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -208,7 +213,7 @@ jobs:
   # 6. Generate the release without BuildConfigs
   Generate-release:
     needs: [Update-manifests, Manifests-merged]
-    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && github.event.inputs.update_buildconfigs == 'n/a'
+    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && github.event.inputs.update_buildconfigs == 'false'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
