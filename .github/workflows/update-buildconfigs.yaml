@@ -1,0 +1,183 @@
+---
+name: Update BuildConfigs
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Optional: Provide branch name"
+        required: false
+        type: string
+      version:
+        description: "Optional: Provide version to update BuildConfigs to"
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      branch:
+        description: "Optional: Provide branch name"
+        required: false
+        type: string
+      version:
+        description: "Optional: Provide version to update BuildConfigs to"
+        required: false
+        type: string
+env:
+  TMP_BRANCH: tmp-verify-${{ github.run_id }}
+  BRANCH: ${{ github.event.inputs.branch || 'test' }}
+  VERSION: ${{ github.event.inputs.version || 'n/a' }}
+
+jobs:
+  buidConfigs:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.version == 'n/a'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Create Target Branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          git checkout -b $TMP_BRANCH
+          git push origin $TMP_BRANCH
+        
+      
+      - name: Update BuildConfig for CUDA RStudio
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          while IFS= read -r line; do
+            if [[ "$line" == *"ref: rhoai-"* ]]; then
+              numstrc=${line#*2.}
+              numc=$(expr "$numstrc" + 1)
+              echo "      ref: rhoai-2.$numc" >> tmp.yaml
+            else
+              echo "$line" >> tmp.yaml
+            fi
+          done < ./manifests/base/cuda-rstudio-buildconfig.yaml
+          cat tmp.yaml > ./manifests/base/cuda-rstudio-buildconfig.yaml
+          rm tmp.yaml
+        
+      - name: Update BuildConfig for RStudio
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          while IFS= read -r line; do
+            if [[ "$line" == *"ref: rhoai-"* ]]; then
+              numstr=${line#*2.}
+              num=$(expr "$numstr" + 1)
+              echo "      ref: rhoai-2.$num" >> tmp.yaml
+            else
+              echo "$line" >> tmp.yaml
+            fi
+          done < ./manifests/base/rstudio-buildconfig.yaml
+          cat tmp.yaml > ./manifests/base/rstudio-buildconfig.yaml
+          rm tmp.yaml
+      
+      - name: Add Files and Commit Changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          git add ./manifests/base/cuda-rstudio-buildconfig.yaml
+          git add ./manifests/base/rstudio-buildconfig.yaml
+          git commit -m "Update BuildConfigs for CUDA RStudio and RStudio"
+          git push origin $TMP_BRANCH
+      
+      - name: Create Pull Request
+        run: |
+          gh pr create -B $BRANCH -H $TMP_BRANCH --title "$PR_TITLE" --body "$PR_BODY"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: "[Updater Action] Update BuildConfigs for CUDA RStudio and RStudio"
+          PR_BODY: |
+            :rocket: This is an automated Pull Request.
+            Created by `/.github/workflows/update-buildconfigs.yaml`
+            - `manifests/base/cuda-rstudio-buildconfig.yaml` File that points to the latest CUDA RStudio version
+            - `manifests/base/rstudio-buildconfig.yaml` File that points to the latest RStudio version
+    
+  buidConfigs_with_version:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.version != 'n/a'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Create Target Branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          git checkout -b $TMP_BRANCH
+          git push origin $TMP_BRANCH
+        
+      
+      - name: Update BuildConfig for CUDA RStudio
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          while IFS= read -r line; do
+            if [[ "$line" == *"ref: rhoai-"* ]]; then
+              echo "      ref: rhoai-$VERSION" >> tmp.yaml
+            else
+              echo "$line" >> tmp.yaml
+            fi
+          done < ./manifests/base/cuda-rstudio-buildconfig.yaml
+          cat tmp.yaml > ./manifests/base/cuda-rstudio-buildconfig.yaml
+          rm tmp.yaml
+        
+      - name: Update BuildConfig for RStudio
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          while IFS= read -r line; do
+            if [[ "$line" == *"ref: rhoai-"* ]]; then
+              echo "      rhoai-$VERSION" >> tmp.yaml
+            else
+              echo "$line" >> tmp.yaml
+            fi
+          done < ./manifests/base/rstudio-buildconfig.yaml
+          cat tmp.yaml > ./manifests/base/rstudio-buildconfig.yaml
+          rm tmp.yaml
+      
+      - name: Add Files and Commit Changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          git add ./manifests/base/cuda-rstudio-buildconfig.yaml
+          git add ./manifests/base/rstudio-buildconfig.yaml
+          git commit -m "Update BuildConfigs for CUDA RStudio and RStudio"
+          git push origin $TMP_BRANCH
+      
+      - name: Create Pull Request
+        run: |
+          gh pr create -B $BRANCH -H $TMP_BRANCH --title "$PR_TITLE" --body "$PR_BODY"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: "[Updater Action] Update BuildConfigs for CUDA RStudio and RStudio"
+          PR_BODY: |
+            :rocket: This is an automated Pull Request.
+            Created by `/.github/workflows/update-buildconfigs.yaml`
+            - `manifests/base/cuda-rstudio-buildconfig.yaml` File that points to the latest CUDA RStudio version
+            - `manifests/base/rstudio-buildconfig.yaml` File that points to the latest RStudio version
+          
