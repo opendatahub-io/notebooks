@@ -16,7 +16,6 @@ on:
       buildconfigs_version:
         description: 'Version to update the BuildConfigs to (if applicable)'
         required: false
-        default: 'n/a'
         type: string
       update_buildconfigs:
         description: 'Update BuildConfigs for CUDA RStudio and RStudio'
@@ -42,7 +41,7 @@ env:
   HEAD_BRANCH: ${{ github.event.inputs.head_branch }}
   REPO_OWNER: mtchoum1
   REPO_NAME: notebooks
-  VERSION: ${{ github.event.inputs.buildconfigs_version || 'n/a'}}
+  VERSION: ${{ github.event.inputs.buildconfigs_version}}
 
 jobs:
   #1. Update the params.env and commit.env files with new SHAs
