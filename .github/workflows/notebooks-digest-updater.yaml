@@ -8,16 +8,28 @@ on:  # yamllint disable-line rule:truthy
       branch:
         required: false
         description: "Optional: Provide branch name"
+        type: string
       user-hash:
         required: false
         description: "Optional: Specify a Git hash (it should exists on the branch history)"
+        type: string
+  workflow_call:
+    inputs:
+      branch:
+        required: false
+        description: "Optional: Provide branch name"
+        type: string
+      user-hash:
+        required: false
+        description: "Optional: Specify a Git hash (it should exists on the branch history)"
+        type: string
 
 env:
-  USER_HASH: ${{ github.event.inputs.user-hash }}
+  USER_HASH: ${{ inputs.user-hash }}
   REPO_ORG: ${{ github.repository_owner }}
   REPO_NAME: 'notebooks'
   TMP_BRANCH: tmp-digest-sync-${{ github.run_id }}
-  BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
+  BRANCH_NAME: ${{ inputs.branch || 'main' }}
 
 jobs:
   update-images:
@@ -54,10 +66,10 @@ jobs:
           ref: ${{ env.TMP_BRANCH }}
           fetch-depth: 0
 
-      - name: Invoke ci/sha-digest-updater.sh script to handle the updates
-        shell: bash
-        run: |
-          bash "${GITHUB_WORKSPACE}/ci/sha-digest-updater.sh" "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}" "${{ env.BRANCH_NAME }}" "${{ env.REPO_NAME }}"
+      # - name: Invoke ci/sha-digest-updater.sh script to handle the updates
+      #   shell: bash
+      #   run: |
+      #     bash "${GITHUB_WORKSPACE}/ci/sha-digest-updater.sh" "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}" "${{ env.BRANCH_NAME }}" "${{ env.REPO_NAME }}"
 
       - name: Commit Changes
         run: |

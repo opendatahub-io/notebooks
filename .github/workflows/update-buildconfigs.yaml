@@ -1,3 +1,5 @@
+# The aim of this GitHub workflow is to update the cuda-rstudio-buildconfig.yaml and rstudio-buildconfig.yaml
+# If No version is provided, it will update the BuildConfigs to the next version by incrementing the minor version number by 1.
 ---
 name: Update BuildConfigs
 on:
@@ -14,22 +16,20 @@ on:
   workflow_call:
     inputs:
       branch:
-        description: "Optional: Provide branch name"
         required: false
         type: string
       version:
-        description: "Optional: Provide version to update BuildConfigs to"
         required: false
         type: string
 env:
   TMP_BRANCH: tmp-verify-${{ github.run_id }}
-  BRANCH: ${{ github.event.inputs.branch || 'test' }}
-  VERSION: ${{ github.event.inputs.version || 'n/a' }}
+  BRANCH: ${{ inputs.branch || 'main' }}
+  VERSION: ${{ inputs.version }}
 
 jobs:
   buidConfigs:
     runs-on: ubuntu-latest
-    if: github.event.inputs.version == 'n/a'
+    if: inputs.version == ''
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -108,7 +108,7 @@ jobs:
     
   buidConfigs_with_version:
     runs-on: ubuntu-latest
-    if: github.event.inputs.version != 'n/a'
+    if: inputs.version != ''
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -151,7 +151,7 @@ jobs:
         run: |
           while IFS= read -r line; do
             if [[ "$line" == *"ref: rhoai-"* ]]; then
-              echo "      rhoai-$VERSION" >> tmp.yaml
+              echo "      ref: rhoai-$VERSION" >> tmp.yaml
             else
               echo "$line" >> tmp.yaml
             fi
