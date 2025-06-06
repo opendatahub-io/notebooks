@@ -138,7 +138,7 @@ jobs:
     uses: ./.github/workflows/update-buildconfigs.yaml
     with:
       branch: ${{ github.event.inputs.base_branch }}
-      version: ${{ github.event.inputs.version }}
+      version: ${{ github.event.inputs.buildconfigs_version }}
 
   # 4. Check if the BuildConfigs PR is merged
   BuildConfigs-merged:
