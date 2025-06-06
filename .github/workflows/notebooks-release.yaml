@@ -22,63 +22,31 @@ on:
         required: true
         default: 'true'
         type: boolean
-      head_branch:
-        description: 'head branch for the release'
-        required: true
-        default: 'tmp-digest-sync-14488482962'
+      branch:
+        description: "Optional: Provide branch name"
+        required: false
         type: string
-      base_branch:
-        description: 'Base branch for the release'
-        required: true
-        default: 'test'
+      user-hash:
+        description: "Optional: Specify a Git hash (it should exists on the branch history)"
+        required: false
         type: string
 
 env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   RELEASE_TAG: ${{ github.event.inputs.tag }}
   RELEASE_NAME: ${{ github.event.inputs.release_name }}
-  BASE_BRANCH: ${{ github.event.inputs.base_branch }}
-  HEAD_BRANCH: ${{ github.event.inputs.head_branch }}
-  REPO_OWNER: mtchoum1
+  BRANCH: ${{ github.event.inputs.branch }}
+  USER_HASH: ${{ github.event.inputs.user-hash }}
+  REPO_OWNER: opendatahub-io
   REPO_NAME: notebooks
   VERSION: ${{ github.event.inputs.buildconfigs_version}}
 
 jobs:
   #1. Update the params.env and commit.env files with new SHAs
   Update-manifests:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Configure Git
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-      
-      - name: Create Target Branch
-        run: |
-          git checkout -b $BASE_BRANCH
-          git push origin $BASE_BRANCH
-      
-      - name: create pull request
-        run: |
-          gh pr create -B $BASE_BRANCH -H $HEAD_BRANCH --title "$PR_TITLE" --body "$PR_BODY"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_TITLE: "[Updater Action] Update Notebook and Runtime Images as well as the Commits With New SHAs"
-          PR_BODY: |
-            :rocket: This is an automated Pull Request.
-            Created by `/.github/workflows/notebooks-digest-updater.yaml`
-            - `manifests/base/params.env` file with the latest updated SHA digests of the notebooks.
-            - `manifests/base/runtime-*.yamls` file with the latest updated SHA digests of the runtimes.
-            - `manifests/base/commit.env` file with the latest commit.
+    uses: opendatahub-io/notebooks/.github/workflows/notebooks-digest-updater.yaml@main
+    with:
+      branch: ${{ github.event.inputs.branch }}
+      user-hash: ${{ github.event.inputs.user_hash }}
 
   # 2. Check if the Manifest PR is merged      
   Manifests-merged:
@@ -135,9 +103,9 @@ jobs:
   # 3. Update the BuildConfigs for CUDA RStudio and RStudio
   Update-buildConfigs:
     if: github.event.inputs.update_buildconfigs == 'true'
-    uses: ./.github/workflows/update-buildconfigs.yaml
+    uses: opendatahub-io/notebooks/.github/workflows/update-buildconfigs.yaml@main
     with:
-      branch: ${{ github.event.inputs.base_branch }}
+      branch: ${{ github.event.inputs.branch }}
       version: ${{ github.event.inputs.buildconfigs_version }}
 
   # 4. Check if the BuildConfigs PR is merged
@@ -208,7 +176,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target $BASE_BRANCH
+          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target $BRANCH
 
   # 6. Generate the release without BuildConfigs
   Generate-release:
@@ -225,4 +193,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target $BASE_BRANCH
+          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target $BRANCH

@@ -1,3 +1,5 @@
+# The aim of this GitHub workflow is to update the cuda-rstudio-buildconfig.yaml and rstudio-buildconfig.yaml
+# If No version is provided, it will update the BuildConfigs to the next version by incrementing the minor version number by 1.
 ---
 name: Update BuildConfigs
 on:
@@ -21,7 +23,7 @@ on:
         type: string
 env:
   TMP_BRANCH: tmp-verify-${{ github.run_id }}
-  BRANCH: ${{ inputs.branch }}
+  BRANCH: ${{ inputs.branch || 'main' }}
   VERSION: ${{ inputs.version }}
 
 jobs:
