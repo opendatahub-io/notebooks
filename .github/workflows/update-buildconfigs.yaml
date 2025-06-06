@@ -14,10 +14,10 @@ on:
   workflow_call:
     inputs:
       branch:
-        required: false
+        required: true
         type: string
       version:
-        required: false
+        required: true
         type: string
 env:
   TMP_BRANCH: tmp-verify-${{ github.run_id }}
