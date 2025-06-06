@@ -2,7 +2,7 @@
 
 # Install dependencies required for Notebooks PDF exports
 
-set -e
+set -euxo
 
 # tex live installation
 echo "Installing TexLive to allow PDf export from Notebooks" 
