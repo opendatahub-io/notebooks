@@ -37,7 +37,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   RELEASE_TAG: ${{ github.event.inputs.tag }}
   RELEASE_NAME: ${{ github.event.inputs.release_name }}
-  BASE_BRANCH: ${{ github.event.inputs.base_branch }}-${{ github.run_id }}
+  BASE_BRANCH: ${{ github.event.inputs.base_branch }}
   HEAD_BRANCH: ${{ github.event.inputs.head_branch }}
   REPO_OWNER: mtchoum1
   REPO_NAME: notebooks
