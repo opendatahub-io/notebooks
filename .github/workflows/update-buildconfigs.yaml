@@ -14,15 +14,15 @@ on:
   workflow_call:
     inputs:
       branch:
-        required: true
+        required: false
         type: string
       version:
-        required: true
+        required: false
         type: string
 env:
   TMP_BRANCH: tmp-verify-${{ github.run_id }}
-  BRANCH: ${{ github.event.inputs.branch }}
-  VERSION: ${{ github.event.inputs.version || 'n/a' }}
+  BRANCH: ${{ inputs.branch || 'test'}}
+  VERSION: ${{ inputs.version || 'n/a' }}
 
 jobs:
   buidConfigs:
