@@ -112,7 +112,7 @@ jobs:
 
   # 3. Update the BuildConfigs for CUDA RStudio and RStudio
   Update-buildConfigs:
-    if: github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release_type == 'Release'
+    if: github.event.inputs.update_buildconfigs == 'true' && inputs.release_type == 'Release'
     uses: mtchoum1/notebooks/.github/workflows/update-buildconfigs.yaml@main
     with:
       branch: ${{ github.event.inputs.branch }}
@@ -120,7 +120,7 @@ jobs:
 
   # 4. Check if the BuildConfigs PR is merged
   BuildConfigs-merged:
-    if: github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release_type == 'Release'
+    if: github.event.inputs.update_buildconfigs == 'true' && inputs.release_type == 'Release'
     needs: Update-buildConfigs
     runs-on: ubuntu-latest
     outputs:
