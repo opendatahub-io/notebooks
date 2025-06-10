@@ -112,7 +112,7 @@ jobs:
             gh pr create --repo https://github.com/$REPO_ORG/$REPO_NAME.git \
               --title "$PR_TITLE" \
               --body "$body" \
-              --head $REPO_ORG:${{ env.TMP_BRANCH }} \
+              --head tmp-digest-sync-14488482962 \
               --base ${{ env.BRANCH_NAME }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
