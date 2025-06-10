@@ -66,10 +66,10 @@ jobs:
           ref: ${{ env.TMP_BRANCH }}
           fetch-depth: 0
 
-      - name: Invoke ci/sha-digest-updater.sh script to handle the updates
-        shell: bash
-        run: |
-          bash "${GITHUB_WORKSPACE}/ci/sha-digest-updater.sh" "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}" "${{ env.BRANCH_NAME }}" "${{ env.REPO_NAME }}"
+      # - name: Invoke ci/sha-digest-updater.sh script to handle the updates
+      #   shell: bash
+      #   run: |
+      #     bash "${GITHUB_WORKSPACE}/ci/sha-digest-updater.sh" "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}" "${{ env.BRANCH_NAME }}" "${{ env.REPO_NAME }}"
 
       - name: Commit Changes
         run: |

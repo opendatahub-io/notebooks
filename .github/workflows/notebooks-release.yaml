@@ -79,7 +79,7 @@ jobs:
 
           # Polling loop to wait for the PR to be merged total timeout=5h
           MAX_ATTEMPTS=30
-          SLEEP_DURATION=600
+          SLEEP_DURATION=30
 
           for (( i=1; i<=MAX_ATTEMPTS; i++ )); do
             echo "Checking if PR #$PR_NUMBER is merged (Attempt $i/$MAX_ATTEMPTS)..."
