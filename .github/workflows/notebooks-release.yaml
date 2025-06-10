@@ -52,7 +52,7 @@ env:
 jobs:
   #1. Update the params.env and commit.env files with new SHAs
   Update-manifests:
-    uses: mtchoum1/notebooks/.github/workflows/notebooks-digest-updater.yaml@main
+    uses: mtchoum1/notebooks/.github/workflows/notebooks-digest-updater.yaml
     with:
       branch: ${{ github.event.inputs.branch }}
       user-hash: ${{ github.event.inputs.user_hash }}
