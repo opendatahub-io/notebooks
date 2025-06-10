@@ -30,20 +30,28 @@ on:
         description: "Optional: Specify a Git hash (it should exists on the branch history)"
         required: false
         type: string
+      release-type:
+        description: "Select the type of action to perform"
+        required: true
+        default: "Sync"
+        type: choice
+        options:
+          - Sync
+          - Release
 
 env:
   RELEASE_TAG: ${{ github.event.inputs.tag }}
   RELEASE_NAME: ${{ github.event.inputs.release_name }}
   BRANCH: ${{ github.event.inputs.branch }}
   USER_HASH: ${{ github.event.inputs.user-hash }}
-  REPO_OWNER: opendatahub-io
+  REPO_OWNER: mtchoum1
   REPO_NAME: notebooks
   VERSION: ${{ github.event.inputs.buildconfigs_version}}
 
 jobs:
   #1. Update the params.env and commit.env files with new SHAs
   Update-manifests:
-    uses: opendatahub-io/notebooks/.github/workflows/notebooks-digest-updater.yaml@main
+    uses: mtchoum1/notebooks/.github/workflows/notebooks-digest-updater.yaml@main
     with:
       branch: ${{ github.event.inputs.branch }}
       user-hash: ${{ github.event.inputs.user_hash }}
@@ -104,7 +112,7 @@ jobs:
   # 3. Update the BuildConfigs for CUDA RStudio and RStudio
   Update-buildConfigs:
     if: github.event.inputs.update_buildconfigs == 'true'
-    uses: opendatahub-io/notebooks/.github/workflows/update-buildconfigs.yaml@main
+    uses: mtchoum1/notebooks/.github/workflows/update-buildconfigs.yaml@main
     with:
       branch: ${{ github.event.inputs.branch }}
       version: ${{ github.event.inputs.buildconfigs_version }}
@@ -166,7 +174,7 @@ jobs:
   # 5. Generate the release with BuildConfigs if needed
   Generate-release_with_buildconfigs:
     needs: [Update-manifests, Manifests-merged, Update-buildConfigs, BuildConfigs-merged]
-    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs-merged.outputs.pr_merged_b == 'true' && github.event.inputs.update_buildconfigs == 'true'
+    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs-merged.outputs.pr_merged_b == 'true' && github.event.inputs.update_buildconfigs == 'true' && inputs.release-type == 'Release'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -183,7 +191,7 @@ jobs:
   # 6. Generate the release without BuildConfigs
   Generate-release:
     needs: [Update-manifests, Manifests-merged]
-    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && github.event.inputs.update_buildconfigs == 'false'
+    if: needs.Manifests-merged.outputs.pr_merged_m == 'true' && github.event.inputs.update_buildconfigs == 'false' && inputs.release-type == 'Release'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
