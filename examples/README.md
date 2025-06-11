@@ -79,3 +79,70 @@ There is a special ODH Dashboard feature that alerts you when you are using a wo
 This code will have to be updated when `elyra` also gains support for Argo Pipelines, but for now it does the job.
 
 Reference: https://github.com/opendatahub-io/odh-dashboard/blob/2ced77737a1b1fc24b94acac41245da8b29468a4/frontend/src/concepts/pipelines/elyra/utils.ts#L152-L162
+
+## Image Streams
+
+Available workbench images are represented by OpenShift ImageStreams stored either in the notebook-controller's own namespace
+(defaults to `opendatahub` on ODH and `redhat-ods-applications` in RHOAI)
+or, starting with RHOAI 2.22, in the datascience project namespace.
+
+There is a system of one label and multiple annotations that can be added to image streams which will influence how the image is displayed in the Dashboard.
+
+### Example image stream
+
+```yaml
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-name: "Jupyter Data Science"
+    opendatahub.io/notebook-image-desc: "Jupyter notebook image with a set of data science libraries that advanced AI/ML notebooks will use as a base image to provide a standard for libraries avialable in all notebooks"
+  name: jupyter-datascience-notebook
+spec:
+  tags:
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.11"},
+            { ... }
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab","version": "4.2"},
+            { ... }
+          ]
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/image-tag-outdated: 'false'
+        opendatahub.io/notebook-build-commit: 947dea7
+      from:
+        kind: DockerImage
+        name: quay.io/opendatahub/workbench-images@sha256:57d8e32ac014dc39d1912577e2decff1b10bb2f06f4293c963e687687a580b05
+      name: "2025.1"
+      referencePolicy:
+        type: Source
+```
+
+**opendatahub.io/notebook-image**: determines whether the image stream will be shown in the workbenches list or not
+
+**opendatahub.io/notebook-image-name**: the name of the image that will be shown in the workbenches list
+
+**opendatahub.io/notebook-image-desc**: the description of the image that will be shown in the workbenches list
+
+**opendatahub.io/notebook-software**: a JSON-formatted list of software that is installed in the image. This is used to display the software in the workbench image details.
+
+**opendatahub.io/notebook-python-dependencies**: a JSON-formatted list of Python dependencies that are installed in the image. This is used to display the Python dependencies in the workbench image details.
+
+**opendatahub.io/workbench-image-recommended**: determines whether the image stream will be marked as the `Recommended` image in the workbenches list or not. Only one image tag can be marked as `Recommended`.
+
+**opendatahub.io/image-tag-outdated**: determines whether the image stream will be hidden from the list of available image versions in the workbench spawner dialog. Workbenches that were previously started with this image will continue to function.
+
+**opendatahub.io/notebook-build-commit**: the commit hash of the notebook image build that was used to create the image. This is shown in Dashboard webui starting with RHOAI 2.22.
+
+Some of these annotations cannot be configured in the Dashboard Settings webui.
+For the label there is a toggle, name and description can be edited as well.
+For the software versions there is also suitable interface.
+Recommended, outdated, and build commit cannot be edited there, though.
