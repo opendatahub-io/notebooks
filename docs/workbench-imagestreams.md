@@ -41,7 +41,7 @@ spec:
   - **`opendatahub.io/notebook-python-dependencies:`** -  a string that represents the list of Python libraries included within the workbench image. Each library is described by its name and currently used version (e.g. `'[{"name":"Numpy","version":"1.24"},{"name":"Pandas","version":"1.5"}]'`)
   - **`openshift.io/imported-from:`** - a reference to the image repository where the workbench image was obtained (e.g. `quay.io/repository/opendatahub/workbench-images`)
   - **`opendatahub.io/workbench-image-recommended:`** - a flag that allows the ImageStream tag to be marked as Recommended (used by the UI to distinguish which tags are recommended for use, e.g., when the workbench image offers multiple tags to choose from)
-  - **`opendatahub.io/image-tag-outdated:`** - a flag to mark the ImageStream tag as outdated and out of regular maintenance cycle. The image tag would be eventually removed.
+  - **`opendatahub.io/image-tag-outdated:`** - a flag to mark the ImageStream tag as outdated and out of regular maintenance cycle. The image tag will eventually be removed.
   - **`opendatahub.io/notebook-build-commit:`** - a reference to the build commit with the ID to look at the updated information.
 
 ### **ImageStream definitions for the supported out-of-the-box images in ODH**  
