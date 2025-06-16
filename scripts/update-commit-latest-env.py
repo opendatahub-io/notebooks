@@ -1,8 +1,10 @@
 import asyncio
 import json
 import logging
+import os
 import pathlib
 import re
+import sys
 import typing
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent
@@ -86,6 +88,10 @@ async def main():
                                               if line.strip() and not line.strip().startswith("#")]
 
     results = await inspect(value for _, value in images_to_inspect)
+    if any(commit_hash is None for variable, commit_hash in results):
+        logging.error("Failed to get commit hash for some images. Quitting, please try again to try again, like.")
+        sys.exit(1)
+
     output = []
     for image, result in zip(images_to_inspect, results):
         variable, image_digest = image
