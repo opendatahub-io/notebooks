@@ -27,7 +27,7 @@ async def get_image_vcs_ref(image_url: str) -> tuple[str, str | None]:
     full_image_url = f"docker://{image_url}"
 
     # Use 'inspect --config' which is much faster as it only fetches the config blob.
-    command = ["skopeo", "inspect", "--config", full_image_url]
+    command = ["skopeo", "inspect", "--retry-times=5", "--config", full_image_url]
 
     logging.info(f"Starting config inspection for: {image_url}")
 
