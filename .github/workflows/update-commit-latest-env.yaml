@@ -1,0 +1,41 @@
+---
+name: Update commit-latest.env on params-latest.env change
+
+"on":
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - rhoai-*
+    paths:
+      - 'manifests/base/params-latest.env'
+
+jobs:
+  sync-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update manifests/base/commit-latest.env
+        id: update_env
+        run: |
+          python3 scripts/update-commit-latest-env.py
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # Check for changes before committing
+          if ! git diff --quiet manifests/base/commit-latest.env; then
+            git add manifests/base/commit-latest.env
+            git commit -m "ci: update commit SHAs for image digests changes"
+            git push
+          else
+            echo "No effective changes in manifests/base/commit-latest.env, skipping commit."
+          fi
