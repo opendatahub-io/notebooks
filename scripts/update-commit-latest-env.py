@@ -75,7 +75,6 @@ async def get_image_vcs_ref(image_url: str) -> tuple[str, str | None]:
 
 
 async def inspect(images_to_inspect: typing.Iterable[str]) -> list[tuple[str, str | None]]:
-    ""
     """
     Main function to orchestrate the concurrent inspection of multiple images.
     """
