@@ -94,7 +94,7 @@ async def main():
         sys.exit(1)
 
     output = []
-    for image, result in zip(images_to_inspect, results):
+    for image, result in zip(images_to_inspect, results, strict=True):
         variable, image_digest = image
         _, commit_hash = result
         output.append((re.sub(r'-n$', "-commit-n", variable), commit_hash[:7]))
