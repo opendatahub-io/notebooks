@@ -32,43 +32,53 @@ async def get_image_vcs_ref(image_url: str, semaphore: asyncio.Semaphore) -> tup
 
     logging.info(f"Starting config inspection for: {image_url}")
 
+    stdout, stderr, returncode = None, None, None
     try:
         async with semaphore:
+            logging.info(f"Semaphore acquired, starting skopeo inspect for: {image_url}")
             # Create an asynchronous subprocess
             process = await asyncio.create_subprocess_exec(
                 *command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-
             # Wait for the command to complete and capture output
             stdout, stderr = await process.communicate()
+            returncode = process.returncode
 
-            # Check for errors
-            if process.returncode != 0:
-                logging.error(f"Skopeo command failed for {image_url} with exit code {process.returncode}.")
+        # Process the results outside the semaphore block
+        if returncode != 0:
+            logging.error(f"Skopeo command failed for {image_url} with exit code {returncode}.")
+            if stderr:
                 logging.error(f"Stderr: {stderr.decode().strip()}")
-                return image_url, None
+            return image_url, None
 
-            # Decode and parse the JSON output from stdout
-            # The output of 'inspect --config' is the image config JSON directly.
-            image_config = json.loads(stdout.decode())
+        if not stdout:
+            logging.error(f"Skopeo command returned success but stdout was empty for {image_url}.")
+            return image_url, None
 
-            # Safely extract the 'vcs-ref' label from the config's 'Labels'
-            vcs_ref = image_config.get("config", {}).get("Labels", {}).get("vcs-ref")
+        # Decode and parse the JSON output from stdout
+        # The output of 'inspect --config' is the image config JSON directly.
+        image_config = json.loads(stdout.decode())
 
-            if vcs_ref:
-                logging.info(f"Successfully found 'vcs-ref' for {image_url}: {vcs_ref}")
-            else:
-                logging.warning(f"'vcs-ref' label not found for {image_url}.")
+        # Safely extract the 'vcs-ref' label from the config's 'Labels'
+        vcs_ref = image_config.get("config", {}).get("Labels", {}).get("vcs-ref")
 
-            return image_url, vcs_ref
+        if vcs_ref:
+            logging.info(f"Successfully found 'vcs-ref' for {image_url}: {vcs_ref}")
+        else:
+            logging.warning(f"'vcs-ref' label not found for {image_url}.")
+
+        return image_url, vcs_ref
 
     except FileNotFoundError:
         logging.error("The 'skopeo' command was not found. Please ensure it is installed and in your PATH.")
         return image_url, None
     except json.JSONDecodeError:
+        # This error can now also happen if stdout is None or not valid JSON
         logging.error(f"Failed to parse skopeo output as JSON for {image_url}.")
+        if stdout:
+             logging.debug(f"Stdout from skopeo for {image_url}: {stdout.decode(errors='replace')}")
         return image_url, None
     except Exception as e:
         logging.error(f"An unexpected error occurred while processing {image_url}: {e}")
