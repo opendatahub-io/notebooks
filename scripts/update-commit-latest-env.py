@@ -78,7 +78,7 @@ async def get_image_vcs_ref(image_url: str, semaphore: asyncio.Semaphore) -> tup
         # This error can now also happen if stdout is None or not valid JSON
         logging.error(f"Failed to parse skopeo output as JSON for {image_url}.")
         if stdout:
-             logging.debug(f"Stdout from skopeo for {image_url}: {stdout.decode(errors='replace')}")
+            logging.debug(f"Stdout from skopeo for {image_url}: {stdout.decode(errors='replace')}")
         return image_url, None
     except Exception as e:
         logging.error(f"An unexpected error occurred while processing {image_url}: {e}")
