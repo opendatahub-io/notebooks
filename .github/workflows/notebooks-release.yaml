@@ -43,21 +43,21 @@ env:
   CREATE_NEW_RELEASE: ${{ github.event.inputs.release-type == 'Release' }}
   RELEASE_TAG: ${{ github.event.inputs.tag }}
   RELEASE_NAME: ${{ github.event.inputs.release_name }}
-  BRANCH: ${{ github.event.inputs.branch }}
+  BRANCH: ${{ github.event.inputs.branch || 'main' }}
   USER_HASH: ${{ github.event.inputs.user-hash }}
-  REPO_OWNER: mtchoum1
+  REPO_OWNER: opendatahub-io
   REPO_NAME: notebooks
   VERSION: ${{ github.event.inputs.buildconfigs_version}}
 
 jobs:
   # 1. Update the params-latest.env and commit-latest.env files with new SHAs
   Update-manifests:
-    uses: mtchoum1/notebooks/.github/workflows/notebooks-digest-updater.yaml@main
+    uses: opendatahub-io/notebooks/.github/workflows/notebooks-digest-updater.yaml@main
     with:
       branch: ${{ github.event.inputs.branch }}
       user-hash: ${{ github.event.inputs.user-hash }}
 
-  # 2. Check if the Manifest PR is merged
+  # 2. Check if the Manifest PR is merged      
   Manifests-merged:
     needs: Update-manifests
     runs-on: ubuntu-latest
@@ -78,7 +78,7 @@ jobs:
           PR_TITLE="[Updater Action] Update Notebook and Runtime Images as well as the Commits With New SHAs"
 
           #Fetch matching PRs
-          PR_NUMBER="$(gh pr list --repo \"$REPO_OWNER/$REPO_NAME\" --state all --search \"$PR_TITLE\" --json number,title | jq -r '.[0].number')"
+          PR_NUMBER=$(gh pr list --repo "$REPO_OWNER/$REPO_NAME" --state all --search "$PR_TITLE" --json number,title | jq -r '.[0].number')
           echo "PR Numbers: $PR_NUMBER"
 
           if [ -z "$PR_NUMBER" ]; then
@@ -106,14 +106,14 @@ jobs:
           done
 
           echo "Timed out waiting for PR #$PR_NUMBER to be merged."
-          echo "pr_merged_m=true" >> "$GITHUB_ENV"
-          echo "pr_merged_m=true" >> "$GITHUB_OUTPUT"
+          echo "pr_merged_m=false" >> $GITHUB_ENV
+          echo "pr_merged_m=false" >> $GITHUB_OUTPUT
           exit 1
 
   # 3. Update the BuildConfigs for CUDA RStudio and RStudio
   Update-buildConfigs:
     if: ${{ github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release-type == 'Release' }}
-    uses: mtchoum1/notebooks/.github/workflows/update-buildconfigs.yaml@main
+    uses: opendatahub-io/notebooks/.github/workflows/update-buildconfigs.yaml@main
     with:
       branch: ${{ github.event.inputs.branch }}
       version: ${{ github.event.inputs.buildconfigs_version }}
@@ -140,7 +140,7 @@ jobs:
           PR_TITLE="[Updater Action] Update BuildConfigs for CUDA RStudio and RStudio"
 
           #Fetch matching PRs
-          PR_NUMBER="$(gh pr list --repo \"$REPO_OWNER/$REPO_NAME\" --state all --search \"$PR_TITLE\" --json number,title | jq -r '.[0].number')"
+          PR_NUMBER=$(gh pr list --repo "$REPO_OWNER/$REPO_NAME" --state all --search "$PR_TITLE" --json number,title | jq -r '.[0].number')
           echo "PR Numbers: $PR_NUMBER"
 
           if [ -z "$PR_NUMBER" ]; then
@@ -168,8 +168,8 @@ jobs:
           done
 
           echo "Timed out waiting for PR #$PR_NUMBER to be merged."
-          echo "pr_merged_m=true" >> "$GITHUB_ENV"
-          echo "pr_merged_b=false" >> "$GITHUB_OUTPUT"
+          echo "pr_merged_b=false" >> $GITHUB_ENV
+          echo "pr_merged_b=false" >> $GITHUB_OUTPUT
           exit 1
 
   # 5. Generate the release with BuildConfigs if needed
@@ -187,7 +187,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target "$BRANCH"
+          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target $BRANCH
 
   # 6. Generate the release without BuildConfigs
   Generate-release:
@@ -204,4 +204,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target "$BRANCH"
+          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target $BRANCH
