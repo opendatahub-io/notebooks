@@ -55,7 +55,7 @@ jobs:
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
           for config in "cuda-rstudio-buildconfig.yaml" "rstudio-buildconfig.yaml"; do
-            bash "${GITHUB_WORKSPACE}/ci/buildconfig-updater.sh" "./manifests/base/$config" "$VERSION"
+            bash "${GITHUB_WORKSPACE}/ci/buildconfig-updater.sh" "${GITHUB_WORKSPACE}/manifests/base/$config" "$VERSION"
           done
           
       
