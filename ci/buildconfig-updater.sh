@@ -1,3 +1,13 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# Ensure at least one argument (file path) is provided
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $0 <file_path> [version]" >&2
+  exit 1
+fi
+
 file_path=$1
 version=$2
 

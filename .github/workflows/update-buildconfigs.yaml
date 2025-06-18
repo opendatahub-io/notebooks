@@ -45,10 +45,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          git checkout -b $TMP_BRANCH
-          git push origin $TMP_BRANCH
-        
-      
+          git checkout -b "$TMP_BRANCH"
+          git push --set-upstream origin "$TMP_BRANCH"
+
       - name: Update BuildConfig
         shell: bash
         run: |
@@ -61,8 +60,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          git add ${GITHUB_WORKSPACE}/manifests/base/cuda-rstudio-buildconfig.yaml
-          git add ${GITHUB_WORKSPACE}/manifests/base/rstudio-buildconfig.yaml
+          git add "${GITHUB_WORKSPACE}/manifests/base/"*.yaml
           git commit -m "Update BuildConfigs for CUDA RStudio and RStudio"
           git push origin $TMP_BRANCH
       
@@ -77,4 +75,3 @@ jobs:
             Created by `/.github/workflows/update-buildconfigs.yaml`
             - `manifests/base/cuda-rstudio-buildconfig.yaml` File that points to the latest CUDA RStudio version
             - `manifests/base/rstudio-buildconfig.yaml` File that points to the latest RStudio version
-          
