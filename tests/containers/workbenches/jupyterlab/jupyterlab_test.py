@@ -101,6 +101,7 @@ class TestJupyterLabImage:
 
     @allure.issue("RHOAIENG-24348")
     @allure.description("Check that custom-built (to be FIPS-compliant) mongocli binary runs.")
+    @pytest.mark.s390x
     def test_mongocli_binary_runs(self, jupyterlab_image: conftest.Image) -> None:
         if "-minimal-" in jupyterlab_image.name and all(
             accelerator not in jupyterlab_image.name for accelerator in ["-cuda-", "-rocm-"]
@@ -114,3 +115,27 @@ class TestJupyterLabImage:
             docker_utils.container_exec(container.get_wrapped_container(), "mongocli config --help")
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)  # if no env is specified, the image will run
+
+    @pytest.mark.s390x
+    @allure.description("Check that pyzmq library works correctly on s390x.")
+    def test_pyzmq_on_s390x(self, jupyterlab_image: conftest.Image) -> None:
+        container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
+        # Python script to test pyzmq
+        python_script = """
+import zmq
+context = zmq.Context()
+socket = context.socket(zmq.PAIR)
+print("pyzmq imported and socket created successfully")
+"""
+        try:
+            container.start(wait_for_readiness=False) # Readiness not needed for exec
+            # Execute the Python script inside the container
+            # Ensure python3 is used, as 'python' might point to python2 in some older base images
+            exit_code, output = container.exec(["python3", "-c", python_script])
+            output_str = output.decode()
+
+            assert exit_code == 0, f"Python script execution failed. Output: {output_str}"
+            assert "pyzmq imported and socket created successfully" in output_str, \
+                f"Expected success message not found in output. Output: {output_str}"
+        finally:
+            docker_utils.NotebookContainer(container).stop(timeout=0)

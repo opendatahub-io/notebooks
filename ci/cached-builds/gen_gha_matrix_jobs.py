@@ -48,6 +48,12 @@ class RhelImages(enum.Enum):
     INCLUDE_ONLY = "include-only"
 
 
+class S390xImages(enum.Enum):
+    EXCLUDE = "exclude"
+    INCLUDE = "include"
+    ONLY = "only"
+
+
 def main() -> None:
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
@@ -65,6 +71,14 @@ def main() -> None:
         default=RhelImages.INCLUDE,
         nargs="?",
         help="Whether to `include` rhel images or `exclude` them or `include-only` them",
+    )
+    argparser.add_argument(
+        "--s390x-images",
+        type=S390xImages,
+        required=False,
+        default=S390xImages.EXCLUDE,
+        nargs="?",
+        help="Whether to include, exclude, or only include s390x images",
     )
     args = argparser.parse_args()
 
@@ -84,12 +98,28 @@ def main() -> None:
     else:
         raise Exception(f"Unknown value for --rhel-images: {args.rhel_images}")
 
+    if args.s390x_images == S390xImages.INCLUDE:
+        pass
+    elif args.s390x_images == S390xImages.EXCLUDE:
+        targets = [target for target in targets if "s390x" not in target]
+    elif args.s390x_images == S390xImages.ONLY:
+        targets = [target for target in targets if "s390x" in target]
+    else:
+        raise Exception(f"Unknown value for --s390x-images: {args.s390x_images}")
+
     # https://stackoverflow.com/questions/66025220/paired-values-in-github-actions-matrix
     output = [
         "matrix="
         + json.dumps(
             {
-                "include": [{"target": target, "subscription": "rhel" in target} for target in targets],
+                "include": [
+                    {
+                        "target": target,
+                        "subscription": "rhel" in target,
+                        "s390x": ("s390x" in target) and (args.s390x_images != S390xImages.EXCLUDE),
+                    }
+                    for target in targets
+                ],
             },
             separators=(",", ":"),
         ),
