@@ -48,8 +48,15 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 USER 0
 
 # Dependencies for PDF export
-RUN ./utils/install_pdf_deps.sh
-ENV PATH="/usr/local/texlive/bin/x86_64-linux:/usr/local/pandoc/bin:$PATH"
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" != "s390x" ]; then \
+  echo "Installing PDF export deps for $TARGETARCH" && \
+  ./utils/install_pdf_deps.sh; \
+else \
+  echo "Skipping PDF export deps for $TARGETARCH"; \
+fi
+
+ENV PATH="/usr/local/texlive/bin/${TARGETARCH}-linux:/usr/local/pandoc/bin:$PATH"
 
 USER 1001
 
