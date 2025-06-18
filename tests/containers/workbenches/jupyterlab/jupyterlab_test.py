@@ -116,7 +116,7 @@ class TestJupyterLabImage:
             docker_utils.NotebookContainer(container).stop(timeout=0)  # if no env is specified, the image will run
 
     @allure.description("Check that pyzmq library works correctly, important to check especially on s390x.")
-    def test_pyzmq_on_s390x(self, jupyterlab_image: conftest.Image) -> None:
+    def test_pyzmq_import(self, jupyterlab_image: conftest.Image) -> None:
         container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
         # Python script to test pyzmq
         python_script = """
