@@ -26,7 +26,7 @@ on:  # yamllint disable-line rule:truthy
 
 env:
   USER_HASH: ${{ inputs.user-hash }}
-  REPO_ORG: opendatahub-io
+  REPO_ORG: mtchoum1
   REPO_NAME: 'notebooks'
   TMP_BRANCH: tmp-digest-sync-${{ github.run_id }}
   BRANCH_NAME: ${{ inputs.branch || 'main' }}

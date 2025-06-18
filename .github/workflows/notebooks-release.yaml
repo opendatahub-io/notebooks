@@ -45,14 +45,14 @@ env:
   RELEASE_NAME: ${{ github.event.inputs.release_name }}
   BRANCH: ${{ github.event.inputs.branch }}
   USER_HASH: ${{ github.event.inputs.user-hash }}
-  REPO_OWNER: opendatahub-io
+  REPO_OWNER: mtchoum1
   REPO_NAME: notebooks
   VERSION: ${{ github.event.inputs.buildconfigs_version}}
 
 jobs:
   # 1. Update the params-latest.env and commit-latest.env files with new SHAs
   Update-manifests:
-    uses: opendatahub-io/notebooks/.github/workflows/notebooks-digest-updater.yaml@main
+    uses: mtchoum1/notebooks/.github/workflows/notebooks-digest-updater.yaml@main
     with:
       branch: ${{ github.event.inputs.branch }}
       user-hash: ${{ github.event.inputs.user-hash }}
@@ -113,7 +113,7 @@ jobs:
   # 3. Update the BuildConfigs for CUDA RStudio and RStudio
   Update-buildConfigs:
     if: ${{ github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release-type == 'Release' }}
-    uses: opendatahub-io/notebooks/.github/workflows/update-buildconfigs.yaml@main
+    uses: mtchoum1/notebooks/.github/workflows/update-buildconfigs.yaml@main
     with:
       branch: ${{ github.event.inputs.branch }}
       version: ${{ github.event.inputs.buildconfigs_version }}
