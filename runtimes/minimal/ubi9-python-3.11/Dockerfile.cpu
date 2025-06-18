@@ -9,14 +9,14 @@ WORKDIR /opt/app-root/bin
 USER 0
 
 # Install useful OS packages
-RUN ARCH=$(uname -m) && \
-    echo "Detected architecture: $ARCH" && \
-    if [ "$ARCH" = "s390x" ]; then \
-        dnf install -y mesa-libGL skopeo gcc g++ make openssl-devel autoconf automake libtool cmake; \
-    else \
-        dnf install -y mesa-libGL skopeo; \
+ARG TARGETARCH
+RUN echo "Building for architecture: ${TARGETARCH}" && \
+    PACKAGES=(mesa-libGL skopeo) && \
+    if [ "$TARGETARCH" = "s390x" ]; then \
+        PACKAGES+=(gcc g++ make openssl-devel autoconf automake libtool cmake); \
     fi && \
-    dnf clean all && rm -rf /var/cache/yum
+    dnf install -y "${PACKAGES[@]}" && \
+    dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
 
 # Other apps and tools installed as default user
 USER 1001
