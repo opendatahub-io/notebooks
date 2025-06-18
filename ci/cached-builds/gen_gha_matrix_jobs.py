@@ -131,7 +131,7 @@ def main() -> None:
         "has_jobs=" + json.dumps(len(targets_with_platform) > 0, separators=(",", ":")),
     ]
 
-    print("targets", targets)
+    print("targets", targets_with_platform)
     print(*output, sep="\n")
 
     if "GITHUB_ACTIONS" in os.environ:
