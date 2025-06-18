@@ -56,7 +56,7 @@ jobs:
     uses: opendatahub-io/notebooks/.github/workflows/notebooks-digest-updater.yaml@main
     with:
       branch: ${{ github.event.inputs.branch }}
-      user-hash: ${{ github.event.inputs['user-hash'] }}
+      user-hash: ${{ github.event.inputs.user-hash }}
 
   # 2. Check if the Manifest PR is merged      
   Manifests-merged:
@@ -176,7 +176,7 @@ jobs:
   # 5. Generate the release with BuildConfigs if needed
   Generate-release_with_buildconfigs:
     needs: [Update-manifests, Manifests-merged, Update-buildConfigs, BuildConfigs-merged]
-    if: ${{ needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs-merged.outputs.pr_merged_b == 'true' && github.event.inputs.update_buildconfigs == 'true' && github.event.inputs['release-type'] == 'Release' }}
+    if: ${{ needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs-merged.outputs.pr_merged_b == 'true' && github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release-type == 'Release' }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
