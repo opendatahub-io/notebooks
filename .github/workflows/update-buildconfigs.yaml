@@ -52,7 +52,9 @@ jobs:
       - name: Update BuildConfig
         shell: bash
         run: |
-          bash "${GITHUB_WORKSPACE}/ci/buildconfig-updater.sh" "${GITHUB_WORKSPACE}/manifests/base/cuda-rstudio-buildconfig.yaml" "$VERSION"
+          for config in "cuda-rstudio-buildconfig.yaml" "rstudio-buildconfig.yaml"; do
+            bash "${GITHUB_WORKSPACE}/ci/buildconfig-updater.sh" "${GITHUB_WORKSPACE}/manifests/base/$config" "$VERSION"
+          done
       
       - name: Add Files and Commit Changes
         env:
