@@ -128,7 +128,7 @@ def main() -> None:
             },
             separators=(",", ":"),
         ),
-        "has_jobs=" + json.dumps(len(targets) > 0, separators=(",", ":")),
+        "has_jobs=" + json.dumps(len(targets_with_platform) > 0, separators=(",", ":")),
     ]
 
     print("targets", targets)
