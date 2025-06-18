@@ -21,6 +21,11 @@ Use https://pypi.org/project/py-make/ or https://github.com/JetBrains/intellij-p
 
 project_dir = pathlib.Path(__file__).parent.parent.parent.absolute()
 
+S390X_COMPATIBLE = {
+    "runtime-minimal-ubi9-python-3.11",
+    # add more here
+}
+
 
 def extract_image_targets(makefile_dir: pathlib.Path | str | None = None) -> list[str]:
     if makefile_dir is None:
@@ -105,10 +110,8 @@ def main() -> None:
         if args.s390x_images != S390xImages.ONLY:
             targets_with_platform.append((target, "linux/amd64"))
         if args.s390x_images != S390xImages.EXCLUDE:
-            # NOTE: hardcode the list of s390x-compatible Makefile targets here
-            if target in [
-                "runtime-minimal-ubi9-python-3.11",
-            ]:
+            # NOTE: hardcode the list of s390x-compatible Makefile targets in S390X_COMPATIBLE
+            if target in S390X_COMPATIBLE:
                 targets_with_platform.append((target, "linux/s390x"))
 
     # https://stackoverflow.com/questions/66025220/paired-values-in-github-actions-matrix
