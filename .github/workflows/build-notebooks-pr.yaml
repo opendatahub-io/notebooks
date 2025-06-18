@@ -41,7 +41,7 @@ jobs:
             --from-ref 'origin/${{ github.event.pull_request.base.ref }}' \
             --to-ref '${{ github.event.pull_request.head.ref }}' \
             --rhel-images exclude \
-            --s390x-images exclude
+            --s390x-images include
         id: gen
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -57,5 +57,6 @@ jobs:
     with:
       target: "${{ matrix.target }}"
       github: "${{ toJSON(github) }}"
+      platform: "${{ matrix.platform }}"
       subscription: "${{ matrix.subscription }}"
     secrets: inherit

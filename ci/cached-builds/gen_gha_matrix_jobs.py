@@ -76,7 +76,7 @@ def main() -> None:
         "--s390x-images",
         type=S390xImages,
         required=False,
-        default=S390xImages.EXCLUDE,
+        default=S390xImages.INCLUDE,
         nargs="?",
         help="Whether to include, exclude, or only include s390x images",
     )
@@ -98,14 +98,17 @@ def main() -> None:
     else:
         raise Exception(f"Unknown value for --rhel-images: {args.rhel_images}")
 
-    if args.s390x_images == S390xImages.INCLUDE:
-        pass
-    elif args.s390x_images == S390xImages.EXCLUDE:
-        targets = [target for target in targets if "s390x" not in target]
-    elif args.s390x_images == S390xImages.ONLY:
-        targets = [target for target in targets if "s390x" in target]
-    else:
+    if args.s390x_images not in S390xImages:
         raise Exception(f"Unknown value for --s390x-images: {args.s390x_images}")
+
+    targets_with_platform: list[tuple[str, str]] = []
+    for target in targets:
+        if args.s390x_images != S390xImages.ONLY:
+            targets_with_platform.append((target, "linux/amd64"))
+        if args.s390x_images != S390xImages.EXCLUDE:
+            # NOTE: hardcode the list of s390x-compatible Makefile targets here
+            if target in ["runtime-minimal-ubi9-python-3.11"]:
+                targets_with_platform.append((target, "linux/s390x"))
 
     # https://stackoverflow.com/questions/66025220/paired-values-in-github-actions-matrix
     output = [
@@ -115,10 +118,10 @@ def main() -> None:
                 "include": [
                     {
                         "target": target,
+                        "platform": platform,
                         "subscription": "rhel" in target,
-                        "s390x": ("s390x" in target) and (args.s390x_images != S390xImages.EXCLUDE),
                     }
-                    for target in targets
+                    for (target, platform) in targets_with_platform
                 ],
             },
             separators=(",", ":"),

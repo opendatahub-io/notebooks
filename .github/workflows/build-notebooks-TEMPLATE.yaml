@@ -15,6 +15,10 @@ name: Build & Publish Notebook Servers (TEMPLATE)
         required: true
         description: "top workflow's `github`"
         type: string
+      platform:
+        required: true
+        description: "platform to build, podman build --platform="
+        type: string
       subscription:
         required: false
         default: false
