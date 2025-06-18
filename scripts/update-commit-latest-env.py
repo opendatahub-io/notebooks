@@ -11,7 +11,7 @@ import typing
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent
 
 
-async def get_image_vcs_ref(image_url: str) -> tuple[str, str | None]:
+async def get_image_vcs_ref(image_url: str, semaphore: asyncio.Semaphore) -> tuple[str, str | None]:
     """
     Asynchronously inspects a container image's configuration using skopeo
     and extracts the 'vcs-ref' label.
@@ -32,21 +32,29 @@ async def get_image_vcs_ref(image_url: str) -> tuple[str, str | None]:
 
     logging.info(f"Starting config inspection for: {image_url}")
 
+    stdout, stderr, returncode = None, None, None
     try:
-        # Create an asynchronous subprocess
-        process = await asyncio.create_subprocess_exec(
-            *command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
+        async with semaphore:
+            logging.info(f"Semaphore acquired, starting skopeo inspect for: {image_url}")
+            # Create an asynchronous subprocess
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            # Wait for the command to complete and capture output
+            stdout, stderr = await process.communicate()
+            returncode = process.returncode
 
-        # Wait for the command to complete and capture output
-        stdout, stderr = await process.communicate()
+        # Process the results outside the semaphore block
+        if returncode != 0:
+            logging.error(f"Skopeo command failed for {image_url} with exit code {returncode}.")
+            if stderr:
+                logging.error(f"Stderr: {stderr.decode().strip()}")
+            return image_url, None
 
-        # Check for errors
-        if process.returncode != 0:
-            logging.error(f"Skopeo command failed for {image_url} with exit code {process.returncode}.")
-            logging.error(f"Stderr: {stderr.decode().strip()}")
+        if not stdout:
+            logging.error(f"Skopeo command returned success but stdout was empty for {image_url}.")
             return image_url, None
 
         # Decode and parse the JSON output from stdout
@@ -67,7 +75,10 @@ async def get_image_vcs_ref(image_url: str) -> tuple[str, str | None]:
         logging.error("The 'skopeo' command was not found. Please ensure it is installed and in your PATH.")
         return image_url, None
     except json.JSONDecodeError:
+        # This error can now also happen if stdout is None or not valid JSON
         logging.error(f"Failed to parse skopeo output as JSON for {image_url}.")
+        if stdout:
+            logging.debug(f"Stdout from skopeo for {image_url}: {stdout.decode(errors='replace')}")
         return image_url, None
     except Exception as e:
         logging.error(f"An unexpected error occurred while processing {image_url}: {e}")
@@ -78,7 +89,8 @@ async def inspect(images_to_inspect: typing.Iterable[str]) -> list[tuple[str, st
     """
     Main function to orchestrate the concurrent inspection of multiple images.
     """
-    tasks = [get_image_vcs_ref(image) for image in images_to_inspect]
+    semaphore = asyncio.Semaphore(22)  # Limit concurrent skopeo processes
+    tasks = [get_image_vcs_ref(image, semaphore) for image in images_to_inspect]
     return await asyncio.gather(*tasks)
 
 
