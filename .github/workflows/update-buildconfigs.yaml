@@ -49,7 +49,9 @@ jobs:
           git push --set-upstream origin "$TMP_BRANCH"
 
       - name: Update BuildConfig
-        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
           for config in "cuda-rstudio-buildconfig.yaml" "rstudio-buildconfig.yaml"; do
             bash "${GITHUB_WORKSPACE}/ci/buildconfig-updater.sh" "${GITHUB_WORKSPACE}/manifests/base/$config" "$VERSION"
