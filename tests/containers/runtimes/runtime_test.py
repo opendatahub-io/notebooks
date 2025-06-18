@@ -19,10 +19,10 @@ class TestRuntimeImage:
 
             context = zmq.Context()
             try:
-                _socket = context.socket(zmq.PAIR)
+                socket = context.socket(zmq.PAIR)
                 print("pyzmq imported and socket created successfully")
             finally:
-                _socket.close(0)  # linger=0
+                socket.close(0)  # linger=0
                 context.term()
 
         try:

@@ -7,7 +7,7 @@ import allure
 import pytest
 import requests
 
-from tests.containers import base_image_test, conftest, docker_utils
+from tests.containers import conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 

@@ -119,10 +119,8 @@ def image(request):
 def runtime_image(image: str) -> Image:
     image_metadata = get_image_metadata(image)
 
-    if not '-runtime-' in image_metadata.labels["name"]:
-        pytest.skip(
-            f"Image {image} does not have any of '-runtime-' in {image_metadata.labels['name']=}'"
-        )
+    if "-runtime-" not in image_metadata.labels["name"]:
+        pytest.skip(f"Image {image} does not have any of '-runtime-' in {image_metadata.labels['name']=}'")
 
     return image_metadata
 
