@@ -101,7 +101,6 @@ class TestJupyterLabImage:
 
     @allure.issue("RHOAIENG-24348")
     @allure.description("Check that custom-built (to be FIPS-compliant) mongocli binary runs.")
-    @pytest.mark.s390x
     def test_mongocli_binary_runs(self, jupyterlab_image: conftest.Image) -> None:
         if "-minimal-" in jupyterlab_image.name and all(
             accelerator not in jupyterlab_image.name for accelerator in ["-cuda-", "-rocm-"]
