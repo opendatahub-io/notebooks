@@ -29,7 +29,7 @@ env:
   REPO_ORG: opendatahub-io
   REPO_NAME: 'notebooks'
   TMP_BRANCH: tmp-digest-sync-${{ github.run_id }}
-  BRANCH_NAME: ${{ inputs.branch || 'main' }}
+  BRANCH_NAME: ${{ inputs.branch }}
 
 jobs:
   update-images:

@@ -1,5 +1,7 @@
-local file_path=$1
-local version=$2
+#!/bin/bash
+
+file_path=$1
+version=$2
 
 tmpfile=$(mktemp)
 trap 'rm -f "$tmpfile"' EXIT
