@@ -100,9 +100,6 @@ def main() -> None:
     else:
         raise Exception(f"Unknown value for --rhel-images: {args.rhel_images}")
 
-    if args.s390x_images not in S390xImages:
-        raise Exception(f"Unknown value for --s390x-images: {args.s390x_images}")
-
     targets_with_platform: list[tuple[str, str]] = []
     for target in targets:
         if args.s390x_images != S390xImages.ONLY:
