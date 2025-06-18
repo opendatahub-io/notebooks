@@ -1,5 +1,5 @@
-local file_path=$1
-local version=$2
+file_path=$1
+version=$2
 
 while IFS= read -r line; do
     if [[ "$line" == *"ref: rhoai-"* ]]; then
