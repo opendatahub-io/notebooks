@@ -54,47 +54,47 @@ jobs:
         with:
           ref: ${{ env.BRANCH_NAME }}
 
-      - name: Create a new branch
-        run: |
-         echo ${{ env.TMP_BRANCH }}
-         git checkout -b ${{ env.TMP_BRANCH }}
-         git push --set-upstream origin ${{ env.TMP_BRANCH }}
+      # - name: Create a new branch
+      #   run: |
+      #    echo ${{ env.TMP_BRANCH }}
+      #    git checkout -b ${{ env.TMP_BRANCH }}
+      #    git push --set-upstream origin ${{ env.TMP_BRANCH }}
 
-      - name: Checkout release branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.TMP_BRANCH }}
-          fetch-depth: 0
+      # - name: Checkout release branch
+      #   uses: actions/checkout@v4
+      #   with:
+      #     ref: ${{ env.TMP_BRANCH }}
+      #     fetch-depth: 0
 
       # - name: Invoke ci/sha-digest-updater.sh script to handle the updates
       #   shell: bash
       #   run: |
       #     bash "${GITHUB_WORKSPACE}/ci/sha-digest-updater.sh" "${{ env.USER_HASH }}" "${{ env.REPO_ORG }}" "${{ env.BRANCH_NAME }}" "${{ env.REPO_NAME }}"
 
-      - name: Commit Changes
-        run: |
+      # - name: Commit Changes
+      #   run: |
 
-          if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-            git fetch origin ${{ env.TMP_BRANCH }} && \
-            git pull origin ${{ env.TMP_BRANCH }} && \
-            git add manifests/base/  && \
-            git commit -m "Update image related sha digests via notebooks-digest-updater GitHub action" && \
-            git push origin ${{ env.TMP_BRANCH }}
-          else
-            echo "There were no changes detected in the images for the ${{ env.BRANCH_NAME }}"
-          fi
+      #     if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
+      #       git fetch origin ${{ env.TMP_BRANCH }} && \
+      #       git pull origin ${{ env.TMP_BRANCH }} && \
+      #       git add manifests/base/  && \
+      #       git commit -m "Update image related sha digests via notebooks-digest-updater GitHub action" && \
+      #       git push origin ${{ env.TMP_BRANCH }}
+      #     else
+      #       echo "There were no changes detected in the images for the ${{ env.BRANCH_NAME }}"
+      #     fi
 
-      - name: Capture skipped images log (if any)
-        id: skipped_log
-        run: |
-          if [[ -f ${GITHUB_WORKSPACE}/skipped-images.txt && -s ${GITHUB_WORKSPACE}/skipped-images.txt ]]; then
-            echo "Found skipped images. Preparing message."
-            echo 'log<<EOF' >> $GITHUB_OUTPUT
-            cat ${GITHUB_WORKSPACE}/skipped-images.txt >> $GITHUB_OUTPUT
-            echo 'EOF' >> $GITHUB_OUTPUT
-          else
-            echo "log=" >> $GITHUB_OUTPUT
-          fi
+      # - name: Capture skipped images log (if any)
+      #   id: skipped_log
+      #   run: |
+      #     if [[ -f ${GITHUB_WORKSPACE}/skipped-images.txt && -s ${GITHUB_WORKSPACE}/skipped-images.txt ]]; then
+      #       echo "Found skipped images. Preparing message."
+      #       echo 'log<<EOF' >> $GITHUB_OUTPUT
+      #       cat ${GITHUB_WORKSPACE}/skipped-images.txt >> $GITHUB_OUTPUT
+      #       echo 'EOF' >> $GITHUB_OUTPUT
+      #     else
+      #       echo "log=" >> $GITHUB_OUTPUT
+      #     fi
 
       - name: pull-request
         run: |
