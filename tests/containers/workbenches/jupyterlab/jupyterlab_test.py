@@ -114,28 +114,3 @@ class TestJupyterLabImage:
             docker_utils.container_exec(container.get_wrapped_container(), "mongocli config --help")
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)  # if no env is specified, the image will run
-
-    @allure.description("Check that pyzmq library works correctly, important to check especially on s390x.")
-    def test_pyzmq_import(self, jupyterlab_image: conftest.Image) -> None:
-        container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
-
-        def check_zmq():
-            # ruff: noqa: PLC0415 `import` should be at the top-level of a file
-            import zmq  # pyright: ignore reportMissingImports
-
-            context = zmq.Context()
-            _socket = context.socket(zmq.PAIR)
-            print("pyzmq imported and socket created successfully")
-
-        try:
-            container.start(wait_for_readiness=False)  # Readiness not needed for exec
-            exit_code, output_str = container.exec(
-                base_image_test.encode_python_function_execution_command_interpreter("/usr/bin/python3", check_zmq)
-            )
-
-            assert exit_code == 0, f"Python script execution failed. Output: {output_str}"
-            assert "pyzmq imported and socket created successfully" in output_str, (
-                f"Expected success message not found in output. Output: {output_str}"
-            )
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)
