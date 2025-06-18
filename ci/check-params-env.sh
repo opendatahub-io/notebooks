@@ -27,8 +27,8 @@ PARAMS_ENV_PATH="manifests/base/params.env"
 
 # This value needs to be updated everytime we deliberately change number of the
 # images we want to have in the `params.env` or `params-latest.env` file.
-EXPECTED_NUM_RECORDS=45
-EXPECTED_ADDI_RUNTIME_RECORDS=6
+EXPECTED_NUM_RECORDS=51
+EXPECTED_ADDI_RUNTIME_RECORDS=0
 
 # Number of attempts for the skopeo tool to gather data from the repository.
 SKOPEO_RETRY=3
