@@ -7,7 +7,7 @@ import allure
 import pytest
 import requests
 
-from tests.containers import conftest, docker_utils
+from tests.containers import conftest, docker_utils, base_image_test
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 
@@ -118,19 +118,18 @@ class TestJupyterLabImage:
     @allure.description("Check that pyzmq library works correctly, important to check especially on s390x.")
     def test_pyzmq_import(self, jupyterlab_image: conftest.Image) -> None:
         container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
-        # Python script to test pyzmq
-        python_script = """
-import zmq
-context = zmq.Context()
-socket = context.socket(zmq.PAIR)
-print("pyzmq imported and socket created successfully")
-"""
+
+        def check_zmq():
+            import zmq
+            context = zmq.Context()
+            _socket = context.socket(zmq.PAIR)
+            print("pyzmq imported and socket created successfully")
+
         try:
             container.start(wait_for_readiness=False)  # Readiness not needed for exec
-            # Execute the Python script inside the container
-            # Ensure python3 is used, as 'python' might point to python2 in some older base images
-            exit_code, output = container.exec(["python3", "-c", python_script])
-            output_str = output.decode()
+            exit_code, output_str = container.exec(
+                base_image_test.encode_python_function_execution_command_interpreter("/usr/bin/python3", check_zmq)
+            )
 
             assert exit_code == 0, f"Python script execution failed. Output: {output_str}"
             assert "pyzmq imported and socket created successfully" in output_str, (
