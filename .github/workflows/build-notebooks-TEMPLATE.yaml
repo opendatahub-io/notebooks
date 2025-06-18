@@ -61,17 +61,11 @@ jobs:
         with:
           ref: "refs/pull/${{ fromJson(inputs.github).event.number }}/merge"
 
-      - name: Set up QEMU
+      - name: Set up QEMU to build linux/s390x
+        if: ${{ inputs.platform == 'linux/s390x' }}
         uses: docker/setup-qemu-action@v3
         with:
           platforms: s390x
-
-      - name: Set platform argument for s390x
-        if: matrix.s390x == true
-        run: echo "PLATFORM_ARG=--platform=linux/s390x" >> $GITHUB_ENV
-      - name: Set platform argument for non-s390x
-        if: matrix.s390x != true # Also true if matrix.s390x is not defined
-        run: echo "PLATFORM_ARG=" >> $GITHUB_ENV
 
       - run: mkdir -p $TMPDIR
 
@@ -319,7 +313,8 @@ jobs:
           fromJson(inputs.github).event_name == 'workflow_dispatch' }}
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
-          CONTAINER_BUILD_CACHE_ARGS: "${{ env.PLATFORM_ARG }} --cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
+          # Configuring `podman build --platform=` through CONTAINER_BUILD_CACHE_ARGS is a venerable hack on this project
+          CONTAINER_BUILD_CACHE_ARGS: "--platform=${{ inputs.platform }} --cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
       - name: "pull_request: make ${{ inputs.target }}"
         run: |
           # print running stats on disk occupancy
