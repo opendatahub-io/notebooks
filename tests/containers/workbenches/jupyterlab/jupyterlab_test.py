@@ -126,14 +126,15 @@ socket = context.socket(zmq.PAIR)
 print("pyzmq imported and socket created successfully")
 """
         try:
-            container.start(wait_for_readiness=False) # Readiness not needed for exec
+            container.start(wait_for_readiness=False)  # Readiness not needed for exec
             # Execute the Python script inside the container
             # Ensure python3 is used, as 'python' might point to python2 in some older base images
             exit_code, output = container.exec(["python3", "-c", python_script])
             output_str = output.decode()
 
             assert exit_code == 0, f"Python script execution failed. Output: {output_str}"
-            assert "pyzmq imported and socket created successfully" in output_str, \
+            assert "pyzmq imported and socket created successfully" in output_str, (
                 f"Expected success message not found in output. Output: {output_str}"
+            )
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)

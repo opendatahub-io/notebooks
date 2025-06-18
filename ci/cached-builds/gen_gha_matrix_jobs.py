@@ -107,7 +107,9 @@ def main() -> None:
             targets_with_platform.append((target, "linux/amd64"))
         if args.s390x_images != S390xImages.EXCLUDE:
             # NOTE: hardcode the list of s390x-compatible Makefile targets here
-            if target in ["runtime-minimal-ubi9-python-3.11"]:
+            if target in [
+                "runtime-minimal-ubi9-python-3.11",
+            ]:
                 targets_with_platform.append((target, "linux/s390x"))
 
     # https://stackoverflow.com/questions/66025220/paired-values-in-github-actions-matrix
