@@ -67,6 +67,7 @@ def main() -> None:
     argparser.add_argument(
         "--rhel-images",
         type=RhelImages,
+        choices=list(RhelImages),
         required=False,
         default=RhelImages.INCLUDE,
         nargs="?",
@@ -75,6 +76,7 @@ def main() -> None:
     argparser.add_argument(
         "--s390x-images",
         type=S390xImages,
+        choices=list(S390xImages),
         required=False,
         default=S390xImages.INCLUDE,
         nargs="?",
