@@ -7,7 +7,7 @@ import allure
 import pytest
 import requests
 
-from tests.containers import conftest, docker_utils, base_image_test
+from tests.containers import base_image_test, conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 
@@ -120,7 +120,9 @@ class TestJupyterLabImage:
         container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
 
         def check_zmq():
-            import zmq
+            # ruff: noqa: PLC0415 `import` should be at the top-level of a file
+            import zmq  # pyright: ignore reportMissingImports
+
             context = zmq.Context()
             _socket = context.socket(zmq.PAIR)
             print("pyzmq imported and socket created successfully")
