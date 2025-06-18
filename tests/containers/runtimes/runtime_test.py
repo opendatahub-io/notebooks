@@ -18,11 +18,13 @@ class TestRuntimeImage:
             import zmq  # pyright: ignore reportMissingImports
 
             context = zmq.Context()
+            socket = None
             try:
                 socket = context.socket(zmq.PAIR)
                 print("pyzmq imported and socket created successfully")
             finally:
-                socket.close(0)  # linger=0
+                if socket is not None:
+                    socket.close(0)  # linger=0
                 context.term()
 
         try:
