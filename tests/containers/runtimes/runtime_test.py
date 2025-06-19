@@ -33,7 +33,8 @@ class TestRuntimeImage:
 
         with running_image(runtime_image.name) as container:
             exit_code, output_str = container.exec(
-                base_image_test.encode_python_function_execution_command_interpreter("/usr/bin/python3", check_zmq)
+                # NOTE: /usr/bin/python3 would not find zmq, we need python3 in user's venv
+                base_image_test.encode_python_function_execution_command_interpreter("python3", check_zmq)
             )
 
             assert exit_code == 0, f"Python script execution failed. Output: {output_str}"
