@@ -52,6 +52,3 @@ def running_image(image: str):
         pytest.fail(f"Unexpected exception in test: {e}")
     finally:
         docker_utils.NotebookContainer(container).stop(timeout=0)
-
-    # If the return doesn't happen in the try block, fail the test
-    pytest.fail("The test did not pass as expected.")
