@@ -115,7 +115,7 @@ class TestJupyterLabImage:
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)  # if no env is specified, the image will run
 
-    @allure.issue("RHOAIENG-27131") # Assuming a new issue number for this test
+    @allure.issue("RHOAIENG-27131")  # Assuming a new issue number for this test
     @allure.description("Check that basic scikit-learn functionality is working.")
     def test_sklearn_smoke(self, jupyterlab_image: conftest.Image) -> None:
         container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
@@ -160,7 +160,7 @@ print("Scikit-learn smoke test completed successfully.")
             exit_code, output = container.exec(["python", script_container_path])
             output_str = output.decode()
 
-            print(f"Script output:\n{output_str}") # For debugging
+            print(f"Script output:\n{output_str}")  # For debugging
 
             assert exit_code == 0, f"Script execution failed with exit code {exit_code}. Output:\n{output_str}"
             assert "Scikit-learn smoke test completed successfully." in output_str
