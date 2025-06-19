@@ -114,3 +114,57 @@ class TestJupyterLabImage:
             docker_utils.container_exec(container.get_wrapped_container(), "mongocli config --help")
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)  # if no env is specified, the image will run
+
+    @allure.issue("RHOAIENG-27131") # Assuming a new issue number for this test
+    @allure.description("Check that basic scikit-learn functionality is working.")
+    def test_sklearn_smoke(self, jupyterlab_image: conftest.Image) -> None:
+        container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
+        test_script_content = """
+import sklearn
+from sklearn.linear_model import LogisticRegression
+import numpy as np
+
+# Simple dataset
+X = np.array([[1], [2], [3], [4], [5]])
+y = np.array([0, 0, 1, 1, 1])
+
+# Train a model
+model = LogisticRegression(solver='liblinear')
+model.fit(X, y)
+
+# Make a prediction
+pred = model.predict([[3.5]])
+print(f"Scikit-learn version: {sklearn.__version__}")
+print(f"Prediction: {pred}")
+# We expect class 1 for input 3.5
+assert pred[0] == 1, "Prediction is not as expected"
+
+print("Scikit-learn smoke test completed successfully.")
+"""
+        test_script_name = "test_sklearn.py"
+        try:
+            container.start(wait_for_readiness=True)
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmpdir_path = pathlib.Path(tmpdir)
+                script_path = tmpdir_path / test_script_name
+                script_path.write_text(test_script_content)
+                docker_utils.container_cp(
+                    container.get_wrapped_container(),
+                    src=str(script_path),
+                    dst=self.APP_ROOT_HOME,
+                )
+
+            # Execute the script
+            # Ensure APP_ROOT_HOME is in PYTHONPATH if scripts are there, or use absolute path
+            script_container_path = f"{self.APP_ROOT_HOME}/{test_script_name}"
+            exit_code, output = container.exec(["python", script_container_path])
+            output_str = output.decode()
+
+            print(f"Script output:\n{output_str}") # For debugging
+
+            assert exit_code == 0, f"Script execution failed with exit code {exit_code}. Output:\n{output_str}"
+            assert "Scikit-learn smoke test completed successfully." in output_str
+            assert "Prediction: [1]" in output_str
+
+        finally:
+            docker_utils.NotebookContainer(container).stop(timeout=0)
