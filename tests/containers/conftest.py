@@ -115,7 +115,7 @@ def image(request):
     yield request.param
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def runtime_image(image: str):
     image_metadata = get_image_metadata(image)
 
