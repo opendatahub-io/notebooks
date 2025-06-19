@@ -529,7 +529,9 @@ jobs:
           kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 
       - name: "Run image tests"
-        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        # skip on s390x because we are unable to install requirements-elyra.txt that's installed by runtime image tests
+        # https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/etc/generic/requirements-elyra.txt
+        if: ${{ steps.have-tests.outputs.tests == 'true' && !contains(fromJSON('["linux/s390x"]'), inputs.platform) }}
         run: python3 ci/cached-builds/make_test.py --target ${{ inputs.target }}
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
