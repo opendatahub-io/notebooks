@@ -305,7 +305,7 @@ jobs:
           set -Eeuxo pipefail
 
           EXTRA_PODMAN_BUILD_ARGS=""
-          if [[ "${{ inputs.architecture }}" == "linux/s390x" ]]; then
+          if [[ "${{ inputs.platform }}" == "linux/s390x" ]]; then
             # workaround for known issue https://github.com/zeromq/libzmq/pull/4486
             # In qemu-user, CACHELINE_SIZE probe is undefined
             EXTRA_PODMAN_BUILD_ARGS+='--env=CXXFLAGS=-DZMQ_CACHELINE_SIZE=64'
