@@ -299,6 +299,19 @@ jobs:
 
       # region Image build
 
+      - name: Compute extra podman build args
+        id: extra-podman-build-args
+        run: |
+          set -Eeuxo pipefail
+
+          EXTRA_PODMAN_BUILD_ARGS=""
+          if [[ "${{ inputs.architecture }}" == "linux/s390x" ]]; then
+            # workaround for known issue https://github.com/zeromq/libzmq/pull/4486
+            # In qemu-user, CACHELINE_SIZE probe is undefined
+            EXTRA_PODMAN_BUILD_ARGS+='--env=CXXFLAGS=-DZMQ_CACHELINE_SIZE=64'
+          fi
+          echo "EXTRA_PODMAN_BUILD_ARGS=$EXTRA_PODMAN_BUILD_ARGS" >> $GITHUB_OUTPUT
+
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
 
@@ -314,7 +327,7 @@ jobs:
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
           # Configuring `podman build --platform=` through CONTAINER_BUILD_CACHE_ARGS is a venerable hack on this project
-          CONTAINER_BUILD_CACHE_ARGS: "--platform=${{ inputs.platform }} --cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
+          CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --platform=${{ inputs.platform }} --cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
       - name: "pull_request: make ${{ inputs.target }}"
         run: |
           # print running stats on disk occupancy
@@ -326,7 +339,7 @@ jobs:
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
           # Configuring `podman build --platform=` through CONTAINER_BUILD_CACHE_ARGS is a venerable hack on this project
-          CONTAINER_BUILD_CACHE_ARGS: "--platform=${{ inputs.platform }} --cache-from ${{ env.CACHE }}"
+          CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --platform=${{ inputs.platform }} --cache-from ${{ env.CACHE }}"
           # We don't have access to image registry, so disable pushing
           PUSH_IMAGES: "no"
 
