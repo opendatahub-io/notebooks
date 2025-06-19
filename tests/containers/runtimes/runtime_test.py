@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import contextlib
+
 import allure
+import pytest
+import testcontainers.core.container
 
 from tests.containers import base_image_test, conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
@@ -27,8 +31,7 @@ class TestRuntimeImage:
                     socket.close(0)  # linger=0
                 context.term()
 
-        try:
-            container.start(wait_for_readiness=False)  # readiness is not needed for exec
+        with running_image(runtime_image.name) as container:
             exit_code, output_str = container.exec(
                 base_image_test.encode_python_function_execution_command_interpreter("/usr/bin/python3", check_zmq)
             )
@@ -37,5 +40,21 @@ class TestRuntimeImage:
             assert "pyzmq imported and socket created successfully" in output_str, (
                 f"Expected success message not found in output. Output: {output_str}"
             )
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)
+
+
+@contextlib.contextmanager
+def running_image(image: str):
+    """Usage: with running_image("quay.io/...") as container:"""
+    container = testcontainers.core.container.DockerContainer(image=image, user=23456, group_add=[0])
+    container.with_command("/bin/sh -c 'sleep infinity'")
+    try:
+        container.start()
+        yield container
+        return
+    except Exception as e:
+        pytest.fail(f"Unexpected exception in test: {e}")
+    finally:
+        docker_utils.NotebookContainer(container).stop(timeout=0)
+
+    # If the return doesn't happen in the try block, fail the test
+    pytest.fail("The test did not pass as expected.")
