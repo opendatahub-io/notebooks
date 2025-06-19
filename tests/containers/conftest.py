@@ -116,13 +116,13 @@ def image(request):
 
 
 @pytest.fixture(scope="session")
-def runtime_image(image: str) -> Image:
+def runtime_image(image: str):
     image_metadata = get_image_metadata(image)
 
     if "-runtime-" not in image_metadata.labels["name"]:
         pytest.skip(f"Image {image} does not have any of '-runtime-' in {image_metadata.labels['name']=}'")
 
-    return image_metadata
+    yield image_metadata
 
 
 @pytest.fixture(scope="function")
