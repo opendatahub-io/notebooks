@@ -115,10 +115,11 @@ class TestJupyterLabImage:
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)  # if no env is specified, the image will run
 
-    @allure.issue("RHOAIENG-27131")  # Assuming a new issue number for this test
+    @allure.issue("RHOAIENG-26843")
     @allure.description("Check that basic scikit-learn functionality is working.")
     def test_sklearn_smoke(self, jupyterlab_image: conftest.Image) -> None:
         container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
+        # language=Python
         test_script_content = """
 import sklearn
 from sklearn.linear_model import LogisticRegression
@@ -154,13 +155,11 @@ print("Scikit-learn smoke test completed successfully.")
                     dst=self.APP_ROOT_HOME,
                 )
 
-            # Execute the script
-            # Ensure APP_ROOT_HOME is in PYTHONPATH if scripts are there, or use absolute path
             script_container_path = f"{self.APP_ROOT_HOME}/{test_script_name}"
             exit_code, output = container.exec(["python", script_container_path])
             output_str = output.decode()
 
-            print(f"Script output:\n{output_str}")  # For debugging
+            print(f"Script output:\n{output_str}")
 
             assert exit_code == 0, f"Script execution failed with exit code {exit_code}. Output:\n{output_str}"
             assert "Scikit-learn smoke test completed successfully." in output_str
