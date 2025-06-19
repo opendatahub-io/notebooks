@@ -50,7 +50,6 @@ def running_image(image: str):
     try:
         container.start()
         yield container
-        return
     except Exception as e:
         pytest.fail(f"Unexpected exception in test: {e}")
     finally:
