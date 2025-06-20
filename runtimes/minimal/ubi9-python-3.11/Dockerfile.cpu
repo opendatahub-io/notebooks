@@ -11,11 +11,11 @@ USER 0
 # Install useful OS packages
 RUN ARCH=$(uname -m) && \
     echo "Detected architecture: $ARCH" && \
+    PACKAGES="mesa-libGL skopeo" && \
     if [ "$ARCH" = "s390x" ]; then \
-        dnf install -y mesa-libGL skopeo gcc g++ make openssl-devel autoconf automake libtool cmake; \
-    else \
-        dnf install -y mesa-libGL skopeo; \
+        PACKAGES="$PACKAGES gcc g++ make openssl-devel autoconf automake libtool cmake"; \
     fi && \
+    dnf install -y $PACKAGES && \
     dnf clean all && rm -rf /var/cache/yum
 
 # Other apps and tools installed as default user
