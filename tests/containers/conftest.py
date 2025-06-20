@@ -116,6 +116,16 @@ def image(request):
 
 
 @pytest.fixture(scope="function")
+def runtime_image(image: str):
+    image_metadata = get_image_metadata(image)
+
+    if "-runtime-" not in image_metadata.labels["name"]:
+        pytest.skip(f"Image {image} does not have any of '-runtime-' in {image_metadata.labels['name']=}'")
+
+    yield image_metadata
+
+
+@pytest.fixture(scope="function")
 def workbench_image(image: str):
     skip_if_not_workbench_image(image)
     yield image
