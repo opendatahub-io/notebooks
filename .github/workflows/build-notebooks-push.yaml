@@ -29,7 +29,8 @@ jobs:
       - name: Determine targets to build (we want to build everything on push)
         run: |
           set -x
-          python3 ci/cached-builds/gen_gha_matrix_jobs.py
+          python3 ci/cached-builds/gen_gha_matrix_jobs.py \
+            --s390x-images include
         id: gen
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -45,5 +46,6 @@ jobs:
     with:
       target: "${{ matrix.target }}"
       github: "${{ toJSON(github) }}"
+      platform: "${{ matrix.platform }}"
       subscription: "${{ matrix.subscription }}"
     secrets: inherit

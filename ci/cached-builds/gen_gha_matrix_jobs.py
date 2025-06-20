@@ -21,6 +21,11 @@ Use https://pypi.org/project/py-make/ or https://github.com/JetBrains/intellij-p
 
 project_dir = pathlib.Path(__file__).parent.parent.parent.absolute()
 
+S390X_COMPATIBLE = {
+    "runtime-minimal-ubi9-python-3.11",
+    # add more here
+}
+
 
 def extract_image_targets(makefile_dir: pathlib.Path | str | None = None) -> list[str]:
     if makefile_dir is None:
@@ -48,6 +53,12 @@ class RhelImages(enum.Enum):
     INCLUDE_ONLY = "include-only"
 
 
+class S390xImages(enum.Enum):
+    EXCLUDE = "exclude"
+    INCLUDE = "include"
+    ONLY = "only"
+
+
 def main() -> None:
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
@@ -61,10 +72,20 @@ def main() -> None:
     argparser.add_argument(
         "--rhel-images",
         type=RhelImages,
+        choices=list(RhelImages),
         required=False,
         default=RhelImages.INCLUDE,
         nargs="?",
         help="Whether to `include` rhel images or `exclude` them or `include-only` them",
+    )
+    argparser.add_argument(
+        "--s390x-images",
+        type=S390xImages,
+        choices=list(S390xImages),
+        required=False,
+        default=S390xImages.INCLUDE,
+        nargs="?",
+        help="Whether to include, exclude, or only include s390x images",
     )
     args = argparser.parse_args()
 
@@ -84,19 +105,35 @@ def main() -> None:
     else:
         raise Exception(f"Unknown value for --rhel-images: {args.rhel_images}")
 
+    targets_with_platform: list[tuple[str, str]] = []
+    for target in targets:
+        if args.s390x_images != S390xImages.ONLY:
+            targets_with_platform.append((target, "linux/amd64"))
+        if args.s390x_images != S390xImages.EXCLUDE:
+            # NOTE: hardcode the list of s390x-compatible Makefile targets in S390X_COMPATIBLE
+            if target in S390X_COMPATIBLE:
+                targets_with_platform.append((target, "linux/s390x"))
+
     # https://stackoverflow.com/questions/66025220/paired-values-in-github-actions-matrix
     output = [
         "matrix="
         + json.dumps(
             {
-                "include": [{"target": target, "subscription": "rhel" in target} for target in targets],
+                "include": [
+                    {
+                        "target": target,
+                        "platform": platform,
+                        "subscription": "rhel" in target,
+                    }
+                    for (target, platform) in targets_with_platform
+                ],
             },
             separators=(",", ":"),
         ),
-        "has_jobs=" + json.dumps(len(targets) > 0, separators=(",", ":")),
+        "has_jobs=" + json.dumps(len(targets_with_platform) > 0, separators=(",", ":")),
     ]
 
-    print("targets", targets)
+    print("targets", targets_with_platform)
     print(*output, sep="\n")
 
     if "GITHUB_ACTIONS" in os.environ:
