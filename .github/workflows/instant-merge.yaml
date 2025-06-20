@@ -8,13 +8,6 @@ on:  # yamllint disable-line rule:truthy
     paths:
       - manifests/base/params-latest.env
 
-permissions:
-  contents: write
-  pull-requests: write
-  checks: write
-  security-events: write
-  statuses: write
-
 jobs:
   instant-merge:
     runs-on: ubuntu-latest
@@ -22,6 +15,6 @@ jobs:
       - name: instant-merge
         if: ${{ github.event.sender.login == 'red-hat-konflux[bot]' && ( contains(github.event.pull_request.title, 'Update odh-workbench-jupyter-') || contains(github.event.pull_request.title, 'Update odh-workbench-codeserver-') || contains(github.event.pull_request.title, 'Update odh-pipeline-runtime-') ) }}
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
         run: |
           gh pr merge --merge --admin ${{ github.event.pull_request.html_url }}
