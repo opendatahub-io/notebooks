@@ -31,6 +31,12 @@ if [[ "$ARCH" == "ppc64le" ]]; then
   # Symlink for pdflatex
   cd /opt/texlive/2025/bin/powerpc64le-unknown-linux-gnu
   ln -s pdftex pdflatex
+  export PATH="/opt/texlive/2025/bin/powerpc64le-unknown-linux-gnu:$PATH"
+  pdflatex --version
+
+  # Install pandoc
+  dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+  dnf install -y pandoc
 
 else
   echo "Installing TeX Live from installer for $ARCH"
