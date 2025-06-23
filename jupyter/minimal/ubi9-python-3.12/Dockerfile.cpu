@@ -62,6 +62,8 @@ USER 0
 # Dependencies for PDF export begin
 RUN ./utils/install_pdf_deps.sh
 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+ENV PATH="/usr/local/texlive/bin/x86_64-linux:/usr/local/pandoc/bin:$PATH"
+ENV PATH="/opt/texlive/2025/bin/powerpc64le-unknown-linux-gnu:$PATH"
 # Dependencies for PDF export end
 
 USER 1001
