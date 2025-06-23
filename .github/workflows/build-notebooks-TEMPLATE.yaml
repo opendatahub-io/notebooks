@@ -15,6 +15,10 @@ name: Build & Publish Notebook Servers (TEMPLATE)
         required: true
         description: "top workflow's `github`"
         type: string
+      platform:
+        required: true
+        description: "platform to build, podman build --platform="
+        type: string
       subscription:
         required: false
         default: false
@@ -56,6 +60,12 @@ jobs:
         if: ${{ fromJson(inputs.github).event_name == 'pull_request_target' }}
         with:
           ref: "refs/pull/${{ fromJson(inputs.github).event.number }}/merge"
+
+      - name: Set up QEMU to build linux/s390x
+        if: ${{ inputs.platform == 'linux/s390x' }}
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: s390x
 
       - run: mkdir -p $TMPDIR
 
@@ -289,6 +299,19 @@ jobs:
 
       # region Image build
 
+      - name: Compute extra podman build args
+        id: extra-podman-build-args
+        run: |
+          set -Eeuxo pipefail
+
+          EXTRA_PODMAN_BUILD_ARGS=""
+          if [[ "${{ inputs.platform }}" == "linux/s390x" ]]; then
+            # workaround for known issue https://github.com/zeromq/libzmq/pull/4486
+            # In qemu-user, CACHELINE_SIZE probe is undefined
+            EXTRA_PODMAN_BUILD_ARGS+='--env=CXXFLAGS=-Dundefined=64'
+          fi
+          echo "EXTRA_PODMAN_BUILD_ARGS=$EXTRA_PODMAN_BUILD_ARGS" >> $GITHUB_OUTPUT
+
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
 
@@ -303,7 +326,8 @@ jobs:
           fromJson(inputs.github).event_name == 'workflow_dispatch' }}
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
-          CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
+          # Configuring `podman build --platform=` through CONTAINER_BUILD_CACHE_ARGS is a venerable hack on this project
+          CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --platform=${{ inputs.platform }} --cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
       - name: "pull_request: make ${{ inputs.target }}"
         run: |
           # print running stats on disk occupancy
@@ -314,7 +338,8 @@ jobs:
           fromJson(inputs.github).event_name == 'pull_request_target' }}"
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
-          CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }}"
+          # Configuring `podman build --platform=` through CONTAINER_BUILD_CACHE_ARGS is a venerable hack on this project
+          CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --platform=${{ inputs.platform }} --cache-from ${{ env.CACHE }}"
           # We don't have access to image registry, so disable pushing
           PUSH_IMAGES: "no"
 
@@ -504,7 +529,9 @@ jobs:
           kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 
       - name: "Run image tests"
-        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        # skip on s390x because we are unable to install requirements-elyra.txt that's installed by runtime image tests
+        # https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/etc/generic/requirements-elyra.txt
+        if: ${{ steps.have-tests.outputs.tests == 'true' && !contains(fromJSON('["linux/s390x"]'), inputs.platform) }}
         run: python3 ci/cached-builds/make_test.py --target ${{ inputs.target }}
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"

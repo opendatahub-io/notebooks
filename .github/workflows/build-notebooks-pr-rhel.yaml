@@ -20,7 +20,7 @@ permissions:
 env:
   # language=json
   contributors: |
-    ["atheo89", "andyatmiami", "caponetto", "daniellutz", "dibryant", "harshad16", "jesuino", "jiridanek", "jstourac", "paulovmr", "Fiona-Waters", "grdryn", "kryanbeane", "mtchoum1"]
+    ["atheo89", "andyatmiami", "caponetto", "daniellutz", "dibryant", "harshad16", "jesuino", "jiridanek", "jstourac", "paulovmr", "Fiona-Waters", "grdryn", "kryanbeane", "mtchoum1", "obrown1205"]
 
 jobs:
   gen:
@@ -71,5 +71,6 @@ jobs:
     with:
       target: "${{ matrix.target }}"
       github: "${{ toJSON(github) }}"
+      platform: "${{ matrix.platform }}"
       subscription: "${{ matrix.subscription }}"
     secrets: inherit
