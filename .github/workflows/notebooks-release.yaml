@@ -20,7 +20,7 @@ on:
       update_buildconfigs:
         description: 'Update BuildConfigs for CUDA RStudio and RStudio'
         required: true
-        default: 'true'
+        default: true
         type: boolean
       branch:
         description: "Optional: Provide branch name"
@@ -43,19 +43,19 @@ env:
   CREATE_NEW_RELEASE: ${{ github.event.inputs.release-type == 'Release' }}
   RELEASE_TAG: ${{ github.event.inputs.tag }}
   RELEASE_NAME: ${{ github.event.inputs.release_name }}
-  BRANCH: ${{ github.event.inputs.branch }}
+  BRANCH: ${{ github.event.inputs.branch || 'main' }}
   USER_HASH: ${{ github.event.inputs.user-hash }}
   REPO_OWNER: mtchoum1
   REPO_NAME: notebooks
   VERSION: ${{ github.event.inputs.buildconfigs_version}}
 
 jobs:
-  #1. Update the params.env and commit.env files with new SHAs
+  # 1. Update the params-latest.env and commit-latest.env files with new SHAs
   Update-manifests:
     uses: mtchoum1/notebooks/.github/workflows/notebooks-digest-updater.yaml@main
     with:
       branch: ${{ github.event.inputs.branch }}
-      user-hash: ${{ github.event.inputs.user_hash }}
+      user-hash: ${{ github.event.inputs.user-hash }}
 
   # 2. Check if the Manifest PR is merged      
   Manifests-merged:
@@ -88,7 +88,7 @@ jobs:
 
           # Polling loop to wait for the PR to be merged total timeout=5h
           MAX_ATTEMPTS=30
-          SLEEP_DURATION=30
+          SLEEP_DURATION=600
 
           for (( i=1; i<=MAX_ATTEMPTS; i++ )); do
             echo "Checking if PR #$PR_NUMBER is merged (Attempt $i/$MAX_ATTEMPTS)..."
@@ -175,7 +175,7 @@ jobs:
   # 5. Generate the release with BuildConfigs if needed
   Generate-release_with_buildconfigs:
     needs: [Update-manifests, Manifests-merged, Update-buildConfigs, BuildConfigs-merged]
-    if: ${{ needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs-merged.outputs.pr_merged_b == 'true' && github.event.inputs.update_buildconfigs == 'true' && inputs.release-type == 'Release' }}
+    if: ${{ needs.Manifests-merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs-merged.outputs.pr_merged_b == 'true' && github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release-type == 'Release' }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository

@@ -16,10 +16,10 @@ on:
   workflow_call:
     inputs:
       branch:
-        required: false
+        required: true
         type: string
       version:
-        required: false
+        required: true
         type: string
 env:
   TMP_BRANCH: tmp-verify-${{ github.run_id }}
@@ -27,7 +27,7 @@ env:
   VERSION: ${{ inputs.version }}
 
 jobs:
-  buidConfigs:
+  buildConfigs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -45,67 +45,24 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          git checkout -b $TMP_BRANCH
-          git push origin $TMP_BRANCH
-        
-      
+          git checkout -b "$TMP_BRANCH"
+          git push --set-upstream origin "$TMP_BRANCH"
+
       - name: Update BuildConfig
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          if [[ -z "$VERSION" ]]; then
-            while IFS= read -r line; do
-            if [[ "$line" == *"ref: rhoai-"* ]]; then
-              numstrc=${line#*2.}
-              numc=$(expr "$numstrc" + 1)
-              echo "      ref: rhoai-2.$numc" >> tmp.yaml
-            else
-              echo "$line" >> tmp.yaml
-            fi
-            done < ./manifests/base/cuda-rstudio-buildconfig.yaml
-            cat tmp.yaml > ./manifests/base/cuda-rstudio-buildconfig.yaml
-            rm tmp.yaml
-            while IFS= read -r line; do
-            if [[ "$line" == *"ref: rhoai-"* ]]; then
-              numstr=${line#*2.}
-              num=$(expr "$numstr" + 1)
-              echo "      ref: rhoai-2.$num" >> tmp.yaml
-            else
-              echo "$line" >> tmp.yaml
-            fi
-            done < ./manifests/base/rstudio-buildconfig.yaml
-            cat tmp.yaml > ./manifests/base/rstudio-buildconfig.yaml
-            rm tmp.yaml
-          else
-            while IFS= read -r line; do
-            if [[ "$line" == *"ref: rhoai-"* ]]; then
-              echo "      ref: rhoai-$VERSION" >> tmp.yaml
-            else
-              echo "$line" >> tmp.yaml
-            fi
-            done < ./manifests/base/cuda-rstudio-buildconfig.yaml
-            cat tmp.yaml > ./manifests/base/cuda-rstudio-buildconfig.yaml
-            rm tmp.yaml
-            while IFS= read -r line; do
-            if [[ "$line" == *"ref: rhoai-"* ]]; then
-              echo "      ref: rhoai-$VERSION" >> tmp.yaml
-            else
-              echo "$line" >> tmp.yaml
-            fi
-            done < ./manifests/base/rstudio-buildconfig.yaml
-            cat tmp.yaml > ./manifests/base/rstudio-buildconfig.yaml
-            rm tmp.yaml
-          fi
-          
+          for config in "cuda-rstudio-buildconfig.yaml" "rstudio-buildconfig.yaml"; do
+            bash "${GITHUB_WORKSPACE}/ci/buildconfig-updater.sh" "${GITHUB_WORKSPACE}/manifests/base/$config" "$VERSION"
+          done
       
       - name: Add Files and Commit Changes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          git add ./manifests/base/cuda-rstudio-buildconfig.yaml
-          git add ./manifests/base/rstudio-buildconfig.yaml
+          git add "${GITHUB_WORKSPACE}/manifests/base/"*.yaml
           git commit -m "Update BuildConfigs for CUDA RStudio and RStudio"
           git push origin $TMP_BRANCH
       
@@ -120,4 +77,3 @@ jobs:
             Created by `/.github/workflows/update-buildconfigs.yaml`
             - `manifests/base/cuda-rstudio-buildconfig.yaml` File that points to the latest CUDA RStudio version
             - `manifests/base/rstudio-buildconfig.yaml` File that points to the latest RStudio version
-          
