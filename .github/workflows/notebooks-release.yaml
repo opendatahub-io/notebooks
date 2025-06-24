@@ -55,6 +55,10 @@ env:
 jobs:
   # 1. Update the params-latest.env and commit-latest.env files with new SHAs
   Update-manifests:
+    # grant the permissions that notebooks-digest-updater.yaml needs
+    permissions:
+      contents: write
+      pull-requests: write
     uses: ./.github/workflows/notebooks-digest-updater.yaml
     with:
       branch: ${{ github.event.inputs.branch }}
