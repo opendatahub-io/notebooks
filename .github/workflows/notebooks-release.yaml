@@ -116,7 +116,7 @@ jobs:
   # 3. Update the BuildConfigs for CUDA RStudio and RStudio
   Update-buildConfigs:
     if: ${{ github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release-type == 'Release' }}
-    uses: opendatahub-io/notebooks/.github/workflows/update-buildconfigs.yaml@main
+    uses: ./.github/workflows/update-buildconfigs.yaml
     with:
       branch: ${{ github.event.inputs.branch }}
       version: ${{ github.event.inputs.buildconfigs_version }}
