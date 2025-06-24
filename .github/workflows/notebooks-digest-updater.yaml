@@ -52,7 +52,7 @@ jobs:
       - name: Checkout branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.BRANCH_NAME }}
+          ref: ${{ main }}
 
       # - name: Create a new branch
       #   run: |
