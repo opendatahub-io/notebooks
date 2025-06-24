@@ -120,6 +120,10 @@ jobs:
   # 3. Update the BuildConfigs for CUDA RStudio and RStudio
   Update-buildConfigs:
     if: ${{ github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release-type == 'Release' }}
+    # grant the permissions that update-buildconfigs.yaml needs
+    permissions:
+      contents: write
+      pull-requests: write
     uses: ./.github/workflows/update-buildconfigs.yaml
     with:
       branch: ${{ github.event.inputs.branch }}
