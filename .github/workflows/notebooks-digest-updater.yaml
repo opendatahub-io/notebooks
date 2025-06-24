@@ -11,7 +11,7 @@ on:  # yamllint disable-line rule:truthy
         type: string
       user-hash:
         required: false
-        description: "Optional: Specify a Git hash (it should exists on the branch history)"
+        description: "Optional: Specify a Git hash (it should exist in the branch history)"
         type: string
   workflow_call:
     inputs:
@@ -21,7 +21,7 @@ on:  # yamllint disable-line rule:truthy
         type: string
       user-hash:
         required: false
-        description: "Optional: Specify a Git hash (it should exists on the branch history)"
+        description: "Optional: Specify a Git hash (it should exist in the branch history)"
         type: string
 
 env:
