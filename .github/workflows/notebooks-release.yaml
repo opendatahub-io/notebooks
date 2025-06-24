@@ -50,7 +50,7 @@ env:
   USER_HASH: ${{ github.event.inputs.user-hash }}
   REPO_OWNER: ${{ github.repository_owner }}
   REPO_NAME: ${{ github.event.repository.name }}
-  VERSION: ${{ github.event.inputs.buildconfigs_version}}
+  VERSION: ${{ github.event.inputs.buildconfigs_version }}
 
 jobs:
   # 1. Update the params-latest.env and commit-latest.env files with new SHAs
