@@ -69,16 +69,18 @@ def test_sklearn_trustyai_compatibility():
         df = pd.DataFrame(X, columns=['f1', 'f2', 'f3'])
         df['prediction'] = model.predict(X)
         df['protected'] = protected_attr
+        favorable = output("income", dtype="number", value=1)
 
+        # https://github.com/trustyai-explainability/trustyai-explainability-python-examples/blob/main/examples/GroupFairnessMetrics.ipynb
         spd = statistical_parity_difference(
-            df,
-            outcome_column='prediction',
-            protected_attribute_column='protected'
+            privileged=df[df.protected == 0],
+            unprivileged=df[df.protected == 1],
+            favorable=[favorable],
         )
         print(f"  - Statistical Parity Difference calculated: {spd:.3f}")
 
         # Test TrustyAI output creation
-        outputs = [output.Output(name=f"pred_{i}", data_type="number", value=float(pred))
+        outputs = [output(name=f"pred_{i}", dtype="number", value=float(pred))
                    for i, pred in enumerate(predictions[:3])]
         print(f"  - Created {len(outputs)} TrustyAI output instances")
 
@@ -97,7 +99,7 @@ if __name__ == "__main__":
 '''
         test_script_name = "test_trustyai.py"
         try:
-            container.start(wait_for_readiness=True)
+            container.start(wait_for_readiness=False)
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir_path = pathlib.Path(tmpdir)
                 script_path = tmpdir_path / test_script_name
@@ -116,6 +118,7 @@ if __name__ == "__main__":
 
             assert exit_code == 0, f"Script execution failed with exit code {exit_code}. Output:\n{output_str}"
             assert "🎉 All compatibility tests passed!" in output_str
+            assert "- Statistical Parity Difference calculated: 1.000" in output_str
 
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
