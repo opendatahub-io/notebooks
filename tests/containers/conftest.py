@@ -151,12 +151,16 @@ def jupyterlab_image(image: str) -> Image:
 
     return image_metadata
 
+
 @pytest.fixture(scope="function")
 def jupyterlab_datascience_image(jupyterlab_image: Image) -> Image:
     if "-minimal-" in jupyterlab_image.labels["name"]:
-        pytest.skip(f"Image {jupyterlab_image.name} is not datascience image because it has '-minimal-' in {jupyterlab_image.labels['name']=}'")
+        pytest.skip(
+            f"Image {jupyterlab_image.name} is not datascience image because it has '-minimal-' in {jupyterlab_image.labels['name']=}'"
+        )
 
     return jupyterlab_image
+
 
 @pytest.fixture(scope="function")
 def rstudio_image(image: str) -> Image:
