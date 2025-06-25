@@ -24,12 +24,15 @@ import sklearn
 from sklearn.linear_model import LogisticRegression
 import numpy as np
 
+# Set random seed for reproducibility
+np.random.seed(42)
+
 # Simple dataset
 X = np.array([[1], [2], [3], [4], [5]])
 y = np.array([0, 0, 1, 1, 1])
 
 # Train a model
-model = LogisticRegression(solver='liblinear')
+model = LogisticRegression(solver='liblinear', random_state=42)
 model.fit(X, y)
 
 # Make a prediction
