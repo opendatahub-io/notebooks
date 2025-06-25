@@ -34,6 +34,7 @@ model.fit(X, y)
 
 # Make a prediction
 pred = model.predict([[3.5]])
+print(f"NumPy version: {np.__version__}")
 print(f"Scikit-learn version: {sklearn.__version__}")
 print(f"Prediction: {pred}")
 # We expect class 1 for input 3.5
