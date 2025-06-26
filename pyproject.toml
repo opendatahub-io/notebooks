@@ -5,12 +5,14 @@ version = "2025.1"
 description = "Open Data Hub / OpenShift AI Notebook / Workbench images, and tests for the same in Python."
 readme = "README.md"
 package-mode = false
-requires-python = ">=3.12,<3.13"
-
-# https://docs.astral.sh/uv/concepts/projects/dependencies/#managing-dependencies
-dependencies = []
+requires-python = ">=3.11,<3.13"
 
 [dependency-groups]
+
+############################
+# Python Dependency Groups #
+############################
+
 dev = [
     "pre-commit",
     "pyright",
@@ -32,11 +34,281 @@ dev = [
     "openshift-python-wrapper",
 ]
 
+base = [
+
+    "wheel~=0.45.1",
+    "setuptools~=78.1.1; python_version == '3.11'",
+    "setuptools~=75.8.2; python_version == '3.12'",
+]
+
+jupyter-base = [
+    "jupyterlab==4.2.7",
+    "jupyter-server~=2.15.0",
+    "jupyter-server-proxy~=4.4.0",
+    "jupyter-server-terminals~=0.5.3",
+    "jupyterlab-git~=0.50.1",
+    "nbdime~=4.0.2",
+    "nbgitpuller~=1.2.2",
+]
+
+elyra-base = [
+    "odh-elyra==4.2.0",
+    "jupyterlab-lsp~=5.1.0",
+    "jupyterlab-widgets~=3.0.13",
+    "jupyter-resource-usage~=1.1.1",
+]
+
+elyra-preferred = [
+    "jupyter-bokeh~=4.0.5",
+]
+
+elyra-trustyai = [
+    "jupyter-bokeh~=3.0.5",
+]
+
+db-connectors = [
+    "pymongo~=4.11.2",
+    "psycopg~=3.2.5",
+    "pyodbc~=5.2.0",
+    "mysql-connector-python~=9.3.0; python_version == '3.11'",
+    "mysql-connector-python~=9.2.0; python_version == '3.12'",
+]
+
+# onnxconverter-common ~=1.13.0 required for skl2onnx, as upgraded version is not compatible with protobuf
+datascience-base = [
+    "boto3~=1.37.8",
+    "kafka-python-ng~=2.2.3",
+    "kfp~=2.12.1",
+    "plotly~=6.0.0",
+    "scipy~=1.15.2",
+    "skl2onnx~=1.18.0",
+    "onnxconverter-common~=1.13.0",
+    "codeflare-sdk~=0.29.0; python_version == '3.11'",
+    "codeflare-sdk~=0.28.1; python_version == '3.12'",
+    "kubeflow-training==1.9.0",
+]
+
+datascience-preferred = [
+    "matplotlib~=3.10.1",
+    "numpy~=2.2.3",
+    "pandas~=2.2.3",
+    "scikit-learn~=1.6.1",
+]
+
+datascience-tensorflow = [
+    "matplotlib~=3.10.1",
+    "numpy~=1.26.4",
+    "pandas~=2.2.3",
+    "scikit-learn~=1.6.1",
+]
+
+datascience-trustyai = [
+    "matplotlib ~=3.6.3",
+    "numpy ~=1.24.1",
+    "pandas ~=1.5.3",
+    "scikit-learn ~=1.2.1"
+]
+
+tensorflowcuda= [
+    "tensorflow[and-cuda]~=2.18.0",
+    "tensorboard~=2.18.0",
+    "tf2onnx~=1.16.1",
+]
+tensorflowrocm = [
+    "tensorflow-rocm~=2.14.0.600",
+    "tensorboard~=2.14.0",
+    "tf2onnx~=1.16.1",
+]
+pytorchcuda = [
+    "tensorboard~=2.19.0",
+    "torch==2.6.0",
+    "torchvision==0.21.0",
+]
+pytorchrocm = [
+    "tensorboard~=2.18.0",
+    "torch==2.6.0",
+    "torchvision==0.21.0",
+    "pytorch-triton-rocm~=3.2.0",
+]
+trustyai = [
+    "torch==2.6.0",
+    "transformers~=4.49.0",
+    "datasets~=3.4.1",
+    "accelerate~=1.5.2",
+    "trustyai~=0.6.1",
+]
+
+#########################
+# Workbench Image Groups #
+#########################
+
+jupyter-minimal-image = [
+    { include-group = "dev" },
+    { include-group = "base" },
+    { include-group = "jupyter-base" },
+]
+
+jupyter-datascience-image = [
+    { include-group = "dev" },
+    { include-group = "base" },
+    { include-group = "jupyter-base" },
+    { include-group = "elyra-base" },
+    { include-group = "elyra-preferred" },
+    { include-group = "datascience-base" },
+    { include-group = "datascience-preferred" },
+    { include-group = "db-connectors" },
+]
+
+jupyter-tensorflow-image = [
+    { include-group = "dev" },
+    { include-group = "base" },
+    { include-group = "jupyter-base" },
+    { include-group = "elyra-base" },
+    { include-group = "elyra-preferred" },
+    { include-group = "datascience-base" },
+    { include-group = "datascience-tensorflow" },
+    { include-group = "db-connectors" },
+    { include-group = "tensorflowcuda" },
+]
+
+jupyter-tensorflow-rocm-image = [
+    { include-group = "dev" },
+    { include-group = "base" },
+    { include-group = "jupyter-base" },
+    { include-group = "elyra-base" },
+    { include-group = "elyra-preferred" },
+    { include-group = "datascience-base" },
+    { include-group = "datascience-tensorflow" },
+    { include-group = "db-connectors" },
+    { include-group = "tensorflowrocm" },
+]
+
+jupyter-pytorch-image = [
+    { include-group = "dev" },
+    { include-group = "base" },
+    { include-group = "jupyter-base" },
+    { include-group = "elyra-base" },
+    { include-group = "elyra-preferred" },
+    { include-group = "datascience-base" },
+    { include-group = "datascience-preferred" },
+    { include-group = "db-connectors" },
+    { include-group = "pytorchcuda" },
+]
+
+jupyter-pytorch-rocm-image = [
+    { include-group = "dev" },
+    { include-group = "base" },
+    { include-group = "jupyter-base" },
+    { include-group = "elyra-base" },
+    { include-group = "elyra-preferred" },
+    { include-group = "datascience-base" },
+    { include-group = "datascience-preferred" },
+    { include-group = "db-connectors" },
+    { include-group = "pytorchrocm" },
+]
+
+jupyter-trustyai-image = [
+    { include-group = "dev" },
+    { include-group = "base" },
+    { include-group = "jupyter-base" },
+    { include-group = "elyra-base" },
+    { include-group = "elyra-trustyai" },
+    { include-group = "datascience-base" },
+    { include-group = "datascience-trustyai" },
+    { include-group = "db-connectors" },
+    { include-group = "trustyai" },
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cuda", group = "pytorchcuda" },
+    { index = "pytorch-cuda", group = "trustyai" },
+    { index = "pytorch-rocm", group = "pytorchrocm" },
+]
+torchvision = [
+    { index = "pytorch-cuda", group = "pytorchcuda" },
+    { index = "pytorch-rocm", group = "pytorchrocm" },
+]
+pytorch-triton-rocm = [
+    { index = "pytorch-rocm" },
+]
+
+
+[[tool.uv.index]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm6.2.4"
+explicit = true
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple/"
+explicit = true 
+
+[[tool.uv.dependency-metadata]]
+name = "tf2onnx"
+version = "1.16.1"
+requires-dist = ["protobuf"]
+
+[[tool.uv.dependency-metadata]]
+name = "tensorflow-rocm"
+version = "2.14.0.600"
+requires-dist = [
+    "tensorflow-cpu-aws; platform_machine != 'x86_64'",
+    "tensorflow-estimator",
+    "tensorflow-io-gcs-filesystem",
+]
+
 [tool.uv]
 package = false
-environments = [
-    "sys_platform == 'darwin'",
-    "sys_platform == 'linux'",
+required-environments = [
+    "sys_platform == 'linux'"
+]
+
+conflicts = [
+    [
+        { group = "elyra-preferred" },
+        { group = "elyra-trustyai" }
+    ],
+    [
+        { group = "elyra-preferred" },
+        { group = "trustyai" }
+    ],
+    [
+        { group = "datascience-preferred" },
+        { group = "trustyai" },
+        { group = "tensorflowcuda" },
+    ],
+    [
+        { group = "datascience-tensorflow" },
+        { group = "trustyai" }
+    ],
+    [
+        { group = "datascience-preferred" },
+        { group = "datascience-trustyai" },
+        { group = "datascience-tensorflow" },
+    ],
+    [
+        { group = "tensorflowcuda" },
+        { group = "tensorflowrocm" }, 
+        { group = "pytorchcuda" },
+        { group = "pytorchrocm" },
+        { group = "trustyai" },
+    ],
+    [
+        { group = "tensorflowcuda" },
+        { group = "tensorflowrocm" }, 
+        { group = "datascience-base" },
+    ],
+    [
+        { group = "tensorflowcuda" },
+        { group = "trustyai" },
+        { group = "datascience-trustyai" },
+    ]
 ]
 
 # https://github.com/astral-sh/uv/issues/3957#issuecomment-2659350181
