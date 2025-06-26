@@ -676,7 +676,7 @@ jobs:
             --volume ${PODMAN_SOCK}:/var/run/docker.sock \
             --volume ${PWD}:/mnt \
             --volume /mnt/node_modules \
-            mcr.microsoft.com/playwright:v1.52.0-noble \
+            mcr.microsoft.com/playwright:v1.53.1-noble \
             /bin/bash <<EOF
               set -Eeuxo pipefail
               cd /mnt
