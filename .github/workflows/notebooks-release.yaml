@@ -6,7 +6,7 @@ permissions:
 "on":
   workflow_dispatch:
     inputs:
-      tag:
+      release_tag:
         description: 'Release tag for the notebooks release'
         required: true
         default: 'v1.32.0'
@@ -44,7 +44,7 @@ permissions:
           - Release
 
 env:
-  RELEASE_TAG: ${{ github.event.inputs.tag }}
+  RELEASE_TAG: ${{ github.event.inputs.release_tag }}
   RELEASE_NAME: ${{ github.event.inputs.release_name }}
   BRANCH: ${{ github.event.inputs.branch }}
   USER_HASH: ${{ github.event.inputs.user_hash }}
@@ -98,8 +98,8 @@ jobs:
 
   # 4. Check if the BuildConfigs PR is merged
   BuildConfigs_merged:
-    if: ${{ github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release_type == 'Release' }}
     needs: Update_buildConfigs
+    if: ${{ github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release_type == 'Release' }}
     runs-on: ubuntu-latest
     outputs:
       pr_merged_b: ${{ steps.check_pr.outputs.pr_merged }}
@@ -121,32 +121,22 @@ jobs:
   Generate_release_with_buildconfigs:
     needs: [Update_manifests, Manifests_merged, Update_buildConfigs, BuildConfigs_merged]
     if: ${{ needs.Manifests_merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs_merged.outputs.pr_merged_b == 'true' && github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release_type == 'Release' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Invoke Script to handle creating a release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: ${{env.GITHUB_WORKSPACE}}
-        run: |
-          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target $BRANCH
+    permissions:
+      contents: write
+    uses: ./.github/workflows/create-release.yaml
+    with:
+      release_tag: ${{ github.event.inputs.release_tag }}
+      release_name: ${{ github.event.inputs.release_name }}
+      branch: ${{ github.event.inputs.branch }}
 
   # 6. Generate the release without BuildConfigs
   Generate_release:
     needs: [Update_manifests, Manifests_merged]
     if: ${{ needs.Manifests_merged.outputs.pr_merged_m == 'true' && github.event.inputs.update_buildconfigs == 'false' && github.event.inputs.release_type == 'Release' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Generate notebooks release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: ${{env.GITHUB_WORKSPACE}}
-        run: |
-          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target "$BRANCH"
+    permissions:
+      contents: write
+    uses: ./.github/workflows/create-release.yaml
+    with:
+      release_tag: ${{ github.event.inputs.release_tag }}
+      release_name: ${{ github.event.inputs.release_name }}
+      branch: ${{ github.event.inputs.branch }}
