@@ -424,6 +424,8 @@ BASE_DIRS := base/c9s-python-$(PYTHON_VERSION) \
 		jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
 		codeserver/ubi9-python-$(PYTHON_VERSION) \
+		rstudio/rhel9-python-$(PYTHON_VERSION) \
+		rstudio/c9s-python-$(PYTHON_VERSION) \
 		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/datascience/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
