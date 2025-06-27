@@ -52,23 +52,24 @@ if [[ "$ARCH" == "ppc64le" ]]; then
   # Symlink for pdflatex
   cd /usr/local/texlive/bin/powerpc64le-unknown-linux-gnu
   ln -s pdftex pdflatex
+
+  # Cleanup TeX source to reduce image size
+  rm -rf /texlive-20250308-source /texlive-build
+
   export PATH="/usr/local/texlive/bin/powerpc64le-unknown-linux-gnu:$PATH"
   pdflatex --version
 
-  # Install dependencies
+  # Install Pandoc from source
   dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
   dnf install -y cabal-install ghc gmp-devel
+
   # Set version
   PANDOC_VERSION=3.7.0.2
-
-  # Clone repo
   cd /tmp
   git clone --recurse-submodules https://github.com/jgm/pandoc.git
   cd pandoc
   git checkout ${PANDOC_VERSION}
   git submodule update --init --recursive
-
-  # Update Cabal
   cabal update
 
   # Build the CLI tool (not the top-level library package)
@@ -77,12 +78,13 @@ if [[ "$ARCH" == "ppc64le" ]]; then
   # Clean previous builds
   cabal clean
 
-  # Configure and build
-  cabal build -j
+  cabal build -j$(nproc)
+  cabal install --installdir=/usr/local/bin --overwrite-policy=always --install-method=copy
 
-  # Install the CLI executable
-  cabal install --installdir=/usr/local/bin --overwrite-policy=always
-
+  # Clean up Haskell build system
+  rm -rf ~/.cabal ~/.ghc /tmp/pandoc
+  dnf remove -y cabal-install ghc gmp-devel
+  dnf clean all && rm -rf /var/cache/dnf
   # Verify installation
   /usr/local/bin/pandoc --version
 
@@ -106,3 +108,4 @@ cd /usr/local/texlive/bin/linux
   rm -f /tmp/pandoc.tar.gz
 
 fi
+
