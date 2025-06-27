@@ -86,7 +86,7 @@ jobs:
 
   # 3. Update the BuildConfigs for CUDA RStudio and RStudio
   Update_buildConfigs:
-    if: ${{ github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release_type == 'Release' }}
+    if: ${{ inputs.update_buildconfigs && github.event.inputs.release_type == 'Release' }}
     # grant the permissions that update-buildconfigs.yaml needs
     permissions:
       contents: write
@@ -99,7 +99,7 @@ jobs:
   # 4. Check if the BuildConfigs PR is merged
   BuildConfigs_merged:
     needs: Update_buildConfigs
-    if: ${{ github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release_type == 'Release' }}
+    if: ${{ inputs.update_buildconfigs && github.event.inputs.release_type == 'Release' }}
     runs-on: ubuntu-latest
     outputs:
       pr_merged_b: ${{ steps.check_pr.outputs.pr_merged }}
@@ -120,7 +120,7 @@ jobs:
   # 5. Generate the release with BuildConfigs if needed
   Generate_release_with_buildconfigs:
     needs: [Update_manifests, Manifests_merged, Update_buildConfigs, BuildConfigs_merged]
-    if: ${{ needs.Manifests_merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs_merged.outputs.pr_merged_b == 'true' && github.event.inputs.update_buildconfigs == 'true' && github.event.inputs.release_type == 'Release' }}
+    if: ${{ needs.Manifests_merged.outputs.pr_merged_m == 'true' && needs.BuildConfigs_merged.outputs.pr_merged_b == 'true' && inputs.update_buildconfigs && github.event.inputs.release_type == 'Release' }}
     permissions:
       contents: write
     uses: ./.github/workflows/create-release.yaml
@@ -140,3 +140,4 @@ jobs:
       release_tag: ${{ github.event.inputs.release_tag }}
       release_name: ${{ github.event.inputs.release_name }}
       branch: ${{ github.event.inputs.branch }}
+      
