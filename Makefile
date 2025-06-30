@@ -39,7 +39,7 @@ WHERE_WHICH ?= which
 
 # linux/amd64 or darwin/arm64
 OS_ARCH=$(shell go env GOOS)/$(shell go env GOARCH)
-BUILD_ARCH=linux/amd64
+BUILD_ARCH ?= linux/amd64
 
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
