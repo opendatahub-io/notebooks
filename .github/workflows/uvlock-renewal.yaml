@@ -1,6 +1,6 @@
 ---
 # This GitHub action is meant to update the pipfile.locks
-name: Pipfile.locks Renewal Action
+name: uv.locks Renewal Action
 
 on:  # yamllint disable-line rule:truthy
   # Triggers the workflow every Wednesday at 1am UTC
@@ -13,7 +13,7 @@ on:  # yamllint disable-line rule:truthy
         required: false
         default: 'main'
       python_version:
-        description: 'Select Python version to update Pipfile.lock'
+        description: 'Select Python version to update uv.lock'
         required: false
         default: '3.11'
         type: choice
@@ -59,14 +59,14 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # Install pipenv
-      - name: Install pipenv
-        run: pip install pipenv
+      # Install uv
+      - name: Install uv
+        run: pip install uv
 
-      # Run makefile recipe to refresh Pipfile.lock and push changes back to the branch
+      # Run makefile recipe to refresh uv.lock and push changes back to the branch
       - name: Run make refresh-pipfilelock-files and push the changes back to the branch
         run: |
-          make refresh-pipfilelock-files PYTHON_VERSION=${{ env.PYTHON_VERSION }} INCLUDE_OPT_DIRS=${{ env.INCLUDE_OPT_DIRS }}
-          git add .
-          git commit -m "Update Pipfile.lock files by piplock-renewal.yaml action"
+          uv lock --python ${{ env.PYTHON_VERSION }}
+          git add uv.lock
+          git commit -m "Update uv.lock files by uvlock-renewal.yaml action"
           git push origin ${{ env.BRANCH }}
