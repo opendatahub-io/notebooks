@@ -43,6 +43,7 @@ jobs:
       TRIVY_VULNDB: "/home/runner/.local/share/containers/trivy_db"
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
       TRIVY_SCAN_FS_JSON: '{}'
+      BUILD_ARCH: ${{ inputs.platform }}
 
     steps:
 
@@ -326,8 +327,7 @@ jobs:
           fromJson(inputs.github).event_name == 'workflow_dispatch' }}
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
-          # Configuring `podman build --platform=` through CONTAINER_BUILD_CACHE_ARGS is a venerable hack on this project
-          CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --platform=${{ inputs.platform }} --cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
+          CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
       - name: "pull_request: make ${{ inputs.target }}"
         run: |
           # print running stats on disk occupancy
@@ -338,8 +338,7 @@ jobs:
           fromJson(inputs.github).event_name == 'pull_request_target' }}"
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
-          # Configuring `podman build --platform=` through CONTAINER_BUILD_CACHE_ARGS is a venerable hack on this project
-          CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --platform=${{ inputs.platform }} --cache-from ${{ env.CACHE }}"
+          CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --cache-from ${{ env.CACHE }}"
           # We don't have access to image registry, so disable pushing
           PUSH_IMAGES: "no"
 
