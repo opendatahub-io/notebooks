@@ -29,14 +29,21 @@ def list_changed_files(from_ref: str, to_ref: str) -> list[str]:
     return files
 
 
-def _query_build(make_target: str, query: str) -> str:
+def _query_build(make_target: str, query: str, env: dict[str, str] | None = None) -> str:
     results = []
+
+    if env is None:
+        env = {}
+
+    envs = []
+    for k, v in env.items():
+        envs.extend(("-e", f"{k}={v}"))
 
     pattern = re.compile(r"#\*# " + query + r": <(?P<result>[^>]+)> #\(MACHINE-PARSED LINE\)#\*#\.\.\.")
     try:
         logging.debug(f"Running make in --just-print mode for target {make_target}")
         for line in subprocess.check_output(
-            [MAKE, make_target, "--just-print"], encoding="utf-8", cwd=PROJECT_ROOT
+            [MAKE, make_target, "--just-print", *envs], encoding="utf-8", cwd=PROJECT_ROOT
         ).splitlines():
             if m := pattern.match(line):
                 results.append(m["result"])
@@ -51,12 +58,12 @@ def _query_build(make_target: str, query: str) -> str:
     return results[0]
 
 
-def get_build_directory(make_target) -> str:
-    return _query_build(make_target, "Image build directory")
+def get_build_directory(make_target, env: dict[str, str] | None = None) -> str:
+    return _query_build(make_target, "Image build directory", env=env)
 
 
-def get_build_dockerfile(make_target) -> str:
-    return _query_build(make_target, "Image build Dockerfile")
+def get_build_dockerfile(make_target: str, env: dict[str, str] | None = None) -> str:
+    return _query_build(make_target, "Image build Dockerfile", env=env)
 
 
 def find_dockerfiles(directory: str) -> list:
@@ -97,7 +104,10 @@ def should_build_target(changed_files: list[str], target_directory: str) -> str:
 def filter_out_unchanged(targets: list[str], changed_files: list[str]) -> list[str]:
     changed = []
     for target in targets:
-        build_directory = get_build_directory(target)
+        python_version = (
+            "3.11" if "-python-3.11" in target else "3.12" if "-python-3.12" in target else "invalid-python-version"
+        )
+        build_directory = get_build_directory(target, env={"RELEASE_PYTHON_VERSION": python_version})
         if reason := should_build_target(changed_files, build_directory):
             logging.info(f"✅ Will build {target} because file {reason} has been changed")
             changed.append(target)
