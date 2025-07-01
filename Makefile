@@ -39,6 +39,7 @@ WHERE_WHICH ?= which
 
 # linux/amd64 or darwin/arm64
 OS_ARCH=$(shell go env GOOS)/$(shell go env GOARCH)
+BUILD_ARCH ?= linux/amd64
 
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
@@ -71,7 +72,7 @@ define build_image
 	$(info # Building $(IMAGE_NAME) image...)
 
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --label release=${RELEASE} --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
 # Push function for the notebook image:
