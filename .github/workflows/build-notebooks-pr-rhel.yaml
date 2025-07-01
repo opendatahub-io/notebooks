@@ -2,6 +2,12 @@
 "name": "Build Notebooks (pr, RHEL images)"
 "on":
   "pull_request_target":
+    "paths-ignore":
+      # Don't build images if the only thing that changed is image digests in manifests
+      - manifests/base/params-latest.env
+      - manifests/base/params.env
+      # In fact, skip the build if there are only changes in manifests and nowhere else
+      - manifests/**
 
 # BEWARE: This GitHub Actions workflow runs on pull_request_target, meaning it has access to our secrets
 # see https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-secrets
@@ -14,7 +20,7 @@ permissions:
 env:
   # language=json
   contributors: |
-    ["atheo89", "andyatmiami", "caponetto", "daniellutz", "dibryant", "harshad16", "jesuino", "jiridanek", "jstourac", "paulovmr", "Fiona-Waters"]
+    ["atheo89", "andyatmiami", "caponetto", "daniellutz", "dibryant", "harshad16", "jesuino", "jiridanek", "jstourac", "paulovmr", "Fiona-Waters", "grdryn", "kryanbeane", "mtchoum1", "obrown1205", "dependabot[bot]", "ide-developer"]
 
 jobs:
   gen:
@@ -65,5 +71,6 @@ jobs:
     with:
       target: "${{ matrix.target }}"
       github: "${{ toJSON(github) }}"
+      platform: "${{ matrix.platform }}"
       subscription: "${{ matrix.subscription }}"
     secrets: inherit

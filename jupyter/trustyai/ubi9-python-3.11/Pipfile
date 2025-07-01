@@ -17,7 +17,7 @@ torch = {version = "==2.6.0+cu126", index = "pytorch"}
 # More information available at:
 #   - https://pypi.org/project/trustyai/
 #   - https://github.com/trustyai-explainability/trustyai-explainability-python/blob/main/requirements.txt
-transformers = "~=4.49.0"
+transformers = "~=4.50.0"
 datasets = "~=3.4.1"
 accelerate = "~=1.5.2"
 trustyai = "~=0.6.1"
@@ -29,21 +29,21 @@ matplotlib = "~=3.6.3" # Should be pinned down to this version in order to be co
 numpy = "~=1.24.1" # Should be pinned down to this version in order to be compatible with trustyai
 pandas = "~=1.5.3" # Should be pinned down to this version in order to be compatible with trustyai
 plotly = "~=6.0.0"
-scikit-learn = "~=1.2.1" # Should be pinned down to this version in order to be compatible with trustyai
+scikit-learn = "~=1.5.0" # Should be pinned down to this version in order to be compatible with trustyai
 scipy = "~=1.15.2"
 skl2onnx = "~=1.18.0"
 onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
-codeflare-sdk = "~=0.27.0"
-kubeflow-training = "==1.9.1"
+codeflare-sdk = "~=0.29.0"
+kubeflow-training = "==1.9.2"
 
 # DB connectors
 pymongo = "~=4.11.2"
 psycopg = "~=3.2.5"
 pyodbc = "~=5.2.0"
-mysql-connector-python = "~=9.2.0"
+mysql-connector-python = "~=9.3.0"
 
 # JupyterLab packages
-odh-elyra = "==4.2.0"
+odh-elyra = "==4.2.1"
 
 jupyterlab = "==4.2.7"
 jupyter-bokeh = "~=3.0.5" # Should be pinned down to this version in order to be compatible with trustyai
@@ -59,7 +59,7 @@ nbgitpuller = "~=1.2.2"
 
 # Base packages
 wheel = "~=0.45.1"
-setuptools = "~=75.8.2"
+setuptools = "~=78.1.1"
 
 [requires]
 python_version = "3.11"

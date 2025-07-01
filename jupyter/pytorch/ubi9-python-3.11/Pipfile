@@ -28,18 +28,18 @@ scikit-learn = "~=1.6.1"
 scipy = "~=1.15.2"
 skl2onnx = "~=1.18.0"
 onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
-codeflare-sdk = "~=0.27.0"
-kubeflow-training = "==1.9.1"
+codeflare-sdk = "~=0.29.0"
+kubeflow-training = "==1.9.2"
 
 # DB connectors
 pymongo = "~=4.11.2"
 psycopg = "~=3.2.5"
 pyodbc = "~=5.2.0"
-mysql-connector-python = "~=9.2.0"
+mysql-connector-python = "~=9.3.0"
 
 # JupyterLab packages
 
-odh-elyra = "==4.2.0"
+odh-elyra = "==4.2.1"
 
 jupyterlab = "==4.2.7"
 jupyter-bokeh = "~=4.0.5"
@@ -55,7 +55,7 @@ nbgitpuller = "~=1.2.2"
 
 # Base packages
 wheel = "~=0.45.1"
-setuptools = "~=75.8.2"
+setuptools = "~=78.1.1"
 
 [requires]
 python_version = "3.11"

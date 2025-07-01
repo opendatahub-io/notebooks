@@ -144,9 +144,9 @@ This section provides an overview of the automation functionalities.
 
 This GitHub action is configured to be triggered on a weekly basis, specifically every Monday at 22:00 PM UTC. Its main objective is to automatically update the Pipfile.lock files by fetching the most recent minor versions available. Additionally, it also updates the hashes for the downloaded files of Python dependencies, including any sub-dependencies. Once the updated files are pushed, the CI pipeline is triggered to generate new updated images based on these changes.
 
-### **Sync the downstream release branch with the upstream** [[Link]](https://github.com/red-hat-data-services/notebooks/blob/main/.github/workflows/sync-release-branch-2023a.yml)
+### **Sync the downstream release branch with the upstream** [[Link]](https://github.com/red-hat-data-services/rhods-devops-infra/blob/main/.github/workflows/upstream-auto-merge.yaml)
 
-This GitHub action is configured to be triggered on a weekly basis, specifically every Tuesday at 08:00 AM UTC. Its main objective is to automatically update the downstream release branch with the upstream branch. 
+This GitHub action is configured to be triggered on a daily basis and synchronizes the selected projects from their upstream repositories to their downstream counterparts.
 
 ### **Digest Updater workflow on the manifests** [[Link]](https://github.com/opendatahub-io/odh-manifests/blob/master/.github/workflows/notebooks-digest-updater-upstream.yaml)
  

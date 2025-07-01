@@ -1,0 +1,261 @@
+
+# DEFAULT CONFIG
+# **************
+# https://github.com/openshift/check-payload/blob/main/config.toml
+
+certified_distributions = []
+
+# List of directories to ignore. This is a prefix match,
+# i.e. everything under a matched directory is ignored.
+filter_dirs = [
+    "/lib/firmware",
+    "/lib/modules",
+    "/usr/lib/.build-id",
+    "/usr/lib/firmware",
+    "/usr/lib/grub",
+    "/usr/lib/modules",
+    "/usr/share/app-info",
+    "/usr/share/doc",
+    "/usr/share/fonts",
+    "/usr/share/icons",
+    "/usr/share/openshift",
+    "/usr/src/plugins",
+    "/rootfs",
+    "/sysroot",
+]
+
+java_fips_disabled_algorithms = [
+    "DH keySize < 2048",
+    "TLSv1.1",
+    "TLSv1",
+    "SSLv3",
+    "SSLv2",
+    "TLS_RSA_WITH_AES_256_CBC_SHA256",
+    "TLS_RSA_WITH_AES_256_CBC_SHA",
+    "TLS_RSA_WITH_AES_128_CBC_SHA256",
+    "TLS_RSA_WITH_AES_128_CBC_SHA",
+    "TLS_RSA_WITH_AES_256_GCM_SHA384",
+    "TLS_RSA_WITH_AES_128_GCM_SHA256",
+    "DHE_DSS",
+    "RSA_EXPORT",
+    "DHE_DSS_EXPORT",
+    "DHE_RSA_EXPORT",
+    "DH_DSS_EXPORT",
+    "DH_RSA_EXPORT",
+    "DH_anon",
+    "ECDH_anon",
+    "DH_RSA",
+    "DH_DSS",
+    "ECDH",
+    "3DES_EDE_CBC",
+    "DES_CBC",
+    "RC4_40",
+    "RC4_128",
+    "DES40_CBC",
+    "RC2",
+    "HmacMD5",
+]
+
+[[rpm.tini.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/bin/tini-static"]
+
+[[rpm.glibc-common.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/sbin/build-locale-archive"]
+
+[[rpm.glibc.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/sbin/ldconfig", "/sbin/ldconfig"]
+
+[[rpm.runc.ignore]]
+error = "ErrGoMissingTag"
+files = ["/usr/bin/runc"]
+
+[[rpm.runc.ignore]]
+error = "ErrGoInvalidTag"
+files = ["/usr/bin/runc"]
+
+[[rpm.runc.ignore]]
+# See OCPBUGS-36541.
+error = "ErrGoMissingSymbols"
+files = ["/usr/bin/runc"]
+
+[[rpm.runc.ignore]]
+# See OCPBUGS-36541.
+error = "ErrLibcryptoMissing"
+files = ["/usr/bin/runc"]
+
+[[rpm.podman.ignore]]
+error = "ErrGoMissingTag"
+files = [
+    "/usr/bin/podman",
+    "/usr/libexec/podman/quadlet",
+    "/usr/libexec/podman/rootlessport",
+]
+
+[[rpm.podman.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/libexec/podman/catatonit"]
+
+[[rpm.podman.ignore]]
+error = "ErrGoMissingSymbols"
+files = ["/usr/libexec/podman/rootlessport"]
+
+[[rpm.podman-catatonit.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/libexec/catatonit/catatonit"]
+
+[[rpm.skopeo.ignore]]
+error = "ErrGoMissingTag"
+files = ["/usr/bin/skopeo"]
+
+[[rpm.cri-o.ignore]]
+error = "ErrGoMissingTag"
+files = ["/usr/bin/crio", "/usr/bin/crio-status"]
+
+[[rpm.cri-o.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/bin/pinns"]
+
+[[rpm.cri-tools.ignore]]
+error = "ErrGoMissingTag"
+files = ["/usr/bin/crictl"]
+
+[[rpm.containernetworking-plugins.ignore]]
+error = "ErrGoMissingTag"
+dirs = ["/usr/libexec/cni"]
+
+[[rpm.ignition.ignore]]
+error = "ErrGoMissingTag"
+files = ["/usr/lib/dracut/modules.d/30ignition/ignition"]
+
+[[payload.openshift-enterprise-pod-container.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/bin/pod"]
+
+[[payload.openshift-virtualization-virt-container.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/bin/container-disk"]
+
+[[payload.openshift-virtualization-cdi-container.ignore]]
+error = "ErrGoNotCgoEnabled"
+files = ["/usr/bin/cdi-containerimage-server"]
+
+[[payload.openshift-istio-cni-rhel8-container.ignore]]
+error = "ErrLibcryptoSoMissing"
+files = ["/opt/cni/bin/istio-cni-rhel9"]
+
+[[payload.rhacs-main-container.ignore]]
+error = "ErrGoNotCgoEnabled"
+dirs = ["/assets/downloads/cli"]
+
+[[payload.rhacs-main-container.ignore]]
+error = "ErrGoNoCgoInit"
+dirs = ["/assets/downloads/cli"]
+
+[[payload.rhacs-main-container.ignore]]
+error = "ErrGoMissingSymbols"
+dirs = ["/assets/downloads/cli"]
+
+[[payload.rhacs-main-container.ignore]]
+error = "ErrNotDynLinked"
+dirs = ["/assets/downloads/cli"]
+
+[[payload.rhacs-main-container.ignore]]
+error = "ErrLibcryptoMissing"
+dirs = ["/assets/downloads/cli"]
+
+[[payload.rhacs-main-container.ignore]]
+error = "ErrGoMissingTag"
+dirs = ["/assets/downloads/cli"]
+
+# Temporary supprsssions for workbenches
+# https://github.com/openshift/check-payload/blob/main/internal/types/errors.go
+
+[[rpm.rstudio-server.ignore]]
+error = "ErrNotDynLinked"
+files = [
+    # executable is not dynamically linked
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/pandoc",
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/typst",
+]
+
+[[rpm.rstudio-server.ignore]]
+error = "ErrNotDynLinked"
+files = [
+    # executable is not dynamically linked
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
+]
+
+[[rpm.rstudio-server.ignore]]
+error = "ErrGoNotCgoEnabled"
+files = [
+    # go binary is not CGO_ENABLED
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
+]
+
+[[rpm.rstudio-server.ignore]]
+error = "ErrGoNoCgoInit"
+files = [
+    # x_cgo_init or _cgo_topofstack not found
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
+]
+
+[[rpm.rstudio-server.ignore]]
+error = "ErrLibcryptoMissing"
+files = [
+    # openssl: did not find libcrypto library within binary
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
+]
+
+[[rpm.rstudio-server.ignore]]
+error = "ErrGoMissingSymbols"
+files = [
+    # go binary does not contain required symbol(s)
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
+]
+
+# valgrind is waived since it doesn't do anything with crypto in a
+# security context
+[[rpm.valgrind.ignore]]
+error = "ErrNotDynLinked"
+files = [
+    # executable is not dynamically linked
+    "/usr/libexec/valgrind/cachegrind-amd64-linux",
+    "/usr/libexec/valgrind/callgrind-amd64-linux",
+    "/usr/libexec/valgrind/dhat-amd64-linux",
+    "/usr/libexec/valgrind/drd-amd64-linux",
+    "/usr/libexec/valgrind/exp-bbv-amd64-linux",
+    "/usr/libexec/valgrind/helgrind-amd64-linux",
+    "/usr/libexec/valgrind/lackey-amd64-linux",
+    "/usr/libexec/valgrind/massif-amd64-linux",
+    "/usr/libexec/valgrind/memcheck-amd64-linux",
+    "/usr/libexec/valgrind/none-amd64-linux",
+]
+
+# py-spy is waived since it doesn't do anything with crypto in a
+# security context
+
+# when scanning with `scan image --spec`
+[[payload.python-311-container.ignore]]
+error = "ErrNotDynLinked"
+files = [
+    # executable is not dynamically linked
+    "/opt/app-root/bin/py-spy",
+]
+# when scanning with `scan local --path`, the above does not apply
+[[ignore]]
+error = "ErrNotDynLinked"
+files = [
+    # executable is not dynamically linked
+    "/opt/app-root/bin/py-spy",
+    "/usr/local/pandoc/bin/pandoc",
+]
+
+[[rpm.code-server.ignore]]
+error = "ErrNotDynLinked"
+files = [
+    # executable is not dynamically linked
+    "/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg",
+]

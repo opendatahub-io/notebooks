@@ -1,0 +1,83 @@
+# The aim of this GitHub workflow is to update the cuda-rstudio-buildconfig.yaml and rstudio-buildconfig.yaml
+# If no version is provided, the workflow will update the BuildConfigs to the next version by incrementing the minor version number by 1.
+---
+name: Update BuildConfigs
+permissions:
+  contents: write
+  pull-requests: write
+"on":
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Optional: Provide branch name"
+        required: false
+        type: string
+        default: "main"
+      version:
+        description: "Optional: Provide version to update BuildConfigs to"
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+env:
+  TMP_BRANCH: tmp-verify-${{ github.run_id }}
+  BRANCH: ${{ inputs.branch }}
+  VERSION: ${{ inputs.version }}
+
+jobs:
+  buildConfigs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create Target Branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          git checkout -b "$TMP_BRANCH"
+          git push --set-upstream origin "$TMP_BRANCH"
+
+      - name: Update BuildConfig
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          for config in "cuda-rstudio-buildconfig.yaml" "rstudio-buildconfig.yaml"; do
+            bash "${GITHUB_WORKSPACE}/ci/buildconfig-updater.sh" "${GITHUB_WORKSPACE}/manifests/base/$config" "$VERSION"
+          done
+
+      - name: Add Files and Commit Changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          git add "${GITHUB_WORKSPACE}/manifests/base/"*.yaml
+          git commit -m "Update BuildConfigs for CUDA RStudio and RStudio"
+          git push origin "$TMP_BRANCH"
+
+      - name: Create Pull Request
+        run: |
+          gh pr create -B $BRANCH -H "$TMP_BRANCH" --title "$PR_TITLE" --body "$PR_BODY"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: "[Updater Action] Update BuildConfigs for CUDA RStudio and RStudio"
+          PR_BODY: |
+            :rocket: This is an automated Pull Request.
+            Created by `/.github/workflows/update-buildconfigs.yaml`
+            - `manifests/base/cuda-rstudio-buildconfig.yaml` File that points to the latest CUDA RStudio version
+            - `manifests/base/rstudio-buildconfig.yaml` File that points to the latest RStudio version

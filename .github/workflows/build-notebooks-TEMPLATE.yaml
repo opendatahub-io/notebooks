@@ -15,6 +15,10 @@ name: Build & Publish Notebook Servers (TEMPLATE)
         required: true
         description: "top workflow's `github`"
         type: string
+      platform:
+        required: true
+        description: "platform to build, podman build --platform="
+        type: string
       subscription:
         required: false
         default: false
@@ -39,6 +43,7 @@ jobs:
       TRIVY_VULNDB: "/home/runner/.local/share/containers/trivy_db"
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
       TRIVY_SCAN_FS_JSON: '{}'
+      BUILD_ARCH: ${{ inputs.platform }}
 
     steps:
 
@@ -56,6 +61,12 @@ jobs:
         if: ${{ fromJson(inputs.github).event_name == 'pull_request_target' }}
         with:
           ref: "refs/pull/${{ fromJson(inputs.github).event.number }}/merge"
+
+      - name: Set up QEMU to build linux/s390x
+        if: ${{ inputs.platform == 'linux/s390x' }}
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: s390x
 
       - run: mkdir -p $TMPDIR
 
@@ -86,7 +97,7 @@ jobs:
       # for bin/buildinputs in scripts/sandbox.py
       - uses: actions/setup-go@v5
         with:
-          cache-dependency-path: "**/*.sum"
+          cache-dependency-path: "scripts/buildinputs/go.sum"
 
       - run: sudo apt-get update
 
@@ -186,6 +197,10 @@ jobs:
           # remote (CONTAINER_HOST) podman does not do reset (and refuses --force option)
           sudo /home/linuxbrew/.linuxbrew/opt/podman/bin/podman system reset --force
 
+          # https://github.com/containers/podman/pull/25504
+          # podman 5.5.0: The podman system reset command no longer removes the user's podman.sock API socket
+          sudo rm -rf /var/run/podman
+
           # https://github.com/containers/podman/blob/main/docs/tutorials/socket_activation.md
           # since `brew services start podman` is buggy, let's do our own brew-compatible service
           # Regarding directory paths, see https://unix.stackexchange.com/questions/224992/where-do-i-put-my-systemd-unit-file
@@ -204,7 +219,12 @@ jobs:
 
       - name: Show error logs (on failure)
         if: ${{ failure() }}
-        run: journalctl -xe
+        run: |
+          set -Eeuxo pipefail
+
+          journalctl -xe
+          ls -AlF /var/run/podman/podman.sock || echo "Socket /var/run/podman/podman.sock not found"
+          sudo ss -xlpn | grep 'podman.sock' || echo "No active listener found for podman.sock via ss"
 
       - name: Calculate image name and tag
         id: calculated_vars
@@ -280,6 +300,19 @@ jobs:
 
       # region Image build
 
+      - name: Compute extra podman build args
+        id: extra-podman-build-args
+        run: |
+          set -Eeuxo pipefail
+
+          EXTRA_PODMAN_BUILD_ARGS=""
+          if [[ "${{ inputs.platform }}" == "linux/s390x" ]]; then
+            # workaround for known issue https://github.com/zeromq/libzmq/pull/4486
+            # In qemu-user, CACHELINE_SIZE probe is undefined
+            EXTRA_PODMAN_BUILD_ARGS+='--env=CXXFLAGS=-Dundefined=64'
+          fi
+          echo "EXTRA_PODMAN_BUILD_ARGS=$EXTRA_PODMAN_BUILD_ARGS" >> $GITHUB_OUTPUT
+
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
 
@@ -294,7 +327,7 @@ jobs:
           fromJson(inputs.github).event_name == 'workflow_dispatch' }}
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
-          CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
+          CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
       - name: "pull_request: make ${{ inputs.target }}"
         run: |
           # print running stats on disk occupancy
@@ -305,7 +338,7 @@ jobs:
           fromJson(inputs.github).event_name == 'pull_request_target' }}"
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
-          CONTAINER_BUILD_CACHE_ARGS: "--cache-from ${{ env.CACHE }}"
+          CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --cache-from ${{ env.CACHE }}"
           # We don't have access to image registry, so disable pushing
           PUSH_IMAGES: "no"
 
@@ -335,7 +368,7 @@ jobs:
       - name: Run Testcontainers container tests (in PyTest)
         run: |
           set -Eeuxo pipefail
-          uv run pytest --capture=fd tests/containers -m 'not openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
@@ -379,20 +412,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y software-properties-common curl
 
+          # https://github.com/cri-o/packaging?tab=readme-ov-file#distributions-using-deb-packages
+
           curl -fsSL https://pkgs.k8s.io/core:/stable:/$KUBERNETES_VERSION/deb/Release.key | \
             sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
           echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/$KUBERNETES_VERSION/deb/ /" | \
             sudo tee /etc/apt/sources.list.d/kubernetes.list
 
-          curl -fsSL https://pkgs.k8s.io/addons:/cri-o:/stable:/$CRIO_VERSION/deb/Release.key | \
+          curl -fsSL https://download.opensuse.org/repositories/isv:/cri-o:/stable:/$CRIO_VERSION/deb/Release.key | \
             sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
 
-          echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://pkgs.k8s.io/addons:/cri-o:/stable:/$CRIO_VERSION/deb/ /" | \
+          echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://download.opensuse.org/repositories/isv:/cri-o:/stable:/$CRIO_VERSION/deb/ /" | \
             sudo tee /etc/apt/sources.list.d/cri-o.list
 
           sudo apt-get update
-          sudo apt-get install -y cri-o kubelet kubeadm kubectl
+          # [ERROR FileExisting-conntrack]: conntrack not found in system path
+          sudo apt-get install -y cri-o kubelet kubeadm kubectl conntrack
 
           # make use of /etc/cni/net.d/11-crio-ipv4-bridge.conflist so we don't
           # need a pod network and just use the default bridge
@@ -406,8 +442,12 @@ jobs:
 
           sudo systemctl start crio.service
         env:
-          CRIO_VERSION: v1.30
-          KUBERNETES_VERSION: v1.30
+          CRIO_VERSION: v1.32
+          # This has to be kept in sync with the packages above, otherwise
+          # [ERROR KubeletVersion]: the kubelet version is higher than the control plane version.
+          #  This is not a supported version skew and may lead to a malfunctional cluster.
+          #  Kubelet version: "1.33.0" Control plane version: "1.30.12"
+          KUBERNETES_VERSION: v1.33
 
       - name: Show crio debug data (on failure)
         if: ${{ failure() && steps.have-tests.outputs.tests == 'true' }}
@@ -464,10 +504,6 @@ jobs:
           # Once you have found the failing container, you can inspect its logs with:
           # crictl --runtime-endpoint unix:///var/run/crio/crio.sock logs CONTAINERID
 
-      - name: Untaint the master
-        if: ${{ steps.have-tests.outputs.tests == 'true' }}
-        run: kubectl taint nodes --all node-role.kubernetes.io/control-plane-
-
       - name: Show nodes status and wait for readiness
         if: ${{ steps.have-tests.outputs.tests == 'true' }}
         run: |
@@ -492,7 +528,9 @@ jobs:
           kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 
       - name: "Run image tests"
-        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        # skip on s390x because we are unable to install requirements-elyra.txt that's installed by runtime image tests
+        # https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/etc/generic/requirements-elyra.txt
+        if: ${{ steps.have-tests.outputs.tests == 'true' && !contains(fromJSON('["linux/s390x"]'), inputs.platform) }}
         run: python3 ci/cached-builds/make_test.py --target ${{ inputs.target }}
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
@@ -505,7 +543,7 @@ jobs:
         if: ${{ steps.have-tests.outputs.tests == 'true' }}
         run: |
           set -Eeuxo pipefail
-          uv run pytest --capture=fd tests/containers -m 'openshift' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          uv run pytest --capture=fd tests/containers -m 'openshift and not cuda and not rocm' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           # TODO(jdanek): this Testcontainers stuff should not be necessary but currently it has to be there
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
@@ -558,6 +596,56 @@ jobs:
 
       # endregion
 
+      # region check-payload for FIPS compliance
+
+      - id: check-payload-vars
+        run: |
+          echo "GOPATH=${{ github.workspace }}/go-check-payload" >> "$GITHUB_OUTPUT"
+        working-directory: scripts/check-payload
+
+      # for https://github.com/openshift/check-payload to cache the built binary
+      - uses: actions/setup-go@v5
+        with:
+          cache-dependency-path: "scripts/check-payload/go.sum"
+        env:
+          GOPATH: ${{ steps.check-payload-vars.outputs.GOPATH }}
+
+      # F0512 15:43:03.219076 21568 main.go:294] Error: exec: "oc": executable file not found in $PATH
+      - name: Install oc client
+        run: |
+          # Install the oc client
+          curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz -o /tmp/openshift-client-linux.tar.gz
+          tar -xzvf /tmp/openshift-client-linux.tar.gz oc
+          rm -f /tmp/openshift-client-linux.tar.gz
+          sudo mv ./oc /usr/local/bin
+
+      # perform `podman image mount` ourselves, and then follow the scenario from
+      # https://github.com/openshift/check-payload/pull/154, that is because
+      # `check-payload scan image --spec` insists on pulling the image, even if already present,
+      #  that causes trouble when checking PRs (image not pushed) and requires `podman login` as root
+      #  (we run podman as root in the GHA to reuse container storage in Kubernetes)
+      # use sudo to avoid
+      #  podman error (args=[image mount ghcr.io/...])
+      #  (stderr=Error: cannot use command "podman image mount" with the remote podman client
+      # and use --preserve-env=PATH to avoid
+      #  F0512 16:31:58.425584    9911 main.go:294] Error: exec: "podman": executable file not found in $PATH
+      - name: Check image with check-payload for FIPS compliance
+        run: |
+          set -Eeuxo pipefail
+          # resolve podman under current user, not under sudo/root
+          PODMAN="$(which podman)"
+          # mount the image
+          IMAGE_MOUNT_DIR=$(sudo "${PODMAN}" image mount "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}")
+          # run the check-payload scan
+          sudo --preserve-env=PATH go run github.com/openshift/check-payload scan local --path "${IMAGE_MOUNT_DIR}"
+          # unmount the image
+          sudo "${PODMAN}" image unmount --all
+        working-directory: scripts/check-payload
+        env:
+          GOPATH: ${{ steps.check-payload-vars.outputs.GOPATH }}
+
+      # endregion
+
       # region Typescript (browser) image tests
 
       # https://playwright.dev/docs/ci
@@ -587,7 +675,7 @@ jobs:
             --volume ${PODMAN_SOCK}:/var/run/docker.sock \
             --volume ${PWD}:/mnt \
             --volume /mnt/node_modules \
-            mcr.microsoft.com/playwright:v1.48.1-noble \
+            mcr.microsoft.com/playwright:v1.53.1-noble \
             /bin/bash <<EOF
               set -Eeuxo pipefail
               cd /mnt

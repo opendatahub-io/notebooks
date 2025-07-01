@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { test as base, expect, chromium } from '@playwright/test';
 
 import {GenericContainer} from "testcontainers";
-import {HttpWaitStrategy} from "testcontainers/build/wait-strategies/http-wait-strategy";
+import {HttpWaitStrategy} from "testcontainers/build/wait-strategies/http-wait-strategy.js";
 
 import {CodeServer} from "./models/codeserver"
 
@@ -43,7 +43,7 @@ const test = base.extend<MyFixtures>({
       })()
       const container = await new GenericContainer(image)
           .withExposedPorts(8787)
-          .withWaitStrategy(new HttpWaitStrategy('/', 8787, {abortOnContainerExit: true}))
+          .withWaitStrategy(new HttpWaitStrategy('/?folder=/opt/app-root/src', 8787, {abortOnContainerExit: true}))
           .start();
       await use(new CodeServer(page, `http://${container.getHost()}:${container.getMappedPort(8787)}`))
       await container.stop()

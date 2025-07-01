@@ -23,10 +23,10 @@ do
     cp -r /opt/app-root/bin/Rpackages/4.4/$package_folder /opt/app-root/src/Rpackages/4.4/
   fi
 done  
-# rstudio terminal cant see environment variables set by the container runtime
-# (which breaks kubectl, to fix this we store the KUBERNETES_* env vars in Renviron.site)
+# rstudio terminal can't see environment variables set by the container runtime;
+# so we set all env variables to the Renviron.site config file. For kubectl, we need the KUBERNETES_* env vars at least.
 # Also, we store proxy-related env vars lowercased by key so RStudio projects work with proxy by default
-env | grep "^KUBERNETES_" >> /usr/lib64/R/etc/Renviron.site
+env >> /usr/lib64/R/etc/Renviron.site
 env | grep "^HTTP_PROXY=" | tr '[:upper:]' '[:lower:]' >> /usr/lib64/R/etc/Renviron.site
 env | grep "^HTTPS_PROXY=" | tr '[:upper:]' '[:lower:]' >> /usr/lib64/R/etc/Renviron.site
 env | grep "^NO_PROXY=" | tr '[:upper:]' '[:lower:]' >> /usr/lib64/R/etc/Renviron.site

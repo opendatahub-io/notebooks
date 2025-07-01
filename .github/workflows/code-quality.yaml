@@ -69,8 +69,9 @@ jobs:
         id: validate-yaml-files
         run: |
           type yamllint || sudo apt-get -y install yamllint
-          find . -name "*.yaml" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
-          find . -name "*.yml" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
+          # We ignore the .tekton directory with the konflux pipelines definitions as it's managed by devops (and usually violates rules...).
+          find . -name "*.yaml" | grep -v "./.tekton/" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
+          find . -name "*.yml" | grep -v "./.tekton/" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
 
       # In some YAML files we use JSON strings, let's check these
       - name: Validate JSON strings in YAML files (just syntax)
@@ -82,11 +83,13 @@ jobs:
       - name: Validate JSON files (just syntax)
         id: validate-json-files
         run: |
+          set -Eeuxo pipefail
+
           type json_verify || sudo apt-get -y install yajl-tools
           shopt -s globstar
           ret_code=0
           echo "-- Checking a regular '*.json' files"
-          for f in **/*.json; do echo "Checking: '${f}"; echo -n "  > "; cat $f | json_verify || ret_code=1; done
+          for f in **/*.json; do echo "Checking: '${f}"; echo -n "  > "; [[ "$(basename "$f")" == "tsconfig.json" ]] && echo "Skipping ${f}" && continue; cat $f | json_verify || ret_code=1; done
           echo "-- Checking a 'Pipfile.lock' files"
           for f in **/Pipfile.lock; do echo "Checking: '${f}"; echo -n "  > "; cat $f | json_verify || ret_code=1; done
           echo "-- Checking a '*.ipynb' Jupyter notebook files"

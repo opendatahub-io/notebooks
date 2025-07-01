@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import logging
 import os
 import platform
@@ -13,7 +14,7 @@ import testcontainers.core.config
 import testcontainers.core.container
 import testcontainers.core.docker_client
 
-from tests.containers import docker_utils, utils
+from tests.containers import docker_utils, skopeo_utils, utils
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -38,6 +39,18 @@ SHUTDOWN_RYUK = False
 testcontainers.core.config.testcontainers_config.ryuk_privileged = True
 
 
+@dataclasses.dataclass
+class Image:
+    # only pulled images have an id
+    id: str | None
+    name: str
+    labels: dict[str, str]
+
+    @classmethod
+    def from_docker(cls, image: docker.models.images.Image, name: str):
+        return Image(id=image.id, name=name, labels=image.labels)
+
+
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_addoption
 def pytest_addoption(parser: Parser) -> None:
     parser.addoption("--image", action="append", default=[], help="Image to use, can be specified multiple times")
@@ -49,19 +62,48 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
         metafunc.parametrize(image.__name__, metafunc.config.getoption("--image"))
 
 
-def skip_if_not_workbench_image(image: str) -> docker.models.images.Image:
+def get_image_metadata(image: str) -> Image:
     client = testcontainers.core.container.DockerClient()
     try:
+        # docker inspect
         image_metadata = client.client.images.get(image)
     except docker.errors.ImageNotFound:
+        # skopeo inspect
+        labels = skopeo_utils.get_image_labels(image)
+        if labels is not None:
+            return Image(id=None, name=image, labels=labels)
+        # pull & docker inspect
         image_metadata = client.client.images.pull(image)
         assert isinstance(image_metadata, docker.models.images.Image)
+
+    return Image.from_docker(image_metadata, name=image)
+
+
+def skip_if_not_workbench_image(image: str) -> Image:
+    image_metadata = get_image_metadata(image)
 
     ide_server_label_fragments = ("-code-server-", "-jupyter-", "-rstudio-")
     if not any(ide in image_metadata.labels["name"] for ide in ide_server_label_fragments):
         pytest.skip(
             f"Image {image} does not have any of '{ide_server_label_fragments=} in {image_metadata.labels['name']=}'"
         )
+
+    return image_metadata
+
+
+def skip_if_not_cuda_image(image: str) -> Image:
+    image_metadata = get_image_metadata(image)
+
+    if "-cuda-" not in image_metadata.labels["name"]:
+        pytest.skip(f"Image {image} does not have any of '-cuda-' in {image_metadata.labels['name']=}")
+
+    return image_metadata
+
+
+def skip_if_not_rocm_image(image: str) -> Image:
+    image_metadata = get_image_metadata(image)
+    if "-rocm-" not in image_metadata.labels["name"]:
+        pytest.skip(f"Image {image} does not have any of '-rocm-' in {image_metadata.labels['name']=}")
 
     return image_metadata
 
@@ -74,13 +116,35 @@ def image(request):
 
 
 @pytest.fixture(scope="function")
+def runtime_image(image: str):
+    image_metadata = get_image_metadata(image)
+
+    if "-runtime-" not in image_metadata.labels["name"]:
+        pytest.skip(f"Image {image} does not have any of '-runtime-' in {image_metadata.labels['name']=}'")
+
+    yield image_metadata
+
+
+@pytest.fixture(scope="function")
 def workbench_image(image: str):
     skip_if_not_workbench_image(image)
     yield image
 
 
 @pytest.fixture(scope="function")
-def jupyterlab_image(image: str) -> docker.models.images.Image:
+def cuda_workbench_image(workbench_image: str):
+    skip_if_not_cuda_image(workbench_image)
+    yield workbench_image
+
+
+@pytest.fixture(scope="function")
+def rocm_workbench_image(workbench_image: str):
+    skip_if_not_rocm_image(workbench_image)
+    yield workbench_image
+
+
+@pytest.fixture(scope="function")
+def jupyterlab_image(image: str) -> Image:
     image_metadata = skip_if_not_workbench_image(image)
     if "-jupyter-" not in image_metadata.labels["name"]:
         pytest.skip(f"Image {image} does not have '-jupyter-' in {image_metadata.labels['name']=}'")
@@ -89,7 +153,27 @@ def jupyterlab_image(image: str) -> docker.models.images.Image:
 
 
 @pytest.fixture(scope="function")
-def rstudio_image(image: str) -> docker.models.images.Image:
+def jupyterlab_datascience_image(jupyterlab_image: Image) -> Image:
+    if "-minimal-" in jupyterlab_image.labels["name"]:
+        pytest.skip(
+            f"Image {jupyterlab_image.name} is not datascience image because it has '-minimal-' in {jupyterlab_image.labels['name']=}'"
+        )
+
+    return jupyterlab_image
+
+
+@pytest.fixture(scope="function")
+def jupyterlab_trustyai_image(jupyterlab_image: Image) -> Image:
+    if "-trustyai-" not in jupyterlab_image.labels["name"]:
+        pytest.skip(
+            f"Image {jupyterlab_image.name} is not trustyai image because it does not have '-trustyai-' in {jupyterlab_image.labels['name']=}'"
+        )
+
+    return jupyterlab_image
+
+
+@pytest.fixture(scope="function")
+def rstudio_image(image: str) -> Image:
     image_metadata = skip_if_not_workbench_image(image)
     if not utils.is_rstudio_image(image):
         pytest.skip(f"Image {image} does not have '-rstudio-' in {image_metadata.labels['name']=}'")
@@ -98,7 +182,7 @@ def rstudio_image(image: str) -> docker.models.images.Image:
 
 
 @pytest.fixture(scope="function")
-def codeserver_image(image: str) -> docker.models.images.Image:
+def codeserver_image(image: str) -> Image:
     image_metadata = skip_if_not_workbench_image(image)
     if "-code-server-" not in image_metadata.labels["name"]:
         pytest.skip(f"Image {image} does not have '-code-server-' in {image_metadata.labels['name']=}'")

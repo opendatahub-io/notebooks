@@ -1,0 +1,55 @@
+---
+name: Create release
+permissions:
+  contents: write
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release Tag:"
+        required: true
+        default: 'v1.32.0'
+        type: string
+      release_name:
+        description: 'Name of the release'
+        required: true
+        default: '2025a'
+        type: string
+      branch:
+        description: "Target Branch:"
+        type: string
+        default: "main"
+  workflow_call:
+    inputs:
+      release_tag:
+        description: "Release Tag:"
+        required: true
+        type: string
+      release_name:
+        description: "Release Name:"
+        required: true
+        type: string
+      branch:
+        description: "Target Branch:"
+        type: string
+
+env:
+  RELEASE_TAG: ${{ inputs.release_tag }}
+  RELEASE_NAME: ${{ inputs.release_name }}
+  BRANCH: ${{ inputs.branch }}
+
+jobs:
+  release:
+    name: Create opendatahub-io/notebooks release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Generate notebooks release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: |
+          gh release create "$RELEASE_TAG" --title="$RELEASE_NAME-$RELEASE_TAG" --generate-notes --target "$BRANCH"
