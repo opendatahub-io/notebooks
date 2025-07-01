@@ -124,6 +124,7 @@ def main() -> None:
                 "include": [
                     {
                         "target": target,
+                        "python": "3.11" if "-python-3.11" in target else "3.12" if "-python-3.12" in target else "invalid-python-version",
                         "platform": platform,
                         "subscription": "rhel" in target,
                     }
