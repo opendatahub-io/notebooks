@@ -104,7 +104,9 @@ def should_build_target(changed_files: list[str], target_directory: str) -> str:
 def filter_out_unchanged(targets: list[str], changed_files: list[str]) -> list[str]:
     changed = []
     for target in targets:
-        python_version = "3.11" if "-python-3.11" in target else "3.12" if "-python-3.12" in target else "invalid-python-version"
+        python_version = (
+            "3.11" if "-python-3.11" in target else "3.12" if "-python-3.12" in target else "invalid-python-version"
+        )
         build_directory = get_build_directory(target, env={"RELEASE_PYTHON_VERSION": python_version})
         if reason := should_build_target(changed_files, build_directory):
             logging.info(f"✅ Will build {target} because file {reason} has been changed")

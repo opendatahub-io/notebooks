@@ -43,5 +43,5 @@ def dry_run_makefile(target: str, makefile_dir: pathlib.Path | str, env: dict[st
         envs.extend(("-e", f"{k}={v}"))
 
     return exec_makefile(
-        target=target, makefile_dir=makefile_dir, options=["--dry-run", "--print-data-base", "--quiet"] + envs
+        target=target, makefile_dir=makefile_dir, options=["--dry-run", "--print-data-base", "--quiet", *envs]
     )
