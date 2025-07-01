@@ -27,13 +27,17 @@ S390X_COMPATIBLE = {
 }
 
 
-def extract_image_targets(makefile_dir: pathlib.Path | str | None = None) -> list[str]:
+def extract_image_targets(
+    makefile_dir: pathlib.Path | str | None = None, env: dict[str, str] | None = None
+) -> list[str]:
     if makefile_dir is None:
         makefile_dir = os.getcwd()
+    if env is None:
+        env = {}
 
     makefile_all_target = "all-images"
 
-    output = makefile_helper.dry_run_makefile(target=makefile_all_target, makefile_dir=makefile_dir)
+    output = makefile_helper.dry_run_makefile(target=makefile_all_target, makefile_dir=makefile_dir, env=env)
 
     # Extract the 'all-images' entry and its values
     all_images = []
@@ -89,7 +93,9 @@ def main() -> None:
     )
     args = argparser.parse_args()
 
-    targets = extract_image_targets()
+    targets = extract_image_targets(env={"RELEASE_PYTHON_VERSION": "3.11"}) + extract_image_targets(
+        env={"RELEASE_PYTHON_VERSION": "3.12"}
+    )
 
     if args.from_ref:
         logging.info("Skipping targets not modified in the PR")
@@ -122,6 +128,11 @@ def main() -> None:
                 "include": [
                     {
                         "target": target,
+                        "python": "3.11"
+                        if "-python-3.11" in target
+                        else "3.12"
+                        if "-python-3.12" in target
+                        else "invalid-python-version",
                         "platform": platform,
                         "subscription": "rhel" in target,
                     }

@@ -11,6 +11,10 @@ name: Build & Publish Notebook Servers (TEMPLATE)
         required: true
         description: "make target to build"
         type: string
+      python:
+        required: true
+        description: "python version"
+        type: string
       github:
         required: true
         description: "top workflow's `github`"
@@ -43,7 +47,9 @@ jobs:
       TRIVY_VULNDB: "/home/runner/.local/share/containers/trivy_db"
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
       TRIVY_SCAN_FS_JSON: '{}'
+      # Makefile variables
       BUILD_ARCH: ${{ inputs.platform }}
+      RELEASE_PYTHON_VERSION: ${{ inputs.python }}
 
     steps:
 
