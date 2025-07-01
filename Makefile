@@ -503,7 +503,7 @@ all-images: \
 	jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-    cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
+	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
 # jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION)
 # runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 # runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION)
