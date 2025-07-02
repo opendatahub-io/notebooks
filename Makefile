@@ -415,10 +415,10 @@ else ifeq ($(PYTHON_VERSION), 3.12)
 	    jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION)
+		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION)
 		# jupyter/trustyai/ubi9-python-$(PYTHON_VERSION)
 		# jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION)
-		# jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION)
 		# codeserver/ubi9-python-$(PYTHON_VERSION)
 		# runtimes/minimal/ubi9-python-$(PYTHON_VERSION)
 		# runtimes/datascience/ubi9-python-$(PYTHON_VERSION)
@@ -503,7 +503,8 @@ all-images: \
 	jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
+	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+ 	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
 # jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION)
 # runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 # runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION)
@@ -516,7 +517,6 @@ all-images: \
 # cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
 # rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 # rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
-# rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
 # rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
 # rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
 else
