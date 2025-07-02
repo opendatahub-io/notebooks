@@ -129,8 +129,8 @@ jobs:
 
           df -h
 
-      - run: sudo apt-get install -y btrfs-compsize
-        id: install-compsize
+      - id: install-compsize
+        run: sudo apt-get install -y btrfs-compsize
 
       - name: Mount lvm overlay for podman builds
         run: |
