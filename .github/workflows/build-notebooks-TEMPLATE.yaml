@@ -130,6 +130,7 @@ jobs:
           df -h
 
       - run: sudo apt-get install -y btrfs-compsize
+        id: install-compsize
 
       - name: Mount lvm overlay for podman builds
         run: |
@@ -673,4 +674,4 @@ jobs:
         if: "${{ !cancelled() }}"
 
       - run: sudo compsize -x "${HOME}/.local/share/containers"
-        if: "${{ !cancelled() }}"
+        if: "${{ !cancelled() && steps.install-compsize.outcome == 'success' }}"
