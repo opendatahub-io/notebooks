@@ -1,3 +1,21 @@
+############################
+# Stage 1: PDF Tool Build #
+############################
+FROM registry.access.redhat.com/ubi9/python-311:latest AS pdf-builder
+
+WORKDIR /opt/app-root/bin
+
+# OS Packages needs to be installed as root
+USER 0
+
+# Copy scripts
+COPY jupyter/utils/install_texlive.sh ./install_texlive.sh
+COPY jupyter/utils/install_pandoc.sh ./install_pandoc.sh
+RUN chmod +x install_texlive.sh install_pandoc.sh
+
+RUN ./install_texlive.sh
+RUN ./install_pandoc.sh
+
 ####################
 # base             #
 ####################
@@ -47,9 +65,11 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
 USER 0
 
-# Dependencies for PDF export
-RUN ./utils/install_pdf_deps.sh
-ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+# Copy built TeXLive and Pandoc binaries only (no build deps)
+COPY --from=pdf-builder /usr/local/texlive /usr/local/texlive
+COPY --from=pdf-builder /usr/local/pandoc /usr/local/pandoc
+
+ENV PATH="/usr/local/texlive/bin/powerpc64le-unknown-linux-gnu:/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 
 USER 1001
 
@@ -74,3 +94,4 @@ RUN echo "Installing softwares and packages" && \
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
+
