@@ -116,6 +116,16 @@ def image(request):
 
 
 @pytest.fixture(scope="function")
+def runtime_image(image: str):
+    image_metadata = get_image_metadata(image)
+
+    if "-runtime-" not in image_metadata.labels["name"]:
+        pytest.skip(f"Image {image} does not have any of '-runtime-' in {image_metadata.labels['name']=}'")
+
+    yield image_metadata
+
+
+@pytest.fixture(scope="function")
 def workbench_image(image: str):
     skip_if_not_workbench_image(image)
     yield image
@@ -140,6 +150,26 @@ def jupyterlab_image(image: str) -> Image:
         pytest.skip(f"Image {image} does not have '-jupyter-' in {image_metadata.labels['name']=}'")
 
     return image_metadata
+
+
+@pytest.fixture(scope="function")
+def jupyterlab_datascience_image(jupyterlab_image: Image) -> Image:
+    if "-minimal-" in jupyterlab_image.labels["name"]:
+        pytest.skip(
+            f"Image {jupyterlab_image.name} is not datascience image because it has '-minimal-' in {jupyterlab_image.labels['name']=}'"
+        )
+
+    return jupyterlab_image
+
+
+@pytest.fixture(scope="function")
+def jupyterlab_trustyai_image(jupyterlab_image: Image) -> Image:
+    if "-trustyai-" not in jupyterlab_image.labels["name"]:
+        pytest.skip(
+            f"Image {jupyterlab_image.name} is not trustyai image because it does not have '-trustyai-' in {jupyterlab_image.labels['name']=}'"
+        )
+
+    return jupyterlab_image
 
 
 @pytest.fixture(scope="function")

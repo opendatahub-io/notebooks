@@ -20,7 +20,7 @@ permissions:
 env:
   # language=json
   contributors: |
-    ["atheo89", "andyatmiami", "caponetto", "daniellutz", "dibryant", "harshad16", "jesuino", "jiridanek", "jstourac", "paulovmr", "Fiona-Waters", "grdryn", "kryanbeane"]
+    ["atheo89", "andyatmiami", "caponetto", "daniellutz", "dibryant", "harshad16", "jesuino", "jiridanek", "jstourac", "paulovmr", "Fiona-Waters", "grdryn", "kryanbeane", "mtchoum1", "obrown1205", "dependabot[bot]", "ide-developer"]
 
 jobs:
   gen:
@@ -70,6 +70,8 @@ jobs:
     if: ${{ fromJson(needs.gen.outputs.has_jobs) }}
     with:
       target: "${{ matrix.target }}"
+      python: "${{ matrix.python }}"
       github: "${{ toJSON(github) }}"
+      platform: "${{ matrix.platform }}"
       subscription: "${{ matrix.subscription }}"
     secrets: inherit

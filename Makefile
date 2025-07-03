@@ -39,6 +39,7 @@ WHERE_WHICH ?= which
 
 # linux/amd64 or darwin/arm64
 OS_ARCH=$(shell go env GOOS)/$(shell go env GOARCH)
+BUILD_ARCH ?= linux/amd64
 
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
@@ -71,7 +72,7 @@ define build_image
 	$(info # Building $(IMAGE_NAME) image...)
 
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --label release=${RELEASE} --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
 # Push function for the notebook image:
@@ -391,7 +392,9 @@ validate-rstudio-image: bin/kubectl
 # Default Python version
 PYTHON_VERSION ?= 3.11
 ROOT_DIR := $(shell pwd)
-BASE_DIRS := jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
+ifeq ($(PYTHON_VERSION), 3.11)
+	BASE_DIRS := \
+	    jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
@@ -399,12 +402,33 @@ BASE_DIRS := jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
 		codeserver/ubi9-python-$(PYTHON_VERSION) \
+		rstudio/rhel9-python-$(PYTHON_VERSION) \
+		rstudio/c9s-python-$(PYTHON_VERSION) \
 		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/datascience/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION)
+else ifeq ($(PYTHON_VERSION), 3.12)
+	BASE_DIRS := \
+	    jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		codeserver/ubi9-python-$(PYTHON_VERSION)
+		# jupyter/trustyai/ubi9-python-$(PYTHON_VERSION)
+		# jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION)
+		# runtimes/minimal/ubi9-python-$(PYTHON_VERSION)
+		# runtimes/datascience/ubi9-python-$(PYTHON_VERSION)
+		# runtimes/pytorch/ubi9-python-$(PYTHON_VERSION)
+		# runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION)
+		# runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION)
+		# runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION)
+else
+	$(error Invalid Python version $(PYTHON_VERSION))
+endif
 
 # Default value is false, can be overiden
 # The below directories are not supported on tier-1
@@ -429,7 +453,7 @@ refresh-pipfilelock-files:
 			echo "Updating $(PYTHON_VERSION) Pipfile.lock in $$dir"
 			cd $$dir
 			if [ -f "Pipfile" ]; then
-				pipenv lock
+				pipenv lock --verbose
 			else
 				echo "No Pipfile found in $$dir, skipping."
 			fi
@@ -449,9 +473,11 @@ refresh-pipfilelock-files:
 scan-image-vulnerabilities:
 	python ci/security-scan/quay_security_analysis.py
 
-# This is used primarly for gen_gha_matrix_jobs.py to we know the set of all possible images we may want to build
+# This is used primarily for gen_gha_matrix_jobs.py to we know the set of all possible images we may want to build
 .PHONY: all-images
-all-images: jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+ifeq ($(RELEASE_PYTHON_VERSION), 3.11)
+all-images: \
+	jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
@@ -471,8 +497,33 @@ all-images: jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+else ifeq ($(RELEASE_PYTHON_VERSION), 3.12)
+all-images: \
+	jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+ 	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+ 	codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION)
+# jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION)
+# runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
+# runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION)
+# runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
+# runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+# rstudio-c9s-python-$(RELEASE_PYTHON_VERSION)
+# cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION)
+# rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
+# cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
+# rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
+# rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+# rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
+# rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+else
+	$(error Invalid Python version $(RELEASE_PYTHON_VERSION))
+endif
 
-# This is used primarly for konflux_generate_component_build_pipelines.py to we know the build release version
+# This is used primarily for `konflux_generate_component_build_pipelines.py` to we know the build release version
 .PHONY: print-release
 print-release:
 	@echo "$(RELEASE)"
