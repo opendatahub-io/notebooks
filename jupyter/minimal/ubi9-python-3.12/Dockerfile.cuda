@@ -135,7 +135,7 @@ RUN yum install -y \
     ${NV_CUDNN_PACKAGE_DEV} \
     && yum clean all \
     && rm -rf /var/cache/yum/*
-    
+
 # Set this flag so that libraries can find the location of CUDA
 ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 
@@ -146,7 +146,7 @@ WORKDIR /opt/app-root/src
 #########################
 # cuda-jupyter-minimal  #
 #########################
-FROM cuda-base AS cuda-jupyter-minimal  
+FROM cuda-base AS cuda-jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
@@ -165,6 +165,14 @@ WORKDIR /opt/app-root/bin
 
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
+USER 0
+
+# Dependencies for PDF export
+RUN ./utils/install_pdf_deps.sh
+ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+
+USER 1001
+
 COPY ${MINIMAL_SOURCE_CODE}/Pipfile.lock ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 # Install Python dependencies from Pipfile.lock file
@@ -180,7 +188,7 @@ RUN echo "Installing softwares and packages" && \
     fix-permissions /opt/app-root -P && \
     # Apply JupyterLab addons \
     /opt/app-root/bin/utils/addons/apply.sh
-    
+
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
