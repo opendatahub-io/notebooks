@@ -183,6 +183,8 @@ jobs:
 
       - name: Install podman (linux/arm64)
         if: inputs.platform == 'linux/arm64' && steps.cached-linuxbrew.outputs.cache-hit != 'true'
+        # Error: podman: no bottle available!
+        # If you're feeling brave, you can try to install from source with:
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           /home/linuxbrew/.linuxbrew/bin/brew install --build-from-source podman
