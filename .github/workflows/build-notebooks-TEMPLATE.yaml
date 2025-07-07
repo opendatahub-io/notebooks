@@ -197,7 +197,6 @@ jobs:
           /home/linuxbrew/.linuxbrew/bin/brew install --build-from-source podman
 
       - name: Add linuxbrew to PATH
-        if: ${{ inputs.platform == 'linux/amd64' }}
         run: echo "/home/linuxbrew/.linuxbrew/bin/" >> $GITHUB_PATH
 
       - name: Configure Podman
