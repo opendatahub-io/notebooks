@@ -1,0 +1,57 @@
+####################
+# base             #
+####################
+FROM registry.access.redhat.com/ubi9/python-312:latest AS base
+
+WORKDIR /opt/app-root/bin
+
+# OS Packages needs to be installed as root
+USER 0
+
+# Install useful OS packages
+RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+
+# Other apps and tools installed as default user
+USER 1001
+
+# Install micropipenv to deploy packages from Pipfile.lock
+RUN pip install --no-cache-dir -U "micropipenv[toml]"
+
+# Install the oc client
+RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+        -o /tmp/openshift-client-linux.tar.gz && \
+    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
+    rm -f /tmp/openshift-client-linux.tar.gz
+
+#######################
+# runtime-datascience #
+#######################
+FROM base AS runtime-datascience  
+
+ARG DATASCIENCE_SOURCE_CODE=runtimes/datascience/ubi9-python-3.12
+
+LABEL name="odh-notebook-runtime-datascience-ubi9-python-3.12" \
+    summary="Runtime data science notebook image for ODH notebooks" \
+    description="Runtime data science notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+    io.k8s.display-name="Runtime data science notebook image for ODH notebooks" \
+    io.k8s.description="Runtime data science notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+    io.openshift.build.commit.ref="main" \
+    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/datascience/ubi9-python-3.12" \
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:runtime-datascience-ubi9-python-3.12"
+
+WORKDIR /opt/app-root/bin
+
+# Install Python packages from Pipfile.lock
+COPY ${DATASCIENCE_SOURCE_CODE}/Pipfile.lock ./
+# Copy Elyra dependencies for air-gapped enviroment
+COPY ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
+
+RUN echo "Installing softwares and packages" && \
+    micropipenv install && \
+    rm -f ./Pipfile.lock && \
+    # Fix permissions to support pip in Openshift environments \
+    chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
+    fix-permissions /opt/app-root -P
+
+WORKDIR /opt/app-root/src
