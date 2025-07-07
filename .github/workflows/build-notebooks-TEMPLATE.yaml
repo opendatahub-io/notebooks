@@ -181,6 +181,13 @@ jobs:
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           /home/linuxbrew/.linuxbrew/bin/brew install podman
 
+      # Warning: Your CPU architecture (arm64) is not supported. We only support
+      # x86_64 CPU architectures. You will be unable to use binary packages (bottles).
+      #
+      # This is a Tier 2 configuration:
+      #  https://docs.brew.sh/Support-Tiers#tier-2
+      # Do not report any issues to Homebrew/* repositories!
+      # Read the above document instead before opening any issues or PRs.
       - name: Install podman (linux/arm64)
         if: inputs.platform == 'linux/arm64' && steps.cached-linuxbrew.outputs.cache-hit != 'true'
         # Error: podman: no bottle available!
