@@ -33,7 +33,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     env:
-      # Some pieces of code (image pulls for example) in podman consult TMPDIR or default to /var/tmp
+      # Some pieces of code (image pulls, for example) in podman consult TMPDIR or default to /var/tmp
       TMPDIR: /home/runner/.local/share/containers/tmpdir
       # Use the rootful instance of podman for sharing images with cri-o
       # https://podman-desktop.io/blog/sharing-podman-images-with-kubernetes-cluster#introduction
@@ -43,7 +43,7 @@ jobs:
       IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
       # GitHub image registry used for storing $(CONTAINER_ENGINE)'s cache
       CACHE: "ghcr.io/${{ github.repository }}/workbench-images/build-cache"
-      TRIVY_VERSION: 0.57.1
+      TRIVY_VERSION: 0.64.1
       TRIVY_VULNDB: "/home/runner/.local/share/containers/trivy_db"
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
       TRIVY_SCAN_FS_JSON: '{}'
@@ -664,7 +664,7 @@ jobs:
         # --ipc=host because Microsoft says so in Playwright docs
         # --net=host because testcontainers connects to the Reaper container's exposed port
         # we need to pass through the relevant environment variables
-        #  DEBUG configures nodejs debuggers, sets different verbosity as needed
+        #  DEBUG configures Node.js debuggers, sets different verbosity as needed
         #  CI=true is set on every CI nowadays
         #  PODMAN_SOCK should be mounted to /var/run/docker.sock, other likely mounting locations may not exist (mkdir -p)
         #  TEST_TARGET is the workbench image the test will run
