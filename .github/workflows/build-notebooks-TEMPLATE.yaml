@@ -18,9 +18,9 @@ name: Build & Publish Notebook Servers (TEMPLATE)
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
-      # Some pieces of code (image pulls for example) in podman consult TMPDIR or default to /var/tmp
+      # Some pieces of code (image pulls, for example) in podman consult TMPDIR or default to /var/tmp
       TMPDIR: /home/runner/.local/share/containers/tmpdir
       # Use the rootful instance of podman for sharing images with cri-o
       # https://podman-desktop.io/blog/sharing-podman-images-with-kubernetes-cluster#introduction
@@ -100,7 +100,7 @@ jobs:
         id: cached-linuxbrew
         with:
           path: /home/linuxbrew/.linuxbrew
-          key: linuxbrew
+          key: linuxbrew-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install podman
         if: steps.cached-linuxbrew.outputs.cache-hit != 'true'
@@ -133,6 +133,10 @@ jobs:
           # remote (CONTAINER_HOST) podman does not do reset (and refuses --force option)
           sudo /home/linuxbrew/.linuxbrew/opt/podman/bin/podman system reset --force
 
+          # https://github.com/containers/podman/pull/25504
+          # podman 5.5.0: The podman system reset command no longer removes the user's podman.sock API socket
+          sudo rm -rf /var/run/podman
+
           # https://github.com/containers/podman/blob/main/docs/tutorials/socket_activation.md
           # since `brew services start podman` is buggy, let's do our own brew-compatible service
           # Regarding directory paths, see https://unix.stackexchange.com/questions/224992/where-do-i-put-my-systemd-unit-file
@@ -151,12 +155,20 @@ jobs:
 
       - name: Show error logs (on failure)
         if: ${{ failure() }}
-        run: journalctl -xe
+        run: |
+          set -Eeuxo pipefail
+
+          journalctl -xe
+          ls -AlF /var/run/podman/podman.sock || echo "Socket /var/run/podman/podman.sock not found"
+          sudo ss -xlpn | grep 'podman.sock' || echo "No active listener found for podman.sock via ss"
 
       - name: Calculate image name and tag
         id: calculated_vars
         run: |
-          SANITIZED_REF_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/_/g')
+          # Need for sanitization explained in https://github.com/opendatahub-io/notebooks/issues/631
+          # For length, Docker image tags have 128-character limit, and we form them as <inputs.target>-<ref_name>_<sha>
+          # therefore since sha is 40 characters, and our target names are <40 chars, we should cut ref_name at 40
+          SANITIZED_REF_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/_/g') | cut -c 1-40
           IMAGE_TAG="${SANITIZED_REF_NAME}_${{ github.sha }}"
 
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
@@ -287,16 +299,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y software-properties-common curl
 
+          # https://github.com/cri-o/packaging?tab=readme-ov-file#distributions-using-deb-packages
+
           curl -fsSL https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/Release.key | \
             sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
           echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/ /" | \
             sudo tee /etc/apt/sources.list.d/kubernetes.list
 
-          curl -fsSL https://pkgs.k8s.io/addons:/cri-o:/stable:/v${CRIO_VERSION}/deb/Release.key | \
+          curl -fsSL https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v${CRIO_VERSION}/deb/Release.key | \
             sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
 
-          echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://pkgs.k8s.io/addons:/cri-o:/stable:/v${CRIO_VERSION}/deb/ /" | \
+          echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v${CRIO_VERSION}/deb/ /" | \
             sudo tee /etc/apt/sources.list.d/cri-o.list
 
           sudo apt-get update
@@ -326,8 +340,12 @@ jobs:
           sudo systemctl start crio.service
         env:
           # TODO(jdanek): install also "cri-tools=${CRIO_VERSION}.*" when updating to 1.33
-          CRIO_VERSION: 1.30
-          KUBERNETES_VERSION: 1.30
+          CRIO_VERSION: 1.32
+          # This has to be kept in sync with the packages above, otherwise
+          # [ERROR KubeletVersion]: the kubelet version is higher than the control plane version.
+          #  This is not a supported version skew and may lead to a malfunctional cluster.
+          #  Kubelet version: "1.33.0" Control plane version: "1.30.12"
+          KUBERNETES_VERSION: 1.33
 
       - name: Show crio debug data (on failure)
         if: ${{ failure() && steps.have-tests.outputs.tests == 'true' }}
@@ -463,7 +481,7 @@ jobs:
         # --ipc=host because Microsoft says so in Playwright docs
         # --net=host because testcontainers connects to the Reaper container's exposed port
         # we need to pass through the relevant environment variables
-        #  DEBUG configures nodejs debuggers, sets different verbosity as needed
+        #  DEBUG configures Node.js debuggers, sets different verbosity as needed
         #  CI=true is set on every CI nowadays
         #  PODMAN_SOCK should be mounted to /var/run/docker.sock, other likely mounting locations may not exist (mkdir -p)
         #  TEST_TARGET is the workbench image the test will run
