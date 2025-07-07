@@ -31,7 +31,8 @@ name: Build & Publish Notebook Servers (TEMPLATE)
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    # https://docs.github.com/en/actions/how-tos/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
+    runs-on: ${{ inputs.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     env:
       # Some pieces of code (image pulls, for example) in podman consult TMPDIR or default to /var/tmp
       TMPDIR: /home/runner/.local/share/containers/tmpdir
@@ -162,23 +163,31 @@ jobs:
 
       # region Podman setup
 
+      - name: Install podman (linux/arm64)
+        if: inputs.platform == 'linux/arm64'
+        run: |
+          sudo apt-get install -y podman
+
       # https://github.com/containers/buildah/issues/2521#issuecomment-884779112
       - name: Workaround https://github.com/containers/podman/issues/22152#issuecomment-2027705598
+        if: ${{ inputs.platform == 'linux/amd64' }}
         run: sudo apt-get -qq remove podman crun
 
       - uses: actions/cache@v4
         id: cached-linuxbrew
+        if: ${{ inputs.platform == 'linux/amd64' }}
         with:
           path: /home/linuxbrew/.linuxbrew
           key: linuxbrew
 
-      - name: Install podman
-        if: steps.cached-linuxbrew.outputs.cache-hit != 'true'
+      - name: Install podman (linux/amd64)
+        if: inputs.platform == 'linux/amd64' && steps.cached-linuxbrew.outputs.cache-hit != 'true'
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           /home/linuxbrew/.linuxbrew/bin/brew install podman
 
       - name: Add linuxbrew to PATH
+        if: ${{ inputs.platform == 'linux/amd64' }}
         run: echo "/home/linuxbrew/.linuxbrew/bin/" >> $GITHUB_PATH
 
       - name: Configure Podman
