@@ -163,28 +163,28 @@ jobs:
 
       # region Podman setup
 
-      - name: Install podman (linux/arm64)
-        if: inputs.platform == 'linux/arm64'
-        run: |
-          sudo apt-get install -y podman
-
       # https://github.com/containers/buildah/issues/2521#issuecomment-884779112
       - name: Workaround https://github.com/containers/podman/issues/22152#issuecomment-2027705598
-        if: ${{ inputs.platform == 'linux/amd64' }}
         run: sudo apt-get -qq remove podman crun
 
       - uses: actions/cache@v4
+        # https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables
         id: cached-linuxbrew
-        if: ${{ inputs.platform == 'linux/amd64' }}
         with:
           path: /home/linuxbrew/.linuxbrew
-          key: linuxbrew
+          key: linuxbrew-${{ env.RUNNER_OS }}
 
       - name: Install podman (linux/amd64)
         if: inputs.platform == 'linux/amd64' && steps.cached-linuxbrew.outputs.cache-hit != 'true'
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           /home/linuxbrew/.linuxbrew/bin/brew install podman
+
+      - name: Install podman (linux/arm64)
+        if: inputs.platform == 'linux/arm64' && steps.cached-linuxbrew.outputs.cache-hit != 'true'
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          /home/linuxbrew/.linuxbrew/bin/brew install --build-from-source podman
 
       - name: Add linuxbrew to PATH
         if: ${{ inputs.platform == 'linux/amd64' }}
