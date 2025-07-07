@@ -31,7 +31,8 @@ name: Build & Publish Notebook Servers (TEMPLATE)
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    # https://docs.github.com/en/actions/how-tos/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
+    runs-on: ${{ inputs.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     env:
       # Some pieces of code (image pulls, for example) in podman consult TMPDIR or default to /var/tmp
       TMPDIR: /home/runner/.local/share/containers/tmpdir
@@ -167,16 +168,33 @@ jobs:
         run: sudo apt-get -qq remove podman crun
 
       - uses: actions/cache@v4
+        # https://docs.github.com/en/actions/reference/variables-reference#default-environment-variables
+        # https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables
         id: cached-linuxbrew
         with:
           path: /home/linuxbrew/.linuxbrew
-          key: linuxbrew
+          key: linuxbrew-${{ runner.os }}-${{ runner.arch }}
 
-      - name: Install podman
-        if: steps.cached-linuxbrew.outputs.cache-hit != 'true'
+      - name: Install podman (linux/amd64)
+        if: inputs.platform == 'linux/amd64' && steps.cached-linuxbrew.outputs.cache-hit != 'true'
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           /home/linuxbrew/.linuxbrew/bin/brew install podman
+
+      # Warning: Your CPU architecture (arm64) is not supported. We only support
+      # x86_64 CPU architectures. You will be unable to use binary packages (bottles).
+      #
+      # This is a Tier 2 configuration:
+      #  https://docs.brew.sh/Support-Tiers#tier-2
+      # Do not report any issues to Homebrew/* repositories!
+      # Read the above document instead before opening any issues or PRs.
+      - name: Install podman (linux/arm64)
+        if: inputs.platform == 'linux/arm64' && steps.cached-linuxbrew.outputs.cache-hit != 'true'
+        # Error: podman: no bottle available!
+        # If you're feeling brave, you can try to install from source with:
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          /home/linuxbrew/.linuxbrew/bin/brew install --build-from-source podman
 
       - name: Add linuxbrew to PATH
         run: echo "/home/linuxbrew/.linuxbrew/bin/" >> $GITHUB_PATH

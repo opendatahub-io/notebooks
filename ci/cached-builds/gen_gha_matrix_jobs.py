@@ -21,8 +21,14 @@ Use https://pypi.org/project/py-make/ or https://github.com/JetBrains/intellij-p
 
 project_dir = pathlib.Path(__file__).parent.parent.parent.absolute()
 
+ARM64_COMPATIBLE = {
+    "codeserver-ubi9-python-3.11",
+    "codeserver-ubi9-python-3.12",
+}
+
 S390X_COMPATIBLE = {
     "runtime-minimal-ubi9-python-3.11",
+    "runtime-minimal-ubi9-python-3.12",
     # add more here
 }
 
@@ -57,6 +63,12 @@ class RhelImages(enum.Enum):
     INCLUDE_ONLY = "include-only"
 
 
+class Arm64Images(enum.Enum):
+    EXCLUDE = "exclude"
+    INCLUDE = "include"
+    ONLY = "only"
+
+
 class S390xImages(enum.Enum):
     EXCLUDE = "exclude"
     INCLUDE = "include"
@@ -81,6 +93,15 @@ def main() -> None:
         default=RhelImages.INCLUDE,
         nargs="?",
         help="Whether to `include` rhel images or `exclude` them or `include-only` them",
+    )
+    argparser.add_argument(
+        "--arm64-images",
+        type=Arm64Images,
+        choices=list(Arm64Images),
+        required=False,
+        default=Arm64Images.INCLUDE,
+        nargs="?",
+        help="Whether to include, exclude, or only include arm64 images",
     )
     argparser.add_argument(
         "--s390x-images",
@@ -113,9 +134,12 @@ def main() -> None:
 
     targets_with_platform: list[tuple[str, str]] = []
     for target in targets:
-        if args.s390x_images != S390xImages.ONLY:
+        if args.s390x_images != S390xImages.ONLY or args.arm64_images != Arm64Images.ONLY:
             targets_with_platform.append((target, "linux/amd64"))
-        if args.s390x_images != S390xImages.EXCLUDE:
+        if args.arm64_images != Arm64Images.EXCLUDE and args.s390x_images != S390xImages.ONLY:
+            if target in ARM64_COMPATIBLE:
+                targets_with_platform.append((target, "linux/arm64"))
+        if args.s390x_images != S390xImages.EXCLUDE and args.arm64_images != Arm64Images.ONLY:
             # NOTE: hardcode the list of s390x-compatible Makefile targets in S390X_COMPATIBLE
             if target in S390X_COMPATIBLE:
                 targets_with_platform.append((target, "linux/s390x"))
