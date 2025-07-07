@@ -44,7 +44,6 @@ jobs:
       # GitHub image registry used for storing $(CONTAINER_ENGINE)'s cache
       CACHE: "ghcr.io/${{ github.repository }}/workbench-images/build-cache"
       TRIVY_VERSION: 0.64.1
-      TRIVY_VULNDB: "/home/runner/.local/share/containers/trivy_db"
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
       TRIVY_SCAN_FS_JSON: '{}'
       # Makefile variables
@@ -244,64 +243,6 @@ jobs:
 
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           echo "OUTPUT_IMAGE=${{ env.IMAGE_REGISTRY}}:${{ inputs.target }}-${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
-
-      # endregion
-
-      # region Trivy init & DB pre-pull
-
-      - name: "pull_request|schedule: resolve target if Trivy scan should run"
-        id: resolve-target
-        if: ${{ fromJson(inputs.github).event_name == 'pull_request' || fromJson(inputs.github).event_name == 'schedule' }}
-        env:
-          EVENT_NAME: ${{ fromJson(inputs.github).event_name }}
-          HAS_TRIVY_LABEL: ${{ contains(fromJson(inputs.github).event.pull_request.labels.*.name, 'trivy-scan') }}
-          FS_SCAN_FOLDER: ${{ fromJson(env.TRIVY_SCAN_FS_JSON)[inputs.target] }}
-        run: |
-          if [[ "$EVENT_NAME" == "pull_request" && "$HAS_TRIVY_LABEL" == "true" ]]; then
-            if [[ -n "$FS_SCAN_FOLDER" ]]; then
-              TARGET="$FS_SCAN_FOLDER"
-              TYPE="fs"
-            else
-              TARGET="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
-              TYPE="image"
-            fi
-          elif [[ "$EVENT_NAME" == "schedule" ]]; then
-            if [[ -n "$FS_SCAN_FOLDER" ]]; then
-              TARGET="$FS_SCAN_FOLDER"
-              TYPE="fs"
-            else
-              TARGET="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
-              TYPE="image"
-            fi
-          fi
-
-          if [[ -n "$TARGET" ]]; then
-            echo "target=$TARGET" >> $GITHUB_OUTPUT
-            echo "type=$TYPE" >> $GITHUB_OUTPUT
-            echo "Trivy scan will run on $TARGET ($TYPE)"
-          else
-            echo "Trivy scan won't run"
-          fi
-
-      # only one db can be downloaded in one call https://github.com/aquasecurity/trivy/issues/3616
-      - name: Pre-pull Trivy vulnerabilities DB
-        if: ${{ steps.resolve-target.outputs.target }}
-        run: |
-          mkdir ${TRIVY_VULNDB}
-          podman run --rm \
-            --env PODMAN_SOCK \
-            -v ${TRIVY_VULNDB}:/cache \
-            docker.io/aquasec/trivy:$TRIVY_VERSION \
-              --cache-dir /cache \
-              image \
-              --download-db-only
-          podman run --rm \
-            --env PODMAN_SOCK \
-            -v ${TRIVY_VULNDB}:/cache \
-            docker.io/aquasec/trivy:$TRIVY_VERSION \
-              --cache-dir /cache \
-              image \
-              --download-java-db-only
 
       # endregion
 
@@ -560,6 +501,40 @@ jobs:
 
       # region Trivy vulnerability scan
 
+      - name: "pull_request|schedule: resolve target if Trivy scan should run"
+        id: resolve-target
+        if: ${{ fromJson(inputs.github).event_name == 'pull_request' || fromJson(inputs.github).event_name == 'schedule' }}
+        env:
+          EVENT_NAME: ${{ fromJson(inputs.github).event_name }}
+          HAS_TRIVY_LABEL: ${{ contains(fromJson(inputs.github).event.pull_request.labels.*.name, 'trivy-scan') }}
+          FS_SCAN_FOLDER: ${{ fromJson(env.TRIVY_SCAN_FS_JSON)[inputs.target] }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" && "$HAS_TRIVY_LABEL" == "true" ]]; then
+            if [[ -n "$FS_SCAN_FOLDER" ]]; then
+              TARGET="$FS_SCAN_FOLDER"
+              TYPE="fs"
+            else
+              TARGET="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+              TYPE="image"
+            fi
+          elif [[ "$EVENT_NAME" == "schedule" ]]; then
+            if [[ -n "$FS_SCAN_FOLDER" ]]; then
+              TARGET="$FS_SCAN_FOLDER"
+              TYPE="fs"
+            else
+              TARGET="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+              TYPE="image"
+            fi
+          fi
+
+          if [[ -n "$TARGET" ]]; then
+            echo "target=$TARGET" >> $GITHUB_OUTPUT
+            echo "type=$TYPE" >> $GITHUB_OUTPUT
+            echo "Trivy scan will run on $TARGET ($TYPE)"
+          else
+            echo "Trivy scan won't run"
+          fi
+
       - name: Run Trivy vulnerability scanner
         if: ${{ steps.resolve-target.outputs.target }}
         run: |
@@ -588,12 +563,9 @@ jobs:
           podman run --rm \
               $PODMAN_ARGS \
               -v ${REPORT_FOLDER}:/report \
-              -v ${TRIVY_VULNDB}:/cache \
               docker.io/aquasec/trivy:$TRIVY_VERSION \
-                --cache-dir /cache \
                 $SCAN_TYPE \
                 $SCAN_ARGS \
-                --skip-db-update \
                 --scanners vuln --ignore-unfixed \
                 --exit-code 0 --timeout 30m \
                 --format template --template "@/report/$REPORT_TEMPLATE" -o /report/$REPORT_FILE \
