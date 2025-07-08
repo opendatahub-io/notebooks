@@ -513,14 +513,14 @@ all-images: \
 	runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
  	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
 # rstudio-c9s-python-$(RELEASE_PYTHON_VERSION)
 # cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION)
 # rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
 # cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
 # runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
 # rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+# rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
 else
 	$(error Invalid Python version $(RELEASE_PYTHON_VERSION))
 endif
