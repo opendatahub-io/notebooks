@@ -59,3 +59,16 @@ controllerManager: {}
 dns: {}
 proxy: {}
 scheduler: {}
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+# ISSUE #1326: disable gc, otherwise kubelet would GC Pytorch images causing later tests to fail
+# The low threshold must be strictly less than the high threshold
+imageGCHighThresholdPercent: 100
+imageGCLowThresholdPercent: 99
+# https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/#minimum-eviction-reclaim
+evictionHard:
+  # eviction threshold nodefs.available must be positive
+  nodefs.available: "1Mi"
+  # eviction threshold imagefs.available must be positive
+  imagefs.available: "1Mi"

@@ -31,9 +31,10 @@ name: Build & Publish Notebook Servers (TEMPLATE)
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    # https://docs.github.com/en/actions/how-tos/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
+    runs-on: ${{ inputs.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     env:
-      # Some pieces of code (image pulls for example) in podman consult TMPDIR or default to /var/tmp
+      # Some pieces of code (image pulls, for example) in podman consult TMPDIR or default to /var/tmp
       TMPDIR: /home/runner/.local/share/containers/tmpdir
       # Use the rootful instance of podman for sharing images with cri-o
       # https://podman-desktop.io/blog/sharing-podman-images-with-kubernetes-cluster#introduction
@@ -43,8 +44,7 @@ jobs:
       IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
       # GitHub image registry used for storing $(CONTAINER_ENGINE)'s cache
       CACHE: "ghcr.io/${{ github.repository }}/workbench-images/build-cache"
-      TRIVY_VERSION: 0.57.1
-      TRIVY_VULNDB: "/home/runner/.local/share/containers/trivy_db"
+      TRIVY_VERSION: 0.64.1
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
       TRIVY_SCAN_FS_JSON: '{}'
       # Makefile variables
@@ -168,16 +168,33 @@ jobs:
         run: sudo apt-get -qq remove podman crun
 
       - uses: actions/cache@v4
+        # https://docs.github.com/en/actions/reference/variables-reference#default-environment-variables
+        # https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables
         id: cached-linuxbrew
         with:
           path: /home/linuxbrew/.linuxbrew
-          key: linuxbrew
+          key: linuxbrew-${{ runner.os }}-${{ runner.arch }}
 
-      - name: Install podman
-        if: steps.cached-linuxbrew.outputs.cache-hit != 'true'
+      - name: Install podman (linux/amd64)
+        if: inputs.platform == 'linux/amd64' && steps.cached-linuxbrew.outputs.cache-hit != 'true'
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           /home/linuxbrew/.linuxbrew/bin/brew install podman
+
+      # Warning: Your CPU architecture (arm64) is not supported. We only support
+      # x86_64 CPU architectures. You will be unable to use binary packages (bottles).
+      #
+      # This is a Tier 2 configuration:
+      #  https://docs.brew.sh/Support-Tiers#tier-2
+      # Do not report any issues to Homebrew/* repositories!
+      # Read the above document instead before opening any issues or PRs.
+      - name: Install podman (linux/arm64)
+        if: inputs.platform == 'linux/arm64' && steps.cached-linuxbrew.outputs.cache-hit != 'true'
+        # Error: podman: no bottle available!
+        # If you're feeling brave, you can try to install from source with:
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          /home/linuxbrew/.linuxbrew/bin/brew install --build-from-source podman
 
       - name: Add linuxbrew to PATH
         run: echo "/home/linuxbrew/.linuxbrew/bin/" >> $GITHUB_PATH
@@ -244,64 +261,6 @@ jobs:
 
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           echo "OUTPUT_IMAGE=${{ env.IMAGE_REGISTRY}}:${{ inputs.target }}-${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
-
-      # endregion
-
-      # region Trivy init & DB pre-pull
-
-      - name: "pull_request|schedule: resolve target if Trivy scan should run"
-        id: resolve-target
-        if: ${{ fromJson(inputs.github).event_name == 'pull_request' || fromJson(inputs.github).event_name == 'schedule' }}
-        env:
-          EVENT_NAME: ${{ fromJson(inputs.github).event_name }}
-          HAS_TRIVY_LABEL: ${{ contains(fromJson(inputs.github).event.pull_request.labels.*.name, 'trivy-scan') }}
-          FS_SCAN_FOLDER: ${{ fromJson(env.TRIVY_SCAN_FS_JSON)[inputs.target] }}
-        run: |
-          if [[ "$EVENT_NAME" == "pull_request" && "$HAS_TRIVY_LABEL" == "true" ]]; then
-            if [[ -n "$FS_SCAN_FOLDER" ]]; then
-              TARGET="$FS_SCAN_FOLDER"
-              TYPE="fs"
-            else
-              TARGET="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
-              TYPE="image"
-            fi
-          elif [[ "$EVENT_NAME" == "schedule" ]]; then
-            if [[ -n "$FS_SCAN_FOLDER" ]]; then
-              TARGET="$FS_SCAN_FOLDER"
-              TYPE="fs"
-            else
-              TARGET="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
-              TYPE="image"
-            fi
-          fi
-
-          if [[ -n "$TARGET" ]]; then
-            echo "target=$TARGET" >> $GITHUB_OUTPUT
-            echo "type=$TYPE" >> $GITHUB_OUTPUT
-            echo "Trivy scan will run on $TARGET ($TYPE)"
-          else
-            echo "Trivy scan won't run"
-          fi
-
-      # only one db can be downloaded in one call https://github.com/aquasecurity/trivy/issues/3616
-      - name: Pre-pull Trivy vulnerabilities DB
-        if: ${{ steps.resolve-target.outputs.target }}
-        run: |
-          mkdir ${TRIVY_VULNDB}
-          podman run --rm \
-            --env PODMAN_SOCK \
-            -v ${TRIVY_VULNDB}:/cache \
-            docker.io/aquasec/trivy:$TRIVY_VERSION \
-              --cache-dir /cache \
-              image \
-              --download-db-only
-          podman run --rm \
-            --env PODMAN_SOCK \
-            -v ${TRIVY_VULNDB}:/cache \
-            docker.io/aquasec/trivy:$TRIVY_VERSION \
-              --cache-dir /cache \
-              image \
-              --download-java-db-only
 
       # endregion
 
@@ -560,6 +519,40 @@ jobs:
 
       # region Trivy vulnerability scan
 
+      - name: "pull_request|schedule: resolve target if Trivy scan should run"
+        id: resolve-target
+        if: ${{ fromJson(inputs.github).event_name == 'pull_request' || fromJson(inputs.github).event_name == 'schedule' }}
+        env:
+          EVENT_NAME: ${{ fromJson(inputs.github).event_name }}
+          HAS_TRIVY_LABEL: ${{ contains(fromJson(inputs.github).event.pull_request.labels.*.name, 'trivy-scan') }}
+          FS_SCAN_FOLDER: ${{ fromJson(env.TRIVY_SCAN_FS_JSON)[inputs.target] }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" && "$HAS_TRIVY_LABEL" == "true" ]]; then
+            if [[ -n "$FS_SCAN_FOLDER" ]]; then
+              TARGET="$FS_SCAN_FOLDER"
+              TYPE="fs"
+            else
+              TARGET="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+              TYPE="image"
+            fi
+          elif [[ "$EVENT_NAME" == "schedule" ]]; then
+            if [[ -n "$FS_SCAN_FOLDER" ]]; then
+              TARGET="$FS_SCAN_FOLDER"
+              TYPE="fs"
+            else
+              TARGET="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+              TYPE="image"
+            fi
+          fi
+
+          if [[ -n "$TARGET" ]]; then
+            echo "target=$TARGET" >> $GITHUB_OUTPUT
+            echo "type=$TYPE" >> $GITHUB_OUTPUT
+            echo "Trivy scan will run on $TARGET ($TYPE)"
+          else
+            echo "Trivy scan won't run"
+          fi
+
       - name: Run Trivy vulnerability scanner
         if: ${{ steps.resolve-target.outputs.target }}
         run: |
@@ -588,12 +581,9 @@ jobs:
           podman run --rm \
               $PODMAN_ARGS \
               -v ${REPORT_FOLDER}:/report \
-              -v ${TRIVY_VULNDB}:/cache \
               docker.io/aquasec/trivy:$TRIVY_VERSION \
-                --cache-dir /cache \
                 $SCAN_TYPE \
                 $SCAN_ARGS \
-                --skip-db-update \
                 --scanners vuln --ignore-unfixed \
                 --exit-code 0 --timeout 30m \
                 --format template --template "@/report/$REPORT_TEMPLATE" -o /report/$REPORT_FILE \
@@ -664,7 +654,7 @@ jobs:
         # --ipc=host because Microsoft says so in Playwright docs
         # --net=host because testcontainers connects to the Reaper container's exposed port
         # we need to pass through the relevant environment variables
-        #  DEBUG configures nodejs debuggers, sets different verbosity as needed
+        #  DEBUG configures Node.js debuggers, sets different verbosity as needed
         #  CI=true is set on every CI nowadays
         #  PODMAN_SOCK should be mounted to /var/run/docker.sock, other likely mounting locations may not exist (mkdir -p)
         #  TEST_TARGET is the workbench image the test will run
