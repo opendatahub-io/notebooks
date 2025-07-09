@@ -1,0 +1,38 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/rocm"
+    opendatahub.io/notebook-image-name: "Jupyter Minimal ROCm Python 3.12"
+    opendatahub.io/notebook-image-desc: "Jupyter ROCm notebook image for ODH notebooks."
+    opendatahub.io/notebook-image-order: "18"
+    opendatahub.io/recommended-accelerators: '["amd.com/gpu"]'
+  name: jupyter-rocm-minimal-beta
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "ROCm", "version": "6.2"},
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.2"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-rocm-py312-ubi9-commit-n_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-minimal-rocm-py312-ubi9-n_PLACEHOLDER
+      name: "2025.1"
+      referencePolicy:
+        type: Source
