@@ -1,0 +1,177 @@
+####################
+# base             #
+####################
+FROM registry.access.redhat.com/ubi9/python-312:latest AS base
+
+WORKDIR /opt/app-root/bin
+
+# OS Packages needs to be installed as root
+USER 0
+
+# Install useful OS packages
+RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+
+# Other apps and tools installed as default user
+USER 1001
+
+# Install micropipenv to deploy packages from Pipfile.lock
+RUN pip install --no-cache-dir -U "micropipenv[toml]"
+
+# Install the oc client
+RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+        -o /tmp/openshift-client-linux.tar.gz && \
+    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
+    rm -f /tmp/openshift-client-linux.tar.gz
+
+####################
+# cuda-base        #
+####################
+FROM base AS cuda-base
+
+ARG CUDA_SOURCE_CODE=cuda
+
+# Install CUDA base from:
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubi9/base/Dockerfile
+USER 0
+WORKDIR /opt/app-root/bin
+
+ENV NVARCH=x86_64
+ENV NVIDIA_REQUIRE_CUDA="cuda>=12.6 brand=unknown,driver>=470,driver<471 brand=grid,driver>=470,driver<471 brand=tesla,driver>=470,driver<471 brand=nvidia,driver>=470,driver<471 brand=quadro,driver>=470,driver<471 brand=quadrortx,driver>=470,driver<471 brand=nvidiartx,driver>=470,driver<471 brand=vapps,driver>=470,driver<471 brand=vpc,driver>=470,driver<471 brand=vcs,driver>=470,driver<471 brand=vws,driver>=470,driver<471 brand=cloudgaming,driver>=470,driver<471 brand=unknown,driver>=535,driver<536 brand=grid,driver>=535,driver<536 brand=tesla,driver>=535,driver<536 brand=nvidia,driver>=535,driver<536 brand=quadro,driver>=535,driver<536 brand=quadrortx,driver>=535,driver<536 brand=nvidiartx,driver>=535,driver<536 brand=vapps,driver>=535,driver<536 brand=vpc,driver>=535,driver<536 brand=vcs,driver>=535,driver<536 brand=vws,driver>=535,driver<536 brand=cloudgaming,driver>=535,driver<536 brand=unknown,driver>=550,driver<551 brand=grid,driver>=550,driver<551 brand=tesla,driver>=550,driver<551 brand=nvidia,driver>=550,driver<551 brand=quadro,driver>=550,driver<551 brand=quadrortx,driver>=550,driver<551 brand=nvidiartx,driver>=550,driver<551 brand=vapps,driver>=550,driver<551 brand=vpc,driver>=550,driver<551 brand=vcs,driver>=550,driver<551 brand=vws,driver>=550,driver<551 brand=cloudgaming,driver>=550,driver<551"
+ENV NV_CUDA_CUDART_VERSION=12.6.77-1
+
+COPY ${CUDA_SOURCE_CODE}/cuda.repo-x86_64 /etc/yum.repos.d/cuda.repo
+COPY ${CUDA_SOURCE_CODE}/NGC-DL-CONTAINER-LICENSE /
+
+RUN NVIDIA_GPGKEY_SUM=d0664fbbdb8c32356d45de36c5984617217b2d0bef41b93ccecd326ba3b80c87 && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/rhel9/${NVARCH}/D42D0685.pub | sed '/^Version/d' > /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA && \
+    echo "$NVIDIA_GPGKEY_SUM  /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA" | sha256sum -c --strict -
+
+ENV CUDA_VERSION=12.6.3
+
+# For libraries in the cuda-compat-* package: https://docs.nvidia.com/cuda/eula/index.html#attachment-a
+RUN yum upgrade -y && yum install -y \
+    cuda-cudart-12-6-${NV_CUDA_CUDART_VERSION} \
+    cuda-compat-12-6 \
+    && yum clean all \
+    && rm -rf /var/cache/yum/*
+
+# nvidia-docker 1.0
+RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf && \
+    echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
+
+ENV PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+
+# nvidia-container-runtime
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Install CUDA runtime from:
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubi9/runtime/Dockerfile
+ENV NV_CUDA_LIB_VERSION=12.6.3-1
+ENV NV_NVTX_VERSION=12.6.77-1
+ENV NV_LIBNPP_VERSION=12.3.1.54-1
+ENV NV_LIBNPP_PACKAGE=libnpp-12-6-${NV_LIBNPP_VERSION}
+ENV NV_LIBCUBLAS_VERSION=12.6.4.1-1
+ENV NV_LIBNCCL_PACKAGE_NAME=libnccl
+ENV NV_LIBNCCL_PACKAGE_VERSION=2.23.4-1
+ENV NV_LIBNCCL_VERSION=2.23.4
+ENV NCCL_VERSION=2.23.4
+ENV NV_LIBNCCL_PACKAGE=${NV_LIBNCCL_PACKAGE_NAME}-${NV_LIBNCCL_PACKAGE_VERSION}+cuda12.6
+
+RUN yum install -y \
+    cuda-libraries-12-6-${NV_CUDA_LIB_VERSION} \
+    cuda-nvtx-12-6-${NV_NVTX_VERSION} \
+    ${NV_LIBNPP_PACKAGE} \
+    libcublas-12-6-${NV_LIBCUBLAS_VERSION} \
+    ${NV_LIBNCCL_PACKAGE} \
+    && yum clean all \
+    && rm -rf /var/cache/yum/*
+
+# Install CUDA devel from:
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubi9/devel/Dockerfile
+ENV NV_NVPROF_VERSION=12.6.80-1
+ENV NV_NVPROF_DEV_PACKAGE=cuda-nvprof-12-6-${NV_NVPROF_VERSION}
+ENV NV_CUDA_CUDART_DEV_VERSION=12.6.77-1
+ENV NV_NVML_DEV_VERSION=12.6.77-1
+ENV NV_LIBCUBLAS_DEV_VERSION=12.6.4.1-1
+ENV NV_LIBNPP_DEV_VERSION=12.3.1.54-1
+ENV NV_LIBNPP_DEV_PACKAGE=libnpp-devel-12-6-${NV_LIBNPP_DEV_VERSION}
+ENV NV_LIBNCCL_DEV_PACKAGE_NAME=libnccl-devel
+ENV NV_LIBNCCL_DEV_PACKAGE_VERSION=2.23.4-1
+ENV NCCL_VERSION=2.23.4
+ENV NV_LIBNCCL_DEV_PACKAGE=${NV_LIBNCCL_DEV_PACKAGE_NAME}-${NV_LIBNCCL_DEV_PACKAGE_VERSION}+cuda12.6
+ENV NV_CUDA_NSIGHT_COMPUTE_VERSION=12.6.3-1
+ENV NV_CUDA_NSIGHT_COMPUTE_DEV_PACKAGE=cuda-nsight-compute-12-6-${NV_CUDA_NSIGHT_COMPUTE_VERSION}
+
+RUN yum install -y \
+    make \
+    findutils \
+    cuda-command-line-tools-12-6-${NV_CUDA_LIB_VERSION} \
+    cuda-libraries-devel-12-6-${NV_CUDA_LIB_VERSION} \
+    cuda-minimal-build-12-6-${NV_CUDA_LIB_VERSION} \
+    cuda-cudart-devel-12-6-${NV_CUDA_CUDART_DEV_VERSION} \
+    ${NV_NVPROF_DEV_PACKAGE} \
+    cuda-nvml-devel-12-6-${NV_NVML_DEV_VERSION} \
+    libcublas-devel-12-6-${NV_LIBCUBLAS_DEV_VERSION} \
+    ${NV_LIBNPP_DEV_PACKAGE} \
+    ${NV_LIBNCCL_DEV_PACKAGE} \
+    ${NV_CUDA_NSIGHT_COMPUTE_DEV_PACKAGE} \
+    && yum clean all \
+    && rm -rf /var/cache/yum/*
+
+ENV LIBRARY_PATH=/usr/local/cuda/lib64/stubs
+
+# Install CUDA devel cudnn9 from:
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubi9/devel/cudnn/Dockerfile
+ENV NV_CUDNN_VERSION=9.5.1.17-1
+ENV NV_CUDNN_PACKAGE=libcudnn9-cuda-12-${NV_CUDNN_VERSION}
+ENV NV_CUDNN_PACKAGE_DEV=libcudnn9-devel-cuda-12-${NV_CUDNN_VERSION}
+
+LABEL com.nvidia.cudnn.version="${NV_CUDNN_VERSION}"
+
+RUN yum install -y \
+    ${NV_CUDNN_PACKAGE} \
+    ${NV_CUDNN_PACKAGE_DEV} \
+    && yum clean all \
+    && rm -rf /var/cache/yum/*
+    
+# Set this flag so that libraries can find the location of CUDA
+ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
+
+# Restore notebook user workspace
+USER 1001
+WORKDIR /opt/app-root/src
+
+############################
+# cuda-runtime-tensorflow  #
+############################
+FROM cuda-base AS cuda-runtime-tensorflow
+
+ARG TENSORFLOW_SOURCE_CODE=runtimes/tensorflow/ubi9-python-3.12
+
+LABEL name="odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.12" \
+    summary="Runtime CUDA tensorflow notebook image for ODH notebooks" \
+    description="Runtime CUDA tensorflow notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+    io.k8s.display-name="Runtime CUDA tensorflow notebook image for ODH notebooks" \
+    io.k8s.description="Runtime CUDA tensorflow notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+    io.openshift.build.commit.ref="main" \
+    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/tensorflow/ubi9-python-3.12" \
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-runtime-tensorflow-ubi9-python-3.12"
+
+WORKDIR /opt/app-root/bin
+
+# Install Python packages from Pipfile.lock
+COPY ${TENSORFLOW_SOURCE_CODE}/Pipfile.lock ./
+# Copy Elyra dependencies for air-gapped enviroment
+COPY ${TENSORFLOW_SOURCE_CODE}/utils ./utils/
+
+RUN echo "Installing softwares and packages" && \
+    micropipenv install && \
+    rm -f ./Pipfile.lock && \
+    # Fix permissions to support pip in Openshift environments \
+    chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
+    fix-permissions /opt/app-root -P
+
+WORKDIR /opt/app-root/src
