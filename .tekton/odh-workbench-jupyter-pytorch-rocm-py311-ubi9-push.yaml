@@ -7,7 +7,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    build.appstudio.openshift.io/build-nudge-files: "manifests/base/params-latest.env"\
+    build.appstudio.openshift.io/build-nudge-files: "manifests/base/params-latest.env"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
       == "main"
       && !("manifests/base/params-latest.env".pathChanged())
