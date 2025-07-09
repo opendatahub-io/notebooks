@@ -1,0 +1,34 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[dev-packages]
+
+[packages]
+# This is a comprehensive list of python dependencies that Elyra requires to execute Jupyter notebooks.
+ipykernel = "~=6.29.5"
+ipython = "~=9.0.1"
+ipython-genutils = "~=0.2.0"
+jinja2 = "~=3.1.6"
+jupyter-client = "~=8.6.3"
+jupyter-core = "~=5.7.2"
+MarkupSafe = "~=3.0.2"
+minio = "~=7.2.15"
+nbclient = "~=0.10.2"
+nbconvert = "~=7.16.6"
+nbformat = "~=5.10.4"
+papermill = "~=2.6.0"
+pyzmq = "~=26.2.1"
+prompt-toolkit = "~=3.0.50"
+requests = "~=2.32.3"
+tornado = "~=6.5.1"
+traitlets = "~=5.14.3"
+urllib3 = "~=2.5.0"
+
+# Base packages
+setuptools = "==78.1.1"
+wheel = "==0.45.1"
+
+[requires]
+python_version = "3.12"
