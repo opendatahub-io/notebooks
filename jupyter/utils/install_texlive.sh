@@ -24,7 +24,7 @@ if [[ "$ARCH" == "ppc64le" ]]; then
 
   # Configure, build, install
   ../texlive-20250308-source/configure --prefix=/usr/local/texlive
-  make -j$(nproc)
+  make -j"$(nproc)"
   make install
 
   # Symlink for pdflatex
@@ -36,9 +36,8 @@ if [[ "$ARCH" == "ppc64le" ]]; then
 
   export PATH="/usr/local/texlive/bin/powerpc64le-unknown-linux-gnu:$PATH"
   pdflatex --version
-fi
 
-if [[ "$ARCH" == "x86_64" ]]; then
+elif [[ "$ARCH" == "x86_64" ]]; then
   # tex live installation
   echo "Installing TexLive to allow PDf export from Notebooks" 
   curl -L https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz -o install-tl-unx.tar.gz 
@@ -47,5 +46,10 @@ if [[ "$ARCH" == "x86_64" ]]; then
   perl ./install-tl --no-interaction --scheme=scheme-small --texdir=/usr/local/texlive
   cd /usr/local/texlive/bin/x86_64-linux
   ./tlmgr install tcolorbox pdfcol adjustbox titling enumitem soul ucs collection-fontsrecommended
+
+else
+  echo "Unsupported architecture: $ARCH" >&2
+  exit 1
+
 fi
 
