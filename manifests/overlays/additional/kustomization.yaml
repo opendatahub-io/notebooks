@@ -13,6 +13,12 @@ resources:
   - jupyter-tensorflow-notebook-imagestream-beta.yaml
   - jupyter-trustyai-notebook-imagestream-beta.yaml
   - code-server-notebook-imagestream-beta.yaml
+  - runtime-datascience-imagestream-beta.yaml
+  - runtime-minimal-imagestream-beta.yaml
+  - runtime-pytorch-imagestream-beta.yaml
+  - runtime-rocm-pytorch-imagestream-beta.yaml
+  - runtime-rocm-tensorflow-imagestream-beta.yaml
+  - runtime-tensorflow-imagestream-beta.yaml
 
 labels:
   - includeSelectors: true
@@ -253,4 +259,82 @@ replacements:
           group: image.openshift.io
           kind: ImageStream
           name: jupyter-rocm-pytorch-beta
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-minimal-cpu-py312-ubi9-n
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-minimal-beta
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-datascience-cpu-py312-ubi9-n
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-datascience-beta
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-pytorch-cuda-py312-ubi9-n
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-pytorch-beta
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-pytorch-rocm-py312-ubi9-n
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-rocm-pytorch-beta
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-tensorflow-rocm-py312-ubi9-n
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-rocm-tensorflow-beta
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-n
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-tensorflow-beta
           version: v1
