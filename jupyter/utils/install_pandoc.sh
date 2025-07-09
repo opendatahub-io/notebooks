@@ -19,21 +19,28 @@ if [[ "$ARCH" == "ppc64le" ]]; then
 
   cabal update
   cd pandoc-cli
-  cabal build -j$(nproc)
-  cabal install --installdir=/usr/local --overwrite-policy=always --install-method=copy
+  cabal build -j"$(nproc)"
+  mkdir -p /usr/local/pandoc/bin
+  cabal install \
+    --installdir=/usr/local/pandoc/bin \
+    --overwrite-policy=always \
+    --install-method=copy
 
   # Clean up Haskell build system
   rm -rf ~/.cabal ~/.ghc /tmp/pandoc
   dnf remove -y cabal-install ghc gmp-devel
   dnf clean all && rm -rf /var/cache/dnf
-fi
 
-if [[ "$ARCH" == "x86_64" ]]; then
+  /usr/local/pandoc/bin/pandoc --version
+
+elif [[ "$ARCH" == "x86_64" ]]; then
   # pandoc installation
   curl -L https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-amd64.tar.gz  -o /tmp/pandoc.tar.gz
   mkdir -p /usr/local/pandoc
   tar xvzf /tmp/pandoc.tar.gz --strip-components 1 -C /usr/local/pandoc/
   rm -f /tmp/pandoc.tar.gz
-fi
 
-/usr/local/pandoc --version
+else
+  echo "Unsupported architecture: $ARCH" >&2
+  exit 1
+fi
