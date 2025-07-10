@@ -262,6 +262,8 @@ jobs:
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           echo "OUTPUT_IMAGE=${{ env.IMAGE_REGISTRY}}:${{ inputs.target }}-${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
 
+          echo "SANITIZED_PLATFORM=$(echo "${{ inputs.platform }}" | sed 's/[^a-zA-Z0-9._-]/_/g')" >> "$GITHUB_OUTPUT"
+
       # endregion
 
       # region Image build
@@ -686,7 +688,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && fromJson(inputs.github).event_name == 'pull_request' && contains(inputs.target, 'codeserver') }}
         with:
-          name: "${{ inputs.target }}_${{ replace(inputs.platform, '/', '_') }}_playwright-report"
+          name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
           path: tests/browser/playwright-report/
           retention-days: 30
 
