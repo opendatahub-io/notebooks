@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/containerd/platforms"
@@ -31,11 +32,11 @@ func getDockerfileDeps(dockerfile string) string {
 			// random digest value
 			digest:   "sha256:a1c7d58d98df3f9a67eda799200655b923ebc7a41cad1d9bb52723ae1c81ad17",
 			dir:      "/",
-			platform: "linux/amd64",
+			platform: "linux/" + runtime.GOARCH,
 		},
 		Config: dockerui.Config{
 			BuildArgs:      map[string]string{"BASE_IMAGE": "fake-image"},
-			BuildPlatforms: []ocispecs.Platform{{OS: "linux", Architecture: "amd64"}},
+			BuildPlatforms: []ocispecs.Platform{{OS: "linux", Architecture: runtime.GOARCH}},
 		},
 		Warn: func(rulename, description, url, fmtmsg string, location []parser.Range) {
 			log.Printf(rulename, description, url, fmtmsg, location)
