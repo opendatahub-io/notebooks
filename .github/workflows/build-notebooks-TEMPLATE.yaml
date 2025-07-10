@@ -686,7 +686,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && fromJson(inputs.github).event_name == 'pull_request' && contains(inputs.target, 'codeserver') }}
         with:
-          name: "${{ inputs.target }}_playwright-report"
+          name: "${{ inputs.target }}_${{ replace(inputs.platform, '/', '_') }}_playwright-report"
           path: tests/browser/playwright-report/
           retention-days: 30
 
