@@ -1,7 +1,6 @@
----
 name: Insta Merge Konflux PRs
 
-on:  # yamllint disable-line rule:truthy
+on:
   pull_request:
     paths:
       - manifests/base/params-latest.env
