@@ -3,6 +3,25 @@
 #########################
 ARG BASE_IMAGE
 
+############################
+# Stage 1: PDF Tool Build #
+############################
+# e.g., registry.access.redhat.com/ubi9/python-312:latest
+FROM ${BASE_IMAGE} AS pdf-builder
+
+WORKDIR /opt/app-root/bin
+
+# OS Packages needs to be installed as root
+USER 0
+
+# Copy scripts
+COPY jupyter/utils/install_texlive.sh ./install_texlive.sh
+COPY jupyter/utils/install_pandoc.sh ./install_pandoc.sh
+RUN chmod +x install_texlive.sh install_pandoc.sh
+
+RUN ./install_texlive.sh
+RUN ./install_pandoc.sh
+
 ####################
 # cpu-base         #
 ####################
@@ -58,6 +77,10 @@ WORKDIR /opt/app-root/bin
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
 USER 0
+
+# Copy built TeXLive and Pandoc binaries only (no build deps)
+COPY --from=pdf-builder /usr/local/texlive /usr/local/texlive
+COPY --from=pdf-builder /usr/local/pandoc /usr/local/pandoc
 
 # Dependencies for PDF export begin
 RUN ./utils/install_pdf_deps.sh
