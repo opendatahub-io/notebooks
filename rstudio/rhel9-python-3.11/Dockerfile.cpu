@@ -1,7 +1,7 @@
 #####################
 # base              #
 #####################
-FROM registry.redhat.io/rhel9/python-311:latest AS base
+FROM registry.access.redhat.com/rhel9/python-311:latest AS base
 
 WORKDIR /opt/app-root/bin
 
