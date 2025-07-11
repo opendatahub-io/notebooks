@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -U "micropipenv[toml]"
 # OS Packages needs to be installed as root
 USER root
 
-# Install usefull OS packages
+# Install useful OS packages
 RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 
 # Other apps and tools installed as default user

@@ -21,14 +21,29 @@ Use https://pypi.org/project/py-make/ or https://github.com/JetBrains/intellij-p
 
 project_dir = pathlib.Path(__file__).parent.parent.parent.absolute()
 
+ARM64_COMPATIBLE = {
+    "codeserver-ubi9-python-3.11",
+    "codeserver-ubi9-python-3.12",
+}
 
-def extract_image_targets(makefile_dir: pathlib.Path | str | None = None) -> list[str]:
+S390X_COMPATIBLE = {
+    "runtime-minimal-ubi9-python-3.11",
+    "runtime-minimal-ubi9-python-3.12",
+    # add more here
+}
+
+
+def extract_image_targets(
+    makefile_dir: pathlib.Path | str | None = None, env: dict[str, str] | None = None
+) -> list[str]:
     if makefile_dir is None:
         makefile_dir = os.getcwd()
+    if env is None:
+        env = {}
 
     makefile_all_target = "all-images"
 
-    output = makefile_helper.dry_run_makefile(target=makefile_all_target, makefile_dir=makefile_dir)
+    output = makefile_helper.dry_run_makefile(target=makefile_all_target, makefile_dir=makefile_dir, env=env)
 
     # Extract the 'all-images' entry and its values
     all_images = []
@@ -48,6 +63,18 @@ class RhelImages(enum.Enum):
     INCLUDE_ONLY = "include-only"
 
 
+class Arm64Images(enum.Enum):
+    EXCLUDE = "exclude"
+    INCLUDE = "include"
+    ONLY = "only"
+
+
+class S390xImages(enum.Enum):
+    EXCLUDE = "exclude"
+    INCLUDE = "include"
+    ONLY = "only"
+
+
 def main() -> None:
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
@@ -61,14 +88,35 @@ def main() -> None:
     argparser.add_argument(
         "--rhel-images",
         type=RhelImages,
+        choices=list(RhelImages),
         required=False,
         default=RhelImages.INCLUDE,
         nargs="?",
         help="Whether to `include` rhel images or `exclude` them or `include-only` them",
     )
+    argparser.add_argument(
+        "--arm64-images",
+        type=Arm64Images,
+        choices=list(Arm64Images),
+        required=False,
+        default=Arm64Images.INCLUDE,
+        nargs="?",
+        help="Whether to include, exclude, or only include arm64 images",
+    )
+    argparser.add_argument(
+        "--s390x-images",
+        type=S390xImages,
+        choices=list(S390xImages),
+        required=False,
+        default=S390xImages.INCLUDE,
+        nargs="?",
+        help="Whether to include, exclude, or only include s390x images",
+    )
     args = argparser.parse_args()
 
-    targets = extract_image_targets()
+    targets = extract_image_targets(env={"RELEASE_PYTHON_VERSION": "3.11"}) + extract_image_targets(
+        env={"RELEASE_PYTHON_VERSION": "3.12"}
+    )
 
     if args.from_ref:
         logging.info("Skipping targets not modified in the PR")
@@ -84,19 +132,43 @@ def main() -> None:
     else:
         raise Exception(f"Unknown value for --rhel-images: {args.rhel_images}")
 
+    targets_with_platform: list[tuple[str, str]] = []
+    for target in targets:
+        if args.s390x_images != S390xImages.ONLY or args.arm64_images != Arm64Images.ONLY:
+            targets_with_platform.append((target, "linux/amd64"))
+        if args.arm64_images != Arm64Images.EXCLUDE and args.s390x_images != S390xImages.ONLY:
+            if target in ARM64_COMPATIBLE:
+                targets_with_platform.append((target, "linux/arm64"))
+        if args.s390x_images != S390xImages.EXCLUDE and args.arm64_images != Arm64Images.ONLY:
+            # NOTE: hardcode the list of s390x-compatible Makefile targets in S390X_COMPATIBLE
+            if target in S390X_COMPATIBLE:
+                targets_with_platform.append((target, "linux/s390x"))
+
     # https://stackoverflow.com/questions/66025220/paired-values-in-github-actions-matrix
     output = [
         "matrix="
         + json.dumps(
             {
-                "include": [{"target": target, "subscription": "rhel" in target} for target in targets],
+                "include": [
+                    {
+                        "target": target,
+                        "python": "3.11"
+                        if "-python-3.11" in target
+                        else "3.12"
+                        if "-python-3.12" in target
+                        else "invalid-python-version",
+                        "platform": platform,
+                        "subscription": "rhel" in target,
+                    }
+                    for (target, platform) in targets_with_platform
+                ],
             },
             separators=(",", ":"),
         ),
-        "has_jobs=" + json.dumps(len(targets) > 0, separators=(",", ":")),
+        "has_jobs=" + json.dumps(len(targets_with_platform) > 0, separators=(",", ":")),
     ]
 
-    print("targets", targets)
+    print("targets", targets_with_platform)
     print(*output, sep="\n")
 
     if "GITHUB_ACTIONS" in os.environ:
