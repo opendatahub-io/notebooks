@@ -1,7 +1,7 @@
 ####################
 # base             #
 ####################
-FROM registry.access.redhat.com/ubi9/python-311:latest AS base
+FROM registry.redhat.io/ubi9/python-311@sha256:3d7217ff801658e72048ace18433f434971f64433f33e8c0f7f1e73525841ae7 AS base
 
 WORKDIR /opt/app-root/bin
 
@@ -26,7 +26,7 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 #######################
 # runtime-datascience #
 #######################
-FROM base AS runtime-datascience  
+FROM base AS runtime-datascience
 
 ARG DATASCIENCE_SOURCE_CODE=runtimes/datascience/ubi9-python-3.11
 

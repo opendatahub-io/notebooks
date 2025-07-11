@@ -14,7 +14,7 @@ RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
 ####################
 # base             #
 ####################
-FROM registry.access.redhat.com/ubi9/python-312:latest AS base
+FROM registry.redhat.io/ubi9/python-312@sha256:9b1c6e37a36bd62815e264345ba1345f0edda83c105cf48aba72eecee1ba98d5 AS base
 
 WORKDIR /opt/app-root/bin
 

@@ -1,7 +1,7 @@
 ####################
 # base             #
 ####################
-FROM registry.access.redhat.com/ubi9/python-312:latest AS base
+FROM registry.redhat.io/ubi9/python-312@sha256:9b1c6e37a36bd62815e264345ba1345f0edda83c105cf48aba72eecee1ba98d5 AS base
 
 WORKDIR /opt/app-root/bin
 
@@ -135,7 +135,7 @@ RUN yum install -y \
     ${NV_CUDNN_PACKAGE_DEV} \
     && yum clean all \
     && rm -rf /var/cache/yum/*
-    
+
 # Set this flag so that libraries can find the location of CUDA
 ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 
