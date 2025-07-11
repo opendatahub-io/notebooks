@@ -115,7 +115,7 @@ RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile && dnf clean all &&
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 
 # Install MSSQL Client, We need a special repo for MSSQL as they do their own distribution
-COPY ${DATASCIENCE_SOURCE_CODE}/mssql-2022.repo-x86_64 /etc/yum.repos.d/mssql-2022.repo
+COPY ${DATASCIENCE_SOURCE_CODE}/mssql-2022.repo /etc/yum.repos.d/mssql-2022.repo
 
 RUN ACCEPT_EULA=Y dnf install -y mssql-tools18 unixODBC-devel && dnf clean all && rm -rf /var/cache/yum
 
