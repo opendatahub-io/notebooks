@@ -24,6 +24,8 @@ project_dir = pathlib.Path(__file__).parent.parent.parent.absolute()
 ARM64_COMPATIBLE = {
     "codeserver-ubi9-python-3.11",
     "codeserver-ubi9-python-3.12",
+    "cuda-jupyter-minimal-ubi9-python-3.11",
+    "cuda-jupyter-minimal-ubi9-python-3.12",
 }
 
 S390X_COMPATIBLE = {
