@@ -11,14 +11,14 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
       == "main"
       && !("manifests/base/params-latest.env".pathChanged())
-      && ( "runtimes/datascience/ubi9-python-3.11/**".pathChanged() || 
-           ".tekton/odh-pipeline-runtime-datascience-cpu-py311-ubi9-push.yaml".pathChanged() )
+      && ( "runtimes/datascience/ubi9-python-3.12/**".pathChanged() ||
+           ".tekton/odh-pipeline-runtime-datascience-cpu-py312-ubi9-push.yaml".pathChanged() )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: opendatahub-release
-    appstudio.openshift.io/component: odh-pipeline-runtime-datascience-cpu-py311-ubi9
+    appstudio.openshift.io/component: odh-pipeline-runtime-datascience-cpu-py312-ubi9
     pipelines.appstudio.openshift.io/type: build
-  name: odh-pipeline-runtime-datascience-cpu-py311-ubi9-on-push
+  name: odh-pipeline-runtime-datascience-cpu-py312-ubi9-on-push
   namespace: open-data-hub-tenant
 spec:
   params:
@@ -27,9 +27,9 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-pipeline-runtime-datascience-cpu-py311-ubi9:2025a-v1.34
+    value: quay.io/opendatahub/odh-pipeline-runtime-datascience-cpu-py312-ubi9:2025a-v1.34
   - name: dockerfile
-    value: runtimes/datascience/ubi9-python-3.11/Dockerfile.cpu
+    value: runtimes/datascience/ubi9-python-3.12/Dockerfile.cpu
   - name: path-context
     value: .
   - name: additional-tags
@@ -662,7 +662,7 @@ spec:
     - name: netrc
       optional: true
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-pipeline-runtime-datascience-cpu-py311-ubi9
+    serviceAccountName: build-pipeline-odh-pipeline-runtime-datascience-cpu-py312-ubi9
   workspaces:
   - name: git-auth
     secret:

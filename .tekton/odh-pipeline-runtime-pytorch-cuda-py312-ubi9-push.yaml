@@ -12,15 +12,15 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
       == "main"
       && !("manifests/base/params-latest.env".pathChanged())
-      && ( ".tekton/odh-pipeline-runtime-pytorch-cuda-py311-ubi9-push.yaml".pathChanged() ||
-           "runtimes/pytorch/ubi9-python-3.11/**".pathChanged() || 
+      && ( ".tekton/odh-pipeline-runtime-pytorch-cuda-py312-ubi9-push.yaml".pathChanged() ||
+           "runtimes/pytorch/ubi9-python-3.12/**".pathChanged() ||
            "cuda/**".pathChanged() )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: opendatahub-release
-    appstudio.openshift.io/component: odh-pipeline-runtime-pytorch-cuda-py311-ubi9
+    appstudio.openshift.io/component: odh-pipeline-runtime-pytorch-cuda-py312-ubi9
     pipelines.appstudio.openshift.io/type: build
-  name: odh-pipeline-runtime-pytorch-cuda-py311-ubi9-on-push
+  name: odh-pipeline-runtime-pytorch-cuda-py312-ubi9-on-push
   namespace: open-data-hub-tenant
 spec:
   timeouts:
@@ -31,9 +31,9 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-pipeline-runtime-pytorch-cuda-py311-ubi9:2025a-v1.34
+    value: quay.io/opendatahub/odh-pipeline-runtime-pytorch-cuda-py312-ubi9:2025a-v1.34
   - name: dockerfile
-    value: runtimes/pytorch/ubi9-python-3.11/Dockerfile.cuda
+    value: runtimes/pytorch/ubi9-python-3.12/Dockerfile.cuda
   - name: path-context
     value: .
   - name: additional-tags
@@ -677,7 +677,7 @@ spec:
     - name: netrc
       optional: true
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-pipeline-runtime-pytorch-cuda-py311-ubi9
+    serviceAccountName: build-pipeline-odh-pipeline-runtime-pytorch-cuda-py312-ubi9
   workspaces:
   - name: git-auth
     secret:
