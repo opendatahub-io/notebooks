@@ -65,9 +65,12 @@ jobs:
         run: pip install pipenv
 
       # Run makefile recipe to refresh Pipfile.lock and push changes back to the branch
-      - name: Run make refresh-pipfilelock-files and push the changes back to the branch
+      - name: Run `make refresh-pipfilelock-files`
         run: |
           make refresh-pipfilelock-files PYTHON_VERSION=${{ env.PYTHON_VERSION }} INCLUDE_OPT_DIRS=${{ env.INCLUDE_OPT_DIRS }}
+
+      - name: Push the changes back to the branch
+        run: |
           git add .
           git commit -m "Update Pipfile.lock files by piplock-renewal.yaml action"
           git push origin ${{ env.BRANCH }}
