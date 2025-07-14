@@ -67,7 +67,7 @@ RUN if [ -d "${SECRET_DIR}" ]; then \
   fi
 
 ENV R_VERSION=4.4.3
-ENV MAKEFLAGS="-j2"
+ENV MAKEFLAGS="-j4"
 
 # Install R
 RUN yum install -y yum-utils && \

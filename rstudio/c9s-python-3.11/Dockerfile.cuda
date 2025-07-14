@@ -179,7 +179,7 @@ LABEL name="odh-notebook-rstudio-server-cuda-c9s-python-3.11" \
 USER 0
 
 ENV R_VERSION=4.4.3
-ENV MAKEFLAGS="-j2"
+ENV MAKEFLAGS="-j4"
 
 # Install R
 RUN yum install -y yum-utils && \
