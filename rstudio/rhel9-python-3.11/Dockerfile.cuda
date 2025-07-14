@@ -1,352 +1,275 @@
-#####################
-# base              #
-#####################
-FROM registry.redhat.io/rhel9/python-311:latest AS base
 
-WORKDIR /opt/app-root/bin
 
-# Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install --no-cache-dir -U "micropipenv[toml]"
 
-# OS Packages needs to be installed as root
-USER root
 
-# Install useful OS packages
-RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 
-# Other apps and tools installed as default user
-USER 1001
 
-# Install the oc client
-RUN curl -L https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz \
-        -o /tmp/openshift-client-linux.tar.gz && \
-    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
-    rm -f /tmp/openshift-client-linux.tar.gz
 
-WORKDIR /opt/app-root/src
 
-################
-# cuda-base    #
-################
-FROM base AS cuda-base-amd64
-ENV NVARCH=x86_64
-# cuda-nvprof only gets installed on amd64 currently
-ENV NV_NVPROF_VERSION=12.6.80-1
-ENV NV_NVPROF_DEV_PACKAGE=cuda-nvprof-12-6-${NV_NVPROF_VERSION}
 
-FROM base AS cuda-base-arm64
-ENV NVARCH=sbsa
 
-FROM cuda-base-${TARGETARCH} AS cuda-base
 
-ARG TARGETARCH
 
-ARG CUDA_SOURCE_CODE=cuda
-# Access the client's secret for the subscription manager from the environment variable
-ARG SECRET_DIR=/opt/app-root/src/.sec
-ARG SERVERURL_DEFAULT=""
-ARG BASEURL_DEFAULT=""
 
-# Install CUDA base from:
-# https://gitlab.com/nvidia/container-images/cuda/-/tree/master/dist/12.4.1/ubi9/base
-USER 0
-WORKDIR /opt/app-root/bin
 
-# If necessary, run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
-RUN if [ -d "${SECRET_DIR}" ]; then \
-    SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFAULT}) && \
-    BASEURL=$(cat ${SECRET_DIR}/BASEURL 2>/dev/null || echo ${BASEURL_DEFAULT}) && \
-    USERNAME=$(cat ${SECRET_DIR}/USERNAME) && \
-    PASSWORD=$(cat ${SECRET_DIR}/PASSWORD) && \
-    subscription-manager register \
-    ${SERVERURL:+--serverurl=$SERVERURL} \
-    ${BASEURL:+--baseurl=$BASEURL} \
-    --username=$USERNAME \
-    --password=$PASSWORD \
-    --force \
-    --auto-attach; \
-  fi
 
-ENV NVIDIA_REQUIRE_CUDA="cuda>=12.4 brand=tesla,driver>=470,driver<471 brand=unknown,driver>=470,driver<471 brand=nvidia,driver>=470,driver<471 brand=nvidiartx,driver>=470,driver<471 brand=geforce,driver>=470,driver<471 brand=geforcertx,driver>=470,driver<471 brand=quadro,driver>=470,driver<471 brand=quadrortx,driver>=470,driver<471 brand=titan,driver>=470,driver<471 brand=titanrtx,driver>=470,driver<471 brand=tesla,driver>=525,driver<526 brand=unknown,driver>=525,driver<526 brand=nvidia,driver>=525,driver<526 brand=nvidiartx,driver>=525,driver<526 brand=geforce,driver>=525,driver<526 brand=geforcertx,driver>=525,driver<526 brand=quadro,driver>=525,driver<526 brand=quadrortx,driver>=525,driver<526 brand=titan,driver>=525,driver<526 brand=titanrtx,driver>=525,driver<526 brand=tesla,driver>=535,driver<536 brand=unknown,driver>=535,driver<536 brand=nvidia,driver>=535,driver<536 brand=nvidiartx,driver>=535,driver<536 brand=geforce,driver>=535,driver<536 brand=geforcertx,driver>=535,driver<536 brand=quadro,driver>=535,driver<536 brand=quadrortx,driver>=535,driver<536 brand=titan,driver>=535,driver<536 brand=titanrtx,driver>=535,driver<536"
-ENV NV_CUDA_CUDART_VERSION=12.4.127-1
 
-COPY ${CUDA_SOURCE_CODE}/cuda.repo-${TARGETARCH} /etc/yum.repos.d/cuda.repo
 
-RUN NVIDIA_GPGKEY_SUM=d0664fbbdb8c32356d45de36c5984617217b2d0bef41b93ccecd326ba3b80c87 && \
-    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/rhel9/${NVARCH}/D42D0685.pub | sed '/^Version/d' > /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA && \
-    echo "$NVIDIA_GPGKEY_SUM  /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA" | sha256sum -c --strict -
 
-ENV CUDA_VERSION=12.4.1
 
-# For libraries in the cuda-compat-* package: https://docs.nvidia.com/cuda/eula/index.html#attachment-a
-RUN yum upgrade -y && yum install -y \
-    cuda-cudart-12-4-${NV_CUDA_CUDART_VERSION} \
-    cuda-compat-12-4 \
-    && yum clean all \
-    && rm -rf /var/cache/yum/*
 
-# nvidia-docker 1.0
-RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf && \
-    echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
 
-ENV PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
 
-COPY ${CUDA_SOURCE_CODE}/NGC-DL-CONTAINER-LICENSE /
 
-# nvidia-container-runtime
-ENV NVIDIA_VISIBLE_DEVICES=all
-ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-# Install CUDA runtime from:
-# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.4.1/ubi9/runtime/Dockerfile
-ENV NV_CUDA_LIB_VERSION=12.4.1-1
-ENV NV_NVTX_VERSION=12.4.127-1
-ENV NV_LIBNPP_VERSION=12.2.5.30-1
-ENV NV_LIBNPP_PACKAGE=libnpp-12-4-${NV_LIBNPP_VERSION}
-ENV NV_LIBCUBLAS_VERSION=12.4.5.8-1
-ENV NV_LIBNCCL_PACKAGE_NAME=libnccl
-ENV NV_LIBNCCL_PACKAGE_VERSION=2.21.5-1
-ENV NV_LIBNCCL_VERSION=2.21.5
-ENV NCCL_VERSION=2.21.5
-ENV NV_LIBNCCL_PACKAGE=${NV_LIBNCCL_PACKAGE_NAME}-${NV_LIBNCCL_PACKAGE_VERSION}+cuda12.4
 
-RUN yum install -y \
-    cuda-libraries-12-4-${NV_CUDA_LIB_VERSION} \
-    cuda-nvtx-12-4-${NV_NVTX_VERSION} \
-    ${NV_LIBNPP_PACKAGE} \
-    libcublas-12-4-${NV_LIBCUBLAS_VERSION} \
-    ${NV_LIBNCCL_PACKAGE} \
-    && yum clean all \
-    && rm -rf /var/cache/yum/*
 
-# Set this flag so that libraries can find the location of CUDA
-ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 
-# Install CUDA devel from:
-# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.4.1/ubi9/devel/Dockerfile
-ENV NV_CUDA_LIB_VERSION=12.4.1-1
-ENV NV_CUDA_CUDART_DEV_VERSION=12.4.127-1
-ENV NV_NVML_DEV_VERSION=12.4.127-1
-ENV NV_LIBCUBLAS_DEV_VERSION=12.4.5.8-1
-ENV NV_LIBNPP_DEV_VERSION=12.2.5.30-1
-ENV NV_LIBNPP_DEV_PACKAGE=libnpp-devel-12-4-${NV_LIBNPP_DEV_VERSION}
-ENV NV_LIBNCCL_DEV_PACKAGE_NAME=libnccl-devel
-ENV NV_LIBNCCL_DEV_PACKAGE_VERSION=2.21.5-1
-ENV NCCL_VERSION=2.21.5
-ENV NV_LIBNCCL_DEV_PACKAGE=${NV_LIBNCCL_DEV_PACKAGE_NAME}-${NV_LIBNCCL_DEV_PACKAGE_VERSION}+cuda12.4
-ENV NV_CUDA_NSIGHT_COMPUTE_VERSION=12.4.1-1
-ENV NV_CUDA_NSIGHT_COMPUTE_DEV_PACKAGE=cuda-nsight-compute-12-4-${NV_CUDA_NSIGHT_COMPUTE_VERSION}
 
-RUN yum install -y \
-    make \
-    findutils \
-    cuda-command-line-tools-12-4-${NV_CUDA_LIB_VERSION} \
-    cuda-libraries-devel-12-4-${NV_CUDA_LIB_VERSION} \
-    cuda-minimal-build-12-4-${NV_CUDA_LIB_VERSION} \
-    cuda-cudart-devel-12-4-${NV_CUDA_CUDART_DEV_VERSION} \
-    ${NV_NVPROF_DEV_PACKAGE} \
-    cuda-nvml-devel-12-4-${NV_NVML_DEV_VERSION} \
-    libcublas-devel-12-4-${NV_LIBCUBLAS_DEV_VERSION} \
-    ${NV_LIBNPP_DEV_PACKAGE} \
-    ${NV_LIBNCCL_DEV_PACKAGE} \
-    ${NV_CUDA_NSIGHT_COMPUTE_DEV_PACKAGE} \
-    && yum clean all \
-    && rm -rf /var/cache/yum/*
 
-ENV LIBRARY_PATH=/usr/local/cuda/lib64/stubs
 
-# Install CUDA devel cudnn8 from:
-# hhttps://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.4.1/ubi9/devel/cudnn/Dockerfile
-ENV NV_CUDNN_VERSION=9.1.0.70-1
-ENV NV_CUDNN_PACKAGE=libcudnn9-cuda-12-${NV_CUDNN_VERSION}
-ENV NV_CUDNN_PACKAGE_DEV=libcudnn9-devel-cuda-12-${NV_CUDNN_VERSION}
 
-LABEL com.nvidia.cudnn.version="${NV_CUDNN_VERSION}"
 
-RUN yum install -y \
-    ${NV_CUDNN_PACKAGE} \
-    ${NV_CUDNN_PACKAGE_DEV} \
-    && yum clean all \
-    && rm -rf /var/cache/yum/*
 
-# Install CUDA toolkit 12.4
-RUN yum -y install cuda-toolkit-12-4 && \
-    yum -y clean all --enablerepo="*"
 
-# Unregister the system
-RUN if [ -d "${SECRET_DIR}" ]; then \
-    subscription-manager remove --all && subscription-manager unregister && subscription-manager clean; \
-  fi
 
-# Restore notebook user workspace
-USER 1001
-WORKDIR /opt/app-root/src
 
-################
-# cuda-rstudio #
-################
-FROM cuda-base AS cuda-rstudio
 
-ARG RSTUDIO_SOURCE_CODE=rstudio/rhel9-python-3.11
-# Access the client's secret for the subscription manager from the environment variable
-ARG SECRET_DIR=/opt/app-root/src/.sec
-ARG SERVERURL_DEFAULT=""
-ARG BASEURL_DEFAULT=""
 
-LABEL name="odh-notebook-rstudio-server-rhel9-python-3.11" \
-      summary="RStudio Server image with python 3.11 based on Red Hat Enterprise Linux 9" \
-      description="RStudio Server image with python 3.11 based on Red Hat Enterprise Linux 9" \
-      io.k9s.display-name="RStudio Server image with python 3.11 based on Red Hat Enterprise Linux 9" \
-      io.k9s.description="RStudio Server image with python 3.11 based on Red Hat Enterprise Linux 9" \
-      authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-      io.openshift.build.commit.ref="main" \
-      io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/rstudio/rhel9-python-3.11" \
-      io.openshift.build.image="quay.io/opendatahub/workbench-images:rstudio-rhel9-python-3.11"
 
-USER 0
 
-# uncomment the below line if you fall on this error: subscription-manager is disabled when running inside a container. Please refer to your host system for subscription management.
-#RUN sed -i 's/\(def in_container():\)/\1\n    return False/g' /usr/lib64/python*/*-packages/rhsm/config.py
 
-# If necessary, run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
-RUN if [ -d "${SECRET_DIR}" ]; then \
-    SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFAULT}) && \
-    BASEURL=$(cat ${SECRET_DIR}/BASEURL 2>/dev/null || echo ${BASEURL_DEFAULT}) && \
-    USERNAME=$(cat ${SECRET_DIR}/USERNAME) && \
-    PASSWORD=$(cat ${SECRET_DIR}/PASSWORD) && \
-    subscription-manager register \
-    ${SERVERURL:+--serverurl=$SERVERURL} \
-    ${BASEURL:+--baseurl=$BASEURL} \
-    --username=$USERNAME \
-    --password=$PASSWORD \
-    --force \
-    --auto-attach; \
-  fi
 
-ENV R_VERSION=4.4.3
 
-# Install R
-RUN yum install -y yum-utils && \
-    subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms && \
-    yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
-    INSTALL_PKGS="R-core R-core-devel R-java R-Rcpp R-highlight \
-    R-littler R-littler-examples openssl-libs compat-openssl11" && \
-    yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
-    echo 'options(repos = c(CRAN = "https://cran.rstudio.com/"), download.file.method = "libcurl")' >> /usr/lib64/R/etc/Rprofile.site && \
-    (umask 002;touch /usr/lib64/R/etc/Renviron.site) && \
-    yum -y clean all --enablerepo='*'
 
-# set R library to default (used in install.r from littler)
-ENV LIBLOC=/usr/lib64/R/library
-ENV R_LIBS_USER=/opt/app-root/bin/Rpackages/4.4
 
-RUN chmod -R a+w ${LIBLOC} && \
-    # create User R Library path
-    mkdir -p ${R_LIBS_USER} && \
-    chmod -R a+w ${R_LIBS_USER}
 
-WORKDIR /tmp/
 
-# Install RStudio
-ARG RSTUDIO_RPM=rstudio-server-rhel-2024.12.1-563-x86_64.rpm
-RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/${RSTUDIO_RPM} && \
-    yum install -y ${RSTUDIO_RPM} && \
-    rm ${RSTUDIO_RPM} && \
-    yum -y clean all  --enablerepo='*' &&\
-    # Specific RStudio config and fixes \
-    chmod 1777 /var/run/rstudio-server && \
-    mkdir -p /usr/share/doc/R && \
-    # package installation \
-    # install necessary texlive-framed package to make Knit R markup to PDF rendering possible \
-    dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed && \
-    dnf clean all && \
-    rm -rf /var/cache/yum
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 COPY ${RSTUDIO_SOURCE_CODE}/rsession.conf /etc/rstudio/rsession.conf
 
 # Install R packages
+ENV MAKEFLAGS="-j2"
+ENV MAKEFLAGS="-j2"
+ENV MAKEFLAGS="-j2"
+ENV MAKEFLAGS="-j2"
 RUN R -e "install.packages('Rcpp')"
 
 # Install NGINX to proxy RStudio and pass probes check
-ENV NGINX_VERSION=1.24 \
-    NGINX_SHORT_VER=124 \
-    NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
-    NGINX_CONF_PATH=/etc/nginx/nginx.conf \
-    NGINX_DEFAULT_CONF_PATH=${APP_ROOT}/etc/nginx.default.d \
-    NGINX_CONTAINER_SCRIPTS_PATH=/usr/share/container-scripts/nginx \
-    NGINX_APP_ROOT=${APP_ROOT} \
-    NGINX_LOG_PATH=/var/log/nginx \
-    NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
-
-# Modules does not exist
-RUN yum -y module enable nginx:$NGINX_VERSION && \
-    INSTALL_PKGS="nss_wrapper bind-utils gettext hostname nginx nginx-mod-stream nginx-mod-http-perl fcgiwrap initscripts chkconfig supervisor" && \
-    yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
-    rpm -V $INSTALL_PKGS && \
-    nginx -v 2>&1 | grep -qe "nginx/$NGINX_VERSION\." && echo "Found VERSION $NGINX_VERSION" && \
-    yum -y clean all --enablerepo='*'
-
-COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/supervisord/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# Copy extra files to the image.
-COPY ${RSTUDIO_SOURCE_CODE}/nginx/root/ /
-
-# Changing ownership and user rights to support following use-cases:
-# 1) running container on OpenShift, whose default security model
-#    is to run the container under random UID, but GID=0
-# 2) for working root-less container with UID=1001, which does not have
-#    to have GID=0
-# 3) for default use-case, that is running container directly on operating system,
-#    with default UID and GID (1001:0)
-# Supported combinations of UID:GID are thus following:
-# UID=1001 && GID=0
-# UID=<any>&& GID=0
-# UID=1001 && GID=<any>
-RUN sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH} && \
-    mkdir -p ${NGINX_APP_ROOT}/etc/nginx.d/ && \
-    mkdir -p ${NGINX_APP_ROOT}/etc/nginx.default.d/ && \
-    mkdir -p ${NGINX_APP_ROOT}/api/ && \
-    mkdir -p ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
-    mkdir -p ${NGINX_LOG_PATH} && \
-    mkdir -p ${NGINX_PERL_MODULE_PATH} && \
-    chown -R 1001:0 ${NGINX_CONF_PATH} && \
-    chown -R 1001:0 ${NGINX_APP_ROOT}/etc && \
-    chown -R 1001:0 ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
-    chown -R 1001:0 /var/lib/nginx /var/log/nginx /run && \
-    chmod    ug+rw  ${NGINX_CONF_PATH} && \
-    chmod -R ug+rwX ${NGINX_APP_ROOT}/etc && \
-    chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
-    chmod -R ug+rwX /var/lib/nginx /var/log/nginx /run && \
-    rpm-file-permissions
-
-# Configure nginx
-COPY ${RSTUDIO_SOURCE_CODE}/nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
-COPY ${RSTUDIO_SOURCE_CODE}/nginx/httpconf/ /opt/app-root/etc/nginx.d/
-COPY ${RSTUDIO_SOURCE_CODE}/nginx/api/ /opt/app-root/api/
-
-# Launcher
-WORKDIR /opt/app-root/bin
-
-COPY ${RSTUDIO_SOURCE_CODE}/utils utils/
-COPY ${RSTUDIO_SOURCE_CODE}/run-rstudio.sh ${RSTUDIO_SOURCE_CODE}/setup_rstudio.py ${RSTUDIO_SOURCE_CODE}/rsession.sh ${RSTUDIO_SOURCE_CODE}/run-nginx.sh ./
-
-# Unregister the system
-RUN if [ -d "${SECRET_DIR}" ]; then \
-    subscription-manager remove --all && subscription-manager unregister && subscription-manager clean; \
-  fi
-
-USER 1001
-
-COPY ${RSTUDIO_SOURCE_CODE}/Pipfile.lock ./
-
-RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
-    # Fix permissions to support pip in Openshift environments \
-    chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
-    fix-permissions /opt/app-root -P
-
-WORKDIR /opt/app-root/src
-
-CMD ["/opt/app-root/bin/run-rstudio.sh"]
