@@ -1,7 +1,14 @@
 #!/bin/bash
 set -euxo pipefail
 
-ARCH=$(uname -m)
+# Mapping of `uname -m` values to equivalent GOARCH values
+declare -A UNAME_TO_GOARCH
+UNAME_TO_GOARCH["x86_64"]="amd64"
+UNAME_TO_GOARCH["aarch64"]="arm64"
+UNAME_TO_GOARCH["ppc64le"]="ppc64le"
+UNAME_TO_GOARCH["s390x"]="s390x"
+
+ARCH="${UNAME_TO_GOARCH[$(uname -m)]}"
 
 if [[ "$ARCH" == "ppc64le" ]]; then
   # Install Pandoc from source
@@ -33,9 +40,9 @@ if [[ "$ARCH" == "ppc64le" ]]; then
 
   /usr/local/pandoc/bin/pandoc --version
 
-elif [[ "$ARCH" == "x86_64" ]]; then
+elif [[ "$ARCH" == "amd64" ]]; then
   # pandoc installation
-  curl -L https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-amd64.tar.gz  -o /tmp/pandoc.tar.gz
+  curl -fL "https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-${ARCH}.tar.gz"  -o /tmp/pandoc.tar.gz
   mkdir -p /usr/local/pandoc
   tar xvzf /tmp/pandoc.tar.gz --strip-components 1 -C /usr/local/pandoc/
   rm -f /tmp/pandoc.tar.gz

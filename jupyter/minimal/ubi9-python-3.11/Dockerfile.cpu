@@ -69,7 +69,7 @@ USER 0
 COPY --from=pdf-builder /usr/local/texlive /usr/local/texlive
 COPY --from=pdf-builder /usr/local/pandoc /usr/local/pandoc
 
-ENV PATH="/usr/local/texlive/bin/powerpc64le-unknown-linux-gnu:/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 
 USER 1001
 

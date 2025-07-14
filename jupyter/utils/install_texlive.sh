@@ -1,7 +1,14 @@
 #!/bin/bash
 set -euxo pipefail
 
-ARCH=$(uname -m)
+# Mapping of `uname -m` values to equivalent GOARCH values
+declare -A UNAME_TO_GOARCH
+UNAME_TO_GOARCH["x86_64"]="amd64"
+UNAME_TO_GOARCH["aarch64"]="arm64"
+UNAME_TO_GOARCH["ppc64le"]="ppc64le"
+UNAME_TO_GOARCH["s390x"]="s390x"
+
+ARCH="${UNAME_TO_GOARCH[$(uname -m)]}"
 
 if [[ "$ARCH" == "ppc64le" ]]; then
   echo "Installing TeX Live from source for $ARCH..."
@@ -12,7 +19,8 @@ if [[ "$ARCH" == "ppc64le" ]]; then
     gd-devel libtool wget tar xz bison flex libXaw-devel
 
   # Step 1: Download and extract the TeX Live source
-  wget https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2025/texlive-20250308-source.tar.xz
+  #wget https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2025/texlive-20250308-source.tar.xz
+  wget --no-check-certificate https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2025/texlive-20250308-source.tar.xz
   tar -xf texlive-20250308-source.tar.xz
   cd texlive-20250308-source
 
@@ -27,9 +35,8 @@ if [[ "$ARCH" == "ppc64le" ]]; then
   make install
 
   # Symlink for pdflatex
-  cd /usr/local/texlive/bin/powerpc64le-unknown-linux-gnu
-  ln -sf pdftex pdflatex
-
+  ln -sf pdftex /usr/local/texlive/bin/powerpc64le-unknown-linux-gnu/pdflatex
+  
   # Cleanup sources to reduce image size
   rm -rf /texlive-20250308-source /texlive-build
 
@@ -52,19 +59,27 @@ EOF
 
   ./install-tl --profile=texlive.profile --custom-bin=$TEXLIVE_INSTALL_PREFIX/bin/powerpc64le-unknown-linux-gnu
 
+# TeX Live binary directory
+TEX_BIN_DIR="/usr/local/texlive/bin/powerpc64le-unknown-linux-gnu"
+
+# Create standard symlink 'linux' → arch-specific folder
+ln -sf "$TEX_BIN_DIR" /usr/local/texlive/bin/linux
+
+
   # Set up environment
-  export PATH="$TEXLIVE_INSTALL_PREFIX/bin/powerpc64le-unknown-linux-gnu:$PATH"
+  export PATH="$TEXLIVE_INSTALL_PREFIX/bin/linux:$PATH"
   pdflatex --version
   tlmgr --version
 
-elif [[ "$ARCH" == "x86_64" ]]; then
+elif [[ "$ARCH" == "amd64" ]]; then
   # tex live installation
-  echo "Installing TexLive to allow PDf export from Notebooks" 
-  curl -L https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz -o install-tl-unx.tar.gz 
+  echo "Installing TexLive to allow PDf export from Notebooks"
+  curl -fL https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz -o install-tl-unx.tar.gz
   zcat < install-tl-unx.tar.gz | tar xf -
   cd install-tl-2*
   perl ./install-tl --no-interaction --scheme=scheme-small --texdir=/usr/local/texlive
-  cd /usr/local/texlive/bin/x86_64-linux
+  mv /usr/local/texlive/bin/"$(uname -m)-linux" /usr/local/texlive/bin/linux
+  cd /usr/local/texlive/bin/linux
   ./tlmgr install tcolorbox pdfcol adjustbox titling enumitem soul ucs collection-fontsrecommended
 
 else
