@@ -19,8 +19,7 @@ if [[ "$ARCH" == "ppc64le" ]]; then
     gd-devel libtool wget tar xz bison flex libXaw-devel
 
   # Step 1: Download and extract the TeX Live source
-  #wget https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2025/texlive-20250308-source.tar.xz
-  wget --no-check-certificate https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2025/texlive-20250308-source.tar.xz
+  wget https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2025/texlive-20250308-source.tar.xz
   tar -xf texlive-20250308-source.tar.xz
   cd texlive-20250308-source
 
