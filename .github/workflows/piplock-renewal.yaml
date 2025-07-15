@@ -13,16 +13,16 @@ on:  # yamllint disable-line rule:truthy
         required: false
         default: 'main'
       python_version:
-        description: 'Select Python version to update Pipfile.lock'
+        description: 'Select a Python version to update Pipfile.lock'
         required: false
-        default: 'all'
+        default: "['3.11', '3.12']"
         type: choice
         options:
-          - 'all'
-          - '3.12'
-          - '3.11'
-          - '3.9'
-          - '3.8'
+          - "['3.11', '3.12']"
+          - "['3.12']"
+          - "['3.11']"
+          - "['3.9']"
+          - "['3.8']"
       update_optional_dirs:
         description: 'Include optional directories in update'
         required: false
@@ -42,12 +42,7 @@ jobs:
       max-parallel: 1
       matrix:
         python-version: >-
-          ${{ fromJSON(
-              (github.event_name == 'schedule' ||
-               github.event.inputs.python_version == 'all') &&
-               '["3.11","3.12"]' ||
-               format('["{0}"]', github.event.inputs.python_version)
-          ) }}
+          ${{ fromJSON( github.event.inputs.python_version || '["3.11", "3.12"]' ) }}
     permissions:
       contents: write
     env:
