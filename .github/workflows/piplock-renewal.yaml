@@ -78,9 +78,8 @@ jobs:
         run: |
           make refresh-pipfilelock-files PYTHON_VERSION=${{ matrix.python-version }} INCLUDE_OPT_DIRS=${{ env.INCLUDE_OPT_DIRS }}
 
-      - name: Commit and push changes (if any)
+      - name: Push the changes back to the branch
         run: |
           git add .
-          git diff --cached --quiet || git commit -m "Update Pipfile.lock for Python ${{ matrix.python-version }}"
-          git pull --rebase origin ${{ env.BRANCH }}
+          git commit -m "Update Pipfile.lock files by piplock-renewal.yaml action"
           git push origin ${{ env.BRANCH }}
