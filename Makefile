@@ -424,7 +424,7 @@ else ifeq ($(PYTHON_VERSION), 3.12)
 		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION)
+		# runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION)
 		# jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION)
 		# rstudio/rhel9-python-$(PYTHON_VERSION)
 		# rstudio/c9s-python-$(PYTHON_VERSION)
@@ -515,7 +515,7 @@ all-images: \
 	rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
  	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+# rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
 # rstudio-c9s-python-$(RELEASE_PYTHON_VERSION)
 # cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION)
 # rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
