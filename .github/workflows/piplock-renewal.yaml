@@ -15,14 +15,14 @@ on:  # yamllint disable-line rule:truthy
       python_version:
         description: 'Select a Python version to update Pipfile.lock'
         required: false
-        default: "['3.11', '3.12']"
+        default: '["3.11", "3.12"]'
         type: choice
         options:
-          - "['3.11', '3.12']"
-          - "['3.12']"
-          - "['3.11']"
-          - "['3.9']"
-          - "['3.8']"
+            - '["3.11", "3.12"]'
+            - '["3.12"]'
+            - '["3.11"]'
+            - '["3.9"]'
+            - '["3.8"]'
       update_optional_dirs:
         description: 'Include optional directories in update'
         required: false
