@@ -33,18 +33,17 @@ on:  # yamllint disable-line rule:truthy
           - 'false'
 
 jobs:
-  # Matrix job for multiple Python versions
-  refresh-multiple-versions:
-    if: github.event_name == 'schedule' || github.event.inputs.python_version == 'all'
+  refresh-pipfile-locks:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.11, 3.12]
+        python-version: ${{ fromJSON((github.event_name == 'schedule' || github.event.inputs.python_version == 'all') && '["3.11", "3.12"]' || format('["{0}"]', github.event.inputs.python_version)) }}
     permissions:
       contents: write
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
       INCLUDE_OPT_DIRS: ${{ github.event.inputs.update_optional_dirs || 'false' }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -74,49 +73,4 @@ jobs:
           git add .
           git diff --cached --quiet || git commit -m "Update Pipfile.lock for Python ${{ matrix.python-version }}"
           git pull --rebase origin ${{ env.BRANCH }}
-          git push origin ${{ env.BRANCH }}
-
-  # Single Python version job for manual runs
-  refresh-single-version:
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.python_version != 'all'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      BRANCH: ${{ github.event.inputs.branch || 'main' }}
-      PYTHON_VERSION: ${{ github.event.inputs.python_version }}
-      INCLUDE_OPT_DIRS: ${{ github.event.inputs.update_optional_dirs }}
-    steps:
-      # Checkout the specified branch from the specified organization
-      - name: Checkout code from the specified branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.BRANCH }}
-          token: ${{ secrets.GH_ACCESS_TOKEN }}
-
-      # Configure Git
-      - name: Configure Git
-        run: |
-         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-         git config --global user.name "GitHub Actions"
-
-      # Setup Python environment with the specified version (or default to '3.11')
-      - name: Setup Python environment
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      # Install pipenv
-      - name: Install pipenv
-        run: pip install pipenv
-
-      # Run makefile recipe to refresh Pipfile.lock and push changes back to the branch
-      - name: Run `make refresh-pipfilelock-files`
-        run: |
-          make refresh-pipfilelock-files PYTHON_VERSION=${{ env.PYTHON_VERSION }} INCLUDE_OPT_DIRS=${{ env.INCLUDE_OPT_DIRS }}
-
-      - name: Push the changes back to the branch
-        run: |
-          git add .
-          git commit -m "Update Pipfile.lock files by piplock-renewal.yaml action"
           git push origin ${{ env.BRANCH }}
