@@ -35,7 +35,11 @@ on:  # yamllint disable-line rule:truthy
 jobs:
   refresh-pipfile-locks:
     runs-on: ubuntu-latest
+    concurrency:
+      group: refresh-pipfile-locks-${{ github.ref }}
+      cancel-in-progress: false
     strategy:
+      max-parallel: 1
       matrix:
         python-version: >-
           ${{ fromJSON(
