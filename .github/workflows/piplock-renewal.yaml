@@ -37,7 +37,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ${{ fromJSON((github.event_name == 'schedule' || github.event.inputs.python_version == 'all') && '["3.11", "3.12"]' || format('["{0}"]', github.event.inputs.python_version)) }}
+        python-version: >-
+          ${{ fromJSON(
+              (github.event_name == 'schedule' ||
+               github.event.inputs.python_version == 'all') &&
+               '["3.11","3.12"]' ||
+               format('["{0}"]', github.event.inputs.python_version)
+          ) }}
     permissions:
       contents: write
     env:
