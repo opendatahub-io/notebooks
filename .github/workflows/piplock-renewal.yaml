@@ -18,6 +18,7 @@ on:  # yamllint disable-line rule:truthy
         default: '3.11'
         type: choice
         options:
+          - 'all'
           - '3.12'
           - '3.11'
           - '3.9'
@@ -32,14 +33,59 @@ on:  # yamllint disable-line rule:truthy
           - 'false'
 
 jobs:
-  build:
+  # Matrix job for multiple Python versions
+  refresh-multiple-versions:
+    if: github.event_name == 'schedule' || github.event.inputs.python_version == 'all'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11, 3.12]
+    permissions:
+      contents: write
+    env:
+      BRANCH: ${{ github.event.inputs.branch || 'main' }}
+      INCLUDE_OPT_DIRS: ${{ github.event.inputs.update_optional_dirs || 'false' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH }}
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install pipenv
+        run: pip install pipenv
+
+      - name: Run make refresh-pipfilelock-files
+        run: |
+          make refresh-pipfilelock-files PYTHON_VERSION=${{ matrix.python-version }} INCLUDE_OPT_DIRS=${{ env.INCLUDE_OPT_DIRS }}
+
+      - name: Commit and push changes (if any)
+        run: |
+          git add .
+          git diff --cached --quiet || git commit -m "Update Pipfile.lock for Python ${{ matrix.python-version }}"
+          git pull --rebase origin ${{ env.BRANCH }}
+          git push origin ${{ env.BRANCH }}
+
+  # Single Python version job for manual runs
+  refresh-single-version:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.python_version != 'all'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
-      PYTHON_VERSION: ${{ github.event.inputs.python_version || '3.11' }}
-      INCLUDE_OPT_DIRS: ${{ github.event.inputs.update_optional_dirs || 'false' }}
+      PYTHON_VERSION: ${{ github.event.inputs.python_version }}
+      INCLUDE_OPT_DIRS: ${{ github.event.inputs.update_optional_dirs }}
     steps:
       # Checkout the specified branch from the specified organization
       - name: Checkout code from the specified branch
