@@ -39,6 +39,7 @@ jobs:
       group: refresh-pipfile-locks-${{ github.ref }}
       cancel-in-progress: false
     strategy:
+      fail-fast: false
       max-parallel: 1
       matrix:
         python-version: >-
