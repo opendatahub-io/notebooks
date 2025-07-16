@@ -6,7 +6,7 @@ metadata:
     opendatahub.io/runtime-image: "true"
   annotations:
     opendatahub.io/runtime-image-url: "https://github.com//opendatahub-io/notebooks/tree/main/runtimes"
-    opendatahub.io/runtime-image-name: "Datascience with Python 3.12 (UBI9)"
+    opendatahub.io/runtime-image-name: "Runtime | Data Science | CPU | Python 3.12"
     opendatahub.io/runtime-image-desc: "Datascience runtime image for Elyra, enabling pipeline execution from Workbenches with a set of advanced AI/ML data science libraries, supporting different runtimes for various pipeline nodes."
   name: runtime-datascience-beta
 spec:
@@ -18,12 +18,12 @@ spec:
         opendatahub.io/runtime-image-metadata: |
           [
             {
-              "display_name": "Datascience with Python 3.12 (UBI9)",
+              "display_name": "Runtime | Data Science | CPU | Python 3.12",
               "metadata": {
                 "tags": [
                   "datascience"
                 ],
-                "display_name": "Datascience with Python 3.12 (UBI9)",
+                "display_name": "Runtime | Data Science | CPU | Python 3.12",
                 "pull_policy": "IfNotPresent"
               },
               "schema_name": "runtime-image"
