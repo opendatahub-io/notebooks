@@ -6,7 +6,7 @@ metadata:
     opendatahub.io/runtime-image: "true"
   annotations:
     opendatahub.io/runtime-image-url: "https://github.com//opendatahub-io/notebooks/tree/main/runtimes"
-    opendatahub.io/runtime-image-name: "PyTorch with ROCm and Python 3.12 (UBI9)"
+    opendatahub.io/runtime-image-name: "Runtime | PyTorch | ROCm | Python 3.12"
     opendatahub.io/runtime-image-desc: "ROCm optimized PyTorch runtime image for Elyra, enabling pipeline execution from Workbenches with PyTorch libraries and dependencies, supporting different runtimes for various pipeline nodes."
   name: runtime-rocm-pytorch-beta
 spec:
@@ -18,12 +18,12 @@ spec:
         opendatahub.io/runtime-image-metadata: |
           [
             {
-              "display_name": "PyTorch with ROCm and Python 3.12 (UBI9)",
+              "display_name": "Runtime | PyTorch | ROCm | Python 3.12",
               "metadata": {
                 "tags": [
                   "rocm-pytorch"
                 ],
-                "display_name": "PyTorch with ROCm and Python 3.12 (UBI9)",
+                "display_name": "Runtime | PyTorch | ROCm | Python 3.12",
                 "pull_policy": "IfNotPresent"
               },
               "schema_name": "runtime-image"
