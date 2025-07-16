@@ -13,15 +13,16 @@ on:  # yamllint disable-line rule:truthy
         required: false
         default: 'main'
       python_version:
-        description: 'Select Python version to update Pipfile.lock'
+        description: 'Select a Python version to update Pipfile.lock'
         required: false
-        default: '3.11'
+        default: '["3.11", "3.12"]'
         type: choice
         options:
-          - '3.12'
-          - '3.11'
-          - '3.9'
-          - '3.8'
+          - '["3.11", "3.12"]'
+          - '["3.12"]'
+          - '["3.11"]'
+          - '["3.9"]'
+          - '["3.8"]'
       update_optional_dirs:
         description: 'Include optional directories in update'
         required: false
@@ -32,42 +33,46 @@ on:  # yamllint disable-line rule:truthy
           - 'false'
 
 jobs:
-  build:
+  refresh-pipfile-locks:
     runs-on: ubuntu-latest
+    concurrency:
+      group: refresh-pipfile-locks-${{ github.ref }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        python-version: >-
+          ${{ fromJSON( github.event.inputs.python_version || '["3.11", "3.12"]' ) }}
     permissions:
       contents: write
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
-      PYTHON_VERSION: ${{ github.event.inputs.python_version || '3.11' }}
       INCLUDE_OPT_DIRS: ${{ github.event.inputs.update_optional_dirs || 'false' }}
+
     steps:
-      # Checkout the specified branch from the specified organization
-      - name: Checkout code from the specified branch
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ env.BRANCH }}
           token: ${{ secrets.GH_ACCESS_TOKEN }}
 
-      # Configure Git
       - name: Configure Git
         run: |
-         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-         git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
 
-      # Setup Python environment with the specified version (or default to '3.11')
-      - name: Setup Python environment
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ matrix.python-version }}
 
-      # Install pipenv
       - name: Install pipenv
         run: pip install pipenv
 
-      # Run makefile recipe to refresh Pipfile.lock and push changes back to the branch
-      - name: Run `make refresh-pipfilelock-files`
+      - name: Run make refresh-pipfilelock-files
         run: |
-          make refresh-pipfilelock-files PYTHON_VERSION=${{ env.PYTHON_VERSION }} INCLUDE_OPT_DIRS=${{ env.INCLUDE_OPT_DIRS }}
+          make refresh-pipfilelock-files PYTHON_VERSION=${{ matrix.python-version }} INCLUDE_OPT_DIRS=${{ env.INCLUDE_OPT_DIRS }}
 
       - name: Push the changes back to the branch
         run: |
