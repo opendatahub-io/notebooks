@@ -5,10 +5,11 @@ metadata:
   labels:
     opendatahub.io/runtime-image: "true"
   annotations:
+    # TODO: once the restraction takes a final shape need to update that url
     opendatahub.io/runtime-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/runtimes"
-    opendatahub.io/runtime-image-name: "Runtime | Data Science | CPU | Python 3.12"
-    opendatahub.io/runtime-image-desc: "Datascience runtime image for Elyra, enabling pipeline execution from Workbenches with a set of advanced AI/ML data science libraries, supporting different runtimes for various pipeline nodes."
-  name: runtime-datascience-beta
+    opendatahub.io/runtime-image-name: "Runtime | TensorFlow | CUDA | Python 3.12"
+    opendatahub.io/runtime-image-desc: "TensorFlow runtime image for Elyra, enabling pipeline execution from Workbenches with TensorFlow libraries and dependencies, supporting different runtimes for various pipeline nodes."
+  name: runtime-tensorflow-cuda-py312-ubi9
 spec:
   lookupPolicy:
     local: true
@@ -18,12 +19,12 @@ spec:
         opendatahub.io/runtime-image-metadata: |
           [
             {
-              "display_name": "Runtime | Data Science | CPU | Python 3.12",
+              "display_name": "Runtime | TensorFlow | CUDA | Python 3.12",
               "metadata": {
                 "tags": [
-                  "datascience"
+                  "tensorflow"
                 ],
-                "display_name": "Runtime | Data Science | CPU | Python 3.12",
+                "display_name": "Runtime | TensorFlow | CUDA | Python 3.12",
                 "pull_policy": "IfNotPresent"
               },
               "schema_name": "runtime-image"
@@ -32,7 +33,7 @@ spec:
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
       from:
         kind: DockerImage
-        name: odh-pipeline-runtime-datascience-cpu-py312-ubi9-n_PLACEHOLDER
-      name: "datascience"
+        name: odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-n_PLACEHOLDER
+      name: "tensorflow"
       referencePolicy:
         type: Source
