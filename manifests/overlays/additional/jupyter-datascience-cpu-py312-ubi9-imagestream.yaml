@@ -5,12 +5,11 @@ metadata:
   labels:
     opendatahub.io/notebook-image: "true"
   annotations:
-    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/pytorch"
-    opendatahub.io/notebook-image-name: "Jupyter | PyTorch | CUDA | Python 3.12"
-    opendatahub.io/notebook-image-desc: "Jupyter notebook image with PyTorch libraries and dependencies to start experimenting with advanced AI/ML notebooks."
-    opendatahub.io/notebook-image-order: "10"
-    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
-  name: jupyter-pytorch-notebook-beta
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/jupyter/datascience"
+    opendatahub.io/notebook-image-name: "Jupyter | Data Science | CPU | Python 3.12"
+    opendatahub.io/notebook-image-desc: "Jupyter notebook image with a set of data science libraries that advanced AI/ML notebooks will use as a base image to provide a standard for libraries avialable in all notebooks"
+    opendatahub.io/notebook-image-order: "8"
+  name: jupyter-datascience-cpu-py312-ubi9
 spec:
   lookupPolicy:
     local: true
@@ -19,16 +18,12 @@ spec:
         # language=json
         opendatahub.io/notebook-software: |
           [
-            {"name": "CUDA", "version": "12.6"},
-            {"name": "Python", "version": "v3.12"},
-            {"name": "PyTorch", "version": "2.6"}
+            {"name": "Python", "version": "v3.12"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
             {"name": "JupyterLab","version": "4.2"},
-            {"name": "PyTorch", "version": "2.6"},
-            {"name": "Tensorboard", "version": "2.19"},
             {"name": "Boto3", "version": "1.37"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
             {"name": "Kfp", "version": "2.12"},
@@ -48,10 +43,10 @@ spec:
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-pytorch-cuda-py312-ubi9-commit-n_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-datascience-cpu-py312-ubi9-commit-n_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-jupyter-pytorch-cuda-py312-ubi9-n_PLACEHOLDER
+        name: odh-workbench-jupyter-datascience-cpu-py312-ubi9-n_PLACEHOLDER
       name: "2025.1"
       referencePolicy:
         type: Source
