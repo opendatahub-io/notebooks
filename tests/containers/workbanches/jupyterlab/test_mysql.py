@@ -1,4 +1,4 @@
-from testcontainers.mysql import MySqlContainer
+
 
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
@@ -11,7 +11,7 @@ def test_mysql_connection(mysql_container: MySqlContainer, workbench_image, subt
         username = mysql_container.username
         password = mysql_container.password
 
-        # Python script to be executed inside the workbench container
+        # language=Python
         python_script = f"""
 import mysql.connector
 
