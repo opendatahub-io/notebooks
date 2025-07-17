@@ -5,6 +5,7 @@ import tempfile
 import typing
 
 import allure
+import pytest
 import testcontainers.core.network
 from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.mysql import MySqlContainer
@@ -163,6 +164,10 @@ except Exception as e:
                 print(output_str)
 
                 assert exit_code == 0, f"Failed to install mysql-connector-python: {output_str}"
+            elif "-rstudio-" in datascience_image.labels["name"]:
+                pytest.skip(
+                    f"Image {datascience_image.name} does have -rstudio- in {datascience_image.labels['name']=}'"
+                )
 
             with subtests.test("Setting the user..."):
                 exit_code, output = container.exec(["python", "-c", setup_mysql_user])
