@@ -13,8 +13,6 @@ from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 import testcontainers.core.network
 from testcontainers.mysql import MySqlContainer
-from testcontainers.core.container import DockerContainer
-from testcontainers.core.image import DockerImage
 from testcontainers.core.waiting_utils import wait_for_logs
 
 
@@ -88,7 +86,9 @@ print("Scikit-learn smoke test completed successfully.")
         network = testcontainers.core.network.Network()
         tf.defer(network.create())
 
-        mysql_container = MySqlContainer("docker.io/library/mysql:9.3.0").with_network(network).with_network_aliases("mysql")
+        mysql_container = (MySqlContainer("docker.io/library/mysql:9.3.0")
+                           .with_network(network)
+                           .with_network_aliases("mysql"))
         tf.defer(mysql_container.start())
 
         try:
@@ -155,8 +155,9 @@ except Exception as e:
 """
 
         container = WorkbenchContainer(image=datascience_image.name, user=4321, group_add=[0])
-        container.with_network(network)
-        container.with_command("/bin/sh -c 'sleep infinity'")
+        (container
+         .with_network(network)
+         .with_command("/bin/sh -c 'sleep infinity'"))
         try:
             container.start(wait_for_readiness=False)
 
