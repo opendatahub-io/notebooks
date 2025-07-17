@@ -505,9 +505,9 @@ json5==0.12.0; python_full_version >= '3.8.0' \
 jsonpointer==3.0.0; python_version >= '3.7' \
     --hash=sha256:13e088adc14fca8b6aa8177c044e12701e6ad4b28ff10e65f2267a90109c9942 \
     --hash=sha256:2b2d729f2091522d61c3b31f82e11870f60b68f43fbc705cb76bf4b832af59ef
-jsonschema[format-nongpl]==4.24.0; python_version >= '3.9' \
-    --hash=sha256:0b4e8069eb12aedfa881333004bccaec24ecef5a8a6a4b6df142b2cc9599d196 \
-    --hash=sha256:a462455f19f5faf404a7902952b6f0e3ce868f3ee09a359b05eca6673bd8412d
+jsonschema[format-nongpl]==4.24.1; python_version >= '3.9' \
+    --hash=sha256:6b916866aa0b61437785f1277aa2cbd63512e8d4b47151072ef13292049b4627 \
+    --hash=sha256:fe45a130cc7f67cd0d67640b4e7e3e2e666919462ae355eda238296eafeb4b5d
 jsonschema-specifications==2025.4.1; python_version >= '3.9' \
     --hash=sha256:4653bffbd6584f7de83a67e0d620ef16900b390ddc7939d56684d6c81e33f1af \
     --hash=sha256:630159c9f4dbea161a6a2205c3011cc4f18ff381b189fff48bb39b9bf26ae608
@@ -881,7 +881,7 @@ psutil==7.0.0; python_version >= '3.6' \
     --hash=sha256:84df4eb63e16849689f76b1ffcb36db7b8de703d1bc1fe41773db487621b6c17 \
     --hash=sha256:a5f098451abc2828f7dc6b58d44b532b22f2088f4999a937557b603ce72b1993 \
     --hash=sha256:ba3fcef7523064a6c9da440fc4d6bd07da93ac726b5733c29027d7dc95b39d99
-ptyprocess==0.7.0 \
+ptyprocess==0.7.0; os_name != 'nt' \
     --hash=sha256:4b41f3967fce3af57cc7e94b888626c18bf37a083e3651ca8feeb66d492fef35 \
     --hash=sha256:5c5d0a3b48ceee0b48485e0c26037c0acd7d29765ca3fbb5cb3831d347423220
 pure-eval==0.2.3 \
