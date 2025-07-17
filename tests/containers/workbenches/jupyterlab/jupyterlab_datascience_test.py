@@ -163,7 +163,7 @@ except Exception as e:
                 output_str = output.decode()
                 print(output_str)
 
-                assert exit_code == 0
+                assert exit_code == 0, f"Failed to install mysql-connector-python: {output_str}"
 
             with subtests.test("Setting the user..."):
                 exit_code, output = container.exec(["python", "-c", setup_mysql_user])
