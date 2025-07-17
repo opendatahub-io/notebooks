@@ -131,6 +131,18 @@ userPassword: testpassword"""
         print(f"ldapadd output: {output_str}")
         assert exit_code == 0, f"ldapadd failed with exit code {exit_code}, output: {output_str}"
 
+        exit_code, output = docker_utils.container_exec_with_stdin(
+            slapd_container.get_wrapped_container(),
+            "ldapmodify -Y EXTERNAL -H ldapi:///",
+            """dn: olcDatabase={1}mdb,cn=config
+changetype: modify
+add: olcSaslAuxprops
+olcSaslAuxprops: sasldb"""
+        )
+        output_str = output.decode()
+        print(f"ldapadd output: {output_str}")
+        assert exit_code == 0, f"ldapmodify failed with exit code {exit_code}, output: {output_str}"
+
         # ec, out = slapd_container.exec("saslpasswd2 -c -u example.com testuser")
         # assert ec == 0, out
 
