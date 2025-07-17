@@ -636,7 +636,7 @@ jobs:
           # mount the image
           IMAGE_MOUNT_DIR=$(sudo "${PODMAN}" image mount "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}")
           # run the check-payload scan
-          sudo --preserve-env=PATH go run github.com/openshift/check-payload scan local --path "${IMAGE_MOUNT_DIR}"
+          sudo --preserve-env=PATH go tool github.com/openshift/check-payload scan local --path "${IMAGE_MOUNT_DIR}"
           # unmount the image
           sudo "${PODMAN}" image unmount --all
         working-directory: scripts/check-payload
