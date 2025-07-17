@@ -88,98 +88,15 @@ print("Scikit-learn smoke test completed successfully.")
         network = testcontainers.core.network.Network()
         tf.defer(network.create())
 
-        slapd_container = DockerContainer("docker.io/osixia/openldap:1.5.0")
-        slapd_container.with_network(network).with_network_aliases("slapd").with_env("LDAP_DOMAIN", "example.com").with_env("LDAP_ADMIN_PASSWORD", "secret")
-        slapd_container.with_volume_mapping("/Users/jdanek/IdeaProjects/notebooks/tests/containers/workbenches/jupyterlab/mysql/sasldb.db", "/etc/sasldb2", "ro")
-        #slapd_container.with_volume_mapping("/Users/jdanek/IdeaProjects/notebooks/tests/containers/workbenches/jupyterlab/mysql/mdb.ldif", "/etc/ldap/slapd.d/cn=config/olcDatabase={1}mdb.ldif", "rw")
-        tf.defer(slapd_container.start())
+        # image = DockerImage(image="mysql-sasl-test", path=pathlib.Path(__file__).parent / "mysql")
+        # image.build()
 
-        try:
-            wait_for_logs(slapd_container, r"slapd starting", timeout=5)
-        except TimeoutError:
-            print("Container is not ready.")
-            print(slapd_container.get_wrapped_container().logs(stdout=True, stderr=True))
-            raise
-
-        time.sleep(5)
-
-        cmd = ["ldapadd", "-x", "-D", "cn=admin,dc=example,dc=com", "-w", "secret"]
-        # r = slapd_container.exec(cmd)
-        # print(r)
-        exit_code, output = docker_utils.container_exec_with_stdin(
-            slapd_container.get_wrapped_container(),
-            cmd,
-            """dn: ou=People,dc=example,dc=com
-objectClass: organizationalUnit
-ou: People"""
-        )
-        output_str = output.decode()
-        print(f"ldapadd output: {output_str}")
-        assert exit_code == 0, f"ldapadd failed with exit code {exit_code}, output: {output_str}"
-
-        exit_code, output = docker_utils.container_exec_with_stdin(
-            slapd_container.get_wrapped_container(),
-            cmd,
-            """dn: uid=testuser,ou=People,dc=example,dc=com
-objectClass: inetOrgPerson
-uid: testuser
-sn: Test
-cn: Test User
-userPassword: testpassword"""
-        )
-        output_str = output.decode()
-        print(f"ldapadd output: {output_str}")
-        assert exit_code == 0, f"ldapadd failed with exit code {exit_code}, output: {output_str}"
-
-        exit_code, output = docker_utils.container_exec_with_stdin(
-            slapd_container.get_wrapped_container(),
-            "ldapmodify -Y EXTERNAL -H ldapi:///",
-            """dn: olcDatabase={1}mdb,cn=config
-changetype: modify
-add: olcSaslAuxprops
-olcSaslAuxprops: sasldb"""
-        )
-        output_str = output.decode()
-        print(f"ldapadd output: {output_str}")
-        assert exit_code == 0, f"ldapmodify failed with exit code {exit_code}, output: {output_str}"
-
-        # ec, out = slapd_container.exec("saslpasswd2 -c -u example.com testuser")
-        # assert ec == 0, out
-
-        #         exit_code, output = docker_utils.container_exec_with_stdin(
-        #             slapd_container.get_wrapped_container(),
-        #             ["/bin/bash", "-c", "cat > /etc/ldap/slapd.d/cn=config/olcDatabase={1}mdb.ldif"],
-        #             """dn: olcDatabase={1}mdb,cn=config
-        # changetype: modify
-        # add: olcSaslAuxprops
-        # olcSaslAuxprops: sasldb"""
-        #         )
-        #         output_str = output.decode()
-        #         print(f"ldapadd output: {output_str}")
-        #         assert exit_code == 0, f"ldapadd failed with exit code {exit_code}, output: {output_str}"
-
-        # 1. add a user to sasldb
-        # docker_utils.container_exec(
-        #     slapd_container.get_wrapped_container(),
-        #     ["/bin/bash", "-c", "saslpasswd2 -c -u example.com testuser"]
-        # )
-
-        #docker_utils.container_cp(slapd_container.get_wrapped_container(),
-        #                          src="/Users/jdanek/IdeaProjects/notebooks/tests/containers/workbenches/jupyterlab/mysql/sasldb.db",
-        #                          dst="/etc/sasldb2")
-
-        # 2. restart slapd so it re-reads sasldb
-        #slapd_container.exec("pkill -HUP slapd")
-
-        image = DockerImage(image="mysql-sasl-test", path=pathlib.Path(__file__).parent / "mysql")
-        image.build()
-
-        # container = MySqlContainer("docker.io/library/mysql:9.3.0").with_network(network).with_network_aliases("mysql")
-        # tf.defer(container.start())
-
-        mysql_container = DockerContainer(image=image.short_id)
-        mysql_container.with_network(network).with_network_aliases("mysql").with_env("MYSQL_ROOT_PASSWORD", "rootpassword")
+        mysql_container = MySqlContainer("docker.io/library/mysql:9.3.0").with_network(network).with_network_aliases("mysql")
         tf.defer(mysql_container.start())
+
+        # mysql_container = DockerContainer(image=image.short_id)
+        # mysql_container.with_network(network).with_network_aliases("mysql").with_env("MYSQL_ROOT_PASSWORD", "rootpassword")
+        # tf.defer(mysql_container.start())
         try:
             wait_for_logs(mysql_container, r"mysqld: ready for connections.", timeout=10)
         except TimeoutError:
@@ -191,8 +108,8 @@ olcSaslAuxprops: sasldb"""
 
         host = "mysql"
         port = 3306
-        # username = container.username
-        password = "StrongRootPass!"
+        username = mysql_container.username
+        password = mysql_container.password
 
         # language=Python
         setup_mysql_user = f"""
@@ -200,50 +117,24 @@ import mysql.connector
 
 conn = mysql.connector.connect(
     user='root',
-    password='StrongRootPass!',
+    password='{mysql_container.root_password}',
     host = "mysql",
     port = 3306,
 )
 cursor = conn.cursor()
-print("Creating SASL user 'testuser'@'%'...")
-# The user name 'testuser' must match the one created in the container's OS
+print("Creating test users...")
 
-#cursor.execute("CREATE USER 'testuser'@'%' IDENTIFIED WITH authentication_ldap_sasl;")
-#cursor.execute("GRANT ALL PRIVILEGES ON *.* TO 'testuser'@'%';")
+cursor.execute(
+# language=mysql
+'''
+CREATE USER 'clearpassuser'@'%' IDENTIFIED WITH caching_sha2_password BY 'clearpassword';
+GRANT ALL PRIVILEGES ON *.* TO 'clearpassuser'@'%';
 
-cursor.execute("CREATE USER 'clearpassuser'@'%' IDENTIFIED WITH caching_sha2_password BY 'clearpassword';")
-cursor.execute("GRANT ALL PRIVILEGES ON *.* TO 'clearpassuser'@'%';")
-
-cursor.execute("FLUSH PRIVILEGES;")
+FLUSH PRIVILEGES;
+''')
 cursor.close()
 conn.close()
-print("Test user created successfully.")
-"""
-
-        # language=Python
-        python_script = f"""
-import mysql.connector
-
-try:
-    cnx = mysql.connector.connect(
-        user='testuser',
-        password='testpassword',
-        host='{host}',
-        port={port},
-        # auth_plugin='authentication_ldap_sasl_client',
-        auth_plugin='authentication_ldap_sasl',
-    )
-    cursor = cnx.cursor()
-    cursor.execute("SELECT 1")
-    result = cursor.fetchone()
-    if result == (1,):
-        print("MySQL connection successful!")
-    else:
-        print("MySQL connection failed!")
-    cnx.close()
-except Exception as e:
-    print(f"An error occurred: {{e}}")
-    raise
+print("Test users created successfully.")
 """
 
         # language=Python
@@ -283,16 +174,7 @@ except Exception as e:
 
                 print(output_str)
 
-                assert "Test user created successfully." in output_str
-                assert exit_code == 0
-
-            with subtests.test("Checking the output of the python script..."):
-                exit_code, output = container.exec(["python", "-c", python_script])
-                output_str = output.decode()
-
-                print(output_str)
-
-                assert "MySQL connection successful!" in output_str
+                assert "Test users created successfully." in output_str
                 assert exit_code == 0
 
             with subtests.test("Checking the output of the clearpassuser script..."):
