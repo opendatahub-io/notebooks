@@ -189,24 +189,3 @@ except Exception as e:
             print("*****")
             print(mysql_container.get_wrapped_container().logs(stdout=True, stderr=True))
             docker_utils.NotebookContainer(container).stop(timeout=0)
-
-def setup_mysql_user(cls):
-    """
-    Connects as root and creates the SASL-authenticated user.
-    This user must match the Linux user created in run.sh ('testuser').
-    """
-    params = cls.get_connection_params()
-    conn = mysql.connector.connect(
-        user='root',
-        password='rootpassword',
-        **params
-    )
-    cursor = conn.cursor()
-    print("Creating SASL user 'testuser'@'%'...")
-    # The user name 'testuser' must match the one created in the container's OS
-    cursor.execute("CREATE USER 'testuser'@'%' IDENTIFIED WITH authentication_ldap_sasl;")
-    cursor.execute("GRANT ALL PRIVILEGES ON *.* TO 'testuser'@'%';")
-    cursor.execute("FLUSH PRIVILEGES;")
-    cursor.close()
-    conn.close()
-    print("Test user created successfully.")
