@@ -6,11 +6,11 @@ metadata:
     opendatahub.io/notebook-image: "true"
   annotations:
     opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/rocm/pytorch"
-    opendatahub.io/notebook-image-name: "Jupyter PyTorch ROCm Python 3.12"
+    opendatahub.io/notebook-image-name: "Jupyter | PyTorch | ROCm | Python 3.12"
     opendatahub.io/notebook-image-desc: "Jupyter ROCm optimized PyTorch notebook image for ODH notebooks."
-    opendatahub.io/notebook-image-order: "190"
+    opendatahub.io/notebook-image-order: "12"
     opendatahub.io/recommended-accelerators: '["amd.com/gpu"]'
-  name: jupyter-rocm-pytorch-beta
+  name: jupyter-pytorch-rocm-py312-ubi9
 spec:
   lookupPolicy:
     local: true

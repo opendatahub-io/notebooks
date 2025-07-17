@@ -6,11 +6,11 @@ metadata:
     opendatahub.io/notebook-image: "true"
   annotations:
     opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/pytorch"
-    opendatahub.io/notebook-image-name: "Jupyter PyTorch CUDA Python 3.12"
+    opendatahub.io/notebook-image-name: "Jupyter | PyTorch | CUDA | Python 3.12"
     opendatahub.io/notebook-image-desc: "Jupyter notebook image with PyTorch libraries and dependencies to start experimenting with advanced AI/ML notebooks."
-    opendatahub.io/notebook-image-order: "170"
+    opendatahub.io/notebook-image-order: "10"
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
-  name: jupyter-pytorch-notebook-beta
+  name: jupyter-pytorch-cuda-py312-ubi9
 spec:
   lookupPolicy:
     local: true
