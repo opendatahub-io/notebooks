@@ -90,12 +90,11 @@ print("Scikit-learn smoke test completed successfully.")
         tf.defer(mysql_container.start())
 
         try:
-            wait_for_logs(mysql_container, r"mysqld: ready for connections.", timeout=10)
+            wait_for_logs(mysql_container, r"mysqld: ready for connections.", timeout=30)
         except TimeoutError:
             print("Container is not ready.")
             print(mysql_container.get_wrapped_container().logs(stdout=True, stderr=True))
             raise
-        print(mysql_container.get_wrapped_container().logs(stdout=True, stderr=True))
         print("Container is ready. Setting up test user...")
 
         host = "mysql"
