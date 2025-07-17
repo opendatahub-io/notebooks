@@ -6,11 +6,11 @@ metadata:
     opendatahub.io/notebook-image: "true"
   annotations:
     opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/jupyter/minimal"
-    opendatahub.io/notebook-image-name: "Jupyter Minimal CUDA Python 3.12"
+    opendatahub.io/notebook-image-name: "Jupyter | Minimal | CUDA | Python 3.12"
     opendatahub.io/notebook-image-desc: "Jupyter notebook image with GPU support and minimal dependency set to start experimenting with Jupyter environment."
-    opendatahub.io/notebook-image-order: "150"
+    opendatahub.io/notebook-image-order: "4"
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
-  name: jupyter-minimal-gpu-notebook-beta
+  name: jupyter-minimal-cuda-py312-ubi9
 spec:
   lookupPolicy:
     local: true

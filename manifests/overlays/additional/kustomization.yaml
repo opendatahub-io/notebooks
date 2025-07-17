@@ -4,20 +4,20 @@ kind: Kustomization
 
 resources:
   - ../../base
-  - jupyter-minimal-notebook-imagestream-beta.yaml
-  - jupyter-minimal-gpu-notebook-imagestream-beta.yaml
-  - jupyter-datascience-notebook-imagestream-beta.yaml
-  - jupyter-pytorch-notebook-imagestream-beta.yaml
-  - jupyter-rocm-minimal-notebook-imagestream-beta.yaml
-  - jupyter-rocm-pytorch-notebook-imagestream-beta.yaml
-  - jupyter-tensorflow-notebook-imagestream-beta.yaml
-  - jupyter-trustyai-notebook-imagestream-beta.yaml
-  - code-server-notebook-imagestream-beta.yaml
-  - runtime-datascience-imagestream-beta.yaml
-  - runtime-minimal-imagestream-beta.yaml
-  - runtime-pytorch-imagestream-beta.yaml
-  - runtime-rocm-pytorch-imagestream-beta.yaml
-  - runtime-tensorflow-imagestream-beta.yaml
+  - codeserver-datascience-cpu-py312-ubi9-imagestream.yaml
+  - jupyter-datascience-cpu-py312-ubi9-imagestream.yaml
+  - jupyter-minimal-cpu-py312-ubi9-imagestream.yaml
+  - jupyter-minimal-cuda-py312-ubi9-imagestream.yaml
+  - jupyter-minimal-rocm-py312-ubi9-imagestream.yaml
+  - jupyter-pytorch-cuda-py312-ubi9-imagestream.yaml
+  - jupyter-pytorch-rocm-py312-ubi9-imagestream.yaml
+  - jupyter-tensorflow-cuda-py312-ubi9-imagestream.yaml
+  - jupyter-trustyai-cpu-py312-ubi9-imagestream.yaml
+  - runtime-datascience-cpu-py312-ubi9-imagestream.yaml
+  - runtime-minimal-cpu-py312-ubi9-imagestream.yaml
+  - runtime-pytorch-cuda-py312-ubi9-imagestream.yaml
+  - runtime-pytorch-rocm-py312-ubi9-imagestream.yaml
+  - runtime-tensorflow-cuda-py312-ubi9-imagestream.yaml
 
 labels:
   - includeSelectors: true
@@ -36,7 +36,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-minimal-notebook-beta
+          name: jupyter-minimal-cpu-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-datascience-cpu-py312-ubi9-n
@@ -49,7 +49,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-datascience-notebook-beta
+          name: jupyter-datascience-cpu-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-minimal-cuda-py312-ubi9-n
@@ -62,7 +62,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-minimal-gpu-notebook-beta
+          name: jupyter-minimal-cuda-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py312-ubi9-n
@@ -75,7 +75,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-pytorch-notebook-beta
+          name: jupyter-pytorch-cuda-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-n
@@ -88,7 +88,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-tensorflow-notebook-beta
+          name: jupyter-tensorflow-cuda-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n
@@ -101,7 +101,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-trustyai-notebook-beta
+          name: jupyter-trustyai-cpu-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-codeserver-datascience-cpu-py312-ubi9-n
@@ -114,7 +114,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: code-server-notebook-beta
+          name: codeserver-datascience-cpu-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-minimal-rocm-py312-ubi9-n
@@ -127,7 +127,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-rocm-minimal-beta
+          name: jupyter-minimal-rocm-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-pytorch-rocm-py312-ubi9-n
@@ -140,7 +140,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-rocm-pytorch-beta
+          name: jupyter-pytorch-rocm-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-n
@@ -153,7 +153,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-minimal-notebook-beta
+          name: jupyter-minimal-cpu-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-datascience-cpu-py312-ubi9-commit-n
@@ -166,7 +166,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-datascience-notebook-beta
+          name: jupyter-datascience-cpu-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-minimal-cuda-py312-ubi9-commit-n
@@ -179,7 +179,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-minimal-gpu-notebook-beta
+          name: jupyter-minimal-cuda-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py312-ubi9-commit-n
@@ -192,7 +192,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-pytorch-notebook-beta
+          name: jupyter-pytorch-cuda-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-commit-n
@@ -205,7 +205,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-tensorflow-notebook-beta
+          name: jupyter-tensorflow-cuda-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py312-ubi9-commit-n
@@ -218,7 +218,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-trustyai-notebook-beta
+          name: jupyter-trustyai-cpu-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-codeserver-datascience-cpu-py312-ubi9-commit-n
@@ -231,7 +231,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: code-server-notebook-beta
+          name: codeserver-datascience-cpu-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-minimal-rocm-py312-ubi9-commit-n
@@ -244,7 +244,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-rocm-minimal-beta
+          name: jupyter-minimal-rocm-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-workbench-jupyter-pytorch-rocm-py312-ubi9-commit-n
@@ -257,7 +257,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: jupyter-rocm-pytorch-beta
+          name: jupyter-pytorch-rocm-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-pipeline-runtime-minimal-cpu-py312-ubi9-n
@@ -270,7 +270,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: runtime-minimal-beta
+          name: runtime-minimal-cpu-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-pipeline-runtime-datascience-cpu-py312-ubi9-n
@@ -283,7 +283,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: runtime-datascience-beta
+          name: runtime-datascience-cpu-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-pipeline-runtime-pytorch-cuda-py312-ubi9-n
@@ -296,7 +296,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: runtime-pytorch-beta
+          name: runtime-pytorch-cuda-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-pipeline-runtime-pytorch-rocm-py312-ubi9-n
@@ -309,7 +309,7 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: runtime-rocm-pytorch-beta
+          name: runtime-pytorch-rocm-py312-ubi9
           version: v1
   - source:
       fieldPath: data.odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-n
@@ -322,5 +322,5 @@ replacements:
         select:
           group: image.openshift.io
           kind: ImageStream
-          name: runtime-tensorflow-beta
+          name: runtime-tensorflow-cuda-py312-ubi9
           version: v1
