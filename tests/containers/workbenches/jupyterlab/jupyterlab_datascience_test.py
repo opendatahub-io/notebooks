@@ -158,9 +158,7 @@ except Exception as e:
 
             # RHOAIENG-140: code-server image users are expected to install their own db clients
             if "-code-server-" in datascience_image.labels["name"]:
-                exit_code, output = container.exec(
-                    ["python", "-m", "pip", "install", "mysql-connector-python==9.3.0"]
-                )
+                exit_code, output = container.exec(["python", "-m", "pip", "install", "mysql-connector-python==9.3.0"])
                 output_str = output.decode()
                 print(output_str)
 
