@@ -102,8 +102,6 @@ print("Scikit-learn smoke test completed successfully.")
 
         host = "mysql"
         port = 3306
-        username = mysql_container.username
-        password = mysql_container.password
 
         # language=Python
         setup_mysql_user = f"""
@@ -112,8 +110,8 @@ import mysql.connector
 conn = mysql.connector.connect(
     user='root',
     password='{mysql_container.root_password}',
-    host = "mysql",
-    port = 3306,
+    host = "{host}",
+    port = {port},
 )
 cursor = conn.cursor()
 print("Creating test users...")
