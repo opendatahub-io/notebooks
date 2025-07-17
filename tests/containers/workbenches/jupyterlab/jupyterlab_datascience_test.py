@@ -12,11 +12,6 @@ from testcontainers.mysql import MySqlContainer
 from tests.containers import conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
-if typing.TYPE_CHECKING:
-    from tests.containers.conftest import Image
-    from tests.containers.kubernetes_utils import TestFrame
-
-
 class TestJupyterLabDatascienceImage:
     """Tests for JupyterLab Workbench images in this repository that are not -minimal-."""
 
@@ -78,31 +73,30 @@ print("Scikit-learn smoke test completed successfully.")
 
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
+@allure.description("Check that mysql client functionality is working with SASL plain auth.")
+def test_mysql_connection(self, tf: TestFrame, datascience_image: Image, subtests):
+    network = testcontainers.core.network.Network()
+    tf.defer(network.create())
 
-    @allure.description("Check that mysql client functionality is working with SASL plain auth.")
-    def test_mysql_connection(self, tf: TestFrame, datascience_image: Image, subtests):
-        network = testcontainers.core.network.Network()
-        tf.defer(network.create())
+    mysql_container = (
+        MySqlContainer("docker.io/library/mysql:9.3.0").with_network(network).with_network_aliases("mysql")
+    )
+    tf.defer(mysql_container.start())
 
-        mysql_container = (
-            MySqlContainer("docker.io/library/mysql:9.3.0").with_network(network).with_network_aliases("mysql")
-        )
-        tf.defer(mysql_container.start())
-
-        try:
-            wait_for_logs(mysql_container, r"mysqld: ready for connections.", timeout=10)
-        except TimeoutError:
-            print("Container is not ready.")
-            print(mysql_container.get_wrapped_container().logs(stdout=True, stderr=True))
-            raise
+    try:
+        wait_for_logs(mysql_container, r"mysqld: ready for connections.", timeout=10)
+    except TimeoutError:
+        print("Container is not ready.")
         print(mysql_container.get_wrapped_container().logs(stdout=True, stderr=True))
-        print("Container is ready. Setting up test user...")
+        raise
+    print(mysql_container.get_wrapped_container().logs(stdout=True, stderr=True))
+    print("Container is ready. Setting up test user...")
 
-        host = "mysql"
-        port = 3306
+    host = "mysql"
+    port = 3306
 
-        # language=Python
-        setup_mysql_user = f"""
+    # language=Python
+    setup_mysql_user = f"""
 import mysql.connector
 
 conn = mysql.connector.connect(
@@ -127,8 +121,8 @@ conn.close()
 print("Test users created successfully.")
 """
 
-        # language=Python
-        clearpassuser = f"""
+    # language=Python
+    clearpassuser = f"""
 import mysql.connector
 
 try:
@@ -152,29 +146,42 @@ except Exception as e:
     raise
 """
 
-        container = WorkbenchContainer(image=datascience_image.name, user=4321, group_add=[0])
-        (container.with_network(network).with_command("/bin/sh -c 'sleep infinity'"))
-        try:
-            container.start(wait_for_readiness=False)
+    container = WorkbenchContainer(image=datascience_image.name, user=4321, group_add=[0]) \
+    (container.with_network(network).with_command("/bin/sh -c 'sleep infinity'"))
+    try:
+        container.start(wait_for_readiness=False)
 
-            with subtests.test("Setting the user..."):
-                exit_code, output = container.exec(["python", "-c", setup_mysql_user])
-                output_str = output.decode()
+        # RHOAIENG-140: code-server image users are expected to install db clients themselves
+        if "-code-server-" in datascience_image.labels["name"]:
+            exit_code, output = mysql_container.exec(["python", "-m", "pip", "install", "mysql-connector-python==9.3.0"])
+            output_str = output.decode()
+            print(output_str)
 
-                print(output_str)
+            assert exit_code == 0
 
-                assert "Test users created successfully." in output_str
-                assert exit_code == 0
+        with subtests.test("Setting the user..."):
+            exit_code, output = container.exec(["python", "-c", setup_mysql_user])
+            output_str = output.decode()
 
-            with subtests.test("Checking the output of the clearpassuser script..."):
-                exit_code, output = container.exec(["python", "-c", clearpassuser])
-                output_str = output.decode()
+            print(output_str)
 
-                print(output_str)
+            assert "Test users created successfully." in output_str
+            assert exit_code == 0
 
-                assert "MySQL connection successful!" in output_str
-                assert exit_code == 0
-        finally:
-            print("*****")
-            print(mysql_container.get_wrapped_container().logs(stdout=True, stderr=True))
-            docker_utils.NotebookContainer(container).stop(timeout=0)
+        with subtests.test("Checking the output of the clearpassuser script..."):
+            exit_code, output = container.exec(["python", "-c", clearpassuser])
+            output_str = output.decode()
+
+            print(output_str)
+
+            assert "MySQL connection successful!" in output_str
+            assert exit_code == 0
+    finally:
+        print("*****")
+        print(mysql_container.get_wrapped_container().logs(stdout=True, stderr=True))
+        docker_utils.NotebookContainer(container).stop(timeout=0)
+
+
+if typing.TYPE_CHECKING:
+    from tests.containers.conftest import Image
+    from tests.containers.kubernetes_utils import TestFrame
