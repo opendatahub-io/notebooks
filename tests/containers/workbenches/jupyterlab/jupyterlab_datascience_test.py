@@ -5,18 +5,17 @@ import tempfile
 import typing
 
 import allure
+import testcontainers.core.network
+from testcontainers.core.waiting_utils import wait_for_logs
+from testcontainers.mysql import MySqlContainer
 
 from tests.containers import conftest, docker_utils
-from tests.containers.kubernetes_utils import TestFrame
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
-
-import testcontainers.core.network
-from testcontainers.mysql import MySqlContainer
-from testcontainers.core.waiting_utils import wait_for_logs
-
 
 if typing.TYPE_CHECKING:
     from tests.containers.conftest import Image
+    from tests.containers.kubernetes_utils import TestFrame
+
 
 class TestJupyterLabDatascienceImage:
     """Tests for JupyterLab Workbench images in this repository that are not -minimal-."""
@@ -85,9 +84,9 @@ print("Scikit-learn smoke test completed successfully.")
         network = testcontainers.core.network.Network()
         tf.defer(network.create())
 
-        mysql_container = (MySqlContainer("docker.io/library/mysql:9.3.0")
-                           .with_network(network)
-                           .with_network_aliases("mysql"))
+        mysql_container = (
+            MySqlContainer("docker.io/library/mysql:9.3.0").with_network(network).with_network_aliases("mysql")
+        )
         tf.defer(mysql_container.start())
 
         try:
@@ -154,9 +153,7 @@ except Exception as e:
 """
 
         container = WorkbenchContainer(image=datascience_image.name, user=4321, group_add=[0])
-        (container
-         .with_network(network)
-         .with_command("/bin/sh -c 'sleep infinity'"))
+        (container.with_network(network).with_command("/bin/sh -c 'sleep infinity'"))
         try:
             container.start(wait_for_readiness=False)
 

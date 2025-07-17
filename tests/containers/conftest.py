@@ -4,7 +4,7 @@ import dataclasses
 import logging
 import os
 import platform
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any
 
 import docker.errors
 import docker.models.images
@@ -18,7 +18,7 @@ from tests.containers import docker_utils, skopeo_utils, utils
 from tests.containers.kubernetes_utils import TestFrame
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
 
     from pytest import ExitCode, Metafunc, Parser, Session
 

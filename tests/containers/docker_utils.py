@@ -3,10 +3,9 @@ from __future__ import annotations
 import io
 import logging
 import os.path
-import socket
+import socket as pysocket
 import sys
 import tarfile
-import socket as pysocket
 import time
 from typing import TYPE_CHECKING
 
@@ -183,7 +182,12 @@ def container_exec_with_stdin(
 
     # Using the low-level API for precise control over the socket.
     exec_id = container.client.api.exec_create(
-        container=container.id, cmd=cmd, stdin=True, stdout=True, stderr=True, tty=True,
+        container=container.id,
+        cmd=cmd,
+        stdin=True,
+        stdout=True,
+        stderr=True,
+        tty=True,
     )
 
     # When using a podman client, exec_start(socket=True) returns a file-like
@@ -199,8 +203,8 @@ def container_exec_with_stdin(
         raw_sock = stream
     else:
         # Try to unwrap a file-like object (e.g., BufferedReader -> SocketIO -> socket)
-        raw_io = getattr(stream, 'raw', stream)
-        if hasattr(raw_io, '_sock'):
+        raw_io = getattr(stream, "raw", stream)
+        if hasattr(raw_io, "_sock"):
             raw_sock = raw_io._sock
 
     if raw_sock:
@@ -211,7 +215,7 @@ def container_exec_with_stdin(
             stream.write(stdin_data)
             stream.flush()
         except (OSError, io.UnsupportedOperation) as e:
-            raise IOError(f"Could not write to container exec stdin using stream of type {type(stream)}") from e
+            raise OSError(f"Could not write to container exec stdin using stream of type {type(stream)}") from e
 
     # Shut down the write-half of the connection to signal EOF to the process.
     try:
@@ -219,8 +223,8 @@ def container_exec_with_stdin(
             raw_sock.shutdown(pysocket.SHUT_WR)
         else:
             # Fallback for stream objects that have a shutdown method.
-            raw_io = getattr(stream, 'raw', stream)
-            if hasattr(raw_io, '_sock'):
+            raw_io = getattr(stream, "raw", stream)
+            if hasattr(raw_io, "_sock"):
                 raw_io._sock.shutdown(pysocket.SHUT_WR)
             else:
                 stream.shutdown(pysocket.SHUT_WR)
