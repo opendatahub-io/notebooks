@@ -88,15 +88,9 @@ print("Scikit-learn smoke test completed successfully.")
         network = testcontainers.core.network.Network()
         tf.defer(network.create())
 
-        # image = DockerImage(image="mysql-sasl-test", path=pathlib.Path(__file__).parent / "mysql")
-        # image.build()
-
         mysql_container = MySqlContainer("docker.io/library/mysql:9.3.0").with_network(network).with_network_aliases("mysql")
         tf.defer(mysql_container.start())
 
-        # mysql_container = DockerContainer(image=image.short_id)
-        # mysql_container.with_network(network).with_network_aliases("mysql").with_env("MYSQL_ROOT_PASSWORD", "rootpassword")
-        # tf.defer(mysql_container.start())
         try:
             wait_for_logs(mysql_container, r"mysqld: ready for connections.", timeout=10)
         except TimeoutError:
