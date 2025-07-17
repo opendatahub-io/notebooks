@@ -168,6 +168,7 @@ def container_exec_with_stdin(
     container: Container,
     cmd: str | list[str],
     stdin_data: str | bytes,
+    read_timeout: float = 1.0,
 ) -> tuple[int, bytes]:
     """
     Executes a command in a container, writing stdin_data to its stdin.
@@ -238,7 +239,7 @@ def container_exec_with_stdin(
         output_chunks = []
         while True:
             # we set the timeout in order not to be blocked afterwards with blocking read
-            raw_sock.settimeout(1)
+            raw_sock.settimeout(read_timeout)
             # Reading in a loop is the standard way to consume a socket's content.
             try:
                 chunk = raw_sock.recv(4096)
