@@ -3,8 +3,10 @@ from __future__ import annotations
 import io
 import logging
 import os.path
+import socket
 import sys
 import tarfile
+import socket as pysocket
 import time
 from typing import TYPE_CHECKING
 
@@ -161,6 +163,99 @@ class ContainerExec:
         while self.poll() is None:
             raise RuntimeError("Hm could that really happen?")
         return self.poll()
+
+
+def container_exec_with_stdin(
+    container: Container,
+    cmd: str | list[str],
+    stdin_data: str | bytes,
+) -> tuple[int, bytes]:
+    """
+    Executes a command in a container, writing stdin_data to its stdin.
+
+    :param container: The container to execute the command in.
+    :param cmd: The command to execute.
+    :param stdin_data: The string or bytes to send to the command's stdin.
+    :return: A tuple of (exit_code, output_bytes).
+    """
+    if isinstance(stdin_data, str):
+        stdin_data = stdin_data.encode("utf-8")
+
+    # Using the low-level API for precise control over the socket.
+    exec_id = container.client.api.exec_create(
+        container=container.id, cmd=cmd, stdin=True, stdout=True, stderr=True, tty=True,
+    )
+
+    # When using a podman client, exec_start(socket=True) returns a file-like
+    # object (a wrapper around SocketIO), not a raw socket. We must use
+    # file-like methods (write, read) instead of raw socket methods.
+    stream = container.client.api.exec_start(exec_id, socket=True, tty=True)
+
+    # The stream object can be a raw socket or a file-like wrapper which might
+    # be incorrectly marked as read-only. We need to find the underlying raw
+    # socket to reliably write to stdin.
+    raw_sock = None
+    if isinstance(stream, pysocket.socket):
+        raw_sock = stream
+    else:
+        # Try to unwrap a file-like object (e.g., BufferedReader -> SocketIO -> socket)
+        raw_io = getattr(stream, 'raw', stream)
+        if hasattr(raw_io, '_sock'):
+            raw_sock = raw_io._sock
+
+    if raw_sock:
+        raw_sock.sendall(stdin_data)
+    else:
+        # Fallback to stream.write() if no raw socket found. This may fail.
+        try:
+            stream.write(stdin_data)
+            stream.flush()
+        except (OSError, io.UnsupportedOperation) as e:
+            raise IOError(f"Could not write to container exec stdin using stream of type {type(stream)}") from e
+
+    # Shut down the write-half of the connection to signal EOF to the process.
+    try:
+        if raw_sock:
+            raw_sock.shutdown(pysocket.SHUT_WR)
+        else:
+            # Fallback for stream objects that have a shutdown method.
+            raw_io = getattr(stream, 'raw', stream)
+            if hasattr(raw_io, '_sock'):
+                raw_io._sock.shutdown(pysocket.SHUT_WR)
+            else:
+                stream.shutdown(pysocket.SHUT_WR)
+    except (OSError, AttributeError):
+        # This is expected if the remote process closes the connection first.
+        pass
+
+    if raw_sock:
+        # If we unwrapped and used the raw socket, we must continue using it
+        # for reading to avoid state inconsistencies with the wrapper object.
+        output_chunks = []
+        while True:
+            # we set the timeout in order not to be blocked afterwards with blocking read
+            raw_sock.settimeout(1)
+            # Reading in a loop is the standard way to consume a socket's content.
+            try:
+                chunk = raw_sock.recv(4096)
+            except TimeoutError:
+                break
+            if not chunk:
+                # An empty chunk signifies that the remote end has closed the connection.
+                break
+            output_chunks.append(chunk)
+        output = b"".join(output_chunks)
+        raw_sock.close()
+    else:
+        # Fallback to stream.read() if we couldn't get a raw socket.
+        # This may hang if the shutdown logic above also failed.
+        output = stream.read()
+        stream.close()
+
+    # Get the exit code of the process.
+    exit_code = container.client.api.exec_inspect(exec_id)["ExitCode"]
+
+    return exit_code, output
 
 
 def get_socket_path(client: docker.client.DockerClient) -> str:
