@@ -68,11 +68,13 @@ jobs:
         with:
           ref: "refs/pull/${{ fromJson(inputs.github).event.number }}/merge"
 
-      - name: Set up QEMU to build linux/s390x
-        if: ${{ inputs.platform == 'linux/s390x' }}
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: s390x
+      # https://github.com/docker/setup-qemu-action?tab=readme-ov-file#about
+      # https://www.itix.fr/blog/qemu-user-static-with-podman/
+      - name: Set up QEMU for non-native architecture
+        if: ${{ contains(fromJSON('["linux/s390x", "linux/ppc64le"]'), inputs.platform) }}
+        run: docker run --rm --privileged tonistiigi/binfmt --install ${platform#*/}
+        env:
+          platform: ${{ inputs.platform }}
 
       - run: mkdir -p $TMPDIR
 
@@ -175,8 +177,8 @@ jobs:
           path: /home/linuxbrew/.linuxbrew
           key: linuxbrew-${{ runner.os }}-${{ runner.arch }}
 
-      - name: Install podman (linux/amd64)
-        if: inputs.platform == 'linux/amd64' && steps.cached-linuxbrew.outputs.cache-hit != 'true'
+      - name: Install podman (linux/amd64, or qemu-user emulation)
+        if: contains(fromJSON('["linux/amd64", "linux/s390x", "linux/ppc64le"]'), inputs.platform) && steps.cached-linuxbrew.outputs.cache-hit != 'true'
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           /home/linuxbrew/.linuxbrew/bin/brew install podman
