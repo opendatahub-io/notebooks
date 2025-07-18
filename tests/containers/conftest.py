@@ -15,9 +15,10 @@ import testcontainers.core.container
 import testcontainers.core.docker_client
 
 from tests.containers import docker_utils, skopeo_utils, utils
+from tests.containers.kubernetes_utils import TestFrame
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
 
     from pytest import ExitCode, Metafunc, Parser, Session
 
@@ -108,6 +109,12 @@ def skip_if_not_rocm_image(image: str) -> Image:
     return image_metadata
 
 
+@pytest.fixture(scope="function")
+def tf() -> Generator[TestFrame[Any], None, None]:
+    with TestFrame() as tf:
+        yield tf
+
+
 # https://docs.pytest.org/en/stable/how-to/fixtures.html#parametrizing-fixtures
 # indirect parametrization https://stackoverflow.com/questions/18011902/how-to-pass-a-parameter-to-a-fixture-function-in-pytest
 @pytest.fixture(scope="session")
@@ -170,6 +177,17 @@ def jupyterlab_trustyai_image(jupyterlab_image: Image) -> Image:
         )
 
     return jupyterlab_image
+
+
+@pytest.fixture(scope="function")
+def datascience_image(image: str) -> Image:
+    image_metadata = get_image_metadata(image)
+    if "-minimal-" in image_metadata.labels["name"]:
+        pytest.skip(
+            f"Image {image_metadata.name} is not datascience image because it has '-minimal-' in {image_metadata.labels['name']=}'"
+        )
+
+    return image_metadata
 
 
 @pytest.fixture(scope="function")
