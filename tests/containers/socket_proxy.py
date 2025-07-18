@@ -90,11 +90,19 @@ class SocketProxy:
                 # ISSUE-922: socket.accept() blocks, so if cancel() did not come very fast, we'd loop over and block
                 if self.server_socket in readable:
                     client_socket, addr = self.server_socket.accept()
-                    logging.info(f"Accepted connection from {addr[0]}:{addr[1]}")
-                    # handle client synchronously, which means that there can be at most one at a time
-                    self._handle_client(client_socket)
+                    logging.info(f"Proxy accepted connection from {addr[0]}:{addr[1]}")
+                    try:
+                        # handle client synchronously, which means that there can be at most one at a time
+                        self._handle_client(client_socket)
+                    except (BrokenPipeError, ConnectionResetError) as e:
+                        # BrokenPipeError happens when the proxy connects to the pod, but the service inside is not yet listening.
+                        # The client (Wait.until) will retry.
+                        logging.info(f"Proxy connection to remote failed, likely due to service not being ready: {e}")
+                        # The client_socket is closed by the `with` statement in `_handle_client`.
+                        # We continue the loop to accept the next connection attempt.
+                        continue
         except Exception as e:
-            logging.exception("Proxying failed to listen", exc_info=e)
+            logging.exception("Proxying failed with an unhandled exception", exc_info=e)
             raise
         finally:
             self.server_socket.close()
