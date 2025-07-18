@@ -90,6 +90,8 @@ class TestKubernetesUtils:
 
 
 class TestFrame[S]:
+    __test__ = False
+
     def __init__(self):
         self.stack: list[tuple[S, Callable[[S], None] | None]] = []
 
@@ -102,6 +104,7 @@ class TestFrame[S]:
 
     def defer[T](self, obj: T, destructor: Callable[[T], None] | None = None) -> T:
         self.stack.append((obj, destructor))
+        return obj
 
     def destroy(self, wait=False):
         while self.stack:
