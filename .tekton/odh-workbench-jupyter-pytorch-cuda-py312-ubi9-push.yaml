@@ -40,7 +40,7 @@ spec:
     value: .
   - name: additional-tags
     value:
-    - '$$OUTPUT_IMAGE_TAG$$'
+    - '{{target_branch}}-{{revision}}'
   taskRunSpecs:
     - pipelineTaskName: build-container
       stepSpecs:
