@@ -95,8 +95,12 @@ def skip_if_not_workbench_image(image: str) -> Image:
 def skip_if_not_cuda_image(image: str) -> Image:
     image_metadata = get_image_metadata(image)
 
-    if "-cuda-" not in image_metadata.labels["name"]:
-        pytest.skip(f"Image {image} does not have any of '-cuda-' in {image_metadata.labels['name']=}")
+    if "-rocm-" in image_metadata.labels["name"]:
+        pytest.skip(f"Image {image} does have '-rocm-' in {image_metadata.labels['name']=}")
+
+    cuda_label_fragments = ("-cuda-", "-pytorch-", "-tensorflow-")
+    if not any(ide in image_metadata.labels["name"] for ide in cuda_label_fragments):
+        pytest.skip(f"Image {image} does not have any of '{cuda_label_fragments=}' in {image_metadata.labels['name']=}")
 
     return image_metadata
 
@@ -139,15 +143,15 @@ def workbench_image(image: str):
 
 
 @pytest.fixture(scope="function")
-def cuda_workbench_image(workbench_image: str):
-    skip_if_not_cuda_image(workbench_image)
-    yield workbench_image
+def cuda_image(image: str):
+    skip_if_not_cuda_image(image)
+    yield image
 
 
 @pytest.fixture(scope="function")
-def rocm_workbench_image(workbench_image: str):
-    skip_if_not_rocm_image(workbench_image)
-    yield workbench_image
+def rocm_image(image: str):
+    skip_if_not_rocm_image(image)
+    yield image
 
 
 @pytest.fixture(scope="function")
