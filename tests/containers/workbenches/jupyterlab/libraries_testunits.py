@@ -79,7 +79,7 @@ class TestDataScienceLibs(unittest.TestCase):
 
     def test_torch(self):
         """🧪 Tests basic PyTorch tensor operations."""
-        if not "-pytorch-" in self.image:
+        if "-pytorch-" not in self.image:
             self.skipTest("Not a Torch image")
         import torch  # pyright: ignore[reportMissingImports]
 
@@ -91,7 +91,7 @@ class TestDataScienceLibs(unittest.TestCase):
 
     def test_torchvision(self):
         """🧪 Tests torchvision model loading and inference."""
-        if not "-pytorch-" in self.image:
+        if "-pytorch-" not in self.image:
             self.skipTest("Not a Torch image")
         import torch  # pyright: ignore[reportMissingImports]
         import torchvision  # pyright: ignore[reportMissingImports]
@@ -106,7 +106,7 @@ class TestDataScienceLibs(unittest.TestCase):
 
     def test_torchaudio(self):
         """🧪 Tests torchaudio waveform generation."""
-        if not "-pytorch-" in self.image:
+        if "-pytorch-" not in self.image:
             self.skipTest("Not a Torch image")
         import torchaudio  # pyright: ignore[reportMissingImports]
 
