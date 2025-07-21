@@ -38,9 +38,6 @@ def check_tests(target: str) -> bool:
     if target.startswith(("rocm-jupyter-minimal-", "rocm-jupyter-datascience-")):
         return False  # we don't have specific tests for -minimal-, ... in ci-operator/config
 
-    if target.endswith("-python-3.12"):
-        return False  # we haven't yet enabled on-cluster testing because that needs valid manifests
-
     build_directory = gha_pr_changed_files.get_build_directory(target)
     kustomization = (
         pathlib.Path(gha_pr_changed_files.PROJECT_ROOT) / build_directory / "kustomize/base/kustomization.yaml"
