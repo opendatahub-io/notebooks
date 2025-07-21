@@ -1,3 +1,23 @@
+The `tests/browser` directory holds Playwright tests.
+
+The following upstream projects have Playwright tests:
+
+* JupyterLab (https://github.com/jupyterlab/jupyterlab/tree/main/galata)
+* code-server (https://github.com/coder/code-server/tree/main/test)
+
+Honorable mentions include:
+
+* VSCode uses custom framework where Playwright is one of the possible runners (https://github.com/microsoft/vscode/wiki/Writing-Tests)
+* RStudio components have Playwright tests (https://github.com/rstudio/shinyuieditor, https://github.com/rstudio/xterm.js)
+* Some RStudio tests are implemented in private repository https://github.com/rstudio/rstudio/issues/10400, possibly in R https://github.com/rstudio/rstudio/tree/main/src/cpp/tests/automation with https://github.com/rstudio/chromote)
+
+The following upstream projects have Cypress tests:
+
+* Elyra (https://github.com/elyra-ai/elyra/tree/main/cypress)
+* ODH Dashboard (https://github.com/opendatahub-io/odh-dashboard/tree/main/frontend/src/__tests__/cypress)
+
+# Playwright
+
 This is a basic Playwright in Typescript that was setup like this
 
 ```shell
@@ -51,3 +71,6 @@ CI captures execution traces that can be opened in [the trace viewer](https://pl
 pnpm playwright show-trace path/to/trace.zip
 ```
 
+## Good practices
+
+* https://playwright.dev/docs/best-practices
