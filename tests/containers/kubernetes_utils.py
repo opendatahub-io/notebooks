@@ -37,6 +37,10 @@ class TestFrameConstants:
     GLOBAL_POLL_INTERVAL_MEDIUM = 10
     TIMEOUT_2MIN = 2 * 60
     TIMEOUT_5MIN = 5 * 60
+    TIMEOUT_20MIN = 20 * 60
+
+    # this includes potentially pulling the image, and cuda images are huge
+    READINESS_TIMEOUT = TIMEOUT_5MIN
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -133,10 +137,14 @@ class ImageDeployment:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.tf.destroy()
+        self.tf.destroy(wait=True)
 
     def deploy(
-        self, container_name: str, accelerator: Literal["amd.com/gpu", "nvidia.com/gpu"] | None = None
+        self,
+        container_name: str,
+        accelerator: Literal["amd.com/gpu", "nvidia.com/gpu"] | None = None,
+        is_runtime_image: bool = False,
+        timeout: float = TestFrameConstants.READINESS_TIMEOUT,
     ) -> kubernetes.client.models.v1_pod.V1Pod:
         LOGGER.debug(f"Deploying {self.image}")
         # custom namespace is necessary, because we cannot assign a SCC to pods created in one of the default namespaces:
@@ -188,7 +196,15 @@ class ImageDeployment:
                         {
                             "name": container_name,
                             "image": self.image,
-                            # "command": ["/bin/sh", "-c", "while true ; do date; sleep 5; done;"],
+                            # "command": ["/bin/sh", "-c", "while true; do date; sleep 5; done;"],
+                            **(
+                                {
+                                    "command": ["/bin/sh"],
+                                    "args": ["-c", "sleep infinity"],
+                                }
+                                if is_runtime_image
+                                else {}
+                            ),
                             "ports": [
                                 {
                                     "containerPort": 8888,
@@ -229,7 +245,11 @@ class ImageDeployment:
         self.tf.defer_resource(deployment)
         LOGGER.debug("Waiting for pods to become ready...")
         PodUtils.wait_for_pods_ready(
-            self.client, namespace_name=ns.name, label_selector=f"app={container_name}", expect_pods_count=1
+            self.client,
+            namespace_name=ns.name,
+            label_selector=f"app={container_name}",
+            expect_pods_count=1,
+            timeout=timeout,
         )
 
         core_v1_api = kubernetes.client.api.core_v1_api.CoreV1Api(api_client=self.client.client)
@@ -239,21 +259,22 @@ class ImageDeployment:
         assert len(pod_name.items) == 1
         self.pod: kubernetes.client.models.v1_pod.V1Pod = pod_name.items[0]
 
-        p = socket_proxy.SocketProxy(lambda: exposing_contextmanager(core_v1_api, self.pod), "localhost", 0)
-        t = threading.Thread(target=p.listen_and_serve_until_canceled)
-        t.start()
-        self.tf.defer(t, lambda thread: thread.join())
-        self.tf.defer(p.cancellation_token, lambda token: token.cancel())
+        if not is_runtime_image:
+            p = socket_proxy.SocketProxy(lambda: exposing_contextmanager(core_v1_api, self.pod), "localhost", 0)
+            t = threading.Thread(target=p.listen_and_serve_until_canceled)
+            t.start()
+            self.tf.defer(t, lambda thread: thread.join())
+            self.tf.defer(p.cancellation_token, lambda token: token.cancel())
 
-        self.port = p.get_actual_port()
-        LOGGER.debug(f"Listening on port {self.port}")
-        Wait.until(
-            "Connecting to pod succeeds",
-            1,
-            30,
-            lambda: requests.get(f"http://localhost:{self.port}").status_code == 200,
-        )
-        LOGGER.debug("Done setting up portforward")
+            self.port = p.get_actual_port()
+            LOGGER.debug(f"Listening on port {self.port}")
+            Wait.until(
+                "Connecting to pod succeeds",
+                1,
+                30,
+                lambda: requests.get(f"http://localhost:{self.port}").status_code == 200,
+            )
+            LOGGER.debug("Done setting up portforward")
 
         return self.pod
 
@@ -300,20 +321,16 @@ class ImageDeployment:
 
 
 class PodUtils:
-    # this includes potentially pulling the image, and cuda images are huge
-    READINESS_TIMEOUT = TestFrameConstants.TIMEOUT_5MIN
-
     # consider using timeout_sampler
     @staticmethod
     def wait_for_pods_ready(
-        client: DynamicClient, namespace_name: str, label_selector: str, expect_pods_count: int
+        client: DynamicClient,
+        namespace_name: str,
+        label_selector: str,
+        expect_pods_count: int,
+        timeout: float = TestFrameConstants.READINESS_TIMEOUT,
     ) -> None:
-        """Wait for all pods in namespace to be ready
-        :param client:
-        :param namespace_name: name of the namespace
-        :param label_selector:
-        :param expect_pods_count:
-        """
+        """Wait for all pods in namespace to be ready"""
 
         # it's a dynamic client with the `resource` parameter already filled in
         class ResourceType(kubernetes.dynamic.Resource, kubernetes.dynamic.DynamicClient):
@@ -359,7 +376,7 @@ class PodUtils:
         Wait.until(
             description=f"readiness of all Pods matching {label_selector} in Namespace {namespace_name}",
             poll_interval=TestFrameConstants.GLOBAL_POLL_INTERVAL_MEDIUM,
-            timeout=PodUtils.READINESS_TIMEOUT,
+            timeout=timeout,
             ready=ready,
         )
 

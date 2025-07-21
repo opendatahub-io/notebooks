@@ -3,6 +3,8 @@ name: Update commit-latest.env on params-latest.env change
 
 "on":
   workflow_dispatch:
+  schedule:
+    - cron: '0 11 * * *'  # Daily at midnight UTC
   push:
     branches:
       - main
