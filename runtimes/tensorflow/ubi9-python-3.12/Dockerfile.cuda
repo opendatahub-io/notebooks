@@ -121,6 +121,11 @@ RUN yum install -y \
 # Set this flag so that libraries can find the location of CUDA
 ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 
+# hdf5 is needed for h5py
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+    dnf install -y hdf5-devel && \
+    dnf clean all
+
 # Restore notebook user workspace
 USER 1001
 WORKDIR /opt/app-root/src
