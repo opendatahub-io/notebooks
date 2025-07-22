@@ -29,7 +29,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9:2025a-v1.34
+    value: quay.io/opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9:{{revision}}
   - name: dockerfile
     value: jupyter/datascience/ubi9-python-3.12/Dockerfile.cpu
   - name: path-context
@@ -37,6 +37,7 @@ spec:
   - name: additional-tags
     value:
     - '{{target_branch}}-{{revision}}'
+    - 2025a-v1.34
   taskRunSpecs:
     - pipelineTaskName: build-container
       stepSpecs:
