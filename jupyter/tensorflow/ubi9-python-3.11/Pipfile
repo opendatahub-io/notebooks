@@ -4,17 +4,19 @@ verify_ssl = true
 name = "pypi"
 
 [dev-packages]
+# tf2onnx has pinned protobuf version, that causes conflict with other packages
+# This is a workaround to avoid the conflict
+tf2onnx = "~=1.16.1"
 
 [packages]
 # TensorFlow packages
 tensorflow = {version = "~=2.17.0", extras = ["and-cuda"]}
 tensorboard = "~=2.17.1"
-tf2onnx = "~= 1.16.1"
 
 # Datascience and useful extensions
 boto3 = "~=1.35.14"
 kafka-python-ng = "~=2.2.2"
-kfp = "~=2.5.0"
+kfp = ">=2.5.0"
 matplotlib = "~=3.9.2"
 numpy = "~=1.26.4"
 pandas = "~=2.2.2"
@@ -23,7 +25,7 @@ scikit-learn = "~=1.5.1"
 scipy = "~=1.14.1"
 skl2onnx = "~=1.17.0"
 onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
-codeflare-sdk = "~=0.24.0"
+codeflare-sdk = "~=0.28.0"
 
 # DB connectors
 pymongo = "~=4.8.0"
