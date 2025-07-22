@@ -7,6 +7,7 @@ import socket as pysocket
 import sys
 import tarfile
 import time
+from os import PathLike
 from typing import TYPE_CHECKING
 
 import podman
@@ -45,7 +46,9 @@ class NotebookContainer:
         return container.attrs["State"]["ExitCode"]
 
 
-def container_cp(container: Container, src: str, dst: str, user: int | None = None, group: int | None = None) -> None:
+def container_cp(
+    container: Container, src: str | PathLike, dst: str, user: int | None = None, group: int | None = None
+) -> None:
     """
     Copies a directory into a container
     From https://stackoverflow.com/questions/46390309/how-to-copy-a-file-from-host-to-container-using-docker-py-docker-sdk
