@@ -33,7 +33,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-workbench-jupyter-tensorflow-cuda-py311-ubi9:2025a-v1.34
+    value: quay.io/opendatahub/odh-workbench-jupyter-tensorflow-cuda-py311-ubi9:{{revision}}
   - name: dockerfile
     value: jupyter/tensorflow/ubi9-python-3.11/Dockerfile.cuda
   - name: path-context
@@ -41,6 +41,7 @@ spec:
   - name: additional-tags
     value:
     - '{{target_branch}}-{{revision}}'
+    - 2025a-v1.34
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
