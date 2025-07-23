@@ -23,6 +23,10 @@ COPY ${SOURCE_CODE}/Pipfile.lock ./
 # OS Packages needs to be installed as root
 USER root
 
+# upgrade first to avoid fixable vulnerabilities
+RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
+    && dnf clean all -y
+
 # Install usefull OS packages
 RUN dnf install -y mesa-libGL && dnf clean all && rm -rf /var/cache/yum
 
