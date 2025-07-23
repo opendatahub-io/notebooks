@@ -21,7 +21,7 @@ COPY ${SOURCE_CODE}/Pipfile.lock ./
 COPY ${SOURCE_CODE}/utils ./utils/
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
+    micropipenv install --dev && \
     rm -f ./Pipfile.lock && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
