@@ -5,6 +5,10 @@ enable_free_tier: true
 reviews:
   sequence_diagrams: false
   poem: false
-  include_branches:
-    - main
-    - 2024b
+reviews:
+  sequence_diagrams: false
+  poem: false
+  auto_review:
+    base_branches:
+      - main
+      - 2024b
