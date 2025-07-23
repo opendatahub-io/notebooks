@@ -26,6 +26,8 @@ ARM64_COMPATIBLE = {
     "codeserver-ubi9-python-3.12",
     "cuda-jupyter-minimal-ubi9-python-3.11",
     "cuda-jupyter-minimal-ubi9-python-3.12",
+    "cuda-jupyter-tensorflow-ubi9-python-3.12",
+    "runtime-cuda-tensorflow-ubi9-python-3.12",
 }
 
 S390X_COMPATIBLE = {

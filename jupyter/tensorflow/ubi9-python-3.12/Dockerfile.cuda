@@ -189,6 +189,11 @@ RUN ACCEPT_EULA=Y dnf install -y mssql-tools18 unixODBC-devel && dnf clean all &
 
 ENV PATH="$PATH:/opt/mssql-tools18/bin"
 
+# hdf5 is needed for h5py
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+    dnf install -y hdf5-devel && \
+    dnf clean all
+
 # Other apps and tools installed as default user
 USER 1001
 
