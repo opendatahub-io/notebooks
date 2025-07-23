@@ -17,7 +17,7 @@ COPY ${SOURCE_CODE}/utils ./utils/
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY ${SOURCE_CODE}/Pipfile.lock ./
 
-RUN echo "Installing softwares and packages" && micropipenv install && rm -f ./Pipfile.lock
+RUN echo "Installing softwares and packages" && micropipenv install --dev && rm -f ./Pipfile.lock
 
 # Temporary:Workaround for fixing the kfp-kubernetes 1.0.0 for elyra pipeline execution
 # TODO: Remove this patch once the issue is fixed with kfp-kubernetes upgrade.
