@@ -419,9 +419,9 @@ BASE_DIRS := base/c9s-python-$(PYTHON_VERSION) \
 		jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/trustyai/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
 		codeserver/ubi9-python-$(PYTHON_VERSION) \
 		rstudio/rhel9-python-$(PYTHON_VERSION) \
@@ -429,9 +429,9 @@ BASE_DIRS := base/c9s-python-$(PYTHON_VERSION) \
 		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/datascience/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION) \
+		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) 
+		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION)
 
 # Default value is false, can be overiden
 # The below directories are not supported on tier-1
@@ -456,7 +456,7 @@ refresh-pipfilelock-files:
 			echo "Updating $(PYTHON_VERSION) Pipfile.lock in $$dir"
 			cd $$dir
 			if [ -f "Pipfile" ]; then
-				pipenv lock --verbose
+				pipenv lock
 			else
 				echo "No Pipfile found in $$dir, skipping."
 			fi
