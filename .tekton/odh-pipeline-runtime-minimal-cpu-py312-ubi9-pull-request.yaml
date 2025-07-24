@@ -113,6 +113,10 @@ spec:
       name: build-image-index
       type: string
     - default: []
+      description: Array of extra tags to apply to the resulting image (e.g. commit or release identifiers).
+      name: additional-tags
+      type: array
+    - default: []
       description: Array of --build-arg values ("arg=value" strings) for buildah
       name: build-args
       type: array
