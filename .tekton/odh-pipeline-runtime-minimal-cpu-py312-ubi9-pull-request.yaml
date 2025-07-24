@@ -42,10 +42,6 @@ spec:
     value: runtimes/minimal/ubi9-python-3.12/Dockerfile.cpu
   - name: path-context
     value: .
-  - name: additional-tags
-    value:
-    - '{{target_branch}}-{{revision}}'
-    - 2025a-v1.34
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
