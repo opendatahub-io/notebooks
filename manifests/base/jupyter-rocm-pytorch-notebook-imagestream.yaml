@@ -1,4 +1,3 @@
----
 apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
@@ -26,9 +25,9 @@ spec:
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
-            {"name": "JupyterLab","version": "4.2"},
-            {"name": "ROCm-PyTorch", "version": "2.6"},
-            {"name": "Tensorboard", "version": "2.16"},
+            {"name": "JupyterLab", "version": "4.2"},
+            {"name": "ROCm-PyTorch", "version": "3.2"},
+            {"name": "Tensorboard", "version": "2.17"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
             {"name": "Matplotlib", "version": "3.9"},
             {"name": "Numpy", "version": "2.1"},
@@ -38,7 +37,7 @@ spec:
             {"name": "Odh-Elyra", "version": "4.2"},
             {"name": "PyMongo", "version": "4.8"},
             {"name": "Pyodbc", "version": "5.1"},
-            {"name": "Codeflare-SDK", "version": "0.26"},
+            {"name": "Codeflare-SDK", "version": "0.28"},
             {"name": "Sklearn-onnx", "version": "1.17"},
             {"name": "Psycopg", "version": "3.2"},
             {"name": "MySQL Connector/Python", "version": "9.1"},
