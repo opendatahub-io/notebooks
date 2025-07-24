@@ -390,47 +390,61 @@ validate-rstudio-image: bin/kubectl
 
 # This recipe used mainly from the Pipfile.locks Renewal Action
 # Default Python version
+# PYTHON_VERSION ?= 3.11
+# ROOT_DIR := $(shell pwd)
+# ifeq ($(PYTHON_VERSION), 3.11)
+# 	BASE_DIRS := \
+# 	    jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
+# 		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
+# 		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
+# 		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+# 		jupyter/trustyai/ubi9-python-$(PYTHON_VERSION) \
+# 		jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+# 		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
+# 		codeserver/ubi9-python-$(PYTHON_VERSION) \
+# 		rstudio/rhel9-python-$(PYTHON_VERSION) \
+# 		rstudio/c9s-python-$(PYTHON_VERSION) \
+# 		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
+# 		runtimes/datascience/ubi9-python-$(PYTHON_VERSION) \
+# 		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
+# 		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+# 		runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION) \
+# 		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION)
+# else ifeq ($(PYTHON_VERSION), 3.12)
+# 	BASE_DIRS := \
+# 	    jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
+# 		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
+# 		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
+# 		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+# 		jupyter/trustyai/ubi9-python-$(PYTHON_VERSION) \
+# 		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
+# 		codeserver/ubi9-python-$(PYTHON_VERSION) \
+# 		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
+# 		runtimes/datascience/ubi9-python-$(PYTHON_VERSION) \
+# 		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
+# 		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
+# 		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION)
+# 		# runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION)
+# 		# jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION)
+# 		# rstudio/rhel9-python-$(PYTHON_VERSION)
+# 		# rstudio/c9s-python-$(PYTHON_VERSION)
+# else
+# 	$(error Invalid Python version $(PYTHON_VERSION))
+# endif
+
 PYTHON_VERSION ?= 3.11
 ROOT_DIR := $(shell pwd)
 ifeq ($(PYTHON_VERSION), 3.11)
 	BASE_DIRS := \
-	    jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/trustyai/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		codeserver/ubi9-python-$(PYTHON_VERSION) \
-		rstudio/rhel9-python-$(PYTHON_VERSION) \
-		rstudio/c9s-python-$(PYTHON_VERSION) \
-		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/datascience/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION)
+		jupyter/trustyai/ubi9-python-$(PYTHON_VERSION) 
+
 else ifeq ($(PYTHON_VERSION), 3.12)
 	BASE_DIRS := \
-	    jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/trustyai/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		codeserver/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/datascience/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION)
-		# runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION)
-		# jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION)
-		# rstudio/rhel9-python-$(PYTHON_VERSION)
-		# rstudio/c9s-python-$(PYTHON_VERSION)
+		jupyter/trustyai/ubi9-python-$(PYTHON_VERSION) 
 else
 	$(error Invalid Python version $(PYTHON_VERSION))
 endif
+
 
 # Default value is false, can be overiden
 # The below directories are not supported on tier-1
