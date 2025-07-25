@@ -71,7 +71,9 @@ def pull_request_pipelinerun_template(
             'namespace': 'open-data-hub-tenant',
         },
         'spec': {
-            'timeout': '4h0m0s',
+            'timeouts': {
+                'pipeline': '3h',
+            },
             'params': [
                 {
                     'name': 'git-url',
