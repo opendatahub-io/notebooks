@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import math
 import pathlib
+import re
 import textwrap
 import unittest
 from typing import Any, Literal
@@ -48,6 +49,11 @@ def pull_request_pipelinerun_template(
         dockerfile: pathlib.Path,
         build_platforms: list[Literal['linux/x86_64', 'linux/arm64', 'linux/ppc64le', 'linux/s390x']]
 ) -> dict[str, Any]:
+    """https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.19/html/pipelines_as_code/creating-pipeline-runs-pac#creating-pipeline-runs-pac"""
+
+    # Tekton uses Go's `regexp`
+    on_comment_pattern = re.compile(f'^/kfbuild (all|{component}|{dockerfile.parent})')
+
     return {
         'apiVersion': 'tekton.dev/v1',
         'kind': 'PipelineRun',
@@ -59,7 +65,7 @@ def pull_request_pipelinerun_template(
                 'build.appstudio.redhat.com/target_branch': '{{target_branch}}',
                 'pipelinesascode.tekton.dev/cancel-in-progress': 'true',
                 'pipelinesascode.tekton.dev/max-keep-runs': '3',
-                'pipelinesascode.tekton.dev/on-comment': f'^/kfbuild {dockerfile.parent}',
+                'pipelinesascode.tekton.dev/on-comment': on_comment_pattern.pattern,
                 'pipelinesascode.tekton.dev/on-cel-expression': on_cel_expression,
             },
             'labels': {
