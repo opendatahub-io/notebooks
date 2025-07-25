@@ -592,10 +592,3 @@ spec:
     optional: true
   - name: netrc
     optional: true
-taskRunTemplate:
-  serviceAccountName: build-pipeline-odh-pipeline-runtime-minimal-cpu-py312-ubi9
-workspaces:
-- name: git-auth
-  secret:
-    secretName: '{{ git_auth_secret }}'
-status: {}
