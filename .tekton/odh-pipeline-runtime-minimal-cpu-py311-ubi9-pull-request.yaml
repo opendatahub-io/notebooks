@@ -1,19 +1,20 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
-#test
 metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    build.appstudio.openshift.io/build-nudge-files: "manifests/base/params-latest.env"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
+    pipelinesascode.tekton.dev/on-comment: "^/kfbuild runtimes/minimal/ubi9-python-3.11"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
       == "main"
       && !("manifests/base/params-latest.env".pathChanged())
-      && ( "runtimes/minimal/ubi9-python-3.11/**".pathChanged() || 
-           ".tekton/odh-pipeline-runtime-minimal-cpu-py311-ubi9-push.yaml".pathChanged() )
+      && ( "runtimes/minimal/ubi9-python-3.11/**".pathChanged() ||
+           ".tekton/odh-pipeline-runtime-minimal-cpu-py311-ubi9-pull-request.yaml".pathChanged() )
+      && body.repository.full_name == "opendatahub-io/notebooks"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -28,15 +29,18 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-pipeline-runtime-minimal-cpu-py311-ubi9:{{revision}}
+    value: quay.io/opendatahub/odh-pipeline-runtime-minimal-cpu-py311-ubi9:on-pr-{{revision}}
+  - name: image-expires-after
+    value: "5d"
+  - name: build-platforms
+    value:
+      - linux/x86_64
+      - linux/arm64
+      - linux/s390x
   - name: dockerfile
     value: runtimes/minimal/ubi9-python-3.11/Dockerfile.cpu
   - name: path-context
     value: .
-  - name: additional-tags
-    value:
-    - '{{target_branch}}-{{revision}}'
-    - 2025a-v1.34
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
@@ -57,28 +61,6 @@ spec:
         - name: kind
           value: task
         resolver: bundles
-    - name: send-slack-notification
-      params:
-      - name: message
-        value: "$(tasks.rhoai-init.results.slack-message-failure-text)"
-      - name: secret-name
-        value: slack-secret
-      - name: key-name
-        value: slack-webhook
-      taskRef:
-        params:
-        - name: name
-          value: slack-webhook-notification
-        - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-slack-webhook-notification:0.1@sha256:dc17b70633363d78414b8c06dc1660d25742935f106a6116995638e1210c2730
-        - name: kind
-          value: task
-        resolver: bundles
-      when:
-      - input: $(tasks.status)
-        operator: in
-        values:
-        - "Failed"
     params:
     - description: Source Repository URL
       name: git-url
@@ -100,7 +82,7 @@ spec:
         path-context
       name: dockerfile
       type: string
-    - default: "true"
+    - default: "false"
       description: Force rebuild image
       name: rebuild
       type: string
@@ -120,14 +102,19 @@ spec:
       description: Image tag expiration time, time values could be something like
         1h, 2d, 3w for hours, days, and weeks, respectively.
       name: image-expires-after
+      type: string
     - default: "false"
       description: Build a source image.
       name: build-source-image
       type: string
-    - default: "false"
+    - default: "true"
       description: Add built image into an OCI image index
       name: build-image-index
       type: string
+    - default: []
+      description: Array of extra tags to apply to the resulting image (e.g. commit or release identifiers).
+      name: additional-tags
+      type: array
     - default: []
       description: Array of --build-arg values ("arg=value" strings) for buildah
       name: build-args
@@ -141,6 +128,12 @@ spec:
         VMs
       name: privileged-nested
       type: string
+    - default:
+      - linux/x86_64
+      description: List of platforms to build the container images on. The available
+        set of values is determined by the configuration of the multi-platform-controller.
+      name: build-platforms
+      type: array
     results:
     - description: ""
       name: IMAGE_URL
@@ -155,42 +148,6 @@ spec:
       name: CHAINS-GIT_COMMIT
       value: $(tasks.clone-repository.results.commit)
     tasks:
-    - name: rhoai-init
-      params:
-      - name: pipelinerun-name
-        value: "$(context.pipelineRun.name)"
-      taskSpec:
-        results:
-        - description: Notification text to be posted to slack
-          name: slack-message-failure-text
-        steps:
-        - image: quay.io/rhoai-konflux/alpine:latest
-          name: rhoai-init
-          env:
-          - name: slack_message
-            valueFrom:
-              secretKeyRef:
-                name: slack-secret
-                key: slack-component-failure-notification
-          script: |
-            pipelinerun_name=$(params.pipelinerun-name)
-            echo "pipelinerun-name = $pipelinerun_name"
-            application_name=opendatahub-release
-            echo "application-name = $application_name"
-
-            component_name=${pipelinerun_name/-on-*/}
-            echo "component-name = $component_name"
-
-            KONFLUX_SERVER="https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com"
-            build_url="${KONFLUX_SERVER}/ns/open-data-hub-tenant/applications/${application_name}/pipelineruns/${pipelinerun_name}/logs"
-
-            build_time="$(date +%Y-%m-%dT%H:%M:%S)"
-
-            slack_message=${slack_message/__BUILD__URL__/$build_url}
-            slack_message=${slack_message/__PIPELINERUN__NAME__/$pipelinerun_name}
-            slack_message=${slack_message/__BUILD__TIME__/$build_time}
-
-            echo -en "${slack_message}" > "$(results.slack-message-failure-text.path)"
     - name: init
       params:
       - name: image-url
@@ -208,8 +165,6 @@ spec:
         - name: kind
           value: task
         resolver: bundles
-      runAfter:
-      - rhoai-init
     - name: clone-repository
       params:
       - name: url
@@ -265,7 +220,12 @@ spec:
         workspace: git-auth
       - name: netrc
         workspace: netrc
-    - name: build-container
+    - matrix:
+        params:
+        - name: PLATFORM
+          value:
+          - $(params.build-platforms)
+      name: build-images
       params:
       - name: IMAGE
         value: $(params.output-image)
@@ -292,14 +252,16 @@ spec:
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      - name: IMAGE_APPEND_PLATFORM
+        value: "true"
       runAfter:
       - prefetch-dependencies
       taskRef:
         params:
         - name: name
-          value: buildah-oci-ta
+          value: buildah-remote-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-buildah-oci-ta:0.4@sha256:6ac9d16f598c14a4b56e662eccda0a438e94aa8f87dd27a3ea0ff1abc6e00c66
+          value: quay.io/konflux-ci/tekton-catalog/task-buildah-remote-oci-ta:0.4@sha256:9e866d4d0489a6ab84ae263db416c9f86d2d6117ef4444f495a0e97388ae3ac0
         - name: kind
           value: task
         resolver: bundles
@@ -320,9 +282,9 @@ spec:
         value: $(params.build-image-index)
       - name: IMAGES
         value:
-        - $(tasks.build-container.results.IMAGE_URL)@$(tasks.build-container.results.IMAGE_DIGEST)
+        - $(tasks.build-images.results.IMAGE_REF[*])
       runAfter:
-      - build-container
+      - build-images
       taskRef:
         params:
         - name: name
@@ -340,7 +302,9 @@ spec:
     - name: build-source-image
       params:
       - name: BINARY_IMAGE
-        value: $(params.output-image)
+        value: $(tasks.build-image-index.results.IMAGE_URL)
+      - name: BINARY_IMAGE_DIGEST
+        value: $(tasks.build-image-index.results.IMAGE_DIGEST)
       - name: SOURCE_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
