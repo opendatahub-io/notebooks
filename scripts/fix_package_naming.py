@@ -21,7 +21,8 @@ def get_canonical_name(name):
     try:
         resp = requests.get(url, timeout=5)
         if resp.ok:
-            return resp.json()['info']['name']
+            pypi_name = resp.json()['info']['name']
+            return re.sub(r"[-_.]+", "-", name).lower() 
     except Exception:
         pass
     return name 
