@@ -4,6 +4,7 @@ import io
 import math
 import pathlib
 import re
+import sys
 import textwrap
 import unittest
 from typing import Any, Literal
@@ -52,7 +53,7 @@ def pull_request_pipelinerun_template(
     """https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.19/html/pipelines_as_code/creating-pipeline-runs-pac#creating-pipeline-runs-pac"""
 
     # Tekton uses Go's `regexp`
-    on_comment_pattern = re.compile(f"^/kfbuild (all|{component}|{dockerfile.parent})")
+    on_comment_pattern = re.compile(f"^/kfbuild\s+(all|{component}|{dockerfile.parent})")
 
     return {
         "apiVersion": "tekton.dev/v1",
@@ -188,7 +189,7 @@ def get_exact_formatted_value(lines: list[str], key: list[int], val: list[int]):
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
 
 
 class TestRaw(unittest.TestCase):
