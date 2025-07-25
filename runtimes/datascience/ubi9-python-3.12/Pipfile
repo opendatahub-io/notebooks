@@ -17,7 +17,12 @@ scikit-learn = "~=1.6.1"
 scipy = "~=1.15.2"
 skl2onnx = "~=1.18.0"
 onnxconverter-common = "~=1.13.0" # Required for skl2onnx, as upgraded version is not compatible with protobuf
-codeflare-sdk = "~=0.29.0"
+
+# Exclude these packages on s390x architecture due to compatibility
+codeflare-sdk = {version = "~=0.29.0", markers = "platform_machine != 's390x'"}
+py-spy = {version = "~=0.4.0", markers = "platform_machine != 's390x'"}
+ray = {version = "~=2.46.0", markers = "platform_machine != 's390x'", extras = ["data", "default"]}
+pyarrow = {version = "~=21.0.0", markers = "platform_machine != 's390x'"}
 
 # DB connectors
 pymongo = "~=4.11.2"
