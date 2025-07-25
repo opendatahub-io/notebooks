@@ -20,7 +20,7 @@ metadata:
     appstudio.openshift.io/application: opendatahub-release
     appstudio.openshift.io/component: odh-pipeline-runtime-minimal-cpu-py311-ubi9
     pipelines.appstudio.openshift.io/type: build
-  name: odh-pipeline-runtime-minimal-cpu-py311-ubi9-on-push
+  name: odh-pipeline-runtime-minimal-cpu-py311-ubi9-on-pull-request
   namespace: open-data-hub-tenant
 spec:
   params:
