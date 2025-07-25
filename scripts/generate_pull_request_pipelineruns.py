@@ -53,7 +53,7 @@ def pull_request_pipelinerun_template(
     """https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.19/html/pipelines_as_code/creating-pipeline-runs-pac#creating-pipeline-runs-pac"""
 
     # Tekton uses Go's `regexp`
-    on_comment_pattern = re.compile(f"^/kfbuild\s+(all|{component}|{dockerfile.parent})")
+    on_comment_pattern = re.compile(rf"^/kfbuild\s+(all|{re.escape(component)}|{re.escape(str(dockerfile.parent))})")
 
     return {
         "apiVersion": "tekton.dev/v1",
