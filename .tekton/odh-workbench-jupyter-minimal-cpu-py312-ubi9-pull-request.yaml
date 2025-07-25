@@ -27,7 +27,8 @@ metadata:
   name: odh-workbench-jupyter-minimal-cpu-py312-ubi9-on-pull-request
   namespace: open-data-hub-tenant
 spec:
-  timeout: 4h0m0s
+  timeouts:
+    pipeline: 3h
   params:
   - name: git-url
     value: '{{source_url}}'

@@ -26,7 +26,8 @@ metadata:
   name: odh-workbench-rstudio-minimal-cuda-py311-c9s-on-pull-request
   namespace: open-data-hub-tenant
 spec:
-  timeout: 4h0m0s
+  timeouts:
+    pipeline: 3h
   params:
   - name: git-url
     value: '{{source_url}}'
