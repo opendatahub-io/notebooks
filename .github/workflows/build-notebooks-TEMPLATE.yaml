@@ -106,10 +106,12 @@ jobs:
         run: sudo apt-get -qq remove podman crun
 
       - uses: actions/cache@v4
+        # https://docs.github.com/en/actions/reference/variables-reference#default-environment-variables
+        # https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables
         id: cached-linuxbrew
         with:
           path: /home/linuxbrew/.linuxbrew
-          key: linuxbrew
+          key: linuxbrew-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install podman
         if: steps.cached-linuxbrew.outputs.cache-hit != 'true'
