@@ -13,7 +13,7 @@ metadata:
       == "main"
       && !("manifests/base/params-latest.env".pathChanged())
       && ( "runtimes/minimal/ubi9-python-3.12/**".pathChanged() ||
-           ".tekton/odh-pipeline-runtime-minimal-cpu-py312-ubi9-push.yaml".pathChanged() )
+           ".tekton/odh-pipeline-runtime-minimal-cpu-py312-ubi9-pull-request.yaml".pathChanged() )
       && body.repository.full_name == "opendatahub-io/notebooks"
   creationTimestamp: null
   labels:
