@@ -44,88 +44,73 @@ def main() -> int:
 
 
 def pull_request_pipelinerun_template(
-        on_cel_expression: str,
-        component: str,
-        dockerfile: pathlib.Path,
-        build_platforms: list[Literal['linux/x86_64', 'linux/arm64', 'linux/ppc64le', 'linux/s390x']]
+    on_cel_expression: str,
+    component: str,
+    dockerfile: pathlib.Path,
+    build_platforms: list[Literal["linux/x86_64", "linux/arm64", "linux/ppc64le", "linux/s390x"]],
 ) -> dict[str, Any]:
     """https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.19/html/pipelines_as_code/creating-pipeline-runs-pac#creating-pipeline-runs-pac"""
 
     # Tekton uses Go's `regexp`
-    on_comment_pattern = re.compile(f'^/kfbuild (all|{component}|{dockerfile.parent})')
+    on_comment_pattern = re.compile(f"^/kfbuild (all|{component}|{dockerfile.parent})")
 
     return {
-        'apiVersion': 'tekton.dev/v1',
-        'kind': 'PipelineRun',
-        'metadata': {
-            'annotations': {
-                'build.appstudio.openshift.io/repo': 'https://github.com/opendatahub-io/notebooks?rev={{revision}}',
-                'build.appstudio.redhat.com/commit_sha': '{{revision}}',
-                'build.appstudio.redhat.com/pull_request_number': '{{pull_request_number}}',
-                'build.appstudio.redhat.com/target_branch': '{{target_branch}}',
-                'pipelinesascode.tekton.dev/cancel-in-progress': 'true',
-                'pipelinesascode.tekton.dev/max-keep-runs': '3',
-                'pipelinesascode.tekton.dev/on-comment': on_comment_pattern.pattern,
-                'pipelinesascode.tekton.dev/on-cel-expression': on_cel_expression,
+        "apiVersion": "tekton.dev/v1",
+        "kind": "PipelineRun",
+        "metadata": {
+            "annotations": {
+                "build.appstudio.openshift.io/repo": "https://github.com/opendatahub-io/notebooks?rev={{revision}}",
+                "build.appstudio.redhat.com/commit_sha": "{{revision}}",
+                "build.appstudio.redhat.com/pull_request_number": "{{pull_request_number}}",
+                "build.appstudio.redhat.com/target_branch": "{{target_branch}}",
+                "pipelinesascode.tekton.dev/cancel-in-progress": "true",
+                "pipelinesascode.tekton.dev/max-keep-runs": "3",
+                "pipelinesascode.tekton.dev/on-comment": on_comment_pattern.pattern,
+                "pipelinesascode.tekton.dev/on-cel-expression": on_cel_expression,
             },
-            'labels': {
-                'appstudio.openshift.io/application': 'opendatahub-release',
-                'appstudio.openshift.io/component': component,
-                'pipelines.appstudio.openshift.io/type': 'build',
+            "labels": {
+                "appstudio.openshift.io/application": "opendatahub-release",
+                "appstudio.openshift.io/component": component,
+                "pipelines.appstudio.openshift.io/type": "build",
             },
-            'name': f'{component}-on-pull-request',
-            'namespace': 'open-data-hub-tenant',
+            "name": f"{component}-on-pull-request",
+            "namespace": "open-data-hub-tenant",
         },
-        'spec': {
-            'timeouts': {
-                'pipeline': '3h',
+        "spec": {
+            "timeouts": {
+                "pipeline": "3h",
             },
-            'params': [
+            "params": [
+                {"name": "git-url", "value": "{{source_url}}"},
+                {"name": "revision", "value": "{{revision}}"},
+                {"name": "output-image", "value": f"quay.io/opendatahub/{component}:on-pr-{{{{revision}}}}"},
+                {"name": "image-expires-after", "value": "5d"},
                 {
-                    'name': 'git-url',
-                    'value': '{{source_url}}'
+                    "name": "build-platforms",
+                    "value": build_platforms,
                 },
+                {"name": "dockerfile", "value": str(dockerfile)},
                 {
-                    'name': 'revision',
-                    'value': '{{revision}}'
-                },
-                {
-                    'name': 'output-image',
-                    'value': f'quay.io/opendatahub/{component}:on-pr-{{{{revision}}}}'
-                },
-                {
-                    'name': 'image-expires-after',
-                    'value': '5d'
-                },
-                {
-                    'name': 'build-platforms',
-                    'value': build_platforms,
-                },
-                {
-                    'name': 'dockerfile',
-                    'value': str(dockerfile)
-                },
-                {
-                    'name': 'path-context',
-                    'value': '.',
+                    "name": "path-context",
+                    "value": ".",
                 },
             ],
-            'pipelineRef': {
-                'name': 'multiarch-pull-request-pipeline',
+            "pipelineRef": {
+                "name": "multiarch-pull-request-pipeline",
             },
-            'taskRunTemplate': {
-                'serviceAccountName': f'build-pipeline-{component}',
+            "taskRunTemplate": {
+                "serviceAccountName": f"build-pipeline-{component}",
             },
-            'workspaces': [
+            "workspaces": [
                 {
-                    'name': 'git-auth',
-                    'secret': {
-                        'secretName': '{{ git_auth_secret }}',
+                    "name": "git-auth",
+                    "secret": {
+                        "secretName": "{{ git_auth_secret }}",
                     },
                 },
             ],
         },
-        'status': {},
+        "status": {},
     }
 
 
@@ -137,7 +122,7 @@ def transform_build_pipeline_to_pr_pipeline(push_pipeline_path: pathlib.Path):
     yaml.width = math.inf
     yaml.explicit_start = True
 
-    with open(push_pipeline_path, 'r') as f:
+    with open(push_pipeline_path, "r") as f:
         push_pipeline = yaml.load(f)
         f.seek(0)
         push_pipeline_lines = f.readlines()
@@ -145,29 +130,28 @@ def transform_build_pipeline_to_pr_pipeline(push_pipeline_path: pathlib.Path):
     print(f"  - Processing '{push_pipeline['metadata']['name']}'")
 
     # Modify on-cel-expression
-    annotations = push_pipeline['metadata']['annotations']
-    cel_key = 'pipelinesascode.tekton.dev/on-cel-expression'
-    original_on_cel_expression = get_exact_formatted_value(push_pipeline_lines, annotations.lc.key(cel_key),
-                                                           annotations.lc.value(cel_key))
+    annotations = push_pipeline["metadata"]["annotations"]
+    cel_key = "pipelinesascode.tekton.dev/on-cel-expression"
+    original_on_cel_expression = get_exact_formatted_value(
+        push_pipeline_lines, annotations.lc.key(cel_key), annotations.lc.value(cel_key)
+    )
 
-    pr_on_cel_expression = (original_on_cel_expression
-                            .replace('"push"', '"pull_request"')
-                            .replace('-push.yaml"', '-pull-request.yaml"')
-                            + '&& body.repository.full_name == "opendatahub-io/notebooks"')
+    pr_on_cel_expression = (
+        original_on_cel_expression.replace('"push"', '"pull_request"').replace('-push.yaml"', '-pull-request.yaml"')
+        + '&& body.repository.full_name == "opendatahub-io/notebooks"'
+    )
 
-    component = push_pipeline['metadata']['labels']['appstudio.openshift.io/component']
+    component = push_pipeline["metadata"]["labels"]["appstudio.openshift.io/component"]
 
-    build_platforms = ['linux/x86_64']
-    if component in [
-        'odh-pipeline-runtime-minimal-cpu-py311-ubi9',
-        'odh-pipeline-runtime-minimal-cpu-py312-ubi9'
-    ]:
-        build_platforms.extend(['linux/arm64', 'linux/s390x'])
+    build_platforms = ["linux/x86_64"]
+    if component in ["odh-pipeline-runtime-minimal-cpu-py311-ubi9", "odh-pipeline-runtime-minimal-cpu-py312-ubi9"]:
+        build_platforms.extend(["linux/arm64", "linux/s390x"])
     pr_pipeline = pull_request_pipelinerun_template(
-        on_cel_expression=LiteralScalarString(pr_on_cel_expression + '\n'),
+        on_cel_expression=LiteralScalarString(pr_on_cel_expression + "\n"),
         component=component,
-        dockerfile=pathlib.Path(next(param for param in push_pipeline['spec']['params']
-                                     if param['name'] == 'dockerfile')['value']),
+        dockerfile=pathlib.Path(
+            next(param for param in push_pipeline["spec"]["params"] if param["name"] == "dockerfile")["value"]
+        ),
         build_platforms=build_platforms,
     )
 
@@ -175,7 +159,7 @@ def transform_build_pipeline_to_pr_pipeline(push_pipeline_path: pathlib.Path):
     pr_pipeline_path = pathlib.Path(str(push_pipeline_path).replace(PUSH_SUFFIX, PR_SUFFIX))
 
     try:
-        with open(pr_pipeline_path, 'w') as f:
+        with open(pr_pipeline_path, "w") as f:
             print("# yamllint disable-file", file=f)
             print(f"# This pipeline is autogenerated by {pathlib.Path(__file__).relative_to(ROOT_DIR)}", file=f)
             yaml.dump(pr_pipeline, f)
@@ -190,14 +174,14 @@ def get_exact_formatted_value(lines: list[str], key: list[int], val: list[int]):
     multi-line formatting as it appears in the source file.
     """
     # Start with the first line of the value
-    value_block_lines = [lines[val[0]][val[1]:]]
+    value_block_lines = [lines[val[0]][val[1] :]]
 
     # Add any additional lines that are part of the multi-line value
     for line_index in range(val[0] + 1, len(lines)):
         indent = len(lines[line_index]) - len(lines[line_index].lstrip())
         if indent <= key[1]:
             break
-        value_block_lines.append(lines[line_index][key[1]:])
+        value_block_lines.append(lines[line_index][key[1] :])
 
     # Join the lines back together, the original input already has newlines
     return value_block_lines[0] + textwrap.dedent("".join(value_block_lines[1:]))
@@ -224,15 +208,18 @@ class TestRaw(unittest.TestCase):
 
         data = YAML().load(file)
         lines = file.splitlines(keepends=True)
-        value = get_exact_formatted_value(lines, data.lc.key('on-cel-expression'), data.lc.value('on-cel-expression'))
+        value = get_exact_formatted_value(lines, data.lc.key("on-cel-expression"), data.lc.value("on-cel-expression"))
 
         out = io.StringIO()
-        YAML().dump({'on-cel-expression': LiteralScalarString(value)}, out)
-        self.assertEqual(textwrap.dedent(
-            """
+        YAML().dump({"on-cel-expression": LiteralScalarString(value)}, out)
+        self.assertEqual(
+            textwrap.dedent(
+                """
             on-cel-expression: |
               lek
               && mek
               || ook
             """
-        ).lstrip(), out.getvalue())
+            ).lstrip(),
+            out.getvalue(),
+        )
