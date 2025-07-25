@@ -191,7 +191,7 @@ function _get_source_of_truth_filepath()
     case "${python_flavor}" in
         python-3.12)
             imagestream_directory="${manifest_directory}/overlays/additional"
-            file_suffix='-imagestream.yaml'
+            file_suffix='imagestream.yaml'
 
             local imagestream_accelerator_flavor="${accelerator_flavor:-cpu}"
             filename="jupyter-${notebook_id}-${imagestream_accelerator_flavor}-py312-${os_flavor}-${file_suffix}"
