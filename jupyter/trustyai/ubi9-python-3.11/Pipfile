@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [[source]]
-url = "https://download.pytorch.org/whl/cu126"
+url = "https://download.pytorch.org/whl/cpu"
 verify_ssl = true
 name = "pytorch"
 
@@ -12,7 +12,7 @@ name = "pytorch"
 
 [packages]
 # PyTorch packages
-torch = {version = "==2.6.0+cu126", index = "pytorch"}
+torch = {version = "==2.6.0", index = "pytorch"}
 # TrustyAI packages
 # More information available at:
 #   - https://pypi.org/project/trustyai/
