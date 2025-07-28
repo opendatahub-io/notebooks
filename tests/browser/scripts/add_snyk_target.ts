@@ -74,5 +74,11 @@ async function addPipfile(page: Page, target: string, branch: string) {
 }
 
 (async () => {
-    await main();
+    try {
+        await main();
+        console.log('Script completed successfully');
+    } catch (error) {
+        console.error('Script failed:', error);
+        process.exit(1);
+    }
 })();
