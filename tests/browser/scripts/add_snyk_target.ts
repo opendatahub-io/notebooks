@@ -30,8 +30,15 @@ async function main() {
     await browser.close();
 }
 
-async function findVisiblePage(context: BrowserContext) : Promise<Page> {
-    return context.pages().filter(async page => await page.evaluate(() => document.visibilityState) === 'visible')[0];
+async function findVisiblePage(context: BrowserContext): Promise<Page> {
+    // NOTE: rabbit says not to use .filter() with async predicates
+    for (const page of context.pages()) {
+        const isVisible = await page.evaluate(() => document.visibilityState === 'visible');
+        if (isVisible) {
+            return page;
+        }
+    }
+    throw new Error('No visible page found');
 }
 
 async function addPipfile(page: Page, target: string, branch: string) {
