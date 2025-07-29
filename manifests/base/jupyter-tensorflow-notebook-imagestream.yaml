@@ -6,9 +6,9 @@ metadata:
     opendatahub.io/notebook-image: "true"
   annotations:
     opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/tensorflow"
-    opendatahub.io/notebook-image-name: "TensorFlow"
+    opendatahub.io/notebook-image-name: "Jupyter | TensorFlow | CUDA | Python 3.11"
     opendatahub.io/notebook-image-desc: "Jupyter notebook image with TensorFlow libraries and dependencies to start experimenting with advanced AI/ML notebooks."
-    opendatahub.io/notebook-image-order: "5"
+    opendatahub.io/notebook-image-order: "13"
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
   name: jupyter-tensorflow-notebook
 spec:
@@ -42,10 +42,10 @@ spec:
             {"name": "Odh-Elyra", "version": "4.2"},
             {"name": "PyMongo", "version": "4.11"},
             {"name": "Pyodbc", "version": "5.2"},
-            {"name": "Codeflare-SDK", "version": "0.28"},
+            {"name": "Codeflare-SDK", "version": "0.30"},
             {"name": "Sklearn-onnx", "version": "1.18"},
             {"name": "Psycopg", "version": "3.2"},
-            {"name": "MySQL Connector/Python", "version": "9.2"}
+            {"name": "MySQL Connector/Python", "version": "9.3"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'

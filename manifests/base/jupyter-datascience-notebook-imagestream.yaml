@@ -5,10 +5,10 @@ metadata:
   labels:
     opendatahub.io/notebook-image: "true"
   annotations:
-    opendatahub.io/notebook-image-url: "https://github.com//opendatahub-io/notebooks/tree/main/jupyter/datascience"
-    opendatahub.io/notebook-image-name: "Jupyter Data Science"
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/jupyter/datascience"
+    opendatahub.io/notebook-image-name: "Jupyter | Data Science | CPU | Python 3.11"
     opendatahub.io/notebook-image-desc: "Jupyter notebook image with a set of data science libraries that advanced AI/ML notebooks will use as a base image to provide a standard for libraries avialable in all notebooks"
-    opendatahub.io/notebook-image-order: "2"
+    opendatahub.io/notebook-image-order: "7"
   name: jupyter-datascience-notebook
 spec:
   lookupPolicy:
@@ -36,10 +36,10 @@ spec:
             {"name": "Odh-Elyra", "version": "4.2"},
             {"name": "PyMongo", "version": "4.11"},
             {"name": "Pyodbc", "version": "5.2"},
-            {"name": "Codeflare-SDK", "version": "0.28"},
+            {"name": "Codeflare-SDK", "version": "0.30"},
             {"name": "Sklearn-onnx", "version": "1.18"},
             {"name": "Psycopg", "version": "3.2"},
-            {"name": "MySQL Connector/Python", "version": "9.2"},
+            {"name": "MySQL Connector/Python", "version": "9.3"},
             {"name": "Kubeflow-Training", "version": "1.9"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
