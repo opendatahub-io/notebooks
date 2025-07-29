@@ -17,6 +17,12 @@ if [[ -z "${ARCH:-}" ]]; then
     exit 1
 fi
 
+# Skip PDF export installation for s390x architecture
+if [[ "$(uname -m)" == "s390x" ]]; then
+    echo "PDF export functionality is not supported on s390x architecture. Skipping installation."
+    exit 0
+fi
+
 # tex live installation
 echo "Installing TexLive to allow PDf export from Notebooks"
 curl -fL https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz -o install-tl-unx.tar.gz
