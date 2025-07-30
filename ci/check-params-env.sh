@@ -155,6 +155,12 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=1213
             ;;
+        odh-workbench-jupyter-minimal-cpu-py312-ubi9-n)
+            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=1213
+            ;;
         odh-workbench-jupyter-minimal-cuda-py311-ubi9-n)
             expected_name="odh-notebook-jupyter-cuda-minimal-ubi9-python-3.11"
             expected_commitref="main"
@@ -274,6 +280,12 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_commitref="release-1.2"
             expected_build_name="jupyter-datascience-ubi8-python-3.8-amd64"
             expected_img_size=865
+            ;;
+        odh-workbench-jupyter-datascience-cpu-py312-ubi9-n)
+            expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=1658
             ;;
         odh-workbench-jupyter-datascience-cpu-py312-ubi9-n)
             expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.12"
