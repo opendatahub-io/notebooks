@@ -12,7 +12,7 @@ USER 0
 RUN ARCH=$(uname -m) && \
     echo "Detected architecture: $ARCH" && \
     PACKAGES="mesa-libGL skopeo" && \
-    if [ "$ARCH" = "s390x" ]; then \
+    if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then \
         PACKAGES="$PACKAGES gcc g++ make openssl-devel autoconf automake libtool cmake"; \
     fi && \
     dnf install -y $PACKAGES && \
