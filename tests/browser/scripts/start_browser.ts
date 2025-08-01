@@ -29,9 +29,8 @@ async function main() {
     // The following command is supposed to disable it again, but it did nothing for me.
     // await session.send('Emulation.setFocusEmulationEnabled', {enabled: false});
 
-    // NOTE: connection method does not really matter, either of them works
-    const browser = await chromium.connect(browserServer.wsEndpoint());
-    // const browser = await chromium.connectOverCDP('http://localhost:9222');
+    // NOTE: connection method does matter, wsEndpoint connection does not see the page opened over CDP
+    const browser = await chromium.connectOverCDP('http://localhost:9222');
 
     const session = await browser.newBrowserCDPSession();
     // https://stackoverflow.com/questions/68000609/target-domain-events-not-firing
@@ -48,7 +47,7 @@ async function main() {
 
     const page = await getFirstPage(browser);
     await page.bringToFront();
-    console.log(`\nSuccessfully captured page: ${page}`);
+    console.log(`\nSuccessfully captured page: ${page.constructor.name}`);
 }
 
 /**
