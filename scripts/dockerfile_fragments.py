@@ -61,7 +61,7 @@ def main():
         lines.extend(new_contents)
         lines.append(f"\n{end_marker}\n")
     else:
-        lines[begin : end + 1] = [f"{begin_marker}\n"] + new_contents + [f"\n{end_marker}\n"]
+        lines[begin : end + 1] = [f"{begin_marker}\n", *new_contents, f"\n{end_marker}\n"]
 
     if lines == original_lines:
         return
