@@ -38,7 +38,7 @@ ARG AMDGPU_VERSION=6.2.4
 # Install the ROCm rpms
 # ref: https://github.com/ROCm/ROCm-docker/blob/master/dev/Dockerfile-centos-7-complete
 # Note: Based on 6.2 above new package mivisionx is a pre-requistes, which bring in more dependent packages
-# Only the ROCm meta-packages are installed 
+# Only the ROCm meta-packages are installed
 # ref: https://rocm.docs.amd.com/projects/install-on-linux/en/develop/reference/package-manager-integration.html#packages-in-rocm-programming-models
 RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
