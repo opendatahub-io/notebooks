@@ -5,7 +5,7 @@ FROM quay.io/sclorg/python-311-c9s:c9s AS base
 
 WORKDIR /opt/app-root/bin
 
-# Install micropipenv and uv to deploy packages from Pipfile.lock
+# Install micropipenv and uv to deploy packages from requirements.txt
 RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
 
 # OS Packages needs to be installed as root
