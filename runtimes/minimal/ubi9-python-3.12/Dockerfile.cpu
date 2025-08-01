@@ -50,7 +50,7 @@ LABEL name="odh-notebook-runtime-minimal-ubi9-python-3.12" \
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages from Pipfile.lock
+# Install Python packages from requirements.txt
 COPY ${MINIMAL_SOURCE_CODE}/requirements.txt ./
 # Copy Elyra dependencies for air-gapped enviroment
 COPY ${MINIMAL_SOURCE_CODE}/utils ./utils/

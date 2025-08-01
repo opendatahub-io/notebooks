@@ -43,7 +43,7 @@ LABEL name="odh-notebook-runtime-datascience-ubi9-python-3.11" \
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages from Pipfile.lock
+# Install Python packages from requirements.txt
 COPY ${DATASCIENCE_SOURCE_CODE}/requirements.txt ./
 # Copy Elyra dependencies for air-gapped enviroment
 COPY ${DATASCIENCE_SOURCE_CODE}/utils ./utils/

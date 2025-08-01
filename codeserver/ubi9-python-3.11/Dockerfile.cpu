@@ -134,7 +134,7 @@ ENV PYTHONPATH=/opt/app-root/bin/python3
 
 USER 1001
 
-# Install useful packages from Pipfile.lock
+# Install useful packages from requirements.txt
 COPY ${CODESERVER_SOURCE_CODE}/requirements.txt ./
 
 # Install packages and cleanup

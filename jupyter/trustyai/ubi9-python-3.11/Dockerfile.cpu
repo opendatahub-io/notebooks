@@ -123,7 +123,7 @@ RUN INSTALL_PKGS="java-17-openjdk" && \
 
 USER 1001
 
-# Install Python packages and Jupyterlab extensions from Pipfile.lock
+# Install Python packages and Jupyterlab extensions from requirements.txt
 COPY ${TRUSTYAI_SOURCE_CODE}/requirements.txt ./
 
 RUN echo "Installing softwares and packages" && \

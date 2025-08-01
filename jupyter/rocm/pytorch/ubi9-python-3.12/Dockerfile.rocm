@@ -151,7 +151,7 @@ LABEL name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.12" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/rocm/pytorch/ubi9-python-3.12" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:rocm-jupyter-pytorch-ubi9-python-3.12"
 
-COPY ${PYTORCH_SOURCE_CODE}/Pipfile.lock ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
+COPY ${PYTORCH_SOURCE_CODE}/requirements.txt ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
 
 RUN echo "Installing softwares and packages" && \
     uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt && \

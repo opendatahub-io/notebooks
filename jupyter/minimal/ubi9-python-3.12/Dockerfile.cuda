@@ -156,9 +156,9 @@ ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 
 USER 1001
 
-COPY ${MINIMAL_SOURCE_CODE}/Pipfile.lock ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
+COPY ${MINIMAL_SOURCE_CODE}/requirements.txt ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
-# Install Python dependencies from Pipfile.lock file
+# Install Python dependencies from requirements.txt file
 RUN echo "Installing softwares and packages" && \
     uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt && \
     # Disable announcement plugin of jupyterlab \

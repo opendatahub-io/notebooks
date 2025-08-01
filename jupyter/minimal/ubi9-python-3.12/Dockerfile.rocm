@@ -88,7 +88,7 @@ ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 
 USER 1001
 
-COPY ${MINIMAL_SOURCE_CODE}/Pipfile.lock ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
+COPY ${MINIMAL_SOURCE_CODE}/requirements.txt ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 # Install Python dependencies from Pipfile.lock file
 RUN echo "Installing softwares and packages" && \
