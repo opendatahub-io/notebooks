@@ -24,8 +24,7 @@ def main():
         )
 
 
--def blockinfile(filename: str | os.PathLike, contents: str, prefix: str = None, *, comment: str = "#"):
-+def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None = None, *, comment: str = "#"):
+def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None = None, *, comment: str = "#"):
     """This is similar to the functions in
     * https://homely.readthedocs.io/en/latest/ref/files.html#homely-files-blockinfile-1
     * ansible.modules.lineinfile
