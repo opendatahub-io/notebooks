@@ -228,7 +228,6 @@ COPY ${TENSORFLOW_SOURCE_CODE}/requirements.txt ./
 
 RUN echo "Installing softwares and packages" && \
     micropipenv install --dev && \
-    rm -f ./Pipfile.lock && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \
     # Remove default Elyra runtime-images \
