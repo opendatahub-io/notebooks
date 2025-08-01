@@ -1,0 +1,46 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/codeserver"
+    opendatahub.io/notebook-image-name: "Code Server | Data Science | CPU | Python 3.12"
+    opendatahub.io/notebook-image-desc: "code-server workbench allows users to code, build, and collaborate on projects directly from web."
+    opendatahub.io/notebook-image-order: "19"
+  name: codeserver-datascience-cpu-py312-ubi9
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "code-server", "version": "4.98"},
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "Boto3", "version": "1.37"},
+            {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Matplotlib", "version": "3.10"},
+            {"name": "Numpy", "version": "2.2"},
+            {"name": "Pandas", "version": "2.2"},
+            {"name": "Scikit-learn", "version": "1.6"},
+            {"name": "Scipy", "version": "1.15"},
+            {"name": "Sklearn-onnx", "version": "1.18"},
+            {"name": "ipykernel", "version": "6.29"},
+            {"name": "Kubeflow-Training", "version": "1.9"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py312-ubi9-commit-n_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-codeserver-datascience-cpu-py312-ubi9-n_PLACEHOLDER
+      name: "2025.1"
+      referencePolicy:
+        type: Source

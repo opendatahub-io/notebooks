@@ -6,9 +6,9 @@ metadata:
     opendatahub.io/notebook-image: "true"
   annotations:
     opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/rocm/pytorch"
-    opendatahub.io/notebook-image-name: "ROCm-PyTorch"
+    opendatahub.io/notebook-image-name: "Jupyter | PyTorch | ROCm | Python 3.11"
     opendatahub.io/notebook-image-desc: "Jupyter ROCm optimized PyTorch notebook image for ODH notebooks."
-    opendatahub.io/notebook-image-order: "12"
+    opendatahub.io/notebook-image-order: "11"
     opendatahub.io/recommended-accelerators: '["amd.com/gpu"]'
   name: jupyter-rocm-pytorch
 spec:
@@ -38,10 +38,10 @@ spec:
             {"name": "Odh-Elyra", "version": "4.2"},
             {"name": "PyMongo", "version": "4.11"},
             {"name": "Pyodbc", "version": "5.2"},
-            {"name": "Codeflare-SDK", "version": "0.28"},
+            {"name": "Codeflare-SDK", "version": "0.30"},
             {"name": "Sklearn-onnx", "version": "1.18"},
             {"name": "Psycopg", "version": "3.2"},
-            {"name": "MySQL Connector/Python", "version": "9.2"},
+            {"name": "MySQL Connector/Python", "version": "9.3"},
             {"name": "Kubeflow-Training", "version": "1.9"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images

@@ -5,10 +5,10 @@ metadata:
   labels:
     opendatahub.io/notebook-image: "true"
   annotations:
-    opendatahub.io/notebook-image-url: "https://github.com//opendatahub-io/notebooks/tree/main/jupyter/trustyai"
-    opendatahub.io/notebook-image-name: "TrustyAI"
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/jupyter/trustyai"
+    opendatahub.io/notebook-image-name: "Jupyter | TrustyAI | CPU | Python 3.11"
     opendatahub.io/notebook-image-desc: "Jupyter TrustyAI notebook integrates the TrustyAI Explainability Toolkit on Jupyter environment."
-    opendatahub.io/notebook-image-order: "6"
+    opendatahub.io/notebook-image-order: "16"
   name: jupyter-trustyai-notebook
 spec:
   lookupPolicy:
@@ -26,7 +26,7 @@ spec:
           [
             {"name": "JupyterLab","version": "4.2"},
             {"name": "TrustyAI", "version": "0.6"},
-            {"name": "Transformers", "version": "4.49"},
+            {"name": "Transformers", "version": "4.50"},
             {"name": "Datasets", "version": "3.4"},
             {"name": "Accelerate", "version": "1.5"},
             {"name": "Torch", "version": "2.6"},
@@ -36,15 +36,15 @@ spec:
             {"name": "Matplotlib", "version": "3.6"},
             {"name": "Numpy", "version": "1.24"},
             {"name": "Pandas", "version": "1.5"},
-            {"name": "Scikit-learn", "version": "1.2"},
+            {"name": "Scikit-learn", "version": "1.5"},
             {"name": "Scipy", "version": "1.15"},
             {"name": "Odh-Elyra", "version": "4.2"},
             {"name": "PyMongo", "version": "4.11"},
             {"name": "Pyodbc", "version": "5.2"},
-            {"name": "Codeflare-SDK", "version": "0.28"},
+            {"name": "Codeflare-SDK", "version": "0.30"},
             {"name": "Sklearn-onnx", "version": "1.18"},
             {"name": "Psycopg", "version": "3.2"},
-            {"name": "MySQL Connector/Python", "version": "9.2"},
+            {"name": "MySQL Connector/Python", "version": "9.3"},
             {"name": "Kubeflow-Training", "version": "1.9"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images

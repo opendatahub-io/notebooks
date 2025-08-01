@@ -15,9 +15,10 @@ import testcontainers.core.container
 import testcontainers.core.docker_client
 
 from tests.containers import docker_utils, skopeo_utils, utils
+from tests.containers.kubernetes_utils import TestFrame
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
 
     from pytest import ExitCode, Metafunc, Parser, Session
 
@@ -94,8 +95,12 @@ def skip_if_not_workbench_image(image: str) -> Image:
 def skip_if_not_cuda_image(image: str) -> Image:
     image_metadata = get_image_metadata(image)
 
-    if "-cuda-" not in image_metadata.labels["name"]:
-        pytest.skip(f"Image {image} does not have any of '-cuda-' in {image_metadata.labels['name']=}")
+    if "-rocm-" in image_metadata.labels["name"]:
+        pytest.skip(f"Image {image} does have '-rocm-' in {image_metadata.labels['name']=}")
+
+    cuda_label_fragments = ("-cuda-", "-pytorch-", "-tensorflow-")
+    if not any(ide in image_metadata.labels["name"] for ide in cuda_label_fragments):
+        pytest.skip(f"Image {image} does not have any of '{cuda_label_fragments=}' in {image_metadata.labels['name']=}")
 
     return image_metadata
 
@@ -108,11 +113,27 @@ def skip_if_not_rocm_image(image: str) -> Image:
     return image_metadata
 
 
+@pytest.fixture(scope="function")
+def tf() -> Generator[TestFrame[Any], None, None]:
+    with TestFrame() as tf:
+        yield tf
+
+
 # https://docs.pytest.org/en/stable/how-to/fixtures.html#parametrizing-fixtures
 # indirect parametrization https://stackoverflow.com/questions/18011902/how-to-pass-a-parameter-to-a-fixture-function-in-pytest
 @pytest.fixture(scope="session")
 def image(request):
     yield request.param
+
+
+@pytest.fixture(scope="function")
+def runtime_image(image: str):
+    image_metadata = get_image_metadata(image)
+
+    if "-runtime-" not in image_metadata.labels["name"]:
+        pytest.skip(f"Image {image} does not have any of '-runtime-' in {image_metadata.labels['name']=}'")
+
+    yield image_metadata
 
 
 @pytest.fixture(scope="function")
@@ -122,15 +143,15 @@ def workbench_image(image: str):
 
 
 @pytest.fixture(scope="function")
-def cuda_workbench_image(workbench_image: str):
-    skip_if_not_cuda_image(workbench_image)
-    yield workbench_image
+def cuda_image(image: str):
+    skip_if_not_cuda_image(image)
+    yield image
 
 
 @pytest.fixture(scope="function")
-def rocm_workbench_image(workbench_image: str):
-    skip_if_not_rocm_image(workbench_image)
-    yield workbench_image
+def rocm_image(image: str):
+    skip_if_not_rocm_image(image)
+    yield image
 
 
 @pytest.fixture(scope="function")
@@ -138,6 +159,37 @@ def jupyterlab_image(image: str) -> Image:
     image_metadata = skip_if_not_workbench_image(image)
     if "-jupyter-" not in image_metadata.labels["name"]:
         pytest.skip(f"Image {image} does not have '-jupyter-' in {image_metadata.labels['name']=}'")
+
+    return image_metadata
+
+
+@pytest.fixture(scope="function")
+def jupyterlab_datascience_image(jupyterlab_image: Image) -> Image:
+    if "-minimal-" in jupyterlab_image.labels["name"]:
+        pytest.skip(
+            f"Image {jupyterlab_image.name} is not datascience image because it has '-minimal-' in {jupyterlab_image.labels['name']=}'"
+        )
+
+    return jupyterlab_image
+
+
+@pytest.fixture(scope="function")
+def jupyterlab_trustyai_image(jupyterlab_image: Image) -> Image:
+    if "-trustyai-" not in jupyterlab_image.labels["name"]:
+        pytest.skip(
+            f"Image {jupyterlab_image.name} is not trustyai image because it does not have '-trustyai-' in {jupyterlab_image.labels['name']=}'"
+        )
+
+    return jupyterlab_image
+
+
+@pytest.fixture(scope="function")
+def datascience_image(image: str) -> Image:
+    image_metadata = get_image_metadata(image)
+    if "-minimal-" in image_metadata.labels["name"]:
+        pytest.skip(
+            f"Image {image_metadata.name} is not datascience image because it has '-minimal-' in {image_metadata.labels['name']=}'"
+        )
 
     return image_metadata
 

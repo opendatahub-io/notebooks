@@ -38,7 +38,7 @@ ARG AMDGPU_VERSION=6.2.4
 # Install the ROCm rpms
 # ref: https://github.com/ROCm/ROCm-docker/blob/master/dev/Dockerfile-centos-7-complete
 # Note: Based on 6.2 above new package mivisionx is a pre-requistes, which bring in more dependent packages
-# so we are only installing meta packages of rocm 
+# so we are only installing meta packages of rocm
 # ref: https://rocm.docs.amd.com/projects/install-on-linux/en/develop/reference/package-manager-integration.html#packages-in-rocm-programming-models
 RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
@@ -60,7 +60,7 @@ WORKDIR /opt/app-root/src
 ########################
 # rocm-jupyter-minimal #
 ########################
-FROM rocm-base AS rocm-jupyter-minimal  
+FROM rocm-base AS rocm-jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.11
@@ -83,7 +83,7 @@ USER 0
 
 # Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
-ENV PATH="/usr/local/texlive/bin/x86_64-linux:/usr/local/pandoc/bin:$PATH"
+ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 
 USER 1001
 
@@ -104,7 +104,7 @@ RUN echo "Installing softwares and packages" && \
     fix-permissions /opt/app-root -P && \
     # Apply JupyterLab addons \
     /opt/app-root/bin/utils/addons/apply.sh
-    
+
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
