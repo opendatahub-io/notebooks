@@ -34,7 +34,11 @@ def main():
     end_marker = f"{comment} {prefix if prefix else ''} end"
 
     begin = end = -1
-    original_lines = open(filename, "rt").readlines()
+    try:
+        with open(filename, "rt") as fp:
+            original_lines = fp.readlines()
+    except (IOError, OSError) as e:
+        raise RuntimeError(f"Failed to read {filename}: {e}") from e
     for line_no, line in enumerate(original_lines):
         if line.rstrip() == begin_marker:
             begin = line_no
