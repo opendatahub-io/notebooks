@@ -45,6 +45,13 @@ def main():
         elif line.rstrip() == end_marker:
             end = line_no
 
+    if begin != -1 and end == -1:
+        raise ValueError(f"Found begin marker but no matching end marker in {filename}")
+    if begin == -1 and end != -1:
+        raise ValueError(f"Found end marker but no matching begin marker in {filename}")
+    if begin > end:
+        raise ValueError(f"Begin marker appears after end marker in {filename}")
+
     lines = original_lines[:]
     # NOTE: textwrap.dedent() with raw strings leaves leading and trailing newline
     new_contents = contents.strip("\n").splitlines(keepends=True)
