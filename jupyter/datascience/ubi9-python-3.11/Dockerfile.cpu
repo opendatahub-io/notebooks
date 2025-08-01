@@ -102,12 +102,12 @@ ENV PATH="$PATH:/opt/mssql-tools18/bin"
 USER 1001
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY ${DATASCIENCE_SOURCE_CODE}/Pipfile.lock ./
+COPY ${DATASCIENCE_SOURCE_CODE}/requirements.txt ./
 # Copy Elyra setup to utils so that it's sourced at startup
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv requirements | uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy unsafe-best-match --requirements - && \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt && \
     rm -f ./Pipfile.lock && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \

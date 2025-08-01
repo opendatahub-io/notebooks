@@ -51,12 +51,12 @@ LABEL name="odh-notebook-runtime-minimal-ubi9-python-3.11" \
 WORKDIR /opt/app-root/bin
 
 # Install Python packages from Pipfile.lock
-COPY ${MINIMAL_SOURCE_CODE}/Pipfile.lock ./
+COPY ${MINIMAL_SOURCE_CODE}/requirements.txt ./
 # Copy Elyra dependencies for air-gapped enviroment
 COPY ${MINIMAL_SOURCE_CODE}/utils ./utils/
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv requirements | uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy unsafe-best-match --requirements - && \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt && \
     rm -f ./Pipfile.lock && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \

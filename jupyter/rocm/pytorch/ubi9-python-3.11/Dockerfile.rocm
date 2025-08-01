@@ -152,7 +152,7 @@ LABEL name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11" \
 COPY ${PYTORCH_SOURCE_CODE}/Pipfile.lock ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv requirements | uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy unsafe-best-match --requirements - && \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt && \
     rm -f ./Pipfile.lock && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \

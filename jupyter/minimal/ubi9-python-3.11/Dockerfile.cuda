@@ -186,7 +186,7 @@ COPY ${MINIMAL_SOURCE_CODE}/Pipfile.lock ${MINIMAL_SOURCE_CODE}/start-notebook.s
 
 # Install Python dependencies from Pipfile.lock file
 RUN echo "Installing softwares and packages" && \
-    micropipenv requirements | uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy unsafe-best-match --requirements - && \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt && \
     rm -f ./Pipfile.lock && \
     # Disable announcement plugin of jupyterlab \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \

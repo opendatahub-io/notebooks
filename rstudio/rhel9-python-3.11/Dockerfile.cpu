@@ -5,8 +5,8 @@ FROM registry.redhat.io/rhel9/python-311:latest AS base
 
 WORKDIR /opt/app-root/bin
 
-# Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install --no-cache-dir -U "micropipenv[toml]"
+# Install micropipenv and uv to deploy packages from Pipfile.lock
+RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
 
 # OS Packages needs to be installed as root
 USER root
@@ -185,10 +185,10 @@ RUN if [ -d "${SECRET_DIR}" ]; then \
 
 USER 1001
 
-COPY ${RSTUDIO_SOURCE_CODE}/Pipfile.lock ./
+COPY ${RSTUDIO_SOURCE_CODE}/requirements.txt ./
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt && \
     rm -f ./Pipfile.lock && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \

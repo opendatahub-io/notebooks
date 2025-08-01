@@ -27,8 +27,8 @@ RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 # Other apps and tools installed as default user
 USER 1001
 
-# Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install --no-cache-dir -U "micropipenv[toml]"
+# Install micropipenv and uv to deploy packages from Pipfile.lock
+RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
 
 # Install the oc client begin
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
@@ -219,10 +219,10 @@ LABEL name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.12" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-pytorch-ubi9-python-3.12"
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY ${PYTORCH_SOURCE_CODE}/Pipfile.lock ./
+COPY ${PYTORCH_SOURCE_CODE}/requirements.txt ./
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt && \
     rm -f ./Pipfile.lock && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \
