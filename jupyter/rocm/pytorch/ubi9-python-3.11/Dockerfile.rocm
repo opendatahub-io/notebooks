@@ -27,7 +27,7 @@ RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 # Other apps and tools installed as default user
 USER 1001
 
-# Install micropipenv and uv to deploy packages from Pipfile.lock
+# Install micropipenv and uv to deploy packages from requirements.txt
 RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
 
 # Install the oc client begin
