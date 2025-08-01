@@ -242,7 +242,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         odh-workbench-rstudio-minimal-cpu-py311-c9s-n)
             expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
             expected_commitref="main"
-            expected_build_name="rstudio-c9s-python-3.11-amd64"
+            expected_build_name="konflux"
             expected_img_size=1377
             ;;
         odh-workbench-rstudio-minimal-cpu-py311-c9s-n-1)
@@ -257,7 +257,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         odh-workbench-rstudio-minimal-cuda-py311-c9s-n)
             expected_name="odh-notebook-rstudio-server-cuda-c9s-python-3.11"
             expected_commitref="main"
-            expected_build_name="cuda-rstudio-c9s-python-3.11-amd64"
+            expected_build_name="konflux"
             expected_img_size=6541
             ;;
         odh-workbench-rstudio-minimal-cuda-py311-c9s-n-1)
