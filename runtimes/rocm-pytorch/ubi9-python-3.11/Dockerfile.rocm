@@ -17,11 +17,12 @@ USER 1001
 # Install micropipenv to deploy packages from Pipfile.lock
 RUN pip install --no-cache-dir -U "micropipenv[toml]"
 
-# Install the oc client
+# Install the oc client begin
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
         -o /tmp/openshift-client-linux.tar.gz && \
     tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
     rm -f /tmp/openshift-client-linux.tar.gz
+# Install the oc client end
 
 #############
 # rocm-base #
@@ -38,7 +39,7 @@ ARG AMDGPU_VERSION=6.2.4
 # Install the ROCm rpms
 # ref: https://github.com/ROCm/ROCm-docker/blob/master/dev/Dockerfile-centos-7-complete
 # Note: Based on 6.2 above new package mivisionx is a pre-requistes, which bring in more dependent packages
-# so we are only installing meta packages of rocm 
+# so we are only installing meta packages of rocm
 # ref: https://rocm.docs.amd.com/projects/install-on-linux/en/develop/reference/package-manager-integration.html#packages-in-rocm-programming-models
 RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
