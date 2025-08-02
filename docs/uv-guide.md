@@ -88,7 +88,7 @@ Imagine `package_A` requires `dependency_X==1.0` and `package_B` requires `depen
 
 If you try to install both:
 
-```
+```toml
 # pyproject.toml
 package_A
 package_B
@@ -111,7 +111,7 @@ error: Failed to resolve dependencies:
 
 2.  **Utilize uv group and conflict:**
     `uv` introduces the concept of "groups" (similar to extras or development dependencies) which can be defined in `pyproject.toml`. This is a powerful way to manage different sets of dependencies, especially when some dependencies might conflict with others required for different aspects of your project.
-    ```
+    ```toml
     [dependency-groups]
     group1 = [
         "package_A==1.0"
