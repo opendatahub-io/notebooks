@@ -58,6 +58,14 @@ class TestJupyterLabImage:
     @allure.description("Check that PDF export is working correctly")
     def test_pdf_export(self, jupyterlab_image: conftest.Image) -> None:
         container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
+        # Skip if we're running on s390x architecture
+        container.start(wait_for_readiness=False)
+        try:
+            exit_code, arch_output = container.exec(["uname", "-m"])
+            if exit_code == 0 and arch_output.decode().strip() == "s390x":
+                pytest.skip("PDF export functionality is not supported on s390x architecture")
+        finally:
+            docker_utils.NotebookContainer(container).stop(timeout=0)
         test_file_name = "test.ipybn"
         test_file_content = """{
                 "cells": [
