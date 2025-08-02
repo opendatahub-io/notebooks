@@ -92,6 +92,7 @@ If you try to install both:
 # pyproject.toml
 package_A
 package_B
+```
 ```bash
 uv lock
 ```
