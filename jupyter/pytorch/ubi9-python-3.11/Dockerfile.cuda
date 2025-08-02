@@ -111,49 +111,23 @@ RUN yum install -y \
     && yum clean all \
     && rm -rf /var/cache/yum/*
 
-# Install CUDA devel from:
-# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubi9/devel/Dockerfile
-ENV NV_CUDA_CUDART_DEV_VERSION=12.6.77-1
-ENV NV_NVML_DEV_VERSION=12.6.77-1
-ENV NV_LIBCUBLAS_DEV_VERSION=12.6.4.1-1
-ENV NV_LIBNPP_DEV_VERSION=12.3.1.54-1
-ENV NV_LIBNPP_DEV_PACKAGE=libnpp-devel-12-6-${NV_LIBNPP_DEV_VERSION}
-ENV NV_LIBNCCL_DEV_PACKAGE_NAME=libnccl-devel
-ENV NV_LIBNCCL_DEV_PACKAGE_VERSION=2.23.4-1
-ENV NCCL_VERSION=2.23.4
-ENV NV_LIBNCCL_DEV_PACKAGE=${NV_LIBNCCL_DEV_PACKAGE_NAME}-${NV_LIBNCCL_DEV_PACKAGE_VERSION}+cuda12.6
-ENV NV_CUDA_NSIGHT_COMPUTE_VERSION=12.6.3-1
-ENV NV_CUDA_NSIGHT_COMPUTE_DEV_PACKAGE=cuda-nsight-compute-12-6-${NV_CUDA_NSIGHT_COMPUTE_VERSION}
+# Install devel tools
 
 RUN yum install -y \
     make \
     findutils \
-    cuda-command-line-tools-12-6-${NV_CUDA_LIB_VERSION} \
-    cuda-libraries-devel-12-6-${NV_CUDA_LIB_VERSION} \
-    cuda-minimal-build-12-6-${NV_CUDA_LIB_VERSION} \
-    cuda-cudart-devel-12-6-${NV_CUDA_CUDART_DEV_VERSION} \
-    ${NV_NVPROF_DEV_PACKAGE} \
-    cuda-nvml-devel-12-6-${NV_NVML_DEV_VERSION} \
-    libcublas-devel-12-6-${NV_LIBCUBLAS_DEV_VERSION} \
-    ${NV_LIBNPP_DEV_PACKAGE} \
-    ${NV_LIBNCCL_DEV_PACKAGE} \
-    ${NV_CUDA_NSIGHT_COMPUTE_DEV_PACKAGE} \
     && yum clean all \
     && rm -rf /var/cache/yum/*
 
-ENV LIBRARY_PATH=/usr/local/cuda/lib64/stubs
-
-# Install CUDA devel cudnn9 from:
-# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubi9/devel/cudnn/Dockerfile
+# Install CUDA cudnn9 from:
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubi9/runtime/cudnn/Dockerfile
 ENV NV_CUDNN_VERSION=9.5.1.17-1
 ENV NV_CUDNN_PACKAGE=libcudnn9-cuda-12-${NV_CUDNN_VERSION}
-ENV NV_CUDNN_PACKAGE_DEV=libcudnn9-devel-cuda-12-${NV_CUDNN_VERSION}
 
 LABEL com.nvidia.cudnn.version="${NV_CUDNN_VERSION}"
 
 RUN yum install -y \
     ${NV_CUDNN_PACKAGE} \
-    ${NV_CUDNN_PACKAGE_DEV} \
     && yum clean all \
     && rm -rf /var/cache/yum/*
 
