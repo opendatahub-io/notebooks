@@ -13,10 +13,10 @@ Packages can be added to the `pyproject.toml` file using `uv add`.
 
 ```bash
 # Add a single package
-uv add requests # Adds the latest compatible release of request
+uv add requests # Adds the latest compatible release of requests
 
 # Add a single package at a specified version
-uv add requests~=2.25  # Adds the latest 2.25.* release of request
+uv add requests~=2.25  # Adds the latest 2.25.* release of requests
 
 # Add multiple packages
 uv add beautifulsoup4 lxml # Adds the latest compatible release of both beautifulsoup4 and lxml
@@ -37,7 +37,7 @@ Locking dependencies means creating a precise list of *all* direct and transitiv
 
 The pyproject.toml file lists dependencies, with each image having its own dependency group.
 
-Now, use `uv lock` to generate a locked `uv.lock` file. This file will contain all direct and transitive dependencies with their exact versions for th entire repo.
+Now, use `uv lock` to generate a locked `uv.lock` file. This file will contain all direct and transitive dependencies with their exact versions for the entire repo.
 
 ### Compiling and Locking
 
