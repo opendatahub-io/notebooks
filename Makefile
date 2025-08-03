@@ -134,6 +134,10 @@ cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
 cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,jupyter/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
 
+.PHONY: cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION)
+cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/pytorch+llmcompressor/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+
 .PHONY: jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION)
 jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,jupyter/trustyai/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
@@ -149,6 +153,10 @@ runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION):
 .PHONY: runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
 runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,runtimes/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+
+.PHONY: runtime-cuda-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION)
+runtime-cuda-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,runtimes/pytorch+llmcompressor/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
 
 .PHONY: runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
 runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
@@ -399,6 +407,7 @@ ifeq ($(PYTHON_VERSION), 3.11)
 		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/trustyai/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/pytorch+llmcompressor/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
 		codeserver/ubi9-python-$(PYTHON_VERSION) \
@@ -484,10 +493,12 @@ all-images: \
 	cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	runtime-cuda-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \

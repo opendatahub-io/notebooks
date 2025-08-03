@@ -73,15 +73,12 @@ jobs:
         run: |
           make refresh-pipfilelock-files PYTHON_VERSION=${{ matrix.python-version }} INCLUDE_OPT_DIRS=${{ env.INCLUDE_OPT_DIRS }}
 
-      - name: Pull latest changes safely
-        run: |
-          git add .
-          git stash push -m "pre-pull-stash" || true
-          git pull --rebase origin ${{ env.BRANCH }}
-          git stash pop || true
-
-      - name: Commit and push changes (if any)
+      - name: Commit changes (if any)
         run: |
           git add .
           git diff --cached --quiet && echo "No changes to commit." || git commit -m "Update Pipfile.lock for Python ${{ matrix.python-version }}"
+
+      - name: Pull and push changes
+        run: |
+          git pull --rebase origin ${{ env.BRANCH }}
           git push origin ${{ env.BRANCH }}
