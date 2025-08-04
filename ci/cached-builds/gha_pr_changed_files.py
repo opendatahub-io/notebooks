@@ -45,7 +45,7 @@ def _query_build(make_target: str, query: str, env: dict[str, str] | None = None
     try:
         logging.debug(f"Running make in --just-print mode for target {make_target}")
         for line in subprocess.check_output(
-                [MAKE, make_target, "--just-print", *envs], encoding="utf-8", cwd=PROJECT_ROOT
+            [MAKE, make_target, "--just-print", *envs], encoding="utf-8", cwd=PROJECT_ROOT
         ).splitlines():
             if m := pattern.match(line):
                 results.append(m["result"])
@@ -90,9 +90,12 @@ def should_build_target(changed_files: list[str], target_directory: str) -> str:
     for dockerfile in dockerfiles:
         stdout = subprocess.check_output(
             [PROJECT_ROOT / "bin/buildinputs", target_directory + "/" + dockerfile],
-            env={"TARGETPLATFORM": f"linux/{get_go_arch()}", **os.environ},
+            env={
+                "TARGETPLATFORM": f"linux/{get_go_arch()}",
+                **os.environ,
+            },  # TODO(jdanek): still not ideal for qemu-user
             text=True,
-            cwd=PROJECT_ROOT
+            cwd=PROJECT_ROOT,
         )
         logging.debug(f"{target_directory=} {dockerfile=} {stdout=}")
         if stdout == "\n":
