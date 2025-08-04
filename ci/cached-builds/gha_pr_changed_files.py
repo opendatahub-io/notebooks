@@ -3,10 +3,12 @@ import json
 import logging
 import os
 import pathlib
+import platform
 import re
 import shutil
 import subprocess
 import unittest
+from typing import Literal
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent.parent.resolve()
 MAKE = shutil.which("gmake") or shutil.which("make")
@@ -43,7 +45,7 @@ def _query_build(make_target: str, query: str, env: dict[str, str] | None = None
     try:
         logging.debug(f"Running make in --just-print mode for target {make_target}")
         for line in subprocess.check_output(
-            [MAKE, make_target, "--just-print", *envs], encoding="utf-8", cwd=PROJECT_ROOT
+                [MAKE, make_target, "--just-print", *envs], encoding="utf-8", cwd=PROJECT_ROOT
         ).splitlines():
             if m := pattern.match(line):
                 results.append(m["result"])
@@ -87,7 +89,10 @@ def should_build_target(changed_files: list[str], target_directory: str) -> str:
     dockerfiles = find_dockerfiles(target_directory)
     for dockerfile in dockerfiles:
         stdout = subprocess.check_output(
-            [PROJECT_ROOT / "bin/buildinputs", target_directory + "/" + dockerfile], text=True, cwd=PROJECT_ROOT
+            [PROJECT_ROOT / "bin/buildinputs", target_directory + "/" + dockerfile],
+            env={"TARGETPLATFORM": f"linux/{get_go_arch()}", **os.environ},
+            text=True,
+            cwd=PROJECT_ROOT
         )
         logging.debug(f"{target_directory=} {dockerfile=} {stdout=}")
         if stdout == "\n":
@@ -114,6 +119,24 @@ def filter_out_unchanged(targets: list[str], changed_files: list[str]) -> list[s
         else:
             logging.info(f"❌ Won't build {target}")
     return changed
+
+
+def get_go_arch() -> Literal["amd64", "arm64", "ppc64le", "s390x"]:
+    arch = os.environ.get("GOARCH")
+    if arch is not None:
+        return arch
+    match platform.machine().lower():
+        case "x86_64" | "amd64":
+            arch = "amd64"
+        case "aarch64" | "arm64":
+            arch = "arm64"
+        case "ppc64le":
+            arch = "ppc64le"
+        case "s390x":
+            arch = "s390x"
+        case _:
+            raise Exception(f"Unknown machine architecture: {platform.machine()}")
+    return arch
 
 
 class SelfTests(unittest.TestCase):
