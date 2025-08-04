@@ -2,13 +2,14 @@
 
 import argparse
 import logging
+import os
 import pathlib
 import shutil
 import subprocess
 import sys
 import tempfile
 import json
-from typing import cast
+from typing import cast, Literal
 
 ROOT_DIR = pathlib.Path(__file__).parent.parent
 MAKE = shutil.which("gmake") or shutil.which("make")
@@ -19,12 +20,16 @@ logging.root.name = pathlib.Path(__file__).name
 
 class Args(argparse.Namespace):
     dockerfile: pathlib.Path
+    platform: Literal["linux/amd64", "linux/arm64", "linux/s390x", "linux/ppc64le"]
     remaining: list[str]
 
 
 def main() -> int:
     p = argparse.ArgumentParser(allow_abbrev=False)
     p.add_argument("--dockerfile", type=pathlib.Path, required=True)
+    p.add_argument("--platform", type=str,
+                   choices=["linux/amd64", "linux/arm64", "linux/s390x", "linux/ppc64le"],
+                   required=True)
     p.add_argument('remaining', nargs=argparse.REMAINDER)
 
     args = cast(Args, p.parse_args())
@@ -38,7 +43,7 @@ def main() -> int:
         print("must give a `{};` parameter that will be replaced with new build context")
         return 1
 
-    prereqs = buildinputs(dockerfile=args.dockerfile)
+    prereqs = buildinputs(dockerfile=args.dockerfile, platform=args.platform)
 
     with tempfile.TemporaryDirectory(delete=True) as tmpdir:
         setup_sandbox(prereqs, pathlib.Path(tmpdir))
@@ -52,11 +57,15 @@ def main() -> int:
     return 0
 
 
-def buildinputs(dockerfile: pathlib.Path | str) -> list[pathlib.Path]:
+def buildinputs(
+        dockerfile: pathlib.Path | str,
+        platform: Literal["linux/amd64", "linux/arm64", "linux/s390x", "linux/ppc64le"] = "linux/amd64"
+) -> list[pathlib.Path]:
     if not (ROOT_DIR / "bin/buildinputs").exists():
         subprocess.check_call([MAKE, "bin/buildinputs"], cwd=ROOT_DIR)
     stdout = subprocess.check_output([ROOT_DIR / "bin/buildinputs", str(dockerfile)],
-                                     text=True, cwd=ROOT_DIR)
+                                     text=True, cwd=ROOT_DIR,
+                                     env={"TARGETPLATFORM": platform, **os.environ})
     prereqs = [pathlib.Path(file) for file in json.loads(stdout)] if stdout != "\n" else []
     print(f"{prereqs=}")
     return prereqs
