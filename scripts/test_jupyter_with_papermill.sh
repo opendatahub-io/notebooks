@@ -185,27 +185,41 @@ function _get_source_of_truth_filepath()
     local notebook_id="${1##*/}"
 
     local manifest_directory="${root_repo_directory}/manifests"
-    local imagestream_directory="${manifest_directory}/base"
-
-    local file_suffix='notebook-imagestream.yaml'
+    local imagestream_directory=
+    local file_suffix=
     local filename=
-    case "${notebook_id}" in
-        *$jupyter_minimal_notebook_id*)
-            filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
-            if [ "${accelerator_flavor}" = 'cuda' ]; then
-                filename="jupyter-${notebook_id}-gpu-${file_suffix}"
-            fi
+    case "${python_flavor}" in
+        python-3.12)
+            imagestream_directory="${manifest_directory}/overlays/additional"
+            file_suffix='imagestream.yaml'
+
+            local imagestream_accelerator_flavor="${accelerator_flavor:-cpu}"
+            filename="jupyter-${notebook_id}-${imagestream_accelerator_flavor}-py312-${os_flavor}-${file_suffix}"
             ;;
-        *$jupyter_datascience_notebook_id* | *$jupyter_trustyai_notebook_id*)
-            filename="jupyter-${notebook_id}-${file_suffix}"
-            ;;
-        *$jupyter_pytorch_notebook_id* | *$jupyter_tensorflow_notebook_id*)
-            filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
-            if [ "${accelerator_flavor}" = 'cuda' ]; then
-                filename="jupyter-${notebook_id}-${file_suffix}"
-            fi
+        *)
+            imagestream_directory="${manifest_directory}/base"
+            file_suffix='notebook-imagestream.yaml'
+
+            case "${notebook_id}" in
+                *$jupyter_minimal_notebook_id*)
+                    filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
+                    if [ "${accelerator_flavor}" = 'cuda' ]; then
+                        filename="jupyter-${notebook_id}-gpu-${file_suffix}"
+                    fi
+                    ;;
+                *$jupyter_datascience_notebook_id* | *$jupyter_trustyai_notebook_id*)
+                    filename="jupyter-${notebook_id}-${file_suffix}"
+                    ;;
+                *$jupyter_pytorch_notebook_id* | *$jupyter_tensorflow_notebook_id*)
+                    filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
+                    if [ "${accelerator_flavor}" = 'cuda' ]; then
+                        filename="jupyter-${notebook_id}-${file_suffix}"
+                    fi
+                    ;;
+            esac
             ;;
     esac
+
 
     local filepath="${imagestream_directory}/${filename}"
 
@@ -381,7 +395,7 @@ jupyter_pytorch_notebook_id='pytorch'
 jupyter_tensorflow_notebook_id='tensorflow'
 
 notebook_name=$( _get_notebook_name "${test_target}" )
-python_flavor="python-${test_target//*-python-/}"
+python_flavor="python-${test_target//*-python-/}"  # <-- python-3.11
 os_flavor=$(_get_os_flavor "${test_target}")
 accelerator_flavor=$(_get_accelerator_flavor "${test_target}")
 
