@@ -71,7 +71,7 @@ define build_image
 
 	$(info # Building $(IMAGE_NAME) image...)
 
-	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' -- \
+	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' -- \
 		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
