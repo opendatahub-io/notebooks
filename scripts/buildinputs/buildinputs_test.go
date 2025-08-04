@@ -30,7 +30,7 @@ func TestParseAllDockerfiles(t *testing.T) {
 
 	for _, dockerfile := range dockerfiles {
 		t.Run(dockerfile, func(t *testing.T) {
-			result := getDockerfileDeps(dockerfile)
+			result := getDockerfileDeps(dockerfile, "amd64")
 			if result == "" {
 				// no deps in the dockerfile
 				return
