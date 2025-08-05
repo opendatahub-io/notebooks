@@ -54,6 +54,18 @@ Updates package names in all Pipfiles found within a given directory and its sub
 python scripts/fix_package_naming.py --context-dir .
 ```
 
+## dockerfile_fragments.py
+
+Updates Dockerfile* blocks demarked using comment blocks of the form
+
+```
+# <prefix> begin
+[... ...]
+# <prefix> end
+```
+
+Run the script to to automatically update the block's content to be the same in all Dockerfiles everywhere.
+
 ## buildinputs/
 
 CLI tool written in Go that computes the list of input files required to build a Dockerfile.
