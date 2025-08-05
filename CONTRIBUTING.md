@@ -40,6 +40,13 @@ Pull requests are the best way to propose changes to the notebooks repository:
 - Run the [piplock-renewal.yaml](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/piplock-renewal.yaml) against your fork branch, check [here](https://github.com/opendatahub-io/notebooks/blob/main/README.md) for more info.
 - Test the changes locally, by manually running the `$ make jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8` from the terminal.
 
+### Working with linters
+
+- Run pre-commit before you commit, to lint the Python sources that have been put under its management
+    ```
+    uv run pre-commit run --all-files
+    ```
+- If you like, you can install pre-commit to run automatically using `uv run pre-commit install`, as per its [install instructions](https://pre-commit.com/#3-install-the-git-hook-scripts)
 
 ### Some basic instructions how to apply the new tests into [openshift-ci](https://github.com/openshift/release)
 
