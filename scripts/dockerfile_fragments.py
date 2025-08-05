@@ -4,6 +4,10 @@ from __future__ import annotations
 import os
 import textwrap
 import pathlib
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyfakefs.fake_filesystem import FakeFilesystem
 
 ROOT_DIR = pathlib.Path(__file__).parent.parent
 
@@ -60,7 +64,7 @@ def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None =
         lines.extend(new_contents)
         lines.append(f"\n{end_marker}\n")
     else:
-        lines[begin : end + 1] = [f"{begin_marker}\n", *new_contents, f"\n{end_marker}\n"]
+        lines[begin: end + 1] = [f"{begin_marker}\n", *new_contents, f"\n{end_marker}\n"]
 
     if lines == original_lines:
         return
@@ -73,8 +77,6 @@ if __name__ == "__main__":
 
 
 class TestBlockinfile:
-    from pyfakefs.fake_filesystem import FakeFilesystem
-
     def test_adding_new_block(self, fs: FakeFilesystem):
         fs.create_file("/config.txt", contents="hello\nworld")
 
