@@ -42,7 +42,7 @@ Pull requests are the best way to propose changes to the notebooks repository:
 
 ### Working with linters
 
-- Run pre-commit before you commit, to lint the Python sources that have been put onder its management
+- Run pre-commit before you commit, to lint the Python sources that have been put under its management
     ```
     uv run pre-commit run --all-files
     ```
