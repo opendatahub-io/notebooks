@@ -156,7 +156,7 @@ COPY ${TENSORFLOW_SOURCE_CODE}/requirements.txt ./
 RUN echo "Installing softwares and packages" && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt --build-constraints=./requirements.txt && \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./requirements.txt --build-constraints=./requirements.txt && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \
     # Remove default Elyra runtime-images \
