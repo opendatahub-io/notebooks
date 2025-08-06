@@ -72,3 +72,11 @@ RUN echo "Installing softwares and packages" && \
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
+
+LABEL name="rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
+      com.redhat.component="odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
+      io.k8s.display-name="odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
+      summary="Minimal Jupyter notebook image for ODH notebooks" \
+      description="Minimal Jupyter notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+      io.k8s.description="Minimal Jupyter notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"

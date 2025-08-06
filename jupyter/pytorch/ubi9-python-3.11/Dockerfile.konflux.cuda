@@ -233,16 +233,6 @@ ARG PYTORCH_SOURCE_CODE=jupyter/pytorch/ubi9-python-3.11
 
 WORKDIR /opt/app-root/bin
 
-LABEL name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.11" \
-    summary="Jupyter CUDA pytorch notebook image for ODH notebooks" \
-    description="Jupyter CUDA pytorch notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
-    io.k8s.display-name="Jupyter CUDA pytorch notebook image for ODH notebooks" \
-    io.k8s.description="Jupyter CUDA pytorch notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-    io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/pytorch/ubi9-python-3.11" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-pytorch-ubi9-python-3.11"
-
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY ${PYTORCH_SOURCE_CODE}/Pipfile.lock ./
 
@@ -266,3 +256,11 @@ RUN echo "Installing softwares and packages" && \
     fix-permissions /opt/app-root -P
 
 WORKDIR /opt/app-root/src
+
+LABEL name="rhoai/odh-workbench-jupyter-pytorch-cuda-py311-rhel9" \
+      com.redhat.component="odh-workbench-jupyter-pytorch-cuda-py311-rhel9" \
+      io.k8s.display-name="odh-workbench-jupyter-pytorch-cuda-py311-rhel9" \
+      summary="Jupyter CUDA pytorch notebook image for ODH notebooks" \
+      description="Jupyter CUDA pytorch notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
+      io.k8s.description="Jupyter CUDA pytorch notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"

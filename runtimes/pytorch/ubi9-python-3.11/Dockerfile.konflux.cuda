@@ -156,17 +156,7 @@ WORKDIR /opt/app-root/src
 #########################
 FROM cuda-base AS cuda-runtime-pytorch
 
-ARG PYTORCH_SOURCE_CODE=runtimes/pytorch/ubi9-python-3.11
-
-LABEL name="odh-notebook-runtime-pytorch-ubi9-python-3.11" \
-    summary="Runtime pytorch notebook image for ODH notebooks" \
-    description="Runtime pytorch notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
-    io.k8s.display-name="Runtime pytorch notebook image for ODH notebooks" \
-    io.k8s.description="Runtime pytorch notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-    io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/pytorch/ubi9-python-3.11" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:runtime-pytorch-ubi9-python-3.11"
+ARG PYTORCH_SOURCE_CODE=runtimes/pytorch/ubi9-python-3.
 
 WORKDIR /opt/app-root/bin
 
@@ -182,4 +172,12 @@ RUN echo "Installing softwares and packages" && \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
     fix-permissions /opt/app-root -P
 
-WORKDIR /opt/app-root/src
+WORKDIR /opt/app-root/src11
+
+LABEL name="rhoai/odh-pipeline-runtime-pytorch-cuda-py311-rhel9" \
+      com.redhat.component="odh-pipeline-runtime-pytorch-cuda-py311-rhel9" \
+      io.k8s.display-name="odh-pipeline-runtime-pytorch-cuda-py311-rhel9" \
+      summary="Runtime pytorch notebook image for ODH notebooks" \
+      description="Runtime pytorch notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
+      io.k8s.description="Runtime pytorch notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"

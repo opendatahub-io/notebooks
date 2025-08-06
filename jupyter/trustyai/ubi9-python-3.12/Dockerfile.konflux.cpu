@@ -103,16 +103,6 @@ FROM jupyter-datascience AS jupyter-trustyai
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
 
-LABEL name="odh-notebook-jupyter-trustyai-ubi9-python-3.12" \
-    summary="Jupyter trustyai notebook image for ODH notebooks" \
-    description="Jupyter trustyai notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    io.k8s.display-name="Jupyter trustyai notebook image for ODH notebooks" \
-    io.k8s.description="Jupyter trustyai notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-    io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/trustyai/ubi9-python-3.12" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:jupyter-trustyai-ubi9-python-3.12"
-
 USER 0
 
 # Install jre that is needed to run the trustyai library
@@ -143,3 +133,11 @@ RUN echo "Installing softwares and packages" && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P
+
+LABEL name="rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9" \
+      com.redhat.component="odh-workbench-jupyter-trustyai-cpu-py312-rhel9" \
+      io.k8s.display-name="odh-workbench-jupyter-trustyai-cpu-py312-rhel9" \
+      summary="Jupyter trustyai notebook image for ODH notebooks" \
+      description="Jupyter trustyai notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+      io.k8s.description="Jupyter trustyai notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"

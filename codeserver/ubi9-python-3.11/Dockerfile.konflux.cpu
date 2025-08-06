@@ -34,16 +34,6 @@ ARG TARGETOS TARGETARCH
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.11
 ARG CODESERVER_VERSION=v4.98.0
 
-LABEL name="odh-notebook-code-server-ubi9-python-3.11" \
-      summary="code-server image with python 3.11 based on UBI 9" \
-      description="code-server image with python 3.11 based on UBI9" \
-      io.k8s.display-name="code-server image with python 3.11 based on UBI9" \
-      io.k8s.description="code-server image with python 3.11 based on UBI9" \
-      authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-      io.openshift.build.commit.ref="main" \
-      io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/codeserver/ubi9-python-3.11" \
-      io.openshift.build.image="quay.io/opendatahub/workbench-images:codeserver-ubi9-python-3.11"
-
 USER 0
 
 WORKDIR /opt/app-root/bin
@@ -147,3 +137,11 @@ RUN echo "Installing softwares and packages" && \
 WORKDIR /opt/app-root/src
 
 CMD ["/opt/app-root/bin/run-code-server.sh"]
+
+LABEL name="rhoai/odh-workbench-codeserver-datascience-cpu-py311-rhel9" \
+      com.redhat.component="odh-workbench-codeserver-datascience-cpu-py311-rhel9" \
+      io.k8s.display-name="odh-workbench-codeserver-datascience-cpu-py311-rhel9" \
+      summary="code-server image with python 3.11 based on UBI 9" \
+      description="code-server image with python 3.11 based on UBI9" \
+      io.k8s.description="code-server image with python 3.11 based on UBI9" \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"

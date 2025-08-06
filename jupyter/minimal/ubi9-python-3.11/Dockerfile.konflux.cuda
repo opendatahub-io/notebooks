@@ -159,16 +159,6 @@ FROM cuda-base AS cuda-jupyter-minimal
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.11
 
-LABEL name="odh-notebook-jupyter-cuda-minimal-ubi9-python-3.11" \
-    summary="Minimal Jupyter CUDA notebook image for ODH notebooks" \
-    description="Minimal Jupyter CUDA notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
-    io.k8s.display-name="Minimal Jupyter CUDA notebook image for ODH notebooks" \
-    io.k8s.description="Minimal Jupyter CUDA notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-    io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/minimal/ubi9-python-3.11" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-minimal-ubi9-python-3.11"
-
 WORKDIR /opt/app-root/bin
 
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
@@ -202,3 +192,11 @@ RUN echo "Installing softwares and packages" && \
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
+
+LABEL name="rhoai/odh-workbench-jupyter-minimal-cuda-py311-rhel9" \
+      com.redhat.component="odh-workbench-jupyter-minimal-cuda-py311-rhel9" \
+      io.k8s.display-name="odh-workbench-jupyter-minimal-cuda-py311-rhel9" \
+      summary="Minimal Jupyter CUDA notebook image for ODH notebooks" \
+      description="Minimal Jupyter CUDA notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
+      io.k8s.description="Minimal Jupyter CUDA notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
