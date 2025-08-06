@@ -83,9 +83,12 @@ datascience-base = [
     "scipy~=1.15.2",
     "skl2onnx~=1.18.0",
     "onnxconverter-common~=1.13.0",
+    "kubeflow-training==1.9.0",
+]
+
+codeflare = [
     "codeflare-sdk~=0.29.0; python_version == '3.11'",
     "codeflare-sdk~=0.28.1; python_version == '3.12'",
-    "kubeflow-training==1.9.0",
 ]
 
 datascience-preferred = [
@@ -103,10 +106,10 @@ datascience-tensorflow = [
 ]
 
 datascience-trustyai = [
-    "matplotlib ~=3.6.3",
-    "numpy ~=1.24.1",
-    "pandas ~=1.5.3",
-    "scikit-learn ~=1.2.1"
+    "matplotlib~=3.6.3",
+    "numpy~=1.24.1",
+    "pandas~=1.5.3",
+    "scikit-learn~=1.2.1"
 ]
 
 tensorflowcuda= [
@@ -129,6 +132,21 @@ pytorchrocm = [
     "torch==2.6.0",
     "torchvision==0.21.0",
     "pytorch-triton-rocm~=3.2.0",
+]
+llmcompressor = [
+    "vllm~=0.8.5",
+    "llmcompressor~=0.5.1; python_version == '3.11'",
+    "lm-eval~=0.4.8",
+    "loguru",
+    "pyyaml>=5.0.0",
+    "requests>=2.0.0",
+    "tqdm>=4.0.0",
+    "transformers>4.0,<5.0",
+    "datasets",
+    "accelerate>=0.20.3,!=1.1.0",
+    "pynvml",
+    "pillow",
+    "compressed-tensors",
 ]
 trustyai = [
     "torch==2.6.0",
@@ -156,6 +174,7 @@ jupyter-datascience-image = [
     { include-group = "elyra-preferred" },
     { include-group = "datascience-base" },
     { include-group = "datascience-preferred" },
+    { include-group = "codeflare" },
     { include-group = "db-connectors" },
 ]
 
@@ -167,6 +186,7 @@ jupyter-tensorflow-image = [
     { include-group = "elyra-preferred" },
     { include-group = "datascience-base" },
     { include-group = "datascience-tensorflow" },
+    { include-group = "codeflare" },
     { include-group = "db-connectors" },
     { include-group = "tensorflowcuda" },
 ]
@@ -179,6 +199,7 @@ jupyter-tensorflow-rocm-image = [
     { include-group = "elyra-preferred" },
     { include-group = "datascience-base" },
     { include-group = "datascience-tensorflow" },
+    { include-group = "codeflare" },
     { include-group = "db-connectors" },
     { include-group = "tensorflowrocm" },
 ]
@@ -191,6 +212,7 @@ jupyter-pytorch-image = [
     { include-group = "elyra-preferred" },
     { include-group = "datascience-base" },
     { include-group = "datascience-preferred" },
+    { include-group = "codeflare" },
     { include-group = "db-connectors" },
     { include-group = "pytorchcuda" },
 ]
@@ -203,8 +225,21 @@ jupyter-pytorch-rocm-image = [
     { include-group = "elyra-preferred" },
     { include-group = "datascience-base" },
     { include-group = "datascience-preferred" },
+    { include-group = "codeflare" },
     { include-group = "db-connectors" },
     { include-group = "pytorchrocm" },
+]
+
+jupyter-pytorch-llmcompressor-image = [
+    { include-group = "dev" },
+    { include-group = "base" },
+    { include-group = "jupyter-base" },
+    { include-group = "elyra-base" },
+    { include-group = "elyra-preferred" },
+    { include-group = "datascience-base" },
+    { include-group = "datascience-tensorflow" },
+    { include-group = "db-connectors" },
+    { include-group = "llmcompressor" },
 ]
 
 jupyter-trustyai-image = [
@@ -215,6 +250,7 @@ jupyter-trustyai-image = [
     { include-group = "elyra-trustyai" },
     { include-group = "datascience-base" },
     { include-group = "datascience-trustyai" },
+    { include-group = "codeflare" },
     { include-group = "db-connectors" },
     { include-group = "trustyai" },
 ]
@@ -255,6 +291,11 @@ version = "1.16.1"
 requires-dist = ["protobuf"]
 
 [[tool.uv.dependency-metadata]]
+name = "vllm"
+version = "0.8.5"
+requires-dist = ["compressed-tensors"]
+
+[[tool.uv.dependency-metadata]]
 name = "tensorflow-rocm"
 version = "2.14.0.600"
 requires-dist = [
@@ -282,6 +323,7 @@ conflicts = [
         { group = "datascience-preferred" },
         { group = "trustyai" },
         { group = "tensorflowcuda" },
+        { group = "llmcompressor" },
     ],
     [
         { group = "datascience-tensorflow" },
@@ -308,6 +350,14 @@ conflicts = [
         { group = "tensorflowcuda" },
         { group = "trustyai" },
         { group = "datascience-trustyai" },
+    ],
+    [
+        {group = "llmcompressor"},
+        {group = "trustyai"},
+    ],
+    [
+        { group = "llmcompressor" },
+        { group = "codeflare" },
     ]
 ]
 

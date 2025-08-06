@@ -16,6 +16,7 @@ while read -r file; do
   image_name="${path%/*/*}"
   python_version="${path%/*}"
   python_version="${python_version##*-}"
+  image_name="${image_name/+/-}"
 
   if [[ "$path" == *"rocm/"* ]]; then
     image_name="${image_name#*/}-rocm"
