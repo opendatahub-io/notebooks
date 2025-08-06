@@ -28,7 +28,7 @@ RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 USER 1001
 
 # Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install --no-cache-dir -U "micropipenv[toml]"
+RUN pip install --no-cache-dir -U uv
 
 # Install the oc client
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
@@ -244,11 +244,11 @@ LABEL name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.11" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-pytorch-ubi9-python-3.11"
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY ${PYTORCH_SOURCE_CODE}/Pipfile.lock ./
+COPY ${PYTORCH_SOURCE_CODE}/requirements.txt ./
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
+    uv pip install --no-deps -r requirements.txt && \
+    rm -f ./requirements.txt && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \
     # Remove default Elyra runtime-images \
