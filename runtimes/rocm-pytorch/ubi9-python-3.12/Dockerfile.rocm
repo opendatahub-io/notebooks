@@ -85,7 +85,7 @@ COPY ${PYTORCH_SOURCE_CODE}/utils ./utils/
 COPY ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
 
 RUN echo "Installing softwares and packages" && \
-    uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt && \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt --build-constraints=./requirements.txt && \
     # De-vendor the ROCm libs that are embedded in Pytorch \
     ./de-vendor-torch.sh && \
     rm ./de-vendor-torch.sh && \

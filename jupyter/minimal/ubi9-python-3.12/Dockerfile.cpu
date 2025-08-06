@@ -58,7 +58,7 @@ COPY ${MINIMAL_SOURCE_CODE}/requirements.txt ${MINIMAL_SOURCE_CODE}/start-notebo
 
 # Install Python dependencies from requirements.txt file
 RUN echo "Installing softwares and packages" && \
-    uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt && \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt --build-constraints=./requirements.txt && \
     # Disable announcement plugin of jupyterlab \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \

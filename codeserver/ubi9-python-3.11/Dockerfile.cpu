@@ -139,7 +139,7 @@ COPY ${CODESERVER_SOURCE_CODE}/requirements.txt ./
 
 # Install packages and cleanup
 RUN echo "Installing softwares and packages" && \
-    uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt && \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --require-hashes --index-strategy=unsafe-best-match --requirements=./requirements.txt --build-constraints=./requirements.txt && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
     fix-permissions /opt/app-root -P
