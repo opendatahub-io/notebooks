@@ -156,7 +156,7 @@ WORKDIR /opt/app-root/src
 #########################
 FROM cuda-base AS cuda-runtime-pytorch
 
-ARG PYTORCH_SOURCE_CODE=runtimes/pytorch/ubi9-python-3.
+ARG PYTORCH_SOURCE_CODE=runtimes/pytorch/ubi9-python-3.11
 
 WORKDIR /opt/app-root/bin
 
