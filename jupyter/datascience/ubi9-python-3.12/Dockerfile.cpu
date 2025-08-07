@@ -27,8 +27,8 @@ RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 # Other apps and tools installed as default user
 USER 1001
 
-# Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install --no-cache-dir -U "micropipenv[toml]"
+# Install micropipenv and uv to deploy packages from requirements.txt
+RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
 
 # Install the oc client begin
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
@@ -101,14 +101,15 @@ ENV PATH="$PATH:/opt/mssql-tools18/bin"
 # Other apps and tools installed as default user
 USER 1001
 
-# Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY ${DATASCIENCE_SOURCE_CODE}/Pipfile.lock ./
+# Install Python packages and Jupyterlab extensions from requirements.txt
+COPY ${DATASCIENCE_SOURCE_CODE}/requirements.txt ./
 # Copy Elyra setup to utils so that it's sourced at startup
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
+    # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+    #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./requirements.txt --build-constraints=./requirements.txt && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \
     mkdir /opt/app-root/pipeline-runtimes && \
