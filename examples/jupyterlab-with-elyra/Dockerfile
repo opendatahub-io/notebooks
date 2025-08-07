@@ -68,7 +68,7 @@ numpy~=2.2.3
 EOF
 
 RUN echo "Installing software and packages" && \
-    pip install -r requirements.txt && \
+    pip install --no-cache-dir -r requirements.txt && \
     rm -f ./Pipfile.lock && \
     # Prepare directories for elyra runtime configuration
     mkdir /opt/app-root/runtimes && \
