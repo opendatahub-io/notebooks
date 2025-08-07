@@ -36,7 +36,7 @@ jobs:
   refresh-pipfile-locks:
     runs-on: ubuntu-latest
     concurrency:
-      group: refresh-pipfile-locks-${{ github.ref }}
+      group: refresh-pipfile-locks-${{ matrix.python-version }}-${{ github.ref }}
       cancel-in-progress: false
     strategy:
       fail-fast: false
