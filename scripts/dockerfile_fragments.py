@@ -19,6 +19,12 @@ def main():
 
         blockinfile(
             dockerfile,
+            textwrap.dedent('''RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"'''),
+            prefix="Install micropipenv and uv to deploy packages from requirements.txt",
+        )
+
+        blockinfile(
+            dockerfile,
             textwrap.dedent(
                 r"""
                 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
