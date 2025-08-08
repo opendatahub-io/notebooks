@@ -27,8 +27,8 @@ RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 # Other apps and tools installed as default user
 USER 1001
 
-# Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install --no-cache-dir -U "micropipenv[toml]"
+# Install micropipenv and uv to deploy packages from requirements.txt
+RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
 
 # Install the oc client begin
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
@@ -84,7 +84,6 @@ WORKDIR /opt/app-root/bin
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
-
 USER 0
 
 # Dependencies for PDF export
@@ -92,7 +91,6 @@ RUN ./utils/install_pdf_deps.sh
 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 
 USER 1001
-
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
@@ -151,11 +149,12 @@ LABEL name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/rocm/pytorch/ubi9-python-3.11" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:rocm-jupyter-pytorch-ubi9-python-3.11"
 
-COPY ${PYTORCH_SOURCE_CODE}/Pipfile.lock ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
+COPY ${PYTORCH_SOURCE_CODE}/requirements.txt ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
+    # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+    #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./requirements.txt --build-constraints=./requirements.txt && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \
     # Remove default Elyra runtime-images \
