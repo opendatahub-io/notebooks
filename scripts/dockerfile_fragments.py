@@ -14,6 +14,9 @@ ROOT_DIR = pathlib.Path(__file__).parent.parent
 
 def main():
     for dockerfile in ROOT_DIR.glob("**/Dockerfile*"):
+        if dockerfile.is_relative_to(ROOT_DIR / "examples"):
+            continue
+
         blockinfile(
             dockerfile,
             textwrap.dedent(
