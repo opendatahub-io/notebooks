@@ -25,16 +25,24 @@ def main():
 
         blockinfile(
             dockerfile,
-            textwrap.dedent(
-                r"""
-                RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
-                        -o /tmp/openshift-client-linux.tar.gz && \
-                    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
-                    rm -f /tmp/openshift-client-linux.tar.gz
-            """
-            ),
+            textwrap.dedent(r"""
+            RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+                    -o /tmp/openshift-client-linux.tar.gz && \
+                tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
+                rm -f /tmp/openshift-client-linux.tar.gz
+            """),
             prefix="Install the oc client",
         )
+
+        if is_jupyter(dockerfile):
+            blockinfile(
+                dockerfile,
+                textwrap.dedent(r"""
+                RUN ./utils/install_pdf_deps.sh
+                ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+                """),
+                prefix="Dependencies for PDF export",
+            )
 
 
 def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None = None, *, comment: str = "#"):
@@ -79,6 +87,10 @@ def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None =
         return
     with open(filename, "wt") as fp:
         fp.writelines(lines)
+
+
+def is_jupyter(filename: pathlib.Path) -> bool:
+    return filename.is_relative_to(ROOT_DIR / "jupyter")
 
 
 if __name__ == "__main__":
