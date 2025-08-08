@@ -346,8 +346,8 @@ function _handle_test()
     local notebook_id=
 
     # Due to existing logic - cuda accelerator value needs to be treated as empty string
-    local accelerator_flavor="${accelerator_flavor}"
-    accelerator_flavor="${accelerator_flavor##'cuda'}"
+    local accelerator="${accelerator_flavor}"
+    accelerator="${accelerator_flavor##'cuda'}"
 
 
     case "${notebook_workload_name}" in
@@ -361,10 +361,10 @@ function _handle_test()
             notebook_id="${jupyter_trustyai_notebook_id}"
             ;;
         *${jupyter_tensorflow_notebook_id}-*)
-            notebook_id="${accelerator_flavor:+$accelerator_flavor/}${jupyter_tensorflow_notebook_id}"
+            notebook_id="${accelerator:+$accelerator/}${jupyter_tensorflow_notebook_id}"
             ;;
         *${jupyter_pytorch_notebook_id}-*)
-            notebook_id="${accelerator_flavor:+$accelerator_flavor/}${jupyter_pytorch_notebook_id}"
+            notebook_id="${accelerator:+$accelerator/}${jupyter_pytorch_notebook_id}"
             ;;
         *)
             printf '%s\n' "No matching condition found for ${notebook_workload_name}."
