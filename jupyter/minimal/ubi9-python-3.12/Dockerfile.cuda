@@ -151,9 +151,10 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
 USER 0
 
-# Dependencies for PDF export
+# Dependencies for PDF export begin
 RUN ./utils/install_pdf_deps.sh
 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+# Dependencies for PDF export end
 
 USER 1001
 
