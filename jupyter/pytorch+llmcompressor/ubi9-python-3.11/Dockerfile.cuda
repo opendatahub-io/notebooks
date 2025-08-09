@@ -147,9 +147,10 @@ COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 USER 0
 
-# Dependencies for PDF export
+# Dependencies for PDF export begin
 RUN ./utils/install_pdf_deps.sh
 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+# Dependencies for PDF export end
 
 USER 1001
 
@@ -237,3 +238,7 @@ COPY ${DATASCIENCE_SOURCE_CODE}/runtime-images/ /opt/app-root/share/jupyter/meta
 COPY ${PYTORCH_SOURCE_CODE}/runtime-images/ /opt/app-root/share/jupyter/metadata/runtime-images/
 
 WORKDIR /opt/app-root/src
+
+# Install micropipenv and uv to deploy packages from requirements.txt begin
+RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
+# Install micropipenv and uv to deploy packages from requirements.txt end

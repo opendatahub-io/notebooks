@@ -14,8 +14,9 @@ RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 # Other apps and tools installed as default user
 USER 1001
 
-# Install micropipenv and uv to deploy packages from requirements.txt
+# Install micropipenv and uv to deploy packages from requirements.txt begin
 RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
+# Install micropipenv and uv to deploy packages from requirements.txt end
 
 # Install the oc client begin
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
@@ -48,9 +49,10 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
 USER 0
 
-# Dependencies for PDF export
+# Dependencies for PDF export begin
 RUN ./utils/install_pdf_deps.sh
 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+# Dependencies for PDF export end
 
 USER 1001
 

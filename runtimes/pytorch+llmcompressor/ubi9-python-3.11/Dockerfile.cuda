@@ -150,3 +150,7 @@ RUN echo "Installing softwares and packages" && \
     fix-permissions /opt/app-root -P
 
 WORKDIR /opt/app-root/src
+
+# Install micropipenv and uv to deploy packages from requirements.txt begin
+RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
+# Install micropipenv and uv to deploy packages from requirements.txt end

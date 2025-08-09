@@ -21,8 +21,9 @@ RUN ARCH=$(uname -m) && \
 # Other apps and tools installed as default user
 USER 1001
 
-# Install micropipenv and uv to deploy packages from requirements.txt
+# Install micropipenv and uv to deploy packages from requirements.txt begin
 RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
+# Install micropipenv and uv to deploy packages from requirements.txt end
 
 # Install the oc client begin
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
