@@ -5,6 +5,8 @@ on:  # yamllint disable-line rule:truthy
     types: [opened]
 
 permissions:
+  contents: read
+  issues: write
   pull-requests: write
 
 jobs:
