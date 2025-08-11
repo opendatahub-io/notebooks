@@ -1,0 +1,25 @@
+---
+name: Add Review Requested Label
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  add-label:
+    if: contains(github.event.pull_request.labels.*.name, 'konflux-nudge') == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add review-requested label
+        uses: actions/github-script@v7
+        with:
+          # language=javascript
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ['review-requested']
+            });
