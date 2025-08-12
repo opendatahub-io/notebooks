@@ -19,6 +19,15 @@ def main():
 
         blockinfile(
             dockerfile,
+            textwrap.dedent(r"""
+            RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
+                && dnf clean all -y
+            """),
+            prefix="upgrade first to avoid fixable vulnerabilities",
+        )
+
+        blockinfile(
+            dockerfile,
             textwrap.dedent('''RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"'''),
             prefix="Install micropipenv and uv to deploy packages from requirements.txt",
         )

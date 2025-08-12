@@ -21,6 +21,11 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER root
 
+# upgrade first to avoid fixable vulnerabilities begin
+RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
+    && dnf clean all -y
+# upgrade first to avoid fixable vulnerabilities end
+
 # Install useful OS packages
 RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 
