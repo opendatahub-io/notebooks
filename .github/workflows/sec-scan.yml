@@ -28,7 +28,7 @@ jobs:
 
       # Checkout the branch
       - name: Checkout branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.BRANCH_NAME }}
 
@@ -52,7 +52,7 @@ jobs:
 
       # Get the latest weekly build commit hash: https://github.com/opendatahub-io/notebooks/commits/2023b
       - name: Checkout upstream notebooks repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: opendatahub-io/notebooks.git
           ref: ${{ env.RELEASE_VERSION_N }}
@@ -64,7 +64,7 @@ jobs:
           echo "HASH_N=$(git rev-parse --short HEAD)" >> ${GITHUB_OUTPUT}
 
       - name: Checkout "N - 1" branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: opendatahub-io/notebooks.git
           ref: ${{ env.RELEASE_VERSION_N_1 }}
@@ -76,7 +76,7 @@ jobs:
           echo "HASH_N_1=$(git rev-parse --short HEAD)" >> ${GITHUB_OUTPUT}
 
       - name: Checkout "main" branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: opendatahub-io/notebooks.git
           ref: main
@@ -89,7 +89,7 @@ jobs:
 
       # Checkout the release branch to apply the updates
       - name: Checkout release branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.SEC_SCAN_BRANCH }}
 
@@ -126,7 +126,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: pull-request
         uses: repo-sync/pull-request@v2

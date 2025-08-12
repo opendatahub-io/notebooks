@@ -39,11 +39,11 @@ jobs:
 
       # Here we are checking out the pull request, so that we can build from the new code
       # We can do this because we already checked that the submitting user is a contributor
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: "refs/pull/${{ github.event.number }}/merge"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: ${{ github.event_name != 'pull_request_target' }}
 
       - name: Determine targets to build based on changed files
