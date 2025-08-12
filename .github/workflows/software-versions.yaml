@@ -25,7 +25,7 @@ jobs:
       # Some pieces of code (image pulls for example) in podman consult TMPDIR or default to /var/tmp
       TMPDIR: /home/runner/.local/share/containers/tmpdir
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Mount lvm overlay for podman operations
         run: |

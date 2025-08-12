@@ -50,7 +50,7 @@ jobs:
           git config --global user.name "GitHub Actions"
 
       - name: Checkout branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.BRANCH_NAME }}
 
@@ -61,7 +61,7 @@ jobs:
          git push --set-upstream origin ${{ env.TMP_BRANCH }}
 
       - name: Checkout release branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.TMP_BRANCH }}
           fetch-depth: 0

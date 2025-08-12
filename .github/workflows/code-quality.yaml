@@ -12,7 +12,7 @@ jobs:
   check-generated-code:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Rerun all code generators we have
         run: bash ci/generate_code.sh
@@ -32,7 +32,7 @@ jobs:
   pytest-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # https://github.com/astral-sh/setup-uv
       - name: Install the latest version of uv
@@ -60,7 +60,7 @@ jobs:
   code-static-analysis:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Do not check secrets, they are encrypted
         run: rm -rf ./ci/secrets

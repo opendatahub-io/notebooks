@@ -72,7 +72,7 @@ jobs:
       pr_merged_m: ${{ steps.check_pr.outputs.pr_merged }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -105,7 +105,7 @@ jobs:
       pr_merged_b: ${{ steps.check_pr.outputs.pr_merged }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
