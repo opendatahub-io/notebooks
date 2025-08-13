@@ -1,0 +1,33 @@
+---
+name: Add Review Requested Label
+on:  # yamllint disable-line rule:truthy
+  # the regular `secrets.GITHUB_TOKEN` with `on: pull_request` results in a 403 error
+  #  HttpError: Resource not accessible by integration
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  add-label:
+    if: contains(github.event.pull_request.labels.*.name, 'konflux-nudge') == false
+    runs-on: ubuntu-latest
+    steps:
+
+      # SECURITY: never clone untrusted code in pull_request_target workflows
+
+      - name: Add review-requested label
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # language=javascript
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ['review-requested']
+            });

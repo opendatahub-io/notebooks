@@ -170,3 +170,24 @@ LABEL name="rhoai/odh-workbench-jupyter-tensorflow-rocm-py311-rhel9" \
       description="Jupyter AMD tensorflow notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
       io.k8s.description="Jupyter AMD tensorflow notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
       com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
+
+# upgrade first to avoid fixable vulnerabilities begin
+RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
+    && dnf clean all -y
+# upgrade first to avoid fixable vulnerabilities end
+
+# Install micropipenv and uv to deploy packages from requirements.txt begin
+RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
+# Install micropipenv and uv to deploy packages from requirements.txt end
+
+# Install the oc client begin
+RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+        -o /tmp/openshift-client-linux.tar.gz && \
+    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
+    rm -f /tmp/openshift-client-linux.tar.gz
+# Install the oc client end
+
+# Dependencies for PDF export begin
+RUN ./utils/install_pdf_deps.sh
+ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+# Dependencies for PDF export end
