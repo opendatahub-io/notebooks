@@ -416,6 +416,7 @@ ifeq ($(PYTHON_VERSION), 3.11)
 		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/datascience/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		runtimes/pytorch+llmcompressor/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION)

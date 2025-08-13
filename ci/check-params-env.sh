@@ -52,7 +52,7 @@ function check_variables_uniq() {
     echo "Checking that all variables in the file '${env_file_path_1}' & '${env_file_path_2}' are unique and expected"
 
     local content
-    content=$(sed 's#\(.*\)=.*#\1#' "${env_file_path_1}"; sed 's#\(.*\)=.*#\1#' "${env_file_path_2}" | sort)
+    content=$(sed '/^$/d' "${env_file_path_1}" "${env_file_path_2}" | sed 's#\(.*\)=.*#\1#' | sort)
 
     local num_records
     num_records=$(echo "${content}" | wc -l)
@@ -69,7 +69,7 @@ function check_variables_uniq() {
     if test "${allow_value_duplicity}" = "false"; then
         echo "Checking that all values assigned to variables in the file '${env_file_path_1}' & '${env_file_path_2}' are unique and expected"
 
-        content=$(sed 's#\(.*\)=.*#\1#' "${env_file_path_1}"; sed 's#\(.*\)=.*#\1#' "${env_file_path_2}" | sort)
+        content=$(sed '/^$/d' "${env_file_path_1}" "${env_file_path_2}" | sed 's#\(.*\)=.*#\1#' | sort)
 
         local num_values
         num_values=$(echo "${content}" | wc -l)
@@ -724,6 +724,9 @@ check_variables_uniq "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" "false" "t
 process_file() {
     local_ret_code=0
     while IFS= read -r LINE; do
+        # If the line is empty, skip to the next one
+        [[ -z "$LINE" ]] && continue
+
         echo "Checking format of: '${LINE}'"
         [[ "${LINE}" = *[[:space:]]* ]] && {
             echo "ERROR: Line contains white-space and it shouldn't!"
