@@ -1,0 +1,36 @@
+# https://github.com/ruivieira/trustyai-explainability-python/blob/main/.github/workflows/security.yaml
+---
+name: Security
+"on":
+  push:
+    branches:
+      - 2024a
+      - release-2024a
+  pull_request:
+  workflow_dispatch:
+jobs:
+  build:
+    name: Trivy scan (fs)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4  # 0.32.0
+        with:
+          scan-type: 'fs'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'MEDIUM,HIGH,CRITICAL'
+          exit-code: '0'
+          ignore-unfixed: false
+
+      - name: Update Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
