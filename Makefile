@@ -428,12 +428,14 @@ else ifeq ($(PYTHON_VERSION), 3.12)
 		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/trustyai/ubi9-python-$(PYTHON_VERSION) \
 		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
+		jupyter/pytorch+llmcompressor/ubi9-python-$(PYTHON_VERSION) \
 		codeserver/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/datascience/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
 		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION)
+		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION) \
+		runtimes/pytorch+llmcompressor/ubi9-python-$(PYTHON_VERSION)
 		# runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION)
 		# jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION)
 		# rstudio/rhel9-python-$(PYTHON_VERSION)
@@ -496,6 +498,7 @@ all-images: \
 	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
@@ -518,12 +521,14 @@ all-images: \
 	cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
  	codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
+	runtime-cuda-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
  	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
