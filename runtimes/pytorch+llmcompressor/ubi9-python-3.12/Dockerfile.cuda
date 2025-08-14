@@ -1,16 +1,3 @@
-######################################################
-# mongocli-builder (build stage only, not published) #
-######################################################
-FROM registry.access.redhat.com/ubi9/go-toolset:latest AS mongocli-builder
-
-ARG MONGOCLI_VERSION=2.0.4
-
-WORKDIR /tmp/
-RUN curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
-RUN unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
-RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
-    CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
-
 ####################
 # base             #
 ####################
@@ -137,110 +124,35 @@ USER 1001
 WORKDIR /opt/app-root/src
 
 #########################
-# cuda-jupyter-minimal  #
+# cuda-runtime-pytorch  #
 #########################
-FROM cuda-base AS cuda-jupyter-minimal
+FROM cuda-base AS cuda-runtime-pytorch
 
-ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
-ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
+ARG PYTORCH_SOURCE_CODE=runtimes/pytorch+llmcompressor/ubi9-python-3.12
 
-WORKDIR /opt/app-root/bin
-
-COPY ${JUPYTER_REUSABLE_UTILS} utils/
-
-COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
-
-USER 0
-
-# Dependencies for PDF export begin
-RUN ./utils/install_pdf_deps.sh
-ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
-# Dependencies for PDF export end
-
-USER 1001
-
-WORKDIR /opt/app-root/src
-
-ENTRYPOINT ["start-notebook.sh"]
-
-#############################
-# cuda-jupyter-datascience  #
-#############################
-FROM cuda-jupyter-minimal AS cuda-jupyter-datascience
-
-ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
-
-WORKDIR /opt/app-root/bin
-
-# OS Packages needs to be installed as root
-USER root
-
-# Install useful OS packages
-RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile && dnf clean all && rm -rf /var/cache/yum
-
-# Copy dynamically-linked mongocli built in earlier build stage
-COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
-
-# Install MSSQL Client, We need a special repo for MSSQL as they do their own distribution
-COPY ${DATASCIENCE_SOURCE_CODE}/mssql-2022.repo /etc/yum.repos.d/mssql-2022.repo
-
-RUN ACCEPT_EULA=Y dnf install -y mssql-tools18 unixODBC-devel && dnf clean all && rm -rf /var/cache/yum
-
-ENV PATH="$PATH:/opt/mssql-tools18/bin"
-
-# Other apps and tools installed as default user
-USER 1001
-
-# Copy Elyra setup to utils so that it's sourced at startup
-COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
-
-WORKDIR /opt/app-root/src
-
-#############################
-# cuda-jupyter-pytorch  #
-#############################
-FROM cuda-jupyter-datascience AS cuda-jupyter-pytorch
-
-ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
-ARG PYTORCH_SOURCE_CODE=jupyter/pytorch+llmcompressor/ubi9-python-3.12
-
-WORKDIR /opt/app-root/bin
-
-LABEL name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.12" \
-    summary="Jupyter CUDA pytorch notebook image for ODH notebooks" \
-    description="Jupyter CUDA pytorch notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    io.k8s.display-name="Jupyter CUDA pytorch notebook image for ODH notebooks" \
-    io.k8s.description="Jupyter CUDA pytorch notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+LABEL name="odh-notebook-runtime-pytorch-ubi9-python-3.12" \
+    summary="Runtime pytorch notebook image for ODH notebooks" \
+    description="Runtime pytorch notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+    io.k8s.display-name="Runtime pytorch notebook image for ODH notebooks" \
+    io.k8s.description="Runtime pytorch notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
     authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
     io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/pytorch/ubi9-python-3.12" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-pytorch-ubi9-python-3.12"
+    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/pytorch/ubi9-python-3.12" \
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:runtime-pytorch-ubi9-python-3.12"
 
-# Install Python packages and Jupyterlab extensions from Pipfile.lock
+WORKDIR /opt/app-root/bin
+
+# Install Python packages from Pipfile.lock
 COPY ${PYTORCH_SOURCE_CODE}/Pipfile.lock ./
+# Copy Elyra dependencies for air-gapped enviroment
+COPY ${PYTORCH_SOURCE_CODE}/utils ./utils/
 
 RUN echo "Installing softwares and packages" && \
     micropipenv install --dev && \
     rm -f ./Pipfile.lock && \
-    # setup path for runtime configuration
-    mkdir /opt/app-root/runtimes && \
-    # Remove default Elyra runtime-images \
-    rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
-    # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
-    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
-    # copy jupyter configuration
-    cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter && \
-    # Disable announcement plugin of jupyterlab \
-    jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
-    # Apply JupyterLab addons \
-    /opt/app-root/bin/utils/addons/apply.sh && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P
-
-# Copy Elyra runtime-images definitions and set the version
-COPY ${DATASCIENCE_SOURCE_CODE}/runtime-images/ /opt/app-root/share/jupyter/metadata/runtime-images/
-COPY ${PYTORCH_SOURCE_CODE}/runtime-images/ /opt/app-root/share/jupyter/metadata/runtime-images/
 
 WORKDIR /opt/app-root/src
 
