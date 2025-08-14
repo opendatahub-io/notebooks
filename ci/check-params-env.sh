@@ -27,7 +27,7 @@ PARAMS_ENV_PATH="manifests/base/params.env"
 
 # This value needs to be updated everytime we deliberately change number of the
 # images we want to have in the `params.env` or `params-latest.env` file.
-EXPECTED_NUM_RECORDS=44
+EXPECTED_NUM_RECORDS=46
 EXPECTED_ADDI_RUNTIME_RECORDS=0
 
 # Number of attempts for the skopeo tool to gather data from the repository.
@@ -239,6 +239,12 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=971
             ;;
+        odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-n)
+            expected_name="odh-notebook-jupyter-cuda-pytorch-llmcompressor-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=6977
+            ;;
         odh-workbench-rstudio-minimal-cpu-py311-c9s-n)
             expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
             expected_commitref="main"
@@ -380,6 +386,12 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_commitref="main"
             expected_build_name="konflux"
             expected_img_size=6714
+            ;;
+        odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9-n)
+            expected_name="odh-notebook-runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=6265
             ;;
         *)
             echo "Unimplemented variable name: '${image_variable}'"
