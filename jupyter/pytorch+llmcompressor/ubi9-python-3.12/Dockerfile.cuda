@@ -14,7 +14,7 @@ RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
 ####################
 # base             #
 ####################
-FROM registry.access.redhat.com/ubi9/python-311:latest AS base
+FROM registry.access.redhat.com/ubi9/python-312:latest AS base
 
 WORKDIR /opt/app-root/bin
 
@@ -142,7 +142,7 @@ WORKDIR /opt/app-root/src
 FROM cuda-base AS cuda-jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
-ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.11
+ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
 
 WORKDIR /opt/app-root/bin
 
@@ -168,7 +168,7 @@ ENTRYPOINT ["start-notebook.sh"]
 #############################
 FROM cuda-jupyter-minimal AS cuda-jupyter-datascience
 
-ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.11
+ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 
 WORKDIR /opt/app-root/bin
 
@@ -201,20 +201,20 @@ WORKDIR /opt/app-root/src
 #############################
 FROM cuda-jupyter-datascience AS cuda-jupyter-pytorch
 
-ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.11
-ARG PYTORCH_SOURCE_CODE=jupyter/pytorch+llmcompressor/ubi9-python-3.11
+ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
+ARG PYTORCH_SOURCE_CODE=jupyter/pytorch+llmcompressor/ubi9-python-3.12
 
 WORKDIR /opt/app-root/bin
 
-LABEL name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.11" \
+LABEL name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.12" \
     summary="Jupyter CUDA pytorch notebook image for ODH notebooks" \
-    description="Jupyter CUDA pytorch notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
+    description="Jupyter CUDA pytorch notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
     io.k8s.display-name="Jupyter CUDA pytorch notebook image for ODH notebooks" \
-    io.k8s.description="Jupyter CUDA pytorch notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
+    io.k8s.description="Jupyter CUDA pytorch notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
     authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
     io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/pytorch/ubi9-python-3.11" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-pytorch-ubi9-python-3.11"
+    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/pytorch/ubi9-python-3.12" \
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-pytorch-ubi9-python-3.12"
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY ${PYTORCH_SOURCE_CODE}/Pipfile.lock ./
@@ -235,7 +235,7 @@ RUN echo "Installing softwares and packages" && \
     # Apply JupyterLab addons \
     /opt/app-root/bin/utils/addons/apply.sh && \
     # Fix permissions to support pip in Openshift environments \
-    chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
+    chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P
 
 # Copy Elyra runtime-images definitions and set the version
