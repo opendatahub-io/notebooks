@@ -498,7 +498,7 @@ all-images: \
 	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(PYTHON_VERSION) \
+	cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
