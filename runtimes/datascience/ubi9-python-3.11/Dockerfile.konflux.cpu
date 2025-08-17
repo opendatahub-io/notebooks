@@ -26,7 +26,7 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 #######################
 # runtime-datascience #
 #######################
-FROM base AS runtime-datascience  
+FROM base AS runtime-datascience
 
 ARG DATASCIENCE_SOURCE_CODE=runtimes/datascience/ubi9-python-3.11
 
@@ -53,18 +53,3 @@ LABEL name="rhoai/odh-pipeline-runtime-datascience-cpu-py311-rhel9" \
       description="Runtime data science notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
       summary="Runtime data science notebook image for ODH notebooks" \
       com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
-# upgrade first to avoid fixable vulnerabilities begin
-RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
-    && dnf clean all -y
-# upgrade first to avoid fixable vulnerabilities end
-
-# Install micropipenv and uv to deploy packages from requirements.txt begin
-RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
-# Install micropipenv and uv to deploy packages from requirements.txt end
-
-# Install the oc client begin
-RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
-        -o /tmp/openshift-client-linux.tar.gz && \
-    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
-    rm -f /tmp/openshift-client-linux.tar.gz
-# Install the oc client end
