@@ -6,7 +6,7 @@ All Tekton file updates **must be made in the `konflux-central` repository**.
 
 ## ✅ How to Make Changes
 
-To modify the pipelines for `notebooks` in the `main` branch:
+To modify the pipelines for `notebooks` in the `rhoai-2.25` release:
 
 - Clone the [`konflux-central`](https://github.com/red-hat-data-services/konflux-central) repository.
 
@@ -15,10 +15,10 @@ git clone git@github.com:red-hat-data-services/konflux-central.git
 cd konflux-central
 ```
 
-- Check out the branch
+- Check out the release branch
 
 ```bash
-git checkout main
+git checkout rhoai-2.25
 ```
 
 - Navigate to the Tekton files for your component(s).
@@ -32,8 +32,8 @@ cd pipelineruns/notebooks/.tekton
 - Commit and push your changes.
 
 ```bash
-git commit -am "Update pipelinerun for notebooks (main)"
-git push origin main
+git commit -am "Update pipelinerun for notebooks (rhoai-2.25)"
+git push origin rhoai-2.25
 ```
 
 - Once pushed, automation will automatically sync your updates to the corresponding component repository.
