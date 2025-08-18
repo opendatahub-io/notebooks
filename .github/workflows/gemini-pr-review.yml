@@ -90,10 +90,10 @@ jobs:
           app-id: '${{ vars.APP_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
 
-      - name: 'Get PR details (pull_request & workflow_dispatch)'
+      - name: 'Get PR details (pull_request & pull_request_target & workflow_dispatch)'
         id: 'get_pr'
         if: |-
-          ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+          ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || github.event_name == 'workflow_dispatch' }}
         env:
           GITHUB_TOKEN: '${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}'
           EVENT_NAME: '${{ github.event_name }}'
@@ -109,6 +109,9 @@ jobs:
           fi
 
           echo "pr_number=${PR_NUMBER}" >> "${GITHUB_OUTPUT}"
+
+          # No additional instructions for non-comment triggers
+          echo "additional_instructions=" >> "${GITHUB_OUTPUT}"
 
           # Get PR details
           PR_DATA="$(gh pr view "${PR_NUMBER}" --json title,body,additions,deletions,changedFiles,baseRefName,headRefName)"
