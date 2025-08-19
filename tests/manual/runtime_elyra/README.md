@@ -19,7 +19,7 @@ The Notebooks team is responsible for maintaining these runtime container images
 
 This ensures ML engineers can focus on AI model development with reliable and efficient pipeline execution in RHOAI.
 
-## **Elyra Testing**
+## Elyra Testing
 
 Elyra comes with a handful of plugins, but for the Notebooks team testing, we must only configure the AWS S3 bucket for the pipeline execution (as it saves data to buckets). No other plugins need to be tested by the Notebook team besides the runtime images and its basic workflow.
 
