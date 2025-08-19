@@ -245,5 +245,5 @@ COPY ${PYTORCH_SOURCE_CODE}/runtime-images/ /opt/app-root/share/jupyter/metadata
 WORKDIR /opt/app-root/src
 
 # Install micropipenv and uv to deploy packages from requirements.txt begin
-RUN pip install --no-cache-dir -U "micropipenv[toml]" "uv"
+RUN pip install --no-cache-dir -U "micropipenv[toml]==1.9.0" "uv==0.8.12"
 # Install micropipenv and uv to deploy packages from requirements.txt end
