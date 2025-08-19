@@ -11,7 +11,7 @@
 - [Workbench creation](#workbench-creation)
 - [Pipeline testing](#pipeline-testing)
 
-## **Overview** {#overview}
+## **Overview**
 
 Elyra enhances JupyterLab with AI-centric features, streamlining AI model development, debugging, and deployment for machine learning engineers and data scientists. It provides a visual pipeline editor for machine learning workflows, reusable code snippets, and Git integration for robust version control. Consistent environments are facilitated by runtime images, which also offer enhanced debugging capabilities, improved resource management, and seamless data source integration.
 
@@ -19,11 +19,11 @@ The Notebooks team is responsible for maintaining these runtime container images
 
 This ensures ML engineers can focus on AI model development with reliable and efficient pipeline execution in RHOAI.
 
-## **Elyra Testing** {#elyra-testing}
+## **Elyra Testing**
 
 Elyra comes with a handful of plugins, but for the Notebooks team testing, we must only configure the AWS S3 bucket for the pipeline execution (as it saves data to buckets). No other plugins need to be tested by the Notebook team besides the runtime images and its basic workflow.
 
-## Setup AWS Credentials {#setup-aws-credentials}
+## Setup AWS Credentials
 
 To properly configure your RHOAI project to have access to your Amazon AWS S3 bucket, we need to create a connection in RHOAI with the credentials, as follows:
 
@@ -57,7 +57,7 @@ To properly configure your RHOAI project to have access to your Amazon AWS S3 bu
 
    ![][image3]
 
-## Pipeline setup {#pipeline-setup}
+## Pipeline setup
 
 To properly configure your RHOAI project to run Elyra pipelines, we need to create a pipeline and configure it to use the AWS credentials created in the section above:
 
@@ -77,7 +77,7 @@ To properly configure your RHOAI project to run Elyra pipelines, we need to crea
 
    ![][image7]
 
-## Workbench creation {#workbench-creation}
+## Workbench creation
 
 To run Elyra pipelines, you need to create a data science cluster workbench in RHOAI, which will already contain Elyra installed on JupyterLab and available for use.
 
@@ -111,7 +111,7 @@ To run Elyra pipelines, you need to create a data science cluster workbench in R
 
    ![][image12]
 
-## Pipeline testing {#pipeline-testing}
+## Pipeline testing
 
 With Elyra, you can simply go and click to create your pipeline from scratch, or you can use JupyterLab's git clone functionality to pull a project from GitHub / GitLab / etc and run the pipeline from this repository directly.
 
