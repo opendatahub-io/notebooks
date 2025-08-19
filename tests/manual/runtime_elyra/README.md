@@ -4,17 +4,12 @@
 
 # Table of contents
 
-[**Overview	2**](#overview)
-
-[**Elyra Testing	2**](#elyra-testing)
-
-[**Setup AWS Credentials	3**](#setup-aws-credentials)
-
-[**Pipeline setup	5**](#pipeline-setup)
-
-[**Workbench creation	7**](#workbench-creation)
-
-[**Pipeline testing	10**](#pipeline-testing)
+- [Overview](#overview)
+- [Elyra Testing](#elyra-testing)
+- [Setup AWS Credentials](#setup-aws-credentials)
+- [Pipeline setup](#pipeline-setup)
+- [Workbench creation](#workbench-creation)
+- [Pipeline testing](#pipeline-testing)
 
 ## **Overview** {#overview}
 
