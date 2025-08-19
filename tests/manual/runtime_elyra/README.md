@@ -11,11 +11,11 @@
 - [Workbench creation](#workbench-creation)
 - [Pipeline testing](#pipeline-testing)
 
-## **Overview**
+## Overview
 
 Elyra enhances JupyterLab with AI-centric features, streamlining AI model development, debugging, and deployment for machine learning engineers and data scientists. It provides a visual pipeline editor for machine learning workflows, reusable code snippets, and Git integration for robust version control. Consistent environments are facilitated by runtime images, which also offer enhanced debugging capabilities, improved resource management, and seamless data source integration.
 
-The Notebooks team is responsible for maintaining these runtime container images. This ensures Elyra pipelines can be executed using RHOAI images specifically crafted for this purpose, including accelerator support (NVIDIA and AMD GPUs), AI frameworks (pre-installed PyTorch and TensorFlow) and Python support**.**
+The Notebooks team is responsible for maintaining these runtime container images. This ensures Elyra pipelines can be executed using RHOAI images specifically crafted for this purpose, including accelerator support (NVIDIA and AMD GPUs), AI frameworks (pre-installed PyTorch and TensorFlow), and Python support.
 
 This ensures ML engineers can focus on AI model development with reliable and efficient pipeline execution in RHOAI.
 
@@ -113,7 +113,7 @@ To run Elyra pipelines, you need to create a data science cluster workbench in R
 
 ## Pipeline testing
 
-With Elyra, you can simply go and click to create your pipeline from scratch, or you can use JupyterLab's git clone functionality to pull a project from GitHub / GitLab / etc and run the pipeline from this repository directly.
+With Elyra, you can create your pipeline from scratch, or use JupyterLab’s Git extension to pull a project from GitHub/GitLab/etc. and run the pipeline from that repository directly.
 
 In this testing scenario, we will use a [sample Elyra application available on GitHub](https://github.com/harshad16/data-science-pipeline-example) to test a runtime image and see if the pipeline executes properly.
 
@@ -121,7 +121,7 @@ In this testing scenario, we will use a [sample Elyra application available on G
 
    ![][image13]
 
-2. On the “Clone a repo” dialog, fill in the the sample application's HTTPS link and click on “Clone”:
+2. On the “Clone a repo” dialog, fill in the sample application’s HTTPS link and click “Clone”:
 
    ![][image14]
 
