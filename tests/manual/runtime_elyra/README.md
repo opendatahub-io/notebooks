@@ -29,11 +29,11 @@ To properly configure your RHOAI project to have access to your Amazon AWS S3 bu
 
 1. After you created a data science project in RHOAI, open it and click on “Connections”:
 
-   ![][image1]
+   ![RHOAI Connections tab][image1]
 
 2. Click on the “Create Connection” button, at the center of the screen:
 
-   ![][image2]
+   ![Create Connection button][image2]
 
 3. After you gathered the credentials with your team, proceed with the creation of the connection with the following example:
 
@@ -55,7 +55,7 @@ To properly configure your RHOAI project to have access to your Amazon AWS S3 bu
 
 5. Check if the connection has been properly created:
 
-   ![][image3]
+   ![S3 connection created successfully][image3]
 
 ## Pipeline setup
 
@@ -63,19 +63,19 @@ To properly configure your RHOAI project to run Elyra pipelines, we need to crea
 
 1. After you created your connection with your AWS credentials, click on the “Pipelines” tab:
 
-   ![][image4]
+   ![Pipelines tab][image4]
 
 2. Click on the “Configure pipeline server” button:
 
-   ![][image5]
+   ![Configure pipeline server button][image5]
 
 3. Click on the “Autofill from connection” dropdown, select the “aws” connection and click on the “Configure pipeline server” button:
 
-   ![][image6]
+   ![Autofill from connection dropdown][image6]
 
 4. Now, wait until the pipeline has been properly configured \- it might take a couple of minutes:
 
-   ![][image7]
+   ![Pipeline server configuring status][image7]
 
 ## Workbench creation
 
@@ -83,13 +83,13 @@ To run Elyra pipelines, you need to create a data science cluster workbench in R
 
 1. Go to the Workbenches tab in your RHOAI project:
 
-   ![][image8]
+   ![Workbench tab][image8]
 
 2. Click on the “Create workbench” button:
 
-   ![][image9]
+      ![Create workbench button][image9]
 
-3. On the workbench creation form, you can put any name you want, but it needs to be, at least, the data science image (you can choose the TensorFlow, PyTorch, among other images \- click [here](https://github.com/search?q=repo%3Aopendatahub-io%2Fnotebooks+COPY+%2F%24%7BDATASCIENCE_SOURCE_CODE%7D%5C%2Fsetup-elyra.sh%2F&type=code) for full list of images with Elyra):
+3. On the workbench creation form, you can put any name you want, but it needs to be, at least, the data science image (you can choose the TensorFlow, PyTorch, among other images \- click [here](https://github.com/search?q=repo%3Aopendatahub-io%2Fnotebooks+COPY+%2F%24%7BDATASCIENCE_SOURCE_CODE%7D%5C%2Fsetup-elyra.sh%2F&type=code) for a full list of images with Elyra):
 
    	**Name:** elyra-wb
    	**Image Selection:** Jupyter | Data Science | CPU | Python 3.12
@@ -101,15 +101,15 @@ To run Elyra pipelines, you need to create a data science cluster workbench in R
 
 5. Wait until your workbench is properly created:
 
-   ![][image10]
+   ![Workbench provisioning in progress][image10]
 
 6. Once your workbench is created and the status is changed to “Running”, click on the workbench name to open it in a new tab:
 
-   ![][image11]
+   ![Open workbench action][image11]
 
 7. Once your JupyterLab opens, you can see that it has a section for Elyra:
 
-   ![][image12]
+   ![JupyterLab Elyra section visible][image12]
 
 ## Pipeline testing
 
@@ -119,43 +119,43 @@ In this testing scenario, we will use a [sample Elyra application available on G
 
 1. In JupyterLab, click on the Git Clone button, on the left menu:
 
-   ![][image13]
+   ![JupyterLab Git Clone button][image13]
 
 2. On the “Clone a repo” dialog, fill in the sample application’s HTTPS link and click “Clone”:
 
-   ![][image14]
+   ![Clone a repo dialog][image14]
 
 3. Once the repository has been downloaded, you can navigate through the folders on the left. Let's go to the Iris folder:
 
-   ![][image15]
+   ![Navigate to Iris folder][image15]
 
 4. A new window will be launched inside JupyterLab and you can see the Iris application's pipeline on it:
 
-   ![][image16]
+   ![Iris pipeline opened in Elyra editor][image16]
 
 5. From each one of these blocks, if you click on them, you can select which runtime image will be used to run the pipeline:
 
-   ![][image17]
+   ![Select runtime image for node][image17]
 
 6. Once you have chosen the runtime image for all pipeline scripts, press the “Play” button in the top menu to execute the pipeline:
 
-   ![][image18]
+   ![Run pipeline (Play button)][image18]
 
 7. Fill in with a name for your pipeline execution and press the “OK” button in the dialog:
 
-   ![][image19]
+   ![Name your pipeline run dialog][image19]
 
 8. Wait until your pipeline starts
 
-   ![][image20]
+   ![Pipeline run starting][image20]
 
 9. Click on the “Run Details” link to follow up your pipeline execution:
 
-   ![][image21]
+   ![Run Details][image21]
 
 10. You can also see the progress from your RHOAI dashboard and clicking in the “Experiments \> Experiments and runs” menu:
 
-    ![][image22]
+    ![Experiments and runs page in RHOAI][image22]
 
 11. If your pipeline succeeds in the execution, then your runtime images are working as expected and the test is good.
 
