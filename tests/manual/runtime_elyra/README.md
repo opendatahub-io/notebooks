@@ -160,7 +160,7 @@ In this testing scenario, we will use a [sample Elyra application available on G
 
 10. You can also see the progress from your RHOAI dashboard and clicking in the “Experiments \> Experiments and runs” menu:
 
-   ![][image22]
+    ![][image22]
 
 11. If your pipeline succeeds in the execution, then your runtime images are working as expected and the test is good.
 
