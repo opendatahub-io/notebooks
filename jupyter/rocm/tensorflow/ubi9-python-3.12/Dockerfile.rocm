@@ -73,8 +73,15 @@ RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
     dnf install -y 'https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm' && \
     dnf clean all && dnf makecache && \
-    dnf install -y rocm-developer-tools rocm-ml-sdk rocm-opencl-sdk rocm-openmp-sdk rocm-utils && \
+    dnf install -y rocm-developer-tools rocm-ml-sdk rocm-openmp-sdk rocm-utils && \
     dnf clean all && rm -rf /var/cache/dnf
+
+# https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/post-install.html#configure-rocm-shared-objects
+RUN tee --append /etc/ld.so.conf.d/rocm.conf <<EOF
+  /opt/rocm/lib
+  /opt/rocm/lib64
+EOF
+RUN ldconfig
 
 # Restore notebook user workspace
 USER 1001
