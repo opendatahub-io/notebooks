@@ -43,20 +43,21 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
     rm -f /tmp/openshift-client-linux.tar.gz
 # Install the oc client end
 
-########################
+#############
 # rocm-base #
-########################
+#############
 FROM base AS rocm-base
 
 USER 0
 WORKDIR /opt/app-root/bin
 
 # Please keep in sync with ROCm/python3.12 dependent images
-ARG ROCM_VERSION=6.4.1
-ARG AMDGPU_VERSION=6.4.1
+ARG ROCM_VERSION=6.4.3
+ARG AMDGPU_VERSION=6.4.3
 
 # Install the ROCm rpms
 # ref: https://github.com/ROCm/ROCm-docker/blob/master/dev/Dockerfile-centos-7-complete
+# docs: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/install-methods/package-manager/package-manager-rhel.html#registering-rocm-repositories
 # Note: Based on 6.4 above new package mivisionx is a pre-requistes, which bring in more dependent packages
 # so we are only installing meta packages of rocm
 # ref: https://rocm.docs.amd.com/projects/install-on-linux/en/develop/reference/package-manager-integration.html#packages-in-rocm-programming-models
