@@ -16,5 +16,6 @@ Notebooks:
 - jupyter-rocm-tensorflow-notebook-imagestream-beta
 - jupyter-tensorflow-notebook-imagestream-beta
 - jupyter-trustyai-notebook-imagestream-beta
+- jupyter-pytorch-llmcompressor-py312-ubi9-beta
 
 **Note:** These images are the beta version of the 2025.b release based on Python 3.12.

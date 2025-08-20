@@ -1,0 +1,59 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/jupyter/pytorch+llmcompressor/ubi9-python-3.12"
+    opendatahub.io/notebook-image-name: "Jupyter | PyTorch LLM Compressor | CUDA | Python 3.12"
+    opendatahub.io/notebook-image-desc: "Jupyter notebook image with PyTorch LLM Compressor libraries and dependencies to start experimenting with advanced AI/ML notebooks."
+    opendatahub.io/notebook-image-order: "22"
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+  name: jupyter-pytorch-llmcompressor-cuda-py312-ubi9
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "CUDA", "version": "12.6"},
+            {"name": "Python", "version": "v3.12"},
+            {"name": "PyTorch", "version": "2.6"},
+            {"name": "LLM-Compressor", "version": "0.6"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab","version": "4.4"},
+            {"name": "PyTorch", "version": "2.6"},
+            {"name": "LLM-Compressor", "version": "0.6"},
+            {"name": "Tensorboard", "version": "2.19"},
+            {"name": "Boto3", "version": "1.37"},
+            {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Kfp", "version": "2.12"},
+            {"name": "Matplotlib", "version": "3.10"},
+            {"name": "Numpy", "version": "1.26"},
+            {"name": "Pandas", "version": "2.2"},
+            {"name": "Scikit-learn", "version": "1.6"},
+            {"name": "Scipy", "version": "1.15"},
+            {"name": "Odh-Elyra", "version": "4.2"},
+            {"name": "PyMongo", "version": "4.11"},
+            {"name": "Pyodbc", "version": "5.2"},
+            {"name": "Codeflare-SDK", "version": "0.29"},
+            {"name": "Sklearn-onnx", "version": "1.18"},
+            {"name": "Psycopg", "version": "3.2"},
+            {"name": "MySQL Connector/Python", "version": "9.3"},
+            {"name": "Kubeflow-Training", "version": "1.9"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-commit-n_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-n_PLACEHOLDER
+      name: "2025.1"
+      referencePolicy:
+        type: Source
