@@ -11,7 +11,7 @@ tf2onnx = "~=1.16.1"
 [packages]
 # ROCm TensorFlow packages
 # https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/tensorflow-install.html#using-a-wheels-package
-tensorflow-rocm = {file = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4/tensorflow_rocm-2.18.1-cp312-cp312-manylinux_2_28_x86_64.whl"}
+tensorflow-rocm = {version = "==2.18.1", file = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4/tensorflow_rocm-2.18.1-cp312-cp312-manylinux_2_28_x86_64.whl", hashes = ["sha256:814a5e4842b0c92d63c7a0bb4df0baf51ff2db8615535d83fe8958204b840598"]}
 tensorboard = "~=2.18.0"
 
 # Datascience and useful extensions
