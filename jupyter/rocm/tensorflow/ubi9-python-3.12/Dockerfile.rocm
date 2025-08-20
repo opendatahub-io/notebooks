@@ -3,7 +3,7 @@
 ######################################################
 FROM registry.access.redhat.com/ubi9/go-toolset:latest AS mongocli-builder
 
-ARG MONGOCLI_VERSION=2.0.3
+ARG MONGOCLI_VERSION=2.0.4
 
 WORKDIR /tmp/
 RUN curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
@@ -21,20 +21,27 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER 0
 
+# upgrade first to avoid fixable vulnerabilities begin
+RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
+    && dnf clean all -y
+# upgrade first to avoid fixable vulnerabilities end
+
 # Install useful OS packages
 RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 
 # Other apps and tools installed as default user
 USER 1001
 
-# Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install --no-cache-dir -U "micropipenv[toml]"
+# Install micropipenv and uv to deploy packages from requirements.txt begin
+RUN pip install --no-cache-dir -U "micropipenv[toml]==1.9.0" "uv==0.8.12"
+# Install micropipenv and uv to deploy packages from requirements.txt end
 
-# Install the oc client
+# Install the oc client begin
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
         -o /tmp/openshift-client-linux.tar.gz && \
     tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
     rm -f /tmp/openshift-client-linux.tar.gz
+# Install the oc client end
 
 ########################
 # rocm-base #
@@ -87,9 +94,10 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
 USER 0
 
-# Dependencies for PDF export
+# Dependencies for PDF export begin
 RUN ./utils/install_pdf_deps.sh
-ENV PATH="/usr/local/texlive/bin/x86_64-linux:/usr/local/pandoc/bin:$PATH"
+ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+# Dependencies for PDF export end
 
 USER 1001
 
@@ -118,7 +126,7 @@ RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile && dnf clean all &&
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 
 # Install MSSQL Client, We need a special repo for MSSQL as they do their own distribution
-COPY ${DATASCIENCE_SOURCE_CODE}/mssql-2022.repo-x86_64 /etc/yum.repos.d/mssql-2022.repo
+COPY ${DATASCIENCE_SOURCE_CODE}/mssql-2022.repo /etc/yum.repos.d/mssql-2022.repo
 
 RUN ACCEPT_EULA=Y dnf install -y mssql-tools18 unixODBC-devel && dnf clean all && rm -rf /var/cache/yum
 
@@ -153,11 +161,12 @@ LABEL name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.12" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/rocm/tensorflow/ubi9-python-3.12" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:rocm-jupyter-tensorflow-ubi9-python-3.12"
 
-COPY ${TENSORFLOW_SOURCE_CODE}/Pipfile.lock  ./
+COPY ${TENSORFLOW_SOURCE_CODE}/requirements.txt ./
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install --dev && \
-    rm -f ./Pipfile.lock && \
+    # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+    #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./requirements.txt --build-constraints=./requirements.txt && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \
     # Remove default Elyra runtime-images \
