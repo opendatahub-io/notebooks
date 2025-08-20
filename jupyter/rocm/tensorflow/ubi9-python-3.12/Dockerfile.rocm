@@ -72,7 +72,6 @@ RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
     dnf install -y 'https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm' && \
     dnf clean all && dnf makecache && \
-    dnf install -y ocl-icd ocl-icd-devel opencl-icd opencl-icd-loader && \
     dnf install -y rocm-developer-tools rocm-ml-sdk rocm-opencl-sdk rocm-openmp-sdk rocm-utils && \
     dnf clean all && rm -rf /var/cache/dnf
 
