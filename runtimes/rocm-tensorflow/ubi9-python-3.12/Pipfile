@@ -10,8 +10,9 @@ tf2onnx = "~= 1.16.1"
 
 [packages]
 # ROCm TensorFlow packages
-tensorflow-rocm = "~=2.14.0.600"
-tensorboard = "~=2.14.0"
+# https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/tensorflow-install.html#using-a-wheels-package
+tensorflow-rocm = {file = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4/tensorflow_rocm-2.18.1-cp312-cp312-manylinux_2_28_x86_64.whl"}
+tensorboard = "~=2.18.0"
 
 # Datascience and useful extensions
 boto3 = "~=1.37.8"
