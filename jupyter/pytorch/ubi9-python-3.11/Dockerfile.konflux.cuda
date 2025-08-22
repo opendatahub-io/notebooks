@@ -3,7 +3,7 @@
 ######################################################
 FROM registry.access.redhat.com/ubi9/go-toolset:latest AS mongocli-builder
 
-ARG MONGOCLI_VERSION=2.0.3
+ARG MONGOCLI_VERSION=2.0.4
 
 WORKDIR /tmp/
 RUN curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
