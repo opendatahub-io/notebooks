@@ -37,9 +37,6 @@ WORKDIR /opt/app-root/src
 ####################
 FROM base AS cuda-base-amd64
 ENV NVARCH=x86_64
-# cuda-nvprof only gets installed on amd64 currently
-ENV NV_NVPROF_VERSION=12.6.80-1
-ENV NV_NVPROF_DEV_PACKAGE=cuda-nvprof-12-6-${NV_NVPROF_VERSION}
 
 FROM base AS cuda-base-arm64
 ENV NVARCH=sbsa
