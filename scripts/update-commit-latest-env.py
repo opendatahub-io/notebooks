@@ -111,7 +111,7 @@ async def main():
         output.append((re.sub(r'-n$', "-commit-n", variable), commit_hash[:7]))
 
     with open(PROJECT_ROOT / "manifests/base/commit-latest.env", "wt") as file:
-        for line in output:
+        for line in sorted(output):
             print(*line, file=file, sep="=", end="\n")
 
 
