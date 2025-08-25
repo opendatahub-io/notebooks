@@ -1,0 +1,54 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    build.appstudio.openshift.io/build-nudge-files: "manifests/base/params-latest.env"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-push.yaml".pathChanged() || "jupyter/pytorch+llmcompressor/ubi9-python-3.12/**".pathChanged() || "cuda/**".pathChanged() || "jupyter/utils/**".pathChanged() || "jupyter/minimal/ubi9-python-3.12/start-notebook.sh".pathChanged() || "jupyter/datascience/ubi9-python-3.12/mongodb-org-6.0.repo-x86_64/**".pathChanged() || "jupyter/datascience/ubi9-python-3.12/mssql-2022.repo-x86_64/**".pathChanged() || "jupyter/datascience/ubi9-python-3.12/setup-elyra.sh".pathChanged() )
+  creationTimestamp:
+  labels:
+    appstudio.openshift.io/application: opendatahub-release
+    appstudio.openshift.io/component: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9
+    pipelines.appstudio.openshift.io/type: build
+  name: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-on-push
+  namespace: open-data-hub-tenant
+spec:
+  params:
+  - name: git-url
+    value: '{{source_url}}'
+  - name: revision
+    value: '{{revision}}'
+  - name: output-image
+    value: quay.io/opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9:{{revision}}
+  - name: dockerfile
+    value: jupyter/pytorch+llmcompressor/ubi9-python-3.12/Dockerfile.cuda
+  - name: path-context
+    value: .
+  - name: additional-tags
+    value:
+    - '{{target_branch}}-{{revision}}'
+    - 2025a-v1.35
+  taskRunSpecs:
+  - pipelineTaskName: build-container
+    stepSpecs:
+    - name: build
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 16Gi
+        limits:
+          cpu: '16'
+          memory: 32Gi
+  pipelineRef:
+    name: singlearch-push-pipeline
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
+status: {}
