@@ -5,7 +5,6 @@ import contextlib
 import allure
 import pytest
 import testcontainers.core.container
-
 from tests.containers import base_image_test, conftest, docker_utils
 
 

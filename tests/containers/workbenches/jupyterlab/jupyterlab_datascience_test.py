@@ -9,7 +9,6 @@ import pytest
 import testcontainers.core.network
 from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.mysql import MySqlContainer
-
 from tests.containers import conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
