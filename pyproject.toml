@@ -4,8 +4,11 @@ name = "notebooks"
 version = "2025.1"
 description = "Open Data Hub / OpenShift AI Notebook / Workbench images, and tests for the same in Python."
 readme = "README.md"
-package-mode = false
 requires-python = ">=3.11,<3.13"
+
+# WARNING: Do NOT attempt `uv lock --universal` (the default) resolution on this pyproject.toml.
+#  It would work (had the ` conflics ` section were defined), but it would run 10+ minutes and produce a huge `uv.lock` file (60MiB+).
+#  Instead, use the `scripts/sync-requirements-txt.sh` script which runs in seconds.
 
 [dependency-groups]
 
@@ -35,26 +38,24 @@ dev = [
 ]
 
 base = [
-
     "wheel~=0.45.1",
-    "setuptools~=78.1.1; python_version == '3.11'",
-    "setuptools~=75.8.2; python_version == '3.12'",
+    "setuptools~=78.1.1",
 ]
 
 jupyter-base = [
-    "jupyterlab==4.2.7",
-    "jupyter-server~=2.15.0",
+    "jupyterlab==4.4.4",
+    "jupyter-server~=2.16.0",
     "jupyter-server-proxy~=4.4.0",
     "jupyter-server-terminals~=0.5.3",
-    "jupyterlab-git~=0.50.1",
+    "jupyterlab-git~=0.51.1",
     "nbdime~=4.0.2",
     "nbgitpuller~=1.2.2",
 ]
 
 elyra-base = [
-    "odh-elyra==4.2.0",
-    "jupyterlab-lsp~=5.1.0",
-    "jupyterlab-widgets~=3.0.13",
+    "odh-elyra==4.2.3",
+    "jupyterlab-lsp~=5.1.1",
+    "jupyterlab-widgets~=3.0.15",
     "jupyter-resource-usage~=1.1.1",
 ]
 
@@ -63,15 +64,14 @@ elyra-preferred = [
 ]
 
 elyra-trustyai = [
-    "jupyter-bokeh~=3.0.5",
+    "jupyter-bokeh~=3.0.5",  # trustyai 0.6.1 depends on jupyter-bokeh~=3.0.5
 ]
 
 db-connectors = [
     "pymongo~=4.11.2",
     "psycopg~=3.2.5",
     "pyodbc~=5.2.0",
-    "mysql-connector-python~=9.3.0; python_version == '3.11'",
-    "mysql-connector-python~=9.2.0; python_version == '3.12'",
+    "mysql-connector-python~=9.3.0",
 ]
 
 # onnxconverter-common ~=1.13.0 required for skl2onnx, as upgraded version is not compatible with protobuf
@@ -87,8 +87,7 @@ datascience-base = [
 ]
 
 codeflare = [
-    "codeflare-sdk~=0.29.0; python_version == '3.11'",
-    "codeflare-sdk~=0.28.1; python_version == '3.12'",
+    "codeflare-sdk~=0.30.0",
 ]
 
 datascience-preferred = [
@@ -109,7 +108,7 @@ datascience-trustyai = [
     "matplotlib~=3.6.3",
     "numpy~=1.24.1",
     "pandas~=1.5.3",
-    "scikit-learn~=1.2.1"
+    "scikit-learn~=1.7.0"
 ]
 
 tensorflowcuda= [
@@ -118,8 +117,8 @@ tensorflowcuda= [
     "tf2onnx~=1.16.1",
 ]
 tensorflowrocm = [
-    "tensorflow-rocm~=2.14.0.600",
-    "tensorboard~=2.14.0",
+    "tensorflow-rocm~=2.18.1",
+    "tensorboard~=2.18.0",
     "tf2onnx~=1.16.1",
 ]
 pytorchcuda = [
@@ -135,7 +134,7 @@ pytorchrocm = [
 ]
 llmcompressor = [
     "vllm~=0.8.5",
-    "llmcompressor~=0.5.1; python_version == '3.11'",
+    "llmcompressor~=0.6.0",
     "lm-eval~=0.4.8",
     "loguru",
     "pyyaml>=5.0.0",
@@ -150,7 +149,8 @@ llmcompressor = [
 ]
 trustyai = [
     "torch==2.6.0",
-    "transformers~=4.49.0",
+    "transformers~=4.53.0; python_version == '3.11'",
+    "transformers~=4.55.0; python_version == '3.12'",
     "datasets~=3.4.1",
     "accelerate~=1.5.2",
     "trustyai~=0.6.1",
@@ -160,14 +160,14 @@ trustyai = [
 # Workbench Image Groups #
 #########################
 
+# https://docs.astral.sh/uv/concepts/projects/workspaces/#when-not-to-use-workspaces
+
 jupyter-minimal-image = [
-    { include-group = "dev" },
     { include-group = "base" },
     { include-group = "jupyter-base" },
 ]
 
 jupyter-datascience-image = [
-    { include-group = "dev" },
     { include-group = "base" },
     { include-group = "jupyter-base" },
     { include-group = "elyra-base" },
@@ -179,7 +179,6 @@ jupyter-datascience-image = [
 ]
 
 jupyter-tensorflow-image = [
-    { include-group = "dev" },
     { include-group = "base" },
     { include-group = "jupyter-base" },
     { include-group = "elyra-base" },
@@ -192,7 +191,6 @@ jupyter-tensorflow-image = [
 ]
 
 jupyter-tensorflow-rocm-image = [
-    { include-group = "dev" },
     { include-group = "base" },
     { include-group = "jupyter-base" },
     { include-group = "elyra-base" },
@@ -205,7 +203,6 @@ jupyter-tensorflow-rocm-image = [
 ]
 
 jupyter-pytorch-image = [
-    { include-group = "dev" },
     { include-group = "base" },
     { include-group = "jupyter-base" },
     { include-group = "elyra-base" },
@@ -218,7 +215,6 @@ jupyter-pytorch-image = [
 ]
 
 jupyter-pytorch-rocm-image = [
-    { include-group = "dev" },
     { include-group = "base" },
     { include-group = "jupyter-base" },
     { include-group = "elyra-base" },
@@ -231,7 +227,6 @@ jupyter-pytorch-rocm-image = [
 ]
 
 jupyter-pytorch-llmcompressor-image = [
-    { include-group = "dev" },
     { include-group = "base" },
     { include-group = "jupyter-base" },
     { include-group = "elyra-base" },
@@ -240,10 +235,10 @@ jupyter-pytorch-llmcompressor-image = [
     { include-group = "datascience-tensorflow" },
     { include-group = "db-connectors" },
     { include-group = "llmcompressor" },
+    { include-group = "pytorchcuda" },
 ]
 
 jupyter-trustyai-image = [
-    { include-group = "dev" },
     { include-group = "base" },
     { include-group = "jupyter-base" },
     { include-group = "elyra-base" },
@@ -253,23 +248,40 @@ jupyter-trustyai-image = [
     { include-group = "codeflare" },
     { include-group = "db-connectors" },
     { include-group = "trustyai" },
+    { include-group = "pytorchcuda" },
 ]
 
+# https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-sources
 [tool.uv.sources]
+
+# NOTE: it is important to specify the `index` for the top-level groups, the ones used in the final resolution.
+#  Index values do not inherit from a lower-level group to the one where it is included.
+
+# https://docs.astral.sh/uv/guides/integration/pytorch/#using-uv-with-pytorch
 torch = [
-    { index = "pytorch-cuda", group = "pytorchcuda" },
-    { index = "pytorch-cuda", group = "trustyai" },
-    { index = "pytorch-rocm", group = "pytorchrocm" },
+    { index = "pytorch-cuda", group = "jupyter-pytorch-image" },
+    { index = "pytorch-cuda", group = "jupyter-pytorch-llmcompressor-image" },
+    { index = "pytorch-cuda", group = "jupyter-trustyai-image" },
+
+    { index = "pytorch-rocm", group = "jupyter-pytorch-rocm-image" },
 ]
 torchvision = [
-    { index = "pytorch-cuda", group = "pytorchcuda" },
-    { index = "pytorch-rocm", group = "pytorchrocm" },
+    { index = "pytorch-cuda", group = "jupyter-pytorch-image" },
+    { index = "pytorch-cuda", group = "jupyter-pytorch-llmcompressor-image" },
+    { index = "pytorch-cuda", group = "jupyter-trustyai-image" },
+
+    { index = "pytorch-rocm", group = "jupyter-pytorch-rocm-image" },
 ]
 pytorch-triton-rocm = [
-    { index = "pytorch-rocm" },
+    { index = "pytorch-rocm", group = "jupyter-pytorch-rocm-image" },
+]
+tensorflow-rocm = [
+    { url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4/tensorflow_rocm-2.18.1-cp312-cp312-manylinux_2_28_x86_64.whl", group = "jupyter-tensorflow-rocm-image" },
 ]
 
-
+# https://docs.astral.sh/uv/concepts/indexes/#package-indexes
+# TODO(jdanek): explicit = false, otherwise `uv pip compile --emit-index-url` wont emit it
+#  also see https://github.com/astral-sh/uv/issues/10008, https://github.com/astral-sh/uv/issues/15534
 [[tool.uv.index]]
 name = "pytorch-cuda"
 url = "https://download.pytorch.org/whl/cu126"
@@ -283,7 +295,7 @@ explicit = true
 [[tool.uv.index]]
 name = "pypi"
 url = "https://pypi.org/simple/"
-explicit = true 
+explicit = true
 
 [[tool.uv.dependency-metadata]]
 name = "tf2onnx"
@@ -297,68 +309,15 @@ requires-dist = ["compressed-tensors"]
 
 [[tool.uv.dependency-metadata]]
 name = "tensorflow-rocm"
-version = "2.14.0.600"
-requires-dist = [
-    "tensorflow-cpu-aws; platform_machine != 'x86_64'",
-    "tensorflow-estimator",
-    "tensorflow-io-gcs-filesystem",
-]
+version = "2.18.1"
+requires-dist = []
 
 [tool.uv]
 package = false
-required-environments = [
-    "sys_platform == 'linux'"
-]
 
-conflicts = [
-    [
-        { group = "elyra-preferred" },
-        { group = "elyra-trustyai" }
-    ],
-    [
-        { group = "elyra-preferred" },
-        { group = "trustyai" }
-    ],
-    [
-        { group = "datascience-preferred" },
-        { group = "trustyai" },
-        { group = "tensorflowcuda" },
-        { group = "llmcompressor" },
-    ],
-    [
-        { group = "datascience-tensorflow" },
-        { group = "trustyai" }
-    ],
-    [
-        { group = "datascience-preferred" },
-        { group = "datascience-trustyai" },
-        { group = "datascience-tensorflow" },
-    ],
-    [
-        { group = "tensorflowcuda" },
-        { group = "tensorflowrocm" }, 
-        { group = "pytorchcuda" },
-        { group = "pytorchrocm" },
-        { group = "trustyai" },
-    ],
-    [
-        { group = "tensorflowcuda" },
-        { group = "tensorflowrocm" }, 
-        { group = "datascience-base" },
-    ],
-    [
-        { group = "tensorflowcuda" },
-        { group = "trustyai" },
-        { group = "datascience-trustyai" },
-    ],
-    [
-        {group = "llmcompressor"},
-        {group = "trustyai"},
-    ],
-    [
-        { group = "llmcompressor" },
-        { group = "codeflare" },
-    ]
+# https://docs.astral.sh/uv/concepts/resolution/#platform-specific-resolution
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
 
 # https://github.com/astral-sh/uv/issues/3957#issuecomment-2659350181
