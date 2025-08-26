@@ -477,6 +477,7 @@ refresh-pipfilelock-files:
 	echo "Regenerating requirements.txt files"
 	pushd $(ROOT_DIR)
 		bash $(ROOT_DIR)/scripts/sync-requirements-txt.sh
+		bash $(ROOT_DIR)/scripts/sync-pylock-toml.sh
 	popd
 
 # This is only for the workflow action
