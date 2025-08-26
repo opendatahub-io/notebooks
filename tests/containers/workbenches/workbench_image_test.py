@@ -17,7 +17,6 @@ import testcontainers.core.container
 import testcontainers.core.docker_client
 import testcontainers.core.network
 import testcontainers.core.waiting_utils
-
 from tests.containers import docker_utils, kubernetes_utils, podman_machine_utils
 
 if TYPE_CHECKING:

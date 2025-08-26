@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, NamedTuple
 
 import allure
 import pytest
-
 from tests.containers import conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 import shlex
 
 import pytest
-
 from tests.containers import conftest, kubernetes_utils
 from tests.containers.kubernetes_utils import TestFrameConstants
 

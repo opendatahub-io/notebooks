@@ -8,7 +8,6 @@ from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 if TYPE_CHECKING:
     import pytest_subtests
-
     from tests.containers.conftest import Image
 
 
