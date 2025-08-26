@@ -50,6 +50,7 @@ spec:
     - linux/x86_64
     - linux/ppc64le
     - linux/s390x
+    - linux-m2xlarge/arm64
   pipelineRef:
     resolver: git
     params:
@@ -66,4 +67,3 @@ spec:
     secret:
       secretName: '{{ git_auth_secret }}'
 status: {}
-#restart
