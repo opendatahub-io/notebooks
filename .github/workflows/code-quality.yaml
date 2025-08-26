@@ -34,6 +34,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - run: echo "UV_PROJECT=${PWD}/tests" >> "${GITHUB_ENV}"
+
       # https://github.com/astral-sh/setup-uv
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v5
@@ -41,8 +43,8 @@ jobs:
           version: "latest"
           python-version: "3.12"
           enable-cache: true
-          cache-dependency-glob: "uv.lock"
-          pyproject-file: "pyproject.toml"
+          cache-dependency-glob: "tests/uv.lock"
+          pyproject-file: "tests/pyproject.toml"
 
       - name: Check uv is installed correctly
         run: uv version
@@ -54,6 +56,9 @@ jobs:
       - name: Run pre-commit on all files
         run: |
           uv run pre-commit run --all-files
+        env:
+          # warning: `VIRTUAL_ENV=.venv` does not match the project environment path `tests/.venv` and will be ignored; use `--active` to target the active environment instead
+          VIRTUAL_ENV: tests/.venv
 
       - run: uv run pytest
 

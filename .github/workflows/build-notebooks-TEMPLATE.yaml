@@ -319,6 +319,8 @@ jobs:
 
       # region Pytest image tests
 
+      - run: echo "UV_PROJECT=${PWD}/tests" >> "${GITHUB_ENV}"
+
       # https://github.com/astral-sh/setup-uv
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v5
@@ -326,8 +328,8 @@ jobs:
           version: "latest"
           python-version: "3.12"
           enable-cache: true
-          cache-dependency-glob: "uv.lock"
-          pyproject-file: "pyproject.toml"
+          cache-dependency-glob: "tests/uv.lock"
+          pyproject-file: "tests/pyproject.toml"
 
       - name: Check uv is installed correctly
         run: uv version
