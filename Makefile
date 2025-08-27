@@ -476,7 +476,9 @@ scan-image-vulnerabilities:
 ifeq ($(RELEASE_PYTHON_VERSION), 3.11)
 all-images: \
 	rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
-	rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
+	rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
 else ifeq ($(RELEASE_PYTHON_VERSION), 3.12)
 all-images: \
 	jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
