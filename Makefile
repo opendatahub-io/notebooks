@@ -448,12 +448,12 @@ refresh-pipfilelock-files:
 		echo "Processing directory: $$dir"
 		cd $(ROOT_DIR)
 		if [ -d "$$dir" ]; then
-			echo "Updating $(PYTHON_VERSION) Pipfile.lock in $$dir"
+			echo "Updating $(PYTHON_VERSION) uv.lock in $$dir"
 			cd $$dir
-			if [ -f "Pipfile" ]; then
-				pipenv lock || pipenv lock --verbose
+			if [ -f "pyproject.toml" ]; then
+				uv lock
 			else
-				echo "No Pipfile found in $$dir, skipping."
+				echo "No pyproject.toml found in $$dir, skipping."
 			fi
 		else
 			echo "Skipping $$dir as it does not exist"
