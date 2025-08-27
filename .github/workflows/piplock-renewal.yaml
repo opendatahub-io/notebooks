@@ -67,7 +67,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install pipenv
-        run: pip install pipenv
+        run: pip install "pipenv==2025.0.4"
+
+      - name: Install uv
+        run: pip install "uv==0.8.12"
 
       - name: Run make refresh-pipfilelock-files
         run: |
