@@ -33,8 +33,8 @@ def test_image_pipfiles(subtests: pytest_subtests.plugin.SubTests):
 def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.SubTests):
     file_groups = {
         "ROCm de-vendor script": [
-            PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.11/de-vendor-torch.sh",
-            PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.11/de-vendor-torch.sh",
+            PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.12/de-vendor-torch.sh",
+            PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.12/de-vendor-torch.sh",
         ]
     }
     for group_name, (first_file, *rest) in file_groups.items():
@@ -44,7 +44,8 @@ def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.Sub
 
 
 def test_make_disable_pushing():
-    lines = dryrun_make(["rocm-jupyter-tensorflow-ubi9-python-3.11"], env={"PUSH_IMAGES": ""})
+    # NOTE: the image below needs to exist in the Makefile
+    lines = dryrun_make(["rocm-jupyter-tensorflow-ubi9-python-3.12"], env={"PUSH_IMAGES": ""})
     for line in lines:
         assert "podman push" not in line
 
