@@ -20,7 +20,7 @@ endif
 
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
 RELEASE	 		 ?= 2025a
-RELEASE_PYTHON_VERSION	 ?= 3.11
+RELEASE_PYTHON_VERSION	 ?= 3.12
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
 # whether to push the images to a registry as they are built
@@ -402,22 +402,8 @@ PYTHON_VERSION ?= 3.11
 ROOT_DIR := $(shell pwd)
 ifeq ($(PYTHON_VERSION), 3.11)
 	BASE_DIRS := \
-	    jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/trustyai/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		codeserver/ubi9-python-$(PYTHON_VERSION) \
 		rstudio/rhel9-python-$(PYTHON_VERSION) \
-		rstudio/c9s-python-$(PYTHON_VERSION) \
-		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/datascience/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION)
+		rstudio/c9s-python-$(PYTHON_VERSION)
 else ifeq ($(PYTHON_VERSION), 3.12)
 	BASE_DIRS := \
 	    jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
@@ -462,12 +448,12 @@ refresh-pipfilelock-files:
 		echo "Processing directory: $$dir"
 		cd $(ROOT_DIR)
 		if [ -d "$$dir" ]; then
-			echo "Updating $(PYTHON_VERSION) Pipfile.lock in $$dir"
+			echo "Updating $(PYTHON_VERSION) uv.lock in $$dir"
 			cd $$dir
-			if [ -f "Pipfile" ]; then
-				pipenv lock || pipenv lock --verbose
+			if [ -f "pyproject.toml" ]; then
+				uv lock && rm uv.lock
 			else
-				echo "No Pipfile found in $$dir, skipping."
+				echo "No pyproject.toml found in $$dir, skipping."
 			fi
 		else
 			echo "Skipping $$dir as it does not exist"
@@ -489,26 +475,8 @@ scan-image-vulnerabilities:
 .PHONY: all-images
 ifeq ($(RELEASE_PYTHON_VERSION), 3.11)
 all-images: \
-	jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION) \
 	rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
-	cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
-	rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION) \
-	cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION) \
-	rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
+	rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
 else ifeq ($(RELEASE_PYTHON_VERSION), 3.12)
 all-images: \
 	jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
