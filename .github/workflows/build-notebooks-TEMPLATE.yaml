@@ -299,7 +299,7 @@ jobs:
             sudo tee /etc/apt/sources.list.d/cri-o.list
 
           sudo apt-get update
-          sudo apt-get install -y cri-o kubelet kubeadm kubectl
+          sudo apt-get install -y cri-o cri-tools kubelet kubeadm kubectl
 
           # make use of /etc/cni/net.d/11-crio-ipv4-bridge.conflist so we don't
           # need a pod network and just use the default bridge
