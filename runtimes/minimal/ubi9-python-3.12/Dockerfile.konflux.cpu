@@ -46,14 +46,15 @@ ARG MINIMAL_SOURCE_CODE=runtimes/minimal/ubi9-python-3.12
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages from Pipfile.lock
-COPY ${MINIMAL_SOURCE_CODE}/Pipfile.lock ./
+# Install Python packages from requirements.txt
+COPY ${MINIMAL_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra dependencies for air-gapped enviroment
 COPY ${MINIMAL_SOURCE_CODE}/utils ./utils/
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
-    rm -f ./Pipfile.lock && \
+    # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+    #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P

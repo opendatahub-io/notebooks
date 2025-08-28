@@ -220,12 +220,13 @@ ARG TENSORFLOW_SOURCE_CODE=jupyter/tensorflow/ubi9-python-3.12
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages and Jupyterlab extensions from Pipfile.lock
-COPY ${TENSORFLOW_SOURCE_CODE}/Pipfile.lock ./
+# Install Python packages and Jupyterlab extensions from requirements.txt
+COPY ${TENSORFLOW_SOURCE_CODE}/pylock.toml ./
 
 RUN echo "Installing softwares and packages" && \
-    micropipenv install --dev && \
-    rm -f ./Pipfile.lock && \
+    # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+    #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \
     # Remove default Elyra runtime-images \
