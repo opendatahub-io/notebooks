@@ -135,8 +135,8 @@ RUN yum install -y \
     && yum clean all \
     && rm -rf /var/cache/yum/*
 
-# Install CUDA cudnn8 from:
-# hhttps://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.4.1/ubi9/runtime/cudnn/Dockerfile
+# Install CUDA cudnn9 from:
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.4.1/ubi9/runtime/cudnn/Dockerfile
 ENV NV_CUDNN_VERSION=9.1.0.70-1
 ENV NV_CUDNN_PACKAGE=libcudnn9-cuda-12-${NV_CUDNN_VERSION}
 
