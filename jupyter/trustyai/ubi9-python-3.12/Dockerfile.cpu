@@ -125,8 +125,8 @@ USER 0
 
 # Install jre that is needed to run the trustyai library
 RUN INSTALL_PKGS="java-17-openjdk" && \
-    yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
-    yum -y clean all --enablerepo='*'
+    dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
+    dnf -y clean all --enablerepo='*'
 
 USER 1001
 
