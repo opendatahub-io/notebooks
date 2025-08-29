@@ -74,7 +74,7 @@ ARG TENSORFLOW_SOURCE_CODE=runtimes/rocm-tensorflow/ubi9-python-3.12
 WORKDIR /opt/app-root/bin
 
 # Install Python packages from requirements.txt
-COPY ${TENSORFLOW_SOURCE_CODE}/requirements.txt ./
+COPY ${TENSORFLOW_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra dependencies for air-gapped enviroment
 COPY ${TENSORFLOW_SOURCE_CODE}/utils ./utils/
 
@@ -82,7 +82,7 @@ RUN echo "Installing softwares and packages" && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
     # Not using --build-constraints=./requirements.txt because error: Unnamed requirements are not allowed as constraints (found: `https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4/
-    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./requirements.txt && \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P
