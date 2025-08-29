@@ -21,7 +21,9 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           version: "latest"
-          activate-environment: "false"
+          activate-environment: false
+          ignore-empty-workdir: true
+          enable-cache: false
 
       - name: Checkout code
         uses: actions/checkout@v5
