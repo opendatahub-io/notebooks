@@ -8,13 +8,33 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER 0
 
+ARG TARGETARCH
+
 # upgrade first to avoid fixable vulnerabilities begin
 RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
     && dnf clean all -y
 # upgrade first to avoid fixable vulnerabilities end
 
-# Install useful OS packages
-RUN dnf install -y mesa-libGL skopeo libxcrypt-compat && dnf clean all && rm -rf /var/cache/yum
+# Install useful OS packages (and dev tools for ppc64le only)
+RUN --mount=type=cache,target=/var/cache/dnf \
+    echo "Building for architecture: ${TARGETARCH}" && \
+    if [ "$TARGETARCH" = "ppc64le" ]; then \
+        PACKAGES="mesa-libGL skopeo libxcrypt-compat git gcc-toolset-13 make wget unzip rust cargo unixODBC-devel cmake ninja-build"; \
+    else \
+        PACKAGES="mesa-libGL skopeo libxcrypt-compat"; \
+    fi && \
+    echo "Installing: $PACKAGES" && \
+    dnf install -y --nogpgcheck --allowerasing --nobest $PACKAGES && \
+    dnf clean all && rm -rf /var/cache/yum
+
+RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
+        echo 'export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/' >> /etc/profile.d/ppc64le.sh && \
+        echo 'export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib:$LD_LIBRARY_PATH' >> /etc/profile.d/ppc64le.sh && \
+        echo 'export OPENBLAS_VERSION=0.3.30' >> /etc/profile.d/ppc64le.sh && \
+        echo 'export ONNX_VERSION=1.19.0' >> /etc/profile.d/ppc64le.sh && \
+        echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /etc/profile.d/ppc64le.sh && \
+        echo 'export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1' >> /etc/profile.d/ppc64le.sh; \
+    fi
 
 # Other apps and tools installed as default user
 USER 1001
@@ -30,11 +50,61 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
     rm -f /tmp/openshift-client-linux.tar.gz
 # Install the oc client end
 
+###################################
+# openblas builder stage for ppc64le
+##################################
+
+FROM base AS openblas-builder
+USER root
+WORKDIR /root
+
+ARG TARGETARCH
+
+ENV OPENBLAS_VERSION=0.3.30
+
+RUN echo "openblas-builder stage TARGETARCH: ${TARGETARCH}"
+
+# Download and build OpenBLAS
+RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
+        source /opt/rh/gcc-toolset-13/enable && \
+        wget https://github.com/OpenMathLib/OpenBLAS/releases/download/v${OPENBLAS_VERSION}/OpenBLAS-${OPENBLAS_VERSION}.zip && \
+        unzip OpenBLAS-${OPENBLAS_VERSION}.zip && cd OpenBLAS-${OPENBLAS_VERSION}                                            && \
+        make -j$(nproc) TARGET=POWER9 BINARY=64 USE_OPENMP=1 USE_THREAD=1 NUM_THREADS=120 DYNAMIC_ARCH=1 INTERFACE64=0; \
+    else \
+        echo "Not ppc64le, skipping OpenBLAS build" && mkdir -p /root/OpenBLAS-dummy; \
+    fi
+
+###################################
+# onnx builder stage for ppc64le
+###################################
+
+FROM base AS onnx-builder
+USER root
+WORKDIR /root
+
+ARG TARGETARCH
+ENV ONNX_VERSION=1.19.0
+
+RUN echo "onnx-builder stage TARGETARCH: ${TARGETARCH}"
+
+RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
+    	source /opt/rh/gcc-toolset-13/enable && \
+    	git clone --recursive https://github.com/onnx/onnx.git && \
+    	cd onnx && git checkout v${ONNX_VERSION} && \
+    	git submodule update --init --recursive && \
+    	pip install -r requirements.txt && \
+    	export CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)" && \
+    	pip wheel . -w /onnx_wheels; \
+    else \
+        echo "Not ppc64le, skipping ONNX build" && mkdir -p /onnx_wheels; \
+    fi
+
 #######################
 # runtime-datascience #
 #######################
 FROM base AS runtime-datascience
 
+ARG TARGETARCH
 ARG DATASCIENCE_SOURCE_CODE=runtimes/datascience/ubi9-python-3.12
 
 LABEL name="odh-notebook-runtime-datascience-ubi9-python-3.12" \
@@ -48,18 +118,45 @@ LABEL name="odh-notebook-runtime-datascience-ubi9-python-3.12" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:runtime-datascience-ubi9-python-3.12"
 
 WORKDIR /opt/app-root/bin
+USER 0
+
+# Install ppc64le-built wheels if available
+COPY --from=openblas-builder /root/OpenBLAS-* /openblas
+COPY --from=onnx-builder /onnx_wheels /tmp/onnx_wheels
+
+RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
+    	echo "Installing ppc64le ONNX wheels and OpenBLAS..." && \
+    	HOME=/root pip install /tmp/onnx_wheels/*.whl && \
+        if [ -d "/openblas" ] && [ "$(ls -A /openblas 2>/dev/null)" ]; then \
+    		PREFIX=/usr/local make -C /openblas install; \
+        fi && rm -rf /openblas /tmp/onnx_wheels; \
+    else \
+    	echo "Skipping architecture-specific wheel installs for (${TARGETARCH})" && \
+        rm -rf /tmp/wheels /openblas /tmp/onnx_wheels; \
+    fi
 
 # Install Python packages from requirements.txt
 COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra dependencies for air-gapped enviroment
 COPY ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
-RUN echo "Installing softwares and packages" && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    echo "Installing softwares and packages" && \
+    if [ "$TARGETARCH" = "ppc64le" ]; then \
+        export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig; \
+        export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib:$LD_LIBRARY_PATH; \
+        GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 && \
+        pip install ml-dtypes && \
+        uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml; \
+    else \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml && \
-    # Fix permissions to support pip in Openshift environments \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml; \
+    fi && \
+    # Fix permissions to support pip in Openshift environments
     chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P
+
+USER 1001
 
 WORKDIR /opt/app-root/src
