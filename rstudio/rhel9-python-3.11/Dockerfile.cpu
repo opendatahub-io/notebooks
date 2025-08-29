@@ -76,7 +76,7 @@ RUN if [ -d "${SECRET_DIR}" ]; then \
 ENV R_VERSION=4.4.3
 
 # Install R
-RUN dnf install -y yum-utils && \
+RUN dnf install -y dnf-plugins-core && \
     subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms && \
     dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
     INSTALL_PKGS="R-core R-core-devel R-java R-Rcpp R-highlight \
