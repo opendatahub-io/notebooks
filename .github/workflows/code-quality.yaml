@@ -66,6 +66,7 @@ jobs:
         run: rm -rf ./ci/secrets
 
       - name: Validate YAML files (best code practices check included)
+        if: ${{ !cancelled() }}
         id: validate-yaml-files
         run: |
           type yamllint || sudo apt-get -y install yamllint
@@ -75,16 +76,19 @@ jobs:
 
       # In some YAML files we use JSON strings, let's check these
       - name: Validate JSON strings in YAML files (just syntax)
+        if: ${{ !cancelled() }}
         id: validate-json-strings-in-yaml-files
         run: |
           type json_verify || sudo apt-get -y install yajl-tools
           bash ./ci/check-json.sh
 
       - name: Validate JSON files (just syntax)
+        if: ${{ !cancelled() }}
         id: validate-json-files
         run: ./ci/validate_json.py
 
       - name: Validate Dockerfiles
+        if: ${{ !cancelled() }}
         id: validate-dockerfiles
         run: |
           type hadolint || sudo apt-get -y install wget \
@@ -96,5 +100,6 @@ jobs:
 
       # This simply checks that the manifests and respective kustomization.yaml finishes without an error.
       - name: Check kustomize manifest
+        if: ${{ !cancelled() }}
         id: kustomize-manifests
         run: ./ci/kustomize.sh
