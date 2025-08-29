@@ -14,6 +14,10 @@ ROOT_DIR = pathlib.Path(__file__).parent.parent
 
 def main():
     for dockerfile in ROOT_DIR.glob("**/Dockerfile*"):
+        if not dockerfile.is_file():
+            continue
+        if dockerfile.is_relative_to(ROOT_DIR / "base-images"):
+            continue
         if dockerfile.is_relative_to(ROOT_DIR / "examples"):
             continue
 
