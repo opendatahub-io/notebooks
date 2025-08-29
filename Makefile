@@ -398,7 +398,7 @@ validate-rstudio-image: bin/kubectl
 
 # This recipe used mainly from the Pipfile.locks Renewal Action
 # Default Python version
-PYTHON_VERSION ?= 3.11
+PYTHON_VERSION ?= 3.12
 ROOT_DIR := $(shell pwd)
 ifeq ($(PYTHON_VERSION), 3.11)
 	BASE_DIRS := \
