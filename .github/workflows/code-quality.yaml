@@ -82,22 +82,7 @@ jobs:
 
       - name: Validate JSON files (just syntax)
         id: validate-json-files
-        run: |
-          set -Eeuxo pipefail
-
-          type json_verify || sudo apt-get -y install yajl-tools
-          shopt -s globstar
-          ret_code=0
-          echo "-- Checking a regular '*.json' files"
-          for f in **/*.json; do echo "Checking: '${f}"; echo -n "  > "; [[ "$(basename "$f")" == "tsconfig.json" ]] && echo "Skipping ${f}" && continue; cat $f | json_verify || ret_code=1; done
-          echo "-- Checking a 'Pipfile.lock' files"
-          for f in **/Pipfile.lock; do echo "Checking: '${f}"; echo -n "  > "; cat $f | json_verify || ret_code=1; done
-          echo "-- Checking a '*.ipynb' Jupyter notebook files"
-          for f in **/*.ipynb; do echo "Checking: '${f}"; echo -n "  > "; cat $f | json_verify || ret_code=1; done
-          if test "${ret_code}" -ne 0; then
-              echo "There were errors in some of the checked files. Please run `json_verify` on such files and fix issues there."
-          fi
-          exit "${ret_code}"
+        run: ./ci/validate_json.py
 
       - name: Validate Dockerfiles
         id: validate-dockerfiles
@@ -112,5 +97,4 @@ jobs:
       # This simply checks that the manifests and respective kustomization.yaml finishes without an error.
       - name: Check kustomize manifest
         id: kustomize-manifests
-        run: |
-          ./ci/kustomize.sh
+        run: ./ci/kustomize.sh
