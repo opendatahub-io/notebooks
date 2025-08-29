@@ -56,8 +56,8 @@ USER 0
 ENV R_VERSION=4.4.3
 
 # Install R
-RUN dnf install -y yum-utils && \
-    yum-config-manager --enable crb && \
+RUN dnf install 'dnf-command(config-manager)' && \
+    dnf config-manager --set-enabled crb && \
     dnf install -y https://download.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
     INSTALL_PKGS="R-core R-core-devel R-java R-Rcpp R-highlight \
     R-littler R-littler-examples openssl-libs compat-openssl11" && \

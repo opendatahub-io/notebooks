@@ -159,8 +159,8 @@ USER 0
 ENV R_VERSION=4.4.3
 
 # Install R
-RUN dnf install -y yum-utils && \
-    yum-config-manager --enable crb && \
+RUN dnf install 'dnf-command(config-manager)' && \
+    dnf config-manager --set-enabled crb && \
     dnf install -y https://download.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
     INSTALL_PKGS="R-core R-core-devel R-java R-Rcpp R-highlight \
     R-littler R-littler-examples openssl-libs compat-openssl11" && \
@@ -183,9 +183,9 @@ WORKDIR /tmp/
 # Install RStudio
 ARG RSTUDIO_RPM=rstudio-server-rhel-2024.12.1-563-x86_64.rpm
 RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel8/x86_64/${RSTUDIO_RPM} && \
-    yum install -y ${RSTUDIO_RPM} && \
+    dnf install -y ${RSTUDIO_RPM} && \
     rm ${RSTUDIO_RPM} && \
-    yum -y clean all  --enablerepo='*' && \
+    dnf -y clean all  --enablerepo='*' && \
     # Specific RStudio config and fixes
     chmod 1777 /var/run/rstudio-server && \
     mkdir -p /usr/share/doc/R && \
@@ -217,10 +217,10 @@ ENV NGINX_VERSION=1.24 \
 # Modules does not exist
 RUN dnf -y module enable nginx:$NGINX_VERSION && \
     INSTALL_PKGS="nss_wrapper bind-utils gettext hostname nginx nginx-mod-stream nginx-mod-http-perl fcgiwrap initscripts chkconfig supervisor" && \
-    yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
+    dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
     nginx -v 2>&1 | grep -qe "nginx/$NGINX_VERSION\." && echo "Found VERSION $NGINX_VERSION" && \
-    yum -y clean all --enablerepo='*'
+    dnf -y clean all --enablerepo='*'
 
 COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/supervisord/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
