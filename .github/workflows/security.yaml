@@ -16,17 +16,15 @@ jobs:
       security-events: write
     steps:
 
-      - name: Checkout code
-        uses: actions/checkout@v5
-
       # https://github.com/astral-sh/setup-uv
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v6
         with:
           version: "latest"
-          python-version: "3.12"
-          enable-cache: false
-          activate-environment: true
+          activate-environment: "false"
+
+      - name: Checkout code
+        uses: actions/checkout@v5
 
       # Trivy does not support pylock.toml https://github.com/aquasecurity/trivy/discussions/9408
       - run: find . -name pyproject.toml -execdir uv lock \;
