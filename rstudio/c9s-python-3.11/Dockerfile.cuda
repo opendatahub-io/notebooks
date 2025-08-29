@@ -159,7 +159,7 @@ USER 0
 ENV R_VERSION=4.4.3
 
 # Install R
-RUN dnf install 'dnf-command(config-manager)' && \
+RUN dnf install -y 'dnf-command(config-manager)' && \
     dnf config-manager --set-enabled crb && \
     dnf install -y https://download.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
     INSTALL_PKGS="R-core R-core-devel R-java R-Rcpp R-highlight \
