@@ -52,14 +52,6 @@ dependencies = [
     "setuptools~=78.1.1",
 ]
 
-[[tool.uv.dependency-metadata]]
-# Because there is no version of tensorflow-intel{sys_platform == 'win32'}==2.18.1 and tensorflow-rocm==2.18.1 depends on tensorflow-intel{sys_platform == 'win32'}==2.18.1, we can conclude that tensorflow-rocm==2.18.1 cannot be used.
-# And because only tensorflow-rocm==2.18.1 is available, we can conclude that all versions of tensorflow-rocm cannot be used.
-# And because your project depends on tensorflow-rocm and your project requires rocm-tensorflow-notebook[dev], we can conclude that your project's requirements are unsatisfiable.
-name = "tensorflow-rocm"
-version = "2.18.1"
-requires-dist = []
-
 [tool.uv]
 
 override-dependencies = [
