@@ -90,17 +90,28 @@ jobs:
         env:
           GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
 
+      # https://console.redhat.com/insights/connector/activation-keys
+      # This runs slower than storing the entitlement certificates with git-crypt,
+      #  but on the other hand, it's then not necessary to regularly update them in the repo.
       - name: Add subscriptions from GitHub secret
         if: ${{ inputs.subscription }}
         run: |
-          sudo mkdir -p /etc/pki/
-          sudo cp -R ${PWD}/ci/secrets/pki/* /etc/pki/
           # https://access.redhat.com/solutions/5870841
           # https://github.com/containers/common/issues/1735
-          printf "${PWD}/ci/secrets/run/secrets/rhsm:/etc/rhsm\n${PWD}/ci/secrets/run/secrets/etc-pki-entitlement:/etc/pki/entitlement\n${PWD}/ci/secrets/pki/consumer:/etc/pki/consumer\n" | sudo tee /usr/share/containers/mounts.conf
+          mkdir entitlement
+          mkdir consumer
+          docker run \
+            -v ${PWD}/entitlement:/etc/pki/entitlement:Z \
+            -v ${PWD}/consumer:/etc/pki/consumer:Z \
+            --rm -t registry.access.redhat.com/ubi9/ubi \
+              /usr/sbin/subscription-manager register --org=${SUBSCRIPTION_ORG} --activationkey=${SUBSCRIPTION_ACTIVATION_KEY}
+          printf "${PWD}/entitlement:/etc/pki/entitlement\n${PWD}/consumer:/etc/pki/consumer\n" | sudo tee /usr/share/containers/mounts.conf
 
           mkdir -p $HOME/.config/containers/
           sudo cp ${PWD}/ci/secrets/pull-secret.json $HOME/.config/containers/auth.json
+        env:
+          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
 
       # for bin/buildinputs in scripts/sandbox.py
       - uses: actions/setup-go@v5

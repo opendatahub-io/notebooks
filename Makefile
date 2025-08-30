@@ -398,7 +398,7 @@ validate-rstudio-image: bin/kubectl
 
 # This recipe used mainly from the Pipfile.locks Renewal Action
 # Default Python version
-PYTHON_VERSION ?= 3.11
+PYTHON_VERSION ?= 3.12
 ROOT_DIR := $(shell pwd)
 ifeq ($(PYTHON_VERSION), 3.11)
 	BASE_DIRS := \
@@ -462,7 +462,7 @@ refresh-pipfilelock-files:
 
 	echo "Regenerating requirements.txt files"
 	pushd $(ROOT_DIR)
-		bash $(ROOT_DIR)/scripts/sync-requirements-txt.sh
+		bash $(ROOT_DIR)/scripts/sync-python-lockfiles.sh
 	popd
 
 # This is only for the workflow action
@@ -476,7 +476,9 @@ scan-image-vulnerabilities:
 ifeq ($(RELEASE_PYTHON_VERSION), 3.11)
 all-images: \
 	rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
-	rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
+	rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-rstudio-c9s-python-$(RELEASE_PYTHON_VERSION) \
+	cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION)
 else ifeq ($(RELEASE_PYTHON_VERSION), 3.12)
 all-images: \
 	jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION) \
