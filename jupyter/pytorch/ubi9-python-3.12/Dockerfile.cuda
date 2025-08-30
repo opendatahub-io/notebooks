@@ -76,10 +76,10 @@ RUN NVIDIA_GPGKEY_SUM=d0664fbbdb8c32356d45de36c5984617217b2d0bef41b93ccecd326ba3
 ENV CUDA_VERSION=12.6.3
 
 # For libraries in the cuda-compat-* package: https://docs.nvidia.com/cuda/eula/index.html#attachment-a
-RUN yum upgrade -y && yum install -y \
+RUN dnf upgrade -y && dnf install -y \
     cuda-cudart-12-6-${NV_CUDA_CUDART_VERSION} \
     cuda-compat-12-6 \
-    && yum clean all \
+    && dnf clean all \
     && rm -rf /var/cache/yum/*
 
 # nvidia-docker 1.0
@@ -106,21 +106,21 @@ ENV NV_LIBNCCL_VERSION=2.23.4
 ENV NCCL_VERSION=2.23.4
 ENV NV_LIBNCCL_PACKAGE=${NV_LIBNCCL_PACKAGE_NAME}-${NV_LIBNCCL_PACKAGE_VERSION}+cuda12.6
 
-RUN yum install -y \
+RUN dnf install -y \
     cuda-libraries-12-6-${NV_CUDA_LIB_VERSION} \
     cuda-nvtx-12-6-${NV_NVTX_VERSION} \
     ${NV_LIBNPP_PACKAGE} \
     libcublas-12-6-${NV_LIBCUBLAS_VERSION} \
     ${NV_LIBNCCL_PACKAGE} \
-    && yum clean all \
+    && dnf clean all \
     && rm -rf /var/cache/yum/*
 
 # Install devel tools
 
-RUN yum install -y \
+RUN dnf install -y \
     make \
     findutils \
-    && yum clean all \
+    && dnf clean all \
     && rm -rf /var/cache/yum/*
 
 # Install CUDA cudnn9 from:
@@ -130,9 +130,9 @@ ENV NV_CUDNN_PACKAGE=libcudnn9-cuda-12-${NV_CUDNN_VERSION}
 
 LABEL com.nvidia.cudnn.version="${NV_CUDNN_VERSION}"
 
-RUN yum install -y \
+RUN dnf install -y \
     ${NV_CUDNN_PACKAGE} \
-    && yum clean all \
+    && dnf clean all \
     && rm -rf /var/cache/yum/*
 
 # Set this flag so that libraries can find the location of CUDA
