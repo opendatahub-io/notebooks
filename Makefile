@@ -512,3 +512,8 @@ endif
 .PHONY: print-release
 print-release:
 	@echo "$(RELEASE)"
+
+.PHONY: test
+test:
+	@echo "Running quick static tests"
+	uv run pytest
