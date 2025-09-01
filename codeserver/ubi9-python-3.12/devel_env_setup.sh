@@ -35,6 +35,7 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     # set path for openblas
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/OpenBLAS/lib/
     export PKG_CONFIG_PATH=$(find / -type d -name "pkgconfig" 2>/dev/null | tr '\n' ':')
+    export CMAKE_ARGS="-DPython3_EXECUTABLE=python"
 else
     # only for mounting on non-ppc64le
     mkdir -p /root/OpenBLAS/
