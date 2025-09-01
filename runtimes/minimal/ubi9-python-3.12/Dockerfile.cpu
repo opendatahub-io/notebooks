@@ -1,7 +1,10 @@
 ####################
-# base             #
+# cpu-base         #
 ####################
-FROM registry.access.redhat.com/ubi9/python-312:latest AS base
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE} AS cpu-base
+
+ARG TARGETARCH
 
 WORKDIR /opt/app-root/bin
 
@@ -40,7 +43,7 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 ####################
 # runtime-minimal  #
 ####################
-FROM base AS runtime-minimal
+FROM cpu-base AS runtime-minimal
 
 ARG MINIMAL_SOURCE_CODE=runtimes/minimal/ubi9-python-3.12
 
