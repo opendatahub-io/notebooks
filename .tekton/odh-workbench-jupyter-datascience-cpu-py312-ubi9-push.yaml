@@ -8,7 +8,7 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     build.appstudio.openshift.io/build-nudge-files: "manifests/base/params-latest.env"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-workbench-jupyter-datascience-cpu-py312-ubi9-push.yaml".pathChanged() || "jupyter/utils/**".pathChanged() || "jupyter/minimal/ubi9-python-3.12/**".pathChanged() || "jupyter/minimal/ubi9-python-3.12/start-notebook.sh".pathChanged() )
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-workbench-jupyter-datascience-cpu-py312-ubi9-push.yaml".pathChanged() || "jupyter/utils/**".pathChanged() || "jupyter/minimal/ubi9-python-3.12/**".pathChanged() || "jupyter/minimal/ubi9-python-3.12/start-notebook.sh".pathChanged() || "jupyter/datascience/ubi9-python-3.12/build-args/cpu.conf".pathChanged() )
   creationTimestamp:
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -26,6 +26,8 @@ spec:
     value: quay.io/opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9:{{revision}}
   - name: dockerfile
     value: jupyter/datascience/ubi9-python-3.12/Dockerfile.cpu
+  - name: build-args-file
+    value: jupyter/datascience/ubi9-python-3.12/build-args/cpu.conf
   - name: path-context
     value: .
   - name: additional-tags
