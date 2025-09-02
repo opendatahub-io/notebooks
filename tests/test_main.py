@@ -14,6 +14,7 @@ from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
     from typing import Any
+
     import pytest_subtests
 
 MAKE = shutil.which("gmake") or shutil.which("make")
