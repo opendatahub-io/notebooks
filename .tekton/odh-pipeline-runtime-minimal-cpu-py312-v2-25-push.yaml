@@ -38,7 +38,7 @@ spec:
     - version=v2.25.0
     - io.openshift.tags=odh-pipeline-runtime-minimal-cpu-py312
   - name: dockerfile
-    value: runtimes/minimal/ubi9-python-3.12/Dockerfile.cpu
+    value: runtimes/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu
   - name: path-context
     value: .
   - name: hermetic
