@@ -13,16 +13,7 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-comment: ^/kfbuild\s+(all|odh\-workbench\-jupyter\-pytorch\-rocm\-py312\-ubi9|jupyter/rocm/pytorch/ubi9\-python\-3\.12)
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && target_branch
-      == "main"
-      && !("manifests/base/params-latest.env".pathChanged())
-      && ( ".tekton/odh-workbench-jupyter-pytorch-rocm-py312-ubi9-pull-request.yaml".pathChanged() ||
-           "jupyter/rocm/pytorch/ubi9-python-3.12/**".pathChanged() ||
-           "jupyter/utils/**".pathChanged() ||
-           "jupyter/minimal/ubi9-python-3.12/start-notebook.sh".pathChanged() ||
-           "jupyter/datascience/ubi9-python-3.12/mongodb-org-6.0.repo-x86_64/**".pathChanged() ||
-           "jupyter/datascience/ubi9-python-3.12/mssql-2022.repo-x86_64/**".pathChanged() ||
-           "jupyter/datascience/ubi9-python-3.12/setup-elyra.sh".pathChanged() )
+      event == "pull_request" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-workbench-jupyter-pytorch-rocm-py312-ubi9-pull-request.yaml".pathChanged() || "jupyter/rocm/pytorch/ubi9-python-3.12/**".pathChanged() || "jupyter/utils/**".pathChanged() || "jupyter/minimal/ubi9-python-3.12/start-notebook.sh".pathChanged() || "jupyter/datascience/ubi9-python-3.12/mongodb-org-6.0.repo-x86_64/**".pathChanged() || "jupyter/datascience/ubi9-python-3.12/mssql-2022.repo-x86_64/**".pathChanged() || "jupyter/datascience/ubi9-python-3.12/setup-elyra.sh".pathChanged() || "jupyter/rocm/pytorch/ubi9-python-3.12/build-args/rocm.conf".pathChanged() )
       && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -49,6 +40,8 @@ spec:
     value: jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.rocm
   - name: path-context
     value: .
+  - name: build-args-file
+    value: jupyter/rocm/pytorch/ubi9-python-3.12/build-args/rocm.conf
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:
