@@ -8,10 +8,10 @@ WORKDIR /opt/app-root/bin
 ####################
 # cuda-base        #
 ####################
-FROM quay.io/sclorg/python-312-c9s:c9s AS cuda-base-amd64
+FROM base AS cuda-base-amd64
 ENV NVARCH=x86_64
 
-FROM quay.io/sclorg/python-312-c9s:c9s AS cuda-base-arm64
+FROM base AS cuda-base-arm64
 ENV NVARCH=sbsa
 
 FROM cuda-base-${TARGETARCH} AS cuda-base
