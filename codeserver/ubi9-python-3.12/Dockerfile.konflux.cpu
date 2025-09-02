@@ -49,8 +49,8 @@ WORKDIR /opt/app-root/bin
 RUN dnf install -y jq git-lfs libsndfile && dnf clean all && rm -rf /var/cache/yum
 
 # Install code-server
-RUN yum install -y "https://github.com/coder/code-server/releases/download/${CODESERVER_VERSION}/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm" && \
-    yum -y clean all --enablerepo='*'
+RUN dnf install -y "https://github.com/coder/code-server/releases/download/${CODESERVER_VERSION}/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm" && \
+    dnf -y clean all --enablerepo='*'
 
 COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/utils utils/
 
@@ -71,11 +71,11 @@ ENV NGINX_VERSION=1.24 \
     NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
 
 # Modules does not exist
-RUN yum install -y https://download.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+RUN dnf install -y https://download.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
     INSTALL_PKGS="bind-utils nginx nginx-mod-stream nginx-mod-http-perl fcgiwrap initscripts chkconfig supervisor" && \
-    yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
+    dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
-    yum -y clean all --enablerepo='*'
+    dnf -y clean all --enablerepo='*'
 
 COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/supervisord/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
