@@ -7,6 +7,8 @@ import subprocess
 import tomllib
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
@@ -15,18 +17,24 @@ if TYPE_CHECKING:
 MAKE = shutil.which("gmake") or shutil.which("make")
 
 
-def test_image_pipfiles(subtests: pytest_subtests.plugin.SubTests):
-    for file in PROJECT_ROOT.glob("**/Pipfile"):
-        with subtests.test(msg="checking Pipfile", pipfile=file):
-            print(file)
+def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
+    for file in PROJECT_ROOT.glob("**/pyproject.toml"):
+        logging.info(file)
+        with subtests.test(msg="checking pyproject.toml", pipfile=file):
             directory = file.parent  # "ubi9-python-3.11"
-            _ubi, _lang, python = directory.name.split("-")
+            try:
+                _ubi, _lang, python = directory.name.split("-")
+            except ValueError:
+                pytest.skip(f"skipping {directory.name}/pyproject.toml as it is not an image directory")
 
             with open(file, "rb") as fp:
-                pipfile = tomllib.load(fp)
-            assert "requires" in pipfile, "Pipfile is missing a [[requires]] section"
-            assert pipfile["requires"]["python_version"] == python, (
-                "Pipfile does not declare the expected Python version"
+                pyproject = tomllib.load(fp)
+            assert "project" in pyproject, "pyproject.toml is missing a [project] section"
+            assert "requires-python" in pyproject["project"], (
+                "pyproject.toml is missing a [project.requires-python] section"
+            )
+            assert pyproject["project"]["requires-python"] == f"=={python}.*", (
+                "pyproject.toml does not declare the expected Python version"
             )
 
 
