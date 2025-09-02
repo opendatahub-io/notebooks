@@ -11,10 +11,11 @@ RUN unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
 RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
     CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
 
-########################
-# base                 #
-########################
-FROM registry.access.redhat.com/ubi9/python-312:latest AS base
+####################
+# cpu-base         #
+####################
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE} AS cpu-base
 
 WORKDIR /opt/app-root/bin
 
@@ -46,7 +47,7 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 ####################
 # jupyter-minimal #
 ####################
-FROM base AS jupyter-minimal
+FROM cpu-base AS jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
