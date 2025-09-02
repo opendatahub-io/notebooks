@@ -1,0 +1,19 @@
+# Configuration for GitHub's automatically generated release notes
+# Docs: https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes
+---
+changelog:
+  exclude:
+    labels:
+      - konflux-nudge
+    authors:
+      # RHAIENG-581: bots and automation accounts (suppress noisy PRs)
+      - app/red-hat-konflux
+      - app/github-actions
+      # known bots
+      - dependabot
+      - ide-developer
+      - codeflare-machine-account
+  categories:
+    - title: "What's Changed"
+      labels:
+        - "*"
