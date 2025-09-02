@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import packaging.requirements
 import packaging.utils
 import pytest
-import ruamel.yaml
+import yaml
 
 from tests import PROJECT_ROOT, manifests
 
@@ -79,7 +79,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                         f"Computed filepath '{manifest_file}' does not exist."
                     )
 
-                imagestream = ruamel.yaml.YAML().load(manifest_file.read_text())
+                imagestream = yaml.safe_load(manifest_file.read_text())
                 recommended_tags = [
                     tag
                     for tag in imagestream["spec"]["tags"]
