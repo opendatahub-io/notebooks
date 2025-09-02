@@ -48,14 +48,17 @@ jobs:
         run: uv version
 
       - name: Install deps
+        id: install-deps
         run: uv sync --locked
 
       # https://github.com/pre-commit/action
       - name: Run pre-commit on all files
+        if: ${{ steps.install-deps.conclusion == 'success' && !cancelled() }}
         run: |
           uv run pre-commit run --all-files
 
-      - run: uv run pytest
+      - run: make test
+        if: ${{ steps.install-deps.conclusion == 'success' && !cancelled() }}
 
   code-static-analysis:
     runs-on: ubuntu-latest
