@@ -4,8 +4,6 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE} AS cuda-base
 
-ARG TARGETARCH
-
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root

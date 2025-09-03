@@ -4,8 +4,6 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE} AS cuda-base
 
-ARG TARGETARCH
-
 WORKDIR /opt/app-root/bin
 
 # Install micropipenv and uv to deploy packages from requirements.txt begin

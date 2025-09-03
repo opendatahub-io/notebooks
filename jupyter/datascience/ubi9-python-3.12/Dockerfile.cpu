@@ -17,8 +17,6 @@ RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE} AS cpu-base
 
-ARG TARGETARCH
-
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
@@ -71,7 +69,6 @@ USER 1001
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
-
 
 ########################
 # jupytyer-datascience #
