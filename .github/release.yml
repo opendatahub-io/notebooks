@@ -2,15 +2,13 @@
 # Docs: https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes
 ---
 changelog:
+  # RHAIENG-581: bots and automation accounts (suppress noisy PRs)
   exclude:
     labels:
+      #
       - konflux-nudge
     authors:
-      # RHAIENG-581: bots and automation accounts (suppress noisy PRs)
+      # chore(deps): update odh-workbench-jupyter-minimal-rocm-py312-ubi9 to 636a39a by @red-hat-konflux[bot] in #1961
       - app/red-hat-konflux
-      - app/github-actions
-      - dependabot
-      - ide-developer
-      # chore(deps): update konflux references by @red-hat-konflux[bot] in https://github.com/opendatahub-io/notebooks/pull/1974
+      # chore(deps): update konflux references by @red-hat-konflux[bot] in #1974
       - red-hat-konflux[bot]
-      - codeflare-machine-account
