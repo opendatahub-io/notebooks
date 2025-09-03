@@ -1,0 +1,37 @@
+# Configuration for GitHub's automatically generated release notes
+# Docs: https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes
+---
+changelog:
+  # RHAIENG-581: bots and automation accounts (suppress noisy PRs)
+  exclude:
+    # TESTING: use https://github.com/opendatahub-io/notebooks/releases/new with custom branch to test this out
+    # selecting the + Create new tag in dropdown actually does not create new tag unless form is submitted
+    # then click Generate release notes to see how it comes out
+    labels:
+      # https://github.com/opendatahub-io/notebooks/pull/1961
+      - konflux-nudge
+    authors:
+      # chore(deps): update odh-workbench-jupyter-minimal-rocm-py312-ubi9 to 636a39a by @red-hat-konflux[bot] in #1961
+      - app/red-hat-konflux
+      # chore(deps): update konflux references by @red-hat-konflux[bot] in #1974
+      - red-hat-konflux[bot]
+
+      # the following are candidates for exclusion, need to determine if app/ or [bot] should be used
+
+      # [main] RHOAIENG-19036: chore(gha): fix workflow_dispatch invocation by @openshift-cherrypick-robot in #896
+      # openshift-cherrypick-robot
+
+      # RHOAIENG-28188: add `.tekton/` files for version 2025a-v1.34 by @odh-devops-app[bot] in #1365
+      # odh-devops-app[bot]
+
+      # [Digest Updater Action] Update Runtimes Images by @github-actions[bot] in #550
+      # github-actions[bot]
+
+      # RHAIENG-540: build(deps): bump `tornado` dependency from `~6.5.1` to `~6.5.2` across all relevant Pipfiles by @dependabot[bot] in #1754
+      # dependabot[bot]
+
+      # CodeRabbit Chat: Update .coderabbit.yaml to filter for main and 2024b branches only by @coderabbitai[bot] in #1491
+      # coderabbitai[bot]
+
+      # [Codeflare Action] Update notebook's pipfile to sync with Codeflare-SDK release 0.16.2 by @codeflare-machine-account in #542
+      # codeflare-machine-account

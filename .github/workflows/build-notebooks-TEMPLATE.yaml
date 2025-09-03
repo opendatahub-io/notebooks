@@ -386,6 +386,7 @@ jobs:
 
       # https://cri-o.io/
       - name: Install cri-o
+        id: install-crio
         if: ${{ steps.have-tests.outputs.tests == 'true' }}
         run: |
           set -Eeuxo pipefail
@@ -408,9 +409,15 @@ jobs:
             sudo tee /etc/apt/sources.list.d/cri-o.list
 
           sudo apt-get update
+
           # [ERROR FileExisting-conntrack]: conntrack not found in system path
           # see man apt-patterns for the ~name=version* syntax
-          sudo apt-get install -y \
+
+          # The following packages will be DOWNGRADED:
+          #  kubectl
+          # E: Packages were downgraded and -y was used without --allow-downgrades.
+
+          sudo apt-get install -y --allow-downgrades \
             "cri-o=${CRIO_VERSION}.*" \
             "kubelet=${KUBERNETES_VERSION}.*" "kubeadm=${KUBERNETES_VERSION}.*" "kubectl=${KUBERNETES_VERSION}.*" \
             conntrack
@@ -478,7 +485,7 @@ jobs:
           sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
       - name: Show kubelet debug data (on failure)
-        if: ${{ failure() && steps.have-tests.outputs.tests == 'true' }}
+        if: ${{ failure() && steps.have-tests.outputs.tests == 'true' && steps.install-crio.outcome == 'success' }}
         run: |
           set -Eeuxo pipefail
 
