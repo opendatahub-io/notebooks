@@ -202,7 +202,8 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
             packages[name].append(VersionData(manifest=manifest, version=version))
 
     # TODO(jdanek): review these, if any are unwarranted
-    ignored_exceptions = (
+    ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
+        # ("package name", ("allowed version 1", "allowed version 2", ...))
         ("Codeflare-SDK", ("0.30", "0.29")),
         ("Scikit-learn", ("1.7", "1.6")),
         ("Pandas", ("2.2", "1.5")),
