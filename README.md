@@ -16,7 +16,7 @@ Make sure the following tools are installed in your environment:
  - podman/docker
  - python
  - pipenv
- - make
+ - make (on macOS install/use: gmake)
  - curl
 
 ### Installation
@@ -76,8 +76,10 @@ uv sync --locked
 By completing configuration in previous section, you are able to run any tests that don't need to start a container using following command:
 
 ```
-uv run pytest
+make test
 ```
+
+Use `gmake test` if you're on macOS.
 
 ##### Container selftests
 

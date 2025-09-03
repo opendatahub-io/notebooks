@@ -1,0 +1,15 @@
+[project]
+name = "rstudio-notebook"
+version = "0.1.0"
+requires-python = "==3.11.*"
+
+dependencies = [
+    # Base packages
+    'wheel~=0.45.1',
+    'setuptools~=78.1.1',
+]
+
+[tool.uv]
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
+]

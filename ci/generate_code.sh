@@ -2,4 +2,4 @@
 set -Eeuxo pipefail
 
 python3 scripts/dockerfile_fragments.py
-bash scripts/sync-requirements-txt.sh
+bash scripts/sync-python-lockfiles.sh
