@@ -59,7 +59,7 @@ RUN if [ "$(uname -m)" = "ppc64le" ]; then \
 # onnx-builder (Power-only)
 #######################################################
 FROM common-builder AS onnx-builder
-ARG ONNX_VERSION=v1.19.0
+ARG ONNX_VERSION=v1.18.0
 WORKDIR /tmp
 RUN if [ "$(uname -m)" = "ppc64le" ]; then \
     source /opt/rh/gcc-toolset-13/enable && \
