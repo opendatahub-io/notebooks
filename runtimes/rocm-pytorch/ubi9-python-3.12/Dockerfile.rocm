@@ -1,7 +1,11 @@
+#########################
+# configuration args    #
+#########################
+ARG BASE_IMAGE
+
 ####################
 # rocm-base        #
 ####################
-ARG BASE_IMAGE
 FROM ${BASE_IMAGE} AS rocm-base
 
 WORKDIR /opt/app-root/bin

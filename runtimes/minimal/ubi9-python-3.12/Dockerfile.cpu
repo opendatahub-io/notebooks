@@ -1,7 +1,11 @@
+#########################
+# configuration args    #
+#########################
+ARG BASE_IMAGE
+
 ####################
 # cpu-base         #
 ####################
-ARG BASE_IMAGE
 FROM ${BASE_IMAGE} AS cpu-base
 
 WORKDIR /opt/app-root/bin

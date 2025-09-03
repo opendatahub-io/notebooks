@@ -1,3 +1,8 @@
+#########################
+# configuration args    #
+#########################
+ARG BASE_IMAGE
+
 ######################################################
 # mongocli-builder (build stage only, not published) #
 ######################################################
@@ -14,7 +19,6 @@ RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
 ####################
 # cuda-base        #
 ####################
-ARG BASE_IMAGE
 FROM ${BASE_IMAGE} AS cuda-base
 
 WORKDIR /opt/app-root/bin
