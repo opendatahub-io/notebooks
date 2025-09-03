@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 import logging
 import os
 import pathlib
+import pprint
 import re
 import shutil
 import subprocess
 import tomllib
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import packaging.requirements
@@ -64,42 +67,14 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                     )
 
             with subtests.test(msg="checking imagestream manifest consistency with pylock.toml", pyproject=file):
-                # TODO(jdanek): missing manifests
-                if is_suffix(directory.parts, pathlib.Path("runtimes/rocm-tensorflow/ubi9-python-3.12").parts):
-                    pytest.skip(f"Manifest not implemented {directory.parts}")
-                if is_suffix(directory.parts, pathlib.Path("jupyter/rocm/tensorflow/ubi9-python-3.12").parts):
-                    pytest.skip(f"Manifest not implemented {directory.parts}")
+                _skip_unimplemented_manifests(directory)
 
-                metadata = manifests.extract_metadata_from_path(directory)
-                manifest_file = manifests.get_source_of_truth_filepath(
-                    root_repo_directory=PROJECT_ROOT,
-                    metadata=metadata,
-                )
-                if not manifest_file.is_file():
-                    raise FileNotFoundError(
-                        f"Unable to determine imagestream manifest for '{directory}'. "
-                        f"Computed filepath '{manifest_file}' does not exist."
-                    )
-
-                imagestream = yaml.safe_load(manifest_file.read_text())
-                recommended_tags = [
-                    tag
-                    for tag in imagestream["spec"]["tags"]
-                    if tag["annotations"].get("opendatahub.io/workbench-image-recommended", None) == "true"
-                ]
-                assert len(recommended_tags) <= 1, "at most one tag may be recommended at a time"
-                assert recommended_tags or len(imagestream["spec"]["tags"]) == 1, (
-                    "Either there has to be recommended image, or there can be only one tag"
-                )
-                current_tag = recommended_tags[0] if recommended_tags else imagestream["spec"]["tags"][0]
-
-                sw = json.loads(current_tag["annotations"]["opendatahub.io/notebook-software"])
-                dep = json.loads(current_tag["annotations"]["opendatahub.io/notebook-python-dependencies"])
+                manifest = load_manifests_file_for(directory)
 
                 with subtests.test(msg="checking the `notebook-software` array", pyproject=file):
                     # TODO(jdanek)
                     pytest.skip("checking the `notebook-software` array not yet implemented")
-                    for s in sw:
+                    for s in manifest.sw:
                         if s.get("name") == "Python":
                             assert s.get("version") == f"v{python}", (
                                 "Python version in imagestream does not match Pipfile"
@@ -108,7 +83,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                             pytest.fail(f"unexpected {s=}")
 
                 with subtests.test(msg="checking the `notebook-python-dependencies` array", pyproject=file):
-                    for d in dep:
+                    for d in manifest.dep:
                         workbench_only_packages = [
                             "Kfp",
                             "JupyterLab",
@@ -155,11 +130,11 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                         }
 
                         name = d["name"]
-                        if name in workbench_only_packages and metadata.type == manifests.NotebookType.RUNTIME:
+                        if name in workbench_only_packages and manifest.metadata.type == manifests.NotebookType.RUNTIME:
                             continue
 
                         # TODO(jdanek): intentional?
-                        if metadata.scope == "pytorch+llmcompressor" and name == "Codeflare-SDK":
+                        if manifest.metadata.scope == "pytorch+llmcompressor" and name == "Codeflare-SDK":
                             continue
 
                         if name == "ROCm-PyTorch":
@@ -195,6 +170,73 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                         assert (parsed_locked_version.major, parsed_locked_version.minor) == tuple(
                             int(v) for v in split_manifest_version.groups()
                         ), f"{name}: manifest declares {manifest_version}, but pylock.toml pins {locked_version}"
+
+
+def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubTests):
+    manifests = []
+    for file in PROJECT_ROOT.glob("**/pyproject.toml"):
+        logging.info(file)
+        directory = file.parent  # "ubi9-python-3.11"
+        try:
+            _ubi, _lang, _python = directory.name.split("-")
+        except ValueError:
+            logging.debug(f"skipping {directory.name}/pyproject.toml as it is not an image directory")
+            continue
+
+        if _skip_unimplemented_manifests(directory, call_skip=False):
+            continue
+
+        manifest = load_manifests_file_for(directory)
+        manifests.append(manifest)
+
+    @dataclasses.dataclass
+    class VersionData:
+        manifest: Manifest
+        version: str
+
+    packages: dict[str, list[VersionData]] = defaultdict(list)
+    for manifest in manifests:
+        for dep in manifest.dep:
+            name = dep["name"]
+            version = dep["version"]
+            packages[name].append(VersionData(manifest=manifest, version=version))
+
+    # TODO(jdanek): review these, if any are unwarranted
+    ignored_exceptions = (
+        ("Codeflare-SDK", ("0.30", "0.29")),
+        ("Scikit-learn", ("1.7", "1.6")),
+        ("Pandas", ("2.2", "1.5")),
+        ("Numpy", ("2.2", "1.26")),
+        ("Tensorboard", ("2.19", "2.18")),
+    )
+
+    for name, data in packages.items():
+        versions = [
+            d.version
+            for d in data
+            if (d.manifest.filename.relative_to(PROJECT_ROOT), d.version) not in ignored_exceptions
+        ]
+
+        # if there is only a single version, all is good
+        if len(set(versions)) == 1:
+            continue
+
+        mapping = {str(d.manifest.filename.relative_to(PROJECT_ROOT)): d.version for d in data}
+
+        exception = next((it for it in ignored_exceptions if it[0] == name), None)
+        if exception:
+            if set(versions) == set(exception[1]):
+                continue
+            else:
+                pytest.fail(
+                    f"{name} is allowed to have {exception} but actually has more versions: {pprint.pformat(mapping)}"
+                )
+
+        with subtests.test(msg=f"checking versions for {name} across the latest tags in all imagestreams"):
+            pytest.fail(f"{name} has multiple versions: {pprint.pformat(mapping)}")
+
+
+# TODO(jdanek): ^^^ should also check pyproject.tomls, in fact checking there is more useful than in manifests
 
 
 def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.SubTests):
@@ -239,3 +281,63 @@ def is_suffix[T](main_sequence: Sequence[T], suffix_sequence: Sequence[T]):
     if suffix_len > len(main_sequence):
         return False
     return main_sequence[-suffix_len:] == suffix_sequence
+
+
+def _skip_unimplemented_manifests(directory: pathlib.Path, call_skip=True) -> bool:
+    # TODO(jdanek): missing manifests
+    dirs = (
+        "runtimes/rocm-tensorflow/ubi9-python-3.12",
+        "jupyter/rocm/tensorflow/ubi9-python-3.12",
+    )
+    for dir in dirs:
+        if is_suffix(directory.parts, pathlib.Path(dir).parts):
+            if call_skip:
+                pytest.skip(f"Manifest not implemented {directory.parts}")
+            else:
+                return True
+    return False
+
+
+@dataclasses.dataclass
+class Manifest:
+    filename: pathlib.Path
+    imagestream: dict[str, Any]
+    metadata: manifests.NotebookMetadata
+    sw: dict
+    dep: dict
+
+
+def load_manifests_file_for(directory: pathlib.Path) -> Manifest:
+    metadata = manifests.extract_metadata_from_path(directory)
+    manifest_file = manifests.get_source_of_truth_filepath(
+        root_repo_directory=PROJECT_ROOT,
+        metadata=metadata,
+    )
+    if not manifest_file.is_file():
+        raise FileNotFoundError(
+            f"Unable to determine imagestream manifest for '{directory}'. "
+            f"Computed filepath '{manifest_file}' does not exist."
+        )
+
+    imagestream = yaml.safe_load(manifest_file.read_text())
+    recommended_tags = [
+        tag
+        for tag in imagestream["spec"]["tags"]
+        if tag["annotations"].get("opendatahub.io/workbench-image-recommended", None) == "true"
+    ]
+    assert len(recommended_tags) <= 1, "at most one tag may be recommended at a time"
+    assert recommended_tags or len(imagestream["spec"]["tags"]) == 1, (
+        "Either there has to be recommended image, or there can be only one tag"
+    )
+    current_tag = recommended_tags[0] if recommended_tags else imagestream["spec"]["tags"][0]
+
+    sw = json.loads(current_tag["annotations"]["opendatahub.io/notebook-software"])
+    dep = json.loads(current_tag["annotations"]["opendatahub.io/notebook-python-dependencies"])
+
+    return Manifest(
+        filename=manifest_file,
+        imagestream=imagestream,
+        metadata=metadata,
+        sw=sw,
+        dep=dep,
+    )
