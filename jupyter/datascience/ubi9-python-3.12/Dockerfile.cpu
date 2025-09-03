@@ -73,6 +73,22 @@ RUN if [ "$(uname -m)" = "ppc64le" ]; then \
     echo "Skipping ONNX build on non-Power"; \
     fi
 
+#######################################################
+# openblas-builder (Power-only)
+#######################################################
+FROM common-builder AS openblas-builder
+ARG OPENBLAS_VERSION=0.3.30
+WORKDIR /root
+RUN if [ "$(uname -m)" = "ppc64le" ]; then \
+    wget https://github.com/OpenMathLib/OpenBLAS/releases/download/v${OPENBLAS_VERSION}/OpenBLAS-${OPENBLAS_VERSION}.zip && \
+    unzip OpenBLAS-${OPENBLAS_VERSION}.zip && \
+    cd OpenBLAS-${OPENBLAS_VERSION} && \
+    make -j$(nproc) TARGET=POWER9 BINARY=64 USE_OPENMP=1 USE_THREAD=1 NUM_THREADS=120 DYNAMIC_ARCH=1 INTERFACE64=0; \
+    else \
+    mkdir -p OpenBLAS-${OPENBLAS_VERSION}; \
+    echo "Skipping OpenBLAS build on non-Power"; \
+    fi
+
 ####################
 # jupyter-minimal #
 ####################
@@ -134,6 +150,7 @@ RUN dnf install -y jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libx
     fi && \
     dnf clean all && rm -rf /var/cache/yum
 
+# Copy dynamically-linked mongocli built in earlier build stage
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
