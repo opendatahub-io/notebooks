@@ -43,7 +43,7 @@ spec:
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-base-image-cuda-py311-c9s
+    serviceAccountName: build-pipeline-odh-base-image-cuda-py311-c9s-poc
   workspaces:
   - name: git-auth
     secret:
