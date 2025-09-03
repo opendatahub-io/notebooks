@@ -338,6 +338,7 @@ jobs:
 
       # https://cri-o.io/
       - name: Install cri-o
+        id: install-crio
         if: ${{ steps.have-tests.outputs.tests == 'true' }}
         run: |
           set -Eeuxo pipefail
@@ -425,7 +426,7 @@ jobs:
           sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
       - name: Show kubelet debug data (on failure)
-        if: ${{ failure() && steps.have-tests.outputs.tests == 'true' }}
+        if: ${{ failure() && steps.have-tests.outputs.tests == 'true' && steps.install-crio.outcome == 'success' }}
         run: |
           set -Eeuxo pipefail
 
