@@ -286,8 +286,8 @@ def _skip_unimplemented_manifests(directory: pathlib.Path, call_skip=True) -> bo
         "runtimes/rocm-tensorflow/ubi9-python-3.12",
         "jupyter/rocm/tensorflow/ubi9-python-3.12",
     )
-    for dir in dirs:
-        if is_suffix(directory.parts, pathlib.Path(dir).parts):
+    for d in dirs:
+        if is_suffix(directory.parts, pathlib.Path(d).parts):
             if call_skip:
                 pytest.skip(f"Manifest not implemented {directory.parts}")
             else:
