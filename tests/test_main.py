@@ -222,17 +222,17 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
             continue
 
         mapping = {str(d.manifest.filename.relative_to(PROJECT_ROOT)): d.version for d in data}
-
-        exception = next((it for it in ignored_exceptions if it[0] == name), None)
-        if exception:
-            if set(versions) == set(exception[1]):
-                continue
-            else:
-                pytest.fail(
-                    f"{name} is allowed to have {exception} but actually has more versions: {pprint.pformat(mapping)}"
-                )
-
         with subtests.test(msg=f"checking versions for {name} across the latest tags in all imagestreams"):
+            exception = next((it for it in ignored_exceptions if it[0] == name), None)
+            if exception:
+                # exception may save us from failing
+                if set(versions) == set(exception[1]):
+                    continue
+                else:
+                    pytest.fail(
+                        f"{name} is allowed to have {exception} but actually has more versions: {pprint.pformat(mapping)}"
+                    )
+            # all hope is lost, the check has failed
             pytest.fail(f"{name} has multiple versions: {pprint.pformat(mapping)}")
 
 
