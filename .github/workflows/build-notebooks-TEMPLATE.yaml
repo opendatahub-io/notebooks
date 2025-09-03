@@ -361,9 +361,15 @@ jobs:
             sudo tee /etc/apt/sources.list.d/cri-o.list
 
           sudo apt-get update
+
           # [ERROR FileExisting-conntrack]: conntrack not found in system path
           # see man apt-patterns for the ~name=version* syntax
-          sudo apt-get install -y \
+
+          # The following packages will be DOWNGRADED:
+          #  kubectl
+          # E: Packages were downgraded and -y was used without --allow-downgrades.
+
+          sudo apt-get install -y --allow-downgrades \
             "cri-o=${CRIO_VERSION}.*" \
             "kubelet=${KUBERNETES_VERSION}.*" "kubeadm=${KUBERNETES_VERSION}.*" "kubectl=${KUBERNETES_VERSION}.*" \
             conntrack
