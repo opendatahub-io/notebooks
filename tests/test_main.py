@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import tomllib
@@ -11,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import packaging.requirements
 import packaging.utils
+import packaging.version
 import pytest
 import yaml
 
@@ -175,10 +177,24 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                         else:
                             normalized_name = name
 
+                        # assert on name
+
                         resolved = pylock_packages.get(normalized_name, None)
                         if resolved is None:
                             with subtests.test(name):
                                 pytest.fail(f"Dependency {name} ({normalized_name=}) is not in pylock.toml ({file=})")
+
+                        # assert on version
+
+                        manifest_version = d.get("version")
+                        locked_version = resolved.get("version")
+
+                        split_manifest_version = re.fullmatch(r"^v?(\d+)\.(\d+)", manifest_version)
+                        assert split_manifest_version is not None, f"{name}: malformed {manifest_version=}"
+                        parsed_locked_version = packaging.version.Version(locked_version)
+                        assert (parsed_locked_version.major, parsed_locked_version.minor) == tuple(
+                            int(v) for v in split_manifest_version.groups()
+                        ), f"{name}: manifest declares {manifest_version}, but pylock.toml pins {locked_version}"
 
 
 def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.SubTests):
