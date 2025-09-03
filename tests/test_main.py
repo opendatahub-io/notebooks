@@ -211,11 +211,7 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
     )
 
     for name, data in packages.items():
-        versions = [
-            d.version
-            for d in data
-            if (d.manifest.filename.relative_to(PROJECT_ROOT), d.version) not in ignored_exceptions
-        ]
+        versions = [d.version for d in data]
 
         # if there is only a single version, all is good
         if len(set(versions)) == 1:
