@@ -7,27 +7,54 @@ import subprocess
 import tomllib
 from typing import TYPE_CHECKING
 
+import packaging.requirements
+import pytest
+
 from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
+    from typing import Any
+
     import pytest_subtests
 
 MAKE = shutil.which("gmake") or shutil.which("make")
 
 
-def test_image_pipfiles(subtests: pytest_subtests.plugin.SubTests):
-    for file in PROJECT_ROOT.glob("**/Pipfile"):
-        with subtests.test(msg="checking Pipfile", pipfile=file):
-            print(file)
+def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
+    for file in PROJECT_ROOT.glob("**/pyproject.toml"):
+        logging.info(file)
+        with subtests.test(msg="checking pyproject.toml", pipfile=file):
             directory = file.parent  # "ubi9-python-3.11"
-            _ubi, _lang, python = directory.name.split("-")
+            try:
+                _ubi, _lang, python = directory.name.split("-")
+            except ValueError:
+                pytest.skip(f"skipping {directory.name}/pyproject.toml as it is not an image directory")
 
-            with open(file, "rb") as fp:
-                pipfile = tomllib.load(fp)
-            assert "requires" in pipfile, "Pipfile is missing a [[requires]] section"
-            assert pipfile["requires"]["python_version"] == python, (
-                "Pipfile does not declare the expected Python version"
-            )
+            pyproject = tomllib.loads(file.read_text())
+            with subtests.test(msg="checking pyproject.toml", pyproject=file):
+                assert "project" in pyproject, "pyproject.toml is missing a [project] section"
+                assert "requires-python" in pyproject["project"], (
+                    "pyproject.toml is missing a [project.requires-python] section"
+                )
+                assert pyproject["project"]["requires-python"] == f"=={python}.*", (
+                    "pyproject.toml does not declare the expected Python version"
+                )
+
+                assert "dependencies" in pyproject["project"], (
+                    "pyproject.toml is missing a [project.dependencies] section"
+                )
+
+            pylock = tomllib.loads(file.with_name("pylock.toml").read_text())
+            pylock_packages: dict[str, dict[str, Any]] = {p["name"]: p for p in pylock["packages"]}
+            with subtests.test(msg="checking pylock.toml consistency with pyproject.toml", pyproject=file):
+                for d in pyproject["project"]["dependencies"]:
+                    requirement = packaging.requirements.Requirement(d)
+
+                    assert requirement.name in pylock_packages, f"Dependency {d} is not in pylock.toml"
+                    version = pylock_packages[requirement.name]["version"]
+                    assert requirement.specifier.contains(version), (
+                        f"Version of {d} in pyproject.toml does not match {version=} in pylock.toml"
+                    )
 
 
 def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.SubTests):
