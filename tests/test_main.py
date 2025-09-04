@@ -226,9 +226,10 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
                 # exception may save us from failing
                 if set(versions) == set(exception[1]):
                     continue
-                pytest.fail(
-                    f"{name} is allowed to have {exception} but actually has more versions: {pprint.pformat(mapping)}"
-                )
+                else:
+                    pytest.fail(
+                        f"{name} is allowed to have {exception} but actually has more versions: {pprint.pformat(mapping)}"
+                    )
             # all hope is lost, the check has failed
             pytest.fail(f"{name} has multiple versions: {pprint.pformat(mapping)}")
 
@@ -283,7 +284,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         if len(set(data)) == 1:
             continue
 
-        with subtests.test(msg=f"checking {name} across imagestreams"):
+        with subtests.test(msg=f"checking versions of {name} across all pyproject.tomls"):
             exception = next((it for it in ignored_exceptions if it[0] == name), None)
             if exception:
                 # exception may save us from failing
@@ -294,8 +295,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
                         f"{name} is allowed to have {exception[1]} but actually has more versions: {pprint.pformat(set(data))}"
                     )
             # all hope is lost, the check has failed
-            with subtests.test(msg=f"checking versions for {name} across the latest tags in all imagestreams"):
-                pytest.fail(f"{name} has multiple versions: {pprint.pformat(data)}")
+            pytest.fail(f"{name} has multiple versions: {pprint.pformat(data)}")
 
 
 def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.SubTests):
