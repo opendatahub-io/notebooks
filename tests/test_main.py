@@ -173,7 +173,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
 
 
 def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubTests):
-    manifests = []
+    collected_manifests = []
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
         directory = file.parent  # "ubi9-python-3.11"
@@ -187,7 +187,7 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
             continue
 
         manifest = load_manifests_file_for(directory)
-        manifests.append(manifest)
+        collected_manifests.append(manifest)
 
     @dataclasses.dataclass
     class VersionData:
@@ -195,7 +195,7 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
         version: str
 
     packages: dict[str, list[VersionData]] = defaultdict(list)
-    for manifest in manifests:
+    for manifest in collected_manifests:
         for dep in manifest.dep:
             name = dep["name"]
             version = dep["version"]
@@ -300,8 +300,8 @@ class Manifest:
     filename: pathlib.Path
     imagestream: dict[str, Any]
     metadata: manifests.NotebookMetadata
-    sw: dict
-    dep: dict
+    sw: list[dict[str, Any]]
+    dep: list[dict[str, Any]]
 
 
 def load_manifests_file_for(directory: pathlib.Path) -> Manifest:
