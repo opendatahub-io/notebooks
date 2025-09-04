@@ -226,10 +226,9 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
                 # exception may save us from failing
                 if set(versions) == set(exception[1]):
                     continue
-                else:
-                    pytest.fail(
-                        f"{name} is allowed to have {exception} but actually has more versions: {pprint.pformat(mapping)}"
-                    )
+                pytest.fail(
+                    f"{name} is allowed to have {exception} but actually has more versions: {pprint.pformat(mapping)}"
+                )
             # all hope is lost, the check has failed
             pytest.fail(f"{name} has multiple versions: {pprint.pformat(mapping)}")
 
