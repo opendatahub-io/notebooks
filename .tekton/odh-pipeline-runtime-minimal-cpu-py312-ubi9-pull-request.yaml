@@ -43,7 +43,7 @@ spec:
   - name: path-context
     value: .
   - name: build-args-file
-    value: runtimes/minimal/build-args/cpu.conf
+    value: runtimes/minimal/ubi9-python-3.12/build-args/cpu.conf
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:
