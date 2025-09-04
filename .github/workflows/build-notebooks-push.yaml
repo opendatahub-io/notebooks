@@ -20,6 +20,10 @@ jobs:
   gen:
     name: Generate job matrix
     runs-on: ubuntu-latest
+    # for odh-io/notebooks and rhds/notebooks, allow only main, rhoai-*, release-*
+    if: ${{ (github.repository != 'opendatahub-io/notebooks' && github.repository != 'red-hat-data-services/notebooks')
+      || github.ref_name == 'main' || github.ref_name == '2024b' || github.ref_name == '2024a'
+      || startsWith(github.ref_name, 'rhoai-') || startsWith(github.ref_name, 'release-') }}
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       has_jobs: ${{ steps.gen.outputs.has_jobs }}

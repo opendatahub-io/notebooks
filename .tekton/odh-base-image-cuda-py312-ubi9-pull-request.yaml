@@ -36,6 +36,7 @@ spec:
   - name: build-platforms
     value:
     - linux/x86_64
+    - linux/arm64
   - name: dockerfile
     value: base-images/cuda/12.6/ubi9-python-3.12/Dockerfile.cuda
   - name: path-context
@@ -43,7 +44,7 @@ spec:
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-base-image-cuda-py312-ubi9
+    serviceAccountName: build-pipeline-odh-base-image-cuda-py312-ubi9-poc
   workspaces:
   - name: git-auth
     secret:
