@@ -14,6 +14,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import packaging.requirements
+import packaging.specifiers
 import packaging.utils
 import packaging.version
 import pytest
@@ -233,7 +234,69 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
             pytest.fail(f"{name} has multiple versions: {pprint.pformat(mapping)}")
 
 
-# TODO(jdanek): ^^^ should also check pyproject.tomls, in fact checking there is more useful than in manifests
+def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.SubTests):
+    requirements = defaultdict(list)
+    for file in PROJECT_ROOT.glob("**/pyproject.toml"):
+        logging.info(file)
+        directory = file.parent  # "ubi9-python-3.11"
+        try:
+            _ubi, _lang, _python = directory.name.split("-")
+        except ValueError:
+            logging.debug(f"skipping {directory.name}/pyproject.toml as it is not an image directory")
+            continue
+
+        if _skip_unimplemented_manifests(directory, call_skip=False):
+            continue
+
+        pyproject = tomllib.loads(file.read_text())
+        for d in pyproject["project"]["dependencies"]:
+            requirement = packaging.requirements.Requirement(d)
+            requirements[requirement.name].append(requirement.specifier)
+
+    # TODO(jdanek): review these, if any are unwarranted
+    ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
+        # ("package name", ("allowed specifier 1", "allowed specifier 2", ...))
+        ("setuptools", ("~=78.1.1", "==78.1.1")),
+        ("wheel", ("==0.45.1", "~=0.45.1")),
+        ("tensorboard", ("~=2.18.0", "~=2.19.0")),
+        ("torch", ("==2.6.0", "==2.6.0+cu126", "==2.6.0+rocm6.2.4")),
+        ("torchvision", ("==0.21.0", "==0.21.0+cu126", "==0.21.0+rocm6.2.4")),
+        ("matplotlib", ("~=3.10.1", "~=3.10.3")),
+        ("numpy", ("~=2.2.3", "<2.0.0", "~=1.26.4")),
+        ("pandas", ("~=2.2.3", "~=1.5.3")),
+        ("scikit-learn", ("~=1.6.1", "~=1.7.0")),
+        ("codeflare-sdk", ("~=0.29.0", "~=0.30.0")),
+        ("ipython-genutils", (">=0.2.0", "~=0.2.0")),
+        ("jinja2", (">=3.1.6", "~=3.1.6")),
+        ("jupyter-client", ("~=8.6.3", ">=8.6.3")),
+        ("requests", ("~=2.32.3", ">=2.0.0")),
+        ("urllib3", ("~=2.5.0", "~=2.3.0")),
+        ("transformers", ("<5.0,>4.0", "~=4.55.0")),
+        ("datasets", ("", "~=3.4.1")),
+        ("accelerate", ("!=1.1.0,>=0.20.3", "~=1.5.2")),
+        ("kubeflow-training", ("==1.9.0", "==1.9.2", "==1.9.3")),
+        ("jupyter-bokeh", ("~=3.0.5", "~=4.0.5")),
+        ("jupyterlab-lsp", ("~=5.1.0", "~=5.1.1")),
+        ("jupyterlab-widgets", ("~=3.0.13", "~=3.0.15")),
+    )
+
+    for name, data in requirements.items():
+        if len(set(data)) == 1:
+            continue
+
+        with subtests.test(msg=f"checking {name} across imagestreams"):
+            exception = next((it for it in ignored_exceptions if it[0] == name), None)
+            if exception:
+                # exception may save us from failing
+                if set(data) == {packaging.specifiers.SpecifierSet(e) for e in exception[1]}:
+                    continue
+                else:
+                    pytest.fail(
+                        f"{name} is allowed to have {exception[1]} but actually has more versions: {pprint.pformat(set(data))}"
+                    )
+            # all hope is lost, the check has failed
+            with subtests.test(msg=f"checking versions for {name} across the latest tags in all imagestreams"):
+                pytest.fail(f"{name} has multiple versions: {pprint.pformat(data)}")
 
 
 def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.SubTests):
