@@ -236,6 +236,11 @@ spec:
       workspace: git-auth
     - name: netrc
       workspace: netrc
+  - matrix:
+      params:
+      - name: PLATFORM
+        value:
+        - $(params.build-platforms)
   - name: build-container
     params:
     - name: IMAGE
