@@ -300,7 +300,7 @@ spec:
       value:
       - $(tasks.build-container.results.IMAGE_URL)@$(tasks.build-container.results.IMAGE_DIGEST)
     runAfter:
-    - build-container
+    - build-images
     taskRef:
       params:
       - name: name
