@@ -1,3 +1,8 @@
+#########################
+# configuration args    #
+#########################
+ARG BASE_IMAGE
+
 ######################################################
 # mongocli-builder (build stage only, not published) #
 ######################################################
@@ -12,9 +17,9 @@ RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
     CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
 
 ####################
-# base             #
+# rocm-base        #
 ####################
-FROM registry.access.redhat.com/ubi9/python-312:latest AS base
+FROM ${BASE_IMAGE} AS rocm-base
 
 WORKDIR /opt/app-root/bin
 
@@ -42,51 +47,6 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
     tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
     rm -f /tmp/openshift-client-linux.tar.gz
 # Install the oc client end
-
-#############
-# rocm-base #
-#############
-FROM base AS rocm-base
-
-USER 0
-WORKDIR /opt/app-root/bin
-
-# Please keep in sync with ROCm/python3.12 dependent images
-ARG ROCM_VERSION=6.4.3
-ARG AMDGPU_VERSION=6.4.3
-
-# Install the ROCm rpms
-# ref: https://github.com/ROCm/ROCm-docker/blob/master/dev/Dockerfile-centos-7-complete
-# docs: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/install-methods/package-manager/package-manager-rhel.html#registering-rocm-repositories
-# Note: Based on 6.4 above new package mivisionx is a pre-requistes, which bring in more dependent packages
-# so we are only installing meta packages of rocm
-# ref: https://rocm.docs.amd.com/projects/install-on-linux/en/develop/reference/package-manager-integration.html#packages-in-rocm-programming-models
-RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
-    echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
-    echo "baseurl=https://repo.radeon.com/rocm/el9/${ROCM_VERSION}/main" >> /etc/yum.repos.d/rocm.repo && \
-    echo "enabled=1" >> /etc/yum.repos.d/rocm.repo && \
-    echo "gpgcheck=0" >> /etc/yum.repos.d/rocm.repo && \
-    echo "[amdgpu]" > /etc/yum.repos.d/amdgpu.repo && \
-    echo "name=amdgpu" >> /etc/yum.repos.d/amdgpu.repo && \
-    echo "baseurl=https://repo.radeon.com/amdgpu/${AMDGPU_VERSION}/rhel/9.4/main/x86_64" >> /etc/yum.repos.d/amdgpu.repo && \
-    echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo && \
-    echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
-    dnf install -y 'https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm' && \
-    dnf clean all && dnf makecache && \
-    dnf install -y rocm-developer-tools rocm-ml-sdk rocm-openmp-sdk rocm-utils && \
-    dnf clean all && rm -rf /var/cache/dnf
-
-# https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/post-install.html#configure-rocm-shared-objects
-RUN tee --append /etc/ld.so.conf.d/rocm.conf <<EOF
-  /opt/rocm/lib
-  /opt/rocm/lib64
-EOF
-
-RUN ldconfig
-
-# Restore notebook user workspace
-USER 1001
-WORKDIR /opt/app-root/src
 
 ########################
 # rocm-jupyter-minimal #
