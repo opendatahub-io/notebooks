@@ -378,7 +378,12 @@ def load_manifests_file_for(directory: pathlib.Path) -> Manifest:
             f"Computed filepath '{manifest_file}' does not exist."
         )
 
-    imagestream = yaml.safe_load(manifest_file.read_text())
+    # BEWARE: rhds rstudio has imagestream bundled in the buildconfig yaml
+    if "buildconfig" in manifest_file.name:
+        # imagestream is the first document in the file
+        imagestream = next(yaml.safe_load_all(manifest_file.read_text()))
+    else:
+        imagestream = yaml.safe_load(manifest_file.read_text())
     recommended_tags = [
         tag
         for tag in imagestream["spec"]["tags"]
