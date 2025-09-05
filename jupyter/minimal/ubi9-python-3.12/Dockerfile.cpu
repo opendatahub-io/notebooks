@@ -78,12 +78,12 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
 USER 0
 
+# Dependencies for PDF export begin
+
 # Copy built TeXLive and Pandoc binaries only (no build deps)
 COPY --from=pdf-builder /usr/local/texlive /usr/local/texlive
 COPY --from=pdf-builder /usr/local/pandoc /usr/local/pandoc
 
-# Dependencies for PDF export begin
-RUN ./utils/install_pdf_deps.sh
 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 ENV PATH="/usr/local/texlive/bin/x86_64-linux:/usr/local/pandoc/bin:$PATH"
 ENV PATH="/opt/texlive/2025/bin/powerpc64le-unknown-linux-gnu:/usr/local/pandoc/bin:$PATH"
