@@ -170,7 +170,7 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
 # onnx builder stage for ppc64le
 ###################################
 
-FROM base AS onnx-builder
+FROM cpu-base AS onnx-builder
 USER root
 WORKDIR /root
 
