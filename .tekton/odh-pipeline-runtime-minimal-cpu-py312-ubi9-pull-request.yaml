@@ -13,11 +13,7 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-comment: ^/kfbuild\s+(all|odh\-pipeline\-runtime\-minimal\-cpu\-py312\-ubi9|runtimes/minimal/ubi9\-python\-3\.12)
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && target_branch
-      == "main"
-      && !("manifests/base/params-latest.env".pathChanged())
-      && ( "runtimes/minimal/ubi9-python-3.12/**".pathChanged() ||
-           ".tekton/odh-pipeline-runtime-minimal-cpu-py312-ubi9-pull-request.yaml".pathChanged() )
+      event == "pull_request" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( "runtimes/minimal/ubi9-python-3.12/**".pathChanged() || "runtimes/minimal/build-args/cpu.conf".pathChanged() || ".tekton/odh-pipeline-runtime-minimal-cpu-py312-ubi9-pull-request.yaml".pathChanged() )
       && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -46,6 +42,8 @@ spec:
     value: runtimes/minimal/ubi9-python-3.12/Dockerfile.cpu
   - name: path-context
     value: .
+  - name: build-args-file
+    value: runtimes/minimal/ubi9-python-3.12/build-args/cpu.conf
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:

@@ -13,12 +13,7 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-comment: ^/kfbuild\s+(all|odh\-pipeline\-runtime\-pytorch\-cuda\-py312\-ubi9|runtimes/pytorch/ubi9\-python\-3\.12)
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && target_branch
-      == "main"
-      && !("manifests/base/params-latest.env".pathChanged())
-      && ( ".tekton/odh-pipeline-runtime-pytorch-cuda-py312-ubi9-pull-request.yaml".pathChanged() ||
-           "runtimes/pytorch/ubi9-python-3.12/**".pathChanged() ||
-           "cuda/**".pathChanged() )
+      event == "pull_request" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-pipeline-runtime-pytorch-cuda-py312-ubi9-pull-request.yaml".pathChanged() || "runtimes/pytorch/ubi9-python-3.12/**".pathChanged() || "runtimes/pytorch/ubi9-python-3.12/build-args/cuda.conf".pathChanged() )
       && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -45,6 +40,8 @@ spec:
     value: runtimes/pytorch/ubi9-python-3.12/Dockerfile.cuda
   - name: path-context
     value: .
+  - name: build-args-file
+    value: runtimes/pytorch/ubi9-python-3.12/build-args/cuda.conf
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:
