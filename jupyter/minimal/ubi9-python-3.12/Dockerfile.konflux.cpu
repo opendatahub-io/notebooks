@@ -1,3 +1,8 @@
+#########################
+# configuration args    #
+#########################
+ARG BASE_IMAGE
+
 ############################
 # Stage 1: PDF Tool Build #
 ############################
@@ -17,9 +22,9 @@ RUN ./install_texlive.sh
 RUN ./install_pandoc.sh
 
 ####################
-# base             #
+# cpu-base         #
 ####################
-FROM registry.access.redhat.com/ubi9/python-312:latest AS base
+FROM ${BASE_IMAGE} AS cpu-base
 
 WORKDIR /opt/app-root/bin
 
@@ -51,7 +56,7 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 ####################
 # jupyter-minimal  #
 ####################
-FROM base AS jupyter-minimal
+FROM cpu-base AS jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
