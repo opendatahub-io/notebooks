@@ -31,7 +31,7 @@ RUN --mount=type=cache,target=/var/cache/dnf \
         PACKAGES="$PACKAGES gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel openssl zlib-devel"; \
     fi && \
     if [ "$TARGETARCH" = "ppc64le" ]; then \
-        PACKAGES="$PACKAGES git gcc-toolset-13 make wget unzip rust cargo unixODBC-devel cmake ninja-build"; \
+        PACKAGES="$PACKAGES git gcc-toolset-13 make wget unzip unixODBC-devel cmake ninja-build"; \
     fi && \
     if [ -n "$PACKAGES" ]; then \
         echo "Installing: $PACKAGES" && \
@@ -246,9 +246,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     echo "Installing softwares and packages" && \
     if [ "$TARGETARCH" = "ppc64le" ]; then \
         export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig; \
-        export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib:$LD_LIBRARY_PATH; \
-        GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
-        pip install ml-dtypes && \
+        export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib:$LD_LIBRARY_PATH && \
         uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml; \
     elif [ "$TARGETARCH" = "s390x" ]; then \
         # For s390x, we need special flags and environment variables for building packages
