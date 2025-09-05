@@ -1,5 +1,6 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
+#test1
 metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
@@ -36,7 +37,7 @@ spec:
     - '{{target_branch}}-{{revision}}'
     - v12.6
   pipelineRef:
-    name: multiarch-pull-request-pipeline
+    name: multiarch-push-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-base-image-cuda-py311-c9s-poc
   workspaces:

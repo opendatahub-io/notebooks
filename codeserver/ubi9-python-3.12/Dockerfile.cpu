@@ -1,7 +1,12 @@
+#########################
+# configuration args    #
+#########################
+ARG BASE_IMAGE
+
 ####################
-# base             #
+# cpu-base         #
 ####################
-FROM registry.access.redhat.com/ubi9/python-312:latest AS base
+FROM ${BASE_IMAGE} AS cpu-base
 
 WORKDIR /opt/app-root/bin
 
@@ -30,11 +35,10 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
     rm -f /tmp/openshift-client-linux.tar.gz
 # Install the oc client end
 
-
 ####################
 # codeserver       #
 ####################
-FROM base AS codeserver
+FROM cpu-base AS codeserver
 
 ARG TARGETOS TARGETARCH
 

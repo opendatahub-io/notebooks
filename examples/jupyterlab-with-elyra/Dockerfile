@@ -58,7 +58,7 @@ nbdime~=4.0.2
 nbgitpuller~=1.2.2
 
 # Elyra
-odh-elyra==4.2.1
+odh-elyra==4.2.3
 kfp~=2.12.1
 
 # Miscellaneous datascience packages
