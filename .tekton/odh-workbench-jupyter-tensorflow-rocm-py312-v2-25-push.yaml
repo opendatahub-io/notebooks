@@ -42,6 +42,8 @@ spec:
     - io.openshift.tags=odh-workbench-jupyter-tensorflow-rocm-py312
   - name: dockerfile
     value: jupyter/rocm/tensorflow/ubi9-python-3.12/Dockerfile.konflux.rocm
+  - name: build-args-file
+    value: jupyter/rocm/tensorflow/ubi9-python-3.12/build-args/rocm.conf
   - name: path-context
     value: .
   - name: hermetic

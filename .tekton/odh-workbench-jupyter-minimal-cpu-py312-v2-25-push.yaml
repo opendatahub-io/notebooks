@@ -38,6 +38,8 @@ spec:
     - io.openshift.tags=odh-workbench-jupyter-minimal-cpu-py312
   - name: dockerfile
     value: jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu
+  - name: build-args-file
+    value: jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf
   - name: path-context
     value: .
   - name: hermetic

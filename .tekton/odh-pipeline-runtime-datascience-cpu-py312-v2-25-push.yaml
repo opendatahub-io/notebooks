@@ -40,6 +40,8 @@ spec:
     - io.openshift.tags=odh-pipeline-runtime-datascience-cpu-py312
   - name: dockerfile
     value: runtimes/datascience/ubi9-python-3.12/Dockerfile.konflux.cpu
+  - name: build-args-file
+    value: runtimes/datascience/ubi9-python-3.12/build-args/cpu.conf
   - name: path-context
     value: .
   - name: hermetic

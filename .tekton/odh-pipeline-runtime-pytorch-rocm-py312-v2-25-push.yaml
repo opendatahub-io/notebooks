@@ -38,6 +38,8 @@ spec:
     - io.openshift.tags=odh-pipeline-runtime-pytorch-rocm-py312
   - name: dockerfile
     value: runtimes/rocm-pytorch/ubi9-python-3.12/Dockerfile.konflux.rocm
+  - name: build-args-file
+    value: runtimes/rocm-pytorch/ubi9-python-3.12/build-args/rocm.conf
   - name: path-context
     value: .
   - name: hermetic

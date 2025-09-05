@@ -37,7 +37,9 @@ spec:
     - version=v2.25.0
     - io.openshift.tags=odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312
   - name: dockerfile
-    value: runtimes/pytorch-llmcompressor/ubi9-python-3.12/Dockerfile.konflux.cuda
+    value: runtimes/pytorch+llmcompressor/ubi9-python-3.12/Dockerfile.konflux.cuda
+  - name: build-args-file
+    value: runtimes/pytorch+llmcompressor/ubi9-python-3.12/build-args/cuda.conf
   - name: path-context
     value: .
   - name: hermetic

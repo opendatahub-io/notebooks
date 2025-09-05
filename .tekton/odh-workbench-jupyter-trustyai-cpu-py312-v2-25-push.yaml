@@ -43,6 +43,8 @@ spec:
     - io.openshift.tags=odh-workbench-jupyter-trustyai-cpu-py312
   - name: dockerfile
     value: jupyter/trustyai/ubi9-python-3.12/Dockerfile.konflux.cpu
+  - name: build-args-file
+    value: jupyter/trustyai/ubi9-python-3.12/build-args/cpu.conf
   - name: path-context
     value: .
   - name: hermetic
