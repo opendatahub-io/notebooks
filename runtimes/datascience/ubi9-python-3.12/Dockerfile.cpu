@@ -25,7 +25,7 @@ RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_d
 # Install useful OS packages
 RUN --mount=type=cache,target=/var/cache/dnf \
     echo "Building for architecture: ${TARGETARCH}" && \
-    PACKAGES="mesa-libGL skopeo libxcrypt-compat" && \
+    PACKAGES="perl mesa-libGL skopeo libxcrypt-compat" && \
     # Additional dev tools only for s390x
     if [ "$TARGETARCH" = "s390x" ]; then \
         PACKAGES="$PACKAGES gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel openssl zlib-devel"; \
