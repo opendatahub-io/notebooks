@@ -49,6 +49,7 @@ def pull_request_pipelinerun_template(
     component: str,
     dockerfile: pathlib.Path,
     build_platforms: list[Literal["linux/x86_64", "linux/arm64", "linux/ppc64le", "linux/s390x"]],
+    params: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.19/html/pipelines_as_code/creating-pipeline-runs-pac#creating-pipeline-runs-pac"""
 
@@ -81,21 +82,7 @@ def pull_request_pipelinerun_template(
             "timeouts": {
                 "pipeline": "3h",
             },
-            "params": [
-                {"name": "git-url", "value": "{{source_url}}"},
-                {"name": "revision", "value": "{{revision}}"},
-                {"name": "output-image", "value": f"quay.io/opendatahub/{component}:on-pr-{{{{revision}}}}"},
-                {"name": "image-expires-after", "value": "5d"},
-                {
-                    "name": "build-platforms",
-                    "value": build_platforms,
-                },
-                {"name": "dockerfile", "value": str(dockerfile)},
-                {
-                    "name": "path-context",
-                    "value": ".",
-                },
-            ],
+            "params": params,
             "pipelineRef": {
                 "name": "multiarch-pull-request-pipeline",
             },
@@ -147,13 +134,36 @@ def transform_build_pipeline_to_pr_pipeline(push_pipeline_path: pathlib.Path):
     build_platforms = ["linux/x86_64"]
     if component in ["odh-pipeline-runtime-minimal-cpu-py311-ubi9", "odh-pipeline-runtime-minimal-cpu-py312-ubi9"]:
         build_platforms.extend(["linux/arm64", "linux/s390x"])
+
+    # Collect params
+    dockerfile = pathlib.Path(
+        next(param for param in push_pipeline["spec"]["params"] if param["name"] == "dockerfile")["value"]
+    )
+
+    pr_params = [
+        {"name": "git-url", "value": "{{source_url}}"},
+        {"name": "revision", "value": "{{revision}}"},
+        {"name": "output-image", "value": f"quay.io/opendatahub/{component}:on-pr-{{{{revision}}}}"},
+        {"name": "image-expires-after", "value": "5d"},
+        {"name": "build-platforms", "value": build_platforms},
+        {"name": "dockerfile", "value": str(dockerfile)},
+        {"name": "path-context", "value": "."},
+    ]
+
+    existing_param_names = {p["name"] for p in pr_params}
+    # skip copying these no need of additional-tags on pull-request
+    skip_params = {"additional-tags"}
+
+    for p in push_pipeline["spec"]["params"]:
+        if p["name"] not in existing_param_names and p["name"] not in skip_params:
+            pr_params.append(p)
+
     pr_pipeline = pull_request_pipelinerun_template(
         on_cel_expression=LiteralScalarString(pr_on_cel_expression + "\n"),
         component=component,
-        dockerfile=pathlib.Path(
-            next(param for param in push_pipeline["spec"]["params"] if param["name"] == "dockerfile")["value"]
-        ),
+        dockerfile=dockerfile,
         build_platforms=build_platforms,
+        params=pr_params,
     )
 
     # Generate the new filename and write the file
