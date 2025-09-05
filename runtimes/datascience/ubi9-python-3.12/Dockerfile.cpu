@@ -247,11 +247,10 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     if [ "$TARGETARCH" = "ppc64le" ]; then \
         export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig; \
         export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib:$LD_LIBRARY_PATH; \
-        GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 && \
+        GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
         pip install ml-dtypes && \
         uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml; \
-    else \
-    if [ "$TARGETARCH" = "s390x" ]; then \
+    elif [ "$TARGETARCH" = "s390x" ]; then \
         # For s390x, we need special flags and environment variables for building packages
         GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
         CFLAGS="-O3" CXXFLAGS="-O3" \
