@@ -74,11 +74,10 @@ define build_image
 	$(eval CONF_FILE := $(BUILD_DIR)build-args/$(shell echo $(DOCKERFILE_NAME) | cut -d. -f2).conf)
 
 	# if the conf file exists, transform it into --build-arg KEY=VALUE flags
-	$(eval BUILD_ARGS := $(shell if [ -f $(CONF_FILE) ]; then \
-		while IFS='=' read -r k v; do \
-			[ -n "$$k" ] && printf -- "--build-arg %s=%s " "$$k" "$$v"; \
-		done < $(CONF_FILE); \
-	fi))
+	$(eval BUILD_ARGS := $(shell \
+		if [ -f $(CONF_FILE) ]; then \
+			awk -F= '!/^#/ && NF {gsub(/^[ \t]+|[ \t]+$$/, "", $$1); gsub(/^[ \t]+|[ \t]+$$/, "", $$2); printf "--build-arg %s=%s ", $$1, $$2}' $(CONF_FILE); \
+		fi))
 
 	$(info # Building $(IMAGE_NAME) using $(DOCKERFILE_NAME) with $(CONF_FILE) and $(BUILD_ARGS)...)
 
