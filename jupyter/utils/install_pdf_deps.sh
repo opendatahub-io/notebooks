@@ -23,8 +23,6 @@ if [[ "$(uname -m)" == "s390x" ]]; then
     exit 0
 fi
 
-ARCH=$(uname -m)
-
 if [[ "$ARCH" == "ppc64le" ]]; then
   echo "Installing TeX Live from source for $ARCH"
 
@@ -65,11 +63,13 @@ if [[ "$ARCH" == "ppc64le" ]]; then
 
   # Set version
   PANDOC_VERSION=3.7.0.2
+
   cd /tmp
   git clone --recurse-submodules https://github.com/jgm/pandoc.git
   cd pandoc
   git checkout ${PANDOC_VERSION}
   git submodule update --init --recursive
+
   cabal update
 
   # Build the CLI tool (not the top-level library package)
@@ -85,12 +85,13 @@ if [[ "$ARCH" == "ppc64le" ]]; then
   rm -rf ~/.cabal ~/.ghc /tmp/pandoc
   dnf remove -y cabal-install ghc gmp-devel
   dnf clean all && rm -rf /var/cache/dnf
+
   # Verify installation
   /usr/local/bin/pandoc --version
 
 fi
 
-if [[ "$ARCH" == "x86_64" ]]; then
+if [[ "$ARCH" == "amd64" ]]; then
   # tex live installation
   echo "Installing TexLive to allow PDf export from Notebooks"
   curl -fL https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz -o install-tl-unx.tar.gz
@@ -98,7 +99,7 @@ if [[ "$ARCH" == "x86_64" ]]; then
   cd install-tl-2*
   perl ./install-tl --no-interaction --scheme=scheme-small --texdir=/usr/local/texlive
   mv /usr/local/texlive/bin/"$(uname -m)-linux" /usr/local/texlive/bin/linux
-cd /usr/local/texlive/bin/linux
+  cd /usr/local/texlive/bin/linux
   ./tlmgr install tcolorbox pdfcol adjustbox titling enumitem soul ucs collection-fontsrecommended
 
   # pandoc installation
@@ -108,4 +109,3 @@ cd /usr/local/texlive/bin/linux
   rm -f /tmp/pandoc.tar.gz
 
 fi
-

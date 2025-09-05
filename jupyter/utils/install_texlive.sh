@@ -9,6 +9,16 @@ UNAME_TO_GOARCH["ppc64le"]="ppc64le"
 UNAME_TO_GOARCH["s390x"]="s390x"
 
 ARCH="${UNAME_TO_GOARCH[$(uname -m)]}"
+if [[ -z "${ARCH:-}" ]]; then
+    echo "Unsupported architecture: $(uname -m)" >&2
+    exit 1
+fi
+
+# Skip PDF export installation for s390x architecture
+if [[ "$(uname -m)" == "s390x" ]]; then
+    echo "PDF export functionality is not supported on s390x architecture. Skipping installation."
+    exit 0
+fi
 
 if [[ "$ARCH" == "ppc64le" ]]; then
   echo "Installing TeX Live from source for $ARCH..."
@@ -29,13 +39,15 @@ if [[ "$ARCH" == "ppc64le" ]]; then
   # Create build directory and build
   mkdir ../texlive-build
   cd ../texlive-build
+
+  # Configure, build, install
   ../texlive-20250308-source/configure --prefix=/usr/local/texlive
   make -j"$(nproc)"
   make install
 
   # Symlink for pdflatex
   ln -sf pdftex /usr/local/texlive/bin/powerpc64le-unknown-linux-gnu/pdflatex
-  
+
   # Cleanup sources to reduce image size
   rm -rf /texlive-20250308-source /texlive-build
 
@@ -58,12 +70,11 @@ EOF
 
   ./install-tl --profile=texlive.profile --custom-bin=$TEXLIVE_INSTALL_PREFIX/bin/powerpc64le-unknown-linux-gnu
 
-# TeX Live binary directory
-TEX_BIN_DIR="/usr/local/texlive/bin/powerpc64le-unknown-linux-gnu"
+  # TeX Live binary directory
+  TEX_BIN_DIR="/usr/local/texlive/bin/powerpc64le-unknown-linux-gnu"
 
-# Create standard symlink 'linux' → arch-specific folder
-ln -sf "$TEX_BIN_DIR" /usr/local/texlive/bin/linux
-
+  # Create standard symlink 'linux' → arch-specific folder
+  ln -sf "$TEX_BIN_DIR" /usr/local/texlive/bin/linux
 
   # Set up environment
   export PATH="$TEXLIVE_INSTALL_PREFIX/bin/linux:$PATH"
@@ -86,4 +97,3 @@ else
   exit 1
 
 fi
-

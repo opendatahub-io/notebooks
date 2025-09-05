@@ -9,6 +9,16 @@ UNAME_TO_GOARCH["ppc64le"]="ppc64le"
 UNAME_TO_GOARCH["s390x"]="s390x"
 
 ARCH="${UNAME_TO_GOARCH[$(uname -m)]}"
+if [[ -z "${ARCH:-}" ]]; then
+    echo "Unsupported architecture: $(uname -m)" >&2
+    exit 1
+fi
+
+# Skip PDF export installation for s390x architecture
+if [[ "$(uname -m)" == "s390x" ]]; then
+    echo "PDF export functionality is not supported on s390x architecture. Skipping installation."
+    exit 0
+fi
 
 if [[ "$ARCH" == "ppc64le" ]]; then
   # Install Pandoc from source
@@ -25,7 +35,13 @@ if [[ "$ARCH" == "ppc64le" ]]; then
   git submodule update --init --recursive
 
   cabal update
+
+  # Build the CLI tool (not the top-level library package)
   cd pandoc-cli
+
+  # Clean previous builds
+  cabal clean
+
   cabal build -j"$(nproc)"
   mkdir -p /usr/local/pandoc/bin
   cabal install \
@@ -38,6 +54,7 @@ if [[ "$ARCH" == "ppc64le" ]]; then
   dnf remove -y cabal-install ghc gmp-devel
   dnf clean all && rm -rf /var/cache/dnf
 
+  # Verify installation
   /usr/local/pandoc/bin/pandoc --version
 
 elif [[ "$ARCH" == "amd64" ]]; then
