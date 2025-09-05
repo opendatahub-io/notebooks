@@ -43,6 +43,9 @@ spec:
     value: .
   - name: build-args-file
     value: codeserver/ubi9-python-3.12/build-args/cpu.conf
+  - name: image-labels
+    value:
+    - release=2025b
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:
