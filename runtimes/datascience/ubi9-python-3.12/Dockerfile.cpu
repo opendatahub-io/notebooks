@@ -8,6 +8,8 @@ ARG BASE_IMAGE
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
 
+ARG TARGETARCH
+
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
@@ -19,7 +21,40 @@ RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_d
 # upgrade first to avoid fixable vulnerabilities end
 
 # Install useful OS packages
-RUN dnf install -y mesa-libGL skopeo libxcrypt-compat && dnf clean all && rm -rf /var/cache/yum
+RUN --mount=type=cache,target=/var/cache/dnf \
+    echo "Building for architecture: ${TARGETARCH}" && \
+    PACKAGES="mesa-libGL skopeo libxcrypt-compat" && \
+    # Additional dev tools only for s390x
+    if [ "$TARGETARCH" = "s390x" ]; then \
+        PACKAGES="$PACKAGES gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel openssl zlib-devel"; \
+    fi && \
+    if [ -n "$PACKAGES" ]; then \
+        dnf install -y $PACKAGES && \
+        dnf clean all && rm -rf /var/cache/yum; \
+    fi
+
+# For s390x only, set ENV vars and install Rust
+RUN if [ "$TARGETARCH" = "s390x" ]; then \
+    # Install Rust and set up environment
+    mkdir -p /opt/.cargo && \
+    export HOME=/root && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh && \
+    chmod +x rustup-init.sh && \
+    CARGO_HOME=/opt/.cargo HOME=/root ./rustup-init.sh -y --no-modify-path && \
+    rm -f rustup-init.sh && \
+    chown -R 1001:0 /opt/.cargo && \
+    # Set environment variables
+    echo 'export PATH=/opt/.cargo/bin:$PATH' >> /etc/profile.d/cargo.sh && \
+    echo 'export CARGO_HOME=/opt/.cargo' >> /etc/profile.d/cargo.sh && \
+    echo 'export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1' >> /etc/profile.d/cargo.sh; \
+fi
+
+# Set python alternatives only for s390x (not needed for other arches)
+RUN if [ "$TARGETARCH" = "s390x" ]; then \
+    alternatives --install /usr/bin/python python /usr/bin/python3.12 1 && \
+    alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
+    python --version && python3 --version; \
+fi
 
 # Other apps and tools installed as default user
 USER 1001
@@ -35,11 +70,69 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
     rm -f /tmp/openshift-client-linux.tar.gz
 # Install the oc client end
 
+##############################
+# wheel-builder stage        #
+# NOTE: Only used in s390x
+##############################
+FROM cpu-base AS s390x-builder
+
+ARG TARGETARCH
+USER 0
+WORKDIR /tmp/build-wheels
+
+# Build pyarrow optimized for s390x
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/root/.cache/dnf \
+    if [ "$TARGETARCH" = "s390x" ]; then \
+        # Install build dependencies (shared for pyarrow and onnx)
+        dnf install -y cmake make gcc-c++ pybind11-devel wget && \
+        dnf clean all && \
+        # Build and collect pyarrow wheel
+        git clone --depth 1 https://github.com/apache/arrow.git && \
+        cd arrow/cpp && \
+        mkdir release && cd release && \
+        cmake -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=/usr/local \
+              -DARROW_PYTHON=ON \
+              -DARROW_PARQUET=ON \
+              -DARROW_ORC=ON \
+              -DARROW_FILESYSTEM=ON \
+              -DARROW_JSON=ON \
+              -DARROW_CSV=ON \
+              -DARROW_DATASET=ON \
+              -DARROW_DEPENDENCY_SOURCE=BUNDLED \
+              -DARROW_WITH_LZ4=OFF \
+              -DARROW_WITH_ZSTD=OFF \
+              -DARROW_WITH_SNAPPY=OFF \
+              -DARROW_BUILD_TESTS=OFF \
+              -DARROW_BUILD_BENCHMARKS=OFF \
+              .. && \
+        make -j$(nproc) VERBOSE=1 && \
+        make install -j$(nproc) && \
+        cd ../../python && \
+        pip install --no-cache-dir -r requirements-build.txt && \
+        PYARROW_WITH_PARQUET=1 \
+        PYARROW_WITH_DATASET=1 \
+        PYARROW_WITH_FILESYSTEM=1 \
+        PYARROW_WITH_JSON=1 \
+        PYARROW_WITH_CSV=1 \
+        PYARROW_PARALLEL=$(nproc) \
+        python setup.py build_ext --build-type=release --bundle-arrow-cpp bdist_wheel && \
+        mkdir -p /tmp/wheels && \
+        cp dist/pyarrow-*.whl /tmp/wheels/ && \
+        # Ensure wheels directory exists and has content
+        ls -la /tmp/wheels/; \
+    else \
+        # Create empty wheels directory for non-s390x
+        mkdir -p /tmp/wheels; \
+    fi
+
 #######################
 # runtime-datascience #
 #######################
 FROM cpu-base AS runtime-datascience
 
+ARG TARGETARCH
 ARG DATASCIENCE_SOURCE_CODE=runtimes/datascience/ubi9-python-3.12
 
 LABEL name="odh-notebook-runtime-datascience-ubi9-python-3.12" \
@@ -54,17 +147,37 @@ LABEL name="odh-notebook-runtime-datascience-ubi9-python-3.12" \
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages from requirements.txt
+USER 0
+# Copy wheels from build stage (s390x only)
+COPY --from=s390x-builder /tmp/wheels /tmp/wheels
+RUN if [ "$TARGETARCH" = "s390x" ]; then \
+    pip install --no-cache-dir /tmp/wheels/*.whl && rm -rf /tmp/wheels; \
+else \
+    echo "Skipping wheel install for $TARGETARCH"; \
+fi
+
+
+# Install Python packages from pylock.toml
 COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra dependencies for air-gapped enviroment
 COPY ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
-RUN echo "Installing softwares and packages" && \
-    # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
-    #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml && \
-    # Fix permissions to support pip in Openshift environments \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    echo "Installing softwares and packages" && \
+    if [ "$TARGETARCH" = "s390x" ]; then \
+        # For s390x, we need special flags and environment variables for building packages
+        GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
+        CFLAGS="-O3" CXXFLAGS="-O3" \
+        uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml; \
+    else \
+        # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+        #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
+        uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml; \
+    fi && \
+    # Fix permissions to support pip in Openshift environments
     chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P
+
+USER 1001
 
 WORKDIR /opt/app-root/src
