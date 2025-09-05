@@ -74,7 +74,7 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 # wheel-builder stage        #
 # NOTE: Only used in s390x
 ##############################
-FROM base AS s390x-builder
+FROM cpu-base AS s390x-builder
 
 ARG TARGETARCH
 USER 0
