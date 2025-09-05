@@ -32,6 +32,9 @@ spec:
     value:
     - '{{target_branch}}-{{revision}}'
     - v6.2
+  - name: image-labels
+    value:
+    - release=2025b
   pipelineRef:
     name: singlearch-push-pipeline
   taskRunTemplate:
