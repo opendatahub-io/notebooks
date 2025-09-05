@@ -245,9 +245,6 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             logging.debug(f"skipping {directory.name}/pyproject.toml as it is not an image directory")
             continue
 
-        if _skip_unimplemented_manifests(directory, call_skip=False):
-            continue
-
         pyproject = tomllib.loads(file.read_text())
         for d in pyproject["project"]["dependencies"]:
             requirement = packaging.requirements.Requirement(d)
