@@ -132,24 +132,27 @@ def transform_build_pipeline_to_pr_pipeline(push_pipeline_path: pathlib.Path):
     component = push_pipeline["metadata"]["labels"]["appstudio.openshift.io/component"]
 
     build_platforms = ["linux/x86_64"]
+
     if component in [
         "odh-base-image-cuda-py311-c9s",
         "odh-base-image-cuda-py312-c9s",
         "odh-base-image-cuda-py312-ubi9",
+        "odh-pipeline-runtime-minimal-cpu-py312-ubi9",
     ]:
         build_platforms.extend(["linux/arm64"])
+
     if component in [
         "odh-workbench-jupyter-minimal-cpu-py312-ubi9",
+        "odh-pipeline-runtime-minimal-cpu-py312-ubi9",
+        "odh-pipeline-runtime-datascience-cpu-py312-ubi9",
     ]:
         build_platforms.extend(["linux/ppc64le"])
+
     if component in [
+        "odh-pipeline-runtime-minimal-cpu-py312-ubi9",
         "odh-pipeline-runtime-datascience-cpu-py312-ubi9",
     ]:
         build_platforms.extend(["linux/s390x"])
-    if component in [
-        "odh-pipeline-runtime-minimal-cpu-py312-ubi9",
-    ]:
-        build_platforms.extend(["linux/arm64", "linux/s390x"])
 
     # Collect params
     dockerfile = pathlib.Path(
