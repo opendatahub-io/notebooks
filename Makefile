@@ -67,9 +67,19 @@ endif
 #   ARG 2: Path of Dockerfile we want to build.
 define build_image
 	$(eval IMAGE_NAME := $(IMAGE_REGISTRY):$(1)-$(IMAGE_TAG))
-	$(eval BUILD_ARGS :=)
 
-	$(info # Building $(IMAGE_NAME) image...)
+	# Checks if there’s a build-args/*.conf matching the Dockerfile
+	$(eval BUILD_DIR := $(dir $(2)))
+	$(eval DOCKERFILE_NAME := $(notdir $(2)))
+	$(eval CONF_FILE := $(BUILD_DIR)build-args/$(shell echo $(DOCKERFILE_NAME) | cut -d. -f2).conf)
+
+	# if the conf file exists, transform it into --build-arg KEY=VALUE flags
+	$(eval BUILD_ARGS := $(shell \
+		if [ -f $(CONF_FILE) ]; then \
+			awk -F= '!/^#/ && NF {gsub(/^[ \t]+|[ \t]+$$/, "", $$1); gsub(/^[ \t]+|[ \t]+$$/, "", $$2); printf "--build-arg %s=%s ", $$1, $$2}' $(CONF_FILE); \
+		fi))
+
+	$(info # Building $(IMAGE_NAME) using $(DOCKERFILE_NAME) with $(CONF_FILE) and $(BUILD_ARGS)...)
 
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' -- \
 		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;

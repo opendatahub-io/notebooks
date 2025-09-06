@@ -8,7 +8,7 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     build.appstudio.openshift.io/build-nudge-files: "manifests/base/params-latest.env"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( "runtimes/minimal/ubi9-python-3.12/**".pathChanged() || ".tekton/odh-pipeline-runtime-minimal-cpu-py312-ubi9-push.yaml".pathChanged() )
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( "runtimes/minimal/ubi9-python-3.12/**".pathChanged() || "runtimes/minimal/build-args/cpu.conf".pathChanged() || ".tekton/odh-pipeline-runtime-minimal-cpu-py312-ubi9-push.yaml".pathChanged() )
   creationTimestamp:
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -26,6 +26,8 @@ spec:
     value: quay.io/opendatahub/odh-pipeline-runtime-minimal-cpu-py312-ubi9:{{revision}}
   - name: dockerfile
     value: runtimes/minimal/ubi9-python-3.12/Dockerfile.cpu
+  - name: build-args-file
+    value: runtimes/minimal/build-args/cpu.conf
   - name: path-context
     value: .
   - name: additional-tags

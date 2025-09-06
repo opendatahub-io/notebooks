@@ -1,7 +1,12 @@
-#####################
-# base              #
-#####################
-FROM quay.io/sclorg/python-311-c9s:c9s AS base
+#########################
+# configuration args    #
+#########################
+ARG BASE_IMAGE
+
+####################
+# cpu-base         #
+####################
+FROM ${BASE_IMAGE} AS cpu-base
 
 WORKDIR /opt/app-root/bin
 
@@ -35,7 +40,7 @@ WORKDIR /opt/app-root/src
 #####################
 # rstudio      #
 #####################
-FROM base AS rstudio
+FROM cpu-base AS rstudio
 
 ARG RSTUDIO_SOURCE_CODE=rstudio/c9s-python-3.11
 

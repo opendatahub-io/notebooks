@@ -17,9 +17,9 @@ if [[ -z "${ARCH:-}" ]]; then
     exit 1
 fi
 
-# Skip PDF export installation for s390x architecture
-if [[ "$(uname -m)" == "s390x" ]]; then
-    echo "PDF export functionality is not supported on s390x architecture. Skipping installation."
+# Skip PDF export installation for s390x and ppc64le architectures
+if [[ "$(uname -m)" == "s390x" || "$(uname -m)" == "ppc64le" ]]; then
+    echo "PDF export functionality is not supported on $(uname -m) architecture. Skipping installation."
     exit 0
 fi
 

@@ -185,7 +185,10 @@ def get_source_of_truth_filepath(
                 filename = f"jupyter-{notebook_id}-{file_suffix}"
 
         elif RSTUDIO_NOTEBOOK_ID in notebook_id:
-            filename = f"rstudio-gpu-{file_suffix}"
+            imagestream_filename = f"rstudio-gpu-{file_suffix}"
+            buildconfig_filename = "cuda-rstudio-buildconfig.yaml"
+            _ = imagestream_filename
+            filename = buildconfig_filename
 
     if not filename:
         raise ValueError(
