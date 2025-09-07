@@ -224,12 +224,10 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
             exception = next((it for it in ignored_exceptions if it[0] == name), None)
             if exception:
                 # exception may save us from failing
-                if set(versions) == set(exception[1]):
-                    continue
-                else:
-                    pytest.fail(
-                        f"{name} is allowed to have {exception} but actually has more versions: {pprint.pformat(mapping)}"
-                    )
+                assert set(versions) == set(exception[1]), (
+                    f"{name} is allowed to have {exception} but actually has {pprint.pformat(mapping)}"
+                )
+                continue
             # all hope is lost, the check has failed
             pytest.fail(f"{name} has multiple versions: {pprint.pformat(mapping)}")
 
@@ -285,12 +283,10 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             exception = next((it for it in ignored_exceptions if it[0] == name), None)
             if exception:
                 # exception may save us from failing
-                if set(data) == {packaging.specifiers.SpecifierSet(e) for e in exception[1]}:
-                    continue
-                else:
-                    pytest.fail(
-                        f"{name} is allowed to have {exception[1]} but actually has more specifiers: {pprint.pformat(set(data))}"
-                    )
+                assert set(data) == {packaging.specifiers.SpecifierSet(e) for e in exception[1]}, (
+                    f"{name} is allowed to have {exception[1]} but actually has {pprint.pformat(set(data))}"
+                )
+                continue
             # all hope is lost, the check has failed
             pytest.fail(f"{name} has multiple specifiers: {pprint.pformat(data)}")
 
