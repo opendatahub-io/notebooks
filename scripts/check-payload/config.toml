@@ -251,6 +251,8 @@ files = [
     # executable is not dynamically linked
     "/opt/app-root/bin/py-spy",
     "/usr/local/pandoc/bin/pandoc",
+    # when code-server is not installed from rpm, the exclusion below won't apply
+    "/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg",
 ]
 
 [[rpm.code-server.ignore]]
