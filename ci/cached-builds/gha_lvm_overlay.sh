@@ -10,7 +10,8 @@ set -Eeuo pipefail
 # root_reserve_mb=2048 was running out of disk space building cuda images
 root_reserve_mb=4096
 temp_reserve_mb=100
-swap_size_mb=256
+# compilation from sources needs memory, for now that's codeserver
+swap_size_mb=16384
 
 build_mount_path="${HOME}/.local/share/containers"
 build_mount_path_ownership="runner:runner"
