@@ -33,6 +33,8 @@ spec:
     - io.openshift.tags=odh-pipeline-runtime-tensorflow-cuda-py312
   - name: dockerfile
     value: runtimes/tensorflow/ubi9-python-3.12/Dockerfile.konflux.cuda
+  - name: build-args-file
+    value: runtimes/tensorflow/ubi9-python-3.12/build-args/cuda.conf
   - name: path-context
     value: .
   - name: hermetic
