@@ -146,9 +146,12 @@ RUN echo "Installing softwares and packages" && \
     /opt/app-root/bin/utils/addons/apply.sh && \
     # De-vendor the ROCm libs that are embedded in Pytorch \
     ./de-vendor-torch.sh && \
-    rm ./de-vendor-torch.sh && \
-    # Fix permissions to support pip in Openshift environments \
-    chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
+    rm ./de-vendor-torch.sh
+
+# Fix permissions to support pip in Openshift environments \
+USER 0
+RUN chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P
+USER 1001
 
 WORKDIR /opt/app-root/src

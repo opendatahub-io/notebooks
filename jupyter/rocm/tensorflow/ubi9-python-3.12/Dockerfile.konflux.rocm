@@ -135,10 +135,13 @@ RUN echo "Installing softwares and packages" && \
     # Disable announcement plugin of jupyterlab \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     # Apply JupyterLab addons \
-    /opt/app-root/bin/utils/addons/apply.sh && \
-    # Fix permissions to support pip in Openshift environments \
-    chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
+    /opt/app-root/bin/utils/addons/apply.sh
+
+# Fix permissions to support pip in Openshift environments \
+USER 0
+RUN chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P
+USER 1001
 
 WORKDIR /opt/app-root/src
 
