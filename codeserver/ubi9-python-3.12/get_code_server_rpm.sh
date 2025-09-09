@@ -17,7 +17,7 @@ UNAME_TO_GOARCH["s390x"]="s390x"
 
 ARCH="${UNAME_TO_GOARCH[$(uname -m)]}"
 
-if [[ "$ARCH" == "ppc64le" ]]; then
+if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
 
 	export MAX_JOBS=${MAX_JOBS:-$(nproc)}
 	export NODE_VERSION=${NODE_VERSION:-20}
@@ -72,11 +72,12 @@ if [[ "$ARCH" == "ppc64le" ]]; then
 
 	# build codeserver rpm
 	VERSION=${CODESERVER_VERSION/v/} npm run package
-	cp release-packages/code-server-${CODESERVER_VERSION/v/}-ppc64le.rpm /tmp/
+	cp release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
 
 else
 
-    # download RPM for other architectures
-    curl -L "https://github.com/coder/code-server/releases/download/${CODESERVER_VERSION}/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm" -o /tmp/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm
+  # we shall not download rpm for other architectures
+  echo "Unsupported architecture: $ARCH" >&2
+  exit 1
 
 fi
