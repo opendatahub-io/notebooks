@@ -31,6 +31,11 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER 0
 
+# Inject the official UBI 9 repository configuration into the AIPCC base image.
+# The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
+# By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
+COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
+
 # upgrade first to avoid fixable vulnerabilities begin
 RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
     && dnf clean all -y
