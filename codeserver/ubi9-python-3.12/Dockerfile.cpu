@@ -134,9 +134,14 @@ COPY --from=rpm-base /tmp/control /dev/null
 
 # Install code-server
 # Note: Use cache mounts, bind mounts fail on konflux
+# https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1755628065772589?thread_ts=1755597929.335999&cid=C04PZ7H0VA8
 RUN --mount=type=cache,from=rpm-base,source=/tmp/,target=/code-server-rpm/,rw \
-    dnf install -y "/code-server-rpm/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm" && \
-    dnf -y clean all --enablerepo='*'
+    # EXPLANATION: dnf installation produces an "unsigned rpm" error from Konflux (Conforma)
+    #  since we're building rpm from source, we will simply unpack it over /
+    # dnf install -y "/code-server-rpm/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm"
+    # dnf -y clean all --enablerepo='*'
+    dnf install -y cpio && dnf -y clean all && \
+    cd / && rpm2cpio "/code-server-rpm/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm" | cpio -idmv
 
 COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/utils utils/
 
