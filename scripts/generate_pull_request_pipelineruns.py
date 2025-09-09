@@ -142,6 +142,7 @@ def transform_build_pipeline_to_pr_pipeline(push_pipeline_path: pathlib.Path):
         build_platforms.extend(["linux/arm64"])
 
     if component in [
+        "odh-workbench-codeserver-datascience-cpu-py312-ubi9",
         "odh-workbench-jupyter-minimal-cpu-py312-ubi9",
         "odh-pipeline-runtime-minimal-cpu-py312-ubi9",
         "odh-pipeline-runtime-datascience-cpu-py312-ubi9",
