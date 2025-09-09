@@ -308,6 +308,7 @@ jobs:
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
 
       - name: "push|schedule|workflow_dispatch: make ${{ inputs.target }}"
+        id: push-make-target
         run: |
           # print running stats on disk occupancy
           (while true; do df -h | grep "${HOME}/.local/share/containers"; sleep 30; done) &
@@ -320,6 +321,7 @@ jobs:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
           CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
       - name: "pull_request: make ${{ inputs.target }}"
+        id: pr-make-target
         run: |
           # print running stats on disk occupancy
           (while true; do df -h | grep "${HOME}/.local/share/containers"; sleep 30; done) &
@@ -687,7 +689,7 @@ jobs:
       # we leave little free disk space after we mount LVM for podman storage
       # not enough to install playwright; running playwright in podman uses the space we have
       - name: Run Playwright tests
-        if: ${{ contains(inputs.target, 'codeserver') }}
+        if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && (steps.push-make-target.outcome == 'success' || steps.pr-make-target.outcome == 'success') }}
         # --ipc=host because Microsoft says so in Playwright docs
         # --net=host because testcontainers connects to the Reaper container's exposed port
         # we need to pass through the relevant environment variables
