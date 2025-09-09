@@ -230,7 +230,8 @@ COPY --from=whl-cache /tmp/control /dev/null
 RUN --mount=type=cache,target=/root/.cache/uv \
     echo "Installing softwares and packages" && \
     # we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
-    uv pip install --offline --cache-dir /root/.cache/uv --requirements=./pylock.toml && \
+    # TODO(jdanek): seen some builds fail on GitHub Actions with --offline and see no need to limit ourselves to the cache, will remove this
+    uv pip install --cache-dir /root/.cache/uv --requirements=./pylock.toml && \
     # Note: debugpy wheel availabe on pypi (in uv cache) is none-any but bundles amd64.so files
     #       Build debugpy from source instead
     uv pip install --no-cache git+https://github.com/microsoft/debugpy.git@v$(grep -A1 '\"debugpy\"' ./pylock.toml | grep -Eo '\b[0-9\.]+\b') && \
