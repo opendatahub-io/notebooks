@@ -6,33 +6,27 @@ requires-python = "==3.12.*"
 
 # https://docs.astral.sh/uv/concepts/projects/workspaces/#when-not-to-use-workspaces
 dependencies = [
-    "vllm~=0.8.5",
+    "vllm~=0.10.1.1",
+
+    # see https://redhat-internal.slack.com/archives/C079FE5H94J/p1756933987117709?thread_ts=1756933154.294109&cid=C079FE5H94J
+    # for a discussion on what version of torch to use
 
     # PyTorch packages
     "tensorboard~=2.19.0",
-    "torch==2.6.0",
-    "torchvision==0.21.0",
+    "torch==2.7.1",
+    "torchvision==0.22.1",
 
     # llmcompressor packages
-    "llmcompressor~=0.6.0",
+    # see https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757007056725559?thread_ts=1756924127.136609&cid=C0961HQ858Q
+    "llmcompressor==0.7.1",
     "lm-eval~=0.4.8",
-    "loguru",
-    "pyyaml>=5.0.0",
-    "requests>=2.0.0",
-    "tqdm>=4.0.0",
-    "transformers>4.0,<5.0",
-    "datasets",
-    "accelerate>=0.20.3,!=1.1.0",
-    "pynvml",
-    "pillow",
-    "compressed-tensors",
 
     # Datascience and useful extensions
     "boto3~=1.37.8",
     "kafka-python-ng~=2.2.3",
     "kfp~=2.12.1",
     "matplotlib~=3.10.1",
-    "numpy<2.0.0",
+    "numpy~=2.2.6",
     "pandas~=2.2.3",
     "plotly~=6.0.0",
     "scikit-learn~=1.6.1",
@@ -84,7 +78,7 @@ torchvision = { index = "pytorch" }
 # https://docs.astral.sh/uv/concepts/indexes/#package-indexes
 [[tool.uv.index]]
 name = "pytorch"
-url = "https://download.pytorch.org/whl/cu124"
+url = "https://download.pytorch.org/whl/cu126"
 explicit = true
 
 # https://docs.astral.sh/uv/concepts/resolution/#dependency-overrides
@@ -95,6 +89,22 @@ explicit = true
 override-dependencies = [
     # vllm is a requirement, however, as compressed-tensors is pinned, this can't be installed together
     "compressed-tensors",
+]
+
+# from https://redhat-internal.slack.com/archives/C079FE5H94J/p1756934476976759?thread_ts=1756933154.294109&cid=C079FE5H94J
+constraint-dependencies = [
+    "loguru==0.7.3",
+    "pyyaml==6.0.2",
+    "numpy==2.2.6",
+    "requests==2.32.5",
+    "tqdm==4.67.1",
+    # apicc is still on torch 2.7.1
+    # "torch==2.8.0",
+    "transformers==4.55.2",
+    "datasets==4.0.0",
+    "accelerate==1.10.0",
+    "pynvml==12.0.0",
+    "pillow==10.4.0",
 ]
 
 environments = [
