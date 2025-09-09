@@ -281,6 +281,16 @@ jobs:
 
       # region Image build
 
+      - name: Login to quay.io/aipcc (if the secret is present)
+        # if: for the ${{ secret != '' }} does not work, getting Unrecognized named-value: 'secrets'.
+        shell: bash
+        run: |
+          if [[ "${{ secrets.AIPCC_QUAY_BOT_USERNAME }}" == "" ]]; then
+            echo "AIPCC_QUAY_BOT_USERNAME is not set, skipping login"
+            exit 0
+          fi
+          echo "${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}" | podman login quay.io/aipcc -u "${{ secrets.AIPCC_QUAY_BOT_USERNAME }}" --password-stdin
+
       - name: Compute extra podman build args
         id: extra-podman-build-args
         run: |

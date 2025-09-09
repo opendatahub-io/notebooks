@@ -1,5 +1,5 @@
 ---
-"name": "Build Notebooks (pr, RHEL images)"
+"name": "Build Notebooks (pr, AIPCC bases)"
 "on":
   "pull_request_target":
     "paths-ignore":
@@ -17,6 +17,10 @@ permissions:
   contents: read
   packages: read
 
+concurrency:
+  group: ${{ format('build-notebooks-pr-{0}', github.event.pull_request.number) }}
+  cancel-in-progress: true
+
 env:
   # language=json
   contributors: |
@@ -26,6 +30,8 @@ jobs:
   gen:
     name: Generate job matrix
     runs-on: ubuntu-latest
+    # rhds/notebooks builds from AIPCC bases and requires pull_request_target trigger
+    if: ${{ github.repository == 'red-hat-data-services/notebooks' }}
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       has_jobs: ${{ steps.gen.outputs.has_jobs }}
@@ -39,7 +45,7 @@ jobs:
             contains(fromJSON(env.contributors), github.actor)
           )
         run: |
-          echo "GitHub user ${{ github.actor }} is not a registered project contributor, not allowed to run actions on RHEL!"
+          echo "GitHub user ${{ github.actor }} is not a registered project contributor, not allowed to run actions requiring secrets!"
           exit 1
 
       # Here we are checking out the pull request, so that we can build from the new code
@@ -51,6 +57,10 @@ jobs:
       - uses: actions/checkout@v5
         if: ${{ github.event_name != 'pull_request_target' }}
 
+      - uses: actions/setup-go@v5
+        with:
+          cache-dependency-path: "**/*.sum"
+
       - name: Determine targets to build based on changed files
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
@@ -60,7 +70,8 @@ jobs:
           python3 ci/cached-builds/gen_gha_matrix_jobs.py \
             --from-ref 'origin/${{ github.event.pull_request.base.ref }}' \
             --to-ref '${{ github.event.pull_request.head.ref }}' \
-            --rhel-images include-only
+            --rhel-images exclude \
+            --s390x-images include
         id: gen
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
