@@ -131,8 +131,10 @@ jobs:
 
       - name: Free up additional disk space
         # https://docs.github.com/en/actions/learn-github-actions/expressions
+        # NOTE: the arm64 GitHub hosted runner does not have the /mnt-mounted scratch disk
         if: "${{ contains(inputs.target, 'rocm') || contains(inputs.target, 'cuda') ||
-         contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') }}"
+         contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') ||
+         inputs.platform == 'linux/arm64' }}"
         run: |
           set -x
 
