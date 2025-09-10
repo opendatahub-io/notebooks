@@ -10,7 +10,7 @@ metadata:
     opendatahub.io/notebook-image-desc: "Jupyter notebook image with PyTorch LLM Compressor libraries and dependencies to start experimenting with advanced AI/ML notebooks."
     opendatahub.io/notebook-image-order: "22"
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
-  name: jupyter-pytorch-llmcompressor-cuda-py312-ubi9
+  name: jupyter-pytorch-llmcompressor
 spec:
   lookupPolicy:
     local: true
@@ -54,6 +54,6 @@ spec:
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-n_PLACEHOLDER
-      name: "2025.1"
+      name: "2025.2"
       referencePolicy:
         type: Source
