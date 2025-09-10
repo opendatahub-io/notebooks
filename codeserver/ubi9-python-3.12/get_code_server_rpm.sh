@@ -57,10 +57,8 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
 	    && source ${NVM_DIR}/nvm.sh && nvm install ${NODE_VERSION}
 
 	# build codeserver
-	git clone https://github.com/coder/code-server.git
+	git clone --depth 1 --branch "${CODESERVER_VERSION}" --recurse-submodules --shallow-submodules https://github.com/coder/code-server.git
 	cd code-server
-	git checkout ${CODESERVER_VERSION}
-	git submodule update --init
 	source ${NVM_DIR}/nvm.sh
 	while IFS= read -r src_patch; do echo "patches/$src_patch"; patch -p1 < "patches/$src_patch"; done < patches/series
 	# https://github.com/microsoft/vscode/issues/243708#issuecomment-2750733077
