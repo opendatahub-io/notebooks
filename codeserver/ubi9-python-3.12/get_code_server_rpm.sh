@@ -92,7 +92,7 @@ EOF
 
 	# build codeserver rpm
 	VERSION=${CODESERVER_VERSION/v/} npm run package
-	cp release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
+	mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
 
 else
 
