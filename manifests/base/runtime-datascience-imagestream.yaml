@@ -6,7 +6,7 @@ metadata:
     opendatahub.io/runtime-image: "true"
   annotations:
     opendatahub.io/runtime-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/runtimes"
-    opendatahub.io/runtime-image-name: "Datascience with Python 3.11 (UBI9)"
+    opendatahub.io/runtime-image-name: "Datascience with Python 3.12 (UBI9)"
     opendatahub.io/runtime-image-desc: "Datascience runtime image for Elyra, enabling pipeline execution from Workbenches with a set of advanced AI/ML data science libraries, supporting different runtimes for various pipeline nodes."
   name: runtime-datascience
 spec:
@@ -18,12 +18,12 @@ spec:
         opendatahub.io/runtime-image-metadata: |
           [
             {
-              "display_name": "Datascience with Python 3.11 (UBI9)",
+              "display_name": "Datascience with Python 3.12 (UBI9)",
               "metadata": {
                 "tags": [
                   "datascience"
                 ],
-                "display_name": "Datascience with Python 3.11 (UBI9)",
+                "display_name": "Datascience with Python 3.12 (UBI9)",
                 "pull_policy": "IfNotPresent"
               },
               "schema_name": "runtime-image"
@@ -32,7 +32,7 @@ spec:
         openshift.io/imported-from: quay.io/modh/runtime-images
       from:
         kind: DockerImage
-        name: odh-pipeline-runtime-datascience-cpu-py311-ubi9-n_PLACEHOLDER
+        name: odh-pipeline-runtime-datascience-cpu-py312-ubi9-n_PLACEHOLDER
       name: "datascience"
       referencePolicy:
         type: Source
