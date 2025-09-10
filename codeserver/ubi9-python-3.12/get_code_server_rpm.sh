@@ -63,9 +63,29 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
 	git submodule update --init
 	source ${NVM_DIR}/nvm.sh
 	while IFS= read -r src_patch; do echo "patches/$src_patch"; patch -p1 < "patches/$src_patch"; done < patches/series
+	# https://github.com/microsoft/vscode/issues/243708#issuecomment-2750733077
+	patch -p1 <<'EOF'
+diff --git i/package.json w/package.json
+index 925462fb087..dfff96eb051 100644
+--- code-server.orig/lib/vscode/package.json
++++ code-server/lib/vscode/package.json
+@@ -32,7 +32,7 @@
+     "watch-extensionsd": "deemon npm run watch-extensions",
+     "kill-watch-extensionsd": "deemon --kill npm run watch-extensions",
+     "precommit": "node build/hygiene.js",
+-    "gulp": "node --max-old-space-size=8192 ./node_modules/gulp/bin/gulp.js",
++    "gulp": "node --max-old-space-size=16384 --optimize-for-size ./node_modules/gulp/bin/gulp.js",
+     "electron": "node build/lib/electron",
+     "7z": "7z",
+     "update-grammars": "node build/npm/update-all-grammars.mjs",
+EOF
 	nvm use ${NODE_VERSION}
 	npm install
 	npm run build
+	# https://github.com/coder/code-server/pull/7418
+	# node: --optimize-for-size is not allowed in NODE_OPTIONS
+	export NODE_OPTIONS="--max-old-space-size=16384"
+	export TERSER_PARALLEL=2
 	VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
 	npm run release
 	npm run release:standalone
