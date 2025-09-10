@@ -769,3 +769,16 @@ replacements:
           kind: ImageStream
           name: runtime-rocm-tensorflow
           version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9-n
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-pytorch-llmcompressor
+          version: v1
