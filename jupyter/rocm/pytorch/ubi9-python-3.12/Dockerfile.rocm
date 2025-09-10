@@ -143,12 +143,14 @@ RUN echo "Installing softwares and packages" && \
     # Disable announcement plugin of jupyterlab \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     # Apply JupyterLab addons \
-    /opt/app-root/bin/utils/addons/apply.sh && \
-    # De-vendor the ROCm libs that are embedded in Pytorch \
-    ./de-vendor-torch.sh && \
+    /opt/app-root/bin/utils/addons/apply.sh
+
+USER 0
+# De-vendor the ROCm libs that are embedded in Pytorch  and fix permissions to support pip in Openshift environments
+RUN ./de-vendor-torch.sh && \
     rm ./de-vendor-torch.sh && \
-    # Fix permissions to support pip in Openshift environments \
-    chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
+    chmod -R g+w /opt/app-root/lib/python3.12/site-packages || true && \
     fix-permissions /opt/app-root -P
+USER 1001
 
 WORKDIR /opt/app-root/src
