@@ -736,3 +736,11 @@ jobs:
 
       - run: sudo compsize -x "${HOME}/.local/share/containers"
         if: "${{ !cancelled() && steps.install-compsize.outcome == 'success' }}"
+
+      # print system logs, useful when hunting for OOM kills
+
+      - run: sudo dmesg
+        if: "${{ failure() }}"
+
+      - run: journalctl --no-pager -k
+        if: "${{ failure() }}"
