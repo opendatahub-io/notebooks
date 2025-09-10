@@ -35,7 +35,9 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux/x86_64
+    # https://github.com/redhat-appstudio/infra-deployments/blob/main/components/multi-platform-controller/production-downstream/stone-prod-p02/host-config.yaml
+    - linux-extra-fast/amd64
+    - linux-m2xlarge/arm64
     - linux/ppc64le
   - name: dockerfile
     value: codeserver/ubi9-python-3.12/Dockerfile.cpu
