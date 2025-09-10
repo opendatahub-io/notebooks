@@ -1,7 +1,7 @@
 ####################
 # base             #
 ####################
-FROM registry.access.redhat.com/ubi9/python-312:latest AS base
+FROM quay.io/sclorg/python-312-c9s:c9s AS base
 
 WORKDIR /opt/app-root/bin
 
@@ -14,12 +14,12 @@ USER 0
 WORKDIR /opt/app-root/bin
 
 # Please keep in sync with ROCm/python3.12 dependent images
-ARG ROCM_VERSION=6.2.4
-ARG AMDGPU_VERSION=6.2.4
+ARG ROCM_VERSION=6.4.3
+ARG AMDGPU_VERSION=6.4.3
 
 # Install the ROCm rpms
 # ref: https://github.com/ROCm/ROCm-docker/blob/master/dev/Dockerfile-centos-7-complete
-# Note: Based on 6.2 above new package mivisionx is a pre-requistes, which bring in more dependent packages
+# Note: Based on 6.4 above new package mivisionx is a pre-requistes, which bring in more dependent packages
 # so we are only installing meta packages of rocm
 # ref: https://rocm.docs.amd.com/projects/install-on-linux/en/develop/reference/package-manager-integration.html#packages-in-rocm-programming-models
 RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
