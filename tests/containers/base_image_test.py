@@ -92,11 +92,6 @@ class TestBaseImage:
                         json.dumps({"dir": path, "count_scanned": count_scanned, "unsatisfied": unsatisfied_deps}),
                     )
 
-                ecode, output = container.exec(["/bin/sh", "-c", "oc version"])
-
-                logging.debug(output.decode())
-                assert ecode == 0
-
             _ecode, output = container.exec(
                 encode_python_function_execution_command_interpreter("/usr/bin/python3", check_elf_file)
             )
@@ -130,6 +125,7 @@ class TestBaseImage:
     def test_oc_command_runs(self, image: str):
         if utils.is_rstudio_image(image):
             pytest.skip("oc command is not preinstalled in RStudio images.")
+
         def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["/bin/sh", "-c", "oc version"])
 
@@ -141,6 +137,7 @@ class TestBaseImage:
     def test_skopeo_command_runs(self, image: str):
         if utils.is_rstudio_image(image):
             pytest.skip("skopeo command is not preinstalled in RStudio images.")
+
         def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["/bin/sh", "-c", "skopeo --version"])
 
