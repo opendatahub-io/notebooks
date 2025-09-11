@@ -6,7 +6,7 @@ metadata:
     opendatahub.io/notebook-image: "true"
   annotations:
     opendatahub.io/notebook-image-url: "https://github.com/red-hat-data-services/notebooks/tree/main/jupyter/minimal"
-    opendatahub.io/notebook-image-name: "Jupyter | Minimal | CUDA | Python 3.11"
+    opendatahub.io/notebook-image-name: "Jupyter | Minimal | CUDA | Python 3.12"
     opendatahub.io/notebook-image-desc: "Jupyter notebook image with GPU support and minimal dependency set to start experimenting with Jupyter environment."
     opendatahub.io/notebook-image-order: "3"
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
@@ -37,7 +37,7 @@ spec:
       name: "2025.2"
       referencePolicy:
         type: Source
-    # N -1  Version of the image
+    # N - 1 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -59,7 +59,29 @@ spec:
       name: "2025.1"
       referencePolicy:
         type: Source
-    # N - 2 Version of the image
+    # N - 2  Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "CUDA", "version": "12.4"},
+            {"name": "Python", "version": "v3.11"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.2"}
+          ]
+        openshift.io/imported-from: quay.io/modh/cuda-notebooks
+        opendatahub.io/image-tag-outdated: 'true'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-n-2_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-2_PLACEHOLDER
+      name: "2024.2"
+      referencePolicy:
+        type: Source
+    # N - 3 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -75,14 +97,14 @@ spec:
           ]
         openshift.io/imported-from: quay.io/modh/cuda-notebooks
         opendatahub.io/image-tag-outdated: 'true'
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-n-2_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-n-3_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-2_PLACEHOLDER
+        name: odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-3_PLACEHOLDER
       name: "2024.1"
       referencePolicy:
         type: Source
-    # N - 3 Version of the image
+    # N - 4 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -98,14 +120,14 @@ spec:
           ]
         openshift.io/imported-from: quay.io/modh/cuda-notebooks
         opendatahub.io/image-tag-outdated: "true"
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-n-3_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-n-4_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-3_PLACEHOLDER
+        name: odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-4_PLACEHOLDER
       name: "2023.2"
       referencePolicy:
         type: Source
-    # N - 4 Version of the image
+    # N - 5 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -121,14 +143,14 @@ spec:
           ]
         openshift.io/imported-from: quay.io/modh/cuda-notebooks
         opendatahub.io/image-tag-outdated: "true"
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-n-4_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-n-5_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-4_PLACEHOLDER
+        name: odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-5_PLACEHOLDER
       name: "2023.1"
       referencePolicy:
         type: Source
-    # N - 5 Version of the image
+    # N - 6 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -144,10 +166,10 @@ spec:
           ]
         openshift.io/imported-from: quay.io/modh/cuda-notebooks
         opendatahub.io/image-tag-outdated: 'true'
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-n-5_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-n-6_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-5_PLACEHOLDER
+        name: odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-6_PLACEHOLDER
       name: "1.2"
       referencePolicy:
         type: Source
