@@ -14,6 +14,11 @@ WORKDIR /root
 
 ENV HOME=/root
 
+# Inject the official UBI 9 repository configuration into the AIPCC base image.
+# The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
+# By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
+COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
+
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 
 ARG NODE_VERSION=20
