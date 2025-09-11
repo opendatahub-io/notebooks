@@ -13,6 +13,8 @@ JUPYTER_TRUSTYAI_NOTEBOOK_ID = "trustyai"
 JUPYTER_PYTORCH_NOTEBOOK_ID = "pytorch"
 JUPYTER_TENSORFLOW_NOTEBOOK_ID = "tensorflow"
 
+CODESERVER_NOTEBOOK_ID = "codeserver"
+
 RSTUDIO_NOTEBOOK_ID = "rstudio"
 
 MAKE = shutil.which("gmake") or shutil.which("make")
@@ -134,67 +136,55 @@ def get_source_of_truth_filepath(
         ValueError: If the logic cannot determine the filename for the given inputs.
     """
     notebook_id = metadata.feature
-    python_flavor = metadata.python_flavor
-    os_flavor = metadata.os_flavor
+    scope = metadata.scope.replace("+", "-")  # pytorch+llmcompressor
     accelerator_flavor = metadata.accelerator_flavor
 
-    manifest_directory = root_repo_directory / "manifests"
-    filename = ""
-
-    if python_flavor == "python-3.12":
-        imagestream_directory = manifest_directory / "overlays" / "additional"
+    if "llmcompressor" in scope:
         file_suffix = "imagestream.yaml"
-
-        if metadata.type == NotebookType.WORKBENCH:
-            feature = metadata.feature
-        elif metadata.type == NotebookType.RUNTIME:
-            # WARNING: we need the jupyter imagestream, because runtime stream does not list software versions
-            feature = "jupyter"
-        else:
-            raise NotImplementedError(f"Unsupported notebook type: {metadata.type}")
-
-        scope = metadata.scope.replace("+", "-")  # pytorch+llmcompressor
-
-        # Shell script defaults accelerator to 'cpu' if it's not set
-        current_accelerator = accelerator_flavor or "cpu"
-        # Assumes python_flavor is like 'python-3.12' -> 'py312'
-        py_version_short = "py" + python_flavor.split("-")[1].replace(".", "")
-        filename = f"{feature}-{scope}-{current_accelerator}-{py_version_short}-{os_flavor}-{file_suffix}"
     else:
-        # Default case from the shell script for other python versions
-        imagestream_directory = manifest_directory / "base"
         file_suffix = "notebook-imagestream.yaml"
 
-        if JUPYTER_MINIMAL_NOTEBOOK_ID in notebook_id:
-            # Logic for minimal notebook
-            accelerator_prefix = f"{accelerator_flavor}-" if accelerator_flavor else ""
-            filename = f"jupyter-{accelerator_prefix}{notebook_id}-{file_suffix}"
-            if accelerator_flavor == "cuda":
-                filename = f"jupyter-{notebook_id}-gpu-{file_suffix}"
+    manifest_directory = root_repo_directory / "manifests"
+    imagestream_directory = manifest_directory / "base"
 
-        elif JUPYTER_DATASCIENCE_NOTEBOOK_ID in notebook_id or JUPYTER_TRUSTYAI_NOTEBOOK_ID in notebook_id:
-            # Logic for datascience and trustyai
-            filename = f"jupyter-{notebook_id}-{file_suffix}"
+    filename = ""
 
-        elif JUPYTER_PYTORCH_NOTEBOOK_ID in notebook_id or JUPYTER_TENSORFLOW_NOTEBOOK_ID in notebook_id:
-            # Logic for pytorch and tensorflow
-            accelerator_prefix = f"{accelerator_flavor}-" if accelerator_flavor else ""
-            filename = f"jupyter-{accelerator_prefix}{notebook_id}-{file_suffix}"
-            if accelerator_flavor == "cuda":
-                # This override is intentionally different from the 'minimal' one, as per the script
-                filename = f"jupyter-{notebook_id}-{file_suffix}"
+    if "runtime" == notebook_id:
+        accelerator_prefix = f"{accelerator_flavor}-" if accelerator_flavor else ""
+        filename = f"jupyter-{accelerator_prefix}{scope}-{file_suffix}"
+        if accelerator_flavor == "cuda":
+            filename = f"jupyter-{scope}-{file_suffix}"
 
-        elif RSTUDIO_NOTEBOOK_ID in notebook_id:
-            imagestream_filename = f"rstudio-gpu-{file_suffix}"
-            buildconfig_filename = "cuda-rstudio-buildconfig.yaml"
-            _ = imagestream_filename
-            filename = buildconfig_filename
+    elif JUPYTER_MINIMAL_NOTEBOOK_ID in scope:
+        # Logic for minimal notebook
+        accelerator_prefix = f"{accelerator_flavor}-" if accelerator_flavor else ""
+        filename = f"jupyter-{accelerator_prefix}{scope}-{file_suffix}"
+        if accelerator_flavor == "cuda":
+            filename = f"jupyter-{scope}-gpu-{file_suffix}"
+
+    elif JUPYTER_DATASCIENCE_NOTEBOOK_ID in scope or JUPYTER_TRUSTYAI_NOTEBOOK_ID in scope:
+        # Logic for datascience and trustyai
+        filename = f"jupyter-{scope}-{file_suffix}"
+
+    elif JUPYTER_PYTORCH_NOTEBOOK_ID in scope or JUPYTER_TENSORFLOW_NOTEBOOK_ID in scope:
+        # Logic for pytorch and tensorflow
+        accelerator_prefix = f"{accelerator_flavor}-" if accelerator_flavor else ""
+        filename = f"jupyter-{accelerator_prefix}{scope}-{file_suffix}"
+        if accelerator_flavor == "cuda":
+            # This override is intentionally different from the 'minimal' one, as per the script
+            filename = f"jupyter-{scope}-{file_suffix}"
+
+    elif CODESERVER_NOTEBOOK_ID in notebook_id:
+        filename = f"code-server-{file_suffix}"
+
+    elif RSTUDIO_NOTEBOOK_ID in notebook_id:
+        imagestream_filename = f"rstudio-gpu-{file_suffix}"
+        buildconfig_filename = "cuda-rstudio-buildconfig.yaml"
+        _ = imagestream_filename
+        filename = buildconfig_filename
 
     if not filename:
-        raise ValueError(
-            f"Unable to determine imagestream filename for notebook_id='{notebook_id}', "
-            f"python_flavor='{python_flavor}', accelerator_flavor='{accelerator_flavor}'"
-        )
+        raise ValueError(f"Unable to determine imagestream filename for '{metadata=}'")
 
     filepath = imagestream_directory / filename
 
@@ -216,7 +206,7 @@ class SelfTests(unittest.TestCase):
     def test_rstudio_truth_manifest(self):
         metadata = extract_metadata_from_path(Path("notebooks/rstudio/rhel9-python-3.11"))
         path = get_source_of_truth_filepath(root_repo_directory=Path("notebooks"), metadata=metadata)
-        assert path == Path("notebooks/manifests/base/rstudio-gpu-notebook-imagestream.yaml")
+        assert path == Path("notebooks/manifests/base/cuda-rstudio-buildconfig.yaml")
 
     def test_jupyter_path(self):
         metadata = extract_metadata_from_path(Path("notebooks/jupyter/rocm/tensorflow/ubi9-python-3.12"))
@@ -243,9 +233,7 @@ class SelfTests(unittest.TestCase):
     def test_codeserver_path(self):
         metadata = extract_metadata_from_path(Path("notebooks/codeserver/ubi9-python-3.12"))
         path = get_source_of_truth_filepath(root_repo_directory=Path("notebooks"), metadata=metadata)
-        assert path == Path(
-            "notebooks/manifests/overlays/additional/codeserver-datascience-cpu-py312-ubi9-imagestream.yaml"
-        )
+        assert path == Path("notebooks/manifests/base/code-server-notebook-imagestream.yaml")
 
     def test_runtime_pytorch_path(self):
         metadata = extract_metadata_from_path(
@@ -266,13 +254,9 @@ class SelfTests(unittest.TestCase):
             Path("/Users/jdanek/IdeaProjects/notebooks/runtimes/rocm-tensorflow/ubi9-python-3.12")
         )
         path = get_source_of_truth_filepath(root_repo_directory=Path("notebooks"), metadata=metadata)
-        assert path == Path(
-            "notebooks/manifests/overlays/additional/jupyter-tensorflow-rocm-py312-ubi9-imagestream.yaml"
-        )
+        assert path == Path("notebooks/manifests/base/jupyter-rocm-tensorflow-notebook-imagestream.yaml")
 
     def test_source_of_truth_jupyter_tensorflow_rocm(self):
         metadata = extract_metadata_from_path(Path("notebooks/jupyter/rocm/tensorflow/ubi9-python-3.12"))
         path = get_source_of_truth_filepath(root_repo_directory=Path("notebooks"), metadata=metadata)
-        assert path == Path(
-            "notebooks/manifests/overlays/additional/jupyter-tensorflow-rocm-py312-ubi9-imagestream.yaml"
-        )
+        assert path == Path("notebooks/manifests/base/jupyter-rocm-tensorflow-notebook-imagestream.yaml")
