@@ -164,8 +164,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # common-builder (for Power-only)
 #######################################################
 FROM cpu-base AS common-builder
+ARG TARGETARCH
 USER root
-RUN if [ "$(uname -m)" = "ppc64le" ]; then \
+RUN if [ "${TARGETARCH}" = "ppc64le" ]; then \
     dnf install -y gcc-toolset-13 cmake ninja-build git wget unzip && \
     dnf clean all; \
     else \
@@ -176,9 +177,10 @@ RUN if [ "$(uname -m)" = "ppc64le" ]; then \
 # onnx-builder (Power-only)
 #######################################################
 FROM common-builder AS onnx-builder
+ARG TARGETARCH
 ARG ONNX_VERSION=v1.19.0
 WORKDIR /root
-RUN if [ "$(uname -m)" = "ppc64le" ]; then \
+RUN if [ "${TARGETARCH}" = "ppc64le" ]; then \
     source /opt/rh/gcc-toolset-13/enable && \
     git clone --recursive https://github.com/onnx/onnx.git && \
     cd onnx && git checkout ${ONNX_VERSION} && \
@@ -195,9 +197,10 @@ RUN if [ "$(uname -m)" = "ppc64le" ]; then \
 # openblas-builder (Power-only)
 #######################################################
 FROM common-builder AS openblas-builder
+ARG TARGETARCH
 ARG OPENBLAS_VERSION=0.3.30
 WORKDIR /root
-RUN if [ "$(uname -m)" = "ppc64le" ]; then \
+RUN if [ "${TARGETARCH}" = "ppc64le" ]; then \
     wget https://github.com/OpenMathLib/OpenBLAS/releases/download/v${OPENBLAS_VERSION}/OpenBLAS-${OPENBLAS_VERSION}.zip && \
     unzip OpenBLAS-${OPENBLAS_VERSION}.zip && \
     cd OpenBLAS-${OPENBLAS_VERSION} && \
@@ -238,6 +241,7 @@ ENTRYPOINT ["start-notebook.sh"]
 # jupytyer-datascience #
 ########################
 FROM jupyter-minimal AS jupyter-datascience
+ARG TARGETARCH
 
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG OPENBLAS_VERSION=0.3.30
@@ -283,7 +287,7 @@ COPY --from=openblas-builder /root/OpenBLAS-${OPENBLAS_VERSION} /openblas
 COPY --from=onnx-builder /root/onnx_wheel/ /onnxwheels/
 
 # Power-specific ONNX/OpenBLAS installation
-RUN if [ "$(uname -m)" = "ppc64le" ]; then \
+RUN if [ "${TARGETARCH}" = "ppc64le" ]; then \
     pip install /onnxwheels/*.whl && \
     PREFIX=/usr/local make -C /openblas install && \
     rm -rf /onnxwheels /openblas; \
