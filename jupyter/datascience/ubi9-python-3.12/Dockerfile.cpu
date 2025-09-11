@@ -166,12 +166,15 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 FROM cpu-base AS common-builder
 ARG TARGETARCH
 USER root
-RUN if [ "${TARGETARCH}" = "ppc64le" ]; then \
-    dnf install -y gcc-toolset-13 cmake ninja-build git wget unzip && \
-    dnf clean all; \
-    else \
-     echo "Skipping common-builder package install on non-Power"; \
-    fi
+RUN <<'EOF'
+set -Eeuxo pipefail
+if [ "${TARGETARCH}" = "ppc64le" ]; then
+    dnf install -y gcc-toolset-13 cmake ninja-build git wget unzip
+    dnf clean all
+else
+    echo "Skipping common-builder package install on non-Power"
+fi
+EOF
 
 #######################################################
 # onnx-builder (Power-only)
@@ -180,18 +183,22 @@ FROM common-builder AS onnx-builder
 ARG TARGETARCH
 ARG ONNX_VERSION=v1.19.0
 WORKDIR /root
-RUN if [ "${TARGETARCH}" = "ppc64le" ]; then \
-    source /opt/rh/gcc-toolset-13/enable && \
-    git clone --recursive https://github.com/onnx/onnx.git && \
-    cd onnx && git checkout ${ONNX_VERSION} && \
-    git submodule update --init --recursive && \
-    pip install -r requirements.txt && \
-    export CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)" && \
-    pip wheel . -w /root/onnx_wheel; \
-    else \
-    echo "Skipping ONNX build on non-Power"; \
-    mkdir -p /root/onnx_wheel; \
-    fi
+RUN <<'EOF'
+set -Eeuxo pipefail
+if [ "${TARGETARCH}" = "ppc64le" ]; then
+    source /opt/rh/gcc-toolset-13/enable
+    git clone --recursive https://github.com/onnx/onnx.git
+    cd onnx
+    git checkout ${ONNX_VERSION}
+    git submodule update --init --recursive
+    pip install -r requirements.txt
+    export CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)"
+    pip wheel . -w /root/onnx_wheel
+else
+    echo "Skipping ONNX build on non-Power"
+    mkdir -p /root/onnx_wheel
+fi
+EOF
 
 #######################################################
 # openblas-builder (Power-only)
@@ -200,16 +207,18 @@ FROM common-builder AS openblas-builder
 ARG TARGETARCH
 ARG OPENBLAS_VERSION=0.3.30
 WORKDIR /root
-RUN if [ "${TARGETARCH}" = "ppc64le" ]; then \
-    wget https://github.com/OpenMathLib/OpenBLAS/releases/download/v${OPENBLAS_VERSION}/OpenBLAS-${OPENBLAS_VERSION}.zip && \
-    unzip OpenBLAS-${OPENBLAS_VERSION}.zip && \
-    cd OpenBLAS-${OPENBLAS_VERSION} && \
-    make -j$(nproc) TARGET=POWER9 BINARY=64 USE_OPENMP=1 USE_THREAD=1 NUM_THREADS=120 DYNAMIC_ARCH=1 INTERFACE64=0; \
-    else \
-    mkdir -p OpenBLAS-${OPENBLAS_VERSION}; \
-    echo "Skipping OpenBLAS build on non-Power"; \
-    fi
-
+RUN <<'EOF'
+set -Eeuxo pipefail
+if [ "${TARGETARCH}" = "ppc64le" ]; then
+    wget https://github.com/OpenMathLib/OpenBLAS/releases/download/v${OPENBLAS_VERSION}/OpenBLAS-${OPENBLAS_VERSION}.zip
+    unzip OpenBLAS-${OPENBLAS_VERSION}.zip
+    cd OpenBLAS-${OPENBLAS_VERSION}
+    make -j$(nproc) TARGET=POWER9 BINARY=64 USE_OPENMP=1 USE_THREAD=1 NUM_THREADS=120 DYNAMIC_ARCH=1 INTERFACE64=0
+else
+    mkdir -p OpenBLAS-${OPENBLAS_VERSION}
+    echo "Skipping OpenBLAS build on non-Power"
+fi
+EOF
 ####################
 # jupyter-minimal #
 ####################
@@ -287,13 +296,16 @@ COPY --from=openblas-builder /root/OpenBLAS-${OPENBLAS_VERSION} /openblas
 COPY --from=onnx-builder /root/onnx_wheel/ /onnxwheels/
 
 # Power-specific ONNX/OpenBLAS installation
-RUN if [ "${TARGETARCH}" = "ppc64le" ]; then \
-    pip install /onnxwheels/*.whl && \
-    PREFIX=/usr/local make -C /openblas install && \
-    rm -rf /onnxwheels /openblas; \
-    else \
-    echo "Skipping ONNX/OpenBLAS install on non-Power"; \
-    fi
+RUN <<'EOF'
+set -Eeuxo pipefail
+if [ "${TARGETARCH}" = "ppc64le" ]; then
+    pip install /onnxwheels/*.whl
+    PREFIX=/usr/local make -C /openblas install
+    rm -rf /onnxwheels /openblas
+else
+    echo "Skipping ONNX/OpenBLAS install on non-Power"
+fi
+EOF
 
 # Install Python packages and Jupyterlab extensions from pylock.toml
 COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml ./
