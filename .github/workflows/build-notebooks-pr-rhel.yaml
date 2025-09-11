@@ -17,6 +17,10 @@ permissions:
   contents: read
   packages: read
 
+concurrency:
+  group: ${{ format('build-notebooks-pr-rhel-{0}', github.event.pull_request.number) }}
+  cancel-in-progress: true
+
 env:
   # language=json
   contributors: |
