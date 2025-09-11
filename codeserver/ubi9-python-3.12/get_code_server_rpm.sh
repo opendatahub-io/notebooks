@@ -17,7 +17,7 @@ UNAME_TO_GOARCH["s390x"]="s390x"
 
 ARCH="${UNAME_TO_GOARCH[$(uname -m)]}"
 
-if [[ "$ARCH" == "ppc64le" ]]; then
+if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
 
 	export MAX_JOBS=${MAX_JOBS:-$(nproc)}
 	export NODE_VERSION=${NODE_VERSION:-20}
@@ -30,8 +30,8 @@ if [[ "$ARCH" == "ppc64le" ]]; then
 
 	# install build dependencies
 #	dnf install -y \
-#	    git gcc-toolset-13 automake libtool rsync krb5-devel libX11-devel gettext jq patch
-        dnf install -y jq libtool gcc-toolset-13
+#	    git automake rsync gettext
+	dnf install -y jq patch libtool gcc-toolset-13 krb5-devel libX11-devel
 
 	. /opt/rh/gcc-toolset-13/enable
 
@@ -57,26 +57,45 @@ if [[ "$ARCH" == "ppc64le" ]]; then
 	    && source ${NVM_DIR}/nvm.sh && nvm install ${NODE_VERSION}
 
 	# build codeserver
-	git clone https://github.com/coder/code-server.git
+	git clone --depth 1 --branch "${CODESERVER_VERSION}" --recurse-submodules --shallow-submodules https://github.com/coder/code-server.git
 	cd code-server
-	git checkout ${CODESERVER_VERSION}
-	git submodule update --init
 	source ${NVM_DIR}/nvm.sh
 	while IFS= read -r src_patch; do echo "patches/$src_patch"; patch -p1 < "patches/$src_patch"; done < patches/series
+	# https://github.com/microsoft/vscode/issues/243708#issuecomment-2750733077
+	patch -p1 <<'EOF'
+diff --git i/package.json w/package.json
+index 925462fb087..dfff96eb051 100644
+--- code-server.orig/lib/vscode/package.json
++++ code-server/lib/vscode/package.json
+@@ -32,7 +32,7 @@
+     "watch-extensionsd": "deemon npm run watch-extensions",
+     "kill-watch-extensionsd": "deemon --kill npm run watch-extensions",
+     "precommit": "node build/hygiene.js",
+-    "gulp": "node --max-old-space-size=8192 ./node_modules/gulp/bin/gulp.js",
++    "gulp": "node --max-old-space-size=16384 --optimize-for-size ./node_modules/gulp/bin/gulp.js",
+     "electron": "node build/lib/electron",
+     "7z": "7z",
+     "update-grammars": "node build/npm/update-all-grammars.mjs",
+EOF
 	nvm use ${NODE_VERSION}
 	npm install
 	npm run build
+	# https://github.com/coder/code-server/pull/7418
+	# node: --optimize-for-size is not allowed in NODE_OPTIONS
+	export NODE_OPTIONS="--max-old-space-size=16384"
+	export TERSER_PARALLEL=2
 	VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
 	npm run release
 	npm run release:standalone
 
 	# build codeserver rpm
 	VERSION=${CODESERVER_VERSION/v/} npm run package
-	cp release-packages/code-server-${CODESERVER_VERSION/v/}-ppc64le.rpm /tmp/
+	mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
 
 else
 
-    # download RPM for other architectures
-    curl -L "https://github.com/coder/code-server/releases/download/${CODESERVER_VERSION}/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm" -o /tmp/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm
+  # we shall not download rpm for other architectures
+  echo "Unsupported architecture: $ARCH" >&2
+  exit 1
 
 fi
