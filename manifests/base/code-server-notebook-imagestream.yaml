@@ -68,7 +68,7 @@ spec:
             {"name": "Kubeflow-Training", "version": "1.9"}
           ]
         openshift.io/imported-from: quay.io/modh/codeserver
-        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py311-ubi9-commit-n-1_PLACEHOLDER
       from:
         kind: DockerImage

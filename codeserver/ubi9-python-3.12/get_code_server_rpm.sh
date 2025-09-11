@@ -30,8 +30,8 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
 
 	# install build dependencies
 #	dnf install -y \
-#	    git automake rsync gettext
-	dnf install -y jq patch libtool gcc-toolset-13 krb5-devel libX11-devel
+#	    git automake gettext
+	dnf install -y jq patch libtool rsync gcc-toolset-13 krb5-devel libX11-devel
 
 	. /opt/rh/gcc-toolset-13/enable
 
