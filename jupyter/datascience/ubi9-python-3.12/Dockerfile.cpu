@@ -26,18 +26,13 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER root
 
-# Inject the official UBI 9 repository configuration into the AIPCC base image.
-# The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
-# By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
-COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
-
 # upgrade first to avoid fixable vulnerabilities begin
 RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
     && dnf clean all -y
 # upgrade first to avoid fixable vulnerabilities end
 
 # Install useful OS packages
-RUN dnf install -y perl mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 
 # Other apps and tools installed as default user
 USER 1001
@@ -53,6 +48,52 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
     rm -f /tmp/openshift-client-linux.tar.gz
 # Install the oc client end
 
+#######################################################
+# common-builder (for Power-only)
+#######################################################
+FROM cpu-base AS common-builder
+USER root
+RUN if [ "$(uname -m)" = "ppc64le" ]; then \
+    dnf install -y gcc-toolset-13 cmake ninja-build git wget unzip && \
+    dnf clean all; \
+    else \
+     echo "Skipping common-builder package install on non-Power"; \
+    fi
+
+#######################################################
+# onnx-builder (Power-only)
+#######################################################
+FROM common-builder AS onnx-builder
+ARG ONNX_VERSION=v1.19.0
+WORKDIR /root
+RUN if [ "$(uname -m)" = "ppc64le" ]; then \
+    source /opt/rh/gcc-toolset-13/enable && \
+    git clone --recursive https://github.com/onnx/onnx.git && \
+    cd onnx && git checkout ${ONNX_VERSION} && \
+    git submodule update --init --recursive && \
+    pip install -r requirements.txt && \
+    export CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)" && \
+    pip wheel . -w /root/onnx_wheel; \
+    else \
+    echo "Skipping ONNX build on non-Power"; \
+    mkdir -p /root/onnx_wheel; \
+    fi
+
+#######################################################
+# openblas-builder (Power-only)
+#######################################################
+FROM common-builder AS openblas-builder
+ARG OPENBLAS_VERSION=0.3.30
+WORKDIR /root
+RUN if [ "$(uname -m)" = "ppc64le" ]; then \
+    wget https://github.com/OpenMathLib/OpenBLAS/releases/download/v${OPENBLAS_VERSION}/OpenBLAS-${OPENBLAS_VERSION}.zip && \
+    unzip OpenBLAS-${OPENBLAS_VERSION}.zip && \
+    cd OpenBLAS-${OPENBLAS_VERSION} && \
+    make -j$(nproc) TARGET=POWER9 BINARY=64 USE_OPENMP=1 USE_THREAD=1 NUM_THREADS=120 DYNAMIC_ARCH=1 INTERFACE64=0; \
+    else \
+    mkdir -p OpenBLAS-${OPENBLAS_VERSION}; \
+    echo "Skipping OpenBLAS build on non-Power"; \
+    fi
 ####################
 # jupyter-minimal #
 ####################
@@ -85,6 +126,7 @@ ENTRYPOINT ["start-notebook.sh"]
 FROM jupyter-minimal AS jupyter-datascience
 
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
+ARG OPENBLAS_VERSION=0.3.30
 
 LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.12" \
     summary="Jupyter data science notebook image for ODH notebooks" \
@@ -102,15 +144,29 @@ WORKDIR /opt/app-root/bin
 USER root
 
 # Install useful OS packages
-RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat && dnf clean all && rm -rf /var/cache/yum
+RUN dnf install -y jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat && \
+    dnf clean all && rm -rf /var/cache/yum
 
 # Copy dynamically-linked mongocli built in earlier build stage
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 
-# Other apps and tools installed as default user
-USER 1001
 
-# Install Python packages and Jupyterlab extensions from requirements.txt
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
+
+# Copy OpenBLAS,ONNX wheels for Power
+COPY --from=openblas-builder /root/OpenBLAS-${OPENBLAS_VERSION} /openblas
+COPY --from=onnx-builder /root/onnx_wheel/ /onnxwheels/
+
+# Power-specific ONNX/OpenBLAS installation
+RUN if [ "$(uname -m)" = "ppc64le" ]; then \
+    pip install /onnxwheels/*.whl && \
+    PREFIX=/usr/local make -C /openblas install && \
+    rm -rf /onnxwheels /openblas; \
+    else \
+    echo "Skipping ONNX/OpenBLAS install on non-Power"; \
+    fi
+
+# Install Python packages and Jupyterlab extensions from pylock.toml
 COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra setup to utils so that it's sourced at startup
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
