@@ -131,8 +131,10 @@ jobs:
 
       - name: Free up additional disk space
         # https://docs.github.com/en/actions/learn-github-actions/expressions
+        # NOTE: the arm64 GitHub hosted runner does not have the /mnt-mounted scratch disk
         if: "${{ contains(inputs.target, 'rocm') || contains(inputs.target, 'cuda') ||
-         contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') }}"
+         contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') ||
+         inputs.platform == 'linux/arm64' }}"
         run: |
           set -x
 
@@ -308,6 +310,7 @@ jobs:
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
 
       - name: "push|schedule|workflow_dispatch: make ${{ inputs.target }}"
+        id: push-make-target
         run: |
           # print running stats on disk occupancy
           (while true; do df -h | grep "${HOME}/.local/share/containers"; sleep 30; done) &
@@ -320,6 +323,7 @@ jobs:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
           CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
       - name: "pull_request: make ${{ inputs.target }}"
+        id: pr-make-target
         run: |
           # print running stats on disk occupancy
           (while true; do df -h | grep "${HOME}/.local/share/containers"; sleep 30; done) &
@@ -687,7 +691,7 @@ jobs:
       # we leave little free disk space after we mount LVM for podman storage
       # not enough to install playwright; running playwright in podman uses the space we have
       - name: Run Playwright tests
-        if: ${{ contains(inputs.target, 'codeserver') }}
+        if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && (steps.push-make-target.outcome == 'success' || steps.pr-make-target.outcome == 'success') }}
         # --ipc=host because Microsoft says so in Playwright docs
         # --net=host because testcontainers connects to the Reaper container's exposed port
         # we need to pass through the relevant environment variables
@@ -734,3 +738,11 @@ jobs:
 
       - run: sudo compsize -x "${HOME}/.local/share/containers"
         if: "${{ !cancelled() && steps.install-compsize.outcome == 'success' }}"
+
+      # print system logs, useful when hunting for OOM kills
+
+      - run: sudo dmesg
+        if: "${{ failure() }}"
+
+      - run: journalctl --no-pager -k
+        if: "${{ failure() }}"
