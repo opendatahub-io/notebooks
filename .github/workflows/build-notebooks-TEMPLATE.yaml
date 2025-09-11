@@ -131,8 +131,10 @@ jobs:
 
       - name: Free up additional disk space
         # https://docs.github.com/en/actions/learn-github-actions/expressions
+        # NOTE: the arm64 GitHub hosted runner does not have the /mnt-mounted scratch disk
         if: "${{ contains(inputs.target, 'rocm') || contains(inputs.target, 'cuda') ||
-         contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') }}"
+         contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') ||
+         inputs.platform == 'linux/arm64' }}"
         run: |
           set -x
 
@@ -736,3 +738,11 @@ jobs:
 
       - run: sudo compsize -x "${HOME}/.local/share/containers"
         if: "${{ !cancelled() && steps.install-compsize.outcome == 'success' }}"
+
+      # print system logs, useful when hunting for OOM kills
+
+      - run: sudo dmesg
+        if: "${{ failure() }}"
+
+      - run: journalctl --no-pager -k
+        if: "${{ failure() }}"

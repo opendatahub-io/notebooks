@@ -18,7 +18,7 @@ permissions:
   packages: read
 
 concurrency:
-  group: ${{ format('build-notebooks-pr-{0}', github.event.pull_request.number) }}
+  group: ${{ format('build-notebooks-pr-apicc-{0}', github.event.pull_request.number) }}
   cancel-in-progress: true
 
 env:

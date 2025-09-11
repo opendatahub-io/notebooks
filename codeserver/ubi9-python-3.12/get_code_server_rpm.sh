@@ -30,8 +30,8 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
 
 	# install build dependencies
 #	dnf install -y \
-#	    git gcc-toolset-13 automake libtool rsync krb5-devel libX11-devel gettext jq patch
-        dnf install -y jq libtool gcc-toolset-13
+#	    git automake
+	dnf install -y jq patch libtool rsync gettext gcc-toolset-13 krb5-devel libX11-devel
 
 	. /opt/rh/gcc-toolset-13/enable
 
@@ -57,10 +57,8 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
 	    && source ${NVM_DIR}/nvm.sh && nvm install ${NODE_VERSION}
 
 	# build codeserver
-	git clone https://github.com/coder/code-server.git
+	git clone --depth 1 --branch "${CODESERVER_VERSION}" --recurse-submodules --shallow-submodules https://github.com/coder/code-server.git
 	cd code-server
-	git checkout ${CODESERVER_VERSION}
-	git submodule update --init
 	source ${NVM_DIR}/nvm.sh
 	while IFS= read -r src_patch; do echo "patches/$src_patch"; patch -p1 < "patches/$src_patch"; done < patches/series
 	# https://github.com/microsoft/vscode/issues/243708#issuecomment-2750733077
@@ -92,7 +90,7 @@ EOF
 
 	# build codeserver rpm
 	VERSION=${CODESERVER_VERSION/v/} npm run package
-	cp release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
+	mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
 
 else
 
