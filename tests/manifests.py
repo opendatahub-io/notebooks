@@ -155,24 +155,25 @@ def get_source_of_truth_filepath(
         if accelerator_flavor == "cuda":
             filename = f"jupyter-{scope}-{file_suffix}"
 
-    elif JUPYTER_MINIMAL_NOTEBOOK_ID in scope:
-        # Logic for minimal notebook
-        accelerator_prefix = f"{accelerator_flavor}-" if accelerator_flavor else ""
-        filename = f"jupyter-{accelerator_prefix}{scope}-{file_suffix}"
-        if accelerator_flavor == "cuda":
-            filename = f"jupyter-{scope}-gpu-{file_suffix}"
+    elif "jupyter" in notebook_id:
+        if scope == JUPYTER_MINIMAL_NOTEBOOK_ID:
+            # Logic for minimal notebook
+            accelerator_prefix = f"{accelerator_flavor}-" if accelerator_flavor else ""
+            filename = f"jupyter-{accelerator_prefix}{scope}-{file_suffix}"
+            if accelerator_flavor == "cuda":
+                filename = f"jupyter-{scope}-gpu-{file_suffix}"
 
-    elif JUPYTER_DATASCIENCE_NOTEBOOK_ID in scope or JUPYTER_TRUSTYAI_NOTEBOOK_ID in scope:
-        # Logic for datascience and trustyai
-        filename = f"jupyter-{scope}-{file_suffix}"
-
-    elif JUPYTER_PYTORCH_NOTEBOOK_ID in scope or JUPYTER_TENSORFLOW_NOTEBOOK_ID in scope:
-        # Logic for pytorch and tensorflow
-        accelerator_prefix = f"{accelerator_flavor}-" if accelerator_flavor else ""
-        filename = f"jupyter-{accelerator_prefix}{scope}-{file_suffix}"
-        if accelerator_flavor == "cuda":
-            # This override is intentionally different from the 'minimal' one, as per the script
+        elif scope in (JUPYTER_DATASCIENCE_NOTEBOOK_ID, JUPYTER_TRUSTYAI_NOTEBOOK_ID):
+            # Logic for datascience and trustyai
             filename = f"jupyter-{scope}-{file_suffix}"
+
+        elif JUPYTER_PYTORCH_NOTEBOOK_ID in scope or JUPYTER_TENSORFLOW_NOTEBOOK_ID in scope:
+            # Logic for pytorch and tensorflow
+            accelerator_prefix = f"{accelerator_flavor}-" if accelerator_flavor else ""
+            filename = f"jupyter-{accelerator_prefix}{scope}-{file_suffix}"
+            if accelerator_flavor == "cuda":
+                # This override is intentionally different from the 'minimal' one, as per the script
+                filename = f"jupyter-{scope}-{file_suffix}"
 
     elif CODESERVER_NOTEBOOK_ID in notebook_id:
         filename = f"code-server-{file_suffix}"
