@@ -36,16 +36,17 @@ def main():
             prefix="Install micropipenv and uv to deploy packages from requirements.txt",
         )
 
-        blockinfile(
-            dockerfile,
-            textwrap.dedent(r"""
-            RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
-                    -o /tmp/openshift-client-linux.tar.gz && \
-                tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
-                rm -f /tmp/openshift-client-linux.tar.gz
-            """),
-            prefix="Install the oc client",
-        )
+        if not is_rstudio(dockerfile):
+            blockinfile(
+                dockerfile,
+                textwrap.dedent(r"""
+                RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+                        -o /tmp/openshift-client-linux.tar.gz && \
+                    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
+                    rm -f /tmp/openshift-client-linux.tar.gz
+                """),
+                prefix="Install the oc client",
+            )
 
         if is_jupyter(dockerfile):
             blockinfile(
@@ -104,6 +105,10 @@ def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None =
 
 def is_jupyter(filename: pathlib.Path) -> bool:
     return filename.is_relative_to(ROOT_DIR / "jupyter")
+
+
+def is_rstudio(filename: pathlib.Path) -> bool:
+    return filename.is_relative_to(ROOT_DIR / "rstudio")
 
 
 if __name__ == "__main__":
