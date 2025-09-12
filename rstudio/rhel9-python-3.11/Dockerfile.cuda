@@ -41,7 +41,7 @@ FROM cuda-base-${TARGETARCH} AS cuda-base
 
 ARG TARGETARCH
 
-ARG CUDA_SOURCE_CODE=cuda
+ARG CUDA_SOURCE_CODE=rstudio/rhel9-python-3.11/cuda
 # Access the client's secret for the subscription manager from the environment variable
 ARG SECRET_DIR=/opt/app-root/src/.sec
 ARG SERVERURL_DEFAULT=""
