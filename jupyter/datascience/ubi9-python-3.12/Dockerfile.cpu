@@ -171,6 +171,9 @@ RUN if [ "$(uname -m)" = "ppc64le" ]; then \
     echo "Skipping ONNX/OpenBLAS install on non-Power"; \
     fi
 
+# Other apps and tools installed as default user
+USER 1001
+
 # Install Python packages and Jupyterlab extensions from pylock.toml
 COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra setup to utils so that it's sourced at startup
