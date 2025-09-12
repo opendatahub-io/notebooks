@@ -68,6 +68,7 @@ RUN if [ -d "${SECRET_DIR}" ]; then \
   fi
 
 ENV R_VERSION=4.4.3
+ENV MAKEFLAGS="-j4"
 
 # Install R
 RUN dnf install -y dnf-plugins-core && \
