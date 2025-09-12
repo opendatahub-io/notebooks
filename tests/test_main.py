@@ -109,6 +109,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                             "Boto3",
                             "Codeflare-SDK",
                             "Datasets",
+                            "Feast",
                             "JupyterLab",
                             "Kafka-Python-ng",
                             "Kfp",
@@ -170,7 +171,9 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                         parsed_locked_version = packaging.version.Version(locked_version)
                         assert (parsed_locked_version.major, parsed_locked_version.minor) == tuple(
                             int(v) for v in split_manifest_version.groups()
-                        ), f"{name}: manifest declares {manifest_version}, but pylock.toml pins {locked_version}"
+                        ), (
+                            f"{name}: manifest {manifest.filename} declares {manifest_version}, but pylock.toml pins {locked_version}"
+                        )
 
 
 def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubTests):
@@ -208,7 +211,15 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
         ("Codeflare-SDK", ("0.30", "0.29")),
         ("Scikit-learn", ("1.7", "1.6")),
         ("Pandas", ("2.2", "1.5")),
-        ("Numpy", ("2.2", "1.26")),
+        (
+            "Numpy",
+            (
+                "1.26",  # trustyai 0.6.2 depends on numpy~=1.26.4
+                # 2.0 for tensorflow rocm, but we don't have that in manifests
+                "2.1",  # for tensorflow cuda
+                "2.2",  # this is our latest where possible
+            ),
+        ),
         ("Tensorboard", ("2.19", "2.18")),
         ("PyTorch", ("2.6", "2.7")),
     )
@@ -258,7 +269,15 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         ("torch", ("==2.6.0+cu126", "==2.6.0+rocm6.2.4", "==2.7.1")),
         ("torchvision", ("==0.22.1", "==0.21.0+cu126", "==0.21.0+rocm6.2.4")),
         ("matplotlib", ("~=3.10.1", "~=3.10.3")),
-        ("numpy", ("~=2.2.6", "~=1.26.4")),
+        (
+            "numpy",
+            (
+                "~=1.26.4",  # trustyai 0.6.2 depends on numpy~=1.26.4
+                "~=2.0.2",  # for tensorflow rocm
+                "~=2.1.3",  # for tensorflow cuda
+                "~=2.2.6",  # this is our latest where possible
+            ),
+        ),
         ("pandas", ("~=2.2.3", "~=1.5.3")),
         ("scikit-learn", ("~=1.6.1", "~=1.7.0")),
         ("codeflare-sdk", ("~=0.29.0", "~=0.30.0")),
@@ -271,7 +290,13 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         ("datasets", ("", "~=3.4.1")),
         ("accelerate", ("!=1.1.0,>=0.20.3", "~=1.5.2")),
         ("kubeflow-training", ("==1.9.0", "==1.9.2", "==1.9.3")),
-        ("jupyter-bokeh", ("~=3.0.5", "~=4.0.5")),
+        (
+            "jupyter-bokeh",
+            (
+                "~=3.0.7",  # trustyai 0.6.2 depends on jupyter-bokeh~=3.0.7
+                "~=4.0.5",
+            ),
+        ),
         ("jupyterlab-lsp", ("~=5.1.0", "~=5.1.1")),
         ("jupyterlab-widgets", ("~=3.0.13", "~=3.0.15")),
     )
