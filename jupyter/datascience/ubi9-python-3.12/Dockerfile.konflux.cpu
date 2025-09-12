@@ -9,13 +9,13 @@ ARG BASE_IMAGE
 FROM registry.access.redhat.com/ubi9/go-toolset:latest AS mongocli-builder
 
 ARG MONGOCLI_VERSION=2.0.4
-ARG TARGETARCH
 
 WORKDIR /tmp/
 
-# Combine both behaviors:
-# - attempt to download/unzip the upstream source for non-s390x
-# - keep the s390x dummy-binary fallback to avoid build failures on s390x
+ARG TARGETARCH
+
+# Keep s390x special-case from original (create dummy binary) but
+# include explicit curl/unzip steps from the delta for non-s390x.
 RUN arch="${TARGETARCH:-$(uname -m)}" && \
     arch=$(echo "$arch" | cut -d- -f1) && \
     if [ "$arch" = "s390x" ]; then \
@@ -27,7 +27,7 @@ RUN arch="${TARGETARCH:-$(uname -m)}" && \
         curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip && \
         unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip && \
         cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
-        CGO_ENABLED=1 GOOS=linux GOARCH=${arch} go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/; \
+        CGO_ENABLED=1 GOOS=linux GOARCH=${arch} GO111MODULE=on go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/; \
     fi
 
 ####################
@@ -52,7 +52,8 @@ RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_d
 # upgrade first to avoid fixable vulnerabilities end
 
 # Install useful OS packages
-RUN echo "Building for architecture: ${TARGETARCH}" && \
+RUN --mount=type=cache,target=/var/cache/dnf \
+    echo "Building for architecture: ${TARGETARCH}" && \
     if [ "$TARGETARCH" = "s390x" ]; then \
         PACKAGES="perl mesa-libGL skopeo gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel"; \
     else \
@@ -103,9 +104,11 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 # NOTE: Only used in s390x
 ##############################
 FROM cpu-base AS s390x-builder
+
 ARG TARGETARCH
 USER 0
 WORKDIR /tmp/build-wheels
+
 # Build pyarrow optimized for s390x
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=cache,target=/root/.cache/dnf \
@@ -180,6 +183,7 @@ WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
 
+
 ########################
 # jupytyer-datascience #
 ########################
@@ -215,19 +219,23 @@ COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra setup to utils so that it's sourced at startup
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
-RUN echo "Installing softwares and packages" && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    echo "Installing softwares and packages" && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
     if [ "$TARGETARCH" = "s390x" ]; then \
+        # For s390x, we need special flags and environment variables for building packages
         GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
         CFLAGS="-O3" CXXFLAGS="-O3" \
         uv pip install --strict --no-deps --no-cache --no-config --no-progress \
-        --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match \
-        --requirements=./pylock.toml; \
+            --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match \
+            --requirements=./pylock.toml; \
     else \
+        # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+        # we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
         uv pip install --strict --no-deps --no-cache --no-config --no-progress \
-        --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match \
-        --requirements=./pylock.toml; \
+            --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match \
+            --requirements=./pylock.toml; \
     fi && \
     # setup path for runtime configuration
     mkdir /opt/app-root/runtimes && \
@@ -235,9 +243,11 @@ RUN echo "Installing softwares and packages" && \
     # Remove default Elyra runtime-images \
     rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
-    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
-    # Copy jupyter configuration
-    cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter && \
+    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" \
+        /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
+    # copy jupyter configuration
+    install -D -m 0644 /opt/app-root/bin/utils/jupyter_server_config.py \
+      /opt/app-root/etc/jupyter/jupyter_server_config.py && \
     # Disable announcement plugin of jupyterlab \
     jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
     # Apply JupyterLab addons \

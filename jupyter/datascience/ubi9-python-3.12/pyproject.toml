@@ -18,9 +18,6 @@ dependencies = [
     "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
     "kubeflow-training==1.9.3",
     "codeflare-sdk~=0.30.0; platform_machine != 's390x'",
-    "py-spy~=0.4.0; platform_machine != 's390x'",
-    "ray[data,default]~=2.47.1; platform_machine != 's390x'",
-    "pyarrow~=20.0.0; platform_machine != 's390x'",
 
     # DB connectors
     "pymongo~=4.11.2",

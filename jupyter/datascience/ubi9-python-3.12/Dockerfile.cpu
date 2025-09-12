@@ -190,6 +190,7 @@ ENTRYPOINT ["start-notebook.sh"]
 FROM jupyter-minimal AS jupyter-datascience
 
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
+ARG TARGETARCH
 
 LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.12" \
     summary="Jupyter data science notebook image for ODH notebooks" \
@@ -230,6 +231,8 @@ COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils 
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     echo "Installing softwares and packages" && \
+    # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+    #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
     if [ "$TARGETARCH" = "s390x" ]; then \
         # For s390x, we need special flags and environment variables for building packages
         GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
