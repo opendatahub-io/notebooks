@@ -5,14 +5,14 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # PyTorch packages
-    "tensorboard~=2.19.0",
+    "tensorboard~=2.20.0",
     "torch==2.6.0+cu126",
     "torchvision==0.21.0+cu126",
 
     # Datascience and useful extensions
-    "boto3~=1.37.8",
+    "boto3~=1.40.27",
     "kafka-python-ng~=2.2.3",
-    "kfp~=2.12.1",
+    "kfp~=2.14.3",
     "matplotlib~=3.10.1",
     "numpy~=2.2.6",
     "pandas~=2.2.3",
@@ -23,6 +23,7 @@ dependencies = [
     "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
     "codeflare-sdk~=0.31.0",
     "kubeflow-training==1.9.2",
+    "feast~=0.53.0",
 
     # DB connectors
     "pymongo~=4.11.2",

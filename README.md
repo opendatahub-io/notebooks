@@ -181,7 +181,11 @@ make  undeployX-${WORKBENCH_NAME}
 
 ## Contributing
 
-Whether you're fixing bugs, adding new notebooks, or improving documentation, your contributions are welcome. Please refer to our [Contribution Guidlines](CONTRIBUTING.md).
+Whether you're fixing bugs, adding new notebooks, or improving documentation, your contributions are welcome. Please refer to our [Contribution Guidelines](CONTRIBUTING.md).
+
+### For AI Agents
+
+If you're an AI agent working with this repository, please refer to our [Agents Guide](Agents.md) for comprehensive instructions on project structure, development workflows, and best practices.
 
 ## Acknowledgments
 

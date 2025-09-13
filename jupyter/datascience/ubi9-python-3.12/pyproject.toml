@@ -5,9 +5,9 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # Datascience and useful extensions
-    "boto3~=1.37.8",
+    "boto3~=1.40.27",
     "kafka-python-ng~=2.2.3",
-    "kfp~=2.12.1",
+    "kfp~=2.14.3",
     "matplotlib~=3.10.1",
     "numpy~=2.2.6",
     "pandas~=2.2.3",
@@ -18,6 +18,7 @@ dependencies = [
     "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
     "kubeflow-training==1.9.3",
     "codeflare-sdk~=0.31.0; platform_machine != 's390x'",
+    "feast~=0.53.0",
 
     # DB connectors
     "pymongo~=4.11.2",
