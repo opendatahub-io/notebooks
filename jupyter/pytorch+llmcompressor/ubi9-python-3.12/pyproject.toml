@@ -73,13 +73,23 @@ dependencies = [
 # https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-sources
 [tool.uv.sources]
 # https://docs.astral.sh/uv/guides/integration/pytorch/#using-uv-with-pytorch
-torch = { index = "pytorch" }
-torchvision = { index = "pytorch" }
+torch = [
+      { index = "pytorch-cuda", marker = "platform_machine == 'x86_64'" },
+      { index = "pytorch-cpu", marker = "platform_machine == 'aarch64'" }]
+torchvision = [
+            { index = "pytorch-cuda", marker = "platform_machine == 'x86_64'" },
+            { index = "pytorch-cpu", marker = "platform_machine == 'aarch64'" }]
 
 # https://docs.astral.sh/uv/concepts/indexes/#package-indexes
 [[tool.uv.index]]
-name = "pytorch"
+name = "pytorch-cuda"
 url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+# Add CPU index for ARM64
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 # https://docs.astral.sh/uv/concepts/resolution/#dependency-overrides

@@ -7,7 +7,24 @@ dependencies = [
     # PyTorch packages
     "tensorboard~=2.20.0",
     "torch==2.6.0+cu126",
-    "torchvision==0.21.0+cu126",
+    "torchvision==0.21.0+cu126; platform_machine == 'x86_64'",
+    "torchvision==0.21.0; platform_machine == 'aarch64'", # CUDA version not pre-built by pytorch for aarch64
+
+    # torch deps that get missed by uv with universal resolution
+    "nvidia-cuda-nvrtc-cu12==12.6.77 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "nvidia-cuda-runtime-cu12==12.6.77 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "nvidia-cuda-cupti-cu12==12.6.80 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "nvidia-cudnn-cu12==9.5.1.17 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "nvidia-cublas-cu12==12.6.4.1 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "nvidia-cufft-cu12==11.3.0.4 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "nvidia-curand-cu12==10.3.7.77 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "nvidia-cusolver-cu12==11.7.1.2 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "nvidia-cusparse-cu12==12.5.4.2 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "nvidia-cusparselt-cu12==0.6.3 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "nvidia-nccl-cu12==2.21.5 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "nvidia-nvtx-cu12==12.6.77 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "nvidia-nvjitlink-cu12==12.6.85 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "triton==3.2.0 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
 
     # Datascience and useful extensions
     "boto3~=1.40.27",
@@ -56,12 +73,20 @@ dependencies = [
 
 [tool.uv.sources]
 torch = { index = "pytorch-cuda" }
-torchvision = { index = "pytorch-cuda" }
+torchvision = [
+            { index = "pytorch-cuda", marker = "platform_machine == 'x86_64'" },
+            { index = "pytorch-cpu", marker = "platform_machine == 'aarch64'" }]
 
 # https://docs.astral.sh/uv/concepts/indexes/#package-indexes
 [[tool.uv.index]]
 name = "pytorch-cuda"
 url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+# Add CPU index for ARM64
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 [tool.uv]
