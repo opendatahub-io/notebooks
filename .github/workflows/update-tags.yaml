@@ -1,0 +1,59 @@
+---
+name: Update Tekton Tags
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+    inputs:
+      new_tag:
+        description: "Set a new image tag (e.g. YYYYx-vn.n)"
+        required: true
+jobs:
+  update-tags:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Detect and replace tag in .tekton yamls
+        id: replace
+        run: |
+          set -e
+          regex="[0-9]{4}[a-z]-v[0-9]+\.[0-9]+"
+          new_tag="${{ github.event.inputs.new_tag }}"
+
+          echo "Searching for tags in .tekton/*.yaml..."
+          prev_tag=$(grep -rhoP "$regex" .tekton/*.yaml | sort -u | head -n1)
+
+          if [ -z "$prev_tag" ]; then
+            echo "❌ No matching tag found with regex $regex"
+            exit 1
+          fi
+
+          echo "Found previous tag: $prev_tag"
+          echo "Replacing $prev_tag -> $new_tag"
+
+          find .tekton -type f -name "*.yaml" -print0 | xargs -0 -I{} perl -0777 -i -pe "s/\Q$prev_tag\E/\Q$new_tag\E/g" "{}"
+
+          # Export previous tag for later steps
+          echo "previous_tag=$prev_tag" >> $GITHUB_OUTPUT
+
+      - name: Commit and push changes
+        run: |
+          prev_tag="${{ steps.replace.outputs.previous_tag }}"
+          new_tag="${{ github.event.inputs.new_tag }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet; then
+            echo "✅ No changes to commit"
+            exit 0
+          fi
+
+          git add .tekton/*.yaml
+          git commit -m "chore: update tekton tag from ${prev_tag} to ${new_tag}"
+          git push origin main
