@@ -300,12 +300,32 @@ RUN <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
     pip install /onnxwheels/*.whl
-    PREFIX=/usr/local make -C /openblas install
-    rm -rf /onnxwheels /openblas
 else
     echo "Skipping ONNX/OpenBLAS install on non-Power"
 fi
 EOF
+
+USER root
+RUN <<'EOF'
+set -Eeuxo pipefail
+if [ "${TARGETARCH}" = "ppc64le" ]; then
+    rm -rf /onnxwheels
+else
+    echo "Skipping ONNX/OpenBLAS install on non-Power"
+fi
+EOF
+
+RUN <<'EOF'
+set -Eeuxo pipefail
+if [ "${TARGETARCH}" = "ppc64le" ]; then
+    PREFIX=/usr/local make -C /openblas install
+    rm -rf /openblas
+else
+    echo "Skipping ONNX/OpenBLAS install on non-Power"
+fi
+EOF
+
+USER 1001:0
 
 # Install Python packages and Jupyterlab extensions from pylock.toml
 COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml ./
