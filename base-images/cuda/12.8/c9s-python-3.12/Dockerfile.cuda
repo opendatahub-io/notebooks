@@ -87,7 +87,7 @@ RUN dnf install -y \
 
 # Install CUDA cudnn9 from:
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubi9/runtime/cudnn/Dockerfile
-ENV NV_CUDNN_VERSION 9.5.1.17-1
+ENV NV_CUDNN_VERSION=9.8.0.87-1
 ENV NV_CUDNN_PACKAGE libcudnn9-cuda-12-${NV_CUDNN_VERSION}
 
 LABEL com.nvidia.cudnn.version="${NV_CUDNN_VERSION}"
