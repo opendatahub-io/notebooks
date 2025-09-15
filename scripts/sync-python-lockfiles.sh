@@ -34,7 +34,7 @@ find . -name pylock.toml -execdir bash -c '
    --generate-hashes \
    --emit-index-url \
    --python-version="${PWD##*-}" \
-   --python-platform linux \
+   --universal \
    --no-annotate \
    ${ADDITIONAL_UV_FLAGS:-} \
    --quiet' \;
