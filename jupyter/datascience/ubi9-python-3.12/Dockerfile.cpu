@@ -104,18 +104,18 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 
 ##############################
 # wheel-builder stage        #
-# NOTE: Only used in s390x
+# NOTE: Only used in ppc64le and s390x
 ##############################
-FROM cpu-base AS s390x-builder
+FROM cpu-base AS pyarrow-builder
 
 ARG TARGETARCH
 USER 0
 WORKDIR /tmp/build-wheels
 
-# Build pyarrow optimized for s390x
+# Build pyarrow on ppc64le and s390x
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=cache,target=/root/.cache/dnf \
-    if [ "$TARGETARCH" = "s390x" ]; then \
+    if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then \
         # Install build dependencies (shared for pyarrow and onnx)
         dnf install -y cmake make gcc-c++ pybind11-devel wget && \
         dnf clean all && \
@@ -283,9 +283,9 @@ USER 1001
 
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
 
-# Copy wheels from build stage (s390x only)
-COPY --from=s390x-builder /tmp/wheels /tmp/wheels
-RUN if [ "$TARGETARCH" = "s390x" ]; then \
+# Copy wheels from build stage (ppc64le and s390x only)
+COPY --from=pyarrow-builder /tmp/wheels /tmp/wheels
+RUN if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then \
     pip install --no-cache-dir /tmp/wheels/*.whl; \
 else \
     echo "Skipping wheel install for $TARGETARCH"; \
@@ -333,11 +333,11 @@ COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml ./
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    echo "Installing softwares and packages" && \
+    echo "Installing software and packages" && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-    if [ "$TARGETARCH" = "s390x" ]; then \
-        # For s390x, we need special flags and environment variables for building packages
+    if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then \
+        # We need special flags and environment variables when building packages
         GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
         CFLAGS="-O3" CXXFLAGS="-O3" \
         uv pip install --strict --no-deps --no-cache --no-config --no-progress \
