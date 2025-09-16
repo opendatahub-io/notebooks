@@ -50,7 +50,7 @@ spec:
   pipelineRef:
     name: singlearch-push-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9
+    serviceAccountName: build-pipeline-odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9
   workspaces:
   - name: git-auth
     secret:
