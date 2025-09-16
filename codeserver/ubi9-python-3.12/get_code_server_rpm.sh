@@ -31,7 +31,7 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
 	# install build dependencies
 #	dnf install -y \
 #	    git automake
-	dnf install -y jq patch libtool rsync gettext gcc-toolset-13 krb5-devel libX11-devel
+	dnf install -y jq patch libtool rsync gettext gcc-toolset-13 krb5-devel libX11-devel meson
 
 	. /opt/rh/gcc-toolset-13/enable
 
@@ -43,9 +43,12 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
 	cd .. && rm -rf macros
 	git clone https://gitlab.freedesktop.org/xorg/lib/libxkbfile.git
 	cd libxkbfile/
-	./autogen.sh && make install -j ${MAX_JOBS}
+	#./autogen.sh && make install -j ${MAX_JOBS}
+	meson setup builddir --prefix=/usr/ -Dwarning_level=3
+	meson compile -C builddir
+	meson install -C builddir
 	cd .. && rm -rf libxkbfile
-        export PKG_CONFIG_PATH=$(find / -type d -name "pkgconfig" 2>/dev/null | tr '\n' ':')
+    export PKG_CONFIG_PATH=$(find / -type d -name "pkgconfig" 2>/dev/null | tr '\n' ':')
 
 	# install nfpm to build rpm
 	NFPM_VERSION=$(curl -s "https://api.github.com/repos/goreleaser/nfpm/releases/latest" | jq -r '.tag_name') \
