@@ -324,15 +324,15 @@ def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.Sub
             PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.12/de-vendor-torch.sh",
         ],
         "nginx/common.sh": [
-           PROJECT_ROOT / "codeserver/ubi9-python-3.12/nginx/root/usr/share/container-scripts/nginx/common.sh",
-           PROJECT_ROOT / "rstudio/c9s-python-3.11/nginx/root/usr/share/container-scripts/nginx/common.sh",
-           PROJECT_ROOT / "rstudio/rhel9-python-3.11/nginx/root/usr/share/container-scripts/nginx/common.sh",
-        ]
+            PROJECT_ROOT / "codeserver/ubi9-python-3.12/nginx/root/usr/share/container-scripts/nginx/common.sh",
+            PROJECT_ROOT / "rstudio/c9s-python-3.11/nginx/root/usr/share/container-scripts/nginx/common.sh",
+            PROJECT_ROOT / "rstudio/rhel9-python-3.11/nginx/root/usr/share/container-scripts/nginx/common.sh",
+        ],
     }
     for group_name, (first_file, *rest) in file_groups.items():
         with subtests.test(msg=f"Checking {group_name}"):
             for file in rest:
-                # file.write_text(first_file.read_text())
+                # file.write_text(first_file.read_text())  # update rest according to first
                 assert first_file.read_text() == file.read_text(), f"The files {first_file} and {file} do not match"
 
 
