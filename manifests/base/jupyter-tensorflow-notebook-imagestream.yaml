@@ -22,20 +22,20 @@ spec:
           [
             {"name": "CUDA", "version": "12.6"},
             {"name": "Python", "version": "v3.12"},
-            {"name": "TensorFlow", "version": "2.19"}
+            {"name": "TensorFlow", "version": "2.20"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
             {"name": "JupyterLab","version": "4.4"},
-            {"name": "TensorFlow", "version": "2.19"},
-            {"name": "Tensorboard", "version": "2.19"},
-            {"name": "Nvidia-CUDA-CU12-Bundle", "version": "12.5"},
-            {"name": "Boto3", "version": "1.37"},
+            {"name": "TensorFlow", "version": "2.20"},
+            {"name": "Tensorboard", "version": "2.20"},
+            {"name": "Nvidia-CUDA-CU12-Bundle", "version": "12.9"},
+            {"name": "Boto3", "version": "1.40"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
-            {"name": "Kfp", "version": "2.12"},
+            {"name": "Kfp", "version": "2.14"},
             {"name": "Matplotlib", "version": "3.10"},
-            {"name": "Numpy", "version": "1.26"},
+            {"name": "Numpy", "version": "2.1"},
             {"name": "Pandas", "version": "2.2"},
             {"name": "Scikit-learn", "version": "1.6"},
             {"name": "Scipy", "version": "1.15"},
@@ -43,6 +43,7 @@ spec:
             {"name": "PyMongo", "version": "4.11"},
             {"name": "Pyodbc", "version": "5.2"},
             {"name": "Codeflare-SDK", "version": "0.31"},
+            {"name": "Feast", "version": "0.53"},
             {"name": "Sklearn-onnx", "version": "1.18"},
             {"name": "Psycopg", "version": "3.2"},
             {"name": "MySQL Connector/Python", "version": "9.3"}
