@@ -120,7 +120,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         dnf install -y cmake make gcc-c++ pybind11-devel wget && \
         dnf clean all && \
         # Build and collect pyarrow wheel
-        git clone --depth 1 https://github.com/apache/arrow.git && \
+        git clone --depth 1 --branch "apache-arrow-17.0.0" https://github.com/apache/arrow.git && \
         cd arrow/cpp && \
         mkdir release && cd release && \
         cmake -DCMAKE_BUILD_TYPE=Release \
