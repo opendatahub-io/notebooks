@@ -29,25 +29,22 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
 	export ELECTRON_SKIP_BINARY_DOWNLOAD=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 	# install build dependencies
-#	dnf install -y \
-#	    git automake
-	dnf install -y jq patch libtool rsync gettext gcc-toolset-13 krb5-devel libX11-devel meson
+	dnf install -y jq patch libtool rsync gettext gcc-toolset-13 krb5-devel libX11-devel
 
 	. /opt/rh/gcc-toolset-13/enable
 
 	# build libxkbfile
-	git clone https://gitlab.freedesktop.org/xorg/util/macros.git
-	cd macros/
-	./autogen.sh && make install -j ${MAX_JOBS}
-	export ACLOCAL_PATH=/usr/local/share/aclocal/
-	cd .. && rm -rf macros
-	git clone https://gitlab.freedesktop.org/xorg/lib/libxkbfile.git
-	cd libxkbfile/
-	#./autogen.sh && make install -j ${MAX_JOBS}
-	meson setup builddir --prefix=/usr/ -Dwarning_level=3
-	meson compile -C builddir
-	meson install -C builddir
-	cd .. && rm -rf libxkbfile
+	export UTIL_MACROS_VERSION=1.20.2
+	curl -L https://www.x.org/releases/individual/util/util-macros-${UTIL_MACROS_VERSION}.tar.gz | tar xz
+	cd util-macros-${UTIL_MACROS_VERSION}/
+	./configure --prefix=/usr && make install -j ${MAX_JOBS}
+	cd .. && rm -rf util-macros-${UTIL_MACROS_VERSION}/
+
+	export X_KB_FILE_VERSION=1.1.3
+	curl -L https://www.x.org/releases/individual/lib/libxkbfile-${X_KB_FILE_VERSION}.tar.gz | tar xz
+	cd libxkbfile-${X_KB_FILE_VERSION}/
+	./configure --prefix=/usr && make install -j ${MAX_JOBS}
+	cd .. && rm -rf libxkbfile-${X_KB_FILE_VERSION}/
     export PKG_CONFIG_PATH=$(find / -type d -name "pkgconfig" 2>/dev/null | tr '\n' ':')
 
 	# install nfpm to build rpm
