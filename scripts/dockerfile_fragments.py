@@ -24,7 +24,10 @@ def main():
         blockinfile(
             dockerfile,
             textwrap.dedent(r"""
-            RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
+            # Problem: The operation would result in removing the following protected packages: systemd
+            #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
+            # Solution: --best --skip-broken does not work either, so use --nobest
+            RUN dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
                 && dnf clean all -y
             """),
             prefix="upgrade first to avoid fixable vulnerabilities",
