@@ -81,9 +81,11 @@ class Arm64Images(enum.Enum):
     INCLUDE = "include"
     ONLY = "only"
 
+
 class Ppc64leImages(enum.Enum):
     EXCLUDE = "exclude"
     INCLUDE = "include"
+
 
 class S390xImages(enum.Enum):
     EXCLUDE = "exclude"
