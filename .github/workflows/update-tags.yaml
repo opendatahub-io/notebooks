@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout repo
         uses: actions/checkout@v5
@@ -36,13 +37,15 @@ jobs:
           echo "Found previous tag: $prev_tag"
           echo "Replacing $prev_tag -> $new_tag"
 
-          find .tekton -type f -name "*.yaml" -print0 | xargs -0 -I{} perl -0777 -i -pe "s/\Q$prev_tag\E/\Q$new_tag\E/g" "{}"
+          find .tekton -type f -name "*.yaml" -print0 | xargs -0 -I{} perl -0777 -i -pe "s/\Q$prev_tag\E/$new_tag/g" "{}"
 
           # Export previous tag for later steps
           echo "previous_tag=$prev_tag" >> $GITHUB_OUTPUT
 
-      - name: Commit and push changes
+      - name: Commit and push changes to branch
+        id: commit
         run: |
+          branch="update-tekton-tag-${{ github.event.inputs.new_tag }}"
           prev_tag="${{ steps.replace.outputs.previous_tag }}"
           new_tag="${{ github.event.inputs.new_tag }}"
 
@@ -54,6 +57,27 @@ jobs:
             exit 0
           fi
 
+          git checkout -b "$branch"
           git add .tekton/*.yaml
           git commit -m "chore: update tekton tag from ${prev_tag} to ${new_tag}"
-          git push origin main
+          git push origin "$branch"
+          echo "branch=$branch" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        run: |
+          branch="${{ steps.commit.outputs.branch }}"
+          prev_tag="${{ steps.replace.outputs.previous_tag }}"
+          new_tag="${{ github.event.inputs.new_tag }}"
+
+          body=":rocket: Automated Tekton Image tag update.
+          - Updated from \`${prev_tag}\` → \`${new_tag}\`
+          - Created by \`.github/workflows/update-tekton-tags.yaml\`"
+
+          gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "chore: update Tekton Image tag ${prev_tag} → ${new_tag}" \
+            --body "$body" \
+            --head "$branch" \
+            --base main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
