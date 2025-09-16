@@ -5,7 +5,7 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # PyTorch packages
-    "torch==2.6.0+cu126",
+    "torch==2.6.0+cu126; platform_machine != 'ppc64le'",
 
     # TrustyAI packages
     # More information available at:
@@ -13,7 +13,7 @@ dependencies = [
     #   - https://github.com/trustyai-explainability/trustyai-explainability-python/blob/main/requirements.txt
     "transformers~=4.55.0",
     "datasets~=3.4.1",
-    "accelerate~=1.5.2",
+    "accelerate~=1.5.2; platform_machine != 'ppc64le'",
     "trustyai~=0.6.2",
     # Datascience and useful extensions
     "boto3~=1.40.27",
@@ -27,7 +27,7 @@ dependencies = [
     "scipy~=1.15.2",
     "skl2onnx~=1.18.0",
     "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
-    "codeflare-sdk~=0.31.1",
+    "codeflare-sdk~=0.31.0; platform_machine != 'ppc64le'",
     "kubeflow-training==1.9.2",
 
     # DB connectors
