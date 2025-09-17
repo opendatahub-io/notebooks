@@ -1,13 +1,33 @@
-.git/
-.idea/
-.venv/
 bin/
 ci/
 tests/
 
+# IDE
+.idea/
+
+# git
+.git/
+.gitignore
+.gitkeep
+
+# Python cache
 **/.mypy_cache/
 **/.pytest_cache/
 **/__pycache__/
 **/*.pyc
 
-**/Dockerfile
+# Virtual environment
+env/
+venv/
+.venv/
+*.egg-info/
+
+# Dockerfiles
+**/Dockerfile*
+
+# Logs
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
