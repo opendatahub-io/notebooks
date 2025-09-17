@@ -263,7 +263,7 @@ WORKDIR /opt/app-root/src
 
 CMD ["/opt/app-root/bin/run-code-server.sh"]
 
-FROM codeserver as tests
+FROM quay.io/opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9:on-pr-3e5282b4b338ca568dfe786a628483a410521b5f@sha256:ee9a05d784bb51cb9afb0e9f67abc8df230a6240af376ed17673e8deaf93ffdc as tests
 # language=python
 COPY <<'EOF' probe_check.py
 #!/usr/bin/env python3
