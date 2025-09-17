@@ -335,14 +335,7 @@ function _test_datascience_notebook()
     _run_test "${jupyter_datascience_notebook_id}"
 }
 
-# Description:
-# 	"Orchestration" function computes necessary parameters and prepares the running notebook workload for papermill tests to be invoked
-#		- notebook_id is calculated based on the workload name and computed accelerator value
-#		- Appropriate "source of truth" file to be used in asserting package version is copied into the running pod
-#		- papermill is installed on the running pod
-#		- All relevant tests based on the notebook_id are invoked
-function _handle_test()
-{
+function _get_notebook_id() {
     local notebook_id=
 
     # Due to existing logic - cuda accelerator value needs to be treated as empty string
@@ -371,6 +364,20 @@ function _handle_test()
             exit 1
             ;;
     esac
+
+    echo "${notebook_id}"
+}
+
+# Description:
+# 	"Orchestration" function computes necessary parameters and prepares the running notebook workload for papermill tests to be invoked
+#		- notebook_id is calculated based on the workload name and computed accelerator value
+#		- Appropriate "source of truth" file to be used in asserting package version is copied into the running pod
+#		- papermill is installed on the running pod
+#		- All relevant tests based on the notebook_id are invoked
+function _handle_test()
+{
+    local notebook_id=
+    notebook_id=$(_get_notebook_id)
 
     _create_test_versions_source_of_truth "${notebook_id}"
 
@@ -413,10 +420,15 @@ if ! [ -e "${yqbin}" ]; then
     exit 1
 fi
 
-printf '%s\n' "Waiting for ${notebook_name} workload to be ready.  This could take a few minutes..."
-_wait_for_workload "${notebook_name}"
+function main() {
+  printf '%s\n' "Waiting for ${notebook_name} workload to be ready.  This could take a few minutes..."
+  _wait_for_workload "${notebook_name}"
 
-notebook_workload_name=$("${kbin}" get pods -l app="${notebook_name}" -o jsonpath='{.items[0].metadata.name}')
+  notebook_workload_name=$("${kbin}" get pods -l app="${notebook_name}" -o jsonpath='{.items[0].metadata.name}')
 
-_handle_test
+  _handle_test
+}
 
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

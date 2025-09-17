@@ -165,7 +165,9 @@ def gha_log_group(title):
 # https://docs.python.org/3/library/unittest.mock-examples.html#patch-decorators
 @unittest.mock.patch("time.sleep", unittest.mock.Mock())
 class TestMakeTest(unittest.TestCase):
-    @unittest.mock.patch("make_test.execute")
+    target = execute.__module__ + "." + execute.__name__
+
+    @unittest.mock.patch(target)
     def test_make_commands_jupyter(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("jupyter-minimal-ubi9-python-3.11")
@@ -174,7 +176,7 @@ class TestMakeTest(unittest.TestCase):
         assert "make test-jupyter-minimal-ubi9-python-3.11" in commands
         assert "make undeploy9-jupyter-minimal-ubi9-python-3.11" in commands
 
-    @unittest.mock.patch("make_test.execute")
+    @unittest.mock.patch(target)
     def test_make_commands_jupyter_rocm(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("rocm-jupyter-tensorflow-ubi9-python-3.11")
@@ -183,7 +185,7 @@ class TestMakeTest(unittest.TestCase):
         assert "make test-jupyter-rocm-tensorflow-ubi9-python-3.11" in commands
         assert "make undeploy9-jupyter-rocm-tensorflow-ubi9-python-3.11" in commands
 
-    @unittest.mock.patch("make_test.execute")
+    @unittest.mock.patch(target)
     def test_make_commands_codeserver(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("codeserver-ubi9-python-3.11")
@@ -192,7 +194,7 @@ class TestMakeTest(unittest.TestCase):
         assert "make validate-codeserver-image image=codeserver-ubi9-python-3.11" in commands
         assert "make undeploy9-codeserver-ubi9-python-3.11" in commands
 
-    @unittest.mock.patch("make_test.execute")
+    @unittest.mock.patch(target)
     def test_make_commands_rstudio(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("rstudio-c9s-python-3.11")
@@ -201,7 +203,7 @@ class TestMakeTest(unittest.TestCase):
         assert "make validate-rstudio-image image=rstudio-c9s-python-3.11" in commands
         assert "make undeploy-c9s-rstudio-c9s-python-3.11" in commands
 
-    @unittest.mock.patch("make_test.execute")
+    @unittest.mock.patch(target)
     def test_make_commands_rsudio_rhel(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("rstudio-rhel9-python-3.11")
@@ -210,7 +212,7 @@ class TestMakeTest(unittest.TestCase):
         assert "make validate-rstudio-image image=rstudio-rhel9-python-3.11" in commands
         assert "make undeploy-rhel9-rstudio-rhel9-python-3.11" in commands
 
-    @unittest.mock.patch("make_test.execute")
+    @unittest.mock.patch(target)
     def test_make_commands_cuda_rstudio(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("cuda-rstudio-c9s-python-3.11")
@@ -219,7 +221,7 @@ class TestMakeTest(unittest.TestCase):
         assert "make validate-rstudio-image image=cuda-rstudio-c9s-python-3.11" in commands
         assert "make undeploy-c9s-rstudio-c9s-python-3.11" in commands
 
-    @unittest.mock.patch("make_test.execute")
+    @unittest.mock.patch(target)
     def test_make_commands_cuda_rstudio_rhel(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("cuda-rstudio-rhel9-python-3.11")
@@ -228,7 +230,7 @@ class TestMakeTest(unittest.TestCase):
         assert "make validate-rstudio-image image=cuda-rstudio-rhel9-python-3.11" in commands
         assert "make undeploy-rhel9-rstudio-rhel9-python-3.11" in commands
 
-    @unittest.mock.patch("make_test.execute")
+    @unittest.mock.patch(target)
     def test_make_commands_runtime(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("runtime-datascience-ubi9-python-3.11")
@@ -237,7 +239,7 @@ class TestMakeTest(unittest.TestCase):
         assert "make validate-runtime-image image=runtime-datascience-ubi9-python-3.11" in commands
         assert "make undeploy9-runtimes-datascience-ubi9-python-3.11" in commands
 
-    @unittest.mock.patch("make_test.execute")
+    @unittest.mock.patch(target)
     def test_make_commands_rocm_runtime(self, mock_execute: unittest.mock.Mock) -> None:
         """Compares the commands with what we had in the openshift/release yaml"""
         run_tests("rocm-runtime-pytorch-ubi9-python-3.11")
