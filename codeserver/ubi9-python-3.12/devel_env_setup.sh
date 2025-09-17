@@ -6,7 +6,7 @@ set -eoux pipefail
 # It installs the required build-time dependencies for python wheels                                #
 # OpenBlas is built from source (instead of distro provided) with recommended flags for performance #
 #####################################################################################################
-export WHEEL_DIR=${WHEEL_DIR:"/wheelsdir"}
+export WHEEL_DIR=${WHEEL_DIR:-"/wheelsdir"}
 mkdir -p ${WHEEL_DIR}
 
 build_pyarrow() {
