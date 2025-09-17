@@ -96,6 +96,8 @@ COPY <<EOF notebook_args.env
 --ServerApp.tornado_settings={"user":"${translatedUsername}","hub_host":"${origin}","hub_prefix":"/projects/${projectName}"}
 EOF
 
+RUN echo baf > /dev/stderr
+
 RUN <<'EOF'
 set -Eeuxo pipefail
 ls -AlF /proc/self/fd/2
