@@ -6,8 +6,11 @@ ARG BASE_IMAGE
 from quay.io/opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9:on-pr-3e5282b4b338ca568dfe786a628483a410521b5f@sha256:ee9a05d784bb51cb9afb0e9f67abc8df230a6240af376ed17673e8deaf93ffdc as codeserver
 
 FROM codeserver as tests
+USER 0
+RUN chown 1001:0 /dev/stderr /dev/stdout
+USER 1001
 # language=python
-COPY <<'EOF' probe_check.py
+COPY <<'EOF' /tmp/probe_check.py
 #!/usr/bin/env python3
 from __future__ import annotations
 """
@@ -87,7 +90,7 @@ ENV projectName=projectName
 ENV notebookId=notebookId
 ENV translatedUsername=sometranslatedUsername
 ENV origin=https://origin
-COPY <<EOF notebook_args.env
+COPY <<EOF /tmp/notebook_args.env
 --ServerApp.port=8888
 --ServerApp.token=''
 --ServerApp.password=''
@@ -96,19 +99,25 @@ COPY <<EOF notebook_args.env
 --ServerApp.tornado_settings={"user":"${translatedUsername}","hub_host":"${origin}","hub_prefix":"/projects/${projectName}"}
 EOF
 
-RUN echo baf > /dev/stderr
-
-RUN <<'EOF'
+RUN   <<'EOF'
 set -Eeuxo pipefail
-ls -AlF /proc/self/fd/2
-ls -AlF /dev/pts/0
-echo baf > /dev/stderr
-export NOTEBOOK_ARGS=$(cat notebook_args.env)
+script -qc "echo baf > /dev/stderr" /dev/null
+export NOTEBOOK_ARGS=$(cat /tmp/notebook_args.env)
 # NB_PREFIX is set by notebook-controller and codeserver scripting depends on it
 # https://github.com/opendatahub-io/kubeflow/blob/f924a96375988fe3801db883e99ce9ed1ab5939c/components/notebook-controller/controllers/notebook_controller.go#L417
 export NB_PREFIX=/notebook/${projectName}/${notebookId}
-/opt/app-root/bin/run-code-server.sh &
-python3 probe_check.py ${projectName} ${notebookId} 8888 |& tee /tmp/test_log.txt
+# NGINX_LOG_TO_VOLUME=true disables the /bin/ln -sf /dev/stderr ${NGINX_LOG_PATH}/error.log logic
+# rootless (or more like remote?) buildah, or is it shipwright on openshift, has /dev/stderr be a pipe
+# nginx tries to do some symlinks that then lead it to attempt to reopen /dev/stderr
+#  nginx: [alert] could not open error log file: open() "/var/log/nginx/error.log" failed (13: Permission denied)
+# evidence from KFLUXSPRT-5139: https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1758128206734419
+#  rwxrwxrwx. 1 default root   11 Sep 17 17:18 error.log -> /dev/stderr
+#  lrwxrwxrwx. 1 root   root     15 Sep 17 17:26 stderr -> /proc/self/fd/2
+#  l-wx------. 1 default root 64 Sep 17 17:38 /proc/self/fd/2 -> pipe:[9523152]
+# on regular linux machine that would be
+#  lrwx------. 1 default root 64 Sep 17 17:34 /proc/self/fd/2 -> /dev/pts/0
+NGINX_LOG_TO_VOLUME=true /opt/app-root/bin/run-code-server.sh &
+python3 /tmp/probe_check.py ${projectName} ${notebookId} 8888 |& tee /tmp/test_log.txt
 EOF
 
 from codeserver
