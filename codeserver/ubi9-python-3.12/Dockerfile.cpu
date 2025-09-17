@@ -3,122 +3,19 @@
 #########################
 ARG BASE_IMAGE
 
-from quay.io/opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9:on-pr-3e5282b4b338ca568dfe786a628483a410521b5f@sha256:ee9a05d784bb51cb9afb0e9f67abc8df230a6240af376ed17673e8deaf93ffdc as codeserver
+FROM quay.io/opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9:on-pr-3e5282b4b338ca568dfe786a628483a410521b5f@sha256:ee9a05d784bb51cb9afb0e9f67abc8df230a6240af376ed17673e8deaf93ffdc as codeserver
 
 FROM codeserver as tests
-USER 0
-RUN chown 1001:0 /dev/stderr /dev/stdout
-USER 1001
-# language=python
-COPY <<'EOF' /tmp/probe_check.py
-#!/usr/bin/env python3
-from __future__ import annotations
-"""
-Reproduce kubelet httpGet probe logic for the supplied path.
-Exits 0 if the probe will eventually pass, 1 otherwise.
-"""
-import sys
-import time
-from http.client import HTTPConnection, HTTPSConnection
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from typing import Type
-
-# probe constants from the odh-dashboard Deployment
-# https://github.com/opendatahub-io/odh-dashboard/blob/2.4.0-release/backend/src/utils/notebookUtils.ts#L310-L332
-INITIAL_DELAY = 10
-PERIOD        = 5
-TIMEOUT       = 1
-FAIL_THRESH   = 3
-SUCCESS_THRESH = 1
-
-def probe_once(connection_factory: Type[HTTPConnection], host: str, port: int, path: str) -> tuple[bool, str]:
-    conn = None
-    try:
-        conn = connection_factory(host, port, timeout=TIMEOUT)
-        conn.request("GET", path)
-        resp = conn.getresponse()
-        return 200 <= resp.status < 400, resp.status
-    except Exception as e:
-        return False, str(e)
-    finally:
-        try:
-            if conn:
-                conn.close()
-        except Exception:
-            pass
-
-def main() -> int:
-    if len(sys.argv) != 4:
-        print("usage: probe_check.py <namespace> <name> <notebook-port>", file=sys.stderr)
-        return 2
-
-    namespace, name, port = sys.argv[1:]
-    path = f"/notebook/{namespace}/{name}/api"
-
-    # kubelet waits initialDelaySeconds before the first probe
-    time.sleep(INITIAL_DELAY)
-
-    consecutive_failures = 0
-    consecutive_successes = 0
-
-    while True:
-        ok, err = probe_once(HTTPConnection, "127.0.0.1", int(port), path)
-        print("probe_once:", ok, err)
-
-        if ok:
-            consecutive_successes += 1
-            consecutive_failures = 0
-            if consecutive_successes >= SUCCESS_THRESH:
-                return 0
-        else:
-            consecutive_failures += 1
-            consecutive_successes = 0
-            if consecutive_failures >= FAIL_THRESH:
-                return 1
-
-        time.sleep(PERIOD)
-
-if __name__ == "__main__":
-    sys.exit(main())
-EOF
-
-# (outdated?) https://github.com/opendatahub-io/odh-dashboard/blob/2.4.0-release/backend/src/utils/notebookUtils.ts#L284-L293
-# https://github.com/opendatahub-io/odh-dashboard/blob/1d5a9065c10acc4706b84b06c67f27f16cf6dee7/frontend/src/api/k8s/notebooks.ts#L157-L170
-ENV projectName=projectName
-ENV notebookId=notebookId
-ENV translatedUsername=sometranslatedUsername
-ENV origin=https://origin
-COPY <<EOF /tmp/notebook_args.env
---ServerApp.port=8888
---ServerApp.token=''
---ServerApp.password=''
---ServerApp.base_url=/notebook/${projectName}/${notebookId}
---ServerApp.quit_button=False
---ServerApp.tornado_settings={"user":"${translatedUsername}","hub_host":"${origin}","hub_prefix":"/projects/${projectName}"}
-EOF
-
-RUN   <<'EOF'
+ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+COPY ${CODESERVER_SOURCE_CODE}/test /tmp/test
+# TODO(jdanek): add --mount=type=bind,target=/opt/app-root/src
+RUN <<'EOF'
 set -Eeuxo pipefail
-script -qc "echo baf > /dev/stderr" /dev/null
-export NOTEBOOK_ARGS=$(cat /tmp/notebook_args.env)
-# NB_PREFIX is set by notebook-controller and codeserver scripting depends on it
-# https://github.com/opendatahub-io/kubeflow/blob/f924a96375988fe3801db883e99ce9ed1ab5939c/components/notebook-controller/controllers/notebook_controller.go#L417
-export NB_PREFIX=/notebook/${projectName}/${notebookId}
-# NGINX_LOG_TO_VOLUME=true disables the /bin/ln -sf /dev/stderr ${NGINX_LOG_PATH}/error.log logic
+# workaround for KFLUXSPRT-5139: https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1758128206734419
 # rootless (or more like remote?) buildah, or is it shipwright on openshift, has /dev/stderr be a pipe
-# nginx tries to do some symlinks that then lead it to attempt to reopen /dev/stderr
-#  nginx: [alert] could not open error log file: open() "/var/log/nginx/error.log" failed (13: Permission denied)
-# evidence from KFLUXSPRT-5139: https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1758128206734419
-#  rwxrwxrwx. 1 default root   11 Sep 17 17:18 error.log -> /dev/stderr
-#  lrwxrwxrwx. 1 root   root     15 Sep 17 17:26 stderr -> /proc/self/fd/2
-#  l-wx------. 1 default root 64 Sep 17 17:38 /proc/self/fd/2 -> pipe:[9523152]
-# on regular linux machine that would be
-#  lrwx------. 1 default root 64 Sep 17 17:34 /proc/self/fd/2 -> /dev/pts/0
-#NGINX_LOG_TO_VOLUME=true
-script -qc "/opt/app-root/bin/run-code-server.sh" /dev/null &
-python3 /tmp/probe_check.py ${projectName} ${notebookId} 8888 |& tee /tmp/test_log.txt
+# our startup script creates some symlinks that then lead nginx to attempt to reopen /dev/stderr
+# > nginx: [alert] could not open error log file: open() "/var/log/nginx/error.log" failed (13: Permission denied)
+script -qec "/tmp/test/test_startup.sh" /dev/null |& tee /tmp/test_log.txt
 EOF
 
 from codeserver
