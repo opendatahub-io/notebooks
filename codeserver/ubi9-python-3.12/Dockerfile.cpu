@@ -98,6 +98,7 @@ EOF
 
 RUN <<'EOF'
 set -Eeuxo pipefail
+echo baf > /dev/stderr
 export NOTEBOOK_ARGS=$(cat notebook_args.env)
 # NB_PREFIX is set by notebook-controller and codeserver scripting depends on it
 # https://github.com/opendatahub-io/kubeflow/blob/f924a96375988fe3801db883e99ce9ed1ab5939c/components/notebook-controller/controllers/notebook_controller.go#L417
