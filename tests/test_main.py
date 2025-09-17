@@ -280,7 +280,6 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         ),
         ("pandas", ("~=2.2.3", "~=1.5.3")),
         ("scikit-learn", ("~=1.6.1", "~=1.7.0")),
-        ("codeflare-sdk", ("~=0.29.0", "~=0.30.0")),
         ("ipython-genutils", (">=0.2.0", "~=0.2.0")),
         ("jinja2", (">=3.1.6", "~=3.1.6")),
         ("jupyter-client", ("~=8.6.3", ">=8.6.3")),
