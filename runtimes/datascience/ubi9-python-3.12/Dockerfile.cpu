@@ -104,19 +104,34 @@ ARG TARGETARCH
 USER 0
 WORKDIR /tmp/build-wheels
 
+# Set pyarrow version for s390x
+RUN if [ "$TARGETARCH" = "s390x" ]; then \
+    echo 'export PYARROW_VERSION=17.0.0' >> /etc/profile.d/s390x.sh; \
+fi
+
 # Build pyarrow optimized for s390x
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=cache,target=/root/.cache/dnf \
     if [ "$TARGETARCH" = "s390x" ]; then \
-        # Install build dependencies (shared for pyarrow and onnx)
-        dnf install -y cmake make gcc-c++ pybind11-devel wget && \
+        # Install build dependencies
+        dnf install -y cmake make gcc-c++ pybind11-devel wget git \
+            openssl-devel zlib-devel bzip2-devel lz4-devel \
+            ninja-build && \
         dnf clean all && \
-        # Build and collect pyarrow wheel
-        git clone --depth 1 https://github.com/apache/arrow.git && \
-        cd arrow/cpp && \
-        mkdir release && cd release && \
+        # Source the environment variables
+        source /etc/profile.d/s390x.sh && \
+        # Clone specific version of arrow
+        git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git && \
+        cd arrow && \
+        # Set environment variables for build
+        export ARROW_HOME=/usr/local && \
+        export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:$LD_LIBRARY_PATH && \
+        export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH && \
+        # Build C++ library first
+        cd cpp && \
+        mkdir build && cd build && \
         cmake -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_INSTALL_PREFIX=/usr/local \
+              -DCMAKE_INSTALL_PREFIX=$ARROW_HOME \
               -DARROW_PYTHON=ON \
               -DARROW_PARQUET=ON \
               -DARROW_ORC=ON \
@@ -124,22 +139,30 @@ RUN --mount=type=cache,target=/root/.cache/pip \
               -DARROW_JSON=ON \
               -DARROW_CSV=ON \
               -DARROW_DATASET=ON \
-              -DARROW_DEPENDENCY_SOURCE=BUNDLED \
-              -DARROW_WITH_LZ4=OFF \
-              -DARROW_WITH_ZSTD=OFF \
+              -DARROW_WITH_LZ4=ON \
+              -DARROW_WITH_ZSTD=ON \
               -DARROW_WITH_SNAPPY=OFF \
+              -DARROW_WITH_BZ2=ON \
+              -DARROW_WITH_ZLIB=ON \
               -DARROW_BUILD_TESTS=OFF \
               -DARROW_BUILD_BENCHMARKS=OFF \
+              -DARROW_USE_CCACHE=OFF \
+              -GNinja \
               .. && \
-        make -j$(nproc) VERBOSE=1 && \
-        make install -j$(nproc) && \
+        ninja install && \
         cd ../../python && \
+        # Install Python build requirements
         pip install --no-cache-dir -r requirements-build.txt && \
+        # Build Python package
         PYARROW_WITH_PARQUET=1 \
         PYARROW_WITH_DATASET=1 \
         PYARROW_WITH_FILESYSTEM=1 \
         PYARROW_WITH_JSON=1 \
         PYARROW_WITH_CSV=1 \
+        PYARROW_WITH_LZ4=1 \
+        PYARROW_WITH_ZSTD=1 \
+        PYARROW_WITH_BZ2=1 \
+        PYARROW_BUNDLE_ARROW_CPP=1 \
         PYARROW_PARALLEL=$(nproc) \
         python setup.py build_ext --build-type=release --bundle-arrow-cpp bdist_wheel && \
         mkdir -p /tmp/wheels && \
