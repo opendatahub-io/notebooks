@@ -310,9 +310,9 @@ class TestManifests:
             "runtime-minimal-ubi9-python-3.12": ROOT_DIR / "manifests/base/jupyter-minimal-notebook-imagestream.yaml",
             # no -gpu-?
             "cuda-jupyter-minimal-ubi9-python-3.12": ROOT_DIR
-            / "manifests/base/jupyter-minimal-notebook-imagestream.yaml",
+            / "manifests/base/jupyter-minimal-gpu-notebook-imagestream.yaml",
             "rocm-jupyter-minimal-ubi9-python-3.12": ROOT_DIR
-            / "manifests/base/jupyter-minimal-notebook-imagestream.yaml",
+            / "manifests/base/jupyter-rocm-minimal-notebook-imagestream.yaml",
             "jupyter-datascience-ubi9-python-3.12": ROOT_DIR
             / "manifests/base/jupyter-datascience-notebook-imagestream.yaml",
             "runtime-datascience-ubi9-python-3.12": ROOT_DIR
@@ -322,9 +322,9 @@ class TestManifests:
             "runtime-cuda-pytorch-ubi9-python-3.12": ROOT_DIR
             / "manifests/base/jupyter-pytorch-notebook-imagestream.yaml",
             "rocm-jupyter-pytorch-ubi9-python-3.12": ROOT_DIR
-            / "manifests/base/jupyter-pytorch-notebook-imagestream.yaml",
+            / "manifests/base/jupyter-rocm-pytorch-notebook-imagestream.yaml",
             "rocm-runtime-pytorch-ubi9-python-3.12": ROOT_DIR
-            / "manifests/base/jupyter-pytorch-notebook-imagestream.yaml",
+            / "manifests/base/jupyter-rocm-pytorch-notebook-imagestream.yaml",
             "cuda-jupyter-pytorch-llmcompressor-ubi9-python-3.12": ROOT_DIR
             / "manifests/base/jupyter-pytorch-notebook-imagestream.yaml",
             "runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12": ROOT_DIR
@@ -334,9 +334,9 @@ class TestManifests:
             "runtime-cuda-tensorflow-ubi9-python-3.12": ROOT_DIR
             / "manifests/base/jupyter-tensorflow-notebook-imagestream.yaml",
             "rocm-jupyter-tensorflow-ubi9-python-3.12": ROOT_DIR
-            / "manifests/base/jupyter-tensorflow-notebook-imagestream.yaml",
+            / "manifests/base/jupyter-rocm-tensorflow-notebook-imagestream.yaml",
             "rocm-runtime-tensorflow-ubi9-python-3.12": ROOT_DIR
-            / "manifests/base/jupyter-tensorflow-notebook-imagestream.yaml",
+            / "manifests/base/jupyter-rocm-tensorflow-notebook-imagestream.yaml",
             "jupyter-trustyai-ubi9-python-3.12": ROOT_DIR / "manifests/base/jupyter-trustyai-notebook-imagestream.yaml",
             "codeserver-ubi9-python-3.12": ROOT_DIR / "manifests/base/code-server-notebook-imagestream.yaml",
             "rstudio-ubi9-python-3.11": ROOT_DIR / "manifests/base/rstudio-buildconfig.yaml",
@@ -350,7 +350,11 @@ class TestManifests:
                 continue
             if "rstudio" in target:
                 continue
-            yield target, expected_manifest_paths[target]
+            try:
+                expected_manifest_path = expected_manifest_paths[target]
+            except KeyError as e:
+                raise ValueError(f"Missing expected manifest path for target '{target}'") from e
+            yield target, expected_manifest_path
 
     @pytest.mark.parametrize("target,expected_manifest_path", get_targets())
     def test_compare_with_shell_implementation(self, target: str, expected_manifest_path: Path):
