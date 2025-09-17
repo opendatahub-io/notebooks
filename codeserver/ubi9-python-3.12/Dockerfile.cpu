@@ -116,7 +116,8 @@ export NB_PREFIX=/notebook/${projectName}/${notebookId}
 #  l-wx------. 1 default root 64 Sep 17 17:38 /proc/self/fd/2 -> pipe:[9523152]
 # on regular linux machine that would be
 #  lrwx------. 1 default root 64 Sep 17 17:34 /proc/self/fd/2 -> /dev/pts/0
-NGINX_LOG_TO_VOLUME=true /opt/app-root/bin/run-code-server.sh &
+#NGINX_LOG_TO_VOLUME=true
+script -qc "/opt/app-root/bin/run-code-server.sh" /dev/null &
 python3 /tmp/probe_check.py ${projectName} ${notebookId} 8888 |& tee /tmp/test_log.txt
 EOF
 
