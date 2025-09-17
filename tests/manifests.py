@@ -276,12 +276,16 @@ class TestManifests:
         self,
         shell_script_path: Path,
         shell_function_name: str,
-        args: Iterable[str] = (),
+        script_args: Iterable[str] = (),
+        function_args: Iterable[str] = (),
         env: dict[str, str] | None = None,
     ) -> str:
         env = env or {}
+        script_args_str = " ".join(shlex.quote(arg) for arg in script_args)
+        function_args_str = " ".join(shlex.quote(arg) for arg in function_args)
         shell_notebook_id = subprocess.run(
-            f"""source {shell_script_path} && {shell_function_name} {" ".join(shlex.quote(arg) for arg in args)}""",
+            # set temporary positional parameters for the `source`ing
+            f"""set -- {script_args_str} && source {shell_script_path} && set -- && {shell_function_name} {function_args_str}""",
             shell=True,
             executable="/bin/bash",
             env=env,
@@ -300,6 +304,7 @@ class TestManifests:
         python_311 = gen_gha_matrix_jobs.extract_image_targets(ROOT_DIR, env={"RELEASE_PYTHON_VERSION": "3.11"})
         python_312 = gen_gha_matrix_jobs.extract_image_targets(ROOT_DIR, env={"RELEASE_PYTHON_VERSION": "3.12"})
         targets = python_311 + python_312
+        # TODO(jdanek): this is again duplicating knowledge, but, what can I do?
         expected_manifest_paths = {
             "jupyter-minimal-ubi9-python-3.12": ROOT_DIR / "manifests/base/jupyter-minimal-notebook-imagestream.yaml",
             "runtime-minimal-ubi9-python-3.12": ROOT_DIR / "manifests/base/jupyter-minimal-notebook-imagestream.yaml",
@@ -354,6 +359,7 @@ class TestManifests:
         notebook_id = self.run_shell_function(
             shell_script_path,
             "_get_notebook_id",
+            script_args=[target],
             env={"notebook_workload_name": target},
         )
         assert notebook_id
@@ -361,6 +367,7 @@ class TestManifests:
         source_of_truth_filepath = self.run_shell_function(
             shell_script_path,
             "_get_source_of_truth_filepath",
-            [notebook_id],
+            script_args=[target],
+            function_args=[notebook_id],
         )
         assert source_of_truth_filepath == str(expected_manifest_path)
