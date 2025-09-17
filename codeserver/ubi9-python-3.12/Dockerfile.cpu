@@ -98,6 +98,7 @@ EOF
 
 RUN <<'EOF'
 set -Eeuxo pipefail
+ls -AlF /proc/self/fd/2
 echo baf > /dev/stderr
 export NOTEBOOK_ARGS=$(cat notebook_args.env)
 # NB_PREFIX is set by notebook-controller and codeserver scripting depends on it
