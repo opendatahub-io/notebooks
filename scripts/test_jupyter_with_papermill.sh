@@ -185,38 +185,25 @@ function _get_source_of_truth_filepath()
     local notebook_id="${1##*/}"
 
     local manifest_directory="${root_repo_directory}/manifests"
-    local imagestream_directory=
-    local file_suffix=
+    local imagestream_directory="${manifest_directory}/base"
+
+    local file_suffix='notebook-imagestream.yaml'
     local filename=
-    case "${python_flavor}" in
-        python-3.12)
-            imagestream_directory="${manifest_directory}/overlays/additional"
-            file_suffix='imagestream.yaml'
-
-            local imagestream_accelerator_flavor="${accelerator_flavor:-cpu}"
-            filename="jupyter-${notebook_id}-${imagestream_accelerator_flavor}-py312-${os_flavor}-${file_suffix}"
+    case "${notebook_id}" in
+        *$jupyter_minimal_notebook_id*)
+            filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
+            if [ "${accelerator_flavor}" = 'cuda' ]; then
+                filename="jupyter-${notebook_id}-gpu-${file_suffix}"
+            fi
             ;;
-        *)
-            imagestream_directory="${manifest_directory}/base"
-            file_suffix='notebook-imagestream.yaml'
-
-            case "${notebook_id}" in
-                *$jupyter_minimal_notebook_id*)
-                    filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
-                    if [ "${accelerator_flavor}" = 'cuda' ]; then
-                        filename="jupyter-${notebook_id}-gpu-${file_suffix}"
-                    fi
-                    ;;
-                *$jupyter_datascience_notebook_id* | *$jupyter_trustyai_notebook_id*)
-                    filename="jupyter-${notebook_id}-${file_suffix}"
-                    ;;
-                *$jupyter_pytorch_notebook_id* | *$jupyter_tensorflow_notebook_id*)
-                    filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
-                    if [ "${accelerator_flavor}" = 'cuda' ]; then
-                        filename="jupyter-${notebook_id}-${file_suffix}"
-                    fi
-                    ;;
-            esac
+        *$jupyter_datascience_notebook_id* | *$jupyter_trustyai_notebook_id*)
+            filename="jupyter-${notebook_id}-${file_suffix}"
+            ;;
+        *$jupyter_pytorch_notebook_id* | *$jupyter_tensorflow_notebook_id*)
+            filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
+            if [ "${accelerator_flavor}" = 'cuda' ]; then
+                filename="jupyter-${notebook_id}-${file_suffix}"
+            fi
             ;;
     esac
 
@@ -335,14 +322,7 @@ function _test_datascience_notebook()
     _run_test "${jupyter_datascience_notebook_id}"
 }
 
-# Description:
-# 	"Orchestration" function computes necessary parameters and prepares the running notebook workload for papermill tests to be invoked
-#		- notebook_id is calculated based on the workload name and computed accelerator value
-#		- Appropriate "source of truth" file to be used in asserting package version is copied into the running pod
-#		- papermill is installed on the running pod
-#		- All relevant tests based on the notebook_id are invoked
-function _handle_test()
-{
+function _get_notebook_id() {
     local notebook_id=
 
     # Due to existing logic - cuda accelerator value needs to be treated as empty string
@@ -371,6 +351,20 @@ function _handle_test()
             exit 1
             ;;
     esac
+
+    echo "${notebook_id}"
+}
+
+# Description:
+# 	"Orchestration" function computes necessary parameters and prepares the running notebook workload for papermill tests to be invoked
+#		- notebook_id is calculated based on the workload name and computed accelerator value
+#		- Appropriate "source of truth" file to be used in asserting package version is copied into the running pod
+#		- papermill is installed on the running pod
+#		- All relevant tests based on the notebook_id are invoked
+function _handle_test()
+{
+    local notebook_id=
+    notebook_id=$(_get_notebook_id)
 
     _create_test_versions_source_of_truth "${notebook_id}"
 
@@ -413,10 +407,15 @@ if ! [ -e "${yqbin}" ]; then
     exit 1
 fi
 
-printf '%s\n' "Waiting for ${notebook_name} workload to be ready.  This could take a few minutes..."
-_wait_for_workload "${notebook_name}"
+function main() {
+  printf '%s\n' "Waiting for ${notebook_name} workload to be ready.  This could take a few minutes..."
+  _wait_for_workload "${notebook_name}"
 
-notebook_workload_name=$("${kbin}" get pods -l app="${notebook_name}" -o jsonpath='{.items[0].metadata.name}')
+  notebook_workload_name=$("${kbin}" get pods -l app="${notebook_name}" -o jsonpath='{.items[0].metadata.name}')
 
-_handle_test
+  _handle_test
+}
 
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
