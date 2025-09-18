@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # get_matched_files finds file for image extending
 function get_matched_files() {
@@ -17,14 +17,14 @@ function process_extending_files() {
   local custom_dir default_dir
   custom_dir=$1
   default_dir=$2
-  while read filename ; do
-    if [ $filename ]; then
+  while read -r filename ; do
+    if [ "$filename" ]; then
       echo "=> sourcing $filename ..."
-      # Custom file is prefered
-      if [ -f $custom_dir/$filename ]; then
-        source $custom_dir/$filename
-      elif [ -f $default_dir/$filename ]; then 
-        source $default_dir/$filename
+      # custom file has precedence
+      if [ -f "$custom_dir/$filename" ]; then
+        source "$custom_dir/$filename"
+      elif [ -f "$default_dir/$filename" ]; then
+        source "$default_dir/$filename"
       fi
     fi
   done <<<"$(get_matched_files "$custom_dir" "$default_dir" '*.sh' | sort -u)"
