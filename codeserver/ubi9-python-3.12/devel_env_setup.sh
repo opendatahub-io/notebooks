@@ -6,6 +6,40 @@ set -eoux pipefail
 # It installs the required build-time dependencies for python wheels                                #
 # OpenBlas is built from source (instead of distro provided) with recommended flags for performance #
 #####################################################################################################
+export WHEEL_DIR=${WHEEL_DIR:-"/wheelsdir"}
+mkdir -p ${WHEEL_DIR}
+
+build_pyarrow() {
+    CURDIR=$(pwd)
+
+    export PYARROW_VERSION=${1:-$(curl -s https://api.github.com/repos/apache/arrow/releases/latest | jq -r '.tag_name' | grep -Eo "[0-9\.]+")}
+
+    TEMP_BUILD_DIR=$(mktemp -d)
+    cd ${TEMP_BUILD_DIR}
+
+    : ================== Installing Pyarrow ==================
+    git clone --recursive https://github.com/apache/arrow.git -b apache-arrow-${PYARROW_VERSION}
+    cd arrow/cpp
+    mkdir build && cd build
+    cmake -DCMAKE_BUILD_TYPE=release \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DARROW_PYTHON=ON \
+        -DARROW_BUILD_TESTS=OFF \
+        -DARROW_JEMALLOC=ON \
+        -DARROW_BUILD_STATIC="OFF" \
+        -DARROW_PARQUET=ON \
+        ..
+    make install -j ${MAX_JOBS:-$(nproc)}
+    cd ../../python/
+    uv pip install -v -r requirements-wheel-build.txt
+    PYARROW_PARALLEL=${PYARROW_PARALLEL:-$(nproc)} \
+    python setup.py build_ext \
+        --build-type=release --bundle-arrow-cpp \
+        bdist_wheel --dist-dir ${WHEEL_DIR}
+
+    cd ${CURDIR}
+    rm -rf ${TEMP_BUILD_DIR}
+}
 
 if [[ $(uname -m) == "ppc64le" ]]; then
     # install development packages
@@ -36,6 +70,10 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/OpenBLAS/lib/
     export PKG_CONFIG_PATH=$(find / -type d -name "pkgconfig" 2>/dev/null | tr '\n' ':')
     export CMAKE_ARGS="-DPython3_EXECUTABLE=python"
+    
+    PYARROW_VERSION=$(grep -A1 '"pyarrow"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
+    build_pyarrow ${PYARROW_VERSION}
+    uv pip install ${WHEEL_DIR}/*.whl
 else
     # only for mounting on non-ppc64le
     mkdir -p /root/OpenBLAS/
