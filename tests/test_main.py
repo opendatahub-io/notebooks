@@ -1,3 +1,4 @@
+# ruff: noqa: COM819
 from __future__ import annotations
 
 import dataclasses
