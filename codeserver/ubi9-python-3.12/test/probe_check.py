@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+
 """
 Reproduce kubelet httpGet probe logic for the supplied path.
 Exits 0 if the probe will eventually pass, 1 otherwise.
@@ -15,10 +16,11 @@ if TYPE_CHECKING:
 # probe constants from the odh-dashboard Deployment
 # https://github.com/opendatahub-io/odh-dashboard/blob/2.4.0-release/backend/src/utils/notebookUtils.ts#L310-L332
 INITIAL_DELAY = 10
-PERIOD        = 5
-TIMEOUT       = 1
-FAIL_THRESH   = 3
+PERIOD = 5
+TIMEOUT = 1
+FAIL_THRESH = 3
 SUCCESS_THRESH = 1
+
 
 def probe_once(connection_factory: Type[HTTPConnection], host: str, port: int, path: str) -> tuple[bool, str]:
     conn = None
@@ -26,7 +28,7 @@ def probe_once(connection_factory: Type[HTTPConnection], host: str, port: int, p
         conn = connection_factory(host, port, timeout=TIMEOUT)
         conn.request("GET", path)
         resp = conn.getresponse()
-        return 200 <= resp.status < 400, resp.status
+        return 200 <= resp.status < 400, str(resp.status)
     except Exception as e:
         return False, str(e)
     finally:
@@ -36,12 +38,8 @@ def probe_once(connection_factory: Type[HTTPConnection], host: str, port: int, p
         except Exception:
             pass
 
-def main() -> int:
-    if len(sys.argv) != 4:
-        print("usage: probe_check.py <namespace> <name> <notebook-port>", file=sys.stderr)
-        return 2
 
-    namespace, name, port = sys.argv[1:]
+def main(namespace, name, port) -> int:
     path = f"/notebook/{namespace}/{name}/api"
 
     # kubelet waits initialDelaySeconds before the first probe
@@ -67,5 +65,11 @@ def main() -> int:
 
         time.sleep(PERIOD)
 
+
 if __name__ == "__main__":
-    sys.exit(main())
+    if len(sys.argv) != 4:
+        print("usage: probe_check.py <namespace> <name> <notebook-port>", file=sys.stderr)
+        sys.exit(2)
+
+    namespace, name, port = sys.argv[1:]
+    sys.exit(main(namespace, name, port))

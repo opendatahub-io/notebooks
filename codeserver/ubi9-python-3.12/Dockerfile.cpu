@@ -15,7 +15,7 @@ set -Eeuxo pipefail
 # rootless (or more like remote?) buildah, or is it shipwright on openshift, has /dev/stderr be a pipe
 # our startup script creates some symlinks that then lead nginx to attempt to reopen /dev/stderr
 # > nginx: [alert] could not open error log file: open() "/var/log/nginx/error.log" failed (13: Permission denied)
-script -qec "/tmp/test/test_startup.sh" /dev/null |& tee /tmp/test_log.txt
+python3 /tmp/test/test_startup.py |& tee /tmp/test_log.txt
 EOF
 
 from codeserver
