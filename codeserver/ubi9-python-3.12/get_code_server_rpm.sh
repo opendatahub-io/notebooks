@@ -20,7 +20,7 @@ ARCH="${UNAME_TO_GOARCH[$(uname -m)]}"
 if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
 
 	export MAX_JOBS=${MAX_JOBS:-$(nproc)}
-	export NODE_VERSION=${NODE_VERSION:-24.8.0}
+	export NODE_VERSION=${NODE_VERSION:-22.19.0}
 	export CODESERVER_VERSION=${CODESERVER_VERSION:-v4.104.0}
 
 	export NVM_DIR=/root/.nvm VENV=/opt/.venv
