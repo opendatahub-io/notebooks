@@ -129,7 +129,8 @@ def main():
                 software.append(f"{sw_name}: {sw_version}")
 
             # in 2.16.1 we only have RStudio as tech preview, and that is not a prebuilt image we ship
-            maybe_techpreview = "" if name not in () else " (Technology Preview)"
+            tech_preview_names = ()  # or define the actual names you want to check
+            maybe_techpreview = "" if name not in tech_preview_names else " (Technology Preview)"
             maybe_recommended = "" if not recommended or len(imagestream.tags) == 1 else " (Recommended)"
 
             tabular_data.append(

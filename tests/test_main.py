@@ -214,7 +214,7 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
         (
             "Numpy",
             (
-                "1.26", # trustyai 0.6.2 depends on numpy~=1.26.4
+                "1.26",  # trustyai 0.6.2 depends on numpy~=1.26.4
                 # 2.0 for tensorflow rocm, but we don't have that in manifests
                 "2.1",  # for tensorflow cuda
                 "2.2",  # for python 3.11 n-1 images
@@ -274,11 +274,11 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         (
             "numpy",
             (
-                "~=1.26.4", # trustyai 0.6.2 depends on numpy~=1.26.4
+                "~=1.26.4",  # trustyai 0.6.2 depends on numpy~=1.26.4
                 "~=2.0.2",  # for tensorflow rocm
-                "~=2.1.3",  # 
-                "~=2.2.6",  # 
-                "~=2.3.3"   # for tensorflow cuda and latest possible
+                "~=2.1.3",
+                "~=2.2.6",
+                "~=2.3.3",  # for tensorflow cuda and latest possible
             ),
         ),
         ("pandas", ("~=2.3.2", "~=1.5.3")),
