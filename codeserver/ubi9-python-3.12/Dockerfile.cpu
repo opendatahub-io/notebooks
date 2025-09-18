@@ -21,7 +21,7 @@ COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/y
 
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 
-ARG NODE_VERSION=24.8.0
+ARG NODE_VERSION=22.19.0
 
 ARG CODESERVER_VERSION=v4.104.0
 
