@@ -270,3 +270,15 @@ RUN chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
 WORKDIR /opt/app-root/src
 
 CMD ["/opt/app-root/bin/run-code-server.sh"]
+
+FROM codeserver as tests
+ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+COPY ${CODESERVER_SOURCE_CODE}/test /tmp/test
+# TODO(jdanek): add --mount=type=bind,target=/opt/app-root/src
+RUN <<'EOF'
+set -Eeuxo pipefail
+python3 /tmp/test/test_startup.py |& tee /tmp/test_log.txt
+EOF
+
+from codeserver
+COPY --from=tests /tmp/test_log.txt /tmp/test_log.txt
