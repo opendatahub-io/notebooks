@@ -240,6 +240,13 @@ COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
 COPY --from=whl-cache /tmp/control /dev/null
 
 # Install packages and cleanup
+# (ARCH-ppc64le): install packages (eg. pyarrow) that need to be built from source repository on ppc64le
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw \
+    bash -c ' \
+        if [[ $(uname -m) == "ppc64le" ]]; then \
+            uv pip install /wheelsdir/*.whl; \
+        fi '
 # install packages as USER 0 (this will allow us to consume uv cache)
 RUN --mount=type=cache,target=/root/.cache/uv \
     echo "Installing softwares and packages" && \
