@@ -20,8 +20,13 @@ USER 0
 # By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
 COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 
+ARG TARGETARCH
+
 # upgrade first to avoid fixable vulnerabilities begin
-RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
+# Problem: The operation would result in removing the following protected packages: systemd
+#  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
+# Solution: --best --skip-broken does not work either, so use --nobest
+RUN dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
     && dnf clean all -y
 # upgrade first to avoid fixable vulnerabilities end
 
@@ -273,6 +278,7 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
     else \
         echo "Not ppc64le, skipping pyarrow build" && mkdir -p /arrowwheels; \
     fi
+
 #######################
 # runtime-datascience #
 #######################
@@ -308,6 +314,7 @@ RUN if [ "$TARGETARCH" = "s390x" ]; then \
 else \
     echo "Skipping wheel install for $TARGETARCH"; \
 fi
+
 
 # Install Python packages from pylock.toml
 COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml ./
