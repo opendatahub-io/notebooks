@@ -92,11 +92,6 @@ class TestBaseImage:
                         json.dumps({"dir": path, "count_scanned": count_scanned, "unsatisfied": unsatisfied_deps}),
                     )
 
-                ecode, output = container.exec(["/bin/sh", "-c", "oc version"])
-
-                logging.debug(output.decode())
-                assert ecode == 0
-
             _ecode, output = container.exec(
                 encode_python_function_execution_command_interpreter("/usr/bin/python3", check_elf_file)
             )
@@ -128,6 +123,9 @@ class TestBaseImage:
         self._run_test(image=image, test_fn=test_fn)
 
     def test_oc_command_runs(self, image: str):
+        if utils.is_rstudio_image(image):
+            pytest.skip("oc command is not preinstalled in RStudio images.")
+
         def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["/bin/sh", "-c", "oc version"])
 
@@ -137,6 +135,9 @@ class TestBaseImage:
         self._run_test(image=image, test_fn=test_fn)
 
     def test_skopeo_command_runs(self, image: str):
+        if utils.is_rstudio_image(image):
+            pytest.skip("skopeo command is not preinstalled in RStudio images.")
+
         def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["/bin/sh", "-c", "skopeo --version"])
 
@@ -164,6 +165,8 @@ class TestBaseImage:
         """Establishes a best-effort fake FIPS environment and attempts to execute `oc` binary in it.
 
         Related issue: RHOAIENG-4350 In workbench the oc CLI tool cannot be used on FIPS enabled cluster"""
+        if utils.is_rstudio_image(image):
+            pytest.skip("oc command is not preinstalled in RStudio images.")
         with tempfile.TemporaryDirectory() as tmp_crypto:
             # Ubuntu does not even have /proc/sys/crypto directory, unless FIPS is activated and machine
             #  is rebooted, see https://ubuntu.com/security/certifications/docs/fips-enablement

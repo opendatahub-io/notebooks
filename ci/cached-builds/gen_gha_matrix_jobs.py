@@ -30,6 +30,11 @@ ARM64_COMPATIBLE = {
     "runtime-cuda-tensorflow-ubi9-python-3.12",
 }
 
+PPC64LE_COMPATIBLE = {
+    "jupyter-minimal-ubi9-python-3.12",
+    "jupyter-datascience-ubi9-python-3.12",
+}
+
 S390X_COMPATIBLE = {
     "runtime-minimal-ubi9-python-3.11",
     "runtime-minimal-ubi9-python-3.12",
@@ -77,6 +82,11 @@ class Arm64Images(enum.Enum):
     ONLY = "only"
 
 
+class Ppc64leImages(enum.Enum):
+    EXCLUDE = "exclude"
+    INCLUDE = "include"
+
+
 class S390xImages(enum.Enum):
     EXCLUDE = "exclude"
     INCLUDE = "include"
@@ -110,6 +120,15 @@ def main() -> None:
         default=Arm64Images.INCLUDE,
         nargs="?",
         help="Whether to include, exclude, or only include arm64 images",
+    )
+    argparser.add_argument(
+        "--ppc64le-images",
+        type=Ppc64leImages,
+        choices=list(Ppc64leImages),
+        required=False,
+        default=Ppc64leImages.INCLUDE,
+        nargs="?",
+        help="Whether to include or exclude ppc64le images",
     )
     argparser.add_argument(
         "--s390x-images",
@@ -147,6 +166,9 @@ def main() -> None:
         if args.arm64_images != Arm64Images.EXCLUDE and args.s390x_images != S390xImages.ONLY:
             if target in ARM64_COMPATIBLE:
                 targets_with_platform.append((target, "linux/arm64"))
+        if args.ppc64le_images != Ppc64leImages.EXCLUDE:
+            if target in PPC64LE_COMPATIBLE:
+                targets_with_platform.append((target, "linux/ppc64le"))
         if args.s390x_images != S390xImages.EXCLUDE and args.arm64_images != Arm64Images.ONLY:
             # NOTE: hardcode the list of s390x-compatible Makefile targets in S390X_COMPATIBLE
             if target in S390X_COMPATIBLE:

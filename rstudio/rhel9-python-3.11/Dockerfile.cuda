@@ -15,22 +15,19 @@ RUN pip install --no-cache-dir -U "micropipenv[toml]==1.9.0" "uv==0.8.12"
 USER root
 
 # upgrade first to avoid fixable vulnerabilities begin
-RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
+# Problem: The operation would result in removing the following protected packages: systemd
+#  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
+# Solution: --best --skip-broken does not work either, so use --nobest
+RUN dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
     && dnf clean all -y
 # upgrade first to avoid fixable vulnerabilities end
 
 # Install useful OS packages
-RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+# remove skopeo, CVE-2025-4674
+RUN dnf install -y mesa-libGL && dnf clean all && rm -rf /var/cache/yum
 
 # Other apps and tools installed as default user
 USER 1001
-
-# Install the oc client begin
-RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
-        -o /tmp/openshift-client-linux.tar.gz && \
-    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
-    rm -f /tmp/openshift-client-linux.tar.gz
-# Install the oc client end
 
 WORKDIR /opt/app-root/src
 
@@ -47,7 +44,7 @@ FROM cuda-base-${TARGETARCH} AS cuda-base
 
 ARG TARGETARCH
 
-ARG CUDA_SOURCE_CODE=cuda
+ARG CUDA_SOURCE_CODE=rstudio/rhel9-python-3.11/cuda
 # Access the client's secret for the subscription manager from the environment variable
 ARG SECRET_DIR=/opt/app-root/src/.sec
 ARG SERVERURL_DEFAULT=""
