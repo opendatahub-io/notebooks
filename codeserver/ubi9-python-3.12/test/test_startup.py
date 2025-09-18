@@ -1,4 +1,3 @@
-import io
 import os
 import select
 import subprocess
@@ -47,13 +46,11 @@ class TestStartup(unittest.TestCase):
         command = ["/opt/app-root/bin/run-code-server.sh"]
         p = subprocess.Popen(
             command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            # KFLUXSPRT-5139: https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1758128206734419
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             env={**os.environ, **env})
         thr = threading.Thread(target=pump_stream, args=(p,), daemon=True)
         thr.start()
-
-        # nginx: [emerg] no "events" section in configuration
 
         try:
             ret = probe_check.main(self.project_name, self.notebook_id, "8888")
@@ -62,27 +59,6 @@ class TestStartup(unittest.TestCase):
         finally:
             p.terminate()
             p.wait()
-
-        thr.join()
-
-    def test_subprocess_backgrounding(self):
-        p = subprocess.Popen(
-            ["bash", "-c", "sleep 99999"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-        thr = threading.Thread(target=pump_stream, args=(p,), daemon=True)
-        thr.start()
-
-        try:
-            pass
-            # ret = probe_check.main(self.project_name, self.notebook_id, "8888")
-            # self.assertEqual(ret, 0, "Probe check should return 0")
-            # self.assertEqual(p.poll(), None, "Code server process should still be running")
-        finally:
-            p.kill()
-            p.wait()
-            p.stdout.close()
 
         thr.join()
 
@@ -100,4 +76,4 @@ def pump_stream(process: subprocess.Popen) -> None:
 
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(verbosity=2)

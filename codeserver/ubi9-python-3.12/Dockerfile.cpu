@@ -11,10 +11,6 @@ COPY ${CODESERVER_SOURCE_CODE}/test /tmp/test
 # TODO(jdanek): add --mount=type=bind,target=/opt/app-root/src
 RUN <<'EOF'
 set -Eeuxo pipefail
-# workaround for KFLUXSPRT-5139: https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1758128206734419
-# rootless (or more like remote?) buildah, or is it shipwright on openshift, has /dev/stderr be a pipe
-# our startup script creates some symlinks that then lead nginx to attempt to reopen /dev/stderr
-# > nginx: [alert] could not open error log file: open() "/var/log/nginx/error.log" failed (13: Permission denied)
 python3 /tmp/test/test_startup.py |& tee /tmp/test_log.txt
 EOF
 
