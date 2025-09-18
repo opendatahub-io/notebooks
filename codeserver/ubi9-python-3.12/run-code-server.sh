@@ -4,9 +4,9 @@
 SCRIPT_DIR=$(dirname -- "$0")
 source ${SCRIPT_DIR}/utils/*.sh
 
-# Start nginx and supervisord
+# Start nginx and httpd
 run-nginx.sh &
-/usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf &
+/usr/sbin/httpd -D FOREGROUND &
 
 # Add .bashrc for custom prompt if not present
 if [ ! -f "/opt/app-root/src/.bashrc" ]; then
