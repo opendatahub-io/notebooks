@@ -526,4 +526,4 @@ print-release:
 .PHONY: test
 test:
 	@echo "Running quick static tests"
-	uv run pytest
+	uv run pytest -m 'not buildonlytest'
