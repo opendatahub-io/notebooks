@@ -270,7 +270,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         ("tensorboard", ("~=2.18.0", "~=2.20.0")),
         ("torch", ("==2.7.1", "==2.7.1+cu128", "==2.7.1+rocm6.2.4")),
         ("torchvision", ("==0.22.1", "~=0.22.1", "==0.22.1+cu128", "==0.22.1+rocm6.2.4")),
-        ("matplotlib", ("~=3.10.6")),
+        ("matplotlib", ("~=3.10.6"),),
         (
             "numpy",
             (
@@ -282,7 +282,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             ),
         ),
         ("pandas", ("~=2.3.2", "~=1.5.3")),
-        ("scikit-learn", ("~=1.7.2")),
+        ("scikit-learn", ("~=1.7.2",)),
         ("codeflare-sdk", ("~=0.31.0", "~=0.31.1")),
         ("ipython-genutils", (">=0.2.0", "~=0.2.0")),
         ("jinja2", (">=3.1.6", "~=3.1.6")),
