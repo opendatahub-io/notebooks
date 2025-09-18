@@ -23,7 +23,10 @@ COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/y
 ARG TARGETARCH
 
 # upgrade first to avoid fixable vulnerabilities begin
-RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
+# Problem: The operation would result in removing the following protected packages: systemd
+#  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
+# Solution: --best --skip-broken does not work either, so use --nobest
+RUN dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
     && dnf clean all -y
 # upgrade first to avoid fixable vulnerabilities end
 
@@ -36,7 +39,7 @@ RUN --mount=type=cache,target=/var/cache/dnf \
         PACKAGES="$PACKAGES gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel openssl zlib-devel"; \
     fi && \
     if [ "$TARGETARCH" = "ppc64le" ]; then \
-        PACKAGES="$PACKAGES git gcc-toolset-13 make wget unzip unixODBC-devel cmake ninja-build"; \
+        PACKAGES="$PACKAGES git gcc-toolset-13 make wget unzip rust cargo unixODBC-devel cmake ninja-build"; \
     fi && \
     if [ -n "$PACKAGES" ]; then \
         echo "Installing: $PACKAGES" && \
@@ -49,6 +52,7 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
         echo 'export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib:$LD_LIBRARY_PATH' >> /etc/profile.d/ppc64le.sh && \
         echo 'export OPENBLAS_VERSION=0.3.30' >> /etc/profile.d/ppc64le.sh && \
         echo 'export ONNX_VERSION=1.19.0' >> /etc/profile.d/ppc64le.sh && \
+        echo 'export PYARROW_VERSION=17.0.0' >> /etc/profile.d/ppc64le.sh && \
         echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /etc/profile.d/ppc64le.sh && \
         echo 'export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1' >> /etc/profile.d/ppc64le.sh; \
     fi
@@ -100,19 +104,34 @@ ARG TARGETARCH
 USER 0
 WORKDIR /tmp/build-wheels
 
+# Set pyarrow version for s390x
+RUN if [ "$TARGETARCH" = "s390x" ]; then \
+    echo 'export PYARROW_VERSION=17.0.0' >> /etc/profile.d/s390x.sh; \
+fi
+
 # Build pyarrow optimized for s390x
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=cache,target=/root/.cache/dnf \
     if [ "$TARGETARCH" = "s390x" ]; then \
-        # Install build dependencies (shared for pyarrow and onnx)
-        dnf install -y cmake make gcc-c++ pybind11-devel wget && \
+        # Install build dependencies
+        dnf install -y cmake make gcc-c++ pybind11-devel wget git \
+            openssl-devel zlib-devel bzip2-devel lz4-devel \
+            ninja-build && \
         dnf clean all && \
-        # Build and collect pyarrow wheel
-        git clone --depth 1 https://github.com/apache/arrow.git && \
-        cd arrow/cpp && \
-        mkdir release && cd release && \
+        # Source the environment variables
+        source /etc/profile.d/s390x.sh && \
+        # Clone specific version of arrow
+        git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git && \
+        cd arrow && \
+        # Set environment variables for build
+        export ARROW_HOME=/usr/local && \
+        export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:$LD_LIBRARY_PATH && \
+        export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH && \
+        # Build C++ library first
+        cd cpp && \
+        mkdir build && cd build && \
         cmake -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_INSTALL_PREFIX=/usr/local \
+              -DCMAKE_INSTALL_PREFIX=$ARROW_HOME \
               -DARROW_PYTHON=ON \
               -DARROW_PARQUET=ON \
               -DARROW_ORC=ON \
@@ -120,22 +139,30 @@ RUN --mount=type=cache,target=/root/.cache/pip \
               -DARROW_JSON=ON \
               -DARROW_CSV=ON \
               -DARROW_DATASET=ON \
-              -DARROW_DEPENDENCY_SOURCE=BUNDLED \
-              -DARROW_WITH_LZ4=OFF \
-              -DARROW_WITH_ZSTD=OFF \
+              -DARROW_WITH_LZ4=ON \
+              -DARROW_WITH_ZSTD=ON \
               -DARROW_WITH_SNAPPY=OFF \
+              -DARROW_WITH_BZ2=ON \
+              -DARROW_WITH_ZLIB=ON \
               -DARROW_BUILD_TESTS=OFF \
               -DARROW_BUILD_BENCHMARKS=OFF \
+              -DARROW_USE_CCACHE=OFF \
+              -GNinja \
               .. && \
-        make -j$(nproc) VERBOSE=1 && \
-        make install -j$(nproc) && \
+        ninja install && \
         cd ../../python && \
+        # Install Python build requirements
         pip install --no-cache-dir -r requirements-build.txt && \
+        # Build Python package
         PYARROW_WITH_PARQUET=1 \
         PYARROW_WITH_DATASET=1 \
         PYARROW_WITH_FILESYSTEM=1 \
         PYARROW_WITH_JSON=1 \
         PYARROW_WITH_CSV=1 \
+        PYARROW_WITH_LZ4=1 \
+        PYARROW_WITH_ZSTD=1 \
+        PYARROW_WITH_BZ2=1 \
+        PYARROW_BUNDLE_ARROW_CPP=1 \
         PYARROW_PARALLEL=$(nproc) \
         python setup.py build_ext --build-type=release --bundle-arrow-cpp bdist_wheel && \
         mkdir -p /tmp/wheels && \
@@ -196,6 +223,62 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
         echo "Not ppc64le, skipping ONNX build" && mkdir -p /onnx_wheels; \
     fi
 
+###################################
+# pyarrow builder stage for ppc64le
+##################################
+
+FROM cpu-base AS arrow-builder
+USER root
+WORKDIR /root
+
+ARG TARGETARCH
+ENV PYARROW_VERSION=17.0.0
+
+RUN echo "arrow-builder stage TARGETARCH: ${TARGETARCH}"
+
+RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
+        git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git --recursive && \
+    	cd arrow && rm -rf .git && mkdir dist                                  && \
+    	pip3 install -r python/requirements-build.txt                          && \
+    	export ARROW_HOME=$(pwd)/dist                                          && \
+    	export LD_LIBRARY_PATH=$(pwd)/dist/lib:$LD_LIBRARY_PATH                && \
+    	export CMAKE_PREFIX_PATH=$ARROW_HOME:$CMAKE_PREFIX_PATH                && \
+    	export PARQUET_TEST_DATA="${PWD}/cpp/submodules/parquet-testing/data"  && \
+    	export ARROW_TEST_DATA="${PWD}/testing/data"                           && \
+    	cmake -S cpp -B cpp/build                                                 \
+            -DCMAKE_INSTALL_PREFIX=$ARROW_HOME \
+            -DCMAKE_BUILD_TYPE=release         \
+            -DARROW_WITH_BZ2=ON                \
+            -DARROW_WITH_ZLIB=ON               \
+            -DARROW_WITH_ZSTD=ON               \
+            -DARROW_WITH_LZ4=ON                \
+            -DARROW_WITH_SNAPPY=ON             \
+            -DARROW_WITH_BROTLI=ON             \
+            -DARROW_DATASET=ON                 \
+            -DARROW_FILESYSTEM=ON              \
+            -DARROW_COMPUTE=ON                 \
+            -DARROW_JSON=ON                    \
+            -DARROW_CSV=ON                     \
+            -DARROW_PYTHON=ON                  \
+            -DARROW_PARQUET=ON                 \
+            -DARROW_BUILD_SHARED=ON 	       \
+            -DARROW_BUILD_TESTS=OFF         && \
+        cd cpp/build                        && \
+        make -j20 install                   && \
+        export PYARROW_PARALLEL=20          && \
+        export PYARROW_WITH_PARQUET=1       && \
+        export PYARROW_WITH_DATASET=1       && \
+        export PYARROW_BUNDLE_ARROW_CPP=1   && \
+        pip3 install wheel                  && \
+        cd ../../python                     && \
+        python setup.py build_ext              \
+            --build-type=release               \
+            --bundle-arrow-cpp                 \
+            bdist_wheel --dist-dir /arrowwheels; \
+    else \
+        echo "Not ppc64le, skipping pyarrow build" && mkdir -p /arrowwheels; \
+    fi
+
 #######################
 # runtime-datascience #
 #######################
@@ -220,16 +303,17 @@ USER 0
 # Install ppc64le-built wheels if available
 COPY --from=openblas-builder /root/OpenBLAS-* /openblas
 COPY --from=onnx-builder /onnx_wheels /tmp/onnx_wheels
+COPY --from=arrow-builder /arrowwheels /tmp/arrowwheels
 
 RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
-    	echo "Installing ppc64le ONNX wheels and OpenBLAS..." && \
-    	HOME=/root pip install /tmp/onnx_wheels/*.whl && \
+    	echo "Installing ppc64le ONNX, pyarrow wheels and OpenBLAS..." && \
+    	HOME=/root pip install /tmp/onnx_wheels/*.whl /tmp/arrowwheels/*.whl && \
         if [ -d "/openblas" ] && [ "$(ls -A /openblas 2>/dev/null)" ]; then \
     		PREFIX=/usr/local make -C /openblas install; \
-        fi && rm -rf /openblas /tmp/onnx_wheels; \
+        fi && rm -rf /openblas /tmp/onnx_wheels /tmp/arrowwheels; \
     else \
     	echo "Skipping architecture-specific wheel installs for (${TARGETARCH})" && \
-        rm -rf /tmp/wheels /openblas /tmp/onnx_wheels; \
+        rm -rf /tmp/wheels /openblas /tmp/onnx_wheels /tmp/arrowwheels; \
     fi
 
 USER 0
