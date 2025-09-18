@@ -77,7 +77,10 @@ USER 0
 COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 
 # upgrade first to avoid fixable vulnerabilities begin
-RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
+# Problem: The operation would result in removing the following protected packages: systemd
+#  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
+# Solution: --best --skip-broken does not work either, so use --nobest
+RUN dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
     && dnf clean all -y
 # upgrade first to avoid fixable vulnerabilities end
 
@@ -156,7 +159,8 @@ RUN mkdir -p /opt/app-root/extensions-temp && \
     code-server --install-extension /opt/app-root/bin/utils/ms-toolsai.jupyter-2025.2.0.vsix --extensions-dir /opt/app-root/extensions-temp
 
 # Install NGINX to proxy code-server and pass probes check
-ENV NGINX_VERSION=1.24 \
+ENV APP_ROOT=/opt/app-root \
+    NGINX_VERSION=1.24 \
     NGINX_SHORT_VER=124 \
     NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_CONF_PATH=/etc/nginx/nginx.conf \
@@ -167,16 +171,22 @@ ENV NGINX_VERSION=1.24 \
     NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
 
 # Modules does not exist
-RUN dnf install -y https://download.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
-    INSTALL_PKGS="bind-utils nginx nginx-mod-stream nginx-mod-http-perl fcgiwrap initscripts chkconfig supervisor" && \
+RUN INSTALL_PKGS="bind-utils nginx nginx-mod-stream nginx-mod-http-perl httpd" && \
     dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
     dnf -y clean all --enablerepo='*'
 
-COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/supervisord/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+# Configure httpd for CGI processing
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/httpd/httpd.conf /etc/httpd/conf/httpd.conf
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/httpd/codeserver-cgi.conf /etc/httpd/conf.d/codeserver-cgi.conf
 
 # Copy extra files to the image.
 COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/nginx/root/ /
+
+## Configure nginx
+COPY ${CODESERVER_SOURCE_CODE}/nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
+COPY ${CODESERVER_SOURCE_CODE}/nginx/httpconf/ /opt/app-root/etc/nginx.d/
+COPY ${CODESERVER_SOURCE_CODE}/nginx/api/ /opt/app-root/api/
 
 # Changing ownership and user rights to support following use-cases:
 # 1) running container on OpenShift, whose default security model
@@ -196,14 +206,20 @@ RUN sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH} && \
     mkdir -p ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
     mkdir -p ${NGINX_LOG_PATH} && \
     mkdir -p ${NGINX_PERL_MODULE_PATH} && \
+    # Create httpd directories and set permissions
+    mkdir -p /var/log/httpd /var/run/httpd /etc/httpd/logs && \
     chown -R 1001:0 ${NGINX_CONF_PATH} && \
     chown -R 1001:0 ${NGINX_APP_ROOT}/etc && \
     chown -R 1001:0 ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
     chown -R 1001:0 /var/lib/nginx /var/log/nginx /run && \
+    chown -R 1001:0 /var/log/httpd /var/run/httpd /etc/httpd/logs && \
     chmod    ug+rw  ${NGINX_CONF_PATH} && \
     chmod -R ug+rwX ${NGINX_APP_ROOT}/etc && \
     chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
     chmod -R ug+rwX /var/lib/nginx /var/log/nginx /run && \
+    chmod -R ug+rwX /var/log/httpd /var/run/httpd /etc/httpd/logs && \
+    # Make CGI script executable
+    chmod +x /opt/app-root/api/kernels/access.cgi && \
     rpm-file-permissions && \
     # Ensure the temporary directory and target directory have the correct permissions
     mkdir -p /opt/app-root/src/.local/share/code-server/extensions && \
@@ -211,11 +227,6 @@ RUN sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH} && \
     chown -R 1001:0 /opt/app-root/src/.local/share/code-server && \
     chown -R 1001:0 /opt/app-root/extensions-temp && \
     chown -R 1001:0 /opt/app-root/src/.config/code-server
-
-## Configure nginx
-COPY ${CODESERVER_SOURCE_CODE}/nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
-COPY ${CODESERVER_SOURCE_CODE}/nginx/httpconf/ /opt/app-root/etc/nginx.d/
-COPY ${CODESERVER_SOURCE_CODE}/nginx/api/ /opt/app-root/api/
 
 # Launcher
 COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/run-code-server.sh ${CODESERVER_SOURCE_CODE}/run-nginx.sh ./
@@ -231,6 +242,13 @@ COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
 COPY --from=whl-cache /tmp/control /dev/null
 
 # Install packages and cleanup
+# (ARCH-ppc64le): install packages (eg. pyarrow) that need to be built from source repository on ppc64le
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw \
+    bash -c ' \
+        if [[ $(uname -m) == "ppc64le" ]]; then \
+            uv pip install /wheelsdir/*.whl; \
+        fi '
 # install packages as USER 0 (this will allow us to consume uv cache)
 RUN --mount=type=cache,target=/root/.cache/uv \
     echo "Installing softwares and packages" && \

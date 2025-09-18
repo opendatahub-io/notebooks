@@ -47,7 +47,10 @@ ARG TARGETARCH
 COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 
 # upgrade first to avoid fixable vulnerabilities begin
-RUN dnf -y upgrade --refresh --best --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
+# Problem: The operation would result in removing the following protected packages: systemd
+#  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
+# Solution: --best --skip-broken does not work either, so use --nobest
+RUN dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
     && dnf clean all -y
 # upgrade first to avoid fixable vulnerabilities end
 
@@ -101,23 +104,23 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 
 ##############################
 # wheel-builder stage        #
-# NOTE: Only used in s390x
+# NOTE: Only used in ppc64le and s390x
 ##############################
-FROM cpu-base AS s390x-builder
+FROM cpu-base AS pyarrow-builder
 
 ARG TARGETARCH
 USER 0
 WORKDIR /tmp/build-wheels
 
-# Build pyarrow optimized for s390x
+# Build pyarrow on ppc64le and s390x
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=cache,target=/root/.cache/dnf \
-    if [ "$TARGETARCH" = "s390x" ]; then \
+    if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then \
         # Install build dependencies (shared for pyarrow and onnx)
         dnf install -y cmake make gcc-c++ pybind11-devel wget && \
         dnf clean all && \
         # Build and collect pyarrow wheel
-        git clone --depth 1 https://github.com/apache/arrow.git && \
+        git clone --depth 1 --branch "apache-arrow-17.0.0" https://github.com/apache/arrow.git && \
         cd arrow/cpp && \
         mkdir release && cd release && \
         cmake -DCMAKE_BUILD_TYPE=Release \
@@ -157,6 +160,65 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         mkdir -p /tmp/wheels; \
     fi
 
+#######################################################
+# common-builder (for Power-only)
+#######################################################
+FROM cpu-base AS common-builder
+ARG TARGETARCH
+USER root
+RUN <<'EOF'
+set -Eeuxo pipefail
+if [ "${TARGETARCH}" = "ppc64le" ]; then
+    dnf install -y gcc-toolset-13 cmake ninja-build git wget unzip
+    dnf clean all
+else
+    echo "Skipping common-builder package install on non-Power"
+fi
+EOF
+
+#######################################################
+# onnx-builder (Power-only)
+#######################################################
+FROM common-builder AS onnx-builder
+ARG TARGETARCH
+ARG ONNX_VERSION=v1.19.0
+WORKDIR /root
+RUN <<'EOF'
+set -Eeuxo pipefail
+if [ "${TARGETARCH}" = "ppc64le" ]; then
+    source /opt/rh/gcc-toolset-13/enable
+    git clone --recursive https://github.com/onnx/onnx.git
+    cd onnx
+    git checkout ${ONNX_VERSION}
+    git submodule update --init --recursive
+    pip install -r requirements.txt
+    export CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)"
+    pip wheel . -w /root/onnx_wheel
+else
+    echo "Skipping ONNX build on non-Power"
+    mkdir -p /root/onnx_wheel
+fi
+EOF
+
+#######################################################
+# openblas-builder (Power-only)
+#######################################################
+FROM common-builder AS openblas-builder
+ARG TARGETARCH
+ARG OPENBLAS_VERSION=0.3.30
+WORKDIR /root
+RUN <<'EOF'
+set -Eeuxo pipefail
+if [ "${TARGETARCH}" = "ppc64le" ]; then
+    wget https://github.com/OpenMathLib/OpenBLAS/releases/download/v${OPENBLAS_VERSION}/OpenBLAS-${OPENBLAS_VERSION}.zip
+    unzip OpenBLAS-${OPENBLAS_VERSION}.zip
+    cd OpenBLAS-${OPENBLAS_VERSION}
+    make -j$(nproc) TARGET=POWER9 BINARY=64 USE_OPENMP=1 USE_THREAD=1 NUM_THREADS=120 DYNAMIC_ARCH=1 INTERFACE64=0
+else
+    mkdir -p OpenBLAS-${OPENBLAS_VERSION}
+    echo "Skipping OpenBLAS build on non-Power"
+fi
+EOF
 ####################
 # jupyter-minimal #
 ####################
@@ -188,8 +250,10 @@ ENTRYPOINT ["start-notebook.sh"]
 # jupytyer-datascience #
 ########################
 FROM jupyter-minimal AS jupyter-datascience
+ARG TARGETARCH
 
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
+ARG OPENBLAS_VERSION=0.3.30
 ARG TARGETARCH
 
 LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.12" \
@@ -208,7 +272,8 @@ WORKDIR /opt/app-root/bin
 USER root
 
 # Install useful OS packages
-RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat && dnf clean all && rm -rf /var/cache/yum
+RUN dnf install -y jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat && \
+    dnf clean all && rm -rf /var/cache/yum
 
 # Copy dynamically-linked mongocli built in earlier build stage
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
@@ -216,25 +281,63 @@ COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 # Other apps and tools installed as default user
 USER 1001
 
-# Copy wheels from build stage (s390x only)
-COPY --from=s390x-builder /tmp/wheels /tmp/wheels
-RUN if [ "$TARGETARCH" = "s390x" ]; then \
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
+
+# Copy wheels from build stage (ppc64le and s390x only)
+COPY --from=pyarrow-builder /tmp/wheels /tmp/wheels
+RUN if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then \
     pip install --no-cache-dir /tmp/wheels/*.whl; \
 else \
     echo "Skipping wheel install for $TARGETARCH"; \
 fi
 
-# Install Python packages and Jupyterlab extensions from requirements.txt
+# Copy OpenBLAS,ONNX wheels for Power
+COPY --from=openblas-builder /root/OpenBLAS-${OPENBLAS_VERSION} /openblas
+COPY --from=onnx-builder /root/onnx_wheel/ /onnxwheels/
+
+# Power-specific ONNX/OpenBLAS installation
+RUN <<'EOF'
+set -Eeuxo pipefail
+if [ "${TARGETARCH}" = "ppc64le" ]; then
+    pip install /onnxwheels/*.whl
+else
+    echo "Skipping ONNX/OpenBLAS install on non-Power"
+fi
+EOF
+
+USER root
+RUN <<'EOF'
+set -Eeuxo pipefail
+if [ "${TARGETARCH}" = "ppc64le" ]; then
+    rm -rf /onnxwheels
+else
+    echo "Skipping ONNX/OpenBLAS install on non-Power"
+fi
+EOF
+
+RUN <<'EOF'
+set -Eeuxo pipefail
+if [ "${TARGETARCH}" = "ppc64le" ]; then
+    PREFIX=/usr/local make -C /openblas install
+    rm -rf /openblas
+else
+    echo "Skipping ONNX/OpenBLAS install on non-Power"
+fi
+EOF
+
+USER 1001:0
+
+# Install Python packages and Jupyterlab extensions from pylock.toml
 COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra setup to utils so that it's sourced at startup
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    echo "Installing softwares and packages" && \
+    echo "Installing software and packages" && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-    if [ "$TARGETARCH" = "s390x" ]; then \
-        # For s390x, we need special flags and environment variables for building packages
+    if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then \
+        # We need special flags and environment variables when building packages
         GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
         CFLAGS="-O3" CXXFLAGS="-O3" \
         uv pip install --strict --no-deps --no-cache --no-config --no-progress \

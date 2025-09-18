@@ -1,5 +1,7 @@
 The following sections are aimed to provide a comprehensive guide for developers, enabling them to understand the project's architecture and seamlessly contribute to its development.
 
+> **Note for AI Agents**: If you're an AI agent working with this repository, please refer to the [Agents Guide](../Agents.md) for specific instructions tailored to automated development workflows.
+
 ## Getting Started
 This project utilizes three branches for the development: the **main** branch, which hosts the latest development, and **two additional branches for each release**.
 These release branches follow a specific naming format: YYYYx, where "YYYY" represents the year, and "x" is an increasing letter. Thus, they help to keep working on minor updates and bug fixes on the supported versions (N & N-1) of each workbench.

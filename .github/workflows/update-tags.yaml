@@ -1,0 +1,88 @@
+---
+name: Update Tekton Tags
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+    inputs:
+      new_tag:
+        description: "Set a new image tag (e.g. YYYYx-vn.n)"
+        required: true
+jobs:
+  update-tags:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Detect and replace tags in .tekton and params-latest.env files
+        id: replace
+        run: |
+          set -e
+          regex="[0-9]{4}[a-z]-v[0-9]+\.[0-9]+"
+          new_tag="${{ github.event.inputs.new_tag }}"
+
+          echo "Searching for tags in .tekton/*.yaml..."
+          prev_tag=$(grep -rhoP "$regex" .tekton/*.yaml | sort -u | head -n1)
+
+          if [ -z "$prev_tag" ]; then
+            echo "❌ No matching tag found with regex $regex"
+            exit 1
+          fi
+
+          echo "Found previous tag: $prev_tag"
+          echo "Replacing $prev_tag -> $new_tag"
+
+          # Update Tekton yamls
+          find .tekton -type f -name "*.yaml" -print0 | \
+            xargs -0 -I{} perl -0777 -i -pe "s/\Q$prev_tag\E/$new_tag/g" "{}"
+
+          # Update params-latest.env
+          perl -pi -e "s/\Q$prev_tag\E/$new_tag/g" manifests/base/params-latest.env
+
+          # Export previous tag for later steps
+          echo "previous_tag=$prev_tag" >> $GITHUB_OUTPUT
+
+      - name: Commit and push changes to branch
+        id: commit
+        run: |
+          branch="update-tekton-tag-${{ github.event.inputs.new_tag }}"
+          prev_tag="${{ steps.replace.outputs.previous_tag }}"
+          new_tag="${{ github.event.inputs.new_tag }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet; then
+            echo "✅ No changes to commit"
+            exit 0
+          fi
+
+          git checkout -b "$branch"
+          git add .tekton/*.yaml manifests/base/params-latest.env
+          git commit -m "chore: update tags from ${prev_tag} to ${new_tag}"
+          git push origin "$branch"
+          echo "branch=$branch" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        run: |
+          branch="${{ steps.commit.outputs.branch }}"
+          prev_tag="${{ steps.replace.outputs.previous_tag }}"
+          new_tag="${{ github.event.inputs.new_tag }}"
+
+          body=":rocket: Automated Tekton + params-latest.env image tag update.
+          - Updated from \`${prev_tag}\` → \`${new_tag}\`
+          - Created by \`.github/workflows/update-tekton-tags.yaml\`"
+
+          gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "chore: update image tags ${prev_tag} → ${new_tag}" \
+            --body "$body" \
+            --head "$branch" \
+            --base main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
