@@ -21,7 +21,7 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
 
 	export MAX_JOBS=${MAX_JOBS:-$(nproc)}
 	export NODE_VERSION=${NODE_VERSION:-20}
-	export CODESERVER_VERSION=${CODESERVER_VERSION:-v4.98.0}
+	export CODESERVER_VERSION=${CODESERVER_VERSION:-v4.104.0}
 
 	export NVM_DIR=/root/.nvm VENV=/opt/.venv
 	export PATH=${VENV}/bin:$PATH
