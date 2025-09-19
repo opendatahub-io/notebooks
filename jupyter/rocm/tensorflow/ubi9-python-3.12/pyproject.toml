@@ -9,49 +9,49 @@ dependencies = [
     # ROCm TensorFlow packages
     # https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/tensorflow-install.html#using-a-wheels-package
     "tensorflow-rocm @ https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4/tensorflow_rocm-2.18.1-cp312-cp312-manylinux_2_28_x86_64.whl#sha256=814a5e4842b0c92d63c7a0bb4df0baf51ff2db8615535d83fe8958204b840598",
-    "tensorboard~=2.18.0",
+    "tensorboard~=2.18.0", # tensorflow-rocm==2.18.1 is available and tensorflow-rocm==2.18.1 depends on tensorboard>=2.18,<2.19
 
     # Datascience and useful extensions
     "boto3~=1.40.27",
     "kafka-python-ng~=2.2.3",
     "kfp~=2.14.3",
-    "matplotlib~=3.10.1",
+    "matplotlib~=3.10.6",
     "numpy~=2.0.2",
-    "pandas~=2.2.3",
-    "plotly~=6.0.0",
-    "scikit-learn~=1.6.1",
-    "scipy~=1.15.2",
-    "skl2onnx~=1.18.0",
+    "pandas~=2.3.2",
+    "plotly~=6.3.0",
+    "scikit-learn~=1.7.2",
+    "scipy~=1.16.1",
+    "skl2onnx~=1.19.1",
     "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
     "codeflare-sdk~=0.31.1",
-    "kubeflow-training==1.9.0",
+    "kubeflow-training==1.9.3",
     "feast~=0.53.0",
 
     # DB connectors
-    "pymongo~=4.11.2",
-    "psycopg~=3.2.5",
+    "pymongo~=4.14.1",
+    "psycopg~=3.2.10",
     "pyodbc~=5.2.0",
-    "mysql-connector-python~=9.3.0",
+    "mysql-connector-python~=9.4.0",
 
     # JupyterLab packages
     "odh-elyra==4.2.4",
     "odh-jupyter-trash-cleanup==0.1.1",
 
-    "jupyterlab==4.4.4",
+    "jupyterlab==4.4.7",
     "jupyter-bokeh~=4.0.5",
-    "jupyter-server~=2.16.0",
+    "jupyter-server~=2.17.0",
     "jupyter-server-proxy~=4.4.0",
     "jupyter-server-terminals~=0.5.3",
-    "jupyterlab-git~=0.51.1",
+    "jupyterlab-git~=0.51.2",
     "jupyterlab-lsp~=5.1.0",
-    "jupyterlab-widgets~=3.0.13",
+    "jupyterlab-widgets~=3.0.15",
     "jupyter-resource-usage~=1.1.1",
     "nbdime~=4.0.2",
     "nbgitpuller~=1.2.2",
 
     # Base packages
     "wheel~=0.45.1",
-    "setuptools~=78.1.1",
+    "setuptools~=80.9.0",
 ]
 
 [tool.uv]
