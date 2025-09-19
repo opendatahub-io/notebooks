@@ -42,6 +42,9 @@ spec:
     value: .
   - name: build-args-file
     value: jupyter/tensorflow/ubi9-python-3.12/build-args/cuda.conf
+  - name: image-labels
+    value:
+    - release=2025b
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:

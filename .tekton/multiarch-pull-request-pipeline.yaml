@@ -94,6 +94,10 @@ spec:
     description: List of platforms to build the container images on. The available set of values is determined by the configuration of the multi-platform-controller.
     name: build-platforms
     type: array
+  - default: []
+    description: Array of image labels to apply to the image (key=value strings)
+    name: image-labels
+    type: array
   results:
   - description: ""
     name: IMAGE_URL
@@ -214,6 +218,9 @@ spec:
       value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
     - name: IMAGE_APPEND_PLATFORM
       value: "true"
+    - name: IMAGE_LABELS
+      value:
+      - $(params.image-labels[*])
     runAfter:
     - prefetch-dependencies
     taskRef:
