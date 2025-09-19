@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -26,6 +27,11 @@ func main() {
 	flag.Parse()
 	for _, dockerfile := range flag.Args() {
 		deps := getDockerfileDeps(dockerfile, targetArch)
-		fmt.Println(deps)
+		// nil slice encodes to null, which is not what we want
+		if deps == nil {
+			deps = []string{}
+		}
+		encoder := json.NewEncoder(os.Stdout)
+		noErr(encoder.Encode(deps))
 	}
 }

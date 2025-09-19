@@ -66,7 +66,7 @@ def buildinputs(
     stdout = subprocess.check_output([ROOT_DIR / "bin/buildinputs", str(dockerfile)],
                                      text=True, cwd=ROOT_DIR,
                                      env={"TARGETPLATFORM": platform, **os.environ})
-    prereqs = [pathlib.Path(file) for file in json.loads(stdout)] if stdout != "\n" else []
+    prereqs = [pathlib.Path(file) for file in json.loads(stdout)]
     print(f"{prereqs=}")
     return prereqs
 
