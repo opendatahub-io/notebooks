@@ -18,6 +18,7 @@ Make sure the following tools are installed in your environment:
  - pipenv
  - make (on macOS install/use: gmake)
  - curl
+ - git, git-lfs (for `*.vsix` files)
 
 ### Installation
 Clone this repository to your local machine:
