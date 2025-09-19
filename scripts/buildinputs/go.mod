@@ -4,6 +4,7 @@ go 1.24
 
 require (
 	github.com/containerd/platforms v1.0.0-rc.1
+	github.com/google/go-cmp v0.7.0
 	github.com/moby/buildkit v0.23.2
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
