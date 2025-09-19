@@ -4,13 +4,15 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
 func globDockerfiles(dir string) ([]string, error) {
 	files := make([]string, 0)
 	err := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
-		if filepath.Base(path) == "Dockerfile" {
+		if strings.HasPrefix(filepath.Base(path), "Dockerfile.") {
 			files = append(files, path)
 		}
 		return nil
@@ -21,8 +23,14 @@ func globDockerfiles(dir string) ([]string, error) {
 
 // TestParseAllDockerfiles checks there are no panics when processing all Dockerfiles we have
 func TestParseAllDockerfiles(t *testing.T) {
-	projectRoot := "../../"
+	_, currentFilePath, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("failed to get caller information")
+	}
+
+	projectRoot := filepath.Join(filepath.Dir(currentFilePath), "../../")
 	dockerfiles := noErr2(globDockerfiles(projectRoot))
+	t.Logf("found %d Dockerfiles in %s", len(dockerfiles), projectRoot)
 
 	if len(dockerfiles) < 6 {
 		t.Fatalf("not enough Dockerfiles found, got %+v", dockerfiles)
