@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/containerd/platforms"
@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func getDockerfileDeps(dockerfile string, targetArch string) string {
+func getDockerfileDeps(dockerfile string, targetArch string) []string {
 	ctx := context.Background()
 	data := noErr2(os.ReadFile(dockerfile))
 
@@ -47,40 +47,67 @@ func getDockerfileDeps(dockerfile string, targetArch string) string {
 	return getOpSourceFollowPaths(definition)
 }
 
-func getOpSourceFollowPaths(definition *llb.Definition) string {
+func getOpSourceFollowPaths(definition *llb.Definition) []string {
 	// https://earthly.dev/blog/compiling-containers-dockerfiles-llvm-and-buildkit/
 	// https://stackoverflow.com/questions/73067660/what-exactly-is-the-frontend-and-backend-of-docker-buildkit
 
-	ops := make([]llbOp, 0)
+	opsByDigest := make(map[digest.Digest]llbOp, len(definition.Def))
 	for _, dt := range definition.Def {
 		var op pb.Op
 		if err := op.UnmarshalVT(dt); err != nil {
 			panic("failed to parse op")
 		}
 		dgst := digest.FromBytes(dt)
-		ent := llbOp{Op: &op, Digest: dgst, OpMetadata: definition.Metadata[dgst].ToPB()}
-		ops = append(ops, ent)
+		ent := llbOp{
+			Op:         &op,
+			Digest:     dgst,
+			OpMetadata: definition.Metadata[dgst].ToPB(),
+		}
+		opsByDigest[dgst] = ent
 	}
 
-	var result string = ""
-	for _, op := range ops {
-		switch op := op.Op.Op.(type) {
-		case *pb.Op_Source:
-			if strings.HasPrefix(op.Source.Identifier, "docker-image://") {
-				// no-op
-			} else if strings.HasPrefix(op.Source.Identifier, "local://") {
-				paths := op.Source.Attrs[pb.AttrFollowPaths]
-				// TODO treat result as a set of strings to get unique set across all layers
-				// this code "works" as is because it seems the terminal layer is the last one processed - which
-				// contains all the referenced files - but treating this as a set seems safer (?)
-				result = paths
-				log.Printf("found paths: %s", paths)
-			} else {
-				panic(fmt.Errorf("unexpected prefix %v", op.Source.Identifier))
+	var result []string
+	for _, opDef := range opsByDigest {
+		switch top := opDef.Op.Op.(type) {
+		// https://github.com/moby/buildkit/blob/v0.24/solver/pb/ops.proto#L308-L325
+		case *pb.Op_File:
+			for _, a := range top.File.Actions {
+				// NOTE CAREFULLY: FileActionCopy copies files from secondaryInput on top of input
+				if cpy := a.GetCopy(); cpy != nil {
+					if inputIsFromLocalContext(a.SecondaryInput, opDef.Op.Inputs, opsByDigest) {
+						result = append(result, cleanPath(cpy.Src))
+					}
+				}
+			}
+		case *pb.Op_Exec:
+			for _, m := range top.Exec.Mounts {
+				if inputIsFromLocalContext(m.Input, opDef.Op.Inputs, opsByDigest) {
+					result = append(result, cleanPath(m.Selector))
+				}
 			}
 		}
 	}
+
 	return result
+}
+
+func cleanPath(path string) string {
+	return noErr2(filepath.Rel("/", filepath.Clean(path)))
+}
+
+func inputIsFromLocalContext(input int64, inputs []*pb.Input, opsByDigest map[digest.Digest]llbOp) bool {
+	// input is -1 if the input is a FROM scratch or equivalent
+	if input == -1 {
+		return false
+	}
+
+	srcDigest := digest.Digest(inputs[input].Digest)
+	sourceOp := opsByDigest[srcDigest]
+	if src, ok := sourceOp.Op.Op.(*pb.Op_Source); ok {
+		// local://context is the primary context, but there may be multiple named contexts
+		return strings.HasPrefix(src.Source.Identifier, "local://")
+	}
+	return false
 }
 
 // llbOp holds data for a single loaded LLB op
