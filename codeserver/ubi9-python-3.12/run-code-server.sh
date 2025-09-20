@@ -126,4 +126,5 @@ start_process /usr/bin/code-server \
     --disable-telemetry \
     --auth none \
     --disable-update-check \
+    --disable-getting-started-override \
     /opt/app-root/src

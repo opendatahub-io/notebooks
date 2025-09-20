@@ -21,9 +21,9 @@ COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/y
 
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 
-ARG NODE_VERSION=20
+ARG NODE_VERSION=22.18.0
 
-ARG CODESERVER_VERSION=v4.98.0
+ARG CODESERVER_VERSION=v4.104.0
 
 COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh .
 
@@ -115,10 +115,11 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 ####################
 FROM cpu-base AS codeserver
 
-ARG TARGETOS TARGETARCH
+ARG TARGETOS
+ARG TARGETARCH
 
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
-ARG CODESERVER_VERSION=v4.98.0
+ARG CODESERVER_VERSION=v4.104.0
 
 LABEL name="odh-notebook-code-server-ubi9-python-3.12" \
       summary="code-server image with python 3.12 based on UBI 9" \
@@ -154,9 +155,10 @@ RUN --mount=type=cache,from=rpm-base,source=/tmp/,target=/code-server-rpm/,rw \
 COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/utils utils/
 
 # Create and intall the extensions though build-time on a temporary directory. Later this directory will copied on the `/opt/app-root/src/.local/share/code-server/extensions` via run-code-server.sh file when it starts up.
+# https://coder.com/docs/code-server/FAQ#how-do-i-install-an-extension
 RUN mkdir -p /opt/app-root/extensions-temp && \
-    code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2025.2.0.vsix --extensions-dir /opt/app-root/extensions-temp && \
-    code-server --install-extension /opt/app-root/bin/utils/ms-toolsai.jupyter-2025.2.0.vsix --extensions-dir /opt/app-root/extensions-temp
+    code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2025.14.0.vsix --extensions-dir /opt/app-root/extensions-temp && \
+    code-server --install-extension /opt/app-root/bin/utils/ms-toolsai.jupyter-2025.8.0.vsix --extensions-dir /opt/app-root/extensions-temp
 
 # Install NGINX to proxy code-server and pass probes check
 ENV APP_ROOT=/opt/app-root \

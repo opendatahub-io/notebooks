@@ -93,6 +93,7 @@ RUN chmod -R a+w ${LIBLOC} && \
     chmod -R a+w ${R_LIBS_USER}
 
 WORKDIR /tmp/
+COPY /rstudio/utils /tmp/utils
 
 # Install RStudio
 ARG RSTUDIO_RPM=rstudio-server-rhel-2024.12.1-563-x86_64.rpm
@@ -107,7 +108,8 @@ RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/$
     # install necessary texlive-framed package to make Knit R markup to PDF rendering possible \
     dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed && \
     dnf clean all && \
-    rm -rf /var/cache/yum
+    rm -rf /var/cache/yum && \
+    (cd /tmp/utils && ./cve_remediation.sh)
 
 COPY ${RSTUDIO_SOURCE_CODE}/rsession.conf /etc/rstudio/rsession.conf
 

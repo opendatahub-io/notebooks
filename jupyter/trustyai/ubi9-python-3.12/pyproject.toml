@@ -5,56 +5,56 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # PyTorch packages
-    "torch==2.6.0+cu126; platform_machine != 'ppc64le'",
+    'torch==2.7.1+cu128',
 
     # TrustyAI packages
     # More information available at:
     #   - https://pypi.org/project/trustyai/
     #   - https://github.com/trustyai-explainability/trustyai-explainability-python/blob/main/requirements.txt
-    "transformers~=4.55.0",
-    "datasets~=3.4.1",
-    "accelerate~=1.5.2; platform_machine != 'ppc64le'",
-    "trustyai~=0.6.2",
+    'transformers~=4.56.1',
+    'datasets~=4.0.0',
+    'accelerate~=1.10.1',
+    'trustyai~=0.6.2',
     # Datascience and useful extensions
-    "boto3~=1.40.27",
-    "kafka-python-ng~=2.2.3",
-    "kfp~=2.14.3",
-    "matplotlib~=3.10.3", # Should be pinned down to this version in order to be compatible with trustyai
-    "numpy~=1.26.4", # Should be pinned down to this version in order to be compatible with trustyai
-    "pandas~=1.5.3", # Should be pinned down to this version in order to be compatible with trustyai
-    "plotly~=6.0.0",
-    "scikit-learn~=1.7.0", # Should be pinned down to this version in order to be compatible with trustyai
-    "scipy~=1.15.2",
-    "skl2onnx~=1.18.0",
-    "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
+    'boto3~=1.40.27',
+    'kafka-python-ng~=2.2.3',
+    'kfp~=2.14.3',
+    'matplotlib~=3.10.6', # Should be pinned down to this version in order to be compatible with trustyai
+    'numpy~=1.26.4', # Should be pinned down to this version in order to be compatible with trustyai
+    'pandas~=1.5.3', # Should be pinned down to this version in order to be compatible with trustyai
+    'plotly~=6.3.0',
+    'scikit-learn~=1.7.2', # Should be pinned down to this version in order to be compatible with trustyai
+    'scipy~=1.16.1',
+    'skl2onnx~=1.19.1',
+    'onnxconverter-common~=1.13.0', # Required for skl2onnx, as upgraded version is not compatible with protobuf
     "codeflare-sdk~=0.31.1; platform_machine != 'ppc64le'",
-    "kubeflow-training==1.9.2",
+    'kubeflow-training==1.9.3',
 
     # DB connectors
-    "pymongo~=4.11.2",
-    "psycopg~=3.2.5",
-    "pyodbc~=5.2.0",
-    "mysql-connector-python~=9.3.0",
+    'pymongo~=4.14.1',
+    'psycopg~=3.2.10',
+    'pyodbc~=5.2.0',
+    'mysql-connector-python~=9.4.0',
 
     # JupyterLab packages
     "odh-elyra==4.2.4",
-    "odh-jupyter-trash-cleanup==0.1.0",
+    "odh-jupyter-trash-cleanup==0.1.1",
 
-    "jupyterlab==4.4.4",
-    "jupyter-bokeh~=3.0.7", # trustyai 0.6.2 depends on jupyter-bokeh~=3.0.7
-    "jupyter-server~=2.16.0",
-    "jupyter-server-proxy~=4.4.0",
-    "jupyter-server-terminals~=0.5.3",
-    "jupyterlab-git~=0.51.1",
-    "jupyterlab-lsp~=5.1.1",
-    "jupyterlab-widgets~=3.0.15",
-    "jupyter-resource-usage~=1.1.1",
-    "nbdime~=4.0.2",
-    "nbgitpuller~=1.2.2",
+    'jupyterlab==4.4.7',
+    'jupyter-bokeh~=3.0.5', # trustyai 0.6.1 depends on jupyter-bokeh~=3.0.5
+    'jupyter-server~=2.17.0',
+    'jupyter-server-proxy~=4.4.0',
+    'jupyter-server-terminals~=0.5.3',
+    'jupyterlab-git~=0.51.2',
+    'jupyterlab-lsp~=5.1.1',
+    'jupyterlab-widgets~=3.0.15',
+    'jupyter-resource-usage~=1.1.1',
+    'nbdime~=4.0.2',
+    'nbgitpuller~=1.2.2',
 
     # Base packages
-    "wheel~=0.45.1",
-    "setuptools~=78.1.1",
+    'wheel~=0.45.1',
+    'setuptools~=80.9.0',
 ]
 
 [tool.uv]
@@ -67,5 +67,5 @@ torch = { index = "pytorch-cuda" }
 
 [[tool.uv.index]]
 name = "pytorch-cuda"
-url = "https://download.pytorch.org/whl/cu126"
+url = "https://download.pytorch.org/whl/cu128"
 explicit = true

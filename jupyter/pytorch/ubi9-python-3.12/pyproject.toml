@@ -6,41 +6,41 @@ requires-python = "==3.12.*"
 dependencies = [
     # PyTorch packages
     "tensorboard~=2.20.0",
-    "torch==2.6.0+cu126",
-    "torchvision==0.21.0+cu126",
+    "torch==2.7.1+cu128",
+    "torchvision==0.22.1+cu128",
 
     # Datascience and useful extensions
     "boto3~=1.40.27",
     "kafka-python-ng~=2.2.3",
     "kfp~=2.14.3",
-    "matplotlib~=3.10.1",
-    "numpy~=2.2.6",
-    "pandas~=2.2.3",
-    "plotly~=6.0.0",
-    "scikit-learn~=1.6.1",
-    "scipy~=1.15.2",
-    "skl2onnx~=1.18.0",
+    "matplotlib~=3.10.6",
+    "numpy~=2.3.3",
+    "pandas~=2.3.2",
+    "plotly~=6.3.0",
+    "scikit-learn~=1.7.2",
+    "scipy~=1.16.1",
+    "skl2onnx~=1.19.1",
     "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
     "codeflare-sdk~=0.31.1",
-    "kubeflow-training==1.9.2",
+    "kubeflow-training==1.9.3",
     "feast~=0.53.0",
 
     # DB connectors
-    "pymongo~=4.11.2",
-    "psycopg~=3.2.5",
+    "pymongo~=4.14.1",
+    "psycopg~=3.2.10",
     "pyodbc~=5.2.0",
-    "mysql-connector-python~=9.3.0",
+    "mysql-connector-python~=9.4.0",
 
     # JupyterLab packages
     "odh-elyra==4.2.4",
-    "odh-jupyter-trash-cleanup==0.1.0",
+    "odh-jupyter-trash-cleanup==0.1.1",
 
-    "jupyterlab==4.4.4",
+    "jupyterlab==4.4.7",
     "jupyter-bokeh~=4.0.5",
-    "jupyter-server~=2.16.0",
+    "jupyter-server~=2.17.0",
     "jupyter-server-proxy~=4.4.0",
     "jupyter-server-terminals~=0.5.3",
-    "jupyterlab-git~=0.51.1",
+    "jupyterlab-git~=0.51.2",
     "jupyterlab-lsp~=5.1.1",
     "jupyterlab-widgets~=3.0.15",
     "jupyter-resource-usage~=1.1.1",
@@ -49,7 +49,7 @@ dependencies = [
 
     # Base packages
     "wheel~=0.45.1",
-    "setuptools~=78.1.1",
+    "setuptools~=80.9.0",
 ]
 
 [tool.uv.sources]
@@ -59,7 +59,7 @@ torchvision = {index = "pytorch-cuda"}
 # https://docs.astral.sh/uv/concepts/indexes/#package-indexes
 [[tool.uv.index]]
 name = "pytorch-cuda"
-url = "https://download.pytorch.org/whl/cu126"
+url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [tool.uv]

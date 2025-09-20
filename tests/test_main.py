@@ -1,3 +1,4 @@
+# ruff: noqa: COM819
 from __future__ import annotations
 
 import dataclasses
@@ -210,14 +211,15 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
         # ("package name", ("allowed version 1", "allowed version 2", ...))
         ("Codeflare-SDK", ("0.30", "0.29")),
         ("Scikit-learn", ("1.7", "1.6")),
-        ("Pandas", ("2.2", "1.5")),
+        ("Pandas", ("2.3", "1.5")),
         (
             "Numpy",
             (
                 "1.26",  # trustyai 0.6.2 depends on numpy~=1.26.4
                 # 2.0 for tensorflow rocm, but we don't have that in manifests
                 "2.1",  # for tensorflow cuda
-                "2.2",  # this is our latest where possible
+                "2.2",  # for python 3.11 n-1 images
+                "2.3",  # this is our latest where possible
             ),
         ),
         ("Tensorboard", ("2.20", "2.18")),
@@ -237,7 +239,8 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
             if exception:
                 # exception may save us from failing
                 assert set(versions) == set(exception[1]), (
-                    f"{name} is allowed to have {exception} but actually has {pprint.pformat(mapping)}"
+                    f"{name} is allowed to have {set(exception[1])} but actually has {set(versions)}. "
+                    f"Manifest breakdown: {pprint.pformat(mapping)}"
                 )
                 continue
             # all hope is lost, the check has failed
@@ -263,23 +266,28 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
     # TODO(jdanek): review these, if any are unwarranted
     ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
         # ("package name", ("allowed specifier 1", "allowed specifier 2", ...))
-        ("setuptools", ("~=78.1.1", "==78.1.1")),
+        ("setuptools", ("~=80.9.0", "==80.9.0")),
         ("wheel", ("==0.45.1", "~=0.45.1")),
         ("tensorboard", ("~=2.18.0", "~=2.20.0")),
-        ("torch", ("==2.6.0+cu126", "==2.6.0+rocm6.2.4", "==2.7.1")),
-        ("torchvision", ("==0.22.1", "==0.21.0+cu126", "==0.21.0+rocm6.2.4")),
-        ("matplotlib", ("~=3.10.1", "~=3.10.3")),
+        ("torch", ("==2.7.1", "==2.7.1+cu128", "==2.7.1+rocm6.2.4")),
+        ("torchvision", ("==0.22.1", "~=0.22.1", "==0.22.1+cu128", "==0.22.1+rocm6.2.4")),
+        (
+            "matplotlib",
+            ("~=3.10.6"),
+        ),
         (
             "numpy",
             (
                 "~=1.26.4",  # trustyai 0.6.2 depends on numpy~=1.26.4
                 "~=2.0.2",  # for tensorflow rocm
-                "~=2.1.3",  # for tensorflow cuda
-                "~=2.2.6",  # this is our latest where possible
+                "~=2.1.3",
+                "~=2.2.6",
+                "~=2.3.3",  # for tensorflow cuda and latest possible
             ),
         ),
-        ("pandas", ("~=2.2.3", "~=1.5.3")),
-        ("scikit-learn", ("~=1.6.1", "~=1.7.0")),
+        ("pandas", ("~=2.3.2", "~=1.5.3")),
+        ("scikit-learn", ("~=1.7.2",)),
+        ("codeflare-sdk", ("~=0.31.0", "~=0.31.1")),
         ("ipython-genutils", (">=0.2.0", "~=0.2.0")),
         ("jinja2", (">=3.1.6", "~=3.1.6")),
         ("jupyter-client", ("~=8.6.3", ">=8.6.3")),
@@ -292,7 +300,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         (
             "jupyter-bokeh",
             (
-                "~=3.0.7",  # trustyai 0.6.2 depends on jupyter-bokeh~=3.0.7
+                "~=3.0.5",  # trustyai 0.6.2 depends on jupyter-bokeh~=3.0.7
                 "~=4.0.5",
             ),
         ),
@@ -308,8 +316,10 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             exception = next((it for it in ignored_exceptions if it[0] == name), None)
             if exception:
                 # exception may save us from failing
-                assert set(data) == {packaging.specifiers.SpecifierSet(e) for e in exception[1]}, (
-                    f"{name} is allowed to have {exception[1]} but actually has {pprint.pformat(set(data))}"
+                actual_specs = {str(spec) for spec in data}
+                expected_specs = set(exception[1])
+                assert actual_specs == expected_specs, (
+                    f"{name} is allowed to have {expected_specs} but actually has {actual_specs}"
                 )
                 continue
             # all hope is lost, the check has failed
@@ -321,11 +331,17 @@ def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.Sub
         "ROCm de-vendor script": [
             PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.12/de-vendor-torch.sh",
             PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.12/de-vendor-torch.sh",
-        ]
+        ],
+        "nginx/common.sh": [
+            PROJECT_ROOT / "codeserver/ubi9-python-3.12/nginx/root/usr/share/container-scripts/nginx/common.sh",
+            PROJECT_ROOT / "rstudio/c9s-python-3.11/nginx/root/usr/share/container-scripts/nginx/common.sh",
+            PROJECT_ROOT / "rstudio/rhel9-python-3.11/nginx/root/usr/share/container-scripts/nginx/common.sh",
+        ],
     }
     for group_name, (first_file, *rest) in file_groups.items():
         with subtests.test(msg=f"Checking {group_name}"):
             for file in rest:
+                # file.write_text(first_file.read_text())  # update rest according to first
                 assert first_file.read_text() == file.read_text(), f"The files {first_file} and {file} do not match"
 
 
