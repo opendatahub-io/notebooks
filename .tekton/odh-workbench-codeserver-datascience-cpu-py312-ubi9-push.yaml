@@ -34,8 +34,12 @@ spec:
     value:
     - '{{target_branch}}-{{revision}}'
     - 2025b-v1.36
+  - name: build-platforms
+    value:
+    - linux-extra-fast/amd64
+    - linux-m2xlarge/arm64
   pipelineRef:
-    name: singlearch-push-pipeline
+    name: multiarch-push-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-codeserver-datascience-cpu-py312-ubi9
   workspaces:
