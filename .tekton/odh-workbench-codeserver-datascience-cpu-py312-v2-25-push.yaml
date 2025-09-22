@@ -22,8 +22,6 @@ metadata:
   name: odh-workbench-codeserver-datascience-cpu-py312-v2-25-on-push
   namespace: rhoai-tenant
 spec:
-  timeouts:
-    pipeline: 4h
   params:
   - name: git-url
     value: '{{source_url}}'
