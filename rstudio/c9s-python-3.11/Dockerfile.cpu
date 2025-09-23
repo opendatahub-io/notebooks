@@ -160,8 +160,7 @@ RUN sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH} && \
     chown -R 1001:0 ${NGINX_APP_ROOT}/etc && \
     chown -R 1001:0 ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
     chown -R 1001:0 /var/lib/nginx /var/log/nginx /run && \
-    # Create httpd directories and set permissions
-    mkdir -p /var/log/httpd /var/run/httpd /etc/httpd/logs && \
+    chown -R 1001:0 /var/log/httpd /var/run/httpd /etc/httpd/logs && \
     chmod    ug+rw  ${NGINX_CONF_PATH} && \
     chmod -R ug+rwX ${NGINX_APP_ROOT}/etc && \
     chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
