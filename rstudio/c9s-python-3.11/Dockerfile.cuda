@@ -119,16 +119,23 @@ ENV NGINX_VERSION=1.24 \
 
 # Modules does not exist
 RUN dnf -y module enable nginx:$NGINX_VERSION && \
-    INSTALL_PKGS="nss_wrapper bind-utils gettext hostname nginx nginx-mod-stream nginx-mod-http-perl fcgiwrap initscripts chkconfig supervisor" && \
+    INSTALL_PKGS="nss_wrapper bind-utils gettext hostname nginx nginx-mod-stream nginx-mod-http-perl httpd" && \
     dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
     nginx -v 2>&1 | grep -qe "nginx/$NGINX_VERSION\." && echo "Found VERSION $NGINX_VERSION" && \
     dnf -y clean all --enablerepo='*'
 
-COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/supervisord/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+# Configure httpd for CGI processing
+COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/httpd/httpd.conf /etc/httpd/conf/httpd.conf
+COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/httpd/codeserver-cgi.conf /etc/httpd/conf.d/codeserver-cgi.conf
 
 # Copy extra files to the image.
 COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/nginx/root/ /
+
+# Configure nginx
+COPY ${RSTUDIO_SOURCE_CODE}/nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
+COPY ${RSTUDIO_SOURCE_CODE}/nginx/httpconf/ /opt/app-root/etc/nginx.d/
+COPY ${RSTUDIO_SOURCE_CODE}/nginx/api/ /opt/app-root/api/
 
 # Changing ownership and user rights to support following use-cases:
 # 1) running container on OpenShift, whose default security model
@@ -148,20 +155,22 @@ RUN sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH} && \
     mkdir -p ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
     mkdir -p ${NGINX_LOG_PATH} && \
     mkdir -p ${NGINX_PERL_MODULE_PATH} && \
+    # Create httpd directories and set permissions
+    mkdir -p /var/log/httpd /var/run/httpd /etc/httpd/logs && \
     chown -R 1001:0 ${NGINX_CONF_PATH} && \
     chown -R 1001:0 ${NGINX_APP_ROOT}/etc && \
     chown -R 1001:0 ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
     chown -R 1001:0 /var/lib/nginx /var/log/nginx /run && \
+    # Create httpd directories and set permissions
+    mkdir -p /var/log/httpd /var/run/httpd /etc/httpd/logs && \
     chmod    ug+rw  ${NGINX_CONF_PATH} && \
     chmod -R ug+rwX ${NGINX_APP_ROOT}/etc && \
     chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
     chmod -R ug+rwX /var/lib/nginx /var/log/nginx /run && \
+    chmod -R ug+rwX /var/log/httpd /var/run/httpd /etc/httpd/logs && \
+    # Make CGI script executable
+    chmod +x /opt/app-root/api/kernels/access.cgi && \
     rpm-file-permissions
-
-# Configure nginx
-COPY ${RSTUDIO_SOURCE_CODE}/nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
-COPY ${RSTUDIO_SOURCE_CODE}/nginx/httpconf/ /opt/app-root/etc/nginx.d/
-COPY ${RSTUDIO_SOURCE_CODE}/nginx/api/ /opt/app-root/api/
 
 # Launcher
 WORKDIR /opt/app-root/bin
