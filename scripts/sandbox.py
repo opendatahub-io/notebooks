@@ -47,7 +47,8 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(delete=True) as tmpdir:
         setup_sandbox(prereqs, pathlib.Path(tmpdir))
-        target = "s390x-linux-gnu"
+        # target glibc 2.28 or newer (supports FORTIFY_SOURCE)
+        target = "s390x-linux-gnu.2.34"
         additional_arguments = [
             f"--volume={os.getcwd()}/bin/zig-0.15.1:/mnt",
             f"--env=CC=/mnt/zig cc -target {target}",
@@ -70,6 +71,24 @@ def main() -> int:
             return err.returncode
     return 0
 
+"""
+Downloading jedi
+  × Failed to build `pyzmq==27.1.0`
+  ├─▶ The build backend returned an error
+  ╰─▶ Call to `scikit_build_core.build.build_wheel` failed (exit status: 1)
+      [stdout]
+      *** scikit-build-core 0.11.6 using CMake 3.26.5 (wheel)
+      *** Configuring CMake...
+      loading initial cache file /tmp/tmpf9bnfh5o/build/CMakeInit.txt
+      -- Configuring incomplete, errors occurred!
+      [stderr]
+      CMake Error at /usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:49
+      (message):
+        Could not find compiler set in environment variable CC:
+        /mnt/zig-0.15.1/zig cc -target s390x-linux-gnu.
+      Call Stack (most recent call first):
+        CMakeLists.txt:2 (project)
+"""
 
 def buildinputs(
         dockerfile: pathlib.Path | str,
