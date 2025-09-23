@@ -47,7 +47,13 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(delete=True) as tmpdir:
         setup_sandbox(prereqs, pathlib.Path(tmpdir))
-        command = [arg if arg != "{};" else tmpdir for arg in args.remaining[1:]]
+        additional_arguments = ["--volume=/usr:/mnt:ro", tmpdir]
+        command = []
+        for arg in args.remaining[1:]:
+            if arg == "{};":
+                command.extend(additional_arguments)
+            else:
+                command.append(arg)
         print(f"running {command=}")
         try:
             subprocess.check_call(command)
