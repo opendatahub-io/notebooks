@@ -13,6 +13,8 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER 0
 
+RUN ls /mnt && false
+
 ### BEGIN upgrade first to avoid fixable vulnerabilities
 # If we have a Red Hat subscription prepared, refresh it
 RUN /bin/bash <<'EOF'
