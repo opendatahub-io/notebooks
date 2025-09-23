@@ -442,7 +442,7 @@ ZIG_BINARY := zig-$(ZIG_VERSION)
 bin/zig-$(ZIG_VERSION):
 	@echo "Installing Zig $(ZIG_VERSION)..."
 	TMPDIR=$(shell mktemp -d)
-	wget https://ziglang.org/download/$(ZIG_VERSION)/zig-$(ARCH)-linux-$(ZIG_VERSION).tar.xz
+	wget --progress=dot:giga https://ziglang.org/download/$(ZIG_VERSION)/zig-$(ARCH)-linux-$(ZIG_VERSION).tar.xz
 	tar -xJf zig-$(ARCH)-linux-$(ZIG_VERSION).tar.xz -C $$TMPDIR --strip-components=1
 	mv $$TMPDIR bin/zig-$(ZIG_VERSION)
 	rm -rf zig-$(ARCH)-linux-$(ZIG_VERSION).tar.xz
