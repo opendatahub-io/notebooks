@@ -19,14 +19,23 @@ location ${NB_PREFIX}/api/ {
 }
 
 location /api/ {
-  index probe.cgi;
-  fastcgi_index probe.cgi;
+  proxy_pass http://localhost:8080;
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
   gzip off;
-  access_log  off;
-  root  /opt/app-root;
-  fastcgi_pass  unix:/var/run/fcgiwrap.socket;
-  include /etc/nginx/fastcgi_params;
-  fastcgi_param SCRIPT_FILENAME  /opt/app-root$fastcgi_script_name;
+  access_log off;
+}
+
+location = /api/probe {
+  proxy_pass http://localhost:8080;
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  gzip off;
+  access_log off;
 }
 ###############
 

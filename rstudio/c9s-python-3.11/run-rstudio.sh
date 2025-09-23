@@ -6,7 +6,22 @@ source ${SCRIPT_DIR}/utils/*.sh
 
 # Start nginx and httpd
 run-nginx.sh &
+
+# Start Apache httpd with error checking
+echo "Starting Apache httpd..."
 /usr/sbin/httpd -D FOREGROUND &
+HTTPD_PID=$!
+sleep 2
+
+# Check if Apache started successfully
+if ! kill -0 $HTTPD_PID 2>/dev/null; then
+    echo "ERROR: Apache httpd failed to start"
+    echo "Checking Apache configuration..."
+    /usr/sbin/httpd -t
+    exit 1
+else
+    echo "Apache httpd started successfully (PID: $HTTPD_PID)"
+fi
 
 
 # Add .bashrc for custom promt if not present

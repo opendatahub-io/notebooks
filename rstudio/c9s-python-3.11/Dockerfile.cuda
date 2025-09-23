@@ -107,7 +107,8 @@ RUN R -f ./install_packages.R && \
     rm ./install_packages.R
 
 # Install NGINX to proxy RStudio and pass probes check
-ENV NGINX_VERSION=1.24 \
+ENV APP_ROOT=/opt/app-root \
+    NGINX_VERSION=1.24 \
     NGINX_SHORT_VER=124 \
     NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_CONF_PATH=/etc/nginx/nginx.conf \
@@ -127,7 +128,7 @@ RUN dnf -y module enable nginx:$NGINX_VERSION && \
 
 # Configure httpd for CGI processing
 COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/httpd/httpd.conf /etc/httpd/conf/httpd.conf
-COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/httpd/codeserver-cgi.conf /etc/httpd/conf.d/codeserver-cgi.conf
+COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/httpd/rstudio-cgi.conf /etc/httpd/conf.d/rstudio-cgi.conf
 
 # Copy extra files to the image.
 COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/nginx/root/ /
@@ -168,8 +169,10 @@ RUN sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH} && \
     chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
     chmod -R ug+rwX /var/lib/nginx /var/log/nginx /run && \
     chmod -R ug+rwX /var/log/httpd /var/run/httpd /etc/httpd/logs && \
-    # Make CGI script executable
+    # Make CGI scripts executable and set proper ownership
     chmod +x /opt/app-root/api/kernels/access.cgi && \
+    chmod +x /opt/app-root/api/probe.cgi && \
+    chown -R 1001:0 /opt/app-root/api && \
     rpm-file-permissions
 
 # Launcher
