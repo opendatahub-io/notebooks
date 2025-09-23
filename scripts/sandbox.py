@@ -47,7 +47,13 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(delete=True) as tmpdir:
         setup_sandbox(prereqs, pathlib.Path(tmpdir))
-        additional_arguments = [f"--volume={os.getcwd()}/bin/zig-0.15.1:/mnt", tmpdir]
+        target = "s390x-linux-gnu"
+        additional_arguments = [
+            f"--volume={os.getcwd()}/bin/zig-0.15.1:/mnt",
+            f"--build-arg=CC=/mnt/zig-0.15.1/zig cc -target {target}",
+            f"--build-arg=CXX=/mnt/zig-0.15.1/zig c++ -target {target}",
+            tmpdir,
+        ]
         command = []
         for arg in args.remaining[1:]:
             if arg == "{};":
