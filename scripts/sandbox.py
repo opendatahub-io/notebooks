@@ -51,8 +51,15 @@ def main() -> int:
         target = "s390x-linux-gnu.2.34"
         additional_arguments = [
             f"--volume={os.getcwd()}/bin/zig-0.15.1:/mnt",
-            f"--env=CC=/mnt/zig cc -target {target}",
-            f"--env=CXX=/mnt/zig c++ -target {target}",
+            # f"--env=CC=/mnt/zig cc -target {target}",
+            # f"--env=CXX=/mnt/zig c++ -target {target}",
+            # f"--env=CC=/mnt/zig-cc",
+            # f"--env=CXX=/mnt/zig-c++",
+            # -Wp,-D_FORTIFY_SOURCE=2
+            # https://github.com/giampaolo/psutil/blob/master/setup.py#L254
+            # defaults to using python's flags
+            # f"--env=CFLAGS=",
+            "--env=CXXFLAGS=-Dundefined=64",
             f"--unsetenv=CC",
             f"--unsetenv=CXX",
             tmpdir,
