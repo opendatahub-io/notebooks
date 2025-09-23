@@ -50,8 +50,8 @@ def main() -> int:
         target = "s390x-linux-gnu"
         additional_arguments = [
             f"--volume={os.getcwd()}/bin/zig-0.15.1:/mnt",
-            f"--env=CC=/mnt/zig-0.15.1/zig cc -target {target}",
-            f"--env=CXX=/mnt/zig-0.15.1/zig c++ -target {target}",
+            f"--env=CC=/mnt/zig cc -target {target}",
+            f"--env=CXX=/mnt/zig c++ -target {target}",
             f"--unsetenv=CC",
             f"--unsetenv=CXX",
             tmpdir,
