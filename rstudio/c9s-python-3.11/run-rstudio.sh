@@ -4,9 +4,9 @@
 SCRIPT_DIR=$(dirname -- "$0")
 source ${SCRIPT_DIR}/utils/*.sh
 
-# Start nginx and supervisord
+# Start nginx and httpd
 run-nginx.sh &
-/usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf &
+/usr/sbin/httpd -D FOREGROUND &
 
 
 # Add .bashrc for custom promt if not present
@@ -22,7 +22,7 @@ do
   if [ ! -d "/opt/app-root/src/Rpackages/4.4/$package_folder" ]; then
     cp -r /opt/app-root/bin/Rpackages/4.4/$package_folder /opt/app-root/src/Rpackages/4.4/
   fi
-done  
+done
 # rstudio terminal can't see environment variables set by the container runtime;
 # so we set all env variables to the Renviron.site config file. For kubectl, we need the KUBERNETES_* env vars at least.
 # Also, we store proxy-related env vars lowercased by key so RStudio projects work with proxy by default
