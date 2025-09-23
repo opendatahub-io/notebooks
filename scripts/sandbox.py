@@ -47,7 +47,7 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(delete=True) as tmpdir:
         setup_sandbox(prereqs, pathlib.Path(tmpdir))
-        additional_arguments = ["--volume=/usr:/mnt:ro", tmpdir]
+        additional_arguments = [f"--volume={os.getcwd()}/bin/zig-0.15.1:/mnt", tmpdir]
         command = []
         for arg in args.remaining[1:]:
             if arg == "{};":
@@ -69,6 +69,8 @@ def buildinputs(
 ) -> list[pathlib.Path]:
     if not (ROOT_DIR / "bin/buildinputs").exists():
         subprocess.check_call([MAKE, "bin/buildinputs"], cwd=ROOT_DIR)
+    if not (ROOT_DIR / "bin/zig-0.15.1").exists():
+        subprocess.check_call([MAKE, "bin/zig-0.15.1"], cwd=ROOT_DIR)
     stdout = subprocess.check_output([ROOT_DIR / "bin/buildinputs", str(dockerfile)],
                                      text=True, cwd=ROOT_DIR,
                                      env={"TARGETPLATFORM": platform, **os.environ})
