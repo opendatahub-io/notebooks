@@ -94,6 +94,46 @@ Downloading jedi
         CMakeLists.txt:2 (project)
 """
 
+"""
+creating build/temp.linux-s390x-cpython-312/psutil/arch/linux
+      /mnt/zig cc -target s390x-linux-gnu -fno-strict-overflow
+      -Wsign-compare -DDYNAMIC_ANNOTATIONS_ENABLED=1 -DNDEBUG
+      -O2 -fexceptions -g -grecord-gcc-switches -pipe
+      -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2
+      -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong
+      -m64 -march=z14 -mtune=z15 -fasynchronous-unwind-tables
+      -fstack-clash-protection -O2 -fexceptions -g -grecord-gcc-switches
+      -pipe -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2
+      -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong
+      -m64 -march=z14 -mtune=z15 -fasynchronous-unwind-tables
+      -fstack-clash-protection -O2 -fexceptions -g -grecord-gcc-switches
+      -pipe -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2
+      -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong
+      -m64 -march=z14 -mtune=z15 -fasynchronous-unwind-tables
+      -fstack-clash-protection -fPIC -DPSUTIL_POSIX=1 -DPSUTIL_SIZEOF_PID_T=4
+      -DPSUTIL_VERSION=700 -DPy_LIMITED_API=0x03060000
+      -DPSUTIL_LINUX=1 -I/tmp/.tmpWlL4ZP/builds-v0/.tmpOwAhw2/include
+      -I/usr/include/python3.12 -c psutil/_psutil_common.c -o
+      build/temp.linux-s390x-cpython-312/psutil/_psutil_common.o
+      [stderr]
+      /tmp/.tmpWlL4ZP/builds-v0/.tmpOwAhw2/lib64/python3.12/site-packages/setuptools/dist.py:759:
+      SetuptoolsDeprecationWarning: License classifiers are deprecated.
+      !!
+
+      ********************************************************************************
+              Please consider removing the following classifiers in favor of a
+      SPDX license expression:
+              License :: OSI Approved :: BSD License
+              See
+      https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license
+      for details.
+
+      ********************************************************************************
+      !!
+        self._finalize_license_expression()
+      error: unsupported preprocessor arg: -D_FORTIFY_SOURCE
+"""
+
 def extract_build_args(remaining: list[str]) -> dict[str, str]:
     """Extract --build-arg KEY=VALUE pairs from the command line using argparse."""
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
@@ -106,7 +146,6 @@ def extract_build_args(remaining: list[str]) -> dict[str, str]:
         key, value = arg.split("=", 1)
         build_args[key] = value
     return build_args
-
 
 def buildinputs(
         dockerfile: pathlib.Path | str,
