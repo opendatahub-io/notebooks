@@ -341,7 +341,7 @@ jobs:
           # E: Packages were downgraded and -y was used without --allow-downgrades.
 
           sudo apt-get install -y --allow-downgrades \
-            "cri-o=${CRIO_VERSION}.*" "cri-tools=${CRIO_VERSION}.*" \
+            "cri-o=${CRIO_VERSION}.*" "cri-o-runc=${CRIO_VERSION}.*" "cri-tools=${CRIO_VERSION}.*" \
             "kubelet=${KUBERNETES_VERSION}.*" "kubeadm=${KUBERNETES_VERSION}.*" "kubectl=${KUBERNETES_VERSION}.*" \
             conntrack
 
@@ -355,7 +355,8 @@ jobs:
 
           sudo cp ci/cached-builds/crio.conf /etc/crio/crio.conf.d/
 
-          sudo systemctl start crio.service
+          sudo systemctl daemon-reload
+          sudo systemctl enable --now crio.service
         env:
           CRIO_VERSION: 1.33
           # This has to be kept in sync with the packages above, otherwise
@@ -364,6 +365,9 @@ jobs:
           #  Kubelet version: "1.33.0" Control plane version: "1.30.12"
           KUBERNETES_VERSION: 1.33
           # Also update version in kubeadm.yaml
+
+      - run: sudo crictl info
+        if: ${{ steps.have-tests.outputs.tests == 'true' }}
 
       - name: Show crio debug data (on failure)
         if: ${{ failure() && steps.have-tests.outputs.tests == 'true' }}
