@@ -341,7 +341,7 @@ jobs:
           # E: Packages were downgraded and -y was used without --allow-downgrades.
 
           sudo apt-get install -y --allow-downgrades \
-            "cri-o=${CRIO_VERSION}.*" "cri-o-runc=${CRIO_VERSION}.*" "cri-tools=${CRIO_VERSION}.*" \
+            "cri-o=${CRIO_VERSION}.*" "cri-tools=${CRIO_VERSION}.*" \
             "kubelet=${KUBERNETES_VERSION}.*" "kubeadm=${KUBERNETES_VERSION}.*" "kubectl=${KUBERNETES_VERSION}.*" \
             conntrack
 
