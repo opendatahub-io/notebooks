@@ -405,6 +405,13 @@ jobs:
         run: |
           set -Eeuxo pipefail
 
+          # the Microsoft repo's kubelet does not provide /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+          #  [Service]
+          #  EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+          #  ExecStart=/usr/bin/kubelet $KUBELET_KUBEADM_ARGS
+          sudo ls /etc/apt/sources.list.d/
+          sudo rm /etc/apt/sources.list.d/microsoft-prod.list
+
           sudo apt-get update
           sudo apt-get install -y software-properties-common curl
 
@@ -446,6 +453,7 @@ jobs:
 
           sudo cp ci/cached-builds/crio.conf /etc/crio/crio.conf.d/
 
+          sudo systemctl daemon-reload
           sudo systemctl start crio.service
         env:
           # TODO(jdanek): install also "cri-tools=${CRIO_VERSION}.*" when updating to 1.33
@@ -455,6 +463,10 @@ jobs:
           #  This is not a supported version skew and may lead to a malfunctional cluster.
           #  Kubelet version: "1.33.0" Control plane version: "1.30.12"
           KUBERNETES_VERSION: 1.33
+          # Also update version in kubeadm.yaml
+
+      - run: sudo crictl info
+        if: ${{ steps.have-tests.outputs.tests == 'true' }}
 
       - name: Show crio debug data (on failure)
         if: ${{ failure() && steps.have-tests.outputs.tests == 'true' }}
@@ -491,6 +503,8 @@ jobs:
           sudo iptables -P FORWARD ACCEPT
           sudo iptables -t nat -A POSTROUTING -s 10.85.0.0/16 -o eth0 -j MASQUERADE
 
+          sudo kubeadm reset -f --cri-socket=unix:///var/run/crio/crio.sock
+
           # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm
           sudo kubeadm init --config=ci/cached-builds/kubeadm.yaml
 
@@ -502,6 +516,15 @@ jobs:
         if: ${{ failure() && steps.have-tests.outputs.tests == 'true' && steps.install-crio.outcome == 'success' }}
         run: |
           set -Eeuxo pipefail
+
+          # [kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+          sudo cat /var/lib/kubelet/kubeadm-flags.env || true
+          # [kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+          sudo cat /var/lib/kubelet/config.yaml || true
+
+          sudo systemctl cat kubelet.service || true
+
+          sudo cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf || true
 
           sudo systemctl status kubelet || true
           sudo journalctl -xeu kubelet
