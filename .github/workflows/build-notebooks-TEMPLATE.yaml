@@ -432,7 +432,7 @@ jobs:
           # E: Packages were downgraded and -y was used without --allow-downgrades.
 
           sudo apt-get install -y --allow-downgrades \
-            "cri-o=${CRIO_VERSION}.*" \
+            "cri-o=${CRIO_VERSION}.*" "cri-tools=${CRIO_VERSION}.*" \
             "kubelet=${KUBERNETES_VERSION}.*" "kubeadm=${KUBERNETES_VERSION}.*" "kubectl=${KUBERNETES_VERSION}.*" \
             conntrack
 
@@ -448,13 +448,13 @@ jobs:
 
           sudo systemctl start crio.service
         env:
-          # TODO(jdanek): install also "cri-tools=${CRIO_VERSION}.*" when updating to 1.33
-          CRIO_VERSION: 1.32
+          CRIO_VERSION: 1.33
           # This has to be kept in sync with the packages above, otherwise
           # [ERROR KubeletVersion]: the kubelet version is higher than the control plane version.
           #  This is not a supported version skew and may lead to a malfunctional cluster.
           #  Kubelet version: "1.33.0" Control plane version: "1.30.12"
           KUBERNETES_VERSION: 1.33
+          # Also update version in kubeadm.yaml
 
       - name: Show crio debug data (on failure)
         if: ${{ failure() && steps.have-tests.outputs.tests == 'true' }}
