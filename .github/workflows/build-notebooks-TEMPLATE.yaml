@@ -281,6 +281,97 @@ jobs:
 
       # endregion
 
+      # region Image build
+
+      - name: Login to quay.io/aipcc (if the secret is present)
+        # if: for the ${{ secret != '' }} does not work, getting Unrecognized named-value: 'secrets'.
+        shell: bash
+        run: |
+          if [[ "${{ secrets.AIPCC_QUAY_BOT_USERNAME }}" == "" ]]; then
+            echo "AIPCC_QUAY_BOT_USERNAME is not set, skipping login"
+            exit 0
+          fi
+          echo "${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}" | podman login quay.io/aipcc -u "${{ secrets.AIPCC_QUAY_BOT_USERNAME }}" --password-stdin
+
+      - name: Compute extra podman build args
+        id: extra-podman-build-args
+        run: |
+          set -Eeuxo pipefail
+
+          EXTRA_PODMAN_BUILD_ARGS=""
+          if [[ "${{ inputs.platform }}" == "linux/s390x" ]]; then
+            # workaround for known issue https://github.com/zeromq/libzmq/pull/4486
+            # In qemu-user, CACHELINE_SIZE probe is undefined
+            EXTRA_PODMAN_BUILD_ARGS+='--env=CXXFLAGS=-Dundefined=64'
+          fi
+          echo "EXTRA_PODMAN_BUILD_ARGS=$EXTRA_PODMAN_BUILD_ARGS" >> $GITHUB_OUTPUT
+
+      # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
+      # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
+
+      - name: "push|schedule|workflow_dispatch: make ${{ inputs.target }}"
+        id: push-make-target
+        run: |
+          # print running stats on disk occupancy
+          (while true; do df -h | grep "${HOME}/.local/share/containers"; sleep 30; done) &
+
+          make ${{ inputs.target }}
+        if: ${{ fromJson(inputs.github).event_name == 'push' ||
+          fromJson(inputs.github).event_name == 'schedule' ||
+          fromJson(inputs.github).event_name == 'workflow_dispatch' }}
+        env:
+          IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
+          CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --cache-from ${{ env.CACHE }} --cache-to ${{ env.CACHE }}"
+      - name: "pull_request: make ${{ inputs.target }}"
+        id: pr-make-target
+        run: |
+          # print running stats on disk occupancy
+          (while true; do df -h | grep "${HOME}/.local/share/containers"; sleep 30; done) &
+
+          make ${{ inputs.target }}
+        if: "${{ fromJson(inputs.github).event_name == 'pull_request' ||
+          fromJson(inputs.github).event_name == 'pull_request_target' }}"
+        env:
+          IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
+          CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-podman-build-args.outputs.EXTRA_PODMAN_BUILD_ARGS }} --cache-from ${{ env.CACHE }}"
+          # We don't have access to image registry, so disable pushing
+          PUSH_IMAGES: "no"
+
+      - name: "Show podman images information"
+        run: podman images --digests
+
+      # endregion
+
+      # region Pytest image tests
+
+      # https://github.com/astral-sh/setup-uv
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          pyproject-file: "pyproject.toml"
+
+      - name: Check uv is installed correctly
+        run: uv version
+
+      - name: Install deps
+        run: uv sync --locked
+
+      - name: Run Testcontainers container tests (in PyTest)
+        run: |
+          set -Eeuxo pipefail
+          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+        env:
+          DOCKER_HOST: "unix:///var/run/podman/podman.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
+          # pulling the Ryuk container from docker.io introduces CI flakiness
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+
+      # endregion Pytest image tests
+
       # region Makefile image tests
 
       - name: "Check if we have tests or not"
@@ -363,14 +454,14 @@ jobs:
           sudo cp ci/cached-builds/crio.conf /etc/crio/crio.conf.d/
 
           sudo systemctl daemon-reload
-          sudo systemctl enable --now crio.service
+          sudo systemctl start crio.service
         env:
-          CRIO_VERSION: 1.33
+          CRIO_VERSION: 1.34
           # This has to be kept in sync with the packages above, otherwise
           # [ERROR KubeletVersion]: the kubelet version is higher than the control plane version.
           #  This is not a supported version skew and may lead to a malfunctional cluster.
           #  Kubelet version: "1.33.0" Control plane version: "1.30.12"
-          KUBERNETES_VERSION: 1.33
+          KUBERNETES_VERSION: 1.34
           # Also update version in kubeadm.yaml
 
       - run: sudo crictl info

@@ -21,7 +21,7 @@ nodeRegistration:
   criSocket: unix:///var/run/crio/crio.sock
   imagePullPolicy: IfNotPresent
   imagePullSerial: true
-  taints: null
+  taints: []
   kubeletExtraArgs:
     # Need to have enough disk space for Kubelet, so move root-dir on the LVM volume
     # Note: the internets discourage from changing the default because storage plugins may then struggle
@@ -39,7 +39,7 @@ timeouts:
 ---
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
-kubernetesVersion: 1.33.0
+kubernetesVersion: 1.34.0
 clusterName: kubernetes
 caCertificateValidityPeriod: 87600h0m0s
 certificateValidityPeriod: 8760h0m0s
