@@ -133,33 +133,12 @@ jobs:
       # region Free up disk space
 
       - name: Free up additional disk space
+        uses: ./.github/actions/free-up-disk-space
         # https://docs.github.com/en/actions/learn-github-actions/expressions
         # NOTE: the arm64 GitHub hosted runner does not have the /mnt-mounted scratch disk
         if: "${{ contains(inputs.target, 'rocm') || contains(inputs.target, 'cuda') ||
          contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') ||
          inputs.platform == 'linux/arm64' }}"
-        run: |
-          set -x
-
-          df -h
-
-          sudo apt-get update
-          sudo apt-get purge -y '^dotnet-.*' '^llvm-.*' 'php.*' '^mongodb-.*'
-          sudo apt-get autoremove -y --purge
-          sudo apt-get clean
-          sudo rm -rf /usr/local/.ghcup &
-          sudo rm -rf /usr/local/lib/android &
-          sudo rm -rf /usr/local/share/boost &
-          sudo rm -rf /usr/local/lib/node_modules &
-          sudo rm -rf /usr/share/dotnet &
-          sudo rm -rf /opt/ghc &
-          sudo rm -rf /opt/hostedtoolcache/CodeQL &
-
-          sudo docker image prune --all --force &
-
-          wait
-
-          df -h
 
       - id: install-compsize
         run: sudo apt-get install -y btrfs-compsize
