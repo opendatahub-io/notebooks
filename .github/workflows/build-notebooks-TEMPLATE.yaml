@@ -439,7 +439,7 @@ jobs:
           # E: Packages were downgraded and -y was used without --allow-downgrades.
 
           sudo apt-get install -y --allow-downgrades \
-            "cri-o=${CRIO_VERSION}.*" "cri-tools=${CRIO_VERSION}.*" \
+            "cri-o=${CRIO_VERSION}.*" \
             "kubelet=${KUBERNETES_VERSION}.*" "kubeadm=${KUBERNETES_VERSION}.*" "kubectl=${KUBERNETES_VERSION}.*" \
             conntrack
 
@@ -456,12 +456,13 @@ jobs:
           sudo systemctl daemon-reload
           sudo systemctl start crio.service
         env:
-          CRIO_VERSION: 1.34
+          # TODO(jdanek): install also "cri-tools=${CRIO_VERSION}.*" when updating to 1.33
+          CRIO_VERSION: 1.32
           # This has to be kept in sync with the packages above, otherwise
           # [ERROR KubeletVersion]: the kubelet version is higher than the control plane version.
           #  This is not a supported version skew and may lead to a malfunctional cluster.
           #  Kubelet version: "1.33.0" Control plane version: "1.30.12"
-          KUBERNETES_VERSION: 1.34
+          KUBERNETES_VERSION: 1.33
           # Also update version in kubeadm.yaml
 
       - run: sudo crictl info
@@ -550,7 +551,7 @@ jobs:
         if: ${{ steps.have-tests.outputs.tests == 'true' }}
         run: |
           set -Eeuxo pipefail
-          kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.32/deploy/local-path-storage.yaml
+          kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.31/deploy/local-path-storage.yaml
           kubectl wait deployments --all --namespace=local-path-storage --for=condition=Available --timeout=100s
           # https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/
           kubectl get storageclass
