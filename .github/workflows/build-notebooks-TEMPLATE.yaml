@@ -314,6 +314,12 @@ jobs:
         run: |
           set -Eeuxo pipefail
 
+          # the Microsoft repo's kubelet does not provide /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+          #  [Service]
+          #  EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+          #  ExecStart=/usr/bin/kubelet $KUBELET_KUBEADM_ARGS
+          sudo add-apt-repository --remove 'deb https://packages.microsoft.com/ubuntu/24.04/prod noble main'
+
           sudo apt-get update
           sudo apt-get install -y software-properties-common curl
 
@@ -424,6 +430,8 @@ jobs:
           sudo cat /var/lib/kubelet/config.yaml || true
 
           sudo systemctl cat kubelet.service || true
+
+          sudo cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf || true
 
           sudo systemctl status kubelet || true
           sudo journalctl -xeu kubelet
