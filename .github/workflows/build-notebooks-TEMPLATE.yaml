@@ -491,6 +491,8 @@ jobs:
           sudo iptables -P FORWARD ACCEPT
           sudo iptables -t nat -A POSTROUTING -s 10.85.0.0/16 -o eth0 -j MASQUERADE
 
+          sudo kubeadm reset -f --cri-socket=unix:///var/run/crio/crio.sock
+
           # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm
           sudo kubeadm init --config=ci/cached-builds/kubeadm.yaml
 
