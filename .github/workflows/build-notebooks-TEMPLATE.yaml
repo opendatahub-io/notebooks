@@ -318,7 +318,8 @@ jobs:
           #  [Service]
           #  EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
           #  ExecStart=/usr/bin/kubelet $KUBELET_KUBEADM_ARGS
-          sudo add-apt-repository --remove 'deb https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease'
+          sudo ls /etc/apt/sources.list.d/
+          sudo rm /etc/apt/sources.list.d/microsoft-prod.list
 
           sudo apt-get update
           sudo apt-get install -y software-properties-common curl
