@@ -1,0 +1,21 @@
+name: Test Provision K8s Action
+
+on:
+  push:
+    paths:
+      - 'ci/cached-builds/**'
+      - '.github/actions/provision-k8s/**'
+  pull_request:
+    paths:
+      - 'ci/cached-builds/**'
+      - '.github/actions/provision-k8s/**'
+  workflow_dispatch:
+
+jobs:
+  test-provisioning:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Provision K8s cluster
+        uses: ./.github/actions/provision-k8s
