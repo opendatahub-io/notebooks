@@ -21,7 +21,6 @@ nodeRegistration:
   criSocket: unix:///var/run/crio/crio.sock
   imagePullPolicy: IfNotPresent
   imagePullSerial: true
-  name: node
   taints: null
   kubeletExtraArgs:
     # Need to have enough disk space for Kubelet, so move root-dir on the LVM volume
