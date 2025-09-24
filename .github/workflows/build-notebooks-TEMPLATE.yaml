@@ -550,7 +550,7 @@ jobs:
         if: ${{ steps.have-tests.outputs.tests == 'true' }}
         run: |
           set -Eeuxo pipefail
-          kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.31/deploy/local-path-storage.yaml
+          kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.32/deploy/local-path-storage.yaml
           kubectl wait deployments --all --namespace=local-path-storage --for=condition=Available --timeout=100s
           # https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/
           kubectl get storageclass
