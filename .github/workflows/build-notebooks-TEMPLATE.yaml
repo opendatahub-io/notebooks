@@ -407,7 +407,7 @@ jobs:
           sudo kubeadm reset -f --cri-socket=unix:///var/run/crio/crio.sock
 
           # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm
-          sudo kubeadm init --config=ci/cached-builds/kubeadm.yaml
+          sudo kubeadm init --config=ci/cached-builds/kubeadm.yaml --cri-socket=unix:///var/run/crio/crio.sock
 
           mkdir -p $HOME/.kube
           sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
