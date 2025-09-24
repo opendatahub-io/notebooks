@@ -159,7 +159,7 @@ runs:
       run: |
         set -Eeuxo pipefail
         kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.31/deploy/local-path-storage.yaml
-        kubectl wait deployments --all --namespace=local-path-storage --for=condition=Available --timeout=100s
+        kubectl wait deployments --all --namespace=local-path-storage --for=condition=Available --timeout=100s || (kubectl describe deployments --namespace=local-path-storage && false)
         # https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/
         kubectl get storageclass
         kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
