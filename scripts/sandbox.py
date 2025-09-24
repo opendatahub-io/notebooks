@@ -53,12 +53,13 @@ def main() -> int:
             f"--volume={os.getcwd()}/bin/zig-0.15.1:/mnt",
             # f"--env=CC=/mnt/zig cc -target {target}",
             # f"--env=CXX=/mnt/zig c++ -target {target}",
-            # f"--env=CC=/mnt/zig-cc",
-            # f"--env=CXX=/mnt/zig-c++",
+            f"--env=CC=/mnt/zig-cc",
+            f"--env=CXX=/mnt/zig-c++",
             # -Wp,-D_FORTIFY_SOURCE=2
             # https://github.com/giampaolo/psutil/blob/master/setup.py#L254
             # defaults to using python's flags
             # f"--env=CFLAGS=",
+            f"--env=bustcachez=",
             "--env=CXXFLAGS=-Dundefined=64",
             f"--unsetenv=CC",
             f"--unsetenv=CXX",
@@ -145,6 +146,10 @@ def buildinputs(
         subprocess.check_call([MAKE, "bin/buildinputs"], cwd=ROOT_DIR)
     if not (ROOT_DIR / "bin/zig-0.15.1").exists():
         subprocess.check_call([MAKE, "bin/zig-0.15.1"], cwd=ROOT_DIR)
+    if not (ROOT_DIR / "bin/zig-0.15.1/zigcc").exists():
+        subprocess.check_call([MAKE, "build"], cwd=ROOT_DIR / "scripts/zigcc")
+        shutil.copy(ROOT_DIR / "scripts/zigcc/bin/zigcc", ROOT_DIR / "bin/zig-0.15.1/zig-cc")
+        shutil.copy(ROOT_DIR / "scripts/zigcc/bin/zigcc", ROOT_DIR / "bin/zig-0.15.1/zig-c++")
     stdout = subprocess.check_output([ROOT_DIR / "bin/buildinputs", str(dockerfile)],
                                      text=True, cwd=ROOT_DIR,
                                      env={"TARGETPLATFORM": platform, **os.environ})
