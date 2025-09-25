@@ -12,6 +12,7 @@ FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
 # e.g., registry.access.redhat.com/ubi9/python-312:latest
 FROM ${BASE_IMAGE} AS rpm-base
 
+# hadolint ignore=DL3002
 USER root
 WORKDIR /root
 
@@ -38,6 +39,7 @@ RUN ./get_code_server_rpm.sh && touch /tmp/control
 #######################
 FROM registry.access.redhat.com/ubi9/python-312:latest AS whl-cache
 
+# hadolint ignore=DL3002
 USER root
 WORKDIR /root
 
@@ -287,5 +289,5 @@ set -Eeuxo pipefail
 python3 /tmp/test/test_startup.py 2>&1 | tee /tmp/test_log.txt
 EOF
 
-from codeserver
+FROM codeserver
 COPY --from=tests /tmp/test_log.txt /tmp/test_log.txt

@@ -113,6 +113,7 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 FROM cpu-base AS s390x-builder
 
 ARG TARGETARCH
+# hadolint ignore=DL3002
 USER 0
 WORKDIR /tmp/build-wheels
 
@@ -191,6 +192,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 ##################################
 
 FROM cpu-base AS openblas-builder
+# hadolint ignore=DL3002
 USER root
 WORKDIR /root
 
@@ -215,6 +217,7 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
 ###################################
 
 FROM cpu-base AS onnx-builder
+# hadolint ignore=DL3002
 USER root
 WORKDIR /root
 
@@ -241,6 +244,7 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
 ##################################
 
 FROM cpu-base AS arrow-builder
+# hadolint ignore=DL3002
 USER root
 WORKDIR /root
 
