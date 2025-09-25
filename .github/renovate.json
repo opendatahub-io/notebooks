@@ -33,9 +33,9 @@
   ],
   "tekton": {
     "additionalBranchPrefix": "",
-    "fileMatch": [
-      "\\.yaml$",
-      "\\.yml$"
+    "managerFilePatterns": [
+      "/\\.yaml$/",
+      "/\\.yml$/"
     ],
     "includePaths": [
       ".tekton/**"
