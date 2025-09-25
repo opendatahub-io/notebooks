@@ -23,7 +23,7 @@ RUN arch="${TARGETARCH:-$(uname -m)}" && \
     arch=$(echo "$arch" | cut -d- -f1) && \
     if [ "$arch" = "s390x" ]; then \
         echo "Skipping mongocli build for ${arch}, creating dummy binary"; \
-        mkdir -p /tmp && echo -e '#!/bin/sh\necho "mongocli not supported on s390x"' > /tmp/mongocli && \
+        mkdir -p /tmp && printf '#!/bin/sh\necho "mongocli not supported on s390x"' > /tmp/mongocli && \
         chmod +x /tmp/mongocli; \
     else \
         echo "Building mongocli for ${arch}"; \
@@ -177,7 +177,7 @@ FROM cpu-base AS common-builder
 ARG TARGETARCH
 # hadolint ignore=DL3002
 USER root
-RUN <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
     dnf install -y gcc-toolset-13 cmake ninja-build git wget unzip
@@ -309,7 +309,7 @@ COPY --from=openblas-builder /root/OpenBLAS-${OPENBLAS_VERSION} /openblas
 COPY --from=onnx-builder /root/onnx_wheel/ /onnxwheels/
 
 # Power-specific ONNX/OpenBLAS installation
-RUN <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
     pip install --no-cache-dir /onnxwheels/*.whl
@@ -319,7 +319,7 @@ fi
 EOF
 
 USER root
-RUN <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
     rm -rf /onnxwheels
@@ -328,7 +328,7 @@ else
 fi
 EOF
 
-RUN <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
     PREFIX=/usr/local make -C /openblas install
