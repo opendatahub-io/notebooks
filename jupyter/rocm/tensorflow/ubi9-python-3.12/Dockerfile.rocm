@@ -114,6 +114,7 @@ WORKDIR /opt/app-root/src
 ###########################
 FROM rocm-jupyter-datascience AS rocm-jupyter-tensorflow
 
+ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG TENSORFLOW_SOURCE_CODE=jupyter/rocm/tensorflow/ubi9-python-3.12
 
@@ -151,5 +152,7 @@ RUN echo "Installing softwares and packages" && \
     # Fix permissions to support pip in Openshift environments \
     chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P
+
+COPY ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monkey_patch_protobuf_6x.py /opt/app-root/lib/python3.12/site-packages/
 
 WORKDIR /opt/app-root/src
