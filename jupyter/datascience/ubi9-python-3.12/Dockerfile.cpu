@@ -66,27 +66,33 @@ RUN --mount=type=cache,target=/var/cache/dnf \
     dnf install -y $PACKAGES && \
     dnf clean all && rm -rf /var/cache/yum
 
-RUN if [ "$TARGETARCH" = "s390x" ]; then \
+RUN <<EOF
+if [ "$TARGETARCH" = "s390x" ]; then
     # Install Rust and set up environment
-    mkdir -p /opt/.cargo && \
-    export HOME=/root && \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh && \
-    chmod +x rustup-init.sh && \
-    CARGO_HOME=/opt/.cargo HOME=/root ./rustup-init.sh -y --no-modify-path && \
-    rm -f rustup-init.sh && \
-    chown -R 1001:0 /opt/.cargo && \
+    mkdir -p /opt/.cargo
+    export HOME=/root
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh
+    chmod +x rustup-init.sh
+    CARGO_HOME=/opt/.cargo HOME=/root ./rustup-init.sh -y --no-modify-path
+    rm -f rustup-init.sh
+    chown -R 1001:0 /opt/.cargo
     # Set environment variables
-    echo 'export PATH=/opt/.cargo/bin:$PATH' >> /etc/profile.d/cargo.sh && \
-    echo 'export CARGO_HOME=/opt/.cargo' >> /etc/profile.d/cargo.sh && \
-    echo 'export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1' >> /etc/profile.d/cargo.sh; \
+    cat > /etc/profile.d/cargo.sh <<'CARGO_EOF'
+export PATH=/opt/.cargo/bin:$PATH
+export CARGO_HOME=/opt/.cargo
+export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
+CARGO_EOF
 fi
+EOF
 
 # Set python alternatives only for s390x (not needed for other arches)
-RUN if [ "$TARGETARCH" = "s390x" ]; then \
-    alternatives --install /usr/bin/python python /usr/bin/python3.12 1 && \
-    alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
-    python --version && python3 --version; \
+RUN <<EOF
+if [ "$TARGETARCH" = "s390x" ]; then
+    alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+    alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+    python --version && python3 --version
 fi
+EOF
 
 # Other apps and tools installed as default user
 USER 1001
