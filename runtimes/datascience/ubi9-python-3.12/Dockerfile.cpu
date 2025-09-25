@@ -225,7 +225,7 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
     	git clone --recursive https://github.com/onnx/onnx.git && \
     	cd onnx && git checkout v${ONNX_VERSION} && \
     	git submodule update --init --recursive && \
-    	pip install -r requirements.txt && \
+    	pip install --no-cache-dir -r requirements.txt && \
     	CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)" && \
     	export CMAKE_ARGS && \
     	pip wheel . -w /onnx_wheels; \
@@ -249,7 +249,7 @@ RUN echo "arrow-builder stage TARGETARCH: ${TARGETARCH}"
 RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
         git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git --recursive && \
     	cd arrow && rm -rf .git && mkdir dist                                  && \
-    	pip3 install -r python/requirements-build.txt                          && \
+    	pip3 install --no-cache-dir -r python/requirements-build.txt                          && \
     	ARROW_HOME=$(pwd)/dist && \
     	export ARROW_HOME && \
     	LD_LIBRARY_PATH=$(pwd)/dist/lib:$LD_LIBRARY_PATH && \
@@ -281,7 +281,7 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
         export PYARROW_WITH_PARQUET=1       && \
         export PYARROW_WITH_DATASET=1       && \
         export PYARROW_BUNDLE_ARROW_CPP=1   && \
-        pip3 install wheel                  && \
+        pip3 install --no-cache-dir wheel                  && \
         cd ../../python                     && \
         python setup.py build_ext              \
             --build-type=release               \
@@ -319,7 +319,7 @@ COPY --from=arrow-builder /arrowwheels /tmp/arrowwheels
 
 RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
     	echo "Installing ppc64le ONNX, pyarrow wheels and OpenBLAS..." && \
-    	HOME=/root pip install /tmp/onnx_wheels/*.whl /tmp/arrowwheels/*.whl && \
+    	HOME=/root pip install --no-cache-dir /tmp/onnx_wheels/*.whl /tmp/arrowwheels/*.whl && \
         if [ -d "/openblas" ] && [ "$(ls -A /openblas 2>/dev/null)" ]; then \
     		PREFIX=/usr/local make -C /openblas install; \
         fi && rm -rf /openblas /tmp/onnx_wheels /tmp/arrowwheels; \

@@ -197,7 +197,7 @@ if [ "${TARGETARCH}" = "ppc64le" ]; then
     cd onnx
     git checkout ${ONNX_VERSION}
     git submodule update --init --recursive
-    pip install -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt
     CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)"
     export CMAKE_ARGS
     pip wheel . -w /root/onnx_wheel
@@ -307,7 +307,7 @@ COPY --from=onnx-builder /root/onnx_wheel/ /onnxwheels/
 RUN <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
-    pip install /onnxwheels/*.whl
+    pip install --no-cache-dir /onnxwheels/*.whl
 else
     echo "Skipping ONNX/OpenBLAS install on non-Power"
 fi
