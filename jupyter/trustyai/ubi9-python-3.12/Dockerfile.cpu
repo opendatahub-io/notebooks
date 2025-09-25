@@ -23,6 +23,7 @@ RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
 ####################
 FROM ${BASE_IMAGE} AS whl-cache
 
+# hadolint ignore=DL3002
 USER root
 ENV HOME=/root
 WORKDIR /root
