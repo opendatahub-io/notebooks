@@ -198,7 +198,8 @@ if [ "${TARGETARCH}" = "ppc64le" ]; then
     git checkout ${ONNX_VERSION}
     git submodule update --init --recursive
     pip install -r requirements.txt
-    export CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)"
+    CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)"
+    export CMAKE_ARGS
     pip wheel . -w /root/onnx_wheel
 else
     echo "Skipping ONNX build on non-Power"
