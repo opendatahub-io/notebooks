@@ -226,7 +226,8 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
     	cd onnx && git checkout v${ONNX_VERSION} && \
     	git submodule update --init --recursive && \
     	pip install -r requirements.txt && \
-    	export CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)" && \
+    	CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)" && \
+    	export CMAKE_ARGS && \
     	pip wheel . -w /onnx_wheels; \
     else \
         echo "Not ppc64le, skipping ONNX build" && mkdir -p /onnx_wheels; \
@@ -249,8 +250,10 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
         git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git --recursive && \
     	cd arrow && rm -rf .git && mkdir dist                                  && \
     	pip3 install -r python/requirements-build.txt                          && \
-    	export ARROW_HOME=$(pwd)/dist                                          && \
-    	export LD_LIBRARY_PATH=$(pwd)/dist/lib:$LD_LIBRARY_PATH                && \
+    	ARROW_HOME=$(pwd)/dist && \
+    	export ARROW_HOME && \
+    	LD_LIBRARY_PATH=$(pwd)/dist/lib:$LD_LIBRARY_PATH && \
+    	export LD_LIBRARY_PATH && \
     	export CMAKE_PREFIX_PATH=$ARROW_HOME:$CMAKE_PREFIX_PATH                && \
     	export PARQUET_TEST_DATA="${PWD}/cpp/submodules/parquet-testing/data"  && \
     	export ARROW_TEST_DATA="${PWD}/testing/data"                           && \
