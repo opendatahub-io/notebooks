@@ -51,7 +51,7 @@ COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
 #            we need to ensure the same cache directory is mounted in
 #            the final stage with the necessary permissions to consume from cache
 RUN --mount=type=cache,target=/root/.cache/uv \
-    pip install --no-cache uv && \
+    pip install --no-cache-dir uv && \
     # the devel script is ppc64le specific - sets up build-time dependencies
     source ./devel_env_setup.sh && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
