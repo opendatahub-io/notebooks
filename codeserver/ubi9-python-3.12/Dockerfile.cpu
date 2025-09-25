@@ -281,7 +281,7 @@ COPY ${CODESERVER_SOURCE_CODE}/test /tmp/test
 # TODO(jdanek): add --mount=type=bind,target=/opt/app-root/src
 RUN <<'EOF'
 set -Eeuxo pipefail
-python3 /tmp/test/test_startup.py |& tee /tmp/test_log.txt
+python3 /tmp/test/test_startup.py 2>&1 | tee /tmp/test_log.txt
 EOF
 
 from codeserver
