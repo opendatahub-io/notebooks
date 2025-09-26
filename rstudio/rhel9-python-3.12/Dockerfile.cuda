@@ -149,8 +149,10 @@ COPY ${RSTUDIO_SOURCE_CODE}/install_packages.R ./
 RUN R -f ./install_packages.R && \
     rm ./install_packages.R
 
+ENV APP_ROOT=/opt/app-root
+
 # Install NGINX to proxy RStudio and pass probes check
-ENV APP_ROOT=/opt/app-root \
+ENV NGINX_VERSION=1.24 \
     NGINX_VERSION=1.24 \
     NGINX_SHORT_VER=124 \
     NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
