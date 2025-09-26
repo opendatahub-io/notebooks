@@ -51,6 +51,7 @@ RUN --mount=type=cache,target=/var/cache/dnf \
     fi
 
 RUN <<EOF
+set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ]; then cat > /etc/profile.d/ppc64le.sh <<'PROFILE_EOF'
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
 export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib:$LD_LIBRARY_PATH
@@ -65,6 +66,7 @@ EOF
 
 # For s390x only, set ENV vars and install Rust
 RUN <<EOF
+set -Eeuxo pipefail
 if [ "$TARGETARCH" = "s390x" ]; then
     # Install Rust and set up environment
     mkdir -p /opt/.cargo
@@ -85,6 +87,7 @@ EOF
 
 # Set python alternatives only for s390x (not needed for other arches)
 RUN <<EOF
+set -Eeuxo pipefail
 if [ "$TARGETARCH" = "s390x" ]; then
     alternatives --install /usr/bin/python python /usr/bin/python3.12 1
     alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
