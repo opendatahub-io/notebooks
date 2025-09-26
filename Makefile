@@ -481,6 +481,41 @@ refresh-pipfilelock-files:
 scan-image-vulnerabilities:
 	python ci/security-scan/quay_security_analysis.py
 
+ARCH := $(shell uname -m)
+ifeq ($(ARCH),amd64)
+    ARCH := x86_64
+else ifeq ($(ARCH),arm64)
+    ARCH := aarch64
+endif
+
+ZIG_VERSION := 0.15.1
+ZIG_BINARY := zig-$(ZIG_VERSION)
+
+bin/zig-$(ZIG_VERSION):
+	@echo "Installing Zig $(ZIG_VERSION)..."
+	TMPDIR=$(shell mktemp -d)
+	wget --progress=dot:giga https://ziglang.org/download/$(ZIG_VERSION)/zig-$(ARCH)-linux-$(ZIG_VERSION).tar.xz
+	tar -xJf zig-$(ARCH)-linux-$(ZIG_VERSION).tar.xz -C $$TMPDIR --strip-components=1
+	rm -rf zig-$(ARCH)-linux-$(ZIG_VERSION).tar.xz
+
+	printf '%s\n' '#!/bin/sh' 'exec /mnt/zig cc -target s390x-linux-gnu.2.34 "$@"' > $$TMPDIR/zig-cc
+	printf '%s\n' '#!/bin/sh' 'exec /mnt/zig c++ -target s390x-linux-gnu.2.34 "$@"' > $$TMPDIR/zig-c++
+	chmod +x $$TMPDIR/zig-cc
+	chmod +x $$TMPDIR/zig-c++
+
+	mv $$TMPDIR bin/zig-$(ZIG_VERSION)
+	@echo "Zig installed as bin/zig-$(ZIG_VERSION)"
+
+# This should be .PHONY because it's an alias/action
+.PHONY: install-zig
+install-zig: bin/zig-$(ZIG_VERSION)
+	@echo "Zig is ready to use!"
+
+# Another .PHONY target for cleanup
+.PHONY: clean-zig
+clean-zig:
+	rm -rf bin/zig-$(ZIG_VERSION)
+
 # This is used primarily for gen_gha_matrix_jobs.py to we know the set of all possible images we may want to build
 .PHONY: all-images
 ifeq ($(RELEASE_PYTHON_VERSION), 3.11)
