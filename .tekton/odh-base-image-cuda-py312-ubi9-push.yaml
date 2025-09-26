@@ -36,6 +36,9 @@ spec:
     value:
     - '{{target_branch}}-{{revision}}'
     - v12.6
+  - name: image-labels
+    value:
+    - release=2025b
   pipelineRef:
     name: multiarch-push-pipeline
   taskRunTemplate:

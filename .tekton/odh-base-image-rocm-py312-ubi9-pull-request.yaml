@@ -40,6 +40,9 @@ spec:
     value: base-images/rocm/6.2/ubi9-python-3.12/Dockerfile.rocm
   - name: path-context
     value: .
+  - name: image-labels
+    value:
+    - release=2025b
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:
