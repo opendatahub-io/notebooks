@@ -3,6 +3,9 @@
 #########################
 ARG BASE_IMAGE
 
+# External image alias for UBI repository configuration
+FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
+
 ####################
 # cpu-base         #
 ####################
@@ -18,7 +21,7 @@ USER 0
 # Inject the official UBI 9 repository configuration into the AIPCC base image.
 # The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
 # By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
-COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
+COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 
 ARG TARGETARCH
 
@@ -47,38 +50,50 @@ RUN --mount=type=cache,target=/var/cache/dnf \
         dnf clean all && rm -rf /var/cache/yum; \
     fi
 
-RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
-        echo 'export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/' >> /etc/profile.d/ppc64le.sh && \
-        echo 'export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib:$LD_LIBRARY_PATH' >> /etc/profile.d/ppc64le.sh && \
-        echo 'export OPENBLAS_VERSION=0.3.30' >> /etc/profile.d/ppc64le.sh && \
-        echo 'export ONNX_VERSION=1.19.0' >> /etc/profile.d/ppc64le.sh && \
-        echo 'export PYARROW_VERSION=17.0.0' >> /etc/profile.d/ppc64le.sh && \
-        echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /etc/profile.d/ppc64le.sh && \
-        echo 'export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1' >> /etc/profile.d/ppc64le.sh; \
-    fi
+RUN <<EOF
+set -Eeuxo pipefail
+if [ "$TARGETARCH" = "ppc64le" ]; then cat > /etc/profile.d/ppc64le.sh <<'PROFILE_EOF'
+export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
+export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib:$LD_LIBRARY_PATH
+export OPENBLAS_VERSION=0.3.30
+export ONNX_VERSION=1.19.0
+export PYARROW_VERSION=17.0.0
+export PATH="$HOME/.cargo/bin:$PATH"
+export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
+PROFILE_EOF
+fi
+EOF
 
 # For s390x only, set ENV vars and install Rust
-RUN if [ "$TARGETARCH" = "s390x" ]; then \
+RUN <<EOF
+set -Eeuxo pipefail
+if [ "$TARGETARCH" = "s390x" ]; then
     # Install Rust and set up environment
-    mkdir -p /opt/.cargo && \
-    export HOME=/root && \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh && \
-    chmod +x rustup-init.sh && \
-    CARGO_HOME=/opt/.cargo HOME=/root ./rustup-init.sh -y --no-modify-path && \
-    rm -f rustup-init.sh && \
-    chown -R 1001:0 /opt/.cargo && \
+    mkdir -p /opt/.cargo
+    export HOME=/root
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh
+    chmod +x rustup-init.sh
+    CARGO_HOME=/opt/.cargo HOME=/root ./rustup-init.sh -y --no-modify-path
+    rm -f rustup-init.sh
+    chown -R 1001:0 /opt/.cargo
     # Set environment variables
-    echo 'export PATH=/opt/.cargo/bin:$PATH' >> /etc/profile.d/cargo.sh && \
-    echo 'export CARGO_HOME=/opt/.cargo' >> /etc/profile.d/cargo.sh && \
-    echo 'export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1' >> /etc/profile.d/cargo.sh; \
+    cat > /etc/profile.d/cargo.sh <<'CARGO_EOF'
+export PATH=/opt/.cargo/bin:$PATH
+export CARGO_HOME=/opt/.cargo
+export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
+CARGO_EOF
 fi
+EOF
 
 # Set python alternatives only for s390x (not needed for other arches)
-RUN if [ "$TARGETARCH" = "s390x" ]; then \
-    alternatives --install /usr/bin/python python /usr/bin/python3.12 1 && \
-    alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
-    python --version && python3 --version; \
+RUN <<EOF
+set -Eeuxo pipefail
+if [ "$TARGETARCH" = "s390x" ]; then
+    alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+    alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+    python --version && python3 --version
 fi
+EOF
 
 # Other apps and tools installed as default user
 USER 1001
@@ -101,6 +116,7 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 FROM cpu-base AS s390x-builder
 
 ARG TARGETARCH
+# hadolint ignore=DL3002
 USER 0
 WORKDIR /tmp/build-wheels
 
@@ -179,6 +195,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 ##################################
 
 FROM cpu-base AS openblas-builder
+# hadolint ignore=DL3002
 USER root
 WORKDIR /root
 
@@ -191,7 +208,7 @@ RUN echo "openblas-builder stage TARGETARCH: ${TARGETARCH}"
 # Download and build OpenBLAS
 RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
         source /opt/rh/gcc-toolset-13/enable && \
-        wget https://github.com/OpenMathLib/OpenBLAS/releases/download/v${OPENBLAS_VERSION}/OpenBLAS-${OPENBLAS_VERSION}.zip && \
+        wget --progress=dot:giga https://github.com/OpenMathLib/OpenBLAS/releases/download/v${OPENBLAS_VERSION}/OpenBLAS-${OPENBLAS_VERSION}.zip && \
         unzip OpenBLAS-${OPENBLAS_VERSION}.zip && cd OpenBLAS-${OPENBLAS_VERSION}                                            && \
         make -j$(nproc) TARGET=POWER9 BINARY=64 USE_OPENMP=1 USE_THREAD=1 NUM_THREADS=120 DYNAMIC_ARCH=1 INTERFACE64=0; \
     else \
@@ -203,6 +220,7 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
 ###################################
 
 FROM cpu-base AS onnx-builder
+# hadolint ignore=DL3002
 USER root
 WORKDIR /root
 
@@ -216,8 +234,9 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
     	git clone --recursive https://github.com/onnx/onnx.git && \
     	cd onnx && git checkout v${ONNX_VERSION} && \
     	git submodule update --init --recursive && \
-    	pip install -r requirements.txt && \
-    	export CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)" && \
+    	pip install --no-cache-dir -r requirements.txt && \
+    	CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)" && \
+    	export CMAKE_ARGS && \
     	pip wheel . -w /onnx_wheels; \
     else \
         echo "Not ppc64le, skipping ONNX build" && mkdir -p /onnx_wheels; \
@@ -228,6 +247,7 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
 ##################################
 
 FROM cpu-base AS arrow-builder
+# hadolint ignore=DL3002
 USER root
 WORKDIR /root
 
@@ -239,9 +259,11 @@ RUN echo "arrow-builder stage TARGETARCH: ${TARGETARCH}"
 RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
         git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git --recursive && \
     	cd arrow && rm -rf .git && mkdir dist                                  && \
-    	pip3 install -r python/requirements-build.txt                          && \
-    	export ARROW_HOME=$(pwd)/dist                                          && \
-    	export LD_LIBRARY_PATH=$(pwd)/dist/lib:$LD_LIBRARY_PATH                && \
+    	pip3 install --no-cache-dir -r python/requirements-build.txt                          && \
+    	ARROW_HOME=$(pwd)/dist && \
+    	export ARROW_HOME && \
+    	LD_LIBRARY_PATH=$(pwd)/dist/lib:$LD_LIBRARY_PATH && \
+    	export LD_LIBRARY_PATH && \
     	export CMAKE_PREFIX_PATH=$ARROW_HOME:$CMAKE_PREFIX_PATH                && \
     	export PARQUET_TEST_DATA="${PWD}/cpp/submodules/parquet-testing/data"  && \
     	export ARROW_TEST_DATA="${PWD}/testing/data"                           && \
@@ -269,7 +291,7 @@ RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
         export PYARROW_WITH_PARQUET=1       && \
         export PYARROW_WITH_DATASET=1       && \
         export PYARROW_BUNDLE_ARROW_CPP=1   && \
-        pip3 install wheel                  && \
+        pip3 install --no-cache-dir wheel                  && \
         cd ../../python                     && \
         python setup.py build_ext              \
             --build-type=release               \
@@ -307,7 +329,7 @@ COPY --from=arrow-builder /arrowwheels /tmp/arrowwheels
 
 RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
     	echo "Installing ppc64le ONNX, pyarrow wheels and OpenBLAS..." && \
-    	HOME=/root pip install /tmp/onnx_wheels/*.whl /tmp/arrowwheels/*.whl && \
+    	HOME=/root pip install --no-cache-dir /tmp/onnx_wheels/*.whl /tmp/arrowwheels/*.whl && \
         if [ -d "/openblas" ] && [ "$(ls -A /openblas 2>/dev/null)" ]; then \
     		PREFIX=/usr/local make -C /openblas install; \
         fi && rm -rf /openblas /tmp/onnx_wheels /tmp/arrowwheels; \

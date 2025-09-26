@@ -3,6 +3,9 @@
 #########################
 ARG BASE_IMAGE
 
+# External image alias for UBI repository configuration
+FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
+
 ######################################################
 # mongocli-builder (build stage only, not published) #
 ######################################################
@@ -20,6 +23,7 @@ RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
 ####################
 FROM ${BASE_IMAGE} AS whl-cache
 
+# hadolint ignore=DL3002
 USER root
 ENV HOME=/root
 WORKDIR /root
@@ -30,7 +34,7 @@ COPY ${TRUSTYAI_SOURCE_CODE}/pylock.toml .
 COPY ${TRUSTYAI_SOURCE_CODE}/devel_env_setup.sh .
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    pip install --no-cache uv && \
+    pip install --no-cache-dir uv && \
     # the devel script is ppc64le specific - sets up build-time dependencies
     source ./devel_env_setup.sh && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
@@ -50,7 +54,7 @@ USER root
 # Inject the official UBI 9 repository configuration into the AIPCC base image.
 # The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
 # By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
-COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
+COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 
 # upgrade first to avoid fixable vulnerabilities begin
 # Problem: The operation would result in removing the following protected packages: systemd
