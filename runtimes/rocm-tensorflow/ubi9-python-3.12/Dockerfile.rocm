@@ -27,7 +27,7 @@ RUN dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setop
 # upgrade first to avoid fixable vulnerabilities end
 
 # Install useful OS packages
-RUN dnf install -y perl mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+RUN dnf install -y perl mesa-libGL skopeo libxcrypt-compat && dnf clean all && rm -rf /var/cache/yum
 
 # Other apps and tools installed as default user
 USER 1001
@@ -48,6 +48,7 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 ###########################
 FROM rocm-base AS rocm-runtime-tensorflow
 
+ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG TENSORFLOW_SOURCE_CODE=runtimes/rocm-tensorflow/ubi9-python-3.12
 
 LABEL name="odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.12" \
@@ -78,5 +79,7 @@ USER 0
 RUN chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P
 USER 1001
+
+COPY ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monkey_patch_protobuf_6x.py /opt/app-root/lib/python3.12/site-packages/
 
 WORKDIR /opt/app-root/src

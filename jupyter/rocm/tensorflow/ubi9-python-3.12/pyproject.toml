@@ -58,8 +58,7 @@ dependencies = [
 
 override-dependencies = [
     # tf2onnx has pinned protobuf version, that causes conflict with other packages
-    # TODO(jdanek): consider tightening this to "protobuf>=3.20.3,<6"  # tf2onnx pins protobuf too low; allow TF-compatible versions
-    "protobuf"
+    "protobuf==6.31.1"
 ]
 
 environments = [

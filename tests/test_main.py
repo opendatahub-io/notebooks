@@ -74,15 +74,23 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                 manifest = load_manifests_file_for(directory)
 
                 with subtests.test(msg="checking the `notebook-software` array", pyproject=file):
-                    # TODO(jdanek)
-                    pytest.skip("checking the `notebook-software` array not yet implemented")
                     for s in manifest.sw:
                         if s.get("name") == "Python":
                             assert s.get("version") == f"v{python}", (
                                 "Python version in imagestream does not match Pipfile"
                             )
+                        elif s.get("name") in ("R", "code-server"):
+                            # TODO(jdanek): check not implemented yet
+                            continue
+                        elif s.get("name") in ("CUDA", "ROCm"):
+                            # TODO(jdanek): check not implemented yet
+                            continue
                         else:
-                            pytest.fail(f"unexpected {s=}")
+                            e = next((dep for dep in manifest.dep if dep.get("name") == s.get("name")), None)
+                            if e:
+                                assert s.get("version") == e.get("version")
+                            else:
+                                pytest.fail(f"unexpected {s=}")
 
                 with subtests.test(msg="checking the `notebook-python-dependencies` array", pyproject=file):
                     for d in manifest.dep:
@@ -130,6 +138,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                             "Torch",
                             "Transformers",
                             "TrustyAI",
+                            "TensorFlow-ROCm",
                         }
 
                         name = d["name"]
@@ -216,7 +225,7 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
             "Numpy",
             (
                 "1.26",  # trustyai 0.6.2 depends on numpy~=1.26.4
-                # 2.0 for tensorflow rocm, but we don't have that in manifests
+                "2.0",  # for tensorflow rocm
                 "2.1",  # for tensorflow cuda
                 "2.2",  # for python 3.11 n-1 images
                 "2.3",  # this is our latest where possible
@@ -273,7 +282,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         ("torchvision", ("==0.22.1", "~=0.22.1", "==0.22.1+cu128", "==0.22.1+rocm6.2.4")),
         (
             "matplotlib",
-            ("~=3.10.6"),
+            ("~=3.10.6",),
         ),
         (
             "numpy",
@@ -377,12 +386,8 @@ def is_suffix[T](main_sequence: Sequence[T], suffix_sequence: Sequence[T]):
 
 
 def _skip_unimplemented_manifests(directory: pathlib.Path, call_skip=True) -> bool:
-    # TODO(jdanek): missing manifests
-    dirs = (
-        "runtimes/rocm-tensorflow/ubi9-python-3.12",
-        "jupyter/rocm/tensorflow/ubi9-python-3.12",
-    )
-    for d in dirs:
+    unimplemented_dirs = ()
+    for d in unimplemented_dirs:
         if is_suffix(directory.parts, pathlib.Path(d).parts):
             if call_skip:
                 pytest.skip(f"Manifest not implemented {directory.parts}")
@@ -429,8 +434,11 @@ def load_manifests_file_for(directory: pathlib.Path) -> Manifest:
     )
     current_tag = recommended_tags[0] if recommended_tags else imagestream["spec"]["tags"][0]
 
-    sw = json.loads(current_tag["annotations"]["opendatahub.io/notebook-software"])
-    dep = json.loads(current_tag["annotations"]["opendatahub.io/notebook-python-dependencies"])
+    try:
+        sw = json.loads(current_tag["annotations"]["opendatahub.io/notebook-software"])
+        dep = json.loads(current_tag["annotations"]["opendatahub.io/notebook-python-dependencies"])
+    except Exception as e:
+        raise ValueError(f"invalid json syntax in {manifest_file}") from e
 
     return Manifest(
         filename=manifest_file,
