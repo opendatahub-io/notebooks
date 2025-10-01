@@ -72,6 +72,10 @@ COPY ${PYTORCH_SOURCE_CODE}/utils ./utils/
 # Copy utility script
 COPY ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
 
+# Download Elyra boostrapper.py
+RUN curl -fL https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/elyra/kfp/bootstrapper.py \
+        -o ./utils/bootstrapper.py
+
 RUN echo "Installing softwares and packages" && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
