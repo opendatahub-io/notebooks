@@ -20,6 +20,8 @@ if [ "$(ls -A /opt/app-root/pipeline-runtimes/)" ]; then
 fi
 
 # Environment vars set for accessing ssl_sa_certs and sa_token
-# export PIPELINES_SSL_SA_CERTS="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+export KF_PIPELINES_SSL_SA_CERTS="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 export KF_PIPELINES_SA_TOKEN_ENV="/var/run/secrets/kubernetes.io/serviceaccount/token"
 export KF_PIPELINES_SA_TOKEN_PATH="/var/run/secrets/kubernetes.io/serviceaccount/token"
+export ELYRA_INSTALL_PACKAGES="false"
+export ELYRA_GENERIC_NODES_ENABLE_SCRIPT_OUTPUT_TO_S3="false"
