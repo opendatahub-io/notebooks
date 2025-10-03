@@ -1,0 +1,25 @@
+---
+name: 'Free up disk space'
+description: 'Removes unnecessary packages and files to free up disk space on GitHub runners'
+runs:
+  using: "composite"
+  steps:
+    - name: Free up additional disk space
+      shell: bash
+      run: |
+        set -x
+        df -h
+        sudo apt-get update
+        sudo apt-get purge -y '^dotnet-.*' '^llvm-.*' 'php.*' '^mongodb-.*'
+        sudo apt-get autoremove -y --purge
+        sudo apt-get clean
+        sudo rm -rf /usr/local/.ghcup &
+        sudo rm -rf /usr/local/lib/android &
+        sudo rm -rf /usr/local/share/boost &
+        sudo rm -rf /usr/local/lib/node_modules &
+        sudo rm -rf /usr/share/dotnet &
+        sudo rm -rf /opt/ghc &
+        sudo rm -rf /opt/hostedtoolcache/CodeQL &
+        sudo docker image prune --all --force &
+        wait
+        df -h

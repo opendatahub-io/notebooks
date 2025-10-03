@@ -1,0 +1,173 @@
+---
+name: 'Provision K8s Cluster'
+description: 'Installs cri-o and provisions a single-node Kubernetes cluster using kubeadm'
+runs:
+  using: "composite"
+  steps:
+    - name: Install cri-o
+      id: install-crio
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
+
+        # the Microsoft repo's kubelet does not provide /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+        #  [Service]
+        #  EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+        #  ExecStart=/usr/bin/kubelet $KUBELET_KUBEADM_ARGS
+        sudo ls /etc/apt/sources.list.d/
+        sudo rm /etc/apt/sources.list.d/microsoft-prod.list
+
+        sudo apt-get update
+        sudo apt-get install -y software-properties-common curl
+
+        # https://github.com/cri-o/packaging?tab=readme-ov-file#distributions-using-deb-packages
+
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/Release.key | \
+          sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+        echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/ /" | \
+          sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+        curl -fsSL https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v${CRIO_VERSION}/deb/Release.key | \
+          sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
+
+        echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v${CRIO_VERSION}/deb/ /" | \
+          sudo tee /etc/apt/sources.list.d/cri-o.list
+
+        sudo apt-get update
+
+        # [ERROR FileExisting-conntrack]: conntrack not found in system path
+        # see man apt-patterns for the ~name=version* syntax
+
+        # The following packages will be DOWNGRADED:
+        #  kubectl
+        # E: Packages were downgraded and -y was used without --allow-downgrades.
+
+        sudo apt-get install -y --allow-downgrades \
+          "cri-o=${CRIO_VERSION}.*" "cri-tools=${CRIO_VERSION}.*" \
+          "kubelet=${KUBERNETES_VERSION}.*" "kubeadm=${KUBERNETES_VERSION}.*" "kubectl=${KUBERNETES_VERSION}.*" \
+          conntrack
+
+        # make use of /etc/cni/net.d/11-crio-ipv4-bridge.conflist so we don't
+        # need a pod network and just use the default bridge
+        sudo rm -rf /etc/cni/net.d/*
+        # cat /etc/cni/net.d/11-crio-ipv4-bridge.conflist
+        # https://github.com/containerd/containerd/blob/main/script%2Fsetup%2Finstall-cni
+        # https://www.cni.dev/plugins/current/main/bridge/
+        sudo cp ${{ github.action_path }}/../../../ci/cached-builds/11-crio-ipv4-bridge.conflist /etc/cni/net.d/11-crio-ipv4-bridge.conflist
+
+        sudo cp ${{ github.action_path }}/../../../ci/cached-builds/crio.conf /etc/crio/crio.conf.d/
+
+        sudo systemctl daemon-reload
+        sudo systemctl start crio.service
+      env:
+        CRIO_VERSION: 1.34
+        # This has to be kept in sync with the packages above, otherwise
+        # [ERROR KubeletVersion]: the kubelet version is higher than the control plane version.
+        #  This is not a supported version skew and may lead to a malfunctional cluster.
+        #  Kubelet version: "1.33.0" Control plane version: "1.30.12"
+        KUBERNETES_VERSION: 1.34
+        # Also update version in kubeadm.yaml
+
+    - run: sudo crictl info
+      shell: bash
+
+    - name: Show crio debug data (on failure)
+      if: ${{ failure() }}
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
+
+        sudo systemctl status crio.service || true
+        sudo journalctl -xeu crio.service
+
+    # do this early, it's a good check that cri-o is not completely broken
+    - name: "Show crio images information"
+      shell: bash
+      run: sudo crictl images
+
+    - name: Install Kubernetes cluster
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
+
+        sudo swapoff -a
+        sudo modprobe br_netfilter
+        sudo sysctl -w net.ipv4.ip_forward=1
+
+        # Was getting strange DNS resolution errors from pods that don't seem to want to go away sometimes:
+        #  Resolving raw.githubusercontent.com (raw.githubusercontent.com)... failed: Name or service not known.
+        #  wget: unable to resolve host address ‘raw.githubusercontent.com’
+        # Here's what helped:
+        #  https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/#known-issues
+        #  https://github.com/kubernetes/kubernetes/blob/e4c1f980b76fecece30c2f77885a7117192170a6/CHANGELOG/CHANGELOG-1.30.md?plain=1#L1454
+        #  https://github.com/canonical/microk8s/issues/68#issuecomment-404923563
+        sudo ufw allow in on cni0
+        sudo ufw allow out on cni0
+        sudo ufw default allow routed
+        sudo iptables -P FORWARD ACCEPT
+        sudo iptables -t nat -A POSTROUTING -s 10.85.0.0/16 -o eth0 -j MASQUERADE
+
+        sudo kubeadm reset -f --cri-socket=unix:///var/run/crio/crio.sock
+
+        # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm
+        sudo kubeadm init --config=${{ github.action_path }}/../../../ci/cached-builds/kubeadm.yaml
+
+        mkdir -p $HOME/.kube
+        sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+        sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+    - name: Show kubelet debug data (on failure)
+      if: ${{ failure() }}
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
+
+        # [kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+        sudo cat /var/lib/kubelet/kubeadm-flags.env || true
+        # [kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+        sudo cat /var/lib/kubelet/config.yaml || true
+
+        sudo systemctl cat kubelet.service || true
+
+        sudo cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf || true
+
+        sudo systemctl status kubelet || true
+        sudo journalctl -xeu kubelet
+
+        # Here is one example how you may list all running Kubernetes containers by using crictl:
+        sudo crictl --runtime-endpoint unix:///var/run/crio/crio.sock ps -a | grep kube | grep -v pause
+        # Once you have found the failing container, you can inspect its logs with:
+        # crictl --runtime-endpoint unix:///var/run/crio/crio.sock logs CONTAINERID
+
+    - name: Show nodes status and wait for readiness
+      shell: bash
+      run: |
+        kubectl describe nodes
+        kubectl wait --for=condition=Ready nodes --all --timeout=100s || (kubectl describe nodes && false)
+
+    - name: Wait for pods to be running
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
+        kubectl wait deployments --all --all-namespaces --for=condition=Available --timeout=100s
+        kubectl wait pods --all --all-namespaces --for=condition=Ready --timeout=100s
+
+    - name: "Install local-path provisioner"
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
+        # InspectFailed Failed to inspect image "": rpc error: code = Unknown desc = short name mode is enforcing, but image name rancher/local-path-provisioner:v0.0.31 returns ambiguous list
+        (curl -fsSL https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.32/deploy/local-path-storage.yaml |
+          sed 's|image: rancher/local-path-provisioner|image: docker.io/rancher/local-path-provisioner|g' |
+          kubectl apply -f -
+        )
+        kubectl wait deployments --all --namespace=local-path-storage --for=condition=Available --timeout=100s || (
+          kubectl describe deployments --namespace=local-path-storage
+          kubectl --namespace=local-path-storage get events --sort-by='.lastTimestamp'
+          kubectl --namespace=local-path-storage describe pods
+          false
+        )
+        # https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/
+        kubectl get storageclass
+        kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
