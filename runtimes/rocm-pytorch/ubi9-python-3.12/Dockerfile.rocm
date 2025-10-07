@@ -70,7 +70,7 @@ COPY ${PYTORCH_SOURCE_CODE}/utils ./utils/
 COPY ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
 
 # Download Elyra boostrapper.py
-RUN curl -fL https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/elyra/kfp/bootstrapper.py \
+RUN curl -fL https://raw.githubusercontent.com/opendatahub-io/elyra/refs/tags/v4.3.0/elyra/kfp/bootstrapper.py \
         -o ./utils/bootstrapper.py
 
 RUN echo "Installing softwares and packages" && \
