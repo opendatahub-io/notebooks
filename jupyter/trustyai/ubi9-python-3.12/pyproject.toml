@@ -7,6 +7,19 @@ dependencies = [
     # PyTorch packages
     "torch==2.7.1+cu128; platform_machine != 'ppc64le'",
 
+    # Triton here is a dependency of torch, and is just being
+    # explicitly re-declared so that the index to pull it from can be
+    # customized. Although torch was being pulled from the PyTorch
+    # index, all of its dependencies are still defaulting to coming
+    # from PyPI (or whatever default index is used for a build). In
+    # the triton case, PyPI only has x86_64 wheels for this version,
+    # but the PyTorch index has both x86_64 and aarch64 wheels,
+    # matching the arches that are available for torch.
+    #
+    # Since it's a dependency of torch, I've also added same platform
+    # exclusion marker to omit for ppc64le.
+    "triton==3.3.1; platform_machine != 'ppc64le'",
+
     # TrustyAI packages
     # More information available at:
     #   - https://pypi.org/project/trustyai/
@@ -64,6 +77,7 @@ environments = [
 
 [tool.uv.sources]
 torch = { index = "pytorch-cuda" }
+triton = { index = "pytorch-cuda" }
 
 [[tool.uv.index]]
 name = "pytorch-cuda"
