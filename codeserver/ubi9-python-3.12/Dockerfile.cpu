@@ -2,6 +2,7 @@
 # configuration args    #
 #########################
 ARG BASE_IMAGE
+ARG OPENBLAS_VERSION=0.3.30 # Define version globally
 
 ####################
 # rpm-base         #
@@ -41,8 +42,10 @@ WORKDIR /root
 ENV HOME=/root
 
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+ARG TARGETARCH
+ARG OPENBLAS_VERSION # Inherits from global
 
-# copy requirements and scripts
+# Copy requirements and scripts
 COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
 COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
 
@@ -58,7 +61,16 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
     UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
 
-# dummy file to make image build wait for this stage
+# OpenBLAS Artifact Preparation (ppc64le only)
+# FIX: COPY the local source artifact instead of using an external URL (wget)
+RUN set -Eeuxo pipefail; \
+    if [ "${TARGETARCH}" = "ppc64le" ]; then \
+        echo "Copying local OpenBLAS source for caching."; \
+    fi
+
+# ASSUMPTION: The OpenBLAS-${OPENBLAS_VERSION} directory exists in the build context.
+COPY OpenBLAS-${OPENBLAS_VERSION} /root/OpenBLAS-${OPENBLAS_VERSION}
+
 RUN touch /tmp/control
 
 ####################
@@ -87,15 +99,6 @@ RUN dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setop
 # Install useful OS packages
 RUN dnf install -y perl mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
 
-# (ARCH-ppc64le): since wheels are compiled from source, we need shared libs available at runtime
-RUN --mount=type=cache,from=whl-cache,source=/root/OpenBLAS,target=/OpenBlas,rw \
-    bash -c ' \
-        if [[ $(uname -m) == "ppc64le" ]]; then \
-            dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm; \
-            dnf install -y lcms2 libraqm libimagequant openjpeg2; \
-            PREFIX=/usr/ make install -C /OpenBlas; \
-        fi '
-
 # Other apps and tools installed as default user
 USER 1001
 
@@ -108,7 +111,39 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
         -o /tmp/openshift-client-linux.tar.gz && \
     tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
     rm -f /tmp/openshift-client-linux.tar.gz
-# Install the oc client end
+
+#########################################################
+# ppc64le-builder (ppc64le specific dependencies)
+#########################################################
+FROM cpu-base AS ppc64le-builder
+ARG TARGETARCH
+ARG OPENBLAS_VERSION # Inherits from global
+
+# OS Packages needs to be installed as root
+USER root
+WORKDIR /
+
+# Conditionally install EPEL and dependencies for ppc64le
+RUN --mount=type=cache,target=/var/cache/dnf \
+    if [ "$TARGETARCH" = "ppc64le" ]; then \
+        echo "Installing ppc64le specific dependencies (lcms2, libraqm, libimagequant, openjpeg2)"; \
+        dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+        dnf install -y lcms2 libraqm libimagequant openjpeg2; \
+        dnf clean all && rm -rf /var/cache/dnf; \
+    else \
+        echo "Skipping ppc64le dependency installation on non-Power"; \
+    fi
+
+# Conditionally install OpenBLAS for ppc64le (Compilation and Installation)
+# FIX: The source code is mounted from the cached whl-cache stage.
+RUN --mount=type=cache,from=whl-cache,source=/root/OpenBLAS-${OPENBLAS_VERSION},target=/OpenBlas,rw \
+    if [ "$TARGETARCH" = "ppc64le" ]; then \
+        echo "Installing OpenBLAS for ppc64le"; \
+        # The mounted source is used for compilation
+        PREFIX=/usr/ make install -C /OpenBlas; \
+    fi
+
+USER 1001
 
 ####################
 # codeserver       #
@@ -284,5 +319,5 @@ set -Eeuxo pipefail
 python3 /tmp/test/test_startup.py |& tee /tmp/test_log.txt
 EOF
 
-from codeserver
+FROM codeserver
 COPY --from=tests /tmp/test_log.txt /tmp/test_log.txt
