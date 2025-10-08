@@ -224,7 +224,7 @@ replacements:
           name: code-server-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py311-c9s-n
+      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py312-c9s-n
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -250,7 +250,7 @@ replacements:
           name: rstudio-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py311-c9s-n
+      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py312-c9s-n
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -549,7 +549,7 @@ replacements:
           name: code-server-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py311-c9s-commit-n
+      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py312-c9s-commit-n
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -575,7 +575,7 @@ replacements:
           name: rstudio-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py311-c9s-commit-n
+      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py312-c9s-commit-n
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1

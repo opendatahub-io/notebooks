@@ -5,7 +5,7 @@ metadata:
   annotations:
     opendatahub.io/notebook-image-creator: RHOAI
     opendatahub.io/notebook-image-url: "https://github.com/red-hat-data-services/notebooks/tree/main/rstudio"
-    opendatahub.io/notebook-image-name: "RStudio | Minimal | CPU | R 4.4"
+    opendatahub.io/notebook-image-name: "RStudio | Minimal | CPU | R 4.5"
     opendatahub.io/notebook-image-desc: "RStudio Server Workbench image with an integrated development environment for R, a programming language designed for statistical computing and graphics."
   name: rstudio-rhel9
 spec:
@@ -17,13 +17,13 @@ spec:
         # language=json
         opendatahub.io/notebook-software: |
           [
-            {"name":"R","version":"v4.4"},
-            {"name":"Python","version":"v3.11"}
+            {"name":"R","version":"v4.5"},
+            {"name":"Python","version":"v3.12"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
-            {"name":"rstudio-server","version":"2024.04.2"}
+            {"name":"rstudio-server","version":"2025.09"}
           ]
       referencePolicy:
         type: Source
@@ -39,11 +39,11 @@ spec:
     type: Git
     git:
       uri: "https://github.com/red-hat-data-services/notebooks"
-      ref: rhoai-2.25
+      ref: rhoai-3.0
   strategy:
     type: Docker
     dockerStrategy:
-      dockerfilePath: "rstudio/rhel9-python-3.11/Dockerfile.cpu"
+      dockerfilePath: "rstudio/rhel9-python-3.12/Dockerfile.cpu"
       volumes:
         - name: secret-mvn
           source:
