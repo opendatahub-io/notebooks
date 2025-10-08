@@ -13,7 +13,6 @@ if (!requireNamespace("remotes", quietly = TRUE)) {
 }
 
 # Install specific versions of packages
-# Install specific versions of packages
 remotes::install_version('Rcpp',       '1.0.14', lib = lib, dependencies = TRUE, upgrade = "never")
 remotes::install_version('tidyverse',  '2.0.0',  lib = lib, dependencies = TRUE, upgrade = "never")
 remotes::install_version('tidymodels', '1.4.1',  lib = lib, dependencies = TRUE, upgrade = "never")
