@@ -136,7 +136,7 @@ RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/$
     mkdir -p /usr/share/doc/R && \
     # package installation
     # install necessary texlive-framed package to make Knit R markup to PDF rendering possible
-    dnf install -y libsodium-devel.x86_64 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed && \
+    dnf install -y libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed && \
     dnf clean all && \
     rm -rf /var/cache/yum && \
     (cd /tmp/utils && ./cve_remediation.sh)
