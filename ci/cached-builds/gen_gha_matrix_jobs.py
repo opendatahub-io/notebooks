@@ -22,9 +22,7 @@ Use https://pypi.org/project/py-make/ or https://github.com/JetBrains/intellij-p
 project_dir = pathlib.Path(__file__).parent.parent.parent.absolute()
 
 ARM64_COMPATIBLE = {
-    "codeserver-ubi9-python-3.11",
     "codeserver-ubi9-python-3.12",
-    "cuda-jupyter-minimal-ubi9-python-3.11",
     "cuda-jupyter-minimal-ubi9-python-3.12",
     "cuda-jupyter-tensorflow-ubi9-python-3.12",
     "runtime-cuda-tensorflow-ubi9-python-3.12",
@@ -36,11 +34,8 @@ PPC64LE_COMPATIBLE = {
 }
 
 S390X_COMPATIBLE = {
-    "runtime-minimal-ubi9-python-3.11",
     "runtime-minimal-ubi9-python-3.12",
-    "jupyter-minimal-ubi9-python-3.11",
     "jupyter-minimal-ubi9-python-3.12",
-    "runtime-datascience-ubi9-python-3.11",
     "runtime-datascience-ubi9-python-3.12",
     # add more here
 }
@@ -141,9 +136,7 @@ def main() -> None:
     )
     args = argparser.parse_args()
 
-    targets = extract_image_targets(env={"RELEASE_PYTHON_VERSION": "3.11"}) + extract_image_targets(
-        env={"RELEASE_PYTHON_VERSION": "3.12"}
-    )
+    targets = extract_image_targets(env={"RELEASE_PYTHON_VERSION": "3.12"})
 
     if args.from_ref:
         logging.info("Skipping targets not modified in the PR")
@@ -182,11 +175,7 @@ def main() -> None:
                 "include": [
                     {
                         "target": target,
-                        "python": "3.11"
-                        if "-python-3.11" in target
-                        else "3.12"
-                        if "-python-3.12" in target
-                        else "invalid-python-version",
+                        "python": "3.12",
                         "platform": platform,
                         "subscription": "rhel" in target,
                     }
@@ -217,28 +206,23 @@ class SelfTests(unittest.TestCase):
     def test_select_changed_targets_dockerfile(self):
         targets = extract_image_targets(makefile_dir=project_dir)
 
-        changed_files = ["jupyter/datascience/ubi9-python-3.11/Dockerfile.cpu"]
+        changed_files = ["jupyter/datascience/ubi9-python-3.12/Dockerfile.cpu"]
 
         targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
-        assert set(targets) == {"jupyter-datascience-ubi9-python-3.11"}
+        assert set(targets) == {"jupyter-datascience-ubi9-python-3.12"}
 
     def test_select_changed_targets_shared_file(self):
         targets = extract_image_targets(makefile_dir=project_dir)
 
-        changed_files = ["cuda/ubi9-python-3.11/NGC-DL-CONTAINER-LICENSE"]
+        changed_files = ["cuda/ubi9-python-3.12/NGC-DL-CONTAINER-LICENSE"]
 
-        # With the removal of chained builds - which now potentially has multiple Dockerfiles defined in a given
-        # directory, there is an inefficiency introduced to 'gha_pr_changed_files' as demonstrated by this unit test.
-        # Even though this test only changes a (shared) CUDA file - you will notice the 'cpu' and 'rocm' targets
-        # also being returned.  Odds of this inefficiency noticably "hurting us" is low - so of the opinion we can
-        # simply treat this as technical debt.
         targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
         assert set(targets) == {
-            "jupyter-minimal-ubi9-python-3.11",
-            "cuda-jupyter-minimal-ubi9-python-3.11",
-            "cuda-jupyter-pytorch-ubi9-python-3.11",
-            "runtime-cuda-pytorch-ubi9-python-3.11",
-            "cuda-jupyter-tensorflow-ubi9-python-3.11",
-            "rocm-jupyter-minimal-ubi9-python-3.11",
-            "runtime-cuda-tensorflow-ubi9-python-3.11",
+            "jupyter-minimal-ubi9-python-3.12",
+            "cuda-jupyter-minimal-ubi9-python-3.12",
+            "cuda-jupyter-pytorch-ubi9-python-3.12",
+            "runtime-cuda-pytorch-ubi9-python-3.12",
+            "cuda-jupyter-tensorflow-ubi9-python-3.12",
+            "rocm-jupyter-minimal-ubi9-python-3.12",
+            "runtime-cuda-tensorflow-ubi9-python-3.12",
         }
