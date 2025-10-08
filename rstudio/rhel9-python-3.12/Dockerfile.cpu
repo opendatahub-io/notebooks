@@ -47,6 +47,7 @@ WORKDIR /opt/app-root/src
 FROM cpu-base AS cpu-rstudio
 
 ARG RSTUDIO_SOURCE_CODE=rstudio/rhel9-python-3.12
+ARG TARGETARCH
 
 WORKDIR /opt/app-root/bin
 
