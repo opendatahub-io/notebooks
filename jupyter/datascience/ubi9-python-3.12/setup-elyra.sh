@@ -1,6 +1,9 @@
 #!/bin/bash
 set -x
 
+# By copying this we must make sure that ELYRA_INSTALL_PACKAGES=false
+cp /opt/app-root/lib/python3.12/site-packages/elyra/kfp/bootstrapper.py /opt/app-root/bin/utils/
+
 # Set the elyra config on the right path
 jupyter elyra --generate-config
 cp /opt/app-root/bin/utils/jupyter_elyra_config.py /opt/app-root/src/.jupyter/
