@@ -96,8 +96,6 @@ RUN dnf install -y perl mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/
 RUN --mount=type=cache,from=whl-cache,source=/root/OpenBLAS,target=/OpenBlas,rw \
     bash -c ' \
         if [[ $(uname -m) == "ppc64le" ]]; then \
-            dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm; \
-            dnf install -y lcms2 libraqm libimagequant openjpeg2; \
             PREFIX=/usr/ make install -C /OpenBlas; \
         fi '
 
