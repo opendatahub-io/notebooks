@@ -3,12 +3,16 @@
 #########################
 ARG BASE_IMAGE
 
+# External image alias for UBI repository configuration
+FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
+
 ####################
 # rpm-base         #
 ####################
 # e.g., registry.access.redhat.com/ubi9/python-312:latest
 FROM ${BASE_IMAGE} AS rpm-base
 
+# hadolint ignore=DL3002
 USER root
 WORKDIR /root
 
@@ -17,7 +21,7 @@ ENV HOME=/root
 # Inject the official UBI 9 repository configuration into the AIPCC base image.
 # The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
 # By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
-COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
+COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 
@@ -35,6 +39,7 @@ RUN ./get_code_server_rpm.sh && touch /tmp/control
 #######################
 FROM registry.access.redhat.com/ubi9/python-312:latest AS whl-cache
 
+# hadolint ignore=DL3002
 USER root
 WORKDIR /root
 
@@ -51,7 +56,7 @@ COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
 #            we need to ensure the same cache directory is mounted in
 #            the final stage with the necessary permissions to consume from cache
 RUN --mount=type=cache,target=/root/.cache/uv \
-    pip install --no-cache uv && \
+    pip install --no-cache-dir uv && \
     # the devel script is ppc64le specific - sets up build-time dependencies
     source ./devel_env_setup.sh && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
@@ -74,7 +79,7 @@ USER 0
 # Inject the official UBI 9 repository configuration into the AIPCC base image.
 # The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
 # By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
-COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
+COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 
 # upgrade first to avoid fixable vulnerabilities begin
 # Problem: The operation would result in removing the following protected packages: systemd
@@ -279,10 +284,10 @@ FROM codeserver as tests
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 COPY ${CODESERVER_SOURCE_CODE}/test /tmp/test
 # TODO(jdanek): add --mount=type=bind,target=/opt/app-root/src
-RUN <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-python3 /tmp/test/test_startup.py |& tee /tmp/test_log.txt
+python3 /tmp/test/test_startup.py 2>&1 | tee /tmp/test_log.txt
 EOF
 
-from codeserver
+FROM codeserver
 COPY --from=tests /tmp/test_log.txt /tmp/test_log.txt
