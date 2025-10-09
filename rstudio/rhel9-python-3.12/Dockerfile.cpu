@@ -136,11 +136,11 @@ RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/$
 
 COPY ${RSTUDIO_SOURCE_CODE}/rsession.conf /etc/rstudio/rsession.conf
 
-# Install R packages
-# https://cran.r-project.org/web/packages
-COPY ${RSTUDIO_SOURCE_CODE}/install_packages.R ./
-RUN R -f ./install_packages.R && \
-    rm ./install_packages.R
+# # Install R packages
+# # https://cran.r-project.org/web/packages
+# COPY ${RSTUDIO_SOURCE_CODE}/install_packages.R ./
+# RUN R -f ./install_packages.R && \
+#     rm ./install_packages.R
 
 ENV APP_ROOT=/opt/app-root
 
