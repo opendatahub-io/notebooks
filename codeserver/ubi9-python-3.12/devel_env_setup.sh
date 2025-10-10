@@ -66,6 +66,7 @@ build_pyarrow() {
 if [[ $(uname -m) == "ppc64le" ]]; then
     # install development packages
     dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    # patchelf: needed by `auditwheel repair`
     dnf install -y cmake gcc-toolset-13 fribidi-devel lcms2-devel patchelf \
         libimagequant-devel libraqm-devel openjpeg2-devel tcl-devel tk-devel
 
