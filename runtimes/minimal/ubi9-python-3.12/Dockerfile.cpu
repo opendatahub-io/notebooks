@@ -16,6 +16,8 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER 0
 
+RUN ls /mnt && true
+
 # Inject the official UBI 9 repository configuration into the AIPCC base image.
 # The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
 # By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
@@ -34,7 +36,7 @@ RUN ARCH=$(uname -m) && \
     echo "Detected architecture: $ARCH" && \
     PACKAGES="perl mesa-libGL skopeo" && \
     if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then \
-        PACKAGES="$PACKAGES gcc g++ make openssl-devel autoconf automake libtool cmake"; \
+        PACKAGES="$PACKAGES gcc g++ ninja-build openssl-devel autoconf automake libtool cmake"; \
     fi && \
     dnf install -y $PACKAGES && \
     dnf clean all && rm -rf /var/cache/yum
