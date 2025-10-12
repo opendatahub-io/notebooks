@@ -18,6 +18,7 @@ RUN curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mo
 RUN unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
 RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
     CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
+
 ####################
 # wheel-cache-base #
 ####################
@@ -35,7 +36,7 @@ COPY ${TRUSTYAI_SOURCE_CODE}/devel_env_setup.sh .
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     pip install --no-cache-dir uv && \
-    # the devel script is ppc64le specific - sets up build-time dependencies
+    # the devel script is ppc64le and s390x specific - sets up build-time dependencies
     source ./devel_env_setup.sh && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
@@ -121,7 +122,7 @@ WORKDIR /opt/app-root/bin
 USER root
 
 # Install useful OS packages
-RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat && dnf clean all && rm -rf /var/cache/yum
+RUN dnf install -y jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat && dnf clean all && rm -rf /var/cache/yum
 
 # Copy dynamically-linked mongocli built in earlier build stage
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
@@ -142,7 +143,7 @@ FROM jupyter-datascience AS jupyter-trustyai
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
 
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib:/usr/lib64
 
 LABEL name="odh-notebook-jupyter-trustyai-ubi9-python-3.12" \
     summary="Jupyter trustyai notebook image for ODH notebooks" \
@@ -157,28 +158,42 @@ LABEL name="odh-notebook-jupyter-trustyai-ubi9-python-3.12" \
 USER 0
 
 # Install jre that is needed to run the trustyai library
+# Also install runtime libraries for s390x/ppc64le
 RUN INSTALL_PKGS="java-17-openjdk" && \
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then \
+        # Install EPEL for runtime dependencies
+        dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+        # Add runtime libraries needed for s390x/ppc64le (OpenBLAS for PyTorch, libimagequant for PIL/matplotlib)
+        INSTALL_PKGS="$INSTALL_PKGS openblas openblas-threads libimagequant libraqm"; \
+    fi && \
     dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
-    dnf -y clean all --enablerepo='*'
+    dnf -y clean all --enablerepo='*' && \
+    # Create symlink for compatibility (openblas package provides libopenblasp.so.0 but PyTorch looks for libopenblas.so.0)
+    if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then \
+        ln -sf /usr/lib64/libopenblasp.so.0 /usr/lib64/libopenblas.so.0 && \
+        ldconfig; \
+    fi
 
 # Install Python packages and Jupyterlab extensions from requirements.txt
 COPY ${TRUSTYAI_SOURCE_CODE}/pylock.toml ./
 
 # install openblas for ppc64le
 RUN --mount=type=cache,from=whl-cache,source=/root/OpenBLAS/,target=/OpenBlas/,rw \
-    bash -c ' \
-        if [[ $(uname -m) == "ppc64le" ]]; then \
+    bash -c 'ARCH=$(uname -m); \
+        if [ "$ARCH" = "ppc64le" ]; then \
             PREFIX=/usr/ make install -C /OpenBlas; \
-        fi '
+        fi'
 
 # Install packages and cleanup
 # install packages as USER 0 (this will allow us to consume uv cache)
 RUN --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw \
     --mount=type=cache,target=/root/.cache/uv \
-    bash -c ' \
-        if [[ $(uname -m) == "ppc64le" ]]; then \
+    bash -c 'ARCH=$(uname -m); \
+        if [ "$ARCH" = "ppc64le" ] || [ "$ARCH" = "s390x" ]; then \
             UV_LINK_MODE=copy uv pip install /wheelsdir/*.whl accelerate --cache-dir /root/.cache/uv; \
-        fi '
+        fi'
+
 RUN --mount=type=cache,target=/root/.cache/uv \
     echo "Installing softwares and packages" && \
     # we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
