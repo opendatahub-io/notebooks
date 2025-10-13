@@ -48,13 +48,15 @@ logger = logging.getLogger("elyra")
 enable_pipeline_info = os.getenv("ELYRA_ENABLE_PIPELINE_INFO", "true").lower() == "true"
 # not only log File Operations output of NotebookFileOp, RFileOp, PythonFileOp to stdout so it appears
 # in runtime / container logs and also Airflow and KFP GUI logs, but also put output to S3 storage
+# NOTEBOOKS: Settings this to false so this will have effect both in Runtimes and Jupyter images
 enable_generic_node_script_output_to_s3 = (
-    os.getenv("ELYRA_GENERIC_NODES_ENABLE_SCRIPT_OUTPUT_TO_S3", "true").lower() == "true"
+    os.getenv("ELYRA_GENERIC_NODES_ENABLE_SCRIPT_OUTPUT_TO_S3", "false").lower() == "true"
 )
 # Set it to false to disable automatic package installation.
 # This is useful in airgapped environments where the image
 # already contains the required packages.
-install_packages = os.getenv("ELYRA_INSTALL_PACKAGES", "true").lower() == "true"
+# NOTEBOOKS: Settings this to false so this will have effect both in Runtimes and Jupyter images
+install_packages = os.getenv("ELYRA_INSTALL_PACKAGES", "false").lower() == "true"
 
 pipeline_name = None  # global used in formatted logging
 operation_name = None  # global used in formatted logging
