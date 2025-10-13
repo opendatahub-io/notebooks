@@ -180,6 +180,42 @@ Clean up the environment when the tests are finished:
 make  undeployX-${WORKBENCH_NAME}
 ```
 
+## Image Inventory List
+This table provides a concise overview of the support status for various container images.
+
+| Workbench | Version | Python | OS | x86_64 | aarch64 | ppc64le | s390x | Container |
+|------------|----------|--------|------|---------|----------|----------|--------|-------------|
+| CPU Minimal | - | 3.12 | UBI9 | ✅ | ✅ | ✅ | ✅ | [quay.io/repository/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9?tab=tags) |
+| CPU DataScience | - | 3.12 | UBI9 | ✅ | ✅ | ✅ | ✅ | [quay.io/repository/opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9?tab=tags) |
+| CPU TrustyAI | - | 3.12 | UBI9 | ✅ | ✅ | ✅ | - | [quay.io/repository/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9?tab=tags) |
+| CPU CodeServer | - | 3.12 | UBI9 | ✅ | ✅ | ✅ | ✅ | [quay.io/repository/opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9?tab=tags) |
+| CPU RStudio | - | 3.12 | C9S | ✅ | ✅ | - | - | [quay.io/repository/opendatahub/odh-workbench-rstudio-minimal-cpu-py312-c9s](https://quay.io/repository/opendatahub/odh-workbench-rstudio-minimal-cpu-py312-c9s?tab=tags) |
+| CUDA Minimal | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ✅ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-minimal-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-minimal-cuda-py312-ubi9?tab=tags) |
+| CUDA PyTorch | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ⏰ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-pytorch-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-pytorch-cuda-py312-ubi9?tab=tags) |
+| CUDA PyTorch LLMCompressor | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ⏰ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9?tab=tags) |
+| CUDA TensorFlow | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ✅ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-tensorflow-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-tensorflow-cuda-py312-ubi9?tab=tags) |
+| CUDA RStudio | 12.8 | 3.12 | C9S | ✅ | ✅ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-rstudio-minimal-cuda-py312-c9s](https://quay.io/repository/opendatahub/odh-workbench-rstudio-minimal-cuda-py312-c9s?tab=tags) |
+| ROCM Minimal | 6.3 | 3.12 | UBI9/RHEL9.6 | ✅ | ❌ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-minimal-rocm-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-minimal-rocm-py312-ubi9) |
+| ROCM PyTorch | 6.3 | 3.12 | UBI9/RHEL9.6 | ✅ | ❌ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-pytorch-rocm-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-pytorch-rocm-py312-ubi9?tab=tags) |
+| ROCM TensorFlow | 6.3 | 3.12 | UBI9/RHEL9.6 | ✅ | ❌ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-workbench-jupyter-tensorflow-rocm-py312-ubi9](https://quay.io/repository/opendatahub/odh-workbench-jupyter-tensorflow-rocm-py312-ubi9?tab=tags) |
+
+
+| Runtime | Version | Python | UBI | x86_64 | aarch64 | ppc64le | s390x | Container |
+|----------|----------|--------|------|---------|----------|----------|--------|-------------|
+| CPU Minimal | - | 3.12 | UBI9 | ✅ | ✅ | ✅ | ✅ | [quay.io/repository/opendatahub/odh-pipeline-runtime-minimal-cpu-py312-ubi9](https://quay.io/repository/opendatahub/odh-pipeline-runtime-minimal-cpu-py312-ubi9?tab=tags) |
+| CPU DataScience | - | 3.12 | UBI9 | ✅ | ✅ | ✅ | ✅ | [quay.io/repository/opendatahub/odh-pipeline-runtime-datascience-cpu-py312-ubi9](https://quay.io/repository/opendatahub/odh-pipeline-runtime-datascience-cpu-py312-ubi9?tab=tags) |
+| CUDA PyTorch | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ⏰ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-pipeline-runtime-pytorch-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-pipeline-runtime-pytorch-cuda-py312-ubi9?tab=tags) |
+| CUDA PyTorch LLMCompressor | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ⏰ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9) |
+| CUDA TensorFlow | 12.8 | 3.12 | UBI9/RHEL9.6 | ✅ | ⏰ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-pipeline-runtime-tensorflow-cuda-py312-ubi9](https://quay.io/repository/opendatahub/odh-pipeline-runtime-tensorflow-cuda-py312-ubi9?tab=tags) |
+| ROCM PyTorch | 6.3 | 3.12 | UBI9/RHEL9.6 | ✅ | ❌ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-pipeline-runtime-pytorch-rocm-py312-ubi9](https://quay.io/repository/opendatahub/odh-pipeline-runtime-pytorch-rocm-py312-ubi9?tab=tags) |
+| ROCM TensorFlow | 6.3 | 3.12 | UBI9/RHEL9.6 | ✅ | ❌ | ❌ | ❌ | [quay.io/repository/opendatahub/odh-pipeline-runtime-tensorflow-rocm-py312-ubi9](https://quay.io/repository/opendatahub/odh-pipeline-runtime-tensorflow-rocm-py312-ubi9?tab=tags) |
+
+
+* ✅ supported
+* ⚠️ under development
+* ⏰ planned in the future
+* ❌ not supported by vendor
+
 ## Contributing
 
 Whether you're fixing bugs, adding new notebooks, or improving documentation, your contributions are welcome. Please refer to our [Contribution Guidelines](CONTRIBUTING.md).
