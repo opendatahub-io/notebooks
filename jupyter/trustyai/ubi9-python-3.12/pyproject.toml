@@ -24,24 +24,24 @@ dependencies = [
     # More information available at:
     #   - https://pypi.org/project/trustyai/
     #   - https://github.com/trustyai-explainability/trustyai-explainability-python/blob/main/requirements.txt
-    'transformers~=4.56.1',
-    'datasets~=4.0.0',
+    "transformers~=4.56.1",
+    "datasets~=4.0.0",
     "accelerate~=1.10.1; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    'trustyai~=0.6.2',
+    "trustyai~=0.6.2",
     # Datascience and useful extensions
-    'boto3~=1.40.27',
-    'kafka-python-ng~=2.2.3',
-    'kfp~=2.14.3',
-    'matplotlib~=3.10.6', # Should be pinned down to this version in order to be compatible with trustyai
-    'numpy~=1.26.4', # Should be pinned down to this version in order to be compatible with trustyai
-    'pandas~=1.5.3', # Should be pinned down to this version in order to be compatible with trustyai
-    'plotly~=6.3.0',
-    'scikit-learn~=1.7.2', # Should be pinned down to this version in order to be compatible with trustyai
-    'scipy~=1.16.1',
-    'skl2onnx~=1.19.1',
-    'onnxconverter-common~=1.13.0', # Required for skl2onnx, as upgraded version is not compatible with protobuf
+    "boto3~=1.40.27",
+    "kafka-python-ng~=2.2.3",
+    "kfp~=2.14.3",
+    "matplotlib~=3.10.6", # Should be pinned down to this version in order to be compatible with trustyai
+    "numpy~=1.26.4", # Should be pinned down to this version in order to be compatible with trustyai
+    "pandas~=1.5.3", # Should be pinned down to this version in order to be compatible with trustyai
+    "plotly~=6.3.0",
+    "scikit-learn~=1.7.2", # Should be pinned down to this version in order to be compatible with trustyai
+    "scipy~=1.16.1",
+    "skl2onnx~=1.19.1",
+    "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
     "codeflare-sdk~=0.31.1; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    'kubeflow-training==1.9.3',
+    "kubeflow-training==1.9.3",
 
     # DB connectors
     "pymongo~=4.14.1",

@@ -101,7 +101,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
         export CMAKE_CXX_FLAGS="-fPIC -O2"
         export CFLAGS="-O2 -pipe"
         export CXXFLAGS="-O2 -pipe"
-        git clone --recursive https://github.com/pytorch/pytorch.git -b v${TORCH_VERSION}
+        git clone --depth 1 --branch "v${TORCH_VERSION}" --recurse-submodules --shallow-submodules https://github.com/pytorch/pytorch.git
         cd pytorch
         pip install --no-cache-dir -r requirements.txt
         python setup.py develop
@@ -109,7 +109,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
         MAX_JOBS=${MAX_JOBS} PYTORCH_BUILD_VERSION=${TORCH_VERSION} PYTORCH_BUILD_NUMBER=1 uv build --wheel --out-dir ${WHEELS_DIR}
         echo "PyTorch build completed successfully"
     else
-        git clone --recursive https://github.com/pytorch/pytorch.git -b v${TORCH_VERSION}
+	git clone --depth 1 --branch "v${TORCH_VERSION}" --recurse-submodules --shallow-submodules https://github.com/pytorch/pytorch.git
         cd pytorch
         uv pip install -r requirements.txt
         python setup.py develop
@@ -122,7 +122,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
     # Pyarrow
     PYARROW_VERSION=$(grep -A1 '"pyarrow"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
     cd ${TMP}
-    git clone --recursive https://github.com/apache/arrow.git -b apache-arrow-${PYARROW_VERSION}
+    git clone --depth 1 --branch "apache-arrow-${PYARROW_VERSION}" --recurse-submodules --shallow-submodules https://github.com/apache/arrow.git 
     cd arrow/cpp
     mkdir build && cd build && \
     # Set architecture-specific CMake flags
@@ -190,7 +190,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
     cd ${CURDIR}
     # Install wheels for s390x and ppc64le
     if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
-        pip install --no-cache-dir ${WHEELS_DIR}/*.whl
+        pip install --no-cache-dir "${WHEELS_DIR}"/*.whl
         uv pip install --refresh ${WHEELS_DIR}/*.whl accelerate==$(grep -A1 '"accelerate"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
     fi
 
