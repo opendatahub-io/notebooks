@@ -162,10 +162,8 @@ USER 0
 RUN INSTALL_PKGS="java-17-openjdk" && \
     ARCH=$(uname -m) && \
     if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then \
-        # Install EPEL for runtime dependencies
-        dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
-        # Add runtime libraries needed for s390x/ppc64le (OpenBLAS for PyTorch, libimagequant for PIL/matplotlib)
-        INSTALL_PKGS="$INSTALL_PKGS openblas openblas-threads libimagequant libraqm"; \
+        # Add runtime libraries needed for s390x/ppc64le (OpenBLAS for PyTorch/NumPy)
+        INSTALL_PKGS="$INSTALL_PKGS openblas openblas-threads"; \
     fi && \
     dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
     dnf -y clean all --enablerepo='*' && \
