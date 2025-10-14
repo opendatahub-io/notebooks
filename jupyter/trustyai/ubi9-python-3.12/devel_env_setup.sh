@@ -13,7 +13,8 @@ if [[ $(uname -m) == "ppc64le" ]]; then
 
     # install development packages
     dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-    dnf install -y fribidi-devel gcc-toolset-13 lcms2-devel libimagequant-devel \
+    # patchelf: needed by `auditwheel repair`
+    dnf install -y fribidi-devel gcc-toolset-13 lcms2-devel libimagequant-devel patchelf \
         libraqm-devel openjpeg2-devel tcl-devel tk-devel unixODBC-devel
 
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -79,6 +80,19 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     python setup.py build_ext \
     --build-type=release --bundle-arrow-cpp \
     bdist_wheel --dist-dir ${WHEELS_DIR}
+
+    # Pillow (use auditwheel repaired wheel to avoid pulling runtime libs from EPEL)
+    cd ${CURDIR}
+    PILLOW_VERSION=$(grep -A1 '"pillow"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
+    cd ${TMP}
+    git clone --recursive https://github.com/python-pillow/Pillow.git -b ${PILLOW_VERSION}
+    cd Pillow
+    uv build --wheel --out-dir /pillowwheel
+    : ================= Fix Pillow Wheel ====================
+    cd /pillowwheel
+    uv pip install auditwheel
+    auditwheel repair pillow*.whl
+    mv wheelhouse/pillow*.whl ${WHEELS_DIR}
 
     ls -ltr ${WHEELS_DIR}
 
