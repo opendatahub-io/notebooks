@@ -66,10 +66,9 @@ build_pyarrow() {
     # Additional dev tools only for s390x \
 if [[ $(uname -m) == "s390x" ]]; then \
 
-    dnf install -y perl mesa-libGL skopeo libxcrypt-compat python3.12-devel pkgconf-pkg-config gcc gcc-gfortran gcc-c++ ninja-build make openssl-devel python3-devel pybind11-devel autoconf automake libtool cmake openblas-devel libjpeg-devel zlib-devel libtiff-devel freetype-devel lcms2-devel libwebp-devel git tar wget
-    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-    dnf install -y cmake gcc gcc-toolset-13 fribidi-devel lcms2-devel && \
-    openjpeg2-devel libraqm-devel libimagequant-devel tcl-devel tk-devel && \
+    dnf install -y perl mesa-libGL skopeo libxcrypt-compat python3.12-devel pkgconf-pkg-config gcc gcc-gfortran gcc-c++ ninja-build make openssl-devel python3-devel pybind11-devel autoconf automake libtool cmake openblas-devel libjpeg-devel zlib-devel libtiff-devel freetype-devel lcms2-devel libwebp-devel git tar wget && \
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+    dnf install -y cmake gcc gcc-toolset-13 fribidi-devel lcms2-devel openjpeg2-devel libraqm-devel libimagequant-devel tcl-devel tk-devel && \
     dnf clean all && rm -rf /var/cache/dnf;
 
      # install rust
