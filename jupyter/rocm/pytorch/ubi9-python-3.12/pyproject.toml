@@ -6,8 +6,8 @@ requires-python = "==3.12.*"
 dependencies = [
     # ROCm PyTorch packages
     "tensorboard~=2.20.0",
-    "torch==2.7.1+rocm6.2.4",
-    "torchvision==0.22.1+rocm6.2.4", # https://pytorch.org/get-started/previous-versions/#linux-and-windows-1
+    "torch==2.7.1+rocm6.3",
+    "torchvision==0.22.1+rocm6.3", # https://pytorch.org/get-started/previous-versions/#linux-and-windows-1
     "pytorch-triton-rocm~=3.3.1",
 
     # Datascience and useful extensions
@@ -61,7 +61,7 @@ pytorch-triton-rocm = { index = "pytorch-rocm" }
 # Please keep in sync with rocm/ubi9-python-3.12/Dockerfile
 [[tool.uv.index]]
 name = "pytorch-rocm"
-url = "https://download.pytorch.org/whl/rocm6.2.4"
+url = "https://download.pytorch.org/whl/rocm6.3"
 explicit = true
 
 [tool.uv]

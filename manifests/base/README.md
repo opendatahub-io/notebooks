@@ -1,31 +1,32 @@
 # IDE Imagestreams
 
-Listing the order in which each imagestreams are introduced.
-NOTE: In overlays/additional there are new set of Python 3.12 images, they are also included in this ordering
+Listing the order in which each imagestreams are introduced based on the `opendatahub.io/notebook-image-order` annotation in each file.
 
-1. jupyter-minimal-notebook-imagestream.yaml
-2. jupyter-minimal-cpu-py312-ubi9-imagestream.yaml
-3. jupyter-minimal-gpu-notebook-imagestream.yaml
-4. jupyter-minimal-cuda-py312-ubi9-imagestream.yaml
-5. jupyter-rocm-minimal-notebook-imagestream.yaml
-6. jupyter-minimal-rocm-py312-ubi9-imagestream.yaml
-7. jupyter-datascience-notebook-imagestream.yaml
-8. jupyter-datascience-cpu-py312-ubi9-imagestream.yaml
-9. jupyter-pytorch-notebook-imagestream.yaml
-10. jupyter-pytorch-cuda-py312-ubi9-imagestream.yaml
-11. jupyter-rocm-pytorch-notebook-imagestream.yaml
-12. jupyter-pytorch-rocm-py312-ubi9-imagestream.yaml
-13. jupyter-tensorflow-notebook-imagestream.yaml
-14. jupyter-tensorflow-cuda-py312-ubi9-imagestream.yaml
-15. jupyter-rocm-tensorflow-notebook-imagestream.yaml
-16. jupyter-trustyai-notebook-imagestream.yaml
-17. jupyter-trustyai-cpu-py312-ubi9-imagestream.yaml
-18. code-server-notebook-imagestream.yaml
-19. codeserver-datascience-cpu-py312-ubi9-imagestream.yaml
-20. rstudio-notebook-imagestream.yaml
-21. rstudio-gpu-notebook-imagestream.yaml
+## Notebook Imagestreams (with order annotations):
 
-The order would also be same as `opendatahub.io/notebook-image-order` listed in each imagestreams.  
+1. jupyter-minimal-notebook-imagestream.yaml (Order: 1)
+2. jupyter-minimal-gpu-notebook-imagestream.yaml (Order: 3)
+3. jupyter-rocm-minimal-notebook-imagestream.yaml (Order: 5)
+4. jupyter-datascience-notebook-imagestream.yaml (Order: 7)
+5. jupyter-pytorch-notebook-imagestream.yaml (Order: 9)
+6. jupyter-pytorch-llmcompressor-imagestream.yaml (Order: 10)
+7. jupyter-rocm-pytorch-notebook-imagestream.yaml (Order: 12)
+8. jupyter-tensorflow-notebook-imagestream.yaml (Order: 14)
+9. jupyter-trustyai-notebook-imagestream.yaml (Order: 16)
+10. jupyter-rocm-tensorflow-notebook-imagestream.yaml (Order: 16)
+11. code-server-notebook-imagestream.yaml (Order: 19)
+
+## Runtime Imagestreams (no order annotations):
+
+- runtime-datascience-imagestream.yaml
+- runtime-minimal-imagestream.yaml
+- runtime-pytorch-imagestream.yaml
+- runtime-rocm-pytorch-imagestream.yaml
+- runtime-rocm-tensorflow-imagestream.yaml
+- runtime-tensorflow-imagestream.yaml
+- runtime-pytorch-llmcompressor-imagestream.yaml
+
+The order is determined by the `opendatahub.io/notebook-image-order` annotation listed in each imagestream file.  
 _Note_: On deprecation/removal of imagestream, the index of that image is retired with it.
 
 ## Params file
