@@ -63,6 +63,35 @@ build_pyarrow() {
     rm -rf ${TEMP_BUILD_DIR}
 }
 
+    # Additional dev tools only for s390x \
+if [[ $(uname -m) == "s390x" ]]; then \
+
+    dnf install -y perl mesa-libGL skopeo libxcrypt-compat python3.12-devel pkgconf-pkg-config gcc gcc-gfortran gcc-c++ ninja-build make openssl-devel python3-devel pybind11-devel autoconf automake libtool cmake openblas-devel libjpeg-devel zlib-devel libtiff-devel freetype-devel lcms2-devel libwebp-devel git tar wget
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    dnf install -y cmake gcc gcc-toolset-13 fribidi-devel lcms2-devel && \
+    openjpeg2-devel libraqm-devel libimagequant-devel tcl-devel tk-devel && \
+    dnf clean all && rm -rf /var/cache/dnf;
+
+     # install rust
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+    source /opt/rh/gcc-toolset-13/enable
+    source "$HOME/.cargo/env"
+
+    export MAX_JOBS=${MAX_JOBS:-$(nproc)}
+
+    if [[ $(uname -m) == "s390x" ]]; then
+        echo "Checking OpenBLAS pkg-config..."
+        pkg-config --exists openblas || echo "Warning: openblas.pc not found"
+    fi
+
+    export CMAKE_ARGS="-DPython3_EXECUTABLE=python -DCMAKE_PREFIX_PATH=/usr/local"
+
+    PYARROW_VERSION=$(grep -A1 '"pyarrow"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
+    build_pyarrow ${PYARROW_VERSION}
+    uv pip install ${WHEEL_DIR}/*.whl
+fi
+
 if [[ $(uname -m) == "ppc64le" ]]; then
     # install development packages
     dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
@@ -101,7 +130,8 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     build_pillow ${PILLOW_VERSION}
 
     uv pip install ${WHEEL_DIR}/*.whl
-else
-    # only for mounting on non-ppc64le
-    mkdir -p /root/OpenBLAS/
+fi
+if [[ $(uname -m) != "ppc64le" ]] && [[ $(uname -m) != "ppc64le" ]]; then
+   # only for mounting on other than s390x and ppc64le
+   mkdir -p /root/OpenBLAS/
 fi

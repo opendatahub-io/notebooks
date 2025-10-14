@@ -57,7 +57,7 @@ COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
 #            the final stage with the necessary permissions to consume from cache
 RUN --mount=type=cache,target=/root/.cache/uv \
     pip install --no-cache-dir uv && \
-    # the devel script is ppc64le specific - sets up build-time dependencies
+    # the devel script is ppc64le and s390x specific - sets up build-time dependencies
     source ./devel_env_setup.sh && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
@@ -90,7 +90,7 @@ RUN dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setop
 # upgrade first to avoid fixable vulnerabilities end
 
 # Install useful OS packages
-RUN dnf install -y perl mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+RUN dnf install -y tar perl mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/dnf
 
 # (ARCH-ppc64le): since wheels are compiled from source, we need shared libs available at runtime
 RUN --mount=type=cache,from=whl-cache,source=/root/OpenBLAS,target=/OpenBlas,rw \
@@ -139,9 +139,9 @@ USER 0
 WORKDIR /opt/app-root/bin
 
 # Install useful OS packages
-RUN dnf install -y jq git-lfs libsndfile && dnf clean all && rm -rf /var/cache/yum
+RUN dnf install -y jq git-lfs libsndfile && dnf clean all && rm -rf /var/cache/dnf
 
-# wait for rpm-base stage (rpm builds for ppc64le)
+# wait for rpm-base stage (rpm builds for ppc64le and s390x)
 COPY --from=rpm-base /tmp/control /dev/null
 
 # Install code-server
@@ -249,11 +249,11 @@ COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
 COPY --from=whl-cache /tmp/control /dev/null
 
 # Install packages and cleanup
-# (ARCH-ppc64le): install packages (eg. pyarrow) that need to be built from source repository on ppc64le
+# (ARCH-ppc64le and s390x): install packages (eg. pyarrow) that need to be built from source repository on ppc64le and s390x
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw \
     bash -c ' \
-        if [[ $(uname -m) == "ppc64le" ]]; then \
+        if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then \
             uv pip install /wheelsdir/*.whl; \
         fi '
 # install packages as USER 0 (this will allow us to consume uv cache)
