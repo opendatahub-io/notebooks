@@ -36,7 +36,6 @@ class TestJupyterLabImage:
                     "--ServerApp.password=''",
                     "--ServerApp.base_url=/notebook/opendatahub/jovyan",
                     "--ServerApp.quit_button=False",
-                    """--ServerApp.tornado_settings={"user":"jovyan","hub_host":"https://opendatahub.io","hub_prefix":"/notebookController/jovyan"}""",
                 ]
             ),
         )
