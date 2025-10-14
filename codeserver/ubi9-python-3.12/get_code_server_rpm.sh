@@ -17,7 +17,7 @@ UNAME_TO_GOARCH["s390x"]="s390x"
 
 ARCH="${UNAME_TO_GOARCH[$(uname -m)]}"
 
-if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
+if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
 
 	export MAX_JOBS=${MAX_JOBS:-$(nproc)}
 	export NODE_VERSION=${NODE_VERSION:-22.18.0}
