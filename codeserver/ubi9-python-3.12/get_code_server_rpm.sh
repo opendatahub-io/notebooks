@@ -17,7 +17,7 @@ UNAME_TO_GOARCH["s390x"]="s390x"
 
 ARCH="${UNAME_TO_GOARCH[$(uname -m)]}"
 
-if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
+if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
 
 	export MAX_JOBS=${MAX_JOBS:-$(nproc)}
 	export NODE_VERSION=${NODE_VERSION:-22.18.0}
@@ -62,12 +62,57 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ||"$ARCH" == "ppc64le" ]]; then
 	# build codeserver
 	git clone --depth 1 --branch "${CODESERVER_VERSION}" --recurse-submodules --shallow-submodules https://github.com/coder/code-server.git
 	cd code-server
+        
+#patch taken from vscodium s390x IBM : https://github.com/VSCodium/vscodium/blob/master/patches/linux/reh/s390x/arch-4-s390x-package.json.patch
+if [[ "$ARCH" == "s390x" ]]; then
+cat > s390x.patch <<EOL
+diff --git a/lib/vscode/package-lock.json b/lib/vscode/package-lock.json
+index 0d0272a92b2..73e8feb92dd 100644
+--- a/lib/vscode/package-lock.json
++++ b/lib/vscode/package-lock.json
+@@ -18236,10 +18236,11 @@
+       }
+     },
+     "node_modules/web-tree-sitter": {
+-      "version": "0.20.8",
+-      "resolved": "https://registry.npmjs.org/web-tree-sitter/-/web-tree-sitter-0.20.8.tgz",
+-      "integrity": "sha512-weOVgZ3aAARgdnb220GqYuh7+rZU0Ka9k9yfKtGAzEYMa6GgiCzW9JjQRJyCJakvibQW+dfjJdihjInKuuCAUQ==",
+-      "dev": true
++      "version": "0.23.0",
++      "resolved": "https://registry.npmjs.org/web-tree-sitter/-/web-tree-sitter-0.23.0.tgz",
++      "integrity": "sha512-p1T+ju2H30fpVX2q5yr+Wv/NfdMMWMjQp9Q+4eEPrHAJpPFh9DPfI2Yr9L1f5SA5KPE+g1cNUqPbpihxUDzmVw==",
++      "dev": true,
++      "license": "MIT"
+     },
+     "node_modules/webidl-conversions": {
+       "version": "3.0.1",
+diff --git a/lib/vscode/package.json b/lib/vscode/package.json
+index a4c7a2a3a35..d7f816248af 100644
+--- a/lib/vscode/package.json
++++ b/lib/vscode/package.json
+@@ -227,6 +227,9 @@
+     "node-gyp-build": "4.8.1",
+     "kerberos@2.1.1": {
+       "node-addon-api": "7.1.0"
++    },
++    "@vscode/l10n-dev@0.0.35": {
++      "web-tree-sitter": "0.23.0"
+     }
+   },
+   "repository": {
+EOL
+
+   git apply s390x.patch
+fi	
+        	
 	source ${NVM_DIR}/nvm.sh
 	while IFS= read -r src_patch; do echo "patches/$src_patch"; patch -p1 < "patches/$src_patch"; done < patches/series
 	nvm use ${NODE_VERSION}
+	npm cache clean --force
 	npm install
 	npm run build
 	VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
+	export KEEP_MODULES=1
 	npm run release
 	npm run release:standalone
 
