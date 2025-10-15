@@ -56,6 +56,8 @@ def pull_request_pipelinerun_template(
     # Tekton uses Go's `regexp`
     on_comment_pattern = re.compile(rf"^/kfbuild\s+(all|{re.escape(component)}|{re.escape(str(dockerfile.parent))})")
 
+    maybe_poc = "-poc" if component.startswith("odh-base-image") else ""
+
     return {
         "apiVersion": "tekton.dev/v1",
         "kind": "PipelineRun",
@@ -87,7 +89,7 @@ def pull_request_pipelinerun_template(
                 "name": "multiarch-pull-request-pipeline",
             },
             "taskRunTemplate": {
-                "serviceAccountName": f"build-pipeline-{component}",
+                "serviceAccountName": f"build-pipeline-{component}{maybe_poc}",
             },
             "workspaces": [
                 {
@@ -131,7 +133,14 @@ def transform_build_pipeline_to_pr_pipeline(push_pipeline_path: pathlib.Path):
 
     component = push_pipeline["metadata"]["labels"]["appstudio.openshift.io/component"]
 
-    build_platforms = ["linux/x86_64"]
+    # https://github.com/redhat-appstudio/infra-deployments/blob/main/components/multi-platform-controller/production-downstream/stone-prod-p02/host-config.yaml
+
+    if component in [
+        "odh-workbench-codeserver-datascience-cpu-py312-ubi9",
+    ]:
+        build_platforms = ["linux-extra-fast/amd64"]
+    else:
+        build_platforms = ["linux/x86_64"]
 
     if component in [
         "odh-base-image-cuda-py311-c9s",
@@ -143,10 +152,18 @@ def transform_build_pipeline_to_pr_pipeline(push_pipeline_path: pathlib.Path):
 
     if component in [
         "odh-workbench-codeserver-datascience-cpu-py312-ubi9",
+        "odh-workbench-jupyter-tensorflow-cuda-py312-ubi9",
+        "odh-workbench-jupyter-trustyai-cpu-py312-ubi9",
+    ]:
+        build_platforms.extend(["linux-m2xlarge/arm64"])
+
+    if component in [
+        "odh-workbench-codeserver-datascience-cpu-py312-ubi9",
         "odh-workbench-jupyter-datascience-cpu-py312-ubi9",
         "odh-workbench-jupyter-minimal-cpu-py312-ubi9",
         "odh-pipeline-runtime-minimal-cpu-py312-ubi9",
         "odh-pipeline-runtime-datascience-cpu-py312-ubi9",
+        "odh-workbench-jupyter-trustyai-cpu-py312-ubi9",
     ]:
         build_platforms.extend(["linux/ppc64le"])
 
