@@ -5,15 +5,15 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # Datascience and useful extensions
-    "boto3~=1.40.27",
+    "boto3~=1.40.52",
     "kafka-python-ng~=2.2.3",
-    "kfp~=2.14.3",
-    "matplotlib~=3.10.6",
-    "numpy~=2.3.3",
-    "pandas~=2.3.2",
-    "plotly~=6.3.0",
+    "kfp~=2.14.6",
+    "matplotlib~=3.10.7",
+    "numpy~=2.3.4",
+    "pandas~=2.3.3",
+    "plotly~=6.3.1",
     "scikit-learn~=1.7.2",
-    "scipy~=1.16.1",
+    "scipy~=1.16.2",
     "skl2onnx~=1.19.1",
     "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
     "kubeflow-training==1.9.3",
@@ -21,16 +21,16 @@ dependencies = [
     "feast~=0.55.0",
 
     # DB connectors
-    "pymongo~=4.14.1",
+    "pymongo~=4.15.3",
     "psycopg~=3.2.10",
     "pyodbc~=5.2.0",
     "mysql-connector-python~=9.4.0",
 
     # JupyterLab packages
-    "odh-elyra==4.2.5",
+    "odh-elyra==4.3.1",
     "odh-jupyter-trash-cleanup==0.1.1",
 
-    "jupyterlab==4.4.7",
+    "jupyterlab==4.4.9",
     "jupyter-bokeh~=4.0.5",
     "jupyter-server~=2.17.0",
     "jupyter-server-proxy~=4.4.0",
