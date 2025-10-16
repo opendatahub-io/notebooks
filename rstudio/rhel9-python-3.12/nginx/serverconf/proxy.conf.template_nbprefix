@@ -1,8 +1,8 @@
 ###############
 # Fix rstudio-server auth-sign-in redirect bug
 ###############
-rewrite ^/auth-sign-in(.*) "$custom_scheme://$http_host/rstudio/auth-sign-in$1?appUri=%2Frstudio";
-rewrite ^/auth-sign-out(.*) "$custom_scheme://$http_host/rstudio/auth-sign-out$1?appUri=%2Frstudio";
+rewrite ^/auth-sign-in(.*) "$custom_scheme://$http_host${NB_PREFIX}/rstudio/auth-sign-in$1?appUri=%2Frstudio";
+rewrite ^/auth-sign-out(.*) "$custom_scheme://$http_host${NB_PREFIX}/rstudio/auth-sign-out$1?appUri=%2Frstudio";
 ###############
 
 ###############
@@ -67,24 +67,38 @@ location /api/kernels/ {
 # root and prefix get to RStudio endpoint
 ###############
 location = ${NB_PREFIX} {
-    return 302 $custom_scheme://$http_host/rstudio/;
-}
-
-location ${NB_PREFIX}/ {
-    return 302 $custom_scheme://$http_host/rstudio/;
+    return 302 $custom_scheme://$http_host${NB_PREFIX}/rstudio/;
 }
 
 location = /rstudio {
-    return 302 $custom_scheme://$http_host/rstudio/;
+    return 302 $custom_scheme://$http_host${NB_PREFIX}/rstudio/;
 }
 
 location = / {
-    return 302 $custom_scheme://$http_host/rstudio/;
+    return 302 $custom_scheme://$http_host${NB_PREFIX}/rstudio/;
+}
+
+location ${NB_PREFIX}/rstudio/ {
+    rewrite ^${NB_PREFIX}/rstudio/(.*)$ /$1 break;
+    # Standard RStudio/NGINX configuration
+    proxy_pass http://workbench_server/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_read_timeout 20d;
+
+    # Needed to make it work properly
+    proxy_set_header X-RStudio-Request $custom_scheme://$http_host$request_uri;
+    proxy_set_header X-RStudio-Root-Path ${NB_PREFIX}/rstudio;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Proto $custom_scheme;
+
+    access_log /var/log/nginx/rstudio.access.log json if=$loggable;
 }
 
 location /rstudio/ {
     rewrite ^/rstudio/(.*)$ /$1 break;
-    # Standard RStudio/NGINX configuration
+    # Standard RStudio/NGINX configuration (fallback without prefix)
     proxy_pass http://workbench_server/;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;

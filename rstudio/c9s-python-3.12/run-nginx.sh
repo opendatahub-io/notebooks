@@ -19,6 +19,10 @@ if [ -z "$NB_PREFIX" ]; then
     cp /opt/app-root/etc/nginx.default.d/proxy.conf.template /opt/app-root/etc/nginx.default.d/proxy.conf
 else
     export BASE_URL=$(echo $NB_PREFIX | awk -F/ '{ print $4"-"$3 }')$(echo $NOTEBOOK_ARGS | grep -Po 'hub_host":"\K.*?(?=")' | awk -F/ '{ print $3 }' | awk -F. '{for (i=2; i<=NF; i++) printf ".%s", $i}')
+    # If BASE_URL is empty or invalid (missing hub_host), use wildcard server_name
+    if [ -z "$BASE_URL" ] || [ "$BASE_URL" = "$(echo $NB_PREFIX | awk -F/ '{ print $4"-"$3 }')" ]; then
+        export BASE_URL="_"
+    fi
     envsubst '${NB_PREFIX},${BASE_URL}' < /opt/app-root/etc/nginx.default.d/proxy.conf.template_nbprefix > /opt/app-root/etc/nginx.default.d/proxy.conf
     envsubst '${BASE_URL}' < /etc/nginx/nginx.conf | tee /etc/nginx/nginx.conf
 fi
