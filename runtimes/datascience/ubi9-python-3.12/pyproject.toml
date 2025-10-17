@@ -5,34 +5,34 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # Datascience and useful extensions
-    "boto3~=1.40.27",
+    "boto3~=1.40.52",
     "kafka-python-ng~=2.2.3",
-    "matplotlib~=3.10.6",
-    "numpy~=2.3.3",
-    "pandas~=2.3.2",
-    "plotly~=6.3.0",
+    "matplotlib~=3.10.7",
+    "numpy~=2.3.4",
+    "pandas~=2.3.3",
+    "plotly~=6.3.1",
     "scikit-learn~=1.7.2",
-    "scipy~=1.16.1",
+    "scipy~=1.16.2",
     "skl2onnx~=1.19.1",
     "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
     "codeflare-sdk~=0.32.0; platform_machine != 's390x' and platform_machine != 'ppc64le'",
     "feast~=0.55.0",
 
     # DB connectors
-    "pymongo~=4.14.1",
+    "pymongo~=4.15.3",
     "psycopg~=3.2.10",
     "pyodbc~=5.2.0",
     "mysql-connector-python~=9.4.0",
 
     # This is a comprehensive list of python dependencies that Elyra requires to execute Jupyter notebooks.
     "ipykernel~=6.30.1",
-    "ipython~=9.5.0",
+    "ipython~=9.6.0",
     "ipython-genutils~=0.2.0",
     "jinja2~=3.1.6",
     "jupyter-client>=8.6.3",
     "jupyter-core~=5.8.1",
-    "markupsafe~=3.0.2",
-    "minio~=7.2.16",
+    "markupsafe~=3.0.3",
+    "minio~=7.2.18",
     "nbclient~=0.10.2",
     "nbconvert~=7.16.6",
     "nbformat~=5.10.4",

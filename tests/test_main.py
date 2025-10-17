@@ -291,10 +291,10 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
                 "~=2.0.2",  # for tensorflow rocm
                 "~=2.1.3",
                 "~=2.2.6",
-                "~=2.3.3",  # for tensorflow cuda and latest possible
+                "~=2.3.4",  # for tensorflow cuda and latest possible
             ),
         ),
-        ("pandas", ("~=2.3.2", "~=1.5.3")),
+        ("pandas", ("~=2.3.3", "~=1.5.3")),
         ("scikit-learn", ("~=1.7.2",)),
         ("codeflare-sdk", ("~=0.31.0", "~=0.31.1")),
         ("ipython-genutils", (">=0.2.0", "~=0.2.0")),
