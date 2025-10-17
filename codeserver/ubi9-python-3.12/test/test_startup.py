@@ -39,7 +39,6 @@ class TestStartup(unittest.TestCase):
                 "--ServerApp.password=''",
                 f"--ServerApp.base_url=/notebook/{self.project_name}/{self.notebook_id}",
                 "--ServerApp.quit_button=False",
-                f'--ServerApp.tornado_settings={{"user":"{self.translated_username}","hub_host":"{self.origin}","hub_prefix":"/projects/{self.project_name}"}}',
             ]
         )
         return expected_args
