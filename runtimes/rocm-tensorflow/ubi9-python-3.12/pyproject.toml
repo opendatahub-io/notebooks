@@ -65,6 +65,11 @@ override-dependencies = [
     "protobuf==6.31.1"
 ]
 
+constraint-dependencies = [
+    # AttributeError: module 'ml_dtypes' has no attribute 'float4_e2m1fn'
+    "onnx<1.19.0",
+]
+
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
