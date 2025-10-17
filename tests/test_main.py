@@ -225,13 +225,12 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
             "Numpy",
             (
                 "1.26",  # trustyai 0.6.2 depends on numpy~=1.26.4
-                "2.0",  # for tensorflow rocm
                 "2.1",  # for tensorflow cuda
                 "2.2",  # for python 3.11 n-1 images
                 "2.3",  # this is our latest where possible
             ),
         ),
-        ("Tensorboard", ("2.20", "2.18")),
+        ("Tensorboard", ("2.20", "2.17")),
         ("PyTorch", ("2.6", "2.7")),
     )
 
@@ -277,7 +276,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         # ("package name", ("allowed specifier 1", "allowed specifier 2", ...))
         ("setuptools", ("~=80.9.0", "==80.9.0")),
         ("wheel", ("==0.45.1", "~=0.45.1")),
-        ("tensorboard", ("~=2.18.0", "~=2.20.0")),
+        ("tensorboard", ("~=2.17.0", "~=2.20.0")),
         ("torch", ("==2.7.1", "==2.7.1+cu128", "==2.7.1+rocm6.2.4")),
         ("torchvision", ("==0.22.1", "~=0.22.1", "==0.22.1+cu128", "==0.22.1+rocm6.2.4")),
         (
@@ -288,7 +287,6 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             "numpy",
             (
                 "~=1.26.4",  # trustyai 0.6.2 depends on numpy~=1.26.4
-                "~=2.0.2",  # for tensorflow rocm
                 "~=2.1.3",
                 "~=2.2.6",
                 "~=2.3.4",  # for tensorflow cuda and latest possible
