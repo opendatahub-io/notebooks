@@ -136,6 +136,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
               -DARROW_WITH_LZ4=OFF \
               -DARROW_WITH_ZSTD=OFF \
               -DARROW_WITH_SNAPPY=OFF \
+              -DARROW_S3=ON \
+              -DARROW_SUBSTRAIT=ON \
               -DARROW_BUILD_TESTS=OFF \
               -DARROW_BUILD_BENCHMARKS=OFF \
               .. && \
