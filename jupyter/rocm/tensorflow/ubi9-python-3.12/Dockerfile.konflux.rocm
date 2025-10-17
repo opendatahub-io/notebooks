@@ -3,6 +3,9 @@
 #########################
 ARG BASE_IMAGE
 
+# External image alias for UBI repository configuration
+FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
+
 ######################################################
 # mongocli-builder (build stage only, not published) #
 ######################################################
@@ -29,7 +32,7 @@ USER 0
 # Inject the official UBI 9 repository configuration into the AIPCC base image.
 # The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
 # By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
-COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
+COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 
 # upgrade first to avoid fixable vulnerabilities begin
 # Problem: The operation would result in removing the following protected packages: systemd
@@ -114,6 +117,7 @@ WORKDIR /opt/app-root/src
 ###########################
 FROM rocm-jupyter-datascience AS rocm-jupyter-tensorflow
 
+ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG TENSORFLOW_SOURCE_CODE=jupyter/rocm/tensorflow/ubi9-python-3.12
 
@@ -144,6 +148,8 @@ USER 0
 RUN chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P
 USER 1001
+
+COPY ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monkey_patch_protobuf_6x.py /opt/app-root/lib/python3.12/site-packages/
 
 WORKDIR /opt/app-root/src
 
