@@ -359,6 +359,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
         uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml; \
     fi && \
+    # change ownership to default user (all packages were installed as root and has root:root ownership
+    chown -R 1001:0 /opt/app-root/ && \
+    chmod -R g=u /opt/app-root && \
     # Fix permissions to support pip in Openshift environments
     chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P
