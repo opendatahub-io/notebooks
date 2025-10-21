@@ -37,12 +37,19 @@ def run_tests(target: str) -> None:
     pod = prefix + "-notebook-0"  # `$(kubectl get statefulset -o name | head -n 1)` would work too
     namespace = "ns-" + prefix
 
-    if target.startswith("runtime-"):
+    if target == "runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12":
+        deploy = "deploy9"
+        deploy_target = "runtimes-cuda-pytorch+llmcompressor-ubi9-python-3.12"
+    elif target.startswith("runtime-"):
         deploy = "deploy9"
         deploy_target = target.replace("runtime-", "runtimes-")
     elif target.startswith("rocm-runtime-"):
         deploy = "deploy9"
         deploy_target = target.replace("rocm-runtime-", "runtimes-rocm-")
+
+    elif target == "cuda-jupyter-pytorch-llmcompressor-ubi9-python-3.12":
+        deploy = "deploy9"
+        deploy_target = "cuda-jupyter-pytorch+llmcompressor-ubi9-python-3.12"
     elif target.startswith("rocm-jupyter-"):
         deploy = "deploy9"
         deploy_target = target.replace("rocm-jupyter-", "jupyter-rocm-")
@@ -247,6 +254,24 @@ class TestMakeTest(unittest.TestCase):
         assert "make deploy9-runtimes-rocm-pytorch-ubi9-python-3.11" in commands
         assert "make validate-runtime-image image=runtime-rocm-pytorch-ubi9-python-3.11" in commands
         assert "make undeploy9-runtimes-rocm-pytorch-ubi9-python-3.11" in commands
+
+    @unittest.mock.patch(target)
+    def test_make_commands_llmcompressor(self, mock_execute: unittest.mock.Mock) -> None:
+        """Compares the commands with what we had in the openshift/release yaml"""
+        run_tests("cuda-jupyter-pytorch-llmcompressor-ubi9-python-3.12")
+        commands: list[str] = [c[0][1][0] for c in mock_execute.call_args_list]
+        assert "make deploy9-cuda-jupyter-pytorch+llmcompressor-ubi9-python-3.12" in commands
+        assert "make test-cuda-jupyter-pytorch-llmcompressor-ubi9-python-3.12" in commands
+        assert "make undeploy9-cuda-jupyter-pytorch+llmcompressor-ubi9-python-3.12" in commands
+
+    @unittest.mock.patch(target)
+    def test_make_commands_llmcompressor_runtime(self, mock_execute: unittest.mock.Mock) -> None:
+        """Compares the commands with what we had in the openshift/release yaml"""
+        run_tests("runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12")
+        commands: list[str] = [c[0][1][0] for c in mock_execute.call_args_list]
+        assert "make deploy9-runtimes-cuda-pytorch+llmcompressor-ubi9-python-3.12" in commands
+        assert "make validate-runtime-image image=runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12" in commands
+        assert "make undeploy9-runtimes-cuda-pytorch+llmcompressor-ubi9-python-3.12" in commands
 
 
 if __name__ == "__main__":
