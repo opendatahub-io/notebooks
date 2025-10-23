@@ -1,0 +1,22 @@
+ARG TARGETARCH
+
+FROM quay.io/sclorg/python-312-c9s:c9s AS buildscripts
+COPY base-images/utils/aipcc.sh /mnt/aipcc.sh
+
+####################
+# base             #
+####################
+FROM quay.io/sclorg/python-312-c9s:c9s AS base
+
+USER 0
+
+RUN \
+--mount=from=buildscripts,source=/mnt,target=/mnt \
+--mount=type=cache,sharing=locked,id=dnf-c9s,target=/var/cache/dnf \
+/bin/bash <<'EOF'
+/mnt/aipcc.sh
+EOF
+
+# Restore user workspace
+USER 1001
+WORKDIR /opt/app-root/src
