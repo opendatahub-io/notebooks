@@ -36,9 +36,11 @@ RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
       rocm-core hip-runtime-amd \
     # system utilities
       rocm-smi-lib rocminfo \
-      rocblas rocsolver rocfft rocrand rocsparse miopen-hip rccl \
-    # HIP (Heterogeneous-compute Interface for Portability)
-      hipblas hipblaslt hipfft hipsparse hiprand hipsolver \
+    # ROC (https://en.wikipedia.org/wiki/ROCm)
+      # the -devel packages create symlinks e.g. /opt/rocm-6.3.4/lib/librocsolver.so which are used by tensorflow-rocm
+      rocblas-devel rocsolver-devel rocfft-devel rocrand-devel rocsparse-devel miopen-hip-devel rccl-devel \
+    # HIP (Heterogeneous-compute Interface for Portability) (subset of rocm-hip-runtime)
+      hipblas-devel hipblaslt-devel hipfft-devel hipsparse-devel hiprand-devel hipsolver-devel \
     # suitesparse's /lib64/libspqr.so.2.0.9 needs libtbb.so.2
       tbb && \
     dnf clean all && rm -rf /var/cache/yum
