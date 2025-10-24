@@ -16,7 +16,7 @@ metadata:
     appstudio.openshift.io/application: opendatahub-poc
     appstudio.openshift.io/component: odh-base-image-cpu-py312-c9s-poc
     pipelines.appstudio.openshift.io/type: build
-  name: odh-base-image-cpu-py312-c9s-poc-on-pull-request
+  name: odh-base-image-cpu-py312-c9s-on-pull-request
   namespace: open-data-hub-tenant
 spec:
   params:
@@ -25,7 +25,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/open-data-hub-tenant/odh-base-image-cpu-py312-c9s:on-pr-{{revision}}
+    value: quay.io/open-data-hub-tenant/odh-base-image-cpu-py312-c9s:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
   - name: dockerfile
