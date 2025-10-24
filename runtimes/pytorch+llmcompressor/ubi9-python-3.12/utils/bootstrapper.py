@@ -1,6 +1,5 @@
-# Copied from: https://github.com/elyra-ai/elyra/blob/main/elyra/kfp/bootstrapper.py
 #
-# Copyright 2018-2023 Elyra Authors
+# Copyright 2018-2025 Elyra Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -47,6 +46,18 @@ F = TypeVar("F", bound="FileOpBase")
 
 logger = logging.getLogger("elyra")
 enable_pipeline_info = os.getenv("ELYRA_ENABLE_PIPELINE_INFO", "true").lower() == "true"
+# not only log File Operations output of NotebookFileOp, RFileOp, PythonFileOp to stdout so it appears
+# in runtime / container logs and also Airflow and KFP GUI logs, but also put output to S3 storage
+# NOTEBOOKS: Settings this to false so this will have effect both in Runtimes and Jupyter images
+enable_generic_node_script_output_to_s3 = (
+    os.getenv("ELYRA_GENERIC_NODES_ENABLE_SCRIPT_OUTPUT_TO_S3", "false").lower() == "true"
+)
+# Set it to false to disable automatic package installation.
+# This is useful in airgapped environments where the image
+# already contains the required packages.
+# NOTEBOOKS: Settings this to false so this will have effect both in Runtimes and Jupyter images
+install_packages = os.getenv("ELYRA_INSTALL_PACKAGES", "false").lower() == "true"
+
 pipeline_name = None  # global used in formatted logging
 operation_name = None  # global used in formatted logging
 
@@ -377,21 +388,32 @@ class NotebookFileOp(FileOpBase):
 
             import papermill
 
-            papermill.execute_notebook(notebook, notebook_output, kernel_name=kernel_name, **kwargs)
+            logger.info("Processing file: %s", notebook)
+            papermill.execute_notebook(
+                notebook,
+                notebook_output,
+                kernel_name=kernel_name,
+                log_output=True,
+                stdout_file=sys.stdout,
+                stderr_file=sys.stderr,
+                **kwargs,
+            )
             duration = time.time() - t0
             OpUtil.log_operation_info("notebook execution completed", duration)
 
             NotebookFileOp.convert_notebook_to_html(notebook_output, notebook_html)
-            self.put_file_to_object_storage(notebook_output, notebook)
-            self.put_file_to_object_storage(notebook_html)
+            if enable_generic_node_script_output_to_s3:
+                self.put_file_to_object_storage(notebook_output, notebook)
+                self.put_file_to_object_storage(notebook_html)
             self.process_outputs()
         except Exception as ex:
             # log in case of errors
             logger.error(f"Unexpected error: {sys.exc_info()[0]}")
 
             NotebookFileOp.convert_notebook_to_html(notebook_output, notebook_html)
-            self.put_file_to_object_storage(notebook_output, notebook)
-            self.put_file_to_object_storage(notebook_html)
+            if enable_generic_node_script_output_to_s3:
+                self.put_file_to_object_storage(notebook_output, notebook)
+                self.put_file_to_object_storage(notebook_html)
             raise ex
 
     @staticmethod
@@ -472,11 +494,11 @@ class PythonFileOp(FileOpBase):
         """Execute the Python script and upload results to object storage"""
         python_script = os.path.basename(self.filepath)
         python_script_name = python_script.replace(".py", "")
-        # python_script_output = f"{python_script_name}.log"
+        python_script_output = f"{python_script_name}.log"
 
         try:
             OpUtil.log_operation_info(
-                f"executing python script using 'python3 {python_script}'"
+                f"executing python script using 'python3 {python_script}' to '{python_script_output}'"
             )
             t0 = time.time()
 
@@ -484,31 +506,33 @@ class PythonFileOp(FileOpBase):
             if self.parameter_pass_method == "env":
                 self.set_parameters_in_env()
 
-            logger.info("----------------------Python logs start----------------------")
-            # Removing support for the s3 storage of python script logs
-            # with open(python_script_output, "w") as log_file:
-            #     process = subprocess.Popen(run_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            process = subprocess.Popen(run_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            logger.info("Processing file: %s", python_script)
+            try:
+                result = subprocess.run(run_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+                output = result.stdout.decode("utf-8")
+                if enable_generic_node_script_output_to_s3:
+                    with open(python_script_output, "w") as log_file:
+                        log_file.write(output)
+                logger.info("Output: %s", output)
+                logger.info("Return code: %s", result.returncode)
+            except subprocess.CalledProcessError as e:
+                logger.error("Output: %s", e.output.decode("utf-8"))
+                logger.error("Return code: %s", e.returncode)
+                raise subprocess.CalledProcessError(e.returncode, run_args)
 
-            for line in iter(process.stdout.readline, b''):
-                sys.stdout.write(line.decode())
-
-            process.stdout.close()
-            return_code = process.wait()
-            logger.info("----------------------Python logs ends----------------------")
-            if return_code:
-                raise subprocess.CalledProcessError(return_code, run_args)
             duration = time.time() - t0
             OpUtil.log_operation_info("python script execution completed", duration)
 
-            # self.put_file_to_object_storage(python_script_output, python_script_output)
+            if enable_generic_node_script_output_to_s3:
+                self.put_file_to_object_storage(python_script_output, python_script_output)
             self.process_outputs()
         except Exception as ex:
             # log in case of errors
             logger.error(f"Unexpected error: {sys.exc_info()[0]}")
             logger.error(f"Error details: {ex}")
 
-            # self.put_file_to_object_storage(python_script_output, python_script_output)
+            if enable_generic_node_script_output_to_s3:
+                self.put_file_to_object_storage(python_script_output, python_script_output)
             raise ex
 
 
@@ -519,42 +543,43 @@ class RFileOp(FileOpBase):
         """Execute the R script and upload results to object storage"""
         r_script = os.path.basename(self.filepath)
         r_script_name = r_script.replace(".r", "")
-        # r_script_output = f"{r_script_name}.log"
+        r_script_output = f"{r_script_name}.log"
 
         try:
-            OpUtil.log_operation_info(f"executing R script using 'Rscript {r_script}'")
+            OpUtil.log_operation_info(f"executing R script using 'Rscript {r_script}' to '{r_script_output}'")
             t0 = time.time()
 
             run_args = ["Rscript", r_script]
             if self.parameter_pass_method == "env":
                 self.set_parameters_in_env()
 
-            logger.info("----------------------R script logs start----------------------")
-            # Removing support for the s3 storage of R script logs
-            # with open(r_script_output, "w") as log_file:
-            #     process = subprocess.Popen(run_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            process = subprocess.Popen(run_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-            for line in iter(process.stdout.readline, b''):
-                sys.stdout.write(line.decode())
-
-            process.stdout.close()
-            return_code = process.wait()
-            logger.info("----------------------R script logs ends----------------------")
-            if return_code:
-                raise subprocess.CalledProcessError(return_code, run_args)
+            logger.info("Processing file: %s", r_script)
+            try:
+                result = subprocess.run(run_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+                output = result.stdout.decode("utf-8")
+                if enable_generic_node_script_output_to_s3:
+                    with open(r_script_output, "w") as log_file:
+                        log_file.write(output)
+                logger.info("Output: %s", output)
+                logger.info("Return code: %s", result.returncode)
+            except subprocess.CalledProcessError as e:
+                logger.error("Output: %s", e.output.decode("utf-8"))
+                logger.error("Return code: %s", e.returncode)
+                raise subprocess.CalledProcessError(e.returncode, run_args)
 
             duration = time.time() - t0
             OpUtil.log_operation_info("R script execution completed", duration)
 
-            # self.put_file_to_object_storage(r_script_output, r_script_output)
+            if enable_generic_node_script_output_to_s3:
+                self.put_file_to_object_storage(r_script_output, r_script_output)
             self.process_outputs()
         except Exception as ex:
             # log in case of errors
             logger.error(f"Unexpected error: {sys.exc_info()[0]}")
             logger.error(f"Error details: {ex}")
 
-            # self.put_file_to_object_storage(r_script_output, r_script_output)
+            if enable_generic_node_script_output_to_s3:
+                self.put_file_to_object_storage(r_script_output, r_script_output)
             raise ex
 
 
@@ -617,7 +642,7 @@ class OpUtil(object):
     @classmethod
     def determine_elyra_requirements(cls) -> Any:
         if sys.version_info.major == 3:
-            if sys.version_info.minor in [8, 9, 10, 11]:
+            if sys.version_info.minor in [9, 10, 11, 12, 13]:
                 return "requirements-elyra.txt"
         logger.error(
             f"This version of Python '{sys.version_info.major}.{sys.version_info.minor}' "
@@ -735,7 +760,7 @@ class OpUtil(object):
         :param action_clause: str representing the action that is being logged
         :param duration_secs: optional float value representing the duration of the action being logged
         """
-        global pipeline_name, operation_name
+        global pipeline_name, operation_name  # noqa: F824
         if enable_pipeline_info:
             duration_clause = f"({duration_secs:.3f} secs)" if duration_secs else ""
             logger.info(f"'{pipeline_name}':'{operation_name}' - {action_clause} {duration_clause}")
@@ -750,6 +775,9 @@ def main():
     input_params = OpUtil.parse_arguments(sys.argv[1:])
     OpUtil.log_operation_info("starting operation")
     t0 = time.time()
+
+    if install_packages:
+        OpUtil.package_install(user_volume_path=input_params.get("user-volume-path"))
 
     # Create the appropriate instance, process dependencies and execute the operation
     file_op = FileOpBase.get_instance(**input_params)
