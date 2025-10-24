@@ -139,7 +139,17 @@ USER 0
 WORKDIR /opt/app-root/bin
 
 # Install useful OS packages
-RUN dnf install -y jq git-lfs libsndfile && dnf clean all && rm -rf /var/cache/dnf
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+PACKAGES=(
+    jq git-lfs libsndfile
+    # provides envsubst which is required by run-nginx.sh
+    gettext
+)
+dnf install -y "${PACKAGES[@]}"
+dnf clean all
+rm -rf /var/cache/dnf
+EOF
 
 # wait for rpm-base stage (rpm builds for ppc64le and s390x)
 COPY --from=rpm-base /tmp/control /dev/null
