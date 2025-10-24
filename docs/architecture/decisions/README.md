@@ -10,7 +10,7 @@ brew install adr-tools
 
 ## Start new ADR
 
-[https://github.com/npryce/adr-tools?tab=readme-ov-file#quick-start]()
+<https://github.com/npryce/adr-tools?tab=readme-ov-file#quick-start>
 
 ```commandline
 adr new Implement as Unix shell scripts
@@ -24,4 +24,4 @@ adr init docs/architecture/decisions
 
 ## OpenDataHub ADRs
 
-[https://github.com/opendatahub-io/architecture-decision-records]()
+<https://github.com/opendatahub-io/architecture-decision-records>
