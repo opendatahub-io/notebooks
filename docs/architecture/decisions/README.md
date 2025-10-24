@@ -1,6 +1,6 @@
 ## Getting started
 
-* https://github.com/npryce/adr-tools, installation:
+* <https://github.com/npryce/adr-tools>, installation:
 [Linux](https://github.com/npryce/adr-tools/blob/master/INSTALL.md#from-a-release-package-linux-macos-x),
 [Homebrew](https://formulae.brew.sh/formula/adr-tools)
 
