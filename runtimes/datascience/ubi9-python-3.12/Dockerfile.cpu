@@ -387,7 +387,10 @@ EOF
 # Install Python packages from pylock.toml
 COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra dependencies for air-gapped enviroment
-COPY ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
+COPY --chown=1001 ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
+# Download Elyra Bootstrapper
+RUN curl -L https://raw.githubusercontent.com/opendatahub-io/elyra/refs/tags/v4.3.1/elyra/kfp/bootstrapper.py \
+         -o ./utils/bootstrapper.py
 
 RUN --mount=type=cache,target=/root/.cache/pip /bin/bash <<'EOF'
 set -Eeuxo pipefail
