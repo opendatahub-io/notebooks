@@ -13,7 +13,7 @@ To do that, we need to explore options available and decide which ones to use.
 
 ## Decision
 
-We will onboard and create some quick-start style test on all platforms available to us.
+We will onboard and create some quick-start-style tests on all platforms available to us.
 This will provide us with sufficient knowledge to talk to Red Hat DevTestOps team on equal footing about what we actually need.
 
 ### Execution platforms to consider for onboarding
