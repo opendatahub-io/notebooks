@@ -6,6 +6,24 @@ ARG BASE_IMAGE
 # External image alias for UBI repository configuration
 FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
 
+############################
+# Stage 1: PDF Tool Build #
+############################
+FROM registry.access.redhat.com/ubi9/python-312:latest AS pdf-builder
+
+WORKDIR /opt/app-root/bin
+
+# OS Packages needs to be installed as root
+USER 0
+
+# Copy scripts
+COPY jupyter/utils/install_texlive.sh ./install_texlive.sh
+COPY jupyter/utils/install_pandoc.sh ./install_pandoc.sh
+RUN chmod +x install_texlive.sh install_pandoc.sh
+
+RUN ./install_texlive.sh
+RUN ./install_pandoc.sh
+
 ####################
 # cpu-base         #
 ####################
@@ -71,9 +89,14 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 USER 0
 
 # Dependencies for PDF export begin
-RUN ./utils/install_pdf_deps.sh
-ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
-# Dependencies for PDF export end
+RUN --mount=type=cache,from=pdf-builder,source=/usr/local/,target=/pdf_builder/,rw \
+    bash -c ' \
+    if [[ "$(uname -m)" == "ppc64le" ]]; then \
+        cp -r /pdf_builder/texlive /usr/local/; \
+        cp -r /pdf_builder/pandoc /usr/local/; \
+    else \
+        ./utils/install_pdf_deps.sh; \
+    fi'
 
 USER 1001
 
