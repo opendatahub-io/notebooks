@@ -26,7 +26,7 @@ This will provide us with sufficient knowledge to talk to Red Hat DevTestOps tea
 * Testing-Farm.io nested virtualization
 * <https://github.com/jiridanek/rhoai-in-kind>
 * Hydra trigger such as /test-e2e that will run something on Red Hat internal CI
-* Machine under @jiridanek's table in Brno
+* Machine under @jiridanek's desk in Brno
 * Virtual machines under our management on ITUP.scale platform in Red Hat
 
 ## Consequences
