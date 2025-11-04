@@ -80,3 +80,16 @@ Initial recommendation: Commit generated files (Option A) for traceability and e
 - Provide clear error messages in templating scripts
 - Keep templates as simple and readable as possible
 - Consider a hybrid approach: commit generated files but validate against templates in CI
+
+### Previous work
+
+- <https://gitlab.cee.redhat.com/astonebe/notebook-utils>
+- [RHOAIENG-16969 Remove specific instances of code duplication in odh/notebooks](https://issues.redhat.com/browse/RHOAIENG-16969)
+- [RHOAIENG-19047 Deduplicate files that get included in workbench images](https://issues.redhat.com/browse/RHOAIENG-19047)
+- [RHOAIENG-19046 Remove reliance on "chained builds" in notebooks repo](https://issues.redhat.com/browse/RHOAIENG-19046)
+- [fix(makefile): standardized image targets #1015](https://github.com/opendatahub-io/notebooks/pull/1015)
+  - [RHOAIENG-16587: fix(test): ensure papermill tests run successfully for all supported notebooks #834](https://github.com/opendatahub-io/notebooks/pull/834)
+  - <https://redhat-internal.slack.com/archives/C060A5FJEAD/p1738786041914139>
+- [📦 Consolidate duplicate bootstrapper implementations across Python 3.12 runtime environments #1349](https://github.com/opendatahub-io/notebooks/issues/1349)
+- [improve and simplify docker multistage build in jupyter/datascience/ubi9-python-3.12/Dockerfile.cpu #2467](https://github.com/opendatahub-io/notebooks/issues/2467)
+- [Refactor notebooks-release workflow to eliminate code duplication using reusable workflows #1185](https://github.com/opendatahub-io/notebooks/issues/1185)
