@@ -5,9 +5,6 @@ ARG TARGETARCH
 #########################
 ARG BASE_IMAGE
 
-# External image alias for UBI repository configuration
-FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
-
 ####################
 # cpu-base         #
 ####################
@@ -18,10 +15,8 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER root
 
-# Inject the official UBI 9 repository configuration into the AIPCC base image.
-# The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
-# By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
-COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
+# Enable copr, so we can do dnf upgrade
+RUN dnf copr enable copr.devel.redhat.com/mcurlej/rstudio-server-dependencies rhel-9-x86_64 -y
 
 # upgrade first to avoid fixable vulnerabilities begin
 # Problem: The operation would result in removing the following protected packages: systemd
@@ -33,14 +28,10 @@ RUN dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setop
 
 # Install useful OS packages
 # remove skopeo, CVE-2025-4674
-RUN dnf install -y perl mesa-libGL && dnf clean all && rm -rf /var/cache/yum
+RUN dnf install -y mesa-libGL && dnf clean all && rm -rf /var/cache/yum
 
 # Other apps and tools installed as default user
 USER 1001
-
-# Install micropipenv and uv to deploy packages from requirements.txt begin
-RUN pip install --no-cache-dir -U "micropipenv[toml]==1.9.0" "uv==0.8.12"
-# Install micropipenv and uv to deploy packages from requirements.txt end
 
 WORKDIR /opt/app-root/src
 
@@ -54,13 +45,6 @@ ARG TARGETARCH
 
 WORKDIR /opt/app-root/bin
 
-# TODO THIS SHOULD BE REMOVED
-# Access the client's secret for the subscription manager from the environment variable
-ARG SECRET_DIR=/opt/app-root/src/.sec
-ARG SERVERURL_DEFAULT=""
-ARG BASEURL_DEFAULT=""
-# TILL HERE
-
 LABEL name="odh-notebook-rstudio-server-rhel9-python-3.12" \
       summary="RStudio Server image with python 3.12 based on Red Hat Enterprise Linux 9" \
       description="RStudio Server image with python 3.12 based on Red Hat Enterprise Linux 9" \
@@ -73,32 +57,20 @@ LABEL name="odh-notebook-rstudio-server-rhel9-python-3.12" \
 
 USER 0
 
-# TODO THIS SHOULD BE REMOVED in favor of: https://issues.redhat.com/browse/RHOAIENG-32541
-# uncomment the below line if you fall on this error: subscription-manager is disabled when running inside a container. Please refer to your host system for subscription management.
-#RUN sed -i 's/\(def in_container():\)/\1\n    return False/g' /usr/lib64/python*/*-packages/rhsm/config.py
-
-# If necessary, run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
-RUN if [ -d "${SECRET_DIR}" ]; then \
-    SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFAULT}) && \
-    BASEURL=$(cat ${SECRET_DIR}/BASEURL 2>/dev/null || echo ${BASEURL_DEFAULT}) && \
-    USERNAME=$(cat ${SECRET_DIR}/USERNAME) && \
-    PASSWORD=$(cat ${SECRET_DIR}/PASSWORD) && \
-    subscription-manager register \
-    ${SERVERURL:+--serverurl=$SERVERURL} \
-    ${BASEURL:+--baseurl=$BASEURL} \
-    --username=$USERNAME \
-    --password=$PASSWORD \
-    --force \
-    --auto-attach; \
-  fi
-# TILL HERE
-
 ENV R_VERSION=4.5.1
 
+# Use CentOS while we are still waiting on final AIPCC image
+RUN dnf config-manager --add-repo https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/
+RUN dnf config-manager --add-repo https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/
+RUN dnf config-manager --add-repo https://mirror.stream.centos.org/9-stream/CRB/x86_64/os/
+RUN dnf makecache
+RUN rpm --import https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official
+
+# This package causes issues with openssl installation
+RUN rpm -e openssl-fips-provider-so --nodeps
+
 # Install R
-RUN dnf install -y dnf-plugins-core && \
-    subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms && \
-    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+RUN dnf install -y https://download.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
     INSTALL_PKGS="R-core R-core-devel R-java R-Rcpp R-highlight \
     R-littler R-littler-examples openssl-libs compat-openssl11" && \
     dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
@@ -117,6 +89,10 @@ RUN chmod -R a+w ${LIBLOC} && \
 
 WORKDIR /tmp/
 COPY /rstudio/utils /tmp/utils
+
+# npm required by ./cve_remediation.sh
+RUN dnf module enable nodejs:22 -y
+RUN dnf install npm -y
 
 # Install RStudio
 ARG RSTUDIO_RPM=rstudio-server-rhel-2025.09.0-387-x86_64.rpm
@@ -216,13 +192,6 @@ WORKDIR /opt/app-root/bin
 
 COPY ${RSTUDIO_SOURCE_CODE}/utils utils/
 COPY ${RSTUDIO_SOURCE_CODE}/run-rstudio.sh ${RSTUDIO_SOURCE_CODE}/setup_rstudio.py ${RSTUDIO_SOURCE_CODE}/rsession.sh ${RSTUDIO_SOURCE_CODE}/run-nginx.sh ./
-
-# TODO THIS SHOULD BE REMOVED in favor of: https://issues.redhat.com/browse/RHOAIENG-32541
-# Unregister the system
-RUN if [ -d "${SECRET_DIR}" ]; then \
-    subscription-manager remove --all && subscription-manager unregister && subscription-manager clean; \
-  fi
-# TILL HERE
 
 USER 1001
 
