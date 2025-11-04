@@ -13,7 +13,7 @@ Maintaining these duplicated files is error-prone, as changes need to be manuall
 We agreed to implement a templating solution to reduce duplication.
 
 We are aware that introducing abstractions may make the project harder to understand for newcomers, and inappropriate abstractions would make it more difficult to make changes that used to be easy.
-Therefore, we're committed to maintaining clarity and debuggability of the build process and to keeping the abstraction maleable so that it can be adjusted to future needs as the project evolves.
+Therefore, we're committed to maintaining clarity and debuggability of the build process and to keeping the abstraction malleable so that it can be adjusted to future needs as the project evolves.
 
 ## Decision
 We are already using the standard `${VARIABLE}` substitution via `podman build --build-arg-file`.
