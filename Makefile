@@ -517,27 +517,3 @@ test:
 	@echo "Running quick static tests"
 	uv run pytest -m 'not buildonlytest'
 	@./scripts/check_dockerfile_alignment.sh
-
-
-#This is temporary lock on the final implementation that will covers all the folders should apply smart logic for the locks
-CPU_INDEX=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/cpu-ubi9/simple/
-CUDA_INDEX=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/cuda-ubi9/simple/
-ROCM_INDEX=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/rocm-ubi9/simple/
-
-lock-cuda:
-	uv pip compile \
-		--python-platform=linux \
-		jupyter/minimal/ubi9-python-3.12/pyproject.toml \
-		--index-url=$(CUDA_INDEX) \
-		--output-file=jupyter/minimal/ubi9-python-3.12/uv.lock/pylock.cuda.toml \
-		--python-version=3.12
-
-
-lock-rocm:
-	uv pip compile \
-		--python-platform=linux \
-		jupyter/minimal/ubi9-python-3.12/pyproject.toml \
-		--index-url=$(ROCM_INDEX) \
-		--output-file=jupyter/minimal/ubi9-python-3.12/uv.lock/pylock.rocm.toml \
-		--python-version=3.12
-
