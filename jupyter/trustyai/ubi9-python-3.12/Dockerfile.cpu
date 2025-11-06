@@ -14,10 +14,13 @@ FROM registry.access.redhat.com/ubi9/go-toolset:latest AS mongocli-builder
 ARG MONGOCLI_VERSION=2.0.4
 
 WORKDIR /tmp/
-RUN curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
-RUN unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
-RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
-    CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
+unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
+cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/
+CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
+EOF
 
 ####################
 # wheel-cache-base #
@@ -34,13 +37,15 @@ ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
 COPY ${TRUSTYAI_SOURCE_CODE}/pylock.toml .
 COPY ${TRUSTYAI_SOURCE_CODE}/devel_env_setup.sh .
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    pip install --no-cache-dir uv && \
-    # the devel script is ppc64le and s390x specific - sets up build-time dependencies
-    source ./devel_env_setup.sh && \
-    # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
-    #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-    UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
+set -Eeuxo pipefail
+pip install --no-cache-dir uv
+# the devel script is ppc64le and s390x specific - sets up build-time dependencies
+source ./devel_env_setup.sh
+# This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+#  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
+UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+EOF
 
 ####################
 # cpu-base         #
@@ -70,7 +75,12 @@ EOF
 # upgrade first to avoid fixable vulnerabilities end
 
 # Install useful OS packages
-RUN dnf install -y perl mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y perl mesa-libGL skopeo
+dnf clean all
+rm -rf /var/cache/yum
+EOF
 
 # Other apps and tools installed as default user
 USER 1001
@@ -131,7 +141,12 @@ WORKDIR /opt/app-root/bin
 USER root
 
 # Install useful OS packages
-RUN dnf install -y jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat && dnf clean all && rm -rf /var/cache/yum
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat
+dnf clean all
+rm -rf /var/cache/yum
+EOF
 
 # Copy dynamically-linked mongocli built in earlier build stage
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
@@ -168,64 +183,77 @@ USER 0
 
 # Install jre that is needed to run the trustyai library
 # Also install runtime libraries for s390x/ppc64le
-RUN INSTALL_PKGS="java-17-openjdk" && \
-    ARCH=$(uname -m) && \
-    if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then \
-        # Add runtime libraries needed for s390x/ppc64le (OpenBLAS for PyTorch/NumPy)
-        INSTALL_PKGS="$INSTALL_PKGS openblas openblas-threads"; \
-    fi && \
-    dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
-    dnf -y clean all --enablerepo='*' && \
-    # Create symlink for compatibility (openblas package provides libopenblasp.so.0 but PyTorch looks for libopenblas.so.0)
-    if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then \
-        ln -sf /usr/lib64/libopenblasp.so.0 /usr/lib64/libopenblas.so.0 && \
-        ldconfig; \
-    fi
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+INSTALL_PKGS="java-17-openjdk"
+ARCH=$(uname -m)
+if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then
+    # Add runtime libraries needed for s390x/ppc64le (OpenBLAS for PyTorch/NumPy)
+    INSTALL_PKGS="$INSTALL_PKGS openblas openblas-threads"
+fi
+dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
+dnf -y clean all --enablerepo='*'
+# Create symlink for compatibility (openblas package provides libopenblasp.so.0 but PyTorch looks for libopenblas.so.0)
+if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then
+    ln -sf /usr/lib64/libopenblasp.so.0 /usr/lib64/libopenblas.so.0
+    ldconfig
+fi
+EOF
 
 # Install Python packages and Jupyterlab extensions from requirements.txt
 COPY ${TRUSTYAI_SOURCE_CODE}/pylock.toml ./
 
 # install openblas for ppc64le
-RUN --mount=type=cache,from=whl-cache,source=/root/OpenBLAS/,target=/OpenBlas/,rw \
-    bash -c 'ARCH=$(uname -m); \
-        if [ "$ARCH" = "ppc64le" ]; then \
-            PREFIX=/usr/ make install -C /OpenBlas; \
-        fi'
+RUN --mount=type=cache,from=whl-cache,source=/root/OpenBLAS/,target=/OpenBlas/,rw /bin/bash <<'EOF'
+set -Eeuxo pipefail
+ARCH=$(uname -m)
+if [ "$ARCH" = "ppc64le" ]; then
+    PREFIX=/usr/ make install -C /OpenBlas
+fi
+EOF
 
 # Install packages and cleanup
 # install packages as USER 0 (this will allow us to consume uv cache)
 RUN --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw \
-    --mount=type=cache,target=/root/.cache/uv \
-    bash -c 'ARCH=$(uname -m); \
-        if [ "$ARCH" = "ppc64le" ] || [ "$ARCH" = "s390x" ]; then \
-            UV_LINK_MODE=copy uv pip install /wheelsdir/*.whl accelerate --cache-dir /root/.cache/uv; \
-        fi'
+    --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
+set -Eeuxo pipefail
+ARCH=$(uname -m)
+if [ "$ARCH" = "ppc64le" ] || [ "$ARCH" = "s390x" ]; then
+    UV_LINK_MODE=copy uv pip install /wheelsdir/*.whl accelerate --cache-dir /root/.cache/uv
+fi
+EOF
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    echo "Installing softwares and packages" && \
-    # we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
-    UV_LINK_MODE=copy uv pip install --cache-dir /root/.cache/uv --requirements=./pylock.toml && \
-    # Note: debugpy wheel availabe on pypi (in uv cache) is none-any but bundles amd64.so files
-    #       Build debugpy from source instead
-    UV_LINK_MODE=copy uv pip install --no-cache git+https://github.com/microsoft/debugpy.git@v$(grep -A1 '\"debugpy\"' ./pylock.toml | grep -Eo '\b[0-9\.]+\b') && \
-    # change ownership to default user (all packages were installed as root and has root:root ownership \
-    chown -R 1001:0 /opt/app-root/ && \
-    chmod -R g=u /opt/app-root
+RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
+set -Eeuxo pipefail
+echo "Installing softwares and packages"
+# we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
+UV_LINK_MODE=copy uv pip install --cache-dir /root/.cache/uv --requirements=./pylock.toml
+# Note: debugpy wheel availabe on pypi (in uv cache) is none-any but bundles amd64.so files
+#       Build debugpy from source instead
+UV_LINK_MODE=copy uv pip install --no-cache git+https://github.com/microsoft/debugpy.git@v$(grep -A1 '\"debugpy\"' ./pylock.toml | grep -Eo '\b[0-9\.]+\b')
+# change ownership to default user (all packages were installed as root and has root:root ownership
+chown -R 1001:0 /opt/app-root/
+chmod -R g=u /opt/app-root
+EOF
 
 USER 1001
 
-RUN # setup path for runtime configuration \
-    mkdir /opt/app-root/runtimes && \
-    # Remove default Elyra runtime-images \
-    rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
-    # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
-    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
-    # copy jupyter configuration
-    cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter && \
-    # Disable announcement plugin of jupyterlab \
-    jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
-    # Apply JupyterLab addons \
-    /opt/app-root/bin/utils/addons/apply.sh && \
-    # Fix permissions to support pip in Openshift environments \
-    chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
-    fix-permissions /opt/app-root -P
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+# TODO: https://issues.redhat.com/browse/RHAIENG-1503 uncomment this
+## setup path for runtime configuration
+#mkdir /opt/app-root/runtimes
+## Remove default Elyra runtime-images
+#rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json
+## Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
+#sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
+## copy jupyter configuration
+#cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter
+## Disable announcement plugin of jupyterlab
+#jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+## Apply JupyterLab addons
+#/opt/app-root/bin/utils/addons/apply.sh
+## Fix permissions to support pip in Openshift environments
+#chmod -R g+w /opt/app-root/lib/python3.12/site-packages
+#fix-permissions /opt/app-root -P
+EOF
