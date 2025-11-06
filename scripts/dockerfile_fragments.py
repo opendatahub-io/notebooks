@@ -27,8 +27,12 @@ def main():
             # Problem: The operation would result in removing the following protected packages: systemd
             #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
             # Solution: --best --skip-broken does not work either, so use --nobest
-            RUN dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
-                && dnf clean all -y
+            RUN /bin/bash <<'EOF'
+            set -Eeuxo pipefail
+            dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
+            dnf clean all -y
+            EOF
+
             """),
             prefix="upgrade first to avoid fixable vulnerabilities",
         )
@@ -43,10 +47,14 @@ def main():
             blockinfile(
                 dockerfile,
                 textwrap.dedent(r"""
-                RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
-                        -o /tmp/openshift-client-linux.tar.gz && \
-                    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
-                    rm -f /tmp/openshift-client-linux.tar.gz
+                RUN /bin/bash <<'EOF'
+                set -Eeuxo pipefail
+                curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+                    -o /tmp/openshift-client-linux.tar.gz
+                tar -xzvf /tmp/openshift-client-linux.tar.gz oc
+                rm -f /tmp/openshift-client-linux.tar.gz
+                EOF
+
                 """),
                 prefix="Install the oc client",
             )
@@ -91,7 +99,10 @@ def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None =
 
     lines = original_lines[:]
     # NOTE: textwrap.dedent() with raw strings leaves leading and trailing newline
-    new_contents = contents.strip("\n").splitlines(keepends=True)
+    #       we want to preserve the trailing one because HEREDOC has to have an empty trailing line for hadolint
+    new_contents = contents.lstrip("\n").splitlines(keepends=True)
+    if new_contents[-1] == "\n":
+        new_contents = new_contents[:-1]
     if begin == end == -1:
         # add at the end if no markers found
         lines.append(f"\n{begin_marker}\n")
@@ -125,6 +136,13 @@ class TestBlockinfile:
         blockinfile("/config.txt", "key=value")
 
         assert fs.get_object("/config.txt").contents == "hello\nworld\n#  begin\nkey=value\n#  end\n"
+
+    def test_lastnewline_removal(self, fs: FakeFilesystem):
+        fs.create_file("/config.txt", contents="hello\nworld")
+
+        blockinfile("/config.txt", "key=value\n\n")
+
+        assert fs.get_object("/config.txt").contents == "hello\nworld\n#  begin\nkey=value\n\n#  end\n"
 
     def test_updating_value_in_block(self, fs: FakeFilesystem):
         fs.create_file("/config.txt", contents="hello\nworld\n#  begin\nkey=value1\n#  end\n")
