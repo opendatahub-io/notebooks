@@ -92,6 +92,7 @@ set -Eeuxo pipefail
 dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
 dnf clean all -y
 EOF
+
 # upgrade first to avoid fixable vulnerabilities end
 
 # Install useful OS packages
@@ -294,6 +295,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
     uv pip install /wheelsdir/*.whl
 fi
 EOF
+
 # install packages as USER 0 (this will allow us to consume uv cache)
 RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
 set -Eeuxo pipefail
