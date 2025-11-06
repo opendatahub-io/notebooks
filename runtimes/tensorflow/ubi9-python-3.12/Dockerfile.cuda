@@ -38,7 +38,12 @@ EOF
 # upgrade first to avoid fixable vulnerabilities end
 
 # Install useful OS packages
-RUN dnf install -y perl mesa-libGL skopeo libxcrypt-compat && dnf clean all && rm -rf /var/cache/yum
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y perl mesa-libGL skopeo libxcrypt-compat
+dnf clean all
+rm -rf /var/cache/yum
+EOF
 
 # Other apps and tools installed as default user
 USER 1001
@@ -83,13 +88,16 @@ COPY ${TENSORFLOW_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra dependencies for air-gapped enviroment
 COPY ${TENSORFLOW_SOURCE_CODE}/utils ./utils/
 
-RUN echo "Installing softwares and packages" && \
-    # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
-    #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml && \
-    # Fix permissions to support pip in Openshift environments \
-    chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
-    fix-permissions /opt/app-root -P
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+echo "Installing softwares and packages"
+# This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+#  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
+uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+# Fix permissions to support pip in Openshift environments
+chmod -R g+w /opt/app-root/lib/python3.12/site-packages
+fix-permissions /opt/app-root -P
+EOF
 
 COPY ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monkey_patch_protobuf_6x.py /opt/app-root/lib/python3.12/site-packages/
 

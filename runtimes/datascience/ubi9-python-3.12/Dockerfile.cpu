@@ -38,21 +38,24 @@ EOF
 # upgrade first to avoid fixable vulnerabilities end
 
 # Install useful OS packages
-RUN --mount=type=cache,target=/var/cache/dnf \
-    echo "Building for architecture: ${TARGETARCH}" && \
-    PACKAGES="perl mesa-libGL skopeo libxcrypt-compat" && \
-    # Additional dev tools only for s390x
-    if [ "$TARGETARCH" = "s390x" ]; then \
-        PACKAGES="$PACKAGES gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel openssl zlib-devel"; \
-    fi && \
-    if [ "$TARGETARCH" = "ppc64le" ]; then \
-        PACKAGES="$PACKAGES git gcc-toolset-13 make wget unzip rust cargo unixODBC-devel cmake ninja-build"; \
-    fi && \
-    if [ -n "$PACKAGES" ]; then \
-        echo "Installing: $PACKAGES" && \
-        dnf install -y $PACKAGES && \
-        dnf clean all && rm -rf /var/cache/yum; \
-    fi
+RUN --mount=type=cache,target=/var/cache/dnf /bin/bash <<'EOF'
+set -Eeuxo pipefail
+echo "Building for architecture: ${TARGETARCH}"
+PACKAGES="perl mesa-libGL skopeo libxcrypt-compat"
+# Additional dev tools only for s390x
+if [ "$TARGETARCH" = "s390x" ]; then
+    PACKAGES="$PACKAGES gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel openssl zlib-devel"
+fi
+if [ "$TARGETARCH" = "ppc64le" ]; then
+    PACKAGES="$PACKAGES git gcc-toolset-13 make wget unzip rust cargo unixODBC-devel cmake ninja-build"
+fi
+if [ -n "$PACKAGES" ]; then
+    echo "Installing: $PACKAGES"
+    dnf install -y $PACKAGES
+    dnf clean all
+    rm -rf /var/cache/yum
+fi
+EOF
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
@@ -129,74 +132,79 @@ USER 0
 WORKDIR /tmp/build-wheels
 
 # Set pyarrow version for s390x
-RUN if [ "$TARGETARCH" = "s390x" ]; then \
-    echo 'export PYARROW_VERSION=17.0.0' >> /etc/profile.d/s390x.sh; \
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ "$TARGETARCH" = "s390x" ]; then
+    echo 'export PYARROW_VERSION=17.0.0' >> /etc/profile.d/s390x.sh
 fi
+EOF
 
 # Build pyarrow optimized for s390x
 RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=cache,target=/root/.cache/dnf \
-    if [ "$TARGETARCH" = "s390x" ]; then \
-        # Install build dependencies
-        dnf install -y cmake make gcc-c++ pybind11-devel wget git \
-            openssl-devel zlib-devel bzip2-devel lz4-devel \
-            ninja-build && \
-        dnf clean all && \
-        # Source the environment variables
-        source /etc/profile.d/s390x.sh && \
-        # Clone specific version of arrow
-        git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git && \
-        cd arrow && \
-        # Set environment variables for build
-        export ARROW_HOME=/usr/local && \
-        export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:$LD_LIBRARY_PATH && \
-        export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH && \
-        # Build C++ library first
-        cd cpp && \
-        mkdir build && cd build && \
-        cmake -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_INSTALL_PREFIX=$ARROW_HOME \
-              -DARROW_PYTHON=ON \
-              -DARROW_PARQUET=ON \
-              -DARROW_ORC=ON \
-              -DARROW_FILESYSTEM=ON \
-              -DARROW_JSON=ON \
-              -DARROW_CSV=ON \
-              -DARROW_DATASET=ON \
-              -DARROW_WITH_LZ4=ON \
-              -DARROW_WITH_ZSTD=ON \
-              -DARROW_WITH_SNAPPY=OFF \
-              -DARROW_WITH_BZ2=ON \
-              -DARROW_WITH_ZLIB=ON \
-              -DARROW_BUILD_TESTS=OFF \
-              -DARROW_BUILD_BENCHMARKS=OFF \
-              -DARROW_USE_CCACHE=OFF \
-              -GNinja \
-              .. && \
-        ninja install && \
-        cd ../../python && \
-        # Install Python build requirements
-        pip install --no-cache-dir -r requirements-build.txt && \
-        # Build Python package
-        PYARROW_WITH_PARQUET=1 \
-        PYARROW_WITH_DATASET=1 \
-        PYARROW_WITH_FILESYSTEM=1 \
-        PYARROW_WITH_JSON=1 \
-        PYARROW_WITH_CSV=1 \
-        PYARROW_WITH_LZ4=1 \
-        PYARROW_WITH_ZSTD=1 \
-        PYARROW_WITH_BZ2=1 \
-        PYARROW_BUNDLE_ARROW_CPP=1 \
-        PYARROW_PARALLEL=$(nproc) \
-        python setup.py build_ext --build-type=release --bundle-arrow-cpp bdist_wheel && \
-        mkdir -p /tmp/wheels && \
-        cp dist/pyarrow-*.whl /tmp/wheels/ && \
-        # Ensure wheels directory exists and has content
-        ls -la /tmp/wheels/; \
-    else \
-        # Create empty wheels directory for non-s390x
-        mkdir -p /tmp/wheels; \
-    fi
+    --mount=type=cache,target=/root/.cache/dnf /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ "$TARGETARCH" = "s390x" ]; then
+    # Install build dependencies
+    dnf install -y cmake make gcc-c++ pybind11-devel wget git \
+        openssl-devel zlib-devel bzip2-devel lz4-devel \
+        ninja-build
+    dnf clean all
+    # Source the environment variables
+    source /etc/profile.d/s390x.sh
+    # Clone specific version of arrow
+    git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git
+    cd arrow
+    # Set environment variables for build
+    export ARROW_HOME=/usr/local
+    export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:$LD_LIBRARY_PATH
+    export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+    # Build C++ library first
+    cd cpp
+    mkdir build && cd build
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=$ARROW_HOME \
+          -DARROW_PYTHON=ON \
+          -DARROW_PARQUET=ON \
+          -DARROW_ORC=ON \
+          -DARROW_FILESYSTEM=ON \
+          -DARROW_JSON=ON \
+          -DARROW_CSV=ON \
+          -DARROW_DATASET=ON \
+          -DARROW_WITH_LZ4=ON \
+          -DARROW_WITH_ZSTD=ON \
+          -DARROW_WITH_SNAPPY=OFF \
+          -DARROW_WITH_BZ2=ON \
+          -DARROW_WITH_ZLIB=ON \
+          -DARROW_BUILD_TESTS=OFF \
+          -DARROW_BUILD_BENCHMARKS=OFF \
+          -DARROW_USE_CCACHE=OFF \
+          -GNinja \
+          ..
+    ninja install
+    cd ../../python
+    # Install Python build requirements
+    pip install --no-cache-dir -r requirements-build.txt
+    # Build Python package
+    PYARROW_WITH_PARQUET=1 \
+    PYARROW_WITH_DATASET=1 \
+    PYARROW_WITH_FILESYSTEM=1 \
+    PYARROW_WITH_JSON=1 \
+    PYARROW_WITH_CSV=1 \
+    PYARROW_WITH_LZ4=1 \
+    PYARROW_WITH_ZSTD=1 \
+    PYARROW_WITH_BZ2=1 \
+    PYARROW_BUNDLE_ARROW_CPP=1 \
+    PYARROW_PARALLEL=$(nproc) \
+    python setup.py build_ext --build-type=release --bundle-arrow-cpp bdist_wheel
+    mkdir -p /tmp/wheels
+    cp dist/pyarrow-*.whl /tmp/wheels/
+    # Ensure wheels directory exists and has content
+    ls -la /tmp/wheels/
+else
+    # Create empty wheels directory for non-s390x
+    mkdir -p /tmp/wheels
+fi
+EOF
 
 ###################################
 # openblas builder stage for ppc64le
@@ -214,14 +222,18 @@ ENV OPENBLAS_VERSION=0.3.30
 RUN echo "openblas-builder stage TARGETARCH: ${TARGETARCH}"
 
 # Download and build OpenBLAS
-RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
-        source /opt/rh/gcc-toolset-13/enable && \
-        wget --progress=dot:giga https://github.com/OpenMathLib/OpenBLAS/releases/download/v${OPENBLAS_VERSION}/OpenBLAS-${OPENBLAS_VERSION}.zip && \
-        unzip OpenBLAS-${OPENBLAS_VERSION}.zip && cd OpenBLAS-${OPENBLAS_VERSION}                                            && \
-        make -j$(nproc) TARGET=POWER9 BINARY=64 USE_OPENMP=1 USE_THREAD=1 NUM_THREADS=120 DYNAMIC_ARCH=1 INTERFACE64=0; \
-    else \
-        echo "Not ppc64le, skipping OpenBLAS build" && mkdir -p /root/OpenBLAS-dummy; \
-    fi
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ "$TARGETARCH" = "ppc64le" ]; then
+    source /opt/rh/gcc-toolset-13/enable
+    wget --progress=dot:giga https://github.com/OpenMathLib/OpenBLAS/releases/download/v${OPENBLAS_VERSION}/OpenBLAS-${OPENBLAS_VERSION}.zip
+    unzip OpenBLAS-${OPENBLAS_VERSION}.zip && cd OpenBLAS-${OPENBLAS_VERSION}
+    make -j$(nproc) TARGET=POWER9 BINARY=64 USE_OPENMP=1 USE_THREAD=1 NUM_THREADS=120 DYNAMIC_ARCH=1 INTERFACE64=0
+else
+    echo "Not ppc64le, skipping OpenBLAS build"
+    mkdir -p /root/OpenBLAS-dummy
+fi
+EOF
 
 ###################################
 # onnx builder stage for ppc64le
@@ -237,18 +249,22 @@ ENV ONNX_VERSION=1.19.0
 
 RUN echo "onnx-builder stage TARGETARCH: ${TARGETARCH}"
 
-RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
-    	source /opt/rh/gcc-toolset-13/enable && \
-    	git clone --recursive https://github.com/onnx/onnx.git && \
-    	cd onnx && git checkout v${ONNX_VERSION} && \
-    	git submodule update --init --recursive && \
-    	pip install --no-cache-dir -r requirements.txt && \
-    	CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)" && \
-    	export CMAKE_ARGS && \
-    	pip wheel . -w /onnx_wheels; \
-    else \
-        echo "Not ppc64le, skipping ONNX build" && mkdir -p /onnx_wheels; \
-    fi
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ "$TARGETARCH" = "ppc64le" ]; then
+    source /opt/rh/gcc-toolset-13/enable
+    git clone --recursive https://github.com/onnx/onnx.git
+    cd onnx && git checkout v${ONNX_VERSION}
+    git submodule update --init --recursive
+    pip install --no-cache-dir -r requirements.txt
+    CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)"
+    export CMAKE_ARGS
+    pip wheel . -w /onnx_wheels
+else
+    echo "Not ppc64le, skipping ONNX build"
+    mkdir -p /onnx_wheels
+fi
+EOF
 
 ###################################
 # pyarrow builder stage for ppc64le
@@ -264,50 +280,54 @@ ENV PYARROW_VERSION=17.0.0
 
 RUN echo "arrow-builder stage TARGETARCH: ${TARGETARCH}"
 
-RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
-        git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git --recursive && \
-    	cd arrow && rm -rf .git && mkdir dist                                  && \
-    	pip3 install --no-cache-dir -r python/requirements-build.txt                          && \
-    	ARROW_HOME=$(pwd)/dist && \
-    	export ARROW_HOME && \
-    	LD_LIBRARY_PATH=$(pwd)/dist/lib:$LD_LIBRARY_PATH && \
-    	export LD_LIBRARY_PATH && \
-    	export CMAKE_PREFIX_PATH=$ARROW_HOME:$CMAKE_PREFIX_PATH                && \
-    	export PARQUET_TEST_DATA="${PWD}/cpp/submodules/parquet-testing/data"  && \
-    	export ARROW_TEST_DATA="${PWD}/testing/data"                           && \
-    	cmake -S cpp -B cpp/build                                                 \
-            -DCMAKE_INSTALL_PREFIX=$ARROW_HOME \
-            -DCMAKE_BUILD_TYPE=release         \
-            -DARROW_WITH_BZ2=ON                \
-            -DARROW_WITH_ZLIB=ON               \
-            -DARROW_WITH_ZSTD=ON               \
-            -DARROW_WITH_LZ4=ON                \
-            -DARROW_WITH_SNAPPY=ON             \
-            -DARROW_WITH_BROTLI=ON             \
-            -DARROW_DATASET=ON                 \
-            -DARROW_FILESYSTEM=ON              \
-            -DARROW_COMPUTE=ON                 \
-            -DARROW_JSON=ON                    \
-            -DARROW_CSV=ON                     \
-            -DARROW_PYTHON=ON                  \
-            -DARROW_PARQUET=ON                 \
-            -DARROW_BUILD_SHARED=ON 	       \
-            -DARROW_BUILD_TESTS=OFF         && \
-        cd cpp/build                        && \
-        make -j20 install                   && \
-        export PYARROW_PARALLEL=20          && \
-        export PYARROW_WITH_PARQUET=1       && \
-        export PYARROW_WITH_DATASET=1       && \
-        export PYARROW_BUNDLE_ARROW_CPP=1   && \
-        pip3 install --no-cache-dir wheel                  && \
-        cd ../../python                     && \
-        python setup.py build_ext              \
-            --build-type=release               \
-            --bundle-arrow-cpp                 \
-            bdist_wheel --dist-dir /arrowwheels; \
-    else \
-        echo "Not ppc64le, skipping pyarrow build" && mkdir -p /arrowwheels; \
-    fi
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ "$TARGETARCH" = "ppc64le" ]; then
+    git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git --recursive
+    cd arrow && rm -rf .git && mkdir dist
+    pip3 install --no-cache-dir -r python/requirements-build.txt
+    ARROW_HOME=$(pwd)/dist
+    export ARROW_HOME
+    LD_LIBRARY_PATH=$(pwd)/dist/lib:$LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH
+    export CMAKE_PREFIX_PATH=$ARROW_HOME:$CMAKE_PREFIX_PATH
+    export PARQUET_TEST_DATA="${PWD}/cpp/submodules/parquet-testing/data"
+    export ARROW_TEST_DATA="${PWD}/testing/data"
+    cmake -S cpp -B cpp/build \
+        -DCMAKE_INSTALL_PREFIX=$ARROW_HOME \
+        -DCMAKE_BUILD_TYPE=release \
+        -DARROW_WITH_BZ2=ON \
+        -DARROW_WITH_ZLIB=ON \
+        -DARROW_WITH_ZSTD=ON \
+        -DARROW_WITH_LZ4=ON \
+        -DARROW_WITH_SNAPPY=ON \
+        -DARROW_WITH_BROTLI=ON \
+        -DARROW_DATASET=ON \
+        -DARROW_FILESYSTEM=ON \
+        -DARROW_COMPUTE=ON \
+        -DARROW_JSON=ON \
+        -DARROW_CSV=ON \
+        -DARROW_PYTHON=ON \
+        -DARROW_PARQUET=ON \
+        -DARROW_BUILD_SHARED=ON \
+        -DARROW_BUILD_TESTS=OFF
+    cd cpp/build
+    make -j20 install
+    export PYARROW_PARALLEL=20
+    export PYARROW_WITH_PARQUET=1
+    export PYARROW_WITH_DATASET=1
+    export PYARROW_BUNDLE_ARROW_CPP=1
+    pip3 install --no-cache-dir wheel
+    cd ../../python
+    python setup.py build_ext \
+        --build-type=release \
+        --bundle-arrow-cpp \
+        bdist_wheel --dist-dir /arrowwheels
+else
+    echo "Not ppc64le, skipping pyarrow build"
+    mkdir -p /arrowwheels
+fi
+EOF
 
 #######################
 # runtime-datascience #
@@ -335,25 +355,33 @@ COPY --from=openblas-builder /root/OpenBLAS-* /openblas
 COPY --from=onnx-builder /onnx_wheels /tmp/onnx_wheels
 COPY --from=arrow-builder /arrowwheels /tmp/arrowwheels
 
-RUN if [ "$TARGETARCH" = "ppc64le" ]; then \
-    	echo "Installing ppc64le ONNX, pyarrow wheels and OpenBLAS..." && \
-    	HOME=/root pip install --no-cache-dir /tmp/onnx_wheels/*.whl /tmp/arrowwheels/*.whl && \
-        if [ -d "/openblas" ] && [ "$(ls -A /openblas 2>/dev/null)" ]; then \
-    		PREFIX=/usr/local make -C /openblas install; \
-        fi && rm -rf /openblas /tmp/onnx_wheels /tmp/arrowwheels; \
-    else \
-    	echo "Skipping architecture-specific wheel installs for (${TARGETARCH})" && \
-        rm -rf /tmp/wheels /openblas /tmp/onnx_wheels /tmp/arrowwheels; \
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ "$TARGETARCH" = "ppc64le" ]; then
+    echo "Installing ppc64le ONNX, pyarrow wheels and OpenBLAS..."
+    HOME=/root pip install --no-cache-dir /tmp/onnx_wheels/*.whl /tmp/arrowwheels/*.whl
+    if [ -d "/openblas" ] && [ "$(ls -A /openblas 2>/dev/null)" ]; then
+        PREFIX=/usr/local make -C /openblas install
     fi
+    rm -rf /openblas /tmp/onnx_wheels /tmp/arrowwheels
+else
+    echo "Skipping architecture-specific wheel installs for (${TARGETARCH})"
+    rm -rf /tmp/wheels /openblas /tmp/onnx_wheels /tmp/arrowwheels
+fi
+EOF
 
 USER 0
 # Copy wheels from build stage (s390x only)
 COPY --from=s390x-builder /tmp/wheels /tmp/wheels
-RUN if [ "$TARGETARCH" = "s390x" ]; then \
-    pip install --no-cache-dir /tmp/wheels/*.whl && rm -rf /tmp/wheels; \
-else \
-    echo "Skipping wheel install for $TARGETARCH"; \
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ "$TARGETARCH" = "s390x" ]; then
+    pip install --no-cache-dir /tmp/wheels/*.whl
+    rm -rf /tmp/wheels
+else
+    echo "Skipping wheel install for $TARGETARCH"
 fi
+EOF
 
 
 # Install Python packages from pylock.toml
@@ -361,28 +389,30 @@ COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra dependencies for air-gapped enviroment
 COPY ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    echo "Installing softwares and packages" && \
-    if [ "$TARGETARCH" = "ppc64le" ]; then \
-        export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig; \
-        export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib:$LD_LIBRARY_PATH && \
-        uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml; \
-    elif [ "$TARGETARCH" = "s390x" ]; then \
-        # For s390x, we need special flags and environment variables for building packages
-        GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
-        CFLAGS="-O3" CXXFLAGS="-O3" \
-        uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml; \
-    else \
-        # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
-        #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-        uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml; \
-    fi && \
-    # change ownership to default user (all packages were installed as root and has root:root ownership
-    chown -R 1001:0 /opt/app-root/ && \
-    chmod -R g=u /opt/app-root && \
-    # Fix permissions to support pip in Openshift environments
-    chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
-    fix-permissions /opt/app-root -P
+RUN --mount=type=cache,target=/root/.cache/pip /bin/bash <<'EOF'
+set -Eeuxo pipefail
+echo "Installing softwares and packages"
+if [ "$TARGETARCH" = "ppc64le" ]; then
+    export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+    export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib:$LD_LIBRARY_PATH
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+elif [ "$TARGETARCH" = "s390x" ]; then
+    # For s390x, we need special flags and environment variables for building packages
+    GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
+    CFLAGS="-O3" CXXFLAGS="-O3" \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+else
+    # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+    #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+fi
+# change ownership to default user (all packages were installed as root and has root:root ownership
+chown -R 1001:0 /opt/app-root/
+chmod -R g=u /opt/app-root
+# Fix permissions to support pip in Openshift environments
+chmod -R g+w /opt/app-root/lib/python3.12/site-packages
+fix-permissions /opt/app-root -P
+EOF
 
 USER 1001
 
