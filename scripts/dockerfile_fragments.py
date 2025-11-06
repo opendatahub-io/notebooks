@@ -101,7 +101,7 @@ def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None =
     # NOTE: textwrap.dedent() with raw strings leaves leading and trailing newline
     #       we want to preserve the trailing one because HEREDOC has to have an empty trailing line for hadolint
     new_contents = contents.lstrip("\n").splitlines(keepends=True)
-    if new_contents[-1] == "\n":
+    if new_contents and new_contents[-1] == "\n":
         new_contents = new_contents[:-1]
     if begin == end == -1:
         # add at the end if no markers found
