@@ -170,6 +170,36 @@ dirs = ["/assets/downloads/cli"]
 error = "ErrGoMissingTag"
 dirs = ["/assets/downloads/cli"]
 
+# AI Pipelines override (RHOAIENG-24702 and RHOAIENG-38121)
+# When FIPS is enabled, /usr/bin/argoexec-fips is used. /usr/bin/argoexec is
+# only used for portability reasons in non-FIPS environments.
+[[payload.odh-data-science-pipelines-argo-argoexec-container.ignore]]
+error = "ErrGoNotCgoEnabled"
+files = ["/usr/bin/argoexec"]
+
+[[payload.odh-data-science-pipelines-argo-argoexec-container.ignore]]
+error = "ErrGoMissingSymbols"
+files = ["/usr/bin/argoexec"]
+
+[[payload.odh-data-science-pipelines-argo-argoexec-container.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/bin/argoexec"]
+
+# AI Pipelines override (RHOAIENG-24702 and RHOAIENG-38121)
+# When FIPS is enabled, /usr/bin/launcher-v2-fips is used. /usr/bin/launcher-v2 is
+# only used for portability reasons in non-FIPS environments.
+[[payload.odh-ml-pipelines-launcher-container.ignore]]
+error = "ErrGoNotCgoEnabled"
+files = ["/usr/bin/launcher-v2"]
+
+[[payload.odh-ml-pipelines-launcher-container.ignore]]
+error = "ErrGoMissingSymbols"
+files = ["/usr/bin/launcher-v2"]
+
+[[payload.odh-ml-pipelines-launcher-container.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/bin/launcher-v2"]
+
 # Temporary supprsssions for workbenches
 # https://github.com/openshift/check-payload/blob/main/internal/types/errors.go
 
