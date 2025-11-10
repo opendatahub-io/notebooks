@@ -93,6 +93,8 @@ USER 1001
 
 COPY ${MINIMAL_SOURCE_CODE}/pylock.toml ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
+USER 0
+
 # Install Python dependencies from Pipfile.lock file
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
@@ -113,6 +115,14 @@ fix-permissions /opt/app-root -P
 /opt/app-root/bin/utils/addons/apply.sh
 EOF
 
+# Fix permissions to support pip in Openshift environments
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+chmod -R g+w /opt/app-root/lib/python3.12/site-packages
+fix-permissions /opt/app-root -P
+EOF
+
+USER 1001
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]

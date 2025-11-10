@@ -157,6 +157,8 @@ LABEL name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.12" \
 
 COPY ${TENSORFLOW_SOURCE_CODE}/pylock.toml ./
 
+USER 0
+
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Installing softwares and packages"
@@ -183,9 +185,8 @@ EOF
 
 COPY ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monkey_patch_protobuf_6x.py /opt/app-root/lib/python3.12/site-packages/
 
-USER 0
 COPY ${TENSORFLOW_SOURCE_CODE}/utils/link-solibs.sh /tmp/link-solibs.sh
 RUN /tmp/link-solibs.sh && rm /tmp/link-solibs.sh
-USER 1001
 
+USER 1001
 WORKDIR /opt/app-root/src
