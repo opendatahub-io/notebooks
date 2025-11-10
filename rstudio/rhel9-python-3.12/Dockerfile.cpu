@@ -157,9 +157,10 @@ COPY ${RSTUDIO_SOURCE_CODE}/rsession.conf /etc/rstudio/rsession.conf
 # # https://cran.r-project.org/web/packages
 # COPY ${RSTUDIO_SOURCE_CODE}/install_packages.R ./
 # RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-R -f ./install_packages.R
-#     rm ./install_packages.REOF
+# set -Eeuxo pipefail
+# R -f ./install_packages.R
+# rm ./install_packages.R
+# EOF
 
 ENV APP_ROOT=/opt/app-root
 
