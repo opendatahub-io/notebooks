@@ -14,10 +14,13 @@ FROM registry.access.redhat.com/ubi9/go-toolset:latest AS mongocli-builder
 ARG MONGOCLI_VERSION=2.0.4
 
 WORKDIR /tmp/
-RUN curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
-RUN unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
-RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
-    CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
+unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
+cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/
+CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
+EOF
 
 ####################
 # rocm-base        #
@@ -38,12 +41,21 @@ COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
 # Solution: --best --skip-broken does not work either, so use --nobest
-RUN dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 \
-    && dnf clean all -y
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
+dnf clean all -y
+EOF
+
 # upgrade first to avoid fixable vulnerabilities end
 
 # Install useful OS packages
-RUN dnf install -y perl mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y perl mesa-libGL skopeo
+dnf clean all
+rm -rf /var/cache/yum
+EOF
 
 # Other apps and tools installed as default user
 USER 1001
@@ -53,10 +65,14 @@ RUN pip install --no-cache-dir -U "micropipenv[toml]==1.9.0" "uv==0.8.12"
 # Install micropipenv and uv to deploy packages from requirements.txt end
 
 # Install the oc client begin
-RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
-        -o /tmp/openshift-client-linux.tar.gz && \
-    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
-    rm -f /tmp/openshift-client-linux.tar.gz
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+    -o /tmp/openshift-client-linux.tar.gz
+tar -xzvf /tmp/openshift-client-linux.tar.gz oc
+rm -f /tmp/openshift-client-linux.tar.gz
+EOF
+
 # Install the oc client end
 
 ########################
@@ -76,6 +92,7 @@ USER 0
 # Dependencies for PDF export begin
 RUN ./utils/install_pdf_deps.sh
 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+
 # Dependencies for PDF export end
 
 USER 1001
@@ -99,7 +116,12 @@ WORKDIR /opt/app-root/bin
 USER root
 
 # Install useful OS packages
-RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile && dnf clean all && rm -rf /var/cache/yum
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y jq unixODBC postgresql git-lfs libsndfile
+dnf clean all
+rm -rf /var/cache/yum
+EOF
 
 # Copy dynamically-linked mongocli built in earlier build stage
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
@@ -135,35 +157,36 @@ LABEL name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.12" \
 
 COPY ${TENSORFLOW_SOURCE_CODE}/pylock.toml ./
 
-RUN echo "Installing softwares and packages" && \
-    # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
-    #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-    # Not using --build-constraints=./requirements.txt because error: Unnamed requirements are not allowed as constraints (found: `https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4/
-    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml && \
-    # setup path for runtime configuration
-    mkdir /opt/app-root/runtimes && \
-    # Remove default Elyra runtime-images \
-    rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
-    # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
-    sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json && \
-    # copy jupyter configuration
-    cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter && \
-    # Disable announcement plugin of jupyterlab \
-    jupyter labextension disable "@jupyterlab/apputils-extension:announcements" && \
-    # Apply JupyterLab addons \
-    /opt/app-root/bin/utils/addons/apply.sh
-
-# Fix permissions to support pip in Openshift environments \
 USER 0
-RUN chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
-    fix-permissions /opt/app-root -P
-USER 1001
+
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+echo "Installing softwares and packages"
+# This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+#  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
+# Not using --build-constraints=./requirements.txt because error: Unnamed requirements are not allowed as constraints (found: `https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4/
+uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+# setup path for runtime configuration
+mkdir /opt/app-root/runtimes
+# Remove default Elyra runtime-images
+rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json
+# Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
+sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
+# copy jupyter configuration
+cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter
+# Disable announcement plugin of jupyterlab
+jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+# Apply JupyterLab addons
+/opt/app-root/bin/utils/addons/apply.sh
+# Fix permissions to support pip in Openshift environments
+chmod -R g+w /opt/app-root/lib/python3.12/site-packages
+fix-permissions /opt/app-root -P
+EOF
 
 COPY ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monkey_patch_protobuf_6x.py /opt/app-root/lib/python3.12/site-packages/
 
-USER 0
 COPY ${TENSORFLOW_SOURCE_CODE}/utils/link-solibs.sh /tmp/link-solibs.sh
 RUN /tmp/link-solibs.sh && rm /tmp/link-solibs.sh
-USER 1001
 
+USER 1001
 WORKDIR /opt/app-root/src
