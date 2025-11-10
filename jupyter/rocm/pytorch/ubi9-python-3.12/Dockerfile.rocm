@@ -156,6 +156,8 @@ LABEL name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.12" \
 
 COPY ${PYTORCH_SOURCE_CODE}/pylock.toml ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
 
+USER 0
+
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Installing softwares and packages"
@@ -182,4 +184,5 @@ chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P
 EOF
 
+USER 1001
 WORKDIR /opt/app-root/src

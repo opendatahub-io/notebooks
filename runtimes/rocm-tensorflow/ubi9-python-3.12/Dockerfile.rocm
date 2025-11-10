@@ -84,6 +84,8 @@ COPY ${TENSORFLOW_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra dependencies for air-gapped enviroment
 COPY ${TENSORFLOW_SOURCE_CODE}/utils ./utils/
 
+USER 0
+
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Installing softwares and packages"
@@ -98,4 +100,5 @@ EOF
 
 COPY ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monkey_patch_protobuf_6x.py /opt/app-root/lib/python3.12/site-packages/
 
+USER 1001
 WORKDIR /opt/app-root/src
