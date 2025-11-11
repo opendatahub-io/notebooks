@@ -107,7 +107,11 @@ ENV R_VERSION=4.5.1
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 dnf install -y dnf-plugins-core
-subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms
+if command -v subscription-manager &> /dev/null; then
+  subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms
+else
+  dnf config-manager --set-enabled crb
+fi
 dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 INSTALL_PKGS="R-core R-core-devel R-java R-Rcpp R-highlight \
 R-littler R-littler-examples openssl-libs compat-openssl11"
