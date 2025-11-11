@@ -108,15 +108,11 @@ jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
 # copy jupyter configuration
 cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter
-# Apply JupyterLab addons
-/opt/app-root/bin/utils/addons/apply.sh
-EOF
-
 # Fix permissions to support pip in Openshift environments
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
 chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P
+# Apply JupyterLab addons
+/opt/app-root/bin/utils/addons/apply.sh
 EOF
 
 USER 1001
