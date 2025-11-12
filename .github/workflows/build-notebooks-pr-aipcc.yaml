@@ -90,5 +90,5 @@ jobs:
       github: "${{ toJSON(github) }}"
       platform: "${{ matrix.platform }}"
       # rhds/notebooks builds from AIPCC base images that are RHEL-based
-      subscription: "true"
+      subscription: ${{ true }}
     secrets: inherit
