@@ -53,5 +53,6 @@ jobs:
       python: "${{ matrix.python }}"
       github: "${{ toJSON(github) }}"
       platform: "${{ matrix.platform }}"
-      subscription: "${{ matrix.subscription }}"
+      # rhds/notebooks builds from AIPCC base images that are RHEL-based
+      subscription: "${{ matrix.subscription || (github.repository == 'red-hat-data-services/notebooks') }}"
     secrets: inherit
