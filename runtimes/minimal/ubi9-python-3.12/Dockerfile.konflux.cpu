@@ -10,6 +10,8 @@ FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
 # cpu-base         #
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
+USER 0
+RUN subscription-manager refresh
 
 WORKDIR /opt/app-root/bin
 

@@ -37,6 +37,8 @@ RUN arch="${TARGETARCH:-$(uname -m)}" && \
 # cpu-base         #
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
+USER 0
+RUN subscription-manager refresh
 
 WORKDIR /opt/app-root/bin
 

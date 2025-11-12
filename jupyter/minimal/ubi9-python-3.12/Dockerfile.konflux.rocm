@@ -10,6 +10,8 @@ FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
 # rocm-base        #
 ####################
 FROM ${BASE_IMAGE} AS rocm-base
+USER 0
+RUN subscription-manager refresh
 
 WORKDIR /opt/app-root/bin
 

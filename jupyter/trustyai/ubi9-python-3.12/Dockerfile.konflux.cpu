@@ -23,6 +23,8 @@ RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
 # wheel-cache-base #
 ####################
 FROM ${BASE_IMAGE} AS whl-cache
+USER 0
+RUN subscription-manager refresh
 
 # hadolint ignore=DL3002
 USER root
