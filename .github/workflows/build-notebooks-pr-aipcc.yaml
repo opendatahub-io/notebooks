@@ -89,5 +89,6 @@ jobs:
       python: "${{ matrix.python }}"
       github: "${{ toJSON(github) }}"
       platform: "${{ matrix.platform }}"
-      subscription: "${{ matrix.subscription }}"
+      # AIPCC base images are RHEL-based, subscription is good for them
+      subscription: "true"
     secrets: inherit
