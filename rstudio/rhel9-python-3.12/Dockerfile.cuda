@@ -24,6 +24,13 @@ USER root
 COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 COPY --from=ubi-repos /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if command -v subscription-manager &> /dev/null; then
+  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "Not registered, skipping refresh."
+fi
+EOF
+
 # upgrade first to avoid fixable vulnerabilities begin
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
