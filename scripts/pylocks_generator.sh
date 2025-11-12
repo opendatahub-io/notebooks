@@ -53,6 +53,10 @@ warn()  { echo -e "⚠️  \033[1;33m$1\033[0m"; }
 error() { echo -e "❌ \033[1;31m$1\033[0m"; }
 ok()    { echo -e "✅ \033[1;32m$1\033[0m"; }
 
+uppercase() {
+  echo "$1" | tr '[:lower:]' '[:upper:]'
+}
+
 # ----------------------------
 # PRE-FLIGHT CHECK
 # ----------------------------
@@ -169,8 +173,8 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     else
       mkdir -p uv.lock
       output="uv.lock/pylock.${flavor}.toml"
-      desc="${flavor^^} lock file"
-      echo "➡️ Generating ${flavor^^} lock file..."
+      desc="$(uppercase "$flavor") lock file"
+      echo "➡️ Generating $(uppercase "$flavor") lock file..."
     fi
 
     set +e
@@ -194,7 +198,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       if [[ "$INDEX_MODE" == "public-index" ]]; then
         ok "pylock.toml generated successfully."
       else
-        ok "${flavor^^} lock generated successfully."
+        ok "$(uppercase "$flavor") lock generated successfully."
       fi
     fi
   }
@@ -240,4 +244,5 @@ if [ ${#FAILED_DIRS[@]} -gt 0 ]; then
     echo "  • $d"
     echo "Please comment out the missing package to continue and report the missing package to aipcc"
   done
+  exit 1
 fi
