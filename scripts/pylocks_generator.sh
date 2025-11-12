@@ -240,4 +240,5 @@ if [ ${#FAILED_DIRS[@]} -gt 0 ]; then
     echo "  • $d"
     echo "Please comment out the missing package to continue and report the missing package to aipcc"
   done
+  exit 1
 fi
