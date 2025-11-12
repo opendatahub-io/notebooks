@@ -39,7 +39,7 @@ def main():
 
         blockinfile(
             dockerfile,
-            textwrap.dedent('''RUN pip install --no-cache-dir -U "micropipenv[toml]==1.9.0" "uv==0.8.12"'''),
+            textwrap.dedent('''RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.8.12"'''),
             prefix="Install micropipenv and uv to deploy packages from requirements.txt",
         )
 
