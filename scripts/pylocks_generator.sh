@@ -1,12 +1,47 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# =============================================================================
+# pylocks_generator.sh
+#
+# This script generates Python dependency lock files (pylock.toml) for multiple
+# directories using either internal AIPCC wheel indexes or the public PyPI index.
+#
+# Features:
+#   • Supports multiple Python project directories, detected by pyproject.toml.
+#   • Detects available Dockerfile flavors (CPU, CUDA, ROCm) for AIPCC index mode.
+#   • Validates Python version extracted from directory name (expects format .../ubi9-python-X.Y).
+#   • Generates per-flavor locks in 'uv.lock/' for AIPCC index mode.
+#   • Overwrites existing pylock.toml in-place for public PyPI index mode.
+#
+# Index Modes:
+#   • aipcc-index  -> Uses internal Red Hat AIPCC wheel indexes. Generates uv.lock/pylock.<flavor>.toml for each detected flavor.
+#   • public-index -> Uses public PyPI index. Updates pylock.toml in the project directory.
+#                    Default mode if not specified.
+#
+# Usage:
+#   1. Lock using default public index for all projects in MAIN_DIRS:
+#        bash pylocks_generator.sh
+#
+#   2. Lock using AIPCC index for a specific directory:
+#        bash pylocks_generator.sh aipcc-index jupyter/minimal/ubi9-python-3.12
+#
+#   3. Lock using public index for a specific directory:
+#        bash pylocks_generator.sh public-index jupyter/minimal/ubi9-python-3.12
+#
+# Notes:
+#   • If the script fails for a directory, it lists the failed directories at the end.
+#   • Public index mode does not create uv.lock directories keeps the old format.
+#   • Python version extraction depends on directory naming convention; invalid formats are skipped.
+# =============================================================================
+
 # ----------------------------
 # CONFIGURATION
 # ----------------------------
 CPU_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/cpu-ubi9/simple/"
 CUDA_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/cuda-ubi9/simple/"
 ROCM_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/rocm-ubi9/simple/"
+PUBLIC_INDEX="--index-url=https://pypi.org/simple"
 
 MAIN_DIRS=("jupyter" "runtimes" "rstudio" "codeserver")
 
@@ -26,12 +61,10 @@ if ! command -v uv &>/dev/null; then
   exit 1
 fi
 
-# (Optional) check uv version (requires version >= 0.4.0)
 UV_MIN_VERSION="0.4.0"
 UV_VERSION=$(uv --version 2>/dev/null | awk '{print $2}' || echo "0.0.0")
 
 version_ge() {
-  # returns 0 if $1 >= $2
   [ "$(printf '%s\n' "$2" "$1" | sort -V | head -n1)" = "$2" ]
 }
 
@@ -42,10 +75,24 @@ if ! version_ge "$UV_VERSION" "$UV_MIN_VERSION"; then
 fi
 
 # ----------------------------
+# ARGUMENT PARSING
+# ----------------------------
+# default to public-index if not provided
+INDEX_MODE="${1:-public-index}"
+TARGET_DIR_ARG="${2:-}"
+
+# Validate mode
+if [[ "$INDEX_MODE" != "aipcc-index" && "$INDEX_MODE" != "public-index" ]]; then
+  error "Invalid mode '$INDEX_MODE'. Valid options: aipcc-index, public-index"
+  exit 1
+fi
+info "Using index mode: $INDEX_MODE"
+
+# ----------------------------
 # GET TARGET DIRECTORIES
 # ----------------------------
-if [ $# -gt 0 ]; then
-  TARGET_DIRS=("$1")
+if [ -n "$TARGET_DIR_ARG" ]; then
+  TARGET_DIRS=("$TARGET_DIR_ARG")
 else
   info "Scanning main directories for Python projects..."
   TARGET_DIRS=()
@@ -76,7 +123,6 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
   echo "==================================================================="
 
   cd "$TARGET_DIR" || continue
-  mkdir -p uv.lock
   PYTHON_VERSION="${PWD##*-}"
 
   # Validate Python version extraction
@@ -113,9 +159,20 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
   run_lock() {
     local flavor="$1"
     local index="$2"
-    local output="uv.lock/pylock.${flavor}.toml"
+    local output
+    local desc
 
-    echo "➡️ Generating ${flavor^^} lock file..."
+    if [[ "$INDEX_MODE" == "public-index" ]]; then
+      output="pylock.toml"
+      desc="pylock.toml (public index)"
+      echo "➡️ Generating pylock.toml from public PyPI index..."
+    else
+      mkdir -p uv.lock
+      output="uv.lock/pylock.${flavor}.toml"
+      desc="${flavor^^} lock file"
+      echo "➡️ Generating ${flavor^^} lock file..."
+    fi
+
     set +e
     uv pip compile pyproject.toml \
       --output-file "$output" \
@@ -130,17 +187,27 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     set -e
 
     if [ $status -ne 0 ]; then
-      warn "${flavor^^} lock failed in $TARGET_DIR"
+      warn "Failed to generate $desc in $TARGET_DIR"
       rm -f "$output"
       DIR_SUCCESS=false
     else
-      ok "${flavor^^} lock generated successfully."
+      if [[ "$INDEX_MODE" == "public-index" ]]; then
+        ok "pylock.toml generated successfully."
+      else
+        ok "${flavor^^} lock generated successfully."
+      fi
     fi
   }
 
-  $HAS_CPU && run_lock "cpu" "$CPU_INDEX"
-  $HAS_CUDA && run_lock "cuda" "$CUDA_INDEX"
-  $HAS_ROCM && run_lock "rocm" "$ROCM_INDEX"
+  # Run lock generation
+  if [[ "$INDEX_MODE" == "public-index" ]]; then
+    # public-index always updates pylock.toml in place
+    run_lock "cpu" "$PUBLIC_INDEX"
+  else
+    $HAS_CPU && run_lock "cpu" "$CPU_INDEX"
+    $HAS_CUDA && run_lock "cuda" "$CUDA_INDEX"
+    $HAS_ROCM && run_lock "rocm" "$ROCM_INDEX"
+  fi
 
   if $DIR_SUCCESS; then
     SUCCESS_DIRS+=("$TARGET_DIR")
