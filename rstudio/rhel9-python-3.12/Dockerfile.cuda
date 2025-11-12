@@ -22,6 +22,7 @@ USER root
 # The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
 # By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
 COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
+COPY --from=ubi-repos /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # upgrade first to avoid fixable vulnerabilities begin
 # Problem: The operation would result in removing the following protected packages: systemd
@@ -43,7 +44,7 @@ RUN dnf install -y perl mesa-libGL && dnf clean all && rm -rf /var/cache/yum
 USER 1001
 
 # Install micropipenv and uv to deploy packages from requirements.txt begin
-RUN pip install --no-cache-dir -U "micropipenv[toml]==1.9.0" "uv==0.8.12"
+RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.8.12"
 # Install micropipenv and uv to deploy packages from requirements.txt end
 
 WORKDIR /opt/app-root/src
@@ -121,7 +122,11 @@ ENV R_VERSION=4.5.1
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 dnf install -y dnf-plugins-core
-subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms
+if command -v subscription-manager &> /dev/null; then
+  subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms
+else
+  dnf config-manager --set-enabled crb
+fi
 dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 INSTALL_PKGS="R-core R-core-devel R-java R-Rcpp R-highlight \
 R-littler R-littler-examples openssl-libs compat-openssl11"
