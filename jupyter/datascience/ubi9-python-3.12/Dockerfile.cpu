@@ -400,10 +400,12 @@ echo "Installing software and packages"
 #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
 if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     # We need special flags and environment variables when building packages
+    # aipcc does not have some dependencies to build cryptography==43.0.3 on ppc64le, so we need to use pypi.org/simple
     GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
     CFLAGS="-O3" CXXFLAGS="-O3" \
     uv pip install --strict --no-deps --no-cache --no-config --no-progress \
         --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match \
+        --extra-index-url https://pypi.org/simple \
         --requirements=./pylock.toml
 else
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
