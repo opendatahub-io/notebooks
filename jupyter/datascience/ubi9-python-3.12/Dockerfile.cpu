@@ -40,6 +40,13 @@ EOF
 # cpu-base         #
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
+USER 0
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if command -v subscription-manager &> /dev/null; then
+  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "Not registered, skipping refresh."
+fi
+EOF
 
 WORKDIR /opt/app-root/bin
 
