@@ -337,7 +337,8 @@ COPY --from=pyarrow-builder /tmp/wheels /tmp/wheels
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
-    pip install --no-cache-dir /tmp/wheels/*.whl
+    # aipcc is lacking numpy>=1.16.6
+    pip install --no-cache-dir --extra-index-url https://pypi.org/simple /tmp/wheels/*.whl
 else
     echo "Skipping wheel install for $TARGETARCH"
 fi
@@ -351,7 +352,8 @@ COPY --from=onnx-builder /root/onnx_wheel/ /onnxwheels/
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
-    pip install --no-cache-dir /onnxwheels/*.whl
+    # aipcc is sure to lack something, so add extra index preemptively
+    pip install --no-cache-dir --extra-index-url https://pypi.org/simple /onnxwheels/*.whl
 else
     echo "Skipping ONNX/OpenBLAS install on non-Power"
 fi
