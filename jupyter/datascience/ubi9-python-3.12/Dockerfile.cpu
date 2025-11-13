@@ -386,6 +386,14 @@ else
 fi
 EOF
 
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ "${TARGETARCH}" = "ppc64le" ]; then
+  # required to compile pillow
+  dnf install -y zlib-devel
+fi
+EOF
+
 USER 1001:0
 
 # Install Python packages and Jupyterlab extensions from pylock.toml
