@@ -179,7 +179,8 @@ if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     make -j$(nproc) VERBOSE=1
     make install -j$(nproc)
     cd ../../python
-    pip install --no-cache-dir -r requirements-build.txt
+    # aipcc index is missing cython, and maybe more
+    pip install --no-cache-dir --extra-index-url https://pypi.org/simple -r requirements-build.txt
     PYARROW_WITH_PARQUET=1 \
     PYARROW_WITH_DATASET=1 \
     PYARROW_WITH_FILESYSTEM=1 \
