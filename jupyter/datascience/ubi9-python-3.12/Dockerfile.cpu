@@ -144,7 +144,13 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     # Install build dependencies (shared for pyarrow and onnx)
-    dnf install -y cmake make gcc-c++ pybind11-devel wget
+    packages=(
+        cmake make gcc-c++ pybind11-devel wget
+        # pyarrow -DARROW_S3=ON pulls in AWS C++ SDK
+        # libcurl-devel is required to build AWS C++ SDK
+        libcurl-devel
+    )
+    dnf install -y "${packages[@]}"
     dnf clean all
     # Build and collect pyarrow wheel
     git clone --depth 1 --branch "apache-arrow-17.0.0" https://github.com/apache/arrow.git
