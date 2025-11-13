@@ -148,7 +148,7 @@ if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
         cmake make gcc-c++ pybind11-devel wget
         # pyarrow -DARROW_S3=ON pulls in AWS C++ SDK
         # libcurl-devel is required to build AWS C++ SDK
-        libcurl-devel
+        libcurl-devel openssl-devel
     )
     dnf install -y "${packages[@]}"
     dnf clean all
