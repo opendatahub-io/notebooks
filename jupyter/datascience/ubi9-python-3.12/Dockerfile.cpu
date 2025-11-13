@@ -235,7 +235,8 @@ if [ "${TARGETARCH}" = "ppc64le" ]; then
     pip install --no-cache-dir --extra-index-url https://pypi.org/simple -r requirements.txt
     CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)"
     export CMAKE_ARGS
-    pip wheel . -w /root/onnx_wheel
+    # protobuf>=4.25.1
+    pip wheel --extra-index-url https://pypi.org/simple . -w /root/onnx_wheel
 else
     echo "Skipping ONNX build on non-Power"
     mkdir -p /root/onnx_wheel
