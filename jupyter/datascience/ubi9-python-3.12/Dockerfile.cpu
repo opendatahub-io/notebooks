@@ -231,7 +231,8 @@ if [ "${TARGETARCH}" = "ppc64le" ]; then
     cd onnx
     git checkout ${ONNX_VERSION}
     git submodule update --init --recursive
-    pip install --no-cache-dir -r requirements.txt
+    # aipcc index does not have numpy>=1.22
+    pip install --no-cache-dir --extra-index-url https://pypi.org/simple -r requirements.txt
     CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)"
     export CMAKE_ARGS
     pip wheel . -w /root/onnx_wheel
