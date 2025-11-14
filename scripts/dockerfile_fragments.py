@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+"""
+This script is inspired by the AIPCC `replace-markers.sh` script, invoked from `make regen`
+  https://gitlab.com/redhat/rhel-ai/core/base-images/app/-/blob/main/containerfiles/replace-markers.sh
+
+The original AIPCC version uses the `ed` command to replace everything between
+ `### BEGIN <filename>` and `### END <filename>` with the content of the <filename>.
+
+This script currently has the data inline, but this can be easily changed.
+We could also support files, or maybe even `### BEGIN funcname("param1", "param2")` that would
+ run Python function `funcname` and paste in the return value.
+"""
+
 import os
 import textwrap
 import pathlib
