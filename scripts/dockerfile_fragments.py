@@ -116,10 +116,8 @@ def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None =
     if new_contents and new_contents[-1] == "\n":
         new_contents = new_contents[:-1]
     if begin == end == -1:
-        # add at the end if no markers found
-        lines.append(f"\n{begin_marker}\n")
-        lines.extend(new_contents)
-        lines.append(f"\n{end_marker}\n")
+        # no markers found
+        return
     else:
         lines[begin: end + 1] = [f"{begin_marker}\n", *new_contents, f"\n{end_marker}\n"]
 
@@ -143,18 +141,12 @@ if __name__ == "__main__":
 
 class TestBlockinfile:
     def test_adding_new_block(self, fs: FakeFilesystem):
+        """the file should not be modified if there is no block already"""
         fs.create_file("/config.txt", contents="hello\nworld")
 
         blockinfile("/config.txt", "key=value")
 
-        assert fs.get_object("/config.txt").contents == "hello\nworld\n### BEGIN\nkey=value\n### END\n"
-
-    def test_lastnewline_removal(self, fs: FakeFilesystem):
-        fs.create_file("/config.txt", contents="hello\nworld")
-
-        blockinfile("/config.txt", "key=value\n\n")
-
-        assert fs.get_object("/config.txt").contents == "hello\nworld\n### BEGIN\nkey=value\n\n### END\n"
+        assert fs.get_object("/config.txt").contents == "hello\nworld"
 
     def test_updating_value_in_block(self, fs: FakeFilesystem):
         fs.create_file("/config.txt", contents="hello\nworld\n### BEGIN\nkey=value1\n### END\n")
@@ -162,3 +154,10 @@ class TestBlockinfile:
         blockinfile("/config.txt", "key=value2")
 
         assert fs.get_object("/config.txt").contents == "hello\nworld\n### BEGIN\nkey=value2\n### END\n"
+
+    def test_lastnewline_removal(self, fs: FakeFilesystem):
+        fs.create_file("/config.txt", contents="hello\nworld\n### BEGIN\n### END\n")
+
+        blockinfile("/config.txt", "key=value\n\n")
+
+        assert fs.get_object("/config.txt").contents == "hello\nworld\n### BEGIN\nkey=value\n\n### END\n"
