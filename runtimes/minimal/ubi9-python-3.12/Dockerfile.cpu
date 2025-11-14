@@ -86,8 +86,14 @@ WORKDIR /opt/app-root/bin
 
 # Install Python packages from requirements.txt
 COPY ${MINIMAL_SOURCE_CODE}/pylock.toml ./
+
 # Copy Elyra dependencies for air-gapped enviroment
-COPY ${MINIMAL_SOURCE_CODE}/utils ./utils/
+COPY --chown=1001 ${MINIMAL_SOURCE_CODE}/utils ./utils/
+# Download Elyra Bootstrapper
+RUN curl -fL https://raw.githubusercontent.com/opendatahub-io/elyra/refs/tags/v4.3.1/elyra/kfp/bootstrapper.py \
+         -o ./utils/bootstrapper.py
+# Prevent Elyra from re-installing the dependencies
+ENV ELYRA_INSTALL_PACKAGES="false"
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
