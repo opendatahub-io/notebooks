@@ -30,6 +30,11 @@ jobs:
       has_jobs: ${{ steps.gen.outputs.has_jobs }}
     steps:
       - uses: actions/checkout@v5
+      - name: Install Pandoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc
+
 
       - name: Determine targets to build (we want to build everything on push)
         run: |
