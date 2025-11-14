@@ -21,7 +21,7 @@ USER 0
 # By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
 COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 
-# upgrade first to avoid fixable vulnerabilities begin
+### BEGIN upgrade first to avoid fixable vulnerabilities
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
 # Solution: --best --skip-broken does not work either, so use --nobest
@@ -31,7 +31,7 @@ dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=in
 dnf clean all -y
 EOF
 
-# upgrade first to avoid fixable vulnerabilities end
+### END upgrade first to avoid fixable vulnerabilities
 
 # Install useful OS packages
 RUN /bin/bash <<'EOF'
@@ -44,11 +44,11 @@ EOF
 # Other apps and tools installed as default user
 USER 1001
 
-# Install micropipenv and uv to deploy packages from requirements.txt begin
+### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
 RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.8.12"
-# Install micropipenv and uv to deploy packages from requirements.txt end
+### END Install micropipenv and uv to deploy packages from requirements.txt
 
-# Install the oc client begin
+### BEGIN Install the oc client
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
@@ -57,7 +57,7 @@ tar -xzvf /tmp/openshift-client-linux.tar.gz oc
 rm -f /tmp/openshift-client-linux.tar.gz
 EOF
 
-# Install the oc client end
+### END Install the oc client
 
 ########################
 # rocm-jupyter-minimal #
@@ -83,11 +83,11 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
 USER 0
 
-# Dependencies for PDF export begin
+### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 
-# Dependencies for PDF export end
+### END Dependencies for PDF export
 
 USER 1001
 
