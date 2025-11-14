@@ -87,8 +87,8 @@ def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None =
     * https://homely.readthedocs.io/en/latest/ref/files.html#homely-files-blockinfile-1
     * ansible.modules.lineinfile
     """
-    begin_marker = f"{comment} {prefix if prefix else ''} begin"
-    end_marker = f"{comment} {prefix if prefix else ''} end"
+    begin_marker = f"{comment} {prefix if prefix else ""} begin"
+    end_marker = f"{comment} {prefix if prefix else ""} end"
 
     begin = end = -1
     try:
@@ -108,6 +108,10 @@ def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None =
         raise ValueError(f"Found end marker but no matching begin marker in {filename}")
     if begin > end:
         raise ValueError(f"Begin marker appears after end marker in {filename}")
+
+    # TODO: temporarily redefine so that we capitalize the marker and switch order
+    begin_marker = f"{comment * 3} BEGIN{" "+ prefix if prefix else ""}"
+    end_marker = f"{comment * 3} END{" " + prefix if prefix else ""}"
 
     lines = original_lines[:]
     # NOTE: textwrap.dedent() with raw strings leaves leading and trailing newline
@@ -147,18 +151,18 @@ class TestBlockinfile:
 
         blockinfile("/config.txt", "key=value")
 
-        assert fs.get_object("/config.txt").contents == "hello\nworld\n#  begin\nkey=value\n#  end\n"
+        assert fs.get_object("/config.txt").contents == "hello\nworld\n### BEGIN\nkey=value\n### END\n"
 
     def test_lastnewline_removal(self, fs: FakeFilesystem):
         fs.create_file("/config.txt", contents="hello\nworld")
 
         blockinfile("/config.txt", "key=value\n\n")
 
-        assert fs.get_object("/config.txt").contents == "hello\nworld\n#  begin\nkey=value\n\n#  end\n"
+        assert fs.get_object("/config.txt").contents == "hello\nworld\n### BEGIN\nkey=value\n\n### END\n"
 
     def test_updating_value_in_block(self, fs: FakeFilesystem):
         fs.create_file("/config.txt", contents="hello\nworld\n#  begin\nkey=value1\n#  end\n")
 
         blockinfile("/config.txt", "key=value2")
 
-        assert fs.get_object("/config.txt").contents == "hello\nworld\n#  begin\nkey=value2\n#  end\n"
+        assert fs.get_object("/config.txt").contents == "hello\nworld\n### BEGIN\nkey=value2\n### END\n"
