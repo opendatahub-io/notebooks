@@ -41,7 +41,6 @@ EOF
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
 USER 0
-RUN subscription-manager register --org 18631088 --activationkey thisisunsafe
 RUN subscription-manager refresh
 
 WORKDIR /opt/app-root/bin
