@@ -398,6 +398,9 @@ if [ "${TARGETARCH}" = "ppc64le" ]; then
 
     # required to compile maturin
     openssl-devel
+
+    # required to compile scikit-learn
+    gcc-gfortran
   )
   dnf install -y "${packages[@]}"
 fi
