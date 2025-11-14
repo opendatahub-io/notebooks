@@ -63,15 +63,18 @@ def main():
         }
 
         # sanity check that we don't have any unexpected `### BEGIN`s and `### END`s
+        begin = "#" * 3 + " BEGIN"
+        end = "#" * 3 + " END"
         with open(dockerfile, "rt") as fp:
-            for line_no, line in enumerate(fp):
-                begin = f"{"#" * 3} BEGIN"
-                end = f"{"#" * 3} END"
+            for line_no, line in enumerate(fp, start=1):
                 for prefix in (begin, end):
                     if line.rstrip().startswith(prefix):
                         suffix = line[len(prefix) + 1:].rstrip()
                         if suffix not in replacements:
-                            raise ValueError(f"Expected replacement for '{prefix} {suffix}' not found in {dockerfile}")
+                            raise ValueError(
+                                f"Expected replacement for '{prefix} {suffix}' "
+                                f"not found in {dockerfile}:{line_no}"
+                            )
 
         for prefix, contents in replacements.items():
             blockinfile(
