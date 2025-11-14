@@ -33,54 +33,60 @@ def main():
         if dockerfile.is_relative_to(ROOT_DIR / "examples"):
             continue
 
-        blockinfile(
-            dockerfile,
-            textwrap.dedent(r"""
-            # Problem: The operation would result in removing the following protected packages: systemd
-            #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
-            # Solution: --best --skip-broken does not work either, so use --nobest
-            RUN /bin/bash <<'EOF'
-            set -Eeuxo pipefail
-            dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
-            dnf clean all -y
-            EOF
+        replacements = {
+            "upgrade first to avoid fixable vulnerabilities": textwrap.dedent(r"""
+                # Problem: The operation would result in removing the following protected packages: systemd
+                #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
+                # Solution: --best --skip-broken does not work either, so use --nobest
+                RUN /bin/bash <<'EOF'
+                set -Eeuxo pipefail
+                dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
+                dnf clean all -y
+                EOF
 
             """),
-            prefix="upgrade first to avoid fixable vulnerabilities",
-        )
-
-        blockinfile(
-            dockerfile,
-            textwrap.dedent('''RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.8.12"'''),
-            prefix="Install micropipenv and uv to deploy packages from requirements.txt",
-        )
-
-        blockinfile(
-            dockerfile,
-            textwrap.dedent(r"""
-            RUN /bin/bash <<'EOF'
-            set -Eeuxo pipefail
-            curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
-                -o /tmp/openshift-client-linux.tar.gz
-            tar -xzvf /tmp/openshift-client-linux.tar.gz oc
-            rm -f /tmp/openshift-client-linux.tar.gz
-            EOF
+            "Install micropipenv and uv to deploy packages from requirements.txt": '''RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.8.12"''',
+            "Install the oc client": textwrap.dedent(r"""
+                RUN /bin/bash <<'EOF'
+                set -Eeuxo pipefail
+                curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+                    -o /tmp/openshift-client-linux.tar.gz
+                tar -xzvf /tmp/openshift-client-linux.tar.gz oc
+                rm -f /tmp/openshift-client-linux.tar.gz
+                EOF
 
             """),
-            prefix="Install the oc client",
-        )
-
-        blockinfile(
-            dockerfile,
-            textwrap.dedent(r"""
-            RUN ./utils/install_pdf_deps.sh
-            ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+            "Dependencies for PDF export": textwrap.dedent(r"""
+                RUN ./utils/install_pdf_deps.sh
+                ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
             """),
-            prefix="Dependencies for PDF export",
-        )
+        }
+
+        # sanity check that we don't have any unexpected `### BEGIN`s and `### END`s
+        with open(dockerfile, "rt") as fp:
+            for line_no, line in enumerate(fp):
+                begin = f"{"#" * 3} BEGIN"
+                end = f"{"#" * 3} END"
+                for prefix in (begin, end):
+                    if line.rstrip().startswith(prefix):
+                        suffix = line[len(prefix) + 1:].rstrip()
+                        if suffix not in replacements:
+                            raise ValueError(f"Expected replacement for '{prefix} {suffix}' not found in {dockerfile}")
+
+        for prefix, contents in replacements.items():
+            blockinfile(
+                filename=dockerfile,
+                contents=contents,
+                prefix=prefix,
+            )
 
 
-def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None = None, *, comment: str = "#"):
+def blockinfile(
+    filename: str | os.PathLike,
+    contents: str, prefix: str | None = None,
+    *,
+    comment: str = "#",
+) -> None:
     """This is similar to the functions in
     * https://homely.readthedocs.io/en/latest/ref/files.html#homely-files-blockinfile-1
     * ansible.modules.lineinfile
@@ -151,3 +157,10 @@ class TestBlockinfile:
         blockinfile("/config.txt", "key=value\n\n")
 
         assert fs.get_object("/config.txt").contents == "hello\nworld\n### BEGIN\nkey=value\n\n### END\n"
+
+    def test_dry_run(self, fs: FakeFilesystem):
+        fs.add_real_directory(source_path=ROOT_DIR / "jupyter", read_only=False)
+        fs.add_real_directory(source_path=ROOT_DIR / "codeserver", read_only=False)
+        fs.add_real_directory(source_path=ROOT_DIR / "rstudio", read_only=False)
+        fs.add_real_directory(source_path=ROOT_DIR / "runtimes", read_only=False)
+        main()
