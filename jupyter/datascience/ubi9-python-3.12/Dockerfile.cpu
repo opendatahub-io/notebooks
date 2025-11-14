@@ -389,12 +389,15 @@ EOF
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
-  # required to compile pillow
   packages=(
+    # required to compile pillow
     zlib-devel libjpeg-turbo-devel
     # optional pillow deps https://pillow.readthedocs.io/en/latest/installation/building-from-source.html#external-libraries
     #libtiff-devel libwebp-devel openjpeg2-devel lcms2-devel freetype-devel
     #libimagequant-devel harfbuzz-devel fribidi-devel
+
+    # required to compile maturin
+    openssl-devel
   )
   dnf install -y "${packages[@]}"
 fi
