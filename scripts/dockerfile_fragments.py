@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+"""
+This script is inspired by the AIPCC `replace-markers.sh` script, invoked from `make regen`
+  https://gitlab.com/redhat/rhel-ai/core/base-images/app/-/blob/main/containerfiles/replace-markers.sh
+
+The original AIPCC version uses the `ed` command to replace everything between
+ `### BEGIN <filename>` and `### END <filename>` with the content of the <filename>.
+
+This script currently has the data inline, but this can be easily changed.
+We could also support files, or maybe even `### BEGIN funcname("param1", "param2")` that would
+ run Python function `funcname` and paste in the return value.
+"""
+
 import os
 import textwrap
 import pathlib
@@ -21,32 +33,20 @@ def main():
         if dockerfile.is_relative_to(ROOT_DIR / "examples"):
             continue
 
-        blockinfile(
-            dockerfile,
-            textwrap.dedent(r"""
-            # Problem: The operation would result in removing the following protected packages: systemd
-            #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
-            # Solution: --best --skip-broken does not work either, so use --nobest
-            RUN /bin/bash <<'EOF'
-            set -Eeuxo pipefail
-            dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
-            dnf clean all -y
-            EOF
+        replacements = {
+            "upgrade first to avoid fixable vulnerabilities": textwrap.dedent(r"""
+                # Problem: The operation would result in removing the following protected packages: systemd
+                #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
+                # Solution: --best --skip-broken does not work either, so use --nobest
+                RUN /bin/bash <<'EOF'
+                set -Eeuxo pipefail
+                dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
+                dnf clean all -y
+                EOF
 
             """),
-            prefix="upgrade first to avoid fixable vulnerabilities",
-        )
-
-        blockinfile(
-            dockerfile,
-            textwrap.dedent('''RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.8.12"'''),
-            prefix="Install micropipenv and uv to deploy packages from requirements.txt",
-        )
-
-        if not is_rstudio(dockerfile):
-            blockinfile(
-                dockerfile,
-                textwrap.dedent(r"""
+            "Install micropipenv and uv to deploy packages from requirements.txt": '''RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.8.12"''',
+            "Install the oc client": textwrap.dedent(r"""
                 RUN /bin/bash <<'EOF'
                 set -Eeuxo pipefail
                 curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
@@ -55,28 +55,47 @@ def main():
                 rm -f /tmp/openshift-client-linux.tar.gz
                 EOF
 
-                """),
-                prefix="Install the oc client",
-            )
-
-        if is_jupyter(dockerfile):
-            blockinfile(
-                dockerfile,
-                textwrap.dedent(r"""
+            """),
+            "Dependencies for PDF export": textwrap.dedent(r"""
                 RUN ./utils/install_pdf_deps.sh
                 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
-                """),
-                prefix="Dependencies for PDF export",
+            """),
+        }
+
+        # sanity check that we don't have any unexpected `### BEGIN`s and `### END`s
+        begin = "#" * 3 + " BEGIN"
+        end = "#" * 3 + " END"
+        with open(dockerfile, "rt") as fp:
+            for line_no, line in enumerate(fp, start=1):
+                for prefix in (begin, end):
+                    if line.rstrip().startswith(prefix):
+                        suffix = line[len(prefix) + 1:].rstrip()
+                        if suffix not in replacements:
+                            raise ValueError(
+                                f"Expected replacement for '{prefix} {suffix}' "
+                                f"not found in {dockerfile}:{line_no}"
+                            )
+
+        for prefix, contents in replacements.items():
+            blockinfile(
+                filename=dockerfile,
+                contents=contents,
+                prefix=prefix,
             )
 
 
-def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None = None, *, comment: str = "#"):
+def blockinfile(
+    filename: str | os.PathLike,
+    contents: str, prefix: str | None = None,
+    *,
+    comment: str = "#",
+) -> None:
     """This is similar to the functions in
     * https://homely.readthedocs.io/en/latest/ref/files.html#homely-files-blockinfile-1
     * ansible.modules.lineinfile
     """
-    begin_marker = f"{comment} {prefix if prefix else ''} begin"
-    end_marker = f"{comment} {prefix if prefix else ''} end"
+    begin_marker = f"{comment * 3} BEGIN{" " + prefix if prefix else ""}"
+    end_marker = f"{comment * 3} END{" " + prefix if prefix else ""}"
 
     begin = end = -1
     try:
@@ -104,10 +123,8 @@ def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None =
     if new_contents and new_contents[-1] == "\n":
         new_contents = new_contents[:-1]
     if begin == end == -1:
-        # add at the end if no markers found
-        lines.append(f"\n{begin_marker}\n")
-        lines.extend(new_contents)
-        lines.append(f"\n{end_marker}\n")
+        # no markers found
+        return
     else:
         lines[begin: end + 1] = [f"{begin_marker}\n", *new_contents, f"\n{end_marker}\n"]
 
@@ -117,36 +134,36 @@ def blockinfile(filename: str | os.PathLike, contents: str, prefix: str | None =
         fp.writelines(lines)
 
 
-def is_jupyter(filename: pathlib.Path) -> bool:
-    return filename.is_relative_to(ROOT_DIR / "jupyter")
-
-
-def is_rstudio(filename: pathlib.Path) -> bool:
-    return filename.is_relative_to(ROOT_DIR / "rstudio")
-
-
 if __name__ == "__main__":
     main()
 
 
 class TestBlockinfile:
     def test_adding_new_block(self, fs: FakeFilesystem):
+        """the file should not be modified if there is no block already"""
         fs.create_file("/config.txt", contents="hello\nworld")
 
         blockinfile("/config.txt", "key=value")
 
-        assert fs.get_object("/config.txt").contents == "hello\nworld\n#  begin\nkey=value\n#  end\n"
-
-    def test_lastnewline_removal(self, fs: FakeFilesystem):
-        fs.create_file("/config.txt", contents="hello\nworld")
-
-        blockinfile("/config.txt", "key=value\n\n")
-
-        assert fs.get_object("/config.txt").contents == "hello\nworld\n#  begin\nkey=value\n\n#  end\n"
+        assert fs.get_object("/config.txt").contents == "hello\nworld"
 
     def test_updating_value_in_block(self, fs: FakeFilesystem):
-        fs.create_file("/config.txt", contents="hello\nworld\n#  begin\nkey=value1\n#  end\n")
+        fs.create_file("/config.txt", contents="hello\nworld\n### BEGIN\nkey=value1\n### END\n")
 
         blockinfile("/config.txt", "key=value2")
 
-        assert fs.get_object("/config.txt").contents == "hello\nworld\n#  begin\nkey=value2\n#  end\n"
+        assert fs.get_object("/config.txt").contents == "hello\nworld\n### BEGIN\nkey=value2\n### END\n"
+
+    def test_lastnewline_removal(self, fs: FakeFilesystem):
+        fs.create_file("/config.txt", contents="hello\nworld\n### BEGIN\n### END\n")
+
+        blockinfile("/config.txt", "key=value\n\n")
+
+        assert fs.get_object("/config.txt").contents == "hello\nworld\n### BEGIN\nkey=value\n\n### END\n"
+
+    def test_dry_run(self, fs: FakeFilesystem):
+        fs.add_real_directory(source_path=ROOT_DIR / "jupyter", read_only=False)
+        fs.add_real_directory(source_path=ROOT_DIR / "codeserver", read_only=False)
+        fs.add_real_directory(source_path=ROOT_DIR / "rstudio", read_only=False)
+        fs.add_real_directory(source_path=ROOT_DIR / "runtimes", read_only=False)
+        main()
