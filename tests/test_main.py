@@ -32,6 +32,26 @@ if TYPE_CHECKING:
 MAKE = shutil.which("gmake") or shutil.which("make")
 
 
+def test_dockerfiles_unintended_subscription_manager_pattern():
+    """Konflux will not `subscription-manager register --org --activationkey` if the pattern matches.
+    Because it is easy to be matched by mistake (e.g. in a string/comment on the same line), add a check.
+
+    See the buildah task definition in https://github.com/konflux-ci/build-definitions for more details."""
+
+    # https://github.com/konflux-ci/build-definitions/blob/main/task/buildah/0.6/buildah.yaml#L795-L813
+    pattern = re.compile(r"^[^#]*subscription-manager.[^#]*register")
+
+    for file in PROJECT_ROOT.glob("**/Dockerfile*"):
+        if file.is_dir():
+            continue
+        with open(file, "r") as f:
+            for line_no, line in enumerate(f, start=1):
+                assert not pattern.match(line), (
+                    f"Undesirable subscription-manager pattern that disables Konflux subscription found in {file}:{line_no}."
+                    f" Modify the test if this is intended behaviour. But It is very reasonable to assume it is a mistake."
+                )
+
+
 def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
