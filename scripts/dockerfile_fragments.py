@@ -35,6 +35,14 @@ def main():
 
         replacements = {
             "upgrade first to avoid fixable vulnerabilities": textwrap.dedent(r"""
+                # If we have a Red Hat subscription prepared, refresh it
+                RUN /bin/bash <<'EOF'
+                set -Eeuxo pipefail
+                if command -v subscription-manager &> /dev/null; then
+                  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "Not registered, skipping refresh."
+                fi
+                EOF
+
                 # Problem: The operation would result in removing the following protected packages: systemd
                 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
                 # Solution: --best --skip-broken does not work either, so use --nobest
@@ -59,6 +67,12 @@ def main():
             "Dependencies for PDF export": textwrap.dedent(r"""
                 RUN ./utils/install_pdf_deps.sh
                 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+            """),
+            "Download Elyra Bootstrapper": textwrap.dedent(r"""
+                RUN curl -fL https://raw.githubusercontent.com/opendatahub-io/elyra/refs/tags/v4.3.1/elyra/kfp/bootstrapper.py \
+                         -o ./utils/bootstrapper.py
+                # Prevent Elyra from re-installing the dependencies
+                ENV ELYRA_INSTALL_PACKAGES="false"
             """),
         }
 

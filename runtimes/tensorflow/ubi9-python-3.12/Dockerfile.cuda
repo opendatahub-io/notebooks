@@ -26,6 +26,14 @@ USER 0
 COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 
 ### BEGIN upgrade first to avoid fixable vulnerabilities
+# If we have a Red Hat subscription prepared, refresh it
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if command -v subscription-manager &> /dev/null; then
+  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "Not registered, skipping refresh."
+fi
+EOF
+
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
 # Solution: --best --skip-broken does not work either, so use --nobest
@@ -87,11 +95,15 @@ WORKDIR /opt/app-root/bin
 COPY ${TENSORFLOW_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra dependencies for air-gapped enviroment
 COPY --chown=1001 ${TENSORFLOW_SOURCE_CODE}/utils ./utils/
-# Download Elyra Bootstrapper
+### BEGIN Download Elyra Bootstrapper
 RUN curl -fL https://raw.githubusercontent.com/opendatahub-io/elyra/refs/tags/v4.3.1/elyra/kfp/bootstrapper.py \
          -o ./utils/bootstrapper.py
 # Prevent Elyra from re-installing the dependencies
 ENV ELYRA_INSTALL_PACKAGES="false"
+
+### END Download Elyra Bootstrapper
+
+### END Download Elyra Bootstrapper
 
 USER 0
 
