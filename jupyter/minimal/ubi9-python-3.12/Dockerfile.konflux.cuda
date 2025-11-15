@@ -12,8 +12,6 @@ FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
 # cuda-base        #
 ####################
 FROM ${BASE_IMAGE} AS cuda-base
-USER 0
-RUN subscription-manager refresh
 
 WORKDIR /opt/app-root/bin
 

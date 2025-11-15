@@ -26,8 +26,6 @@ EOF
 # wheel-cache-base #
 ####################
 FROM ${BASE_IMAGE} AS whl-cache
-USER 0
-RUN subscription-manager refresh
 
 # hadolint ignore=DL3002
 USER root
@@ -53,8 +51,6 @@ EOF
 # cpu-base         #
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
-USER 0
-RUN subscription-manager refresh
 
 WORKDIR /opt/app-root/bin
 

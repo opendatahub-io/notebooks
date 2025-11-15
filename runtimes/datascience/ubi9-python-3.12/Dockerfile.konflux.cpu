@@ -10,8 +10,6 @@ FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
 # cpu-base         #
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
-USER 0
-RUN subscription-manager refresh
 
 ARG TARGETARCH
 
@@ -387,7 +385,14 @@ EOF
 # Install Python packages from pylock.toml
 COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml ./
 # Copy Elyra dependencies for air-gapped enviroment
-COPY ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
+COPY --chown=1001 ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
+### BEGIN Download Elyra Bootstrapper
+RUN curl -fL https://raw.githubusercontent.com/opendatahub-io/elyra/refs/tags/v4.3.1/elyra/kfp/bootstrapper.py \
+         -o ./utils/bootstrapper.py
+# Prevent Elyra from re-installing the dependencies
+ENV ELYRA_INSTALL_PACKAGES="false"
+
+### END Download Elyra Bootstrapper
 
 RUN --mount=type=cache,target=/root/.cache/pip /bin/bash <<'EOF'
 set -Eeuxo pipefail

@@ -28,8 +28,6 @@ RUN ./install_pandoc.sh
 # cpu-base         #
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
-USER 0
-RUN subscription-manager refresh
 
 WORKDIR /opt/app-root/bin
 
@@ -111,6 +109,8 @@ RUN --mount=type=cache,from=pdf-builder,source=/usr/local/,target=/pdf_builder/,
         ./utils/install_pdf_deps.sh; \
     fi'
 
+ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+
 USER 1001
 
 COPY ${MINIMAL_SOURCE_CODE}/pylock.toml ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
@@ -146,9 +146,3 @@ LABEL name="rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
     description="Minimal Jupyter CPU notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
     io.k8s.description="Minimal Jupyter CPU notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
     com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
-
-### BEGIN Dependencies for PDF export
-RUN ./utils/install_pdf_deps.sh
-ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
-
-### END Dependencies for PDF export

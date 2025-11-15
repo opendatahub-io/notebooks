@@ -119,6 +119,8 @@ RUN --mount=type=cache,from=pdf-builder,source=/usr/local/,target=/pdf_builder/,
         ./utils/install_pdf_deps.sh; \
     fi'
 
+ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+
 USER 1001
 
 COPY ${MINIMAL_SOURCE_CODE}/pylock.toml ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
