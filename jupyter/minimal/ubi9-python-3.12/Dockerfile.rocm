@@ -101,6 +101,8 @@ USER 1001
 
 COPY ${MINIMAL_SOURCE_CODE}/pylock.toml ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
+USER 0
+
 # Install Python dependencies from Pipfile.lock file
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
@@ -121,6 +123,7 @@ fix-permissions /opt/app-root -P
 /opt/app-root/bin/utils/addons/apply.sh
 EOF
 
+USER 1001
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
