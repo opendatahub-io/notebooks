@@ -14,6 +14,7 @@ FROM registry.access.redhat.com/ubi9/python-312:latest AS pdf-builder
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
+# hadolint ignore=DL3002
 USER 0
 
 # Copy scripts
