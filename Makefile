@@ -25,6 +25,8 @@ RELEASE_PYTHON_VERSION	 ?= 3.12
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
 # whether to push the images to a registry as they are built
 PUSH_IMAGES ?= yes
+# INDEX_MODES=public-index(default) or aipcc-index this used for the lock
+INDEX_MODE ?= public-index
 
 # OS dependant: Generate date, select appropriate cmd to locate container engine
 ifdef OS
@@ -113,7 +115,7 @@ endef
 #######################################        Build helpers                 #######################################
 
 # https://stackoverflow.com/questions/78899903/how-to-create-a-make-target-which-is-an-implicit-dependency-for-all-other-target
-skip-init-for := all-images deploy% undeploy% test% validate% refresh-pipfilelock-files scan-image-vulnerabilities print-release
+skip-init-for := all-images deploy% undeploy% test% validate% refresh-lock-files scan-image-vulnerabilities print-release
 ifneq (,$(filter-out $(skip-init-for),$(MAKECMDGOALS) $(.DEFAULT_GOAL)))
 $(SELF): bin/buildinputs
 endif
@@ -406,70 +408,20 @@ validate-rstudio-image: bin/kubectl
 		continue
 	fi
 
-# This recipe used mainly from the Pipfile.locks Renewal Action
-# Default Python version
-PYTHON_VERSION ?= 3.12
-ROOT_DIR := $(shell pwd)
-ifeq ($(PYTHON_VERSION), 3.12)
-	BASE_DIRS := \
-	    jupyter/minimal/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/datascience/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/trustyai/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/rocm/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/pytorch+llmcompressor/ubi9-python-$(PYTHON_VERSION) \
-		codeserver/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/minimal/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/datascience/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/pytorch/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/rocm-pytorch/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/pytorch+llmcompressor/ubi9-python-$(PYTHON_VERSION) \
-		runtimes/rocm-tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		jupyter/rocm/tensorflow/ubi9-python-$(PYTHON_VERSION) \
-		rstudio/rhel9-python-$(PYTHON_VERSION) \
-		rstudio/c9s-python-$(PYTHON_VERSION)
-else
-	$(error Invalid Python version $(PYTHON_VERSION))
-endif
-
-# Default value is false, can be overridden
-# The below directories are not supported on tier-1
-INCLUDE_OPT_DIRS ?= false
-OPT_DIRS :=
-
-# This recipe gets args, can be used like
-# make refresh-pipfilelock-files PYTHON_VERSION=3.11 INCLUDE_OPT_DIRS=false
-.PHONY: refresh-pipfilelock-files
-refresh-pipfilelock-files:
-	@echo "Updating Pipfile.lock files for Python $(PYTHON_VERSION)"
-	@if [ "$(INCLUDE_OPT_DIRS)" = "true" ]; then
-		echo "Including optional directories"
-		DIRS="$(BASE_DIRS) $(OPT_DIRS)"
-	else
-		DIRS="$(BASE_DIRS)"
-	fi
-	for dir in $$DIRS; do
-		echo "Processing directory: $$dir"
-		cd $(ROOT_DIR)
-		if [ -d "$$dir" ]; then
-			echo "Updating $(PYTHON_VERSION) uv.lock in $$dir"
-			cd $$dir
-			if [ -f "pyproject.toml" ]; then
-				uv lock && rm uv.lock
-			else
-				echo "No pyproject.toml found in $$dir, skipping."
-			fi
-		else
-			echo "Skipping $$dir as it does not exist"
-		fi
-	done
-
-	echo "Regenerating requirements.txt files"
-	pushd $(ROOT_DIR)
-		bash $(ROOT_DIR)/scripts/sync-python-lockfiles.sh
-	popd
+# ======================================================================================
+# Refresh lock files
+# Usage examples:
+#   gmake refresh-lock-files
+#   gmake refresh-lock-files INDEX_MODE=aipcc-index
+#	gmake refresh-lock-files INDEX_MODE=aipcc-index DIR=jupyter/minimal/ubi9-python-3.12
+# ======================================================================================
+DIR ?=
+.PHONY: refresh-lock-files
+refresh-lock-files:
+	@echo "==================================================================="
+	@echo "🔁 Refreshing pylock.toml files using $(INDEX_MODE)"
+	@echo "==================================================================="
+	@cd $(ROOT_DIR) && bash scripts/pylocks_generator.sh $(INDEX_MODE) $(DIR)
 
 # This is only for the workflow action
 # For running manually, set the required environment variables
