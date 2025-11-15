@@ -30,7 +30,7 @@ COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if command -v subscription-manager &> /dev/null; then
-  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "Not registered, skipping refresh."
+  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
 fi
 EOF
 
@@ -102,6 +102,10 @@ RUN curl -fL https://raw.githubusercontent.com/opendatahub-io/elyra/refs/tags/v4
 ENV ELYRA_INSTALL_PACKAGES="false"
 
 ### END Download Elyra Bootstrapper
+
+### END Download Elyra Bootstrapper
+
+USER 0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
