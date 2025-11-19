@@ -38,6 +38,9 @@ spec:
     value:
     - linux/x86_64
     - linux/arm64
+    - linux/ppc64le
+    # TODO(jdanek): Enable s390x once it is supported in the base image.
+    #- linux/s390x
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:
