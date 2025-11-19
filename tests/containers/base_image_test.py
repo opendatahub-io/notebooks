@@ -233,7 +233,7 @@ class TestBaseImage:
         expected_uid = "1001"  # default
         expected_gid = "0"  # root
         # Directories to assert permissions and ownerships as we did in ODS-CI
-        directories_to_check: list[str] = [
+        directories_to_check: list[list[str]] = [
             [f"{app_root_path}/lib", "775", expected_gid, expected_uid],
         ]
         if not utils.is_rstudio_image(image):
@@ -243,10 +243,11 @@ class TestBaseImage:
         def test_fn(container: testcontainers.core.container.DockerContainer):
             for item in directories_to_check:
                 with subtests.test(f"Checking permissions of the: {item[0]}"):
-                    _, output = container.exec(["stat", "--format='%a:%g:%u'", f"{item[0]}"])
+                    # ignore `:%u`, it does not matter what the uid is, it's the gid that is nonrandom on openshift
+                    _, output = container.exec(["stat", "--format='%a:%g'", f"{item[0]}"])
                     logging.debug(output.decode())
                     cleaned_output = output.decode().strip().strip("'")
-                    assert cleaned_output == f"{item[1]}:{item[2]}:{item[3]}"
+                    assert cleaned_output == f"{item[1]}:{item[2]}"
 
         self._run_test(image=image, test_fn=test_fn)
 
