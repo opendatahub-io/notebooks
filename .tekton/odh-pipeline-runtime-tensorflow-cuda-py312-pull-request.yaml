@@ -34,7 +34,7 @@ spec:
   - name: dockerfile
     value: runtimes/tensorflow/ubi9-python-3.12/Dockerfile.konflux.cuda
   - name: build-args-file
-    value: runtimes/tensorflow/ubi9-python-3.12/build-args/cuda.conf
+    value: runtimes/tensorflow/ubi9-python-3.12/build-args/konflux.cuda.conf
   - name: path-context
     value: .
   - name: hermetic
