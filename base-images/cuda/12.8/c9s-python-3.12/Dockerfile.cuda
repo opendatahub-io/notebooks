@@ -39,7 +39,7 @@ RUN NVIDIA_GPGKEY_SUM=d0664fbbdb8c32356d45de36c5984617217b2d0bef41b93ccecd326ba3
 ENV CUDA_VERSION=12.8.1
 
 # For libraries in the cuda-compat-* package: https://docs.nvidia.com/cuda/eula/index.html#attachment-a
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-c9s dnf upgrade -y --setopt=keepcache=1 && dnf install -y --setopt=keepcache=1 \
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf dnf upgrade -y --setopt=keepcache=1 && dnf install -y --setopt=keepcache=1 \
     cuda-cudart-12-8-${NV_CUDA_CUDART_VERSION} \
     cuda-compat-12-8
 
@@ -67,7 +67,7 @@ ENV NV_LIBNCCL_VERSION=2.25.1
 ENV NCCL_VERSION=2.25.1
 ENV NV_LIBNCCL_PACKAGE=${NV_LIBNCCL_PACKAGE_NAME}-${NV_LIBNCCL_PACKAGE_VERSION}+cuda12.8
 
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-c9s dnf install -y --setopt=keepcache=1 \
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf dnf install -y --setopt=keepcache=1 \
     cuda-libraries-12-8-${NV_CUDA_LIB_VERSION} \
     cuda-nvtx-12-8-${NV_NVTX_VERSION} \
     ${NV_LIBNPP_PACKAGE} \
@@ -75,7 +75,7 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-c9s dnf insta
     ${NV_LIBNCCL_PACKAGE}
 
 # Install devel tools
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-c9s dnf install -y --setopt=keepcache=1 \
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf dnf install -y --setopt=keepcache=1 \
     make \
     findutils
 
@@ -86,14 +86,14 @@ ENV NV_CUDNN_PACKAGE libcudnn9-cuda-12-${NV_CUDNN_VERSION}
 
 LABEL com.nvidia.cudnn.version="${NV_CUDNN_VERSION}"
 
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-c9s dnf install -y --setopt=keepcache=1 \
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf dnf install -y --setopt=keepcache=1 \
     ${NV_CUDNN_PACKAGE}
 
 # Set this flag so that libraries can find the location of CUDA
 ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 
 # Install CUDA toolkit 12.8
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-c9s dnf -y install --setopt=keepcache=1 cuda-toolkit-12-8
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf dnf -y install --setopt=keepcache=1 cuda-toolkit-12-8
 
 # Restore user workspace
 USER 1001

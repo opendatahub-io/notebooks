@@ -12,7 +12,7 @@ USER 0
 
 RUN \
 --mount=from=buildscripts,source=/mnt,target=/mnt \
---mount=type=cache,sharing=locked,id=dnf-ubi9,target=/var/cache/dnf \
+--mount=type=cache,sharing=locked,id=notebooks-dnf,target=/var/cache/dnf \
 /bin/bash <<'EOF'
 /mnt/aipcc.sh
 EOF

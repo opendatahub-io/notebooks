@@ -56,7 +56,7 @@ EOF
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
 # Solution: --best --skip-broken does not work either, so use --nobest
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=1
 EOF
@@ -64,7 +64,7 @@ EOF
 ### END upgrade first to avoid fixable vulnerabilities
 
 # Install useful OS packages
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Building for architecture: ${TARGETARCH}"
 if [ "$TARGETARCH" = "s390x" ]; then
@@ -137,7 +137,7 @@ WORKDIR /tmp/build-wheels
 
 # Build pyarrow on ppc64le and s390x
 RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
+    --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     # Install build dependencies (shared for pyarrow and onnx)
@@ -202,7 +202,7 @@ FROM cpu-base AS common-builder
 ARG TARGETARCH
 # hadolint ignore=DL3002
 USER root
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
     dnf install -y --setopt=keepcache=1 gcc-toolset-13 cmake ninja-build git wget unzip
@@ -312,7 +312,7 @@ WORKDIR /opt/app-root/bin
 USER root
 
 # Install useful OS packages
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 dnf install -y --setopt=keepcache=1 jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat
 EOF
@@ -372,7 +372,7 @@ else
 fi
 EOF
 
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
   packages=(
