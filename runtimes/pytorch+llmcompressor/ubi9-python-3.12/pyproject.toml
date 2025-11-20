@@ -15,6 +15,7 @@ dependencies = [
     # llmcompressor packages
     "llmcompressor~=0.8.1",
     "lm-eval~=0.4.9",
+    "compressed-tensors==0.12.2",
 
     # Datascience and useful extensions
     "boto3~=1.40.52",
@@ -70,12 +71,6 @@ url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [tool.uv]
-
-override-dependencies = [
-    # vllm is a requirement, however, as compressed-tensors is pinned, this can't be installed together
-    "compressed-tensors",
-]
-
 # from https://redhat-internal.slack.com/archives/C079FE5H94J/p1756934476976759?thread_ts=1756933154.294109&cid=C079FE5H94J
 constraint-dependencies = [
     "loguru==0.7.3",
