@@ -24,14 +24,14 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
     CURDIR=$(pwd)
 
     # install development packages
-    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    dnf install -y --setopt=keepcache=1 https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
     # patchelf: needed by `auditwheel repair`
-    dnf install -y fribidi-devel gcc-toolset-13 lcms2-devel libimagequant-devel patchelf \
+    dnf install -y --setopt=keepcache=1 fribidi-devel gcc-toolset-13 lcms2-devel libimagequant-devel patchelf \
         libraqm-devel openjpeg2-devel tcl-devel tk-devel unixODBC-devel
 
      # Install build tools and libraries needed for compiling PyTorch/PyArrow
      if [[ $(uname -m) == "s390x" ]]; then
-         dnf install -y gcc gcc-gfortran gcc-c++ make cmake ninja-build \
+         dnf install -y --setopt=keepcache=1 gcc gcc-gfortran gcc-c++ make cmake ninja-build \
              autoconf automake libtool pkg-config \
              python3.12-devel python3-devel pybind11-devel \
              openssl-devel openblas-devel \
@@ -42,7 +42,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
              git tar wget unzip
      else
          # ppc64le packages
-         dnf install -y fribidi-devel lcms2-devel libimagequant-devel \
+         dnf install -y --setopt=keepcache=1 fribidi-devel lcms2-devel libimagequant-devel \
              libraqm-devel openjpeg2-devel tcl-devel tk-devel unixODBC-devel
      fi
 
