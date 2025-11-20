@@ -66,14 +66,14 @@ FROM cuda-base AS cuda-runtime-pytorch
 ARG PYTORCH_SOURCE_CODE=runtimes/pytorch+llmcompressor/ubi9-python-3.12
 
 LABEL name="odh-notebook-runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12" \
-  summary="Runtime CUDA pytorch-llmcompressor notebook image for ODH notebooks" \
-  description="Runtime CUDA pytorch-llmcompressor notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-  io.k8s.display-name="Runtime CUDA pytorch-llmcompressor notebook image for ODH notebooks" \
-  io.k8s.description="Runtime CUDA pytorch-llmcompressor notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-  authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-  io.openshift.build.commit.ref="main" \
-  io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/pytorch+llmcompressor/ubi9-python-3.12" \
-  io.openshift.build.image="quay.io/opendatahub/workbench-images:runtime-pytorch-llmcompressor-ubi9-python-3.12"
+    summary="Runtime CUDA pytorch-llmcompressor notebook image for ODH notebooks" \
+    description="Runtime CUDA pytorch-llmcompressor notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+    io.k8s.display-name="Runtime CUDA pytorch-llmcompressor notebook image for ODH notebooks" \
+    io.k8s.description="Runtime CUDA pytorch-llmcompressor notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+    io.openshift.build.commit.ref="main" \
+    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/pytorch+llmcompressor/ubi9-python-3.12" \
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:runtime-pytorch-llmcompressor-ubi9-python-3.12"
 
 WORKDIR /opt/app-root/bin
 
