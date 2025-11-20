@@ -82,20 +82,17 @@ EOF
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
 # Solution: --best --skip-broken does not work either, so use --nobest
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
-dnf clean all -y
+dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=1
 EOF
 
 ### END upgrade first to avoid fixable vulnerabilities
 
 # Install useful OS packages
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y tar perl mesa-libGL skopeo
-dnf clean all
-rm -rf /var/cache/dnf
+dnf install -y --setopt=keepcache=1 tar perl mesa-libGL skopeo
 EOF
 
 # (ARCH-ppc64le): since wheels are compiled from source, we need shared libs available at runtime
@@ -136,30 +133,28 @@ ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 ARG CODESERVER_VERSION=v4.104.0
 
 LABEL name="odh-notebook-code-server-ubi9-python-3.12" \
-      summary="code-server image with python 3.12 based on UBI 9" \
-      description="code-server image with python 3.12 based on UBI9" \
-      io.k8s.display-name="code-server image with python 3.12 based on UBI9" \
-      io.k8s.description="code-server image with python 3.12 based on UBI9" \
-      authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-      io.openshift.build.commit.ref="main" \
-      io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/codeserver/ubi9-python-3.12" \
-      io.openshift.build.image="quay.io/opendatahub/workbench-images:codeserver-ubi9-python-3.12"
+    summary="code-server image with python 3.12 based on UBI 9" \
+    description="code-server image with python 3.12 based on UBI9" \
+    io.k8s.display-name="code-server image with python 3.12 based on UBI9" \
+    io.k8s.description="code-server image with python 3.12 based on UBI9" \
+    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+    io.openshift.build.commit.ref="main" \
+    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/codeserver/ubi9-python-3.12" \
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:codeserver-ubi9-python-3.12"
 
 USER 0
 
 WORKDIR /opt/app-root/bin
 
 # Install useful OS packages
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
 set -Eeuxo pipefail
 PACKAGES=(
     jq git-lfs libsndfile
     # provides envsubst which is required by run-nginx.sh
     gettext
 )
-dnf install -y "${PACKAGES[@]}"
-dnf clean all
-rm -rf /var/cache/dnf
+dnf install -y --setopt=keepcache=1 "${PACKAGES[@]}"
 EOF
 
 # wait for rpm-base stage (rpm builds for ppc64le and s390x)
@@ -168,14 +163,14 @@ COPY --from=rpm-base /tmp/control /dev/null
 # Install code-server
 # Note: Use cache mounts, bind mounts fail on konflux
 # https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1755628065772589?thread_ts=1755597929.335999&cid=C04PZ7H0VA8
-RUN --mount=type=cache,from=rpm-base,source=/tmp/,target=/code-server-rpm/,rw /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 \
+    --mount=type=cache,from=rpm-base,source=/tmp/,target=/code-server-rpm/,rw /bin/bash <<'EOF'
 set -Eeuxo pipefail
 # EXPLANATION: dnf installation produces an "unsigned rpm" error from Konflux (Conforma)
 #  since we're building rpm from source, we will simply unpack it over /
 # dnf install -y "/code-server-rpm/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm"
 # dnf -y clean all --enablerepo='*'
-dnf install -y cpio
-dnf -y clean all
+dnf install -y --setopt=keepcache=1 cpio
 cd /
 rpm2cpio "/code-server-rpm/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm" | cpio -idmv
 EOF
@@ -206,12 +201,11 @@ ENV NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
 
 # Modules does not exist
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
 set -Eeuxo pipefail
 INSTALL_PKGS="bind-utils nginx nginx-mod-stream nginx-mod-http-perl httpd"
-dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
+dnf install -y --setopt=tsflags=nodocs --setopt=keepcache=1 $INSTALL_PKGS
 rpm -V $INSTALL_PKGS
-dnf -y clean all --enablerepo='*'
 EOF
 
 # Configure httpd for CGI processing

@@ -66,20 +66,17 @@ EOF
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
 # Solution: --best --skip-broken does not work either, so use --nobest
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
-dnf clean all -y
+dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=1
 EOF
 
 ### END upgrade first to avoid fixable vulnerabilities
 
 # Install useful OS packages
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y perl mesa-libGL skopeo
-dnf clean all
-rm -rf /var/cache/yum
+dnf install -y --setopt=keepcache=1 perl mesa-libGL skopeo
 EOF
 
 # Other apps and tools installed as default user
@@ -141,11 +138,9 @@ WORKDIR /opt/app-root/bin
 USER root
 
 # Install useful OS packages
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat
-dnf clean all
-rm -rf /var/cache/yum
+dnf install -y --setopt=keepcache=1 jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat
 EOF
 
 # Copy dynamically-linked mongocli built in earlier build stage
@@ -191,8 +186,7 @@ if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then
     # Add runtime libraries needed for s390x/ppc64le (OpenBLAS for PyTorch/NumPy)
     INSTALL_PKGS="$INSTALL_PKGS openblas openblas-threads"
 fi
-dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
-dnf -y clean all --enablerepo='*'
+dnf install -y --setopt=tsflags=nodocs --setopt=keepcache=1 $INSTALL_PKGS
 # Create symlink for compatibility (openblas package provides libopenblasp.so.0 but PyTorch looks for libopenblas.so.0)
 if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then
     ln -sf /usr/lib64/libopenblasp.so.0 /usr/lib64/libopenblas.so.0
