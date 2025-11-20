@@ -39,11 +39,9 @@ RUN NVIDIA_GPGKEY_SUM=d0664fbbdb8c32356d45de36c5984617217b2d0bef41b93ccecd326ba3
 ENV CUDA_VERSION=12.6.3
 
 # For libraries in the cuda-compat-* package: https://docs.nvidia.com/cuda/eula/index.html#attachment-a
-RUN dnf upgrade -y && dnf install -y \
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-c9s dnf upgrade -y --setopt=keepcache=1 && dnf install -y --setopt=keepcache=1 \
     cuda-cudart-12-6-${NV_CUDA_CUDART_VERSION} \
-    cuda-compat-12-6 \
-    && dnf clean all \
-    && rm -rf /var/cache/yum/*
+    cuda-compat-12-6
 
 # nvidia-docker 1.0
 RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf && \
@@ -69,21 +67,17 @@ ENV NV_LIBNCCL_VERSION=2.23.4
 ENV NCCL_VERSION=2.23.4
 ENV NV_LIBNCCL_PACKAGE=${NV_LIBNCCL_PACKAGE_NAME}-${NV_LIBNCCL_PACKAGE_VERSION}+cuda12.6
 
-RUN dnf install -y \
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-c9s dnf install -y --setopt=keepcache=1 \
     cuda-libraries-12-6-${NV_CUDA_LIB_VERSION} \
     cuda-nvtx-12-6-${NV_NVTX_VERSION} \
     ${NV_LIBNPP_PACKAGE} \
     libcublas-12-6-${NV_LIBCUBLAS_VERSION} \
-    ${NV_LIBNCCL_PACKAGE} \
-    && dnf clean all \
-    && rm -rf /var/cache/yum/*
+    ${NV_LIBNCCL_PACKAGE}
 
 # Install devel tools
-RUN dnf install -y \
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-c9s dnf install -y --setopt=keepcache=1 \
     make \
-    findutils \
-    && dnf clean all \
-    && rm -rf /var/cache/yum/*
+    findutils
 
 # Install CUDA cudnn9 from:
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubi9/runtime/cudnn/Dockerfile
@@ -92,17 +86,14 @@ ENV NV_CUDNN_PACKAGE=libcudnn9-cuda-12-${NV_CUDNN_VERSION}
 
 LABEL com.nvidia.cudnn.version="${NV_CUDNN_VERSION}"
 
-RUN dnf install -y \
-    ${NV_CUDNN_PACKAGE} \
-    && dnf clean all \
-    && rm -rf /var/cache/yum/*
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-c9s dnf install -y --setopt=keepcache=1 \
+    ${NV_CUDNN_PACKAGE}
 
 # Set this flag so that libraries can find the location of CUDA
 ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 
 # Install CUDA toolkit 12.6
-RUN dnf -y install cuda-toolkit-12-6 && \
-    dnf -y clean all --enablerepo="*"
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-c9s dnf -y install --setopt=keepcache=1 cuda-toolkit-12-6
 
 # Restore user workspace
 USER 1001
