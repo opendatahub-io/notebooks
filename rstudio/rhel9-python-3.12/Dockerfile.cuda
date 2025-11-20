@@ -58,14 +58,14 @@ ARG TARGETARCH
 WORKDIR /opt/app-root/bin
 
 LABEL name="odh-notebook-rstudio-server-rhel9-python-3.12" \
-    summary="RStudio Server image with python 3.12 based on Red Hat Enterprise Linux 9" \
-    description="RStudio Server image with python 3.12 based on Red Hat Enterprise Linux 9" \
-    io.k8s.display-name="RStudio Server image with python 3.12 based on Red Hat Enterprise Linux 9" \
-    io.k8s.description="RStudio Server image with python 3.12 based on Red Hat Enterprise Linux 9" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-    io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/rstudio/rhel9-python-3.12" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:rstudio-rhel9-python-3.12"
+      summary="RStudio Server image with python 3.12 based on Red Hat Enterprise Linux 9" \
+      description="RStudio Server image with python 3.12 based on Red Hat Enterprise Linux 9" \
+      io.k8s.display-name="RStudio Server image with python 3.12 based on Red Hat Enterprise Linux 9" \
+      io.k8s.description="RStudio Server image with python 3.12 based on Red Hat Enterprise Linux 9" \
+      authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+      io.openshift.build.commit.ref="main" \
+      io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/rstudio/rhel9-python-3.12" \
+      io.openshift.build.image="quay.io/opendatahub/workbench-images:rstudio-rhel9-python-3.12"
 
 USER 0
 
