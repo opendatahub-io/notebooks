@@ -83,7 +83,7 @@ COPY ${PYTORCH_SOURCE_CODE}/pylock.toml ./
 COPY --chown=1001 ${PYTORCH_SOURCE_CODE}/utils ./utils/
 ### BEGIN Download Elyra Bootstrapper
 RUN curl -fL https://raw.githubusercontent.com/opendatahub-io/elyra/refs/tags/v4.3.1/elyra/kfp/bootstrapper.py \
-  -o ./utils/bootstrapper.py
+         -o ./utils/bootstrapper.py
 # Prevent Elyra from re-installing the dependencies
 ENV ELYRA_INSTALL_PACKAGES="false"
 
