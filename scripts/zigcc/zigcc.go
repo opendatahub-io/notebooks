@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 )
@@ -15,7 +14,7 @@ const (
 
 func getTarget() string {
 	var arch string
-	switch runtime.GOARCH {
+	switch os.Getenv("ZIGCC_ARCH") {
 	case "amd64":
 		arch = "x86_64"
 	case "arm64":
@@ -25,9 +24,11 @@ func getTarget() string {
 	case "s390x":
 		arch = "s390x"
 	default:
-		fmt.Fprintf(os.Stderr, "Error: unknown architecture: %s\n", runtime.GOARCH)
+		fmt.Fprintf(os.Stderr, "Error: unknown architecture: %s\n", os.Getenv("ZIGCC_ARCH"))
 		os.Exit(1)
 	}
+
+	// target glibc 2.28 or newer (supports FORTIFY_SOURCE)
 	return arch + "-linux-gnu.2.34"
 }
 
@@ -39,10 +40,15 @@ func processArg0(arg0 string) (string, error) {
 		return "c++", nil
 
 	// `llvm-` prefix so that CMake finds it
-	case "llvm-ar":
+	// https://gitlab.kitware.com/cmake/cmake/-/issues/23554
+	// https://gitlab.kitware.com/cmake/cmake/-/issues/18712#note_1006035
+	// ../../libtool: line 1887: /mnt/ar: No such file or directory
+	case "ar", "llvm-ar":
 		return "ar", nil
-	case "llvm-ranlib":
+	case "ranlib", "llvm-ranlib":
 		return "ranlib", nil
+	case "strip", "llvm-strip":
+		return "strip", nil
 
 	default:
 		return "", fmt.Errorf("unknown wrapper name: %s", arg0)
@@ -52,6 +58,9 @@ func processArg0(arg0 string) (string, error) {
 func processArgs(args []string) []string {
 	newArgs := make([]string, 0, len(args))
 	for _, arg := range args {
+		// deal with -Wp,-D_FORTIFY_SOURCE=2:
+		//  this comes in https://github.com/giampaolo/psutil/blob/master/setup.py#L254
+		//  build defaults to using python's flags and they are the RHEL fortified ones
 		if strings.HasPrefix(arg, "-Wp,") {
 			newArgs = append(newArgs, strings.Split(arg, ",")[1:]...)
 		} else {

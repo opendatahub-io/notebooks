@@ -446,11 +446,6 @@ bin/zig-$(ZIG_VERSION):
 	tar -xJf zig-$(ARCH)-linux-$(ZIG_VERSION).tar.xz -C $$TMPDIR --strip-components=1
 	rm -rf zig-$(ARCH)-linux-$(ZIG_VERSION).tar.xz
 
-	printf '%s\n' '#!/bin/sh' 'exec /mnt/zig cc -target s390x-linux-gnu.2.34 "$@"' > $$TMPDIR/zig-cc
-	printf '%s\n' '#!/bin/sh' 'exec /mnt/zig c++ -target s390x-linux-gnu.2.34 "$@"' > $$TMPDIR/zig-c++
-	chmod +x $$TMPDIR/zig-cc
-	chmod +x $$TMPDIR/zig-c++
-
 	mv $$TMPDIR bin/zig-$(ZIG_VERSION)
 	@echo "Zig installed as bin/zig-$(ZIG_VERSION)"
 

@@ -47,22 +47,35 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(delete=True) as tmpdir:
         setup_sandbox(prereqs, pathlib.Path(tmpdir))
-        # target glibc 2.28 or newer (supports FORTIFY_SOURCE)
-        target = "s390x-linux-gnu.2.34"
         additional_arguments = [
+            # Mount the zigcc utility
             f"--volume={os.getcwd()}/bin/zig-0.15.2:/mnt",
-            # f"--env=CC=/mnt/zig cc -target {target}",
-            # f"--env=CXX=/mnt/zig c++ -target {target}",
-            f"--env=CC=/mnt/zig-cc",
-            f"--env=CXX=/mnt/zig-c++",
-            # -Wp,-D_FORTIFY_SOURCE=2
-            # https://github.com/giampaolo/psutil/blob/master/setup.py#L254
-            # defaults to using python's flags
-            # f"--env=CFLAGS=",
-            f"--env=bustcachez=",
+            f"--env=ZIGCC_ARCH={args.platform.split('/')[1]}",
+            "--unsetenv=ZIGCC_ARCH",
+            # CMake heeds these
+            "--env=CC=/mnt/cc",
+            "--env=CXX=/mnt/c++",
+            "--unsetenv=CC",
+            "--unsetenv=CXX",
+            # CMake ignores these
+            "--env=AR=/mnt/ar",
+            "--env=RANLIB=/mnt/ranlib",
+            "--env=STRIP=/mnt/strip",
+            "--unsetenv=AR",
+            "--unsetenv=RANLIB",
+            "--unsetenv=STRIP",
+            # Parallelism
+            "--env=UV_CONCURRENT_BUILDS=8",
+            "--unsetenv=UV_CONCURRENT_BUILDS",
+            "--env=UV_CONCURRENT_DOWNLOADS=10",
+            "--unsetenv=UV_CONCURRENT_DOWNLOADS",
+            # Workaround for a s390x compilation issue
             "--env=CXXFLAGS=-Dundefined=64",
-            f"--unsetenv=CC",
-            f"--unsetenv=CXX",
+            "--unsetenv=CXXFLAGS",
+
+            "--env=bustcachez=xx",
+            "--unsetenv=bustcachez",
+
             tmpdir,
         ]
         command = []
@@ -148,8 +161,8 @@ def buildinputs(
         subprocess.check_call([MAKE, "bin/zig-0.15.2"], cwd=ROOT_DIR)
     if not (ROOT_DIR / "bin/zig-0.15.2/zigcc").exists():
         subprocess.check_call([MAKE, "build"], cwd=ROOT_DIR / "scripts/zigcc")
-        shutil.copy(ROOT_DIR / "scripts/zigcc/bin/zigcc", ROOT_DIR / "bin/zig-0.15.2/zig-cc")
-        shutil.copy(ROOT_DIR / "scripts/zigcc/bin/zigcc", ROOT_DIR / "bin/zig-0.15.2/zig-c++")
+    for alias in ["cc", "c++", "ar", "llvm-ar", "ranlib", "llvm-ranlib", "strip", "llvm-strip"]:
+        shutil.copy(ROOT_DIR / "scripts/zigcc/bin/zigcc", ROOT_DIR / "bin/zig-0.15.2" / alias)
     stdout = subprocess.check_output([ROOT_DIR / "bin/buildinputs", str(dockerfile)],
                                      text=True, cwd=ROOT_DIR,
                                      env={"TARGETPLATFORM": platform, **os.environ})
