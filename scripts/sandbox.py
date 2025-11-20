@@ -50,7 +50,7 @@ def main() -> int:
         # target glibc 2.28 or newer (supports FORTIFY_SOURCE)
         target = "s390x-linux-gnu.2.34"
         additional_arguments = [
-            f"--volume={os.getcwd()}/bin/zig-0.15.1:/mnt",
+            f"--volume={os.getcwd()}/bin/zig-0.15.2:/mnt",
             # f"--env=CC=/mnt/zig cc -target {target}",
             # f"--env=CXX=/mnt/zig c++ -target {target}",
             # f"--env=CC=/mnt/zig-cc",
@@ -144,12 +144,12 @@ def buildinputs(
 ) -> list[pathlib.Path]:
     if not (ROOT_DIR / "bin/buildinputs").exists():
         subprocess.check_call([MAKE, "bin/buildinputs"], cwd=ROOT_DIR)
-    if not (ROOT_DIR / "bin/zig-0.15.1").exists():
-        subprocess.check_call([MAKE, "bin/zig-0.15.1"], cwd=ROOT_DIR)
-    if not (ROOT_DIR / "bin/zig-0.15.1/zigcc").exists():
+    if not (ROOT_DIR / "bin/zig-0.15.2").exists():
+        subprocess.check_call([MAKE, "bin/zig-0.15.2"], cwd=ROOT_DIR)
+    if not (ROOT_DIR / "bin/zig-0.15.2/zigcc").exists():
         subprocess.check_call([MAKE, "build"], cwd=ROOT_DIR / "scripts/zigcc")
-        shutil.copy(ROOT_DIR / "scripts/zigcc/bin/zigcc", ROOT_DIR / "bin/zig-0.15.1/zig-cc")
-        shutil.copy(ROOT_DIR / "scripts/zigcc/bin/zigcc", ROOT_DIR / "bin/zig-0.15.1/zig-c++")
+        shutil.copy(ROOT_DIR / "scripts/zigcc/bin/zigcc", ROOT_DIR / "bin/zig-0.15.2/zig-cc")
+        shutil.copy(ROOT_DIR / "scripts/zigcc/bin/zigcc", ROOT_DIR / "bin/zig-0.15.2/zig-c++")
     stdout = subprocess.check_output([ROOT_DIR / "bin/buildinputs", str(dockerfile)],
                                      text=True, cwd=ROOT_DIR,
                                      env={"TARGETPLATFORM": platform, **os.environ})
