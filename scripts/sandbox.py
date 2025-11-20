@@ -64,17 +64,9 @@ def main() -> int:
             "--unsetenv=AR",
             "--unsetenv=RANLIB",
             "--unsetenv=STRIP",
-            # Parallelism
-            "--env=UV_CONCURRENT_BUILDS=8",
-            "--unsetenv=UV_CONCURRENT_BUILDS",
-            "--env=UV_CONCURRENT_DOWNLOADS=10",
-            "--unsetenv=UV_CONCURRENT_DOWNLOADS",
             # Workaround for a s390x compilation issue
             "--env=CXXFLAGS=-Dundefined=64",
             "--unsetenv=CXXFLAGS",
-
-            "--env=bustcachez=xx",
-            "--unsetenv=bustcachez",
 
             tmpdir,
         ]
