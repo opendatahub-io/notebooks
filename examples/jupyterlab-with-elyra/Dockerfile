@@ -18,7 +18,7 @@ FROM registry.access.redhat.com/ubi9/python-311:latest
 USER root
 
 # Install useful OS packages
-RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf dnf install -y --setopt=keepcache=1 mesa-libGL skopeo
 
 # Other apps and tools shall be installed as default user
 # - Kuberneres requires using numeric IDs for the final USER command

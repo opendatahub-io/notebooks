@@ -31,7 +31,7 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
 	# install build dependencies
 	# https://access.redhat.com/support/policy/updates/rhel-app-streams-life-cycle
 	# https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/developing_c_and_cpp_applications_in_rhel_9/assembly_additional-toolsets-for-development-rhel-9_developing-applications#cpp-compatibility-in-gcc-toolset-14_gcc-toolset-14
-	dnf install -y jq patch libtool rsync gettext gcc-toolset-14 krb5-devel libX11-devel
+	dnf install -y --setopt=keepcache=1 jq patch libtool rsync gettext gcc-toolset-14 krb5-devel libX11-devel
 
 	# starting with node-22, c++20 is required
 	. /opt/rh/gcc-toolset-14/enable
@@ -52,7 +52,7 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
 
 	# install nfpm to build rpm
 	NFPM_VERSION=$(curl -s "https://api.github.com/repos/goreleaser/nfpm/releases/latest" | jq -r '.tag_name') \
-	    && dnf install -y https://github.com/goreleaser/nfpm/releases/download/${NFPM_VERSION}/nfpm-${NFPM_VERSION:1}-1.$(uname -m).rpm
+	    && dnf install -y --setopt=keepcache=1 https://github.com/goreleaser/nfpm/releases/download/${NFPM_VERSION}/nfpm-${NFPM_VERSION:1}-1.$(uname -m).rpm
 
 	# install node
 	NVM_VERSION=$(curl -s "https://api.github.com/repos/nvm-sh/nvm/releases/latest" | jq -r '.tag_name') \

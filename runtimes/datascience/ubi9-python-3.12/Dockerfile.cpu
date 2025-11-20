@@ -29,16 +29,15 @@ EOF
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
 # Solution: --best --skip-broken does not work either, so use --nobest
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
-dnf clean all -y
+dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=1
 EOF
 
 ### END upgrade first to avoid fixable vulnerabilities
 
 # Install useful OS packages
-RUN --mount=type=cache,target=/var/cache/dnf /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Building for architecture: ${TARGETARCH}"
 PACKAGES="perl mesa-libGL skopeo libxcrypt-compat"
@@ -51,9 +50,7 @@ if [ "$TARGETARCH" = "ppc64le" ]; then
 fi
 if [ -n "$PACKAGES" ]; then
     echo "Installing: $PACKAGES"
-    dnf install -y $PACKAGES
-    dnf clean all
-    rm -rf /var/cache/yum
+    dnf install -y --setopt=keepcache=1 $PACKAGES
 fi
 EOF
 
@@ -141,14 +138,13 @@ EOF
 
 # Build pyarrow optimized for s390x
 RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=cache,target=/root/.cache/dnf /bin/bash <<'EOF'
+    --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "s390x" ]; then
     # Install build dependencies
-    dnf install -y cmake make gcc-c++ pybind11-devel wget git \
+    dnf install -y --setopt=keepcache=1 cmake make gcc-c++ pybind11-devel wget git \
         openssl-devel zlib-devel bzip2-devel lz4-devel \
         ninja-build
-    dnf clean all
     # Source the environment variables
     source /etc/profile.d/s390x.sh
     # Clone specific version of arrow
