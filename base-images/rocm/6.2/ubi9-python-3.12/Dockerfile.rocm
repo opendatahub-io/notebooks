@@ -33,14 +33,14 @@ echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
     echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
     dnf install -y --setopt=keepcache=1 \
-    rocm-core hip-runtime-amd \
+      rocm-core hip-runtime-amd \
     # system utilities
-    rocm-smi-lib rocminfo \
-    rocblas rocsolver rocfft rocrand rocsparse miopen-hip rccl \
+      rocm-smi-lib rocminfo \
+      rocblas rocsolver rocfft rocrand rocsparse miopen-hip rccl \
     # HIP (Heterogeneous-compute Interface for Portability)
-    hipblas hipblaslt hipfft hipsparse hiprand hipsolver \
+      hipblas hipblaslt hipfft hipsparse hiprand hipsolver \
     # suitesparse's /lib64/libspqr.so.2.0.9 needs libtbb.so.2
-    tbb
+      tbb
 
 # https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/post-install.html#configure-rocm-shared-objects
 RUN tee --append /etc/ld.so.conf.d/rocm.conf <<EOF
