@@ -453,7 +453,7 @@ else ifeq ($(ARCH),arm64)
     ARCH := aarch64
 endif
 
-ZIG_VERSION := 0.15.1
+ZIG_VERSION := 0.15.2
 ZIG_BINARY := zig-$(ZIG_VERSION)
 
 bin/zig-$(ZIG_VERSION):
