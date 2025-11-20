@@ -72,7 +72,7 @@ USER 0
 ENV R_VERSION=4.5.1
 
 # Install R
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
 set -Eeuxo pipefail
 dnf install -y dnf-plugins-core
 if command -v subscription-manager &> /dev/null; then
@@ -105,7 +105,7 @@ COPY /rstudio/utils /tmp/utils
 
 # Install RStudio
 ARG RSTUDIO_RPM=rstudio-server-rhel-2025.09.0-387-x86_64.rpm
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
 set -Eeuxo pipefail
 wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/${RSTUDIO_RPM}
 dnf install -y --setopt=keepcache=1 ${RSTUDIO_RPM}
@@ -146,7 +146,7 @@ ENV NGINX_VERSION=1.24 \
   NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
 
 # Modules does not exist
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
 set -Eeuxo pipefail
 dnf -y module enable nginx:$NGINX_VERSION
 INSTALL_PKGS="nss_wrapper bind-utils gettext hostname nginx nginx-mod-stream nginx-mod-http-perl httpd"
