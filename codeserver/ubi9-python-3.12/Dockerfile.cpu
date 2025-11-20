@@ -24,7 +24,11 @@ ARG CODESERVER_VERSION=v4.104.0
 COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh .
 
 # create dummy file to ensure this stage is awaited before installing rpm
-RUN ./get_code_server_rpm.sh && touch /tmp/control
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 /bin/bash <<'EOF'
+set -Eeuxo pipefail
+./get_code_server_rpm.sh
+touch /tmp/control
+EOF
 
 #######################
 # wheel caching stage #
@@ -47,7 +51,8 @@ COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
 # Important: Since HOME & USER for the python-312 has been changed,
 #            we need to ensure the same cache directory is mounted in
 #            the final stage with the necessary permissions to consume from cache
-RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 \
+    --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
 set -Eeuxo pipefail
 pip install --no-cache-dir uv
 # the devel script is ppc64le and s390x specific - sets up build-time dependencies
