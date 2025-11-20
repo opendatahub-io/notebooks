@@ -23,24 +23,24 @@ ARG AMDGPU_VERSION=6.2.4
 # so we are only installing meta packages of rocm
 # ref: https://rocm.docs.amd.com/projects/install-on-linux/en/develop/reference/package-manager-integration.html#packages-in-rocm-programming-models
 RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
-  echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
-  echo "baseurl=https://repo.radeon.com/rocm/rhel9/$ROCM_VERSION/main" >> /etc/yum.repos.d/rocm.repo && \
-  echo "enabled=1" >> /etc/yum.repos.d/rocm.repo && \
-  echo "gpgcheck=0" >> /etc/yum.repos.d/rocm.repo && \
-  echo "[amdgpu]" > /etc/yum.repos.d/amdgpu.repo && \
-  echo "name=amdgpu" >> /etc/yum.repos.d/amdgpu.repo && \
-  echo "baseurl=https://repo.radeon.com/amdgpu/$AMDGPU_VERSION/rhel/9.4/main/x86_64" >> /etc/yum.repos.d/amdgpu.repo && \
-  echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo && \
-  echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
-  dnf install -y --setopt=keepcache=1 \
-  rocm-core hip-runtime-amd \
-  # system utilities
-  rocm-smi-lib rocminfo \
-  rocblas rocsolver rocfft rocrand rocsparse miopen-hip rccl \
-  # HIP (Heterogeneous-compute Interface for Portability)
-  hipblas hipblaslt hipfft hipsparse hiprand hipsolver \
-  # suitesparse's /lib64/libspqr.so.2.0.9 needs libtbb.so.2
-  tbb
+echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
+    echo "baseurl=https://repo.radeon.com/rocm/rhel9/$ROCM_VERSION/main" >> /etc/yum.repos.d/rocm.repo && \
+    echo "enabled=1" >> /etc/yum.repos.d/rocm.repo && \
+    echo "gpgcheck=0" >> /etc/yum.repos.d/rocm.repo && \
+    echo "[amdgpu]" > /etc/yum.repos.d/amdgpu.repo && \
+    echo "name=amdgpu" >> /etc/yum.repos.d/amdgpu.repo && \
+    echo "baseurl=https://repo.radeon.com/amdgpu/$AMDGPU_VERSION/rhel/9.4/main/x86_64" >> /etc/yum.repos.d/amdgpu.repo && \
+    echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo && \
+    echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
+    dnf install -y --setopt=keepcache=1 \
+    rocm-core hip-runtime-amd \
+    # system utilities
+    rocm-smi-lib rocminfo \
+    rocblas rocsolver rocfft rocrand rocsparse miopen-hip rccl \
+    # HIP (Heterogeneous-compute Interface for Portability)
+    hipblas hipblaslt hipfft hipsparse hiprand hipsolver \
+    # suitesparse's /lib64/libspqr.so.2.0.9 needs libtbb.so.2
+    tbb
 
 # https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/post-install.html#configure-rocm-shared-objects
 RUN tee --append /etc/ld.so.conf.d/rocm.conf <<EOF
