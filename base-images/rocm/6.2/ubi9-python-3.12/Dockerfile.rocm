@@ -23,7 +23,7 @@ ARG AMDGPU_VERSION=6.2.4
 # so we are only installing meta packages of rocm
 # ref: https://rocm.docs.amd.com/projects/install-on-linux/en/develop/reference/package-manager-integration.html#packages-in-rocm-programming-models
 RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=dnf-ubi9 echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
-echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
+    echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
     echo "baseurl=https://repo.radeon.com/rocm/rhel9/$ROCM_VERSION/main" >> /etc/yum.repos.d/rocm.repo && \
     echo "enabled=1" >> /etc/yum.repos.d/rocm.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/rocm.repo && \
