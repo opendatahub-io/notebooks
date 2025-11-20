@@ -4,16 +4,46 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 )
 
+const (
+	zig = "/mnt/zig"
+)
+
+func getTarget() string {
+	var arch string
+	switch runtime.GOARCH {
+	case "amd64":
+		arch = "x86_64"
+	case "arm64":
+		arch = "aarch64"
+	case "ppc64le":
+		arch = "ppc64le"
+	case "s390x":
+		arch = "s390x"
+	default:
+		fmt.Fprintf(os.Stderr, "Error: unknown architecture: %s\n", runtime.GOARCH)
+		os.Exit(1)
+	}
+	return arch + "-linux-gnu.2.34"
+}
+
 func processArg0(arg0 string) (string, error) {
 	switch arg0 {
-	case "zig-cc":
+	case "cc":
 		return "cc", nil
-	case "zig-c++":
+	case "c++":
 		return "c++", nil
+
+	// `llvm-` prefix so that CMake finds it
+	case "llvm-ar":
+		return "ar", nil
+	case "llvm-ranlib":
+		return "ranlib", nil
+
 	default:
 		return "", fmt.Errorf("unknown wrapper name: %s", arg0)
 	}
@@ -39,13 +69,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	newArgs := make([]string, 0, len(os.Args)+4)
-	newArgs = append(newArgs,
-		"/mnt/zig", // Path to the real Zig executable.
+	target := getTarget()
+
+	newArgs := []string{
+		zig,
 		subcommand,
-		"-target",
-		"s390x-linux-gnu.2.34",
-	)
+	}
+	if subcommand == "cc" || subcommand == "c++" {
+		newArgs = append(newArgs, "-target", target)
+	}
 	newArgs = append(newArgs, processArgs(os.Args[1:])...)
 
 	env := os.Environ()
