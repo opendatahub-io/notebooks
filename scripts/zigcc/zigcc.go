@@ -4,15 +4,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 )
 
 const (
-	zig = "/mnt/zig"
+	zig          = "/mnt/zig"
+	glibcVersion = "2.34"
 )
 
-func getTarget() string {
+func getTarget(subcommand string, args []string) string {
 	var arch string
 	switch os.Getenv("ZIGCC_ARCH") {
 	case "amd64":
@@ -29,7 +31,24 @@ func getTarget() string {
 	}
 
 	// target glibc 2.28 or newer (supports FORTIFY_SOURCE)
-	return arch + "-linux-gnu.2.34"
+	//return arch + "-linux-gnu"
+	// specify glibc version with . separator between gnu and the version, otherwise
+	//  error: unable to parse target query 'x86_64-linux-gnu2.34': UnknownApplicationBinaryInterface
+	//  error: unable to parse target query 'x86_64-linux-gnu+2.34': UnknownApplicationBinaryInterface
+	//  error: unable to parse target query 'x86_64-unknown-linux-gnu.2.34': UnknownOperatingSystem
+	//  error: unable to parse target query 'x86_64-linux-gnuabi2.34': UnknownApplicationBinaryInterface
+	// but for some reason, I'm still having problems with npm
+	//  zig c++ -target s390x-linux-gnu.2.34 -o Release/obj.target/windows.node -shared -pthread -rdynamic -m64 -march=z196 -Wl,-soname=windows.node -Wl,--start-group -Wl,--end-group
+	//  npm error zig: error: version '.2.34' in target triple 's390x-unknown-linux-gnu.2.34' is invalid
+	if subcommand == "c++" {
+		// https://github.com/ziglang/zig/issues/25994#issuecomment-3562961055
+		return arch + "-linux-gnu"
+	}
+	if slices.Contains(args, "--version") || slices.Contains(args, "-v") {
+		// https://github.com/ziglang/zig/issues/22269
+		return arch + "-linux-gnu"
+	}
+	return arch + "-linux-gnu" + "." + glibcVersion
 }
 
 func processArg0(arg0 string) (string, error) {
@@ -78,7 +97,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	target := getTarget()
+	argv := os.Args[1:]
+	target := getTarget(subcommand, argv)
 
 	newArgs := []string{
 		zig,
@@ -86,8 +106,16 @@ func main() {
 	}
 	if subcommand == "cc" || subcommand == "c++" {
 		newArgs = append(newArgs, "-target", target)
+		// codeserver: :33:10: fatal error: 'X11/Xlib.h' file not found
+		// -isystem=... does not work, requires passing as two separate args
+		newArgs = append(newArgs,
+			"--sysroot", "/",
+			"-isystem", "/usr/include",
+			"-L/usr/lib64",
+			"-isystem", "/usr/local/include",
+			"-L/usr/local/lib64")
 	}
-	newArgs = append(newArgs, processArgs(os.Args[1:])...)
+	newArgs = append(newArgs, processArgs(argv)...)
 
 	env := os.Environ()
 	if err := syscall.Exec(newArgs[0], newArgs, env); err != nil {
