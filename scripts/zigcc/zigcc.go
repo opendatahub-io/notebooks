@@ -20,11 +20,11 @@ func getTarget() string {
 	case "arm64":
 		arch = "aarch64"
 	case "ppc64le":
-		arch = "ppc64le"
+		arch = "powerpc64le"
 	case "s390x":
 		arch = "s390x"
 	default:
-		fmt.Fprintf(os.Stderr, "Error: unknown architecture: %s\n", os.Getenv("ZIGCC_ARCH"))
+		fmt.Fprintf(os.Stderr, "zigcc.go: Error: unknown architecture: %s\n", os.Getenv("ZIGCC_ARCH"))
 		os.Exit(1)
 	}
 
@@ -51,7 +51,7 @@ func processArg0(arg0 string) (string, error) {
 		return "strip", nil
 
 	default:
-		return "", fmt.Errorf("unknown wrapper name: %s", arg0)
+		return "", fmt.Errorf("zigcc.go: Error: unknown wrapper name: %s", arg0)
 	}
 }
 
@@ -74,7 +74,7 @@ func main() {
 	arg0 := filepath.Base(os.Args[0])
 	subcommand, err := processArg0(arg0)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "zigcc.go: Error: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -91,7 +91,7 @@ func main() {
 
 	env := os.Environ()
 	if err := syscall.Exec(newArgs[0], newArgs, env); err != nil {
-		fmt.Fprintf(os.Stderr, "Error executing zig: %v\n", err)
+		fmt.Fprintf(os.Stderr, "zigcc.go: Error executing zig: %v\n", err)
 		os.Exit(1)
 	}
 }
