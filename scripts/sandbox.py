@@ -65,7 +65,11 @@ def main() -> int:
             "--unsetenv=RANLIB",
             "--unsetenv=STRIP",
             # Workaround for a s390x compilation issue
-            "--env=CXXFLAGS=-Dundefined=64",
+            # Codeserver: SPDLOG_CONSTEXPR_FUNC is to work around a consteval issue with zig c++
+            #  ../deps/spdlog/include/spdlog/details/fmt_helper.h:105:54: error: call to consteval function 'fmt::basic_format_string<...>' is not a constant expression
+            #  Clang (via Zig) is stricter about consteval requirements than GCC
+            #  The format string "{:02}" cannot be evaluated as a constant expression in this context
+            "--env=CXXFLAGS=-Dundefined=64 -DFMT_CONSTEVAL= -DSPDLOG_CONSTEXPR_FUNC=",
             "--unsetenv=CXXFLAGS",
 
             tmpdir,
