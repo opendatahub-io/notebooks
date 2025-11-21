@@ -82,6 +82,18 @@ func processArgs(args []string) []string {
 		//  build defaults to using python's flags and they are the RHEL fortified ones
 		if strings.HasPrefix(arg, "-Wp,") {
 			newArgs = append(newArgs, strings.Split(arg, ",")[1:]...)
+
+		} else if arg == "-mtune=generic" {
+			// error: unknown target CPU 'generic'
+			// https://github.com/ziglang/zig/issues/12767
+			continue
+
+		} else if strings.HasPrefix(arg, "-mcpu=power") {
+			// error: unknown CPU: 'power9'
+			newArgs = append(newArgs, "-mcpu=pwr"+arg[len("-mcpu=power"):])
+		} else if strings.HasPrefix(arg, "-mtune=power") {
+			newArgs = append(newArgs, "-mtune=pwr"+arg[len("-mtune=power"):])
+
 		} else {
 			newArgs = append(newArgs, arg)
 		}
