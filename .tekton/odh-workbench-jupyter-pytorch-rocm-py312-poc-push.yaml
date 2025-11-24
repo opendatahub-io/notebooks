@@ -28,6 +28,8 @@ spec:
     value: jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.rocm
   - name: path-context
     value: .
+  - name: build-args-file
+    value: jupyter/rocm/pytorch/ubi9-python-3.12/build-args/rocm.conf
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
