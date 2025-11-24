@@ -13,6 +13,29 @@ Everything that's running in the container will run slower, because it has to ru
 
 This slowdown is especially noticeable when compiling C/C++ code for IBM Power and Z, such as Python extension modules that don't have precompiled binaries for these architectures on PyPI.
 
+## Design
+
+Zig's cc is powerful but has
+[limitations](https://andrewkelley.me/post/zig-cc-powerful-drop-in-replacement-gcc-clang.html):
+
+* Uses Zig's bundled libc by default, not the system's
+* Different preprocessor macro behavior than native compilers
+* OpenBLAS's Makefile.prebuild (line 100) expects traditional GCC behavior
+
+We use zig cc as a convenient distribution of a foreign-architecture compiler binary.
+It would've been fine to install a host-platform version of gcc, but that's not possible as they are not built statically.
+Getting prebuilt GCC from other sources than your distro is not easy.
+Making the foreign-architecture compiller binary work requires resolving clashes with the libs installed in the image.
+
+!. Offload compilation to the upstream steps of building a Dockerfile
+RPMs and wheels can be built by AIPCC, then downloaded and installed in the container.
+That way there would be no need to compile during the container build.
+
+in ODH, we can build RPMs in COPR and install them from there
+
+In RHDS, we can rely on AIPCC to build the RPMs for us.
+Revisit deploying unreleleased versions of RPMs to containers.
+
 ## Usage
 
 ```commandline

@@ -12,6 +12,9 @@ import (
 const (
 	zig          = "/mnt/zig"
 	glibcVersion = "2.34"
+
+	CC  = "clang"
+	CXX = "clang++"
 )
 
 func getTarget(subcommand string, args []string) string {
@@ -37,11 +40,23 @@ func getTarget(subcommand string, args []string) string {
 	//  error: unable to parse target query 'x86_64-linux-gnu+2.34': UnknownApplicationBinaryInterface
 	//  error: unable to parse target query 'x86_64-unknown-linux-gnu.2.34': UnknownOperatingSystem
 	//  error: unable to parse target query 'x86_64-linux-gnuabi2.34': UnknownApplicationBinaryInterface
-	// but for some reason, I'm still having problems with npm
+	// but for some reason, I'm still having problems with npm in codeserver
 	//  zig c++ -target s390x-linux-gnu.2.34 -o Release/obj.target/windows.node -shared -pthread -rdynamic -m64 -march=z196 -Wl,-soname=windows.node -Wl,--start-group -Wl,--end-group
 	//  npm error zig: error: version '.2.34' in target triple 's390x-unknown-linux-gnu.2.34' is invalid
-	if subcommand == "c++" {
+	// and in trustyai
+	//  zig: warning: argument unused during compilation: '-c' [-Wunused-command-line-argument]
+	//  zig cc -target powerpc64le-linux-gnu.2.34 --sysroot / -isystem /usr/include -L/usr/lib64 -isystem /usr/local/include -L/usr/local/lib64 -dumpversion
+	//  zig: error: version '.2.34' in target triple 'powerpc64le-unknown-linux-gnu.2.34' is invalid
+	//  ../Makefile.power:60: your compiler is too old to fully support POWER9, getting a newer version of gcc is recommended
+
+	// "-nostdinc" "-nostdlib" and be done with it?
+	return arch + "-linux-gnu"
+
+	if subcommand == CXX {
 		// https://github.com/ziglang/zig/issues/25994#issuecomment-3562961055
+		return arch + "-linux-gnu"
+	}
+	if slices.Contains(args, "-dumpversion") {
 		return arch + "-linux-gnu"
 	}
 	if slices.Contains(args, "--version") || slices.Contains(args, "-v") {
@@ -53,9 +68,9 @@ func getTarget(subcommand string, args []string) string {
 
 func processArg0(arg0 string) (string, error) {
 	switch arg0 {
-	case "cc":
+	case CC:
 		return "cc", nil
-	case "c++":
+	case CXX:
 		return "c++", nil
 
 	// `llvm-` prefix so that CMake finds it
@@ -94,6 +109,13 @@ func processArgs(args []string) []string {
 		} else if strings.HasPrefix(arg, "-mtune=power") {
 			newArgs = append(newArgs, "-mtune=pwr"+arg[len("-mtune=power"):])
 
+			// OpenBLAS's Makefile.power detects that you are using a Clang-based compiler (Zig) and automatically appends -fno-integrated-as.
+			// /usr/bin/as -a64 -mppc64 -mlittle-endian -mpower8 -I .. -I . -o /root/.cache/zig/tmp/29e640c58e36ff72-tobf16.o /tmp/tobf16-0619ba.s -gdwarf-4
+			// > /tmp/tobf16-423d78.s:63: Error: unrecognized opcode: `extswsli'
+			// --env=CFLAGS=-fintegrated-as",
+		} else if arg == "-fno-integrated-as" {
+			newArgs = append(newArgs, "-fintegrated-as")
+
 		} else {
 			newArgs = append(newArgs, arg)
 		}
@@ -120,16 +142,71 @@ func main() {
 		newArgs = append(newArgs, "-target", target)
 		// codeserver: :33:10: fatal error: 'X11/Xlib.h' file not found
 		// -isystem=... does not work, requires passing as two separate args
+
+		// Kimi K2 suggests using --search-prefix= instead of --sysroot
+		newArgs = append(newArgs, "--sysroot", "/")
+
+		//// Gemini suggests disabling zig's libc
+		//switch subcommand {
+		//case CC:
+		//	newArgs = append(newArgs,
+		//		"-nostdinc", // Exclude Zig's internal headers
+		//		"-nostdlib", // Exclude Zig's startup/crt files
+		//		"-lc",       // Link against glibc's libc
+		//
+		//		// K2 also suggests -Wl,--version-script
+		//		//  # Prevents linking symbols newer than 2.17, but doesn't fix headers
+		//		//  echo '{ global: *; }; GLIBC_2.17;' > version.script
+		//		//  zig cc -target x86_64-linux-gnu.2.28 -Wl,--version-script=version.script main.c
+		//	)
+		//case CXX:
+		//	newArgs = append(newArgs, "-nostdinc++", "-nostdlib++", "-lc++")
+		//}
+
 		newArgs = append(newArgs,
-			"--sysroot", "/",
 			"-isystem", "/usr/include",
 			"-L/usr/lib64",
 			"-isystem", "/usr/local/include",
-			"-L/usr/local/lib64")
+			"-L/usr/local/lib64",
+
+			//// Get Zig's internal library path first
+			//"-isystem", "/mnt/lib/include",
+
+			//// trustryai installs the gcc13 toolset but does not activate it
+			////dnf whatprovides '**/omp.h'
+			//// /usr/lib/clang/19/include/omp.h
+			// we need to add the clang version of the library, the gcc one fails on atomics def mismatches
+			"-isystem", "/usr/lib/clang/20/include",
+			"-L/usr/lib64/llvm20/lib64",
+			//// /usr/lib/gcc/s390x-redhat-linux/11/include/omp.h
+			//// /opt/rh/gcc-toolset-13/root/usr/lib/gcc/s390x-redhat-linux/13/include/omp.h
+			//"-isystem", "/usr/lib/gcc/x86_64-redhat-linux/11/include",
+			//"-isystem", "/usr/lib/gcc/aarch64-redhat-linux/11/include",
+			//"-isystem", "/usr/lib/gcc/ppc64le-redhat-linux/11/include",
+			//"-isystem", "/usr/lib/gcc/s390x-redhat-linux/11/include",
+
+			// https://github.com/llvm/llvm-project/issues/109993
+			// putting clang-based zigcc where previously gcc was expected causes headaches
+			// it worked for the simple things, but for the more complicated ones it's a problem
+			// and another gotcha will be when some images use the developer toolset with newer gcc
+
+			// it is super hard to inject all this transparently
+		)
 	}
 	newArgs = append(newArgs, processArgs(argv)...)
 
+	//// these will be at the end of the command line and will overpower everything that came before
+	//switch subcommand {
+	//case CC:
+	//	newArgs = append(newArgs, cflags...)
+	//case CXX:
+	//	newArgs = append(newArgs, cxxflags...)
+	//}
+
 	env := os.Environ()
+	// TODO: I should introduce ccache here, so that it caches the modified args, not original cmdline
+	// anyways, ccache is not really very helpful right now; need to evaluate if it is worth it overall
+	// the hit rate when I tried this was extremely low, but nonzero; what's going on?
 	if err := syscall.Exec(newArgs[0], newArgs, env); err != nil {
 		fmt.Fprintf(os.Stderr, "zigcc.go: Error executing zig: %v\n", err)
 		os.Exit(1)

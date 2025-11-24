@@ -57,23 +57,26 @@ def main() -> int:
             f"--env=ZIGCC_ARCH={args.platform.split('/')[1]}",
             "--unsetenv=ZIGCC_ARCH",
             # CMake heeds these
-            "--env=CC=/mnt/cc",
-            "--env=CXX=/mnt/c++",
+            "--env=CC=/mnt/clang",
+            "--env=CXX=/mnt/clang++",
             "--unsetenv=CC",
             "--unsetenv=CXX",
             # CMake ignores these
-            "--env=AR=/mnt/ar",
-            "--env=RANLIB=/mnt/ranlib",
-            "--env=STRIP=/mnt/strip",
+            "--env=AR=/mnt/llvm-ar",
+            "--env=RANLIB=/mnt/llvm-ranlib",
+            "--env=STRIP=/mnt/llvm-strip",
             "--unsetenv=AR",
             "--unsetenv=RANLIB",
             "--unsetenv=STRIP",
             # Workaround for a s390x compilation issue
+
             # Codeserver: SPDLOG_CONSTEXPR_FUNC is to work around a consteval issue with zig c++
             #  ../deps/spdlog/include/spdlog/details/fmt_helper.h:105:54: error: call to consteval function 'fmt::basic_format_string<...>' is not a constant expression
             #  Clang (via Zig) is stricter about consteval requirements than GCC
             #  The format string "{:02}" cannot be evaluated as a constant expression in this context
+
             "--env=CXXFLAGS=-Dundefined=64 -DFMT_CONSTEVAL= -DSPDLOG_CONSTEXPR_FUNC=",
+            # "--unsetenv=CFLAGS",
             "--unsetenv=CXXFLAGS",
 
             tmpdir,
@@ -177,7 +180,14 @@ def buildinputs(
         subprocess.check_call([MAKE, "bin/zig-0.15.2"], cwd=ROOT_DIR)
     if not (ROOT_DIR / "bin/zig-0.15.2/zigcc").exists():
         subprocess.check_call([MAKE, "build"], cwd=ROOT_DIR / "scripts/zigcc")
-    for alias in ["cc", "c++", "ar", "llvm-ar", "ranlib", "llvm-ranlib", "strip", "llvm-strip"]:
+    # Openblas failed to compile
+    # https://github.com/OpenMathLib/OpenBLAS/discussions/5169#discussioncomment-12489095
+    # During shared library creation: The exports/Makefile checks the compiler name to decide whether to add -lomp (clang) or -lgomp (gcc)
+    # When compiler is named "cc": Detection fails → no OpenMP library appended → linking fails
+    # ld.lld: error: undefined reference: omp_get_max_threads
+    # >>> referenced by ../libopenblasp-r0.3.30.so (disallowed by --no-allow-shlib-undefined)
+    # to fix this, name the compiler binary alias "clang" and "clang++"
+    for alias in ["clang", "clang++", "ar", "llvm-ar", "ranlib", "llvm-ranlib", "strip", "llvm-strip"]:
         shutil.copy(ROOT_DIR / "scripts/zigcc/bin/zigcc", ROOT_DIR / "bin/zig-0.15.2" / alias)
     stdout = subprocess.check_output([ROOT_DIR / "bin/buildinputs",
                                       *[f"-build-arg={k}={v}" for k, v in build_args.items()],

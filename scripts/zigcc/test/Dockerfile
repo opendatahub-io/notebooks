@@ -2,6 +2,9 @@ FROM quay.io/centos/centos:stream9
 
 # Don't install the GCC compiler, we will inject our own CC
 #RUN dnf install -y gcc
+# But do install glibc because I'm now disabling the one embedded in zig
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf \
+    dnf install -y glibc-devel
 
 # Check CC is in fact injected
 RUN /bin/bash <<'EOF'
@@ -12,7 +15,7 @@ EOF
 
 #RUN /mnt/zig clang -x c /dev/null --no-default-config -target s390x-unknown-linux5.10.0-gnu2.34.0 -mhard-float -fno-PIE -fPIC -gdwarf-4 -gdwarf32 -fno-lto -MD -MV -MF /root/.cache/zig/tmp/4ee4407ea328f5c8-null.o.d -fhosted -fno-omit-frame-pointer
 #RUN /mnt/zig cc -target s390x-linux-gnu.2.34 --sysroot / -isystem /usr/include -L/usr/lib64 -isystem /usr/local/include -L/usr/local/lib64 -dM -E -x c /dev/null
-RUN /mnt/zig -cc1 -triple x86_64-unknown-linux5.10.0-gnu2.34.0 -E -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name abi-note.S -mrelocation-model pic -pic-level 2 -fhalf-no-semantic-interposition -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math
+#RUN /mnt/zig -cc1 -triple x86_64-unknown-linux5.10.0-gnu2.34.0 -E -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name abi-note.S -mrelocation-model pic -pic-level 2 -fhalf-no-semantic-interposition -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math
 
 # Create a directory for the program
 RUN mkdir /app

@@ -1,0 +1,121 @@
+# Create a minimal self-contained arm64 environment to run the ppc64le cross-compiler
+
+# Use dnf --instalroot to install only the smallest set of packages necessary
+
+# Install  28 Packages
+# Total download size: 55 M
+# Installed size: 181 M
+
+FROM --platform=linux/arm64 quay.io/centos/centos:stream9 as arm64-sysroot-bootstrapper
+# RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf <<'EOF'
+    set -Eeuxo pipefail
+    dnf install -y epel-release
+    dnf search libstdc
+    dnf \
+      --installroot=/sysroot \
+      --releasever=9 \
+      --setopt=tsflags=nodocs \
+      --setopt=install_weak_deps=False \
+      install \
+        -y \
+        gcc-ppc64le-linux-gnu \
+        gcc-c++-ppc64le-linux-gnu
+    dnf --installroot=/sysroot clean all
+EOF
+
+# consider binutils-powerpc64-linux-gnu
+# also, fedora has libstdc++-devel-powerpc64-linux-gnu
+
+# Copy out the /sysroot directory to a separate image
+FROM scratch as arm64-sysroot
+COPY --from=arm64-sysroot-bootstrapper /sysroot /
+# for debugging, so that this can be podman run; actually useless, don't even have ls
+#ENTRYPOINT ["/bin/bash"]
+
+# Demo out the usage of the cross-compiling environment using RUN --mount=from=arm64-sysroot
+FROM --platform=linux/ppc64le quay.io/centos/centos:stream9 as builder
+
+# There is a choice whether to have the gcc --sysroot be the arm64-sysroot or this builder image
+# For simplicity, we'll use this buildroot image and install -devel libraries on it, same as the regular builder stage pattern
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf \
+    dnf install -y glibc-devel libstdc++-devel
+
+# Mount the arm64-sysroot as /mnt and hack around the paths to make it work
+RUN --mount=from=arm64-sysroot,target=/mnt,type=bind <<'EOF'
+set -Eeuxo pipefail
+
+# the cross-compile gcc needs aarch64 dynamic loader, the ELF hardcodes path to it
+cp /mnt/lib/ld-linux-aarch64.so.1 /usr/lib/
+
+# The dynamic loader then needs to be able to find the libraries in arm64-sysroot
+export LD_LIBRARY_PATH=/mnt/usr/lib64
+
+# Now we can already run gcc, but it is not able to compile anything yet
+/mnt/usr/bin/powerpc64le-linux-gnu-gcc --version
+
+# There are some paths that GCC needs that we need to set
+CC1_PATH=$(find /mnt/usr/libexec/gcc -name cc1 | head -n 1 | xargs dirname)
+echo "Found GCC internal tools at: $CC1_PATH"
+
+GCC_BIN_PATH=/mnt/usr/powerpc64le-linux-gnu/bin/
+echo "GCC tool binaries at: $GCC_BIN_PATH"
+
+# keep in mind GCC_EXEC_PREFIX env var, it may be useful later
+# also the -print-search-dirs gcc option
+# and the -v option is pretty useful
+
+# GCC was compiled with --with-ld=/usr/bin/powerpc64le-linux-gnu-ld (see gcc -v, it prints that)
+# This means collect2 (the linker driver) is strictly looking for a file named powerpc64le-linux-gnu-ld
+cp /mnt/usr/bin/powerpc64le-linux-gnu-ld /usr/bin/powerpc64le-linux-gnu-ld
+
+# Now we're ready to compile something
+cat > hello.c <<EOFF
+#include <stdio.h>
+int main() {
+    printf("Hello, World!\n");
+    return 0;
+}
+EOFF
+
+/mnt/usr/bin/powerpc64le-linux-gnu-gcc \
+  -B "$CC1_PATH/" \
+  -B "$GCC_BIN_PATH" \
+  --sysroot / \
+  -o hello hello.c
+
+# Some more headers
+
+# /usr/include/c++/11
+NATIVE_INC=$(find /usr/include/c++ -maxdepth 1 -type d -name "[0-9]*" | sort -rn | head -n 1)
+# /usr/include/c++/11/ppc64le-redhat-linux/
+NATIVE_ARCH_INC=$(find "$NATIVE_INC" -maxdepth 1 -type d -name "*ppc64le*" | head -n 1)
+# /usr/lib/gcc/ppc64le-redhat-linux/11
+NATIVE_LIB_PATH=$(find /usr/lib/gcc -name "libstdc++.so" | grep ppc64le | head -n 1 | xargs dirname)
+
+# The same for C++
+cat > hello.cc <<EOFF
+#include <iostream>
+int main() {
+    std::cout << "Hello, World!" << std::endl;
+    return 0;
+}
+EOFF
+
+/mnt/usr/bin/powerpc64le-linux-gnu-g++ -v \
+  -B "$CC1_PATH/" \
+  -B "$GCC_BIN_PATH" \
+  --sysroot / \
+  -I "$NATIVE_INC" \
+  -I "$NATIVE_ARCH_INC" \
+  -L "$NATIVE_LIB_PATH" \
+  -o hello++ hello.cc
+EOF
+
+FROM --platform=linux/ppc64le quay.io/centos/centos:stream9
+COPY --from=builder /hello /hello++ /
+RUN ./hello && ldd ./hello
+RUN ./hello++ && ldd ./hello++
+CMD ["/hello"]
+
+#  build -t cross -f scripts/zigcc/test/Dockerfile.crosscompiler

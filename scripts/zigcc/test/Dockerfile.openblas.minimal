@@ -1,0 +1,91 @@
+FROM quay.io/centos/centos:stream9
+
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+set -Eeuxo pipefail
+# this is clang variant of the library, for zig cc
+dnf install -y libomp-devel
+EOF
+
+RUN /bin/bash <<'OUTEREOF'
+#!/bin/bash
+set -Eeuxo pipefail
+
+echo "=== OpenBLAS OpenMP Linking Issue Reproducer ==="
+echo ""
+
+# Create a temporary directory
+TMPDIR=$(mktemp -d)
+cd "$TMPDIR"
+
+# Create minimal source that uses the same OpenMP functions as OpenBLAS
+cat > openblas_omp_stub.c << 'EOF'
+#include <omp.h>
+
+/* Functions that mirror OpenBLAS's OpenMP usage */
+int openblas_get_num_threads(void) { return omp_get_max_threads(); }
+int openblas_get_parallel(void) { return omp_in_parallel(); }
+void openblas_init_lock(void *lock) { omp_init_lock((omp_lock_t*)lock); }
+void openblas_set_lock(void *lock) { omp_set_lock((omp_lock_t*)lock); }
+void openblas_unset_lock(void *lock) { omp_unset_lock((omp_lock_t*)lock); }
+int openblas_place_procs(void) { return omp_get_place_num_procs(0); }
+EOF
+
+# Compile flags from the failing OpenBLAS build
+CFLAGS="-O2 -fopenmp -fPIC -Wall -m64"
+
+echo "1. Compiling with OpenMP support..."
+/mnt/clang $CFLAGS -c openblas_omp_stub.c -o openblas_omp_stub.o
+
+echo "2. Creating static library (like libopenblasp-r0.3.30.a)..."
+/mnt/ar rcs libopenblasp.a openblas_omp_stub.o
+
+echo ""
+echo "3. Reproducing the failure:"
+echo "   This mimics the OpenBLAS shared library link command:"
+
+LINK_CMD="/mnt/clang $CFLAGS -shared -o libopenblasp.so \
+    -Wl,--whole-archive libopenblasp.a -Wl,--no-whole-archive \
+    -Wl,-soname,libopenblas.so.0 -Wl,--no-allow-shlib-undefined \
+    -lm -lpthread"
+
+echo "   Command: $LINK_CMD"
+echo ""
+
+if $LINK_CMD 2>&1; then
+    echo "   UNEXPECTED: Command succeeded (bug may be fixed or environment differs)"
+else
+    echo "   EXPECTED FAILURE: Undefined OpenMP symbols"
+    echo "   The key error is: 'ld.lld: error: undefined reference: omp_get_max_threads'"
+    echo "   '>>> referenced by ... (disallowed by --no-allow-shlib-undefined)'"
+fi
+
+echo ""
+echo "4. Applying the fix - explicitly link OpenMP runtime:"
+
+FIXED_LINK_CMD="/mnt/clang $CFLAGS -shared -o libopenblasp.so \
+    -Wl,--whole-archive libopenblasp.a -Wl,--no-whole-archive \
+    -Wl,-soname,libopenblas.so.0 -Wl,--no-allow-shlib-undefined \
+    -lm -lpthread -lomp"
+
+echo "   Command: $FIXED_LINK_CMD"
+echo ""
+
+if $FIXED_LINK_CMD 2>&1; then
+    echo "   SUCCESS: Shared library created with explicit -lomp"
+
+    # Verify the library links correctly
+    echo ""
+    echo "5. Verifying with a link test:"
+    cat > linktest.c << 'EOF'
+extern int openblas_get_num_threads(void);
+int main() { return openblas_get_num_threads(); }
+EOF
+
+    /mnt/clang -O2 -c linktest.c -o linktest.o
+    /mnt/clang -o linktest linktest.o ./libopenblasp.so -lomp && echo "   Link test passed!"
+else
+    echo "   STILL FAILING: OpenMP runtime may not be installed"
+    echo "   Install with: apt-get install libomp-dev  (Ubuntu/Debian)"
+    echo "   Or:           yum install libomp-devel     (Fedora/RHEL)"
+fi
+OUTEREOF

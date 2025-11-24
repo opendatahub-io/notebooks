@@ -1,0 +1,80 @@
+# Build 1: Create ARM64 sysroot containing the PPC64LE cross-compiler
+FROM --platform=linux/arm64 quay.io/centos/centos:stream9 as sysroot-builder
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked \
+    dnf install -y epel-release && \
+    dnf \
+      --installroot=/sysroot \
+      --releasever=9 \
+      --setopt=tsflags=nodocs \
+      --setopt=install_weak_deps=False \
+      install -y \
+        gcc-ppc64le-linux-gnu \
+        gcc-c++-ppc64le-linux-gnu \
+        glibc-devel.ppc64le \
+        libstdc++-devel.ppc64le
+
+# Build 2: Export the sysroot
+FROM scratch as arm64-sysroot
+COPY --from=sysroot-builder /sysroot /
+
+# Build 3: Create builder with QEMU and compile
+FROM --platform=linux/ppc64le quay.io/centos/centos:stream9 as builder
+
+# Install QEMU user-mode static for ARM64 emulation
+RUN dnf install -y qemu-user-static && \
+    # Register ARM64 binary format with binfmt_misc
+    /usr/libexec/qemu-binfmt-register aarch64
+
+# Install target development headers/libraries (for --sysroot)
+RUN dnf install -y \
+    glibc-devel.ppc64le \
+    libstdc++-devel.ppc64le
+
+# Compile using the ARM64-hosted cross-compiler
+RUN --mount=from=arm64-sysroot,target=/mnt,type=bind <<'EOF'
+set -Eeuxo pipefail
+
+# Copy ARM64 dynamic loader (needed to run the ARM64 gcc binary)
+cp /mnt/lib/ld-linux-aarch64.so.1 /usr/lib/
+
+# Set library path for ARM64 binaries
+export LD_LIBRARY_PATH=/mnt/usr/lib64
+
+# Create test C program
+cat > hello.c <<'EOFF'
+#include <stdio.h>
+int main() {
+    printf("Hello from PPC64LE, compiled by ARM64-hosted GCC!\n");
+    return 0;
+}
+EOFF
+
+# Compile (note corrected --sysroot)
+/mnt/usr/bin/powerpc64le-linux-gnu-gcc \
+  --sysroot=/mnt \
+  -o hello hello.c
+
+# Create test C++ program
+cat > hello.cc <<'EOFF'
+#include <iostream>
+int main() {
+    std::cout << "Hello C++ from PPC64LE!" << std::endl;
+    return 0;
+}
+EOFF
+
+# Compile C++ (sysroot provides all needed headers/libs)
+/mnt/usr/bin/powerpc64le-linux-gnu-g++ \
+  --sysroot=/mnt \
+  -o hello++ hello.cc
+EOF
+
+# Build 4: Final runtime image (PPC64LE)
+FROM --platform=linux/ppc64le quay.io/centos/centos:stream9-minimal
+COPY --from=builder /hello /hello++ /
+RUN echo "Running compiled binaries:" && \
+    ./hello && \
+    ldd ./hello && \
+    ./hello++ && \
+    ldd ./hello++
+CMD ["/hello"]
