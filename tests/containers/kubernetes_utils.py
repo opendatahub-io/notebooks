@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextlib
 import functools
 import logging
-import platform
 import socket
 import subprocess
 import threading
@@ -269,11 +268,13 @@ class ImageDeployment:
             self.port = p.get_actual_port()
             LOGGER.debug(f"Listening on port {self.port}")
             # Increase timeout for s390x architecture due to slower SSL/TLS negotiation
-            timeout = 60 if platform.machine() == "s390x" else 30
+            # Check image name for s390x since tests run on x86_64 runners with emulated/cross-compiled s390x images
+            is_s390x = "s390x" in self.image.lower()
+            connection_timeout = 60 if is_s390x else 30
             Wait.until(
                 "Connecting to pod succeeds",
                 1,
-                timeout,
+                connection_timeout,
                 lambda: requests.get(f"http://localhost:{self.port}").status_code == 200,
             )
             LOGGER.debug("Done setting up portforward")
