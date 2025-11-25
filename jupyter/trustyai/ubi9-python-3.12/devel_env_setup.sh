@@ -58,7 +58,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
      source $HOME/.cargo/env
 
      # Install cmake via pip (already available via dnf for s390x, but this ensures it's in PATH)
-     uv pip install cmake
+     uv pip install --extra-index-url https://pypi.org/simple cmake
 
      # Set python alternatives for s390x
      if [[ $(uname -m) == "s390x" ]]; then
@@ -110,19 +110,21 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
         export CXXFLAGS="-O2 -pipe"
         git clone --depth 1 --branch "v${TORCH_VERSION}" --recurse-submodules --shallow-submodules https://github.com/pytorch/pytorch.git
         cd pytorch
-        pip install --no-cache-dir -r requirements.txt
+        # RHAIENG-2111: missing dep in aipcc python index
+        #  ERROR: Could not find a version that satisfies the requirement expecttest>=0.3.0 (from versions: none)
+        pip install --extra-index-url https://pypi.org/simple --no-cache-dir -r requirements.txt
         python setup.py develop
         rm -f dist/torch*+git*whl
-        MAX_JOBS=${MAX_JOBS} PYTORCH_BUILD_VERSION=${TORCH_VERSION} PYTORCH_BUILD_NUMBER=1 uv build --wheel --out-dir ${WHEELS_DIR}
+        MAX_JOBS=${MAX_JOBS} PYTORCH_BUILD_VERSION=${TORCH_VERSION} PYTORCH_BUILD_NUMBER=1 uv build --extra-index-url https://pypi.org/simple --wheel --out-dir ${WHEELS_DIR}
         echo "PyTorch build completed successfully"
     else
 	git clone --depth 1 --branch "v${TORCH_VERSION}" --recurse-submodules --shallow-submodules https://github.com/pytorch/pytorch.git
         cd pytorch
-        uv pip install -r requirements.txt
+        uv pip install --extra-index-url https://pypi.org/simple -r requirements.txt
         python setup.py develop
         rm -f dist/torch*+git*whl
         MAX_JOBS=${MAX_JOBS:-$(nproc)} \
-            PYTORCH_BUILD_VERSION=${TORCH_VERSION} PYTORCH_BUILD_NUMBER=1 uv build --wheel --out-dir ${WHEELS_DIR}
+            PYTORCH_BUILD_VERSION=${TORCH_VERSION} PYTORCH_BUILD_NUMBER=1 uv build --extra-index-url https://pypi.org/simple --wheel --out-dir ${WHEELS_DIR}
     fi
 
     cd ${CURDIR}
@@ -162,7 +164,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
     make -j${MAX_JOBS} VERBOSE=1 && \
     make install -j${MAX_JOBS} && \
     cd ../../python/ && \
-    uv pip install -v -r requirements-build.txt && \
+    uv pip install --extra-index-url https://pypi.org/simple -v -r requirements-build.txt && \
     if [[ $(uname -m) == "s390x" ]]; then
         PYARROW_WITH_PARQUET=1 \
         PYARROW_WITH_DATASET=1 \
@@ -185,10 +187,10 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
     cd ${TMP}
     git clone --recursive https://github.com/python-pillow/Pillow.git -b ${PILLOW_VERSION}
     cd Pillow
-    uv build --wheel --out-dir /pillowwheel
+    uv build --extra-index-url https://pypi.org/simple --wheel --out-dir /pillowwheel
     : ================= Fix Pillow Wheel ====================
     cd /pillowwheel
-    uv pip install auditwheel
+    uv pip install --extra-index-url https://pypi.org/simple auditwheel
     auditwheel repair pillow*.whl
     mv wheelhouse/pillow*.whl ${WHEELS_DIR}
 
@@ -198,7 +200,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
     # Install wheels for s390x and ppc64le
     if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
         pip install --no-cache-dir "${WHEELS_DIR}"/*.whl
-        uv pip install --refresh ${WHEELS_DIR}/*.whl accelerate==$(grep -A1 '"accelerate"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
+        uv pip install --extra-index-url https://pypi.org/simple --refresh ${WHEELS_DIR}/*.whl accelerate==$(grep -A1 '"accelerate"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
     fi
 
     uv pip list

@@ -54,13 +54,16 @@ EOF
 
 RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
 set -Eeuxo pipefail
-pip install --no-cache-dir uv
+# RHAIENG-2111: Looking in indexes: https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/cpu-ubi9/simple/
+#  ERROR: Could not find a version that satisfies the requirement uv (from versions: none)
+pip install --no-cache-dir --extra-index-url https://pypi.org/simple uv
 
 # the devel script is ppc64le and s390x specific - sets up build-time dependencies
 source ./devel_env_setup.sh
 # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
 #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+# RHAIENG-2111: building pandas requires cython from PyPI
+UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --extra-index-url https://pypi.org/simple --requirements=./pylock.toml
 EOF
 
 ####################
@@ -252,7 +255,8 @@ RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Installing softwares and packages"
 # we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
-UV_LINK_MODE=copy uv pip install --cache-dir /root/.cache/uv --requirements=./pylock.toml
+# RHAIENG-2111: building pandas requires cython from PyPI
+UV_LINK_MODE=copy uv pip install --cache-dir /root/.cache/uv --extra-index-url https://pypi.org/simple --requirements=./pylock.toml
 # Note: debugpy wheel availabe on pypi (in uv cache) is none-any but bundles amd64.so files
 #       Build debugpy from source instead
 UV_LINK_MODE=copy uv pip install --no-cache git+https://github.com/microsoft/debugpy.git@v$(grep -A1 '\"debugpy\"' ./pylock.toml | grep -Eo '\b[0-9\.]+\b')
