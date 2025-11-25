@@ -18,6 +18,10 @@ else
     export PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig}
 fi
 
+# compiling jpype1==1.5.0 requires g++ and this gets compiled on all platforms
+# gcc and g++ is present by default on registry.access.redhat.com/ubi9/python-312:latest
+dnf install -y --setopt=keepcache=1 gcc gcc-g++
+
 WHEELS_DIR=/wheelsdir
 mkdir -p ${WHEELS_DIR}
 if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
@@ -26,8 +30,11 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
     # install development packages
     dnf install -y --setopt=keepcache=1 https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
     # patchelf: needed by `auditwheel repair`
-    dnf install -y --setopt=keepcache=1 fribidi-devel gcc-toolset-13 lcms2-devel libimagequant-devel patchelf \
+    dnf install -y --setopt=keepcache=1 fribidi-devel lcms2-devel libimagequant-devel patchelf \
         libraqm-devel openjpeg2-devel tcl-devel tk-devel unixODBC-devel
+
+    # previously we installed but never activated (added to PATH, etc.) the gcc-toolset-13, which suggests that maybe
+    # regular gcc/g++ is just fine
 
      # Install build tools and libraries needed for compiling PyTorch/PyArrow
      if [[ $(uname -m) == "s390x" ]]; then
@@ -122,7 +129,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
     # Pyarrow
     PYARROW_VERSION=$(grep -A1 '"pyarrow"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
     cd ${TMP}
-    git clone --depth 1 --branch "apache-arrow-${PYARROW_VERSION}" --recurse-submodules --shallow-submodules https://github.com/apache/arrow.git 
+    git clone --depth 1 --branch "apache-arrow-${PYARROW_VERSION}" --recurse-submodules --shallow-submodules https://github.com/apache/arrow.git
     cd arrow/cpp
     mkdir build && cd build && \
     # Set architecture-specific CMake flags
