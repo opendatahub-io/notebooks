@@ -28,6 +28,8 @@ spec:
     value: jupyter/minimal/ubi9-python-3.12/Dockerfile.cuda
   - name: path-context
     value: .
+  - name: build-args-file
+    value: jupyter/minimal/ubi9-python-3.12/build-args/konflux.cuda.conf
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
