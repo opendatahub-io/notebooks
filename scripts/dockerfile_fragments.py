@@ -33,16 +33,25 @@ def main():
         if dockerfile.is_relative_to(ROOT_DIR / "examples"):
             continue
 
-        replacements = {
-            "upgrade first to avoid fixable vulnerabilities": textwrap.dedent(r"""
-                # If we have a Red Hat subscription prepared, refresh it
+        # TODO(jdanek): go to Python 3.14 and use t-string to compose these; or daniel's jinja2 would also work
+        subscription_manager_register_refresh = r"""
                 RUN /bin/bash <<'EOF'
+                # The devops activationkey is not powerful enough, use rhoai-ide-konflux key
+                # https://redhat-internal.slack.com/archives/C07SBP17R7Z/p1764077596143619?thread_ts=1761667034.429529&cid=C07SBP17R7Z
+                subscription-manager register --org 18631088 --activationkey thisisunsafe
+
+                # If we have a Red Hat subscription prepared, refresh it
                 set -Eeuxo pipefail
                 if command -v subscription-manager &> /dev/null; then
                   subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
                 fi
                 EOF
+        """
 
+        replacements = {
+            "Subscribe with subscription manager": textwrap.dedent(subscription_manager_register_refresh),
+            "upgrade first to avoid fixable vulnerabilities": textwrap.dedent(rf"""
+                {subscription_manager_register_refresh}
                 # Problem: The operation would result in removing the following protected packages: systemd
                 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
                 # Solution: --best --skip-broken does not work either, so use --nobest

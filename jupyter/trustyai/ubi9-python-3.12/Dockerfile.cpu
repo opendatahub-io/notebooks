@@ -38,6 +38,12 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf \
     --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
 set -Eeuxo pipefail
 pip install --no-cache-dir uv
+
+# If we have a Red Hat subscription prepared, refresh it
+if command -v subscription-manager &> /dev/null; then
+  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
+fi
+
 # the devel script is ppc64le and s390x specific - sets up build-time dependencies
 source ./devel_env_setup.sh
 # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
@@ -56,8 +62,12 @@ WORKDIR /opt/app-root/bin
 USER root
 
 ### BEGIN upgrade first to avoid fixable vulnerabilities
-# If we have a Red Hat subscription prepared, refresh it
 RUN /bin/bash <<'EOF'
+# The devops activationkey is not powerful enough, use rhoai-ide-konflux key
+# https://redhat-internal.slack.com/archives/C07SBP17R7Z/p1764077596143619?thread_ts=1761667034.429529&cid=C07SBP17R7Z
+subscription-manager register --org 18631088 --activationkey thisisunsafe
+
+# If we have a Red Hat subscription prepared, refresh it
 set -Eeuxo pipefail
 if command -v subscription-manager &> /dev/null; then
   subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
