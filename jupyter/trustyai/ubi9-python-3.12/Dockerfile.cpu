@@ -192,7 +192,7 @@ USER 0
 
 # Install jre that is needed to run the trustyai library
 # Also install runtime libraries for s390x/ppc64le
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 INSTALL_PKGS="java-17-openjdk"
 ARCH=$(uname -m)

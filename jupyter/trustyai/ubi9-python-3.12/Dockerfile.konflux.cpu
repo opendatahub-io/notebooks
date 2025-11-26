@@ -52,7 +52,8 @@ EOF
 
 ### END Subscribe with subscription manager
 
-RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf \
+    --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
 set -Eeuxo pipefail
 # RHAIENG-2111: Looking in indexes: https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/cpu-ubi9/simple/
 #  ERROR: Could not find a version that satisfies the requirement uv (from versions: none)
@@ -105,11 +106,9 @@ EOF
 ### END upgrade first to avoid fixable vulnerabilities
 
 # Install useful OS packages
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y perl mesa-libGL skopeo
-dnf clean all
-rm -rf /var/cache/yum
+dnf install -y --setopt=keepcache=1 perl mesa-libGL skopeo
 EOF
 
 # Other apps and tools installed as default user
@@ -171,11 +170,9 @@ WORKDIR /opt/app-root/bin
 USER root
 
 # Install useful OS packages
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat
-dnf clean all
-rm -rf /var/cache/yum
+dnf install -y --setopt=keepcache=1 jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat
 EOF
 
 # Copy dynamically-linked mongocli built in earlier build stage
@@ -211,7 +208,7 @@ USER 0
 
 # Install jre that is needed to run the trustyai library
 # Also install runtime libraries for s390x/ppc64le
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 INSTALL_PKGS="java-17-openjdk"
 ARCH=$(uname -m)
@@ -219,8 +216,7 @@ if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then
     # Add runtime libraries needed for s390x/ppc64le (OpenBLAS for PyTorch/NumPy)
     INSTALL_PKGS="$INSTALL_PKGS openblas openblas-threads"
 fi
-dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
-dnf -y clean all --enablerepo='*'
+dnf install -y --setopt=tsflags=nodocs --setopt=keepcache=1 $INSTALL_PKGS
 # Create symlink for compatibility (openblas package provides libopenblasp.so.0 but PyTorch looks for libopenblas.so.0)
 if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then
     ln -sf /usr/lib64/libopenblasp.so.0 /usr/lib64/libopenblas.so.0
