@@ -21,7 +21,6 @@ import ocp_resources.pod
 import ocp_resources.project_project_openshift_io
 import ocp_resources.project_request
 import ocp_resources.resource
-import ocp_resources.service
 import requests
 
 from tests.containers import socket_proxy
@@ -498,7 +497,7 @@ class Utils:
 @contextlib.contextmanager
 def exposing_contextmanager(
     core_v1_api: kubernetes.client.CoreV1Api, pod: kubernetes.client.models.V1Pod
-) -> Generator[socket, None, None]:
+) -> Generator[socket]:
     # If we e.g., specify the wrong port, the pf = portforward() call succeeds,
     # but pf.connected will later flip to False
     # we need to check that _everything_ works before moving on

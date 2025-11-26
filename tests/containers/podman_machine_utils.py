@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import json
 import logging
 import socket
 import subprocess
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import tests.containers.pydantic_schemas
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 logging.basicConfig(level=logging.DEBUG)
 

@@ -1,4 +1,3 @@
-# ruff: noqa: COM819
 from __future__ import annotations
 
 import dataclasses
@@ -15,8 +14,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import packaging.requirements
-import packaging.specifiers
-import packaging.utils
 import packaging.version
 import pytest
 import yaml

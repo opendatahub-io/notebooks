@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 import testcontainers.core.container
-import testcontainers.core.waiting_utils
 
 from tests.containers import docker_utils, utils
 
