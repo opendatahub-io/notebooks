@@ -1,0 +1,17 @@
+[project]
+name = "minimal-notebook"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    # Custom packages
+    "mypackage==0.1.1",
+
+    # Data Science packages
+    {% uv_include "odh/workbenches/jupyter-datascience/pyproject.toml.j2" %}
+]
+
+[tool.uv]
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
+]

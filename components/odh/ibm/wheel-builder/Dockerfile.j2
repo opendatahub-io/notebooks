@@ -1,0 +1,85 @@
+##############################
+# wheel-builder stage        #
+# NOTE: Only used in s390x   #
+##############################
+
+FROM cpu-base AS s390x-builder
+
+USER 0
+WORKDIR /tmp/build-wheels
+
+# Set pyarrow version for s390x
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+echo 'export PYARROW_VERSION=17.0.0' >> /etc/profile.d/s390x.sh
+EOF
+
+# Build pyarrow optimized for s390x
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+set -Eeuxo pipefail
+
+# Install build dependencies
+dnf install -y --setopt=keepcache=1 cmake make gcc-c++ pybind11-devel wget git \
+    openssl-devel zlib-devel bzip2-devel lz4-devel \
+    ninja-build
+
+# Source the environment variables
+source /etc/profile.d/s390x.sh
+
+# Clone specific version of arrow
+git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git
+cd arrow
+
+# Set environment variables for build
+export ARROW_HOME=/usr/local
+export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}
+
+# Build C++ library first
+cd cpp
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=$ARROW_HOME \
+      -DARROW_PYTHON=ON \
+      -DARROW_PARQUET=ON \
+      -DARROW_ORC=ON \
+      -DARROW_FILESYSTEM=ON \
+      -DARROW_JSON=ON \
+      -DARROW_CSV=ON \
+      -DARROW_DATASET=ON \
+      -DARROW_WITH_LZ4=ON \
+      -DARROW_WITH_ZSTD=ON \
+      -DARROW_WITH_SNAPPY=OFF \
+      -DARROW_WITH_BZ2=ON \
+      -DARROW_WITH_ZLIB=ON \
+      -DARROW_BUILD_TESTS=OFF \
+      -DARROW_BUILD_BENCHMARKS=OFF \
+      -DARROW_USE_CCACHE=OFF \
+      -GNinja \
+      ..
+
+ninja install
+cd ../../python
+
+# Install Python build requirements
+pip install --no-cache-dir -r requirements-build.txt
+
+# Build Python package
+PYARROW_WITH_PARQUET=1 \
+PYARROW_WITH_DATASET=1 \
+PYARROW_WITH_FILESYSTEM=1 \
+PYARROW_WITH_JSON=1 \
+PYARROW_WITH_CSV=1 \
+PYARROW_WITH_LZ4=1 \
+PYARROW_WITH_ZSTD=1 \
+PYARROW_WITH_BZ2=1 \
+PYARROW_BUNDLE_ARROW_CPP=1 \
+PYARROW_PARALLEL=$(nproc) \
+python setup.py build_ext --build-type=release --bundle-arrow-cpp bdist_wheel
+mkdir -p /tmp/wheels
+cp dist/pyarrow-*.whl /tmp/wheels/
+
+# Ensure wheels directory exists and has content
+ls -la /tmp/wheels/
+EOF

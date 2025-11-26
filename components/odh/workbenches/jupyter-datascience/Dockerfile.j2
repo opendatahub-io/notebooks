@@ -1,0 +1,13 @@
+{% set base_image = "quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest" -%}
+
+{% include "odh/base/mongocli-builder/Dockerfile.j2" %}
+{% include "odh/base/cpu/Dockerfile.j2" %}
+
+{% if arch == 's390x' %}
+  {% include "odh/ibm/onnx/Dockerfile.j2" %}
+  {% include "odh/ibm/openblas/Dockerfile.j2" %}
+  {% include "odh/ibm/pyarrow/Dockerfile.j2" %}
+  {% include "odh/ibm/wheel-builder/Dockerfile.j2" %}
+{% endif %}
+
+{% include "odh/jupyter/Dockerfile.j2" %}

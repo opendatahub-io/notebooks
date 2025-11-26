@@ -1,0 +1,25 @@
+{% if arch == 's390x' -%}
+
+    RUN echo "s390x"
+
+{% elif arch == 'ppc64le' -%}
+
+    RUN echo "ppc64le"
+
+{% elif arch == 'x86_64' -%}
+
+    RUN echo "x86_64"
+
+{% elif arch == 'cuda' -%}
+
+    RUN echo "cuda"
+
+{% elif arch == 'rocm' -%}
+
+    RUN echo "rocm"
+
+{% endif -%}
+
+{% if potato == True %}
+RUN potato
+{% endif %}

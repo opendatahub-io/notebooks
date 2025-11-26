@@ -1,0 +1,31 @@
+[project]
+name = "datascience-notebook"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    {% uv_include "odh/workbenches/rhoai-dependencies/pyproject.toml.j2" %}
+
+    # DB connectors
+    "pymongo~=4.15.3",
+    "psycopg~=3.2.10",
+    "pyodbc~=5.2.0",
+    "mysql-connector-python~=9.4.0",
+
+    # Elyra
+    "odh-elyra==4.3.1",
+
+    # Jupyter extensions for Data Science image
+    "jupyter-bokeh~=4.0.5",
+    "jupyterlab-lsp~=5.1.1",
+    "jupyterlab-widgets~=3.0.15",
+    "jupyter-resource-usage~=1.1.1",
+
+    # Jupyter Minimal packages
+    {% uv_include "odh/workbenches/jupyter-minimal/pyproject.toml.j2" %}
+]
+
+[tool.uv]
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
+]

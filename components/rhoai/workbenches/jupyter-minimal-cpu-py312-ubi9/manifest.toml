@@ -1,0 +1,47 @@
+# ==============================================================================
+# Image - Basic metadata about the notebook image
+# ==============================================================================
+
+# ID of this image to be used internally
+image.id = "jupyter-minimal-cpu-py312-ubi9"
+
+# Name of this workbench image, including details like Python version, CPU or GPU versions, type of image, etc
+image.name = "Jupyter | Minimal | CPU | Python 3.12"
+
+# Reference URL for this workbench image
+image.url = "https://github.com/opendatahub-io/notebooks/tree/main/jupyter/minimal"
+
+# Notebook description that will appear in the catalog / dashboard UI
+image.description = "Jupyter notebook image with minimal dependency set to start experimenting with Jupyter environment."
+
+
+# ==============================================================================
+# Dashboard - UI display configuration
+# ==============================================================================
+
+# Order of this image in the selection box
+dashboard.workbench_order = 1
+
+# Set this workbench as "Recommended" on the RHOAI / ODH dashboard UI
+dashboard.workbench_recommended = true
+
+# Set as default workbench in the selection box
+dashboard.default_workbench = false
+
+
+# ==============================================================================
+# Build - platforms, arguments, additional settings
+# ==============================================================================
+
+# List of architectures that this image will be built into
+build.platforms = [
+    "x86_64",
+    "s390"
+]
+
+# Directory to hold all generated Dockerfiles, pyproject.toml and etc
+build.output_dir = "jupyter/minimal/ubi9-python-3.12/"
+
+# If set to true, will generate the similar Dockerfile.konflux file
+# If set to false, no Dockerfile.konflux file will be generated
+build.generate_konflux_dockerfile = true

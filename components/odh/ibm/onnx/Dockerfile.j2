@@ -1,0 +1,22 @@
+##################################
+# onnx builder stage for ppc64le #
+##################################
+
+FROM cpu-base AS onnx-builder
+
+USER root
+WORKDIR /root
+
+ENV ONNX_VERSION=1.19.0
+
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+source /opt/rh/gcc-toolset-13/enable
+git clone --recursive https://github.com/onnx/onnx.git
+cd onnx && git checkout v${ONNX_VERSION}
+git submodule update --init --recursive
+pip install --no-cache-dir -r requirements.txt
+CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)"
+export CMAKE_ARGS
+pip wheel . -w /onnx_wheels
+EOF

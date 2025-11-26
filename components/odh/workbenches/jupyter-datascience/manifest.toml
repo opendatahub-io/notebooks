@@ -1,0 +1,54 @@
+# ==============================================================================
+# Image - Basic metadata about the notebook image
+# ==============================================================================
+
+[image]
+
+# ID of this image to be used internally
+id = "jupyter-datascience-cpu-py312-ubi9"
+
+# Name of this workbench image, including details like Python version, CPU or GPU versions, type of image, etc
+name = "Jupyter | Data Science | CPU | Python 3.12"
+
+# Reference URL for this workbench image
+url = "https://github.com/opendatahub-io/notebooks/tree/main/jupyter/datascience"
+
+# Notebook description that will appear in the catalog / dashboard UI
+description = "Jupyter notebook image with a set of data science libraries that advanced AI/ML notebooks will use as a base image to provide a standard for libraries available in all notebooks"
+
+
+# ==============================================================================
+# Dashboard - UI display configuration
+# ==============================================================================
+
+[dashboard]
+
+# Order of this image in the selection box
+workbench_order = 7
+
+# Set this workbench as "Recommended" on the RHOAI / ODH dashboard UI
+workbench_recommended = true
+
+# Set as default workbench in the selection box
+default_workbench = false
+
+
+# ==============================================================================
+# Build - platforms, arguments, additional settings
+# ==============================================================================
+
+[build]
+
+# List of architectures that this image will be built into
+platforms.cpu = ["x86_64", "ppc64le", "s390x"]
+platforms.gpu = [
+  { name = "cuda", version = "12.6" },
+  { name = "rocm", version = "6.2" }
+]
+
+# Directory to hold all generated Dockerfiles, pyproject.toml and etc
+output_dir = "jupyter/datascience/ubi9-python-3.12/"
+
+# If set to true, will generate the similar Dockerfile.konflux file
+# If set to false, no Dockerfile.konflux file will be generated
+generate_konflux_dockerfile = true

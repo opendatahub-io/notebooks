@@ -7,6 +7,12 @@ readme = "README.md"
 package-mode = false
 requires-python = ">=3.12,<3.13"
 
+[project.scripts]
+nb = "cli.main:main"
+
+[tool.setuptools]
+packages = ["cli"]
+
 # https://docs.astral.sh/uv/concepts/projects/dependencies/#managing-dependencies
 dependencies = []
 
@@ -30,6 +36,13 @@ dev = [
     "podman",
     "kubernetes",
     "openshift-python-wrapper",
+]
+
+cli = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
 ]
 
 [tool.uv]

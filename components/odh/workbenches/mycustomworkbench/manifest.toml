@@ -1,0 +1,54 @@
+# ==============================================================================
+# Image - Basic metadata about the notebook image
+# ==============================================================================
+
+[image]
+
+# ID of this image to be used internally
+id = "mycustomworkbench"
+
+# Name of this workbench image, including details like Python version, CPU or GPU versions, type of image, etc
+name = "MyCustom Workbench"
+
+# Reference URL for this workbench image
+url = "https://github.com/opendatahub-io/notebooks/tree/main/mycustomworkbench"
+
+# Notebook description that will appear in the catalog / dashboard UI
+description = "My custom workbench for BYON"
+
+
+# ==============================================================================
+# Dashboard - UI display configuration
+# ==============================================================================
+
+[dashboard]
+
+# Order of this image in the selection box
+workbench_order = 10
+
+# Set this workbench as "Recommended" on the RHOAI / ODH dashboard UI
+workbench_recommended = true
+
+# Set as default workbench in the selection box
+default_workbench = false
+
+
+# ==============================================================================
+# Build - platforms, arguments, additional settings
+# ==============================================================================
+
+[build]
+
+# List of architectures that this image will be built into
+platforms.cpu = ["x86_64", "ppc64le", "s390x"]
+platforms.gpu = [
+  { name = "cuda", version = "12.6" },
+  { name = "rocm", version = "6.2" }
+]
+
+# Directory to hold all generated Dockerfiles, pyproject.toml and etc
+output_dir = "mycustomworkbench"
+
+# If set to true, will generate the similar Dockerfile.konflux file
+# If set to false, no Dockerfile.konflux file will be generated
+generate_konflux_dockerfile = true
