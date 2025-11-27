@@ -17,38 +17,38 @@ The OpenDataHub Notebooks repository provides a collection of containerized note
 ### Key Directories
 
 ```
-.  
-├── .github/ # GitHub-specific configuration (workflows, issue templates, etc.)  
-├── jupyter/ # Jupyter Notebook image definitions, organized by flavor and accelerator  
-│ ├── datascience/  
-│ ├── minimal/  
-│ ├── pytorch/  
-│ ├── pytorch+llmcompressor/  
-│ ├── rocm/  
-│ │ ├── pytorch/  
-│ │ └── tensorflow/  
-│ ├── tensorflow/  
-│ ├── trustyai/  
-├── runtimes/ # container images that Elyra plugin uses to execute pipeline nodes  
-│ ├── datascience/  
-│ ├── minimal/  
-│ ├── pytorch/  
-│ ├── pytorch+llmcompressor/  
-│ ├── rocm-pytorch/  
-│ ├── rocm-tensorflow/  
-│ └── tensorflow/  
-├── codeserver/ # Code-Server (VS Code in the browser) image definitions and configs  
-│ ├── ubi9-python-3.11/  
-├── rstudio/ # RStudio image definitions and configs  
-│ ├── rhel9-python-3.11/  
-│ └── c9s-python-3.11/  
-├── ci/ # Continuous Integration scripts, checks, and configuration  
-├── cuda/ # CUDA-specific files (NVIDIA GPU support), e.g., repo files, licenses  
-├── manifests/ # Kubernetes manifests for deploying the images  
-├── scripts/  
-├── tests/  
-├── README.md  
-├── Makefile # Build orchestration tool for local development  
+.
+├── .github/ # GitHub-specific configuration (workflows, issue templates, etc.)
+├── jupyter/ # Jupyter Notebook image definitions, organized by flavor and accelerator
+│ ├── datascience/
+│ ├── minimal/
+│ ├── pytorch/
+│ ├── pytorch+llmcompressor/
+│ ├── rocm/
+│ │ ├── pytorch/
+│ │ └── tensorflow/
+│ ├── tensorflow/
+│ ├── trustyai/
+├── runtimes/ # container images that Elyra plugin uses to execute pipeline nodes
+│ ├── datascience/
+│ ├── minimal/
+│ ├── pytorch/
+│ ├── pytorch+llmcompressor/
+│ ├── rocm-pytorch/
+│ ├── rocm-tensorflow/
+│ └── tensorflow/
+├── codeserver/ # Code-Server (VS Code in the browser) image definitions and configs
+│ ├── ubi9-python-3.11/
+├── rstudio/ # RStudio image definitions and configs
+│ ├── rhel9-python-3.11/
+│ └── c9s-python-3.11/
+├── ci/ # Continuous Integration scripts, checks, and configuration
+├── cuda/ # CUDA-specific files (NVIDIA GPU support), e.g., repo files, licenses
+├── manifests/ # Kubernetes manifests for deploying the images
+├── scripts/
+├── tests/
+├── README.md
+├── Makefile # Build orchestration tool for local development
 └── …
 ```
 
@@ -58,7 +58,7 @@ The OpenDataHub Notebooks repository provides a collection of containerized note
 
 When working with this project, ensure these tools are available:
 - **Container Runtime**: podman/docker
-- **Python**: 3.12 (required)
+- **Python**: 3.14 (required)
 - **Package Manager**: uv (preferred) or pipenv
 - **Build System**: make (gmake on macOS)
 - **Version Control**: git with proper signing
@@ -83,7 +83,7 @@ The project uses pytest with testcontainers for container testing:
 
 ```bash
 # Setup environment
-uv venv --python $(which python3.12)
+uv venv --python $(which python3.14)
 uv sync --locked
 
 # Run tests

@@ -1,10 +1,10 @@
 # https://docs.astral.sh/uv/concepts/projects/config/
 [project]
 name = "notebooks"
-version = "2025.1"
+version = "2025.2"
 description = "Open Data Hub / OpenShift AI Notebook / Workbench images, and tests for the same in Python."
 readme = "README.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.14,<3.15"
 
 # https://docs.astral.sh/uv/concepts/projects/dependencies/#managing-dependencies
 dependencies = []
@@ -57,14 +57,14 @@ reportOptionalMemberAccess = "none"
 reportOptionalSubscript = "none"
 include = ["ci/", "tests/"]
 ignore = [ ]
-pythonVersion = "3.12"
+pythonVersion = "3.14"
 pythonPlatform = "Linux"
 
 # https://docs.astral.sh/ruff/configuration
 [tool.ruff]
 include = ["pyproject.toml", "ci/**/*.py", "tests/**/*.py"]
 exclude = [ ]
-target-version = "py312"
+target-version = "py314"
 line-length = 120
 
 # https://docs.astral.sh/ruff/rules
