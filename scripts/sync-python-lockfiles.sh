@@ -24,7 +24,7 @@ fi
 export ADDITIONAL_UV_FLAGS
 
 # The following will create a pylock.toml file for every pyproject.toml we have.
-uv --version || pip install "uv==0.8.12"
+uv --version || pip install "uv==0.9.6"
 find . -name pylock.toml -execdir bash -c '
   pwd
   # derives python-version from directory suffix (e.g., "ubi9-python-3.12")
