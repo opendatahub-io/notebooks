@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
-import pathlib
+from __future__ import annotations
+
 import platform
 import subprocess
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pathlib
 
 
 def exec_makefile(target: str, makefile_dir: pathlib.Path | str, options: list[str] = []) -> str:

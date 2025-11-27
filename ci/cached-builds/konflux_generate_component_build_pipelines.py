@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import os
 import pathlib
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import gen_gha_matrix_jobs
 import gha_pr_changed_files
@@ -847,7 +849,8 @@ if __name__ == "__main__":
     main()
 else:
     # test dependencies
-    import pyfakefs.fake_filesystem
+    if TYPE_CHECKING:
+        import pyfakefs.fake_filesystem
 
     class Tests:
         def test_compute_cel_expression(self, fs: pyfakefs.fake_filesystem.FakeFilesystem):

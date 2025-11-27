@@ -296,7 +296,7 @@ class TestManifests:
         return shell_notebook_id.stdout.rstrip()
 
     @staticmethod
-    def get_targets() -> Generator[tuple[str, Path], None, None]:
+    def get_targets() -> Generator[tuple[str, Path]]:
         # TODO(jdanek): should systematize import paths to avoid this hack
         sys.path.insert(0, str(ROOT_DIR / "ci/cached-builds"))
         from ci.cached_builds import gen_gha_matrix_jobs  # noqa: PLC0415

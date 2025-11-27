@@ -64,12 +64,12 @@ Note: To ensure the GitHub Action runs successfully, users must add a `GH_ACCESS
 
 ```shell
 # Linux
-sudo dnf install python3.12
+sudo dnf install python3.14
 pip install --user uv
 # MacOS
-brew install python@3.12 uv
+brew install python@3.14 uv
 
-uv venv --python $(which python3.12)
+uv venv --python $(which python3.14)
 uv sync --locked
 ```
 

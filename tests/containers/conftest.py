@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any
 
 import docker.errors
 import docker.models.images
-import docker.types
 import pytest
 import testcontainers.core.config
 import testcontainers.core.container
@@ -114,7 +113,7 @@ def skip_if_not_rocm_image(image: str) -> Image:
 
 
 @pytest.fixture(scope="function")
-def tf() -> Generator[TestFrame[Any], None, None]:
+def tf() -> Generator[TestFrame[Any]]:
     with TestFrame() as tf:
         yield tf
 
