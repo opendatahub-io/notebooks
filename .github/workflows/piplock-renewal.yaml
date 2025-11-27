@@ -80,7 +80,7 @@ jobs:
         run: pip install "pipenv==2025.0.4"
 
       - name: Install uv
-        run: pip install "uv==0.8.12"
+        run: pip install "uv==0.9.6"
 
       - name: Run make refresh-pipfilelock-files
         run: |
