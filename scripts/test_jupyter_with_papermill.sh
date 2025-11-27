@@ -143,6 +143,10 @@ function _get_notebook_name()
         $rocm_target_prefix*)
             notebook_name=jupyter-rocm${raw_notebook_name#"$rocm_target_prefix"}
             ;;
+        *pytorch+llmcompressor*)
+            # Special case: pytorch+llmcompressor maps to pytorch-llmc for shorter names
+            notebook_name="${raw_notebook_name//pytorch+llmcompressor/pytorch-llmc}"
+            ;;
         *)
             notebook_name="${raw_notebook_name}"
             ;;
@@ -204,6 +208,10 @@ function _get_source_of_truth_filepath()
             if [ "${accelerator_flavor}" = 'cuda' ]; then
                 filename="jupyter-${notebook_id}-${file_suffix}"
             fi
+            ;;
+        *pytorch+llmcompressor*)
+            # Special case for pytorch+llmcompressor imagestream
+            filename="jupyter-pytorch-llmcompressor-${file_suffix}"
             ;;
     esac
 
@@ -345,6 +353,10 @@ function _get_notebook_id() {
             ;;
         *${jupyter_pytorch_notebook_id}-*)
             notebook_id="${accelerator:+$accelerator/}${jupyter_pytorch_notebook_id}"
+            ;;
+        *pytorch-llmc-*)
+            # Special case for pytorch+llmcompressor (shortened to llmc)
+            notebook_id="${accelerator:+$accelerator/}pytorch+llmcompressor"
             ;;
         *)
             printf '%s\n' "No matching condition found for ${notebook_workload_name}."
