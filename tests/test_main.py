@@ -102,7 +102,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                         elif s.get("name") in ("R", "code-server"):
                             # TODO(jdanek): check not implemented yet
                             continue
-                        elif s.get("name") in ("CUDA", "ROCm"):
+                        elif s.get("name") in ("CUDA", "ROCm", "LLM-Compressor"):
                             # TODO(jdanek): check not implemented yet
                             continue
                         else:
