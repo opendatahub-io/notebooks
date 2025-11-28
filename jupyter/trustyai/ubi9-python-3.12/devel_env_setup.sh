@@ -205,6 +205,9 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
 
     uv pip list
     cd ${CURDIR}
+
+    # cleanup temporary build files
+    rm -rf ${TMP}
 else
     # only for mounting on non-ppc64le and non-s390x
     mkdir -p /root/OpenBLAS/
