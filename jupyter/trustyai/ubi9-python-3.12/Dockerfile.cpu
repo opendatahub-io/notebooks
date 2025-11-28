@@ -51,7 +51,7 @@ source ./devel_env_setup.sh
 # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
 #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
 # RHAIENG-2111: building pandas requires cython from PyPI
-UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --extra-index-url https://pypi.org/simple --requirements=./pylock.toml
+UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --extra-index-url https://pypi.org/simple --requirements=./pylock.toml
 EOF
 
 ####################
@@ -227,7 +227,7 @@ RUN --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw \
 set -Eeuxo pipefail
 ARCH=$(uname -m)
 if [ "$ARCH" = "ppc64le" ] || [ "$ARCH" = "s390x" ]; then
-    UV_LINK_MODE=copy uv pip install /wheelsdir/*.whl accelerate --cache-dir /root/.cache/uv
+    UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install /wheelsdir/*.whl accelerate --cache-dir /root/.cache/uv
 fi
 EOF
 
@@ -236,7 +236,7 @@ set -Eeuxo pipefail
 echo "Installing softwares and packages"
 # we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
 # RHAIENG-2111: building pandas requires cython from PyPI
-UV_LINK_MODE=copy uv pip install --cache-dir /root/.cache/uv --extra-index-url https://pypi.org/simple --requirements=./pylock.toml
+UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --offline --cache-dir /root/.cache/uv --extra-index-url https://pypi.org/simple --requirements=./pylock.toml
 # Note: debugpy wheel availabe on pypi (in uv cache) is none-any but bundles amd64.so files
 #       Build debugpy from source instead
 UV_LINK_MODE=copy uv pip install --no-cache git+https://github.com/microsoft/debugpy.git@v$(grep -A1 '\"debugpy\"' ./pylock.toml | grep -Eo '\b[0-9\.]+\b')
