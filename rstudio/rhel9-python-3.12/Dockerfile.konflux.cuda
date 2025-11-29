@@ -55,7 +55,7 @@ RUN dnf install -y perl mesa-libGL && dnf clean all && rm -rf /var/cache/yum
 USER 1001
 
 ### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
-RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.8.12"
+RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.9.6"
 ### END Install micropipenv and uv to deploy packages from requirements.txt
 
 WORKDIR /opt/app-root/src
