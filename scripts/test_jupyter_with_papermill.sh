@@ -143,6 +143,10 @@ function _get_notebook_name()
         $rocm_target_prefix*)
             notebook_name=jupyter-rocm${raw_notebook_name#"$rocm_target_prefix"}
             ;;
+        *pytorch+llmcompressor*)
+            # Special case: pytorch+llmcompressor maps to pytorch-llmc for shorter names
+            notebook_name="${raw_notebook_name//pytorch+llmcompressor/pytorch-llmc}"
+            ;;
         *)
             notebook_name="${raw_notebook_name}"
             ;;
@@ -198,6 +202,10 @@ function _get_source_of_truth_filepath()
             ;;
         *$jupyter_datascience_notebook_id* | *$jupyter_trustyai_notebook_id*)
             filename="jupyter-${notebook_id}-${file_suffix}"
+            ;;
+        *pytorch+llmcompressor*)
+            # Special case for pytorch+llmcompressor imagestream
+            filename="jupyter-pytorch-llmcompressor-imagestream.yaml"
             ;;
         *$jupyter_pytorch_notebook_id* | *$jupyter_tensorflow_notebook_id*)
             filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
@@ -342,6 +350,10 @@ function _get_notebook_id() {
             ;;
         *${jupyter_tensorflow_notebook_id}-*)
             notebook_id="${accelerator:+$accelerator/}${jupyter_tensorflow_notebook_id}"
+            ;;
+        *pytorch-llmc-*)
+            # Special case for pytorch+llmcompressor (shortened to llmc)
+            notebook_id="${accelerator:+$accelerator/}pytorch+llmcompressor"
             ;;
         *${jupyter_pytorch_notebook_id}-*)
             notebook_id="${accelerator:+$accelerator/}${jupyter_pytorch_notebook_id}"
