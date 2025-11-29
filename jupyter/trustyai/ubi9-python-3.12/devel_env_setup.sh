@@ -29,6 +29,14 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
 
     # install development packages
     dnf install -y --setopt=keepcache=1 https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    dnf clean all
+    # enable codeready-builder/crb repository
+    dnf install -y dnf-plugins-core
+    if command -v subscription-manager &> /dev/null; then
+      subscription-manager repos --enable "codeready-builder-for-rhel-9-$(uname -m)-rpms"
+    else
+      dnf config-manager --set-enabled crb
+    fi
     # patchelf: needed by `auditwheel repair`
     dnf install -y --setopt=keepcache=1 fribidi-devel lcms2-devel libimagequant-devel patchelf \
         libraqm-devel openjpeg2-devel tcl-devel tk-devel unixODBC-devel

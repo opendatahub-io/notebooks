@@ -59,7 +59,7 @@ pip install --no-cache-dir uv
 source ./devel_env_setup.sh
 # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
 #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
 EOF
 
 # dummy file to make image build wait for this stage
@@ -291,7 +291,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
-    uv pip install /wheelsdir/*.whl
+    UV_NO_CACHE=false uv pip install /wheelsdir/*.whl
 fi
 EOF
 
@@ -300,8 +300,7 @@ RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Installing softwares and packages"
 # we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
-# TODO(jdanek): seen some builds fail on GitHub Actions with --offline and see no need to limit ourselves to the cache, will remove this
-UV_LINK_MODE=copy uv pip install --cache-dir /root/.cache/uv --requirements=./pylock.toml
+UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --offline --cache-dir /root/.cache/uv --requirements=./pylock.toml
 # Note: debugpy wheel availabe on pypi (in uv cache) is none-any but bundles amd64.so files
 #       Build debugpy from source instead
 UV_LINK_MODE=copy uv pip install --no-cache git+https://github.com/microsoft/debugpy.git@v$(grep -A1 '\"debugpy\"' ./pylock.toml | grep -Eo '\b[0-9\.]+\b')
