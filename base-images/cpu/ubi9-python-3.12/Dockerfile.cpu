@@ -10,10 +10,12 @@ FROM registry.access.redhat.com/ubi9/python-312:latest AS base
 
 USER 0
 
+ARG TARGETARCH
 RUN \
 --mount=from=buildscripts,source=/mnt,target=/mnt \
 --mount=type=cache,sharing=locked,id=notebooks-dnf,target=/var/cache/dnf \
 /bin/bash <<'EOF'
+export TARGETARCH=$TARGETARCH
 /mnt/aipcc.sh
 EOF
 
