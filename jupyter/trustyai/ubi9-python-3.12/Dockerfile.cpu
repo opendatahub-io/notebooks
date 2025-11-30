@@ -224,7 +224,7 @@ set -Eeuxo pipefail
 echo "Installing softwares and packages"
 # we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
 # RHAIENG-2111: building pandas requires cython from PyPI
-UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --offline --cache-dir /root/.cache/uv --strict --no-deps --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --extra-index-url https://pypi.org/simple --requirements=./pylock.toml
+UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --cache-dir /root/.cache/uv --strict --no-deps --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --extra-index-url https://pypi.org/simple --requirements=./pylock.toml
 # Note: debugpy wheel availabe on pypi (in uv cache) is none-any but bundles amd64.so files
 #       Build debugpy from source instead
 UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --no-cache git+https://github.com/microsoft/debugpy.git@v$(grep -A1 '\"debugpy\"' ./pylock.toml | grep -Eo '\b[0-9\.]+\b')
