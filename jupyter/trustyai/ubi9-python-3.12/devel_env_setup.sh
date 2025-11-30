@@ -60,9 +60,12 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
              tcl-devel tk-devel unixODBC-devel \
              git tar wget unzip
      else
-         # ppc64le packages
+         # ppc64le packages, mostly compile requirements for pillow
+         # and openssl-devel for maturin, and gcc-gfortran for scikit-learn
          dnf install -y --setopt=keepcache=1 fribidi-devel lcms2-devel libimagequant-devel \
-             libraqm-devel openjpeg2-devel tcl-devel tk-devel unixODBC-devel
+             zlib-devel libraqm-devel libjpeg-devel libjpeg-turbo-devel openjpeg2-devel tcl-devel tk-devel \
+             openssl-devel gcc-gfortran \
+             unixODBC-devel
      fi
 
      # Install Rust for both ppc64le and s390x
