@@ -18,6 +18,10 @@ else
     export PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig}
 fi
 
+# the build uses uv cache to pass artifacts between stages
+export UV_NO_CACHE=false
+export UV_LINK_MODE=copy
+
 # compiling jpype1==1.5.0 requires g++ and this gets compiled on all platforms
 # gcc and g++ is present by default on registry.access.redhat.com/ubi9/python-312:latest
 dnf install -y --setopt=keepcache=1 gcc gcc-g++
