@@ -23,6 +23,21 @@ ARG CODESERVER_VERSION=v4.104.0
 
 COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh .
 
+### BEGIN Subscribe with subscription manager
+RUN /bin/bash <<'EOF'
+# The devops activationkey is not powerful enough, use rhoai-ide-konflux key
+# https://redhat-internal.slack.com/archives/C07SBP17R7Z/p1764077596143619?thread_ts=1761667034.429529&cid=C07SBP17R7Z
+subscription-manager register --org 18631088 --activationkey thisisunsafe
+
+# If we have a Red Hat subscription prepared, refresh it
+set -Eeuxo pipefail
+if command -v subscription-manager &> /dev/null; then
+  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
+fi
+EOF
+
+### END Subscribe with subscription manager
+
 # create dummy file to ensure this stage is awaited before installing rpm
 RUN ./get_code_server_rpm.sh && touch /tmp/control
 
