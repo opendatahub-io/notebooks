@@ -44,17 +44,33 @@ EOF
 RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Building for architecture: ${TARGETARCH}"
-PACKAGES="perl mesa-libGL skopeo libxcrypt-compat"
+PACKAGES=(perl mesa-libGL skopeo libxcrypt-compat)
+# Datascience packages devel dependencies
+if [ "$TARGETARCH" = "s390x" ] || [ "$TARGETARCH" = "ppc64le" ]; then
+    PACKAGES+=(
+    # required to compile pillow
+    zlib-devel libjpeg-turbo-devel
+    # optional pillow deps https://pillow.readthedocs.io/en/latest/installation/building-from-source.html#external-libraries
+    #libtiff-devel libwebp-devel openjpeg2-devel lcms2-devel freetype-devel
+    #libimagequant-devel harfbuzz-devel fribidi-devel
+
+    # required to compile maturin
+    openssl-devel
+
+    # required to compile scikit-learn
+    gcc-gfortran
+    )
+fi
 # Additional dev tools only for s390x
 if [ "$TARGETARCH" = "s390x" ]; then
-    PACKAGES="$PACKAGES gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel openssl zlib-devel"
+    PACKAGES+=("gcc" "gcc-c++" "make" "openssl-devel" "autoconf" "automake" "libtool" "cmake" "python3-devel" "pybind11-devel" "openblas-devel" "unixODBC-devel" "openssl" "zlib-devel")
 fi
 if [ "$TARGETARCH" = "ppc64le" ]; then
-    PACKAGES="$PACKAGES git gcc-toolset-13 make wget unzip rust cargo unixODBC-devel cmake ninja-build"
+    PACKAGES+=(git gcc-toolset-13 make wget unzip rust cargo unixODBC-devel cmake ninja-build)
 fi
 if [ -n "$PACKAGES" ]; then
     echo "Installing: $PACKAGES"
-    dnf install -y --setopt=keepcache=1 $PACKAGES
+    dnf install -y --setopt=keepcache=1 "${PACKAGES[@]}"
 fi
 EOF
 
