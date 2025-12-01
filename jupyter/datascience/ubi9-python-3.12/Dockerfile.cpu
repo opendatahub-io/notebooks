@@ -378,7 +378,7 @@ EOF
 
 RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
-if [ "${TARGETARCH}" = "ppc64le" ]; then
+if [ "${TARGETARCH}" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
   packages=(
     # required to compile pillow
     zlib-devel libjpeg-turbo-devel

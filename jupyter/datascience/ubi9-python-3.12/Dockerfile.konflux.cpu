@@ -382,7 +382,7 @@ EOF
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-if [ "${TARGETARCH}" = "ppc64le" ]; then
+if [ "${TARGETARCH}" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
   packages=(
     # required to compile pillow
     zlib-devel libjpeg-turbo-devel
