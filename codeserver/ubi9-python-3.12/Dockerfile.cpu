@@ -300,8 +300,8 @@ RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Installing softwares and packages"
 # we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
-UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --offline --cache-dir /root/.cache/uv --requirements=./pylock.toml
-# Note: debugpy wheel availabe on pypi (in uv cache) is none-any but bundles amd64.so files
+UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --cache-dir /root/.cache/uv --requirements=./pylock.toml
+# Note: debugpy wheel available on pypi (in uv cache) is none-any but bundles amd64.so files
 #       Build debugpy from source instead
 UV_LINK_MODE=copy uv pip install --no-cache git+https://github.com/microsoft/debugpy.git@v$(grep -A1 '\"debugpy\"' ./pylock.toml | grep -Eo '\b[0-9\.]+\b')
 # change ownership to default user (all packages were installed as root and has root:root ownership
