@@ -72,6 +72,10 @@ FROM ${BASE_IMAGE} AS cpu-base
 
 WORKDIR /opt/app-root/bin
 
+# RHAIENG-2189: this is AIPCC migration phase 1.5
+ENV PIP_EXTRA_INDEX_URL=https://pypi.org/simple
+ENV UV_EXTRA_INDEX_URL=https://pypi.org/simple
+
 # OS Packages needs to be installed as root
 USER 0
 
