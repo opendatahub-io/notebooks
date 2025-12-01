@@ -18,17 +18,18 @@ WORKDIR /opt/app-root/bin
 USER 0
 
 # Copy scripts
-COPY jupyter/utils/install_texlive.sh ./install_texlive.sh
 COPY jupyter/utils/install_pandoc.sh ./install_pandoc.sh
-RUN chmod +x install_texlive.sh install_pandoc.sh
 
-RUN ./install_texlive.sh
 RUN ./install_pandoc.sh
 
 ####################
 # cpu-base         #
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
+
+# RHAIENG-2189: this is AIPCC migration phase 1.5
+ENV PIP_EXTRA_INDEX_URL=https://pypi.org/simple
+ENV UV_EXTRA_INDEX_URL=https://pypi.org/simple
 
 WORKDIR /opt/app-root/bin
 
@@ -107,14 +108,14 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 USER 0
 
 # Dependencies for PDF export
-RUN --mount=type=cache,from=pdf-builder,source=/usr/local/,target=/pdf_builder/,rw \
-    bash -c ' \
-    if [[ "$(uname -m)" == "ppc64le" ]]; then \
-        cp -r /pdf_builder/texlive /usr/local/; \
-        cp -r /pdf_builder/pandoc /usr/local/; \
-    else \
-        ./utils/install_pdf_deps.sh; \
-    fi'
+RUN --mount=type=cache,from=pdf-builder,source=/usr/local/,target=/pdf_builder/,rw bash <<'EOF'
+if [[ "$(uname -m)" == "ppc64le" ]]; then
+    cp -r /pdf_builder/pandoc /usr/local/
+    ./utils/install_texlive.sh
+else
+    ./utils/install_pdf_deps.sh
+fi
+EOF
 
 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 
