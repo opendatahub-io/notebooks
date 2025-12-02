@@ -3,9 +3,6 @@
 #########################
 ARG BASE_IMAGE
 
-# External image alias for UBI repository configuration
-FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
-
 ####################
 # rpm-base         #
 ####################
@@ -18,11 +15,6 @@ WORKDIR /root
 
 ENV HOME=/root
 
-# Inject the official UBI 9 repository configuration into the AIPCC base image.
-# The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
-# By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
-COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
-
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 
 ARG NODE_VERSION=22.18.0
@@ -30,6 +22,21 @@ ARG NODE_VERSION=22.18.0
 ARG CODESERVER_VERSION=v4.104.0
 
 COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh .
+
+### BEGIN Subscribe with subscription manager
+RUN /bin/bash <<'EOF'
+# The devops activationkey is not powerful enough, use rhoai-ide-konflux key
+# https://redhat-internal.slack.com/archives/C07SBP17R7Z/p1764077596143619?thread_ts=1761667034.429529&cid=C07SBP17R7Z
+subscription-manager register --org 18631088 --activationkey thisisunsafe
+
+# If we have a Red Hat subscription prepared, refresh it
+set -Eeuxo pipefail
+if command -v subscription-manager &> /dev/null; then
+  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
+fi
+EOF
+
+### END Subscribe with subscription manager
 
 # create dummy file to ensure this stage is awaited before installing rpm
 RUN ./get_code_server_rpm.sh && touch /tmp/control
@@ -75,13 +82,12 @@ FROM ${BASE_IMAGE} AS cpu-base
 
 WORKDIR /opt/app-root/bin
 
+# RHAIENG-2189: this is AIPCC migration phase 1.5
+ENV PIP_EXTRA_INDEX_URL=https://pypi.org/simple
+ENV UV_EXTRA_INDEX_URL=https://pypi.org/simple
+
 # OS Packages needs to be installed as root
 USER 0
-
-# Inject the official UBI 9 repository configuration into the AIPCC base image.
-# The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
-# By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
-COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 
 ### BEGIN upgrade first to avoid fixable vulnerabilities
 RUN /bin/bash <<'EOF'
@@ -311,8 +317,8 @@ RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Installing softwares and packages"
 # we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
-UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --offline --cache-dir /root/.cache/uv --requirements=./pylock.toml
-# Note: debugpy wheel availabe on pypi (in uv cache) is none-any but bundles amd64.so files
+UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --cache-dir /root/.cache/uv --requirements=./pylock.toml
+# Note: debugpy wheel available on pypi (in uv cache) is none-any but bundles amd64.so files
 #       Build debugpy from source instead
 UV_LINK_MODE=copy uv pip install --no-cache git+https://github.com/microsoft/debugpy.git@v$(grep -A1 '\"debugpy\"' ./pylock.toml | grep -Eo '\b[0-9\.]+\b')
 # change ownership to default user (all packages were installed as root and has root:root ownership

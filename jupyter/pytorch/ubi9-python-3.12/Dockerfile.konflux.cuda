@@ -5,9 +5,6 @@ ARG TARGETARCH
 #########################
 ARG BASE_IMAGE
 
-# External image alias for UBI repository configuration
-FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
-
 ######################################################
 # mongocli-builder (build stage only, not published) #
 ######################################################
@@ -33,11 +30,6 @@ WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
 USER 0
-
-# Inject the official UBI 9 repository configuration into the AIPCC base image.
-# The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
-# By copying ubi.repo from the public UBI 9 image, we enable package management for upgrades and installations.
-COPY --from=ubi-repos /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 
 ### BEGIN upgrade first to avoid fixable vulnerabilities
 RUN /bin/bash <<'EOF'
