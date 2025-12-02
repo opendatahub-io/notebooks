@@ -268,9 +268,20 @@ class ImageDeployment:
             self.port = p.get_actual_port()
             LOGGER.debug(f"Listening on port {self.port}")
             # Increase timeout for s390x architecture due to slower SSL/TLS negotiation
-            # Check image name for s390x since tests run on x86_64 runners with emulated/cross-compiled s390x images
-            is_s390x = "s390x" in self.image.lower()
-            connection_timeout = 60 if is_s390x else 30
+            # Check the node architecture where the pod is running
+            connection_timeout = 30  # default
+            try:
+                if self.pod.spec and self.pod.spec.node_name:
+                    node = core_v1_api.read_node(name=self.pod.spec.node_name)
+                    if node.status and node.status.node_info:
+                        arch = node.status.node_info.architecture
+                        LOGGER.debug(f"Pod running on node with architecture: {arch}")
+                        if arch == "s390x":
+                            connection_timeout = 60
+                            LOGGER.info(f"Using extended timeout ({connection_timeout}s) for s390x architecture")
+            except Exception as e:
+                LOGGER.warning(f"Could not detect node architecture, using default timeout: {e}")
+            
             Wait.until(
                 "Connecting to pod succeeds",
                 1,
