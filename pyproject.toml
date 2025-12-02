@@ -34,7 +34,7 @@ dev = [
 ]
 
 [tool.uv]
-package = false
+package = true
 environments = [
     "sys_platform == 'darwin'",
     "sys_platform == 'linux'",
@@ -44,6 +44,11 @@ environments = [
 [build-system]
 requires = ["uv-build"]
 build-backend = "uv_build"
+
+# https://docs.astral.sh/uv/concepts/build-backend/#modules
+[tool.uv.build-backend]
+module-name = ["ntb"]
+module-root = ""
 
 # inspired from https://github.com/red-hat-data-services/ods-ci/blob/master/pyproject.toml
 
@@ -64,7 +69,7 @@ pythonPlatform = "Linux"
 
 # https://docs.astral.sh/ruff/configuration
 [tool.ruff]
-include = ["pyproject.toml", "ci/**/*.py", "tests/**/*.py"]
+include = ["pyproject.toml", "ci/**/*.py", "ntb/**/*.py", "tests/**/*.py"]
 exclude = [ ]
 target-version = "py314"
 line-length = 120
