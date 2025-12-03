@@ -1,4 +1,4 @@
-# DEVELOPER.md: ODH Notebooks CLI
+# DEVELOPMENT.md: ODH Notebooks CLI
 
 This guide explains the architecture, design patterns, and how to extend the CLI with new functionality.
 
