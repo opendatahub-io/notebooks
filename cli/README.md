@@ -29,7 +29,7 @@ This displays the main menu with all available commands.
 Skip the main menu and run a command directly:
 
 ```bash
-nb compile jupyter-minimal-cpu-py312-ubi9
+nb compile jupyter-minimal
 ```
 
 ### Non-Interactive Mode
@@ -48,7 +48,7 @@ nb --dry-run
 **compile** - Generate Dockerfiles and configuration files from templates
 ```bash
 nb compile <workbench-name>
-nb compile jupyter-minimal-cpu-py312-ubi9
+nb compile jupyter-minimal
 ```
 
 **build** - Build container images
@@ -97,7 +97,7 @@ A workbench is a directory containing everything needed to define a notebook ima
 ### Workbench Structure
 
 ```
-components/odh/workbenches/jupyter-minimal-cpu-py312-ubi9/
+components/odh/workbenches/jupyter-minimal/
 ├── manifest.toml          # Configuration (name, platforms, settings)
 ├── Dockerfile.j2          # Dockerfile template with variables
 └── pyproject.toml.j2      # Python dependencies template
@@ -109,7 +109,7 @@ Workbench names follow this pattern:
 ```
 jupyter-<type>-<platform>-<python>-<base>
 
-jupyter-minimal-cpu-py312-ubi9
+jupyter-minimal
 ├─ jupyter     = notebook type
 ├─ minimal     = size/scope (minimal, datascience, tensorflow)
 ├─ cpu         = hardware platform (cpu, cuda, rocm)
@@ -185,19 +185,19 @@ Templates also support logic:
 ### Generate Files for a Workbench
 
 ```bash
-nb compile jupyter-minimal-cpu-py312-ubi9
+nb compile jupyter-minimal
 ```
 
 This:
 1. Finds the workbench directory
 2. Reads `manifest.toml` for configuration
 3. Processes templates using manifest values
-4. Writes generated files to `output/jupyter-minimal-cpu-py312-ubi9/`
+4. Writes generated files to `output/jupyter-minimal/`
 
 ### Build a Container Image
 
 ```bash
-nb build jupyter-minimal-cpu-py312-ubi9
+nb build jupyter-minimal
 ```
 
 The build command:
@@ -212,7 +212,7 @@ Generated files are written to the `output/` directory:
 
 ```
 output/
-├── jupyter-minimal-cpu-py312-ubi9/
+├── jupyter-minimal/
 │   ├── Dockerfile
 │   ├── pyproject.toml
 │   └── .build-info
