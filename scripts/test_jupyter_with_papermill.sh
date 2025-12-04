@@ -346,6 +346,9 @@ function _get_notebook_id() {
         *${jupyter_pytorch_notebook_id}-*)
             notebook_id="${accelerator:+$accelerator/}${jupyter_pytorch_notebook_id}"
             ;;
+        *${jupyter_pytorch_llmcompressor_notebook_shortened_id}-*)
+            notebook_id="${accelerator:+$accelerator/}${jupyter_pytorch_llmcompressor_notebook_full_id}"
+            ;;
         *)
             printf '%s\n' "No matching condition found for ${notebook_workload_name}."
             exit 1
@@ -387,6 +390,8 @@ jupyter_datascience_notebook_id='datascience'
 jupyter_trustyai_notebook_id='trustyai'
 jupyter_pytorch_notebook_id='pytorch'
 jupyter_tensorflow_notebook_id='tensorflow'
+jupyter_pytorch_llmcompressor_notebook_shortened_id='pt-llmcompress'
+jupyter_pytorch_llmcompressor_notebook_full_id="pytorch-llmcompressor"
 
 notebook_name=$( _get_notebook_name "${test_target}" )
 python_flavor="python-${test_target//*-python-/}"  # <-- python-3.11
