@@ -23,7 +23,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/open-data-hub-tenant/odh-workbench-codeserver-datascience-cpu-py312-poc:{{revision}}
+    value: quay.io/opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9:odh-stable
   - name: dockerfile
     value: runtimes/rocm-tensorflow/ubi9-python-3.12/Dockerfile.rocm
   - name: path-context
