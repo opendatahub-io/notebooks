@@ -10,6 +10,10 @@ FROM ${BASE_IMAGE} AS cpu-base
 
 ARG TARGETARCH
 
+# RHAIENG-2189: this is AIPCC migration phase 1.5
+ENV PIP_EXTRA_INDEX_URL=https://pypi.org/simple
+ENV UV_EXTRA_INDEX_URL=https://pypi.org/simple
+
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
@@ -40,17 +44,33 @@ EOF
 RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Building for architecture: ${TARGETARCH}"
-PACKAGES="perl mesa-libGL skopeo libxcrypt-compat"
+PACKAGES=(perl mesa-libGL skopeo libxcrypt-compat)
+# Datascience packages devel dependencies
+if [ "$TARGETARCH" = "s390x" ] || [ "$TARGETARCH" = "ppc64le" ]; then
+    PACKAGES+=(
+    # required to compile pillow
+    zlib-devel libjpeg-turbo-devel
+    # optional pillow deps https://pillow.readthedocs.io/en/latest/installation/building-from-source.html#external-libraries
+    #libtiff-devel libwebp-devel openjpeg2-devel lcms2-devel freetype-devel
+    #libimagequant-devel harfbuzz-devel fribidi-devel
+
+    # required to compile maturin
+    openssl-devel
+
+    # required to compile scikit-learn
+    gcc-gfortran
+    )
+fi
 # Additional dev tools only for s390x
 if [ "$TARGETARCH" = "s390x" ]; then
-    PACKAGES="$PACKAGES gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel openssl zlib-devel"
+    PACKAGES+=("gcc" "gcc-c++" "make" "openssl-devel" "autoconf" "automake" "libtool" "cmake" "python3-devel" "pybind11-devel" "openblas-devel" "unixODBC-devel" "openssl" "zlib-devel")
 fi
 if [ "$TARGETARCH" = "ppc64le" ]; then
-    PACKAGES="$PACKAGES git gcc-toolset-13 make wget unzip rust cargo unixODBC-devel cmake ninja-build"
+    PACKAGES+=(git gcc-toolset-13 make wget unzip rust cargo unixODBC-devel cmake ninja-build)
 fi
 if [ -n "$PACKAGES" ]; then
     echo "Installing: $PACKAGES"
-    dnf install -y --setopt=keepcache=1 $PACKAGES
+    dnf install -y --setopt=keepcache=1 "${PACKAGES[@]}"
 fi
 EOF
 
@@ -286,7 +306,8 @@ if [ "$TARGETARCH" = "ppc64le" ]; then
     export ARROW_HOME
     LD_LIBRARY_PATH=$(pwd)/dist/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
     export LD_LIBRARY_PATH
-    export CMAKE_PREFIX_PATH=$ARROW_HOME:$CMAKE_PREFIX_PATH
+    CMAKE_PREFIX_PATH=$ARROW_HOME${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}
+    export CMAKE_PREFIX_PATH
     export PARQUET_TEST_DATA="${PWD}/cpp/submodules/parquet-testing/data"
     export ARROW_TEST_DATA="${PWD}/testing/data"
     cmake -S cpp -B cpp/build \
