@@ -13,11 +13,51 @@ if TYPE_CHECKING:
     from pyfakefs.fake_filesystem import FakeFilesystem
 
 
-def indent(template: templatelib.Template) -> str:
-    """Template-rendering function to render a t-string while preserving indentation,
-    processing all the accustomed f-string formatters.
-    References: https://www.pythonmorsels.com/t-strings-in-python/
-    https://github.com/t-strings/pep750-examples/blob/main/pep/fstring.py"""
+def process_template_with_indents(template: templatelib.Template) -> str:
+    """Process a template string while preserving indentation.
+
+    The standard f-string formatters in the template are processed.
+
+    This is useful for embedding multi-line code blocks inside other code blocks,
+    for example, in Dockerfiles.
+
+    >>> from string import templatelib as t
+    >>> import textwrap
+    >>>
+    >>> cleanup_fragment = '''
+    ... dnf clean all
+    ... rm -rf /var/lib/dnf
+    ... '''.strip()
+    >>>
+    >>> # Instead of this, which is hard to read:
+    >>> script1 = f'''RUN /bin/bash <<'EOF'
+    ... if [ -z "$RUN_CLEANUP" ]; then
+    ... {textwrap.indent(cleanup_fragment, prefix="    ")}
+    ... EOF
+    ... '''
+    >>>
+    >>> # You can do this, which is more straightforward to read:
+    >>> script2 = process_template_with_indents(t'''RUN /bin/bash <<'EOF'
+    ... if [ -z "$RUN_CLEANUP" ]; then
+    ...     {cleanup_fragment}
+    ... EOF
+    ... ''')
+    >>>
+    >>> print(script2)
+    RUN /bin/bash <<'EOF'
+    if [ -z "$RUN_CLEANUP" ]; then
+        dnf clean all
+        rm -rf /var/lib/dnf
+    EOF
+    <BLANKLINE>
+    >>> # The results are the same
+    >>> script1 == script2
+    True
+
+    References:
+    - https://www.pythonmorsels.com/t-strings-in-python/
+    - https://github.com/t-strings/pep750-examples/blob/main/pep/fstring.py
+    """
     parts = []
     indent = 0
     for item in template:
