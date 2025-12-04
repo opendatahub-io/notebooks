@@ -267,10 +267,12 @@ class ImageDeployment:
 
             self.port = p.get_actual_port()
             LOGGER.debug(f"Listening on port {self.port}")
+            # Use 60s timeout for all architectures to handle slower SSL/TLS negotiation
+            # especially on s390x and other non-native architectures
             Wait.until(
                 "Connecting to pod succeeds",
                 1,
-                30,
+                60,
                 lambda: requests.get(f"http://localhost:{self.port}").status_code == 200,
             )
             LOGGER.debug("Done setting up portforward")

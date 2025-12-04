@@ -147,6 +147,13 @@ ignore = [
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
+# Don't suggest moving types used in Pydantic models into `if TYPE_CHECKING` import blocks
+# https://docs.astral.sh/ruff/settings/#lint_flake8-type-checking_runtime-evaluated-base-classes
+flake8-type-checking.runtime-evaluated-base-classes = ["pydantic.BaseModel"]
+
+# https://docs.astral.sh/ruff/settings/#lint_pep8-naming_classmethod-decorators
+pep8-naming.classmethod-decorators = ["pydantic.validator"]
+
 # https://docs.astral.sh/ruff/formatter
 [tool.ruff.format]
 line-ending = "lf"
