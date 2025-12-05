@@ -25,7 +25,7 @@ We should avoid using Bash for anything more complicated than a `RUN dnf install
 
 ### Bash
 
-Titus Winters presented about programming languages being [software-engineering-friendly](https://youtu.be/yA_wUiNuhSc&t=649) or unfriendly.
+Titus Winters presented about programming languages being [software-engineering-friendly](https://youtu.be/yA_wUiNuhSc?t=649) or unfriendly.
 Bash was not mentioned but it should fall into the unfriendly category.
 It does not have proper runtime types (everything in Bash is a string, or possibly an array of strings),
 it does not even have proper value-returning functions!
@@ -70,7 +70,7 @@ _The language of the web._
 
 <span style="color:green;">⊕</span> Playwright has best support for TypeScript, other language bindings are a bit of a second-class citizen.
 
-<span style="color: gray;">🛈</span> We will consider using full-stack TypeScript over Python or Go backends with a TypeScript frontend.
+<span style="color: gray;">🛈</span> We may consider using full-stack TypeScript over Python or Go backends with a TypeScript frontend.
 
 <span style="color: red;">⊖</span> It's still JavaScript underneath, so there is much inherited weirdness,
 such as the `this` keyword being different depending on how a function is called.
