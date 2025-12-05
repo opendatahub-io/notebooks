@@ -35,7 +35,7 @@ There are efforts to level up Bash scripting, such as the `set -Eeuxo pipefail`,
 
 > `errexit`, `nounset` and `pipefail` are imperfect implementations of otherwise sane ideas, and unfortunately they often amount to being unreliable interfaces that are less familiar and less understood than simply living without them. It's perfectly fine to want them to work as advertised, and I think we all would like that, but they don't, so shouldn't be recommended so blindly, nor advertised as a "best practice"—they aren't.
 
-There is the [bats](https://github.com/bats-core/bats-core) testing framework.
+There is also the [bats](https://github.com/bats-core/bats-core) testing framework which does show promise if forced to live with a Bash codebase.
 
 ### Python
 
@@ -80,7 +80,7 @@ such as the `this` keyword being different depending on how a function is called
 Static analyzability and specifically typechecking is (according to Winters)
 an important step to achieving software-engineering friendliness.
 
-The choice is between
+The choice in Python is currently between
 
 * Pyrefly
 * Pyright (or basedpyright)
@@ -113,6 +113,10 @@ Simple scripts will be more verbose in Python, but this is a trade-off we can ma
 
 Obvious location to place shared code, sane `import` mechanism.
 
-Allow for fearless refactoring <https://www.jamesshore.com/v2/blog/2005/merciless-refactoring>.
+Allow for [fearless refactoring](https://www.jamesshore.com/v2/blog/2005/merciless-refactoring.html).
+
+> Imagine!
+> Do this right, and your code gets cheaper to modify over time!
+> That's so amazing, most people don't even think it's possible.
 
 We will need to fight the ever-present tendency to overengineer, and instead we shall promote low-ceremony code.
