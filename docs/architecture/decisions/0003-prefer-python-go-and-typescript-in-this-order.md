@@ -31,9 +31,13 @@ It does not have proper runtime types (everything in Bash is a string, or possib
 it does not even have proper value-returning functions!
 
 There are efforts to level up Bash scripting, such as the `set -Eeuxo pipefail`, but it has
-[problems of its own](https://www.reddit.com/r/bash/comments/mivbcm/comment/gt8harr/):
+[problems](https://mywiki.wooledge.org/BashPitfalls#set_-euo_pipefail)
+[of](https://lobste.rs/s/gwzjjw/modern_bash_scripting)
+[its](https://www.mulle-kybernetik.com/modern-bash-scripting/)
+[own](https://www.reddit.com/r/bash/comments/mivbcm/comment/gt8harr/):
 
-> `errexit`, `nounset` and `pipefail` are imperfect implementations of otherwise sane ideas, and unfortunately they often amount to being unreliable interfaces that are less familiar and less understood than simply living without them. It's perfectly fine to want them to work as advertised, and I think we all would like that, but they don't, so shouldn't be recommended so blindly, nor advertised as a "best practice"—they aren't.
+> `errexit`, `nounset` and `pipefail` are imperfect implementations of otherwise sane ideas, and unfortunately they often amount to being unreliable interfaces that are less familiar and less understood than simply living without them.
+> It's perfectly fine to want them to work as advertised, and I think we all would like that, but they don't, so shouldn't be recommended so blindly, nor advertised as a "best practice"—they aren't.
 
 There is also the [bats](https://github.com/bats-core/bats-core) testing framework which does show promise if forced to live with a Bash codebase.
 
