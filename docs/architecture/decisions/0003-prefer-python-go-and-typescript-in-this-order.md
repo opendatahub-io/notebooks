@@ -12,7 +12,7 @@ We have many Bash scripts; often they are inline scripts embedded in Dockerfiles
 This is hindering code reuse and makes using good software engineering practices difficult.
 
 The current team self-reported that they are comfortable with Python, Go, and (to a lesser degree) TypeScript.
-Use these languages in preference to Bash.
+Always consider using one of these languages rather than Bash.
 
 ## Decision
 
@@ -68,7 +68,7 @@ the language does not believe in programming in types (the way some typed functi
 
 _The language of the web._
 
-<span style="color:green;">⊕</span> Playwright has best support for TypeScript, other language bindings are a bit of a second class citizen.
+<span style="color:green;">⊕</span> Playwright has best support for TypeScript, other language bindings are a bit of a second-class citizen.
 
 <span style="color: gray;">🛈</span> We will consider using full-stack TypeScript over Python or Go backends with a TypeScript frontend.
 
@@ -89,13 +89,13 @@ The choice in Python is currently between
 Currently, the project is configured with Pyright, but with type checking disabled.
 We should first fix the types with Pyright, gain experience, and then either decide not to use typed Python, or migrate off to one of the other options.
 
-Pyrefly is more complete, whereas ty seems to be more vibrant and dynamic.
+Pyrefly is more complete, whereas ty is more vibrant and dynamic.
 Either case, Python type annotations are language standard, so the core does not change,
 but the checkers still have lots of implementation-specific behavior left to define themselves.
 
 ### Editor support for Python type checkers
 
-VSCode support is pretty much given these days.
+VSCode support is pretty much a given these days.
 
 In IntelliJ world,
 [version 2025.3+ is required for Python tools](https://www.jetbrains.com/help/pycharm/2025.3/lsp-tools.html)
