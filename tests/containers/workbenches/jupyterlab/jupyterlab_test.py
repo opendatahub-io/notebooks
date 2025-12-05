@@ -8,6 +8,10 @@ import pytest
 import requests
 
 from tests.containers import conftest, docker_utils
+from tests.containers.architecture_utils import (
+    get_architecture_limitation_reason,
+    is_feature_supported,
+)
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 
 
@@ -55,16 +59,12 @@ class TestJupyterLabImage:
 
     @allure.issue("RHOAIENG-16568")
     @allure.description("Check that PDF export is working correctly")
-    def test_pdf_export(self, jupyterlab_image: conftest.Image) -> None:
+    def test_pdf_export(self, jupyterlab_image: conftest.Image, container_architecture) -> None:
+        # Skip if PDF export is not supported on this architecture
+        if not is_feature_supported(container_architecture, "pdf_export"):
+            reason = get_architecture_limitation_reason(container_architecture, "pdf_export")
+            pytest.skip(f"PDF export functionality is not supported on {container_architecture} architecture: {reason}")
         container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
-        # Skip if we're running on s390x architecture
-        container.start(wait_for_readiness=False)
-        try:
-            exit_code, arch_output = container.exec(["uname", "-m"])
-            if exit_code == 0 and arch_output.decode().strip() == "s390x":
-                pytest.skip("PDF export functionality is not supported on s390x architecture")
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)
         test_file_name = "test.ipybn"
         test_file_content = """{
                 "cells": [
