@@ -1,4 +1,4 @@
-# 3. Prefer Python, Go, and Typescript (in this order)
+# 3. Prefer Python, Go, and TypeScript (in this order)
 
 Date: 2025-10-31
 
@@ -70,7 +70,7 @@ _The language of the web._
 
 <span style="color:green;">⊕</span> Playwright has best support for TypeScript, other language bindings are a bit of a second class citizen.
 
-<span style="color: gray;">🛈</span> We will consider using full-stack TypeScript in preference to having either a Python or Go backend to a TypeScript frontend.
+<span style="color: gray;">🛈</span> We will consider using full-stack TypeScript over Python or Go backends with a TypeScript frontend.
 
 <span style="color: red;">⊖</span> It's still JavaScript underneath, so there is much inherited weirdness,
 such as the `this` keyword being different depending on how a function is called.
