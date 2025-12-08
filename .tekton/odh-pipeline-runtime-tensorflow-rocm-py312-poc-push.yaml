@@ -18,7 +18,7 @@ metadata:
   namespace: open-data-hub-tenant
 spec:
   timeouts:
-    pipeline: "8h0m0s"
+    pipeline: "10h0m0s"
   params:
   - name: git-url
     value: '{{source_url}}'
@@ -32,6 +32,9 @@ spec:
     value: .
   - name: build-args-file
     value: codeserver/ubi9-python-3.12/build-args/cpu.conf
+  - name: build-platforms
+    value:
+    - linux-extra-fast/amd64
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
