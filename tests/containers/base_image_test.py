@@ -264,10 +264,10 @@ class TestBaseImage:
         """
 
         expected_env = {
-            "PIP_EXTRA_INDEX_URL": "https://pypi.org/simple",
-            "UV_EXTRA_INDEX_URL": "https://pypi.org/simple",
-            # https://docs.astral.sh/uv/reference/environment/#uv_index
-            "UV_INDEX": "https://pypi.org/simple",
+            "PIP_INDEX_URL": "https://pypi.org/simple",
+            "UV_INDEX_URL": "https://pypi.org/simple",
+            # https://docs.astral.sh/uv/reference/environment/#uv_default_index
+            "UV_DEFAULT_INDEX": "https://pypi.org/simple",
         }
 
         with self._test_container(image=image) as container:
