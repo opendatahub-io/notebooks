@@ -62,11 +62,11 @@ def main():
 
     replacements = {
         "RHAIENG-2189: this is AIPCC migration phase 1.5": textwrap.dedent(r"""
-            ENV PIP_EXTRA_INDEX_URL=https://pypi.org/simple
-            # UV_EXTRA_INDEX_URL is deprecated in favor of UV_INDEX
-            ENV UV_EXTRA_INDEX_URL=https://pypi.org/simple
-            # https://docs.astral.sh/uv/reference/environment/#uv_index
-            ENV UV_INDEX=https://pypi.org/simple"""),
+            ENV PIP_INDEX_URL=https://pypi.org/simple
+            # UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
+            ENV UV_INDEX_URL=https://pypi.org/simple
+            # https://docs.astral.sh/uv/reference/environment/#uv_default_index
+            ENV UV_DEFAULT_INDEX=https://pypi.org/simple"""),
 
         "Subscribe with subscription manager": textwrap.dedent(subscription_manager_register_refresh),
         "upgrade first to avoid fixable vulnerabilities": textwrap.dedent(ntb.process_template_with_indents(rt"""
