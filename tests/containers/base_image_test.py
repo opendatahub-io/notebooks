@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import binascii
+import contextlib
 import inspect
 import json
 import logging
@@ -11,6 +12,7 @@ import tempfile
 import textwrap
 from typing import TYPE_CHECKING, Any
 
+import allure
 import pytest
 import testcontainers.core.container
 
@@ -20,7 +22,7 @@ logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
 
     import pytest_subtests
 
@@ -28,20 +30,25 @@ if TYPE_CHECKING:
 class TestBaseImage:
     """Tests that are applicable for all images we have in this repository."""
 
-    def _run_test(self, image: str, test_fn: Callable[[testcontainers.core.container.DockerContainer], None]):
+    def _run_test(self, image: str, test_fn: Callable[[testcontainers.core.container.DockerContainer], None]) -> None:
+        with self._test_container(image) as container:
+            test_fn(container)
+
+    @contextlib.contextmanager
+    def _test_container(self, image: str) -> Generator[testcontainers.core.container.DockerContainer]:
+        """Context manager that starts a test container and yields it."""
         container = testcontainers.core.container.DockerContainer(image=image, user=23456, group_add=[0])
         container.with_command("/bin/sh -c 'sleep infinity'")
         try:
             container.start()
-            test_fn(container)
+            yield container
             return
         except Exception as e:
             pytest.fail(f"Unexpected exception in test: {e}")
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
-        # If the return doesn't happen in the try block, fail the test
-        pytest.fail("The test did not pass as expected.")
+        raise RuntimeError("Cannot happen: the test did not pass as expected.")
 
     def test_elf_files_can_link_runtime_libs(self, subtests: pytest_subtests.SubTests, image):
         def test_fn(container: testcontainers.core.container.DockerContainer):
@@ -249,6 +256,32 @@ class TestBaseImage:
                     assert cleaned_output == f"{item[1]}:{item[2]}"
 
         self._run_test(image=image, test_fn=test_fn)
+
+    @allure.issue("RHAIENG-2189")
+    def test_python_package_index(self, image: str, subtests: pytest_subtests.SubTests):
+        """Checks that we use the Python Package Index we mean to use.
+        https://redhat-internal.slack.com/archives/C05TTTYG599/p1764240587118899?thread_ts=1764234802.564119&cid=C05TTTYG599
+        """
+
+        expected_env = {
+            "PIP_INDEX_URL": "https://pypi.org/simple",
+            "UV_INDEX_URL": "https://pypi.org/simple",
+            # https://docs.astral.sh/uv/reference/environment/#uv_default_index
+            "UV_DEFAULT_INDEX": "https://pypi.org/simple",
+        }
+
+        with self._test_container(image=image) as container:
+            _, output = container.exec(["env"])
+            output = output.decode().strip()
+
+            actual = {}
+            for line in output.splitlines():
+                key, value = line.split("=", maxsplit=1)
+                actual[key] = value
+
+            assert actual.items() >= expected_env.items(), (
+                "actual is not a superset of expected, we are missing some env variables"
+            )
 
 
 def encode_python_function_execution_command_interpreter(

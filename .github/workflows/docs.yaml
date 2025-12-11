@@ -20,13 +20,12 @@ jobs:
 
       # https://github.com/astral-sh/setup-uv
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           version: "latest"
           python-version: "3.14"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
-          pyproject-file: "pyproject.toml"
 
       - name: Run the release notes script
         run: |

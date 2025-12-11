@@ -31,6 +31,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: actions/setup-go@v5
+        with:
+          cache-dependency-path: "**/*.sum"
+
       - name: Determine targets to build (we want to build everything on push)
         run: |
           set -x
