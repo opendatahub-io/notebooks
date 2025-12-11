@@ -35,16 +35,17 @@ EOF
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
 # Solution: --best --skip-broken does not work either, so use --nobest
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=1
+dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
+dnf clean all -y
 EOF
 
 ### END upgrade first to avoid fixable vulnerabilities
 
 # Install useful OS packages
 # remove skopeo, CVE-2025-4674
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf dnf install -y --setopt=keepcache=1 mesa-libGL
+RUN dnf install -y mesa-libGL && dnf clean all && rm -rf /var/cache/yum
 
 # Other apps and tools installed as default user
 USER 1001
@@ -87,9 +88,10 @@ dnf config-manager --set-enabled crb
 dnf install -y https://download.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 INSTALL_PKGS="R-core R-core-devel R-java R-Rcpp R-highlight \
 R-littler R-littler-examples openssl-libs compat-openssl11"
-dnf install -y --setopt=tsflags=nodocs --setopt=keepcache=1 $INSTALL_PKGS
+dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
 echo 'options(repos = c(CRAN = "https://cran.rstudio.com/"), download.file.method = "libcurl")' >> /usr/lib64/R/etc/Rprofile.site
 (umask 002;touch /usr/lib64/R/etc/Renviron.site)
+dnf -y clean all --enablerepo='*'
 EOF
 
 # set R library to default (used in install.r from littler)
@@ -112,14 +114,17 @@ ARG RSTUDIO_RPM=rstudio-server-rhel-2025.09.0-387-x86_64.rpm
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/${RSTUDIO_RPM}
-dnf install -y --setopt=keepcache=1 ${RSTUDIO_RPM}
+dnf install -y ${RSTUDIO_RPM}
 rm ${RSTUDIO_RPM}
+dnf -y clean all  --enablerepo='*'
 # Specific RStudio config and fixes
 chmod 1777 /var/run/rstudio-server
 mkdir -p /usr/share/doc/R
 # package installation
 # install necessary texlive-framed package to make Knit R markup to PDF rendering possible
-dnf install -y --setopt=keepcache=1 libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed
+dnf install -y libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed
+dnf clean all
+rm -rf /var/cache/yum
 (cd /tmp/utils && ./cve_remediation.sh)
 EOF
 
@@ -138,24 +143,25 @@ ENV APP_ROOT=/opt/app-root
 
 # Install NGINX to proxy RStudio and pass probes check
 ENV NGINX_VERSION=1.24 \
-  NGINX_SHORT_VER=124 \
-  NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
-  NGINX_CONF_PATH=/etc/nginx/nginx.conf \
-  NGINX_DEFAULT_CONF_PATH=${APP_ROOT}/etc/nginx.default.d \
-  NGINX_CONTAINER_SCRIPTS_PATH=/usr/share/container-scripts/nginx \
-  NGINX_APP_ROOT=${APP_ROOT} \
-  NGINX_LOG_PATH=/var/log/nginx \
-  NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
+    NGINX_SHORT_VER=124 \
+    NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
+    NGINX_CONF_PATH=/etc/nginx/nginx.conf \
+    NGINX_DEFAULT_CONF_PATH=${APP_ROOT}/etc/nginx.default.d \
+    NGINX_CONTAINER_SCRIPTS_PATH=/usr/share/container-scripts/nginx \
+    NGINX_APP_ROOT=${APP_ROOT} \
+    NGINX_LOG_PATH=/var/log/nginx \
+    NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
 
 # Modules does not exist
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 dnf -y module enable nginx:$NGINX_VERSION
 INSTALL_PKGS="nss_wrapper bind-utils gettext hostname nginx nginx-mod-stream nginx-mod-http-perl httpd"
-dnf install -y --setopt=tsflags=nodocs --setopt=keepcache=1 $INSTALL_PKGS
+dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
 rpm -V $INSTALL_PKGS
 nginx -v 2>&1 | grep -qe "nginx/$NGINX_VERSION\."
 echo "Found VERSION $NGINX_VERSION"
+dnf -y clean all --enablerepo='*'
 EOF
 
 # Configure httpd for CGI processing

@@ -34,8 +34,7 @@ ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
 COPY ${TRUSTYAI_SOURCE_CODE}/pylock.toml .
 COPY ${TRUSTYAI_SOURCE_CODE}/devel_env_setup.sh .
 
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf \
-    --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
 set -Eeuxo pipefail
 pip install --no-cache-dir uv
 # the devel script is ppc64le and s390x specific - sets up build-time dependencies
@@ -68,17 +67,20 @@ EOF
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
 # Solution: --best --skip-broken does not work either, so use --nobest
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=1
+dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
+dnf clean all -y
 EOF
 
 ### END upgrade first to avoid fixable vulnerabilities
 
 # Install useful OS packages
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y --setopt=keepcache=1 perl mesa-libGL skopeo
+dnf install -y perl mesa-libGL skopeo
+dnf clean all
+rm -rf /var/cache/yum
 EOF
 
 # Other apps and tools installed as default user
@@ -140,9 +142,11 @@ WORKDIR /opt/app-root/bin
 USER root
 
 # Install useful OS packages
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y --setopt=keepcache=1 jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat
+dnf install -y jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat
+dnf clean all
+rm -rf /var/cache/yum
 EOF
 
 # Copy dynamically-linked mongocli built in earlier build stage
@@ -196,7 +200,8 @@ if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then
     # Add runtime libraries needed for s390x/ppc64le (OpenBLAS for PyTorch/NumPy)
     INSTALL_PKGS="$INSTALL_PKGS openblas openblas-threads"
 fi
-dnf install -y --setopt=tsflags=nodocs --setopt=keepcache=1 $INSTALL_PKGS
+dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
+dnf -y clean all --enablerepo='*'
 # Create symlink for compatibility (openblas package provides libopenblasp.so.0 but PyTorch looks for libopenblas.so.0)
 if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then
     ln -sf /usr/lib64/libopenblasp.so.0 /usr/lib64/libopenblas.so.0
