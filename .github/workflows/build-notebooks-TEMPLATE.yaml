@@ -281,7 +281,8 @@ jobs:
           if [[ "${{ inputs.platform }}" == "linux/s390x" ]]; then
             # workaround for known issue https://github.com/zeromq/libzmq/pull/4486
             # In qemu-user, CACHELINE_SIZE probe is undefined
-            EXTRA_PODMAN_BUILD_ARGS+='--env=CXXFLAGS=-Dundefined=64'
+            # Compiling pyzmq through UV needs this in CFLAGS
+            EXTRA_PODMAN_BUILD_ARGS+='--env=CFLAGS=-Dundefined=64 --env=CXXFLAGS=-Dundefined=64 --unsetenv=CFLAGS --unsetenv=CXXFLAGS'
           fi
           echo "EXTRA_PODMAN_BUILD_ARGS=$EXTRA_PODMAN_BUILD_ARGS" >> $GITHUB_OUTPUT
 
