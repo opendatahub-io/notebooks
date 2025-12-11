@@ -24,7 +24,7 @@ export UV_LINK_MODE=copy
 
 # compiling jpype1==1.5.0 requires g++ and this gets compiled on all platforms
 # gcc and g++ is present by default on registry.access.redhat.com/ubi9/python-312:latest
-dnf install -y --setopt=keepcache=1 gcc gcc-g++
+dnf install -y --setopt=keepcache=0 gcc gcc-g++
 
 WHEELS_DIR=/wheelsdir
 mkdir -p ${WHEELS_DIR}
@@ -32,7 +32,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
     CURDIR=$(pwd)
 
     # install development packages
-    dnf install -y --setopt=keepcache=1 https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
     dnf clean all
     # enable codeready-builder/crb repository
     dnf install -y dnf-plugins-core
@@ -42,7 +42,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
       dnf config-manager --set-enabled crb
     fi
     # patchelf: needed by `auditwheel repair`
-    dnf install -y --setopt=keepcache=1 fribidi-devel lcms2-devel libimagequant-devel patchelf \
+    dnf install -y fribidi-devel lcms2-devel libimagequant-devel patchelf \
         libraqm-devel openjpeg2-devel tcl-devel tk-devel unixODBC-devel
 
     # previously we installed but never activated (added to PATH, etc.) the gcc-toolset-13, which suggests that maybe
@@ -50,7 +50,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
 
      # Install build tools and libraries needed for compiling PyTorch/PyArrow
      if [[ $(uname -m) == "s390x" ]]; then
-         dnf install -y --setopt=keepcache=1 gcc gcc-gfortran gcc-c++ make cmake ninja-build \
+         dnf install -y gcc gcc-gfortran gcc-c++ make cmake ninja-build \
              autoconf automake libtool pkg-config \
              python3.12-devel python3-devel pybind11-devel \
              openssl-devel openblas-devel \
@@ -62,7 +62,7 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
      else
          # ppc64le packages, mostly compile requirements for pillow
          # and openssl-devel for maturin, and gcc-gfortran for scikit-learn
-         dnf install -y --setopt=keepcache=1 fribidi-devel lcms2-devel libimagequant-devel \
+         dnf install -y fribidi-devel lcms2-devel libimagequant-devel \
              zlib-devel libraqm-devel libjpeg-devel libjpeg-turbo-devel openjpeg2-devel tcl-devel tk-devel \
              openssl-devel gcc-gfortran \
              unixODBC-devel
