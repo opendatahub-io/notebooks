@@ -51,8 +51,12 @@ def sanity_check(dockerfile: pathlib.Path, replacements: dict[str, str]):
 
 def main():
     subscription_manager_register_refresh = textwrap.dedent(r"""
-        # If we have a Red Hat subscription prepared, refresh it
         RUN /bin/bash <<'EOF'
+        # The devops activationkey is not powerful enough, use rhoai-ide-konflux key
+        # https://redhat-internal.slack.com/archives/C07SBP17R7Z/p1764077596143619?thread_ts=1761667034.429529&cid=C07SBP17R7Z
+        subscription-manager register --org 18631088 --activationkey thisisunsafe
+
+        # If we have a Red Hat subscription prepared, refresh it
         set -Eeuxo pipefail
         if command -v subscription-manager &> /dev/null; then
           subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
