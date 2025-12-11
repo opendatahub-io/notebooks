@@ -123,7 +123,7 @@ USER root
 # Install useful OS packages
 RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y --setopt=keepcache=1 jq unixODBC postgresql git-lfs libsndfile
+dnf install -y --setopt=keepcache=1 jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat
 EOF
 
 # Copy dynamically-linked mongocli built in earlier build stage
