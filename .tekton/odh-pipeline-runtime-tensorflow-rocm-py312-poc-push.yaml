@@ -19,6 +19,15 @@ metadata:
 spec:
   timeouts:
     pipeline: "10h0m0s"
+  taskRunSpecs:
+    - pipelineTaskName: build-images
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 16Gi
+        limits:
+          cpu: '16'
+          memory: 32Gi
   params:
   - name: git-url
     value: '{{source_url}}'
