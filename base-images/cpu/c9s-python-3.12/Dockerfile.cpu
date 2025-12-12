@@ -60,7 +60,7 @@ COPY --from=buildscripts /mnt/usr/bin/ /usr/bin/
 
 RUN \
 --mount=from=buildscripts,source=/mnt,target=/mnt \
---mount=type=cache,sharing=locked,id=notebooks-dnf,target=/var/cache/dnf \
+--mount=type=cache,sharing=locked,id=dnf-c9s,target=/var/cache/dnf \
 /bin/bash <<'EOF'
 set -Eeuxo pipefail
 /mnt/aipcc.sh

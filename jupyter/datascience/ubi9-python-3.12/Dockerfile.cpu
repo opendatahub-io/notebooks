@@ -60,15 +60,16 @@ EOF
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
 # Solution: --best --skip-broken does not work either, so use --nobest
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=1
+dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
+dnf clean all -y
 EOF
 
 ### END upgrade first to avoid fixable vulnerabilities
 
 # Install useful OS packages
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Building for architecture: ${TARGETARCH}"
 if [ "$TARGETARCH" = "s390x" ]; then
@@ -77,7 +78,9 @@ else
     PACKAGES="perl mesa-libGL skopeo"
 fi
 echo "Installing: $PACKAGES"
-dnf install -y --setopt=keepcache=1 $PACKAGES
+dnf install -y $PACKAGES
+dnf clean all
+rm -rf /var/cache/yum
 EOF
 
 RUN /bin/bash <<'EOF'
@@ -141,7 +144,7 @@ WORKDIR /tmp/build-wheels
 
 # Build pyarrow on ppc64le and s390x
 RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+    --mount=type=cache,target=/root/.cache/dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     # Install build dependencies (shared for pyarrow and onnx)
@@ -151,7 +154,8 @@ if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
         # libcurl-devel is required to build AWS C++ SDK
         libcurl-devel openssl-devel
     )
-    dnf install -y --setopt=keepcache=1 "${packages[@]}"
+    dnf install -y "${packages[@]}"
+    dnf clean all
     # Build and collect pyarrow wheel
     git clone --depth 1 --branch "apache-arrow-17.0.0" https://github.com/apache/arrow.git
     cd arrow/cpp
@@ -206,10 +210,11 @@ FROM cpu-base AS common-builder
 ARG TARGETARCH
 # hadolint ignore=DL3002
 USER root
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
-    dnf install -y --setopt=keepcache=1 gcc-toolset-13 cmake ninja-build git wget unzip
+    dnf install -y gcc-toolset-13 cmake ninja-build git wget unzip
+    dnf clean all
 else
     echo "Skipping common-builder package install on non-Power"
 fi
@@ -324,9 +329,11 @@ WORKDIR /opt/app-root/bin
 USER root
 
 # Install useful OS packages
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y --setopt=keepcache=1 jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat
+dnf install -y jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat
+dnf clean all
+rm -rf /var/cache/yum
 EOF
 
 # Copy dynamically-linked mongocli built in earlier build stage
@@ -384,7 +391,7 @@ else
 fi
 EOF
 
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
   packages=(
@@ -400,7 +407,7 @@ if [ "${TARGETARCH}" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     # required to compile scikit-learn
     gcc-gfortran
   )
-  dnf install -y --setopt=keepcache=1 "${packages[@]}"
+  dnf install -y "${packages[@]}"
 fi
 EOF
 

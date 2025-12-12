@@ -24,11 +24,7 @@ ARG CODESERVER_VERSION=v4.104.0
 COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh .
 
 # create dummy file to ensure this stage is awaited before installing rpm
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
-set -Eeuxo pipefail
-./get_code_server_rpm.sh
-touch /tmp/control
-EOF
+RUN ./get_code_server_rpm.sh && touch /tmp/control
 
 #######################
 # wheel caching stage #
@@ -51,8 +47,7 @@ COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
 # Important: Since HOME & USER for the python-312 has been changed,
 #            we need to ensure the same cache directory is mounted in
 #            the final stage with the necessary permissions to consume from cache
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf \
-    --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
 set -Eeuxo pipefail
 pip install --no-cache-dir uv
 # the devel script is ppc64le and s390x specific - sets up build-time dependencies
@@ -99,17 +94,20 @@ EOF
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
 # Solution: --best --skip-broken does not work either, so use --nobest
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=1
+dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
+dnf clean all -y
 EOF
 
 ### END upgrade first to avoid fixable vulnerabilities
 
 # Install useful OS packages
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y --setopt=keepcache=1 tar perl mesa-libGL skopeo
+dnf install -y tar perl mesa-libGL skopeo
+dnf clean all
+rm -rf /var/cache/dnf
 EOF
 
 # (ARCH-ppc64le): since wheels are compiled from source, we need shared libs available at runtime
@@ -164,14 +162,16 @@ USER 0
 WORKDIR /opt/app-root/bin
 
 # Install useful OS packages
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 PACKAGES=(
     jq git-lfs libsndfile
     # provides envsubst which is required by run-nginx.sh
     gettext
 )
-dnf install -y --setopt=keepcache=1 "${PACKAGES[@]}"
+dnf install -y "${PACKAGES[@]}"
+dnf clean all
+rm -rf /var/cache/dnf
 EOF
 
 # wait for rpm-base stage (rpm builds for ppc64le and s390x)
@@ -180,14 +180,14 @@ COPY --from=rpm-base /tmp/control /dev/null
 # Install code-server
 # Note: Use cache mounts, bind mounts fail on konflux
 # https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1755628065772589?thread_ts=1755597929.335999&cid=C04PZ7H0VA8
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf \
-    --mount=type=cache,from=rpm-base,source=/tmp/,target=/code-server-rpm/,rw /bin/bash <<'EOF'
+RUN --mount=type=cache,from=rpm-base,source=/tmp/,target=/code-server-rpm/,rw /bin/bash <<'EOF'
 set -Eeuxo pipefail
 # EXPLANATION: dnf installation produces an "unsigned rpm" error from Konflux (Conforma)
 #  since we're building rpm from source, we will simply unpack it over /
 # dnf install -y "/code-server-rpm/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm"
 # dnf -y clean all --enablerepo='*'
-dnf install -y --setopt=keepcache=1 cpio
+dnf install -y cpio
+dnf -y clean all
 cd /
 rpm2cpio "/code-server-rpm/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm" | cpio -idmv
 EOF
@@ -218,11 +218,12 @@ ENV NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
 
 # Modules does not exist
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 INSTALL_PKGS="bind-utils nginx nginx-mod-stream nginx-mod-http-perl httpd"
-dnf install -y --setopt=tsflags=nodocs --setopt=keepcache=1 $INSTALL_PKGS
+dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
 rpm -V $INSTALL_PKGS
+dnf -y clean all --enablerepo='*'
 EOF
 
 # Configure httpd for CGI processing
