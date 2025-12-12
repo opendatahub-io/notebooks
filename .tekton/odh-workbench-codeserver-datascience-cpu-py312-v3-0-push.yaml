@@ -22,6 +22,8 @@ metadata:
   name: odh-workbench-codeserver-datascience-cpu-py312-v3-0-on-push
   namespace: rhoai-tenant
 spec:
+  timeouts:
+    pipeline: 6h
   params:
   - name: git-url
     value: '{{source_url}}'
@@ -39,7 +41,7 @@ spec:
   - name: dockerfile
     value: codeserver/ubi9-python-3.12/Dockerfile.konflux.cpu
   - name: build-args-file
-    value: codeserver/ubi9-python-3.12/build-args/cpu.conf
+    value: codeserver/ubi9-python-3.12/build-args/konflux.cpu.conf
   - name: path-context
     value: .
   - name: hermetic
