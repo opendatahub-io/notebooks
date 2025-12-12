@@ -153,7 +153,7 @@ if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     dnf install -y "${packages[@]}"
     dnf clean all
     # Build and collect pyarrow wheel
-    git clone --depth 1 --branch "apache-arrow-17.0.0" https://github.com/apache/arrow.git
+    git clone --depth 1 --branch "apache-arrow-21.0.0" https://github.com/apache/arrow.git
     cd arrow/cpp
     mkdir release && cd release
     ARROW_S3_FLAG=""
@@ -221,7 +221,7 @@ EOF
 #######################################################
 FROM common-builder AS onnx-builder
 ARG TARGETARCH
-ARG ONNX_VERSION=v1.19.0
+ARG ONNX_VERSION=v1.20.0
 WORKDIR /root
 RUN <<'EOF'
 set -Eeuxo pipefail

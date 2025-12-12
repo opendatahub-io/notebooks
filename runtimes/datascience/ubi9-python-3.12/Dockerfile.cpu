@@ -87,8 +87,8 @@ if [ "$TARGETARCH" = "ppc64le" ]; then cat > /etc/profile.d/ppc64le.sh <<'PROFIL
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
 export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 export OPENBLAS_VERSION=0.3.30
-export ONNX_VERSION=1.19.0
-export PYARROW_VERSION=17.0.0
+export ONNX_VERSION=1.20.0
+export PYARROW_VERSION=21.0.0
 export PATH="$HOME/.cargo/bin:$PATH"
 export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
 PROFILE_EOF
@@ -159,7 +159,7 @@ WORKDIR /tmp/build-wheels
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "s390x" ]; then
-    echo 'export PYARROW_VERSION=17.0.0' >> /etc/profile.d/s390x.sh
+    echo 'export PYARROW_VERSION=21.0.0' >> /etc/profile.d/s390x.sh
 fi
 EOF
 
@@ -269,7 +269,7 @@ USER root
 WORKDIR /root
 
 ARG TARGETARCH
-ENV ONNX_VERSION=1.19.0
+ENV ONNX_VERSION=1.20.0
 
 RUN echo "onnx-builder stage TARGETARCH: ${TARGETARCH}"
 
@@ -300,7 +300,7 @@ USER root
 WORKDIR /root
 
 ARG TARGETARCH
-ENV PYARROW_VERSION=17.0.0
+ENV PYARROW_VERSION=21.0.0
 
 RUN echo "arrow-builder stage TARGETARCH: ${TARGETARCH}"
 
