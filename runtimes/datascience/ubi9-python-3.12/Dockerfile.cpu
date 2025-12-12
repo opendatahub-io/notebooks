@@ -155,6 +155,9 @@ ARG TARGETARCH
 USER 0
 WORKDIR /tmp/build-wheels
 
+# Bring in the Arrow patch to apply on the source checkout
+COPY apache-arrow-48430.patch /tmp/build-wheels/apache-arrow-48430.patch
+
 # Set pyarrow version for s390x
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
@@ -178,6 +181,8 @@ if [ "$TARGETARCH" = "s390x" ]; then
     # Clone specific version of arrow
     git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git
     cd arrow
+    # Apply downstream patch before building (do not tolerate already-applied)
+    patch -p1 < ../apache-arrow-48430.patch
     # Set environment variables for build
     export ARROW_HOME=/usr/local
     export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
@@ -302,13 +307,19 @@ WORKDIR /root
 ARG TARGETARCH
 ENV PYARROW_VERSION=21.0.0
 
+# Bring in the Arrow patch to apply on the source checkout
+COPY apache-arrow-48430.patch /root/apache-arrow-48430.patch
+
 RUN echo "arrow-builder stage TARGETARCH: ${TARGETARCH}"
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ]; then
     git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git --recursive
-    cd arrow && rm -rf .git && mkdir dist
+    cd arrow
+    # Apply downstream patch before building (do not tolerate already-applied)
+    git apply ../apache-arrow-48430.patch
+    rm -rf .git && mkdir dist
     pip3 install --no-cache-dir -r python/requirements-build.txt
     ARROW_HOME=$(pwd)/dist
     export ARROW_HOME

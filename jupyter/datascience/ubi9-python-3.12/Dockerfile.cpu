@@ -137,6 +137,7 @@ ARG TARGETARCH
 # hadolint ignore=DL3002
 USER 0
 WORKDIR /tmp/build-wheels
+COPY apache-arrow-48430.patch /tmp/build-wheels/
 
 # Build pyarrow on ppc64le and s390x
 RUN --mount=type=cache,target=/root/.cache/pip \
@@ -145,7 +146,7 @@ set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     # Install build dependencies (shared for pyarrow and onnx)
     packages=(
-        cmake make gcc-c++ pybind11-devel wget
+        cmake make gcc-c++ pybind11-devel wget patch
         # pyarrow -DARROW_S3=ON pulls in AWS C++ SDK
         # libcurl-devel is required to build AWS C++ SDK
         libcurl-devel openssl-devel
@@ -154,7 +155,9 @@ if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     dnf clean all
     # Build and collect pyarrow wheel
     git clone --depth 1 --branch "apache-arrow-21.0.0" https://github.com/apache/arrow.git
-    cd arrow/cpp
+    cd arrow
+    git apply /tmp/build-wheels/apache-arrow-48430.patch
+    cd cpp
     mkdir release && cd release
     ARROW_S3_FLAG=""
     if [ "$TARGETARCH" != "s390x" ]; then ARROW_S3_FLAG="-DARROW_S3=ON"; fi
