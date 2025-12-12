@@ -178,6 +178,14 @@ ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
 
 ENV LD_LIBRARY_PATH=/usr/lib:/usr/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 
+### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
+ENV PIP_INDEX_URL=https://pypi.org/simple
+# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
+ENV UV_INDEX_URL=https://pypi.org/simple
+# https://docs.astral.sh/uv/reference/environment/#uv_default_index
+ENV UV_DEFAULT_INDEX=https://pypi.org/simple
+### END RHAIENG-2189: this is AIPCC migration phase 1.5
+
 LABEL name="odh-notebook-jupyter-trustyai-ubi9-python-3.12" \
     summary="Jupyter trustyai notebook image for ODH notebooks" \
     description="Jupyter trustyai notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
