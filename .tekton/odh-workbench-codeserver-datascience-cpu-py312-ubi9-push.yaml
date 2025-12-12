@@ -17,6 +17,8 @@ metadata:
   name: odh-workbench-codeserver-datascience-cpu-py312-ubi9-on-push
   namespace: open-data-hub-tenant
 spec:
+  timeouts:
+    pipeline: 6h
   params:
   - name: git-url
     value: '{{source_url}}'

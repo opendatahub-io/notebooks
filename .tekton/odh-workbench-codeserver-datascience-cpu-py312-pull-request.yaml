@@ -8,7 +8,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-comment: "^/build-konflux"
+    pipelinesascode.tekton.dev/on-comment: "^/(build-konflux|build-codeserver)"
     pipelinesascode.tekton.dev/on-event: "[pull_request]"
   labels:
     appstudio.openshift.io/application: automation
@@ -17,6 +17,9 @@ metadata:
   name: odh-workbench-codeserver-datascience-cpu-py312-on-pull-request
   namespace: rhoai-tenant
 spec:
+  timeouts:
+    pipeline: 8h0m0s
+    tasks: "4h0m0s"
   params:
   - name: git-url
     value: '{{source_url}}'
