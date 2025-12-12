@@ -177,6 +177,13 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       echo "➡️ Generating $(uppercase "$flavor") lock file..."
     fi
 
+    # The behavior has changed in uv 0.9.17 (https://github.com/astral-sh/uv/pull/16956)
+    # Documentation at https://docs.astral.sh/uv/reference/cli/#uv-pip-compile--python-platform says that
+    #  `--python-platform linux` is alias for `x86_64-unknown-linux-gnu`; we cannot use this to get a multiarch pylock
+    # Let's use --universal temporarily, and in the future we can switch to using uv.lock
+    #  when https://github.com/astral-sh/uv/issues/6830 is resolved, or link `ln -s uv.lock/lock.${flavor}.toml uv.lock`
+    # See also --universal discussion with Gerard
+    #  https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757935641975969?thread_ts=1757542802.032519&cid=C0961HQ858Q
     set +e
     uv pip compile pyproject.toml \
       --output-file "$output" \
@@ -184,7 +191,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       --generate-hashes \
       --emit-index-url \
       --python-version="$PYTHON_VERSION" \
-      --python-platform linux \
+      --universal \
       --no-annotate \
       $index
     local status=$?
