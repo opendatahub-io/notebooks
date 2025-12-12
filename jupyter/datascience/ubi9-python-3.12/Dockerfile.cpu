@@ -158,6 +158,7 @@ if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     git clone --depth 1 --branch "apache-arrow-21.0.0" https://github.com/apache/arrow.git
     cd arrow
     git apply /tmp/build-wheels/apache-arrow-48430.patch
+    rm -rf .git
     cd cpp
     mkdir release && cd release
     ARROW_S3_FLAG=""

@@ -182,6 +182,7 @@ if [ "$TARGETARCH" = "s390x" ]; then
     # Clone specific version of arrow
     git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git
     cd arrow
+    rm -rf .git
     # Apply downstream patch before building (do not tolerate already-applied)
     patch -p1 < ../apache-arrow-48430.patch
     # Set environment variables for build
