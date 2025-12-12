@@ -151,12 +151,13 @@ EOF
 FROM cpu-base AS s390x-builder
 
 ARG TARGETARCH
+ARG DATASCIENCE_SOURCE_CODE=runtimes/datascience/ubi9-python-3.12
 # hadolint ignore=DL3002
 USER 0
 WORKDIR /tmp/build-wheels
 
 # Bring in the Arrow patch to apply on the source checkout
-COPY apache-arrow-48430.patch /tmp/build-wheels/apache-arrow-48430.patch
+COPY ${DATASCIENCE_SOURCE_CODE}/apache-arrow-48430.patch /tmp/build-wheels/apache-arrow-48430.patch
 
 # Set pyarrow version for s390x
 RUN /bin/bash <<'EOF'
@@ -305,10 +306,11 @@ USER root
 WORKDIR /root
 
 ARG TARGETARCH
+ARG DATASCIENCE_SOURCE_CODE=runtimes/datascience/ubi9-python-3.12
 ENV PYARROW_VERSION=21.0.0
 
 # Bring in the Arrow patch to apply on the source checkout
-COPY apache-arrow-48430.patch /root/apache-arrow-48430.patch
+COPY ${DATASCIENCE_SOURCE_CODE}/apache-arrow-48430.patch /root/apache-arrow-48430.patch
 
 RUN echo "arrow-builder stage TARGETARCH: ${TARGETARCH}"
 

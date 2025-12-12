@@ -134,10 +134,11 @@ EOF
 FROM cpu-base AS pyarrow-builder
 
 ARG TARGETARCH
+ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 # hadolint ignore=DL3002
 USER 0
 WORKDIR /tmp/build-wheels
-COPY apache-arrow-48430.patch /tmp/build-wheels/
+COPY ${DATASCIENCE_SOURCE_CODE}/apache-arrow-48430.patch /tmp/build-wheels/
 
 # Build pyarrow on ppc64le and s390x
 RUN --mount=type=cache,target=/root/.cache/pip \
