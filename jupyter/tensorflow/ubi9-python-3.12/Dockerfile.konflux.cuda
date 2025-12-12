@@ -118,6 +118,14 @@ ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 
 WORKDIR /opt/app-root/bin
 
+### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
+ENV PIP_INDEX_URL=https://pypi.org/simple
+# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
+ENV UV_INDEX_URL=https://pypi.org/simple
+# https://docs.astral.sh/uv/reference/environment/#uv_default_index
+ENV UV_DEFAULT_INDEX=https://pypi.org/simple
+### END RHAIENG-2189: this is AIPCC migration phase 1.5
+
 # OS Packages needs to be installed as root
 USER root
 
