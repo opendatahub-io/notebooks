@@ -15,7 +15,7 @@ dependencies = [
     "scipy~=1.16.2",
     "skl2onnx~=1.19.1",
     "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
-    "codeflare-sdk~=0.32.1; platform_machine != 's390x' and platform_machine != 'ppc64le'",
+    "codeflare-sdk~=0.33.0; platform_machine != 's390x' and platform_machine != 'ppc64le'",
     "feast~=0.56.0",
 
     # DB connectors

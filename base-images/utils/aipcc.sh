@@ -2,6 +2,7 @@
 set -Eeuxo pipefail
 
 ARCH=${TARGETARCH}
+PYTHON=${PYTHON:-python3}
 
 DNF_OPTS=(-y --nodocs --setopt=install_weak_deps=False --setopt=keepcache=True --setopt=max_parallel_downloads=10)
 
@@ -340,7 +341,7 @@ function uninstall_epel() {
 # or codeready-builder-for-rhel-${RELEASEVER_MAJOR}-${ARCH}-rpms
 function install_csb() {
     dnf install "${DNF_OPTS[@]}" dnf-plugins-core
-    dnf config-manager --set-enabled crb
+    dnf config-manager --set-enabled ubi-9-codeready-builder-rpms
 }
 
 # create Python virtual env and update pip inside the venv
