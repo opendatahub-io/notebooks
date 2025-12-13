@@ -179,7 +179,7 @@ if [ "$TARGETARCH" = "s390x" ]; then
     # Install build dependencies
     dnf install -y cmake make gcc-c++ pybind11-devel wget git \
         openssl-devel zlib-devel bzip2-devel lz4-devel \
-        ninja-build
+        ninja-build patch
     dnf clean all
     # Source the environment variables
     source /etc/profile.d/s390x.sh
