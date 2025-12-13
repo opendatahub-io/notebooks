@@ -22,6 +22,7 @@ ARG NODE_VERSION=22.18.0
 ARG CODESERVER_VERSION=v4.104.0
 
 COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh .
+COPY ${CODESERVER_SOURCE_CODE}/s390x.patch /tmp/
 
 ### BEGIN Subscribe with subscription manager
 RUN /bin/bash <<'EOF'
@@ -38,8 +39,15 @@ EOF
 
 ### END Subscribe with subscription manager
 
-# create dummy file to ensure this stage is awaited before installing rpm
-RUN ./get_code_server_rpm.sh && touch /tmp/control
+# install build dependencies
+RUN dnf install -y \
+    jq patch libtool rsync gettext gcc-toolset-14 krb5-devel libX11-devel libatomic gcc-toolset-14-libatomic-devel && \
+  dnf clean all
+
+# Build code-server rpm
+RUN ./get_code_server_rpm.sh
+
+RUN echo "done" > /tmp/control
 
 #######################
 # wheel caching stage #

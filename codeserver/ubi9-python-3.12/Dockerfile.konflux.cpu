@@ -40,7 +40,9 @@ EOF
 ### END Subscribe with subscription manager
 
 # install build dependencies
-RUN dnf install -y jq patch libtool rsync gettext gcc-toolset-14 krb5-devel libX11-devel libatomic gcc-toolset-14-libatomic-devel
+RUN dnf install -y \
+    jq patch libtool rsync gettext gcc-toolset-14 krb5-devel libX11-devel libatomic gcc-toolset-14-libatomic-devel && \
+  dnf clean all
 
 # Build code-server rpm
 RUN ./get_code_server_rpm.sh
