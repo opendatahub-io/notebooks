@@ -128,6 +128,9 @@ class TestBaseImage:
                         continue  # it's in ${MPI_HOME}/lib
                     if deps.startswith("liboshmem.so"):
                         continue  # it's in ${MPI_HOME}/lib
+                    # AIPCC-8057: Unsatisfied library dependencies on libnvidia-ml.so in the cuda aipcc image
+                    if deps.startswith("libnvidia-ml.so"):
+                        continue  # it does not seem to be in the image
 
                     with subtests.test(f"{dlib=}"):
                         pytest.fail(f"{dlib=} has unsatisfied dependencies {deps=}")
