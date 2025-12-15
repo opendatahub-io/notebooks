@@ -5,12 +5,12 @@ name: Test Install Podman
   push:
     paths:
       - 'ci/cached-builds/**'
-      - '.github/actions/install-podman/**'
+      - '.github/actions/install-podman-action/**'
       - '.github/workflows/test-install-podman.yaml'
   pull_request:
     paths:
       - 'ci/cached-builds/**'
-      - '.github/actions/install-podman/**'
+      - '.github/actions/install-podman-action/**'
       - '.github/workflows/test-install-podman.yaml'
   workflow_dispatch:
 
@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Install Podman
-        uses: './.github/actions/install-podman'
+        uses: './.github/actions/install-podman-action'
         with:
           platform: linux/amd64
 

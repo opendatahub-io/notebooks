@@ -158,7 +158,7 @@ jobs:
       # region Podman setup
 
       - name: Install Podman
-        uses: './.github/actions/install-podman'
+        uses: './.github/actions/install-podman-action'
         with:
           platform: ${{ inputs.platform }}
 
