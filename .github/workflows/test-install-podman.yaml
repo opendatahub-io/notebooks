@@ -1,0 +1,39 @@
+---
+name: Test Install Podman
+
+"on":
+  push:
+    paths:
+      - 'ci/cached-builds/**'
+      - '.github/actions/install-podman/**'
+      - '.github/workflows/test-install-podman.yaml'
+  pull_request:
+    paths:
+      - 'ci/cached-builds/**'
+      - '.github/actions/install-podman/**'
+      - '.github/workflows/test-install-podman.yaml'
+  workflow_dispatch:
+
+env:
+  TMPDIR: /home/runner/.local/share/containers/tmpdir
+  CONTAINER_HOST: unix:///var/run/podman/podman.sock
+
+jobs:
+  test-install:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Podman
+        uses: './.github/actions/install-podman'
+        with:
+          platform: linux/amd64
+
+      - name: Test Podman installation
+        run: |
+          set -Eeuxo pipefail
+
+          podman version
+
+          # https://github.com/containers/podman/blob/main/docs/tutorials/podman_tutorial.md#running-a-sample-container
+          podman run --name basic_httpd -dt -p 8080:80/tcp docker.io/nginx
