@@ -147,6 +147,8 @@ jobs:
         run: sudo apt-get install -y btrfs-compsize
 
       - name: Mount lvm overlay for podman builds
+        # Don't mount LVM on IBM runners, they don't have separate /mnt, and they are containers, so it would fail anyway
+        if: ${{ runner.arch == 'x86_64' || runner.arch == 'arm64' }}
         run: |
           df -h
           free -h
