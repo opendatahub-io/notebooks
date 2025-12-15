@@ -42,7 +42,7 @@ jobs:
       # Use the rootful instance of podman for sharing images with cri-o
       # https://podman-desktop.io/blog/sharing-podman-images-with-kubernetes-cluster#introduction
       # https://access.redhat.com/solutions/6986565
-      CONTAINER_HOST: unix:///var/run/podman/podman.sock
+#      CONTAINER_HOST: unix:///var/run/podman/podman.sock
       # We don't push here when building PRs, so we can use the same IMAGE_REGISTRY in all branches of the workflow
       IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
       # GitHub image registry used for storing $(CONTAINER_ENGINE)'s cache
