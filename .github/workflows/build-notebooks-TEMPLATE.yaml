@@ -29,10 +29,20 @@ name: Build & Publish Notebook Servers (TEMPLATE)
         description: "add RHEL subscription from github secret"
         type: boolean
 
+env:
+  # language=json
+  PLATFORM_RUNNERS: >-
+    {
+      "linux/amd64": "ubuntu-24.04",
+      "linux/arm64": "ubuntu-24.04-arm",
+      "linux/ppc64le": "ubuntu-24.04",
+      "linux/s390x": "ubuntu-24.04"
+    }
+
 jobs:
   build:
     # https://docs.github.com/en/actions/how-tos/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
-    runs-on: ${{ inputs.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    runs-on: ${{ fromJSON(env.PLATFORM_RUNNERS)[inputs.platform] || 'no-such-runner' }}
     env:
       # Some pieces of code (image pulls, for example) in podman consult TMPDIR or default to /var/tmp
       TMPDIR: /home/runner/.local/share/containers/tmpdir
