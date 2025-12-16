@@ -104,6 +104,7 @@ jobs:
           mkdir entitlement
           mkdir consumer
           docker run \
+            --platform=${{ inputs.platform }} \
             -v ${PWD}/entitlement:/etc/pki/entitlement:Z \
             -v ${PWD}/consumer:/etc/pki/consumer:Z \
             --rm -t registry.access.redhat.com/ubi9/ubi \
