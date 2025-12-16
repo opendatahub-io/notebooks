@@ -11,15 +11,15 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: 'true'
     pipelinesascode.tekton.dev/max-keep-runs: '3'
-    pipelinesascode.tekton.dev/on-comment: ^/kfbuild\s+(all|odh\-base\-image\-cuda\-py312\-c9s|base\-images/cuda/12\.8/c9s\-python\-3\.12)
+    pipelinesascode.tekton.dev/on-comment: ^/kfbuild\s+(all|odh\-workbench\-jupyter\-trustyai\-cpu\-py312\-ubi9|jupyter/trustyai/ubi9\-python\-3\.12)
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && target_branch == "main"  && ( "base-images/cuda/12.8/c9s-python-3.12/**".pathChanged() || ".tekton/odh-base-image-cuda-12-8-py312-c9s-pull-request.yaml".pathChanged() )
+      event == "pull_request" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-workbench-jupyter-trustyai-cpu-py312-ubi9-pull-request.yaml".pathChanged() || "jupyter/trustyai/ubi9-python-3.12/**".pathChanged() || "jupyter/utils/**".pathChanged() || "jupyter/minimal/ubi9-python-3.12/start-notebook.sh".pathChanged() || "jupyter/datascience/ubi9-python-3.12/mongodb-org-6.0.repo-x86_64/**".pathChanged() || "jupyter/datascience/ubi9-python-3.12/mssql-2022.repo-x86_64/**".pathChanged() || "jupyter/datascience/ubi9-python-3.12/setup-elyra.sh".pathChanged() || "jupyter/trustyai/ubi9-python-3.12/build-args/cpu.conf".pathChanged() )
       && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
     appstudio.openshift.io/application: opendatahub-release
-    appstudio.openshift.io/component: odh-base-image-cuda-py312-c9s
+    appstudio.openshift.io/component: odh-workbench-jupyter-trustyai-cpu-py312-ubi9
     pipelines.appstudio.openshift.io/type: build
-  name: odh-base-image-cuda-12-8-py312-c9s-on-pull-request
+  name: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-on-pull-request
   namespace: open-data-hub-tenant
 spec:
   timeouts:
@@ -30,21 +30,25 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-base-image-cuda-py312-c9s:on-pr-{{revision}}
+    value: quay.io/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
   - name: build-platforms
     value:
     - linux/x86_64
     - linux-d160-m2xlarge/arm64
+    - linux/ppc64le
+    - linux/s390x
   - name: dockerfile
-    value: base-images/cuda/12.8/c9s-python-3.12/Dockerfile.cuda
+    value: jupyter/trustyai/ubi9-python-3.12/Dockerfile.cpu
   - name: path-context
     value: .
+  - name: build-args-file
+    value: jupyter/trustyai/ubi9-python-3.12/build-args/cpu.conf
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-base-image-cuda-py312-c9s-poc
+    serviceAccountName: build-pipeline-odh-workbench-jupyter-trustyai-cpu-py312-ubi9
   workspaces:
   - name: git-auth
     secret:

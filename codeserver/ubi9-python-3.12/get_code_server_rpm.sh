@@ -28,6 +28,11 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
 	export ELECTRON_SKIP_BINARY_DOWNLOAD=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 	export npm_config_runtime=node
 
+	# install build dependencies
+	# https://access.redhat.com/support/policy/updates/rhel-app-streams-life-cycle
+	# https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/developing_c_and_cpp_applications_in_rhel_9/assembly_additional-toolsets-for-development-rhel-9_developing-applications#cpp-compatibility-in-gcc-toolset-14_gcc-toolset-14
+	dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel
+
 	# starting with node-22, c++20 is required
 	. /opt/rh/gcc-toolset-14/enable
 
@@ -64,7 +69,7 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
 		#SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 		git apply /tmp/s390x.patch
 	fi
-        	
+
 	source ${NVM_DIR}/nvm.sh
 	while IFS= read -r src_patch; do echo "patches/$src_patch"; patch -p1 < "patches/$src_patch"; done < patches/series
 	nvm use ${NODE_VERSION}
