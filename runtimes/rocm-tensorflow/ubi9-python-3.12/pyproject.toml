@@ -9,9 +9,9 @@ dependencies = [
     # ROCm TensorFlow packages
     # https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/tensorflow-install.html#using-a-wheels-package
     # TODO(jdanek): consider adding #sha256=814a5e4842b0c92d63c7a0bb4df0baf51ff2db8615535d83fe8958204b840598
-    "tensorflow-rocm @ https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4/tensorflow_rocm-2.17.1-cp312-cp312-manylinux_2_28_x86_64.whl",
+    "tensorflow-rocm @ https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4/tensorflow_rocm-2.18.1-cp312-cp312-manylinux_2_28_x86_64.whl",
     # tensorflow-rocm==2.x needs tensorboard>=2.x,<2.x+1
-    "tensorboard~=2.17.0",
+    "tensorboard~=2.18.0",
 
     # Datascience and useful extensions
     "boto3~=1.40.52",
