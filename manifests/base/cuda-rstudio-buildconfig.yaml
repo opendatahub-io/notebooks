@@ -42,11 +42,14 @@ spec:
     type: Git
     git:
       uri: "https://github.com/red-hat-data-services/notebooks"
-      ref: rhoai-3.0
+      ref: rhoai-3.2
   strategy:
     type: Docker
     dockerStrategy:
       dockerfilePath: "rstudio/rhel9-python-3.12/Dockerfile.cuda"
+      buildArgs:
+        - name: BASE_IMAGE
+          value: "registry.redhat.io/rhel9/python-312:latest"
       noCache: true
       volumes:
         - name: secret-mvn
