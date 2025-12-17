@@ -23,25 +23,21 @@ ENV UV_DEFAULT_INDEX=https://pypi.org/simple
 # OS Packages needs to be installed as root
 USER root
 
-### BEGIN upgrade first to avoid fixable vulnerabilities
+#!!! BEGIN upgrade first to avoid fixable vulnerabilities
 # If we have a Red Hat subscription prepared, refresh it
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-if command -v subscription-manager &> /dev/null; then
-  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "Not registered, skipping refresh."
-fi
-EOF
+RUN set -Eeuxo pipefail && \
+    if command -v subscription-manager &> /dev/null; then \
+        subscription-manager identity &>/dev/null && subscription-manager refresh || echo "Not registered, skipping refresh."; \
+    fi
 
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
 # Solution: --best --skip-broken does not work either, so use --nobest
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
-dnf clean all -y
-EOF
+RUN set -Eeuxo pipefail && \
+    dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 && \
+    dnf clean all -y
 
-### END upgrade first to avoid fixable vulnerabilities
+#!!! END upgrade first to avoid fixable vulnerabilities
 
 # Install useful OS packages
 # remove skopeo, CVE-2025-4674
@@ -90,11 +86,9 @@ USER 0
 ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 
 # Install CUDA toolkit 12.8
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf -y install cuda-toolkit-12-8
-dnf -y clean all --enablerepo="*"
-EOF
+RUN set -Eeuxo pipefail && \
+    dnf -y install cuda-toolkit-12-8 && \
+    dnf -y clean all --enablerepo="*"
 
 WORKDIR /opt/app-root/src
 # TILL HERE
@@ -104,81 +98,66 @@ WORKDIR /opt/app-root/src
 #RUN sed -i 's/\(def in_container():\)/\1\n    return False/g' /usr/lib64/python*/*-packages/rhsm/config.py
 
 # If necessary, run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
-RUN /bin/bash <<'EOF'
-set -Eeuo pipefail
-# remove -x as to not leak passwords in build logs
-if [ -d "${SECRET_DIR}" ]; then
-    SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFAULT})
-    BASEURL=$(cat ${SECRET_DIR}/BASEURL 2>/dev/null || echo ${BASEURL_DEFAULT})
-    USERNAME=$(cat ${SECRET_DIR}/USERNAME)
-    PASSWORD=$(cat ${SECRET_DIR}/PASSWORD)
-    subscription-manager register \
-    ${SERVERURL:+--serverurl=$SERVERURL} \
-    ${BASEURL:+--baseurl=$BASEURL} \
-    --username=$USERNAME \
-    --password=$PASSWORD \
-    --force \
-    --auto-attach
-fi
-EOF
+RUN set -Eeuo pipefail && \
+    if [ -d "${SECRET_DIR}" ]; then \
+        SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFAULT}) && \
+        BASEURL=$(cat ${SECRET_DIR}/BASEURL 2>/dev/null || echo ${BASEURL_DEFAULT}) && \
+        USERNAME=$(cat ${SECRET_DIR}/USERNAME) && \
+        PASSWORD=$(cat ${SECRET_DIR}/PASSWORD) && \
+        subscription-manager register \
+            ${SERVERURL:+--serverurl=$SERVERURL} \
+            ${BASEURL:+--baseurl=$BASEURL} \
+            --username=$USERNAME \
+            --password=$PASSWORD \
+            --force \
+            --auto-attach; \
+    fi
 
 # TILL HERE
 
 ENV R_VERSION=4.5.1
 
 # Install R
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y dnf-plugins-core
-if command -v subscription-manager &> /dev/null; then
-  subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms
-else
-  dnf config-manager --set-enabled crb
-fi
-dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-INSTALL_PKGS="R-core R-core-devel R-java R-Rcpp R-highlight \
-R-littler R-littler-examples openssl-libs compat-openssl11"
-dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
-echo 'options(repos = c(CRAN = "https://cran.rstudio.com/"), download.file.method = "libcurl")' >> /usr/lib64/R/etc/Rprofile.site
-(umask 002;touch /usr/lib64/R/etc/Renviron.site)
-dnf -y clean all --enablerepo='*'
-EOF
+RUN set -Eeuxo pipefail && \
+    dnf install -y dnf-plugins-core && \
+    if command -v subscription-manager &> /dev/null; then \
+        subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms; \
+    else \
+        dnf config-manager --set-enabled crb; \
+    fi && \
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+    INSTALL_PKGS="R-core R-core-devel R-java R-Rcpp R-highlight R-littler R-littler-examples openssl-libs compat-openssl11" && \
+    dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
+    echo 'options(repos = c(CRAN = "https://cran.rstudio.com/"), download.file.method = "libcurl")' >> /usr/lib64/R/etc/Rprofile.site && \
+    (umask 002;touch /usr/lib64/R/etc/Renviron.site) && \
+    dnf -y clean all --enablerepo='*'
 
 # set R library to default (used in install.r from littler)
 ENV LIBLOC=/usr/lib64/R/library
 ENV R_LIBS_USER=/opt/app-root/bin/Rpackages/4.5
 
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-chmod -R a+w ${LIBLOC}
-# create User R Library path
-mkdir -p ${R_LIBS_USER}
-chmod -R a+w ${R_LIBS_USER}
-EOF
+RUN set -Eeuxo pipefail && \
+    chmod -R a+w ${LIBLOC} && \
+    mkdir -p ${R_LIBS_USER} && \
+    chmod -R a+w ${R_LIBS_USER}
 
 WORKDIR /tmp/
 COPY /rstudio/utils /tmp/utils
 
 # Install RStudio
 ARG RSTUDIO_RPM=rstudio-server-rhel-2025.09.0-387-x86_64.rpm
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/${RSTUDIO_RPM}
-dnf install -y ${RSTUDIO_RPM}
-rm ${RSTUDIO_RPM}
-dnf -y clean all  --enablerepo='*'
-# Specific RStudio config and fixes
-chmod 1777 /var/run/rstudio-server
-mkdir -p /usr/share/doc/R
-# package installation
-# install necessary texlive-framed package to make Knit R markup to PDF rendering possible
-dnf install -y libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed
-# install npm to run cve_remediation script
-dnf install -y npm
-dnf clean all
-rm -rf /var/cache/yum
-(cd /tmp/utils && ./cve_remediation.sh)
-EOF
+RUN set -Eeuxo pipefail && \
+    wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/${RSTUDIO_RPM} && \
+    dnf install -y ${RSTUDIO_RPM} && \
+    rm ${RSTUDIO_RPM} && \
+    dnf -y clean all --enablerepo='*' && \
+    chmod 1777 /var/run/rstudio-server && \
+    mkdir -p /usr/share/doc/R && \
+    dnf install -y libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed && \
+    dnf install -y npm && \
+    dnf clean all && \
+    rm -rf /var/cache/yum && \
+    (cd /tmp/utils && ./cve_remediation.sh)
 
 COPY ${RSTUDIO_SOURCE_CODE}/rsession.conf /etc/rstudio/rsession.conf
 
@@ -205,15 +184,13 @@ ENV NGINX_VERSION=1.24 \
     NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
 
 # Modules does not exist
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf -y module enable nginx:$NGINX_VERSION
-INSTALL_PKGS="nss_wrapper bind-utils gettext hostname nginx nginx-mod-stream nginx-mod-http-perl httpd"
-dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
-rpm -V $INSTALL_PKGS
-nginx -v 2>&1 | grep -qe "nginx/$NGINX_VERSION\." && echo "Found VERSION $NGINX_VERSION"
-dnf -y clean all --enablerepo='*'
-EOF
+RUN set -Eeuxo pipefail && \
+    dnf -y module enable nginx:$NGINX_VERSION && \
+    INSTALL_PKGS="nss_wrapper bind-utils gettext hostname nginx nginx-mod-stream nginx-mod-http-perl httpd" && \
+    dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
+    rpm -V $INSTALL_PKGS && \
+    nginx -v 2>&1 | grep -qe "nginx/$NGINX_VERSION\." && echo "Found VERSION $NGINX_VERSION" && \
+    dnf -y clean all --enablerepo='*'
 
 # Configure httpd for CGI processing
 COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/httpd/httpd.conf /etc/httpd/conf/httpd.conf
@@ -238,33 +215,29 @@ COPY ${RSTUDIO_SOURCE_CODE}/nginx/api/ /opt/app-root/api/
 # UID=1001 && GID=0
 # UID=<any>&& GID=0
 # UID=1001 && GID=<any>
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH}
-mkdir -p ${NGINX_APP_ROOT}/etc/nginx.d/
-mkdir -p ${NGINX_APP_ROOT}/etc/nginx.default.d/
-mkdir -p ${NGINX_APP_ROOT}/api/
-mkdir -p ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
-mkdir -p ${NGINX_LOG_PATH}
-mkdir -p ${NGINX_PERL_MODULE_PATH}
-# Create httpd directories and set permissions
-mkdir -p /var/log/httpd /var/run/httpd /etc/httpd/logs
-chown -R 1001:0 ${NGINX_CONF_PATH}
-chown -R 1001:0 ${NGINX_APP_ROOT}/etc
-chown -R 1001:0 ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
-chown -R 1001:0 /var/lib/nginx /var/log/nginx /run
-chown -R 1001:0 /var/log/httpd /var/run/httpd /etc/httpd/logs
-chmod    ug+rw  ${NGINX_CONF_PATH}
-chmod -R ug+rwX ${NGINX_APP_ROOT}/etc
-chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
-chmod -R ug+rwX /var/lib/nginx /var/log/nginx /run
-chmod -R ug+rwX /var/log/httpd /var/run/httpd /etc/httpd/logs
-# Make CGI scripts executable and set proper ownership
-chmod +x /opt/app-root/api/kernels/access.cgi
-chmod +x /opt/app-root/api/probe.cgi
-chown -R 1001:0 /opt/app-root/api
-rpm-file-permissions
-EOF
+RUN set -Eeuxo pipefail && \
+    sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH} && \
+    mkdir -p ${NGINX_APP_ROOT}/etc/nginx.d/ && \
+    mkdir -p ${NGINX_APP_ROOT}/etc/nginx.default.d/ && \
+    mkdir -p ${NGINX_APP_ROOT}/api/ && \
+    mkdir -p ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
+    mkdir -p ${NGINX_LOG_PATH} && \
+    mkdir -p ${NGINX_PERL_MODULE_PATH} && \
+    mkdir -p /var/log/httpd /var/run/httpd /etc/httpd/logs && \
+    chown -R 1001:0 ${NGINX_CONF_PATH} && \
+    chown -R 1001:0 ${NGINX_APP_ROOT}/etc && \
+    chown -R 1001:0 ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
+    chown -R 1001:0 /var/lib/nginx /var/log/nginx /run && \
+    chown -R 1001:0 /var/log/httpd /var/run/httpd /etc/httpd/logs && \
+    chmod ug+rw ${NGINX_CONF_PATH} && \
+    chmod -R ug+rwX ${NGINX_APP_ROOT}/etc && \
+    chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
+    chmod -R ug+rwX /var/lib/nginx /var/log/nginx /run && \
+    chmod -R ug+rwX /var/log/httpd /var/run/httpd /etc/httpd/logs && \
+    chmod +x /opt/app-root/api/kernels/access.cgi && \
+    chmod +x /opt/app-root/api/probe.cgi && \
+    chown -R 1001:0 /opt/app-root/api && \
+    rpm-file-permissions
 
 # Launcher
 WORKDIR /opt/app-root/bin
@@ -274,12 +247,10 @@ COPY ${RSTUDIO_SOURCE_CODE}/run-rstudio.sh ${RSTUDIO_SOURCE_CODE}/setup_rstudio.
 
 # TODO THIS SHOULD BE REMOVED in favor of: https://issues.redhat.com/browse/RHOAIENG-32541
 # Unregister the system
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-if [ -d "${SECRET_DIR}" ]; then
-    subscription-manager remove --all && subscription-manager unregister && subscription-manager clean
-fi
-EOF
+RUN set -Eeuxo pipefail && \
+    if [ -d "${SECRET_DIR}" ]; then \
+        subscription-manager remove --all && subscription-manager unregister && subscription-manager clean; \
+    fi
 
 # TILL HERE
 
@@ -287,16 +258,11 @@ USER 1001
 
 COPY ${RSTUDIO_SOURCE_CODE}/pylock.toml ./
 
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-echo "Installing softwares and packages"
-# This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
-#  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
-# Fix permissions to support pip in Openshift environments
-chmod -R g+w /opt/app-root/lib/python3.12/site-packages
-fix-permissions /opt/app-root -P
-EOF
+RUN set -Eeuxo pipefail && \
+    echo "Installing softwares and packages" && \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml && \
+    chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
+    fix-permissions /opt/app-root -P
 
 WORKDIR /opt/app-root/src
 
