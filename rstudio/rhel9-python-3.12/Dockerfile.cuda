@@ -28,7 +28,7 @@ USER root
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if command -v subscription-manager &> /dev/null; then
-  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
+  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "Not registered, skipping refresh."
 fi
 EOF
 
@@ -90,6 +90,30 @@ dnf -y clean all --enablerepo="*"
 EOF
 
 WORKDIR /opt/app-root/src
+# TILL HERE
+
+# TODO THIS SHOULD BE REMOVED in favor of: https://issues.redhat.com/browse/RHOAIENG-32541
+# uncomment the below line if you fall on this error: subscription-manager is disabled when running inside a container. Please refer to your host system for subscription management.
+#RUN sed -i 's/\(def in_container():\)/\1\n    return False/g' /usr/lib64/python*/*-packages/rhsm/config.py
+
+# If necessary, run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ -d "${SECRET_DIR}" ]; then
+    SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFAULT})
+    BASEURL=$(cat ${SECRET_DIR}/BASEURL 2>/dev/null || echo ${BASEURL_DEFAULT})
+    USERNAME=$(cat ${SECRET_DIR}/USERNAME)
+    PASSWORD=$(cat ${SECRET_DIR}/PASSWORD)
+    subscription-manager register \
+    ${SERVERURL:+--serverurl=$SERVERURL} \
+    ${BASEURL:+--baseurl=$BASEURL} \
+    --username=$USERNAME \
+    --password=$PASSWORD \
+    --force \
+    --auto-attach
+fi
+EOF
+
 # TILL HERE
 
 ENV R_VERSION=4.5.1
@@ -239,6 +263,17 @@ WORKDIR /opt/app-root/bin
 
 COPY ${RSTUDIO_SOURCE_CODE}/utils utils/
 COPY ${RSTUDIO_SOURCE_CODE}/run-rstudio.sh ${RSTUDIO_SOURCE_CODE}/setup_rstudio.py ${RSTUDIO_SOURCE_CODE}/rsession.sh ${RSTUDIO_SOURCE_CODE}/run-nginx.sh ./
+
+# TODO THIS SHOULD BE REMOVED in favor of: https://issues.redhat.com/browse/RHOAIENG-32541
+# Unregister the system
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ -d "${SECRET_DIR}" ]; then
+    subscription-manager remove --all && subscription-manager unregister && subscription-manager clean
+fi
+EOF
+
+# TILL HERE
 
 USER 1001
 
