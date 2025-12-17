@@ -5,7 +5,7 @@ set -Eeuo pipefail
 # This would require us to install the -devel packages, but that's cumbersome with AIPCC bases.
 # Therefore, simply create symlinks to the versioned libraries and (IMPORTANT!) run ldconfig afterwards.
 
-ROCM_PATH=/opt/rocm-6.3.4
+ROCM_PATH=/opt/rocm-6.4.3
 find "$ROCM_PATH/lib" -name '*.so.*' -type f -print0 |
 while IFS= read -r -d '' f; do
   dir=${f%/*}                       # /opt/rocm-6.3.4/lib  (or sub-dir)

@@ -193,6 +193,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       --python-version="$PYTHON_VERSION" \
       --universal \
       --no-annotate \
+      --quiet \
       $index
     local status=$?
     set -e
