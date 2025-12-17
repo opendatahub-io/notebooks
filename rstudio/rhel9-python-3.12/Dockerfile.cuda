@@ -182,11 +182,6 @@ USER 0
 # Set this flag so that libraries can find the location of CUDA
 ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 
-# Install CUDA toolkit 12.8
-RUN set -Eeuxo pipefail && \
-    dnf -y install cuda-toolkit-12-8 && \
-    dnf -y clean all --enablerepo="*"
-
 WORKDIR /opt/app-root/src
 # TILL HERE
 
