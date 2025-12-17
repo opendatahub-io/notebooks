@@ -66,6 +66,13 @@ ARG TARGETARCH
 
 WORKDIR /opt/app-root/bin
 
+# TODO THIS SHOULD BE REMOVED
+# Access the client's secret for the subscription manager from the environment variable
+ARG SECRET_DIR=/opt/app-root/src/.sec
+ARG SERVERURL_DEFAULT=""
+ARG BASEURL_DEFAULT=""
+# TILL HERE
+
 LABEL name="odh-notebook-rstudio-server-rhel9-python-3.12" \
       summary="RStudio Server image with python 3.12 based on Red Hat Enterprise Linux 9" \
       description="RStudio Server image with python 3.12 based on Red Hat Enterprise Linux 9" \
