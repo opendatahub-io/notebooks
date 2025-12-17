@@ -121,6 +121,17 @@ fix-permissions /opt/app-root -P
 /opt/app-root/bin/utils/addons/apply.sh
 EOF
 
+# Fix permissions to support pip in Openshift environments
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+chmod -R g+w /opt/app-root/lib/python3.12/site-packages
+fix-permissions /opt/app-root -P
+EOF
+
+# Workaround for https://issues.redhat.com/browse/AIPCC-8152
+ENV ROCM_PATH=/opt/rocm
+
+USER 1001
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
