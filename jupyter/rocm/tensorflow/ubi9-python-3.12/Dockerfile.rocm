@@ -194,6 +194,10 @@ COPY ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monke
 USER 0
 COPY ${TENSORFLOW_SOURCE_CODE}/utils/link-solibs.sh /tmp/link-solibs.sh
 RUN /tmp/link-solibs.sh && rm /tmp/link-solibs.sh
+
+# Workaround for https://issues.redhat.com/browse/AIPCC-8152
+ENV ROCM_PATH=/opt/rocm
+
 USER 1001
 
 WORKDIR /opt/app-root/src
