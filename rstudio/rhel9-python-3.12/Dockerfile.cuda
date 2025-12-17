@@ -105,7 +105,8 @@ WORKDIR /opt/app-root/src
 
 # If necessary, run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
 RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
+set -Eeuo pipefail
+# remove -x as to not leak passwords in build logs
 if [ -d "${SECRET_DIR}" ]; then
     SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFAULT})
     BASEURL=$(cat ${SECRET_DIR}/BASEURL 2>/dev/null || echo ${BASEURL_DEFAULT})
