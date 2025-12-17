@@ -44,6 +44,9 @@ spec:
     type: Docker
     dockerStrategy:
       dockerfilePath: "rstudio/rhel9-python-3.12/Dockerfile.cpu"
+      buildArgs:
+        - name: BASE_IMAGE
+          value: "registry.redhat.io/rhel9/python-312:latest"
       volumes:
         - name: secret-mvn
           source:
