@@ -41,11 +41,13 @@ def test_dockerfiles_unintended_subscription_manager_pattern():
     for file in PROJECT_ROOT.glob("**/Dockerfile*"):
         if file.is_dir():
             continue
+        if file.is_relative_to(PROJECT_ROOT / "rstudio/rhel9-python-3.12"):
+            continue  # Skip RStudio Dockerfiles
         with open(file, "r") as f:
             for line_no, line in enumerate(f, start=1):
                 assert not pattern.match(line), (
                     f"Undesirable subscription-manager pattern that disables Konflux subscription found in {file}:{line_no}."
-                    f" Modify the test if this is intended behaviour. But It is very reasonable to assume it is a mistake."
+                    f" Modify the test if this is intended behaviour. But it is very reasonable to assume it is a mistake."
                 )
 
 
