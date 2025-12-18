@@ -27,7 +27,7 @@ USER root
 # If we have a Red Hat subscription prepared, refresh it
 RUN set -Eeuxo pipefail && \
     if command -v subscription-manager &> /dev/null; then \
-        subscription-manager identity &>/dev/null && subscription-manager refresh || echo "Not registered, skipping refresh."; \
+        subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."; \
     fi
 
 # Problem: The operation would result in removing the following protected packages: systemd

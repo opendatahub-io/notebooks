@@ -59,7 +59,7 @@ def main():
         # If we have a Red Hat subscription prepared, refresh it
         set -Eeuxo pipefail
         if command -v subscription-manager &> /dev/null; then
-          subscription-manager identity &>/dev/null && subscription-manager refresh || echo "Not registered, skipping refresh."
+          subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
         fi
         EOF
     """)
