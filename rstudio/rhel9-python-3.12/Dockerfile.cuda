@@ -8,7 +8,7 @@ ARG BASE_IMAGE
 ####################
 # cuda-base        #
 ####################
-FROM ${BASE_IMAGE} AS cuda-base
+FROM ${BASE_IMAGE} AS base
 
 WORKDIR /opt/app-root/bin
 
@@ -23,29 +23,21 @@ ENV UV_DEFAULT_INDEX=https://pypi.org/simple
 # OS Packages needs to be installed as root
 USER root
 
-### BEGIN upgrade first to avoid fixable vulnerabilities
-RUN /bin/bash <<'EOF'
-# The devops activationkey is not powerful enough, use rhoai-ide-konflux key
-# https://redhat-internal.slack.com/archives/C07SBP17R7Z/p1764077596143619?thread_ts=1761667034.429529&cid=C07SBP17R7Z
-subscription-manager register --org 18631088 --activationkey thisisunsafe
-
+#!!! BEGIN upgrade first to avoid fixable vulnerabilities
 # If we have a Red Hat subscription prepared, refresh it
-set -Eeuxo pipefail
-if command -v subscription-manager &> /dev/null; then
-  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
-fi
-EOF
+RUN set -Eeuxo pipefail && \
+    if command -v subscription-manager &> /dev/null; then \
+        subscription-manager identity &>/dev/null && subscription-manager refresh || echo "Not registered, skipping refresh."; \
+    fi
 
 # Problem: The operation would result in removing the following protected packages: systemd
 #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
 # Solution: --best --skip-broken does not work either, so use --nobest
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
-dnf clean all -y
-EOF
+RUN set -Eeuxo pipefail && \
+    dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0 && \
+    dnf clean all -y
 
-### END upgrade first to avoid fixable vulnerabilities
+#!!! END upgrade first to avoid fixable vulnerabilities
 
 # Install useful OS packages
 # remove skopeo, CVE-2025-4674
@@ -60,6 +52,103 @@ RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "mic
 
 WORKDIR /opt/app-root/src
 
+####################
+# cuda-base        #
+####################
+FROM base AS cuda-base-amd64
+ENV NVARCH=x86_64
+
+FROM base AS cuda-base-arm64
+ENV NVARCH=sbsa
+
+FROM cuda-base-${TARGETARCH} AS cuda-base
+
+ARG TARGETARCH
+
+# Install CUDA base from:
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.8.1/ubi9/base/Dockerfile
+USER 0
+WORKDIR /opt/app-root/bin
+
+ENV NVIDIA_REQUIRE_CUDA="cuda>=12.8 brand=unknown,driver>=470,driver<471 brand=grid,driver>=470,driver<471 brand=tesla,driver>=470,driver<471 brand=nvidia,driver>=470,driver<471 brand=quadro,driver>=470,driver<471 brand=quadrortx,driver>=470,driver<471 brand=nvidiartx,driver>=470,driver<471 brand=vapps,driver>=470,driver<471 brand=vpc,driver>=470,driver<471 brand=vcs,driver>=470,driver<471 brand=vws,driver>=470,driver<471 brand=cloudgaming,driver>=470,driver<471 brand=unknown,driver>=535,driver<536 brand=grid,driver>=535,driver<536 brand=tesla,driver>=535,driver<536 brand=nvidia,driver>=535,driver<536 brand=quadro,driver>=535,driver<536 brand=quadrortx,driver>=535,driver<536 brand=nvidiartx,driver>=535,driver<536 brand=vapps,driver>=535,driver<536 brand=vpc,driver>=535,driver<536 brand=vcs,driver>=535,driver<536 brand=vws,driver>=535,driver<536 brand=cloudgaming,driver>=535,driver<536 brand=unknown,driver>=550,driver<551 brand=grid,driver>=550,driver<551 brand=tesla,driver>=550,driver<551 brand=nvidia,driver>=550,driver<551 brand=quadro,driver>=550,driver<551 brand=quadrortx,driver>=550,driver<551 brand=nvidiartx,driver>=550,driver<551 brand=vapps,driver>=550,driver<551 brand=vpc,driver>=550,driver<551 brand=vcs,driver>=550,driver<551 brand=vws,driver>=550,driver<551 brand=cloudgaming,driver>=550,driver<551 brand=unknown,driver>=560,driver<561 brand=grid,driver>=560,driver<561 brand=tesla,driver>=560,driver<561 brand=nvidia,driver>=560,driver<561 brand=quadro,driver>=560,driver<561 brand=quadrortx,driver>=560,driver<561 brand=nvidiartx,driver>=560,driver<561 brand=vapps,driver>=560,driver<561 brand=vpc,driver>=560,driver<561 brand=vcs,driver>=560,driver<561 brand=vws,driver>=560,driver<561 brand=cloudgaming,driver>=560,driver<561 brand=unknown,driver>=565,driver<566 brand=grid,driver>=565,driver<566 brand=tesla,driver>=565,driver<566 brand=nvidia,driver>=565,driver<566 brand=quadro,driver>=565,driver<566 brand=quadrortx,driver>=565,driver<566 brand=nvidiartx,driver>=565,driver<566 brand=vapps,driver>=565,driver<566 brand=vpc,driver>=565,driver<566 brand=vcs,driver>=565,driver<566 brand=vws,driver>=565,driver<566 brand=cloudgaming,driver>=565,driver<566"
+ENV NV_CUDA_CUDART_VERSION=12.8.90-1
+
+ARG CUDA_REPOS=base-images/cuda/12.8/cuda-repos
+COPY ${CUDA_REPOS}/cuda.repo-${TARGETARCH} /etc/yum.repos.d/cuda.repo
+COPY ${CUDA_REPOS}/NGC-DL-CONTAINER-LICENSE /
+
+RUN NVIDIA_GPGKEY_SUM=d0664fbbdb8c32356d45de36c5984617217b2d0bef41b93ccecd326ba3b80c87 && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/rhel9/${NVARCH}/D42D0685.pub | sed '/^Version/d' > /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA && \
+    echo "$NVIDIA_GPGKEY_SUM  /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA" | sha256sum -c --strict -
+
+ENV CUDA_VERSION=12.8.1
+
+# For libraries in the cuda-compat-* package: https://docs.nvidia.com/cuda/eula/index.html#attachment-a
+RUN dnf upgrade -y && dnf install -y \
+    cuda-cudart-12-8-${NV_CUDA_CUDART_VERSION} \
+    cuda-compat-12-8 \
+    && dnf clean all \
+    && rm -rf /var/cache/yum/*
+
+# nvidia-docker 1.0
+RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf && \
+    echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
+
+ENV PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+
+# nvidia-container-runtime
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Install CUDA runtime from:
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.8.1/ubi9/runtime/Dockerfile
+ENV NV_CUDA_LIB_VERSION=12.8.1-1
+ENV NV_NVTX_VERSION=12.8.90-1
+ENV NV_LIBNPP_VERSION=12.3.3.100-1
+ENV NV_LIBNPP_PACKAGE=libnpp-12-8-${NV_LIBNPP_VERSION}
+ENV NV_LIBCUBLAS_VERSION=12.8.4.1-1
+ENV NV_LIBNCCL_PACKAGE_NAME=libnccl
+ENV NV_LIBNCCL_PACKAGE_VERSION=2.25.1-1
+ENV NV_LIBNCCL_VERSION=2.25.1
+ENV NCCL_VERSION=2.25.1
+ENV NV_LIBNCCL_PACKAGE=${NV_LIBNCCL_PACKAGE_NAME}-${NV_LIBNCCL_PACKAGE_VERSION}+cuda12.8
+
+RUN dnf install -y \
+    cuda-libraries-12-8-${NV_CUDA_LIB_VERSION} \
+    cuda-nvtx-12-8-${NV_NVTX_VERSION} \
+    ${NV_LIBNPP_PACKAGE} \
+    libcublas-12-8-${NV_LIBCUBLAS_VERSION} \
+    ${NV_LIBNCCL_PACKAGE} \
+    && dnf clean all \
+    && rm -rf /var/cache/yum/*
+
+# Install devel tools
+RUN dnf install -y \
+    make \
+    findutils \
+    && dnf clean all \
+    && rm -rf /var/cache/yum/*
+
+# Install CUDA cudnn9 from:
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.8.1/ubi9/runtime/cudnn/Dockerfile
+ENV NV_CUDNN_VERSION 9.8.0.87-1
+ENV NV_CUDNN_PACKAGE libcudnn9-cuda-12-${NV_CUDNN_VERSION}
+
+LABEL com.nvidia.cudnn.version="${NV_CUDNN_VERSION}"
+
+RUN dnf install -y \
+    ${NV_CUDNN_PACKAGE} \
+    && dnf clean all \
+    && rm -rf /var/cache/yum/*
+
+# Set this flag so that libraries can find the location of CUDA
+ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
+
+# Restore user workspace
+USER 1001
+WORKDIR /opt/app-root/src
+
 ################
 # cuda-rstudio #
 ################
@@ -69,6 +158,13 @@ ARG RSTUDIO_SOURCE_CODE=rstudio/rhel9-python-3.12
 ARG TARGETARCH
 
 WORKDIR /opt/app-root/bin
+
+# TODO THIS SHOULD BE REMOVED
+# Access the client's secret for the subscription manager from the environment variable
+ARG SECRET_DIR=/opt/app-root/src/.sec
+ARG SERVERURL_DEFAULT=""
+ARG BASEURL_DEFAULT=""
+# TILL HERE
 
 LABEL name="odh-notebook-rstudio-server-rhel9-python-3.12" \
       summary="RStudio Server image with python 3.12 based on Red Hat Enterprise Linux 9" \
@@ -86,71 +182,74 @@ USER 0
 # Set this flag so that libraries can find the location of CUDA
 ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 
-# Install CUDA toolkit 12.8
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf -y install cuda-toolkit-12-8
-dnf -y clean all --enablerepo="*"
-EOF
-
 WORKDIR /opt/app-root/src
+# TILL HERE
+
+# TODO THIS SHOULD BE REMOVED in favor of: https://issues.redhat.com/browse/RHOAIENG-32541
+# uncomment the below line if you fall on this error: subscription-manager is disabled when running inside a container. Please refer to your host system for subscription management.
+#RUN sed -i 's/\(def in_container():\)/\1\n    return False/g' /usr/lib64/python*/*-packages/rhsm/config.py
+
+# If necessary, run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
+RUN if [ -d "${SECRET_DIR}" ]; then \
+    SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFAULT}) && \
+    BASEURL=$(cat ${SECRET_DIR}/BASEURL 2>/dev/null || echo ${BASEURL_DEFAULT}) && \
+    USERNAME=$(cat ${SECRET_DIR}/USERNAME) && \
+    PASSWORD=$(cat ${SECRET_DIR}/PASSWORD) && \
+    subscription-manager register \
+    ${SERVERURL:+--serverurl=$SERVERURL} \
+    ${BASEURL:+--baseurl=$BASEURL} \
+    --username=$USERNAME \
+    --password=$PASSWORD \
+    --force \
+    --auto-attach; \
+  fi
+
 # TILL HERE
 
 ENV R_VERSION=4.5.1
 
 # Install R
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y dnf-plugins-core
-if command -v subscription-manager &> /dev/null; then
-  subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms
-else
-  dnf config-manager --set-enabled crb
-fi
-dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-INSTALL_PKGS="R-core R-core-devel R-java R-Rcpp R-highlight \
-R-littler R-littler-examples openssl-libs compat-openssl11"
-dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
-echo 'options(repos = c(CRAN = "https://cran.rstudio.com/"), download.file.method = "libcurl")' >> /usr/lib64/R/etc/Rprofile.site
-(umask 002;touch /usr/lib64/R/etc/Renviron.site)
-dnf -y clean all --enablerepo='*'
-EOF
+RUN dnf install -y dnf-plugins-core && \
+    if command -v subscription-manager &> /dev/null; then \
+        subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms; \
+    else \
+        dnf config-manager --set-enabled crb; \
+    fi && \
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+    INSTALL_PKGS="R-core R-core-devel R-java R-Rcpp R-highlight R-littler R-littler-examples openssl-libs compat-openssl11" && \
+    dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
+    echo 'options(repos = c(CRAN = "https://cran.rstudio.com/"), download.file.method = "libcurl")' >> /usr/lib64/R/etc/Rprofile.site && \
+    (umask 002;touch /usr/lib64/R/etc/Renviron.site) && \
+    dnf -y clean all --enablerepo='*'
 
 # set R library to default (used in install.r from littler)
 ENV LIBLOC=/usr/lib64/R/library
 ENV R_LIBS_USER=/opt/app-root/bin/Rpackages/4.5
 
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-chmod -R a+w ${LIBLOC}
-# create User R Library path
-mkdir -p ${R_LIBS_USER}
-chmod -R a+w ${R_LIBS_USER}
-EOF
+RUN chmod -R a+w ${LIBLOC} && \
+    # create User R Library path
+    mkdir -p ${R_LIBS_USER} && \
+    chmod -R a+w ${R_LIBS_USER}
 
 WORKDIR /tmp/
 COPY /rstudio/utils /tmp/utils
 
 # Install RStudio
 ARG RSTUDIO_RPM=rstudio-server-rhel-2025.09.0-387-x86_64.rpm
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/${RSTUDIO_RPM}
-dnf install -y ${RSTUDIO_RPM}
-rm ${RSTUDIO_RPM}
-dnf -y clean all  --enablerepo='*'
-# Specific RStudio config and fixes
-chmod 1777 /var/run/rstudio-server
-mkdir -p /usr/share/doc/R
-# package installation
-# install necessary texlive-framed package to make Knit R markup to PDF rendering possible
-dnf install -y libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed
-# install npm to run cve_remediation script
-dnf install -y npm
-dnf clean all
-rm -rf /var/cache/yum
-(cd /tmp/utils && ./cve_remediation.sh)
-EOF
+RUN wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/${RSTUDIO_RPM} && \
+    dnf install -y ${RSTUDIO_RPM} && \
+    rm ${RSTUDIO_RPM} && \
+    dnf -y clean all  --enablerepo='*' &&\
+    # Specific RStudio config and fixes \
+    chmod 1777 /var/run/rstudio-server && \
+    mkdir -p /usr/share/doc/R && \
+    # package installation \
+    # install necessary texlive-framed package to make Knit R markup to PDF rendering possible \
+    dnf install -y libgit2-devel.x86_64 libcurl-devel harfbuzz-devel.x86_64 fribidi-devel.x86_64 cmake "flexiblas-*" texlive-framed && \
+    dnf install -y npm && \
+    dnf clean all && \
+    rm -rf /var/cache/yum && \
+    (cd /tmp/utils && ./cve_remediation.sh)
 
 COPY ${RSTUDIO_SOURCE_CODE}/rsession.conf /etc/rstudio/rsession.conf
 
@@ -177,15 +276,12 @@ ENV NGINX_VERSION=1.24 \
     NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
 
 # Modules does not exist
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf -y module enable nginx:$NGINX_VERSION
-INSTALL_PKGS="nss_wrapper bind-utils gettext hostname nginx nginx-mod-stream nginx-mod-http-perl httpd"
-dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
-rpm -V $INSTALL_PKGS
-nginx -v 2>&1 | grep -qe "nginx/$NGINX_VERSION\." && echo "Found VERSION $NGINX_VERSION"
-dnf -y clean all --enablerepo='*'
-EOF
+RUN dnf -y module enable nginx:$NGINX_VERSION && \
+    INSTALL_PKGS="nss_wrapper bind-utils gettext hostname nginx nginx-mod-stream nginx-mod-http-perl httpd" && \
+    dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
+    rpm -V $INSTALL_PKGS && \
+    nginx -v 2>&1 | grep -qe "nginx/$NGINX_VERSION\." && echo "Found VERSION $NGINX_VERSION" && \
+    dnf -y clean all --enablerepo='*'
 
 # Configure httpd for CGI processing
 COPY --chown=1001:0 ${RSTUDIO_SOURCE_CODE}/httpd/httpd.conf /etc/httpd/conf/httpd.conf
@@ -210,33 +306,28 @@ COPY ${RSTUDIO_SOURCE_CODE}/nginx/api/ /opt/app-root/api/
 # UID=1001 && GID=0
 # UID=<any>&& GID=0
 # UID=1001 && GID=<any>
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH}
-mkdir -p ${NGINX_APP_ROOT}/etc/nginx.d/
-mkdir -p ${NGINX_APP_ROOT}/etc/nginx.default.d/
-mkdir -p ${NGINX_APP_ROOT}/api/
-mkdir -p ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
-mkdir -p ${NGINX_LOG_PATH}
-mkdir -p ${NGINX_PERL_MODULE_PATH}
-# Create httpd directories and set permissions
-mkdir -p /var/log/httpd /var/run/httpd /etc/httpd/logs
-chown -R 1001:0 ${NGINX_CONF_PATH}
-chown -R 1001:0 ${NGINX_APP_ROOT}/etc
-chown -R 1001:0 ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
-chown -R 1001:0 /var/lib/nginx /var/log/nginx /run
-chown -R 1001:0 /var/log/httpd /var/run/httpd /etc/httpd/logs
-chmod    ug+rw  ${NGINX_CONF_PATH}
-chmod -R ug+rwX ${NGINX_APP_ROOT}/etc
-chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
-chmod -R ug+rwX /var/lib/nginx /var/log/nginx /run
-chmod -R ug+rwX /var/log/httpd /var/run/httpd /etc/httpd/logs
-# Make CGI scripts executable and set proper ownership
-chmod +x /opt/app-root/api/kernels/access.cgi
-chmod +x /opt/app-root/api/probe.cgi
-chown -R 1001:0 /opt/app-root/api
-rpm-file-permissions
-EOF
+RUN sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH} && \
+    mkdir -p ${NGINX_APP_ROOT}/etc/nginx.d/ && \
+    mkdir -p ${NGINX_APP_ROOT}/etc/nginx.default.d/ && \
+    mkdir -p ${NGINX_APP_ROOT}/api/ && \
+    mkdir -p ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
+    mkdir -p ${NGINX_LOG_PATH} && \
+    mkdir -p ${NGINX_PERL_MODULE_PATH} && \
+    mkdir -p /var/log/httpd /var/run/httpd /etc/httpd/logs && \
+    chown -R 1001:0 ${NGINX_CONF_PATH} && \
+    chown -R 1001:0 ${NGINX_APP_ROOT}/etc && \
+    chown -R 1001:0 ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
+    chown -R 1001:0 /var/lib/nginx /var/log/nginx /run && \
+    chown -R 1001:0 /var/log/httpd /var/run/httpd /etc/httpd/logs && \
+    chmod    ug+rw  ${NGINX_CONF_PATH} && \
+    chmod -R ug+rwX ${NGINX_APP_ROOT}/etc && \
+    chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start && \
+    chmod -R ug+rwX /var/lib/nginx /var/log/nginx /run && \
+    chmod -R ug+rwX /var/log/httpd /var/run/httpd /etc/httpd/logs && \
+    chmod +x /opt/app-root/api/kernels/access.cgi && \
+    chmod +x /opt/app-root/api/probe.cgi && \
+    chown -R 1001:0 /opt/app-root/api && \
+    rpm-file-permissions
 
 # Launcher
 WORKDIR /opt/app-root/bin
@@ -244,20 +335,25 @@ WORKDIR /opt/app-root/bin
 COPY ${RSTUDIO_SOURCE_CODE}/utils utils/
 COPY ${RSTUDIO_SOURCE_CODE}/run-rstudio.sh ${RSTUDIO_SOURCE_CODE}/setup_rstudio.py ${RSTUDIO_SOURCE_CODE}/rsession.sh ${RSTUDIO_SOURCE_CODE}/run-nginx.sh ./
 
+# TODO THIS SHOULD BE REMOVED in favor of: https://issues.redhat.com/browse/RHOAIENG-32541
+# Unregister the system
+RUN if [ -d "${SECRET_DIR}" ]; then \
+    subscription-manager remove --all && subscription-manager unregister && subscription-manager clean; \
+  fi
+
+# TILL HERE
+
 USER 1001
 
 COPY ${RSTUDIO_SOURCE_CODE}/pylock.toml ./
 
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-echo "Installing softwares and packages"
-# This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
-#  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
-# Fix permissions to support pip in Openshift environments
-chmod -R g+w /opt/app-root/lib/python3.12/site-packages
-fix-permissions /opt/app-root -P
-EOF
+RUN echo "Installing softwares and packages" && \
+    # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+    #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml && \
+    # Fix permissions to support pip in Openshift environments \
+    chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
+    fix-permissions /opt/app-root -P
 
 WORKDIR /opt/app-root/src
 
