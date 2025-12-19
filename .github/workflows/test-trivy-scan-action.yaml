@@ -1,0 +1,68 @@
+---
+name: Test Trivy Scan Action
+"on":
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/actions/trivy-scan-action/**'
+      - '.github/workflows/test-trivy-scan-action.yaml'
+      - 'ci/trivy-markdown.tpl'
+  push:
+    paths:
+      - '.github/actions/trivy-scan-action/**'
+      - '.github/workflows/test-trivy-scan-action.yaml'
+      - 'ci/trivy-markdown.tpl'
+
+jobs:
+  test-scan-type-image:
+    name: Test Image Scan
+    runs-on: ubuntu-24.04
+    env:
+      TEST_IMAGE: docker.io/library/alpine:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install and configure Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+
+          # Start podman socket for rootful podman
+          sudo systemctl enable --now podman.socket
+          sudo systemctl status podman.socket
+
+          # Verify socket is accessible
+          ls -la /var/run/podman/podman.sock || true
+
+      - name: Pull test image
+        run: |
+          sudo podman pull ${{ env.TEST_IMAGE }}
+          sudo podman images
+
+      - name: Test Trivy scan on container image
+        uses: ./.github/actions/trivy-scan-action
+        with:
+          scan-type: image
+          scan-target: ${{ env.TEST_IMAGE }}
+          podman-socket: /var/run/podman/podman.sock
+
+  test-scan-type-fs:
+    name: Test Multiple Targets
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        target:
+          - jupyter/minimal/ubi9-python-3.12
+          - jupyter/datascience/ubi9-python-3.12
+          - codeserver/ubi9-python-3.12
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Test Trivy scan on ${{ matrix.target }}
+        uses: ./.github/actions/trivy-scan-action
+        with:
+          scan-type: fs
+          scan-target: ${{ github.workspace }}
