@@ -28,6 +28,10 @@ ignored:
   - DL3007
   # SC3060 warning: In POSIX sh, string replacement is undefined.
   - SC3060
+  # SC3041 warning: In POSIX sh, set flag -E is undefined. (bash-specific ERR trap)
+  - SC3041
+  # SC3020 warning: In POSIX sh, &> is undefined. (bash-specific redirect operator)
+  - SC3020
   # SC2086 info: Double quote to prevent globbing and word splitting.
   - SC2086
   # SC2046 warning: Quote this to prevent word splitting.
