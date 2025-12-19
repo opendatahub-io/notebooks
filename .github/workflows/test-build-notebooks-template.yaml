@@ -1,0 +1,37 @@
+---
+name: Test Build Notebooks Template
+
+permissions:
+  contents: read
+  packages: write
+
+"on":
+  push:
+    paths:
+      - '.github/workflows/build-notebooks-TEMPLATE.yaml'
+      - '.github/workflows/test-build-notebooks-template.yaml'
+      - '.github/actions/install-podman-action/**'
+      - '.github/actions/provision-k8s/**'
+      - '.github/actions/free-up-disk-space/**'
+      - 'ci/cached-builds/**'
+  pull_request:
+    paths:
+      - '.github/workflows/build-notebooks-TEMPLATE.yaml'
+      - '.github/workflows/test-build-notebooks-template.yaml'
+      - '.github/actions/install-podman-action/**'
+      - '.github/actions/provision-k8s/**'
+      - '.github/actions/free-up-disk-space/**'
+      - 'ci/cached-builds/**'
+  workflow_dispatch:
+
+jobs:
+  test-template-minimal:
+    name: Test Template with Minimal Notebook
+    uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
+    with:
+      target: jupyter-minimal-ubi9-python-3.12
+      python: "3.12"
+      github: ${{ toJson(github) }}
+      platform: linux/amd64
+      subscription: false
+    secrets: inherit
