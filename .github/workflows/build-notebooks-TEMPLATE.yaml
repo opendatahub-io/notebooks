@@ -363,41 +363,12 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         if: ${{ steps.resolve-target.outputs.target }}
-        run: |
-          REPORT_FOLDER=${{ github.workspace }}/report
-          REPORT_FILE=trivy-report.md
-          REPORT_TEMPLATE=trivy-markdown.tpl
-
-          mkdir -p $REPORT_FOLDER
-          cp ci/$REPORT_TEMPLATE $REPORT_FOLDER
-
-          SCAN_TARGET=${{ steps.resolve-target.outputs.target }}
-          SCAN_TYPE=${{ steps.resolve-target.outputs.type }}
-          echo "Scanning $SCAN_TARGET ($SCAN_TYPE)"
-
-          if [[ "$SCAN_TYPE" == "image" ]]; then
-            SCAN_ARGS="--image-src podman --podman-host /var/run/podman/podman.sock"
-            PODMAN_ARGS="-v ${PODMAN_SOCK}:/var/run/podman/podman.sock"
-          elif [[ "$SCAN_TYPE" == "fs" ]]; then
-            WORKSPACE_FOLDER="/workspace"
-            SCAN_TARGET="$WORKSPACE_FOLDER/$SCAN_TARGET"
-            PODMAN_ARGS="-v ${{ github.workspace }}:$WORKSPACE_FOLDER"
-          fi
-
-          # have trivy access podman socket,
-          # https://github.com/aquasecurity/trivy/issues/580#issuecomment-666423279
-          podman run --rm \
-              $PODMAN_ARGS \
-              -v ${REPORT_FOLDER}:/report \
-              docker.io/aquasec/trivy:$TRIVY_VERSION \
-                $SCAN_TYPE \
-                $SCAN_ARGS \
-                --scanners vuln --ignore-unfixed \
-                --exit-code 0 --timeout 30m \
-                --format template --template "@/report/$REPORT_TEMPLATE" -o /report/$REPORT_FILE \
-                $SCAN_TARGET
-
-          cat $REPORT_FOLDER/$REPORT_FILE >> $GITHUB_STEP_SUMMARY
+        uses: ./.github/actions/trivy-scan-action
+        with:
+          scan-type: ${{ steps.resolve-target.outputs.type }}
+          scan-target: ${{ steps.resolve-target.outputs.target }}
+          trivy-version: ${{ env.TRIVY_VERSION }}
+          podman-socket: /var/run/podman/podman.sock
 
       # endregion
 
