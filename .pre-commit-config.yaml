@@ -3,12 +3,12 @@
 repos:
   # https://docs.astral.sh/uv/guides/integration/pre-commit/
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.9.13
+    rev: 0.9.18
     hooks:
       - id: uv-lock
   # https://github.com/astral-sh/ruff-pre-commit
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.6
+    rev: v0.14.10
     hooks:
       - id: ruff
         types_or: [python, pyi]
