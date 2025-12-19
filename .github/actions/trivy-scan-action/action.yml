@@ -1,0 +1,141 @@
+---
+name: 'Trivy Vulnerability Scanner'
+description: |
+  Run [Trivy](https://trivy.dev) vulnerability scanner on container images or filesystems.
+
+  Features
+  - Supports both container image and filesystem scanning
+  - Configurable Trivy version
+  - Customizable scan parameters (scanners, timeout, exit codes)
+  - Generates markdown reports
+  - Automatically adds reports to GitHub job summary
+
+  Requirements
+  - Podman must be installed and running (for image scans)
+  - The Trivy report template must exist at the specified path
+  - For image scans, the image must be available in the local Podman storage
+
+inputs:
+  # https://trivy.dev/docs/latest/guide/target/container_image/#vulnerabilities
+  scan-type:
+    description: 'Type of scan to perform: "image" or "fs" (filesystem)'
+    required: true
+  scan-target:
+    description: 'Target to scan (image name or filesystem path relative to workspace-path)'
+    required: true
+  trivy-version:
+    description: 'Version of Trivy to use'
+    required: false
+    default: '0.68.2'
+  podman-socket:
+    description: 'Path to Podman socket (required for image scans)'
+    required: false
+    default: '/var/run/podman/podman.sock'
+  workspace-path:
+    description: 'Workspace path for filesystem scans'
+    required: false
+    default: ${{ github.workspace }}
+  report-template:
+    description: 'Path to Trivy report template'
+    required: false
+    default: 'ci/trivy-markdown.tpl'
+  scanners:
+    description: 'Comma-separated list of scanners to use'
+    required: false
+    default: 'vuln'
+  ignore-unfixed:
+    description: 'Ignore unfixed vulnerabilities'
+    required: false
+    default: 'true'
+  timeout:
+    description: 'Scan timeout'
+    required: false
+    default: '30m'
+  exit-code:
+    description: 'Exit code when vulnerabilities are found'
+    required: false
+    default: '0'
+
+outputs:
+  report-file:
+    description: 'Path to the generated report file'
+    value: ${{ steps.scan.outputs.report-file }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup report directory
+      id: setup
+      shell: bash
+      run: |
+        set -Eeuo pipefail
+        REPORT_FOLDER="${{ inputs.workspace-path }}/trivy-report"
+        REPORT_FILE="trivy-report.md"
+        REPORT_TEMPLATE="$(basename "${{ inputs.report-template }}")"
+
+        mkdir -p "$REPORT_FOLDER"
+        cp "${{ inputs.report-template }}" "$REPORT_FOLDER/"
+
+        echo "report-folder=$REPORT_FOLDER" >> "$GITHUB_OUTPUT"
+        echo "report-file=$REPORT_FILE" >> "$GITHUB_OUTPUT"
+        echo "report-template=$REPORT_TEMPLATE" >> "$GITHUB_OUTPUT"
+
+    - name: Run Trivy vulnerability scanner
+      id: scan
+      shell: bash
+      run: |
+        set -Eeuo pipefail
+        REPORT_FOLDER="${{ steps.setup.outputs.report-folder }}"
+        REPORT_FILE="${{ steps.setup.outputs.report-file }}"
+        REPORT_TEMPLATE="${{ steps.setup.outputs.report-template }}"
+
+        SCAN_TARGET="${{ inputs.scan-target }}"
+        SCAN_TYPE="${{ inputs.scan-type }}"
+
+        # Initialize variables with defaults
+        SCAN_ARGS=""
+        PODMAN_ARGS=""
+
+        echo "Scanning $SCAN_TARGET ($SCAN_TYPE)"
+
+        # Configure scan arguments based on type
+        if [[ "$SCAN_TYPE" == "image" ]]; then
+          SCAN_ARGS="--image-src podman --podman-host /var/run/podman/podman.sock"
+          PODMAN_ARGS="-v ${{ inputs.podman-socket }}:/var/run/podman/podman.sock"
+        elif [[ "$SCAN_TYPE" == "fs" ]]; then
+          WORKSPACE_FOLDER="/workspace"
+          SCAN_TARGET="$WORKSPACE_FOLDER/$SCAN_TARGET"
+          PODMAN_ARGS="-v ${{ inputs.workspace-path }}:$WORKSPACE_FOLDER"
+        else
+          echo "Error: Invalid scan type '$SCAN_TYPE'. Must be 'image' or 'fs'"
+          exit 1
+        fi
+
+        # Run Trivy scan in container
+        # Note: PODMAN_ARGS and SCAN_ARGS are intentionally unquoted to allow word splitting
+        podman run --rm \
+            $PODMAN_ARGS \
+            -v "${REPORT_FOLDER}:/report" \
+            "docker.io/aquasec/trivy:${{ inputs.trivy-version }}" \
+              "$SCAN_TYPE" \
+              $SCAN_ARGS \
+              --scanners "${{ inputs.scanners }}" \
+              ${{ inputs.ignore-unfixed == 'true' && '--ignore-unfixed' || '' }} \
+              --exit-code "${{ inputs.exit-code }}" \
+              --timeout "${{ inputs.timeout }}" \
+              --format template --template "@/report/$REPORT_TEMPLATE" \
+              -o "/report/$REPORT_FILE" \
+              "$SCAN_TARGET"
+
+        echo "report-file=$REPORT_FOLDER/$REPORT_FILE" >> "$GITHUB_OUTPUT"
+
+    - name: Add report to job summary
+      shell: bash
+      run: |
+        set -Eeuo pipefail
+        REPORT_FILE="${{ steps.scan.outputs.report-file }}"
+        if [[ -f "$REPORT_FILE" ]]; then
+          cat "$REPORT_FILE" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "Warning: Report file not found at $REPORT_FILE"
+        fi

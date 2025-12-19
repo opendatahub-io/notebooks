@@ -1,0 +1,82 @@
+---
+name: Test Trivy Scan Action
+"on":
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/actions/trivy-scan-action/**'
+      - '.github/workflows/test-trivy-scan-action.yaml'
+      - 'ci/trivy-markdown.tpl'
+  push:
+    paths:
+      - '.github/actions/trivy-scan-action/**'
+      - '.github/workflows/test-trivy-scan-action.yaml'
+      - 'ci/trivy-markdown.tpl'
+
+jobs:
+  test-scan-type-image:
+    name: Test Image Scan
+    runs-on: ubuntu-24.04
+    env:
+      # random image from our past, don't update it all the time
+      TEST_IMAGE: quay.io/opendatahub/odh-pipeline-runtime-minimal-cpu-py312-ubi9:2025b-v1.40
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install missing dependencies
+        run: |
+          # Collect missing packages
+          PACKAGES=()
+          if ! command -v podman &> /dev/null; then
+            PACKAGES+=(podman)
+          fi
+          if ! command -v setfacl &> /dev/null; then
+            PACKAGES+=(acl)
+          fi
+
+          # Install missing packages if any
+          if [ ${#PACKAGES[@]} -gt 0 ]; then
+            echo "Installing missing packages: ${PACKAGES[*]}"
+            sudo apt-get update
+            sudo apt-get install -y "${PACKAGES[@]}"
+          fi
+
+      - name: Configure Podman
+        run: |
+          # Start podman socket for rootful podman
+          sudo systemctl daemon-reload
+          sudo systemctl enable --now podman.socket
+          sudo systemctl status podman.socket
+
+          # Grant access to the podman socket for the current user
+          sudo setfacl -m u:${USER}:x /var/run/podman
+          sudo setfacl -m u:${USER}:rw /var/run/podman/podman.sock
+
+          # Verify socket is accessible
+          ls -la /var/run/podman/podman.sock
+
+      - name: Pull test image
+        run: |
+          sudo podman pull ${{ env.TEST_IMAGE }}
+          sudo podman images
+
+      - name: Test Trivy scan on container image
+        uses: ./.github/actions/trivy-scan-action
+        with:
+          scan-type: image
+          scan-target: ${{ env.TEST_IMAGE }}
+          podman-socket: /var/run/podman/podman.sock
+
+  test-scan-type-fs:
+    name: Test FS scan
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Test Trivy scan on filesystem
+        uses: ./.github/actions/trivy-scan-action
+        with:
+          scan-type: fs
+          scan-target: './'
