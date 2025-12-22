@@ -1,0 +1,19 @@
+[project]
+name = "notebooks-db-connectors-deps"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    # Database connectors
+    "pymongo~=4.15.3",
+    "psycopg~=3.2.10",
+    "pyodbc~=5.2.0",
+    "mysql-connector-python~=9.4.0",
+]
+
+[tool.uv]
+package = false
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
+]
