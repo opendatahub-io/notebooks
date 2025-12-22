@@ -30,6 +30,15 @@ if TYPE_CHECKING:
 MAKE = shutil.which("gmake") or shutil.which("make")
 
 
+def is_subproject_metapackage(package_name: str) -> bool:
+    """Check if a package name is a subproject meta-package that should be excluded from pylock.toml.
+
+    Subproject meta-packages are dependency-only packages (package = false) that group common dependencies.
+    They are excluded from lock files via --no-emit-package in scripts/pylocks_generator.sh.
+    """
+    return package_name.startswith("notebooks-") and package_name.endswith("-deps")
+
+
 def test_dockerfiles_unintended_subscription_manager_pattern():
     """Konflux will not `subscription-manager register --org --activationkey` if the pattern matches.
     Because it is easy to be matched by mistake (e.g. in a string/comment on the same line), add a check.
@@ -86,7 +95,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                     requirement = packaging.requirements.Requirement(d)
 
                     # Skip subproject meta-packages - they should NOT be in pylock.toml
-                    # Their dependencies are expanded inline
+                    # Their dependencies are expanded inline via --no-emit-package
                     if is_subproject_metapackage(requirement.name):
                         # Verify the subproject package is correctly excluded from pylock.toml
                         assert requirement.name not in pylock_packages, (
@@ -95,6 +104,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                         )
                         continue
 
+                    # For regular dependencies, verify they're in pylock.toml with correct version
                     assert requirement.name in pylock_packages, f"Dependency {d} is not in pylock.toml"
                     assert "version" in pylock_packages[requirement.name], (
                         f"Version missing for {requirement.name} in pylock.toml"
@@ -255,6 +265,7 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
         (
             "Numpy",
             (
+                "1.26",  # trustyai 0.6.2 depends on numpy~=1.26.4
                 "2.0",  # for tensorflow rocm (numpy 2.0.2)
                 "2.3",  # this used to be our latest
                 "2.4",  # this is our latest where possible
@@ -298,6 +309,11 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         pyproject = tomllib.loads(file.read_text())
         for d in pyproject["project"]["dependencies"]:
             requirement = packaging.requirements.Requirement(d)
+
+            # Skip subproject meta-packages when checking version alignment
+            if is_subproject_metapackage(requirement.name):
+                continue
+
             requirements[requirement.name].append(requirement.specifier)
 
     # list of packages and their versions where we need to have multiple versions of the same package
@@ -313,6 +329,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         (
             "numpy",
             (
+                "~=1.26.4",  # trustyai depends on numpy~=1.26.4
                 ">=1.26.4",  # allow the latest possible, see the pylock.toml check for precise pins
                 "==2.3.5",  # llmcompressor pins exact version
             ),
@@ -440,15 +457,6 @@ def is_suffix[T](main_sequence: Sequence[T], suffix_sequence: Sequence[T]):
     if suffix_len > len(main_sequence):
         return False
     return main_sequence[-suffix_len:] == suffix_sequence
-
-
-def is_subproject_metapackage(package_name: str) -> bool:
-    """Check if a package name is a subproject meta-package that should be excluded from pylock.toml.
-
-    Subproject meta-packages are dependency-only packages (package = false) that group common dependencies.
-    They are excluded from lock files via --no-emit-package in scripts/pylocks_generator.sh.
-    """
-    return package_name.startswith("odh-notebooks-meta-") and package_name.endswith("-deps")
 
 
 def _skip_unimplemented_manifests(directory: pathlib.Path, call_skip=True) -> bool:
