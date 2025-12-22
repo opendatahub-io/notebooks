@@ -196,10 +196,10 @@ wheels = [
 
 [[packages]]
 name = "click"
-version = "8.2.1"
+version = "8.3.1"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-sdist = { url = "https://files.pythonhosted.org/packages/60/6c/8ca2efa64cf75a977a0d7fac081354553ebe483345c734fb6b6515d96bbc/click-8.2.1.tar.gz", upload-time = 2025-05-20T23:19:49Z, size = 286342, hashes = { sha256 = "27c491cc05d968d271d5a1db13e3b5a184636d9d930f148c50b038f0d0646202" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/85/32/10bb5764d90a8eee674e9dc6f4db6a0ab47c8c4d0d83c27f7c39ac415a4d/click-8.2.1-py3-none-any.whl", upload-time = 2025-05-20T23:19:47Z, size = 102215, hashes = { sha256 = "61a3265b914e850b85317d0b3109c7f8cd35a670f963866005d6ef1d5175a12b" } }]
+sdist = { url = "https://files.pythonhosted.org/packages/3d/fa/656b739db8587d7b5dfa22e22ed02566950fbfbcdc20311993483657a5c0/click-8.3.1.tar.gz", upload-time = 2025-11-15T20:45:42Z, size = 295065, hashes = { sha256 = "12ff4785d337a1bb490bb7e9c2b1ee5da3112e94a8622f26a6c77f5d2fc6842a" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/98/78/01c019cdb5d6498122777c1a43056ebb3ebfeef2076d9d026bfe15583b2b/click-8.3.1-py3-none-any.whl", upload-time = 2025-11-15T20:45:41Z, size = 108274, hashes = { sha256 = "981153a64e25f12d547d3426c367a4857371575ee7ad18df2a6183ab0545b2a6" } }]
 
 [[packages]]
 name = "cloudpickle"
@@ -382,10 +382,10 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/b0/0d/9feae160378a355
 
 [[packages]]
 name = "executing"
-version = "1.2.0"
+version = "2.2.1"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-sdist = { url = "https://files.pythonhosted.org/packages/8f/ac/89ff37d8594b0eef176b7cec742ac868fef853b8e18df0309e3def9f480b/executing-1.2.0.tar.gz", upload-time = 2022-10-29T13:51:11Z, size = 654544, hashes = { sha256 = "19da64c18d2d851112f09c287f8d3dbbdf725ab0e569077efb6cdcbd3497c107" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/28/3c/bc3819dd8b1a1588c9215a87271b6178cc5498acaa83885211f5d4d9e693/executing-1.2.0-py2.py3-none-any.whl", upload-time = 2022-10-29T13:51:08Z, size = 24360, hashes = { sha256 = "0314a69e37426e3608aada02473b4161d4caf5a4b244d1d0c48072b8fee7bacc" } }]
+sdist = { url = "https://files.pythonhosted.org/packages/cc/28/c14e053b6762b1044f34a13aab6859bbf40456d37d23aa286ac24cfd9a5d/executing-2.2.1.tar.gz", upload-time = 2025-09-01T09:48:10Z, size = 1129488, hashes = { sha256 = "3632cc370565f6648cc328b32435bd120a1e4ebb20c77e3fdde9a13cd1e533c4" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/c1/ea/53f2148663b321f21b5a606bd5f191517cf40b7072c0497d3c92c4a13b1e/executing-2.2.1-py2.py3-none-any.whl", upload-time = 2025-09-01T09:48:08Z, size = 28317, hashes = { sha256 = "760643d3452b4d777d295bb167ccc74c64a81df23fb5e08eff250c425a4b2017" } }]
 
 [[packages]]
 name = "fastapi"
@@ -1083,7 +1083,7 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/af/33/ee4519fa02ed11a
 [[packages]]
 name = "ml-dtypes"
 version = "0.5.4"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+marker = "implementation_name == 'cpython' and platform_machine != 's390x' and sys_platform == 'linux'"
 sdist = { url = "https://files.pythonhosted.org/packages/0e/4a/c27b42ed9b1c7d13d9ba8b6905dece787d6259152f2309338aed29b2447b/ml_dtypes-0.5.4.tar.gz", upload-time = 2025-11-17T22:32:31Z, size = 692314, hashes = { sha256 = "8ab06a50fb9bf9666dd0fe5dfb4676fa2b0ac0f31ecff72a6c3af8e22c063453" } }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fe/3a/c5b855752a70267ff729c349e650263adb3c206c29d28cc8ea7ace30a1d5/ml_dtypes-0.5.4-cp310-cp310-macosx_10_9_universal2.whl", upload-time = 2025-11-17T22:31:31Z, size = 679735, hashes = { sha256 = "b95e97e470fe60ed493fd9ae3911d8da4ebac16bd21f87ffa2b7c588bf22ea2c" } },
@@ -1411,7 +1411,7 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/be/9c/92789c596b8df83
 [[packages]]
 name = "onnx"
 version = "1.20.0"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+marker = "implementation_name == 'cpython' and platform_machine != 's390x' and sys_platform == 'linux'"
 sdist = { url = "https://files.pythonhosted.org/packages/bd/bf/824b13b7ea14c2d374b48a296cfa412442e5559326fbab5441a4fcb68924/onnx-1.20.0.tar.gz", upload-time = 2025-12-01T18:14:34Z, size = 12049527, hashes = { sha256 = "1a93ec69996b4556062d552ed1aa0671978cfd3c17a40bf4c89a1ae169c6a4ad" } }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/23/18/8fd768f715a990d3b5786c9bffa6f158934cc1935f2774dd15b26c62f99f/onnx-1.20.0-cp310-cp310-macosx_12_0_universal2.whl", upload-time = 2025-12-01T18:13:29Z, size = 18341375, hashes = { sha256 = "7e706470f8b731af6d0347c4f01b8e0e1810855d0c71c467066a5bd7fa21704b" } },
@@ -1441,7 +1441,7 @@ wheels = [
 [[packages]]
 name = "onnxconverter-common"
 version = "1.13.0"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+marker = "implementation_name == 'cpython' and platform_machine != 's390x' and sys_platform == 'linux'"
 sdist = { url = "https://files.pythonhosted.org/packages/ec/44/54c6b7f1a28d919a15caf642113fb44651087d1bb0658f028c54b93df8e3/onnxconverter-common-1.13.0.tar.gz", upload-time = 2022-11-03T12:11:37Z, size = 73935, hashes = { sha256 = "03db8a6033a3d6590f22df3f64234079caa826375d1fcb0b37b8123c06bf598c" } }
 wheels = [{ url = "https://files.pythonhosted.org/packages/51/a4/4439174c879c33557eab08e4dd480c1e096bc26c487c85a62e4c0d8f78ff/onnxconverter_common-1.13.0-py2.py3-none-any.whl", upload-time = 2022-11-03T12:11:35Z, size = 83796, hashes = { sha256 = "5ee1c025ef6c3b4abaede8425bc6b393248941a6cf8c21563d0d0e3f04634a0a" } }]
 

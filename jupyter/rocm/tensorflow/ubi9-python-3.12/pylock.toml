@@ -3045,7 +3045,7 @@ wheels = [
 [[packages]]
 name = "onnxconverter-common"
 version = "1.13.0"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+marker = "implementation_name == 'cpython' and platform_machine != 's390x' and sys_platform == 'linux'"
 sdist = { url = "https://files.pythonhosted.org/packages/ec/44/54c6b7f1a28d919a15caf642113fb44651087d1bb0658f028c54b93df8e3/onnxconverter-common-1.13.0.tar.gz", upload-time = 2022-11-03T12:11:37Z, size = 73935, hashes = { sha256 = "03db8a6033a3d6590f22df3f64234079caa826375d1fcb0b37b8123c06bf598c" } }
 wheels = [{ url = "https://files.pythonhosted.org/packages/51/a4/4439174c879c33557eab08e4dd480c1e096bc26c487c85a62e4c0d8f78ff/onnxconverter_common-1.13.0-py2.py3-none-any.whl", upload-time = 2022-11-03T12:11:35Z, size = 83796, hashes = { sha256 = "5ee1c025ef6c3b4abaede8425bc6b393248941a6cf8c21563d0d0e3f04634a0a" } }]
 

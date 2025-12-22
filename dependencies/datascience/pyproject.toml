@@ -14,7 +14,7 @@ dependencies = [
     "scikit-learn~=1.7.2",
     "scipy~=1.16.2",
     "skl2onnx~=1.19.1; platform_machine != 's390x'",
-    "onnxconverter-common~=1.13.0",
+    "onnxconverter-common~=1.13.0; platform_machine != 's390x'",
 
     # Kubeflow and related
     "kubeflow-training==1.9.3",
