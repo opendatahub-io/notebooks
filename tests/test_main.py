@@ -29,6 +29,15 @@ if TYPE_CHECKING:
 MAKE = shutil.which("gmake") or shutil.which("make")
 
 
+def is_subproject_metapackage(package_name: str) -> bool:
+    """Check if a package name is a subproject meta-package that should be excluded from pylock.toml.
+
+    Subproject meta-packages are dependency-only packages (package = false) that group common dependencies.
+    They are excluded from lock files via --no-emit-package in scripts/pylocks_generator.sh.
+    """
+    return package_name.startswith("notebooks-") and package_name.endswith("-deps")
+
+
 def test_dockerfiles_unintended_subscription_manager_pattern():
     """Konflux will not `subscription-manager register --org --activationkey` if the pattern matches.
     Because it is easy to be matched by mistake (e.g. in a string/comment on the same line), add a check.
@@ -81,6 +90,17 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                 for d in pyproject["project"]["dependencies"]:
                     requirement = packaging.requirements.Requirement(d)
 
+                    # Skip subproject meta-packages - they should NOT be in pylock.toml
+                    # Their dependencies are expanded inline via --no-emit-package
+                    if is_subproject_metapackage(requirement.name):
+                        # Verify the subproject package is correctly excluded from pylock.toml
+                        assert requirement.name not in pylock_packages, (
+                            f"Subproject meta-package {requirement.name} found in pylock.toml. "
+                            f"It should be excluded via --no-emit-package in scripts/pylocks_generator.sh"
+                        )
+                        continue
+
+                    # For regular dependencies, verify they're in pylock.toml with correct version
                     assert requirement.name in pylock_packages, f"Dependency {d} is not in pylock.toml"
                     version = pylock_packages[requirement.name]["version"]
                     assert requirement.specifier.contains(version), (
@@ -244,7 +264,6 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
             "Numpy",
             (
                 "1.26",  # trustyai 0.6.2 depends on numpy~=1.26.4
-                "2.1",  # for tensorflow cuda
                 "2.2",  # for python 3.11 n-1 images
                 "2.3",  # this is our latest where possible
             ),
@@ -288,6 +307,11 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         pyproject = tomllib.loads(file.read_text())
         for d in pyproject["project"]["dependencies"]:
             requirement = packaging.requirements.Requirement(d)
+
+            # Skip subproject meta-packages when checking version alignment
+            if is_subproject_metapackage(requirement.name):
+                continue
+
             requirements[requirement.name].append(requirement.specifier)
 
     # TODO(jdanek): review these, if any are unwarranted
@@ -306,7 +330,6 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             "numpy",
             (
                 "~=1.26.4",  # trustyai 0.6.2 depends on numpy~=1.26.4
-                "~=2.1.3",
                 "~=2.2.6",
                 "~=2.3.4",  # for tensorflow cuda and latest possible
             ),
