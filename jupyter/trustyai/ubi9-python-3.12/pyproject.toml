@@ -63,8 +63,7 @@ override-dependencies = [
     # Using >= instead of ~= to allow broader compatibility during resolution
     # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
     "python-lsp-server>=1.11.0",
-    # TrustyAI requires specific versions that differ from standard datascience
-    "jupyter-bokeh~=3.0.5",  # trustyai 0.6.1 depends on jupyter-bokeh~=3.0.5
-    "numpy~=1.26.4",  # TrustyAI requires this specific version
-    "pandas~=1.5.3",  # TrustyAI requires this specific version
+    # TrustyAI <=0.6.2 required specific versions that differ from standard datascience
+    #  resolved in 0.6.3 https://github.com/trustyai-explainability/trustyai-explainability-python/pull/226
+    #  and https://github.com/trustyai-explainability/trustyai-explainability-python/pull/224
 ]
