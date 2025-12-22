@@ -4,21 +4,14 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
-    # JupyterLab packages
-    "odh-jupyter-trash-cleanup==0.1.1",
-
-    "jupyterlab==4.5.2",
-    "jupyter-server~=2.17.0",
-    "jupyter-server-proxy~=4.4.0",
-    "jupyter-server-terminals~=0.5.3",
-    "jupyterlab-git~=0.51.2",
-    "nbdime~=4.0.2",
-    "nbgitpuller~=1.2.2",
-
-    # Base packages
-    "wheel~=0.46.3",
-    "setuptools~=80.9.0",
+    # Subproject dependencies
+    "notebooks-base-deps",
+    "notebooks-jupyterlab-deps",
 ]
+
+[tool.uv.sources]
+notebooks-base-deps = { path = "../../../dependencies/base" }
+notebooks-jupyterlab-deps = { path = "../../../dependencies/jupyterlab" }
 
 [tool.uv]
 environments = [

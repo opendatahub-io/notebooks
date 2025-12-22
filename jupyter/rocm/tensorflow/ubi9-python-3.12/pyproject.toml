@@ -13,40 +13,20 @@ dependencies = [
     # tensorflow-rocm==2.x needs tensorboard>=2.x,<2.x+1
     "tensorboard~=2.18.0",
 
-    # Datascience and useful extensions
-    "codeflare-sdk~=0.34.0",
-    "skl2onnx~=1.19.1",
-    "odh-notebooks-meta-workbench-datascience-deps",
-
-    # DB connectors
-    "pymongo~=4.16.0",
-    "psycopg~=3.3.2",
-    "pyodbc~=5.3.0",
-    "mysql-connector-python~=9.5.0",
-
-    # JupyterLab packages
-    "odh-elyra==4.3.2",
-    "odh-jupyter-trash-cleanup==0.1.1",
-
-    "jupyterlab==4.5.2",
-    "jupyter-bokeh~=4.0.5",
-    "jupyter-server~=2.17.0",
-    "jupyter-server-proxy~=4.4.0",
-    "jupyter-server-terminals~=0.5.3",
-    "jupyterlab-git~=0.51.2",
-    "jupyterlab-lsp~=5.1.0",
-    "jupyterlab-widgets~=3.0.15",
-    "jupyter-resource-usage~=1.1.1",
-    "nbdime~=4.0.2",
-    "nbgitpuller~=1.2.2",
-
-    # Base packages
-    "wheel~=0.46.3",
-    "setuptools~=80.9.0",
+    # Subproject dependencies
+    "notebooks-base-deps",
+    "notebooks-jupyterlab-deps",
+    "notebooks-jupyterlab-datascience-deps",
+    "notebooks-datascience-deps",
+    "notebooks-db-connectors-deps",
 ]
 
 [tool.uv.sources]
-odh-notebooks-meta-workbench-datascience-deps = { path = "../../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
+notebooks-base-deps = { path = "../../../../dependencies/base" }
+notebooks-jupyterlab-deps = { path = "../../../../dependencies/jupyterlab" }
+notebooks-jupyterlab-datascience-deps = { path = "../../../../dependencies/jupyterlab-datascience" }
+notebooks-datascience-deps = { path = "../../../../dependencies/datascience" }
+notebooks-db-connectors-deps = { path = "../../../../dependencies/db-connectors" }
 
 [tool.uv]
 
@@ -54,6 +34,8 @@ override-dependencies = [
     # tf2onnx has pinned protobuf version, that causes conflict with other packages
     "protobuf==6.31.1",
     "keras~=3.13.2",
+    # ROCm TensorFlow requires specific numpy version
+    "numpy~=1.26.4",
     # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
     # appengine-python-standard which has an obnoxious urllib3<2 constraint
     "urllib3>=2.6.0",
