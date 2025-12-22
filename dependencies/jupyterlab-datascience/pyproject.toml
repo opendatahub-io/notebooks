@@ -10,6 +10,11 @@ dependencies = [
     "jupyterlab-lsp~=5.1.1",
     "jupyterlab-widgets~=3.0.15",
     "jupyter-resource-usage~=1.1.1",
+
+    "kfp~=2.14.6",
+
+    # CodeFlare SDK (jupyter-specific, with platform markers)
+    "codeflare-sdk~=0.33.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
 ]
 
 [tool.uv]

@@ -5,7 +5,7 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # Python kernel for VSCode/Jupyterlab
-    "ipykernel~=6.30.1",
+    "ipykernel~=7.1.0",
 
     # Datascience and ML packages
     "boto3~=1.40.52",
@@ -20,12 +20,8 @@ dependencies = [
     "onnxconverter-common~=1.13.0; platform_machine != 's390x'",
 
     # Kubeflow and related
-    "kfp~=2.14.6",
     "kubeflow-training==1.9.3",
     "feast~=0.58.0",
-
-    # CodeFlare SDK (jupyter-specific, with platform markers)
-    "codeflare-sdk~=0.33.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
 ]
 
 [tool.uv]
