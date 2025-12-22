@@ -23,7 +23,7 @@ metadata:
   namespace: open-data-hub-tenant
 spec:
   timeouts:
-    pipeline: 3h
+    pipeline: 6h
   params:
   - name: git-url
     value: '{{source_url}}'
@@ -34,15 +34,32 @@ spec:
   - name: image-expires-after
     value: 5d
   - name: build-platforms
-    value:
-    # Increase build resources to use m2xlarge machines, avoid OOM
-    - linux/x86_64
+    value:    
+    - linux-d160-m2xlarge/amd64
   - name: dockerfile
     value: jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.rocm
   - name: path-context
     value: .
   - name: build-args-file
     value: jupyter/rocm/pytorch/ubi9-python-3.12/build-args/rocm.conf
+  # Added taskRunSpecs to increase compute resources
+  taskRunSpecs:
+    - pipelineTaskName: clair-scan
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
+    - pipelineTaskName: ecosystem-cert-preflight-checks
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:

@@ -23,7 +23,7 @@ metadata:
   namespace: open-data-hub-tenant
 spec:
   timeouts:
-    pipeline: 3h
+    pipeline: 6h
   params:
   - name: git-url
     value: '{{source_url}}'
@@ -35,7 +35,7 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux/x86_64
+    - linux-d160-m2xlarge/amd64
   - name: dockerfile
     value: base-images/rocm/6.2/c9s-python-3.12/Dockerfile.rocm
   - name: path-context

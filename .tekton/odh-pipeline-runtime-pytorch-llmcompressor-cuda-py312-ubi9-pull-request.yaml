@@ -23,7 +23,7 @@ metadata:
   namespace: open-data-hub-tenant
 spec:
   timeouts:
-    pipeline: 3h
+    pipeline: 6h
   params:
   - name: git-url
     value: '{{source_url}}'
@@ -35,13 +35,31 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux/x86_64
+    - linux-d160-m2xlarge/amd64
   - name: dockerfile
     value: runtimes/pytorch+llmcompressor/ubi9-python-3.12/Dockerfile.cuda
   - name: path-context
     value: .
   - name: build-args-file
     value: runtimes/pytorch+llmcompressor/ubi9-python-3.12/build-args/cuda.conf
+  # Added taskRunSpecs to increase compute resources
+  taskRunSpecs:
+    - pipelineTaskName: clair-scan
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
+    - pipelineTaskName: ecosystem-cert-preflight-checks
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:
