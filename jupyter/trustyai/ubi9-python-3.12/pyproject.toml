@@ -27,7 +27,7 @@ dependencies = [
     "transformers~=4.56.1",
     "datasets~=4.0.0",
     "accelerate~=1.10.1; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    "trustyai~=0.6.2",
+    "trustyai~=0.6.3",
 
     # Subproject dependencies
     "notebooks-base-deps",
@@ -54,10 +54,9 @@ explicit = true
 [tool.uv]
 
 override-dependencies = [
-    # TrustyAI requires specific versions that differ from standard datascience
-    "jupyter-bokeh~=3.0.5",  # trustyai 0.6.1 depends on jupyter-bokeh~=3.0.5
-    "numpy~=1.26.4",  # TrustyAI requires this specific version
-    "pandas~=1.5.3",  # TrustyAI requires this specific version
+    # TrustyAI <=0.6.2 required specific versions that differ from standard datascience
+    #  resolved in 0.6.3 https://github.com/trustyai-explainability/trustyai-explainability-python/pull/226
+    #  and https://github.com/trustyai-explainability/trustyai-explainability-python/pull/224
 ]
 
 environments = [
