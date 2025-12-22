@@ -4,17 +4,16 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
-    "odh-notebooks-meta-runtime-elyra-deps",
-
-    # Base packages
-    "setuptools==80.9.0",
-    "wheel==0.46.3",
+    # Subproject dependencies
+    "notebooks-base-deps",
+    "notebooks-elyra-runtime-deps",
 ]
+
+[tool.uv.sources]
+notebooks-base-deps = { path = "../../../dependencies/base" }
+notebooks-elyra-runtime-deps = { path = "../../../dependencies/elyra-runtime" }
 
 [tool.uv]
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
-
-[tool.uv.sources]
-odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }

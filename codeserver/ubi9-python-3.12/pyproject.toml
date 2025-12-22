@@ -4,19 +4,11 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
-    # Base packages
-    "wheel~=0.46.3",
-    "setuptools~=80.9.0",
-
-    "ipykernel~=7.1.0",
-
-    # Datascience packages
-    "feast~=0.59.0",
-    # RHAIENG-1475: skl2onnx excluded on s390x for codeserver
-    "skl2onnx~=1.19.1; platform_machine != 's390x'",
-    "odh-notebooks-meta-workbench-datascience-deps",
-
-    # Some extra useful packages
+    # Subproject dependencies
+    "notebooks-base-deps",
+    "notebooks-datascience-deps",
+    
+    # Additional useful packages
     "opencensus~=0.11.4",
     "smart-open~=7.5.0",
     "virtualenv~=20.36.1",
@@ -24,6 +16,10 @@ dependencies = [
     "py-spy~=0.4.1; platform_machine != 's390x' and platform_machine != 'ppc64le'",
     "prometheus-client~=0.24.1",
 ]
+
+[tool.uv.sources]
+notebooks-base-deps = { path = "../../dependencies/base" }
+notebooks-datascience-deps = { path = "../../dependencies/datascience" }
 
 [tool.uv]
 environments = [
@@ -34,5 +30,3 @@ override-dependencies = [
     # Upstream: https://github.com/kubernetes-client/python/issues/2458
     "urllib3>=2.6.0",
 ]
-[tool.uv.sources]
-odh-notebooks-meta-workbench-datascience-deps = { path = "../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
