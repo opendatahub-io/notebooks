@@ -335,14 +335,6 @@ function uninstall_epel() {
     dnf remove "${DNF_OPTS[@]}" epel-release
 }
 
-# AIPCC bases enable codeready-builder, so we need to do the CentOS equivalent
-# In RHEL this is codeready-builder-for-rhel-${RELEASEVER_MAJOR}-${ARCH}-eus-rpms
-# or codeready-builder-for-rhel-${RELEASEVER_MAJOR}-${ARCH}-rpms
-function install_csb() {
-    dnf install "${DNF_OPTS[@]}" dnf-plugins-core
-    dnf config-manager --set-enabled crb
-}
-
 # create Python virtual env and update pip inside the venv
 function install_python_venv() {
     # install venv with bundled pip (no --upgrade-deps)
@@ -354,8 +346,6 @@ function install_python_venv() {
 }
 
 function main() {
-    install_csb
-
     install_epel
 
     # install security updates
