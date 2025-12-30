@@ -28,58 +28,38 @@ dependencies = [
     "datasets~=4.0.0",
     "accelerate~=1.10.1; platform_machine != 'ppc64le' and platform_machine != 's390x'",
     "trustyai~=0.6.2",
-    # Datascience and useful extensions
-    "boto3~=1.40.52",
-    "kafka-python-ng~=2.2.3",
-    "kfp~=2.14.6",
-    "matplotlib~=3.10.7", # Should be pinned down to this version in order to be compatible with trustyai
-    "numpy~=1.26.4", # Should be pinned down to this version in order to be compatible with trustyai
-    "pandas~=1.5.3", # Should be pinned down to this version in order to be compatible with trustyai
-    "plotly~=6.3.1",
-    "scikit-learn~=1.7.2", # Should be pinned down to this version in order to be compatible with trustyai
-    "scipy~=1.16.2",
-    "skl2onnx~=1.19.1",
-    "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
-    "codeflare-sdk~=0.33.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    "kubeflow-training==1.9.3",
 
-    # DB connectors
-    "pymongo~=4.15.3",
-    "psycopg~=3.2.10",
-    "pyodbc~=5.2.0",
-    "mysql-connector-python~=9.4.0",
-
-    # JupyterLab packages
-    "odh-elyra==4.3.2",
-    "odh-jupyter-trash-cleanup==0.1.1",
-
-    "jupyterlab==4.4.9",
-    "jupyter-bokeh~=3.0.5", # trustyai 0.6.1 depends on jupyter-bokeh~=3.0.5
-    "jupyter-server~=2.17.0",
-    "jupyter-server-proxy~=4.4.0",
-    "jupyter-server-terminals~=0.5.3",
-    "jupyterlab-git~=0.51.2",
-    "jupyterlab-lsp~=5.1.1",
-    "jupyterlab-widgets~=3.0.15",
-    "jupyter-resource-usage~=1.1.1",
-    "nbdime~=4.0.2",
-    "nbgitpuller~=1.2.2",
-
-    # Base packages
-    "wheel~=0.45.1",
-    "setuptools~=80.9.0",
-]
-
-[tool.uv]
-environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    # Subproject dependencies
+    "notebooks-base-deps",
+    "notebooks-jupyterlab-deps",
+    "notebooks-jupyterlab-datascience-deps",
+    "notebooks-datascience-deps",
+    "notebooks-db-connectors-deps",
 ]
 
 [tool.uv.sources]
 torch = { index = "pytorch-cuda" }
 triton = { index = "pytorch-cuda" }
+notebooks-base-deps = { path = "../../../dependencies/base" }
+notebooks-jupyterlab-deps = { path = "../../../dependencies/jupyterlab" }
+notebooks-jupyterlab-datascience-deps = { path = "../../../dependencies/jupyterlab-datascience" }
+notebooks-datascience-deps = { path = "../../../dependencies/datascience" }
+notebooks-db-connectors-deps = { path = "../../../dependencies/db-connectors" }
 
 [[tool.uv.index]]
 name = "pytorch-cuda"
 url = "https://download.pytorch.org/whl/cu128"
 explicit = true
+
+[tool.uv]
+
+override-dependencies = [
+    # TrustyAI requires specific versions that differ from standard datascience
+    "jupyter-bokeh~=3.0.5",  # trustyai 0.6.1 depends on jupyter-bokeh~=3.0.5
+    "numpy~=1.26.4",  # TrustyAI requires this specific version
+    "pandas~=1.5.3",  # TrustyAI requires this specific version
+]
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
+]
