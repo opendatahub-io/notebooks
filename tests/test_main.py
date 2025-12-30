@@ -388,13 +388,22 @@ def test_rhds_pipelines_use_rhds_args(subtests: pytest_subtests.plugin.SubTests)
 
             if pipeline["kind"] == "Pipeline":
                 continue
-            assert pipeline["kind"] == "PipelineRun"
+            assert pipeline["kind"] == "PipelineRun", f"Expected PipelineRun, got {pipeline['kind']}"
+
+            dockerfile_param = None
+            build_args_file_param = None
 
             for param in pipeline["spec"]["params"]:
                 if param["name"] == "dockerfile":
                     dockerfile_param = pathlib.Path(param["value"])
                 if param["name"] == "build-args-file":
                     build_args_file_param = pathlib.Path(param["value"])
+
+            if dockerfile_param is None or build_args_file_param is None:
+                pytest.fail(
+                    f"Pipeline {file.relative_to(PROJECT_ROOT)} is missing required parameters: "
+                    f"dockerfile={dockerfile_param}, build-args-file={build_args_file_param}"
+                )
 
             if not dockerfile_param.name.startswith("Dockerfile.konflux"):
                 continue
