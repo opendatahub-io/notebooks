@@ -399,14 +399,16 @@ def test_rhds_pipelines_use_rhds_args(subtests: pytest_subtests.plugin.SubTests)
                 if param["name"] == "build-args-file":
                     build_args_file_param = pathlib.Path(param["value"])
 
-            assert dockerfile_param is not None
+            assert dockerfile_param is not None, (
+                f"Pipeline {file.relative_to(PROJECT_ROOT)} is missing the required 'dockerfile' parameter"
+            )
 
             if not dockerfile_param.name.startswith("Dockerfile.konflux"):
                 continue
 
             assert build_args_file_param is not None, (
-                f"Pipeline {file.relative_to(PROJECT_ROOT)} is missing required parameters: "
-                f"dockerfile={dockerfile_param}, build-args-file={build_args_file_param}"
+                f"Pipeline {file.relative_to(PROJECT_ROOT)} builds a konflux Dockerfile ({dockerfile_param.name}) "
+                f"but is missing the required 'build-args-file' parameter"
             )
 
             assert build_args_file_param.name.startswith("konflux."), (
