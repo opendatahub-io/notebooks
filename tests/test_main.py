@@ -13,6 +13,7 @@ import tomllib
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
+import allure
 import packaging.requirements
 import packaging.version
 import pytest
@@ -369,6 +370,38 @@ def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.Sub
             for file in rest:
                 # file.write_text(first_file.read_text())  # update rest according to first
                 assert first_file.read_text() == file.read_text(), f"The files {first_file} and {file} do not match"
+
+
+@allure.issue("RHOAIENG-42632")
+def test_rhds_pipelines_use_rhds_args(subtests: pytest_subtests.plugin.SubTests):
+    r"""Pipelines under .tekton/ that build `^Dockerfile\.konflux.*` dockerfiles have to use
+    `^konflux\..*` args files. For example, this would be a violation of the rule:
+
+    - name: dockerfile
+      value: jupyter/rocm/tensorflow/ubi9-python-3.12/Dockerfile.konflux.rocm
+    - name: build-args-file
+      value: jupyter/rocm/tensorflow/ubi9-python-3.12/build-args/rocm.conf
+    """
+    for file in PROJECT_ROOT.glob(".tekton/*.yaml"):
+        with subtests.test(msg="checking tekton pipeline", pipeline=file):
+            pipeline = yaml.safe_load(file.read_text())
+
+            if pipeline["kind"] == "Pipeline":
+                continue
+            assert pipeline["kind"] == "PipelineRun"
+
+            for param in pipeline["spec"]["params"]:
+                if param["name"] == "dockerfile":
+                    dockerfile_param = pathlib.Path(param["value"])
+                if param["name"] == "build-args-file":
+                    build_args_file_param = pathlib.Path(param["value"])
+
+            if not dockerfile_param.name.startswith("Dockerfile.konflux"):
+                continue
+
+            assert build_args_file_param.name.startswith("konflux."), (
+                f"Pipeline {file.relative_to(PROJECT_ROOT)} builds a konflux Dockerfile but does not use konflux build-args"
+            )
 
 
 def test_make_disable_pushing():
