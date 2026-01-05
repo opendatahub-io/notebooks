@@ -3,6 +3,7 @@
 #########################
 ARG BASE_IMAGE
 
+### BEGIN mongocli-builder stage with s390x support
 ######################################################
 # mongocli-builder (build stage only, not published) #
 ######################################################
@@ -32,6 +33,8 @@ else
     CGO_ENABLED=1 GOOS=linux GOARCH=${arch} GO111MODULE=on go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
 fi
 EOF
+
+### END mongocli-builder stage with s390x support
 
 ####################
 # cpu-base         #
@@ -335,8 +338,10 @@ dnf clean all
 rm -rf /var/cache/yum
 EOF
 
+### BEGIN Copy mongocli from builder
 # Copy dynamically-linked mongocli built in earlier build stage
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
+### END Copy mongocli from builder
 
 # Other apps and tools installed as default user
 USER 1001

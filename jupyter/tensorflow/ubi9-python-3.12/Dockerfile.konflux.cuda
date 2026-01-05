@@ -5,6 +5,7 @@ ARG TARGETARCH
 #########################
 ARG BASE_IMAGE
 
+### BEGIN mongocli-builder stage
 ######################################################
 # mongocli-builder (build stage only, not published) #
 ######################################################
@@ -20,6 +21,8 @@ unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
 cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/
 CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
 EOF
+
+### END mongocli-builder stage
 
 ####################
 # cuda-base        #
@@ -133,8 +136,10 @@ dnf clean all
 rm -rf /var/cache/yum
 EOF
 
+### BEGIN Copy mongocli from builder
 # Copy dynamically-linked mongocli built in earlier build stage
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
+### END Copy mongocli from builder
 
 # Other apps and tools installed as default user
 USER 1001
