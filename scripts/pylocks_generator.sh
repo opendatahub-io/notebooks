@@ -194,6 +194,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       --universal \
       --no-annotate \
       --quiet \
+      --no-emit-package odh-notebooks-meta-llmcompressor-deps \
       $index
     local status=$?
     set -e
