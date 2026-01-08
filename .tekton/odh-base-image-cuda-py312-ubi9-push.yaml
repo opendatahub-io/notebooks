@@ -28,7 +28,7 @@ spec:
     value: base-images/cuda/12.6/ubi9-python-3.12/Dockerfile.cuda
   - name: build-platforms
     value:
-    - linux/x86_64
+    - linux-mxlarge/amd64
     - linux/arm64
   - name: path-context
     value: .

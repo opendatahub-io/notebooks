@@ -23,7 +23,7 @@ metadata:
   namespace: open-data-hub-tenant
 spec:
   timeouts:
-    pipeline: 3h
+    pipeline: 6h
   params:
   - name: git-url
     value: '{{source_url}}'
@@ -35,7 +35,7 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux/x86_64
+    - linux-mxlarge/amd64
     - linux/ppc64le
   - name: dockerfile
     value: jupyter/minimal/ubi9-python-3.12/Dockerfile.cpu
@@ -43,6 +43,24 @@ spec:
     value: .
   - name: build-args-file
     value: jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf
+  # Added taskRunSpecs to increase compute resources
+  taskRunSpecs:
+    - pipelineTaskName: clair-scan
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
+    - pipelineTaskName: ecosystem-cert-preflight-checks
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:
