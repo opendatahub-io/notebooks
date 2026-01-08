@@ -1,5 +1,4 @@
 apiVersion: tekton.dev/v1
-#poke
 kind: PipelineRun
 metadata:
   annotations:
@@ -34,7 +33,7 @@ spec:
   - name: additional-tags
     value:
     - '{{target_branch}}-{{revision}}'
-    - 2025b-v1.40
+    - 2025a-v1.35
   pipelineRef:
     name: singlearch-push-pipeline
   taskRunTemplate:
