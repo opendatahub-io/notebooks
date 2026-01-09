@@ -6,6 +6,7 @@ import tempfile
 import allure
 import pytest
 import requests
+import re
 
 from tests.containers import conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
@@ -50,6 +51,20 @@ class TestJupyterLabImage:
             assert response.status_code == 200
             assert "text/html" in response.headers["content-type"]
             assert 'class="pf-v6-c-spinner"' in response.text
+        finally:
+            docker_utils.NotebookContainer(container).stop(timeout=0)
+
+    @allure.issue("RHOAIENG-32156")
+    @allure.description("Check that Trash Cleanup extension is installed and enabled")
+    def test_trash_cleanup_installed(self, jupyterlab_image: conftest.Image) -> None:
+        container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
+        extension_check_pattern = r"odh-jupyter-trash-cleanup.*enabled.*OK"
+        try:
+            container.start(wait_for_readiness=True)
+            exit_code, convert_output = container.exec(["jupyter", "labextension", "list"])
+            result_output = convert_output.decode()
+            assert re.search(extension_check_pattern, result_output) is not None
+            assert 0 == exit_code
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
