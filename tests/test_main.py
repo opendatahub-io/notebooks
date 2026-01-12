@@ -333,6 +333,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         ),
         ("jupyterlab-lsp", ("~=5.1.0", "~=5.1.1")),
         ("jupyterlab-widgets", ("~=3.0.13", "~=3.0.15")),
+        ("tornado", ("~=6.5.3")),
     )
 
     for name, data in requirements.items():
