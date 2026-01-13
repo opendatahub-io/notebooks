@@ -229,7 +229,7 @@ EOF
 #######################################################
 FROM common-builder AS onnx-builder
 ARG TARGETARCH
-ARG ONNX_VERSION=v1.20.0
+ARG ONNX_VERSION=v1.20.1
 WORKDIR /root
 RUN <<'EOF'
 set -Eeuxo pipefail
