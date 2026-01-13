@@ -1,6 +1,15 @@
 @charset "UTF-8";
 
 :root {
+}
+
+@property --pf-v6-global--danger-jiggle--TranslateX {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0;
+}
+
+:root {
   --pf-t--color--blue--50: #0066cc;
   --pf-t--global--icon--size--400: 3.5rem;
   --pf-t--global--color--brand--200: var(--pf-t--color--blue--50);
@@ -10,6 +19,14 @@
 }
 
 :root {
+}
+
+@property --pf-v6-c-menu-toggle--m-danger--TranslateX {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
 }
 
 .pf-v6-c-spinner {
@@ -22,6 +39,7 @@
   --pf-v6-c-spinner--StrokeWidth: 10;
   --pf-v6-c-spinner__path--StrokeWidth: var(--pf-v6-c-spinner--StrokeWidth);
   --pf-v6-c-spinner__path--AnimationTimingFunction: ease-in-out;
+  --pf-v6-c-spinner--m-xs--diameter: var(--pf-t--global--icon--size--sm);
   --pf-v6-c-spinner--m-sm--diameter: var(--pf-t--global--icon--size--md);
   --pf-v6-c-spinner--m-md--diameter: var(--pf-t--global--icon--size--lg);
   --pf-v6-c-spinner--m-lg--diameter: var(--pf-t--global--icon--size--xl);
@@ -72,4 +90,15 @@
     stroke-dashoffset: 280;
     transform: rotate(720deg);
   }
+}
+
+@property --pf-v6-c-tabs--link-accent--length {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --pf-v6-c-tabs--link-accent--start {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
 }
