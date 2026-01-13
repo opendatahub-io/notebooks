@@ -317,7 +317,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             (
                 "~=1.26.4",  # trustyai 0.6.2 depends on numpy~=1.26.4
                 "~=2.1.3",
-                "~=2.3.4",  # for llmcompressor, tensorflow cuda, latest possible at the time of writing
+                "~=2.3.5",  # for llmcompressor, tensorflow cuda, latest possible at the time of writing
             ),
         ),
         ("pandas", ("~=2.3.3", "~=1.5.3")),
