@@ -102,6 +102,58 @@ def main():
             # Prevent Elyra from re-installing the dependencies
             ENV ELYRA_INSTALL_PACKAGES="false"
         """),
+
+        "mongocli-builder stage": textwrap.dedent(r"""
+            ######################################################
+            # mongocli-builder (build stage only, not published) #
+            ######################################################
+            FROM registry.access.redhat.com/ubi9/go-toolset:latest AS mongocli-builder
+
+            ARG MONGOCLI_VERSION=2.0.4
+
+            WORKDIR /tmp/
+            RUN /bin/bash <<'EOF'
+            set -Eeuxo pipefail
+            curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
+            unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
+            cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/
+            CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
+            EOF
+        """),
+        "mongocli-builder stage with s390x support": textwrap.dedent(r"""
+            ######################################################
+            # mongocli-builder (build stage only, not published) #
+            ######################################################
+            FROM registry.access.redhat.com/ubi9/go-toolset:latest AS mongocli-builder
+
+            ARG MONGOCLI_VERSION=2.0.4
+
+            WORKDIR /tmp/
+
+            ARG TARGETARCH
+
+            # Keep s390x special-case from original (create dummy binary) but
+            # include explicit curl/unzip steps from the delta for non-s390x.
+            RUN /bin/bash <<'EOF'
+            set -Eeuxo pipefail
+            arch="${TARGETARCH:-$(uname -m)}"
+            arch=$(echo "$arch" | cut -d- -f1)
+            if [ "$arch" = "s390x" ]; then
+                echo "Skipping mongocli build for ${arch}, creating dummy binary"
+                mkdir -p /tmp && printf '#!/bin/sh\necho "mongocli not supported on s390x"\n' > /tmp/mongocli
+                chmod +x /tmp/mongocli
+            else
+                echo "Building mongocli for ${arch}"
+                curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
+                unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
+                cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/
+                CGO_ENABLED=1 GOOS=linux GOARCH=${arch} GO111MODULE=on go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
+            fi
+            EOF
+        """),
+        "Copy mongocli from builder": textwrap.dedent(r"""
+            # Copy dynamically-linked mongocli built in earlier build stage
+            COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/"""),
     }
 
     for docker_dir in docker_directories:
