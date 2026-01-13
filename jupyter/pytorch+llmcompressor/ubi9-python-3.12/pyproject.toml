@@ -6,9 +6,6 @@ requires-python = "==3.12.*"
 
 # https://docs.astral.sh/uv/concepts/projects/workspaces/#when-not-to-use-workspaces
 dependencies = [
-    # see https://redhat-internal.slack.com/archives/C079FE5H94J/p1756933987117709?thread_ts=1756933154.294109&cid=C079FE5H94J
-    # for a discussion on what version of torch to use
-
     # PyTorch packages
     "tensorboard~=2.20.0",
     "torch==2.7.1",
@@ -18,16 +15,15 @@ dependencies = [
     # see https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757007056725559?thread_ts=1756924127.136609&cid=C0961HQ858Q
 
     # llmcompressor packages
-    "llmcompressor~=0.8.1",
+    "odh-notebooks-meta-llmcompressor-deps",
     "lm-eval~=0.4.9",
-    "compressed-tensors==0.12.2",
 
     # Datascience and useful extensions
     "boto3~=1.40.52",
     "kafka-python-ng~=2.2.3",
     "kfp~=2.14.6",
     "matplotlib~=3.10.7",
-    "numpy~=2.2.6",
+    "numpy~=2.3.5",
     "pandas~=2.3.3",
     "plotly~=6.3.1",
     "scikit-learn~=1.7.2",
@@ -78,6 +74,8 @@ dependencies = [
 # https://docs.astral.sh/uv/guides/integration/pytorch/#using-uv-with-pytorch
 torch = { index = "pytorch" }
 torchvision = { index = "pytorch" }
+# https://github.com/astral-sh/uv/issues/13067#issuecomment-2824190008
+odh-notebooks-meta-llmcompressor-deps = { path = "../../../dependencies/odh-notebooks-meta-llmcompressor-deps" }
 
 # https://docs.astral.sh/uv/concepts/indexes/#package-indexes
 [[tool.uv.index]]
@@ -88,22 +86,6 @@ explicit = true
 # https://docs.astral.sh/uv/concepts/resolution/#dependency-overrides
 # https://docs.astral.sh/uv/reference/settings/#override-dependencies
 [tool.uv]
-
-# from https://redhat-internal.slack.com/archives/C079FE5H94J/p1756934476976759?thread_ts=1756933154.294109&cid=C079FE5H94J
-constraint-dependencies = [
-    "loguru==0.7.3",
-    "pyyaml==6.0.2",
-    "numpy==2.2.6",
-    "requests==2.32.5",
-    "tqdm==4.67.1",
-    # apicc is still on torch 2.7.1
-    # "torch==2.8.0",
-    "transformers==4.55.2",
-    "datasets==4.0.0",
-    "accelerate==1.10.0",
-    "pynvml==12.0.0",
-    "pillow==10.4.0",
-]
 
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
