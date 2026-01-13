@@ -291,7 +291,8 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             requirement = packaging.requirements.Requirement(d)
             requirements[requirement.name].append(requirement.specifier)
 
-    # TODO(jdanek): review these, if any are unwarranted
+    # list of packages and their versions where we need to have multiple versions of the same package
+    #  do not add/maintain entries with a single version here, delete such items directly
     ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
         # ("package name", ("allowed specifier 1", "allowed specifier 2", ...))
         ("setuptools", ("~=80.9.0", "==80.9.0")),
@@ -299,10 +300,6 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         ("tensorboard", ("~=2.18.0", "~=2.20.0")),
         ("torch", ("==2.7.1", "==2.7.1+cu128", "==2.7.1+rocm6.3")),
         ("torchvision", ("==0.22.1", "~=0.22.1", "==0.22.1+cu128", "==0.22.1+rocm6.3")),
-        (
-            "matplotlib",
-            ("~=3.10.6",),
-        ),
         (
             "numpy",
             (
@@ -313,17 +310,9 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             ),
         ),
         ("pandas", ("~=2.3.3", "~=1.5.3")),
-        ("scikit-learn", ("~=1.7.2",)),
-        ("codeflare-sdk", ("~=0.34.0",)),
         ("ipython-genutils", (">=0.2.0", "~=0.2.0")),
         ("jinja2", (">=3.1.6", "~=3.1.6")),
         ("jupyter-client", ("~=8.6.3", ">=8.6.3")),
-        ("requests", ("~=2.32.5",)),
-        ("urllib3", ("~=2.6.0",)),  # CVE-2025-66418 fix
-        ("transformers", ("~=4.56.1",)),
-        ("datasets", ("~=4.0.0",)),
-        ("accelerate", ("~=1.10.1",)),
-        ("kubeflow-training", ("==1.9.3",)),
         (
             "jupyter-bokeh",
             (
@@ -332,7 +321,6 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             ),
         ),
         ("jupyterlab-lsp", ("~=5.1.0", "~=5.1.1")),
-        ("jupyterlab-widgets", ("~=3.0.15",)),
     )
 
     for name, data in requirements.items():
