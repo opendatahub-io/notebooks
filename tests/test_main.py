@@ -259,6 +259,7 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
             (
                 "1.26",  # trustyai 0.6.2 depends on numpy~=1.26.4
                 "2.1",  # for tensorflow cuda
+                "2.2",  # for python 3.11 n-1 images
                 "2.3",  # this is our latest where possible
             ),
         ),
@@ -317,13 +318,11 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             (
                 "~=1.26.4",  # trustyai 0.6.2 depends on numpy~=1.26.4
                 "~=2.1.3",
-                "~=2.3.5",  # for llmcompressor, tensorflow cuda, latest possible at the time of writing
+                "~=2.2.6",
+                "~=2.3.4",  # for llmcompressor, tensorflow cuda, latest possible at the time of writing
             ),
         ),
         ("pandas", ("~=2.3.3", "~=1.5.3")),
-        ("ipython-genutils", (">=0.2.0", "~=0.2.0")),
-        ("jinja2", (">=3.1.6", "~=3.1.6")),
-        ("jupyter-client", ("~=8.6.3", ">=8.6.3")),
         (
             "jupyter-bokeh",
             (
