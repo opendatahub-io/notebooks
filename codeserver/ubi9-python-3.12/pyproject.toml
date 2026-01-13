@@ -34,3 +34,8 @@ dependencies = [
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
+override-dependencies = [
+    # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
+    # Upstream: https://github.com/kubernetes-client/python/issues/2458
+    "urllib3>=2.6.0",
+]
