@@ -11,19 +11,19 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: 'true'
     pipelinesascode.tekton.dev/max-keep-runs: '3'
-    pipelinesascode.tekton.dev/on-comment: ^/kfbuild\s+(all|odh\-base\-image\-cuda\-py312\-c9s|base\-images/cuda/12\.8/c9s\-python\-3\.12)
+    pipelinesascode.tekton.dev/on-comment: ^/kfbuild\s+(all|odh\-base\-image\-cuda\-py312\-c9s|base\-images/cuda/13\.0/c9s\-python\-3\.12)
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && target_branch == "main"  && ( "base-images/cuda/12.8/c9s-python-3.12/**".pathChanged() || ".tekton/odh-base-image-cuda-12-8-py312-c9s-pull-request.yaml".pathChanged() )
+      event == "pull_request" && target_branch == "main"  && ( "base-images/cuda/13.0/c9s-python-3.12/**".pathChanged() || ".tekton/odh-base-image-cuda-13-0-py312-c9s-pull-request.yaml".pathChanged() )
       && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
     appstudio.openshift.io/application: opendatahub-release
     appstudio.openshift.io/component: odh-base-image-cuda-py312-c9s
     pipelines.appstudio.openshift.io/type: build
-  name: odh-base-image-cuda-12-8-py312-c9s-on-pull-request
+  name: odh-base-image-cuda-13-0-py312-c9s-on-pull-request
   namespace: open-data-hub-tenant
 spec:
   timeouts:
-    pipeline: 6h
+    pipeline: 3h
   params:
   - name: git-url
     value: '{{source_url}}'
@@ -35,30 +35,12 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux-d160-m2xlarge/amd64
+    - linux/x86_64
     - linux-d160-m2xlarge/arm64
   - name: dockerfile
-    value: base-images/cuda/12.8/c9s-python-3.12/Dockerfile.cuda
+    value: base-images/cuda/13.0/c9s-python-3.12/Dockerfile.cuda
   - name: path-context
     value: .
-  # Added taskRunSpecs to increase compute resources
-  taskRunSpecs:
-    - pipelineTaskName: clair-scan
-      computeResources:
-        requests:
-          cpu: '8'
-          memory: 32Gi
-        limits:
-          cpu: '8'
-          memory: 32Gi
-    - pipelineTaskName: ecosystem-cert-preflight-checks
-      computeResources:
-        requests:
-          cpu: '8'
-          memory: 32Gi
-        limits:
-          cpu: '8'
-          memory: 32Gi
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:
