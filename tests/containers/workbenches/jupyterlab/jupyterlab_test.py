@@ -60,11 +60,13 @@ class TestJupyterLabImage:
         container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
         extension_check_pattern = r"odh-jupyter-trash-cleanup.*enabled.*OK"
         try:
-            container.start(wait_for_readiness=True)
-            exit_code, convert_output = container.exec(["jupyter", "labextension", "list"])
-            result_output = convert_output.decode()
-            assert re.search(extension_check_pattern, result_output) is not None
-            assert 0 == exit_code
+            container.start(wait_for_readiness=False)
+            exit_code, output = container.exec(["jupyter", "labextension", "list"])
+            result_output = output.decode(errors="replace")
+            assert exit_code == 0, f"`jupyter labextension list` failed:\n{result_output}"
+            assert re.search(extension_check_pattern, result_output) is not None, (
+                "Trash Cleanup extension not reported as enabled/OK:\n" + result_output
+            )
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 
