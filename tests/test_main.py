@@ -319,7 +319,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         ("jinja2", (">=3.1.6", "~=3.1.6")),
         ("jupyter-client", ("~=8.6.3", ">=8.6.3")),
         ("requests", ("~=2.32.3", ">=2.0.0")),
-        ("urllib3", ("~=2.5.0", "~=2.3.0")),
+        ("urllib3", ("~=2.6.0", "~=2.5.0")),
         ("transformers", ("<5.0,>4.0", "~=4.55.0")),
         ("datasets", ("", "~=3.4.1")),
         ("accelerate", ("!=1.1.0,>=0.20.3", "~=1.5.2")),
