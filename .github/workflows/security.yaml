@@ -26,7 +26,7 @@ jobs:
           enable-cache: false
 
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       # Trivy does not support pylock.toml https://github.com/aquasecurity/trivy/discussions/9408
       - run: find . -name pyproject.toml -execdir uv lock \;

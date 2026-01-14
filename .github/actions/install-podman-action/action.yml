@@ -13,7 +13,7 @@ runs:
       shell: bash
       run: sudo apt-get -qq remove podman crun
 
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       # https://docs.github.com/en/actions/reference/variables-reference#default-environment-variables
       # https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables
       id: cached-linuxbrew
