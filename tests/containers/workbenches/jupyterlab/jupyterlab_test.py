@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import pathlib
+import re
 import tempfile
 
 import allure
 import pytest
 import requests
-import re
 
 from tests.containers import conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
