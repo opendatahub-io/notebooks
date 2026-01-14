@@ -93,7 +93,9 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                         continue
 
                     assert requirement.name in pylock_packages, f"Dependency {d} is not in pylock.toml"
-                    assert "version" in pylock_packages[requirement.name], f"Version missing for {requirement.name} in pylock.toml"
+                    assert "version" in pylock_packages[requirement.name], (
+                        f"Version missing for {requirement.name} in pylock.toml"
+                    )
                     version = pylock_packages[requirement.name]["version"]
                     assert requirement.specifier.contains(version), (
                         f"Version of {d} in pyproject.toml does not match {version=} in pylock.toml"
@@ -319,9 +321,6 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             ),
         ),
         ("pandas", ("~=2.3.3", "~=1.5.3")),
-        ("ipython-genutils", (">=0.2.0", "~=0.2.0")),
-        ("jinja2", (">=3.1.6", "~=3.1.6")),
-        ("jupyter-client", ("~=8.6.3", ">=8.6.3")),
         (
             "jupyter-bokeh",
             (
@@ -457,6 +456,7 @@ def is_subproject_metapackage(package_name: str) -> bool:
     They are excluded from lock files via --no-emit-package in scripts/pylocks_generator.sh.
     """
     return package_name.startswith("odh-notebooks-meta-") and package_name.endswith("-deps")
+
 
 def _skip_unimplemented_manifests(directory: pathlib.Path, call_skip=True) -> bool:
     unimplemented_dirs = ()

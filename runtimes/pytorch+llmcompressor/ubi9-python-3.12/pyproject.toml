@@ -32,25 +32,7 @@ dependencies = [
     "pyodbc~=5.2.0",
     "mysql-connector-python~=9.4.0",
 
-    # This is a comprehensive list of python dependencies that Elyra requires to execute Jupyter notebooks.
-    "ipykernel~=6.30.1",
-    "ipython~=9.6.0",
-    "ipython-genutils~=0.2.0",
-    "jinja2~=3.1.6",
-    "jupyter-client~=8.6.3",
-    "jupyter-core~=5.8.1",
-    "markupsafe~=3.0.3",
-    "minio~=7.2.18",
-    "nbclient~=0.10.2",
-    "nbconvert~=7.16.6",
-    "nbformat~=5.10.4",
-    "papermill~=2.6.0",
-    "pyzmq~=27.1.0",
-    "prompt-toolkit~=3.0.52",
-    "requests~=2.32.5",
-    "tornado~=6.5.2",
-    "traitlets~=5.14.3",
-    "urllib3~=2.6.0",
+    "odh-notebooks-meta-runtime-elyra-deps",
 
     # Base packages
     "setuptools~=80.9.0",
@@ -62,6 +44,7 @@ torch = { index = "pytorch-cuda" }
 torchvision = { index = "pytorch-cuda" }
 # https://github.com/astral-sh/uv/issues/13067#issuecomment-2824190008
 odh-notebooks-meta-llmcompressor-deps = { path = "../../../dependencies/odh-notebooks-meta-llmcompressor-deps" }
+odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }
 
 [[tool.uv.index]]
 name = "pytorch-cuda"
