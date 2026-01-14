@@ -1,0 +1,38 @@
+[project]
+name = "odh-notebooks-meta-llmcompressor-deps"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+# Single source of truth for all things LLMCompressor
+# https://issues.redhat.com/browse/RHAISTRAT-1014?focusedId=28766926&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-28766926
+# previous version of the list was from https://redhat-internal.slack.com/archives/C079FE5H94J/p1756934476976759?thread_ts=1756933154.294109&cid=C079FE5H94J
+dependencies = [
+    # these may also be constraint-dependencies
+    "loguru==0.7.3",
+    "PyYAML==6.0.3",
+    "numpy==2.3.5",
+    "requests==2.32.5",
+    "tqdm==4.67.1",
+    "transformers==4.57.3",
+    "datasets==4.4.1",
+    "accelerate==1.12.0",
+    "nvidia-ml-py==13.590.44",
+    "pillow==11.3.0",
+    "auto-round==0.9.2",
+    "compressed-tensors==0.13.0",
+
+    # see https://redhat-internal.slack.com/archives/C079FE5H94J/p1756933987117709?thread_ts=1756933154.294109&cid=C079FE5H94J
+    # for a discussion on what version of torch to use
+
+    # we will ignore their torch preference for now
+    #"torch==2.9.1",
+
+    "llmcompressor==0.9.0",
+]
+
+[tool.uv]
+package = false
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
+]
