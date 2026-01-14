@@ -58,13 +58,13 @@ class TestJupyterLabImage:
     @allure.description("Check that Trash Cleanup extension is installed and enabled")
     def test_trash_cleanup_installed(self, jupyterlab_image: conftest.Image) -> None:
         container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
-        extension_check_pattern = r"odh-jupyter-trash-cleanup.*enabled.*OK"
+        extension_check_pattern = r"^\s*odh-jupyter-trash-cleanup[^\n]*enabled[^\n]*OK"
         try:
             container.start(wait_for_readiness=False)
             exit_code, output = container.exec(["jupyter", "labextension", "list"])
             result_output = output.decode(errors="replace")
             assert exit_code == 0, f"`jupyter labextension list` failed:\n{result_output}"
-            assert re.search(extension_check_pattern, result_output) is not None, (
+            assert re.search(extension_check_pattern, result_output, re.MULTILINE) is not None, (
                 "Trash Cleanup extension not reported as enabled/OK:\n" + result_output
             )
         finally:
