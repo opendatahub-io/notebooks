@@ -131,7 +131,7 @@ jobs:
           SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
 
       # for bin/buildinputs in scripts/sandbox.py
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           cache-dependency-path: "scripts/buildinputs/go.sum"
 
@@ -401,7 +401,7 @@ jobs:
         working-directory: scripts/check-payload
 
       # for https://github.com/openshift/check-payload to cache the built binary
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           cache-dependency-path: "scripts/check-payload/go.sum"
         env:

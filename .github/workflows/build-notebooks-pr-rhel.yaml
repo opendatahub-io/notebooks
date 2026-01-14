@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v6
         if: ${{ github.event_name != 'pull_request_target' }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           cache-dependency-path: "**/*.sum"
 
