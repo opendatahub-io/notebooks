@@ -22,7 +22,7 @@ jobs:
       TEST_IMAGE: quay.io/opendatahub/odh-pipeline-runtime-minimal-cpu-py312-ubi9:2025b-v1.40
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install missing dependencies
         run: |
@@ -73,7 +73,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Test Trivy scan on filesystem
         uses: ./.github/actions/trivy-scan-action
