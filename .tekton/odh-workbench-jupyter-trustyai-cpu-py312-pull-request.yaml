@@ -50,6 +50,9 @@ spec:
     value: 5d
   - name: enable-slack-failure-notification
     value: "false"
+  timeouts:
+    pipeline: 8h
+    tasks: 4h
   pipelineRef:
     resolver: git
     params:
