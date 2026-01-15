@@ -48,14 +48,14 @@ jobs:
 
       # Here we are checking out the pull request, so that we can build from the new code
       # We can do this because we already checked that the submitting user is a contributor
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: "refs/pull/${{ github.event.number }}/merge"
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         if: ${{ github.event_name != 'pull_request_target' }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           cache-dependency-path: "**/*.sum"
 
