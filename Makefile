@@ -25,7 +25,7 @@ RELEASE_PYTHON_VERSION	 ?= 3.12
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
 # whether to push the images to a registry as they are built
 PUSH_IMAGES ?= yes
-# INDEX_MODE: auto (default), public-index, or rh-index - controls lock file generation
+# INDEX_MODE: auto (default), public-index, or aipcc-index - controls lock file generation
 INDEX_MODE ?= auto
 
 # OS dependant: Generate date, select appropriate cmd to locate container engine

@@ -15,6 +15,7 @@ set -euo pipefail
 #   • Overwrites existing pylock.toml in-place for public PyPI index mode.
 #
 # Index Modes:
+#   • auto         -> Uses AIPCC index if uv.lock.d/ directory is detected, public PyPI index otherwise.
 #   • auto (default) -> Uses rh-index if uv.lock.d/ exists, public-index otherwise.
 #   • rh-index    -> Uses internal Red Hat wheel indexes. Generates uv.lock.d/pylock.<flavor>.toml .
 #   • public-index   -> Uses public PyPI index and updates pylock.toml in place.
@@ -180,7 +181,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     local output
     local desc
 
-    if [[ "$mode" == "public-index" ]]; then
+    if [[ "$mode" == "public-index" || ( "$INDEX_MODE" == "auto" && ! -d "uv.lock.d" ) ]]; then
       output="pylock.toml"
       desc="pylock.toml (public index)"
       echo "➡️ Generating pylock.toml from public PyPI index..."
@@ -225,7 +226,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
   }
 
   # Run lock generation based on effective mode
-  if [[ "$EFFECTIVE_MODE" == "public-index" ]]; then
+  if [[ "$EFFECTIVE_MODE" == "public-index" || ( "$INDEX_MODE" == "auto" && ! -d "uv.lock.d" ) ]]; then
     run_lock "cpu" "$PUBLIC_INDEX" "$EFFECTIVE_MODE"
   else
     $HAS_CPU && run_lock "cpu" "$CPU_INDEX" "$EFFECTIVE_MODE"
