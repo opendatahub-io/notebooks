@@ -89,7 +89,11 @@ def should_build_target(changed_files: list[str], target_directory: str) -> str:
     dockerfiles = find_dockerfiles(target_directory)
     for dockerfile in dockerfiles:
         stdout = subprocess.check_output(
-            [PROJECT_ROOT / "bin/buildinputs", target_directory + "/" + dockerfile],
+            args=[
+                PROJECT_ROOT / "bin/buildinputs",
+                *["-build-arg=BASE_IMAGE=fake-image"],
+                target_directory + "/" + dockerfile,
+            ],
             env={
                 "TARGETPLATFORM": f"linux/{get_go_arch()}",
                 **os.environ,
@@ -152,12 +156,12 @@ class SelfTests(unittest.TestCase):
         }
 
     def test_get_build_directory(self):
-        directory = get_build_directory("rocm-jupyter-pytorch-ubi9-python-3.11")
+        directory = get_build_directory("rocm-jupyter-pytorch-ubi9-python-3.12")
         assert directory == "jupyter/rocm/pytorch/ubi9-python-3.11"
 
     def test_get_build_dockerfile(self):
-        dockerfile = get_build_dockerfile("rocm-jupyter-pytorch-ubi9-python-3.11")
-        assert dockerfile == "jupyter/rocm/pytorch/ubi9-python-3.11/Dockerfile.rocm"
+        dockerfile = get_build_dockerfile("rocm-jupyter-pytorch-ubi9-python-3.12")
+        assert dockerfile == "jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.rocm"
 
     def test_should_build_target(self):
-        assert "" == should_build_target(["README.md"], "jupyter/datascience/ubi9-python-3.11")
+        assert "" == should_build_target(["README.md"], "jupyter/datascience/ubi9-python-3.12")
