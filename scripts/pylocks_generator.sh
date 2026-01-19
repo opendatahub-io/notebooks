@@ -15,13 +15,12 @@ set -euo pipefail
 #   • Overwrites existing pylock.toml in-place for public PyPI index mode.
 #
 # Index Modes:
-#   • auto         -> Uses AIPCC index if uv.lock.d/ exists, public PyPI index otherwise.
-#   • aipcc-index       -> Uses internal Red Hat AIPCCwheel indexes. Generates uv.lock.d/pylock.<flavor>.toml.
-#   • public-index -> Uses public PyPI index. Updates pylock.toml in place.
-#                    Default mode if not specified.
+#   • auto (default) -> Uses AIPCC index if uv.lock.d/ exists, public PyPI index otherwise.
+#   • aipcc-index    -> Uses internal Red Hat AIPCC wheel indexes. Generates uv.lock.d/pylock.<flavor>.toml .
+#   • public-index   -> Uses public PyPI index and updates pylock.toml in place.
 #
 # Usage:
-#   1. Lock using default public index for all projects in MAIN_DIRS:
+#   1. Lock using auto mode (default) for all projects in MAIN_DIRS:
 #        bash pylocks_generator.sh
 #
 #   2. Lock using AIPCC index for a specific directory:
@@ -32,16 +31,17 @@ set -euo pipefail
 #
 # Notes:
 #   • If the script fails for a directory, it lists the failed directories at the end.
-#   • Public index mode does not create uv.lock.d directories keeps the old format.
+#   • Public index mode does not create uv.lock.d directories and keeps the old format.
 #   • Python version extraction depends on directory naming convention; invalid formats are skipped.
 # =============================================================================
 
 # ----------------------------
 # CONFIGURATION
 # ----------------------------
-CPU_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/cpu-ubi9/simple/"
-CUDA_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/cuda-ubi9/simple/"
-ROCM_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/rocm-ubi9/simple/"
+# https://redhat-internal.slack.com/archives/C079FE5H94J/p1768855783394919?thread_ts=1767789190.424899&cid=C079FE5H94J
+CPU_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cpu-ubi9/simple/"
+CUDA_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cuda12.9-ubi9/simple/"
+ROCM_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/rocm6.4-ubi9/simple/"
 PUBLIC_INDEX="--index-url=https://pypi.org/simple"
 
 MAIN_DIRS=("jupyter" "runtimes" "rstudio" "codeserver")
@@ -82,7 +82,7 @@ fi
 # ----------------------------
 # ARGUMENT PARSING
 # ----------------------------
-# default to public-index if not provided
+# default to auto if not provided
 INDEX_MODE="${1:-auto}"
 TARGET_DIR_ARG="${2:-}"
 
@@ -181,8 +181,9 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     # The behavior has changed in uv 0.9.17 (https://github.com/astral-sh/uv/pull/16956)
     # Documentation at https://docs.astral.sh/uv/reference/cli/#uv-pip-compile--python-platform says that
     #  `--python-platform linux` is alias for `x86_64-unknown-linux-gnu`; we cannot use this to get a multiarch pylock
-    # Let's use --universal temporarily, and in the future we can switch to using uv.lock.d
-    #  when https://github.com/astral-sh/uv/issues/6830 is resolved, or link `ln -s uv.lock.d/lock.${flavor}.toml uv.lock`
+    # Let's use --universal temporarily, and in the future we can switch to using uv.lock
+    #  when https://github.com/astral-sh/uv/issues/6830 is resolved, or symlink `ln -s uv.lock.d/uv.${flavor}.lock uv.lock`
+    # Note: currently generating uv.lock.d/pylock.${flavor}.toml; future rename to uv.${flavor}.lock is planned
     # See also --universal discussion with Gerard
     #  https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757935641975969?thread_ts=1757542802.032519&cid=C0961HQ858Q
     set +e
@@ -206,11 +207,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       rm -f "$output"
       DIR_SUCCESS=false
     else
-      if [[ "$INDEX_MODE" == "public-index" ]]; then
-        ok "pylock.toml generated successfully."
-      else
-        ok "$(uppercase "$flavor") lock generated successfully."
-      fi
+      ok "$desc generated successfully."
     fi
   }
 
