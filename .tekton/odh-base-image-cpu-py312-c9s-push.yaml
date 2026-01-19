@@ -28,16 +28,10 @@ spec:
     value: base-images/cpu/c9s-python-3.12/Dockerfile.cpu
   - name: path-context
     value: .
-  - name: additional-tags
-    value:
-    - '{{target_branch}}-{{revision}}'
-    - latest
   - name: build-platforms
     value:
     - linux-mxlarge/amd64
     - linux/arm64
-    - linux/ppc64le
-    - linux/s390x
   pipelineRef:
     name: multiarch-push-pipeline
   taskRunTemplate:
