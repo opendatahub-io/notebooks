@@ -11,12 +11,13 @@ set -euo pipefail
 #   • Supports multiple Python project directories, detected by pyproject.toml.
 #   • Detects available Dockerfile flavors (CPU, CUDA, ROCm) for AIPCC index mode.
 #   • Validates Python version extracted from directory name (expects format .../ubi9-python-X.Y).
-#   • Generates per-flavor locks in 'uv.lock/' for AIPCC index mode.
+#   • Generates per-flavor locks in 'uv.lock.d/' for AIPCC index mode.
 #   • Overwrites existing pylock.toml in-place for public PyPI index mode.
 #
 # Index Modes:
-#   • aipcc-index  -> Uses internal Red Hat AIPCC wheel indexes. Generates uv.lock/pylock.<flavor>.toml for each detected flavor.
-#   • public-index -> Uses public PyPI index. Updates pylock.toml in the project directory.
+#   • auto         -> Uses AIPCC index if uv.lock.d/ exists, public PyPI index otherwise.
+#   • aipcc-index       -> Uses internal Red Hat AIPCCwheel indexes. Generates uv.lock.d/pylock.<flavor>.toml.
+#   • public-index -> Uses public PyPI index. Updates pylock.toml in place.
 #                    Default mode if not specified.
 #
 # Usage:
@@ -31,7 +32,7 @@ set -euo pipefail
 #
 # Notes:
 #   • If the script fails for a directory, it lists the failed directories at the end.
-#   • Public index mode does not create uv.lock directories keeps the old format.
+#   • Public index mode does not create uv.lock.d directories keeps the old format.
 #   • Python version extraction depends on directory naming convention; invalid formats are skipped.
 # =============================================================================
 
@@ -82,12 +83,12 @@ fi
 # ARGUMENT PARSING
 # ----------------------------
 # default to public-index if not provided
-INDEX_MODE="${1:-public-index}"
+INDEX_MODE="${1:-auto}"
 TARGET_DIR_ARG="${2:-}"
 
 # Validate mode
-if [[ "$INDEX_MODE" != "aipcc-index" && "$INDEX_MODE" != "public-index" ]]; then
-  error "Invalid mode '$INDEX_MODE'. Valid options: aipcc-index, public-index"
+if [[ "$INDEX_MODE" != "auto" && "$INDEX_MODE" != "aipcc-index" && "$INDEX_MODE" != "public-index" ]]; then
+  error "Invalid mode '$INDEX_MODE'. Valid options: auto, aipcc-index, public-index"
   exit 1
 fi
 info "Using index mode: $INDEX_MODE"
@@ -166,13 +167,13 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     local output
     local desc
 
-    if [[ "$INDEX_MODE" == "public-index" ]]; then
+    if [[ "$INDEX_MODE" == "public-index" || ( "$INDEX_MODE" == "auto" && ! -d "uv.lock.d" ) ]]; then
       output="pylock.toml"
       desc="pylock.toml (public index)"
       echo "➡️ Generating pylock.toml from public PyPI index..."
     else
-      mkdir -p uv.lock
-      output="uv.lock/pylock.${flavor}.toml"
+      mkdir -p uv.lock.d
+      output="uv.lock.d/pylock.${flavor}.toml"
       desc="$(uppercase "$flavor") lock file"
       echo "➡️ Generating $(uppercase "$flavor") lock file..."
     fi
@@ -180,8 +181,8 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     # The behavior has changed in uv 0.9.17 (https://github.com/astral-sh/uv/pull/16956)
     # Documentation at https://docs.astral.sh/uv/reference/cli/#uv-pip-compile--python-platform says that
     #  `--python-platform linux` is alias for `x86_64-unknown-linux-gnu`; we cannot use this to get a multiarch pylock
-    # Let's use --universal temporarily, and in the future we can switch to using uv.lock
-    #  when https://github.com/astral-sh/uv/issues/6830 is resolved, or link `ln -s uv.lock/lock.${flavor}.toml uv.lock`
+    # Let's use --universal temporarily, and in the future we can switch to using uv.lock.d
+    #  when https://github.com/astral-sh/uv/issues/6830 is resolved, or link `ln -s uv.lock.d/lock.${flavor}.toml uv.lock`
     # See also --universal discussion with Gerard
     #  https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757935641975969?thread_ts=1757542802.032519&cid=C0961HQ858Q
     set +e
@@ -214,7 +215,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
   }
 
   # Run lock generation
-  if [[ "$INDEX_MODE" == "public-index" ]]; then
+  if [[ "$INDEX_MODE" == "public-index" || ( "$INDEX_MODE" == "auto" && ! -d "uv.lock.d" ) ]]; then
     # public-index always updates pylock.toml in place
     run_lock "cpu" "$PUBLIC_INDEX"
   else
