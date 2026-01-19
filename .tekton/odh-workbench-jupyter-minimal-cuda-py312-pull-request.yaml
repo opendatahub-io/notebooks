@@ -8,7 +8,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-comment: "^/build-konflux"
+    pipelinesascode.tekton.dev/on-comment: "^/(build-konflux|build-jupyter-minimal-cuda)"
     pipelinesascode.tekton.dev/on-event: "[pull_request]"
   labels:
     appstudio.openshift.io/application: automation
