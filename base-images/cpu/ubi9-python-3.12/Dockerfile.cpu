@@ -31,6 +31,10 @@ set -Eeuxo pipefail
 fix-permissions ${APP_ROOT} -P
 EOF
 
+# RHELAI-2417, RHELAI-1720: workaround for PyArrow
+# libjemalloc.so.2: cannot allocate memory in static TLS block
+ENV LD_PRELOAD=/usr/lib64/libjemalloc.so.2
+
 # Restore user workspace
 USER 1001
 WORKDIR /opt/app-root/src
