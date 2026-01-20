@@ -39,7 +39,7 @@ func TestParseAllDockerfiles(t *testing.T) {
 
 	for _, dockerfile := range dockerfiles {
 		t.Run(dockerfile, func(t *testing.T) {
-			result := getDockerfileDeps(dockerfile, "amd64")
+			result := getDockerfileDeps(dockerfile, "amd64", map[string]string{"BASE_IMAGE": "fake-image"})
 			if len(result) == 0 {
 				// no deps in the dockerfile
 				return
@@ -74,7 +74,7 @@ func TestParseDockerfileWithBindMount(t *testing.T) {
 
 	//dockerfile = "/Users/jdanek/IdeaProjects/notebooks/jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.rocm"
 
-	result := getDockerfileDeps(dockerfile, "amd64")
+	result := getDockerfileDeps(dockerfile, "amd64", map[string]string{"BASE_IMAGE": "fake-image"})
 	expected := []string{"codeserver/ubi9-python-3.12/test", "foo"}
 	if !reflect.DeepEqual(
 		slices.Sorted(slices.Values(result)),
@@ -92,7 +92,7 @@ func TestParseFileWithStageCopy(t *testing.T) {
 		COPY --from=registry.access.redhat.com/ubi9/ubi /etc/yum.repos.d/ubi.repo /etc/yum.repos.d/ubi.repo
 	`)), 0644))
 
-	result := getDockerfileDeps(dockerfile, "amd64")
+	result := getDockerfileDeps(dockerfile, "amd64", map[string]string{"BASE_IMAGE": "fake-image"})
 	if len(result) != 0 {
 		t.Fatalf("unexpected deps reported for the dockerfile: %s", result)
 	}
@@ -107,7 +107,7 @@ func TestParseFileWithStageMount(t *testing.T) {
 			mvn package
 	`)), 0644))
 
-	result := getDockerfileDeps(dockerfile, "amd64")
+	result := getDockerfileDeps(dockerfile, "amd64", map[string]string{"BASE_IMAGE": "fake-image"})
 	if len(result) != 0 {
 		t.Fatalf("unexpected deps reported for the dockerfile: %s", result)
 	}
