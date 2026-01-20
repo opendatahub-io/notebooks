@@ -18,6 +18,7 @@ RUN \
 --mount=from=buildscripts,source=/mnt,target=/mnt \
 --mount=type=cache,sharing=locked,id=dnf-ubi9,target=/var/cache/dnf \
 /bin/bash <<'EOF'
+set -Eeuxo pipefail
 /mnt/aipcc.sh
 EOF
 
