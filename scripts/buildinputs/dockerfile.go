@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func getDockerfileDeps(dockerfile string, targetArch string) []string {
+func getDockerfileDeps(dockerfile string, targetArch string, buildArgs map[string]string) []string {
 	ctx := context.Background()
 	data := noErr2(os.ReadFile(dockerfile))
 
@@ -34,7 +34,7 @@ func getDockerfileDeps(dockerfile string, targetArch string) []string {
 			platform: "linux/" + targetArch,
 		},
 		Config: dockerui.Config{
-			BuildArgs:      map[string]string{"BASE_IMAGE": "fake-image"},
+			BuildArgs:      buildArgs,
 			BuildPlatforms: []ocispecs.Platform{{OS: "linux", Architecture: targetArch}},
 		},
 		Warn: func(rulename, description, url, fmtmsg string, location []parser.Range) {
