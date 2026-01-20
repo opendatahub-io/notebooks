@@ -8,7 +8,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main"  && ( "base-images/cuda/12.8/c9s-python-3.12/**".pathChanged() || ".tekton/odh-base-image-cuda-12-8-py312-c9s-push.yaml".pathChanged() )
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main"  && ( "base-images/utils/**".pathChanged() || "base-images/cuda/12.8/c9s-python-3.12/**".pathChanged() || ".tekton/odh-base-image-cuda-12-8-py312-c9s-push.yaml".pathChanged() )
   creationTimestamp:
   labels:
     appstudio.openshift.io/application: opendatahub-release
