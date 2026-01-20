@@ -2,10 +2,15 @@
 set -Eeuxo pipefail
 
 ARCH=${TARGETARCH}
+_=${PYTHON}
+_=${VIRTUAL_ENV}
 
 DNF_OPTS=(-y --nodocs --setopt=install_weak_deps=False --setopt=keepcache=True --setopt=max_parallel_downloads=10)
 
 function install_packages() {
+    local os_vendor
+    os_vendor=$(cut -d: -f3 /etc/system-release-cpe)
+
     PKGS=()
 
     # common tools
@@ -26,7 +31,11 @@ function install_packages() {
     PKGS+=("freetype" "lcms2" "libjpeg" "libpng" "libtiff" "libwebp" "openjpeg2")
 
     # compression libraries and tools
-    PKGS+=("bzip2" "cpio" "lz4" "libzstd" "gzip" "snappy" "xz" "xz-libs" "zlib" "zstd")
+    PKGS+=("bzip2" "cpio" "lz4" "libzstd" "gzip" "xz" "xz-libs" "zlib" "zstd")
+    # snappy is not available on ubi9
+    if [[ "${os_vendor}" == "centos" ]]; then
+        PKGS+=("snappy")
+    fi
 
     # Mathematics libraries used by various packages
     PKGS+=("fftw" "gmp" "mpfr" "libmpc" "openblas" "libomp")
@@ -42,7 +51,10 @@ function install_packages() {
     PKGS+=("libxml2" "libxslt")
 
     # OpenMPI depends on openmpi-devel (Perl, GCC, glibc-devel)
-    PKGS+=("openmpi")
+    # openmpi is not available on ubi9
+    if [[ "${os_vendor}" == "centos" ]]; then
+        PKGS+=("openmpi")
+    fi
 
     # async io for DeepSpeed
     PKGS+=("libaio")
@@ -64,14 +76,16 @@ function install_packages() {
     # For soundfile
     PKGS+=("libsndfile")
 
-    # docling
-    PKGS+=(
-        "qpdf"
-        # tesserocr
-        "tesseract"
-        # RHELAI: loguru
-        "loguru"
-    )
+    # docling: qpdf, tesseract are not available on ubi9
+    if [[ "${os_vendor}" == "centos" ]]; then
+        PKGS+=(
+            "qpdf"
+            # tesserocr
+            "tesseract"
+        )
+    fi
+    # RHELAI: loguru
+    PKGS+=("loguru")
 
     # RHELAI: pyzmq for vLLM
     PKGS+=("zeromq")
@@ -83,7 +97,10 @@ function install_packages() {
     PKGS+=("jemalloc")
 
     # RHELAI: for shapely
-    PKGS+=("geos")
+    # geos is not available on ubi9
+    if [[ "${os_vendor}" == "centos" ]]; then
+        PKGS+=("geos")
+    fi
 
     # RHELAI: for rtree
     PKGS+=("spatialindex")
@@ -95,7 +112,10 @@ function install_packages() {
     PKGS+=("libpq")
 
     # For matplotlib
-    PKGS+=("libqhull_r")
+    # libqhull_r is not available on ubi9
+    if [[ "${os_vendor}" == "centos" ]]; then
+        PKGS+=("libqhull_r")
+    fi
 
     PKGS+=(
         "${PYTHON:?}"
@@ -109,6 +129,9 @@ function install_packages() {
 #  so we install them temporarily, to avoid breaking the build.
 # The list is obtained as explained in c9s-python-3.12/README.md
 function install_scl_packages() {
+    local os_vendor
+    os_vendor=$(cut -d: -f3 /etc/system-release-cpe)
+
     SCL_PACKAGES=(
         "annobin"
         "apr"
@@ -126,10 +149,6 @@ function install_scl_packages() {
         "brotli-devel"
         "bsdtar"
         "bzip2-devel"
-        "centos-gpg-keys"
-        "centos-logos-httpd"
-        "centos-stream-release"
-        "centos-stream-repos"
         "cmake-filesystem"
         "cyrus-sasl"
         "cyrus-sasl-devel"
@@ -324,6 +343,17 @@ function install_scl_packages() {
         "zip"
         "zlib-devel"
     )
+
+    # CentOS-specific packages not available on ubi9
+    if [[ "${os_vendor}" == "centos" ]]; then
+        SCL_PACKAGES+=(
+            "centos-gpg-keys"
+            "centos-logos-httpd"
+            "centos-stream-release"
+            "centos-stream-repos"
+        )
+    fi
+
     dnf install "${DNF_OPTS[@]}" "${SCL_PACKAGES[@]}"
 }
 
@@ -340,7 +370,13 @@ function uninstall_epel() {
 # or codeready-builder-for-rhel-${RELEASEVER_MAJOR}-${ARCH}-rpms
 function install_csb() {
     dnf install "${DNF_OPTS[@]}" dnf-plugins-core
-    dnf config-manager --set-enabled crb
+
+    local os_vendor
+    os_vendor=$(cut -d: -f3 /etc/system-release-cpe)
+
+    if [[ "${os_vendor}" == "centos" ]]; then
+      dnf config-manager --set-enabled crb
+    fi
 }
 
 # create Python virtual env and update pip inside the venv
@@ -367,6 +403,7 @@ function main() {
         exit 1
     fi
 
+    dnf install "${DNF_OPTS[@]}" ${PYTHON}-devel ${PYTHON}-pip
     install_python_venv
 
     # TODO(jdanek): we want to eventually remove this
