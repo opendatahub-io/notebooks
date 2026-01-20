@@ -1,3 +1,5 @@
+ARG TARGETARCH
+
 FROM quay.io/centos/centos:stream9 AS buildscripts
 COPY base-images/utils/aipcc.sh /mnt/aipcc.sh
 
