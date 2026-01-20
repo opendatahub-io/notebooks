@@ -1,8 +1,26 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS buildscripts
+COPY base-images/utils/aipcc.sh /mnt/aipcc.sh
+
 ####################
 # base             #
 ####################
 FROM registry.access.redhat.com/ubi9/python-312:latest AS base
 
+USER 0
+ARG TARGETARCH
+ENV TARGETARCH=${TARGETARCH}
+ENV PYTHON=python3.12
+ENV VIRTUAL_ENV=/opt/app-root/
+
+RUN \
+--mount=from=buildscripts,source=/mnt,target=/mnt \
+--mount=type=cache,sharing=locked,id=dnf-ubi9,target=/var/cache/dnf \
+/bin/bash <<'EOF'
+set -Eeuxo pipefail
+/mnt/aipcc.sh
+EOF
+
+USER 1001
 WORKDIR /opt/app-root/bin
 
 ########################
