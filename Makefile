@@ -1,3 +1,13 @@
+# On macOS, the default /usr/bin/make is GNU Make 3.81 which doesn't support .RECIPEPREFIX.
+# Transparently re-exec with gmake if available.
+ifeq ($(origin .RECIPEPREFIX), undefined)
+	ifeq ($(shell command -v gmake 2>/dev/null),)
+		$(error This Make does not support .RECIPEPREFIX. If on macOS, install GNU Make 4.0+ (`gmake`) via 'brew install make')
+	endif
+.DEFAULT:
+	@exec gmake $(MAKECMDGOALS)
+endif
+
 # https://stackoverflow.com/questions/18136918/how-to-get-current-relative-directory-of-your-makefile
 ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 SELF ::= $(firstword $(MAKEFILE_LIST))
@@ -13,9 +23,6 @@ MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
 # todo: leave the default recipe prefix for now
-ifeq ($(origin .RECIPEPREFIX), undefined)
-$(error This Make does not support .RECIPEPREFIX. Please use GNU Make 4.0 or later)
-endif
 .RECIPEPREFIX =
 
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
