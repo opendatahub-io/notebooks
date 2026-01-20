@@ -1,10 +1,28 @@
 ARG TARGETARCH
 
+FROM quay.io/centos/centos:stream9 AS buildscripts
+COPY base-images/utils/aipcc.sh /mnt/aipcc.sh
+
 ####################
 # base             #
 ####################
 FROM quay.io/sclorg/python-311-c9s:c9s AS base
 
+USER 0
+ARG TARGETARCH
+ENV TARGETARCH=${TARGETARCH}
+ENV PYTHON=python3.11
+ENV VIRTUAL_ENV=/opt/app-root/
+
+RUN \
+--mount=from=buildscripts,source=/mnt,target=/mnt \
+--mount=type=cache,sharing=locked,id=dnf-c9s,target=/var/cache/dnf \
+/bin/bash <<'EOF'
+set -Eeuxo pipefail
+/mnt/aipcc.sh
+EOF
+
+USER 1001
 WORKDIR /opt/app-root/bin
 
 ####################
