@@ -20,6 +20,7 @@ RUN \
 /bin/bash <<'EOF'
 set -Eeuxo pipefail
 /mnt/aipcc.sh
+fix-permissions ${APP_ROOT} -P
 EOF
 
 # Restore user workspace
