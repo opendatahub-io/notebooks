@@ -159,15 +159,28 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
   $HAS_ROCM && echo "  • ROCm"
   echo
 
+  # Resolve effective mode for this directory
+  if [[ "$INDEX_MODE" == "auto" ]]; then
+    if [[ -d "uv.lock.d" ]]; then
+      EFFECTIVE_MODE="aipcc-index"
+    else
+      EFFECTIVE_MODE="public-index"
+    fi
+  else
+    EFFECTIVE_MODE="$INDEX_MODE"
+  fi
+  info "Effective mode for this directory: $EFFECTIVE_MODE"
+
   DIR_SUCCESS=true
 
   run_lock() {
     local flavor="$1"
     local index="$2"
+    local mode="$3"
     local output
     local desc
 
-    if [[ "$INDEX_MODE" == "public-index" || ( "$INDEX_MODE" == "auto" && ! -d "uv.lock.d" ) ]]; then
+    if [[ "$mode" == "public-index" ]]; then
       output="pylock.toml"
       desc="pylock.toml (public index)"
       echo "➡️ Generating pylock.toml from public PyPI index..."
@@ -211,14 +224,13 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     fi
   }
 
-  # Run lock generation
-  if [[ "$INDEX_MODE" == "public-index" || ( "$INDEX_MODE" == "auto" && ! -d "uv.lock.d" ) ]]; then
-    # public-index always updates pylock.toml in place
-    run_lock "cpu" "$PUBLIC_INDEX"
+  # Run lock generation based on effective mode
+  if [[ "$EFFECTIVE_MODE" == "public-index" ]]; then
+    run_lock "cpu" "$PUBLIC_INDEX" "$EFFECTIVE_MODE"
   else
-    $HAS_CPU && run_lock "cpu" "$CPU_INDEX"
-    $HAS_CUDA && run_lock "cuda" "$CUDA_INDEX"
-    $HAS_ROCM && run_lock "rocm" "$ROCM_INDEX"
+    $HAS_CPU && run_lock "cpu" "$CPU_INDEX" "$EFFECTIVE_MODE"
+    $HAS_CUDA && run_lock "cuda" "$CUDA_INDEX" "$EFFECTIVE_MODE"
+    $HAS_ROCM && run_lock "rocm" "$ROCM_INDEX" "$EFFECTIVE_MODE"
   fi
 
   if $DIR_SUCCESS; then
