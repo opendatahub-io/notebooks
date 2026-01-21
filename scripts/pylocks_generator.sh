@@ -5,42 +5,43 @@ set -euo pipefail
 # pylocks_generator.sh
 #
 # This script generates Python dependency lock files (pylock.toml) for multiple
-# directories using either internal AIPCC wheel indexes or the public PyPI index.
+# directories using either internal Red Hat wheel indexes or the public PyPI index.
 #
 # Features:
 #   • Supports multiple Python project directories, detected by pyproject.toml.
-#   • Detects available Dockerfile flavors (CPU, CUDA, ROCm) for AIPCC index mode.
+#   • Detects available Dockerfile flavors (CPU, CUDA, ROCm) for rh-index mode.
 #   • Validates Python version extracted from directory name (expects format .../ubi9-python-X.Y).
-#   • Generates per-flavor locks in 'uv.lock/' for AIPCC index mode.
+#   • Generates per-flavor locks in 'uv.lock.d/' for rh-index mode.
 #   • Overwrites existing pylock.toml in-place for public PyPI index mode.
 #
 # Index Modes:
-#   • aipcc-index  -> Uses internal Red Hat AIPCC wheel indexes. Generates uv.lock/pylock.<flavor>.toml for each detected flavor.
-#   • public-index -> Uses public PyPI index. Updates pylock.toml in the project directory.
-#                    Default mode if not specified.
+#   • auto (default) -> Uses rh-index if uv.lock.d/ exists, public-index otherwise.
+#   • rh-index    -> Uses internal Red Hat wheel indexes. Generates uv.lock.d/pylock.<flavor>.toml .
+#   • public-index   -> Uses public PyPI index and updates pylock.toml in place.
 #
 # Usage:
-#   1. Lock using default public index for all projects in MAIN_DIRS:
+#   1. Lock using auto mode (default) for all projects in MAIN_DIRS:
 #        bash pylocks_generator.sh
 #
-#   2. Lock using AIPCC index for a specific directory:
-#        bash pylocks_generator.sh aipcc-index jupyter/minimal/ubi9-python-3.12
+#   2. Lock using rh-index for a specific directory:
+#        bash pylocks_generator.sh rh-index jupyter/minimal/ubi9-python-3.12
 #
 #   3. Lock using public index for a specific directory:
 #        bash pylocks_generator.sh public-index jupyter/minimal/ubi9-python-3.12
 #
 # Notes:
 #   • If the script fails for a directory, it lists the failed directories at the end.
-#   • Public index mode does not create uv.lock directories keeps the old format.
+#   • Public index mode does not create uv.lock.d directories and keeps the old format.
 #   • Python version extraction depends on directory naming convention; invalid formats are skipped.
 # =============================================================================
 
 # ----------------------------
 # CONFIGURATION
 # ----------------------------
-CPU_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/cpu-ubi9/simple/"
-CUDA_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/cuda-ubi9/simple/"
-ROCM_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.0/rocm-ubi9/simple/"
+# https://redhat-internal.slack.com/archives/C079FE5H94J/p1768855783394919?thread_ts=1767789190.424899&cid=C079FE5H94J
+CPU_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cpu-ubi9/simple/"
+CUDA_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cuda12.9-ubi9/simple/"
+ROCM_INDEX="--index-url=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/rocm6.4-ubi9/simple/"
 PUBLIC_INDEX="--index-url=https://pypi.org/simple"
 
 MAIN_DIRS=("jupyter" "runtimes" "rstudio" "codeserver")
@@ -81,13 +82,13 @@ fi
 # ----------------------------
 # ARGUMENT PARSING
 # ----------------------------
-# default to public-index if not provided
-INDEX_MODE="${1:-public-index}"
+# default to auto if not provided
+INDEX_MODE="${1:-auto}"
 TARGET_DIR_ARG="${2:-}"
 
 # Validate mode
-if [[ "$INDEX_MODE" != "aipcc-index" && "$INDEX_MODE" != "public-index" ]]; then
-  error "Invalid mode '$INDEX_MODE'. Valid options: aipcc-index, public-index"
+if [[ "$INDEX_MODE" != "auto" && "$INDEX_MODE" != "rh-index" && "$INDEX_MODE" != "public-index" ]]; then
+  error "Invalid mode '$INDEX_MODE'. Valid options: auto, rh-index, public-index"
   exit 1
 fi
 info "Using index mode: $INDEX_MODE"
@@ -158,21 +159,34 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
   $HAS_ROCM && echo "  • ROCm"
   echo
 
+  # Resolve effective mode for this directory
+  if [[ "$INDEX_MODE" == "auto" ]]; then
+    if [[ -d "uv.lock.d" ]]; then
+      EFFECTIVE_MODE="rh-index"
+    else
+      EFFECTIVE_MODE="public-index"
+    fi
+  else
+    EFFECTIVE_MODE="$INDEX_MODE"
+  fi
+  info "Effective mode for this directory: $EFFECTIVE_MODE"
+
   DIR_SUCCESS=true
 
   run_lock() {
     local flavor="$1"
     local index="$2"
+    local mode="$3"
     local output
     local desc
 
-    if [[ "$INDEX_MODE" == "public-index" ]]; then
+    if [[ "$mode" == "public-index" ]]; then
       output="pylock.toml"
       desc="pylock.toml (public index)"
       echo "➡️ Generating pylock.toml from public PyPI index..."
     else
-      mkdir -p uv.lock
-      output="uv.lock/pylock.${flavor}.toml"
+      mkdir -p uv.lock.d
+      output="uv.lock.d/pylock.${flavor}.toml"
       desc="$(uppercase "$flavor") lock file"
       echo "➡️ Generating $(uppercase "$flavor") lock file..."
     fi
@@ -181,7 +195,8 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     # Documentation at https://docs.astral.sh/uv/reference/cli/#uv-pip-compile--python-platform says that
     #  `--python-platform linux` is alias for `x86_64-unknown-linux-gnu`; we cannot use this to get a multiarch pylock
     # Let's use --universal temporarily, and in the future we can switch to using uv.lock
-    #  when https://github.com/astral-sh/uv/issues/6830 is resolved, or link `ln -s uv.lock/lock.${flavor}.toml uv.lock`
+    #  when https://github.com/astral-sh/uv/issues/6830 is resolved, or symlink `ln -s uv.lock.d/uv.${flavor}.lock uv.lock`
+    # Note: currently generating uv.lock.d/pylock.${flavor}.toml; future rename to uv.${flavor}.lock is planned
     # See also --universal discussion with Gerard
     #  https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757935641975969?thread_ts=1757542802.032519&cid=C0961HQ858Q
     set +e
@@ -205,22 +220,17 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       rm -f "$output"
       DIR_SUCCESS=false
     else
-      if [[ "$INDEX_MODE" == "public-index" ]]; then
-        ok "pylock.toml generated successfully."
-      else
-        ok "$(uppercase "$flavor") lock generated successfully."
-      fi
+      ok "$desc generated successfully."
     fi
   }
 
-  # Run lock generation
-  if [[ "$INDEX_MODE" == "public-index" ]]; then
-    # public-index always updates pylock.toml in place
-    run_lock "cpu" "$PUBLIC_INDEX"
+  # Run lock generation based on effective mode
+  if [[ "$EFFECTIVE_MODE" == "public-index" ]]; then
+    run_lock "cpu" "$PUBLIC_INDEX" "$EFFECTIVE_MODE"
   else
-    $HAS_CPU && run_lock "cpu" "$CPU_INDEX"
-    $HAS_CUDA && run_lock "cuda" "$CUDA_INDEX"
-    $HAS_ROCM && run_lock "rocm" "$ROCM_INDEX"
+    $HAS_CPU && run_lock "cpu" "$CPU_INDEX" "$EFFECTIVE_MODE"
+    $HAS_CUDA && run_lock "cuda" "$CUDA_INDEX" "$EFFECTIVE_MODE"
+    $HAS_ROCM && run_lock "rocm" "$ROCM_INDEX" "$EFFECTIVE_MODE"
   fi
 
   if $DIR_SUCCESS; then
@@ -252,7 +262,7 @@ if [ ${#FAILED_DIRS[@]} -gt 0 ]; then
   warn "Failed lock generation for:"
   for d in "${FAILED_DIRS[@]}"; do
     echo "  • $d"
-    echo "Please comment out the missing package to continue and report the missing package to aipcc"
+    echo "Please comment out the missing package to continue and report the missing package to the RH index maintainers"
   done
   exit 1
 fi

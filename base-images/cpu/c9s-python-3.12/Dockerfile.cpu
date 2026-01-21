@@ -55,7 +55,7 @@ ENV CNB_USER_ID=1001 \
 RUN useradd -u ${CNB_USER_ID} -g ${CNB_GROUP_ID} -d ${HOME} -K HOME_MODE=0770 -K UMASK=0007 -m -s /bin/bash -c "Default Application User" default \
     && mkdir -m 770 "${HOME}/.cache"
 
-# permission fixer from github.com/sclorg
+# Custom fix-permissions script that extends sclorg version with chown to UID 1001
 COPY --from=buildscripts /mnt/usr/bin/ /usr/bin/
 
 RUN \
