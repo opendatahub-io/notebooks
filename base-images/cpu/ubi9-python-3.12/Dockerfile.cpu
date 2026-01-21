@@ -2,6 +2,7 @@ ARG TARGETARCH
 
 FROM registry.access.redhat.com/ubi9/python-312:latest AS buildscripts
 COPY base-images/utils/aipcc.sh /mnt/aipcc.sh
+COPY base-images/utils/fix-permissions /mnt/usr/bin/
 
 ####################
 # base             #
@@ -13,6 +14,13 @@ ARG TARGETARCH
 ENV TARGETARCH=${TARGETARCH}
 ENV PYTHON=python3.12
 ENV VIRTUAL_ENV=/opt/app-root/
+
+# OpenShift s2i / Cloud Native Buildpack user
+ENV CNB_USER_ID=1001 \
+    CNB_GROUP_ID=0
+
+# Custom fix-permissions script that extends sclorg version with chown to UID 1001
+COPY --from=buildscripts /mnt/usr/bin/ /usr/bin/
 
 RUN \
 --mount=from=buildscripts,source=/mnt,target=/mnt \
