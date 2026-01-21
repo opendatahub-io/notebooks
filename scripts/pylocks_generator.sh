@@ -5,26 +5,26 @@ set -euo pipefail
 # pylocks_generator.sh
 #
 # This script generates Python dependency lock files (pylock.toml) for multiple
-# directories using either internal AIPCC wheel indexes or the public PyPI index.
+# directories using either internal Red Hat wheel indexes or the public PyPI index.
 #
 # Features:
 #   • Supports multiple Python project directories, detected by pyproject.toml.
-#   • Detects available Dockerfile flavors (CPU, CUDA, ROCm) for AIPCC index mode.
+#   • Detects available Dockerfile flavors (CPU, CUDA, ROCm) for rh-index mode.
 #   • Validates Python version extracted from directory name (expects format .../ubi9-python-X.Y).
-#   • Generates per-flavor locks in 'uv.lock.d/' for AIPCC index mode.
+#   • Generates per-flavor locks in 'uv.lock.d/' for rh-index mode.
 #   • Overwrites existing pylock.toml in-place for public PyPI index mode.
 #
 # Index Modes:
-#   • auto (default) -> Uses AIPCC index if uv.lock.d/ exists, public PyPI index otherwise.
-#   • aipcc-index    -> Uses internal Red Hat AIPCC wheel indexes. Generates uv.lock.d/pylock.<flavor>.toml .
+#   • auto (default) -> Uses rh-index if uv.lock.d/ exists, public-index otherwise.
+#   • rh-index    -> Uses internal Red Hat wheel indexes. Generates uv.lock.d/pylock.<flavor>.toml .
 #   • public-index   -> Uses public PyPI index and updates pylock.toml in place.
 #
 # Usage:
 #   1. Lock using auto mode (default) for all projects in MAIN_DIRS:
 #        bash pylocks_generator.sh
 #
-#   2. Lock using AIPCC index for a specific directory:
-#        bash pylocks_generator.sh aipcc-index jupyter/minimal/ubi9-python-3.12
+#   2. Lock using rh-index for a specific directory:
+#        bash pylocks_generator.sh rh-index jupyter/minimal/ubi9-python-3.12
 #
 #   3. Lock using public index for a specific directory:
 #        bash pylocks_generator.sh public-index jupyter/minimal/ubi9-python-3.12
@@ -87,8 +87,8 @@ INDEX_MODE="${1:-auto}"
 TARGET_DIR_ARG="${2:-}"
 
 # Validate mode
-if [[ "$INDEX_MODE" != "auto" && "$INDEX_MODE" != "aipcc-index" && "$INDEX_MODE" != "public-index" ]]; then
-  error "Invalid mode '$INDEX_MODE'. Valid options: auto, aipcc-index, public-index"
+if [[ "$INDEX_MODE" != "auto" && "$INDEX_MODE" != "rh-index" && "$INDEX_MODE" != "public-index" ]]; then
+  error "Invalid mode '$INDEX_MODE'. Valid options: auto, rh-index, public-index"
   exit 1
 fi
 info "Using index mode: $INDEX_MODE"
@@ -162,7 +162,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
   # Resolve effective mode for this directory
   if [[ "$INDEX_MODE" == "auto" ]]; then
     if [[ -d "uv.lock.d" ]]; then
-      EFFECTIVE_MODE="aipcc-index"
+      EFFECTIVE_MODE="rh-index"
     else
       EFFECTIVE_MODE="public-index"
     fi
@@ -262,7 +262,7 @@ if [ ${#FAILED_DIRS[@]} -gt 0 ]; then
   warn "Failed lock generation for:"
   for d in "${FAILED_DIRS[@]}"; do
     echo "  • $d"
-    echo "Please comment out the missing package to continue and report the missing package to aipcc"
+    echo "Please comment out the missing package to continue and report the missing package to the RH index maintainers"
   done
   exit 1
 fi
