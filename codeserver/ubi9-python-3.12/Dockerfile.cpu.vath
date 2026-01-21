@@ -1,3 +1,5 @@
+# Test 5
+
 #########################
 # configuration args    #
 #########################
@@ -13,6 +15,29 @@ FROM ${BASE_IMAGE} AS rpm-base
 USER root
 WORKDIR /root
 
+# Some distributions eg. CentOS requires GPG key import to verify packages
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# ===== For local testing only. Turn this on, so you can install rpm from local repo.
+COPY cachi2 /cachi2
+RUN dnf install -y /cachi2/output/deps/rpm/modulemd-tools*.rpm
+
+# Create local repos with module metadata
+RUN createrepo_c /cachi2/output/deps/rpm
+RUN repo2module /cachi2/output/deps/rpm > modules.yaml
+RUN modifyrepo_c --mdtype=modules modules.yaml /cachi2/output/deps/rpm/repodata
+
+RUN dnf module enable nodejs:22 -y
+RUN rm -rf /etc/yum.repos.d/*
+RUN cp /cachi2/local.repo /etc/yum.repos.d/local.repo
+RUN dnf clean all -y
+# ===== end local testing only
+
+#RUN dnf module enable nodejs:22 -y
+RUN node --version
+RUN dnf install -y nodejs nodejs-devel
+RUN node --version
+
 ENV HOME=/root
 
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
@@ -23,25 +48,35 @@ ARG CODESERVER_VERSION=v4.104.0
 
 COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh .
 COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server ./code-server
+#RUN ls -alh ./code-server
+#RUN ls -alh ./code-server/lib/vscode
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package-lock.json ./code-server/test/package-lock.json
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package.json ./code-server/test/package.json
-
-# Some distributions eg. CentOS requires GPG key import to verify packages
-RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-
-# Update nodejs to 22
-RUN node --version
-RUN dnf install -y nodejs nodejs-devel
-RUN node --version
+#RUN cat ./code-server/test/package-lock.json
 
 # create dummy file to ensure this stage is awaited before installing rpm
 RUN --network=none ./get_code_server_rpm.sh
 RUN --network=none cd /root/code-server && npm install --verbose
+
+#RUN --network=none cd /root/code-server && npm install --offline
+
+# RUN cat /cachi2/cachi2.env
+#RUN cd /root/code-server && npm install
+# RUN npm run build
+# RUN VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
+# RUN export KEEP_MODULES=1
+# RUN npm run release
+# RUN npm run release:standalone
+
+# RUN VERSION=${CODESERVER_VERSION/v/} npm run package
+# RUN mv /root/code-server/release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
+
+
 RUN echo "done" > /tmp/control
 
-#######################
-# wheel caching stage #
-#######################
+# #######################
+# # wheel caching stage #
+# #######################
 # FROM registry.access.redhat.com/ubi9/python-312:latest AS whl-cache
 
 # # hadolint ignore=DL3002
@@ -73,12 +108,27 @@ RUN echo "done" > /tmp/control
 # # dummy file to make image build wait for this stage
 # RUN touch /tmp/control
 
-####################
-# cpu-base         #
-####################
+# ####################
+# # cpu-base         #
+# ####################
 # FROM ${BASE_IMAGE} AS cpu-base
+# USER root
 
 # WORKDIR /opt/app-root/bin
+# RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+# ARG NODE_VERSION=22.18.0
+
+# # For local testing only. Turn this on, so you can install rpm from local repo.
+# COPY cachi2 /cachi2
+# RUN dnf install -y /cachi2/output/deps/rpm/createrepo_c*.rpm
+# RUN createrepo_c /cachi2/output/deps/rpm/
+# RUN dnf module enable nodejs:22 -y
+# RUN rm -rf /etc/yum.repos.d/*
+# RUN cp /cachi2/local.repo /etc/yum.repos.d/local.repo
+# RUN dnf clean all
+# # end local testing only
+
+# RUN dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
 
 # ### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
 # ENV PIP_INDEX_URL=https://pypi.org/simple

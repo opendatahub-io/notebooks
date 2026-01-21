@@ -1,0 +1,178 @@
+#!/bin/bash
+
+# --- Configuration & Defaults ---
+DEST_DIR="./cachi2/output/deps/npm"
+LOCKFILE=""
+
+# --- Functions ---
+
+usage() {
+    echo "Usage: $0 --lock-file <path>"
+    echo ""
+    echo "Options:"
+    echo "  -l, --lock-file    Path to the package-lock.json file (e.g., codeserver/ubi9-python-3.12/prefetch-input/code-server/package-lock.json)"
+    echo "  -h, --help         Display this help message"
+    echo ""
+    echo "Note: This script must be run from the project root directory."
+    exit 1
+}
+
+# --- Root Directory Validation ---
+# We check for a known unique path to ensure we are in the project root.
+if [ ! -f "scripts/lockfile-generators/download-npm" ]; then
+    echo "Error: This script must be executed from the project root directory."
+    echo "Current directory: $(pwd)"
+    exit 1
+fi
+
+# --- Argument Parsing ---
+# Support both -l and --lock-file
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -l|--lock-file)
+            LOCKFILE="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            ;;
+        *)
+            echo "Unknown option: $1"
+            usage
+            ;;
+    esac
+done
+
+# Validate required input
+if [[ -z "$LOCKFILE" ]]; then
+    echo "Error: --lock-file is required."
+    usage
+fi
+
+if [[ ! -f "$LOCKFILE" ]]; then
+    echo "Error: Lock file not found at '$LOCKFILE'"
+    exit 1
+fi
+
+# --- Execution ---
+
+mkdir -p "$DEST_DIR"
+
+echo "Starting download of npm packages from $LOCKFILE..."
+
+# Check if jq is installed
+if ! command -v jq &> /dev/null; then
+    echo "Error: 'jq' is required but not installed."
+    echo "Install it with: brew install jq (macOS) or apt-get install jq (Linux)"
+    exit 1
+fi
+
+# Extract all resolved URLs from package-lock.json
+# This handles both the old format and new format (lockfileVersion 2 and 3)
+urls=$(jq -r '.. | objects | select(has("resolved")) | .resolved' "$LOCKFILE" | grep -v '^null$' | sort -u)
+
+if [[ -z "$urls" ]]; then
+    echo "Error: No resolved URLs found in $LOCKFILE"
+    exit 1
+fi
+
+total=$(echo "$urls" | wc -l | tr -d ' ')
+count=0
+
+echo "Found $total unique packages to download"
+
+for url in $urls; do
+    count=$((count + 1))
+    filename=$(basename "$url")
+
+    echo "[$count/$total] Processing: $filename"
+
+    # Extract the integrity hash for this specific URL
+    integrity=$(jq -r ".. | objects | select(.resolved == \"$url\") | .integrity" "$LOCKFILE" 2>/dev/null | grep -v '^null$' | head -n 1)
+
+    # Check if file already exists
+    if [ -f "$DEST_DIR/$filename" ]; then
+        # Verify integrity of existing file
+        if [ -n "$integrity" ]; then
+            if [[ $integrity =~ ^sha512- ]]; then
+                hash_value=$(echo "$integrity" | sed 's/^sha512-//')
+                calculated_hash=$(openssl dgst -sha512 -binary "$DEST_DIR/$filename" | openssl base64 -A)
+
+                if [ "$calculated_hash" == "$hash_value" ]; then
+                    echo "  ✓ Already exists with correct integrity, skipping: $filename"
+                    continue
+                else
+                    echo "  ⚠ File exists but integrity mismatch, re-downloading: $filename"
+                    rm -f "$DEST_DIR/$filename"
+                fi
+            elif [[ $integrity =~ ^sha256- ]]; then
+                hash_value=$(echo "$integrity" | sed 's/^sha256-//')
+                calculated_hash=$(openssl dgst -sha256 -binary "$DEST_DIR/$filename" | openssl base64 -A)
+
+                if [ "$calculated_hash" == "$hash_value" ]; then
+                    echo "  ✓ Already exists with correct integrity, skipping: $filename"
+                    continue
+                else
+                    echo "  ⚠ File exists but integrity mismatch, re-downloading: $filename"
+                    rm -f "$DEST_DIR/$filename"
+                fi
+            else
+                echo "  ⚠ File exists but unknown integrity format, re-downloading: $filename"
+                rm -f "$DEST_DIR/$filename"
+            fi
+        else
+            echo "  ⚠ File exists but no integrity hash available, skipping: $filename"
+            continue
+        fi
+    fi
+
+    # Download file
+    if command -v wget &> /dev/null; then
+        wget -q -nc -P "$DEST_DIR" "$url"
+    elif command -v curl &> /dev/null; then
+        curl -sS -o "$DEST_DIR/$filename" "$url"
+    else
+        echo "Error: Neither wget nor curl is available"
+        exit 1
+    fi
+
+    if [ $? -eq 0 ]; then
+        echo "  ✓ Downloaded: $filename"
+
+        # Verify integrity of newly downloaded file
+        if [ -n "$integrity" ]; then
+            if [[ $integrity =~ ^sha512- ]]; then
+                hash_value=$(echo "$integrity" | sed 's/^sha512-//')
+                calculated_hash=$(openssl dgst -sha512 -binary "$DEST_DIR/$filename" | openssl base64 -A)
+
+                if [ "$calculated_hash" == "$hash_value" ]; then
+                    echo "  ✓ Integrity verified for $filename"
+                else
+                    echo "  ✗ Integrity mismatch for $filename"
+                    echo "    Expected: sha512-$hash_value"
+                    echo "    Got: sha512-$calculated_hash"
+                    exit 1
+                fi
+            elif [[ $integrity =~ ^sha256- ]]; then
+                hash_value=$(echo "$integrity" | sed 's/^sha256-//')
+                calculated_hash=$(openssl dgst -sha256 -binary "$DEST_DIR/$filename" | openssl base64 -A)
+
+                if [ "$calculated_hash" == "$hash_value" ]; then
+                    echo "  ✓ Integrity verified for $filename"
+                else
+                    echo "  ✗ Integrity mismatch for $filename"
+                    echo "    Expected: sha256-$hash_value"
+                    echo "    Got: sha256-$calculated_hash"
+                    exit 1
+                fi
+            fi
+        fi
+    else
+        echo "  ✗ Failed to download: $url"
+        exit 1
+    fi
+done
+
+echo ""
+echo "Finished! npm packages are located in $DEST_DIR"
+echo "Total packages downloaded: $total"
