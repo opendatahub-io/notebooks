@@ -31,6 +31,7 @@ RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # Update nodejs to 22
 RUN node --version
+RUN dnf module enable nodejs:22 -y
 RUN dnf install -y nodejs nodejs-devel
 RUN node --version
 
