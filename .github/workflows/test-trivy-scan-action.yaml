@@ -61,12 +61,23 @@ jobs:
           sudo podman pull ${{ env.TEST_IMAGE }}
           sudo podman images
 
-      - name: Test Trivy scan on container image
+      - name: Test Trivy scan on container image (full scan)
         uses: ./.github/actions/trivy-scan-action
         with:
           scan-type: image
           scan-target: ${{ env.TEST_IMAGE }}
           podman-socket: /var/run/podman/podman.sock
+
+      # Test pkg-types=library to skip OS package scanning
+      # This is used for CentOS Stream images which are not supported by Trivy
+      # See: https://github.com/opendatahub-io/notebooks/issues/2848
+      - name: Test Trivy scan on container image (library only, skip OS packages)
+        uses: ./.github/actions/trivy-scan-action
+        with:
+          scan-type: image
+          scan-target: ${{ env.TEST_IMAGE }}
+          podman-socket: /var/run/podman/podman.sock
+          pkg-types: library
 
   test-scan-type-fs:
     name: Test FS scan
