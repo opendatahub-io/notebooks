@@ -55,6 +55,10 @@ inputs:
     description: 'Exit code when vulnerabilities are found'
     required: false
     default: '0'
+  pkg-types:
+    description: 'Comma-separated list of package types to scan: "os" (RPM, apt, etc.) and/or "library" (Python, npm, etc.). Use "library" only to skip OS package scanning for unsupported distros like CentOS Stream.'
+    required: false
+    default: 'os,library'
 
 outputs:
   report-file:
@@ -120,6 +124,7 @@ runs:
               "$SCAN_TYPE" \
               $SCAN_ARGS \
               --scanners "${{ inputs.scanners }}" \
+              --pkg-types "${{ inputs.pkg-types }}" \
               ${{ inputs.ignore-unfixed == 'true' && '--ignore-unfixed' || '' }} \
               --exit-code "${{ inputs.exit-code }}" \
               --timeout "${{ inputs.timeout }}" \
