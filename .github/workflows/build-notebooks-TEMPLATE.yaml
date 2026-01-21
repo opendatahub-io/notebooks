@@ -378,6 +378,17 @@ jobs:
             echo "target=$TARGET" >> $GITHUB_OUTPUT
             echo "type=$TYPE" >> $GITHUB_OUTPUT
             echo "Trivy scan will run on $TARGET ($TYPE)"
+
+            # opendatahub-io/notebooks uses CentOS Stream which is not supported by Trivy
+            # for OS package scanning. Skip OS packages and only scan language dependencies.
+            # red-hat-data-services/notebooks uses UBI/RHEL which is fully supported.
+            # See: https://github.com/opendatahub-io/notebooks/issues/2848
+            if [[ "${{ github.repository }}" == "opendatahub-io/notebooks" ]]; then
+              echo "pkg-types=library" >> $GITHUB_OUTPUT
+              echo "opendatahub-io/notebooks: skipping OS package scanning (CentOS Stream unsupported by Trivy)"
+            else
+              echo "pkg-types=os,library" >> $GITHUB_OUTPUT
+            fi
           else
             echo "Trivy scan won't run"
           fi
@@ -390,6 +401,7 @@ jobs:
           scan-target: ${{ steps.resolve-target.outputs.target }}
           trivy-version: ${{ env.TRIVY_VERSION }}
           podman-socket: /var/run/podman/podman.sock
+          pkg-types: ${{ steps.resolve-target.outputs.pkg-types }}
 
       # endregion
 
