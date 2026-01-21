@@ -52,14 +52,14 @@ spec:
     value: codeserver/ubi9-python-3.12/build-args/cpu.conf
   - name: prefetch-input
     value:
-    - path: codeserver/ubi9-python-3.12/prefetch-input
-      type: rpm
-    - path: codeserver/ubi9-python-3.12/prefetch-input
-      type: generic
-    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server
-      type: npm
-    # - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode
+    # - path: codeserver/ubi9-python-3.12/prefetch-input
+    #   type: rpm
+    # - path: codeserver/ubi9-python-3.12/prefetch-input
+    #   type: generic
+    # - path: codeserver/ubi9-python-3.12/prefetch-input/code-server
     #   type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode
+      type: npm
     # - path: codeserver/ubi9-python-3.12/patches/code-server/test
     #   type: npm
     # - patch: codeserver/ubi9-python-3.12/prefetch-input/code-server/test/e2e/extensions/test-extension
