@@ -1,3 +1,4 @@
+---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
@@ -8,10 +9,9 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     build.appstudio.openshift.io/build-nudge-files: "manifests/base/params-latest.env"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-workbench-rstudio-minimal-cuda-py312-c9s-push.yaml".pathChanged() || "rstudio/c9s-python-3.12/**".pathChanged() || "rstudio/c9s-python-3.12/build-args/cuda.conf".pathChanged() )
-  creationTimestamp:
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "stable" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-workbench-rstudio-minimal-cuda-py312-c9s-push.yaml".pathChanged() || "rstudio/c9s-python-3.12/**".pathChanged() || "rstudio/c9s-python-3.12/build-args/cuda.conf".pathChanged() )
   labels:
-    appstudio.openshift.io/application: opendatahub-release
+    appstudio.openshift.io/application: opendatahub-builds
     appstudio.openshift.io/component: odh-workbench-rstudio-minimal-cuda-py312-c9s
     pipelines.appstudio.openshift.io/type: build
   name: odh-workbench-rstudio-minimal-cuda-py312-c9s-on-push
@@ -25,19 +25,22 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-workbench-rstudio-minimal-cuda-py312-c9s:{{revision}}
+    value: quay.io/opendatahub/odh-workbench-rstudio-minimal-cuda-py312-c9s:odh-stable
   - name: dockerfile
     value: rstudio/c9s-python-3.12/Dockerfile.cuda
   - name: build-args-file
     value: rstudio/c9s-python-3.12/build-args/cuda.conf
   - name: path-context
     value: .
-  - name: additional-tags
-    value:
-    - '{{target_branch}}-{{revision}}'
-    - 3.4_ea1-v1.41
   pipelineRef:
-    name: singlearch-push-pipeline
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/opendatahub-io/odh-konflux-central.git
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: pipeline/multi-arch-container-build.yaml
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-rstudio-minimal-cuda-py312-c9s
   workspaces:
