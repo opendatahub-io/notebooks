@@ -44,6 +44,14 @@ spec:
   - name: pipeline-type
     value: pull-request
   taskRunSpecs:
+    - pipelineTaskName: build-images
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 16Gi
+        limits:
+          cpu: '16'
+          memory: 32Gi
     - pipelineTaskName: clair-scan
       computeResources:
         requests:

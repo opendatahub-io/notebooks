@@ -33,22 +33,30 @@ spec:
   - name: path-context
     value: .
   taskRunSpecs:
-  - pipelineTaskName: ecosystem-cert-preflight-checks
-    computeResources:
-      requests:
-        cpu: '8'
-        memory: 16Gi
-      limits:
-        cpu: '16'
-        memory: 32Gi
-  - pipelineTaskName: clair-scan
-    computeResources:
-      requests:
-        cpu: '8'
-        memory: 16Gi
-      limits:
-        cpu: '16'
-        memory: 32Gi
+    - pipelineTaskName: build-images
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 16Gi
+        limits:
+          cpu: '16'
+          memory: 32Gi
+    - pipelineTaskName: clair-scan
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
+    - pipelineTaskName: ecosystem-cert-preflight-checks
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
   pipelineRef:
     resolver: git
     params:
