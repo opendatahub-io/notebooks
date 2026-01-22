@@ -39,7 +39,7 @@ RUN node --version
 RUN --network=none ./get_code_server_rpm.sh
 
 # providing headers for node-gyp offline
-RUN --network=none npm config set tarball cachi2/output/deps/generic/node-v37.3.1-headers.tar.gz
+RUN --network=none npm config set disturl /cachi2/output/deps/generic
 
 RUN --network=none cd /root/code-server && npm install --verbose
 RUN echo "done" > /tmp/control
