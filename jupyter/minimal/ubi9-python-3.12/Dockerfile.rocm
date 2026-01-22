@@ -74,7 +74,7 @@ FROM rocm-base AS rocm-jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
-ARG PYLOCK_PLATFORM
+ARG PYLOCK_FLAVOR
 
 LABEL name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.12" \
     summary="Minimal Jupyter ROCm notebook image for ODH notebooks" \
@@ -100,7 +100,7 @@ ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 
 USER 1001
 
-COPY ${MINIMAL_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_PLATFORM}.toml ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
+COPY ${MINIMAL_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 # Install Python dependencies from Pipfile.lock file
 RUN /bin/bash <<'EOF'
@@ -108,7 +108,7 @@ set -Eeuxo pipefail
 echo "Installing softwares and packages"
 # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
 #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.${PYLOCK_PLATFORM}.toml
+uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.${PYLOCK_FLAVOR}.toml
 # Disable announcement plugin of jupyterlab
 jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
