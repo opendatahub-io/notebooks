@@ -65,6 +65,7 @@ jobs:
         with:
           ref: ${{ env.BRANCH }}
           token: ${{ secrets.GH_ACCESS_TOKEN }}
+          persist-credentials: true
 
       - name: Configure Git
         run: |
