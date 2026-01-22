@@ -43,6 +43,8 @@ RUN --network=none ./get_code_server_rpm.sh
 #RUN --network=none npm config set disturl /cachi2/output/deps/generic
 RUN --network=none mkdir -p /tmp/node-headers && \
     tar -xzf /cachi2/output/deps/generic/node-v37.3.1-headers.tar.gz -C /tmp/node-headers --strip-components=1 && \
+    mkdir -p /root/code-server/test/node_modules/argon2/lib/binding/napi-v3 && \
+    tar -xzf /cachi2/output/deps/generic/argon2-v0.28.7-napi-v3-linux-x64-glibc.tar.gz -C /root/code-server/test/node_modules/argon2/lib/binding/napi-v3 && \
     cd /root/code-server && \
     npm install --verbose --nodedir=/tmp/node-headers
 
