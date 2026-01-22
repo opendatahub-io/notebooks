@@ -29,6 +29,8 @@ jobs:
       has_jobs: ${{ steps.gen.outputs.has_jobs }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false  # https://github.com/actions/checkout/issues/2312
 
       - uses: actions/setup-go@v6
         with:

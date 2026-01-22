@@ -52,8 +52,11 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: "refs/pull/${{ github.event.number }}/merge"
+          persist-credentials: false  # https://github.com/actions/checkout/issues/2312
       - uses: actions/checkout@v6
         if: ${{ github.event_name != 'pull_request_target' }}
+        with:
+          persist-credentials: false  # https://github.com/actions/checkout/issues/2312
 
       - uses: actions/setup-go@v6
         with:
