@@ -46,7 +46,6 @@ spec:
     - 'odh-pr-{{revision}}'
   - name: pipeline-type
     value: pull-request
-
   pipelineRef:
     resolver: git
     params:
@@ -57,7 +56,7 @@ spec:
     - name: pathInRepo
       value: pipeline/multi-arch-container-build.yaml
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-pipeline-runtime-pytorch-rocm-py312-ubi9
+    serviceAccountName: build-pipeline-odh-pipeline-runtime-pytorch-rocm-py312-poc
   workspaces:
   - name: git-auth
     secret:
