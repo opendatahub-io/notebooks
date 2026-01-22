@@ -315,17 +315,14 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
                 "~=1.26.4",  # trustyai 0.6.2 depends on numpy~=1.26.4
                 "~=2.1.3",
                 "~=2.3.5",  # for llmcompressor, tensorflow cuda, latest possible at the time of writing
-            ),
-        ),
-        ("pandas", ("~=2.3.3", "~=1.5.3")),
-        (
-            "jupyter-bokeh",
-            (
-                "~=3.0.5",  # trustyai 0.6.2 depends on jupyter-bokeh~=3.0.7
-                "~=4.0.5",
+                "==2.3.5",  # llmcompressor pins exact version
             ),
         ),
         ("jupyterlab-lsp", ("~=5.1.0", "~=5.1.1")),
+        ("transformers", ("~=4.57.3", "==4.57.3")),
+        ("datasets", ("~=4.4.1", "==4.4.1")),
+        ("accelerate", ("~=1.12.0", "==1.12.0")),
+        ("requests", ("~=2.32.5", "==2.32.5")),
     )
 
     for name, data in requirements.items():
