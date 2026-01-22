@@ -1,3 +1,4 @@
+---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
@@ -8,11 +9,10 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     build.appstudio.openshift.io/build-nudge-files: "manifests/base/params-latest.env"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( "runtimes/datascience/ubi9-python-3.12/**".pathChanged() || "runtimes/datascience/ubi9-python-3.12/build-args/cpu.conf".pathChanged() || ".tekton/odh-pipeline-runtime-datascience-cpu-py312-ubi9-push.yaml".pathChanged() )
-  creationTimestamp:
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "stable" && !("manifests/base/params-latest.env".pathChanged()) && ( "runtimes/datascience/ubi9-python-3.12/**".pathChanged() || "runtimes/datascience/ubi9-python-3.12/build-args/cpu.conf".pathChanged() || ".tekton/odh-pipeline-runtime-datascience-cpu-py312-ubi9-push.yaml".pathChanged() )
   labels:
-    appstudio.openshift.io/application: opendatahub-release
-    appstudio.openshift.io/component: odh-pipeline-runtime-datascience-cpu-py312-ubi9
+    appstudio.openshift.io/application: opendatahub-builds
+    appstudio.openshift.io/component: odh-pipeline-runtime-datascience-cpu-py312-ubi9-ci
     pipelines.appstudio.openshift.io/type: build
   name: odh-pipeline-runtime-datascience-cpu-py312-ubi9-on-push
   namespace: open-data-hub-tenant
@@ -23,19 +23,22 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-pipeline-runtime-datascience-cpu-py312-ubi9:{{revision}}
+    value: quay.io/opendatahub/odh-pipeline-runtime-datascience-cpu-py312-ubi9:odh-stable
   - name: dockerfile
     value: runtimes/datascience/ubi9-python-3.12/Dockerfile.cpu
   - name: build-args-file
     value: runtimes/datascience/ubi9-python-3.12/build-args/cpu.conf
   - name: path-context
     value: .
-  - name: additional-tags
-    value:
-    - '{{target_branch}}-{{revision}}'
-    - 3.4_ea1-v1.41
   pipelineRef:
-    name: singlearch-push-pipeline
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/opendatahub-io/odh-konflux-central.git
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: pipeline/multi-arch-container-build.yaml
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-pipeline-runtime-datascience-cpu-py312-ubi9
   workspaces:
