@@ -51,7 +51,7 @@ spec:
     - name: pathInRepo
       value: pipeline/multi-arch-container-build.yaml
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-workbench-jupyter-datascience-cpu-py312-ubi9
+    serviceAccountName: build-pipeline-odh-workbench-jupyter-datascience-cpu-py312-poc
   workspaces:
   - name: git-auth
     secret:

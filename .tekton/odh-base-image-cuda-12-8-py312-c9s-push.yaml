@@ -27,7 +27,7 @@ spec:
     value: base-images/cuda/12.8/c9s-python-3.12/Dockerfile.cuda
   - name: build-platforms
     value:
-    - linux-d160-m2xlarge
+    - linux-d160-m2xlarge/amd64
     - linux-d160-m2xlarge/arm64
   - name: path-context
     value: .
