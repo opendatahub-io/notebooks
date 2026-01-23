@@ -133,7 +133,9 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
     else
 	git clone --depth 1 --branch "v${TORCH_VERSION}" --recurse-submodules --shallow-submodules https://github.com/pytorch/pytorch.git
         cd pytorch
-        uv pip install -r requirements.txt
+        # Filter out lintrunner - it's a dev tool for linting, not needed for building PyTorch
+        # uv cannot parse lintrunner's pyproject.toml (missing project.version)
+        grep -v lintrunner requirements.txt | uv pip install -r /dev/stdin
         python setup.py develop
         rm -f dist/torch*+git*whl
         MAX_JOBS=${MAX_JOBS:-$(nproc)} \
