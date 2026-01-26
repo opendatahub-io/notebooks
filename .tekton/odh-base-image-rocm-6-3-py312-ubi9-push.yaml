@@ -31,8 +31,11 @@ spec:
     value:
     - '{{target_branch}}-{{revision}}'
     - v6.3
+  - name: build-platforms
+    value:
+    - linux-mxlarge/amd64
   pipelineRef:
-    name: singlearch-push-pipeline
+    name: base-image-multiarch-push-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-base-image-rocm-py312-ubi9-poc
   workspaces:

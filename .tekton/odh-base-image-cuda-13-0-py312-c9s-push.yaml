@@ -35,7 +35,7 @@ spec:
     - '{{target_branch}}-{{revision}}'
     - v13.0
   pipelineRef:
-    name: multiarch-push-pipeline
+    name: base-image-multiarch-push-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-base-image-cuda-py312-c9s-poc
   workspaces:

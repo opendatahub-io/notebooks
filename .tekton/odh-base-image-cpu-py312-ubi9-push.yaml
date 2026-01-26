@@ -33,7 +33,7 @@ spec:
     - linux-mxlarge/amd64
     - linux/arm64
   pipelineRef:
-    name: multiarch-push-pipeline
+    name: base-image-multiarch-push-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-base-image-cpu-py312-ubi9
   workspaces:
