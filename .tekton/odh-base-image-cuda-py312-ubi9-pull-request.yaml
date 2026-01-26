@@ -60,7 +60,7 @@ spec:
           cpu: '8'
           memory: 32Gi
   pipelineRef:
-    name: multiarch-pull-request-pipeline
+    name: base-image-multiarch-pull-request-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-base-image-cuda-py312-ubi9-poc
   workspaces:
