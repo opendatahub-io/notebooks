@@ -39,7 +39,7 @@ spec:
     - linux-mxlarge/amd64
     - linux/arm64
   pipelineRef:
-    name: multiarch-pull-request-pipeline
+    name: base-image-multiarch-pull-request-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-base-image-cpu-py312-ubi9
   workspaces:
