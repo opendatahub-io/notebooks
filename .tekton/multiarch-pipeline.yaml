@@ -419,8 +419,11 @@ spec:
             CONVERTED_REFS+=("${NEW_IMAGE_REF}")
           done
 
-          # Write array result as JSON
-          printf '%s\n' "${CONVERTED_REFS[@]}" | jq -R . | jq -s . > "$(results.IMAGE_REFS.path)"
+          # Write array result as JSON array (Tekton format for typed array results)
+          # Each element must be properly JSON-escaped
+          echo "[$(date --utc -Ins)] Writing ${#CONVERTED_REFS[@]} image refs to results"
+          jq -cn '$ARGS.positional' --args "${CONVERTED_REFS[@]}" > "$(results.IMAGE_REFS.path)"
+          cat "$(results.IMAGE_REFS.path)"
           echo "[$(date --utc -Ins)] All conversions complete"
         securityContext:
           capabilities:
