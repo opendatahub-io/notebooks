@@ -4,15 +4,21 @@ metadata:
   labels:
     appstudio.openshift.io/application: opendatahub-release
     pipelines.appstudio.openshift.io/type: build
-  name: base-image-multiarch-pull-request-pipeline
+  name: multiarch-pipeline
   namespace: open-data-hub-tenant
 spec:
   description: |
-    Pipeline for building base images with zstd:chunked compression support (pull request variant).
-    This pipeline converts each architecture image to zstd:chunked compression
-    BEFORE creating the manifest index, ensuring all arch images are compressed.
+    Unified pipeline for building multi-architecture container images.
 
-    Flow: build-images → convert-compression (per arch) → build-image-index
+    This pipeline supports:
+    - Push builds (with Slack notifications)
+    - Pull-request builds (without notifications)
+    - Optional zstd:chunked compression for base images
+
+    Uses `buildah` to create container images leveraging trusted artifacts.
+    Optionally converts images to zstd:chunked compression for faster pulls.
+
+    Flow: build-images → convert-compression (optional) → build-image-index
   finally:
   - name: show-sbom
     params:
@@ -27,6 +33,32 @@ spec:
       - name: kind
         value: task
       resolver: bundles
+  - name: send-slack-notification
+    params:
+    - name: message
+      value: "$(tasks.rhoai-init.results.slack-message-failure-text)"
+    - name: secret-name
+      value: slack-secret
+    - name: key-name
+      value: slack-webhook
+    taskRef:
+      params:
+      - name: name
+        value: slack-webhook-notification
+      - name: bundle
+        value: quay.io/konflux-ci/tekton-catalog/task-slack-webhook-notification:0.1@sha256:4e68fe2225debc256d403b828ed358345bb56d03327b46d55cb6c42911375750
+      - name: kind
+        value: task
+      resolver: bundles
+    when:
+    - input: $(tasks.status)
+      operator: in
+      values:
+      - "Failed"
+    - input: $(params.enable-slack-notification)
+      operator: in
+      values:
+      - "true"
   params:
   - description: Source Repository URL
     name: git-url
@@ -99,15 +131,20 @@ spec:
     default: docker
     type: string
     description: The format for the resulting image's mediaType. Valid values are oci or docker.
-  # Compression parameters for base images
+  # Slack notification control (for push vs pull-request)
+  - name: enable-slack-notification
+    default: "false"
+    type: string
+    description: Enable Slack notifications on failure. Set to "true" for push builds.
+  # Compression parameters (for base images)
   - name: compression-format
-    default: "zstd:chunked"
+    default: ""
     type: string
-    description: The compression format to use for image layers (e.g., gzip, zstd, zstd:chunked).
+    description: The compression format to use for image layers (e.g., gzip, zstd, zstd:chunked). Empty means no conversion.
   - name: force-compression
-    default: "true"
+    default: "false"
     type: string
-    description: Force re-compression of all layers including base image layers. Required for CUDA images.
+    description: Force re-compression of all layers including base image layers. Required for CUDA images with zstd:chunked.
   results:
   - description: ""
     name: IMAGE_URL
@@ -122,6 +159,51 @@ spec:
     name: CHAINS-GIT_COMMIT
     value: $(tasks.clone-repository.results.commit)
   tasks:
+  # Slack notification setup (only for push builds)
+  - name: rhoai-init
+    when:
+    - input: $(params.enable-slack-notification)
+      operator: in
+      values:
+      - "true"
+    params:
+    - name: pipelinerun-name
+      value: "$(context.pipelineRun.name)"
+    taskSpec:
+      params:
+      - name: pipelinerun-name
+        type: string
+      results:
+      - description: Notification text to be posted to slack
+        name: slack-message-failure-text
+      steps:
+      - image: quay.io/rhoai-konflux/alpine:latest
+        name: rhoai-init
+        env:
+        - name: slack_message
+          valueFrom:
+            secretKeyRef:
+              name: slack-secret
+              key: slack-component-failure-notification
+        script: |
+          pipelinerun_name=$(params.pipelinerun-name)
+          echo "pipelinerun-name = $pipelinerun_name"
+          application_name=opendatahub-release
+          echo "application-name = $application_name"
+
+          component_name=${pipelinerun_name/-on-*/}
+          echo "component-name = $component_name"
+
+          KONFLUX_SERVER="https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com"
+          build_url="${KONFLUX_SERVER}/ns/open-data-hub-tenant/applications/${application_name}/pipelineruns/${pipelinerun_name}/logs"
+
+          build_time="$(date +%Y-%m-%dT%H:%M:%S)"
+
+          slack_message=${slack_message/__BUILD__URL__/$build_url}
+          slack_message=${slack_message/__PIPELINERUN__NAME__/$pipelinerun_name}
+          slack_message=${slack_message/__BUILD__TIME__/$build_time}
+
+          echo -en "${slack_message}" > "$(results.slack-message-failure-text.path)"
   - name: init
     params:
     - name: image-url
@@ -248,6 +330,7 @@ spec:
       - "true"
   # Convert compression for all arch images BEFORE creating manifest index
   # Uses a single task to avoid extremely long TaskRun names from IMAGE_REF matrix
+  # When compression-format is empty, this passes through the original IMAGE_REFs
   - name: convert-compression
     params:
     - name: IMAGE_REFS
@@ -266,16 +349,16 @@ spec:
         description: Array of image references to convert
       - name: COMPRESSION_FORMAT
         type: string
-        default: "zstd:chunked"
-        description: Target compression format.
+        default: ""
+        description: Target compression format (e.g., zstd:chunked). Empty means passthrough.
       - name: FORCE_COMPRESSION
         type: string
-        default: "true"
+        default: "false"
         description: Force re-compression of all layers.
       results:
       - name: IMAGE_REFS
         type: array
-        description: Array of converted image references
+        description: Array of converted image references (or original if no conversion)
       steps:
       - name: convert
         image: quay.io/konflux-ci/buildah-task:latest@sha256:5c5eb4117983b324f932f144aa2c2df7ed508174928a423d8551c4e11f30fbd9
@@ -366,7 +449,7 @@ spec:
       value: $(params.build-image-index)
     - name: IMAGES
       value:
-      # Use compressed image refs from convert-compression
+      # Use converted image refs (passthrough if no compression)
       - $(tasks.convert-compression.results.IMAGE_REFS[*])
     - name: BUILDAH_FORMAT
       value: $(params.buildah-format)
