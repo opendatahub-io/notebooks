@@ -309,14 +309,13 @@ spec:
       operator: in
       values:
       - "true"
-  # Convert compression for each arch image BEFORE creating manifest index
-  - matrix:
-      params:
-      - name: IMAGE_REF
-        value:
-        - $(tasks.build-images.results.IMAGE_REF[*])
-    name: convert-compression
+  # Convert compression for all arch images BEFORE creating manifest index
+  # Uses a single task to avoid extremely long TaskRun names from IMAGE_REF matrix
+  - name: convert-compression
     params:
+    - name: IMAGE_REFS
+      value:
+      - $(tasks.build-images.results.IMAGE_REF[*])
     - name: COMPRESSION_FORMAT
       value: $(params.compression-format)
     - name: FORCE_COMPRESSION
@@ -325,9 +324,9 @@ spec:
     - build-images
     taskSpec:
       params:
-      - name: IMAGE_REF
-        type: string
-        description: The image reference to convert (format image:tag@sha256:digest)
+      - name: IMAGE_REFS
+        type: array
+        description: Array of image references to convert
       - name: COMPRESSION_FORMAT
         type: string
         default: "zstd:chunked"
@@ -337,14 +336,15 @@ spec:
         default: "true"
         description: Force re-compression of all layers.
       results:
-      - name: IMAGE_REF
-        description: The converted image reference
+      - name: IMAGE_REFS
+        type: array
+        description: Array of converted image references
       steps:
       - name: convert
         image: quay.io/konflux-ci/buildah-task:latest@sha256:5c5eb4117983b324f932f144aa2c2df7ed508174928a423d8551c4e11f30fbd9
+        args:
+        - $(params.IMAGE_REFS[*])
         env:
-        - name: IMAGE_REF
-          value: $(params.IMAGE_REF)
         - name: COMPRESSION_FORMAT
           value: $(params.COMPRESSION_FORMAT)
         - name: FORCE_COMPRESSION
@@ -353,45 +353,55 @@ spec:
           #!/bin/bash
           set -euo pipefail
 
-          # If no compression format specified, just pass through
-          if [ -z "${COMPRESSION_FORMAT}" ]; then
-            echo "[$(date --utc -Ins)] No compression conversion, passing through: ${IMAGE_REF}"
-            echo -n "${IMAGE_REF}" > "$(results.IMAGE_REF.path)"
-            exit 0
-          fi
+          # Collect all converted image refs
+          CONVERTED_REFS=()
 
-          echo "[$(date --utc -Ins)] Converting compression for: ${IMAGE_REF}"
-          echo "Compression format: ${COMPRESSION_FORMAT}"
-          echo "Force compression: ${FORCE_COMPRESSION}"
+          # Process each image reference passed as arguments
+          for IMAGE_REF in "$@"; do
+            # If no compression format specified, just pass through
+            if [ -z "${COMPRESSION_FORMAT}" ]; then
+              echo "[$(date --utc -Ins)] No compression, passing through: ${IMAGE_REF}"
+              CONVERTED_REFS+=("${IMAGE_REF}")
+              continue
+            fi
 
-          # Parse image reference: image:tag@sha256:digest
-          IMAGE_BASE="${IMAGE_REF%@*}"
-          echo "Image base: ${IMAGE_BASE}"
+            echo "[$(date --utc -Ins)] Converting compression for: ${IMAGE_REF}"
+            echo "Compression format: ${COMPRESSION_FORMAT}"
+            echo "Force compression: ${FORCE_COMPRESSION}"
 
-          # Pull the image
-          echo "[$(date --utc -Ins)] Pulling image..."
-          buildah pull "${IMAGE_REF}"
+            # Parse image reference: image:tag@sha256:digest
+            IMAGE_BASE="${IMAGE_REF%@*}"
+            echo "Image base: ${IMAGE_BASE}"
 
-          # Build push arguments
-          PUSH_ARGS=(
-            --compression-format "${COMPRESSION_FORMAT}"
-          )
-          if [ "${FORCE_COMPRESSION}" = "true" ]; then
-            PUSH_ARGS+=(--force-compression)
-          fi
+            # Pull the image
+            echo "[$(date --utc -Ins)] Pulling image..."
+            buildah pull "${IMAGE_REF}"
 
-          # Re-push with new compression to the same tag
-          echo "[$(date --utc -Ins)] Pushing with compression: ${COMPRESSION_FORMAT}"
-          buildah push "${PUSH_ARGS[@]}" \
-            --digestfile /tmp/new-digest \
-            "${IMAGE_REF}" \
-            "docker://${IMAGE_BASE}"
+            # Build push arguments
+            PUSH_ARGS=(
+              --compression-format "${COMPRESSION_FORMAT}"
+            )
+            if [ "${FORCE_COMPRESSION}" = "true" ]; then
+              PUSH_ARGS+=(--force-compression)
+            fi
 
-          NEW_DIGEST=$(cat /tmp/new-digest)
-          NEW_IMAGE_REF="${IMAGE_BASE}@${NEW_DIGEST}"
-          echo "[$(date --utc -Ins)] New image ref: ${NEW_IMAGE_REF}"
+            # Re-push with new compression to the same tag
+            echo "[$(date --utc -Ins)] Pushing with compression: ${COMPRESSION_FORMAT}"
+            buildah push "${PUSH_ARGS[@]}" \
+              --digestfile /tmp/new-digest \
+              "${IMAGE_REF}" \
+              "docker://${IMAGE_BASE}"
 
-          echo -n "${NEW_IMAGE_REF}" > "$(results.IMAGE_REF.path)"
+            NEW_DIGEST=$(cat /tmp/new-digest)
+            NEW_IMAGE_REF="${IMAGE_BASE}@${NEW_DIGEST}"
+            echo "[$(date --utc -Ins)] New image ref: ${NEW_IMAGE_REF}"
+
+            CONVERTED_REFS+=("${NEW_IMAGE_REF}")
+          done
+
+          # Write array result as JSON
+          printf '%s\n' "${CONVERTED_REFS[@]}" | jq -R . | jq -s . > "$(results.IMAGE_REFS.path)"
+          echo "[$(date --utc -Ins)] All conversions complete"
         securityContext:
           capabilities:
             add:
@@ -420,7 +430,7 @@ spec:
     - name: IMAGES
       value:
       # Use compressed image refs from convert-compression
-      - $(tasks.convert-compression.results.IMAGE_REF[*])
+      - $(tasks.convert-compression.results.IMAGE_REFS[*])
     - name: BUILDAH_FORMAT
       value: $(params.buildah-format)
     runAfter:
