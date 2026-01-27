@@ -431,9 +431,8 @@ spec:
     - name: ALWAYS_BUILD_INDEX
       value: $(params.build-image-index)
     - name: IMAGES
-      value:
-      # Use compressed image refs from convert-compression
-      - $(tasks.convert-compression.results.IMAGE_REFS[*])
+      # Use compressed image refs from convert-compression (array result expansion)
+      value: $(tasks.convert-compression.results.IMAGE_REFS[*])
     - name: BUILDAH_FORMAT
       value: $(params.buildah-format)
     runAfter:

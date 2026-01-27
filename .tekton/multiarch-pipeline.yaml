@@ -451,9 +451,8 @@ spec:
     - name: ALWAYS_BUILD_INDEX
       value: $(params.build-image-index)
     - name: IMAGES
-      value:
-      # Use converted image refs (passthrough if no compression)
-      - $(tasks.convert-compression.results.IMAGE_REFS[*])
+      # Use converted image refs (passthrough if no compression) - array result expansion
+      value: $(tasks.convert-compression.results.IMAGE_REFS[*])
     - name: BUILDAH_FORMAT
       value: $(params.buildah-format)
     runAfter:
