@@ -9,10 +9,10 @@ metadata:
 spec:
   description: |
     Pipeline for building base images with zstd:chunked compression support.
-    This pipeline converts each architecture image to zstd:chunked compression
-    BEFORE creating the manifest index, ensuring all arch images are compressed.
+    This pipeline builds multi-arch images and then converts the final manifest to zstd:chunked
+    compression format for faster image pulls.
 
-    Flow: build-images → convert-compression (per arch) → build-image-index
+    Flow: build-images → build-image-index → convert-compression
   finally:
   - name: show-sbom
     params:
@@ -133,10 +133,10 @@ spec:
   results:
   - description: ""
     name: IMAGE_URL
-    value: $(tasks.build-image-index.results.IMAGE_URL)
+    value: $(tasks.convert-compression.results.IMAGE_URL)
   - description: ""
     name: IMAGE_DIGEST
-    value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+    value: $(tasks.convert-compression.results.IMAGE_DIGEST)
   - description: ""
     name: CHAINS-GIT_URL
     value: $(tasks.clone-repository.results.url)
@@ -309,42 +309,75 @@ spec:
       operator: in
       values:
       - "true"
-  # Convert compression for all arch images BEFORE creating manifest index
-  # Uses a single task to avoid extremely long TaskRun names from IMAGE_REF matrix
-  - name: convert-compression
+  - name: build-image-index
     params:
-    - name: IMAGE_REFS
+    - name: IMAGE
+      value: $(params.output-image)
+    - name: COMMIT_SHA
+      value: $(tasks.clone-repository.results.commit)
+    - name: IMAGE_EXPIRES_AFTER
+      value: $(params.image-expires-after)
+    - name: ALWAYS_BUILD_INDEX
+      value: $(params.build-image-index)
+    - name: IMAGES
       value:
       - $(tasks.build-images.results.IMAGE_REF[*])
+    - name: BUILDAH_FORMAT
+      value: $(params.buildah-format)
+    runAfter:
+    - build-images
+    taskRef:
+      params:
+      - name: name
+        value: build-image-index
+      - name: bundle
+        value: quay.io/konflux-ci/tekton-catalog/task-build-image-index:0.1@sha256:d94cad7f41be61074dd21c7dff26dab9217c3435a16f62813c1cb8382dd9aae6
+      - name: kind
+        value: task
+      resolver: bundles
+    when:
+    - input: $(tasks.init.results.build)
+      operator: in
+      values:
+      - "true"
+  # Convert manifest list to zstd:chunked compression AFTER build-image-index
+  - name: convert-compression
+    params:
+    - name: IMAGE_URL
+      value: $(tasks.build-image-index.results.IMAGE_URL)
+    - name: IMAGE_DIGEST
+      value: $(tasks.build-image-index.results.IMAGE_DIGEST)
     - name: COMPRESSION_FORMAT
       value: $(params.compression-format)
     - name: FORCE_COMPRESSION
       value: $(params.force-compression)
     runAfter:
-    - build-images
+    - build-image-index
     taskSpec:
       params:
-      - name: IMAGE_REFS
-        type: array
-        description: Array of image references to convert
+      - name: IMAGE_URL
+        type: string
+      - name: IMAGE_DIGEST
+        type: string
       - name: COMPRESSION_FORMAT
         type: string
         default: "zstd:chunked"
-        description: Target compression format.
       - name: FORCE_COMPRESSION
         type: string
         default: "true"
-        description: Force re-compression of all layers.
       results:
-      - name: IMAGE_REFS
-        type: array
-        description: Array of converted image references
+      - name: IMAGE_URL
+        description: Image URL after compression conversion
+      - name: IMAGE_DIGEST
+        description: Image digest after compression conversion
       steps:
-      - name: convert
+      - name: convert-compression
         image: quay.io/konflux-ci/buildah-task:latest@sha256:5c5eb4117983b324f932f144aa2c2df7ed508174928a423d8551c4e11f30fbd9
-        args:
-        - $(params.IMAGE_REFS[*])
         env:
+        - name: IMAGE_URL
+          value: $(params.IMAGE_URL)
+        - name: IMAGE_DIGEST
+          value: $(params.IMAGE_DIGEST)
         - name: COMPRESSION_FORMAT
           value: $(params.COMPRESSION_FORMAT)
         - name: FORCE_COMPRESSION
@@ -353,58 +386,47 @@ spec:
           #!/bin/bash
           set -euo pipefail
 
-          # Collect all converted image refs
-          CONVERTED_REFS=()
+          echo "[$(date --utc -Ins)] Starting compression conversion"
+          echo "Image: ${IMAGE_URL}@${IMAGE_DIGEST}"
+          echo "Compression format: ${COMPRESSION_FORMAT}"
+          echo "Force compression: ${FORCE_COMPRESSION}"
 
-          # Process each image reference passed as arguments
-          for IMAGE_REF in "$@"; do
-            # If no compression format specified, just pass through
-            if [ -z "${COMPRESSION_FORMAT}" ]; then
-              echo "[$(date --utc -Ins)] No compression, passing through: ${IMAGE_REF}"
-              CONVERTED_REFS+=("${IMAGE_REF}")
-              continue
-            fi
+          # If no compression format specified, just pass through
+          if [ -z "${COMPRESSION_FORMAT}" ]; then
+            echo "No compression format specified, skipping conversion"
+            echo -n "${IMAGE_URL}" > "$(results.IMAGE_URL.path)"
+            echo -n "${IMAGE_DIGEST}" > "$(results.IMAGE_DIGEST.path)"
+            exit 0
+          fi
 
-            echo "[$(date --utc -Ins)] Converting compression for: ${IMAGE_REF}"
-            echo "Compression format: ${COMPRESSION_FORMAT}"
-            echo "Force compression: ${FORCE_COMPRESSION}"
+          # Pull the manifest list
+          echo "[$(date --utc -Ins)] Pulling manifest list..."
+          buildah pull "${IMAGE_URL}@${IMAGE_DIGEST}"
 
-            # Parse image reference: image:tag@sha256:digest
-            IMAGE_BASE="${IMAGE_REF%@*}"
-            echo "Image base: ${IMAGE_BASE}"
+          # Build push arguments
+          PUSH_ARGS=(
+            --compression-format "${COMPRESSION_FORMAT}"
+          )
+          if [ "${FORCE_COMPRESSION}" = "true" ]; then
+            PUSH_ARGS+=(--force-compression)
+          fi
 
-            # Pull the image
-            echo "[$(date --utc -Ins)] Pulling image..."
-            buildah pull "${IMAGE_REF}"
+          # Re-push manifest list with new compression
+          # This will re-push all architecture images with the new compression
+          echo "[$(date --utc -Ins)] Pushing with compression: ${COMPRESSION_FORMAT}"
+          buildah manifest push "${PUSH_ARGS[@]}" \
+            --all \
+            --digestfile /tmp/new-digest \
+            "${IMAGE_URL}@${IMAGE_DIGEST}" \
+            "docker://${IMAGE_URL}"
 
-            # Build push arguments
-            PUSH_ARGS=(
-              --compression-format "${COMPRESSION_FORMAT}"
-            )
-            if [ "${FORCE_COMPRESSION}" = "true" ]; then
-              PUSH_ARGS+=(--force-compression)
-            fi
+          NEW_DIGEST=$(cat /tmp/new-digest)
+          echo "[$(date --utc -Ins)] New digest: ${NEW_DIGEST}"
 
-            # Re-push with new compression to the same tag
-            echo "[$(date --utc -Ins)] Pushing with compression: ${COMPRESSION_FORMAT}"
-            buildah push "${PUSH_ARGS[@]}" \
-              --digestfile /tmp/new-digest \
-              "${IMAGE_REF}" \
-              "docker://${IMAGE_BASE}"
+          echo -n "${IMAGE_URL}" > "$(results.IMAGE_URL.path)"
+          echo -n "${NEW_DIGEST}" > "$(results.IMAGE_DIGEST.path)"
 
-            NEW_DIGEST=$(cat /tmp/new-digest)
-            NEW_IMAGE_REF="${IMAGE_BASE}@${NEW_DIGEST}"
-            echo "[$(date --utc -Ins)] New image ref: ${NEW_IMAGE_REF}"
-
-            CONVERTED_REFS+=("${NEW_IMAGE_REF}")
-          done
-
-          # Write array result as JSON array (Tekton format for typed array results)
-          # Each element must be properly JSON-escaped
-          echo "[$(date --utc -Ins)] Writing ${#CONVERTED_REFS[@]} image refs to results"
-          jq -cn '$ARGS.positional' --args "${CONVERTED_REFS[@]}" > "$(results.IMAGE_REFS.path)"
-          cat "$(results.IMAGE_REFS.path)"
-          echo "[$(date --utc -Ins)] All conversions complete"
+          echo "[$(date --utc -Ins)] Compression conversion complete"
         securityContext:
           capabilities:
             add:
@@ -420,49 +442,18 @@ spec:
       operator: in
       values:
       - "true"
-  - name: build-image-index
-    params:
-    - name: IMAGE
-      value: $(params.output-image)
-    - name: COMMIT_SHA
-      value: $(tasks.clone-repository.results.commit)
-    - name: IMAGE_EXPIRES_AFTER
-      value: $(params.image-expires-after)
-    - name: ALWAYS_BUILD_INDEX
-      value: $(params.build-image-index)
-    - name: IMAGES
-      # Use compressed image refs from convert-compression (array result expansion)
-      value: $(tasks.convert-compression.results.IMAGE_REFS[*])
-    - name: BUILDAH_FORMAT
-      value: $(params.buildah-format)
-    runAfter:
-    - convert-compression
-    taskRef:
-      params:
-      - name: name
-        value: build-image-index
-      - name: bundle
-        value: quay.io/konflux-ci/tekton-catalog/task-build-image-index:0.1@sha256:d94cad7f41be61074dd21c7dff26dab9217c3435a16f62813c1cb8382dd9aae6
-      - name: kind
-        value: task
-      resolver: bundles
-    when:
-    - input: $(tasks.init.results.build)
-      operator: in
-      values:
-      - "true"
   - name: build-source-image
     params:
     - name: BINARY_IMAGE
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.convert-compression.results.IMAGE_URL)
     - name: BINARY_IMAGE_DIGEST
-      value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      value: $(tasks.convert-compression.results.IMAGE_DIGEST)
     - name: SOURCE_ARTIFACT
       value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
     - name: CACHI2_ARTIFACT
       value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
     runAfter:
-    - build-image-index
+    - convert-compression
     taskRef:
       params:
       - name: name
@@ -484,11 +475,11 @@ spec:
   - name: deprecated-base-image-check
     params:
     - name: IMAGE_URL
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.convert-compression.results.IMAGE_URL)
     - name: IMAGE_DIGEST
-      value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      value: $(tasks.convert-compression.results.IMAGE_DIGEST)
     runAfter:
-    - build-image-index
+    - convert-compression
     taskRef:
       params:
       - name: name
@@ -511,11 +502,11 @@ spec:
     name: clair-scan
     params:
     - name: image-digest
-      value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      value: $(tasks.convert-compression.results.IMAGE_DIGEST)
     - name: image-url
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.convert-compression.results.IMAGE_URL)
     runAfter:
-    - build-image-index
+    - convert-compression
     taskRef:
       params:
       - name: name
@@ -533,9 +524,9 @@ spec:
   - name: ecosystem-cert-preflight-checks
     params:
     - name: image-url
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.convert-compression.results.IMAGE_URL)
     runAfter:
-    - build-image-index
+    - convert-compression
     taskRef:
       params:
       - name: name
@@ -553,15 +544,15 @@ spec:
   - name: sast-snyk-check
     params:
     - name: image-digest
-      value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      value: $(tasks.convert-compression.results.IMAGE_DIGEST)
     - name: image-url
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.convert-compression.results.IMAGE_URL)
     - name: SOURCE_ARTIFACT
       value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
     - name: CACHI2_ARTIFACT
       value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
     runAfter:
-    - build-image-index
+    - convert-compression
     taskRef:
       params:
       - name: name
@@ -579,11 +570,11 @@ spec:
   - name: clamav-scan
     params:
     - name: image-digest
-      value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      value: $(tasks.convert-compression.results.IMAGE_DIGEST)
     - name: image-url
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.convert-compression.results.IMAGE_URL)
     runAfter:
-    - build-image-index
+    - convert-compression
     taskRef:
       params:
       - name: name
@@ -601,9 +592,9 @@ spec:
   - name: sast-coverity-check
     params:
     - name: image-digest
-      value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      value: $(tasks.convert-compression.results.IMAGE_DIGEST)
     - name: image-url
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.convert-compression.results.IMAGE_URL)
     - name: IMAGE
       value: $(params.output-image)
     - name: DOCKERFILE
@@ -649,7 +640,7 @@ spec:
       - success
   - name: coverity-availability-check
     runAfter:
-    - build-image-index
+    - convert-compression
     taskRef:
       params:
       - name: name
@@ -667,15 +658,15 @@ spec:
   - name: sast-shell-check
     params:
     - name: image-digest
-      value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      value: $(tasks.convert-compression.results.IMAGE_DIGEST)
     - name: image-url
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.convert-compression.results.IMAGE_URL)
     - name: SOURCE_ARTIFACT
       value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
     - name: CACHI2_ARTIFACT
       value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
     runAfter:
-    - build-image-index
+    - convert-compression
     taskRef:
       params:
       - name: name
@@ -693,15 +684,15 @@ spec:
   - name: sast-unicode-check
     params:
     - name: image-digest
-      value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      value: $(tasks.convert-compression.results.IMAGE_DIGEST)
     - name: image-url
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.convert-compression.results.IMAGE_URL)
     - name: SOURCE_ARTIFACT
       value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
     - name: CACHI2_ARTIFACT
       value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
     runAfter:
-    - build-image-index
+    - convert-compression
     taskRef:
       params:
       - name: name
@@ -719,14 +710,14 @@ spec:
   - name: apply-tags
     params:
     - name: IMAGE_URL
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.convert-compression.results.IMAGE_URL)
     - name: IMAGE_DIGEST
-      value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      value: $(tasks.convert-compression.results.IMAGE_DIGEST)
     - name: ADDITIONAL_TAGS
       value:
       - $(params.additional-tags[*])
     runAfter:
-    - build-image-index
+    - convert-compression
     taskRef:
       params:
       - name: name
@@ -739,9 +730,9 @@ spec:
   - name: push-dockerfile
     params:
     - name: IMAGE
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.convert-compression.results.IMAGE_URL)
     - name: IMAGE_DIGEST
-      value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      value: $(tasks.convert-compression.results.IMAGE_DIGEST)
     - name: DOCKERFILE
       value: $(params.dockerfile)
     - name: CONTEXT
@@ -749,7 +740,7 @@ spec:
     - name: SOURCE_ARTIFACT
       value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
     runAfter:
-    - build-image-index
+    - convert-compression
     taskRef:
       params:
       - name: name
@@ -762,11 +753,11 @@ spec:
   - name: rpms-signature-scan
     params:
     - name: image-url
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.convert-compression.results.IMAGE_URL)
     - name: image-digest
-      value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      value: $(tasks.convert-compression.results.IMAGE_DIGEST)
     runAfter:
-    - build-image-index
+    - convert-compression
     taskRef:
       params:
       - name: name
