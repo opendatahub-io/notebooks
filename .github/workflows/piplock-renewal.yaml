@@ -1,6 +1,6 @@
 ---
-# This GitHub action is meant to update the pipfile.locks
-name: Pipfile.locks Renewal Action
+# This GitHub action is meant to update the lock files (pylock.toml)
+name: Lock Files Renewal Action
 
 on:  # yamllint disable-line rule:truthy
   # Triggers the workflow every Wednesday at 1am UTC
@@ -9,59 +9,42 @@ on:  # yamllint disable-line rule:truthy
     - cron: "0 9,15 * * 1-5"  # Auto-merge check at 9am and 3pm UTC on weekdays
   workflow_dispatch:  # for manual trigger workflow from GH Web UI
     inputs:
+      operation:
+        description: 'Which operation to run'
+        required: true
+        default: 'update-lockfiles'
+        type: choice
+        options:
+          - 'update-lockfiles'
+          - 'auto-merge'
       branch:
-        description: 'Specify branch'
+        description: 'Specify branch (for update-lockfiles)'
         required: false
         default: 'main'
-      python_version:
-        description: 'Select a Python version to update Pipfile.lock'
+      index_mode:
+        description: 'Index mode for lock file generation (for update-lockfiles)'
         required: false
-        default: '["3.11", "3.12"]'
+        default: 'auto'
         type: choice
         options:
-          - '["3.11", "3.12"]'
-          - '["3.12"]'
-          - '["3.11"]'
-          - '["3.9"]'
-          - '["3.8"]'
-      lockfiles_upgrade:
-        description: 'Force full relock and upgrades for pylock.toml (manual runs)'
-        required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
-      update_optional_dirs:
-        description: 'Include optional directories in update'
-        required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
+          - 'auto'
+          - 'public-index'
+          - 'rh-index'
 
 jobs:
-  refresh-pipfile-locks:
-    # Only run on Wednesday schedule (cron index 0) or manual dispatch, not on auto-merge schedule
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 1 * * 3')
+  refresh-lock-files:
+    # Only run on Wednesday schedule or manual dispatch with 'update-lockfiles' operation
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'update-lockfiles') || (github.event_name == 'schedule' && github.event.schedule == '0 1 * * 3')
     runs-on: ubuntu-latest
     concurrency:
-      group: refresh-pipfile-locks-${{ matrix.python-version }}-${{ github.ref }}
+      group: refresh-lock-files-${{ github.ref }}
       cancel-in-progress: false
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: >-
-          ${{ fromJSON( github.event.inputs.python_version || '["3.11", "3.12"]' ) }}
     permissions:
       contents: write
       pull-requests: write
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
-      INCLUDE_OPT_DIRS: ${{ github.event.inputs.update_optional_dirs || 'false' }}
-      # Force full relock on scheduled runs. For manual runs, use the input toggle.
-      FORCE_LOCKFILES_UPGRADE: ${{ github.event_name == 'schedule' && '1' || (github.event.inputs.lockfiles_upgrade == 'true' && '1' || '0') }}
+      INDEX_MODE: ${{ github.event.inputs.index_mode || 'auto' }}
 
     steps:
       - name: Checkout code
@@ -76,22 +59,17 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "GitHub Actions"
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install pipenv
-        run: pip install "pipenv==2025.0.4"
+          python-version: '3.12'
 
       - name: Install uv
-        run: pip install "uv==0.9.6"
+        run: pip install "uv==0.9.27"
 
-      - name: Run make refresh-pipfilelock-files
+      - name: Run make refresh-lock-files
         run: |
-          make refresh-pipfilelock-files PYTHON_VERSION=${{ matrix.python-version }} INCLUDE_OPT_DIRS=${{ env.INCLUDE_OPT_DIRS }}
-        env:
-          FORCE_LOCKFILES_UPGRADE: ${{ env.FORCE_LOCKFILES_UPGRADE }}
+          make refresh-lock-files INDEX_MODE=${{ env.INDEX_MODE }}
 
       - name: Create Pull Request
         env:
@@ -103,19 +81,19 @@ jobs:
             exit 0
           fi
 
-          BRANCH_NAME="lockfile-update-py${{ matrix.python-version }}-$(date +%Y%m%d-%H%M)"
+          BRANCH_NAME="lockfile-update-$(date +%Y%m%d-%H%M)"
           git checkout -b "$BRANCH_NAME"
-          git commit -m "Update Pipfile.lock for Python ${{ matrix.python-version }}"
+          git commit -m "Update lock files"
           git push -u origin "$BRANCH_NAME"
 
           gh pr create \
-            --title "Update Pipfile.lock for Python ${{ matrix.python-version }}" \
+            --title "Update lock files" \
             --body "$(cat <<'EOF'
-          Automated lockfile update.
+          Automated lock file update.
 
           **Auto-merge policy:** This PR will be automatically merged after 1 working day unless:
           - Moved to draft status
-          - Labeled with \`do-not-merge/*\`
+          - Labeled with `do-not-merge/*`
           - Manually merged or closed
           EOF
           )" \
@@ -123,8 +101,8 @@ jobs:
             --base "${{ env.BRANCH }}"
 
   auto-merge-lockfile-prs:
-    # Run on auto-merge schedule (weekdays at 9am and 3pm UTC) or manual dispatch
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 9,15 * * 1-5')
+    # Run on auto-merge schedule or manual dispatch with 'auto-merge' operation
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'auto-merge') || (github.event_name == 'schedule' && github.event.schedule == '0 9,15 * * 1-5')
     runs-on: ubuntu-latest
     permissions:
       contents: write
