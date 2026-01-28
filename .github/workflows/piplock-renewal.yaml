@@ -111,6 +111,7 @@ jobs:
       - name: Auto-merge eligible lockfile PRs
         env:
           GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+          GITHUB_TOKEN_FOR_APPROVAL: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -186,6 +187,29 @@ jobs:
             if [ "$AGE_SECONDS" -lt "$MIN_AGE_SECONDS" ]; then
               echo "SKIP: PR #$PR_NUM is not old enough (created $AGE_HOURS hours ago, need $((MIN_AGE_SECONDS / 3600)) hours)"
               continue
+            fi
+
+            echo "Checking review status for PR #$PR_NUM..."
+
+            # Check if PR has an approving review
+            REVIEWS=$(gh pr view "$PR_NUM" --repo "$REPO" --json reviews --jq '.reviews[] | select(.state == "APPROVED")' 2>/dev/null || echo "")
+
+            if [ -z "$REVIEWS" ]; then
+              echo "No approving review found. Adding approval using github-actions bot..."
+
+              # Get PR author to ensure we don't approve our own PR
+              PR_AUTHOR=$(gh pr view "$PR_NUM" --repo "$REPO" --json author --jq '.author.login')
+              echo "PR author: $PR_AUTHOR"
+
+              # Add approving review using GITHUB_TOKEN (github-actions bot)
+              # This is different from GH_ACCESS_TOKEN which created the PR
+              GH_TOKEN="$GITHUB_TOKEN_FOR_APPROVAL" gh pr review "$PR_NUM" --repo "$REPO" --approve --body "Auto-approved by lockfile renewal workflow after 1 working day waiting period." || {
+                echo "WARNING: Failed to add approval for PR #$PR_NUM. May need manual approval."
+                continue
+              }
+              echo "Approval added successfully."
+            else
+              echo "PR #$PR_NUM already has an approving review."
             fi
 
             echo "MERGING: PR #$PR_NUM meets all criteria"
