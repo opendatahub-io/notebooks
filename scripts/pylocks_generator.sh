@@ -29,6 +29,9 @@ set -euo pipefail
 #   3. Lock using public index for a specific directory:
 #        bash pylocks_generator.sh public-index jupyter/minimal/ubi9-python-3.12
 #
+#   4. Force upgrade all packages to latest versions:
+#        FORCE_LOCKFILES_UPGRADE=1 bash pylocks_generator.sh
+#
 # Notes:
 #   • If the script fails for a directory, it lists the failed directories at the end.
 #   • Public index mode does not create uv.lock.d directories and keeps the old format.
@@ -85,6 +88,14 @@ fi
 # default to auto if not provided
 INDEX_MODE="${1:-auto}"
 TARGET_DIR_ARG="${2:-}"
+
+# Check for upgrade flag via environment variable
+# Set FORCE_LOCKFILES_UPGRADE=1 to upgrade all packages to latest versions
+UPGRADE_FLAG=""
+if [[ "${FORCE_LOCKFILES_UPGRADE:-0}" == "1" ]]; then
+  UPGRADE_FLAG="--upgrade"
+  info "FORCE_LOCKFILES_UPGRADE=1 detected. Will upgrade all packages to latest versions."
+fi
 
 # Validate mode
 if [[ "$INDEX_MODE" != "auto" && "$INDEX_MODE" != "rh-index" && "$INDEX_MODE" != "public-index" ]]; then
@@ -200,6 +211,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     # See also --universal discussion with Gerard
     #  https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757935641975969?thread_ts=1757542802.032519&cid=C0961HQ858Q
     set +e
+    # shellcheck disable=SC2086
     uv pip compile pyproject.toml \
       --output-file "$output" \
       --format pylock.toml \
@@ -211,6 +223,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       --quiet \
       --no-emit-package odh-notebooks-meta-llmcompressor-deps \
       --no-emit-package odh-notebooks-meta-runtime-elyra-deps \
+      $UPGRADE_FLAG \
       $index
     local status=$?
     set -e
