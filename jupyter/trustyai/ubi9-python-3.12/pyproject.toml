@@ -24,19 +24,19 @@ dependencies = [
     # More information available at:
     #   - https://pypi.org/project/trustyai/
     #   - https://github.com/trustyai-explainability/trustyai-explainability-python/blob/main/requirements.txt
-    "transformers~=4.56.1",
-    "datasets~=4.0.0",
-    "accelerate~=1.10.1; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    "trustyai~=0.6.2",
+    "transformers~=4.57.3",
+    "datasets~=4.4.1",
+    "accelerate~=1.12.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    "trustyai~=0.6.3",
     # Datascience and useful extensions
     "boto3~=1.40.52",
     "kafka-python-ng~=2.2.3",
     "kfp~=2.14.6",
-    "matplotlib~=3.10.7", # Should be pinned down to this version in order to be compatible with trustyai
-    "numpy~=1.26.4", # Should be pinned down to this version in order to be compatible with trustyai
-    "pandas~=1.5.3", # Should be pinned down to this version in order to be compatible with trustyai
+    "matplotlib~=3.10.7", # Should be pinned down to this version in order to be compatible with trustyai < 0.6.3
+    "numpy~=2.3.5", # Should be pinned down to this version in order to be compatible with trustyai < 0.6.3
+    "pandas~=2.3.3",
     "plotly~=6.3.1",
-    "scikit-learn~=1.7.2", # Should be pinned down to this version in order to be compatible with trustyai
+    "scikit-learn~=1.7.2", # Should be pinned down to this version in order to be compatible with trustyai < 0.6.3
     "scipy~=1.16.2",
     "skl2onnx~=1.19.1",
     "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
@@ -54,7 +54,7 @@ dependencies = [
     "odh-jupyter-trash-cleanup==0.1.1",
 
     "jupyterlab==4.5.2",
-    "jupyter-bokeh~=3.0.5", # trustyai 0.6.1 depends on jupyter-bokeh~=3.0.5
+    "jupyter-bokeh~=4.0.5",
     "jupyter-server~=2.17.0",
     "jupyter-server-proxy~=4.4.0",
     "jupyter-server-terminals~=0.5.3",
