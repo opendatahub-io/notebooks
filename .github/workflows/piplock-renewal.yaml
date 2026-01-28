@@ -1,63 +1,60 @@
 ---
-# This GitHub action is meant to update the pipfile.locks
-name: Pipfile.locks Renewal Action
+# This GitHub action is meant to update the lock files (pylock.toml)
+name: Lock Files Renewal Action
 
 on:  # yamllint disable-line rule:truthy
   # Triggers the workflow every Wednesday at 1am UTC
   schedule:
-    - cron: "0 1 * * 3"
+    - cron: "0 1 * * 3"  # Weekly lockfile update
+    - cron: "0 9,15 * * 1-5"  # Auto-merge check at 9am and 3pm UTC on weekdays
   workflow_dispatch:  # for manual trigger workflow from GH Web UI
     inputs:
+      operation:
+        description: 'Which operation to run'
+        required: true
+        default: 'update-lockfiles'
+        type: choice
+        options:
+          - 'update-lockfiles'
+          - 'auto-merge'
       branch:
-        description: 'Specify branch'
+        description: 'Specify branch (for update-lockfiles)'
         required: false
         default: 'main'
-      python_version:
-        description: 'Select a Python version to update Pipfile.lock'
+      index_mode:
+        description: 'Index mode for lock file generation (for update-lockfiles)'
         required: false
-        default: '["3.11", "3.12"]'
+        default: 'auto'
         type: choice
         options:
-          - '["3.11", "3.12"]'
-          - '["3.12"]'
-          - '["3.11"]'
-          - '["3.9"]'
-          - '["3.8"]'
-      lockfiles_upgrade:
-        description: 'Force full relock and upgrades for pylock.toml (manual runs)'
+          - 'auto'
+          - 'public-index'
+          - 'rh-index'
+      force_upgrade:
+        description: 'Force upgrade all packages to latest versions (for update-lockfiles)'
         required: false
         default: 'false'
         type: choice
         options:
-          - 'true'
           - 'false'
-      update_optional_dirs:
-        description: 'Include optional directories in update'
-        required: false
-        default: 'false'
-        type: choice
-        options:
           - 'true'
-          - 'false'
 
 jobs:
-  refresh-pipfile-locks:
+  refresh-lock-files:
+    # Only run on Wednesday schedule or manual dispatch with 'update-lockfiles' operation
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'update-lockfiles') || (github.event_name == 'schedule' && github.event.schedule == '0 1 * * 3')
     runs-on: ubuntu-latest
     concurrency:
-      group: refresh-pipfile-locks-${{ matrix.python-version }}-${{ github.ref }}
+      group: refresh-lock-files-${{ github.ref }}
       cancel-in-progress: false
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: >-
-          ${{ fromJSON( github.event.inputs.python_version || '["3.11", "3.12"]' ) }}
     permissions:
       contents: write
+      pull-requests: write
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
-      INCLUDE_OPT_DIRS: ${{ github.event.inputs.update_optional_dirs || 'false' }}
-      # Force full relock on scheduled runs. For manual runs, use the input toggle.
-      FORCE_LOCKFILES_UPGRADE: ${{ github.event_name == 'schedule' && '1' || (github.event.inputs.lockfiles_upgrade == 'true' && '1' || '0') }}
+      INDEX_MODE: ${{ github.event.inputs.index_mode || 'auto' }}
+      # Force upgrade on scheduled runs, or when explicitly requested
+      FORCE_LOCKFILES_UPGRADE: ${{ github.event_name == 'schedule' && '1' || (github.event.inputs.force_upgrade == 'true' && '1' || '0') }}
 
     steps:
       - name: Checkout code
@@ -65,35 +62,177 @@ jobs:
         with:
           ref: ${{ env.BRANCH }}
           token: ${{ secrets.GH_ACCESS_TOKEN }}
+          persist-credentials: true
 
       - name: Configure Git
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "GitHub Actions"
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install pipenv
-        run: pip install "pipenv==2025.0.4"
+          python-version: '3.12'
 
       - name: Install uv
-        run: pip install "uv==0.9.6"
+        run: pip install "uv==0.9.27"
 
-      - name: Run make refresh-pipfilelock-files
+      - name: Run make refresh-lock-files
         run: |
-          make refresh-pipfilelock-files PYTHON_VERSION=${{ matrix.python-version }} INCLUDE_OPT_DIRS=${{ env.INCLUDE_OPT_DIRS }}
+          make refresh-lock-files INDEX_MODE=${{ env.INDEX_MODE }}
         env:
           FORCE_LOCKFILES_UPGRADE: ${{ env.FORCE_LOCKFILES_UPGRADE }}
 
-      - name: Commit changes (if any)
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
         run: |
           git add .
-          git diff --cached --quiet && echo "No changes to commit." || git commit -m "Update Pipfile.lock for Python ${{ matrix.python-version }}"
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
 
-      - name: Pull and push changes
+          BRANCH_NAME="lockfile-update-$(date +%Y%m%d-%H%M)"
+          git checkout -b "$BRANCH_NAME"
+          git commit -m "Update lock files"
+          git push -u origin "$BRANCH_NAME"
+
+          gh pr create \
+            --title "Update lock files" \
+            --body "$(cat <<'EOF'
+          Automated lock file update.
+
+          **Auto-merge policy:** This PR will be automatically merged after 1 working day unless:
+          - Moved to draft status
+          - Labeled with `do-not-merge/*`
+          - Manually merged or closed
+          EOF
+          )" \
+            --label "automated-lockfile-update" \
+            --base "${{ env.BRANCH }}"
+
+  auto-merge-lockfile-prs:
+    # Run on auto-merge schedule or manual dispatch with 'auto-merge' operation
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'auto-merge') || (github.event_name == 'schedule' && github.event.schedule == '0 9,15 * * 1-5')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Auto-merge eligible lockfile PRs
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+          GITHUB_TOKEN_FOR_APPROVAL: ${{ github.token }}
         run: |
-          git pull --rebase origin ${{ env.BRANCH }}
-          git push origin ${{ env.BRANCH }}
+          set -euo pipefail
+
+          REPO="${{ github.repository }}"
+
+          echo "Searching for PRs with label 'automated-lockfile-update'..."
+
+          # Get all open PRs with the automated-lockfile-update label
+          PRS=$(gh pr list --repo "$REPO" --label "automated-lockfile-update" --state open --json number,title,createdAt,isDraft,labels --limit 50)
+
+          if [ "$PRS" = "[]" ] || [ -z "$PRS" ]; then
+            echo "No open PRs found with label 'automated-lockfile-update'"
+            exit 0
+          fi
+
+          echo "Found PRs: $PRS"
+
+          # Process each PR
+          echo "$PRS" | jq -c '.[]' | while read -r pr; do
+            PR_NUM=$(echo "$pr" | jq -r '.number')
+            PR_TITLE=$(echo "$pr" | jq -r '.title')
+            CREATED_AT=$(echo "$pr" | jq -r '.createdAt')
+            IS_DRAFT=$(echo "$pr" | jq -r '.isDraft')
+            LABELS=$(echo "$pr" | jq -r '.labels[].name' 2>/dev/null || echo "")
+
+            echo ""
+            echo "=== Processing PR #$PR_NUM: $PR_TITLE ==="
+            echo "Created at: $CREATED_AT"
+            echo "Is draft: $IS_DRAFT"
+            echo "Labels: $LABELS"
+
+            # Skip drafts
+            if [ "$IS_DRAFT" = "true" ]; then
+              echo "SKIP: PR #$PR_NUM is a draft"
+              continue
+            fi
+
+            # Skip if has do-not-merge/* label
+            if echo "$LABELS" | grep -q "^do-not-merge/"; then
+              echo "SKIP: PR #$PR_NUM has a do-not-merge/* label"
+              continue
+            fi
+
+            # Check if PR is at least 1 working day old
+            # Working day = Monday-Friday, so:
+            # - If created Mon-Thu, eligible next day
+            # - If created Fri, eligible Mon
+            # - If created Sat, eligible Mon
+            # - If created Sun, eligible Tue
+
+            CREATED_TS=$(date -d "$CREATED_AT" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$CREATED_AT" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${CREATED_AT%Z}" +%s)
+            NOW_TS=$(date +%s)
+            CREATED_DOW=$(date -d "$CREATED_AT" +%u 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$CREATED_AT" +%u 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${CREATED_AT%Z}" +%u)
+
+            if [ -z "$CREATED_TS" ] || [ -z "$CREATED_DOW" ]; then
+              echo "WARNING: Failed to parse date '$CREATED_AT' for PR #$PR_NUM. Skipping."
+              continue
+            fi
+
+            # Calculate minimum age in seconds for 1 working day
+            # Base: 24 hours = 86400 seconds
+            # If created on Friday (5), add weekend: 72 hours = 259200 seconds
+            # If created on Saturday (6), need to wait till Monday + 1 day: 48 + 24 = 72 hours
+            # If created on Sunday (7), need to wait till Tuesday: 24 + 24 = 48 hours... actually Mon+1day = Tue
+
+            case "$CREATED_DOW" in
+              5) MIN_AGE_SECONDS=$((72 * 3600)) ;;  # Friday -> Monday (3 days)
+              6) MIN_AGE_SECONDS=$((48 * 3600)) ;;  # Saturday -> Monday (2 days)
+              7) MIN_AGE_SECONDS=$((48 * 3600)) ;;  # Sunday -> Tuesday (2 days, Mon is working day 0)
+              *) MIN_AGE_SECONDS=$((24 * 3600)) ;;  # Mon-Thu -> next day (1 day)
+            esac
+
+            AGE_SECONDS=$((NOW_TS - CREATED_TS))
+            AGE_HOURS=$((AGE_SECONDS / 3600))
+
+            echo "PR age: ${AGE_HOURS} hours (minimum required: $((MIN_AGE_SECONDS / 3600)) hours)"
+
+            if [ "$AGE_SECONDS" -lt "$MIN_AGE_SECONDS" ]; then
+              echo "SKIP: PR #$PR_NUM is not old enough (created $AGE_HOURS hours ago, need $((MIN_AGE_SECONDS / 3600)) hours)"
+              continue
+            fi
+
+            echo "Checking review status for PR #$PR_NUM..."
+
+            # Check if PR has an approving review
+            REVIEWS=$(gh pr view "$PR_NUM" --repo "$REPO" --json reviews --jq '.reviews[] | select(.state == "APPROVED")' 2>/dev/null || echo "")
+
+            if [ -z "$REVIEWS" ]; then
+              echo "No approving review found. Adding approval using github-actions bot..."
+
+              # Get PR author to ensure we don't approve our own PR
+              PR_AUTHOR=$(gh pr view "$PR_NUM" --repo "$REPO" --json author --jq '.author.login')
+              echo "PR author: $PR_AUTHOR"
+
+              # Add approving review using GITHUB_TOKEN (github-actions bot)
+              # This is different from GH_ACCESS_TOKEN which created the PR
+              GH_TOKEN="$GITHUB_TOKEN_FOR_APPROVAL" gh pr review "$PR_NUM" --repo "$REPO" --approve --body "Auto-approved by lockfile renewal workflow after 1 working day waiting period." || {
+                echo "WARNING: Failed to add approval for PR #$PR_NUM. May need manual approval."
+                continue
+              }
+              echo "Approval added successfully."
+            else
+              echo "PR #$PR_NUM already has an approving review."
+            fi
+
+            echo "MERGING: PR #$PR_NUM meets all criteria"
+            gh pr merge "$PR_NUM" --repo "$REPO" --merge --admin || echo "WARNING: Failed to merge PR #$PR_NUM"
+
+          done
+
+          echo ""
+          echo "Auto-merge check complete."

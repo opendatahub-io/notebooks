@@ -18,6 +18,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Detect and replace tags in .tekton and params-latest.env files
         id: replace

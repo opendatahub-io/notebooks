@@ -224,9 +224,7 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
         directory = file.parent  # "ubi9-python-3.11"
-        try:
-            _ubi, _lang, _python = directory.name.split("-")
-        except ValueError:
+        if not is_image_directory(directory):
             logging.debug(f"skipping {directory.name}/pyproject.toml as it is not an image directory")
             continue
 
@@ -292,10 +290,9 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
         directory = file.parent  # "ubi9-python-3.11"
-        try:
-            _ubi, _lang, _python = directory.name.split("-")
-        except ValueError:
-            logging.debug(f"skipping {directory.name}/pyproject.toml as it is not an image directory")
+
+        if not is_image_directory(directory) and not is_dependencies_directory(file):
+            logging.debug(f"skipping {directory.name}/pyproject.toml as it is not an image or dependencies directory")
             continue
 
         pyproject = tomllib.loads(file.read_text())
@@ -318,17 +315,14 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
                 "~=1.26.4",  # trustyai 0.6.2 depends on numpy~=1.26.4
                 "~=2.1.3",
                 "~=2.3.5",  # for llmcompressor, tensorflow cuda, latest possible at the time of writing
-            ),
-        ),
-        ("pandas", ("~=2.3.3", "~=1.5.3")),
-        (
-            "jupyter-bokeh",
-            (
-                "~=3.0.5",  # trustyai 0.6.2 depends on jupyter-bokeh~=3.0.7
-                "~=4.0.5",
+                "==2.3.5",  # llmcompressor pins exact version
             ),
         ),
         ("jupyterlab-lsp", ("~=5.1.0", "~=5.1.1")),
+        ("transformers", ("~=4.57.3", "==4.57.3")),
+        ("datasets", ("~=4.4.1", "==4.4.1")),
+        ("accelerate", ("~=1.12.0", "==1.12.0")),
+        ("requests", ("~=2.32.5", "==2.32.5")),
     )
 
     for name, data in requirements.items():
@@ -467,6 +461,19 @@ def _skip_unimplemented_manifests(directory: pathlib.Path, call_skip=True) -> bo
             else:
                 return True
     return False
+
+
+def is_image_directory(directory: pathlib.Path) -> bool:
+    """image directory e.g. "ubi9-python-3.11"""
+    try:
+        _ubi, _lang, _python = directory.name.split("-")
+        return True
+    except ValueError:
+        return False
+
+
+def is_dependencies_directory(file: pathlib.Path) -> bool:
+    return "dependencies" in file.relative_to(PROJECT_ROOT).parts
 
 
 @dataclasses.dataclass

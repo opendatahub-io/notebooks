@@ -432,6 +432,19 @@ echo "Installing software and packages"
 if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     # We need special flags and environment variables when building packages
     # aipcc does not have some dependencies to build cryptography==43.0.3 on ppc64le, so we need to use pypi.org/simple
+
+    # first, install pyzmq with our extra flags for libzmq
+    # https://github.com/opendatahub-io/notebooks/issues/1172
+    PYZMQ_REQ=$(python3 -c "import tomllib; print(next(f'{p[\"name\"]}=={p[\"version\"]}' for p in tomllib.load(open('pylock.toml', 'rb'))['packages'] if p['name'] == 'pyzmq'))")
+    GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
+    CFLAGS="${CFLAGS:-} -O3" CXXFLAGS="${CXXFLAGS:-} -O3" \
+    uv pip install --strict --no-deps --no-cache --no-config --no-progress \
+        --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match \
+        --extra-index-url https://pypi.org/simple \
+        "${PYZMQ_REQ}"
+
+    # next, install everything else
+    # this is because matplotlib depends on pybind11 which won't build if we define `undefined`
     GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
     CFLAGS="-O3" CXXFLAGS="-O3" \
     uv pip install --strict --no-deps --no-cache --no-config --no-progress \
