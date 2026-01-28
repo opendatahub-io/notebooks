@@ -338,17 +338,6 @@ spec:
 
           IMAGE_REF="${IMAGE_URL}@${IMAGE_DIGEST}"
 
-          # Detect if image is a manifest list or single image
-          echo "[$(date --utc -Ins)] Detecting image type..."
-          MEDIA_TYPE=$(skopeo inspect --raw "docker://${IMAGE_REF}" | jq -r '.mediaType // .schemaVersion')
-          echo "Media type: ${MEDIA_TYPE}"
-
-          IS_MANIFEST_LIST=false
-          if [[ "${MEDIA_TYPE}" == *"manifest.list"* ]] || [[ "${MEDIA_TYPE}" == *"image.index"* ]]; then
-            IS_MANIFEST_LIST=true
-          fi
-          echo "Is manifest list: ${IS_MANIFEST_LIST}"
-
           # Build push arguments
           PUSH_ARGS=(
             --compression-format "${COMPRESSION_FORMAT}"
@@ -357,7 +346,12 @@ spec:
             PUSH_ARGS+=(--force-compression)
           fi
 
-          if [ "${IS_MANIFEST_LIST}" = "true" ]; then
+          # Detect if image is a manifest list by trying to inspect it as one
+          # buildah manifest inspect succeeds for manifest lists, fails for single images
+          echo "[$(date --utc -Ins)] Detecting image type..."
+          if buildah manifest inspect "docker://${IMAGE_REF}" > /dev/null 2>&1; then
+            echo "Image is a manifest list"
+
             # For manifest lists, use buildah manifest push --all
             echo "[$(date --utc -Ins)] Pulling manifest list..."
             buildah manifest pull "${IMAGE_REF}"
@@ -369,6 +363,8 @@ spec:
               "${IMAGE_REF}" \
               "docker://${IMAGE_URL}"
           else
+            echo "Image is a single image"
+
             # For single images, use regular buildah push
             echo "[$(date --utc -Ins)] Pulling single image..."
             buildah pull "${IMAGE_REF}"
