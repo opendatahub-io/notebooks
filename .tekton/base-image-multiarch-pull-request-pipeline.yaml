@@ -336,9 +336,18 @@ spec:
             exit 0
           fi
 
-          # Pull the manifest list
-          echo "[$(date --utc -Ins)] Pulling manifest list..."
-          buildah pull "${IMAGE_URL}@${IMAGE_DIGEST}"
+          IMAGE_REF="${IMAGE_URL}@${IMAGE_DIGEST}"
+
+          # Detect if image is a manifest list or single image
+          echo "[$(date --utc -Ins)] Detecting image type..."
+          MEDIA_TYPE=$(skopeo inspect --raw "docker://${IMAGE_REF}" | jq -r '.mediaType // .schemaVersion')
+          echo "Media type: ${MEDIA_TYPE}"
+
+          IS_MANIFEST_LIST=false
+          if [[ "${MEDIA_TYPE}" == *"manifest.list"* ]] || [[ "${MEDIA_TYPE}" == *"image.index"* ]]; then
+            IS_MANIFEST_LIST=true
+          fi
+          echo "Is manifest list: ${IS_MANIFEST_LIST}"
 
           # Build push arguments
           PUSH_ARGS=(
@@ -348,14 +357,28 @@ spec:
             PUSH_ARGS+=(--force-compression)
           fi
 
-          # Re-push manifest list with new compression
-          # This will re-push all architecture images with the new compression
-          echo "[$(date --utc -Ins)] Pushing with compression: ${COMPRESSION_FORMAT}"
-          buildah manifest push "${PUSH_ARGS[@]}" \
-            --all \
-            --digestfile /tmp/new-digest \
-            "${IMAGE_URL}@${IMAGE_DIGEST}" \
-            "docker://${IMAGE_URL}"
+          if [ "${IS_MANIFEST_LIST}" = "true" ]; then
+            # For manifest lists, use buildah manifest push --all
+            echo "[$(date --utc -Ins)] Pulling manifest list..."
+            buildah manifest pull "${IMAGE_REF}"
+
+            echo "[$(date --utc -Ins)] Pushing manifest list with compression: ${COMPRESSION_FORMAT}"
+            buildah manifest push "${PUSH_ARGS[@]}" \
+              --all \
+              --digestfile /tmp/new-digest \
+              "${IMAGE_REF}" \
+              "docker://${IMAGE_URL}"
+          else
+            # For single images, use regular buildah push
+            echo "[$(date --utc -Ins)] Pulling single image..."
+            buildah pull "${IMAGE_REF}"
+
+            echo "[$(date --utc -Ins)] Pushing single image with compression: ${COMPRESSION_FORMAT}"
+            buildah push "${PUSH_ARGS[@]}" \
+              --digestfile /tmp/new-digest \
+              "${IMAGE_REF}" \
+              "docker://${IMAGE_URL}"
+          fi
 
           NEW_DIGEST=$(cat /tmp/new-digest)
           echo "[$(date --utc -Ins)] New digest: ${NEW_DIGEST}"
