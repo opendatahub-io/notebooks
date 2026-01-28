@@ -5,7 +5,8 @@ name: Pipfile.locks Renewal Action
 on:  # yamllint disable-line rule:truthy
   # Triggers the workflow every Wednesday at 1am UTC
   schedule:
-    - cron: "0 1 * * 3"
+    - cron: "0 1 * * 3"  # Weekly lockfile update
+    - cron: "0 9,15 * * 1-5"  # Auto-merge check at 9am and 3pm UTC on weekdays
   workflow_dispatch:  # for manual trigger workflow from GH Web UI
     inputs:
       branch:
@@ -42,6 +43,8 @@ on:  # yamllint disable-line rule:truthy
 
 jobs:
   refresh-pipfile-locks:
+    # Only run on Wednesday schedule (cron index 0) or manual dispatch, not on auto-merge schedule
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 1 * * 3')
     runs-on: ubuntu-latest
     concurrency:
       group: refresh-pipfile-locks-${{ matrix.python-version }}-${{ github.ref }}
@@ -53,6 +56,7 @@ jobs:
           ${{ fromJSON( github.event.inputs.python_version || '["3.11", "3.12"]' ) }}
     permissions:
       contents: write
+      pull-requests: write
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
       INCLUDE_OPT_DIRS: ${{ github.event.inputs.update_optional_dirs || 'false' }}
@@ -89,12 +93,127 @@ jobs:
         env:
           FORCE_LOCKFILES_UPGRADE: ${{ env.FORCE_LOCKFILES_UPGRADE }}
 
-      - name: Commit changes (if any)
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
         run: |
           git add .
-          git diff --cached --quiet && echo "No changes to commit." || git commit -m "Update Pipfile.lock for Python ${{ matrix.python-version }}"
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
 
-      - name: Pull and push changes
+          BRANCH_NAME="lockfile-update-py${{ matrix.python-version }}-$(date +%Y%m%d-%H%M)"
+          git checkout -b "$BRANCH_NAME"
+          git commit -m "Update Pipfile.lock for Python ${{ matrix.python-version }}"
+          git push -u origin "$BRANCH_NAME"
+
+          gh pr create \
+            --title "Update Pipfile.lock for Python ${{ matrix.python-version }}" \
+            --body "$(cat <<'EOF'
+          Automated lockfile update.
+
+          **Auto-merge policy:** This PR will be automatically merged after 1 working day unless:
+          - Moved to draft status
+          - Labeled with \`do-not-merge/*\`
+          - Manually merged or closed
+          EOF
+          )" \
+            --label "automated-lockfile-update" \
+            --base "${{ env.BRANCH }}"
+
+  auto-merge-lockfile-prs:
+    # Run on auto-merge schedule (weekdays at 9am and 3pm UTC) or manual dispatch
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 9,15 * * 1-5')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Auto-merge eligible lockfile PRs
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
         run: |
-          git pull --rebase origin ${{ env.BRANCH }}
-          git push origin ${{ env.BRANCH }}
+          set -euo pipefail
+
+          REPO="${{ github.repository }}"
+
+          echo "Searching for PRs with label 'automated-lockfile-update'..."
+
+          # Get all open PRs with the automated-lockfile-update label
+          PRS=$(gh pr list --repo "$REPO" --label "automated-lockfile-update" --state open --json number,title,createdAt,isDraft,labels --limit 50)
+
+          if [ "$PRS" = "[]" ] || [ -z "$PRS" ]; then
+            echo "No open PRs found with label 'automated-lockfile-update'"
+            exit 0
+          fi
+
+          echo "Found PRs: $PRS"
+
+          # Process each PR
+          echo "$PRS" | jq -c '.[]' | while read -r pr; do
+            PR_NUM=$(echo "$pr" | jq -r '.number')
+            PR_TITLE=$(echo "$pr" | jq -r '.title')
+            CREATED_AT=$(echo "$pr" | jq -r '.createdAt')
+            IS_DRAFT=$(echo "$pr" | jq -r '.isDraft')
+            LABELS=$(echo "$pr" | jq -r '.labels[].name' 2>/dev/null || echo "")
+
+            echo ""
+            echo "=== Processing PR #$PR_NUM: $PR_TITLE ==="
+            echo "Created at: $CREATED_AT"
+            echo "Is draft: $IS_DRAFT"
+            echo "Labels: $LABELS"
+
+            # Skip drafts
+            if [ "$IS_DRAFT" = "true" ]; then
+              echo "SKIP: PR #$PR_NUM is a draft"
+              continue
+            fi
+
+            # Skip if has do-not-merge/* label
+            if echo "$LABELS" | grep -q "^do-not-merge/"; then
+              echo "SKIP: PR #$PR_NUM has a do-not-merge/* label"
+              continue
+            fi
+
+            # Check if PR is at least 1 working day old
+            # Working day = Monday-Friday, so:
+            # - If created Mon-Thu, eligible next day
+            # - If created Fri, eligible Mon
+            # - If created Sat, eligible Mon
+            # - If created Sun, eligible Tue
+
+            CREATED_TS=$(date -d "$CREATED_AT" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$CREATED_AT" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${CREATED_AT%Z}" +%s)
+            NOW_TS=$(date +%s)
+            CREATED_DOW=$(date -d "$CREATED_AT" +%u 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$CREATED_AT" +%u 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${CREATED_AT%Z}" +%u)
+
+            # Calculate minimum age in seconds for 1 working day
+            # Base: 24 hours = 86400 seconds
+            # If created on Friday (5), add weekend: 72 hours = 259200 seconds
+            # If created on Saturday (6), need to wait till Monday + 1 day: 48 + 24 = 72 hours
+            # If created on Sunday (7), need to wait till Tuesday: 24 + 24 = 48 hours... actually Mon+1day = Tue
+
+            case "$CREATED_DOW" in
+              5) MIN_AGE_SECONDS=$((72 * 3600)) ;;  # Friday -> Monday (3 days)
+              6) MIN_AGE_SECONDS=$((48 * 3600)) ;;  # Saturday -> Monday (2 days)
+              7) MIN_AGE_SECONDS=$((48 * 3600)) ;;  # Sunday -> Tuesday (2 days, Mon is working day 0)
+              *) MIN_AGE_SECONDS=$((24 * 3600)) ;;  # Mon-Thu -> next day (1 day)
+            esac
+
+            AGE_SECONDS=$((NOW_TS - CREATED_TS))
+            AGE_HOURS=$((AGE_SECONDS / 3600))
+
+            echo "PR age: ${AGE_HOURS} hours (minimum required: $((MIN_AGE_SECONDS / 3600)) hours)"
+
+            if [ "$AGE_SECONDS" -lt "$MIN_AGE_SECONDS" ]; then
+              echo "SKIP: PR #$PR_NUM is not old enough (created $AGE_HOURS hours ago, need $((MIN_AGE_SECONDS / 3600)) hours)"
+              continue
+            fi
+
+            echo "MERGING: PR #$PR_NUM meets all criteria"
+            gh pr merge "$PR_NUM" --repo "$REPO" --merge --admin || echo "WARNING: Failed to merge PR #$PR_NUM"
+
+          done
+
+          echo ""
+          echo "Auto-merge check complete."
