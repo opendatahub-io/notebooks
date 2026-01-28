@@ -41,6 +41,8 @@ spec:
     value: base-images/cuda/12.6/ubi9-python-3.12/Dockerfile.cuda
   - name: path-context
     value: .
+  pipelineRef:
+    name: base-image-multiarch-pull-request-pipeline
   # Added taskRunSpecs to increase compute resources
   taskRunSpecs:
     - pipelineTaskName: clair-scan
@@ -59,8 +61,6 @@ spec:
         limits:
           cpu: '8'
           memory: 32Gi
-  pipelineRef:
-    name: multiarch-pull-request-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-base-image-cuda-py312-ubi9-poc
   workspaces:

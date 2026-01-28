@@ -41,7 +41,7 @@ spec:
   - name: path-context
     value: .
   pipelineRef:
-    name: multiarch-pull-request-pipeline
+    name: base-image-multiarch-pull-request-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-base-image-rocm-py312-c9s-poc
   workspaces:

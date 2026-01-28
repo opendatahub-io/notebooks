@@ -41,7 +41,7 @@ spec:
     - linux/ppc64le
     - linux/s390x
   pipelineRef:
-    name: multiarch-pull-request-pipeline
+    name: base-image-multiarch-pull-request-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-base-image-cpu-py312-c9s
   workspaces:
