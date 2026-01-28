@@ -30,6 +30,14 @@ on:  # yamllint disable-line rule:truthy
           - 'auto'
           - 'public-index'
           - 'rh-index'
+      force_upgrade:
+        description: 'Force upgrade all packages to latest versions (for update-lockfiles)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 jobs:
   refresh-lock-files:
@@ -45,6 +53,8 @@ jobs:
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
       INDEX_MODE: ${{ github.event.inputs.index_mode || 'auto' }}
+      # Force upgrade on scheduled runs, or when explicitly requested
+      FORCE_LOCKFILES_UPGRADE: ${{ github.event_name == 'schedule' && '1' || (github.event.inputs.force_upgrade == 'true' && '1' || '0') }}
 
     steps:
       - name: Checkout code
@@ -70,6 +80,8 @@ jobs:
       - name: Run make refresh-lock-files
         run: |
           make refresh-lock-files INDEX_MODE=${{ env.INDEX_MODE }}
+        env:
+          FORCE_LOCKFILES_UPGRADE: ${{ env.FORCE_LOCKFILES_UPGRADE }}
 
       - name: Create Pull Request
         env:
