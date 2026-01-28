@@ -178,6 +178,11 @@ jobs:
             NOW_TS=$(date +%s)
             CREATED_DOW=$(date -d "$CREATED_AT" +%u 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$CREATED_AT" +%u 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${CREATED_AT%Z}" +%u)
 
+            if [ -z "$CREATED_TS" ] || [ -z "$CREATED_DOW" ]; then
+              echo "WARNING: Failed to parse date '$CREATED_AT' for PR #$PR_NUM. Skipping."
+              continue
+            fi
+
             # Calculate minimum age in seconds for 1 working day
             # Base: 24 hours = 86400 seconds
             # If created on Friday (5), add weekend: 72 hours = 259200 seconds
