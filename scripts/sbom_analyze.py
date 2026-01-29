@@ -251,8 +251,11 @@ def print_path_results(results: list[dict], path_pattern: str) -> None:
     print(f"  Found {len(results)} package(s) at path matching '{path_pattern}':\n")
     for r in results:
         print(f"  {r['name']}@{r['version']} ({r['type']})")
-        for loc in r['locations']:
-            print(f"    - {loc}")
+        if r.get('locations'):
+            for loc in r['locations']:
+                print(f"    - {loc}")
+        elif r.get('sourceInfo'):
+            print(f"    Source: {r['sourceInfo']}")
 
 
 def main() -> int:
