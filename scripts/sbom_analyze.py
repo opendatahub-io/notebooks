@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-Analyze syft SBOM JSON files for CVE investigation.
+Analyze SBOM JSON files for CVE investigation.
 
 This script helps developers find where vulnerable packages are installed
 within container images by querying SBOM files from manifest-box.
+
+Supports both:
+- Syft native JSON format
+- SPDX JSON format (used by manifest-box)
 
 Usage:
     python sbom_analyze.py <sbom.json> <package_name>
@@ -12,84 +16,198 @@ Usage:
 
 Examples:
     # Find a specific package
-    python sbom_analyze.py codeserver-sbom.json esbuild
+    python sbom_analyze.py workbench-sbom.json lodash
 
     # Get SBOM metadata (source, version, distro)
-    python sbom_analyze.py codeserver-sbom.json --info
+    python sbom_analyze.py workbench-sbom.json --info
 
     # Summarize packages by ecosystem type
-    python sbom_analyze.py codeserver-sbom.json --summary
+    python sbom_analyze.py workbench-sbom.json --summary
 
     # Find all packages at a specific path
-    python sbom_analyze.py codeserver-sbom.json --path /code-server/
+    python sbom_analyze.py workbench-sbom.json --path /jupyter/
 """
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
 
 
+def detect_sbom_format(sbom: dict) -> str:
+    """Detect whether this is syft native or SPDX format."""
+    if "artifacts" in sbom:
+        return "syft"
+    elif "build_manifest" in sbom and "manifest" in sbom.get("build_manifest", {}):
+        return "spdx-manifest-box"
+    elif "spdxVersion" in sbom or "packages" in sbom:
+        return "spdx"
+    else:
+        return "unknown"
+
+
+def extract_purl_type(purl: str) -> str:
+    """Extract package type from PURL (e.g., 'pkg:npm/lodash@4.17.21' -> 'npm')."""
+    if not purl:
+        return "unknown"
+    match = re.match(r"pkg:([^/]+)/", purl)
+    return match.group(1) if match else "unknown"
+
+
+def get_components_from_sbom(sbom: dict) -> list[dict]:
+    """Get normalized component list from any SBOM format."""
+    fmt = detect_sbom_format(sbom)
+    
+    if fmt == "syft":
+        return sbom.get("artifacts", [])
+    elif fmt == "spdx-manifest-box":
+        # manifest-box wraps SPDX in build_manifest.manifest.components
+        return sbom.get("build_manifest", {}).get("manifest", {}).get("components", [])
+    elif fmt == "spdx":
+        return sbom.get("packages", [])
+    else:
+        return []
+
+
+def normalize_component(component: dict, fmt: str) -> dict:
+    """Normalize a component to a common format."""
+    if fmt == "syft":
+        return {
+            "name": component.get("name", ""),
+            "version": component.get("version"),
+            "type": component.get("type", "unknown"),
+            "foundBy": component.get("foundBy"),
+            "locations": [loc.get("path") for loc in component.get("locations", [])],
+            "purl": component.get("purl"),
+            "sourceInfo": None,
+        }
+    elif fmt in ("spdx", "spdx-manifest-box"):
+        # Extract PURL from externalRefs
+        purl = None
+        for ref in component.get("externalRefs", []):
+            if ref.get("referenceType") == "purl":
+                purl = ref.get("referenceLocator")
+                break
+        
+        pkg_type = extract_purl_type(purl) if purl else "unknown"
+        
+        # sourceInfo contains the path where the package was found
+        source_info = component.get("sourceInfo", "")
+        locations = []
+        if source_info:
+            # Extract path from sourceInfo like "acquired package info from installed node module manifest file: /jupyter/utils/addons/pnpm-lock.yaml"
+            if ": " in source_info:
+                path = source_info.split(": ", 1)[-1]
+                locations = [path]
+        
+        return {
+            "name": component.get("name", ""),
+            "version": component.get("versionInfo"),
+            "type": pkg_type,
+            "foundBy": None,
+            "locations": locations,
+            "purl": purl,
+            "sourceInfo": source_info,
+        }
+    else:
+        return {
+            "name": component.get("name", ""),
+            "version": None,
+            "type": "unknown",
+            "foundBy": None,
+            "locations": [],
+            "purl": None,
+            "sourceInfo": None,
+        }
+
+
 def find_package(sbom: dict, package_name: str, case_insensitive: bool = True) -> list[dict]:
     """Find a package in the SBOM and return its details."""
+    fmt = detect_sbom_format(sbom)
+    components = get_components_from_sbom(sbom)
+    
     results = []
-    for artifact in sbom.get("artifacts", []):
-        name = artifact.get("name", "")
+    for component in components:
+        normalized = normalize_component(component, fmt)
+        name = normalized.get("name", "")
+        
         if case_insensitive:
             match = package_name.lower() in name.lower()
         else:
             match = package_name == name
 
         if match:
-            results.append({
-                "name": name,
-                "version": artifact.get("version"),
-                "type": artifact.get("type"),
-                "foundBy": artifact.get("foundBy"),
-                "locations": [loc.get("path") for loc in artifact.get("locations", [])],
-                "purl": artifact.get("purl"),
-            })
+            results.append(normalized)
     return results
 
 
 def find_packages_at_path(sbom: dict, path_pattern: str) -> list[dict]:
     """Find all packages installed at a path matching the pattern."""
+    fmt = detect_sbom_format(sbom)
+    components = get_components_from_sbom(sbom)
+    
     results = []
-    for artifact in sbom.get("artifacts", []):
-        locations = [loc.get("path", "") for loc in artifact.get("locations", [])]
+    for component in components:
+        normalized = normalize_component(component, fmt)
+        locations = normalized.get("locations", [])
+        source_info = normalized.get("sourceInfo", "") or ""
+        
+        # Check both locations and sourceInfo
         matching_locations = [loc for loc in locations if path_pattern in loc]
+        source_match = path_pattern in source_info
 
-        if matching_locations:
-            results.append({
-                "name": artifact.get("name"),
-                "version": artifact.get("version"),
-                "type": artifact.get("type"),
-                "locations": matching_locations,
-            })
+        if matching_locations or source_match:
+            results.append(normalized)
     return results
 
 
 def get_sbom_info(sbom: dict) -> dict:
     """Extract SBOM metadata (source, version, etc.)."""
-    return {
-        "source_name": sbom.get("source", {}).get("name"),
-        "source_version": sbom.get("source", {}).get("version"),
-        "source_type": sbom.get("source", {}).get("type"),
-        "distro": sbom.get("distro", {}).get("name"),
-        "distro_version": sbom.get("distro", {}).get("version"),
-        "syft_version": sbom.get("descriptor", {}).get("version"),
-        "schema_version": sbom.get("schema", {}).get("version"),
-        "artifact_count": len(sbom.get("artifacts", [])),
-        "file_count": len(sbom.get("files", [])),
-    }
+    fmt = detect_sbom_format(sbom)
+    
+    if fmt == "syft":
+        return {
+            "format": "syft",
+            "source_name": sbom.get("source", {}).get("name"),
+            "source_version": sbom.get("source", {}).get("version"),
+            "source_type": sbom.get("source", {}).get("type"),
+            "distro": sbom.get("distro", {}).get("name"),
+            "distro_version": sbom.get("distro", {}).get("version"),
+            "syft_version": sbom.get("descriptor", {}).get("version"),
+            "schema_version": sbom.get("schema", {}).get("version"),
+            "artifact_count": len(sbom.get("artifacts", [])),
+            "file_count": len(sbom.get("files", [])),
+        }
+    elif fmt == "spdx-manifest-box":
+        components = get_components_from_sbom(sbom)
+        return {
+            "format": "spdx (manifest-box)",
+            "build_component": sbom.get("build_component"),
+            "build_completed_at": sbom.get("build_completed_at"),
+            "component_count": len(components),
+        }
+    elif fmt == "spdx":
+        return {
+            "format": "spdx",
+            "spdx_version": sbom.get("spdxVersion"),
+            "name": sbom.get("name"),
+            "package_count": len(sbom.get("packages", [])),
+        }
+    else:
+        return {"format": "unknown"}
 
 
 def summarize_by_type(sbom: dict) -> dict[str, int]:
     """Summarize packages by ecosystem type."""
+    fmt = detect_sbom_format(sbom)
+    components = get_components_from_sbom(sbom)
+    
     counts: dict[str, int] = {}
-    for artifact in sbom.get("artifacts", []):
-        pkg_type = artifact.get("type", "unknown")
+    for component in components:
+        normalized = normalize_component(component, fmt)
+        pkg_type = normalized.get("type", "unknown")
         counts[pkg_type] = counts.get(pkg_type, 0) + 1
 
     return dict(sorted(counts.items(), key=lambda x: -x[1]))
@@ -111,11 +229,15 @@ def print_package_results(results: list[dict], package_name: str) -> None:
     for r in results:
         print(f"  {r['name']}@{r['version']}")
         print(f"    Type: {r['type']}")
-        print(f"    Found by: {r['foundBy']}")
-        print(f"    Locations:")
-        for loc in r['locations']:
-            print(f"      - {loc}")
-        if r['purl']:
+        if r.get('foundBy'):
+            print(f"    Found by: {r['foundBy']}")
+        if r.get('locations'):
+            print(f"    Locations:")
+            for loc in r['locations']:
+                print(f"      - {loc}")
+        if r.get('sourceInfo'):
+            print(f"    Source: {r['sourceInfo']}")
+        if r.get('purl'):
             print(f"    PURL: {r['purl']}")
         print()
 
