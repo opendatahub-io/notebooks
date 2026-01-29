@@ -86,7 +86,9 @@ for url in $urls; do
             checksum=$(yq ".arches[].packages[] | select(.url == \"$url\") | .checksum" "$LOCKFILE" 2>/dev/null | head -n 1)
             
             if [ -n "$checksum" ]; then
-                echo "$checksum  $DEST_DIR/$filename" | sha256sum -c - &>/dev/null
+                # Lockfile has "sha256:hex"; sha256sum -c expects "hex  path"
+                hash="${checksum#sha256:}"
+                echo "$hash  $DEST_DIR/$filename" | sha256sum -c - &>/dev/null
                 if [ $? -eq 0 ]; then
                     echo "✓ Checksum verified for $filename"
                 else
@@ -99,5 +101,33 @@ for url in $urls; do
         echo "Error: Failed to download $url"
     fi
 done
+
+# Create DNF repo metadata so dnf install can use this directory (e.g. with cachi2/local.repo)
+# On macOS createrepo_c is not available; run it inside a container.
+run_createrepo_in_container() {
+    local repo_dir_abs="$1"
+    local img=""
+
+    img="localhost/notebook-rpm-lockfile:latest"
+    echo "Creating repository metadata via podman (notebook-rpm-lockfile image)..."
+
+    # Create repository metadata with supported modules
+    commands="rm -rf /repo/repodata && \
+        createrepo_c /repo && \
+        repo2module /repo > modules.yaml && \
+        modifyrepo_c --mdtype=modules modules.yaml /repo/repodata"
+    podman run --rm -v "${repo_dir_abs}:/repo:z" --platform=linux/x86_64 "$img" sh -c "$commands"
+}
+
+if command -v createrepo_c &>/dev/null; then
+    echo "Creating repository metadata (createrepo_c)..."
+    createrepo_c "$DEST_DIR"
+elif command -v createrepo &>/dev/null; then
+    echo "Creating repository metadata (createrepo)..."
+    createrepo "$DEST_DIR"
+else
+    DEST_ABS="$(cd "$DEST_DIR" && pwd)"
+    run_createrepo_in_container "$DEST_ABS" || exit 1
+fi
 
 echo "Finished! RPMs are located in $DEST_DIR"

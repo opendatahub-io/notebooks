@@ -1,6 +1,6 @@
 [baseos]
 name=CentOS Stream $releasever - BaseOS
-metalink=https://mirrors.centos.org/metalink?repo=centos-baseos-$stream&arch=$basearch&protocol=https,http
+baseurl=https://mirror.stream.centos.org/9-stream/BaseOS/$basearch/os/
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 gpgcheck=1
 repo_gpgcheck=0
@@ -10,7 +10,7 @@ enabled=1
 
 [baseos-debuginfo]
 name=CentOS Stream $releasever - BaseOS - Debug
-metalink=https://mirrors.centos.org/metalink?repo=centos-baseos-debug-$stream&arch=$basearch&protocol=https,http
+baseurl=https://mirror.stream.centos.org/9-stream/BaseOS/$basearch/debug/tree/
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 gpgcheck=1
 repo_gpgcheck=0
@@ -19,7 +19,7 @@ enabled=0
 
 [baseos-source]
 name=CentOS Stream $releasever - BaseOS - Source
-metalink=https://mirrors.centos.org/metalink?repo=centos-baseos-source-$stream&arch=source&protocol=https,http
+baseurl=https://mirror.stream.centos.org/9-stream/BaseOS/source/tree/
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 gpgcheck=1
 repo_gpgcheck=0
@@ -28,7 +28,7 @@ enabled=0
 
 [appstream]
 name=CentOS Stream $releasever - AppStream
-metalink=https://mirrors.centos.org/metalink?repo=centos-appstream-$stream&arch=$basearch&protocol=https,http
+baseurl=https://mirror.stream.centos.org/9-stream/AppStream/$basearch/os/
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 gpgcheck=1
 repo_gpgcheck=0
@@ -38,7 +38,7 @@ enabled=1
 
 [appstream-debuginfo]
 name=CentOS Stream $releasever - AppStream - Debug
-metalink=https://mirrors.centos.org/metalink?repo=centos-appstream-debug-$stream&arch=$basearch&protocol=https,http
+baseurl=https://mirror.stream.centos.org/9-stream/AppStream/$basearch/debug/tree/
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 gpgcheck=1
 repo_gpgcheck=0
@@ -47,7 +47,7 @@ enabled=0
 
 [appstream-source]
 name=CentOS Stream $releasever - AppStream - Source
-metalink=https://mirrors.centos.org/metalink?repo=centos-appstream-source-$stream&arch=source&protocol=https,http
+baseurl=https://mirror.stream.centos.org/9-stream/AppStream/source/tree/
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 gpgcheck=1
 repo_gpgcheck=0
@@ -56,7 +56,7 @@ enabled=0
 
 [crb]
 name=CentOS Stream $releasever - CRB
-metalink=https://mirrors.centos.org/metalink?repo=centos-crb-$stream&arch=$basearch&protocol=https,http
+baseurl=https://mirror.stream.centos.org/9-stream/CRB/$basearch/os/
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 gpgcheck=1
 repo_gpgcheck=0
@@ -66,7 +66,7 @@ enabled=1
 
 [crb-debuginfo]
 name=CentOS Stream $releasever - CRB - Debug
-metalink=https://mirrors.centos.org/metalink?repo=centos-crb-debug-$stream&arch=$basearch&protocol=https,http
+baseurl=https://mirror.stream.centos.org/9-stream/CRB/$basearch/debug/tree/
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 gpgcheck=1
 repo_gpgcheck=0
@@ -75,7 +75,7 @@ enabled=0
 
 [crb-source]
 name=CentOS Stream $releasever - CRB - Source
-metalink=https://mirrors.centos.org/metalink?repo=centos-crb-source-$stream&arch=source&protocol=https,http
+baseurl=https://mirror.stream.centos.org/9-stream/CRB/source/tree/
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 gpgcheck=1
 repo_gpgcheck=0

@@ -38,6 +38,8 @@ RUN node --version
 RUN dnf install -y nodejs nodejs-devel
 RUN node --version
 
+dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel
+
 ENV HOME=/root
 
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12

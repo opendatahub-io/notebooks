@@ -1,4 +1,17 @@
 #!/usr/bin/env python3
+"""
+Generate artifacts.lock.yaml from artifacts.in.yaml
+
+Reads a list of URLs from the input YAML file. Each entry can have:
+- url: (required) The URL to download
+- filename: (optional) The path/filename to save the file as
+- checksum: (optional) Expected SHA256 checksum
+
+Files are saved to: cachi2/output/deps/generic/{filename}
+If filename is not provided, it's extracted from the URL.
+
+Usage: python create-artifact-lockfile.py --artifact-input=path/to/artifacts.in.yaml
+"""
 import hashlib
 import sys
 import subprocess
@@ -6,30 +19,15 @@ import argparse
 from pathlib import Path
 import yaml
 
-"""
-Generate artifacts.lock.yaml from artifacts.in.yaml
-
-Reads artifact groups from a YAML input file (default: artifacts.in.yaml).
-Each group may provide a `directory` and a `urls` list. Each url entry can
-be either a mapping with `url` and optional `filename` and `checksum`, or a
-short form mapping with just `url`.
-
-If a checksum is present in the input it is used as-is. Otherwise the script
-downloads the file into the cache directory under its provided `directory`
-and computes the sha256 checksum. The output `artifacts.lock.yaml` lists
-entries with `download_url`, `checksum` and `filename` (filename includes the
-directory prefix when provided).
-
-Usage: python create-artifact-lockfile.py --artifact-input=path/to/artifacts.in.yaml
-"""
-
-# --- Constants ---
+# Constants
 CACHE_BASE_DIR = Path("cachi2/output/deps/generic")
 METADATA_VERSION = "1.0"
+
 
 def get_default_filename(url: str) -> str:
     """Extract filename from URL."""
     return url.rstrip("/").split("/")[-1]
+
 
 def compute_sha256(file_path: Path) -> str:
     """Compute SHA256 checksum of a file."""
@@ -39,8 +37,9 @@ def compute_sha256(file_path: Path) -> str:
             sha256_hash.update(chunk)
     return sha256_hash.hexdigest()
 
-def download_and_hash(url: str, target_path: Path) -> str:
-    """Download URL using wget and return sha256 hex digest."""
+
+def download_file(url: str, target_path: Path) -> None:
+    """Download URL using wget to target_path."""
     target_path.parent.mkdir(parents=True, exist_ok=True)
     cmd = ["wget", "--timeout=60", "--tries=3", "-q", "-O", str(target_path), url]
 
@@ -51,102 +50,120 @@ def download_and_hash(url: str, target_path: Path) -> str:
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"wget failed for {url}: exit code {e.returncode}")
 
-    checksum = compute_sha256(target_path)
-    print(f"  ✓ Downloaded {target_path} (sha256: {checksum[:16]}...)")
-    return checksum
 
 def load_artifact_input(input_path: Path) -> list:
-    """Reads and pre-processes the YAML input into a list of groups."""
+    """Load and parse the YAML input file."""
     if not input_path.exists():
         print(f"Error: {input_path} not found", file=sys.stderr)
         sys.exit(1)
 
-    raw_text = input_path.read_text()
-    # Pre-process YAML to handle repeated 'directory:' keys
-    cleaned = raw_text.replace("input:\n    directory:", "input:\n  - directory:")
-    cleaned = cleaned.replace("\n\n    directory:", "\n\n  - directory:")
-
     try:
-        data = yaml.safe_load(cleaned)
+        with open(input_path, "r") as f:
+            data = yaml.safe_load(f)
     except Exception as e:
         print(f"Failed to parse YAML input: {e}", file=sys.stderr)
         sys.exit(1)
 
-    groups = data.get("input") or []
-    return [groups] if isinstance(groups, dict) else groups
+    # Get the input list
+    items = data.get("input") or []
+    if not isinstance(items, list):
+        print(f"Error: 'input' must be a list", file=sys.stderr)
+        sys.exit(1)
 
-def resolve_artifact(item: dict, directory: str, seen: set) -> dict:
-    """Logic to resolve a single artifact's filename and checksum."""
+    return items
+
+
+def process_artifact(item: dict) -> dict:
+    """Process a single artifact item."""
     url = item.get("url")
-    base_name = item.get("filename") or get_default_filename(url)
-    filename = str(Path(directory) / base_name) if directory else base_name
-
-    if filename in seen:
+    if not url:
+        print(f"Warning: Skipping item without 'url': {item}", file=sys.stderr)
         return None
-    seen.add(filename)
 
+    # Determine filename
+    filename = item.get("filename")
+    if not filename:
+        filename = get_default_filename(url)
+
+    # Build full cache path
     cache_file = CACHE_BASE_DIR / filename
-    provided_checksum = item.get("checksum")
 
-    if provided_checksum:
-        checksum_full = provided_checksum if provided_checksum.startswith("sha256:") else f"sha256:{provided_checksum}"
+    # Check if file already exists
+    if cache_file.exists():
+        print(f"  ✓ Using existing file: {filename}")
+        checksum = compute_sha256(cache_file)
     else:
-        try:
-            checksum = compute_sha256(cache_file) if cache_file.exists() else download_and_hash(url, cache_file)
-            checksum_full = f"sha256:{checksum}"
-        except Exception as e:
-            print(f"  error: {url}: {e}", file=sys.stderr)
-            return None
+        # Download the file
+        print(f"  ↓ Downloading: {url}")
+        print(f"    → Saving to: {filename}")
+        download_file(url, cache_file)
+        checksum = compute_sha256(cache_file)
+        print(f"    ✓ Downloaded (sha256: {checksum[:16]}...)")
+
+    # Handle provided checksum (validate if given)
+    provided_checksum = item.get("checksum")
+    if provided_checksum:
+        # Normalize checksum format
+        if provided_checksum.startswith("sha256:"):
+            expected_checksum = provided_checksum[7:]  # Remove "sha256:" prefix
+        else:
+            expected_checksum = provided_checksum
+
+        if checksum != expected_checksum:
+            print(f"    ⚠ Warning: Checksum mismatch for {filename}", file=sys.stderr)
+            print(f"      Expected: {expected_checksum[:16]}...", file=sys.stderr)
+            print(f"      Got:      {checksum[:16]}...", file=sys.stderr)
 
     return {
         "download_url": url,
-        "checksum": checksum_full,
+        "checksum": f"sha256:{checksum}",
         "filename": filename,
     }
 
-def process_groups(groups: list) -> list:
-    """Iterate through groups and items to build the artifact list."""
-    artifacts = []
-    seen_filenames = set()
-
-    for group in groups:
-        directory = (group.get("directory") or "").strip()
-        urls = group.get("urls") or []
-        
-        for item in urls:
-            resolved = resolve_artifact(item, directory, seen_filenames)
-            if resolved:
-                artifacts.append(resolved)
-    return artifacts
-
-def write_lockfile(output_path: Path, artifacts: list) -> None:
-    """Constructs the lockfile structure and writes to disk."""
-    lock_data = {
-        "metadata": {"version": METADATA_VERSION},
-        "artifacts": artifacts,
-    }
-    
-    with open(output_path, "w") as f:
-        yaml.dump(lock_data, f, default_flow_style=False, sort_keys=False)
-    
-    print(f"✓ Generated {output_path} with {len(artifacts)} artifacts")
 
 def main():
     parser = argparse.ArgumentParser(description="Generate artifacts lockfile.")
     parser.add_argument("--artifact-input", required=True, help="Path to input artifacts.in.yaml")
     args = parser.parse_args()
-    
+
     input_path = Path(args.artifact_input)
     output_path = input_path.parent / "artifacts.lock.yaml"
 
-    # Create the directory (including parents) if it doesn't exist
+    # Create the cache directory if it doesn't exist
     CACHE_BASE_DIR.mkdir(parents=True, exist_ok=True)
 
     print(f"Reading {input_path}...")
-    groups = load_artifact_input(input_path)
-    artifacts = process_groups(groups)
-    
-    write_lockfile(output_path, artifacts)
+    items = load_artifact_input(input_path)
+    print(f"Found {len(items)} artifact(s) to process\n")
+
+    artifacts = []
+    for item in items:
+        # Handle case where item might be a string (just a URL)
+        if isinstance(item, str):
+            item = {"url": item}
+        elif not isinstance(item, dict):
+            print(f"Warning: Skipping invalid item (not a dict or string): {item}", file=sys.stderr)
+            continue
+
+        result = process_artifact(item)
+        if result:
+            artifacts.append(result)
+
+    if not artifacts:
+        print("Error: No artifacts were processed.", file=sys.stderr)
+        sys.exit(1)
+
+    # Write lockfile
+    lock_data = {
+        "metadata": {"version": METADATA_VERSION},
+        "artifacts": artifacts,
+    }
+
+    with open(output_path, "w") as f:
+        yaml.dump(lock_data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+    print(f"\n✓ Generated {output_path} with {len(artifacts)} artifacts")
+
 
 if __name__ == "__main__":
     main()

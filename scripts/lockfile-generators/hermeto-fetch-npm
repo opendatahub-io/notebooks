@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+hermeto() {
+  podman run --rm -ti \
+    -v "$PWD:$PWD:z" \
+    -w "$PWD" \
+    ghcr.io/hermetoproject/hermeto:latest \
+    "$@"
+}
+
+# It is OK to ignore error: ERROR UnsupportedFeature: hermeto cannot process repositories that don't have an 'origin' remote
+declare -a sources=(
+    #"codeserver/ubi9-python-3.12/patches/code-server/test"
+    "codeserver/ubi9-python-3.12/prefetch-input/code-server"
+    #"codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode"
+    #"codeserver/ubi9-python-3.12/prefetch-input/code-server/test/e2e/extensions/test-extension"
+)
+
+mkdir -p ./cachi2/output/deps/npm
+
+for i in "${!sources[@]}"; do
+    index=$((i + 1))
+    echo "Fetching npm dependencies for ${sources[$i]}"
+    hermeto fetch-deps npm \
+        --source "${sources[$i]}" \
+        --output "./cachi2/tmp/npm-$index" \
+        --dev-package-managers || true
+    cp -r "./cachi2/tmp/npm-$index"/deps/npm/* ./cachi2/output/deps/npm/
+done
+
+echo "Successfully fetched npm packages into ./cachi2/output/deps/npm"

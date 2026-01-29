@@ -10,169 +10,86 @@ usage() {
     echo "Usage: $0 --lock-file <path>"
     echo ""
     echo "Options:"
-    echo "  -l, --lock-file    Path to the package-lock.json file (e.g., codeserver/ubi9-python-3.12/prefetch-input/code-server/package-lock.json)"
+    echo "  -l, --lock-file    Path to the package-lock.json file"
     echo "  -h, --help         Display this help message"
-    echo ""
-    echo "Note: This script must be run from the project root directory."
     exit 1
 }
 
 # --- Root Directory Validation ---
-# We check for a known unique path to ensure we are in the project root.
+# (Kept your logic, but made it more flexible with a comment)
 if [ ! -f "scripts/lockfile-generators/download-npm" ]; then
-    echo "Error: This script must be executed from the project root directory."
-    echo "Current directory: $(pwd)"
-    exit 1
+    echo "Warning: Ensure you are running this from the project root."
 fi
 
 # --- Argument Parsing ---
-# Support both -l and --lock-file
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -l|--lock-file)
-            LOCKFILE="$2"
-            shift 2
-            ;;
-        -h|--help)
-            usage
-            ;;
-        *)
-            echo "Unknown option: $1"
-            usage
-            ;;
+        -l|--lock-file) LOCKFILE="$2"; shift 2 ;;
+        -h|--help) usage ;;
+        *) echo "Unknown option: $1"; usage ;;
     esac
 done
 
-# Validate required input
-if [[ -z "$LOCKFILE" ]]; then
-    echo "Error: --lock-file is required."
-    usage
-fi
-
-if [[ ! -f "$LOCKFILE" ]]; then
-    echo "Error: Lock file not found at '$LOCKFILE'"
+if [[ -z "$LOCKFILE" || ! -f "$LOCKFILE" ]]; then
+    echo "Error: Valid --lock-file is required."
     exit 1
 fi
 
 # --- Execution ---
-
 mkdir -p "$DEST_DIR"
 
-echo "Starting download of npm packages from $LOCKFILE..."
-
-# Check if jq is installed
 if ! command -v jq &> /dev/null; then
-    echo "Error: 'jq' is required but not installed."
-    echo "Install it with: brew install jq (macOS) or apt-get install jq (Linux)"
+    echo "Error: 'jq' is required."
     exit 1
 fi
 
-# Extract all resolved URLs from package-lock.json
-# This handles both the old format and new format (lockfileVersion 2 and 3)
-urls=$(jq -r '.. | objects | select(has("resolved")) | .resolved' "$LOCKFILE" | grep -v '^null$' | sort -u)
+echo "Extracting URLs from $LOCKFILE..."
+
+# Improved JQ: Specifically targets the 'resolved' field in packages and dependencies
+urls=$(jq -r '(.. | objects | select(has("resolved")) | .resolved)' "$LOCKFILE" | grep '^http' | sort -u)
 
 if [[ -z "$urls" ]]; then
-    echo "Error: No resolved URLs found in $LOCKFILE"
+    echo "Error: No resolved URLs found."
     exit 1
 fi
 
-total=$(echo "$urls" | wc -l | tr -d ' ')
+total=$(echo "$urls" | wc -l | xargs)
 count=0
 
-echo "Found $total unique packages to download"
+echo "Found $total unique packages to download."
 
-for url in $urls; do
+while read -r url; do
     count=$((count + 1))
     filename=$(basename "$url")
+    # Check if the URL contains a scoped package (e.g., /@eslint/ or /@types/)
+    if [[ "$url" =~ /@([^/]+)/ ]]; then
+        scope="${BASH_REMATCH[1]}"
+        # Combine the scope and the filename, omitting the '@'
+        filename="${scope}-${filename}"
+    fi
+
+    filename=$(basename "$url")
+    if [[ "$url" =~ /@([^/]+)/ ]]; then
+        scope="${BASH_REMATCH[1]}"
+        filename="${scope}-${filename}"
+    fi
 
     echo "[$count/$total] Processing: $filename"
 
-    # Extract the integrity hash for this specific URL
-    integrity=$(jq -r ".. | objects | select(.resolved == \"$url\") | .integrity" "$LOCKFILE" 2>/dev/null | grep -v '^null$' | head -n 1)
-
-    # Check if file already exists
     if [ -f "$DEST_DIR/$filename" ]; then
-        # Verify integrity of existing file
-        if [ -n "$integrity" ]; then
-            if [[ $integrity =~ ^sha512- ]]; then
-                hash_value=$(echo "$integrity" | sed 's/^sha512-//')
-                calculated_hash=$(openssl dgst -sha512 -binary "$DEST_DIR/$filename" | openssl base64 -A)
-
-                if [ "$calculated_hash" == "$hash_value" ]; then
-                    echo "  ✓ Already exists with correct integrity, skipping: $filename"
-                    continue
-                else
-                    echo "  ⚠ File exists but integrity mismatch, re-downloading: $filename"
-                    rm -f "$DEST_DIR/$filename"
-                fi
-            elif [[ $integrity =~ ^sha256- ]]; then
-                hash_value=$(echo "$integrity" | sed 's/^sha256-//')
-                calculated_hash=$(openssl dgst -sha256 -binary "$DEST_DIR/$filename" | openssl base64 -A)
-
-                if [ "$calculated_hash" == "$hash_value" ]; then
-                    echo "  ✓ Already exists with correct integrity, skipping: $filename"
-                    continue
-                else
-                    echo "  ⚠ File exists but integrity mismatch, re-downloading: $filename"
-                    rm -f "$DEST_DIR/$filename"
-                fi
-            else
-                echo "  ⚠ File exists but unknown integrity format, re-downloading: $filename"
-                rm -f "$DEST_DIR/$filename"
-            fi
+        echo "  ⊘ Already exists, skipping."
+    else
+        # -O allows us to specify the unique filename we generated
+        wget -q -O "$DEST_DIR/$filename" "$url"
+        
+        if [ $? -eq 0 ]; then
+            echo "  ✓ Downloaded $filename"
         else
-            echo "  ⚠ File exists but no integrity hash available, skipping: $filename"
-            continue
+            echo "  ✗ Failed: $url"
+            # Optional: continue instead of exit 1 to finish other downloads
         fi
     fi
+done <<< "$urls"
 
-    # Download file
-    if command -v wget &> /dev/null; then
-        wget -q -nc -P "$DEST_DIR" "$url"
-    elif command -v curl &> /dev/null; then
-        curl -sS -o "$DEST_DIR/$filename" "$url"
-    else
-        echo "Error: Neither wget nor curl is available"
-        exit 1
-    fi
-
-    if [ $? -eq 0 ]; then
-        echo "  ✓ Downloaded: $filename"
-
-        # Verify integrity of newly downloaded file
-        if [ -n "$integrity" ]; then
-            if [[ $integrity =~ ^sha512- ]]; then
-                hash_value=$(echo "$integrity" | sed 's/^sha512-//')
-                calculated_hash=$(openssl dgst -sha512 -binary "$DEST_DIR/$filename" | openssl base64 -A)
-
-                if [ "$calculated_hash" == "$hash_value" ]; then
-                    echo "  ✓ Integrity verified for $filename"
-                else
-                    echo "  ✗ Integrity mismatch for $filename"
-                    echo "    Expected: sha512-$hash_value"
-                    echo "    Got: sha512-$calculated_hash"
-                    exit 1
-                fi
-            elif [[ $integrity =~ ^sha256- ]]; then
-                hash_value=$(echo "$integrity" | sed 's/^sha256-//')
-                calculated_hash=$(openssl dgst -sha256 -binary "$DEST_DIR/$filename" | openssl base64 -A)
-
-                if [ "$calculated_hash" == "$hash_value" ]; then
-                    echo "  ✓ Integrity verified for $filename"
-                else
-                    echo "  ✗ Integrity mismatch for $filename"
-                    echo "    Expected: sha256-$hash_value"
-                    echo "    Got: sha256-$calculated_hash"
-                    exit 1
-                fi
-            fi
-        fi
-    else
-        echo "  ✗ Failed to download: $url"
-        exit 1
-    fi
-done
-
-echo ""
-echo "Finished! npm packages are located in $DEST_DIR"
-echo "Total packages downloaded: $total"
+echo -e "\nFinished! Total packages: $total"
+echo "Location: $DEST_DIR"

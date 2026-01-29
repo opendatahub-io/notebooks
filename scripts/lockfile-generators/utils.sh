@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Parse arguments: accept positional, named 'prefetch-input=...', or '--prefetch-input=...'
 PREFETCH_INPUT_DIR=""
