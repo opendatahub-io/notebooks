@@ -257,14 +257,18 @@ def print_path_results(results: list[dict], path_pattern: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Analyze syft SBOM JSON files for CVE investigation.",
+        description="Analyze Syft or SPDX SBOM JSON files for CVE investigation.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s sbom.json esbuild          # Find package by name
-  %(prog)s sbom.json --info           # Show SBOM metadata
+  %(prog)s sbom.json esbuild          # Find package by name (Syft or SPDX)
+  %(prog)s sbom.json --info           # Show SBOM metadata and format
   %(prog)s sbom.json --summary        # Show package count by type
   %(prog)s sbom.json --path /opt/     # Find packages at path
+
+Supports both formats:
+  - Syft native JSON (syft-json)
+  - SPDX JSON (including manifest-box wrapper format)
 
 Location patterns help determine remediation:
   /lib/apk/db/installed                → Alpine system package
