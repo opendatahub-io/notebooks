@@ -157,7 +157,7 @@ class SelfTests(unittest.TestCase):
 
     def test_get_build_directory(self):
         directory = get_build_directory("rocm-jupyter-pytorch-ubi9-python-3.12")
-        assert directory == "jupyter/rocm/pytorch/ubi9-python-3.11"
+        assert directory == "jupyter/rocm/pytorch/ubi9-python-3.12"
 
     def test_get_build_dockerfile(self):
         dockerfile = get_build_dockerfile("rocm-jupyter-pytorch-ubi9-python-3.12")
