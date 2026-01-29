@@ -22,9 +22,12 @@ def get_github_token() -> str:
 def list_changed_files(from_ref: str, to_ref: str) -> list[str]:
     logging.debug("Getting list of changed files from git diff")
 
+    # Use three-dot diff to show changes from merge-base to to_ref
+    # This correctly shows only changes introduced by the PR, regardless of how much from_ref has advanced
+    # See: https://github.com/opendatahub-io/notebooks/issues/2875
     # https://github.com/red-hat-data-services/notebooks/pull/361: add -- in case to_ref matches a file name in the repo
     files = subprocess.check_output(
-        ["git", "diff", "--name-only", from_ref, to_ref, "--"], encoding="utf-8"
+        ["git", "diff", "--name-only", f"{from_ref}...{to_ref}", "--"], encoding="utf-8"
     ).splitlines()
 
     logging.debug(f"Determined {len(files)} changed files: {files[:100]} (..., printing up to 100 files)")
@@ -157,7 +160,7 @@ class SelfTests(unittest.TestCase):
 
     def test_get_build_directory(self):
         directory = get_build_directory("rocm-jupyter-pytorch-ubi9-python-3.12")
-        assert directory == "jupyter/rocm/pytorch/ubi9-python-3.11"
+        assert directory == "jupyter/rocm/pytorch/ubi9-python-3.12"
 
     def test_get_build_dockerfile(self):
         dockerfile = get_build_dockerfile("rocm-jupyter-pytorch-ubi9-python-3.12")
