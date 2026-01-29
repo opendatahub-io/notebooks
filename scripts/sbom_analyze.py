@@ -232,7 +232,7 @@ def print_package_results(results: list[dict], package_name: str) -> None:
         if r.get('foundBy'):
             print(f"    Found by: {r['foundBy']}")
         if r.get('locations'):
-            print(f"    Locations:")
+            print("    Locations:")
             for loc in r['locations']:
                 print(f"      - {loc}")
         if r.get('sourceInfo'):
@@ -299,38 +299,45 @@ Location patterns help determine remediation:
         return 1
 
     # Process commands
-    if args.info:
-        print("=== SBOM Info ===")
-        info = get_sbom_info(sbom)
-        if args.json:
-            print(json.dumps(info, indent=2))
-        else:
+    if args.json:
+        # JSON mode: collect all outputs into a single dict
+        result: dict[str, Any] = {}
+        
+        if args.info:
+            result["info"] = get_sbom_info(sbom)
+        
+        if args.summary:
+            result["summary"] = summarize_by_type(sbom)
+        
+        if args.path:
+            result["path"] = find_packages_at_path(sbom, args.path)
+        
+        if args.package_name:
+            result["search"] = find_package(sbom, args.package_name, case_insensitive=not args.exact)
+        
+        print(json.dumps(result, indent=2))
+    else:
+        # Human-readable mode
+        if args.info:
+            print("=== SBOM Info ===")
+            info = get_sbom_info(sbom)
             for k, v in info.items():
                 print(f"  {k}: {v}")
 
-    if args.summary:
-        print("\n=== Package Summary by Type ===")
-        summary = summarize_by_type(sbom)
-        if args.json:
-            print(json.dumps(summary, indent=2))
-        else:
+        if args.summary:
+            print("\n=== Package Summary by Type ===")
+            summary = summarize_by_type(sbom)
             for pkg_type, count in summary.items():
                 print(f"  {pkg_type}: {count}")
 
-    if args.path:
-        print(f"\n=== Packages at path matching '{args.path}' ===")
-        results = find_packages_at_path(sbom, args.path)
-        if args.json:
-            print(json.dumps(results, indent=2))
-        else:
+        if args.path:
+            print(f"\n=== Packages at path matching '{args.path}' ===")
+            results = find_packages_at_path(sbom, args.path)
             print_path_results(results, args.path)
 
-    if args.package_name:
-        print(f"\n=== Searching for '{args.package_name}' ===")
-        results = find_package(sbom, args.package_name, case_insensitive=not args.exact)
-        if args.json:
-            print(json.dumps(results, indent=2))
-        else:
+        if args.package_name:
+            print(f"\n=== Searching for '{args.package_name}' ===")
+            results = find_package(sbom, args.package_name, case_insensitive=not args.exact)
             print_package_results(results, args.package_name)
 
     return 0
