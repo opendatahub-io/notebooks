@@ -66,6 +66,57 @@ Updates Dockerfile* blocks demarked using comment blocks of the form
 
 Run the script to to automatically update the block's content to be the same in all Dockerfiles everywhere.
 
+## sbom_analyze.py
+
+Analyze syft SBOM JSON files for CVE investigation. This script helps developers find where vulnerable packages are installed within container images by querying SBOM files from the manifest-box repository.
+
+See [docs/manifestbox.md](../docs/manifestbox.md) for detailed documentation on working with SBOMs.
+
+### Examples
+
+Find a specific package and its installation location:
+
+```sh
+python scripts/sbom_analyze.py sbom.json esbuild
+```
+
+Output:
+```
+=== Searching for 'esbuild' ===
+  Found 1 matching package(s):
+
+  esbuild@0.17.14
+    Type: npm
+    Found by: javascript-package-cataloger
+    Locations:
+      - /usr/lib/code-server/lib/vscode/extensions/php/package.json
+    PURL: pkg:npm/esbuild@0.17.14
+```
+
+Get SBOM metadata (source image, version, distro):
+
+```sh
+python scripts/sbom_analyze.py sbom.json --info
+```
+
+Summarize packages by ecosystem type:
+
+```sh
+python scripts/sbom_analyze.py sbom.json --summary
+```
+
+Find all packages at a specific path:
+
+```sh
+python scripts/sbom_analyze.py sbom.json --path /code-server/
+```
+
+Output as JSON for scripting:
+
+```sh
+python scripts/sbom_analyze.py sbom.json esbuild --json
+```
+
 ## buildinputs/
 
 CLI tool written in Go that computes the list of input files required to build a Dockerfile.
