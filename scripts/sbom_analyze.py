@@ -79,7 +79,7 @@ def normalize_component(component: dict, fmt: str) -> dict:
             "version": component.get("version"),
             "type": component.get("type", "unknown"),
             "foundBy": component.get("foundBy"),
-            "locations": [loc.get("path") for loc in component.get("locations", [])],
+            "locations": [loc.get("path") for loc in component.get("locations", []) if loc.get("path")],
             "purl": component.get("purl"),
             "sourceInfo": None,
         }
