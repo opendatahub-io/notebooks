@@ -31,37 +31,52 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
 	# install build dependencies
 	# https://access.redhat.com/support/policy/updates/rhel-app-streams-life-cycle
 	# https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/developing_c_and_cpp_applications_in_rhel_9/assembly_additional-toolsets-for-development-rhel-9_developing-applications#cpp-compatibility-in-gcc-toolset-14_gcc-toolset-14
-	dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel
+	#dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel
 
 	# starting with node-22, c++20 is required
 	. /opt/rh/gcc-toolset-14/enable
 
 	# build libxkbfile
 	export UTIL_MACROS_VERSION=1.20.2
-	curl -L https://www.x.org/releases/individual/util/util-macros-${UTIL_MACROS_VERSION}.tar.gz | tar xz
+	tar -xzf /cachi2/output/deps/generic/util-macros-${UTIL_MACROS_VERSION}.tar.gz
 	cd util-macros-${UTIL_MACROS_VERSION}/
 	./configure --prefix=/usr && make install -j ${MAX_JOBS}
 	cd .. && rm -rf util-macros-${UTIL_MACROS_VERSION}/
 
 	export X_KB_FILE_VERSION=1.1.3
-	curl -L https://www.x.org/releases/individual/lib/libxkbfile-${X_KB_FILE_VERSION}.tar.gz | tar xz
+	tar -xzf /cachi2/output/deps/generic/libxkbfile-${X_KB_FILE_VERSION}.tar.gz
 	cd libxkbfile-${X_KB_FILE_VERSION}/
 	./configure --prefix=/usr && make install -j ${MAX_JOBS}
 	cd .. && rm -rf libxkbfile-${X_KB_FILE_VERSION}/
     export PKG_CONFIG_PATH=$(find / -type d -name "pkgconfig" 2>/dev/null | tr '\n' ':')
 
 	# install nfpm to build rpm
-	NFPM_VERSION=$(curl -s "https://api.github.com/repos/goreleaser/nfpm/releases/latest" | jq -r '.tag_name') \
-	    && dnf install -y https://github.com/goreleaser/nfpm/releases/download/${NFPM_VERSION}/nfpm-${NFPM_VERSION:1}-1.$(uname -m).rpm
+	#NFPM_VERSION=$(curl -s "https://api.github.com/repos/goreleaser/nfpm/releases/latest" | jq -r '.tag_name') \
+	#NFPM_VERSION="v2.44.1" && dnf install -y https://github.com/goreleaser/nfpm/releases/download/${NFPM_VERSION}/nfpm-${NFPM_VERSION:1}-1.$(uname -m).rpm
+	dnf install -y /cachi2/output/deps/generic/nfpm-2.44.1-1.$(uname -m).rpm
+
 
 	# install node
-	NVM_VERSION=$(curl -s "https://api.github.com/repos/nvm-sh/nvm/releases/latest" | jq -r '.tag_name') \
-	    && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash \
-	    && source ${NVM_DIR}/nvm.sh && nvm install ${NODE_VERSION}
+	#NVM_VERSION="v0.40.3" && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash \
+	#    && source ${NVM_DIR}/nvm.sh && nvm install ${NODE_VERSION}
+	# bash /cachi2/output/deps/generic/nvm-install.sh
+	# source ${NVM_DIR}/nvm.sh
+	# nvm install ${NODE_VERSION}
+
+	#dnf install -y nodejs
 
 	# build codeserver
-	git clone --depth 1 --branch "${CODESERVER_VERSION}" --recurse-submodules --shallow-submodules https://github.com/coder/code-server.git
-	cd code-server
+	#git clone --depth 1 --branch "${CODESERVER_VERSION}" --recurse-submodules --shallow-submodules https://github.com/coder/code-server.git
+	#
+	## Mine
+	# unzip -q -o /cachi2/output/deps/generic/${CODESERVER_VERSION}.zip
+	# cd code-server-*
+	# rm -rf lib/vscode/ # Remove old empty link, replace with actual vscode content
+	# unzip -q -o /cachi2/output/deps/generic/vscode.zip -d ./lib/
+	# mv lib/vscode-* lib/vscode
+
+	cd /root/code-server
+	ls -alh ./
         
 #patch taken from vscodium s390x IBM : https://github.com/VSCodium/vscodium/blob/master/patches/linux/reh/s390x/arch-4-s390x-package.json.patch
 if [[ "$ARCH" == "s390x" ]]; then
@@ -104,21 +119,33 @@ EOL
 
    git apply s390x.patch
 fi	
-        	
-	source ${NVM_DIR}/nvm.sh
+    #ls -alh /cachi2/output/deps/npm/    	
+	#source ${NVM_DIR}/nvm.sh
 	while IFS= read -r src_patch; do echo "patches/$src_patch"; patch -p1 < "patches/$src_patch"; done < patches/series
-	nvm use ${NODE_VERSION}
+	#nvm use ${NODE_VERSION}
 	npm cache clean --force
-	npm install
-	npm run build
-	VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
-	export KEEP_MODULES=1
-	npm run release
-	npm run release:standalone
 
-	# build codeserver rpm
-	VERSION=${CODESERVER_VERSION/v/} npm run package
-	mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
+
+	# export NPM_CACHE=/tmp/npm-cache
+	# mkdir -p "$NPM_CACHE"
+	# npm cache add /cachi2/output/deps/npm/*.tgz --cache "$NPM_CACHE"
+	# ls -alh "$NPM_CACHE"
+	# npm ci --offline --cache "$NPM_CACHE" --no-audit --no-fund
+
+	#npm config set cache /cachi2/output/deps/npm/
+	# cat /cachi2/cachi2.env
+	# source /cachi2/cachi2.env
+	# npm install
+
+	# npm run build
+	# VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
+	# export KEEP_MODULES=1
+	# npm run release
+	# npm run release:standalone
+
+	# # build codeserver rpm
+	# VERSION=${CODESERVER_VERSION/v/} npm run package
+	# mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
 
 else
 
