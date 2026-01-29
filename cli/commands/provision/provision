@@ -1,0 +1,9 @@
+#!/bin/bash
+# GCP Provisioning CLI wrapper
+# Add this directory to PATH or symlink to ~/bin/provision
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Use uv to ensure dependencies are available
+exec uv run --with typer python "$SCRIPT_DIR/run_cli.py" "$@"
