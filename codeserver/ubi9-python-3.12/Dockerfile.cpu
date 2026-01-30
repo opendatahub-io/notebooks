@@ -129,7 +129,7 @@ RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh &
 
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm run release:standalone
+    npm run release:standalone --loglevel silly
 
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     VERSION=${CODESERVER_VERSION/v/} npm run package && \
