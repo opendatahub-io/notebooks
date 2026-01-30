@@ -75,11 +75,12 @@ COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package-lock.json ${CODE
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package.json ${CODESERVER_SOURCE_PREFETCH}/test/package.json
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib/vscode/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/package-lock.json
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib/vscode/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/package.json
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/dev/postinstall.sh ${CODESERVER_SOURCE_PREFETCH}/ci/dev/postinstall.sh
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build/build-vscode.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-vscode.sh
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib/vscode/build/lib/fetch.js ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/build/lib/fetch.js
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib/vscode/extensions/emmet/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/extensions/emmet/package.json
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib/vscode/extensions/emmet/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/extensions/emmet/package-lock.json
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/dev/postinstall.sh ${CODESERVER_SOURCE_PREFETCH}/ci/dev/postinstall.sh
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build/build-vscode.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-vscode.sh
+
 COPY ${CODESERVER_SOURCE_CODE}/patches/s390x.patch ${CODESERVER_SOURCE_PREFETCH}/
 
 COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh ${CODESERVER_SOURCE_CODE}/
