@@ -56,11 +56,13 @@ spec:
       type: rpm
     - path: codeserver/ubi9-python-3.12/prefetch-input
       type: generic
-    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server
-      type: npm
-    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode
+    - path: codeserver/ubi9-python-3.12/patches/code-server/
       type: npm
     - path: codeserver/ubi9-python-3.12/patches/code-server/test
+      type: npm
+    - path: codeserver/ubi9-python-3.12/patches/code-server/lib-vscode
+      type: npm
+    - path: codeserver/ubi9-python-3.12/patches/code-server/lib-vscode/extensions/emmet
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/test/e2e/extensions/test-extension
       type: npm
