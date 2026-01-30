@@ -6,28 +6,30 @@ requires-python = "==3.12.*"
 dependencies = [
     # PyTorch packages
     "tensorboard~=2.20.0",
-    "torch==2.7.1+cu128",
-    "torchvision==0.22.1+cu128",
+    "torch==2.9.0",
+    "torchvision==0.24.0",
 
     # Datascience and useful extensions
-    "boto3~=1.40.52",
+    "boto3~=1.42.29",
     "kafka-python-ng~=2.2.3",
     "matplotlib~=3.10.7",
     "numpy~=2.3.5",
     "pandas~=2.3.3",
-    "plotly~=6.3.1",
-    "scikit-learn~=1.7.2",
+    "plotly~=6.5.2",
+    "scikit-learn~=1.8.0",
     "scipy~=1.16.2",
     "skl2onnx~=1.19.1",
-    "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
-    "codeflare-sdk~=0.34.0",
-    "feast~=0.59.0",
+    "onnxconverter-common~=1.16.0",
+    # TODO(RHAIENG-3039): Re-enable codeflare-sdk before RHOAI 3.4 GA
+    # "codeflare-sdk~=0.34.0",
+    # TODO(RHAIENG-3041): Upgrade feast to ~=0.59.0 before RHOAI 3.4 GA
+    "feast~=0.58.0",
 
     # DB connectors
     "pymongo~=4.15.3",
-    "psycopg~=3.2.10",
-    "pyodbc~=5.2.0",
-    "mysql-connector-python~=9.4.0",
+    "psycopg~=3.3.2",
+    "pyodbc~=5.3.0",
+    "mysql-connector-python~=9.5.0",
 
     "odh-notebooks-meta-runtime-elyra-deps",
 
@@ -37,17 +39,13 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-torch = { index = "pytorch-cuda" }
-torchvision = { index = "pytorch-cuda" }
 odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }
-
-# https://docs.astral.sh/uv/concepts/indexes/#package-indexes
-[[tool.uv.index]]
-name = "pytorch-cuda"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
 
 [tool.uv]
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
+]
+override-dependencies = [
+    # AIPCC-8698: python-lsp-server[all] has conflicting pyflakes/pycodestyle requirements
+    "python-lsp-server>=1.11.0",
 ]
