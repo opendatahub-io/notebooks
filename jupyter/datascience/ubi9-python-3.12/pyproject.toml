@@ -52,7 +52,7 @@ environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
 override-dependencies = [
-    # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
-    # Upstream: https://github.com/elyra-ai/elyra/issues/3325
+    # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
+    # appengine-python-standard which has an obnoxious urllib3<2 constraint
     "urllib3>=2.6.0",
 ]
