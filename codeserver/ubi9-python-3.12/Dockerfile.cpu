@@ -44,8 +44,6 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
       mv /root/scripts/lockfile-generators/local.repo /etc/yum.repos.d/local.repo && \
       dnf remove -y nodejs && \
       dnf clean all -y; \
-    else \
-      rm -f /root/cachi2-local.repo; \
     fi
 
 # Update nodejs to 22 and install dependencies for code-server build
