@@ -30,6 +30,8 @@ ARG CODESERVER_SOURCE_PREFETCH=${CODESERVER_SOURCE_CODE}/prefetch-input/code-ser
 ARG NODE_VERSION=22.18.0
 ARG CODESERVER_VERSION=v4.104.0
 
+RUN ll /cachi2/output/deps/npm | wc -l
+
 # Some distributions eg. CentOS requires GPG key import to verify packages
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
