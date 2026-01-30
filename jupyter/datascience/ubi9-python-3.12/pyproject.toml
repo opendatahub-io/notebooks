@@ -18,7 +18,7 @@ dependencies = [
     "onnxconverter-common~=1.16.0",
     "kubeflow-training==1.9.3",
     # TODO(RHAIENG-3039): Re-enable codeflare-sdk before RHOAI 3.4 GA
-    "codeflare-sdk~=0.34.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    #"codeflare-sdk~=0.34.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
     # TODO(RHAIENG-3041): Upgrade feast to ~=0.59.0 before RHOAI 3.4 GA
     "feast~=0.58.0",
 
@@ -58,6 +58,7 @@ override-dependencies = [
     # Upstream: https://github.com/elyra-ai/elyra/issues/3325
     "urllib3>=2.6.0",
     # AIPCC-8698: python-lsp-server[all] has conflicting pyflakes/pycodestyle requirements
+    # The [all] extra pulls in linting tools we don't need at runtime
     # Using >= instead of ~= to allow broader compatibility during resolution
     # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
     "python-lsp-server>=1.11.0",
