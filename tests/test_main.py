@@ -140,6 +140,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                             # TODO(jdanek): is this one intentional?
                             "LLM-Compressor": "llmcompressor",
                             "PyTorch": "torch",
+                            "ROCm-PyTorch": "torch",
                             "Sklearn-onnx": "skl2onnx",
                             "Nvidia-CUDA-CU12-Bundle": "nvidia-cuda-runtime-cu12",
                             "MySQL Connector/Python": "mysql-connector-python",
@@ -180,10 +181,6 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
 
                         # TODO(jdanek): intentional?
                         if manifest.metadata.scope == "pytorch+llmcompressor" and name == "Codeflare-SDK":
-                            continue
-
-                        if name == "ROCm-PyTorch":
-                            # TODO(jdanek): figure out what to do here
                             continue
 
                         if name == "rstudio-server":
@@ -261,7 +258,7 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
             ),
         ),
         ("Tensorboard", ("2.18", "2.20")),
-        ("PyTorch", ("2.6", "2.7")),
+        ("PyTorch", ("2.7", "2.9")),
     )
 
     for name, data in packages.items():
@@ -307,8 +304,9 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         ("setuptools", ("~=80.9.0", "==80.9.0")),
         ("wheel", ("==0.45.1", "~=0.45.1")),
         ("tensorboard", ("~=2.18.0", "~=2.20.0")),
-        ("torch", ("==2.7.1", "==2.7.1+cu128", "==2.7.1+rocm6.3")),
-        ("torchvision", ("==0.22.1", "~=0.22.1", "==0.22.1+cu128", "==0.22.1+rocm6.3")),
+        ("torch", ("==2.7.1+cu128", "==2.9.0")),
+        ("torchvision", ("==0.24.0", "~=0.24.0")),
+        ("triton", ("~=3.5.0", "==3.3.1")),
         (
             "numpy",
             (
