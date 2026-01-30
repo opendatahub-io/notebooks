@@ -8,6 +8,15 @@ dependencies = [
     "boto3~=1.42.29",
     "kafka-python-ng~=2.2.3",
     "kfp~=2.15.2",
+    # AIPCC-9537: kfp in AIPCC 3.3 has stripped dependency metadata
+    # Adding all missing deps that are available in AIPCC:
+    "docstring-parser~=0.17.0",
+    "google-api-core~=2.28.1",
+    "google-cloud-storage~=3.7.0",
+    "kfp-pipeline-spec~=2.15.2",
+    "kfp-server-api~=2.15.2",
+    "requests-toolbelt~=1.0.0",
+    # NOTE: click-option-group==0.5.7 is required by kfp but NOT in AIPCC index
     "matplotlib~=3.10.7",
     "numpy~=2.3.5",
     "pandas~=2.3.3",
