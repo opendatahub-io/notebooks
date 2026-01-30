@@ -24,6 +24,8 @@ spec:
             {"name": "Python", "version": "v3.12"},
             {"name": "TensorFlow", "version": "2.20"}
           ]
+        # TODO(RHAIENG-3039): Re-enable Codeflare-SDK before RHOAI 3.4 GA
+        # {"name": "Codeflare-SDK", "version": "0.34"}
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
@@ -31,22 +33,21 @@ spec:
             {"name": "TensorFlow", "version": "2.20"},
             {"name": "Tensorboard", "version": "2.20"},
             {"name": "Nvidia-CUDA-CU12-Bundle", "version": "12.9"},
-            {"name": "Boto3", "version": "1.40"},
+            {"name": "Boto3", "version": "1.42"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
-            {"name": "Kfp", "version": "2.14"},
+            {"name": "Kfp", "version": "2.15"},
             {"name": "Matplotlib", "version": "3.10"},
             {"name": "Numpy", "version": "2.1"},
             {"name": "Pandas", "version": "2.3"},
-            {"name": "Scikit-learn", "version": "1.7"},
+            {"name": "Scikit-learn", "version": "1.8"},
             {"name": "Scipy", "version": "1.16"},
             {"name": "Odh-Elyra", "version": "4.3"},
             {"name": "PyMongo", "version": "4.15"},
-            {"name": "Pyodbc", "version": "5.2"},
-            {"name": "Codeflare-SDK", "version": "0.34"},
-            {"name": "Feast", "version": "0.59"},
+            {"name": "Pyodbc", "version": "5.3"},
+            {"name": "Feast", "version": "0.58"},
             {"name": "Sklearn-onnx", "version": "1.19"},
-            {"name": "Psycopg", "version": "3.2"},
-            {"name": "MySQL Connector/Python", "version": "9.4"}
+            {"name": "Psycopg", "version": "3.3"},
+            {"name": "MySQL Connector/Python", "version": "9.5"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
@@ -83,10 +84,10 @@ spec:
             {"name": "Scipy", "version": "1.15"},
             {"name": "Odh-Elyra", "version": "4.2"},
             {"name": "PyMongo", "version": "4.11"},
-            {"name": "Pyodbc", "version": "5.2"},
+            {"name": "Pyodbc", "version": "5.3"},
             {"name": "Codeflare-SDK", "version": "0.30"},
             {"name": "Sklearn-onnx", "version": "1.18"},
-            {"name": "Psycopg", "version": "3.2"},
+            {"name": "Psycopg", "version": "3.3"},
             {"name": "MySQL Connector/Python", "version": "9.3"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
