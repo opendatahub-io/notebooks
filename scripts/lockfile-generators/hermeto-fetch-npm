@@ -12,62 +12,63 @@ hermeto() {
 # It is OK to ignore error: ERROR UnsupportedFeature: hermeto cannot process repositories that don't have an 'origin' remote
 declare -a sources=(
     #"codeserver/ubi9-python-3.12/patches/code-server/test"
-    #"codeserver/ubi9-python-3.12/prefetch-input/code-server/test"
+    "codeserver/ubi9-python-3.12/prefetch-input/code-server/test"
     #"codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode"
     #"codeserver/ubi9-python-3.12/prefetch-input/code-server/test/e2e/extensions/test-extension"
-
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-selfhost-import-aid
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-selfhost-test-provider
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/build
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/build/npm/gyp
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/configuration-editing
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/css-language-features
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/css-language-features/server
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/debug-auto-launch
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/debug-server-ready
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/emmet
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/extension-editing
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/git
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/git-base
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/github
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/github-authentication
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/grunt
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/gulp
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/html-language-features
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/html-language-features/server
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/ipynb
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/jake
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/json-language-features
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/json-language-features/server
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/markdown-language-features
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/markdown-math
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/media-preview
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/merge-conflict
     codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/microsoft-authentication
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/notebook-renderers
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/npm
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/php-language-features
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/references-view
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/search-result
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/simple-browser
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/tunnel-forwarding
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/typescript-language-features
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/vscode-api-tests
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/vscode-colorize-perf-tests
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/vscode-colorize-tests
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/vscode-test-resolver
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/remote
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/remote/web
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/automation
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/integration/browser
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/mcp
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/monaco
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/smoke
-    codeserver/ubi9-python-3.12/prefetch-input/code-server/test/e2e/extensions/test-extension
-    codeserver/ubi9-python-3.12/patches/code-server
-    codeserver/ubi9-python-3.12/patches/code-server/test
-    codeserver/ubi9-python-3.12/patches/code-server/lib-vscode
+
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-selfhost-import-aid
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-selfhost-test-provider
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/build
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/build/npm/gyp
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/configuration-editing
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/css-language-features
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/css-language-features/server
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/debug-auto-launch
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/debug-server-ready
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/emmet
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/extension-editing
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/git
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/git-base
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/github
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/github-authentication
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/grunt
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/gulp
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/html-language-features
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/html-language-features/server
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/ipynb
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/jake
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/json-language-features
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/json-language-features/server
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/markdown-language-features
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/markdown-math
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/media-preview
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/merge-conflict
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/microsoft-authentication
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/notebook-renderers
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/npm
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/php-language-features
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/references-view
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/search-result
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/simple-browser
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/tunnel-forwarding
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/typescript-language-features
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/vscode-api-tests
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/vscode-colorize-perf-tests
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/vscode-colorize-tests
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/vscode-test-resolver
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/remote
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/remote/web
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/automation
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/integration/browser
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/mcp
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/monaco
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/smoke
+    # codeserver/ubi9-python-3.12/prefetch-input/code-server/test/e2e/extensions/test-extension
+    # codeserver/ubi9-python-3.12/patches/code-server
+    # codeserver/ubi9-python-3.12/patches/code-server/test
+    # codeserver/ubi9-python-3.12/patches/code-server/lib-vscode
 )
 dir=./cachi2/output/deps/npm-vath
 mkdir -p $dir
