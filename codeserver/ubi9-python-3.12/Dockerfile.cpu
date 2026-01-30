@@ -118,8 +118,8 @@ RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh &
     VERSION=${CODESERVER_VERSION/v/} npm run build:vscode --verbose
 
 # Copy patched build scripts just before they're needed for npm run release
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build/build-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-release.sh
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build/build-standalone-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-standalone-release.sh
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-release.sh
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-standalone-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-standalone-release.sh
 
 # Split release commands for better caching - if release fails, release:standalone won't run
 # but both are cached independently
