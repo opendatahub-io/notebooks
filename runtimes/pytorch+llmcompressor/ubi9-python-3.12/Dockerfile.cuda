@@ -67,6 +67,7 @@ EOF
 FROM cuda-base AS cuda-runtime-pytorch
 
 ARG PYTORCH_SOURCE_CODE=runtimes/pytorch+llmcompressor/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
 
 ### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
 ENV PIP_INDEX_URL=https://pypi.org/simple
@@ -88,8 +89,8 @@ LABEL name="odh-notebook-runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12" \
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages from requirements.txt
-COPY ${PYTORCH_SOURCE_CODE}/pylock.toml ./
+# Install Python packages from pylock file
+COPY ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 # Copy Elyra dependencies for air-gapped enviroment
 COPY --chown=1001 ${PYTORCH_SOURCE_CODE}/utils ./utils/
 ### BEGIN Download Elyra Bootstrapper

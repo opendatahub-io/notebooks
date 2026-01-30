@@ -170,7 +170,7 @@ LABEL name="odh-notebook-jupyter-cuda-pytorch-llmcompressor-ubi9-python-3.12" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-pytorch-llmcompressor-ubi9-python-3.12"
 
 # Install Python packages and Jupyterlab extensions from requirements.txt
-COPY ${PYTORCH_SOURCE_CODE}/pylock.toml ./
+COPY ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
