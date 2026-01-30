@@ -446,6 +446,12 @@ spec:
           echo -n "${NEW_DIGEST}" > "$(results.IMAGE_DIGEST.path)"
 
           echo "[$(date --utc -Ins)] Compression conversion complete"
+        resources:
+          requests:
+            memory: 4Gi
+            cpu: 500m
+          limits:
+            memory: 8Gi
         securityContext:
           capabilities:
             add:
