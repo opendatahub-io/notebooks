@@ -172,6 +172,38 @@ jobs:
           DURATION=$(echo "$END - $START" | bc)
           echo "- Duration: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
 
+      - name: Benchmark build FROM image
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Build FROM Image Test" >> $GITHUB_STEP_SUMMARY
+          echo "Build a simple image that installs cowsay on top of the base image." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Create test Dockerfile
+          cat > /tmp/Dockerfile.test << 'DOCKERFILE'
+          ARG BASE_IMAGE
+          FROM ${BASE_IMAGE}
+          RUN pip install --no-cache-dir cowsay && cowsay "Hello from zstd:chunked test!"
+          DOCKERFILE
+          
+          # Build from zstd:chunked base
+          podman system reset -f 2>/dev/null || true
+          echo "### Build FROM zstd:chunked base" >> $GITHUB_STEP_SUMMARY
+          START=$(date +%s.%N)
+          podman build -f /tmp/Dockerfile.test --build-arg BASE_IMAGE="$ZSTD_CPU_C9S" -t test-zstd:latest /tmp 2>&1 | tail -5
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "- Build time: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+          
+          # Build from gzip base
+          podman system reset -f 2>/dev/null || true
+          echo "### Build FROM gzip base" >> $GITHUB_STEP_SUMMARY
+          START=$(date +%s.%N)
+          podman build -f /tmp/Dockerfile.test --build-arg BASE_IMAGE="$GZIP_CPU_C9S" -t test-gzip:latest /tmp 2>&1 | tail -5
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "- Build time: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+
       - name: Inspect compression format
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
