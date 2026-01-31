@@ -8,6 +8,15 @@ dependencies = [
     "boto3~=1.42.29",
     "kafka-python-ng~=2.2.3",
     "kfp~=2.15.2",
+    # AIPCC-9537: kfp in AIPCC 3.3 has stripped dependency metadata
+    # Adding all missing deps that are available in AIPCC:
+    "docstring-parser~=0.17.0",
+    "google-api-core~=2.28.1",
+    "google-cloud-storage~=3.7.0",
+    "kfp-pipeline-spec~=2.15.2",
+    "kfp-server-api~=2.15.2",
+    "requests-toolbelt~=1.0.0",
+    # NOTE: click-option-group==0.5.7 is required by kfp but NOT in AIPCC index
     "matplotlib~=3.10.7",
     "numpy~=2.3.5",
     "pandas~=2.3.3",
@@ -18,7 +27,7 @@ dependencies = [
     "onnxconverter-common~=1.16.0",
     "kubeflow-training==1.9.3",
     # TODO(RHAIENG-3039): Re-enable codeflare-sdk before RHOAI 3.4 GA
-    "codeflare-sdk~=0.34.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    #"codeflare-sdk~=0.34.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
     # TODO(RHAIENG-3041): Upgrade feast to ~=0.59.0 before RHOAI 3.4 GA
     "feast~=0.58.0",
 
@@ -58,6 +67,7 @@ override-dependencies = [
     # Upstream: https://github.com/elyra-ai/elyra/issues/3325
     "urllib3>=2.6.0",
     # AIPCC-8698: python-lsp-server[all] has conflicting pyflakes/pycodestyle requirements
+    # The [all] extra pulls in linting tools we don't need at runtime
     # Using >= instead of ~= to allow broader compatibility during resolution
     # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
     "python-lsp-server>=1.11.0",
