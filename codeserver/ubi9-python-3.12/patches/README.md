@@ -37,7 +37,8 @@ the Dockerfile uses `${CODESERVER_SOURCE_CODE}` which already includes the `pref
 - **Purpose**: Ensures offline npm installs work correctly by converting registry URLs to `file:///cachi2` paths
 
 ### `prefetch-input/code-server/ci/build-scripts/build-standalone-release.sh`
-- **Purpose**: (Unchanged from upstream; copied for consistency with build-release.sh)
+- **Changes**: Rewrite shrinkwrap resolved URLs to `file:///cachi2` in the release-standalone directory (root, lib/vscode, lib/vscode/extensions) before `npm install`, so offline install uses cached deps
+- **Purpose**: Ensures offline npm installs in release-standalone use file:///cachi2 paths (in case paths were relative or not rewritten earlier)
 
 ### `prefetch-input/code-server/lib/vscode/remote/package.json` and `remote/package-lock.json`
 - **Changes**: Add `tslib` as a direct dependency (2.6.3) and add `node_modules/tslib` to the lockfile with resolved URL

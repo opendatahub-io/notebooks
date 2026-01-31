@@ -25,6 +25,15 @@ main() {
 
   chmod 755 "$RELEASE_PATH/lib/node"
 
+  # Rewrite shrinkwrap resolved URLs to file:///cachi2 for offline install
+  # (in case paths were relative or not rewritten earlier).
+  if [ -f /root/scripts/lockfile-generators/rewrite-cachi2-path.sh ]; then
+    . /root/scripts/lockfile-generators/rewrite-cachi2-path.sh
+    rewrite_cachi2_path "$RELEASE_PATH/npm-shrinkwrap.json"
+    rewrite_cachi2_path "$RELEASE_PATH/lib/vscode/npm-shrinkwrap.json"
+    rewrite_cachi2_path "$RELEASE_PATH/lib/vscode/extensions/npm-shrinkwrap.json"
+  fi
+
   pushd "$RELEASE_PATH"
   npm install --unsafe-perm --omit=dev
   # Code deletes some files from the extension node_modules directory which

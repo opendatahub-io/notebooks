@@ -139,14 +139,14 @@ RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh &
 #     rewrite_cachi2_path release/lib/vscode/npm-shrinkwrap.json && \
 #     rewrite_cachi2_path release/lib/vscode/extensions/npm-shrinkwrap.json
 
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
-    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm run release:standalone --loglevel silly
+# RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
+#     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
+#     npm run release:standalone --loglevel silly
 
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    VERSION=${CODESERVER_VERSION/v/} npm run package && \
-    ls -alh release-packages/ && \
-    mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
+# RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+#     VERSION=${CODESERVER_VERSION/v/} npm run package && \
+#     ls -alh release-packages/ && \
+#     mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
 
 RUN echo "done" > /tmp/control
 
