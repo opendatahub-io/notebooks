@@ -40,6 +40,8 @@ COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-g
 
 RUN ls -alh /etc/yum.repos.d/
 
+RUN dnf module enable nodejs:22 -y
+
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
       rm -f /etc/yum.repos.d/* && \
       dnf config-manager --add-repo file:///cachi2/output/deps/rpm/x86_64/; \
