@@ -30,23 +30,16 @@ ARG CODESERVER_SOURCE_PREFETCH=${CODESERVER_SOURCE_CODE}/prefetch-input/code-ser
 ARG NODE_VERSION=22.18.0
 ARG CODESERVER_VERSION=v4.104.0
 
-RUN ll /cachi2/output/deps/npm | wc -l
+RUN ls -alh /cachi2/output/deps/npm | wc -l
 
 # Some distributions eg. CentOS requires GPG key import to verify packages
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-RUN dnf module enable nodejs:22 -y
-
 COPY scripts/lockfile-generators/local.repo /root/scripts/lockfile-generators/
 COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-generators/
 
-# For local build, if you want to run podman build locally
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-      rm -f /etc/yum.repos.d/* && \
-      mv /root/scripts/lockfile-generators/local.repo /etc/yum.repos.d/local.repo && \
-      dnf remove -y nodejs && \
-      dnf clean all -y; \
-    fi
+RUN rm -f /etc/yum.repos.d/*
+RUN dnf config-manager --add-repo file:///cachi2/output/deps/rpm
 
 # Update nodejs to 22 and install dependencies for code-server build
 RUN dnf install -y nodejs nodejs-devel npm

@@ -23,6 +23,14 @@ main() {
 
   create_shrinkwraps
 
+  # Rewrite shrinkwrap resolved URLs to file:///cachi2 for offline install (e.g. release-standalone postinstall).
+  if [ -f /root/scripts/lockfile-generators/rewrite-cachi2-path.sh ]; then
+    . /root/scripts/lockfile-generators/rewrite-cachi2-path.sh
+    rewrite_cachi2_path npm-shrinkwrap.json
+    rewrite_cachi2_path "$VSCODE_SRC_PATH/remote/npm-shrinkwrap.json"
+    rewrite_cachi2_path "$VSCODE_SRC_PATH/extensions/npm-shrinkwrap.json"
+  fi
+
   mkdir -p "$RELEASE_PATH"
 
   bundle_code_server
