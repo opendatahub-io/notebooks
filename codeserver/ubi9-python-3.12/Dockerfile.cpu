@@ -40,7 +40,7 @@ COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-g
 
 RUN ls -alh /etc/yum.repos.d/
 
-RUN dnf module enable nodejs:22 -y
+RUN --network=none dnf module enable nodejs:22 -y
 
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
       rm -f /etc/yum.repos.d/* && \
@@ -48,8 +48,8 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
     fi;
 
 # Update nodejs to 22 and install dependencies for code-server build
-RUN dnf install -y nodejs nodejs-devel npm
-RUN dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel
+RUN --network=none dnf install -y nodejs nodejs-devel npm
+RUN --network=none dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel
 
 # build libxkbfile (make -j with empty MAX_JOBS uses unlimited jobs)
 RUN export UTIL_MACROS_VERSION=1.20.2 && \
