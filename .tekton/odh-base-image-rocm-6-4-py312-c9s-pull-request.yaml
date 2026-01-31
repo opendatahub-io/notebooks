@@ -42,6 +42,14 @@ spec:
     value: .
   # Added taskRunSpecs to increase compute resources
   taskRunSpecs:
+    - pipelineTaskName: convert-compression
+      computeResources:
+        requests:
+          cpu: '2'
+          memory: 16Gi
+        limits:
+          cpu: '4'
+          memory: 32Gi
     - pipelineTaskName: clair-scan
       computeResources:
         requests:
