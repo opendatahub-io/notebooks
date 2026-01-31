@@ -223,6 +223,8 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       --quiet \
       --no-emit-package odh-notebooks-meta-llmcompressor-deps \
       --no-emit-package odh-notebooks-meta-runtime-elyra-deps \
+      --no-emit-package odh-notebooks-meta-runtime-datascience-deps \
+      --no-emit-package odh-notebooks-meta-workbench-datascience-deps \
       $UPGRADE_FLAG \
       $index
     local status=$?

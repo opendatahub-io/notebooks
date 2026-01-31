@@ -255,7 +255,7 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
         (
             "Numpy",
             (
-                "1.26",  # trustyai 0.6.2 depends on numpy~=1.26.4
+                "1.26",  # for tensorflow rocm
                 "2.1",  # for tensorflow cuda
                 "2.3",  # this is our latest where possible
             ),
@@ -312,9 +312,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         (
             "numpy",
             (
-                "~=1.26.4",  # trustyai 0.6.2 depends on numpy~=1.26.4
-                "~=2.1.3",
-                "~=2.3.5",  # for llmcompressor, tensorflow cuda, latest possible at the time of writing
+                ">=1.26.4",  # allow the latest possible, see the pylock.toml check for precise pins
                 "==2.3.5",  # llmcompressor pins exact version
             ),
         ),

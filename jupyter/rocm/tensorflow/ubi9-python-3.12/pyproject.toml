@@ -14,20 +14,10 @@ dependencies = [
     "tensorboard~=2.18.0",
 
     # Datascience and useful extensions
-    "boto3~=1.42.29",
-    "kafka-python-ng~=2.2.3",
-    "kfp~=2.15.2",
-    "matplotlib~=3.10.7",
-    "numpy~=1.26.4",
-    "pandas~=2.3.3",
-    "plotly~=6.5.2",
-    "scikit-learn~=1.8.0",
-    "scipy~=1.16.2",
-    "skl2onnx~=1.19.1",
-    "onnxconverter-common~=1.16.0",
     # TODO(RHAIENG-3039): Re-enable codeflare-sdk before RHOAI 3.4 GA
     "codeflare-sdk~=0.34.0",
-    "kubeflow-training==1.9.3",
+    "skl2onnx~=1.19.1",
+    "odh-notebooks-meta-workbench-datascience-deps",
 
     # DB connectors
     "pymongo~=4.15.3",
@@ -55,6 +45,9 @@ dependencies = [
     "wheel~=0.45.1",
     "setuptools~=80.9.0",
 ]
+
+[tool.uv.sources]
+odh-notebooks-meta-workbench-datascience-deps = { path = "../../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
 
 [tool.uv]
 
