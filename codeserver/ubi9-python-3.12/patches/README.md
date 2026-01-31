@@ -16,7 +16,9 @@ The patches directory mirrors the structure of the code-server directory (relati
 patches/
 └── code-server/
     └── ci/
-        └── build/
+        ├── build/
+        │   └── npm-postinstall.sh
+        └── build-scripts/
             ├── build-release.sh
             └── build-standalone-release.sh
 ```
@@ -26,13 +28,20 @@ the Dockerfile uses `${CODESERVER_SOURCE_CODE}` which already includes the `pref
 
 ## Current Patches
 
-### `prefetch-input/code-server/ci/build/build-release.sh`
-- **Changes**: Added `fix_shrinkwrap_paths()` function to fix npm registry URLs and relative paths in `npm-shrinkwrap.json` files
+### `prefetch-input/code-server/ci/build/npm-postinstall.sh`
+- **Changes**: When `npm-shrinkwrap.json` exists (e.g. release package with `file:///cachi2` URLs), use `npm ci --offline --omit=dev --unsafe-perm` instead of `npm install --unsafe-perm --omit=dev`
+- **Purpose**: Avoids fetching packument metadata (e.g. for `tslib@*`) which fails with cache mode `only-if-cached` when building offline (ENOTCACHED)
+
+### `prefetch-input/code-server/ci/build-scripts/build-release.sh`
+- **Changes**: Added rewrite of shrinkwrap resolved URLs to `file:///cachi2` for offline install (e.g. release-standalone postinstall)
 - **Purpose**: Ensures offline npm installs work correctly by converting registry URLs to `file:///cachi2` paths
 
-### `prefetch-input/code-server/ci/build/build-standalone-release.sh`
-- **Changes**: Added `fix_shrinkwrap_paths()` function and logic to fix shrinkwrap files in the standalone release directory
-- **Purpose**: Ensures offline npm installs work correctly during standalone release builds
+### `prefetch-input/code-server/ci/build-scripts/build-standalone-release.sh`
+- **Purpose**: (Unchanged from upstream; copied for consistency with build-release.sh)
+
+### `prefetch-input/code-server/lib/vscode/remote/package.json` and `remote/package-lock.json`
+- **Changes**: Add `tslib` as a direct dependency (2.6.3) and add `node_modules/tslib` to the lockfile with resolved URL
+- **Purpose**: Ensures the remote shrinkwrap (used by release-standalone/lib/vscode) includes tslib so `npm ci --offline` does not need to resolve the `tslib@*` peer dependency of `@microsoft/applicationinsights-core-js`, avoiding packument fetch and ENOTCACHED
 
 ## How to Update Patches
 

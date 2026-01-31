@@ -35,17 +35,12 @@ RUN ls -alh /cachi2/output/deps/npm | wc -l
 # Some distributions eg. CentOS requires GPG key import to verify packages
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-COPY scripts/lockfile-generators/local.repo /root/scripts/lockfile-generators/
-COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-generators/
-
-RUN ls -alh /etc/yum.repos.d/
-RUN cat /etc/yum.repos.d/cachi2.repo
-
-RUN --network=none dnf module enable nodejs:22 -y
-
+# Local repos already enabled nodejs:22
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-      rm -f /etc/yum.repos.d/* && \
-      dnf config-manager --add-repo file:///cachi2/output/deps/rpm/x86_64/; \
+        rm -f /etc/yum.repos.d/* && \
+        dnf config-manager --add-repo file:///cachi2/output/deps/rpm/x86_64/; \
+    else \
+        dnf module enable nodejs:22 -y; \
     fi;
 
 # Update nodejs to 22 and install dependencies for code-server build
@@ -67,6 +62,9 @@ RUN export X_KB_FILE_VERSION=1.1.3 && \
 
 # Git submodule requires .git directory for all git metadata
 COPY .git /root/.git
+
+# Helper script to rewrite cachi2 paths in package-lock.json files
+COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-generators/
 
 # Copy code-server source code
 COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server/ ${CODESERVER_SOURCE_PREFETCH}/
@@ -119,9 +117,15 @@ RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh &
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     VERSION=${CODESERVER_VERSION/v/} npm run build:vscode --verbose
 
-# Copy patched build scripts just before they're needed for npm run release
+# Copy patched build scripts and postinstall just before they're needed for npm run release.
+# npm-postinstall.sh: use npm ci --offline when shrinkwrap exists to avoid fetching packument
+# metadata (e.g. tslib@*) which fails with cache mode 'only-if-cached' in offline builds.
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/npm-postinstall.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/npm-postinstall.sh
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-release.sh
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-standalone-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-standalone-release.sh
+
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package.json
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package-lock.json
 
 # Split release commands for better caching - if release fails, release:standalone won't run
 # but both are cached independently
@@ -130,10 +134,10 @@ RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh &
     npm run release
 
 # Rewrite shrinkwraps in release/ so release:standalone postinstall (npm install in lib/vscode) uses file:///cachi2
-RUN . /root/scripts/lockfile-generators/rewrite-cachi2-path.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    rewrite_cachi2_path release/npm-shrinkwrap.json && \
-    rewrite_cachi2_path release/lib/vscode/npm-shrinkwrap.json && \
-    rewrite_cachi2_path release/lib/vscode/extensions/npm-shrinkwrap.json
+# RUN . /root/scripts/lockfile-generators/rewrite-cachi2-path.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+#     rewrite_cachi2_path release/npm-shrinkwrap.json && \
+#     rewrite_cachi2_path release/lib/vscode/npm-shrinkwrap.json && \
+#     rewrite_cachi2_path release/lib/vscode/extensions/npm-shrinkwrap.json
 
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
