@@ -39,6 +39,7 @@ COPY scripts/lockfile-generators/local.repo /root/scripts/lockfile-generators/
 COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-generators/
 
 RUN ls -alh /etc/yum.repos.d/
+RUN cat /etc/yum.repos.d/cachi2.repo
 
 RUN --network=none dnf module enable nodejs:22 -y
 
