@@ -21,7 +21,7 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
     # starting with node-22, c++20 is required
     . /opt/rh/gcc-toolset-14/enable
     dnf install -y /cachi2/output/deps/generic/nfpm-2.44.1-1.$(uname -m).rpm
-    cd /root/${CODESERVER_SOURCE_PREFETCH}
+    cd "${CODESERVER_SOURCE_PREFETCH}"
 
     # s390x: apply patch from patches/s390x.patch (from VSCodium: arch-4-s390x-package.json.patch)
     if [[ "$ARCH" == "s390x" ]]; then

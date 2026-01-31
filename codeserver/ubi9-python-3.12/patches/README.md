@@ -1,56 +1,26 @@
 # Patches Directory
 
-This directory contains modified files from the `prefetch-input/code-server` submodule and its nested submodules.
+This directory contains modified files from the `prefetch-input/code-server` submodule and its nested submodules. Patched files are applied in the Dockerfile so the submodule can stay in its original state while we get better layer caching.
 
-## Purpose
+## Patch rationale (original vs patched)
 
-By separating modified files into this `patches/` directory, we can:
-1. Keep the `prefetch-input/code-server` submodule in its original checked-out state
-2. Apply patches separately in the Dockerfile, allowing better Docker layer caching
-3. Avoid invalidating cached layers when only patched files change
+See **[PATCHES.md](./PATCHES.md)** for a side-by-side comparison of each patched file with the original and the reason for each change.
 
 ## Structure
 
-The patches directory mirrors the structure of the code-server directory (relative to prefetch-input):
-```
-patches/
-└── code-server/
-    └── ci/
-        ├── build/
-        │   └── npm-postinstall.sh
-        └── build-scripts/
-            ├── build-release.sh
-            └── build-standalone-release.sh
-```
+Patches live under `patches/code-server/` and are copied onto `prefetch-input/code-server/` by the Dockerfile (e.g. `patches/code-server/ci/build-scripts/*.sh` → `prefetch-input/code-server/ci/build/*.sh`). The Dockerfile uses `${CODESERVER_SOURCE_CODE}` which already includes the prefetch path.
 
-Note: The path is `patches/code-server/` (not `patches/prefetch-input/code-server/`) because
-the Dockerfile uses `${CODESERVER_SOURCE_CODE}` which already includes the `prefetch-input/` path.
+## Cachi2
 
-## Current Patches
-
-### `prefetch-input/code-server/ci/build/npm-postinstall.sh`
-- **Changes**: When `npm-shrinkwrap.json` exists (e.g. release package with `file:///cachi2` URLs), use `npm ci --offline --omit=dev --unsafe-perm` instead of `npm install --unsafe-perm --omit=dev`
-- **Purpose**: Avoids fetching packument metadata (e.g. for `tslib@*`) which fails with cache mode `only-if-cached` when building offline (ENOTCACHED)
-
-### `prefetch-input/code-server/ci/build-scripts/build-release.sh`
-- **Changes**: Added rewrite of shrinkwrap resolved URLs to `file:///cachi2` for offline install (e.g. release-standalone postinstall)
-- **Purpose**: Ensures offline npm installs work correctly by converting registry URLs to `file:///cachi2` paths
-
-### `prefetch-input/code-server/ci/build-scripts/build-standalone-release.sh`
-- **Changes**: Rewrite shrinkwrap resolved URLs to `file:///cachi2` in the release-standalone directory (root, lib/vscode, lib/vscode/extensions) before `npm install`, so offline install uses cached deps
-- **Purpose**: Ensures offline npm installs in release-standalone use file:///cachi2 paths (in case paths were relative or not rewritten earlier)
-
-### `prefetch-input/code-server/lib/vscode/remote/package.json` and `remote/package-lock.json`
-- **Changes**: Add `tslib` as a direct dependency (2.6.3) and add `node_modules/tslib` to the lockfile with resolved URL
-- **Purpose**: Ensures the remote shrinkwrap (used by release-standalone/lib/vscode) includes tslib so `npm ci --offline` does not need to resolve the `tslib@*` peer dependency of `@microsoft/applicationinsights-core-js`, avoiding packument fetch and ENOTCACHED
+Run Cachi2 **with the patched files applied** (e.g. apply patches before Cachi2, or point Cachi2 at a repo that already has these changes) so `node-gyp`, `proc-log`, and pinned `tslib` are prefetched. Otherwise the image build can fail with ENOTCACHED or MODULE_NOT_FOUND when native modules’ install scripts run.
 
 ## How to Update Patches
 
-1. Make changes to files in `prefetch-input/code-server/` as needed
-2. Copy the modified files to `patches/` maintaining the same directory structure:
+1. Make changes to files in `prefetch-input/code-server/` as needed (e.g. under `ci/build/`).
+2. Copy the modified files into `patches/code-server/` using the paths the Dockerfile expects (e.g. `ci/build/*.sh` → `patches/code-server/ci/build-scripts/*.sh`):
    ```bash
    cp prefetch-input/code-server/ci/build/build-release.sh \
-      patches/code-server/ci/build/build-release.sh
+      patches/code-server/ci/build-scripts/build-release.sh
    ```
 3. Reset the code-server submodule to its original state:
    ```bash

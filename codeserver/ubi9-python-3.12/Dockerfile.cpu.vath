@@ -15,50 +15,80 @@ FROM ${BASE_IMAGE} AS rpm-base
 USER root
 WORKDIR /root
 
-# Some distributions eg. CentOS requires GPG key import to verify packages
-RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-
-# ===== For local testing only. Turn this on, so you can install rpm from local repo.
-COPY cachi2 /cachi2
-RUN dnf install -y /cachi2/output/deps/rpm/modulemd-tools*.rpm
-
-# Create local repos with module metadata
-RUN createrepo_c /cachi2/output/deps/rpm
-RUN repo2module /cachi2/output/deps/rpm > modules.yaml
-RUN modifyrepo_c --mdtype=modules modules.yaml /cachi2/output/deps/rpm/repodata
-
-RUN dnf module enable nodejs:22 -y
-RUN rm -rf /etc/yum.repos.d/*
-RUN cp /cachi2/local.repo /etc/yum.repos.d/local.repo
-RUN dnf clean all -y
-# ===== end local testing only
-
-#RUN dnf module enable nodejs:22 -y
-RUN node --version
-RUN dnf install -y nodejs nodejs-devel
-RUN node --version
-
-dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel
-
-ENV HOME=/root
-
+ARG ARCH
+ARG BASE_IMAGE
+ARG LOCAL_BUILD
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
-
+ARG CODESERVER_SOURCE_PREFETCH=${CODESERVER_SOURCE_CODE}/prefetch-input/code-server
 ARG NODE_VERSION=22.18.0
-
 ARG CODESERVER_VERSION=v4.104.0
 
-COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh .
-COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server ./code-server
-#RUN ls -alh ./code-server
-#RUN ls -alh ./code-server/lib/vscode
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package-lock.json ./code-server/test/package-lock.json
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package.json ./code-server/test/package.json
-#RUN cat ./code-server/test/package-lock.json
 
-# create dummy file to ensure this stage is awaited before installing rpm
-RUN --network=none ./get_code_server_rpm.sh
-RUN --network=none cd /root/code-server && npm install --verbose
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/npm-postinstall.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/npm-postinstall.sh
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-release.sh
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-standalone-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-standalone-release.sh
+
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package.json
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package-lock.json
+
+# Rewrite npm-shrinkwrap.json resolved URLs to file:///cachi2/ for offline install
+# (build-standalone-release.sh sources this and runs rewrite_cachi2_path on shrinkwrap files)
+COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-generators/
+
+RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
+    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    npm run release:standalone --loglevel silly
+
+RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    VERSION=${CODESERVER_VERSION/v/} npm run package && \
+    ls -alh release-packages/ && \
+    mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
+
+
+# # Some distributions eg. CentOS requires GPG key import to verify packages
+# RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# # ===== For local testing only. Turn this on, so you can install rpm from local repo.
+# COPY cachi2 /cachi2
+# RUN dnf install -y /cachi2/output/deps/rpm/modulemd-tools*.rpm
+
+# # Create local repos with module metadata
+# RUN createrepo_c /cachi2/output/deps/rpm
+# RUN repo2module /cachi2/output/deps/rpm > modules.yaml
+# RUN modifyrepo_c --mdtype=modules modules.yaml /cachi2/output/deps/rpm/repodata
+
+# RUN dnf module enable nodejs:22 -y
+# RUN rm -rf /etc/yum.repos.d/*
+# RUN cp /cachi2/local.repo /etc/yum.repos.d/local.repo
+# RUN dnf clean all -y
+# # ===== end local testing only
+
+# #RUN dnf module enable nodejs:22 -y
+# RUN node --version
+# RUN dnf install -y nodejs nodejs-devel
+# RUN node --version
+
+# dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel
+
+# ENV HOME=/root
+
+# ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+
+# ARG NODE_VERSION=22.18.0
+
+# ARG CODESERVER_VERSION=v4.104.0
+
+# COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh .
+# COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server ./code-server
+# #RUN ls -alh ./code-server
+# #RUN ls -alh ./code-server/lib/vscode
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package-lock.json ./code-server/test/package-lock.json
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package.json ./code-server/test/package.json
+# #RUN cat ./code-server/test/package-lock.json
+
+# # create dummy file to ensure this stage is awaited before installing rpm
+# RUN --network=none ./get_code_server_rpm.sh
+# RUN --network=none cd /root/code-server && npm install --verbose
 
 #RUN --network=none cd /root/code-server && npm install --offline
 

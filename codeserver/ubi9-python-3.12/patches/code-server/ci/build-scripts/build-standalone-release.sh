@@ -13,6 +13,21 @@ main() {
   rsync "$RELEASE_PATH/" "$RELEASE_PATH-standalone"
   RELEASE_PATH+=-standalone
 
+  # Use patched remote package.json and lockfile in release-standalone/lib/vscode
+  # so node-gyp is present for node-pty's postinstall (npx node-gyp) in offline builds.
+  VSCODE_SRC_PATH="lib/vscode"
+  jq --slurp '.[0] * .[1]' \
+    "$VSCODE_SRC_PATH/remote/package.json" \
+    "$RELEASE_PATH/lib/vscode/package.json" > "$RELEASE_PATH/lib/vscode/package.json.merged"
+  mv "$RELEASE_PATH/lib/vscode/package.json.merged" "$RELEASE_PATH/lib/vscode/package.json"
+  cp "$VSCODE_SRC_PATH/remote/package-lock.json" "$RELEASE_PATH/lib/vscode/npm-shrinkwrap.json"
+
+  # Ensure release-standalone uses the patched postinstall (npm ci --offline,
+  # node-gyp handling). The release/ dir may have been pre-populated with an
+  # older postinstall.sh; overwrite it so the patched ci/build/npm-postinstall.sh
+  # is used when npm install runs below.
+  cp ./ci/build/npm-postinstall.sh "$RELEASE_PATH/postinstall.sh"
+
   # Package managers may shim their own "node" wrapper into the PATH, so run
   # node and ask it for its true path.
   local node_path

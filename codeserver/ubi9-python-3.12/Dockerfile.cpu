@@ -30,7 +30,8 @@ ARG CODESERVER_SOURCE_PREFETCH=${CODESERVER_SOURCE_CODE}/prefetch-input/code-ser
 ARG NODE_VERSION=22.18.0
 ARG CODESERVER_VERSION=v4.104.0
 
-RUN ls -alh /cachi2/output/deps/npm | wc -l
+# Prefetch path as env so codeserver-offline-env.sh and scripts see the same path (absolute under HOME).
+ENV CODESERVER_SOURCE_PREFETCH=${HOME}/${CODESERVER_SOURCE_PREFETCH}
 
 # Some distributions eg. CentOS requires GPG key import to verify packages
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
@@ -62,13 +63,17 @@ RUN export X_KB_FILE_VERSION=1.1.3 && \
 
 # Git submodule requires .git directory for all git metadata
 COPY .git /root/.git
-
-# Helper script to rewrite cachi2 paths in package-lock.json files
+# Rewrite shrinkwrap resolved URLs to file:///cachi2 for offline install (build-release.sh and build-standalone-release.sh source this).
 COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-generators/
 
 # Copy code-server source code
 COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server/ ${CODESERVER_SOURCE_PREFETCH}/
-# Apply these patches in order make it build hermetically.
+# Apply patches so the image builds hermetically (aligned with Dockerfile.cpu.vath: release patches + rewrite script in place before release).
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/npm-postinstall.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/npm-postinstall.sh
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-release.sh
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-standalone-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-standalone-release.sh
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package.json
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package-lock.json
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/test/package-lock.json
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package.json ${CODESERVER_SOURCE_PREFETCH}/test/package.json
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/package-lock.json
@@ -106,7 +111,7 @@ COPY ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh ${CODESERVER_SOUR
 RUN --network=none cd ${CODESERVER_SOURCE_CODE} && \
     source ./setup-offline-binaries.sh && \
     source ./utils/codeserver-offline-env.sh && \
-    cd ${HOME}/${CODESERVER_SOURCE_PREFETCH} && \
+    cd ${CODESERVER_SOURCE_PREFETCH} && \
     npm install --no-audit --offline
 
 # Fix shrinkwrap paths ../ issue
@@ -117,36 +122,18 @@ RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh &
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     VERSION=${CODESERVER_VERSION/v/} npm run build:vscode --verbose
 
-# Copy patched build scripts and postinstall just before they're needed for npm run release.
-# npm-postinstall.sh: use npm ci --offline when shrinkwrap exists to avoid fetching packument
-# metadata (e.g. tslib@*) which fails with cache mode 'only-if-cached' in offline builds.
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/npm-postinstall.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/npm-postinstall.sh
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-release.sh
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-standalone-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-standalone-release.sh
-
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package.json
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package-lock.json
-
-# Split release commands for better caching - if release fails, release:standalone won't run
-# but both are cached independently
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
-    export KEEP_MODULES=1 &&  cd ${CODESERVER_SOURCE_PREFETCH} && \
+    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
     npm run release
 
-# Rewrite shrinkwraps in release/ so release:standalone postinstall (npm install in lib/vscode) uses file:///cachi2
-# RUN . /root/scripts/lockfile-generators/rewrite-cachi2-path.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-#     rewrite_cachi2_path release/npm-shrinkwrap.json && \
-#     rewrite_cachi2_path release/lib/vscode/npm-shrinkwrap.json && \
-#     rewrite_cachi2_path release/lib/vscode/extensions/npm-shrinkwrap.json
+RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
+    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    npm run release:standalone --loglevel silly
 
-# RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
-#     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
-#     npm run release:standalone --loglevel silly
-
-# RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-#     VERSION=${CODESERVER_VERSION/v/} npm run package && \
-#     ls -alh release-packages/ && \
-#     mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
+RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    VERSION=${CODESERVER_VERSION/v/} npm run package && \
+    ls -alh release-packages/ && \
+    mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
 
 RUN echo "done" > /tmp/control
 

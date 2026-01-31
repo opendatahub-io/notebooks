@@ -69,8 +69,12 @@ cp "${HERMETO_OUTPUT}/deps/generic/ripgrep-v13.0.0-13-aarch64-unknown-linux-gnu.
 echo "VSCode ripgrep cache populated at ${RIPGREP_CACHE_DIR}"
 
 # Setup VSCode marketplace extensions and Node.js binaries from prefetched files
-# Copy files to a location accessible during build
-VSCODE_OFFLINE_DIR="/root/${CODESERVER_SOURCE_PREFETCH}/.vscode-offline-cache"
+# Copy files to a location accessible during build (CODESERVER_SOURCE_PREFETCH may be absolute from ENV)
+if [[ "$CODESERVER_SOURCE_PREFETCH" = /* ]]; then
+  VSCODE_OFFLINE_DIR="${CODESERVER_SOURCE_PREFETCH}/.vscode-offline-cache"
+else
+  VSCODE_OFFLINE_DIR="${HOME:-/root}/${CODESERVER_SOURCE_PREFETCH}/.vscode-offline-cache"
+fi
 mkdir -p "${VSCODE_OFFLINE_DIR}"
 
 # Copy .vsix extension files

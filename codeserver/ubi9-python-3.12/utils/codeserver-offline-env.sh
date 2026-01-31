@@ -13,4 +13,9 @@ export ELECTRON_CACHE=~/.cache/electron
 export PLAYWRIGHT_BROWSERS_PATH=~/.cache/ms-playwright
 export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 export PLAYWRIGHT_SKIP_FFMPEG_INSTALL=1
-export VSCODE_OFFLINE_CACHE="/root/${CODESERVER_SOURCE_PREFETCH}/.vscode-offline-cache"
+# CODESERVER_SOURCE_PREFETCH may be absolute (from ENV) or relative; avoid double /root/ when already absolute
+if [[ "$CODESERVER_SOURCE_PREFETCH" = /* ]]; then
+  export VSCODE_OFFLINE_CACHE="${CODESERVER_SOURCE_PREFETCH}/.vscode-offline-cache"
+else
+  export VSCODE_OFFLINE_CACHE="${HOME:-/root}/${CODESERVER_SOURCE_PREFETCH}/.vscode-offline-cache"
+fi

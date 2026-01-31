@@ -115,6 +115,13 @@ main() {
   fi
 }
 
+# Where the registry.npmjs.org/node-gyp request comes from:
+# The node-pty dependency has a postinstall script that runs "npx node-gyp configure".
+# When npm ci runs, it executes that postinstall. npx then looks for node-gyp in
+# node_modules; if not found, it tries to fetch from the registry, which fails
+# offline (ENOTCACHED). So node-gyp must be present in the lockfile with a
+# resolved file:/// URL (e.g. file:///cachi2/...) so npm ci installs it before
+# any postinstall runs.
 install_with_yarn_or_npm() {
   echo "User agent: ${npm_config_user_agent-none}"
   # For development we enforce npm, but for installing the package as an
