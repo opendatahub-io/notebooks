@@ -1,0 +1,213 @@
+name: Benchmark zstd:chunked vs gzip image pulls
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'benchmark/zstd-chunked-pulls'
+
+env:
+  # zstd:chunked images from PR #2868 (after convert-compression step)
+  # Layer mediaType: application/vnd.oci.image.layer.v1.tar+zstd
+  ZSTD_CPU_C9S: "quay.io/opendatahub/odh-base-image-cpu-py312-c9s@sha256:c840c511470b6d67d15a2bbb40f842cf10f1e9e15cebab270c950218ee2d9497"
+  ZSTD_CPU_UBI9: "quay.io/opendatahub/odh-base-image-cpu-py312-ubi9@sha256:f3e62ed83c6e1feef555ad77854814dd91914d05924dd3b75396c8e7dfea1aca"
+  ZSTD_CUDA_UBI9: "quay.io/opendatahub/odh-base-image-cuda-py312-ubi9@sha256:9e595435fd0a47333ddb02f73bed6736f9d2362ffbe4c8a0739bfe2d2d238586"
+  
+  # Same images BEFORE convert-compression (gzip from build-image-index step)
+  # Layer mediaType: application/vnd.docker.image.rootfs.diff.tar.gzip
+  # These are the intermediate tags that Konflux creates before conversion
+  GZIP_CPU_C9S: "quay.io/opendatahub/odh-base-image-cpu-py312-c9s:odh-base-imagefb33124cc9794083132252ff1b7bdd7-build-image-index"
+  GZIP_CPU_UBI9: "quay.io/opendatahub/odh-base-image-cpu-py312-ubi9:odh-base-imag8942daf86761a7e29ff6a361b5887f48-build-image-index"
+  GZIP_CUDA_UBI9: "quay.io/opendatahub/odh-base-image-cuda-py312-ubi9:odh-base-imag284d188d332fdda5f0b56c96466f96fa-build-image-index"
+
+jobs:
+  benchmark-pull-times:
+    name: Benchmark Pull Times
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          # Install crane for image inspection
+          curl -sL https://github.com/google/go-containerregistry/releases/download/v0.20.2/go-containerregistry_Linux_x86_64.tar.gz | tar xzf - crane
+          sudo mv crane /usr/local/bin/
+          
+          # Configure podman for partial pulls
+          mkdir -p ~/.config/containers
+          cat > ~/.config/containers/storage.conf << 'EOF'
+          [storage]
+          driver = "overlay"
+          
+          [storage.options.pull_options]
+          enable_partial_images = "true"
+          use_hard_links = "false"
+          EOF
+
+      - name: Get image sizes
+        run: |
+          echo "## Image Size Comparison" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | gzip (original) | zstd:chunked | Savings |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-----------------|--------------|---------|" >> $GITHUB_STEP_SUMMARY
+          
+          get_total_layer_size() {
+            local image="$1"
+            # For manifest lists, get first manifest and sum layer sizes
+            MANIFEST=$(crane manifest "$image" 2>/dev/null)
+            if echo "$MANIFEST" | jq -e '.manifests' >/dev/null 2>&1; then
+              # It's a manifest list, get first architecture
+              DIGEST=$(echo "$MANIFEST" | jq -r '.manifests[0].digest')
+              REPO=$(echo "$image" | cut -d@ -f1 | cut -d: -f1)
+              crane manifest "${REPO}@${DIGEST}" 2>/dev/null | jq '[.layers[].size] | add // 0'
+            else
+              # Single manifest
+              echo "$MANIFEST" | jq '[.layers[].size] | add // 0'
+            fi
+          }
+          
+          # CPU C9S comparison
+          GZIP_SIZE=$(get_total_layer_size "$GZIP_CPU_C9S")
+          ZSTD_SIZE=$(get_total_layer_size "$ZSTD_CPU_C9S")
+          if [ "$GZIP_SIZE" -gt 0 ] && [ "$ZSTD_SIZE" -gt 0 ]; then
+            SAVINGS=$((100 - (ZSTD_SIZE * 100 / GZIP_SIZE)))
+            echo "| CPU C9S | $(numfmt --to=iec $GZIP_SIZE) | $(numfmt --to=iec $ZSTD_SIZE) | ${SAVINGS}% smaller |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| CPU C9S | N/A | N/A | - |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # CPU UBI9 comparison
+          GZIP_SIZE=$(get_total_layer_size "$GZIP_CPU_UBI9")
+          ZSTD_SIZE=$(get_total_layer_size "$ZSTD_CPU_UBI9")
+          if [ "$GZIP_SIZE" -gt 0 ] && [ "$ZSTD_SIZE" -gt 0 ]; then
+            SAVINGS=$((100 - (ZSTD_SIZE * 100 / GZIP_SIZE)))
+            echo "| CPU UBI9 | $(numfmt --to=iec $GZIP_SIZE) | $(numfmt --to=iec $ZSTD_SIZE) | ${SAVINGS}% smaller |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| CPU UBI9 | N/A | N/A | - |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # CUDA UBI9 comparison
+          GZIP_SIZE=$(get_total_layer_size "$GZIP_CUDA_UBI9")
+          ZSTD_SIZE=$(get_total_layer_size "$ZSTD_CUDA_UBI9")
+          if [ "$GZIP_SIZE" -gt 0 ] && [ "$ZSTD_SIZE" -gt 0 ]; then
+            SAVINGS=$((100 - (ZSTD_SIZE * 100 / GZIP_SIZE)))
+            echo "| CUDA UBI9 | $(numfmt --to=iec $GZIP_SIZE) | $(numfmt --to=iec $ZSTD_SIZE) | ${SAVINGS}% smaller |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| CUDA UBI9 | N/A | N/A | - |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Benchmark gzip pull (CPU C9S) - cold cache
+        run: |
+          echo "### Pull Time: gzip CPU C9S (cold)" >> $GITHUB_STEP_SUMMARY
+          podman system reset -f 2>/dev/null || true
+          START=$(date +%s.%N)
+          podman pull "$GZIP_CPU_C9S" --quiet
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "- Duration: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+          echo "GZIP_CPU_C9S_TIME=$DURATION" >> $GITHUB_ENV
+
+      - name: Benchmark zstd:chunked pull (CPU C9S) - cold cache
+        run: |
+          echo "### Pull Time: zstd:chunked CPU C9S (cold)" >> $GITHUB_STEP_SUMMARY
+          podman system reset -f 2>/dev/null || true
+          START=$(date +%s.%N)
+          podman pull "$ZSTD_CPU_C9S" --quiet
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "- Duration: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+          echo "ZSTD_CPU_C9S_TIME=$DURATION" >> $GITHUB_ENV
+
+      - name: Benchmark deduplication - pull second related image
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Deduplication Test" >> $GITHUB_STEP_SUMMARY
+          echo "Pull a second image that shares base layers with the first." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Reset and pull first image
+          podman system reset -f 2>/dev/null || true
+          podman pull "$ZSTD_CPU_C9S" --quiet
+          
+          # Time pulling second related image (should deduplicate)
+          echo "### Pulling UBI9 after C9S (with layer cache)" >> $GITHUB_STEP_SUMMARY
+          START=$(date +%s.%N)
+          podman pull "$ZSTD_CPU_UBI9" --quiet
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "- zstd:chunked second image: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+          
+          # Compare with gzip
+          podman system reset -f 2>/dev/null || true
+          podman pull "$GZIP_CPU_C9S" --quiet
+          START=$(date +%s.%N)
+          podman pull "$GZIP_CPU_UBI9" --quiet
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "- gzip second image: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+
+      - name: Benchmark large image (CUDA)
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Large Image Test (CUDA ~10GB)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # zstd:chunked CUDA
+          podman system reset -f 2>/dev/null || true
+          echo "### zstd:chunked CUDA pull" >> $GITHUB_STEP_SUMMARY
+          START=$(date +%s.%N)
+          podman pull "$ZSTD_CUDA_UBI9" --quiet
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "- Duration: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+          
+          # gzip CUDA
+          podman system reset -f 2>/dev/null || true
+          echo "### gzip CUDA pull" >> $GITHUB_STEP_SUMMARY
+          START=$(date +%s.%N)
+          podman pull "$GZIP_CUDA_UBI9" --quiet
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "- Duration: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+
+      - name: Inspect compression format
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Compression Format Verification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          get_layer_info() {
+            local image="$1"
+            MANIFEST=$(crane manifest "$image" 2>/dev/null)
+            if echo "$MANIFEST" | jq -e '.manifests' >/dev/null 2>&1; then
+              DIGEST=$(echo "$MANIFEST" | jq -r '.manifests[0].digest')
+              REPO=$(echo "$image" | cut -d@ -f1 | cut -d: -f1)
+              crane manifest "${REPO}@${DIGEST}" 2>/dev/null | jq '.layers[:3][] | {mediaType, size: (.size | . / 1048576 | floor | tostring + " MB")}'
+            else
+              echo "$MANIFEST" | jq '.layers[:3][] | {mediaType, size: (.size | . / 1048576 | floor | tostring + " MB")}'
+            fi
+          }
+          
+          echo "### zstd:chunked image layers (first 3)" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          get_layer_info "$ZSTD_CPU_C9S" >> $GITHUB_STEP_SUMMARY || echo "Could not inspect layers" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          
+          echo "### gzip image layers (first 3)" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          get_layer_info "$GZIP_CPU_C9S" >> $GITHUB_STEP_SUMMARY || echo "Could not inspect layers" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Summary
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Notes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Cold cache tests show raw pull performance" >> $GITHUB_STEP_SUMMARY
+          echo "- Deduplication tests show benefit when pulling related images" >> $GITHUB_STEP_SUMMARY
+          echo "- On high-bandwidth CI (>100Mbps), partial pulls may be slower due to HTTP range request overhead" >> $GITHUB_STEP_SUMMARY
+          echo "- Real benefits materialize with: layer caching, low-bandwidth, or lazy loading" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See [ADR-0005](docs/architecture/decisions/0005-zstd-chunked-compression-for-base-images.md) for details." >> $GITHUB_STEP_SUMMARY
