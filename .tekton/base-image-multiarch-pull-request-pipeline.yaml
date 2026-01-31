@@ -336,7 +336,12 @@ spec:
             exit 0
           fi
 
-          IMAGE_REF="${IMAGE_URL}@${IMAGE_DIGEST}"
+          # Strip tag from IMAGE_URL to get registry/repo format
+          # Bug fix: buildah manifest inspect fails with "tag@digest" format (e.g. repo:tag@sha256:...)
+          # but works correctly with "repo@digest" format. The tag@digest format causes buildah to
+          # resolve the tag first (which may point to a single-arch manifest), ignoring the digest.
+          IMAGE_BASE="${IMAGE_URL%:*}"
+          IMAGE_REF="${IMAGE_BASE}@${IMAGE_DIGEST}"
 
           # Build push arguments
           PUSH_ARGS=(
