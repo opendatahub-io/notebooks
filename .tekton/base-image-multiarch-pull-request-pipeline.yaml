@@ -321,7 +321,7 @@ spec:
           value: $(params.FORCE_COMPRESSION)
         script: |
           #!/bin/bash
-          set -euo pipefail
+          set -Eeuxo pipefail
 
           echo "[$(date --utc -Ins)] Starting compression conversion"
           echo "Image: ${IMAGE_URL}@${IMAGE_DIGEST}"
@@ -348,20 +348,30 @@ spec:
 
           # Detect if image is a manifest list by trying to inspect it as one
           # buildah manifest inspect succeeds for manifest lists, fails for single images
+          # Note: buildah manifest inspect does NOT support docker:// transport
           echo "[$(date --utc -Ins)] Detecting image type..."
-          if buildah manifest inspect "docker://${IMAGE_REF}" > /dev/null 2>&1; then
+          if buildah manifest inspect "${IMAGE_REF}" > /dev/null 2>&1; then
             echo "Image is a manifest list"
 
-            # For manifest lists, use buildah manifest push --all
-            echo "[$(date --utc -Ins)] Pulling manifest list..."
-            buildah manifest pull "${IMAGE_REF}"
+            # For manifest lists:
+            # 1. Create a local manifest list
+            # 2. Add all platforms from the remote manifest
+            # 3. Push with new compression
+            echo "[$(date --utc -Ins)] Creating local manifest list..."
+            buildah manifest create local-manifest-list
+
+            echo "[$(date --utc -Ins)] Adding all platforms from remote manifest..."
+            buildah manifest add --all local-manifest-list "${IMAGE_REF}"
 
             echo "[$(date --utc -Ins)] Pushing manifest list with compression: ${COMPRESSION_FORMAT}"
             buildah manifest push "${PUSH_ARGS[@]}" \
               --all \
               --digestfile /tmp/new-digest \
-              "${IMAGE_REF}" \
+              local-manifest-list \
               "docker://${IMAGE_URL}"
+
+            # Cleanup (ignore errors - push already succeeded)
+            buildah manifest rm local-manifest-list || true
           else
             echo "Image is a single image"
 
