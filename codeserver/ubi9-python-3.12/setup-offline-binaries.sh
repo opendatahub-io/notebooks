@@ -59,10 +59,12 @@ VSCODE_RIPGREP_VERSION="1.15.14"
 RIPGREP_CACHE_DIR="/tmp/vscode-ripgrep-cache-${VSCODE_RIPGREP_VERSION}"
 mkdir -p "${RIPGREP_CACHE_DIR}"
 
-# Copy the tarball to the cache with the exact name the package expects
-# Format: ripgrep-<version>-<target>.tar.gz
+# Copy both architecture tarballs to the cache with the exact name the package expects
+# Format: ripgrep-<version>-<target>.tar.gz (@vscode/ripgrep picks by arch at runtime)
 cp "${HERMETO_OUTPUT}/deps/generic/ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz" \
    "${RIPGREP_CACHE_DIR}/ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz"
+cp "${HERMETO_OUTPUT}/deps/generic/ripgrep-v13.0.0-13-aarch64-unknown-linux-gnu.tar.gz" \
+   "${RIPGREP_CACHE_DIR}/ripgrep-v13.0.0-13-aarch64-unknown-linux-gnu.tar.gz"
 
 echo "VSCode ripgrep cache populated at ${RIPGREP_CACHE_DIR}"
 
