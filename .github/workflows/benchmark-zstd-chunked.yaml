@@ -9,16 +9,16 @@ on:
 env:
   # zstd:chunked images from PR #2868 (after convert-compression step)
   # Layer mediaType: application/vnd.oci.image.layer.v1.tar+zstd
-  ZSTD_CPU_C9S: "quay.io/opendatahub/odh-base-image-cpu-py312-c9s@sha256:c840c511470b6d67d15a2bbb40f842cf10f1e9e15cebab270c950218ee2d9497"
-  ZSTD_CPU_UBI9: "quay.io/opendatahub/odh-base-image-cpu-py312-ubi9@sha256:f3e62ed83c6e1feef555ad77854814dd91914d05924dd3b75396c8e7dfea1aca"
-  ZSTD_CUDA_UBI9: "quay.io/opendatahub/odh-base-image-cuda-py312-ubi9@sha256:9e595435fd0a47333ddb02f73bed6736f9d2362ffbe4c8a0739bfe2d2d238586"
+  ZSTD_CPU_C9S: "quay.io/opendatahub/odh-base-image-cpu-py312-c9s:on-pr-092c6459c5405027594ea964d53ba3419ac50e5d"
+  ZSTD_CPU_UBI9: "quay.io/opendatahub/odh-base-image-cpu-py312-ubi9:on-pr-092c6459c5405027594ea964d53ba3419ac50e5d"
+  ZSTD_CUDA_C9S: "quay.io/opendatahub/odh-base-image-cuda-py312-c9s:on-pr-092c6459c5405027594ea964d53ba3419ac50e5d"
   
   # Same images BEFORE convert-compression (gzip from build-image-index step)
   # Layer mediaType: application/vnd.docker.image.rootfs.diff.tar.gzip
   # These are the intermediate tags that Konflux creates before conversion
-  GZIP_CPU_C9S: "quay.io/opendatahub/odh-base-image-cpu-py312-c9s:odh-base-imagefb33124cc9794083132252ff1b7bdd7-build-image-index"
-  GZIP_CPU_UBI9: "quay.io/opendatahub/odh-base-image-cpu-py312-ubi9:odh-base-imag8942daf86761a7e29ff6a361b5887f48-build-image-index"
-  GZIP_CUDA_UBI9: "quay.io/opendatahub/odh-base-image-cuda-py312-ubi9:odh-base-imag284d188d332fdda5f0b56c96466f96fa-build-image-index"
+  GZIP_CPU_C9S: "quay.io/opendatahub/odh-base-image-cpu-py312-c9s:odh-base-imagdb6789fe4a552eed5f7a284a8ef1c16f-build-image-index"
+  GZIP_CPU_UBI9: "quay.io/opendatahub/odh-base-image-cpu-py312-ubi9:odh-base-imag1448bfb0db7888075ea7a7e5c42e3f1f-build-image-index"
+  GZIP_CUDA_C9S: "quay.io/opendatahub/odh-base-image-cuda-py312-c9s:odh-base-image1635032e0b94178a149746d1675d52c-build-image-index"
 
 jobs:
   benchmark-pull-times:
@@ -88,14 +88,14 @@ jobs:
             echo "| CPU UBI9 | N/A | N/A | - |" >> $GITHUB_STEP_SUMMARY
           fi
           
-          # CUDA UBI9 comparison
-          GZIP_SIZE=$(get_total_layer_size "$GZIP_CUDA_UBI9")
-          ZSTD_SIZE=$(get_total_layer_size "$ZSTD_CUDA_UBI9")
+          # CUDA C9S comparison (~10GB image)
+          GZIP_SIZE=$(get_total_layer_size "$GZIP_CUDA_C9S")
+          ZSTD_SIZE=$(get_total_layer_size "$ZSTD_CUDA_C9S")
           if [ "$GZIP_SIZE" -gt 0 ] && [ "$ZSTD_SIZE" -gt 0 ]; then
             SAVINGS=$((100 - (ZSTD_SIZE * 100 / GZIP_SIZE)))
-            echo "| CUDA UBI9 | $(numfmt --to=iec $GZIP_SIZE) | $(numfmt --to=iec $ZSTD_SIZE) | ${SAVINGS}% smaller |" >> $GITHUB_STEP_SUMMARY
+            echo "| CUDA C9S (~10GB) | $(numfmt --to=iec $GZIP_SIZE) | $(numfmt --to=iec $ZSTD_SIZE) | ${SAVINGS}% smaller |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| CUDA UBI9 | N/A | N/A | - |" >> $GITHUB_STEP_SUMMARY
+            echo "| CUDA C9S (~10GB) | N/A | N/A | - |" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Benchmark gzip pull (CPU C9S) - cold cache
@@ -120,63 +120,99 @@ jobs:
           echo "- Duration: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
           echo "ZSTD_CPU_C9S_TIME=$DURATION" >> $GITHUB_ENV
 
-      - name: Benchmark deduplication - pull second related image
+      - name: Benchmark deduplication - pull UBI9 after C9S (shared base layers)
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Deduplication Test" >> $GITHUB_STEP_SUMMARY
-          echo "Pull a second image that shares base layers with the first." >> $GITHUB_STEP_SUMMARY
+          echo "## Deduplication Test 1: UBI9 after C9S" >> $GITHUB_STEP_SUMMARY
+          echo "Pull UBI9 image after C9S - they share common Python/base layers." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          # Reset and pull first image
+          # zstd:chunked test
           podman system reset -f 2>/dev/null || true
           podman pull "$ZSTD_CPU_C9S" --quiet
-          
-          # Time pulling second related image (should deduplicate)
-          echo "### Pulling UBI9 after C9S (with layer cache)" >> $GITHUB_STEP_SUMMARY
+          echo "### zstd:chunked: Pulling UBI9 after C9S (with layer cache)" >> $GITHUB_STEP_SUMMARY
           START=$(date +%s.%N)
           podman pull "$ZSTD_CPU_UBI9" --quiet
           END=$(date +%s.%N)
           DURATION=$(echo "$END - $START" | bc)
-          echo "- zstd:chunked second image: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+          echo "- zstd:chunked UBI9 (warm): **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
           
-          # Compare with gzip
+          # gzip test
           podman system reset -f 2>/dev/null || true
           podman pull "$GZIP_CPU_C9S" --quiet
+          echo "### gzip: Pulling UBI9 after C9S (with layer cache)" >> $GITHUB_STEP_SUMMARY
           START=$(date +%s.%N)
           podman pull "$GZIP_CPU_UBI9" --quiet
           END=$(date +%s.%N)
           DURATION=$(echo "$END - $START" | bc)
-          echo "- gzip second image: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+          echo "- gzip UBI9 (warm): **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
 
-      - name: Benchmark large image (CUDA)
+      - name: Benchmark deduplication - pull CUDA after CPU (shared base layers)
+        continue-on-error: true
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Large Image Test (CUDA ~10GB)" >> $GITHUB_STEP_SUMMARY
+          echo "## Deduplication Test 2: CUDA after CPU" >> $GITHUB_STEP_SUMMARY
+          echo "Pull large CUDA image after CPU - demonstrates savings on shared layers." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          # zstd:chunked CUDA
+          # zstd:chunked test
           podman system reset -f 2>/dev/null || true
-          echo "### zstd:chunked CUDA pull" >> $GITHUB_STEP_SUMMARY
+          podman pull "$ZSTD_CPU_C9S" --quiet
+          echo "### zstd:chunked: Pulling CUDA after CPU (with layer cache)" >> $GITHUB_STEP_SUMMARY
           START=$(date +%s.%N)
-          podman pull "$ZSTD_CUDA_UBI9" --quiet
+          podman pull "$ZSTD_CUDA_C9S" --quiet
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "- zstd:chunked CUDA (warm): **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+          
+          # gzip test
+          podman system reset -f 2>/dev/null || true
+          podman pull "$GZIP_CPU_C9S" --quiet
+          echo "### gzip: Pulling CUDA after CPU (with layer cache)" >> $GITHUB_STEP_SUMMARY
+          START=$(date +%s.%N)
+          podman pull "$GZIP_CUDA_C9S" --quiet
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "- gzip CUDA (warm): **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+
+      - name: Benchmark large image (CUDA ~10GB) - cold cache
+        continue-on-error: true
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Large Image Test (CUDA ~10GB) - Cold Cache" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if zstd:chunked CUDA image exists
+          if ! crane manifest "$ZSTD_CUDA_C9S" >/dev/null 2>&1; then
+            echo "⚠️ **zstd:chunked CUDA image not available** (convert-compression may have failed)" >> $GITHUB_STEP_SUMMARY
+            echo "Skipping CUDA benchmarks." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+          
+          # zstd:chunked CUDA - cold cache
+          podman system reset -f 2>/dev/null || true
+          echo "### zstd:chunked CUDA pull (cold)" >> $GITHUB_STEP_SUMMARY
+          START=$(date +%s.%N)
+          podman pull "$ZSTD_CUDA_C9S" --quiet
           END=$(date +%s.%N)
           DURATION=$(echo "$END - $START" | bc)
           echo "- Duration: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
           
-          # gzip CUDA
+          # gzip CUDA - cold cache
           podman system reset -f 2>/dev/null || true
-          echo "### gzip CUDA pull" >> $GITHUB_STEP_SUMMARY
+          echo "### gzip CUDA pull (cold)" >> $GITHUB_STEP_SUMMARY
           START=$(date +%s.%N)
-          podman pull "$GZIP_CUDA_UBI9" --quiet
+          podman pull "$GZIP_CUDA_C9S" --quiet
           END=$(date +%s.%N)
           DURATION=$(echo "$END - $START" | bc)
           echo "- Duration: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
 
-      - name: Benchmark build FROM image
+      - name: Benchmark build FROM image (cold cache)
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Build FROM Image Test" >> $GITHUB_STEP_SUMMARY
+          echo "## Build FROM Image Test (cold cache)" >> $GITHUB_STEP_SUMMARY
           echo "Build a simple image that installs cowsay on top of the base image." >> $GITHUB_STEP_SUMMARY
+          echo "Each build starts with a fresh podman cache (no pre-pulled layers)." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # Create test Dockerfile
@@ -186,20 +222,60 @@ jobs:
           RUN pip install --no-cache-dir cowsay && cowsay "Hello from zstd:chunked test!"
           DOCKERFILE
           
-          # Build from zstd:chunked base
+          # Build from zstd:chunked base (cold cache - no pre-pulled layers)
           podman system reset -f 2>/dev/null || true
-          echo "### Build FROM zstd:chunked base" >> $GITHUB_STEP_SUMMARY
+          echo "### Build FROM zstd:chunked base (cold cache)" >> $GITHUB_STEP_SUMMARY
           START=$(date +%s.%N)
           podman build -f /tmp/Dockerfile.test --build-arg BASE_IMAGE="$ZSTD_CPU_C9S" -t test-zstd:latest /tmp 2>&1 | tail -5
           END=$(date +%s.%N)
           DURATION=$(echo "$END - $START" | bc)
           echo "- Build time: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
           
-          # Build from gzip base
+          # Build from gzip base (cold cache - no pre-pulled layers)
           podman system reset -f 2>/dev/null || true
-          echo "### Build FROM gzip base" >> $GITHUB_STEP_SUMMARY
+          echo "### Build FROM gzip base (cold cache)" >> $GITHUB_STEP_SUMMARY
           START=$(date +%s.%N)
           podman build -f /tmp/Dockerfile.test --build-arg BASE_IMAGE="$GZIP_CPU_C9S" -t test-gzip:latest /tmp 2>&1 | tail -5
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "- Build time: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+
+      - name: Benchmark build FROM CUDA image (cold cache)
+        continue-on-error: true
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Build FROM CUDA Image Test (~10GB base, cold cache)" >> $GITHUB_STEP_SUMMARY
+          echo "Build a simple image with cowsay on top of the large CUDA base image." >> $GITHUB_STEP_SUMMARY
+          echo "Each build starts with a fresh podman cache (no pre-pulled layers)." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if zstd:chunked CUDA image exists
+          if ! crane manifest "$ZSTD_CUDA_C9S" >/dev/null 2>&1; then
+            echo "⚠️ **zstd:chunked CUDA image not available** - skipping CUDA build test" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+          
+          # Create test Dockerfile
+          cat > /tmp/Dockerfile.test << 'DOCKERFILE'
+          ARG BASE_IMAGE
+          FROM ${BASE_IMAGE}
+          RUN pip install --no-cache-dir cowsay && cowsay "Hello from CUDA test!"
+          DOCKERFILE
+          
+          # Build from zstd:chunked CUDA base (cold cache)
+          podman system reset -f 2>/dev/null || true
+          echo "### Build FROM zstd:chunked CUDA base (cold cache)" >> $GITHUB_STEP_SUMMARY
+          START=$(date +%s.%N)
+          podman build -f /tmp/Dockerfile.test --build-arg BASE_IMAGE="$ZSTD_CUDA_C9S" -t test-cuda-zstd:latest /tmp 2>&1 | tail -5
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "- Build time: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
+          
+          # Build from gzip CUDA base (cold cache)
+          podman system reset -f 2>/dev/null || true
+          echo "### Build FROM gzip CUDA base (cold cache)" >> $GITHUB_STEP_SUMMARY
+          START=$(date +%s.%N)
+          podman build -f /tmp/Dockerfile.test --build-arg BASE_IMAGE="$GZIP_CUDA_C9S" -t test-cuda-gzip:latest /tmp 2>&1 | tail -5
           END=$(date +%s.%N)
           DURATION=$(echo "$END - $START" | bc)
           echo "- Build time: **${DURATION}s**" >> $GITHUB_STEP_SUMMARY
