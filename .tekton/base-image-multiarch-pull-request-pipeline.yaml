@@ -17,7 +17,7 @@ spec:
   - name: show-sbom
     params:
     - name: IMAGE_URL
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.convert-compression.results.IMAGE_URL)
     taskRef:
       params:
       - name: name
