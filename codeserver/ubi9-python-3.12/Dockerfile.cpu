@@ -71,7 +71,7 @@ COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server/ ${CODESERVER_SOURCE_P
 # Apply patches so the image builds hermetically (aligned with Dockerfile.cpu.vath: release patches + rewrite script in place before release).
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/npm-postinstall.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/npm-postinstall.sh
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-release.sh
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-standalone-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-standalone-release.sh
+
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package.json
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package-lock.json
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/test/package-lock.json
@@ -122,20 +122,22 @@ RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh &
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     VERSION=${CODESERVER_VERSION/v/} npm run build:vscode --verbose
 
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
-    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm run release
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-standalone-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-standalone-release.sh
 
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
-    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm run release:standalone --loglevel silly
+# RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
+#     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
+#     npm run release
 
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    VERSION=${CODESERVER_VERSION/v/} npm run package && \
-    ls -alh release-packages/ && \
-    mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
+# RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
+#     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
+#     npm run release:standalone --loglevel silly
 
-RUN echo "done" > /tmp/control
+# RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+#     VERSION=${CODESERVER_VERSION/v/} npm run package && \
+#     ls -alh release-packages/ && \
+#     mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
+
+# RUN echo "done" > /tmp/control
 
 # #######################
 # # wheel caching stage #

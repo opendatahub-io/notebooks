@@ -14,9 +14,11 @@ main() {
   RELEASE_PATH+=-standalone
 
   # Use patched remote package.json and lockfile in release-standalone/lib/vscode
-  # so node-gyp is present for node-pty's postinstall (npx node-gyp) in offline builds.
+  # so node-gyp, proc-log, and tslib are present for offline npm ci (avoids ENOTCACHED on tslib@*).
   VSCODE_SRC_PATH="lib/vscode"
-  jq --slurp '.[0] * .[1]' \
+  # Merge package.json but merge dependencies from both: remote adds tslib, node-gyp, proc-log
+  # so the result has them; plain .[0]+.[1] would let release's dependencies overwrite and drop them.
+  jq --slurp '. as $in | ($in[0] + $in[1]) | .dependencies = (($in[0].dependencies // {}) + ($in[1].dependencies // {}))' \
     "$VSCODE_SRC_PATH/remote/package.json" \
     "$RELEASE_PATH/lib/vscode/package.json" > "$RELEASE_PATH/lib/vscode/package.json.merged"
   mv "$RELEASE_PATH/lib/vscode/package.json.merged" "$RELEASE_PATH/lib/vscode/package.json"
