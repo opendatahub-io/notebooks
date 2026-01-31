@@ -39,10 +39,11 @@ COPY scripts/lockfile-generators/local.repo /root/scripts/lockfile-generators/
 COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-generators/
 
 RUN ls -alh /etc/yum.repos.d/
-RUN rm -f /etc/yum.repos.d/*
-RUN dnf config-manager --add-repo file:///cachi2/output/deps/rpm/x86_64/
-RUN dnf repolist --all && cat /cachi2/cachi2.env && ls -alh /cachi2/output/deps/rpm/x86_64/ && ls -alh /etc/yum.repos.d/
 
+RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
+      rm -f /etc/yum.repos.d/* && \
+      dnf config-manager --add-repo file:///cachi2/output/deps/rpm/x86_64/; \
+    fi;
 
 # Update nodejs to 22 and install dependencies for code-server build
 RUN dnf install -y nodejs nodejs-devel npm
