@@ -399,6 +399,21 @@ spec:
             exit 0
           fi
 
+          # === Setup environment like Konflux buildah task ===
+          echo "[$(date --utc -Ins)] Setting up environment..."
+
+          # Fixing group permission on /var/lib/containers
+          chown root:root /var/lib/containers
+
+          # Setting new namespace to run buildah - 2^32-2
+          # This mirrors the Konflux buildah task setup
+          echo 'root:1:4294967294' | tee -a /etc/subuid >> /etc/subgid
+
+          # Show buildah info for debugging
+          echo "[$(date --utc -Ins)] Buildah version and info:"
+          buildah --version
+          buildah info | head -30
+
           # Strip tag from IMAGE_URL to get registry/repo format
           # Bug fix: buildah manifest inspect fails with "tag@digest" format (e.g. repo:tag@sha256:...)
           # but works correctly with "repo@digest" format. The tag@digest format causes buildah to
@@ -428,41 +443,106 @@ spec:
           if buildah manifest inspect "${IMAGE_REF}" > /dev/null 2>&1; then
             echo "Image is a manifest list"
 
-            # For manifest lists:
-            # 1. Create a local manifest list
-            # 2. Add all platforms from the remote manifest
-            # 3. Push with new compression
-            echo "[$(date --utc -Ins)] Creating local manifest list..."
-            buildah manifest create local-manifest-list
+            # For manifest lists, use unshare with user namespace like Konflux buildah task
+            # This mirrors the exact environment used during image builds
+            echo "[$(date --utc -Ins)] Running manifest conversion with unshare (like Konflux build)..."
 
-            echo "[$(date --utc -Ins)] Adding all platforms from remote manifest..."
-            buildah manifest add --all local-manifest-list "${IMAGE_REF}"
+            # Create the conversion script to run inside unshare
+            cat > /tmp/convert-manifest.sh << 'CONVERT_SCRIPT'
+          #!/bin/bash
+          set -Eeuxo pipefail
 
-            echo "[$(date --utc -Ins)] Pushing manifest list with compression: ${COMPRESSION_FORMAT}"
-            buildah manifest push "${PUSH_ARGS[@]}" \
-              --all \
-              --digestfile /tmp/new-digest \
-              local-manifest-list \
-              "docker://${IMAGE_URL}"
+          IMAGE_REF="$1"
+          IMAGE_URL="$2"
+          COMPRESSION_FORMAT="$3"
+          FORCE_COMPRESSION="$4"
 
-            # Cleanup (ignore errors - push already succeeded)
-            buildah manifest rm local-manifest-list || true
+          PUSH_ARGS=(--compression-format "${COMPRESSION_FORMAT}")
+          if [ "${FORCE_COMPRESSION}" = "true" ]; then
+            PUSH_ARGS+=(--force-compression)
+          fi
+
+          echo "[$(date --utc -Ins)] Creating local manifest list..."
+          buildah manifest create local-manifest-list
+
+          echo "[$(date --utc -Ins)] Adding all platforms from remote manifest..."
+          buildah manifest add --all local-manifest-list "${IMAGE_REF}"
+
+          echo "[$(date --utc -Ins)] Pushing manifest list with compression: ${COMPRESSION_FORMAT}"
+          buildah manifest push "${PUSH_ARGS[@]}" \
+            --all \
+            --digestfile /tmp/new-digest \
+            local-manifest-list \
+            "docker://${IMAGE_URL}"
+
+          # Cleanup (ignore errors - push already succeeded)
+          buildah manifest rm local-manifest-list || true
+          CONVERT_SCRIPT
+            chmod +x /tmp/convert-manifest.sh
+
+            # Run with unshare like Konflux buildah task does
+            unshare -Uf --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 --mount -- \
+              /tmp/convert-manifest.sh "${IMAGE_REF}" "${IMAGE_URL}" "${COMPRESSION_FORMAT}" "${FORCE_COMPRESSION}"
+
           else
             echo "Image is a single image"
 
-            # For single images, use regular buildah push
-            echo "[$(date --utc -Ins)] Pulling single image..."
-            buildah pull "${IMAGE_REF}"
+            # For single images, also use unshare for consistency
+            echo "[$(date --utc -Ins)] Running single image conversion with unshare..."
 
-            echo "[$(date --utc -Ins)] Pushing single image with compression: ${COMPRESSION_FORMAT}"
-            buildah push "${PUSH_ARGS[@]}" \
-              --digestfile /tmp/new-digest \
-              "${IMAGE_REF}" \
-              "docker://${IMAGE_URL}"
+            cat > /tmp/convert-single.sh << 'CONVERT_SCRIPT'
+          #!/bin/bash
+          set -Eeuxo pipefail
+
+          IMAGE_REF="$1"
+          IMAGE_URL="$2"
+          COMPRESSION_FORMAT="$3"
+          FORCE_COMPRESSION="$4"
+
+          PUSH_ARGS=(--compression-format "${COMPRESSION_FORMAT}")
+          if [ "${FORCE_COMPRESSION}" = "true" ]; then
+            PUSH_ARGS+=(--force-compression)
+          fi
+
+          echo "[$(date --utc -Ins)] Pulling single image..."
+          buildah pull "${IMAGE_REF}"
+
+          echo "[$(date --utc -Ins)] Pushing single image with compression: ${COMPRESSION_FORMAT}"
+          buildah push "${PUSH_ARGS[@]}" \
+            --digestfile /tmp/new-digest \
+            "${IMAGE_REF}" \
+            "docker://${IMAGE_URL}"
+          CONVERT_SCRIPT
+            chmod +x /tmp/convert-single.sh
+
+            unshare -Uf --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 --mount -- \
+              /tmp/convert-single.sh "${IMAGE_REF}" "${IMAGE_URL}" "${COMPRESSION_FORMAT}" "${FORCE_COMPRESSION}"
           fi
 
           NEW_DIGEST=$(cat /tmp/new-digest)
           echo "[$(date --utc -Ins)] New digest: ${NEW_DIGEST}"
+
+          # === DEBUG: Check permissions in the converted image ===
+          echo "[$(date --utc -Ins)] DEBUG: Checking permissions in converted image..."
+          NEW_IMAGE_REF="${IMAGE_BASE}@${NEW_DIGEST}"
+
+          # Pull the converted image and check permissions
+          buildah pull "${NEW_IMAGE_REF}" || echo "Warning: Could not pull converted image for permission check"
+          CONTAINER=$(buildah from "${NEW_IMAGE_REF}" 2>/dev/null) || echo "Warning: Could not create container"
+          if [ -n "${CONTAINER:-}" ]; then
+            MOUNTPOINT=$(buildah mount "${CONTAINER}" 2>/dev/null) || echo "Warning: Could not mount container"
+            if [ -n "${MOUNTPOINT:-}" ]; then
+              echo "[$(date --utc -Ins)] Permissions in converted image:"
+              stat -c '%a %n' "${MOUNTPOINT}/etc/pki" "${MOUNTPOINT}/etc/pki/tls" "${MOUNTPOINT}/etc/pki/tls/certs" 2>/dev/null || echo "Could not stat /etc/pki"
+
+              echo "[$(date --utc -Ins)] Checking for 000 permission directories in /etc..."
+              find "${MOUNTPOINT}/etc" -type d -perm 0000 2>/dev/null | head -20 || echo "No 000 permission dirs found"
+
+              buildah umount "${CONTAINER}" || true
+            fi
+            buildah rm "${CONTAINER}" || true
+          fi
+          echo "[$(date --utc -Ins)] DEBUG: Permission check complete"
 
           echo -n "${IMAGE_URL}" > "$(results.IMAGE_URL.path)"
           echo -n "${NEW_DIGEST}" > "$(results.IMAGE_DIGEST.path)"
