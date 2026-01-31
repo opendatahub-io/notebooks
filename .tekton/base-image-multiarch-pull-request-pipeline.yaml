@@ -340,7 +340,14 @@ spec:
           # Bug fix: buildah manifest inspect fails with "tag@digest" format (e.g. repo:tag@sha256:...)
           # but works correctly with "repo@digest" format. The tag@digest format causes buildah to
           # resolve the tag first (which may point to a single-arch manifest), ignoring the digest.
-          IMAGE_BASE="${IMAGE_URL%:*}"
+          # Note: We check the last path segment for a colon to distinguish tags from registry ports
+          # (e.g., registry.io:5000/repo has port, registry.io/repo:tag has tag)
+          IMAGE_NAME="${IMAGE_URL##*/}"
+          if [[ "${IMAGE_NAME}" == *:* ]]; then
+            IMAGE_BASE="${IMAGE_URL%:*}"
+          else
+            IMAGE_BASE="${IMAGE_URL}"
+          fi
           IMAGE_REF="${IMAGE_BASE}@${IMAGE_DIGEST}"
 
           # Build push arguments
