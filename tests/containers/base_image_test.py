@@ -16,7 +16,7 @@ import allure
 import pytest
 import testcontainers.core.container
 
-from tests.containers import docker_utils, utils
+from tests.containers import conftest, docker_utils, utils
 
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -261,9 +261,25 @@ class TestBaseImage:
     def test_python_package_index(self, image: str, subtests: pytest_subtests.SubTests):
         """Checks that we use the Python Package Index we mean to use.
         https://redhat-internal.slack.com/archives/C05TTTYG599/p1764240587118899?thread_ts=1764234802.564119&cid=C05TTTYG599
+
+        Images with uv.lock.d directory do not need these env vars since dependencies
+        are pinned with exact sources in the lockfile (RHAIENG-3056).
         """
 
-        expected_env = {
+        # Get image metadata to determine source directory
+        image_metadata = conftest.get_image_metadata(image)
+        source_location = image_metadata.labels.get("io.openshift.build.source-location", "")
+
+        # Extract relative path from URL (after /tree/main/)
+        source_dir = None
+        if "/tree/main/" in source_location:
+            source_dir = source_location.split("/tree/main/")[1]
+
+        # Check if uv.lock.d directory exists in source
+        workspace_root = pathlib.Path(__file__).parent.parent.parent
+        has_uv_lock_d = source_dir is not None and (workspace_root / source_dir / "uv.lock.d").is_dir()
+
+        pypi_env_vars = {
             "PIP_INDEX_URL": "https://pypi.org/simple",
             "UV_INDEX_URL": "https://pypi.org/simple",
             # https://docs.astral.sh/uv/reference/environment/#uv_default_index
@@ -272,16 +288,17 @@ class TestBaseImage:
 
         with self._test_container(image=image) as container:
             _, output = container.exec(["env"])
-            output = output.decode().strip()
+            actual = dict(line.split("=", maxsplit=1) for line in output.decode().strip().splitlines())
 
-            actual = {}
-            for line in output.splitlines():
-                key, value = line.split("=", maxsplit=1)
-                actual[key] = value
-
-            assert actual.items() >= expected_env.items(), (
-                "actual is not a superset of expected, we are missing some env variables"
-            )
+            if has_uv_lock_d:
+                # Images with uv.lock.d should NOT have these env vars
+                for key in pypi_env_vars:
+                    assert key not in actual, f"Expected {key} to NOT be present (image uses uv.lock.d)"
+            else:
+                # Images without uv.lock.d should have these env vars
+                assert actual.items() >= pypi_env_vars.items(), (
+                    "actual is not a superset of expected, we are missing some env variables"
+                )
 
 
 def encode_python_function_execution_command_interpreter(
