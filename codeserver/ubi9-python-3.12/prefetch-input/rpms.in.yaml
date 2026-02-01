@@ -15,7 +15,7 @@ context:
 
 arches:
   - x86_64
-  #- aarch64
+  - aarch64
 
 moduleEnable: [nodejs:22]
 
@@ -32,7 +32,7 @@ packages:
   - gcc-toolset-14-gcc-c++
   - gcc-toolset-14-gcc-gfortran
   - gcc-toolset-14-libatomic-devel
-  - gcc-toolset-14-libquadmath-devel
+  #- gcc-toolset-14-libquadmath-devel
   - gcc-toolset-14-libstdc++-devel
   - gcc-toolset-14-runtime
   - jansson
