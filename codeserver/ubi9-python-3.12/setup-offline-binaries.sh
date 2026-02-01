@@ -53,18 +53,19 @@ unzip -q "${HERMETO_OUTPUT}/deps/generic/chromium-1134-linux.zip" -d ~/.cache/ms
 touch ~/.cache/ms-playwright/chromium-1134/INSTALLATION_COMPLETE
 
 # Setup VSCode ripgrep - use the cache directory that @vscode/ripgrep expects
-# The cache directory is: <os.tmpdir()>/vscode-ripgrep-cache-<packageVersion>/
-# where packageVersion is the version from @vscode/ripgrep package.json
+# Prefetched in prefetch-input/artifacts.in.yaml; Cachi2 puts them in HERMETO_OUTPUT/deps/generic/.
+# Cache dir: <os.tmpdir()>/vscode-ripgrep-cache-<packageVersion>/ (see @vscode/ripgrep lib/download.js).
+# @vscode/ripgrep postinstall looks for: x64 = ripgrep-*-x86_64-unknown-linux-musl.tar.gz,
+#   arm64 = ripgrep-*-aarch64-unknown-linux-musl.tar.gz (musl name; we only prefetch gnu for aarch64).
 VSCODE_RIPGREP_VERSION="1.15.14"
 RIPGREP_CACHE_DIR="/tmp/vscode-ripgrep-cache-${VSCODE_RIPGREP_VERSION}"
 mkdir -p "${RIPGREP_CACHE_DIR}"
 
-# Copy both architecture tarballs to the cache with the exact name the package expects
-# Format: ripgrep-<version>-<target>.tar.gz (@vscode/ripgrep picks by arch at runtime)
 cp "${HERMETO_OUTPUT}/deps/generic/ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz" \
    "${RIPGREP_CACHE_DIR}/ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz"
+# aarch64: artifacts.in.yaml has -gnu only; package expects -musl filename, so copy gnu as musl name
 cp "${HERMETO_OUTPUT}/deps/generic/ripgrep-v13.0.0-13-aarch64-unknown-linux-gnu.tar.gz" \
-   "${RIPGREP_CACHE_DIR}/ripgrep-v13.0.0-13-aarch64-unknown-linux-gnu.tar.gz"
+   "${RIPGREP_CACHE_DIR}/ripgrep-v13.0.0-13-aarch64-unknown-linux-musl.tar.gz"
 
 echo "VSCode ripgrep cache populated at ${RIPGREP_CACHE_DIR}"
 
