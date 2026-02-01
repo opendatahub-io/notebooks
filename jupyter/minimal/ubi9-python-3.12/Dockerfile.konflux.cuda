@@ -9,15 +9,6 @@ ARG BASE_IMAGE
 # cuda-base        #
 ####################
 FROM ${BASE_IMAGE} AS cuda-base
-
-### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-ENV PIP_INDEX_URL=https://pypi.org/simple
-# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-ENV UV_INDEX_URL=https://pypi.org/simple
-# https://docs.astral.sh/uv/reference/environment/#uv_default_index
-ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-### END RHAIENG-2189: this is AIPCC migration phase 1.5
-
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
@@ -76,6 +67,7 @@ FROM cuda-base AS cuda-jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
 
 LABEL name="odh-notebook-jupyter-cuda-minimal-ubi9-python-3.12" \
     summary="Minimal Jupyter CUDA notebook image for ODH notebooks" \
@@ -101,7 +93,7 @@ ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 
 USER 1001
 
-COPY ${MINIMAL_SOURCE_CODE}/pylock.toml ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
+COPY ${MINIMAL_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 # Install Python dependencies from requirements.txt file
 RUN /bin/bash <<'EOF'
@@ -109,7 +101,7 @@ set -Eeuxo pipefail
 echo "Installing softwares and packages"
 # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
 #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.${PYLOCK_FLAVOR}.toml
 # Disable announcement plugin of jupyterlab
 jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
