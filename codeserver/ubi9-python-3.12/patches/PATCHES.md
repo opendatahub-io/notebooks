@@ -2,6 +2,8 @@
 
 This document explains **why** each file under `patches/code-server/` differs from the original in `prefetch-input/code-server/`, and what to keep when syncing from upstream.
 
+**Build install flow:** The Dockerfile uses `CI=1 npm ci --offline` at the root (not `npm install`). With `CI=1`, `ci/dev/postinstall.sh` runs `npm ci` in subdirs (test, lib/vscode); lib/vscode’s postinstall uses `npm_command` and runs `npm ci` in remote/, extensions/, etc. Because `npm ci` does not modify lockfiles, `resolved` URLs stay absolute (`file:///cachi2/...`) after the initial rewrite. No re-patch of package-lock.json after install is needed.
+
 ---
 
 ## 1. `ci/build-scripts/npm-postinstall.sh` → applied to `ci/build/npm-postinstall.sh`
@@ -58,10 +60,11 @@ This document explains **why** each file under `patches/code-server/` differs fr
 
 ---
 
-## Unnecessary / redundant patches
+## Unnecessary / redundant
 
-- **No patches removed.** The listed patches are all required for offline (Cachi2) build: npm-postinstall (npm ci --offline), build-release (rewrite URLs), build-standalone-release (inject patched remote + rewrite + patched postinstall), remote package.json (node-gyp, proc-log), remote package-lock.json (pinned tslib, node-gyp, proc-log with resolved URLs).
-- **Other files under `patches/code-server/`** (e.g. `ci/dev/postinstall.sh`, `lib-vscode/package.json`, extensions, build-vscode.sh, fetch.js, test/, s390x.patch) are used by the **full** Dockerfile (e.g. `Dockerfile.cpu`) for other build paths. They are outside the minimal set needed for the release-standalone + Cachi2 flow described above.
+- **No patches removed.** The listed patches are all required for offline (Cachi2) build.
+- **Removed (not a patch):** `fix-shrinkwrap-paths.sh` was removed; it was never run in the Dockerfile. Shrinkwrap path rewriting is done inside `build-release.sh` and `build-standalone-release.sh` via `rewrite_cachi2_path`.
+- **Other files under `patches/code-server/`** (e.g. `ci/dev/postinstall.sh`, `lib-vscode/package.json`, extensions, build-vscode.sh, fetch.js, test/, s390x.patch) are used by the **full** Dockerfile (e.g. `Dockerfile.cpu`) for other build paths. `ci/dev/postinstall.sh` is used so that when `CI=1`, `install-deps` runs `npm ci` in subdirs (test, lib/vscode), keeping lockfiles unchanged and resolved URLs absolute.
 
 ---
 

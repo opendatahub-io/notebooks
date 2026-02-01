@@ -14,35 +14,45 @@ FROM ${BASE_IMAGE} AS rpm-base
 # hadolint ignore=DL3002
 USER root
 WORKDIR /root
+ENV HOME=/root
 
 ARG ARCH
 ARG BASE_IMAGE
 ARG LOCAL_BUILD
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
-ARG CODESERVER_SOURCE_PREFETCH=${CODESERVER_SOURCE_CODE}/prefetch-input/code-server
+# CODESERVER_SOURCE_PREFETCH is provided by the base image (e.g. /root/codeserver/ubi9-python-3.12/prefetch-input/code-server).
 ARG NODE_VERSION=22.18.0
 ARG CODESERVER_VERSION=v4.104.0
 
-
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/npm-postinstall.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/npm-postinstall.sh
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-release.sh
+# Apply all patches needed for release + release:standalone (tslib/node-gyp/proc-log, npm ci --offline, rewrite).
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/npm-postinstall.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/npm-postinstall.sh
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-release.sh
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-standalone-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-standalone-release.sh
-
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package.json
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package-lock.json
-
-# Rewrite npm-shrinkwrap.json resolved URLs to file:///cachi2/ for offline install
-# (build-standalone-release.sh sources this and runs rewrite_cachi2_path on shrinkwrap files)
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package.json.new
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package-lock.json.new
 COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-generators/
+
+RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
+    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    npm run release
+
+RUN cat ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package-lock.json
 
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
     npm run release:standalone --loglevel silly
 
+RUN cat ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package-lock.json
+
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     VERSION=${CODESERVER_VERSION/v/} npm run package && \
     ls -alh release-packages/ && \
     mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
+
+RUN cat ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package-lock.json
+
+RUN echo "done" > /tmp/control
+
 
 
 # # Some distributions eg. CentOS requires GPG key import to verify packages

@@ -108,19 +108,44 @@ RUN cd ${CODESERVER_SOURCE_PREFETCH} && \
 
 COPY ${CODESERVER_SOURCE_CODE}/setup-offline-binaries.sh ${CODESERVER_SOURCE_CODE}/
 COPY ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/utils/
+# Use npm ci (not npm install) so lockfiles are never written: npm ci installs exactly from
+# package-lock.json and does not modify it. CI=1 makes ci/dev/postinstall.sh run "npm ci" in
+# subdirs (test, lib/vscode); lib/vscode's postinstall.js uses npm_command and runs "npm ci"
+# in remote/, extensions/, etc. So resolved URLs stay absolute (file:///cachi2/...).
 RUN --network=none cd ${CODESERVER_SOURCE_CODE} && \
     source ./setup-offline-binaries.sh && \
     source ./utils/codeserver-offline-env.sh && \
     cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm install --no-audit --offline
+    CI=1 npm ci --offline
 
-# Fix shrinkwrap paths ../ issue
-COPY ${CODESERVER_SOURCE_CODE}/fix-shrinkwrap-paths.sh .
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     npm run build
 
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     VERSION=${CODESERVER_VERSION/v/} npm run build:vscode --verbose
+
+
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-standalone-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-standalone-release.sh
+
+RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
+    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    npm run release
+
+RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && \
+    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    npm run release:standalone --loglevel silly
+
+RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    VERSION=${CODESERVER_VERSION/v/} npm run package && \
+    ls -alh release-packages/ && \
+    mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
+
+RUN echo "done" > /tmp/control
+
+
+
+
+
 
 # COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-standalone-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-standalone-release.sh
 
