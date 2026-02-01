@@ -141,300 +141,300 @@ RUN --network=none . ${CODESERVER_SOURCE_CODE}/utils/codeserver-offline-env.sh &
 
 RUN echo "done" > /tmp/control
 
-# #######################
-# # wheel caching stage #
-# #######################
-# FROM registry.access.redhat.com/ubi9/python-312:latest AS whl-cache
+#######################
+# wheel caching stage #
+#######################
+FROM registry.access.redhat.com/ubi9/python-312:latest AS whl-cache
 
-# # hadolint ignore=DL3002
-# USER root
-# WORKDIR /root
+# hadolint ignore=DL3002
+USER root
+WORKDIR /root
 
-# ENV HOME=/root
+ENV HOME=/root
 
-# ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 
-# # copy requirements and scripts
-# COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
-# COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
+# copy requirements and scripts
+COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
+COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
 
-# # This stage installs (builds) all the packages needed and caches it in uv-cache
-# # Important: Since HOME & USER for the python-312 has been changed,
-# #            we need to ensure the same cache directory is mounted in
-# #            the final stage with the necessary permissions to consume from cache
-# RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# pip install --no-cache-dir uv
-# # the devel script is ppc64le and s390x specific - sets up build-time dependencies
-# source ./devel_env_setup.sh
-# # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
-# #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-# UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
-# EOF
+# This stage installs (builds) all the packages needed and caches it in uv-cache
+# Important: Since HOME & USER for the python-312 has been changed,
+#            we need to ensure the same cache directory is mounted in
+#            the final stage with the necessary permissions to consume from cache
+RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
+set -Eeuxo pipefail
+pip install --no-cache-dir uv
+# the devel script is ppc64le and s390x specific - sets up build-time dependencies
+source ./devel_env_setup.sh
+# This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+#  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
+UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+EOF
 
-# # dummy file to make image build wait for this stage
-# RUN touch /tmp/control
+# dummy file to make image build wait for this stage
+RUN touch /tmp/control
 
-# ####################
-# # cpu-base         #
-# ####################
-# FROM ${BASE_IMAGE} AS cpu-base
+####################
+# cpu-base         #
+####################
+FROM ${BASE_IMAGE} AS cpu-base
 
-# WORKDIR /opt/app-root/bin
+WORKDIR /opt/app-root/bin
 
-# ### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-# ENV PIP_INDEX_URL=https://pypi.org/simple
-# # UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-# ENV UV_INDEX_URL=https://pypi.org/simple
-# # https://docs.astral.sh/uv/reference/environment/#uv_default_index
-# ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-# ### END RHAIENG-2189: this is AIPCC migration phase 1.5
+### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
+ENV PIP_INDEX_URL=https://pypi.org/simple
+# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
+ENV UV_INDEX_URL=https://pypi.org/simple
+# https://docs.astral.sh/uv/reference/environment/#uv_default_index
+ENV UV_DEFAULT_INDEX=https://pypi.org/simple
+### END RHAIENG-2189: this is AIPCC migration phase 1.5
 
-# # OS Packages needs to be installed as root
-# USER 0
+# OS Packages needs to be installed as root
+USER 0
 
-# # Update nodejs to 22
-# RUN node --version
-# RUN dnf module enable nodejs:22 -y
-# RUN dnf install -y nodejs nodejs-devel
-# RUN node --version
+# Update nodejs to 22
+RUN node --version
+RUN dnf module enable nodejs:22 -y
+RUN dnf install -y nodejs nodejs-devel
+RUN node --version
 
-# # Install useful OS packages
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# dnf install -y tar perl mesa-libGL skopeo
-# dnf clean all
-# rm -rf /var/cache/dnf
-# EOF
+# Install useful OS packages
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y tar perl mesa-libGL skopeo
+dnf clean all
+rm -rf /var/cache/dnf
+EOF
 
-# # (ARCH-ppc64le): since wheels are compiled from source, we need shared libs available at runtime
-# RUN --mount=type=cache,from=whl-cache,source=/root/OpenBLAS,target=/OpenBlas,rw /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# if [[ $(uname -m) == "ppc64le" ]]; then
-#     PREFIX=/usr/ make install -C /OpenBlas
-# fi
-# EOF
+# (ARCH-ppc64le): since wheels are compiled from source, we need shared libs available at runtime
+RUN --mount=type=cache,from=whl-cache,source=/root/OpenBLAS,target=/OpenBlas,rw /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [[ $(uname -m) == "ppc64le" ]]; then
+    PREFIX=/usr/ make install -C /OpenBlas
+fi
+EOF
 
-# # Other apps and tools installed as default user
-# USER 1001
+# Other apps and tools installed as default user
+USER 1001
 
-# ### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
-# RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.9.6"
-# ### END Install micropipenv and uv to deploy packages from requirements.txt
+### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
+RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.9.6"
+### END Install micropipenv and uv to deploy packages from requirements.txt
 
-# ### BEGIN Install the oc client
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
-#     -o /tmp/openshift-client-linux.tar.gz
-# tar -xzvf /tmp/openshift-client-linux.tar.gz oc
-# rm -f /tmp/openshift-client-linux.tar.gz
-# EOF
+### BEGIN Install the oc client
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+    -o /tmp/openshift-client-linux.tar.gz
+tar -xzvf /tmp/openshift-client-linux.tar.gz oc
+rm -f /tmp/openshift-client-linux.tar.gz
+EOF
 
-# ### END Install the oc client
+### END Install the oc client
 
-# ####################
-# # codeserver       #
-# ####################
-# FROM cpu-base AS codeserver
+####################
+# codeserver       #
+####################
+FROM cpu-base AS codeserver
 
-# ARG TARGETOS
-# ARG TARGETARCH
+ARG TARGETOS
+ARG TARGETARCH
 
-# ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
-# ARG CODESERVER_VERSION=v4.104.0
+ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+ARG CODESERVER_VERSION=v4.104.0
 
-# LABEL name="odh-notebook-code-server-ubi9-python-3.12" \
-#       summary="code-server image with python 3.12 based on UBI 9" \
-#       description="code-server image with python 3.12 based on UBI9" \
-#       io.k8s.display-name="code-server image with python 3.12 based on UBI9" \
-#       io.k8s.description="code-server image with python 3.12 based on UBI9" \
-#       authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-#       io.openshift.build.commit.ref="main" \
-#       io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/codeserver/ubi9-python-3.12" \
-#       io.openshift.build.image="quay.io/opendatahub/workbench-images:codeserver-ubi9-python-3.12"
+LABEL name="odh-notebook-code-server-ubi9-python-3.12" \
+      summary="code-server image with python 3.12 based on UBI 9" \
+      description="code-server image with python 3.12 based on UBI9" \
+      io.k8s.display-name="code-server image with python 3.12 based on UBI9" \
+      io.k8s.description="code-server image with python 3.12 based on UBI9" \
+      authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+      io.openshift.build.commit.ref="main" \
+      io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/codeserver/ubi9-python-3.12" \
+      io.openshift.build.image="quay.io/opendatahub/workbench-images:codeserver-ubi9-python-3.12"
 
-# USER 0
+USER 0
 
-# WORKDIR /opt/app-root/bin
+WORKDIR /opt/app-root/bin
 
-# # Install useful OS packages
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# PACKAGES=(
-#     jq git-lfs libsndfile
-#     # provides envsubst which is required by run-nginx.sh
-#     gettext
-# )
-# dnf install -y "${PACKAGES[@]}"
-# dnf clean all
-# rm -rf /var/cache/dnf
-# EOF
+# Install useful OS packages
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+PACKAGES=(
+    jq git-lfs libsndfile
+    # provides envsubst which is required by run-nginx.sh
+    gettext
+)
+dnf install -y "${PACKAGES[@]}"
+dnf clean all
+rm -rf /var/cache/dnf
+EOF
 
-# # wait for rpm-base stage (rpm builds for ppc64le and s390x)
-# COPY --from=rpm-base /tmp/control /dev/null
+# wait for rpm-base stage (rpm builds for ppc64le and s390x)
+COPY --from=rpm-base /tmp/control /dev/null
 
-# # Install code-server
-# # Note: Use cache mounts, bind mounts fail on konflux
-# # https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1755628065772589?thread_ts=1755597929.335999&cid=C04PZ7H0VA8
-# RUN --mount=type=cache,from=rpm-base,source=/tmp/,target=/code-server-rpm/,rw /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# # EXPLANATION: dnf installation produces an "unsigned rpm" error from Konflux (Conforma)
-# #  since we're building rpm from source, we will simply unpack it over /
-# # dnf install -y "/code-server-rpm/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm"
-# # dnf -y clean all --enablerepo='*'
-# dnf install -y cpio
-# dnf -y clean all
-# cd /
-# rpm2cpio "/code-server-rpm/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm" | cpio -idmv
-# EOF
-
-# COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/utils utils/
-
-# # Create and intall the extensions though build-time on a temporary directory. Later this directory will copied on the `/opt/app-root/src/.local/share/code-server/extensions` via run-code-server.sh file when it starts up.
-# # https://coder.com/docs/code-server/FAQ#how-do-i-install-an-extension
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# mkdir -p /opt/app-root/extensions-temp
-# code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2025.14.0.vsix --extensions-dir /opt/app-root/extensions-temp
-# code-server --install-extension /opt/app-root/bin/utils/ms-toolsai.jupyter-2025.8.0.vsix --extensions-dir /opt/app-root/extensions-temp
-# EOF
-
-# # Install NGINX to proxy code-server and pass probes check
-# ENV APP_ROOT=/opt/app-root
-
-# ENV NGINX_VERSION=1.24 \
-#     NGINX_SHORT_VER=124 \
-#     NGINX_CONF_PATH=/etc/nginx/nginx.conf \
-#     NGINX_CONTAINER_SCRIPTS_PATH=/usr/share/container-scripts/nginx \
-#     NGINX_LOG_PATH=/var/log/nginx
-
-# ENV NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
-#     NGINX_DEFAULT_CONF_PATH=${APP_ROOT}/etc/nginx.default.d \
-#     NGINX_APP_ROOT=${APP_ROOT} \
-#     NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
-
-# # Modules does not exist
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# INSTALL_PKGS="bind-utils nginx nginx-mod-stream nginx-mod-http-perl httpd"
-# dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
-# rpm -V $INSTALL_PKGS
+# Install code-server
+# Note: Use cache mounts, bind mounts fail on konflux
+# https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1755628065772589?thread_ts=1755597929.335999&cid=C04PZ7H0VA8
+RUN --mount=type=cache,from=rpm-base,source=/tmp/,target=/code-server-rpm/,rw /bin/bash <<'EOF'
+set -Eeuxo pipefail
+# EXPLANATION: dnf installation produces an "unsigned rpm" error from Konflux (Conforma)
+#  since we're building rpm from source, we will simply unpack it over /
+# dnf install -y "/code-server-rpm/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm"
 # dnf -y clean all --enablerepo='*'
-# EOF
+dnf install -y cpio
+dnf -y clean all
+cd /
+rpm2cpio "/code-server-rpm/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm" | cpio -idmv
+EOF
 
-# # Configure httpd for CGI processing
-# COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/httpd/httpd.conf /etc/httpd/conf/httpd.conf
-# COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/httpd/codeserver-cgi.conf /etc/httpd/conf.d/codeserver-cgi.conf
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/utils utils/
 
-# # Copy extra files to the image.
-# COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/nginx/root/ /
+# Create and intall the extensions though build-time on a temporary directory. Later this directory will copied on the `/opt/app-root/src/.local/share/code-server/extensions` via run-code-server.sh file when it starts up.
+# https://coder.com/docs/code-server/FAQ#how-do-i-install-an-extension
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+mkdir -p /opt/app-root/extensions-temp
+code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2025.14.0.vsix --extensions-dir /opt/app-root/extensions-temp
+code-server --install-extension /opt/app-root/bin/utils/ms-toolsai.jupyter-2025.8.0.vsix --extensions-dir /opt/app-root/extensions-temp
+EOF
 
-# ## Configure nginx
-# COPY ${CODESERVER_SOURCE_CODE}/nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
-# COPY ${CODESERVER_SOURCE_CODE}/nginx/httpconf/ /opt/app-root/etc/nginx.d/
-# COPY ${CODESERVER_SOURCE_CODE}/nginx/api/ /opt/app-root/api/
+# Install NGINX to proxy code-server and pass probes check
+ENV APP_ROOT=/opt/app-root
 
-# # Changing ownership and user rights to support following use-cases:
-# # 1) running container on OpenShift, whose default security model
-# #    is to run the container under random UID, but GID=0
-# # 2) for working root-less container with UID=1001, which does not have
-# #    to have GID=0
-# # 3) for default use-case, that is running container directly on operating system,
-# #    with default UID and GID (1001:0)
-# # Supported combinations of UID:GID are thus following:
-# # UID=1001 && GID=0
-# # UID=<any>&& GID=0
-# # UID=1001 && GID=<any>
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH}
-# mkdir -p ${NGINX_APP_ROOT}/etc/nginx.d/
-# mkdir -p ${NGINX_APP_ROOT}/etc/nginx.default.d/
-# mkdir -p ${NGINX_APP_ROOT}/api/
-# mkdir -p ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
-# mkdir -p ${NGINX_LOG_PATH}
-# mkdir -p ${NGINX_PERL_MODULE_PATH}
-# # Create httpd directories and set permissions
-# mkdir -p /var/log/httpd /var/run/httpd /etc/httpd/logs
-# chown -R 1001:0 ${NGINX_CONF_PATH}
-# chown -R 1001:0 ${NGINX_APP_ROOT}/etc
-# chown -R 1001:0 ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
-# chown -R 1001:0 /var/lib/nginx /var/log/nginx /run
-# chown -R 1001:0 /var/log/httpd /var/run/httpd /etc/httpd/logs
-# chmod    ug+rw  ${NGINX_CONF_PATH}
-# chmod -R ug+rwX ${NGINX_APP_ROOT}/etc
-# chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
-# chmod -R ug+rwX /var/lib/nginx /var/log/nginx /run
-# chmod -R ug+rwX /var/log/httpd /var/run/httpd /etc/httpd/logs
-# # Make CGI script executable
-# chmod +x /opt/app-root/api/kernels/access.cgi
-# rpm-file-permissions
-# # Ensure the temporary directory and target directory have the correct permissions
-# mkdir -p /opt/app-root/src/.local/share/code-server/extensions
-# mkdir -p /opt/app-root/src/.local/share/code-server/coder-logs
-# chown -R 1001:0 /opt/app-root/src/.local/share/code-server
-# chown -R 1001:0 /opt/app-root/extensions-temp
-# chown -R 1001:0 /opt/app-root/src/.config/code-server
-# EOF
+ENV NGINX_VERSION=1.24 \
+    NGINX_SHORT_VER=124 \
+    NGINX_CONF_PATH=/etc/nginx/nginx.conf \
+    NGINX_CONTAINER_SCRIPTS_PATH=/usr/share/container-scripts/nginx \
+    NGINX_LOG_PATH=/var/log/nginx
 
-# # Launcher
-# COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/run-code-server.sh ${CODESERVER_SOURCE_CODE}/run-nginx.sh ./
+ENV NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
+    NGINX_DEFAULT_CONF_PATH=${APP_ROOT}/etc/nginx.default.d \
+    NGINX_APP_ROOT=${APP_ROOT} \
+    NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
 
-# ENV SHELL=/bin/bash
+# Modules does not exist
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+INSTALL_PKGS="bind-utils nginx nginx-mod-stream nginx-mod-http-perl httpd"
+dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
+rpm -V $INSTALL_PKGS
+dnf -y clean all --enablerepo='*'
+EOF
 
-# ENV PYTHONPATH=/opt/app-root/bin/python3
+# Configure httpd for CGI processing
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/httpd/httpd.conf /etc/httpd/conf/httpd.conf
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/httpd/codeserver-cgi.conf /etc/httpd/conf.d/codeserver-cgi.conf
 
-# # Install useful packages from requirements.txt
-# COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
+# Copy extra files to the image.
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/nginx/root/ /
 
-# # wait for whl-cache stage (builds uv cache)
-# COPY --from=whl-cache /tmp/control /dev/null
+## Configure nginx
+COPY ${CODESERVER_SOURCE_CODE}/nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
+COPY ${CODESERVER_SOURCE_CODE}/nginx/httpconf/ /opt/app-root/etc/nginx.d/
+COPY ${CODESERVER_SOURCE_CODE}/nginx/api/ /opt/app-root/api/
 
-# # Install packages and cleanup
-# # (ARCH-ppc64le): install packages (eg. pyarrow) that need to be built from source repository on ppc64le
-# RUN --mount=type=cache,target=/root/.cache/uv \
-#     --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
-#     UV_NO_CACHE=false uv pip install /wheelsdir/*.whl
-# fi
-# EOF
+# Changing ownership and user rights to support following use-cases:
+# 1) running container on OpenShift, whose default security model
+#    is to run the container under random UID, but GID=0
+# 2) for working root-less container with UID=1001, which does not have
+#    to have GID=0
+# 3) for default use-case, that is running container directly on operating system,
+#    with default UID and GID (1001:0)
+# Supported combinations of UID:GID are thus following:
+# UID=1001 && GID=0
+# UID=<any>&& GID=0
+# UID=1001 && GID=<any>
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH}
+mkdir -p ${NGINX_APP_ROOT}/etc/nginx.d/
+mkdir -p ${NGINX_APP_ROOT}/etc/nginx.default.d/
+mkdir -p ${NGINX_APP_ROOT}/api/
+mkdir -p ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
+mkdir -p ${NGINX_LOG_PATH}
+mkdir -p ${NGINX_PERL_MODULE_PATH}
+# Create httpd directories and set permissions
+mkdir -p /var/log/httpd /var/run/httpd /etc/httpd/logs
+chown -R 1001:0 ${NGINX_CONF_PATH}
+chown -R 1001:0 ${NGINX_APP_ROOT}/etc
+chown -R 1001:0 ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
+chown -R 1001:0 /var/lib/nginx /var/log/nginx /run
+chown -R 1001:0 /var/log/httpd /var/run/httpd /etc/httpd/logs
+chmod    ug+rw  ${NGINX_CONF_PATH}
+chmod -R ug+rwX ${NGINX_APP_ROOT}/etc
+chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
+chmod -R ug+rwX /var/lib/nginx /var/log/nginx /run
+chmod -R ug+rwX /var/log/httpd /var/run/httpd /etc/httpd/logs
+# Make CGI script executable
+chmod +x /opt/app-root/api/kernels/access.cgi
+rpm-file-permissions
+# Ensure the temporary directory and target directory have the correct permissions
+mkdir -p /opt/app-root/src/.local/share/code-server/extensions
+mkdir -p /opt/app-root/src/.local/share/code-server/coder-logs
+chown -R 1001:0 /opt/app-root/src/.local/share/code-server
+chown -R 1001:0 /opt/app-root/extensions-temp
+chown -R 1001:0 /opt/app-root/src/.config/code-server
+EOF
 
-# # install packages as USER 0 (this will allow us to consume uv cache)
-# RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# echo "Installing softwares and packages"
-# # we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
-# UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --cache-dir /root/.cache/uv --requirements=./pylock.toml
-# # Note: debugpy wheel available on pypi (in uv cache) is none-any but bundles amd64.so files
-# #       Build debugpy from source instead
-# UV_LINK_MODE=copy uv pip install --no-cache git+https://github.com/microsoft/debugpy.git@v$(grep -A1 '\"debugpy\"' ./pylock.toml | grep -Eo '\b[0-9\.]+\b')
-# # change ownership to default user (all packages were installed as root and has root:root ownership
-# chown -R 1001:0 /opt/app-root
-# EOF
+# Launcher
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/run-code-server.sh ${CODESERVER_SOURCE_CODE}/run-nginx.sh ./
 
-# USER 1001
+ENV SHELL=/bin/bash
 
-# # Fix permissions to support pip in Openshift environments
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# chmod -R g+w /opt/app-root/lib/python3.12/site-packages
-# fix-permissions /opt/app-root -P
-# EOF
+ENV PYTHONPATH=/opt/app-root/bin/python3
 
-# WORKDIR /opt/app-root/src
+# Install useful packages from requirements.txt
+COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
 
-# CMD ["/opt/app-root/bin/run-code-server.sh"]
+# wait for whl-cache stage (builds uv cache)
+COPY --from=whl-cache /tmp/control /dev/null
 
-# FROM codeserver as tests
-# ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
-# COPY ${CODESERVER_SOURCE_CODE}/test /tmp/test
-# # TODO(jdanek): add --mount=type=bind,target=/opt/app-root/src
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# python3 /tmp/test/test_startup.py 2>&1 | tee /tmp/test_log.txt
-# EOF
+# Install packages and cleanup
+# (ARCH-ppc64le): install packages (eg. pyarrow) that need to be built from source repository on ppc64le
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
+    UV_NO_CACHE=false uv pip install /wheelsdir/*.whl
+fi
+EOF
 
-# FROM codeserver
-# COPY --from=tests /tmp/test_log.txt /tmp/test_log.txt
+# install packages as USER 0 (this will allow us to consume uv cache)
+RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
+set -Eeuxo pipefail
+echo "Installing softwares and packages"
+# we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
+UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --cache-dir /root/.cache/uv --requirements=./pylock.toml
+# Note: debugpy wheel available on pypi (in uv cache) is none-any but bundles amd64.so files
+#       Build debugpy from source instead
+UV_LINK_MODE=copy uv pip install --no-cache git+https://github.com/microsoft/debugpy.git@v$(grep -A1 '\"debugpy\"' ./pylock.toml | grep -Eo '\b[0-9\.]+\b')
+# change ownership to default user (all packages were installed as root and has root:root ownership
+chown -R 1001:0 /opt/app-root
+EOF
+
+USER 1001
+
+# Fix permissions to support pip in Openshift environments
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+chmod -R g+w /opt/app-root/lib/python3.12/site-packages
+fix-permissions /opt/app-root -P
+EOF
+
+WORKDIR /opt/app-root/src
+
+CMD ["/opt/app-root/bin/run-code-server.sh"]
+
+FROM codeserver as tests
+ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+COPY ${CODESERVER_SOURCE_CODE}/test /tmp/test
+# TODO(jdanek): add --mount=type=bind,target=/opt/app-root/src
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+python3 /tmp/test/test_startup.py 2>&1 | tee /tmp/test_log.txt
+EOF
+
+FROM codeserver
+COPY --from=tests /tmp/test_log.txt /tmp/test_log.txt
