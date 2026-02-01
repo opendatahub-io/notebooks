@@ -86,8 +86,9 @@ EOF
 RUN ldconfig
 
 # Runtime dependencies for PyTorch packages (libmpi_cxx.so, libqhull_r.so, libsnappy.so)
-# libqhull is in CRB (Code Ready Builder) repo
-RUN dnf config-manager --set-enabled crb && \
+# libqhull_r is in CRB (Code Ready Builder) repo
+RUN dnf -y install dnf-plugins-core && \
+    dnf config-manager --set-enabled crb && \
     dnf -y install \
     openmpi \
     libqhull_r \
