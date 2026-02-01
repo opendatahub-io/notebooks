@@ -8,14 +8,6 @@ ARG BASE_IMAGE
 ####################
 FROM ${BASE_IMAGE} AS rocm-base
 
-### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-ENV PIP_INDEX_URL=https://pypi.org/simple
-# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-ENV UV_INDEX_URL=https://pypi.org/simple
-# https://docs.astral.sh/uv/reference/environment/#uv_default_index
-ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-### END RHAIENG-2189: this is AIPCC migration phase 1.5
-
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
