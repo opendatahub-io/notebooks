@@ -139,15 +139,9 @@ RUN dnf -y install \
     && rm -rf /var/cache/yum/*
 
 # Runtime dependencies for PyTorch packages (libmpi_cxx.so, libqhull_r.so, libsnappy.so)
-# These packages are not in UBI9 base repos, add EPEL temporarily
-RUN dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
-    dnf -y install \
-    openmpi \
-    qhull \
-    snappy \
-    && dnf -y remove epel-release \
-    && dnf clean all \
-    && rm -rf /var/cache/yum/*
+# These packages (openmpi, libqhull_r, snappy) are not available in UBI9 repos without
+# RHEL entitlements. Adding CentOS Stream 9 repos would work but mixing distro repos
+# is not a good practice to promote. The c9s variant of this image has these installed.
 
 # Restore user workspace
 USER 1001
