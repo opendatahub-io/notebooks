@@ -14,23 +14,15 @@ dependencies = [
     "lm-eval~=0.4.9",
 
     # Datascience and useful extensions
-    "boto3~=1.40.52",
-    "kafka-python-ng~=2.2.3",
-    "matplotlib~=3.10.7",
-    "numpy~=2.3.5",
-    "pandas~=2.3.3",
-    "plotly~=6.3.1",
-    "scikit-learn~=1.7.2",
-    "scipy~=1.16.2",
-    "skl2onnx~=1.19.1",
-    "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
-    "feast~=0.59.0",
+    # TODO(RHAIENG-3041): Upgrade feast to ~=0.59.0 before RHOAI 3.4 GA
+    "feast~=0.58.0",
+    "odh-notebooks-meta-runtime-datascience-deps",
 
     # DB connectors
     "pymongo~=4.15.3",
-    "psycopg~=3.2.10",
-    "pyodbc~=5.2.0",
-    "mysql-connector-python~=9.4.0",
+    "psycopg~=3.3.2",
+    "pyodbc~=5.3.0",
+    "mysql-connector-python~=9.5.0",
 
     "odh-notebooks-meta-runtime-elyra-deps",
 
@@ -45,6 +37,7 @@ torchvision = { index = "pytorch-cuda" }
 # https://github.com/astral-sh/uv/issues/13067#issuecomment-2824190008
 odh-notebooks-meta-llmcompressor-deps = { path = "../../../dependencies/odh-notebooks-meta-llmcompressor-deps" }
 odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }
+odh-notebooks-meta-runtime-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-datascience-deps" }
 
 [[tool.uv.index]]
 name = "pytorch-cuda"

@@ -24,6 +24,8 @@ spec:
             {"name": "Python", "version": "v3.12"},
             {"name": "TensorFlow-ROCm", "version": "2.18"}
           ]
+        # TODO(RHAIENG-3039): Re-enable Codeflare-SDK before RHOAI 3.4 GA
+        # {"name": "Codeflare-SDK", "version": "0.34"}
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
@@ -34,15 +36,14 @@ spec:
             {"name": "Matplotlib", "version": "3.10"},
             {"name": "Numpy", "version": "1.26"},
             {"name": "Pandas", "version": "2.3"},
-            {"name": "Scikit-learn", "version": "1.7"},
+            {"name": "Scikit-learn", "version": "1.8"},
             {"name": "Scipy", "version": "1.16"},
             {"name": "Odh-Elyra", "version": "4.3"},
             {"name": "PyMongo", "version": "4.15"},
-            {"name": "Pyodbc", "version": "5.2"},
-            {"name": "Codeflare-SDK", "version": "0.34"},
+            {"name": "Pyodbc", "version": "5.3"},
             {"name": "Sklearn-onnx", "version": "1.19"},
-            {"name": "Psycopg", "version": "3.2"},
-            {"name": "MySQL Connector/Python", "version": "9.4"}
+            {"name": "Psycopg", "version": "3.3"},
+            {"name": "MySQL Connector/Python", "version": "9.5"}
           ]
         openshift.io/imported-from: quay.io/modh/rocm-notebooks
         opendatahub.io/workbench-image-recommended: 'true'

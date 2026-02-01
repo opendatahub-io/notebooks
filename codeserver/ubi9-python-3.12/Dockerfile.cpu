@@ -57,9 +57,10 @@ WORKDIR /root
 ENV HOME=/root
 
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
 
 # copy requirements and scripts
-COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
+COPY ${CODESERVER_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
 
 # This stage installs (builds) all the packages needed and caches it in uv-cache
@@ -85,14 +86,6 @@ RUN touch /tmp/control
 FROM ${BASE_IMAGE} AS cpu-base
 
 WORKDIR /opt/app-root/bin
-
-### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-ENV PIP_INDEX_URL=https://pypi.org/simple
-# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-ENV UV_INDEX_URL=https://pypi.org/simple
-# https://docs.astral.sh/uv/reference/environment/#uv_default_index
-ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-### END RHAIENG-2189: this is AIPCC migration phase 1.5
 
 # OS Packages needs to be installed as root
 USER 0
@@ -161,6 +154,7 @@ ARG TARGETARCH
 
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 ARG CODESERVER_VERSION=v4.104.0
+ARG PYLOCK_FLAVOR
 
 LABEL name="odh-notebook-code-server-ubi9-python-3.12" \
       summary="code-server image with python 3.12 based on UBI 9" \
@@ -303,8 +297,8 @@ ENV SHELL=/bin/bash
 
 ENV PYTHONPATH=/opt/app-root/bin/python3
 
-# Install useful packages from requirements.txt
-COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
+# Install useful packages from pylock file
+COPY ${CODESERVER_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
 # wait for whl-cache stage (builds uv cache)
 COPY --from=whl-cache /tmp/control /dev/null

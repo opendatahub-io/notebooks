@@ -28,26 +28,18 @@ dependencies = [
     "datasets~=4.4.1",
     "accelerate~=1.12.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
     "trustyai~=0.6.3",
+
     # Datascience and useful extensions
-    "boto3~=1.40.52",
-    "kafka-python-ng~=2.2.3",
-    "kfp~=2.14.6",
-    "matplotlib~=3.10.7", # Should be pinned down to this version in order to be compatible with trustyai < 0.6.3
-    "numpy~=2.3.5", # Should be pinned down to this version in order to be compatible with trustyai < 0.6.3
-    "pandas~=2.3.3",
-    "plotly~=6.3.1",
-    "scikit-learn~=1.7.2", # Should be pinned down to this version in order to be compatible with trustyai < 0.6.3
-    "scipy~=1.16.2",
-    "skl2onnx~=1.19.1",
-    "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
+    # TODO(RHAIENG-3039): Re-enable codeflare-sdk before RHOAI 3.4 GA
     "codeflare-sdk~=0.34.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    "kubeflow-training==1.9.3",
+    "skl2onnx~=1.19.1",
+    "odh-notebooks-meta-workbench-datascience-deps",
 
     # DB connectors
     "pymongo~=4.15.3",
-    "psycopg~=3.2.10",
-    "pyodbc~=5.2.0",
-    "mysql-connector-python~=9.4.0",
+    "psycopg~=3.3.2",
+    "pyodbc~=5.3.0",
+    "mysql-connector-python~=9.5.0",
 
     # JupyterLab packages
     "odh-elyra==4.3.2",
@@ -78,11 +70,16 @@ override-dependencies = [
     # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
     # Upstream: https://github.com/elyra-ai/elyra/issues/3325
     "urllib3>=2.6.0",
+    # AIPCC-8698: python-lsp-server[all] has conflicting pyflakes/pycodestyle requirements
+    # Using >= instead of ~= to allow broader compatibility during resolution
+    # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
+    "python-lsp-server>=1.11.0",
 ]
 
 [tool.uv.sources]
 torch = { index = "pytorch-cuda" }
 triton = { index = "pytorch-cuda" }
+odh-notebooks-meta-workbench-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
 
 [[tool.uv.index]]
 name = "pytorch-cuda"
