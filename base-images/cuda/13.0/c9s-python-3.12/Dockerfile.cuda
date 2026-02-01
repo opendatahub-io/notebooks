@@ -141,6 +141,15 @@ RUN dnf -y install \
     libcudss0-cuda-12 \
     && dnf -y clean all --enablerepo="*"
 
+# Runtime dependencies for PyTorch packages (libmpi_cxx.so, libqhull_r.so, libsnappy.so)
+# qhull is in CRB (Code Ready Builder) repo
+RUN dnf config-manager --set-enabled crb && \
+    dnf -y install \
+    openmpi \
+    qhull \
+    snappy \
+    && dnf -y clean all --enablerepo="*"
+
 # Restore user workspace
 USER 1001
 WORKDIR /opt/app-root/src

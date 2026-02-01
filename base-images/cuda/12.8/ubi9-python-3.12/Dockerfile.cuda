@@ -138,6 +138,17 @@ RUN dnf -y install \
     && dnf clean all \
     && rm -rf /var/cache/yum/*
 
+# Runtime dependencies for PyTorch packages (libmpi_cxx.so, libqhull_r.so, libsnappy.so)
+# These packages are not in UBI9 base repos, add EPEL temporarily
+RUN dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+    dnf -y install \
+    openmpi \
+    qhull \
+    snappy \
+    && dnf -y remove epel-release \
+    && dnf clean all \
+    && rm -rf /var/cache/yum/*
+
 # Restore user workspace
 USER 1001
 WORKDIR /opt/app-root/src
