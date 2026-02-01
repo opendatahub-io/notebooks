@@ -131,6 +131,16 @@ ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 RUN dnf -y install cuda-toolkit-13-0 && \
     dnf -y clean all --enablerepo="*"
 
+# Install additional CUDA libraries needed by PyTorch
+# cuda-cupti: CUDA Profiling Tools Interface (libcupti.so)
+# libcusparselt0: cuSPARSELt for structured sparsity (libcusparseLt.so)
+# libcudss0-cuda-12: cuDSS direct sparse solver (libcudss.so)
+RUN dnf -y install \
+    cuda-cupti-13-0 \
+    libcusparselt0 \
+    libcudss0-cuda-12 \
+    && dnf -y clean all --enablerepo="*"
+
 # Restore user workspace
 USER 1001
 WORKDIR /opt/app-root/src
