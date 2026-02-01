@@ -38,7 +38,6 @@ function fetchUrls(urls, options) {
     }));
 }
 async function fetchUrl(url, options, retries = 10, retryDelay = 1000) {
-    // OFFLINE MODE: Check for local Node.js binaries (patched for notebooks offline build)
     const offlineDir = process.env.VSCODE_OFFLINE_CACHE;
     if (offlineDir && fs_1.default.existsSync(offlineDir)) {
         const filename = url.split('/').pop();

@@ -2,7 +2,7 @@
 
 This document explains **why** each file under `patches/code-server/` differs from the original in `prefetch-input/code-server/`, and what to keep when syncing from upstream.
 
-**Build install flow:** The Dockerfile uses `CI=1 npm ci --offline` at the root (not `npm install`). With `CI=1`, `ci/dev/postinstall.sh` runs `npm ci` in subdirs (test, lib/vscode); lib/vscode’s postinstall uses `npm_command` and runs `npm ci` in remote/, extensions/, etc. Because `npm ci` does not modify lockfiles, `resolved` URLs stay absolute (`file:///cachi2/...`) after the initial rewrite. No re-patch of package-lock.json after install is needed.
+**Build install flow:** The Dockerfile uses `CI=1 npm ci --offline` at the root (not `npm install`). The **prefetch** `ci/dev/postinstall.sh` already uses `CI` to run `npm ci` in subdirs (test, lib/vscode); lib/vscode’s postinstall uses `npm_command` and runs `npm ci` in remote/, extensions/, etc. Because `npm ci` does not modify lockfiles, `resolved` URLs stay absolute (`file:///cachi2/...`) after the initial rewrite. No patch of postinstall.sh or build-vscode.sh is used; prefetch originals are used.
 
 ---
 
@@ -60,11 +60,16 @@ This document explains **why** each file under `patches/code-server/` differs fr
 
 ---
 
-## Unnecessary / redundant
+## Removed / not patched
 
-- **No patches removed.** The listed patches are all required for offline (Cachi2) build.
-- **Removed (not a patch):** `fix-shrinkwrap-paths.sh` was removed; it was never run in the Dockerfile. Shrinkwrap path rewriting is done inside `build-release.sh` and `build-standalone-release.sh` via `rewrite_cachi2_path`.
-- **Other files under `patches/code-server/`** (e.g. `ci/dev/postinstall.sh`, `lib-vscode/package.json`, extensions, build-vscode.sh, fetch.js, test/, s390x.patch) are used by the **full** Dockerfile (e.g. `Dockerfile.cpu`) for other build paths. `ci/dev/postinstall.sh` is used so that when `CI=1`, `install-deps` runs `npm ci` in subdirs (test, lib/vscode), keeping lockfiles unchanged and resolved URLs absolute.
+- **ci/dev/postinstall.sh** and **ci/build-scripts/build-vscode.sh**: Not patched; identical to prefetch. Dockerfile uses prefetch originals. Postinstall already has `CI` → `npm ci`; build-vscode.sh needs no changes.
+- **fix-shrinkwrap-paths.sh** (not under patches): Removed; never run. Shrinkwrap rewriting is in build-release.sh and build-standalone-release.sh.
+
+## Other patched files
+
+- **lib-vscode/package.json**, **package-lock.json**, **extensions/emmet/** (package.json, package-lock.json), **test/** (package.json, package-lock.json):** Dependency and lockfile content for offline/Cachi2.
+- **lib-vscode/build-lib/fetch.js:** Offline mode: when `VSCODE_OFFLINE_CACHE` is set, serve Node binaries from local dir instead of fetching from network.
+- **s390x.patch:** Architecture-specific patch (applied at build).
 
 ---
 
@@ -72,8 +77,10 @@ This document explains **why** each file under `patches/code-server/` differs fr
 
 | File | Purpose of patch |
 |------|-------------------|
-| npm-postinstall.sh | Use `npm ci --offline` when shrinkwrap exists so offline install does not hit the registry. |
-| build-release.sh | Rewrite shrinkwrap resolved URLs to `file:///cachi2` after creating them. |
-| build-standalone-release.sh | Inject patched remote package.json + lockfile into release-standalone lib/vscode; use patched postinstall; rewrite shrinkwrap URLs. |
-| remote/package.json | Add node-gyp and proc-log so they are in the lockfile and shrinkwrap for node-pty postinstall. |
-| remote/package-lock.json | Pin tslib and add node-gyp/proc-log with resolved URLs for offline install and Cachi2 prefetch. |
+| npm-postinstall.sh | Use `npm ci --offline` when shrinkwrap exists (release-package install). |
+| build-release.sh | Rewrite shrinkwrap resolved URLs to `file:///cachi2` after create_shrinkwraps. |
+| build-standalone-release.sh | Merge remote package.json into release-standalone lib/vscode; copy remote lockfile as npm-shrinkwrap.json; copy patched postinstall; rewrite shrinkwrap URLs. |
+| remote/package.json | Add node-gyp and proc-log for node-pty postinstall (offline). |
+| remote/package-lock.json | Pin tslib; add node-gyp/proc-log with resolved URLs for Cachi2. |
+| lib-vscode/build-lib/fetch.js | Serve Node binaries from VSCODE_OFFLINE_CACHE when set (offline build). |
+| lib-vscode/package.json, package-lock.json, extensions/emmet/, test/ | Dependency content for offline build. |

@@ -115,23 +115,11 @@ main() {
   fi
 }
 
-# Where the registry.npmjs.org/node-gyp request comes from:
-# The node-pty dependency has a postinstall script that runs "npx node-gyp configure".
-# When npm ci runs, it executes that postinstall. npx then looks for node-gyp in
-# node_modules; if not found, it tries to fetch from the registry, which fails
-# offline (ENOTCACHED). So node-gyp must be present in the lockfile with a
-# resolved file:/// URL (e.g. file:///cachi2/...) so npm ci installs it before
-# any postinstall runs.
+# Offline: when shrinkwrap exists (file:///cachi2/...), use npm ci --offline so we don't hit the registry.
 install_with_yarn_or_npm() {
   echo "User agent: ${npm_config_user_agent-none}"
-  # For development we enforce npm, but for installing the package as an
-  # end-user we want to keep using whatever package manager is in use.
   case "${npm_config_user_agent-}" in
     npm*)
-      # When npm-shrinkwrap.json exists (e.g. release package with file:///cachi2
-      # URLs), use npm ci --offline to install from shrinkwrap only. This avoids
-      # fetching packument metadata (e.g. for tslib@*) which fails with
-      # cache mode 'only-if-cached' when building offline.
       if [ -f npm-shrinkwrap.json ]; then
         if ! npm ci --offline --omit=dev --unsafe-perm; then
           return 1
