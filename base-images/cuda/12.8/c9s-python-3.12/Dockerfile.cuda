@@ -142,11 +142,11 @@ RUN dnf -y install \
     && dnf -y clean all --enablerepo="*"
 
 # Runtime dependencies for PyTorch packages (libmpi_cxx.so, libqhull_r.so, libsnappy.so)
-# qhull is in CRB (Code Ready Builder) repo
+# libqhull is in CRB (Code Ready Builder) repo
 RUN dnf config-manager --set-enabled crb && \
     dnf -y install \
     openmpi \
-    qhull \
+    libqhull_r \
     snappy \
     && dnf -y clean all --enablerepo="*"
 
