@@ -8,8 +8,8 @@ requires-python = "==3.12.*"
 dependencies = [
     # PyTorch packages
     "tensorboard~=2.20.0",
-    "torch==2.7.1",
-    "torchvision~=0.22.1",
+    "torch==2.9.0",
+    "torchvision~=0.24.0",
 
     # llmcompressor packages
     # see https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757007056725559?thread_ts=1756924127.136609&cid=C0961HQ858Q
@@ -62,18 +62,9 @@ dependencies = [
 
 # https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-sources
 [tool.uv.sources]
-# https://docs.astral.sh/uv/guides/integration/pytorch/#using-uv-with-pytorch
-torch = { index = "pytorch" }
-torchvision = { index = "pytorch" }
 # https://github.com/astral-sh/uv/issues/13067#issuecomment-2824190008
 odh-notebooks-meta-llmcompressor-deps = { path = "../../../dependencies/odh-notebooks-meta-llmcompressor-deps" }
 odh-notebooks-meta-workbench-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
-
-# https://docs.astral.sh/uv/concepts/indexes/#package-indexes
-[[tool.uv.index]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
 
 # https://docs.astral.sh/uv/concepts/resolution/#dependency-overrides
 # https://docs.astral.sh/uv/reference/settings/#override-dependencies

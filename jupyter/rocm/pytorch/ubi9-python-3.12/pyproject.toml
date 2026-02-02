@@ -4,15 +4,15 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
-    # ROCm PyTorch packages
+    # ROCm PyTorch packages (from AIPCC ROCm index)
     "tensorboard~=2.20.0",
-    "torch==2.7.1+rocm6.3",
-    "torchvision==0.22.1+rocm6.3", # https://pytorch.org/get-started/previous-versions/#linux-and-windows-1
-    "pytorch-triton-rocm~=3.3.1",
+    "torch==2.9.0",
+    "torchvision==0.24.0",
+    "triton~=3.5.0",
 
     # Datascience and useful extensions
     # TODO(RHAIENG-3039): Re-enable codeflare-sdk before RHOAI 3.4 GA
-    "codeflare-sdk~=0.34.0",
+    # "codeflare-sdk~=0.34.0",
     # TODO(RHAIENG-3041): Upgrade feast to ~=0.59.0 before RHOAI 3.4 GA
     "feast~=0.58.0",
     "skl2onnx~=1.19.1",
@@ -46,16 +46,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-torch = { index = "pytorch-rocm" }
-torchvision = { index = "pytorch-rocm" }
-pytorch-triton-rocm = { index = "pytorch-rocm" }
 odh-notebooks-meta-workbench-datascience-deps = { path = "../../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
-
-# Please keep in sync with rocm/ubi9-python-3.12/Dockerfile
-[[tool.uv.index]]
-name = "pytorch-rocm"
-url = "https://download.pytorch.org/whl/rocm6.3"
-explicit = true
 
 [tool.uv]
 environments = [
@@ -66,6 +57,7 @@ override-dependencies = [
     # Upstream: https://github.com/elyra-ai/elyra/issues/3325
     "urllib3>=2.6.0",
     # AIPCC-8698: python-lsp-server[all] has conflicting pyflakes/pycodestyle requirements
+    # The [all] extra pulls in linting tools we don't need at runtime
     # Using >= instead of ~= to allow broader compatibility during resolution
     # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
     "python-lsp-server>=1.11.0",
