@@ -105,36 +105,87 @@ EOL
    git apply s390x.patch
 fi	
         
-# @vscode/vsce-sign does not support ppc64le/s390x; provide a stub to allow build.
+# @vscode/vsce-sign does not support ppc64le/s390x; optionally provide a stub.
 if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
-  STUB_DIR="lib/vscode/build/vendor/vsce-sign-stub"
-  mkdir -p "${STUB_DIR}"
-  cat > "${STUB_DIR}/package.json" <<'EOF'
+  if [[ "${ALLOW_VSCE_SIGN_STUB:-}" != "1" ]]; then
+    echo "vsce-sign has no ${ARCH} binary. Set ALLOW_VSCE_SIGN_STUB=1 to use a stub (disables signature verification)." >&2
+    exit 1
+  fi
+
+  VSCE_SIGN_STUB_DIR="lib/vscode/build/vsce-sign-stub"
+  mkdir -p "${VSCE_SIGN_STUB_DIR}/src" "${VSCE_SIGN_STUB_DIR}/bin"
+  cat > "${VSCE_SIGN_STUB_DIR}/package.json" <<'EOF'
 {
   "name": "@vscode/vsce-sign",
-  "version": "0.0.0-unsupported-arch",
-  "description": "Stub for unsupported architectures",
-  "main": "index.js",
+  "version": "0.0.0-stub",
+  "main": "src/main.js",
+  "bin": {
+    "vsce-sign": "bin/vsce-sign"
+  },
   "license": "MIT"
 }
 EOF
 
-  cat > "${STUB_DIR}/index.js" <<'EOF'
+  cat > "${VSCE_SIGN_STUB_DIR}/src/main.js" <<'EOF'
 'use strict';
 
-const message = 'vsce-sign is not available on this architecture; signing and verification are disabled.';
+const fs = require('fs');
+const path = require('path');
 
-async function unsupported() {
-  throw new Error(message);
+const ExtensionSignatureVerificationCode = {
+  Success: 'Success',
+  UnknownError: 'UnknownError'
+};
+
+const ReturnCode = {};
+ReturnCode[ReturnCode[ExtensionSignatureVerificationCode.Success] = 0] = ExtensionSignatureVerificationCode.Success;
+ReturnCode[ReturnCode[ExtensionSignatureVerificationCode.UnknownError] = 39] = ExtensionSignatureVerificationCode.UnknownError;
+
+class ExtensionSignatureVerificationResult {
+  constructor(code, didExecute, internalCode, output) {
+    this.code = code;
+    this.internalCode = internalCode;
+    this.didExecute = didExecute;
+    this.output = output;
+  }
+}
+
+async function verify(_vsixFilePath, _signatureArchiveFilePath, _verbose) {
+  return new ExtensionSignatureVerificationResult(
+    ExtensionSignatureVerificationCode.Success,
+    false,
+    0,
+    'vsce-sign stub: verification skipped on unsupported architecture'
+  );
+}
+
+async function generateManifest(vsixFilePath, manifestFilePath, _verbose) {
+  const outputPath = manifestFilePath || path.join(path.dirname(vsixFilePath), '.signature.manifest');
+  fs.writeFileSync(outputPath, '');
+  return outputPath;
+}
+
+async function zip(manifestFilePath, _signatureFilePath, signatureArchiveFilePath, _verbose) {
+  const outputPath = signatureArchiveFilePath || path.join(path.dirname(manifestFilePath), '.signature.zip');
+  fs.writeFileSync(outputPath, '');
+  return outputPath;
 }
 
 module.exports = {
-  generateManifest: async () => unsupported(),
-  verify: async () => ({ code: 0, output: message }),
-  zip: async () => unsupported(),
-  ExtensionSignatureVerificationCode: { Success: 0 },
+  verify,
+  generateManifest,
+  zip,
+  ReturnCode,
+  ExtensionSignatureVerificationCode,
+  ExtensionSignatureVerificationResult
 };
 EOF
+
+  cat > "${VSCE_SIGN_STUB_DIR}/bin/vsce-sign" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  chmod +x "${VSCE_SIGN_STUB_DIR}/bin/vsce-sign"
 
   python3 - <<'PY'
 import json
@@ -143,7 +194,7 @@ from pathlib import Path
 build_pkg = Path("lib/vscode/build/package.json")
 data = json.loads(build_pkg.read_text())
 overrides = data.get("overrides", {})
-overrides["@vscode/vsce-sign"] = "file:./vendor/vsce-sign-stub"
+overrides["@vscode/vsce-sign"] = "file:vsce-sign-stub"
 data["overrides"] = overrides
 build_pkg.write_text(json.dumps(data, indent=2) + "\n")
 PY
@@ -154,6 +205,16 @@ fi
 	nvm use ${NODE_VERSION}
 	npm cache clean --force
 	npm install
+	# Ensure @vscode/vsce-sign is resolvable at runtime for ppc64le/s390x builds.
+	if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
+		if [[ "${ALLOW_VSCE_SIGN_STUB:-}" == "1" ]]; then
+			STUB_NODE_MODULE_DIR="lib/vscode/build/node_modules/@vscode/vsce-sign"
+			if [[ ! -d "${STUB_NODE_MODULE_DIR}" ]]; then
+				mkdir -p "$(dirname "${STUB_NODE_MODULE_DIR}")"
+				cp -R "${VSCE_SIGN_STUB_DIR}" "${STUB_NODE_MODULE_DIR}"
+			fi
+		fi
+	fi
 	npm run build
 	VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
 	export KEEP_MODULES=1

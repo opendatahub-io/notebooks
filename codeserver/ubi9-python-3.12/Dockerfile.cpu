@@ -2,6 +2,7 @@
 # configuration args    #
 #########################
 ARG BASE_IMAGE
+ARG ALLOW_VSCE_SIGN_STUB=0
 
 ####################
 # rpm-base         #
@@ -16,13 +17,14 @@ WORKDIR /root
 ENV HOME=/root
 
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+ARG ALLOW_VSCE_SIGN_STUB
 ARG NODE_VERSION=22.21.1
 ARG CODESERVER_VERSION=v4.108.2
 
 COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh .
 
 # create dummy file to ensure this stage is awaited before installing rpm
-RUN ./get_code_server_rpm.sh && touch /tmp/control
+RUN ALLOW_VSCE_SIGN_STUB=${ALLOW_VSCE_SIGN_STUB} ./get_code_server_rpm.sh && touch /tmp/control
 
 #######################
 # wheel caching stage #
