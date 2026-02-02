@@ -45,6 +45,16 @@ spec:
     value: .
   - name: build-args-file
     value: codeserver/ubi9-python-3.12/build-args/cpu.conf
+  # Added taskRunSpecs to increase compute resources
+  taskRunSpecs:
+    - pipelineTaskName: build-images
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 16Gi
+        limits:
+          cpu: '16'
+          memory: 32Gi
   pipelineRef:
     name: multiarch-pull-request-pipeline
   taskRunTemplate:
