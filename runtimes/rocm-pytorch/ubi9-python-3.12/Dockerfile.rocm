@@ -65,14 +65,7 @@ EOF
 FROM rocm-base AS rocm-runtime-pytorch
 
 ARG PYTORCH_SOURCE_CODE=runtimes/rocm-pytorch/ubi9-python-3.12
-
-### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-ENV PIP_INDEX_URL=https://pypi.org/simple
-# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-ENV UV_INDEX_URL=https://pypi.org/simple
-# https://docs.astral.sh/uv/reference/environment/#uv_default_index
-ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-### END RHAIENG-2189: this is AIPCC migration phase 1.5
+ARG PYLOCK_FLAVOR
 
 LABEL name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.12" \
     summary="Runtime ROCm pytorch notebook image for ODH notebooks" \
@@ -86,8 +79,8 @@ LABEL name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.12" \
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages from requirements.txt
-COPY ${PYTORCH_SOURCE_CODE}/pylock.toml ./
+# Install Python packages from pylock file
+COPY ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 # Copy Elyra dependencies for air-gapped enviroment
 COPY --chown=1001 ${PYTORCH_SOURCE_CODE}/utils ./utils/
 ### BEGIN Download Elyra Bootstrapper

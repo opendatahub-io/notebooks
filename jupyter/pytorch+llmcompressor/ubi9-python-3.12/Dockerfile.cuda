@@ -148,16 +148,9 @@ FROM cuda-jupyter-datascience AS cuda-jupyter-pytorch
 
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG PYTORCH_SOURCE_CODE=jupyter/pytorch+llmcompressor/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
 
 WORKDIR /opt/app-root/bin
-
-### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-ENV PIP_INDEX_URL=https://pypi.org/simple
-# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-ENV UV_INDEX_URL=https://pypi.org/simple
-# https://docs.astral.sh/uv/reference/environment/#uv_default_index
-ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-### END RHAIENG-2189: this is AIPCC migration phase 1.5
 
 LABEL name="odh-notebook-jupyter-cuda-pytorch-llmcompressor-ubi9-python-3.12" \
     summary="Jupyter CUDA pytorch-llmcompressor notebook image for ODH notebooks" \
@@ -170,7 +163,7 @@ LABEL name="odh-notebook-jupyter-cuda-pytorch-llmcompressor-ubi9-python-3.12" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-pytorch-llmcompressor-ubi9-python-3.12"
 
 # Install Python packages and Jupyterlab extensions from requirements.txt
-COPY ${PYTORCH_SOURCE_CODE}/pylock.toml ./
+COPY ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail

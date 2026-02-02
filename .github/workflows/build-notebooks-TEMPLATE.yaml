@@ -283,6 +283,8 @@ jobs:
         run: uv sync --locked
 
       - name: Run Testcontainers container tests (in PyTest)
+        id: pytest-testcontainers
+        if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
         run: |
           set -Eeuxo pipefail
           uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
@@ -298,9 +300,11 @@ jobs:
 
       - name: "Check if we have tests or not"
         id: have-tests
+        if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
         run: "ci/cached-builds/has_tests.py --target ${{ inputs.target }}"
 
       - name: "Change pull policy to IfNotPresent"
+        if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
         run: |
           set -Eeuxo pipefail
 
@@ -312,7 +316,7 @@ jobs:
       # Deploying notebook from runtimes/rocm/tensorflow/ubi9-python-3.11/kustomize/base directory...
       # sed: can't read runtimes/rocm/tensorflow/ubi9-python-3.11/kustomize/base/kustomization.yaml: No such file or directory
       - name: "Fixup paths that prevent us from running rocm tests"
-        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        if: ${{ !cancelled() && steps.make-target.outcome == 'success' && steps.have-tests.outputs.tests == 'true' }}
         run: |
           set -Eeuxo pipefail
 
@@ -321,13 +325,15 @@ jobs:
           ln -s ../rocm-pytorch runtimes/rocm/pytorch
 
       - name: Provision K8s cluster
-        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        id: provision-k8s
+        if: ${{ !cancelled() && steps.make-target.outcome == 'success' && steps.have-tests.outputs.tests == 'true' }}
         uses: ./.github/actions/provision-k8s
 
       - name: "Run image tests"
+        id: makefile-tests
         # skip on s390x because we are unable to install requirements-elyra.txt that's installed by runtime image tests
         # https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/etc/generic/requirements-elyra.txt
-        if: ${{ steps.have-tests.outputs.tests == 'true' && !contains(fromJSON('["linux/s390x"]'), inputs.platform) }}
+        if: ${{ !cancelled() && steps.make-target.outcome == 'success' && steps.provision-k8s.outcome == 'success' && !contains(fromJSON('["linux/s390x"]'), inputs.platform) }}
         run: python3 ci/cached-builds/make_test.py --target ${{ inputs.target }}
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
@@ -337,7 +343,8 @@ jobs:
       # endregion
 
       - name: Run OpenShift container tests (in PyTest)
-        if: ${{ steps.have-tests.outputs.tests == 'true' }}
+        id: pytest-openshift
+        if: ${{ !cancelled() && steps.make-target.outcome == 'success' && steps.provision-k8s.outcome == 'success' && steps.have-tests.outputs.tests == 'true' }}
         run: |
           set -Eeuxo pipefail
           uv run pytest --capture=fd tests/containers -m 'openshift and not cuda and not rocm' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
@@ -410,12 +417,14 @@ jobs:
       # region check-payload for FIPS compliance
 
       - id: check-payload-vars
+        if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
         run: |
           echo "GOPATH=${{ github.workspace }}/go-check-payload" >> "$GITHUB_OUTPUT"
         working-directory: scripts/check-payload
 
       # for https://github.com/openshift/check-payload to cache the built binary
       - uses: actions/setup-go@v6
+        if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
         with:
           cache-dependency-path: "scripts/check-payload/go.sum"
         env:
@@ -423,6 +432,7 @@ jobs:
 
       # F0512 15:43:03.219076 21568 main.go:294] Error: exec: "oc": executable file not found in $PATH
       - name: Install oc client
+        if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
         run: |
           # Install the oc client
           curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz -o /tmp/openshift-client-linux.tar.gz
@@ -441,6 +451,8 @@ jobs:
       # and use --preserve-env=PATH to avoid
       #  F0512 16:31:58.425584    9911 main.go:294] Error: exec: "podman": executable file not found in $PATH
       - name: Check image with check-payload for FIPS compliance
+        id: fips-check
+        if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
         run: |
           set -Eeuxo pipefail
           # resolve podman under current user, not under sudo/root
