@@ -104,6 +104,50 @@ EOL
 
    git apply s390x.patch
 fi	
+        
+# @vscode/vsce-sign does not support ppc64le/s390x; provide a stub to allow build.
+if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
+  STUB_DIR="lib/vscode/build/vendor/vsce-sign-stub"
+  mkdir -p "${STUB_DIR}"
+  cat > "${STUB_DIR}/package.json" <<'EOF'
+{
+  "name": "@vscode/vsce-sign",
+  "version": "0.0.0-unsupported-arch",
+  "description": "Stub for unsupported architectures",
+  "main": "index.js",
+  "license": "MIT"
+}
+EOF
+
+  cat > "${STUB_DIR}/index.js" <<'EOF'
+'use strict';
+
+const message = 'vsce-sign is not available on this architecture; signing and verification are disabled.';
+
+async function unsupported() {
+  throw new Error(message);
+}
+
+module.exports = {
+  generateManifest: async () => unsupported(),
+  verify: async () => ({ code: 0, output: message }),
+  zip: async () => unsupported(),
+  ExtensionSignatureVerificationCode: { Success: 0 },
+};
+EOF
+
+  python3 - <<'PY'
+import json
+from pathlib import Path
+
+build_pkg = Path("lib/vscode/build/package.json")
+data = json.loads(build_pkg.read_text())
+overrides = data.get("overrides", {})
+overrides["@vscode/vsce-sign"] = "file:./vendor/vsce-sign-stub"
+data["overrides"] = overrides
+build_pkg.write_text(json.dumps(data, indent=2) + "\n")
+PY
+fi	
         	
 	source ${NVM_DIR}/nvm.sh
 	while IFS= read -r src_patch; do echo "patches/$src_patch"; patch -p1 < "patches/$src_patch"; done < patches/series
