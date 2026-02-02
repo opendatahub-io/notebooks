@@ -42,6 +42,14 @@ spec:
     value: .
   # Added taskRunSpecs to increase compute resources
   taskRunSpecs:
+    - pipelineTaskName: convert-compression
+      computeResources:
+        requests:
+          cpu: '2'
+          memory: 16Gi
+        limits:
+          cpu: '4'
+          memory: 32Gi
     - pipelineTaskName: clair-scan
       computeResources:
         requests:
@@ -59,7 +67,7 @@ spec:
           cpu: '8'
           memory: 32Gi
   pipelineRef:
-    name: multiarch-pull-request-pipeline
+    name: base-image-multiarch-pull-request-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-base-image-rocm-py312-c9s-poc
   workspaces:
