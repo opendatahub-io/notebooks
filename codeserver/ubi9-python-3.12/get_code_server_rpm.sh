@@ -203,6 +203,10 @@ fi
 	source ${NVM_DIR}/nvm.sh
 	while IFS= read -r src_patch; do echo "patches/$src_patch"; patch -p1 < "patches/$src_patch"; done < patches/series
 	nvm use ${NODE_VERSION}
+	# Avoid VS Code build workers hitting default V8 heap limits.
+	if [[ "${NODE_OPTIONS:-}" != *"--max-old-space-size"* ]]; then
+		export NODE_OPTIONS="--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE:-8192} ${NODE_OPTIONS:-}"
+	fi
 	npm cache clean --force
 	npm install
 	# Ensure @vscode/vsce-sign is resolvable at runtime for ppc64le/s390x builds.
