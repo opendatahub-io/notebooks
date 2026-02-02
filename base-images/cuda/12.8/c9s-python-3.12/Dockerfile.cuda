@@ -74,10 +74,11 @@ RUN dnf upgrade -y && dnf install -y \
 
 # nvidia-docker 1.0
 RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf && \
-    echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
+    echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf && \
+    echo "/usr/local/cuda/lib64" >> /etc/ld.so.conf.d/nvidia.conf
 
 ENV PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/lib64
 
 # nvidia-container-runtime
 ENV NVIDIA_VISIBLE_DEVICES=all
@@ -130,6 +131,26 @@ ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 # Install CUDA toolkit 12.8
 RUN dnf -y install cuda-toolkit-12-8 && \
     dnf -y clean all --enablerepo="*"
+
+# Install additional CUDA libraries needed by PyTorch
+# cuda-cupti: CUDA Profiling Tools Interface (libcupti.so)
+# libcusparselt0: cuSPARSELt for structured sparsity (libcusparseLt.so)
+# libcudss0-cuda-12: cuDSS direct sparse solver (libcudss.so)
+RUN dnf -y install \
+    cuda-cupti-12-8 \
+    libcusparselt0 \
+    libcudss0-cuda-12 \
+    && dnf -y clean all --enablerepo="*"
+
+# Runtime dependencies for PyTorch packages (libmpi_cxx.so, libqhull_r.so, libsnappy.so)
+# libqhull_r is in CRB (Code Ready Builder) repo
+RUN dnf -y install dnf-plugins-core && \
+    dnf config-manager --set-enabled crb && \
+    dnf -y install \
+    openmpi \
+    libqhull_r \
+    snappy \
+    && dnf -y clean all --enablerepo="*"
 
 # Restore user workspace
 USER 1001

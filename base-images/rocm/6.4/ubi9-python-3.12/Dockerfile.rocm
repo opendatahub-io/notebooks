@@ -62,12 +62,17 @@ RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
     dnf install -y \
-      rocm-core hip-runtime-amd \
+    # HIP (Heterogeneous-compute Interface for Portability) libraries meta-package
+    # Includes: hipblas, hipblaslt, hipfft, hiprand, hipsolver, hipsparse, hipsparselt,
+    # hiptensor, rccl, rocalution, rocblas, rocfft, rocm-core, rocm-smi-lib, rocrand,
+    # rocsolver, rocsparse
+      rocm-hip-libraries \
     # system utilities
-      rocm-smi-lib rocminfo \
-      rocblas rocsolver rocfft rocrand rocsparse miopen-hip rccl \
-    # HIP (Heterogeneous-compute Interface for Portability)
-      hipblas hipblaslt hipfft hipsparse hiprand hipsolver \
+      rocminfo amd-smi-lib \
+    # ML libraries (includes miopen-hip)
+      rocm-ml-libraries \
+    # OpenMP runtime support
+      openmp-extras-runtime \
     # suitesparse's /lib64/libspqr.so.2.0.9 needs libtbb.so.2
       tbb && \
     dnf clean all && rm -rf /var/cache/yum
@@ -79,6 +84,11 @@ RUN tee --append /etc/ld.so.conf.d/rocm.conf <<EOF
 EOF
 
 RUN ldconfig
+
+# Runtime dependencies for PyTorch packages (libmpi_cxx.so, libqhull_r.so, libsnappy.so)
+# These packages (openmpi, libqhull_r, snappy) are not available in UBI9 repos without
+# RHEL entitlements. Adding CentOS Stream 9 repos would work but mixing distro repos
+# is not a good practice to promote. The c9s variant of this image has these installed.
 
 # Restore user workspace
 USER 1001

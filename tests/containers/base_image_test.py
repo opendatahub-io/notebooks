@@ -129,6 +129,12 @@ class TestBaseImage:
                     if deps.startswith("liboshmem.so"):
                         continue  # it's in ${MPI_HOME}/lib
 
+                    # torchvision video_reader requires FFmpeg 6.x - not available in RHEL9/UBI9/CentOS Stream 9
+                    # EPEL 9 and RPM Fusion only provide FFmpeg 5.1.4 (libavcodec.so.59)
+                    # Ignored for ODH; TODO: check if this needs resolution for production Konflux/RHDS builds
+                    if dlib.endswith("video_reader.so"):
+                        continue
+
                     with subtests.test(f"{dlib=}"):
                         pytest.fail(f"{dlib=} has unsatisfied dependencies {deps=}")
 

@@ -42,6 +42,14 @@ spec:
     value: .
   # Added taskRunSpecs to increase compute resources
   taskRunSpecs:
+    - pipelineTaskName: build-images
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
     - pipelineTaskName: clair-scan
       computeResources:
         requests:
