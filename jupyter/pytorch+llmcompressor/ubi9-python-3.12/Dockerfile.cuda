@@ -148,6 +148,7 @@ FROM cuda-jupyter-datascience AS cuda-jupyter-pytorch
 
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG PYTORCH_SOURCE_CODE=jupyter/pytorch+llmcompressor/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
 
 WORKDIR /opt/app-root/bin
 
