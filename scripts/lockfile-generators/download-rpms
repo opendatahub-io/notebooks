@@ -1,0 +1,133 @@
+#!/bin/bash
+
+# --- Configuration & Defaults ---
+DEST_DIR="./cachi2/output/deps/rpm"
+LOCKFILE=""
+
+# --- Functions ---
+
+usage() {
+    echo "Usage: $0 --lock-file <path>"
+    echo ""
+    echo "Options:"
+    echo "  -l, --lock-file    Path to the lock.yaml file (e.g., codeserver/ubi9-python-3.12/prefetch-input/rpms.lock.yaml)"
+    echo "  -h, --help         Display this help message"
+    echo ""
+    echo "Note: This script must be run from the project root directory."
+    exit 1
+}
+
+# --- Root Directory Validation ---
+# We check for a known unique path to ensure we are in the project root.
+if [ ! -f "scripts/lockfile-generators/download-rpms" ]; then
+    echo "Error: This script must be executed from the project root directory."
+    echo "Current directory: $(pwd)"
+    exit 1
+fi
+
+# --- Argument Parsing ---
+# Support both -l and --lock-file
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -l|--lock-file)
+            LOCKFILE="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            ;;
+        *)
+            echo "Unknown option: $1"
+            usage
+            ;;
+    esac
+done
+
+# Validate required input
+if [[ -z "$LOCKFILE" ]]; then
+    echo "Error: --lock-file is required."
+    usage
+fi
+
+if [[ ! -f "$LOCKFILE" ]]; then
+    echo "Error: Lock file not found at '$LOCKFILE'"
+    exit 1
+fi
+
+# --- Execution ---
+
+mkdir -p "$DEST_DIR"
+
+echo "Starting download of RPMs from $LOCKFILE..."
+
+# Check if yq is installed
+if command -v yq &> /dev/null; then
+    urls=$(yq '.arches[].packages[].url' "$LOCKFILE")
+else
+    echo "Warning: 'yq' not found. Falling back to grep/sed (less robust)..."
+    urls=$(grep -oP '(?<=url: ).*' "$LOCKFILE")
+fi
+
+total=$(echo "$urls" | grep -c '^')
+count=0
+
+for url in $urls; do
+    count=$((count + 1))
+    filename=$(basename "$url")
+    
+    echo "[$count/$total] Downloading: $filename"
+    
+    # Download file
+    wget -q -nc -P "$DEST_DIR" "$url"
+    
+    if [ $? -eq 0 ]; then
+        # Verify checksum if yq is available
+        if command -v yq &> /dev/null; then
+            checksum=$(yq ".arches[].packages[] | select(.url == \"$url\") | .checksum" "$LOCKFILE" 2>/dev/null | head -n 1)
+            
+            if [ -n "$checksum" ]; then
+                # Lockfile has "sha256:hex"; sha256sum -c expects "hex  path"
+                hash="${checksum#sha256:}"
+                echo "$hash  $DEST_DIR/$filename" | sha256sum -c - &>/dev/null
+                if [ $? -eq 0 ]; then
+                    echo "✓ Checksum verified for $filename"
+                else
+                    echo "✗ Checksum mismatch for $filename"
+                    exit 1
+                fi
+            fi
+        fi
+    else
+        echo "Error: Failed to download $url"
+    fi
+done
+
+# Create DNF repo metadata so dnf install can use this directory (e.g. with cachi2/local.repo)
+# On macOS createrepo_c is not available; run it inside a container.
+run_createrepo_in_container() {
+    local repo_dir_abs="$1"
+    local img=""
+
+    img="localhost/notebook-rpm-lockfile:latest"
+    echo "Creating repository metadata via podman (notebook-rpm-lockfile image)..."
+
+    # Create repository metadata with supported modules
+    commands="rm -rf /repo/repodata && \
+        createrepo_c /repo && \
+        repo2module /repo > modules.yaml && \
+        modifyrepo_c --mdtype=modules modules.yaml /repo/repodata"
+    podman run --rm -v "${repo_dir_abs}:/repo:z" --platform=linux/x86_64 "$img" sh -c "$commands"
+}
+
+if command -v createrepo_c &>/dev/null; then
+    echo "Creating repository metadata (createrepo_c)..."
+    createrepo_c "$DEST_DIR"
+elif command -v createrepo &>/dev/null; then
+    echo "Creating repository metadata (createrepo)..."
+    createrepo "$DEST_DIR"
+else
+    DEST_ABS="$(cd "$DEST_DIR" && pwd)"
+    run_createrepo_in_container "$DEST_ABS" || exit 1
+fi
+
+echo "Finished! RPMs are located in $DEST_DIR"

@@ -1,0 +1,95 @@
+#!/bin/bash
+
+# --- Configuration & Defaults ---
+DEST_DIR="./cachi2/output/deps/npm"
+LOCKFILE=""
+
+# --- Functions ---
+
+usage() {
+    echo "Usage: $0 --lock-file <path>"
+    echo ""
+    echo "Options:"
+    echo "  -l, --lock-file    Path to the package-lock.json file"
+    echo "  -h, --help         Display this help message"
+    exit 1
+}
+
+# --- Root Directory Validation ---
+# (Kept your logic, but made it more flexible with a comment)
+if [ ! -f "scripts/lockfile-generators/download-npm" ]; then
+    echo "Warning: Ensure you are running this from the project root."
+fi
+
+# --- Argument Parsing ---
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -l|--lock-file) LOCKFILE="$2"; shift 2 ;;
+        -h|--help) usage ;;
+        *) echo "Unknown option: $1"; usage ;;
+    esac
+done
+
+if [[ -z "$LOCKFILE" || ! -f "$LOCKFILE" ]]; then
+    echo "Error: Valid --lock-file is required."
+    exit 1
+fi
+
+# --- Execution ---
+mkdir -p "$DEST_DIR"
+
+if ! command -v jq &> /dev/null; then
+    echo "Error: 'jq' is required."
+    exit 1
+fi
+
+echo "Extracting URLs from $LOCKFILE..."
+
+# Improved JQ: Specifically targets the 'resolved' field in packages and dependencies
+urls=$(jq -r '(.. | objects | select(has("resolved")) | .resolved)' "$LOCKFILE" | grep '^http' | sort -u)
+
+if [[ -z "$urls" ]]; then
+    echo "Error: No resolved URLs found."
+    exit 1
+fi
+
+total=$(echo "$urls" | wc -l | xargs)
+count=0
+
+echo "Found $total unique packages to download."
+
+while read -r url; do
+    count=$((count + 1))
+    filename=$(basename "$url")
+    # Check if the URL contains a scoped package (e.g., /@eslint/ or /@types/)
+    if [[ "$url" =~ /@([^/]+)/ ]]; then
+        scope="${BASH_REMATCH[1]}"
+        # Combine the scope and the filename, omitting the '@'
+        filename="${scope}-${filename}"
+    fi
+
+    filename=$(basename "$url")
+    if [[ "$url" =~ /@([^/]+)/ ]]; then
+        scope="${BASH_REMATCH[1]}"
+        filename="${scope}-${filename}"
+    fi
+
+    echo "[$count/$total] Processing: $filename"
+
+    if [ -f "$DEST_DIR/$filename" ]; then
+        echo "  ⊘ Already exists, skipping."
+    else
+        # -O allows us to specify the unique filename we generated
+        wget -q -O "$DEST_DIR/$filename" "$url"
+        
+        if [ $? -eq 0 ]; then
+            echo "  ✓ Downloaded $filename"
+        else
+            echo "  ✗ Failed: $url"
+            # Optional: continue instead of exit 1 to finish other downloads
+        fi
+    fi
+done <<< "$urls"
+
+echo -e "\nFinished! Total packages: $total"
+echo "Location: $DEST_DIR"

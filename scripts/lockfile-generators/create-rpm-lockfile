@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --- Configuration & Defaults ---
+SCRIPTS_PATH="scripts/lockfile-generators"
+UBI9_IMAGE="registry.redhat.io/ubi9:9.6"
+ODH_BASE_IMAGE="quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest"
+
+IMAGE_DIR=""
+ACTIVATION_KEY=""
+ORG=""
+DO_DOWNLOAD=false
+
+# --- Functions ---
+show_help() {
+  cat << EOF
+Usage: ./$SCRIPTS_PATH/create-rpm-lockfile [OPTIONS]
+
+This script builds a container image and runs rpm-lockfile-prototype to 
+generate an RPM lock file. It MUST be run from the repository root.
+
+Options:
+  --activation-key VALUE   Red Hat activation key for subscription-manager
+  --org VALUE              Red Hat organization ID for subscription-manager
+  --image-dir VALUE        Path to image directory (e.g., codeserver/ubi9-python-3.12)
+  --download               After generating the lockfile, fetch all RPMs from rpms.lock.yaml
+                           into ./cachi2/output/deps/rpm/ and create repo metadata (for dnf)
+  --help                   Show this help message and exit
+
+Example:
+  ./$SCRIPTS_PATH/create-rpm-lockfile \\
+    --activation-key my-key \\
+    --org my-org \\
+    --image-dir codeserver/ubi9-python-3.12
+
+  ./$SCRIPTS_PATH/create-rpm-lockfile --image-dir codeserver/ubi9-python-3.12 --download
+EOF
+}
+
+error_exit() {
+  echo "Error: $1" >&2
+  echo "Use --help for usage information." >&2
+  exit 1
+}
+
+# --- Validation ---
+# Ensure script is executed from repository root
+if [[ ! -f "$SCRIPTS_PATH/Dockerfile.rpm-lockfile" ]]; then
+  error_exit "This script MUST be run from the repository root."
+fi
+
+# --- Argument Parsing ---
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)           show_help; exit 0 ;;
+    --activation-key)    ACTIVATION_KEY="$2"; shift 2 ;;
+    --org)               ORG="$2";            shift 2 ;;
+    --image-dir)         IMAGE_DIR="$2";      shift 2 ;;
+    --download)          DO_DOWNLOAD=true;   shift ;;
+    *)                   error_exit "Unknown argument: '$1'. Expected options: --activation-key, --org, --image-dir, --download, --help" ;;
+  esac
+done
+
+# --- Required argument check ---
+[[ -z "$IMAGE_DIR" ]] && error_exit "--image-dir is required. Eg. --image-dir codeserver/ubi9-python-3.12"
+
+# --- Base image and RHEL version ---
+# With activation key + org: use UBI9 and pin release. Otherwise: use ODH base image (CentOS Stream), no releasever.
+if [[ -n "$ACTIVATION_KEY" ]] && [[ -n "$ORG" ]]; then
+  BASE_IMAGE="$UBI9_IMAGE"
+  RHEL_VERSION="9.6"
+else
+  BASE_IMAGE="$ODH_BASE_IMAGE"
+  RHEL_VERSION=""
+fi
+
+# First build the image, so we can run rpm-lockfile-prototype inside it
+echo "--- Building Lockfile Generator Image ---"
+podman build \
+    -f "$SCRIPTS_PATH/Dockerfile.rpm-lockfile" \
+    --platform=linux/x86_64 \
+    --build-arg RHEL_VERSION="$RHEL_VERSION" \
+    --build-arg BASE_IMAGE="$BASE_IMAGE" \
+    --build-arg ACTIVATION_KEY="$ACTIVATION_KEY" \
+    --build-arg ORG="$ORG" \
+    -t notebook-rpm-lockfile "$SCRIPTS_PATH"
+
+# Second run rpm-lockfile-prototype to generate the lockfile
+echo "--- Generating Lockfile using rpm-lockfile-prototype --"
+podman run --rm -it \
+    -v "$(pwd):/workspace" \
+    --platform=linux/x86_64 \
+    localhost/notebook-rpm-lockfile:latest \
+    sh -c "cd /workspace/$SCRIPTS_PATH && ./utils.sh prefetch-input=$IMAGE_DIR/prefetch-input"
+
+# Download RPMs and create repository metadata (for dnf)
+if [[ "$DO_DOWNLOAD" == true ]]; then
+  LOCKFILE="$IMAGE_DIR/prefetch-input/rpms.lock.yaml"
+  if [[ ! -f "$LOCKFILE" ]]; then
+    error_exit "Lockfile not found at $LOCKFILE (required for --download)."
+  fi
+  echo "--- Downloading RPMs from lockfile ---"
+  "$SCRIPTS_PATH/download-rpms" --lock-file "$LOCKFILE"
+fi

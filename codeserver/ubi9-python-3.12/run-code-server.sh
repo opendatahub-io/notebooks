@@ -2,7 +2,9 @@
 
 # Load bash libraries
 SCRIPT_DIR=$(dirname -- "$0")
-source ${SCRIPT_DIR}/utils/*.sh
+if [ -f "${SCRIPT_DIR}/utils/process.sh" ]; then
+    source "${SCRIPT_DIR}/utils/process.sh"
+fi
 
 # Start nginx and httpd
 run-nginx.sh &

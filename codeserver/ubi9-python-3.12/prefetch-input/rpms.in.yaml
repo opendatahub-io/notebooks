@@ -1,0 +1,217 @@
+contentOrigin:
+  repofiles:
+    # You must pick 1 or 2 below, can not use both.
+    # 1: If the system is registered with subscription-manager,
+    # use the absolute path to the redhat repo file.
+    #- /etc/yum.repos.d/redhat.repo
+    
+    # 2: If no subscription-manager registration
+    #- ubi.repo
+    #- rhsm-pulp.repo
+    #- epel.repo
+    - centos.repo
+context:
+  bare: true
+
+arches:
+  - x86_64
+  - aarch64
+  - ppc64le
+
+moduleEnable: [nodejs:22]
+
+packages:
+
+  - checkpolicy
+  - diffutils
+  - gcc-toolset-14
+  - gcc-toolset-14-annobin-docs
+  - gcc-toolset-14-annobin-plugin-gcc
+  - gcc-toolset-14-binutils
+  - gcc-toolset-14-dwz
+  - gcc-toolset-14-gcc
+  - gcc-toolset-14-gcc-c++
+  - gcc-toolset-14-gcc-gfortran
+  - gcc-toolset-14-libatomic-devel
+  #- gcc-toolset-14-libquadmath-devel
+  - gcc-toolset-14-libstdc++-devel
+  - gcc-toolset-14-runtime
+  - jansson
+  - libatomic
+  - libselinux-utils
+  - libtool
+  - nodejs-devel
+  - nodejs-packaging
+  - npm
+  - policycoreutils
+  - policycoreutils-python-utils
+  - python3-audit
+  - python3-distro
+  - python3-libselinux
+  - python3-libsemanage
+  - python3-policycoreutils
+  - python3-setools
+  - python3-setuptools
+
+  - tar
+  - perl
+  - mesa-libGL
+  - skopeo
+
+  - jq
+  - git-lfs
+  - libsndfile
+  - gettext
+
+  - bind-utils
+  - nginx
+  - nginx-mod-stream
+  - nginx-mod-http-perl
+  - httpd
+
+  # To create a local repo for local testing
+  #- modulemd-tools
+
+  # For dnf upgrade
+  # - apr
+  # - apr-devel
+  # - boost-regex
+  # - brotli
+  # - brotli-devel
+  # - bsdtar
+  # - bzip2
+  # - bzip2-devel
+  # - bzip2-libs
+  # - containers-common
+  # - cyrus-sasl
+  # - cyrus-sasl-devel
+  # - cyrus-sasl-lib
+  # - fontconfig
+  # - fontconfig-devel
+  # - git
+  # - git-core
+  # - git-core-doc
+  # - glib2
+  # - glib2-devel
+  # - krb5-devel
+  # - krb5-libs
+  # - libarchive
+  # - libbrotli
+  # - libdb
+  # - libdb-devel
+  # - libevent
+  # - libicu
+  # - libicu-devel
+  # #- libipt
+  # - libkadm5
+  # - libpng
+  # - libpng-devel
+  # - libsemanage
+  # - libtiff
+  # - libtiff-devel
+  # - libwebp
+  # - libwebp-devel
+  # - libxml2
+  # - libxml2-devel
+  # - libxslt
+  # - libxslt-devel
+  # - mariadb-connector-c
+  # - mariadb-connector-c-config
+  # - mariadb-connector-c-devel
+  # - mesa-dri-drivers
+  # - mesa-filesystem
+  # - mesa-libGL
+  # - mesa-libgbm
+  # - nodejs
+  # - nodejs-docs
+  # - nodejs-full-i18n
+  # - nodejs-libs
+  # - npm
+  # - perl-Git
+  # - pixman
+  # - python3
+  # - python3-dateutil
+  # - python3-libs
+  # - python3.12
+  # - python3.12-devel
+  # - python3.12-libs
+  # - python3.12-setuptools
+  # - skopeo
+  # - sqlite
+  # - sqlite-devel
+  # - sqlite-libs
+  # - tar
+  # - vim-filesystem
+  # - vim-minimal
+  # - wget
+  # - which
+  # - xz
+  # - xz-devel
+  # - xz-libs
+  
+  # # From nodejs:22
+  # - nodejs
+  # - nodejs-devel
+  # - npm
+
+  # # Gathered from codeserver's Dockerfile
+  # - jq
+  # - patch
+  # - libtool
+  # - rsync
+  # - gettext
+  # - gcc-toolset-14
+  # - gcc-toolset-14-libatomic-devel
+  # - krb5-devel
+  # - libX11-devel
+
+  # - perl
+  # - mesa-libGL
+  # - skopeo
+  # - libxcrypt-compat
+  # - python3.12-devel
+  # - pkgconf-pkg-config
+  # - gcc
+  # - gcc-gfortran
+  # - gcc-c++
+  # - ninja-build
+  # - make
+  # - openssl-devel
+  # - python3-devel
+  # - pybind11-devel
+  # - autoconf
+  # - automake
+  # - libtool
+  # - cmake
+  # - openblas-devel
+  # - libjpeg-devel
+  # - zlib-devel
+  # - libtiff-devel
+  # - freetype-devel
+  # - lcms2-devel
+  # - libwebp-devel
+  # - git
+  # - tar
+  # - wget
+  # - cmake
+  # - gcc
+  # - gcc-toolset-13
+  # - gcc-toolset-13-libatomic-devel
+  # - fribidi-devel
+  # - lcms2-devel
+  # - openjpeg2-devel
+  # - libraqm-devel
+  # - tcl-devel
+  # - tk-devel
+
+  # # From EPEL
+  # - libimagequant-devel
+
+  # - git-lfs
+  # - libsndfile
+
+  # - bind-utils
+  # - nginx
+  # - nginx-mod-stream
+  # - nginx-mod-http-perl
+  # - httpd
