@@ -36,8 +36,8 @@ spec:
     - 3.4_ea1-v1.41
   - name: build-platforms
     value:
-    - linux-extra-fast/amd64
-    - linux-m2xlarge/arm64
+    - linux-mxlarge/amd64
+    - linux-d160-m2xlarge/arm64
   taskRunSpecs:
     - pipelineTaskName: build-images
       computeResources:
