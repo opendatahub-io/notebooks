@@ -3,34 +3,22 @@
 #########################
 ARG BASE_IMAGE
 
-############################
-# Stage 1: PDF Tool Build #
-############################
-FROM registry.access.redhat.com/ubi9/python-312:latest AS pdf-builder
-
-WORKDIR /opt/app-root/bin
-
-# OS Packages needs to be installed as root
-# hadolint ignore=DL3002
-USER 0
-
-# Copy scripts
-COPY jupyter/utils/install_pandoc.sh ./install_pandoc.sh
-
-RUN ./install_pandoc.sh
+# External image alias for UBI repository configuration
+FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
 
 ####################
 # cpu-base         #
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
+
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
 USER 0
 
 ### BEGIN upgrade first to avoid fixable vulnerabilities
-RUN /bin/bash <<'EOF'
 # If we have a Red Hat subscription prepared, refresh it
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if command -v subscription-manager &> /dev/null; then
   subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
@@ -99,17 +87,11 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
 USER 0
 
-# Dependencies for PDF export
-RUN --mount=type=cache,from=pdf-builder,source=/usr/local/,target=/pdf_builder/,rw bash <<'EOF'
-if [[ "$(uname -m)" == "ppc64le" ]]; then
-    cp -r /pdf_builder/pandoc /usr/local/
-    ./utils/install_texlive.sh
-else
-    ./utils/install_pdf_deps.sh
-fi
-EOF
-
+### BEGIN Dependencies for PDF export
+RUN ./utils/install_pdf_deps.sh
 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+
+### END Dependencies for PDF export
 
 USER 1001
 

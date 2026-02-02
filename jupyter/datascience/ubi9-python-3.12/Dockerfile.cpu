@@ -48,8 +48,8 @@ USER root
 ARG TARGETARCH
 
 ### BEGIN upgrade first to avoid fixable vulnerabilities
-RUN /bin/bash <<'EOF'
 # If we have a Red Hat subscription prepared, refresh it
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if command -v subscription-manager &> /dev/null; then
   subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
@@ -280,6 +280,7 @@ ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
 
 WORKDIR /opt/app-root/bin
+
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 

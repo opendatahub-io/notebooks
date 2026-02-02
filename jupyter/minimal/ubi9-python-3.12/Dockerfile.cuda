@@ -9,14 +9,15 @@ ARG BASE_IMAGE
 # cuda-base        #
 ####################
 FROM ${BASE_IMAGE} AS cuda-base
+
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
 USER 0
 
 ### BEGIN upgrade first to avoid fixable vulnerabilities
-RUN /bin/bash <<'EOF'
 # If we have a Red Hat subscription prepared, refresh it
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if command -v subscription-manager &> /dev/null; then
   subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."

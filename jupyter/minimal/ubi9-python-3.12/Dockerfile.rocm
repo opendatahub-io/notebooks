@@ -7,14 +7,15 @@ ARG BASE_IMAGE
 # rocm-base        #
 ####################
 FROM ${BASE_IMAGE} AS rocm-base
+
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
 USER 0
 
 ### BEGIN upgrade first to avoid fixable vulnerabilities
-RUN /bin/bash <<'EOF'
 # If we have a Red Hat subscription prepared, refresh it
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if command -v subscription-manager &> /dev/null; then
   subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
@@ -92,8 +93,6 @@ ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 USER 1001
 
 COPY ${MINIMAL_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
-
-USER 0
 
 # Install Python dependencies from Pipfile.lock file
 RUN /bin/bash <<'EOF'
