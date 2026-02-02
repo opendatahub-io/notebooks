@@ -66,8 +66,4 @@ override-dependencies = [
     # Using >= instead of ~= to allow broader compatibility during resolution
     # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
     "python-lsp-server>=1.11.0",
-    # TODO(AIPCC-9537): kfp deps added as workaround for stripped metadata, but not available in CUDA index
-    "google-cloud-storage ; sys_platform == 'never'",
-    "kfp-pipeline-spec ; sys_platform == 'never'",
-    "kfp-server-api ; sys_platform == 'never'",
 ]

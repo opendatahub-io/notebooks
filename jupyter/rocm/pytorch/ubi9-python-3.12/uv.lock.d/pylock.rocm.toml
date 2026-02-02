@@ -641,6 +641,18 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://console.redhat.com/api/pulp-content/public-rhai/rhoai/3.3/rocm6.4-ubi9/kfp_kubernetes-2.15.2-12-py3-none-any.whl", hashes = { sha256 = "7a9faec40c593fd1a52330ccb68fe9d5b04b5eb0a27e9039c1bb6dbdbf12e418" } }]
 
 [[packages]]
+name = "kfp-pipeline-spec"
+version = "2.15.2"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://console.redhat.com/api/pulp-content/public-rhai/rhoai/3.3/cpu-ubi9/kfp_pipeline_spec-2.15.2-2-py3-none-any.whl", hashes = { sha256 = "587040b1de8c4a3a86d4e36f25d204a7e4af52b7b363b4f2260c65abdbecc44b" } }]
+
+[[packages]]
+name = "kfp-server-api"
+version = "2.15.2"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://console.redhat.com/api/pulp-content/public-rhai/rhoai/3.3/cpu-ubi9/kfp_server_api-2.15.2-2-py3-none-any.whl", hashes = { sha256 = "01dc12f5a9961bebed492e752df4de25e668e971100aa939835534f1e2fb4eb2" } }]
+
+[[packages]]
 name = "kiwisolver"
 version = "1.4.9"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -1146,6 +1158,12 @@ name = "requests-oauthlib"
 version = "2.0.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://console.redhat.com/api/pulp-content/public-rhai/rhoai/3.3/rocm6.4-ubi9/requests_oauthlib-2.0.0-12-py2.py3-none-any.whl", hashes = { sha256 = "7f2ec965a07ceffd3a763ed0a9b3be2ad08c2368fa793ff1b71feb2efb7de7d1" } }]
+
+[[packages]]
+name = "requests-toolbelt"
+version = "1.0.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://console.redhat.com/api/pulp-content/public-rhai/rhoai/3.3/cpu-ubi9/requests_toolbelt-1.0.0-2-py2.py3-none-any.whl", hashes = { sha256 = "22a60a783ab26d3df6befcc4072204aa1dfad65802da16186fe97852df6e352c" } }]
 
 [[packages]]
 name = "retrying"

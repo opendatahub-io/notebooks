@@ -383,6 +383,30 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://console.redhat.com/api/pulp-content/public-rhai/rhoai/3.3/cuda12.9-ubi9/google_auth-2.47.0-8-py3-none-any.whl", hashes = { sha256 = "5c0ea61ffec57ddab370f46b557132f27ba5c1bb8f1dc4f0b2f921a0d753ad66" } }]
 
 [[packages]]
+name = "google-cloud-core"
+version = "2.5.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://console.redhat.com/api/pulp-content/public-rhai/rhoai/3.3/cpu-ubi9/google_cloud_core-2.5.0-2-py3-none-any.whl", hashes = { sha256 = "6fbf78b1f08be891d896310309e576f66565a19a79334575db9cececde4fe948" } }]
+
+[[packages]]
+name = "google-cloud-storage"
+version = "3.7.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://console.redhat.com/api/pulp-content/public-rhai/rhoai/3.3/cpu-ubi9/google_cloud_storage-3.7.0-2-py3-none-any.whl", hashes = { sha256 = "26c67201f8b33a5a1f4e6e24d508d673738dcb4a2db956bcaf901ad0bf1a3b74" } }]
+
+[[packages]]
+name = "google-crc32c"
+version = "1.8.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://console.redhat.com/api/pulp-content/public-rhai/rhoai/3.3/cpu-ubi9/google_crc32c-1.8.0-2-py3-none-any.whl", hashes = { sha256 = "aa358fd96bbc33eddfccd794e8bf77b7cd1b02b5b857518139dcc0b328392cf6" } }]
+
+[[packages]]
+name = "google-resumable-media"
+version = "2.8.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://console.redhat.com/api/pulp-content/public-rhai/rhoai/3.3/cpu-ubi9/google_resumable_media-2.8.0-2-py3-none-any.whl", hashes = { sha256 = "bdf13a0ceec8ba97622165ceeb789e6f0fb7c1614665be246b819811ca661f9c" } }]
+
+[[packages]]
 name = "googleapis-common-protos"
 version = "1.72.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -648,6 +672,18 @@ name = "kfp-kubernetes"
 version = "2.15.2"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://console.redhat.com/api/pulp-content/public-rhai/rhoai/3.3/cuda12.9-ubi9/kfp_kubernetes-2.15.2-8-py3-none-any.whl", hashes = { sha256 = "2b90e4ce6a84ce982104bfa8b0513019e6d31870fc547a88ca1dfbcf119173e4" } }]
+
+[[packages]]
+name = "kfp-pipeline-spec"
+version = "2.15.2"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://console.redhat.com/api/pulp-content/public-rhai/rhoai/3.3/cpu-ubi9/kfp_pipeline_spec-2.15.2-2-py3-none-any.whl", hashes = { sha256 = "587040b1de8c4a3a86d4e36f25d204a7e4af52b7b363b4f2260c65abdbecc44b" } }]
+
+[[packages]]
+name = "kfp-server-api"
+version = "2.15.2"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://console.redhat.com/api/pulp-content/public-rhai/rhoai/3.3/cpu-ubi9/kfp_server_api-2.15.2-2-py3-none-any.whl", hashes = { sha256 = "01dc12f5a9961bebed492e752df4de25e668e971100aa939835534f1e2fb4eb2" } }]
 
 [[packages]]
 name = "kiwisolver"
