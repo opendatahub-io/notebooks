@@ -3,8 +3,8 @@ set -euxo pipefail
 
 ##############################################################################
 # This script is expected to be run as `root`                                #
-# It builds code-server rpm for `ppc64le`                                    #
-# For other architectures, the rpm is downloaded from the available releases #
+# It builds code-server RPM from source for all supported architectures      #
+# For ppc64le/s390x: Additional patches and stubs are required               #
 ##############################################################################
 
 
@@ -18,6 +18,7 @@ UNAME_TO_GOARCH["s390x"]="s390x"
 ARCH="${UNAME_TO_GOARCH[$(uname -m)]}"
 
 if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
+	echo "Building code-server from source for ${ARCH}..."
 
 	export MAX_JOBS=${MAX_JOBS:-$(nproc)}
 	export NODE_VERSION=${NODE_VERSION:-22.21.1}
@@ -48,7 +49,7 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
 	cd libxkbfile-${X_KB_FILE_VERSION}/
 	./configure --prefix=/usr && make install -j ${MAX_JOBS}
 	cd .. && rm -rf libxkbfile-${X_KB_FILE_VERSION}/
-    export PKG_CONFIG_PATH=$(find / -type d -name "pkgconfig" 2>/dev/null | tr '\n' ':')
+	export PKG_CONFIG_PATH=$(find / -type d -name "pkgconfig" 2>/dev/null | tr '\n' ':')
 
 	# install nfpm to build rpm
 	NFPM_VERSION=$(curl -s "https://api.github.com/repos/goreleaser/nfpm/releases/latest" | jq -r '.tag_name') \
@@ -62,9 +63,9 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
 	# build codeserver
 	git clone --depth 1 --branch "${CODESERVER_VERSION}" --recurse-submodules --shallow-submodules https://github.com/coder/code-server.git
 	cd code-server
-        
-#patch taken from vscodium s390x IBM : https://github.com/VSCodium/vscodium/blob/master/patches/linux/reh/s390x/arch-4-s390x-package.json.patch
-if [[ "$ARCH" == "s390x" ]]; then
+
+	# patch taken from vscodium s390x IBM : https://github.com/VSCodium/vscodium/blob/master/patches/linux/reh/s390x/arch-4-s390x-package.json.patch
+	if [[ "$ARCH" == "s390x" ]]; then
 cat > s390x.patch <<EOL
 diff --git a/lib/vscode/package-lock.json b/lib/vscode/package-lock.json
 index 0d0272a92b2..73e8feb92dd 100644
@@ -102,19 +103,19 @@ index a4c7a2a3a35..d7f816248af 100644
    "repository": {
 EOL
 
-   git apply s390x.patch
-fi	
-        
-# @vscode/vsce-sign does not support ppc64le/s390x; optionally provide a stub.
-if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
-  if [[ "${ALLOW_VSCE_SIGN_STUB:-}" != "1" ]]; then
-    echo "vsce-sign has no ${ARCH} binary. Set ALLOW_VSCE_SIGN_STUB=1 to use a stub (disables signature verification)." >&2
-    exit 1
-  fi
+		git apply s390x.patch
+	fi
 
-  VSCE_SIGN_STUB_DIR="lib/vscode/build/vsce-sign-stub"
-  mkdir -p "${VSCE_SIGN_STUB_DIR}/src" "${VSCE_SIGN_STUB_DIR}/bin"
-  cat > "${VSCE_SIGN_STUB_DIR}/package.json" <<'EOF'
+	# @vscode/vsce-sign does not support ppc64le/s390x; optionally provide a stub.
+	if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
+		if [[ "${ALLOW_VSCE_SIGN_STUB:-}" != "1" ]]; then
+			echo "vsce-sign has no ${ARCH} binary. Set ALLOW_VSCE_SIGN_STUB=1 to use a stub (disables signature verification)." >&2
+			exit 1
+		fi
+
+		VSCE_SIGN_STUB_DIR="lib/vscode/build/vsce-sign-stub"
+		mkdir -p "${VSCE_SIGN_STUB_DIR}/src" "${VSCE_SIGN_STUB_DIR}/bin"
+		cat > "${VSCE_SIGN_STUB_DIR}/package.json" <<'EOF'
 {
   "name": "@vscode/vsce-sign",
   "version": "0.0.0-stub",
@@ -126,7 +127,7 @@ if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
 }
 EOF
 
-  cat > "${VSCE_SIGN_STUB_DIR}/src/main.js" <<'EOF'
+		cat > "${VSCE_SIGN_STUB_DIR}/src/main.js" <<'EOF'
 'use strict';
 
 const fs = require('fs');
@@ -181,13 +182,13 @@ module.exports = {
 };
 EOF
 
-  cat > "${VSCE_SIGN_STUB_DIR}/bin/vsce-sign" <<'EOF'
+		cat > "${VSCE_SIGN_STUB_DIR}/bin/vsce-sign" <<'EOF'
 #!/usr/bin/env bash
 exit 0
 EOF
-  chmod +x "${VSCE_SIGN_STUB_DIR}/bin/vsce-sign"
+		chmod +x "${VSCE_SIGN_STUB_DIR}/bin/vsce-sign"
 
-  python3 - <<'PY'
+		python3 - <<'PY'
 import json
 from pathlib import Path
 
@@ -198,17 +199,68 @@ overrides["@vscode/vsce-sign"] = "file:vsce-sign-stub"
 data["overrides"] = overrides
 build_pkg.write_text(json.dumps(data, indent=2) + "\n")
 PY
-fi	
-        	
+	fi
+
 	source ${NVM_DIR}/nvm.sh
 	while IFS= read -r src_patch; do echo "patches/$src_patch"; patch -p1 < "patches/$src_patch"; done < patches/series
 	nvm use ${NODE_VERSION}
+
 	# Avoid VS Code build workers hitting default V8 heap limits.
-	if [[ "${NODE_OPTIONS:-}" != *"--max-old-space-size"* ]]; then
-		export NODE_OPTIONS="--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE:-8192} ${NODE_OPTIONS:-}"
-	fi
+	# Set a high value (16GB) to accommodate the VS Code build which spawns multiple workers.
+	# The default V8 heap limit is ~4GB on 64-bit systems.
+	export NODE_MAX_OLD_SPACE_SIZE=${NODE_MAX_OLD_SPACE_SIZE:-16384}
+	export NODE_OPTIONS="--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE}"
+	
+	# Also set via npm config to ensure it propagates to child processes
+	npm config set node-options "--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE}"
+	
+	# VS Code build uses worker threads that need their own memory limits
+	# UV_THREADPOOL_SIZE limits async I/O threads
+	# VSCODE_BUILD_WEBVIEW_USE_PROCESS disables problematic webview worker
+	export UV_THREADPOOL_SIZE=${UV_THREADPOOL_SIZE:-4}
+	
+	# Limit gulp/VS Code build concurrency to reduce memory pressure
+	# Lower concurrency = fewer workers = less total memory usage
+	export JOBS=${JOBS:-2}
+	export BUILD_CONCURRENCY=${BUILD_CONCURRENCY:-1}
+	export VSCODE_BUILD_CONCURRENCY=${BUILD_CONCURRENCY}
+	
+	# Disable parallel compilation to reduce memory pressure
+	export npm_config_jobs=1
+	
+	# Configure npm for better network reliability in CI environments
+	# Increase timeouts and add retry logic for flaky connections
+	npm config set fetch-retries 5
+	npm config set fetch-retry-mintimeout 30000
+	npm config set fetch-retry-maxtimeout 180000
+	npm config set fetch-timeout 600000
+
+	
+	echo "=== Build Configuration ==="
+	echo "NODE_OPTIONS: ${NODE_OPTIONS}"
+	echo "npm node-options: $(npm config get node-options)"
+	echo "JOBS: ${JOBS}"
+	echo "BUILD_CONCURRENCY: ${BUILD_CONCURRENCY}"
+	echo "npm fetch-retries: $(npm config get fetch-retries)"
+	echo "npm fetch-timeout: $(npm config get fetch-timeout)"
+	echo "==========================="
+
 	npm cache clean --force
-	npm install
+	
+	# Install with retry logic for network resilience
+	MAX_RETRIES=3
+	RETRY_COUNT=0
+	until npm install || [ $RETRY_COUNT -ge $MAX_RETRIES ]; do
+		RETRY_COUNT=$((RETRY_COUNT + 1))
+		echo "npm install failed (attempt $RETRY_COUNT/$MAX_RETRIES), retrying in 30 seconds..."
+		sleep 30
+		npm cache clean --force
+	done
+	
+	if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+		echo "ERROR: npm install failed after $MAX_RETRIES attempts"
+		exit 1
+	fi
 	# Ensure @vscode/vsce-sign is resolvable at runtime for ppc64le/s390x builds.
 	if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
 		if [[ "${ALLOW_VSCE_SIGN_STUB:-}" == "1" ]]; then
@@ -220,6 +272,10 @@ fi
 		fi
 	fi
 	npm run build
+	
+	# Build VS Code - this is the memory-intensive step
+	# NODE_OPTIONS should propagate to child npm processes
+	echo "Building VS Code (memory-intensive step)..."
 	VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
 	export KEEP_MODULES=1
 	npm run release
@@ -230,9 +286,7 @@ fi
 	mv release-packages/code-server-${CODESERVER_VERSION/v/}-${ARCH}.rpm /tmp/
 
 else
-
-  # we shall not download rpm for other architectures
-  echo "Unsupported architecture: $ARCH" >&2
-  exit 1
-
+	# Unsupported architecture
+	echo "Unsupported architecture: $ARCH" >&2
+	exit 1
 fi
