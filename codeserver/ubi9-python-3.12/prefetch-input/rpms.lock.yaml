@@ -11,6 +11,34 @@ arches:
     name: annobin
     evr: 12.98-1.el9
     sourcerpm: annobin-12.98-1.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/apr-1.7.0-12.el9.aarch64.rpm
+    repoid: appstream
+    size: 122324
+    checksum: sha256:a8e3b1cc48131a4d2861843dac20f31cf013d55e52948ff93607c915c9b29f9f
+    name: apr
+    evr: 1.7.0-12.el9
+    sourcerpm: apr-1.7.0-12.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/apr-util-1.6.1-23.el9.aarch64.rpm
+    repoid: appstream
+    size: 98313
+    checksum: sha256:10299e1d88fcb4ae5d703374455fec36b62d060dcc0882d0f73aa9b31cb2d784
+    name: apr-util
+    evr: 1.6.1-23.el9
+    sourcerpm: apr-util-1.6.1-23.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/apr-util-bdb-1.6.1-23.el9.aarch64.rpm
+    repoid: appstream
+    size: 13259
+    checksum: sha256:90c6cf6695fabb4e05e1313d5ee7cc0a573dc4279665ff0330b4809da516238c
+    name: apr-util-bdb
+    evr: 1.6.1-23.el9
+    sourcerpm: apr-util-1.6.1-23.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/apr-util-openssl-1.6.1-23.el9.aarch64.rpm
+    repoid: appstream
+    size: 15420
+    checksum: sha256:6a96ea26b01344461c64755381f2397499ad616b2ba890ec7200712911640058
+    name: apr-util-openssl
+    evr: 1.6.1-23.el9
+    sourcerpm: apr-util-1.6.1-23.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/autoconf-2.69-41.el9.noarch.rpm
     repoid: appstream
     size: 696964
@@ -25,6 +53,27 @@ arches:
     name: automake
     evr: 1.16.2-8.el9
     sourcerpm: automake-1.16.2-8.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/bind-libs-9.16.23-36.el9.aarch64.rpm
+    repoid: appstream
+    size: 1252243
+    checksum: sha256:818e8019621e960be166b9a042e312556f6dfc28ec410235bb249948cfa7c9ef
+    name: bind-libs
+    evr: 32:9.16.23-36.el9
+    sourcerpm: bind-9.16.23-36.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/bind-license-9.16.23-36.el9.noarch.rpm
+    repoid: appstream
+    size: 12853
+    checksum: sha256:842039873edf3d7a29b8dc3a481f70545b7e0130b8e307eed0b9f017099386fd
+    name: bind-license
+    evr: 32:9.16.23-36.el9
+    sourcerpm: bind-9.16.23-36.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/bind-utils-9.16.23-36.el9.aarch64.rpm
+    repoid: appstream
+    size: 211362
+    checksum: sha256:7c057e92498d6821bb13f9f8d54091073e018c8de451c4e01398b83f0db12181
+    name: bind-utils
+    evr: 32:9.16.23-36.el9
+    sourcerpm: bind-9.16.23-36.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/brotli-1.0.9-9.el9.aarch64.rpm
     repoid: appstream
     size: 316695
@@ -39,6 +88,13 @@ arches:
     name: brotli-devel
     evr: 1.0.9-9.el9
     sourcerpm: brotli-1.0.9-9.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/centos-logos-httpd-90.9-1.el9.noarch.rpm
+    repoid: appstream
+    size: 1577199
+    checksum: sha256:0a6e9d58e4941b43b115c90aa468fe3b335a938a805c18676896dc93587b741d
+    name: centos-logos-httpd
+    evr: 90.9-1.el9
+    sourcerpm: centos-logos-90.9-1.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/checkpolicy-3.6-1.el9.aarch64.rpm
     repoid: appstream
     size: 355913
@@ -116,6 +172,13 @@ arches:
     name: fonts-srpm-macros
     evr: 1:2.0.5-7.el9.1
     sourcerpm: fonts-rpm-macros-2.0.5-7.el9.1.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/fstrm-0.6.1-3.el9.aarch64.rpm
+    repoid: appstream
+    size: 27694
+    checksum: sha256:5455cb7ade366e93de381aeda3c6f6ea8d89e5e3153b4e5b4604c9eaa9397f24
+    name: fstrm
+    evr: 0.6.1-3.el9
+    sourcerpm: fstrm-0.6.1-3.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/fuse-overlayfs-1.16-1.el9.aarch64.rpm
     repoid: appstream
     size: 63278
@@ -284,6 +347,34 @@ arches:
     name: gsm
     evr: 1.0.19-6.el9
     sourcerpm: gsm-1.0.19-6.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/httpd-2.4.62-10.el9.aarch64.rpm
+    repoid: appstream
+    size: 47016
+    checksum: sha256:5de800a418c133ad4b26d704566c794bfd8e28716e96445ee769bd19e7753363
+    name: httpd
+    evr: 2.4.62-10.el9
+    sourcerpm: httpd-2.4.62-10.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/httpd-core-2.4.62-10.el9.aarch64.rpm
+    repoid: appstream
+    size: 1565011
+    checksum: sha256:906da2187de7f1abb4e6d7ac68ef357486316d0f0d7151171f3967ceaacdec8f
+    name: httpd-core
+    evr: 2.4.62-10.el9
+    sourcerpm: httpd-2.4.62-10.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/httpd-filesystem-2.4.62-10.el9.noarch.rpm
+    repoid: appstream
+    size: 12003
+    checksum: sha256:663dec20c6394b4b2c9687f8a41585f609480c8ee31335c0a65515fd45add57a
+    name: httpd-filesystem
+    evr: 2.4.62-10.el9
+    sourcerpm: httpd-2.4.62-10.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/httpd-tools-2.4.62-10.el9.aarch64.rpm
+    repoid: appstream
+    size: 80736
+    checksum: sha256:04633dadba5e92275f2a9b190aa5dfb54518c303fcc4e2e473c00362667fc9e1
+    name: httpd-tools
+    evr: 2.4.62-10.el9
+    sourcerpm: httpd-2.4.62-10.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/kernel-headers-5.14.0-665.el9.aarch64.rpm
     repoid: appstream
     size: 2499801
@@ -375,6 +466,13 @@ arches:
     name: libglvnd-glx
     evr: 1:1.3.4-1.el9
     sourcerpm: libglvnd-1.3.4-1.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/libmaxminddb-1.5.2-4.el9.aarch64.rpm
+    repoid: appstream
+    size: 37530
+    checksum: sha256:4460a3cddcb3bc42f17b73e89ad1e7067775151497380162298f3993ea4bfb04
+    name: libmaxminddb
+    evr: 1.5.2-4.el9
+    sourcerpm: libmaxminddb-1.5.2-4.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/libmpc-1.2.1-4.el9.aarch64.rpm
     repoid: appstream
     size: 64836
@@ -438,6 +536,13 @@ arches:
     name: libubsan
     evr: 11.5.0-14.el9
     sourcerpm: gcc-11.5.0-14.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/libuv-1.42.0-2.el9.aarch64.rpm
+    repoid: appstream
+    size: 146652
+    checksum: sha256:459d3302e40bfc7bc1b7d4905f265b8bae19aa7485a1b6cd49b5743947605ec4
+    name: libuv
+    evr: 1:1.42.0-2.el9
+    sourcerpm: libuv-1.42.0-2.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/libvorbis-1.3.7-5.el9.aarch64.rpm
     repoid: appstream
     size: 193875
@@ -522,6 +627,55 @@ arches:
     name: mesa-libgbm
     evr: 25.2.7-2.el9
     sourcerpm: mesa-25.2.7-2.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/mod_http2-2.0.26-5.el9.aarch64.rpm
+    repoid: appstream
+    size: 160871
+    checksum: sha256:389cacb75b46f805a4f61c81d27b1b549fc8a51e11d3e93fcedecf90a0c67e90
+    name: mod_http2
+    evr: 2.0.26-5.el9
+    sourcerpm: mod_http2-2.0.26-5.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/mod_lua-2.4.62-10.el9.aarch64.rpm
+    repoid: appstream
+    size: 57525
+    checksum: sha256:0a23a00fa85726b9fb61a061afbcb0d87143913e683719bf51fe2522052a1fc4
+    name: mod_lua
+    evr: 2.4.62-10.el9
+    sourcerpm: httpd-2.4.62-10.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/nginx-1.20.1-26.el9.aarch64.rpm
+    repoid: appstream
+    size: 37089
+    checksum: sha256:79c06758f15b6f612dd2d19d6234a56cbeec4ac82a2957adc8c05ac4ced00ce3
+    name: nginx
+    evr: 2:1.20.1-26.el9
+    sourcerpm: nginx-1.20.1-26.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/nginx-core-1.20.1-26.el9.aarch64.rpm
+    repoid: appstream
+    size: 585144
+    checksum: sha256:f65205bf6666fd5b5f230524a487a100d688bbcd6e73f6921886385bf19bb779
+    name: nginx-core
+    evr: 2:1.20.1-26.el9
+    sourcerpm: nginx-1.20.1-26.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/nginx-filesystem-1.20.1-26.el9.noarch.rpm
+    repoid: appstream
+    size: 9567
+    checksum: sha256:166db61775a464e316bb567c88cd52622e5605d640eeb8070a83dbcfbee26f1f
+    name: nginx-filesystem
+    evr: 2:1.20.1-26.el9
+    sourcerpm: nginx-1.20.1-26.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/nginx-mod-http-perl-1.20.1-26.el9.aarch64.rpm
+    repoid: appstream
+    size: 30765
+    checksum: sha256:e786c09c719b0148cf7581930bf7e4585b92dd62edd8e36f9ad173a04e9fa171
+    name: nginx-mod-http-perl
+    evr: 2:1.20.1-26.el9
+    sourcerpm: nginx-1.20.1-26.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/nginx-mod-stream-1.20.1-26.el9.aarch64.rpm
+    repoid: appstream
+    size: 78602
+    checksum: sha256:f9f7c3b7e89f15efd2387901f018c95d70f8b2d245d81e22d91ee9fa3f2b6c9e
+    name: nginx-mod-stream
+    evr: 2:1.20.1-26.el9
+    sourcerpm: nginx-1.20.1-26.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/nodejs-22.22.0-1.module_el9+1314+f4a09924.aarch64.rpm
     repoid: appstream
     size: 2512038
@@ -3119,6 +3273,20 @@ arches:
     name: libzstd
     evr: 1.5.5-1.el9
     sourcerpm: zstd-1.5.5-1.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/lmdb-libs-0.9.29-3.el9.aarch64.rpm
+    repoid: baseos
+    size: 63298
+    checksum: sha256:3678d9be6be00d469dc278b59be321ebbd8e686e67b28790ad647da6f43956aa
+    name: lmdb-libs
+    evr: 0.9.29-3.el9
+    sourcerpm: lmdb-0.9.29-3.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/logrotate-3.18.0-12.el9.aarch64.rpm
+    repoid: baseos
+    size: 74051
+    checksum: sha256:a049d5b42d32d949c5b015168703d32c9a54297c8b583dde83dd5dc1feb7b252
+    name: logrotate
+    evr: 3.18.0-12.el9
+    sourcerpm: logrotate-3.18.0-12.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/lua-libs-5.4.4-4.el9.aarch64.rpm
     repoid: baseos
     size: 130674
@@ -3133,6 +3301,13 @@ arches:
     name: lz4-libs
     evr: 1.9.3-5.el9
     sourcerpm: lz4-1.9.3-5.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/mailcap-2.1.49-5.el9.noarch.rpm
+    repoid: baseos
+    size: 33919
+    checksum: sha256:ff68e21d6e9d7c5b379a3164de7543038849ddfe9f849359ea7421ff23c91c9d
+    name: mailcap
+    evr: 2.1.49-5.el9
+    sourcerpm: mailcap-2.1.49-5.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/make-4.3-8.el9.aarch64.rpm
     repoid: baseos
     size: 546264
@@ -3554,6 +3729,34 @@ arches:
     name: annobin
     evr: 12.98-1.el9
     sourcerpm: annobin-12.98-1.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/apr-1.7.0-12.el9.x86_64.rpm
+    repoid: appstream
+    size: 126159
+    checksum: sha256:447b443dc55acc5d4749d0d2ddc11bdf7edb6ff53071e661c2ebb7a527b9ac54
+    name: apr
+    evr: 1.7.0-12.el9
+    sourcerpm: apr-1.7.0-12.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/apr-util-1.6.1-23.el9.x86_64.rpm
+    repoid: appstream
+    size: 97275
+    checksum: sha256:1c5729ec625fe24cbfaa6fb9bed7fe35a3a00961364c2133eb7cf67dfb84ec6f
+    name: apr-util
+    evr: 1.6.1-23.el9
+    sourcerpm: apr-util-1.6.1-23.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/apr-util-bdb-1.6.1-23.el9.x86_64.rpm
+    repoid: appstream
+    size: 13261
+    checksum: sha256:9d92e6fc2d8df679dc8e7a7388977810654f932c8452b111e3b9f7da3c9b6f08
+    name: apr-util-bdb
+    evr: 1.6.1-23.el9
+    sourcerpm: apr-util-1.6.1-23.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/apr-util-openssl-1.6.1-23.el9.x86_64.rpm
+    repoid: appstream
+    size: 15812
+    checksum: sha256:13a9ef505475c08f02a04dbea2776a4aa513db2612200c4aace104ffec9d559e
+    name: apr-util-openssl
+    evr: 1.6.1-23.el9
+    sourcerpm: apr-util-1.6.1-23.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/autoconf-2.69-41.el9.noarch.rpm
     repoid: appstream
     size: 696964
@@ -3568,6 +3771,27 @@ arches:
     name: automake
     evr: 1.16.2-8.el9
     sourcerpm: automake-1.16.2-8.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/bind-libs-9.16.23-36.el9.x86_64.rpm
+    repoid: appstream
+    size: 1301195
+    checksum: sha256:2dfb32671f73e4595f4fe039c4885589e801b1f9bdf6859f084af0ebe369557d
+    name: bind-libs
+    evr: 32:9.16.23-36.el9
+    sourcerpm: bind-9.16.23-36.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/bind-license-9.16.23-36.el9.noarch.rpm
+    repoid: appstream
+    size: 12853
+    checksum: sha256:842039873edf3d7a29b8dc3a481f70545b7e0130b8e307eed0b9f017099386fd
+    name: bind-license
+    evr: 32:9.16.23-36.el9
+    sourcerpm: bind-9.16.23-36.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/bind-utils-9.16.23-36.el9.x86_64.rpm
+    repoid: appstream
+    size: 211135
+    checksum: sha256:9255f9ff6de2c742b8d977e2a03c6a81718d523c418df9a513308a8a12ac0f18
+    name: bind-utils
+    evr: 32:9.16.23-36.el9
+    sourcerpm: bind-9.16.23-36.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/brotli-1.0.9-9.el9.x86_64.rpm
     repoid: appstream
     size: 318216
@@ -3582,6 +3806,13 @@ arches:
     name: brotli-devel
     evr: 1.0.9-9.el9
     sourcerpm: brotli-1.0.9-9.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/centos-logos-httpd-90.9-1.el9.noarch.rpm
+    repoid: appstream
+    size: 1577199
+    checksum: sha256:0a6e9d58e4941b43b115c90aa468fe3b335a938a805c18676896dc93587b741d
+    name: centos-logos-httpd
+    evr: 90.9-1.el9
+    sourcerpm: centos-logos-90.9-1.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/checkpolicy-3.6-1.el9.x86_64.rpm
     repoid: appstream
     size: 361742
@@ -3659,6 +3890,13 @@ arches:
     name: fonts-srpm-macros
     evr: 1:2.0.5-7.el9.1
     sourcerpm: fonts-rpm-macros-2.0.5-7.el9.1.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/fstrm-0.6.1-3.el9.x86_64.rpm
+    repoid: appstream
+    size: 28914
+    checksum: sha256:6f4651a4d115aae83f99b914773973c7c0a637916e0d505ba19a162266785111
+    name: fstrm
+    evr: 0.6.1-3.el9
+    sourcerpm: fstrm-0.6.1-3.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/fuse-overlayfs-1.16-1.el9.x86_64.rpm
     repoid: appstream
     size: 67195
@@ -3841,6 +4079,34 @@ arches:
     name: gsm
     evr: 1.0.19-6.el9
     sourcerpm: gsm-1.0.19-6.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/httpd-2.4.62-10.el9.x86_64.rpm
+    repoid: appstream
+    size: 47479
+    checksum: sha256:76bf982e1f19beb01add019e022d2fb7580c85fd581002527dd397556557b18f
+    name: httpd
+    evr: 2.4.62-10.el9
+    sourcerpm: httpd-2.4.62-10.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/httpd-core-2.4.62-10.el9.x86_64.rpm
+    repoid: appstream
+    size: 1584542
+    checksum: sha256:008ff4c414500e3ce1dd8f5b16c7cf45dd4a2705af5701ff5bd3d471a6fc0c4d
+    name: httpd-core
+    evr: 2.4.62-10.el9
+    sourcerpm: httpd-2.4.62-10.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/httpd-filesystem-2.4.62-10.el9.noarch.rpm
+    repoid: appstream
+    size: 12003
+    checksum: sha256:663dec20c6394b4b2c9687f8a41585f609480c8ee31335c0a65515fd45add57a
+    name: httpd-filesystem
+    evr: 2.4.62-10.el9
+    sourcerpm: httpd-2.4.62-10.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/httpd-tools-2.4.62-10.el9.x86_64.rpm
+    repoid: appstream
+    size: 82473
+    checksum: sha256:6c5e98644a0e7b11d721ae6cea73ac9377b523a20719ae3d6fb946c911440bd2
+    name: httpd-tools
+    evr: 2.4.62-10.el9
+    sourcerpm: httpd-2.4.62-10.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/kernel-headers-5.14.0-665.el9.x86_64.rpm
     repoid: appstream
     size: 2539081
@@ -3925,6 +4191,13 @@ arches:
     name: libglvnd-glx
     evr: 1:1.3.4-1.el9
     sourcerpm: libglvnd-1.3.4-1.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/libmaxminddb-1.5.2-4.el9.x86_64.rpm
+    repoid: appstream
+    size: 33629
+    checksum: sha256:fca535b4624b1413c3702a916b365c702bbd05f733ff0255236fedbbb4c718f7
+    name: libmaxminddb
+    evr: 1.5.2-4.el9
+    sourcerpm: libmaxminddb-1.5.2-4.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/libmpc-1.2.1-4.el9.x86_64.rpm
     repoid: appstream
     size: 63754
@@ -3981,6 +4254,13 @@ arches:
     name: libtool
     evr: 2.4.6-46.el9
     sourcerpm: libtool-2.4.6-46.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/libuv-1.42.0-2.el9.x86_64.rpm
+    repoid: appstream
+    size: 151142
+    checksum: sha256:bb36238ab9c8f9155c64de8a69299a04a2263f0a215a5acef4f6b72e2de12eda
+    name: libuv
+    evr: 1:1.42.0-2.el9
+    sourcerpm: libuv-1.42.0-2.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/libvorbis-1.3.7-5.el9.x86_64.rpm
     repoid: appstream
     size: 197644
@@ -4072,6 +4352,55 @@ arches:
     name: mesa-libgbm
     evr: 25.2.7-2.el9
     sourcerpm: mesa-25.2.7-2.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/mod_http2-2.0.26-5.el9.x86_64.rpm
+    repoid: appstream
+    size: 166529
+    checksum: sha256:145dc47bdfeb77e82301c3225c0e69d013db40da8154a018ab53244382156312
+    name: mod_http2
+    evr: 2.0.26-5.el9
+    sourcerpm: mod_http2-2.0.26-5.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/mod_lua-2.4.62-10.el9.x86_64.rpm
+    repoid: appstream
+    size: 59835
+    checksum: sha256:3decdd34de33a93eaec1d540118cfcf477a2c1efd6fda1ef5c4d6f35d92c6e4e
+    name: mod_lua
+    evr: 2.4.62-10.el9
+    sourcerpm: httpd-2.4.62-10.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/nginx-1.20.1-26.el9.x86_64.rpm
+    repoid: appstream
+    size: 37150
+    checksum: sha256:99e3388560d2e8cafa561794767ad445bf875c63036b10f1204f13daa9923437
+    name: nginx
+    evr: 2:1.20.1-26.el9
+    sourcerpm: nginx-1.20.1-26.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/nginx-core-1.20.1-26.el9.x86_64.rpm
+    repoid: appstream
+    size: 584254
+    checksum: sha256:349981d94f9da846a1afe8feb0c56a03b85ae7563d14b992a9573cba89b66325
+    name: nginx-core
+    evr: 2:1.20.1-26.el9
+    sourcerpm: nginx-1.20.1-26.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/nginx-filesystem-1.20.1-26.el9.noarch.rpm
+    repoid: appstream
+    size: 9567
+    checksum: sha256:166db61775a464e316bb567c88cd52622e5605d640eeb8070a83dbcfbee26f1f
+    name: nginx-filesystem
+    evr: 2:1.20.1-26.el9
+    sourcerpm: nginx-1.20.1-26.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/nginx-mod-http-perl-1.20.1-26.el9.x86_64.rpm
+    repoid: appstream
+    size: 31618
+    checksum: sha256:12c76282bb03937d58f458f7bcdd0f32385bddc9311f106001127ed94e003bc0
+    name: nginx-mod-http-perl
+    evr: 2:1.20.1-26.el9
+    sourcerpm: nginx-1.20.1-26.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/nginx-mod-stream-1.20.1-26.el9.x86_64.rpm
+    repoid: appstream
+    size: 78921
+    checksum: sha256:77f7b0b21ab33eaf9c82de8e4979fd768f898ba60b378a708bdbed3e9675e6fc
+    name: nginx-mod-stream
+    evr: 2:1.20.1-26.el9
+    sourcerpm: nginx-1.20.1-26.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/nodejs-22.22.0-1.module_el9+1314+f4a09924.x86_64.rpm
     repoid: appstream
     size: 2510583
@@ -6690,6 +7019,20 @@ arches:
     name: libzstd
     evr: 1.5.5-1.el9
     sourcerpm: zstd-1.5.5-1.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/lmdb-libs-0.9.29-3.el9.x86_64.rpm
+    repoid: baseos
+    size: 62011
+    checksum: sha256:da9d02d99432b00e49e7d6e64d3afaec71704cbd295b900b88d31e78fd608e19
+    name: lmdb-libs
+    evr: 0.9.29-3.el9
+    sourcerpm: lmdb-0.9.29-3.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/logrotate-3.18.0-12.el9.x86_64.rpm
+    repoid: baseos
+    size: 76109
+    checksum: sha256:42dd0adc822a893dc1ab2f9ff79e26ef6937124dcf79b2917beb0b2f6521dbce
+    name: logrotate
+    evr: 3.18.0-12.el9
+    sourcerpm: logrotate-3.18.0-12.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/lua-libs-5.4.4-4.el9.x86_64.rpm
     repoid: baseos
     size: 133559
@@ -6704,6 +7047,13 @@ arches:
     name: lz4-libs
     evr: 1.9.3-5.el9
     sourcerpm: lz4-1.9.3-5.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/mailcap-2.1.49-5.el9.noarch.rpm
+    repoid: baseos
+    size: 33919
+    checksum: sha256:ff68e21d6e9d7c5b379a3164de7543038849ddfe9f849359ea7421ff23c91c9d
+    name: mailcap
+    evr: 2.1.49-5.el9
+    sourcerpm: mailcap-2.1.49-5.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/make-4.3-8.el9.x86_64.rpm
     repoid: baseos
     size: 549326
