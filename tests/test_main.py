@@ -76,7 +76,10 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                     "pyproject.toml is missing a [project.dependencies] section"
                 )
 
-            pylock = tomllib.loads(file.with_name("pylock.toml").read_text())
+            if (f := file.parent / "uv.lock.d").is_dir():
+                pylock = tomllib.loads(next(f.glob("pylock.*.toml")).read_text())
+            else:
+                pylock = tomllib.loads(file.with_name("pylock.toml").read_text())
             pylock_packages: dict[str, dict[str, Any]] = {p["name"]: p for p in pylock["packages"]}
             with subtests.test(msg="checking pylock.toml consistency with pyproject.toml", pyproject=file):
                 for d in pyproject["project"]["dependencies"]:
@@ -254,7 +257,8 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
             (
                 "1.26",  # for tensorflow rocm
                 "2.1",  # for tensorflow cuda
-                "2.3",  # this is our latest where possible
+                "2.3",  # this used to be our latest
+                "2.4",  # this is our latest where possible
             ),
         ),
         ("Tensorboard", ("2.18", "2.20")),
