@@ -1,0 +1,46 @@
+# Dockerfile.rpm-lockfile — Build image for running rpm-lockfile-prototype.
+#
+# Used by create-rpm-lockfile.sh to resolve RPM packages listed in
+# rpms.in.yaml into a fully pinned rpms.lock.yaml (exact URLs + checksums
+# per architecture).  The image includes rpm-lockfile-prototype, createrepo_c
+# (for repo metadata), and optionally registers with subscription-manager
+# to access RHEL-only repos.
+#
+# Not used during the actual notebook image build — only for lockfile generation.
+
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+ARG RHEL_VERSION
+ARG ACTIVATION_KEY
+ARG ORG
+
+# hadolint ignore=DL3002
+USER root
+
+# Optional registration and release pinning
+RUN if [ -n "$ACTIVATION_KEY" ] && [ -n "$ORG" ]; then \
+        subscription-manager register --activationkey="$ACTIVATION_KEY" --org="$ORG" && \
+        subscription-manager release --set="${RHEL_VERSION}"; \
+        # Enable rhocp, to install /usr/bin/oc
+        dnf config-manager --set-enabled rhocp-4.16-for-rhel-9-x86_64-rpms; \
+
+    else \
+        echo "Skipping subscription-manager registration"; \
+        # export INJECT_RHEL_VERSION="--releasever=\"${RHEL_VERSION}\" "; \
+    fi
+
+# To install modulemd-tools (createrepo_c) for Development only, not for Production
+COPY helpers/rhsm-pulp.repo /etc/yum.repos.d/rhsm-pulp.repo
+
+# Don't run upgrade, it upgrades from 9.6 to 9.7 which is not desired here
+# Add --releasever when RHEL_VERSION is set (e.g. for RHEL/UBI) to pin repo release
+RUN releasever_opt=; [ -n "$RHEL_VERSION" ] && releasever_opt="--releasever=${RHEL_VERSION}"; \
+    dnf $releasever_opt install -y python3 python3-pip python3-dnf skopeo rpm git modulemd-tools && \
+    dnf clean all
+
+# --index-url: override the base image's pip.conf which may point to a restricted
+# internal PyPI index that lacks transitive deps like jsonschema.
+RUN /usr/bin/python3 -m pip install --no-cache-dir \
+    --index-url https://pypi.org/simple/ \
+    https://github.com/konflux-ci/rpm-lockfile-prototype/archive/refs/tags/v0.20.0.zip
