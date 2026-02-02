@@ -134,11 +134,11 @@ RUN dnf -y install cuda-toolkit-13-0 && \
 # Install additional CUDA libraries needed by PyTorch
 # cuda-cupti: CUDA Profiling Tools Interface (libcupti.so)
 # libcusparselt0: cuSPARSELt for structured sparsity (libcusparseLt.so)
-# libcudss0-cuda-12: cuDSS direct sparse solver (libcudss.so)
+# libcudss0-cuda-13: cuDSS direct sparse solver (libcudss.so)
 RUN dnf -y install \
     cuda-cupti-13-0 \
     libcusparselt0 \
-    libcudss0-cuda-12 \
+    libcudss0-cuda-13 \
     && dnf -y clean all --enablerepo="*"
 
 # Runtime dependencies for PyTorch packages (libmpi_cxx.so, libqhull_r.so, libsnappy.so)
