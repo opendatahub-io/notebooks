@@ -34,6 +34,28 @@ spec:
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-minimal-cuda-py312-ubi9-n_PLACEHOLDER
+      name: "3.4"
+      referencePolicy:
+        type: Source
+    # N - 1 Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "CUDA", "version": "12.8"},
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab", "version": "4.4"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py312-ubi9-commit-n_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-minimal-cuda-py312-ubi9-n_PLACEHOLDER
       name: "2025.2"
       referencePolicy:
         type: Source
