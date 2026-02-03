@@ -38,7 +38,6 @@ spec:
     # https://github.com/redhat-appstudio/infra-deployments/blob/main/components/multi-platform-controller/production-downstream/stone-prod-p02/host-config.yaml
     - linux-d160-m4xlarge/amd64
     - linux-d160-m4xlarge/arm64
-    - linux/ppc64le
   - name: dockerfile
     value: codeserver/ubi9-python-3.12/Dockerfile.cpu
   - name: path-context
