@@ -133,7 +133,7 @@ spec:
             {"name": "MySQL Connector/Python", "version": "9.3"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
-        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/image-tag-outdated: "true"
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-commit-n-1_PLACEHOLDER
       from:
         kind: DockerImage
