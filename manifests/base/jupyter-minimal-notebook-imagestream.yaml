@@ -49,8 +49,7 @@ spec:
             {"name": "JupyterLab","version": "4.4"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
-        opendatahub.io/workbench-image-recommended: 'true'
-        opendatahub.io/default-image: "true"
+        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-n_PLACEHOLDER
       from:
         kind: DockerImage
