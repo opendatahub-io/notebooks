@@ -21,8 +21,11 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
 	echo "Building code-server from source for ${ARCH}..."
 
 	export MAX_JOBS=${MAX_JOBS:-$(nproc)}
-	export NODE_VERSION=${NODE_VERSION:-22.21.1}
-	export CODESERVER_VERSION=${CODESERVER_VERSION:-v4.108.2}
+	export NODE_VERSION=${NODE_VERSION:-22.20.0}
+	# Note: v4.108.x has known build memory issues (VS Code 1.108 gulp workers OOM)
+	# See: https://github.com/microsoft/vscode/issues/243708
+	# v4.106.3 is the latest stable patch release before v4.107+ which has heavier builds
+	export CODESERVER_VERSION=${CODESERVER_VERSION:-v4.106.3}
 
 	export NVM_DIR=/root/.nvm VENV=/opt/.venv
 	export PATH=${VENV}/bin:$PATH
