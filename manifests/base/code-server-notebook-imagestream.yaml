@@ -42,10 +42,41 @@ spec:
       from:
         kind: DockerImage
         name: odh-workbench-codeserver-datascience-cpu-py312-ubi9-n_PLACEHOLDER
-      name: "2025.2"
+      name: "3.4"
       referencePolicy:
         type: Source
     # N - 1 Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "code-server", "version": "4.104"},
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "Boto3", "version": "1.40"},
+            {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Matplotlib", "version": "3.10"},
+            {"name": "Numpy", "version": "2.3"},
+            {"name": "Pandas", "version": "2.3"},
+            {"name": "Scikit-learn", "version": "1.7"},
+            {"name": "Scipy", "version": "1.16"},
+            {"name": "Sklearn-onnx", "version": "1.19"},
+            {"name": "ipykernel", "version": "6.30"},
+            {"name": "Kubeflow-Training", "version": "1.9"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py312-ubi9-commit-n_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-codeserver-datascience-cpu-py312-ubi9-n_PLACEHOLDER
+      name: "2025.2"
+      referencePolicy:
+        type: Source
+    # N - 2 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -68,7 +99,6 @@ spec:
             {"name": "Kubeflow-Training", "version": "1.9"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
-        opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py311-ubi9-commit-n-1_PLACEHOLDER
         opendatahub.io/image-tag-outdated: 'true'
       from:

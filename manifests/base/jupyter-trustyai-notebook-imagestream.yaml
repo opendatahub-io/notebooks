@@ -54,10 +54,52 @@ spec:
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n_PLACEHOLDER
-      name: "2025.2"
+      name: "3.4"
       referencePolicy:
         type: Source
     # N - 1 Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab","version": "4.4"},
+            {"name": "TrustyAI", "version": "0.6"},
+            {"name": "Transformers", "version": "4.56"},
+            {"name": "Datasets", "version": "4.0"},
+            {"name": "Accelerate", "version": "1.10"},
+            {"name": "Torch", "version": "2.7"},
+            {"name": "Boto3", "version": "1.40"},
+            {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Kfp", "version": "2.14"},
+            {"name": "Matplotlib", "version": "3.10"},
+            {"name": "Numpy", "version": "1.26"},
+            {"name": "Pandas", "version": "1.5"},
+            {"name": "Scikit-learn", "version": "1.7"},
+            {"name": "Scipy", "version": "1.16"},
+            {"name": "Odh-Elyra", "version": "4.3"},
+            {"name": "PyMongo", "version": "4.15"},
+            {"name": "Pyodbc", "version": "5.2"},
+            {"name": "Codeflare-SDK", "version": "0.33"},
+            {"name": "Sklearn-onnx", "version": "1.19"},
+            {"name": "Psycopg", "version": "3.2"},
+            {"name": "MySQL Connector/Python", "version": "9.4"},
+            {"name": "Kubeflow-Training", "version": "1.9"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-commit-n_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n_PLACEHOLDER
+      name: "2025.2"
+      referencePolicy:
+        type: Source
+    # N - 2 Version of the image
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
@@ -91,7 +133,7 @@ spec:
             {"name": "Kubeflow-Training", "version": "1.9"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
-        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/image-tag-outdated: "true"
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-trustyai-cpu-py311-ubi9-commit-n-1_PLACEHOLDER
       from:
         kind: DockerImage
