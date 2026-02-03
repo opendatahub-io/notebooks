@@ -87,7 +87,11 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
 ENV CUDA_CACHE_DISABLE=1
 
 # Load kernels on demand for faster startup
-ENV CUDA_MODULE_LOADING=LAZY
+# With CUDA_MODULE_LOADING=LAZY:
+# - A simple import torch; torch.cuda.is_available() won't catch all issues
+# Eager loading for tests - Override during test:
+#     CUDA_MODULE_LOADING=EAGER python -c "import torch; ..."
+#ENV CUDA_MODULE_LOADING=LAZY
 
 # Install CUDA runtime from:
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.9.1/ubi9/runtime/Dockerfile
