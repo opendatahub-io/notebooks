@@ -54,9 +54,9 @@ CVE_CONSTRAINTS_FILE="$ROOT_DIR/dependencies/cve-constraints.txt"
 # HELPER FUNCTIONS
 # ----------------------------
 info()  { echo -e "🔹 \033[1;34m$1\033[0m"; }
-warn()  { echo -e "⚠️  \033[1;33m$1\033[0m"; }
-error() { echo -e "❌ \033[1;31m$1\033[0m"; }
-ok()    { echo -e "✅ \033[1;32m$1\033[0m"; }
+warn()  { echo -e "⚠️  \033[1;33m$1\033[0m" >&2; }
+error() { echo -e "❌ \033[1;31m$1\033[0m"; >&2; }
+ok()    { echo -e "✅ \033[1;32m$1\033[0m"; >&2; }
 
 uppercase() {
   echo "$1" | tr '[:lower:]' '[:upper:]'
@@ -232,8 +232,6 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     index_flags="--default-index=${index_url}"
 
     if [[ "$flavor" != "cpu" ]]; then
-      index_flags+=" --index=${index_url}"
-
       cpu_index_url=$(read_conf_value "$conf_file" "CPU_INDEX_URL")
       if [[ -z "$cpu_index_url" && -n "$CPU_INDEX_URL" ]]; then
         cpu_index_url="$CPU_INDEX_URL"
