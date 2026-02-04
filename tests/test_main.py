@@ -306,7 +306,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
     ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
         # ("package name", ("allowed specifier 1", "allowed specifier 2", ...))
         ("setuptools", ("~=80.9.0", "==80.9.0")),
-        ("wheel", ("==0.45.1", "~=0.45.1")),
+        ("wheel", ("==0.46.3", "~=0.46.3")),
         ("tensorboard", ("~=2.18.0", "~=2.20.0")),
         ("torch", ("==2.7.1+cu128", "==2.9.0")),
         ("torchvision", ("==0.24.0", "~=0.24.0")),

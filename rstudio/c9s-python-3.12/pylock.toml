@@ -5,6 +5,13 @@ created-by = "uv"
 requires-python = ">=3.12"
 
 [[packages]]
+name = "packaging"
+version = "26.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+sdist = { url = "https://files.pythonhosted.org/packages/65/ee/299d360cdc32edc7d2cf530f3accf79c4fca01e96ffc950d8a52213bd8e4/packaging-26.0.tar.gz", upload-time = 2026-01-21T20:50:39Z, size = 143416, hashes = { sha256 = "00243ae351a257117b6a241061796684b084ed1c516a08c48a3f7e147a9d80b4" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/b7/b9/c538f279a4e237a006a2c98387d081e9eb060d203d8ed34467cc0f0b9b53/packaging-26.0-py3-none-any.whl", upload-time = 2026-01-21T20:50:37Z, size = 74366, hashes = { sha256 = "b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529" } }]
+
+[[packages]]
 name = "setuptools"
 version = "80.9.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -13,7 +20,7 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/a3/dc/17031897dae0efa
 
 [[packages]]
 name = "wheel"
-version = "0.45.1"
+version = "0.46.3"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-sdist = { url = "https://files.pythonhosted.org/packages/8a/98/2d9906746cdc6a6ef809ae6338005b3f21bb568bea3165cfc6a243fdc25c/wheel-0.45.1.tar.gz", upload-time = 2024-11-23T00:18:23Z, size = 107545, hashes = { sha256 = "661e1abd9198507b1409a20c02106d9670b2576e916d58f520316666abca6729" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/0b/2c/87f3254fd8ffd29e4c02732eee68a83a1d3c346ae39bc6822dcbcb697f2b/wheel-0.45.1-py3-none-any.whl", upload-time = 2024-11-23T00:18:21Z, size = 72494, hashes = { sha256 = "708e7481cc80179af0e556bbf0cc00b8444c7321e2700b8d8580231d13017248" } }]
+sdist = { url = "https://files.pythonhosted.org/packages/89/24/a2eb353a6edac9a0303977c4cb048134959dd2a51b48a269dfc9dde00c8a/wheel-0.46.3.tar.gz", upload-time = 2026-01-22T12:39:49Z, size = 60605, hashes = { sha256 = "e3e79874b07d776c40bd6033f8ddf76a7dad46a7b8aa1b2787a83083519a1803" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/87/22/b76d483683216dde3d67cba61fb2444be8d5be289bf628c13fc0fd90e5f9/wheel-0.46.3-py3-none-any.whl", upload-time = 2026-01-22T12:39:48Z, size = 30557, hashes = { sha256 = "4b399d56c9d9338230118d705d9737a2a468ccca63d5e813e2a4fc7815d8bc4d" } }]
