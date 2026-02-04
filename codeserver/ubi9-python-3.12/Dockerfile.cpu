@@ -187,8 +187,8 @@ COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/utils utils/
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 mkdir -p /opt/app-root/extensions-temp
-code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2025.14.0.vsix --extensions-dir /opt/app-root/extensions-temp
-code-server --install-extension /opt/app-root/bin/utils/ms-toolsai.jupyter-2025.8.0.vsix --extensions-dir /opt/app-root/extensions-temp
+code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2026.0.1.vsix --extensions-dir /opt/app-root/extensions-temp
+code-server --install-extension /opt/app-root/bin/utils/ms-toolsai.jupyter-2025.9.1.vsix --extensions-dir /opt/app-root/extensions-temp
 EOF
 
 # Install NGINX to proxy code-server and pass probes check
