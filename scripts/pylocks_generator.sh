@@ -41,6 +41,16 @@ set -euo pipefail
 # ----------------------------
 # CONFIGURATION
 # ----------------------------
+# https://redhat-internal.slack.com/archives/C079FE5H94J/p1768855783394919?thread_ts=1767789190.424899&cid=C079FE5H94J
+CPU_INDEX_URL="https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cpu-ubi9/simple/"
+CUDA_INDEX_URL="https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cuda13.0-ubi9/simple/"
+ROCM_INDEX_URL="https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/rocm6.4-ubi9/simple/"
+
+CPU_INDEX="--default-index=${CPU_INDEX_URL}"
+# TODO(RHAIENG-3071): Add CPU index as fallback for packages not available in CUDA/ROCm indexes
+# (e.g., kfp-pipeline-spec, kfp-server-api, google-cloud-storage, requests-toolbelt)
+CUDA_INDEX="--default-index=${CUDA_INDEX_URL} --index=${CUDA_INDEX_URL} --index=${CPU_INDEX_URL}"
+ROCM_INDEX="--default-index=${ROCM_INDEX_URL} --index=${ROCM_INDEX_URL} --index=${CPU_INDEX_URL}"
 PUBLIC_INDEX="--default-index=https://pypi.org/simple"
 
 MAIN_DIRS=("jupyter" "runtimes" "rstudio" "codeserver")
