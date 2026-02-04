@@ -223,9 +223,14 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     #  https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757935641975969?thread_ts=1757542802.032519&cid=C0961HQ858Q
 
     # Build constraints flag if CVE constraints file exists
+    # Use relative path to avoid absolute paths in pylock.toml headers
+    # (which would differ between CI and local environments)
     local constraints_flag=""
     if [[ -f "$CVE_CONSTRAINTS_FILE" ]]; then
-      constraints_flag="--constraints=$CVE_CONSTRAINTS_FILE"
+      local relative_constraints
+      # Use Python for cross-platform relative path computation (realpath --relative-to is GNU-only)
+      relative_constraints=$(python3 -c "import os; print(os.path.relpath('$CVE_CONSTRAINTS_FILE', '$PWD'))")
+      constraints_flag="--constraints=$relative_constraints"
     fi
 
     set +e
