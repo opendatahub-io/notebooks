@@ -54,9 +54,9 @@ CVE_CONSTRAINTS_FILE="$ROOT_DIR/dependencies/cve-constraints.txt"
 # HELPER FUNCTIONS
 # ----------------------------
 info()  { echo -e "🔹 \033[1;34m$1\033[0m"; }
-warn()  { echo -e "⚠️  \033[1;33m$1\033[0m" >&2; }
-error() { echo -e "❌ \033[1;31m$1\033[0m"; >&2; }
-ok()    { echo -e "✅ \033[1;32m$1\033[0m"; >&2; }
+warn()  { echo -e "⚠️ \033[1;33m$1\033[0m" >&2; }
+error() { echo -e "❌ \033[1;31m$1\033[0m" >&2; }
+ok()    { echo -e "✅ \033[1;32m$1\033[0m" >&2; }
 
 uppercase() {
   echo "$1" | tr '[:lower:]' '[:upper:]'
