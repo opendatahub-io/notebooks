@@ -93,8 +93,9 @@ class TestWorkbenchImage:
                         socket_path = os.path.realpath(docker_utils.get_socket_path(client.client))
                         logging.debug(f"{socket_path=}")
                         process = podman_machine_utils.open_ssh_tunnel(
-                            machine_predicate=lambda m: os.path.realpath(m.ConnectionInfo.PodmanSocket.Path)
-                            == socket_path,
+                            machine_predicate=lambda m: (
+                                os.path.realpath(m.ConnectionInfo.PodmanSocket.Path) == socket_path
+                            ),
                             local_port=port,
                             remote_port=container.port,
                             remote_interface=f"[{ipv6_address}]",
