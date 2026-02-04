@@ -135,6 +135,7 @@ jobs:
       # for bin/buildinputs in scripts/sandbox.py
       - uses: actions/setup-go@v6
         with:
+          go-version: "stable"
           cache-dependency-path: "scripts/buildinputs/go.sum"
 
       - run: sudo apt-get update
@@ -426,6 +427,7 @@ jobs:
       - uses: actions/setup-go@v6
         if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
         with:
+          go-version-file: "scripts/check-payload/go.mod"
           cache-dependency-path: "scripts/check-payload/go.sum"
         env:
           GOPATH: ${{ steps.check-payload-vars.outputs.GOPATH }}
