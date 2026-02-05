@@ -20,7 +20,8 @@ dependencies = [
     "opencensus~=0.11.4",
     "smart-open~=7.5.0",
     "virtualenv~=20.36.1",
-    "py-spy~=0.4.1; platform_machine != 's390x'",
+    # https://issues.redhat.com/browse/AIPCC-9544 py-spy excluded on ppc64le for codeserver
+    "py-spy~=0.4.1; platform_machine != 's390x' and platform_machine != 'ppc64le'",
     "prometheus-client~=0.24.1",
 ]
 
