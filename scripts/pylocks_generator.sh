@@ -205,18 +205,12 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
 
   DIR_SUCCESS=true
   CONF_DIR="build-args"
-  CPU_INDEX_URL=""
-
-  if [[ -f "${CONF_DIR}/cpu.conf" ]]; then
-    CPU_INDEX_URL=$(read_conf_value "${CONF_DIR}/cpu.conf" "INDEX_URL")
-  fi
 
   get_index_flags() {
     local flavor="$1"
     local conf_file="${CONF_DIR}/${flavor}.conf"
     local index_url
     local index_flags
-    local cpu_index_url
 
     if [[ ! -f "$conf_file" ]]; then
       warn "Missing build-args config for ${flavor}: $conf_file"
@@ -230,19 +224,6 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     fi
 
     index_flags="--default-index=${index_url}"
-
-    if [[ "$flavor" != "cpu" ]]; then
-      cpu_index_url=$(read_conf_value "$conf_file" "CPU_INDEX_URL")
-      if [[ -z "$cpu_index_url" && -n "$CPU_INDEX_URL" ]]; then
-        cpu_index_url="$CPU_INDEX_URL"
-      fi
-
-      if [[ -n "$cpu_index_url" ]]; then
-        index_flags+=" --index=${cpu_index_url}"
-      else
-        warn "CPU_INDEX_URL not found for $conf_file; using ${flavor} index only."
-      fi
-    fi
 
     echo "$index_flags"
   }
