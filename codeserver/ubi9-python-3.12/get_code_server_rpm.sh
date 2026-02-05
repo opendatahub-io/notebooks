@@ -110,9 +110,15 @@ fi
 	nvm use ${NODE_VERSION}
 	npm cache clean --force
 	if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
-		VSCE_SIGN_VERSION=$(node -e "try { const lock=require('./lib/vscode/build/package-lock.json'); console.log(lock?.packages?.['node_modules/@vscode/vsce-sign']?.version || ''); } catch (e) { console.log(''); }")
+		if [[ -n "${VSCE_SIGN_VERSION:-}" ]]; then
+			:
+		else
+			VSCE_SIGN_VERSION=$(node -e "try { const lock=require('./lib/vscode/build/package-lock.json'); console.log(lock?.packages?.['node_modules/@vscode/vsce-sign']?.version || ''); } catch (e) { console.log(''); }")
+		fi
 		if [[ -z "${VSCE_SIGN_VERSION}" || "${VSCE_SIGN_VERSION}" == "undefined" ]]; then
-			VSCE_SIGN_VERSION=$(npm view @vscode/vsce-sign version)
+			echo "VSCE_SIGN_VERSION is required when @vscode/vsce-sign version cannot be read from lib/vscode/build/package-lock.json" >&2
+			echo "Set VSCE_SIGN_VERSION to an explicit version (e.g. 2.0.9) to ensure reproducible builds." >&2
+			exit 1
 		fi
 		if [[ ! -f lib/vscode/build/package.json ]]; then
 			echo "Missing lib/vscode/build/package.json; cannot apply vsce-sign override" >&2
@@ -128,7 +134,7 @@ fi
 		cat > "${VSCE_SIGN_PATCH_DIR}/src/postinstall.js" <<'EOL'
 const platform = process.platform;
 const arch = process.arch;
-if (platform === 'linux' && (arch === 'ppc64' || arch === 'ppc64le')) {
+if (platform === 'linux' && (arch === 'ppc64' || arch === 'ppc64le' || arch === 's390x')) {
   console.warn(`[vsce-sign] Skipping binary install on unsupported architecture: ${platform}-${arch}`);
   process.exit(0);
 }
