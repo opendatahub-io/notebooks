@@ -74,6 +74,36 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
 	while IFS= read -r src_patch; do echo "patches/$src_patch"; patch -p1 < "patches/$src_patch"; done < patches/series
 	nvm use ${NODE_VERSION}
 	npm cache clean --force
+	if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
+		VSCE_SIGN_VERSION=$(node -e "try { const lock=require('./lib/vscode/build/package-lock.json'); console.log(lock?.packages?.['node_modules/@vscode/vsce-sign']?.version || ''); } catch (e) { console.log(''); }")
+		if [[ -z "${VSCE_SIGN_VERSION}" || "${VSCE_SIGN_VERSION}" == "undefined" ]]; then
+			VSCE_SIGN_VERSION=$(npm view @vscode/vsce-sign version)
+		fi
+		if [[ ! -f lib/vscode/build/package.json ]]; then
+			echo "Missing lib/vscode/build/package.json; cannot apply vsce-sign override" >&2
+			exit 1
+		fi
+		VSCE_SIGN_PATCH_DIR=/tmp/vsce-sign-ppc64le
+		rm -rf "${VSCE_SIGN_PATCH_DIR}"
+		mkdir -p "${VSCE_SIGN_PATCH_DIR}"
+		VSCE_SIGN_TARBALL=$(npm pack "@vscode/vsce-sign@${VSCE_SIGN_VERSION}")
+		tar -xzf "${VSCE_SIGN_TARBALL}" -C "${VSCE_SIGN_PATCH_DIR}" --strip-components=1
+		rm -f "${VSCE_SIGN_TARBALL}"
+		mv "${VSCE_SIGN_PATCH_DIR}/src/postinstall.js" "${VSCE_SIGN_PATCH_DIR}/src/postinstall.orig.js"
+		cat > "${VSCE_SIGN_PATCH_DIR}/src/postinstall.js" <<'EOL'
+const platform = process.platform;
+const arch = process.arch;
+if (platform === 'linux' && (arch === 'ppc64' || arch === 'ppc64le')) {
+  console.warn(`[vsce-sign] Skipping binary install on unsupported architecture: ${platform}-${arch}`);
+  process.exit(0);
+}
+require('./postinstall.orig.js');
+EOL
+		jq --arg override "file:${VSCE_SIGN_PATCH_DIR}" \
+			'.overrides = (.overrides // {}) | .overrides["@vscode/vsce-sign"] = $override' \
+			lib/vscode/build/package.json > /tmp/build-package.json \
+			&& mv /tmp/build-package.json lib/vscode/build/package.json
+	fi
 	npm install
 	npm run build
 	VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
