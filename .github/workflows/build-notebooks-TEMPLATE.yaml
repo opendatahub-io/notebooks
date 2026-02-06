@@ -28,6 +28,11 @@ name: Build & Publish Notebook Servers (TEMPLATE)
         default: false
         description: "add RHEL subscription from github secret"
         type: boolean
+      konflux:
+        required: false
+        default: false
+        description: "build from Dockerfile.konflux.* instead of Dockerfile.*"
+        type: boolean
       PLATFORM_RUNNERS:
         required: false
         # language=json
@@ -260,6 +265,7 @@ jobs:
           CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-container-build-args.outputs.CONTAINER_BUILD_CACHE_ARGS }}"
           # We don't have access to image registry for PRs, so disable pushing
           PUSH_IMAGES: "${{ (fromJson(inputs.github).event_name == 'pull_request' || fromJson(inputs.github).event_name == 'pull_request_target') && 'no' || 'yes' }}"
+          KONFLUX: "${{ inputs.konflux && 'yes' || 'no' }}"
 
       - name: "Show podman images information"
         run: podman images --digests
