@@ -39,11 +39,15 @@ def test_dockerfiles_unintended_subscription_manager_pattern():
     # https://github.com/konflux-ci/build-definitions/blob/main/task/buildah/0.6/buildah.yaml#L795-L813
     pattern = re.compile(r"^[^#]*subscription-manager.[^#]*register")
 
+    skip_dirs = (
+        PROJECT_ROOT / "rstudio/rhel9-python-3.12",  # RStudio Dockerfiles
+        PROJECT_ROOT / "scripts/lockfile-generators",  # RPM lockfile image optionally uses subscription-manager
+    )
     for file in PROJECT_ROOT.glob("**/Dockerfile*"):
         if file.is_dir():
             continue
-        if file.is_relative_to(PROJECT_ROOT / "rstudio/rhel9-python-3.12"):
-            continue  # Skip RStudio Dockerfiles
+        if any(file.is_relative_to(d) for d in skip_dirs):
+            continue
         with open(file, "r") as f:
             for line_no, line in enumerate(f, start=1):
                 assert not pattern.match(line), (
