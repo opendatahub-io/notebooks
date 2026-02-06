@@ -214,7 +214,15 @@ jobs:
             echo "AIPCC_QUAY_BOT_USERNAME is not set, skipping login"
             exit 0
           fi
-          echo "${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}" | podman login quay.io/aipcc -u "${{ secrets.AIPCC_QUAY_BOT_USERNAME }}" --password-stdin
+
+          # Use --authfile to merge aipcc creds into the same file as pull-secret creds
+          echo "${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}" | podman login --authfile "$HOME/.config/containers/auth.json" quay.io/aipcc -u "${{ secrets.AIPCC_QUAY_BOT_USERNAME }}" --password-stdin
+
+          # The rootful podman server (behind CONTAINER_HOST) performs the actual build and
+          # needs credentials to pull private base images. The remote API doesn't reliably
+          # forward client-side auth for FROM image pulls, so copy auth to root's config.
+          sudo mkdir -p /root/.config/containers/
+          sudo cp "$HOME/.config/containers/auth.json" /root/.config/containers/auth.json
 
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
       # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
