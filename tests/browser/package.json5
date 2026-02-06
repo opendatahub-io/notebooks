@@ -10,7 +10,9 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    // NOTE: update playwright container image version in .github/workflows/build-notebooks-TEMPLATE.yaml
+    // NOTE: This is the single source of truth for Playwright version.
+    // The container image tag (v{version}-noble) is derived from @playwright/test version
+    // by .github/actions/playwright-test/action.yml
     "playwright": "=1.58.1",
     "@playwright/test": "=1.58.1",
 
