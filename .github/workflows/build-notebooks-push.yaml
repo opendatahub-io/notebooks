@@ -33,6 +33,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
+          go-version: "stable"
           cache-dependency-path: "**/*.sum"
 
       - name: Determine targets to build (we want to build everything on push)
