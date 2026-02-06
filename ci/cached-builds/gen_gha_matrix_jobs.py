@@ -214,15 +214,18 @@ class SelfTests(unittest.TestCase):
     def test_select_changed_targets_shared_file(self):
         targets = extract_image_targets(makefile_dir=project_dir)
 
-        changed_files = ["cuda/ubi9-python-3.12/NGC-DL-CONTAINER-LICENSE"]
+        changed_files = ["jupyter/utils/addons/dist/pf.css"]
 
         targets = gha_pr_changed_files.filter_out_unchanged(targets, changed_files)
         assert set(targets) == {
-            "jupyter-minimal-ubi9-python-3.12",
             "cuda-jupyter-minimal-ubi9-python-3.12",
+            "cuda-jupyter-pytorch-llmcompressor-ubi9-python-3.12",
             "cuda-jupyter-pytorch-ubi9-python-3.12",
-            "runtime-cuda-pytorch-ubi9-python-3.12",
             "cuda-jupyter-tensorflow-ubi9-python-3.12",
+            "jupyter-datascience-ubi9-python-3.12",
+            "jupyter-minimal-ubi9-python-3.12",
+            "jupyter-trustyai-ubi9-python-3.12",
             "rocm-jupyter-minimal-ubi9-python-3.12",
-            "runtime-cuda-tensorflow-ubi9-python-3.12",
+            "rocm-jupyter-pytorch-ubi9-python-3.12",
+            "rocm-jupyter-tensorflow-ubi9-python-3.12",
         }
