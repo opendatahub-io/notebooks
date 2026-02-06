@@ -1,0 +1,94 @@
+---
+name: Test Playwright Action
+"on":
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/actions/playwright-test/**'
+      - '.github/workflows/test-playwright-action.yaml'
+      - 'tests/browser/**'
+  push:
+    paths:
+      - '.github/actions/playwright-test/**'
+      - '.github/workflows/test-playwright-action.yaml'
+      - 'tests/browser/**'
+
+jobs:
+  test-playwright:
+    name: Test Playwright Browser Tests
+    runs-on: ubuntu-24.04
+    env:
+      # Use rootful podman socket so podman run can find the image pulled with sudo
+      CONTAINER_HOST: unix:///var/run/podman/podman.sock
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Extract default test image from playwright.config.ts
+        id: get-image
+        run: |
+          # Extract DEFAULT_TEST_IMAGE using grep (the config imports @playwright/test which isn't installed yet)
+          # Anchor to start of line to avoid matching comments
+          TEST_IMAGE=$(grep -oP '^export const DEFAULT_TEST_IMAGE\s*=\s*"\K[^"]+' tests/browser/playwright.config.ts)
+
+          # Fail if extraction returned empty
+          if [[ -z "$TEST_IMAGE" ]]; then
+            echo "::error::Failed to extract DEFAULT_TEST_IMAGE from playwright.config.ts"
+            exit 1
+          fi
+
+          # Validate image reference against allowed characters (registry/repo:tag@sha256:digest format)
+          if [[ ! "$TEST_IMAGE" =~ ^[a-zA-Z0-9_./:@-]+$ ]]; then
+            echo "::error::Invalid image reference contains disallowed characters: $TEST_IMAGE"
+            exit 1
+          fi
+
+          echo "image=$TEST_IMAGE" >> "$GITHUB_OUTPUT"
+          echo "Using test image: $TEST_IMAGE"
+
+      - name: Install missing dependencies
+        run: |
+          # Collect missing packages
+          PACKAGES=()
+          if ! command -v podman &> /dev/null; then
+            PACKAGES+=(podman)
+          fi
+          if ! command -v setfacl &> /dev/null; then
+            PACKAGES+=(acl)
+          fi
+
+          # Install missing packages if any
+          if [ ${#PACKAGES[@]} -gt 0 ]; then
+            echo "Installing missing packages: ${PACKAGES[*]}"
+            sudo apt-get update
+            sudo apt-get install -y "${PACKAGES[@]}"
+          fi
+
+      - name: Configure Podman
+        run: |
+          # Start podman socket for rootful podman
+          sudo systemctl daemon-reload
+          sudo systemctl enable --now podman.socket
+          sudo systemctl status podman.socket
+
+          # Grant access to the podman socket for the current user
+          sudo setfacl -m u:${USER}:x /var/run/podman
+          sudo setfacl -m u:${USER}:rw /var/run/podman/podman.sock
+
+          # Verify socket is accessible
+          ls -la /var/run/podman/podman.sock
+
+      - name: Pull test image
+        run: |
+          sudo podman pull "$TEST_IMAGE"
+          sudo podman images
+        env:
+          TEST_IMAGE: ${{ steps.get-image.outputs.image }}
+
+      - name: Run Playwright tests
+        uses: ./.github/actions/playwright-test
+        with:
+          test-target: ${{ steps.get-image.outputs.image }}
+          podman-socket: /var/run/podman/podman.sock
+          upload-report: 'true'
+          artifact-name: playwright-action-test-report

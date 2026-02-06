@@ -479,44 +479,12 @@ jobs:
       # not enough to install playwright; running playwright in podman uses the space we have
       - name: Run Playwright tests
         if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' }}
-        # --ipc=host because Microsoft says so in Playwright docs
-        # --net=host because testcontainers connects to the Reaper container's exposed port
-        # we need to pass through the relevant environment variables
-        #  DEBUG configures Node.js debuggers, sets different verbosity as needed
-        #  CI=true is set on every CI nowadays
-        #  PODMAN_SOCK should be mounted to /var/run/docker.sock, other likely mounting locations may not exist (mkdir -p)
-        #  TEST_TARGET is the workbench image the test will run
-        # --volume(s) let us access docker socket and not clobber host's node_modules
-        run: |
-          podman run \
-            --interactive --rm \
-            --ipc=host \
-            --net=host \
-            --env "CI=true" \
-            --env "NPM_CONFIG_fund=false" \
-            --env "DEBUG=testcontainers:*" \
-            --env "PODMAN_SOCK=/var/run/docker.sock" \
-            --env "TEST_TARGET" \
-            --volume ${PODMAN_SOCK}:/var/run/docker.sock \
-            --volume ${PWD}:/mnt \
-            --volume /mnt/node_modules \
-            mcr.microsoft.com/playwright:v1.58.1-noble \
-            /bin/bash <<EOF
-              set -Eeuxo pipefail
-              cd /mnt
-              npm install -g pnpm && pnpm install
-              pnpm exec playwright test
-              exit 0
-          EOF
-        working-directory: tests/browser
-        env:
-          TEST_TARGET: "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
-      - uses: actions/upload-artifact@v6
-        if: ${{ !cancelled() && fromJson(inputs.github).event_name == 'pull_request' && contains(inputs.target, 'codeserver') }}
+        uses: ./.github/actions/playwright-test
         with:
-          name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
-          path: tests/browser/playwright-report/
-          retention-days: 30
+          test-target: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}
+          podman-socket: /var/run/podman/podman.sock
+          upload-report: ${{ fromJson(inputs.github).event_name == 'pull_request' }}
+          artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
 
       # endregion
 

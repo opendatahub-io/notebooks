@@ -1,0 +1,121 @@
+---
+name: 'Playwright Browser Tests'
+description: |
+  Run Playwright browser tests for workbench images.
+
+  Features:
+  - Runs Playwright tests inside the official Microsoft Playwright container
+  - Uses Podman to run the test container with proper isolation
+  - Supports testcontainers for container orchestration
+  - Uploads test reports as artifacts on pull requests
+
+  Requirements:
+  - Podman must be installed and running
+  - The workbench image must be available in the local Podman storage
+  - tests/browser directory must contain the Playwright test configuration
+
+inputs:
+  test-target:
+    description: 'The workbench image to test (full image reference).'
+    required: true
+  podman-socket:
+    description: 'Path to Podman socket'
+    required: false
+    default: '/var/run/podman/podman.sock'
+  playwright-version:
+    description: 'Version of the Playwright container to use (e.g., v1.58.1-noble). If not provided, extracted from package.json5'
+    required: false
+    default: ''
+  working-directory:
+    description: 'Directory containing the Playwright tests'
+    required: false
+    default: 'tests/browser'
+  upload-report:
+    description: 'Whether to upload the Playwright report as an artifact'
+    required: false
+    default: 'false'
+  artifact-name:
+    description: 'Name for the uploaded artifact (required if upload-report is true)'
+    required: false
+    default: 'playwright-report'
+  artifact-retention-days:
+    description: 'Number of days to retain the artifact'
+    required: false
+    default: '30'
+
+outputs:
+  outcome:
+    description: 'The outcome of the Playwright tests (success or failure)'
+    value: ${{ steps.playwright.outcome }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Determine Playwright version
+      id: playwright-version
+      shell: bash
+      run: |
+        if [[ -n "${INPUT_PLAYWRIGHT_VERSION}" ]]; then
+          echo "version=${INPUT_PLAYWRIGHT_VERSION}" >> "$GITHUB_OUTPUT"
+        else
+          # Extract version from package.json5 (single source of truth)
+          # package.json5 has: "@playwright/test": "=1.58.1"
+          # Container tag format is: v1.58.1-noble
+          PKG_VERSION=$(grep -oP '"@playwright/test":\s*"=?\K[0-9.]+' "${WORKING_DIRECTORY}/package.json5")
+          if [[ -z "$PKG_VERSION" ]]; then
+            echo "::error::Failed to extract Playwright version from package.json5"
+            exit 1
+          fi
+          echo "version=v${PKG_VERSION}-noble" >> "$GITHUB_OUTPUT"
+          echo "Extracted Playwright version: v${PKG_VERSION}-noble"
+        fi
+      env:
+        INPUT_PLAYWRIGHT_VERSION: ${{ inputs.playwright-version }}
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+
+    - name: Run Playwright tests
+      id: playwright
+      shell: bash
+      # --ipc=host because Microsoft says so in Playwright docs
+      # --net=host because testcontainers connects to the Reaper container's exposed port
+      # we need to pass through the relevant environment variables
+      #  DEBUG configures Node.js debuggers, sets different verbosity as needed
+      #  CI=true is set on every CI nowadays
+      #  PODMAN_SOCK should be mounted to /var/run/docker.sock, other likely mounting locations may not exist (mkdir -p)
+      #  TEST_TARGET is the workbench image the test will run
+      # --volume(s) let us access docker socket and not clobber host's node_modules
+      run: |
+        podman run \
+          --interactive --rm \
+          --ipc=host \
+          --net=host \
+          --env "CI=true" \
+          --env "NPM_CONFIG_fund=false" \
+          --env "DEBUG=testcontainers:*" \
+          --env "PODMAN_SOCK=/var/run/docker.sock" \
+          --env "TEST_TARGET" \
+          --volume "${PODMAN_SOCKET}":/var/run/docker.sock \
+          --volume "${PWD}":/mnt \
+          --volume /mnt/node_modules \
+          "mcr.microsoft.com/playwright:${PLAYWRIGHT_VERSION}" \
+          /bin/bash <<EOF
+            set -Eeuxo pipefail
+            cd /mnt
+            npm install -g pnpm && pnpm install
+            pnpm exec playwright test
+            exit 0
+        EOF
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        # Only set TEST_TARGET if provided, otherwise playwright.config.ts uses its default
+        TEST_TARGET: ${{ inputs.test-target || '' }}
+        PODMAN_SOCKET: ${{ inputs.podman-socket }}
+        PLAYWRIGHT_VERSION: ${{ steps.playwright-version.outputs.version }}
+
+    - name: Upload Playwright report
+      if: ${{ !cancelled() && inputs.upload-report == 'true' }}
+      uses: actions/upload-artifact@v6
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.working-directory }}/playwright-report/
+        retention-days: ${{ inputs.artifact-retention-days }}
