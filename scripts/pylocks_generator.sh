@@ -19,6 +19,10 @@ set -euo pipefail
 #   • rh-index    -> Uses internal Red Hat wheel indexes. Generates uv.lock.d/pylock.<flavor>.toml .
 #   • public-index   -> Uses public PyPI index and updates pylock.toml in place.
 #
+# Fallback Index (RHAIENG-3071):
+#   For CUDA and ROCm flavors, if CPU_INDEX_URL is defined in the build-args/*.conf file,
+#   it will be added as a fallback index for packages not available in the specialized indexes.
+#
 # Usage:
 #   1. Lock using auto mode (default) for all projects in MAIN_DIRS:
 #        bash pylocks_generator.sh
@@ -210,6 +214,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     local flavor="$1"
     local conf_file="${CONF_DIR}/${flavor}.conf"
     local index_url
+    local cpu_index_url
     local index_flags
 
     if [[ ! -f "$conf_file" ]]; then
@@ -223,7 +228,17 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       return 1
     fi
 
-    index_flags="--default-index=${index_url}"
+    index_flags="--default-index=${index_url} --index=${index_url}"
+
+    # For CUDA and ROCm flavors, add CPU index as fallback for packages
+    # not available in the specialized indexes (RHAIENG-3071)
+    if [[ "$flavor" == "cuda" || "$flavor" == "rocm" ]]; then
+      cpu_index_url=$(read_conf_value "$conf_file" "CPU_INDEX_URL")
+      if [[ -n "$cpu_index_url" ]]; then
+        index_flags="${index_flags} --index=${cpu_index_url}"
+        echo "  📎 Using CPU index as fallback" >&2
+      fi
+    fi
 
     echo "$index_flags"
   }
