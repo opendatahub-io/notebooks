@@ -26,6 +26,12 @@ wheels = [
 ]
 
 [[packages]]
+name = "aiohttp-cors"
+version = "0.8.1"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/aiohttp_cors-0.8.1-8-py3-none-any.whl", hashes = { sha256 = "8e7369a0d75b345d83f596071807f5621519a96f5d29a90fba3d240dc9490e5a" } }]
+
+[[packages]]
 name = "aiosignal"
 version = "1.4.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -113,6 +119,15 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/babel-2.18.0-8-py3-none-any.whl", hashes = { sha256 = "be3485e1e7f083386b0e09643561b33b372428dd7373923c7363766dec49b299" } }]
 
 [[packages]]
+name = "bcrypt"
+version = "5.0.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/bcrypt-5.0.0-8-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "daa11e64ff8863d9c97864a11f782281083d37b358adfd24a8f93c72d8561be9" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/bcrypt-5.0.0-8-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "9afdfc5bc2b65bf5660e4848cbd7fd3091bd5f1ba846fba3f3f283e22ec3e2a6" } },
+]
+
+[[packages]]
 name = "beautifulsoup4"
 version = "4.14.3"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -188,10 +203,22 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/cloudpickle-3.1.2-8-py3-none-any.whl", hashes = { sha256 = "a9c9dba766e2288e12bd9f26435a5a3cf3f022d7ee048c6f0c5ba05b796b1cd2" } }]
 
 [[packages]]
+name = "codeflare-sdk"
+version = "0.34.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/codeflare_sdk-0.34.0-8-py3-none-any.whl", hashes = { sha256 = "9ef6b583ee00f04df8199aafb800ea8a6d7eb56dd3f97b1287e6c939d32faf4d" } }]
+
+[[packages]]
 name = "colorama"
 version = "0.4.6"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/colorama-0.4.6-8-py2.py3-none-any.whl", hashes = { sha256 = "08c8b3038b633a70557d54797563b6f1f0fab174e97939ad5459d0479ff628c6" } }]
+
+[[packages]]
+name = "colorful"
+version = "0.5.8"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/colorful-0.5.8-8-py2.py3-none-any.whl", hashes = { sha256 = "9ba8514681b0a1accb47bd0263d94e8fbcad90e58e4fd6feafa3efe0710cd351" } }]
 
 [[packages]]
 name = "comm"
@@ -210,11 +237,11 @@ wheels = [
 
 [[packages]]
 name = "cryptography"
-version = "46.0.4"
+version = "46.0.3"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/cryptography-46.0.4-8-cp312-abi3-linux_aarch64.whl", hashes = { sha256 = "640a3979b159ca4f9454ed26b8b016f7d6703b0442a027088262d4d279945497" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/cryptography-46.0.4-8-cp312-abi3-linux_x86_64.whl", hashes = { sha256 = "625066533ca6ecfac0f31b974a629903899467053f8593b57ea1fa69b57ba3c3" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/cryptography-46.0.3-8-cp312-abi3-linux_aarch64.whl", hashes = { sha256 = "8c308ee0475994bf9cd3cff12515e78f8a24e4bc15f28b5b7c973d3cbf1505f2" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/cryptography-46.0.3-8-cp312-abi3-linux_x86_64.whl", hashes = { sha256 = "597b2688ec213512f8bd2596e92c72d86600e0ff132f453baf8d45876a97f364" } },
 ]
 
 [[packages]]
@@ -263,6 +290,12 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/dill-0.3.9-8-py3-none-any.whl", hashes = { sha256 = "10f14f67e7fb824cf1f0c771fc709be3404ee0a3506e385aad9aadd1fca48453" } }]
 
 [[packages]]
+name = "distlib"
+version = "0.4.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/distlib-0.4.0-8-py2.py3-none-any.whl", hashes = { sha256 = "6c00e3348021f675262a7bbece9e56562060dba095acebd59db743b9c482c939" } }]
+
+[[packages]]
 name = "dnspython"
 version = "2.8.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -294,9 +327,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "executing"
-version = "2.2.1"
+version = "1.2.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/executing-2.2.1-8-py2.py3-none-any.whl", hashes = { sha256 = "2f6db4d258b4375ffcbff9bd4a35c8e7ad883d724fd246221f234116134caf00" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/executing-1.2.0-8-py2.py3-none-any.whl", hashes = { sha256 = "e763ca4ee97f6fe04c08c95f2c1afbcdc1b2197e8bdadb32405e57a3aa47e2b1" } }]
 
 [[packages]]
 name = "fastapi"
@@ -476,6 +509,12 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/importlib_metadata-8.7.1-8-py3-none-any.whl", hashes = { sha256 = "9438c2c8582fae36d4d851f9c02aa8e327e14a77738d9f1f8a6f7e9bfa3ea908" } }]
 
 [[packages]]
+name = "invoke"
+version = "2.2.1"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/invoke-2.2.1-8-py3-none-any.whl", hashes = { sha256 = "05412facff8cf1c8bb9ddc0e0bbc37d64e33318886855bf2876e32e68ad9cf00" } }]
+
+[[packages]]
 name = "ipykernel"
 version = "7.1.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -495,9 +534,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "ipywidgets"
-version = "8.1.8"
+version = "8.1.2"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/ipywidgets-8.1.8-8-py3-none-any.whl", hashes = { sha256 = "f84784cc7dce51f234dda0464acafa722f9351250d58ab9fb248f0001e8f589c" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/ipywidgets-8.1.2-8-py3-none-any.whl", hashes = { sha256 = "4f78c5242b754eba22ae1fa04f5db458e3e562e33ed702c705e9bc5b74af6071" } }]
 
 [[packages]]
 name = "isoduration"
@@ -740,6 +779,12 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/markdown-3.10.1-8-py3-none-any.whl", hashes = { sha256 = "817a697ce457f652cb368a14b9eaf9c62f02b0243468204bd49c618904f6e012" } }]
 
 [[packages]]
+name = "markdown-it-py"
+version = "4.0.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/markdown_it_py-4.0.0-8-py3-none-any.whl", hashes = { sha256 = "2e63f1744bd8d809a002f68dddd01956ffc12964c15397dcdd492aa4bae11bb9" } }]
+
+[[packages]]
 name = "markupsafe"
 version = "3.0.3"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -762,6 +807,12 @@ name = "matplotlib-inline"
 version = "0.2.1"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/matplotlib_inline-0.2.1-8-py3-none-any.whl", hashes = { sha256 = "a439bba0219798e3bb1123bc378f673df65fc1e7ddb59ddbce8155cb9ac45114" } }]
+
+[[packages]]
+name = "mdurl"
+version = "0.1.2"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/mdurl-0.1.2-8-py3-none-any.whl", hashes = { sha256 = "45c663f9c94351ece0ba397babc5bc2131de528d527821321c4267c8e8c0b484" } }]
 
 [[packages]]
 name = "minio"
@@ -804,6 +855,15 @@ name = "mpmath"
 version = "1.3.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/mpmath-1.3.0-8-py3-none-any.whl", hashes = { sha256 = "b321f4f60780963fc0f5a27c61aa0ae7925818535564526855f0874302b9e73b" } }]
+
+[[packages]]
+name = "msgpack"
+version = "1.1.2"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/msgpack-1.1.2-8-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "70a36b2a556ca5261a866ad6fcc6a63bf26be77a66d5e1ed3a9fb1282a8722a3" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/msgpack-1.1.2-8-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "73d2c1e7da99fec6486f18169ec2d4dbb7ea32e41fa06285fc071159436751bb" } },
+]
 
 [[packages]]
 name = "multidict"
@@ -932,6 +992,54 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/onnxconverter_common-1.16.0-10-py2.py3-none-any.whl", hashes = { sha256 = "e10b80b7d24d4dfae295d1a872bb0046b9a095a58aadf06c2ff03bb7424e34e5" } }]
 
 [[packages]]
+name = "opencensus"
+version = "0.11.4"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/opencensus-0.11.4-8-py2.py3-none-any.whl", hashes = { sha256 = "4be45e7b357769afbeb34d576a05997af19e663c5c210b9d27cbc3c0d0970b80" } }]
+
+[[packages]]
+name = "opencensus-context"
+version = "0.1.3"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/opencensus_context-0.1.3-8-py2.py3-none-any.whl", hashes = { sha256 = "6cbc534d5bb803948f575da1b555c0344df7148cd3adebfc71c377b58ce1932a" } }]
+
+[[packages]]
+name = "openshift-client"
+version = "1.0.18"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/openshift_client-1.0.18-8-py2.py3-none-any.whl", hashes = { sha256 = "4a5cb57fb2f2ef3372b504797bed19a9dd75ca93168ec93b7012cbc0b60c7fb0" } }]
+
+[[packages]]
+name = "opentelemetry-api"
+version = "1.39.1"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/opentelemetry_api-1.39.1-8-py3-none-any.whl", hashes = { sha256 = "892530d3de2309f4c7ea86c895fafd5e9d489545db928510efca294bcb7e8610" } }]
+
+[[packages]]
+name = "opentelemetry-exporter-prometheus"
+version = "0.60b1"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/opentelemetry_exporter_prometheus-0.60b1-8-py3-none-any.whl", hashes = { sha256 = "94d5b62023f659b091bb5e48818412b2fc9a21e164bece9fbe8a698342410c1e" } }]
+
+[[packages]]
+name = "opentelemetry-proto"
+version = "1.39.1"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/opentelemetry_proto-1.39.1-8-py3-none-any.whl", hashes = { sha256 = "bb5b3235b7fb2414378ae1c906e6b4751acc424c37b590336fc4d2850e4a4da5" } }]
+
+[[packages]]
+name = "opentelemetry-sdk"
+version = "1.39.1"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/opentelemetry_sdk-1.39.1-8-py3-none-any.whl", hashes = { sha256 = "2286f30340a77ade25238fa4c60a3d69a7161a6c4a35fac1c81649792c63fe64" } }]
+
+[[packages]]
+name = "opentelemetry-semantic-conventions"
+version = "0.60b1"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/opentelemetry_semantic_conventions-0.60b1-8-py3-none-any.whl", hashes = { sha256 = "908640a7c0bf479a1bdbbad21561d895f9a227bd3ea606fdbb686159eb059864" } }]
+
+[[packages]]
 name = "packaging"
 version = "26.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -957,6 +1065,12 @@ name = "papermill"
 version = "2.6.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/papermill-2.6.0-8-py3-none-any.whl", hashes = { sha256 = "fbca5b662c14f7127390597bc7a967a1a745fde51efee097c592dcc8b57a193e" } }]
+
+[[packages]]
+name = "paramiko"
+version = "4.0.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/paramiko-4.0.0-8-py3-none-any.whl", hashes = { sha256 = "1d168b4631018edf5bc438dce290503b82fdb7c288935e0513a8f7bbf57b2acc" } }]
 
 [[packages]]
 name = "parso"
@@ -1071,6 +1185,15 @@ name = "pure-eval"
 version = "0.2.3"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/pure_eval-0.2.3-8-py3-none-any.whl", hashes = { sha256 = "2fdc667e87f14de1c0e961c1288dbb4a0f97ce82c41756c47521c9ab86e794b1" } }]
+
+[[packages]]
+name = "py-spy"
+version = "0.4.1"
+marker = "python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/py_spy-0.4.1-8-py3-none-linux_aarch64.whl", hashes = { sha256 = "cb40c2741f7ecf0b63812353e81c7f356f00a5aa6fcfe0c4f41f3d755d0f7bc6" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/py_spy-0.4.1-8-py3-none-linux_x86_64.whl", hashes = { sha256 = "5fe3ae248e1cd1c07939b228f9b5f563c1bdbe0ad5c2b908588e9ceac5c42bbb" } },
+]
 
 [[packages]]
 name = "pyarrow"
@@ -1244,6 +1367,15 @@ wheels = [
 ]
 
 [[packages]]
+name = "ray"
+version = "2.52.1"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/ray-2.52.1-cp312-cp312-manylinux2014_aarch64.whl", hashes = { sha256 = "08eb8f5fd55292ba6bee363a32491136a5e54af54e007f81e0603986fbea41a4" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/ray-2.52.1-cp312-cp312-manylinux2014_x86_64.whl", hashes = { sha256 = "843c0108ad72bb7fc6c23a22e29e6099546a5eaad3ad675c78a146d9080f6ec6" } },
+]
+
+[[packages]]
 name = "referencing"
 version = "0.37.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -1290,6 +1422,12 @@ name = "rfc3987-syntax"
 version = "1.1.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/rfc3987_syntax-1.1.0-8-py3-none-any.whl", hashes = { sha256 = "bf5ef1cefcc974e2bf90eb9746ae79ff7d3734905ca0c41f86e601d992bcc596" } }]
+
+[[packages]]
+name = "rich"
+version = "13.9.4"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/rich-13.9.4-8-py3-none-any.whl", hashes = { sha256 = "9f582115c023367d33d9f44df636ad1c037dc540d5fd971e8526b11ea83f33e8" } }]
 
 [[packages]]
 name = "rpds-py"
@@ -1365,6 +1503,12 @@ name = "skl2onnx"
 version = "1.19.1"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/skl2onnx-1.19.1-8-py3-none-any.whl", hashes = { sha256 = "fd966002d2b0620765e4597b807e03f777e674c852f7739b98fbc12b81f5c264" } }]
+
+[[packages]]
+name = "smart-open"
+version = "7.5.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/smart_open-7.5.0-8-py3-none-any.whl", hashes = { sha256 = "b28e557ee2c0e112c46247620c46bae12472a0dcc2f0ca2c9ae2f2fea0f18a3f" } }]
 
 [[packages]]
 name = "smmap"
@@ -1586,6 +1730,12 @@ wheels = [
 ]
 
 [[packages]]
+name = "virtualenv"
+version = "20.36.1"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/virtualenv-20.36.1-8-py3-none-any.whl", hashes = { sha256 = "a4ed3477e28d87de9c6e12c4e1d69ee61897ded82f247b108319c2fa565f24cd" } }]
+
+[[packages]]
 name = "watchdog"
 version = "6.0.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -1650,6 +1800,15 @@ name = "widgetsnbextension"
 version = "4.0.15"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/widgetsnbextension-4.0.15-8-py3-none-any.whl", hashes = { sha256 = "397974e955b5e21d84621ec82b001b9fed3bbc3562c8a59a04e737dee630f4a2" } }]
+
+[[packages]]
+name = "wrapt"
+version = "2.1.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/wrapt-2.1.0-8-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "612384476b9d11027d318ee601249fa9505397d877d109e724d06a1afd69078e" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/wrapt-2.1.0-8-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "70cd59427a242e29fbd842b7614d04dcdeac38120bff169caa4902a43691aead" } },
+]
 
 [[packages]]
 name = "xyzservices"
