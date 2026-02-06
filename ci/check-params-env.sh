@@ -27,7 +27,7 @@ PARAMS_ENV_PATH="manifests/base/params.env"
 
 # This value needs to be updated everytime we deliberately change number of the
 # images we want to have in the `params.env` or `params-latest.env` file.
-EXPECTED_NUM_RECORDS=46
+EXPECTED_NUM_RECORDS=38
 EXPECTED_ADDI_RUNTIME_RECORDS=0
 
 # Number of attempts for the skopeo tool to gather data from the repository.
@@ -119,11 +119,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=1217
             ;;
-        odh-workbench-jupyter-minimal-cpu-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="jupyter-minimal-ubi9-python-3.11-amd64"
-            expected_img_size=503
+        odh-workbench-jupyter-minimal-cpu-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.12"
+            expected_commitref="2025b"
+            expected_build_name="jupyter-minimal-ubi9-python-3.12-amd64"
+            expected_img_size=1224
             ;;
         odh-workbench-jupyter-minimal-cpu-py312-ubi9-n)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.12"
@@ -137,11 +137,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=5624
             ;;
-        odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="cuda-jupyter-minimal-ubi9-python-3.11-amd64"
-            expected_img_size=5157
+        odh-workbench-jupyter-minimal-cuda-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-cuda-minimal-ubi9-python-3.12"
+            expected_commitref="2025b"
+            expected_build_name="cuda-jupyter-minimal-ubi9-python-3.12-amd64"
+            expected_img_size=8252
             ;;
         odh-workbench-jupyter-minimal-cuda-py312-ubi9-n)
             expected_name="odh-notebook-jupyter-cuda-minimal-ubi9-python-3.12"
@@ -155,11 +155,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=9226
             ;;
-        odh-workbench-jupyter-pytorch-cuda-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-pytorch-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="jupyter-pytorch-ubi9-python-3.11-amd64"
-            expected_img_size=8571
+        odh-workbench-jupyter-pytorch-cuda-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.12"
+            expected_commitref="2025b"
+            expected_build_name="jupyter-pytorch-ubi9-python-3.12-amd64"
+            expected_img_size=12872
             ;;
         odh-workbench-jupyter-pytorch-cuda-py312-ubi9-n)
             expected_name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.12"
@@ -173,11 +173,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=1667
             ;;
-        odh-workbench-jupyter-datascience-cpu-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="jupyter-datascience-ubi9-python-3.11-amd64"
-            expected_img_size=904
+        odh-workbench-jupyter-datascience-cpu-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.12"
+            expected_commitref="2025b"
+            expected_build_name="jupyter-datascience-ubi9-python-3.12-amd64"
+            expected_img_size=1724
             ;;
         odh-workbench-jupyter-datascience-cpu-py312-ubi9-n)
             expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.12"
@@ -191,11 +191,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=8652
             ;;
-        odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-n-1)
-            expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="cuda-jupyter-tensorflow-ubi9-python-3.11-amd64"
-            expected_img_size=8211
+        odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-n-1)
+            expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.12"
+            expected_commitref="2025b"
+            expected_build_name="cuda-jupyter-tensorflow-ubi9-python-3.12-amd64"
+            expected_img_size=12322
             ;;
         odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-n)
             expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.12"
@@ -209,11 +209,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=5015
             ;;
-        odh-workbench-jupyter-trustyai-cpu-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="jupyter-trustyai-ubi9-python-3.11-amd64"
-            expected_img_size=4197
+        odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.12"
+            expected_commitref="2025b"
+            expected_build_name="jupyter-trustyai-ubi9-python-3.12-amd64"
+            expected_img_size=5917
             ;;
         odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n)
             expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.12"
@@ -227,11 +227,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=979
             ;;
-        odh-workbench-codeserver-datascience-cpu-py311-ubi9-n-1)
-            expected_name="odh-notebook-code-server-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="codeserver-ubi9-python-3.11-amd64"
-            expected_img_size=850
+        odh-workbench-codeserver-datascience-cpu-py312-ubi9-n-1)
+            expected_name="odh-notebook-code-server-ubi9-python-3.12"
+            expected_commitref="2025b"
+            expected_build_name="codeserver-ubi9-python-3.12-amd64"
+            expected_img_size=1289
             ;;
         odh-workbench-codeserver-datascience-cpu-py312-ubi9-n)
             expected_name="odh-notebook-code-server-ubi9-python-3.12"
@@ -251,11 +251,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=1377
             ;;
-        odh-workbench-rstudio-minimal-cpu-py311-c9s-n-1)
-            expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="rstudio-c9s-python-3.11-amd64"
-            expected_img_size=1208
+        odh-workbench-rstudio-minimal-cpu-py312-c9s-n-1)
+            expected_name="odh-notebook-rstudio-server-c9s-python-3.12"
+            expected_commitref="2025b"
+            expected_build_name="rstudio-c9s-python-3.12-amd64"
+            expected_img_size=1503
             ;;
         # For both RStudio GPU workbenches - the final name labels are identical to plain RStudio ones
         # This is because the very same RStudio Dockerfile is used but different base images in both cases
@@ -266,11 +266,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=6541
             ;;
-        odh-workbench-rstudio-minimal-cuda-py311-c9s-n-1)
-            expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="cuda-rstudio-c9s-python-3.11-amd64"
-            expected_img_size=7184
+        odh-workbench-rstudio-minimal-cuda-py312-c9s-n-1)
+            expected_name="odh-notebook-rstudio-server-cuda-c9s-python-3.12"
+            expected_commitref="2025b"
+            expected_build_name="cuda-rstudio-c9s-python-3.12-amd64"
+            expected_img_size=8653
             ;;
         odh-workbench-jupyter-minimal-rocm-py311-ubi9-n)
             expected_name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.11"
@@ -278,11 +278,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=6478
             ;;
-        odh-workbench-jupyter-minimal-rocm-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="rocm-jupyter-minimal-ubi9-python-3.11-amd64"
-            expected_img_size=4830
+        odh-workbench-jupyter-minimal-rocm-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.12"
+            expected_commitref="2025b"
+            expected_build_name="rocm-jupyter-minimal-ubi9-python-3.12-amd64"
+            expected_img_size=4698
             ;;
          odh-workbench-jupyter-minimal-rocm-py312-ubi9-n)
             expected_name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.12"
@@ -296,11 +296,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=8135
             ;;
-        odh-workbench-jupyter-pytorch-rocm-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="rocm-jupyter-pytorch-ubi9-python-3.11-amd64"
-            expected_img_size=6571
+        odh-workbench-jupyter-pytorch-rocm-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.12"
+            expected_commitref="2025b"
+            expected_build_name="rocm-jupyter-pytorch-ubi9-python-3.12-amd64"
+            expected_img_size=6471
             ;;
         odh-workbench-jupyter-pytorch-rocm-py312-ubi9-n)
             expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.12"
@@ -314,11 +314,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=7432
             ;;
-        odh-workbench-jupyter-tensorflow-rocm-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="rocm-jupyter-tensorflow-ubi9-python-3.11-amd64"
-            expected_img_size=5782
+        odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.12"
+            expected_commitref="2025b"
+            expected_build_name="rocm-jupyter-tensorflow-ubi9-python-3.12-amd64"
+            expected_img_size=5779
             ;;
         # The following are pipeline runtime images
         odh-pipeline-runtime-minimal-cpu-py311-ubi9-n)
