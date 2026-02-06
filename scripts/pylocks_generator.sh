@@ -19,6 +19,10 @@ set -euo pipefail
 #   • rh-index    -> Uses internal Red Hat wheel indexes. Generates uv.lock.d/pylock.<flavor>.toml .
 #   • public-index   -> Uses public PyPI index and updates pylock.toml in place.
 #
+# Fallback Index (RHAIENG-3071):
+#   For CUDA and ROCm flavors, if CPU_INDEX_URL is defined in the build-args/*.conf file,
+#   it will be added as a fallback index for packages not available in the specialized indexes.
+#
 # Usage:
 #   1. Lock using auto mode (default) for all projects in MAIN_DIRS:
 #        bash pylocks_generator.sh
@@ -41,16 +45,6 @@ set -euo pipefail
 # ----------------------------
 # CONFIGURATION
 # ----------------------------
-# https://redhat-internal.slack.com/archives/C079FE5H94J/p1768855783394919?thread_ts=1767789190.424899&cid=C079FE5H94J
-CPU_INDEX_URL="https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cpu-ubi9/simple/"
-CUDA_INDEX_URL="https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cuda12.9-ubi9/simple/"
-ROCM_INDEX_URL="https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/rocm6.4-ubi9/simple/"
-
-CPU_INDEX="--default-index=${CPU_INDEX_URL}"
-# TODO(RHAIENG-3071): Add CPU index as fallback for packages not available in CUDA/ROCm indexes
-# (e.g., kfp-pipeline-spec, kfp-server-api, google-cloud-storage, requests-toolbelt)
-CUDA_INDEX="--default-index=${CUDA_INDEX_URL} --index=${CUDA_INDEX_URL} --index=${CPU_INDEX_URL}"
-ROCM_INDEX="--default-index=${ROCM_INDEX_URL} --index=${ROCM_INDEX_URL} --index=${CPU_INDEX_URL}"
 PUBLIC_INDEX="--default-index=https://pypi.org/simple"
 
 MAIN_DIRS=("jupyter" "runtimes" "rstudio" "codeserver")
@@ -64,12 +58,32 @@ CVE_CONSTRAINTS_FILE="$ROOT_DIR/dependencies/cve-constraints.txt"
 # HELPER FUNCTIONS
 # ----------------------------
 info()  { echo -e "🔹 \033[1;34m$1\033[0m"; }
-warn()  { echo -e "⚠️  \033[1;33m$1\033[0m"; }
-error() { echo -e "❌ \033[1;31m$1\033[0m"; }
-ok()    { echo -e "✅ \033[1;32m$1\033[0m"; }
+warn()  { echo -e "⚠️ \033[1;33m$1\033[0m" >&2; }
+error() { echo -e "❌ \033[1;31m$1\033[0m" >&2; }
+ok()    { echo -e "✅ \033[1;32m$1\033[0m" >&2; }
 
 uppercase() {
   echo "$1" | tr '[:lower:]' '[:upper:]'
+}
+
+read_conf_value() {
+  local conf_file="$1"
+  local key="$2"
+
+  awk -F= -v key="$key" '
+    /^[[:space:]]*#/ { next }
+    NF < 2 { next }
+    {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1)
+      if ($1 == key) {
+        $1=""
+        sub(/^=/, "", $0)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+        print $0
+        exit
+      }
+    }
+  ' "$conf_file"
 }
 
 # ----------------------------
@@ -194,6 +208,52 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
   info "Effective mode for this directory: $EFFECTIVE_MODE"
 
   DIR_SUCCESS=true
+  CONF_DIR="build-args"
+
+  get_index_flags() {
+    local flavor="$1"
+    local conf_file="${CONF_DIR}/${flavor}.conf"
+    local index_url
+    local cpu_index_url
+    local index_flags
+
+    if [[ ! -f "$conf_file" ]]; then
+      warn "Missing build-args config for ${flavor}: $conf_file"
+      return 1
+    fi
+
+    index_url=$(read_conf_value "$conf_file" "INDEX_URL")
+    if [[ -z "$index_url" ]]; then
+      warn "INDEX_URL not found in $conf_file"
+      return 1
+    fi
+
+    index_flags="--default-index=${index_url} --index=${index_url}"
+
+    # For CUDA and ROCm flavors, add CPU index as fallback for packages
+    # not available in the specialized indexes (RHAIENG-3071)
+    if [[ "$flavor" == "cuda" || "$flavor" == "rocm" ]]; then
+      cpu_index_url=$(read_conf_value "$conf_file" "CPU_INDEX_URL")
+      if [[ -n "$cpu_index_url" ]]; then
+        index_flags="${index_flags} --index=${cpu_index_url}"
+        echo "  📎 Using CPU index as fallback" >&2
+      fi
+    fi
+
+    echo "$index_flags"
+  }
+
+  run_flavor_lock() {
+    local flavor="$1"
+    local index_flags
+
+    if ! index_flags=$(get_index_flags "$flavor"); then
+      DIR_SUCCESS=false
+      return
+    fi
+
+    run_lock "$flavor" "$index_flags" "$EFFECTIVE_MODE"
+  }
 
   run_lock() {
     local flavor="$1"
@@ -267,9 +327,9 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
   if [[ "$EFFECTIVE_MODE" == "public-index" ]]; then
     run_lock "cpu" "$PUBLIC_INDEX" "$EFFECTIVE_MODE"
   else
-    $HAS_CPU && run_lock "cpu" "$CPU_INDEX" "$EFFECTIVE_MODE"
-    $HAS_CUDA && run_lock "cuda" "$CUDA_INDEX" "$EFFECTIVE_MODE"
-    $HAS_ROCM && run_lock "rocm" "$ROCM_INDEX" "$EFFECTIVE_MODE"
+    $HAS_CPU && run_flavor_lock "cpu"
+    $HAS_CUDA && run_flavor_lock "cuda"
+    $HAS_ROCM && run_flavor_lock "rocm"
   fi
 
   if $DIR_SUCCESS; then

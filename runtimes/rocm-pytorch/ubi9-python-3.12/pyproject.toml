@@ -11,14 +11,12 @@ dependencies = [
     "triton~=3.5.0",
 
     # Datascience and useful extensions
-    # TODO(RHAIENG-3039): Re-enable codeflare-sdk before RHOAI 3.4 GA
-    # "codeflare-sdk~=0.34.0",
-    # TODO(RHAIENG-3041): Upgrade feast to ~=0.59.0 before RHOAI 3.4 GA
-    "feast~=0.58.0",
+    "codeflare-sdk~=0.34.0",
+    "feast~=0.59.0",
     "odh-notebooks-meta-runtime-datascience-deps",
 
     # DB connectors
-    "pymongo~=4.15.3",
+    "pymongo~=4.16.0",
     "psycopg~=3.3.2",
     "pyodbc~=5.3.0",
     "mysql-connector-python~=9.5.0",
@@ -27,7 +25,7 @@ dependencies = [
 
     # Base packages
     "setuptools==80.9.0",
-    "wheel==0.45.1",
+    "wheel==0.46.3",
 ]
 
 [tool.uv.sources]
