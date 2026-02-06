@@ -1,0 +1,22 @@
+diff --git a/test/package.json b/test/package.json
+index 6d2e92edd..54c1236d7 100644
+--- a/test/package.json
++++ b/test/package.json
+@@ -1,5 +1,6 @@
+ {
+   "license": "MIT",
++  "version": "1.0.0",
+   "#": "We must put jest in a sub-directory otherwise VS Code somehow picks up the types and generates conflicts with mocha.",
+   "devDependencies": {
+     "@jest-mock/express": "^1.4.5",
+diff --git a/test/package-lock.json b/test/package-lock.json
+index f7ee4863c..f9a56eb71 100644
+--- a/test/package-lock.json
++++ b/test/package-lock.json
+@@ -1,5 +1,6 @@
+ {
+   "name": "test",
++  "version": "1.0.0",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {

@@ -1,0 +1,78 @@
+############################################################################################
+# Minimal test Dockerfile: tests whl-cache stage (RHOAI wheels + openblas RPM) on ppc64le
+#
+# This mirrors the exact whl-cache stage from Dockerfile.cpu so that
+# devel_env_setup.sh is sourced the same way. OpenBLAS is installed via
+# the openblas RPM (provides libopenblasp.so.0 needed by RHOAI numpy/scipy).
+#
+# Usage (local build with prefetched cachi2 cache):
+#   # 1. Populate cachi2 cache (must include both requirements files):
+#   #    python3 scripts/lockfile-generators/download-pip-packages.py codeserver/ubi9-python-3.12/requirements.txt
+#   #    python3 scripts/lockfile-generators/download-pip-packages.py codeserver/ubi9-python-3.12/requirements-rhoai.txt
+#   # 2. Build:
+#   podman build -f codeserver/ubi9-python-3.12/Dockerfile.vath \
+#       --platform linux/ppc64le -t docker-test \
+#       --build-arg ARCH=ppc64le --build-arg LOCAL_BUILD=true \
+#       -v $(realpath ./cachi2):/cachi2:z .
+############################################################################################
+
+ARG LOCAL_BUILD=false
+
+FROM registry.access.redhat.com/ubi9/python-312:latest AS whl-cache
+
+USER root
+WORKDIR /root
+
+ENV HOME=/root
+
+ARG LOCAL_BUILD
+ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# [HERMETIC] Configure package repos for local testing.
+RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
+        rm -f /etc/yum.repos.d/* && \
+        dnf config-manager --add-repo file:///cachi2/output/deps/rpm/; \
+    fi;
+
+# [HERMETIC] ppc64le/s390x: install system-level deps.
+# openblas-threads: provides libopenblasp.so.0 (pthreads variant) that RHOAI numpy/scipy
+# wheels link against at runtime. The base 'openblas' meta-package only pulls in
+# openblas-serial (libopenblas.so.0) which has the wrong soname.
+# gcc/gcc-c++: needed for packages with simple C extensions that only provide sdist
+# on PyPI and are not available on RHOAI (e.g. psutil, tornado, greenlet).
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
+    dnf install -y gcc gcc-c++ openblas-threads \
+        python3.12-devel python3-devel \
+        tar mesa-libGL libxcrypt-compat
+fi
+EOF
+
+# Copy files (same as Dockerfile.cpu whl-cache stage)
+COPY .git /root/.git
+COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
+COPY ${CODESERVER_SOURCE_CODE}/requirements.txt ./
+COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
+
+# [HERMETIC] Install uv + install all Python packages (--network=none).
+# /cachi2/output/deps/pip/ contains PyPI wheels + RHOAI wheels (prefetched by cachi2
+# from requirements.txt and requirements-rhoai.txt respectively).
+RUN --network=none /bin/bash <<'EOF'
+    set -Eeuxo pipefail
+    pip install --no-index --find-links /cachi2/output/deps/pip uv
+    echo "installed uv from cachi2"
+    source ./devel_env_setup.sh
+    # Install all packages from the offline cachi2 pip cache.
+    UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --no-index \
+        --find-links /cachi2/output/deps/pip \
+        --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode \
+        --requirements=./requirements.txt
+EOF
+
+RUN echo "=== whl-cache stage completed ===" && python -c "import numpy; print('numpy', numpy.__version__)"

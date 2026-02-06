@@ -1,0 +1,97 @@
+---
+metadata:
+  version: '1.0'
+artifacts:
+  - download_url: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9
+    checksum: sha256:fcf0eab4f05a1c0de6363ac4b707600a27a9d774e9b491059e59e6921b255a84
+    filename: RPM-GPG-KEY-EPEL-9
+  - download_url: https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official
+    checksum: sha256:146059788b214d7ba0dd70c1cf21111e594c6cfde201da8a9a88fe7101be8a78
+    filename: RPM-GPG-KEY-CentOS-Official
+  - download_url: https://www.x.org/releases/individual/util/util-macros-1.20.2.tar.gz
+    checksum: sha256:f642f8964d81acdf06653fdf9dbc210c43ce4bd308bd644a8d573148d0ced76b
+    filename: util-macros-1.20.2.tar.gz
+  - download_url: https://www.x.org/releases/individual/lib/libxkbfile-1.1.3.tar.gz
+    checksum: sha256:c4c2687729d1f920f165ebb96557a1ead2ef655809ab5eaa66a1ad36dc31050d
+    filename: libxkbfile-1.1.3.tar.gz
+  - download_url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.x86_64.rpm
+    checksum: sha256:74f9d1c5f13b6661940472d96be2b819c326f2793afb096e4d98e9d4ec2e9d1f
+    filename: nfpm-2.44.1-1.x86_64.rpm
+  - download_url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.s390x.rpm
+    checksum: sha256:f2a77bccc22fdf2e14f6dd545ac90393ed75481f8075620f8706d08f702b7aef
+    filename: nfpm-2.44.1-1.s390x.rpm
+  - download_url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.aarch64.rpm
+    checksum: sha256:45585140b10502db4b29833215977f82ed3eaa463137a7aead8ab15d259ae0d2
+    filename: nfpm-2.44.1-1.aarch64.rpm
+  - download_url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.ppc64le.rpm
+    checksum: sha256:9814d43163c32de1974e72e2679032216da7dea64a0054ce85f4d1fd39f39cd6
+    filename: nfpm-2.44.1-1.ppc64le.rpm
+  - download_url: https://electronjs.org/headers/v37.3.1/node-v37.3.1-headers.tar.gz
+    checksum: sha256:85940d5719d913f47ad2dcb8feb1af20a2003f58ada808f5d7a80529364d2ac8
+    filename: node-v37.3.1-headers.tar.gz
+  - download_url: https://nodejs.org/download/release/v22.19.0/node-v22.19.0-headers.tar.gz
+    checksum: sha256:183bdc17092336ad21e01a425d238e85db4ee077ae3caa0547ff1fbda07d9bd8
+    filename: node-v22.19.0-headers.tar.gz
+  - download_url: https://nodejs.org/download/release/v22.18.0/node-v22.18.0-headers.tar.gz
+    checksum: sha256:c99fd7e0a7d2b7563ef5276e09a1f23559381c601ef80ccdce91259d6f6d0971
+    filename: node-v22.18.0-headers.tar.gz
+  - download_url: https://nodejs.org/download/release/v22.18.0/node-v22.18.0-linux-x64.tar.gz
+    checksum: sha256:a2e703725d8683be86bb5da967bf8272f4518bdaf10f21389e2b2c9eaeae8c8a
+    filename: node-v22.18.0-linux-x64.tar.gz
+  - download_url: https://playwright.azureedge.net/builds/chromium/1134/chromium-linux.zip
+    checksum: sha256:6f4bb701f2ad2d3a77ad5232f43ca719cd8ec7bc418a0a1f5f9495d8edfb953b
+    filename: chromium-1134-linux.zip
+  - download_url: https://github.com/electron/electron/releases/download/v37.3.1/electron-v37.3.1-linux-x64.zip
+    checksum: sha256:9c379b91f7ff65311f2b040299ee95c137fcb8e7e1bef87f9225d608cf579548
+    filename: electron-v37.3.1-linux-x64.zip
+  - download_url: https://github.com/electron/electron/releases/download/v37.3.1/SHASUMS256.txt
+    checksum: sha256:6c5bd25e78d67bbfc96eb4c1d88443ac1e7da0ccbb6dd1c672f2aee88ab85409
+    filename: SHASUMS256.txt
+  - download_url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
+    checksum: sha256:324cd645481db1ceda8621409c9151fc58d182b90cc5c428db80edb21fb26df3
+    filename: ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
+  - download_url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-aarch64-unknown-linux-gnu.tar.gz
+    checksum: sha256:1b0ca509f8707f2128f1b3ef245c3ea666d49a737431288536d49bd74652d143
+    filename: ripgrep-v13.0.0-13-aarch64-unknown-linux-musl.tar.gz
+  - download_url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-powerpc64le-unknown-linux-gnu.tar.gz
+    checksum: sha256:a3fdb2c6ef9d4ff927ca1cb1e56f7aed7913d1be4dd4546aec400118c26452ab
+    filename: ripgrep-v13.0.0-13-powerpc64le-unknown-linux-musl.tar.gz
+  - download_url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-4/ripgrep-v13.0.0-4-powerpc64le-unknown-linux-gnu.tar.gz
+    checksum: sha256:3ddd7c0797c14cefd3ee61f13f15ac219bfecee8e6f6e27fd15c102ef229653a
+    filename: ripgrep-v13.0.0-4-powerpc64le-unknown-linux-gnu.tar.gz
+  - download_url: https://github.com/ranisalt/node-argon2/releases/download/v0.31.2/argon2-v0.31.2-napi-v3-linux-x64-glibc.tar.gz
+    checksum: sha256:255e7b6b13bd373e9714f05b4b137262a4362f9e4cc2a86a162e461c611fe17c
+    filename: v0.31.2/argon2-v0.31.2-napi-v3-linux-x64-glibc.tar.gz
+  - download_url: https://github.com/ranisalt/node-argon2/releases/download/v0.28.7/argon2-v0.28.7-napi-v3-linux-x64-glibc.tar.gz
+    checksum: sha256:5e4f98a014681f286a8ed298758c1c76a1269ac40ba171962eb6c12085bca202
+    filename: v0.28.7/argon2-v0.28.7-napi-v3-linux-x64-glibc.tar.gz
+  - download_url: https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz
+    checksum: sha256:735b43f9ae4ffe8f1777b13e23d691540f51dcbe18ac73ab058754d42abfb4b2
+    filename: openshift-client-linux-x86_64.tar.gz
+  - download_url: https://mirror.openshift.com/pub/openshift-v4/amd64/clients/ocp/stable/openshift-client-linux.tar.gz
+    checksum: sha256:735b43f9ae4ffe8f1777b13e23d691540f51dcbe18ac73ab058754d42abfb4b2
+    filename: openshift-client-linux-amd64.tar.gz
+  - download_url: https://mirror.openshift.com/pub/openshift-v4/aarch64/clients/ocp/stable/openshift-client-linux.tar.gz
+    checksum: sha256:9db7c783d7cd4a63f13462e4c0855841ecb63c0f6c6a43aab424ae8f09ea4145
+    filename: openshift-client-linux-aarch64.tar.gz
+  - download_url: https://mirror.openshift.com/pub/openshift-v4/arm64/clients/ocp/stable/openshift-client-linux.tar.gz
+    checksum: sha256:9db7c783d7cd4a63f13462e4c0855841ecb63c0f6c6a43aab424ae8f09ea4145
+    filename: openshift-client-linux-arm64.tar.gz
+  - download_url: https://mirror.openshift.com/pub/openshift-v4/ppc64le/clients/ocp/stable/openshift-client-linux.tar.gz
+    checksum: sha256:5dcb0d2574245281f8a08e5f50f424241d9358beb79053104f61dd8cc0685c46
+    filename: openshift-client-linux-ppc64le.tar.gz
+  - download_url: https://mirror.openshift.com/pub/openshift-v4/s390x/clients/ocp/stable/openshift-client-linux.tar.gz
+    checksum: sha256:ef42eaa8fa6a38571d85d0b52a2937fd918a6effaf9e3ce4cbc3e16a1a5a30f1
+    filename: openshift-client-linux-s390x.tar.gz
+  - download_url: https://codeload.github.com/ramya-rao-a/css-parser/tar.gz/370c480ac103bd17c7bcfb34bf5d577dc40d3660
+    checksum: sha256:6004ae05ad17931a62a72b27ebf1dab54fca6e72c0a9f0b7925a8b315bbe776d
+    filename: ramya-rao-a-css-parser-370c480ac103bd17c7bcfb34bf5d577dc40d3660.tar.gz
+  - download_url: https://github.com/microsoft/vscode-js-debug-companion/releases/download/v1.1.3/ms-vscode.js-debug-companion.1.1.3.vsix
+    checksum: sha256:7380a890787452f14b2db7835dfa94de538caf358ebc263f9d46dd68ac52de93
+    filename: ms-vscode.js-debug-companion.1.1.3.vsix
+  - download_url: https://github.com/microsoft/vscode-js-debug/releases/download/v1.104.0/ms-vscode.js-debug.1.104.0.vsix
+    checksum: sha256:856db934294bd8b78769dd91c86904c7e35e356bb05b223a9e4d8eb38cb17ae3
+    filename: ms-vscode.js-debug.1.104.0.vsix
+  - download_url: https://github.com/microsoft/vscode-js-profile-visualizer/releases/download/v1.0.10/ms-vscode.vscode-js-profile-table.1.0.10.vsix
+    checksum: sha256:7361748ddf9fd09d8a2ed1f2a2d7376a2cf9aae708692820b799708385c38e08
+    filename: ms-vscode.vscode-js-profile-table.1.0.10.vsix

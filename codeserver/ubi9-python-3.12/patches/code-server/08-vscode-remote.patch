@@ -1,0 +1,77 @@
+diff --git a/lib/vscode/remote/package.json b/lib/vscode/remote/package.json
+index 1a2b555cf..3e7c5e37a 100644
+--- a/lib/vscode/remote/package.json
++++ b/lib/vscode/remote/package.json
+@@ -33,7 +33,9 @@
+     "kerberos": "2.1.1",
+     "minimist": "^1.2.8",
+     "native-watchdog": "^1.4.1",
++    "node-gyp": "^11.2.0",
+     "node-pty": "^1.1.0-beta33",
++    "proc-log": "^5.0.0",
+     "tas-client-umd": "0.2.0",
+     "vscode-oniguruma": "1.7.0",
+     "vscode-regexpp": "^3.1.0",
+diff --git a/lib/vscode/remote/package-lock.json b/lib/vscode/remote/package-lock.json
+index 7a9d0455c..5fcabef40 100644
+--- a/lib/vscode/remote/package-lock.json
++++ b/lib/vscode/remote/package-lock.json
+@@ -38,8 +38,11 @@
+         "kerberos": "2.1.1",
+         "minimist": "^1.2.8",
+         "native-watchdog": "^1.4.1",
++        "node-gyp": "^11.2.0",
+         "node-pty": "^1.1.0-beta33",
++        "proc-log": "^5.0.0",
+         "tas-client-umd": "0.2.0",
++        "tslib": "2.6.3",
+         "vscode-oniguruma": "1.7.0",
+         "vscode-regexpp": "^3.1.0",
+         "vscode-textmate": "9.2.0",
+@@ -84,6 +87,11 @@
+       "resolved": "https://registry.npmjs.org/@microsoft/applicationinsights-shims/-/applicationinsights-shims-2.0.2.tgz",
+       "integrity": "sha512-PoHEgsnmcqruLNHZ/amACqdJ6YYQpED0KSRe6J7gIJTtpZC1FfFU9b1fmDKDKtFoUSrPzEh1qzO3kmRZP0betg=="
+     },
++    "node_modules/tslib": {
++      "version": "2.6.3",
++      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.3.tgz",
++      "integrity": "sha512-xNvxJEOUiWPGhUuUdQgAJPKOOJfGnIyKySOc09XkKsgdUV/3E2zvwZYdejjmRgPCgcym1juLH3226yA7sEFJKQ=="
++    },
+     "node_modules/@microsoft/dynamicproto-js": {
+       "version": "1.1.9",
+       "resolved": "https://registry.npmjs.org/@microsoft/dynamicproto-js/-/dynamicproto-js-1.1.9.tgz",
+@@ -1127,6 +1135,18 @@
+         "node": "^16 || ^18 || >= 20"
+       }
+     },
++    "node_modules/node-gyp": {
++      "version": "11.2.0",
++      "resolved": "https://registry.npmjs.org/node-gyp/-/node-gyp-11.2.0.tgz",
++      "integrity": "sha512-T0S1zqskVUSxcsSTkAsLc7xCycrRYmtDHadDinzocrThjyQCn5kMlEBSj6H4qDbgsIOSLmmlRIeb0lZXj+UArA==",
++      "license": "MIT",
++      "bin": {
++        "node-gyp": "bin/node-gyp.js"
++      },
++      "engines": {
++        "node": "^18.17.0 || >=20.5.0"
++      }
++    },
+     "node_modules/node-pty": {
+       "version": "1.1.0-beta33",
+       "resolved": "https://registry.npmjs.org/node-pty/-/node-pty-1.1.0-beta33.tgz",
+@@ -1173,6 +1193,15 @@
+         "url": "https://github.com/sponsors/jonschlinkert"
+       }
+     },
++    "node_modules/proc-log": {
++      "version": "5.0.0",
++      "resolved": "https://registry.npmjs.org/proc-log/-/proc-log-5.0.0.tgz",
++      "integrity": "sha512-Azwzvl90HaF0aCz1JrDdXQykFakSSNPaPoiZ9fm5qJIMHioDZEi7OAdRwSm6rSoPtY3Qutnm3L7ogmg3dc+wbQ==",
++      "license": "ISC",
++      "engines": {
++        "node": "^18.17.0 || >=20.5.0"
++      }
++    },
+     "node_modules/prebuild-install": {
+       "version": "7.1.2",
+       "resolved": "https://registry.npmjs.org/prebuild-install/-/prebuild-install-7.1.2.tgz",

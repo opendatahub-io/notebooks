@@ -1,0 +1,18 @@
+diff --git a/ci/build/build-release.sh b/ci/build/build-release.sh
+index 0d226fd83..22056c7d5 100755
+--- a/ci/build/build-release.sh
++++ b/ci/build/build-release.sh
+@@ -23,6 +23,13 @@ main() {
+ 
+   create_shrinkwraps
+ 
++  if [ -f /root/scripts/lockfile-generators/rewrite-cachi2-path.sh ]; then
++    . /root/scripts/lockfile-generators/rewrite-cachi2-path.sh
++    rewrite_cachi2_path npm-shrinkwrap.json
++    rewrite_cachi2_path "$VSCODE_SRC_PATH/remote/npm-shrinkwrap.json"
++    rewrite_cachi2_path "$VSCODE_SRC_PATH/extensions/npm-shrinkwrap.json"
++  fi
++
+   mkdir -p "$RELEASE_PATH"
+ 
+   bundle_code_server

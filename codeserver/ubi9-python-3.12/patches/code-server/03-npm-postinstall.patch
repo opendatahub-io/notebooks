@@ -1,0 +1,28 @@
+diff --git a/ci/build/npm-postinstall.sh b/ci/build/npm-postinstall.sh
+index ee4c92237..0e27f5831 100755
+--- a/ci/build/npm-postinstall.sh
++++ b/ci/build/npm-postinstall.sh
+@@ -115,14 +115,19 @@ main() {
+   fi
+ }
+ 
++# Offline: when shrinkwrap exists (file:///cachi2/...), use npm ci --offline so we don't hit the registry.
+ install_with_yarn_or_npm() {
+   echo "User agent: ${npm_config_user_agent-none}"
+-  # For development we enforce npm, but for installing the package as an
+-  # end-user we want to keep using whatever package manager is in use.
+   case "${npm_config_user_agent-}" in
+     npm*)
+-      if ! npm install --unsafe-perm --omit=dev; then
+-        return 1
++      if [ -f npm-shrinkwrap.json ]; then
++        if ! npm ci --offline --omit=dev --unsafe-perm; then
++          return 1
++        fi
++      else
++        if ! npm install --unsafe-perm --omit=dev; then
++          return 1
++        fi
+       fi
+       ;;
+     yarn*)
