@@ -27,6 +27,8 @@ CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
 PUSH_IMAGES ?= yes
 # INDEX_MODE: auto (default), public-index, or rh-index - controls lock file generation
 INDEX_MODE ?= auto
+# KONFLUX: whether to build images from Dockerfile.konflux.* (default: no)
+KONFLUX ?= no
 
 # OS dependant: Generate date, select appropriate cmd to locate container engine
 ifdef OS
@@ -67,13 +69,14 @@ endif
 # Build function for the notebook image:
 #   ARG 1: Image tag name.
 #   ARG 2: Path of Dockerfile we want to build.
+#   ARG 3: Path of the build-args conf file to use.
 define build_image
 	$(eval IMAGE_NAME := $(IMAGE_REGISTRY):$(1)-$(IMAGE_TAG))
 
 	# Checks if there’s a build-args/*.conf matching the Dockerfile
 	$(eval BUILD_DIR := $(dir $(2)))
 	$(eval DOCKERFILE_NAME := $(notdir $(2)))
-	$(eval CONF_FILE := $(BUILD_DIR)build-args/$(shell echo $(DOCKERFILE_NAME) | cut -d. -f2).conf)
+	$(eval CONF_FILE := $(3))
 
 	# if the conf file exists, transform it into --build-arg KEY=VALUE flags
 	$(eval BUILD_ARGS := $(shell \
@@ -101,11 +104,14 @@ endef
 #
 # PUSH_IMAGES: allows skipping podman push
 define image
-	$(info #*# Image build Dockerfile: <$(2)> #(MACHINE-PARSED LINE)#*#...)
 	$(eval BUILD_DIRECTORY := $(shell echo $(2) | sed 's/\/Dockerfile.*//'))
+	$(eval VARIANT := $(shell echo $(notdir $(2)) | cut -d. -f2))
+	$(eval DOCKERFILE := $(BUILD_DIRECTORY)/Dockerfile$(if $(KONFLUX:no=),.konflux,$()).$(VARIANT))
+	$(eval CONF_FILE := $(BUILD_DIRECTORY)/build-args/$(if $(KONFLUX:no=),konflux.,$())$(shell echo $(VARIANT)).conf)
+	$(info #*# Image build Dockerfile: <$(DOCKERFILE)> #(MACHINE-PARSED LINE)#*#...)
 	$(info #*# Image build directory: <$(BUILD_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
 
-	$(call build_image,$(1),$(2))
+	$(call build_image,$(1),$(DOCKERFILE),$(CONF_FILE))
 
 	$(if $(PUSH_IMAGES:no=),
 		$(call push_image,$(1))
