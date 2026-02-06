@@ -10,13 +10,14 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "playwright": "==1.53.1",
-    "@playwright/test": "==1.53.1",
+    // NOTE: update playwright container image version in .github/workflows/build-notebooks-TEMPLATE.yaml
+    "playwright": "=1.58.1",
+    "@playwright/test": "=1.58.1",
 
-    "testcontainers": "^11.0.3",
+    "testcontainers": "^11.11.0",
 
-    "typescript": "^5.8.3",
-    "@types/node": "^24.0.4"
+    "typescript": "^5.9.3",
+    "@types/node": "^25.2.1"
   },
   "packageManager": "pnpm@10.8.0"
 }
