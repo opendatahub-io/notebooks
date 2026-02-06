@@ -94,4 +94,6 @@ jobs:
       platform: "${{ matrix.platform }}"
       # rhds/notebooks builds from AIPCC base images that are RHEL-based
       subscription: ${{ true }}
+    env:
+      KONFLUX: yes
     secrets: inherit
