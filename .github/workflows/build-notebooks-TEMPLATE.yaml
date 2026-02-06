@@ -132,7 +132,11 @@ jobs:
           printf "${PWD}/entitlement:/etc/pki/entitlement\n${PWD}/consumer:/etc/pki/consumer\n" | sudo tee /usr/share/containers/mounts.conf
 
           mkdir -p $HOME/.config/containers/
-          sudo cp ${PWD}/ci/secrets/pull-secret.json $HOME/.config/containers/auth.json
+
+          # Don't use sudo here.
+          # With CONTAINER_HOST set, podman is a remote client that forwards auth to the
+          # rootful server during builds. Credentials must be readable by the runner user.
+          cp ${PWD}/ci/secrets/pull-secret.json $HOME/.config/containers/auth.json
         env:
           SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
           SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
