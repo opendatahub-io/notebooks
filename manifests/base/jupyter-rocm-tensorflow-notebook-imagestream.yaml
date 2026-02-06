@@ -24,8 +24,6 @@ spec:
             {"name": "Python", "version": "v3.12"},
             {"name": "TensorFlow-ROCm", "version": "2.18"}
           ]
-        # TODO(RHAIENG-3039): Re-enable Codeflare-SDK before RHOAI 3.4 GA
-        # {"name": "Codeflare-SDK", "version": "0.34"}
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
@@ -41,6 +39,7 @@ spec:
             {"name": "Odh-Elyra", "version": "4.3"},
             {"name": "PyMongo", "version": "4.16"},
             {"name": "Pyodbc", "version": "5.3"},
+            {"name": "Codeflare-SDK", "version": "0.34"},
             {"name": "Sklearn-onnx", "version": "1.19"},
             {"name": "Psycopg", "version": "3.3"},
             {"name": "MySQL Connector/Python", "version": "9.5"}

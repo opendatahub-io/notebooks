@@ -30,7 +30,6 @@ dependencies = [
     "trustyai~=0.6.3",
 
     # Datascience and useful extensions
-    # TODO(RHAIENG-3039): Re-enable codeflare-sdk before RHOAI 3.4 GA
     "codeflare-sdk~=0.34.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
     "skl2onnx~=1.19.1",
     "odh-notebooks-meta-workbench-datascience-deps",
