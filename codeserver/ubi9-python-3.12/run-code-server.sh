@@ -2,7 +2,16 @@
 
 # Load bash libraries
 SCRIPT_DIR=$(dirname -- "$0")
-source ${SCRIPT_DIR}/utils/*.sh
+for f in "${SCRIPT_DIR}"/utils/*.sh; do
+  [[ -f "$f" ]] && source "$f"
+done
+
+# When HOME is /root or unset, use app-root so code-server logs/config use a writable path (avoids EACCES in test or when not running as root)
+if [[ -z "$HOME" || "$HOME" == /root ]]; then
+  export HOME=/opt/app-root/src
+fi
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 
 # Start nginx and httpd
 run-nginx.sh &
@@ -120,9 +129,10 @@ else
     echo "IPv6 not detected: falling back to IPv4 only"
 fi
 
-# Start server
+# Start server (--user-data-dir so code-server writes under app-root, not /root, avoiding EACCES when HOME is /root)
 start_process /usr/bin/code-server \
     --bind-addr "${BIND_ADDR}" \
+    --user-data-dir /opt/app-root/src/.local/share/code-server \
     --disable-telemetry \
     --auth none \
     --disable-update-check \

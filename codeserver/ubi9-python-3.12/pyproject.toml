@@ -4,38 +4,66 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
+    # Installer/tooling used in Docker/CI (prefetched with main deps for cachi2 offline)
+    "uv==0.9.6",
+    "micropipenv[toml]==1.9.0",
+
     # Base packages
     "wheel~=0.45.1",
     "setuptools~=80.9.0",
 
+    "ipykernel~=7.1.0",
+    "debugpy~=1.8.20",
+
     # Datascience packages
-    "boto3~=1.40.52",
-    "kafka-python-ng~=2.2.3",
-    "matplotlib~=3.10.7",
-    "numpy~=2.3.5",
-    "pandas~=2.3.3",
-    "plotly~=6.3.1",
-    "scikit-learn~=1.7.2",
-    "scipy~=1.16.2",
+    # TODO(RHAIENG-3041): Upgrade feast to ~=0.59.0 before RHOAI 3.4 GA
+    "feast~=0.58.0",
+    # RHAIENG-1475: skl2onnx excluded on s390x for codeserver
     "skl2onnx~=1.19.1; platform_machine != 's390x'",
-    "ipykernel~=6.30.1",
-    "kubeflow-training==1.9.3",
-    "feast~=0.59.0",
+    "odh-notebooks-meta-workbench-datascience-deps",
 
     # Some extra useful packages
     "opencensus~=0.11.4",
-    "smart-open~=7.3.1",
+    "smart-open~=7.5.0",
     "virtualenv~=20.35.3",
-    "py-spy~=0.4.1; platform_machine != 's390x'",
+    # py-spy is a Rust package; excluded on s390x/ppc64le because maturin
+    # cannot fetch crates from crates.io during hermetic (--network=none) builds.
+    "py-spy~=0.4.1; platform_machine != 's390x' and platform_machine != 'ppc64le'",
     "prometheus-client~=0.23.1",
+
+    # Build-system deps for ppc64le/s390x source builds (Pillow, numpy, PyArrow, etc.)
+    # These are needed in the cachi2 pip cache so `uv pip install` can set up
+    # isolated build environments for sdist packages that lack ppc64le/s390x wheels.
+    "meson-python>=0.18.0,<0.19.0",  # upper-bound: scikit-learn requires <0.19.0
+    "meson>=1.2.3",
+    "pybind11==3.0.1",
+    "auditwheel==6.6.0",
+    "maturin>=1.0,<2.0",           # py-spy (Rust build backend)
+    "scikit-build-core>=0.5.0",     # google-crc32c, pyzmq (CMake build backend)
+    "cmake>=3.20",                  # onnx (CMake wrapper)
+    "ninja>=1.8.2",                 # pandas via meson[ninja] (Ninja wrapper)
+    "versioneer[toml]",             # pandas (versioning build backend plugin)
+    "cython<4.0.0a0",               # pandas, scikit-learn (C extension compiler)
+    "pythran>=0.14.0,<0.19.0",      # scipy (Pythran ahead-of-time compiler)
+    "setuptools-scm[toml]>=7",      # matplotlib, pyarrow (version-from-git plugin)
+    "nanobind>=2.8.0",              # onnx (C++/Python binding, CMake find_package)
 ]
 
 [tool.uv]
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and platform_machine == 'aarch64'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and platform_machine == 'ppc64le'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and platform_machine == 's390x'",
 ]
+
 override-dependencies = [
     # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
     # Upstream: https://github.com/kubernetes-client/python/issues/2458
     "urllib3>=2.6.0",
+    # scikit-learn==1.8.0 build-system.requires: numpy>=2,<2.4.0
+    # Without the cap uv resolves to 2.4.x which breaks scikit-learn's isolated build.
+    "numpy>=2.0,<2.4.0",
 ]
+[tool.uv.sources]
+odh-notebooks-meta-workbench-datascience-deps = { path = "../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }

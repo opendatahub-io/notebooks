@@ -1,4 +1,4 @@
-
+# Test 1
 #########################
 # configuration args    #
 #########################
@@ -31,119 +31,119 @@ ARG NODE_VERSION=22.18.0
 ARG CODESERVER_VERSION=v4.104.0
 
 # Prefetch path as env so patches/codeserver-offline-env.sh and scripts see the same path (absolute under HOME).
-ENV CODESERVER_SOURCE_PREFETCH=${HOME}/${CODESERVER_SOURCE_PREFETCH}
+# ENV CODESERVER_SOURCE_PREFETCH=${HOME}/${CODESERVER_SOURCE_PREFETCH}
 
-# Some distributions eg. CentOS requires GPG key import to verify packages
-RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+# # Some distributions eg. CentOS requires GPG key import to verify packages
+# RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# Local repos already enabled nodejs:22
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/* && \
-        dnf config-manager --add-repo file:///cachi2/output/deps/rpm/; \
-    else \
-        dnf module enable nodejs:22 -y; \
-    fi;
+# # Local repos already enabled nodejs:22
+# RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
+#         rm -f /etc/yum.repos.d/* && \
+#         dnf config-manager --add-repo file:///cachi2/output/deps/rpm/x86_64/; \
+#     else \
+#         dnf module enable nodejs:22 -y; \
+#     fi;
 
-# Update nodejs to 22 and install dependencies for code-server build
-RUN --network=none dnf install -y nodejs nodejs-devel npm
-RUN --network=none dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel
+# # Update nodejs to 22 and install dependencies for code-server build
+# RUN --network=none dnf install -y nodejs nodejs-devel npm
+# RUN --network=none dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel
 
-# build libxkbfile (make -j with empty MAX_JOBS uses unlimited jobs)
-RUN export UTIL_MACROS_VERSION=1.20.2 && \
-    tar -xzf /cachi2/output/deps/generic/util-macros-${UTIL_MACROS_VERSION}.tar.gz && \
-    cd util-macros-${UTIL_MACROS_VERSION}/ && \
-    ./configure --prefix=/usr && make install -j ${MAX_JOBS:-} && \
-    cd .. && rm -rf util-macros-${UTIL_MACROS_VERSION}/
+# # build libxkbfile (make -j with empty MAX_JOBS uses unlimited jobs)
+# RUN export UTIL_MACROS_VERSION=1.20.2 && \
+#     tar -xzf /cachi2/output/deps/generic/util-macros-${UTIL_MACROS_VERSION}.tar.gz && \
+#     cd util-macros-${UTIL_MACROS_VERSION}/ && \
+#     ./configure --prefix=/usr && make install -j ${MAX_JOBS:-} && \
+#     cd .. && rm -rf util-macros-${UTIL_MACROS_VERSION}/
 
-RUN export X_KB_FILE_VERSION=1.1.3 && \
-    tar -xzf /cachi2/output/deps/generic/libxkbfile-${X_KB_FILE_VERSION}.tar.gz && \
-    cd libxkbfile-${X_KB_FILE_VERSION}/ && \
-    ./configure --prefix=/usr && make install -j ${MAX_JOBS:-} && \
-    cd .. && rm -rf libxkbfile-${X_KB_FILE_VERSION}/
+# RUN export X_KB_FILE_VERSION=1.1.3 && \
+#     tar -xzf /cachi2/output/deps/generic/libxkbfile-${X_KB_FILE_VERSION}.tar.gz && \
+#     cd libxkbfile-${X_KB_FILE_VERSION}/ && \
+#     ./configure --prefix=/usr && make install -j ${MAX_JOBS:-} && \
+#     cd .. && rm -rf libxkbfile-${X_KB_FILE_VERSION}/
 
-# native-keymap (and other node-gyp deps in lib/vscode) need xkbfile.pc; libxkbfile installs
-# to /usr/lib64/pkgconfig or /usr/lib/pkgconfig depending on arch. Ensure pkg-config finds it.
-ENV PKG_CONFIG_PATH=/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
+# # native-keymap (and other node-gyp deps in lib/vscode) need xkbfile.pc; libxkbfile installs
+# # to /usr/lib64/pkgconfig or /usr/lib/pkgconfig depending on arch. Ensure pkg-config finds it.
+# ENV PKG_CONFIG_PATH=/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
 
-# Git submodule requires .git directory for all git metadata
-COPY .git /root/.git
-# Rewrite shrinkwrap resolved URLs to file:///cachi2 for offline install (build-release.sh and build-standalone-release.sh source this).
-COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-generators/
+# # Git submodule requires .git directory for all git metadata
+# COPY .git /root/.git
+# # Rewrite shrinkwrap resolved URLs to file:///cachi2 for offline install (build-release.sh and build-standalone-release.sh source this).
+# COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-generators/
 
-# Copy code-server source code
-COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server/ ${CODESERVER_SOURCE_PREFETCH}/
-# Apply patches so the image builds hermetically (aligned with Dockerfile.cpu.vath: release patches + rewrite script in place before release).
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/npm-postinstall.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/npm-postinstall.sh
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-release.sh
+# # Copy code-server source code
+# COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server/ ${CODESERVER_SOURCE_PREFETCH}/
+# # Apply patches so the image builds hermetically (aligned with Dockerfile.cpu.vath: release patches + rewrite script in place before release).
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/npm-postinstall.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/npm-postinstall.sh
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-release.sh
 
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package.json
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package-lock.json
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/test/package-lock.json
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package.json ${CODESERVER_SOURCE_PREFETCH}/test/package.json
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/package-lock.json
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/package.json
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/build-lib/fetch.js ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/build/lib/fetch.js
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/extensions/emmet/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/extensions/emmet/package.json
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/extensions/emmet/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/extensions/emmet/package-lock.json
-# ci/dev/postinstall.sh and ci/build/build-vscode.sh: use prefetch originals (no patch; CI=1 -> npm ci already in postinstall)
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package.json
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/remote/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/remote/package-lock.json
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/test/package-lock.json
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/test/package.json ${CODESERVER_SOURCE_PREFETCH}/test/package.json
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/package-lock.json
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/package.json
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/build-lib/fetch.js ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/build/lib/fetch.js
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/extensions/emmet/package.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/extensions/emmet/package.json
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib-vscode/extensions/emmet/package-lock.json ${CODESERVER_SOURCE_PREFETCH}/lib/vscode/extensions/emmet/package-lock.json
+# # ci/dev/postinstall.sh and ci/build/build-vscode.sh: use prefetch originals (no patch; CI=1 -> npm ci already in postinstall)
 
-COPY ${CODESERVER_SOURCE_CODE}/patches/s390x.patch ${CODESERVER_SOURCE_PREFETCH}/
+# COPY ${CODESERVER_SOURCE_CODE}/patches/s390x.patch ${CODESERVER_SOURCE_PREFETCH}/
 
-COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh ${CODESERVER_SOURCE_CODE}/
-RUN cd ${CODESERVER_SOURCE_CODE} && ./get_code_server_rpm.sh
+# COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh ${CODESERVER_SOURCE_CODE}/
+# RUN cd ${CODESERVER_SOURCE_CODE} && ./get_code_server_rpm.sh
 
-# Prepare the destination
-RUN mkdir -p /tmp/node-headers
+# # Prepare the destination
+# RUN mkdir -p /tmp/node-headers
 
-# Extract the headers
-# Using --strip-components=1 removes the top-level 'node-v37.3.1' folder 
-# inside the tarball so that 'include' is at the root of /tmp/node-headers
-RUN tar -xzf /cachi2/output/deps/generic/node-v37.3.1-headers.tar.gz \
-    -C /tmp/node-headers --strip-components=1
+# # Extract the headers
+# # Using --strip-components=1 removes the top-level 'node-v37.3.1' folder 
+# # inside the tarball so that 'include' is at the root of /tmp/node-headers
+# RUN tar -xzf /cachi2/output/deps/generic/node-v37.3.1-headers.tar.gz \
+#     -C /tmp/node-headers --strip-components=1
 
-# Fix npm registry URLs and relative paths in package-lock.json files
-RUN cd ${CODESERVER_SOURCE_PREFETCH} && \
-  . /root/scripts/lockfile-generators/rewrite-cachi2-path.sh && \
-  find . -name "package-lock.json" -type f | while read f; do \
-    echo "Patching $f" && \
-    rewrite_cachi2_path "$f"; \
-  done
+# # Fix npm registry URLs and relative paths in package-lock.json files
+# RUN cd ${CODESERVER_SOURCE_PREFETCH} && \
+#   . /root/scripts/lockfile-generators/rewrite-cachi2-path.sh && \
+#   find . -name "package-lock.json" -type f | while read f; do \
+#     echo "Patching $f" && \
+#     rewrite_cachi2_path "$f"; \
+#   done
 
-COPY ${CODESERVER_SOURCE_CODE}/setup-offline-binaries.sh ${CODESERVER_SOURCE_CODE}/
-COPY ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
-# Use npm ci (not npm install) so lockfiles are never written: npm ci installs exactly from
-# package-lock.json and does not modify it. CI=1 makes ci/dev/postinstall.sh run "npm ci" in
-# subdirs (test, lib/vscode); lib/vscode's postinstall.js uses npm_command and runs "npm ci"
-# in remote/, extensions/, etc. So resolved URLs stay absolute (file:///cachi2/...).
-RUN --network=none cd ${CODESERVER_SOURCE_CODE} && \
-    source ./setup-offline-binaries.sh && \
-    source ./patches/codeserver-offline-env.sh && \
-    cd ${CODESERVER_SOURCE_PREFETCH} && \
-    CI=1 npm ci --offline
+# COPY ${CODESERVER_SOURCE_CODE}/setup-offline-binaries.sh ${CODESERVER_SOURCE_CODE}/
+# COPY ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
+# # Use npm ci (not npm install) so lockfiles are never written: npm ci installs exactly from
+# # package-lock.json and does not modify it. CI=1 makes ci/dev/postinstall.sh run "npm ci" in
+# # subdirs (test, lib/vscode); lib/vscode's postinstall.js uses npm_command and runs "npm ci"
+# # in remote/, extensions/, etc. So resolved URLs stay absolute (file:///cachi2/...).
+# RUN --network=none cd ${CODESERVER_SOURCE_CODE} && \
+#     source ./setup-offline-binaries.sh && \
+#     source ./patches/codeserver-offline-env.sh && \
+#     cd ${CODESERVER_SOURCE_PREFETCH} && \
+#     CI=1 npm ci --offline
 
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm run build
+# RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+#     npm run build
 
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    VERSION=${CODESERVER_VERSION/v/} npm run build:vscode --verbose
+# RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+#     VERSION=${CODESERVER_VERSION/v/} npm run build:vscode --verbose
 
 
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-standalone-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-standalone-release.sh
+# COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/ci/build-scripts/build-standalone-release.sh ${CODESERVER_SOURCE_PREFETCH}/ci/build/build-standalone-release.sh
 
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
-    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm run release
+# RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
+#     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
+#     npm run release
 
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
-    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    npm run release:standalone --loglevel silly
+# RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
+#     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
+#     npm run release:standalone --loglevel silly
 
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    VERSION=${CODESERVER_VERSION/v/} npm run package && \
-    ls -alh release-packages/ && \
-    mv release-packages/code-server-${CODESERVER_VERSION/v/}-*.rpm /tmp/
+# RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+#     VERSION=${CODESERVER_VERSION/v/} npm run package && \
+#     ls -alh release-packages/ && \
+#     mv release-packages/code-server-${CODESERVER_VERSION/v/}-*.rpm /tmp/
 
-RUN echo "done" > /tmp/control
+# RUN echo "done" > /tmp/control
 
 #######################
 # wheel caching stage #
@@ -156,48 +156,24 @@ WORKDIR /root
 
 ENV HOME=/root
 
-ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
-
-# Key for EPEL repository
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
-RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-
-# ppc64le/s390x only: build deps for source compilation (pre-built wheels exist for x86_64/aarch64)
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
-    # Base build deps for compiling Python packages from source
-    dnf install -y perl mesa-libGL libxcrypt-compat python3.12-devel pkgconf-pkg-config \
-        gcc gcc-gfortran gcc-c++ ninja-build make openssl-devel python3-devel pybind11-devel \
-        autoconf automake libtool cmake openblas-devel libjpeg-devel zlib-devel libtiff-devel \
-        freetype-devel lcms2-devel libwebp-devel git tar wget boost-devel qhull-devel zeromq-devel
-    # Pillow/PyArrow/matplotlib/onnx build deps
-    dnf install -y gcc-toolset-13 gcc-toolset-13-libatomic-devel fribidi-devel openjpeg2-devel \
-        tcl-devel tk-devel patchelf libimagequant-devel libraqm-devel
-    # Rust toolchain (maturin-based packages)
-    dnf install -y rust cargo
-fi
-EOF
+ENV CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 
 COPY .git /root/.git
-# All arches: requirements and devel script (script is no-op on x86_64/aarch64, runs ppc64le/s390x build on those arches)
-COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
+
+# copy requirements and scripts
 COPY ${CODESERVER_SOURCE_CODE}/requirements.txt ./
 COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
-# s390x + ppc64le: prefetched Pillow and Arrow source (for building wheels from source; unused on x86_64/aarch64)
+# hermetic: prefetched Pillow and Arrow source (submodules) for ppc64le/s390x wheel build
 COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/Pillow/ ${CODESERVER_SOURCE_CODE}/prefetch-input/Pillow/
 COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/arrow/ ${CODESERVER_SOURCE_CODE}/prefetch-input/arrow/
 
-# Install from Cachi2 pip cache (offline). devel_env_setup.sh builds Pillow/PyArrow on s390x/ppc64le only.
+# This stage installs (builds) all the packages needed from prefetched cachi2 pip deps
 RUN --network=none /bin/bash <<'EOF'
     set -Eeuxo pipefail
     pip install --no-index --find-links /cachi2/output/deps/pip uv
     echo "installed uv from cachi2"
     # the devel script is ppc64le and s390x specific - sets up build-time dependencies
     source ./devel_env_setup.sh
-EOF
-
-RUN --network=none /bin/bash <<'EOF'
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
 
@@ -237,8 +213,6 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
     else \
         dnf module enable nodejs:22 -y; \
     fi;
-
-RUN --network=none dnf install -y nodejs npm
 
 # Install useful OS packages
 RUN /bin/bash <<'EOF'
@@ -312,9 +286,6 @@ EOF
 
 # wait for rpm-base stage (rpm builds for ppc64le and s390x)
 COPY --from=rpm-base /tmp/control /dev/null
-
-# Copy the built RPM from rpm-base stage
-COPY --from=rpm-base /tmp/code-server-*.rpm /tmp/
 
 # Install code-server
 # Note: Use cache mounts, bind mounts fail on konflux

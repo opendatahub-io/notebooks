@@ -1,0 +1,42 @@
+# WHY THIS FILE EXISTS
+# ====================
+# On ppc64le (and s390x), many Python packages lack pre-built wheels on PyPI,
+# so `uv pip install` must build them from source distributions (sdists).
+# uv uses *build isolation*: for each sdist it creates a temporary virtual
+# environment and installs the package's `build-system.requires` from the
+# local --find-links cache (cachi2/output/deps/pip/).
+#
+# The problem is that different packages require CONFLICTING version ranges
+# of the same build dependency.  For example:
+#
+#   numpy, scikit-learn  →  meson-python >= 0.18.0
+#   matplotlib           →  meson-python >= 0.13.1, < 0.17.0
+#
+#   pandas, scikit-learn →  Cython >= 3.1.2  (up to < 4.0)
+#   scipy, uvloop        →  Cython >= 3.0.8, < 3.2.0
+#
+# A single `uv export` (pyproject.toml → requirements.txt) can only resolve
+# ONE version per package.  So the main requirements.txt carries the *newer*
+# versions (meson-python 0.18.x, Cython 3.2.x), and this file captures the
+# *older* versions that must ALSO be present in the cache.
+#
+# This file is compiled into requirements-build-system-extras.txt (with
+# pinned hashes) and listed in the Tekton prefetch-input so cachi2 downloads
+# both old and new versions into the same flat cache directory.
+#
+# VERSIONS IN THE MAIN CACHE (requirements.txt / prefetch-input/requirements-wheel-build.txt)
+#   meson-python == 0.18.0   (for numpy, scikit-learn)
+#   Cython       == 3.2.4    (for pandas, scikit-learn)
+#
+# VERSIONS IN THIS EXTRAS CACHE (prefetch-input/requirements-build-system-extras.txt)
+#   meson-python < 0.17.0    (for matplotlib)
+#   Cython       < 3.2.0     (for scipy, uvloop)
+#
+# Generate lockfile:
+#   ./scripts/lockfile-generators/create-pip-requirements-lockfile.sh \
+#     --image-dir codeserver/ubi9-python-3.12 \
+#     --compile codeserver/ubi9-python-3.12/prefetch-input/requirements-build-system-extras.in \
+#     --output codeserver/ubi9-python-3.12/prefetch-input/requirements-build-system-extras.txt
+
+meson-python>=0.13.1,<0.17.0
+Cython>=3.0.8,<3.2.0
