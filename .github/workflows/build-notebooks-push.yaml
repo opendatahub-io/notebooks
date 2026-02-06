@@ -9,6 +9,11 @@
       # In fact, skip the build if there are only changes in manifests and nowhere else
       - manifests/**
   "workflow_dispatch":
+    inputs:
+      "KONFLUX":
+        description: "Build also images from Dockerfile.konflux.*; requires subscription"
+        type: boolean
+        default: false
   "schedule":
     - "cron": "0 2 * * *"
 
@@ -52,12 +57,29 @@ jobs:
       fail-fast: false
       matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
     uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
-    if: ${{ fromJson(needs.gen.outputs.has_jobs) }}
+    if: ${{ github.repository != 'red-hat-data-services/notebooks' && fromJson(needs.gen.outputs.has_jobs) }}
+    with:
+      target: "${{ matrix.target }}"
+      python: "${{ matrix.python }}"
+      github: "${{ toJSON(github) }}"
+      platform: "${{ matrix.platform }}"
+      subscription: "${{ matrix.subscription }}"
+    secrets: inherit
+
+  build-aipcc:
+    needs: ["gen"]
+    strategy:
+      fail-fast: false
+      matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
+    uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
+    if: ${{ (github.repository == 'red-hat-data-services/notebooks' || inputs.KONFLUX) && fromJson(needs.gen.outputs.has_jobs) }}
     with:
       target: "${{ matrix.target }}"
       python: "${{ matrix.python }}"
       github: "${{ toJSON(github) }}"
       platform: "${{ matrix.platform }}"
       # rhds/notebooks builds from AIPCC base images that are RHEL-based
-      subscription: "${{ matrix.subscription || (github.repository == 'red-hat-data-services/notebooks') }}"
+      subscription: ${{ true }}
+    env:
+      KONFLUX: yes
     secrets: inherit
