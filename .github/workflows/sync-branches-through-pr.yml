@@ -45,3 +45,39 @@ jobs:
             It merges all commits from `${{ github.event.inputs.source }}` branch into `${{ github.event.inputs.target }}` branch.
 
             :warning: **IMPORTANT NOTE**: Remember to delete the `${{ steps.prepare.outputs.branch }}` branch after merging the changes.
+
+  backup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Encrypt git-crypt key with recovery passphrase
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+          GIT_CRYPT_KEY_RECOVERY: ${{ secrets.GIT_CRYPT_KEY_RECOVERY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GIT_CRYPT_KEY}" ]; then
+            echo "::error::GIT_CRYPT_KEY secret is not set"
+            exit 1
+          fi
+          if [ -z "${GIT_CRYPT_KEY_RECOVERY}" ]; then
+            echo "::error::GIT_CRYPT_KEY_RECOVERY secret is not set"
+            exit 1
+          fi
+
+          echo "${GIT_CRYPT_KEY}" | base64 -d > git-crypt-key.bin
+          echo "${GIT_CRYPT_KEY_RECOVERY}" | \
+            openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \
+              -in git-crypt-key.bin \
+              -out git-crypt-key.enc \
+              -pass stdin
+          rm -f git-crypt-key.bin
+
+      - name: Upload encrypted key as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: git-crypt-key-backup-${{ github.run_id }}
+          path: git-crypt-key.enc
+          retention-days: 3
