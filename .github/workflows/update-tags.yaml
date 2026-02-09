@@ -4,7 +4,7 @@ on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:
       new_tag:
-        description: "Set a new image tag (e.g. YYYYx-vn.n)"
+        description: "Set a new image tag (e.g. 3.4_ea1-v1.41 or 2025a-v1.41)"
         required: true
 jobs:
   update-tags:
@@ -23,7 +23,8 @@ jobs:
         id: replace
         run: |
           set -e
-          regex="[0-9]{4}[a-z]-v[0-9]+\.[0-9]+"
+          # Updated regex to match both old (2025a-v1.41) and new (3.4_ea1-v1.41) tag patterns
+          regex="([0-9]{4}[a-z]|[0-9]+\.[0-9]+(_ea[0-9]+)?)-v[0-9]+\.[0-9]+"
           new_tag="${{ github.event.inputs.new_tag }}"
 
           echo "Searching for tags in .tekton/*.yaml..."
