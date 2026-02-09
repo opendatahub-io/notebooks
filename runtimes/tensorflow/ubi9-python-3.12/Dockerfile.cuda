@@ -70,14 +70,7 @@ FROM cuda-base AS cuda-runtime-tensorflow
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG TENSORFLOW_SOURCE_CODE=runtimes/tensorflow/ubi9-python-3.12
-
-### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-ENV PIP_INDEX_URL=https://pypi.org/simple
-# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-ENV UV_INDEX_URL=https://pypi.org/simple
-# https://docs.astral.sh/uv/reference/environment/#uv_default_index
-ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-### END RHAIENG-2189: this is AIPCC migration phase 1.5
+ARG PYLOCK_FLAVOR
 
 LABEL name="odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.12" \
     summary="Runtime CUDA tensorflow notebook image for ODH notebooks" \
@@ -92,7 +85,7 @@ LABEL name="odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.12" \
 WORKDIR /opt/app-root/bin
 
 # Install Python packages from requirements.txt
-COPY ${TENSORFLOW_SOURCE_CODE}/pylock.toml ./
+COPY ${TENSORFLOW_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 # Copy Elyra dependencies for air-gapped enviroment
 COPY --chown=1001 ${TENSORFLOW_SOURCE_CODE}/utils ./utils/
 ### BEGIN Download Elyra Bootstrapper
