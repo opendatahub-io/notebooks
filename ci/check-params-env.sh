@@ -27,7 +27,7 @@ PARAMS_ENV_PATH="manifests/base/params.env"
 
 # This value needs to be updated everytime we deliberately change number of the
 # images we want to have in the `params.env` or `params-latest.env` file.
-EXPECTED_NUM_RECORDS=46
+EXPECTED_NUM_RECORDS=39
 EXPECTED_ADDI_RUNTIME_RECORDS=0
 
 # Number of attempts for the skopeo tool to gather data from the repository.
@@ -113,285 +113,243 @@ function check_image_variable_matches_name_and_commitref_and_size() {
     local expected_img_size
 
     case "${image_variable}" in
-        odh-workbench-jupyter-minimal-cpu-py311-ubi9-n)
-            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=1217
-            ;;
-        odh-workbench-jupyter-minimal-cpu-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="jupyter-minimal-ubi9-python-3.11-amd64"
-            expected_img_size=503
-            ;;
         odh-workbench-jupyter-minimal-cpu-py312-ubi9-n)
             expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=1213
+            expected_img_size=1169
             ;;
-        odh-workbench-jupyter-minimal-cuda-py311-ubi9-n)
-            expected_name="odh-notebook-jupyter-cuda-minimal-ubi9-python-3.11"
+        odh-workbench-jupyter-minimal-cpu-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=5624
-            ;;
-        odh-workbench-jupyter-minimal-cuda-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="cuda-jupyter-minimal-ubi9-python-3.11-amd64"
-            expected_img_size=5157
+            expected_img_size=1224
             ;;
         odh-workbench-jupyter-minimal-cuda-py312-ubi9-n)
             expected_name="odh-notebook-jupyter-cuda-minimal-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=3370
+            expected_img_size=6757
             ;;
-        odh-workbench-jupyter-pytorch-cuda-py311-ubi9-n)
-            expected_name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.11"
+        odh-workbench-jupyter-minimal-cuda-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-cuda-minimal-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=9226
+            expected_img_size=8252
             ;;
-        odh-workbench-jupyter-pytorch-cuda-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-pytorch-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="jupyter-pytorch-ubi9-python-3.11-amd64"
-            expected_img_size=8571
-            ;;
-        odh-workbench-jupyter-pytorch-cuda-py312-ubi9-n)
-            expected_name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.12"
+        odh-workbench-jupyter-minimal-rocm-py312-ubi9-n)
+            expected_name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=6977
+            expected_img_size=5295
             ;;
-        odh-workbench-jupyter-datascience-cpu-py311-ubi9-n)
-            expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.11"
+        odh-workbench-jupyter-minimal-rocm-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=1667
-            ;;
-        odh-workbench-jupyter-datascience-cpu-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="jupyter-datascience-ubi9-python-3.11-amd64"
-            expected_img_size=904
+            expected_img_size=4698
             ;;
         odh-workbench-jupyter-datascience-cpu-py312-ubi9-n)
             expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=1658
+            expected_img_size=1731
             ;;
-        odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-n)
-            expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.11"
+        odh-workbench-jupyter-datascience-cpu-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=8652
+            expected_img_size=1724
             ;;
-        odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-n-1)
-            expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="cuda-jupyter-tensorflow-ubi9-python-3.11-amd64"
-            expected_img_size=8211
-            ;;
-        odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-n)
-            expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.12"
+        odh-workbench-jupyter-pytorch-cuda-py312-ubi9-n)
+            expected_name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=6432
+            expected_img_size=11590
             ;;
-        odh-workbench-jupyter-trustyai-cpu-py311-ubi9-n)
-            expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.11"
+        odh-workbench-jupyter-pytorch-cuda-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=5015
-            ;;
-        odh-workbench-jupyter-trustyai-cpu-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="jupyter-trustyai-ubi9-python-3.11-amd64"
-            expected_img_size=4197
-            ;;
-        odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n)
-            expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.12"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=5034
-            ;;
-        odh-workbench-codeserver-datascience-cpu-py311-ubi9-n)
-            expected_name="odh-notebook-code-server-ubi9-python-3.11"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=979
-            ;;
-        odh-workbench-codeserver-datascience-cpu-py311-ubi9-n-1)
-            expected_name="odh-notebook-code-server-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="codeserver-ubi9-python-3.11-amd64"
-            expected_img_size=850
-            ;;
-        odh-workbench-codeserver-datascience-cpu-py312-ubi9-n)
-            expected_name="odh-notebook-code-server-ubi9-python-3.12"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=971
-            ;;
-        odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-n)
-            expected_name="odh-notebook-jupyter-cuda-pytorch-llmcompressor-ubi9-python-3.12"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=6977
-            ;;
-        odh-workbench-rstudio-minimal-cpu-py311-c9s-n)
-            expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=1377
-            ;;
-        odh-workbench-rstudio-minimal-cpu-py311-c9s-n-1)
-            expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="rstudio-c9s-python-3.11-amd64"
-            expected_img_size=1208
-            ;;
-        # For both RStudio GPU workbenches - the final name labels are identical to plain RStudio ones
-        # This is because the very same RStudio Dockerfile is used but different base images in both cases
-        # We should consider what to do with this - in ideal case, we should have different labels for these cases.
-        odh-workbench-rstudio-minimal-cuda-py311-c9s-n)
-            expected_name="odh-notebook-rstudio-server-cuda-c9s-python-3.11"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=6541
-            ;;
-        odh-workbench-rstudio-minimal-cuda-py311-c9s-n-1)
-            expected_name="odh-notebook-rstudio-server-c9s-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="cuda-rstudio-c9s-python-3.11-amd64"
-            expected_img_size=7184
-            ;;
-        odh-workbench-jupyter-minimal-rocm-py311-ubi9-n)
-            expected_name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.11"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=6478
-            ;;
-        odh-workbench-jupyter-minimal-rocm-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="rocm-jupyter-minimal-ubi9-python-3.11-amd64"
-            expected_img_size=4830
-            ;;
-         odh-workbench-jupyter-minimal-rocm-py312-ubi9-n)
-            expected_name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.12"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=6474
-            ;;
-        odh-workbench-jupyter-pytorch-rocm-py311-ubi9-n)
-            expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=8135
-            ;;
-        odh-workbench-jupyter-pytorch-rocm-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="rocm-jupyter-pytorch-ubi9-python-3.11-amd64"
-            expected_img_size=6571
+            expected_img_size=12872
             ;;
         odh-workbench-jupyter-pytorch-rocm-py312-ubi9-n)
             expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=8124
+            expected_img_size=6409
             ;;
-        odh-workbench-jupyter-tensorflow-rocm-py311-ubi9-n)
-            expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11"
+        odh-workbench-jupyter-pytorch-rocm-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=7432
+            expected_img_size=6471
             ;;
-        odh-workbench-jupyter-tensorflow-rocm-py311-ubi9-n-1)
-            expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11"
-            expected_commitref="2024b"
-            expected_build_name="rocm-jupyter-tensorflow-ubi9-python-3.11-amd64"
-            expected_img_size=5782
+        odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-n)
+            expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=13198
+            ;;
+        odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-n-1)
+            expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=12322
+            ;;
+        odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-n)
+            expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=6367
+            ;;
+        odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=5779
+            ;;
+        odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n)
+            expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=5833
+            ;;
+        odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=5917
+            ;;
+        odh-workbench-codeserver-datascience-cpu-py312-ubi9-n)
+            expected_name="odh-notebook-code-server-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=1140
+            ;;
+        odh-workbench-codeserver-datascience-cpu-py312-ubi9-n-1)
+            expected_name="odh-notebook-code-server-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=1289
+            ;;
+        odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-n)
+            expected_name="odh-notebook-jupyter-cuda-pytorch-llmcompressor-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=11565
+            ;;
+        odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-n-1)
+            expected_name="odh-notebook-jupyter-cuda-pytorch-llmcompressor-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=12720
+            ;;
+        odh-workbench-rstudio-minimal-cpu-py312-c9s-n)
+            expected_name="odh-notebook-rstudio-server-c9s-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=1502
+            ;;
+        odh-workbench-rstudio-minimal-cpu-py312-c9s-n-1)
+            expected_name="odh-notebook-rstudio-server-c9s-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=1503
+            ;;
+        # For both RStudio GPU workbenches - the final name labels are identical to plain RStudio ones
+        # This is because the very same RStudio Dockerfile is used but different base images in both cases
+        # We should consider what to do with this - in ideal case, we should have different labels for these cases.
+        odh-workbench-rstudio-minimal-cuda-py312-c9s-n)
+            expected_name="odh-notebook-rstudio-server-cuda-c9s-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=9614
+            ;;
+        odh-workbench-rstudio-minimal-cuda-py312-c9s-n-1)
+            expected_name="odh-notebook-rstudio-server-cuda-c9s-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=8653
             ;;
         # The following are pipeline runtime images
-        odh-pipeline-runtime-minimal-cpu-py311-ubi9-n)
-            expected_name="odh-notebook-runtime-minimal-ubi9-python-3.11"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=579
-            ;;
         odh-pipeline-runtime-minimal-cpu-py312-ubi9-n)
             expected_name="odh-notebook-runtime-minimal-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=579
+            expected_img_size=832
             ;;
-        odh-pipeline-runtime-datascience-cpu-py311-ubi9-n)
-            expected_name="odh-notebook-runtime-datascience-ubi9-python-3.11"
+        odh-pipeline-runtime-minimal-cpu-py312-ubi9-n-1)
+            expected_name="odh-notebook-runtime-minimal-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=964
+            expected_img_size=887
             ;;
         odh-pipeline-runtime-datascience-cpu-py312-ubi9-n)
             expected_name="odh-notebook-runtime-datascience-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=954
+            expected_img_size=1330
             ;;
-        odh-pipeline-runtime-pytorch-cuda-py311-ubi9-n)
-            expected_name="odh-notebook-runtime-pytorch-ubi9-python-3.11"
+        odh-pipeline-runtime-datascience-cpu-py312-ubi9-n-1)
+            expected_name="odh-notebook-runtime-datascience-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=8515
+            expected_img_size=1317
             ;;
         odh-pipeline-runtime-pytorch-cuda-py312-ubi9-n)
             expected_name="odh-notebook-runtime-pytorch-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=6265
+            expected_img_size=11180
             ;;
-        odh-pipeline-runtime-pytorch-rocm-py311-ubi9-n)
-            expected_name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.11"
+        odh-pipeline-runtime-pytorch-cuda-py312-ubi9-n-1)
+            expected_name="odh-notebook-runtime-pytorch-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=7423
+            expected_img_size=8149
             ;;
         odh-pipeline-runtime-pytorch-rocm-py312-ubi9-n)
             expected_name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=7411
+            expected_img_size=5999
             ;;
-        odh-pipeline-runtime-tensorflow-cuda-py311-ubi9-n)
-            expected_name="odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.11"
+        odh-pipeline-runtime-pytorch-rocm-py312-ubi9-n-1)
+            expected_name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=7938
-            ;;
-        odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-n)
-            expected_name="odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.12"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=5715
-            ;;
-        odh-pipeline-runtime-tensorflow-rocm-py311-ubi9-n)
-            expected_name="odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.11"
-            expected_commitref="main"
-            expected_build_name="konflux"
-            expected_img_size=6714
+            expected_img_size=5131
             ;;
         odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9-n)
             expected_name="odh-notebook-runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=6265
+            expected_img_size=11144
+            ;;
+        odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-n)
+            expected_name="odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=12781
+            ;;
+        odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-n-1)
+            expected_name="odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=7596
+            ;;
+        odh-pipeline-runtime-tensorflow-rocm-py312-ubi9-n)
+            expected_name="odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=5953
+            ;;
+        odh-pipeline-runtime-tensorflow-rocm-py312-ubi9-n-1)
+            expected_name="odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=5358
             ;;
         *)
             echo "Unimplemented variable name: '${image_variable}'"
@@ -449,7 +407,7 @@ function check_image_commit_id_matches_metadata() {
     if [[ "${image_variable}" == *"odh-pipeline-runtime-"* ]]; then
         is_pipeline_runtime="true"
     fi
-    file_image_commit_id=$(cat "${COMMIT_ENV_PATH}"  "${COMMIT_LATEST_ENV_PATH}" | sed 's#-commit##' | grep "${image_variable}=" | cut --delimiter "=" --field 2)
+    file_image_commit_id=$(cat "${COMMIT_ENV_PATH}"  "${COMMIT_LATEST_ENV_PATH}" | sed 's#-commit##' | grep "${image_variable}=" | cut -d '=' -f 2)
 
     test -n "${file_image_commit_id}" || test "${is_pipeline_runtime}" = "true" || {
         echo "Couldn't retrieve commit id for image variable '${image_variable}' in '${COMMIT_ENV_PATH}' or '${COMMIT_LATEST_ENV_PATH}'!"
@@ -469,11 +427,14 @@ function check_image_repo_name() {
     local image_url="${2}"
     local image_variable_filtered=""
     local repository_name=""
+    local image_repo=""
 
     # Line record example:
-    # odh-pipeline-runtime-tensorflow-rocm-py311-ubi9-n=quay.io/modh/odh-pipeline-runtime-tensorflow-rocm-py311-ubi9@sha256:ae1ebd1f0b3dd444b5271101a191eb16ec4cc9735c8cab7f836aae5dfe31ae89
+    # odh-pipeline-runtime-tensorflow-rocm-py312-ubi9-n=quay.io/modh/odh-pipeline-runtime-tensorflow-rocm-py312-ubi9@sha256:ae1ebd1f0b3dd444b5271101a191eb16ec4cc9735c8cab7f836aae5dfe31ae89
     image_variable_filtered=$(echo "${image_variable}" | sed 's/\(.*\)-n.*/\1/')
-    repository_name=$(echo "${image_url}" | sed 's#.*/\(.*\)@.*#\1#')
+    image_repo="${image_url%@*}"
+    image_repo="${image_repo%:*}"
+    repository_name="${image_repo##*/}"
 
     test "${image_variable_filtered}" == "${repository_name}" || {
         echo "The image repository name '${repository_name}' doesn't match the filtered image variable value '${image_variable_filtered}'!"
@@ -539,6 +500,9 @@ function check_image() {
     local image_metadata
     local image_size
     local image_size_mb
+    local manifest_digest
+    local image_repo
+    local platform_image_metadata
 
     image_metadata="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --raw "docker://${image_url}")" || {
         echo "Couldn't download image metadata with skopeo tool!"
@@ -548,9 +512,23 @@ function check_image() {
     # 'tests/containers/base_image_test.py#test_image_size_change' where we check against the extracted image size.
     # There is no actual reason to compare these different sizes except that in this case we want to do check the
     # image remotely, whereas in the othe test, we have the image present locally on the machine.
-    image_size=$(echo "${image_metadata}" | jq --exit-status '[ .layers[].size ] | add') ||  {
-        echo "Couldn't count image size from image metadata!"
-        return 1
+    image_size=$(echo "${image_metadata}" | jq --exit-status '[ .layers[]?.size ] | add') ||  {
+        manifest_digest=$(echo "${image_metadata}" | jq --exit-status --raw-output '[.manifests[]? | select(.platform.os=="linux" and .platform.architecture=="amd64") | .digest] | first // empty') || manifest_digest=""
+        if test -n "${manifest_digest}"; then
+            image_repo="${image_url%@*}"
+            image_repo="${image_repo%:*}"
+            platform_image_metadata="$(skopeo inspect --retry-times "${SKOPEO_RETRY}" --raw "docker://${image_repo}@${manifest_digest}")" || {
+                echo "Couldn't download image metadata for manifest digest '${manifest_digest}'!"
+                return 1
+            }
+            image_size=$(echo "${platform_image_metadata}" | jq --exit-status '[ .layers[]?.size ] | add') || {
+                echo "Couldn't count image size from image metadata!"
+                return 1
+            }
+        else
+            echo "Couldn't count image size from image metadata!"
+            return 1
+        fi
     }
     image_size_mb=$((image_size / 1024 / 1024)) ||  {
         echo "Couldn't count image size from image metadata!"
@@ -618,8 +596,8 @@ process_file() {
             continue
         }
 
-        IMAGE_VARIABLE=$(echo "${LINE}" | cut --delimiter '=' --field 1)
-        IMAGE_URL=$(echo "${LINE}" | cut --delimiter '=' --field 2)
+        IMAGE_VARIABLE=$(echo "${LINE}" | cut -d '=' -f 1)
+        IMAGE_URL=$(echo "${LINE}" | cut -d '=' -f 2)
 
         test -n "${IMAGE_VARIABLE}" || {
             echo "ERROR: Couldn't parse image variable - got empty value!"
