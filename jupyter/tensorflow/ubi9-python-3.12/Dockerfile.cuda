@@ -157,6 +157,7 @@ FROM cuda-jupyter-datascience AS cuda-jupyter-tensorflow
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG TENSORFLOW_SOURCE_CODE=jupyter/tensorflow/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
 
 WORKDIR /opt/app-root/bin
 
@@ -171,7 +172,7 @@ LABEL name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.12" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-tensorflow-ubi9-python-3.12"
 
 # Install Python packages and Jupyterlab extensions from requirements.txt
-COPY ${TENSORFLOW_SOURCE_CODE}/pylock.toml ./
+COPY ${TENSORFLOW_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
