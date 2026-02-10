@@ -1,17 +1,24 @@
 copr_project: opendatahub/rhelai-el9
 koji_tag: f44
 
+# https://copr.fedorainfracloud.org/coprs/jdanek/rhelai-el9/edit/
 chroots:
-  - centos-stream-9-x86_64
-  - centos-stream-9-aarch64
+  - epel-9-x86_64
+  - epel-9-aarch64
+  - epel-9-ppc64le
+  - epel-9-s390x
 
 # Extra packages for the mock buildroot.
-# EL9 ships autoconf 2.69 by default, but many Fedora SRPMs (including HDF5)
-# need autoconf >= 2.71.  autoconf-latest provides 2.71 on EL9.
-chroot_packages:
-  - autoconf-latest
+chroot_packages: []
 
 packages:
+  - name: autoconf
+    nvr: autoconf-2.72-7.fc43
+    note: >-
+      EL9 ships autoconf 2.69 but Fedora SRPMs (including HDF5) need >= 2.71.
+      Rebuilding the standard Fedora autoconf replaces the system version in the
+      Copr buildroot (2.72 > 2.69), so /usr/bin/autoreconf becomes 2.72.
+      Packages that need it pull it in transitively via automake -> autoconf.
   - name: libaec
     nvr: libaec-1.1.4-3.fc43
     note: "szip compression library required by HDF5"
