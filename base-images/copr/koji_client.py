@@ -12,6 +12,7 @@ from .models import PackageMetadata
 logger = logging.getLogger(__name__)
 
 # Koji dependency type constants
+DEP_BUILDREQUIRES = 0  # BuildRequires on SRPMs use type 0 in Koji
 DEP_PROVIDES = 1
 DEP_REQUIRES = 2
 
@@ -49,8 +50,14 @@ class KojiClient:
             provides.update(d["name"] for d in deps)
 
         # Get BuildRequires from SRPM
-        build_reqs_raw = self.session.getRPMDeps(srpm["id"], depType=DEP_REQUIRES)
-        build_requires = {d["name"] for d in build_reqs_raw}
+        # Note: Koji stores SRPM BuildRequires with type=0, not the usual
+        # REQUIRES type (2).  We fetch all deps and filter by type.
+        all_srpm_deps = self.session.getRPMDeps(srpm["id"])
+        build_requires = {
+            d["name"]
+            for d in all_srpm_deps
+            if d["type"] == DEP_BUILDREQUIRES and not d["name"].startswith("rpmlib(")
+        }
 
         # Build SRPM download URL
         pathinfo = koji.PathInfo(topdir="https://kojipkgs.fedoraproject.org")
