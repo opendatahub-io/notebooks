@@ -6,11 +6,12 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 from pathlib import Path
 
 import yaml
 
-from base_images.copr.copr_client import CoprClient
+from base_images.copr.copr_client import CoprBuildError, CoprClient, CoprCliError
 from base_images.copr.dependency_resolver import compute_build_waves
 from base_images.copr.koji_client import KojiClient
 from base_images.copr.models import Manifest
@@ -115,13 +116,33 @@ def main(argv: list[str] | None = None) -> None:
         format="%(levelname)s %(name)s: %(message)s",
     )
 
-    manifest = load_manifest(args.manifest)
+    try:
+        manifest = load_manifest(args.manifest)
+    except Exception as exc:
+        print(f"Error: failed to load manifest {args.manifest}: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     koji_client = KojiClient()
 
-    if args.dry_run:
-        run_dry_run(manifest, koji_client)
-    else:
-        run_rebuild(manifest, koji_client)
+    try:
+        if args.dry_run:
+            run_dry_run(manifest, koji_client)
+        else:
+            run_rebuild(manifest, koji_client)
+    except CoprCliError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        if exc.stderr.strip():
+            print(f"  stderr: {exc.stderr.strip()}", file=sys.stderr)
+        if exc.stdout.strip():
+            print(f"  stdout: {exc.stdout.strip()}", file=sys.stderr)
+        print(f"  command: {' '.join(exc.command)}", file=sys.stderr)
+        sys.exit(1)
+    except CoprBuildError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

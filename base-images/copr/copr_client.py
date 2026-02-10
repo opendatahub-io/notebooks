@@ -19,6 +19,18 @@ class CoprBuildError(Exception):
         super().__init__(f"Copr build {build_id} ended with status: {status}")
 
 
+class CoprCliError(Exception):
+    """Raised when copr-cli returns a non-zero exit code."""
+
+    def __init__(self, command: list[str], returncode: int, stdout: str, stderr: str) -> None:
+        self.command = command
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+        detail = stderr.strip() or stdout.strip() or "(no output)"
+        super().__init__(f"copr-cli failed (exit {returncode}): {detail}")
+
+
 class CoprClient:
     """Client for submitting and monitoring builds on Fedora Copr."""
 
@@ -41,15 +53,13 @@ class CoprClient:
 
         Raises:
             RuntimeError: If the build ID cannot be parsed from copr-cli output.
-            subprocess.CalledProcessError: If copr-cli returns a non-zero exit code.
+            CoprCliError: If copr-cli returns a non-zero exit code.
         """
         logger.info("Submitting build to %s: %s", self.project, srpm_url)
-        result = subprocess.run(
-            ["copr-cli", "build", "--nowait", self.project, srpm_url],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        cmd = ["copr-cli", "build", "--nowait", self.project, srpm_url]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if result.returncode != 0:
+            raise CoprCliError(cmd, result.returncode, result.stdout, result.stderr)
         # Parse build ID from output like "Created builds: 12345"
         for line in result.stdout.splitlines():
             if "Created builds:" in line:
@@ -65,13 +75,14 @@ class CoprClient:
 
         Returns:
             Build status string (e.g. 'succeeded', 'failed', 'pending', 'running').
+
+        Raises:
+            CoprCliError: If copr-cli returns a non-zero exit code.
         """
-        result = subprocess.run(
-            ["copr-cli", "status", str(build_id)],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        cmd = ["copr-cli", "status", str(build_id)]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if result.returncode != 0:
+            raise CoprCliError(cmd, result.returncode, result.stdout, result.stderr)
         return result.stdout.strip()
 
     def wait_for_build(self, build_id: int, poll_interval: int = 30) -> bool:

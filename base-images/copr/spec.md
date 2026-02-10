@@ -77,6 +77,15 @@ The tool scales to the full RHEL AI package set (approximately 50 source package
 
 The tool supports a `--verbose` flag that enables detailed debug-level logging of Koji queries, dependency graph construction, and build status polling. Default logging reports progress at the INFO level.
 
+### R10: Actionable Error Messages
+
+When an operation fails, the tool displays a clear, human-readable error message that includes the underlying cause. In particular:
+
+- If the Copr build service rejects a submission (e.g. project not found, authentication failure, invalid SRPM URL), the error message from the build service is displayed, not a raw stack trace.
+- If a build status query fails, the service's error message is shown.
+- If manifest loading fails, the validation error is reported immediately.
+- All error output is written to stderr with a consistent `Error:` prefix, and the tool exits with a non-zero status code.
+
 ## Scope
 
 ### In Scope
@@ -113,3 +122,4 @@ The tool supports a `--verbose` flag that enables detailed debug-level logging o
 4. The dependency resolver correctly orders builds, verified by unit tests covering: linear chains, diamond dependencies, independent package sets, self-dependencies, and cycle detection
 5. Invalid manifests are rejected before any external service calls
 6. A failed Copr build halts the process immediately with a clear error identifying the failed build
+7. All failures produce actionable error messages (with the underlying cause from the build service), not raw stack traces
