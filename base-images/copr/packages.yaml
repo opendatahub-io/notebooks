@@ -1,0 +1,17 @@
+copr_project: opendatahub/rhelai-el9
+koji_tag: f44
+
+packages:
+  - name: libaec
+    nvr: libaec-1.1.4-3.fc43
+    note: "szip compression library required by HDF5"
+  - name: hdf5
+    nvr: hdf5-1.14.6-6.fc43
+    note: "provides libhdf5.so.310 for h5py"
+  # Future packages from RHEL AI repo:
+  # - name: geos
+  #   nvr: geos-3.13.1-1.fc44
+  #   note: "geometry engine for shapely"
+  # - name: proj
+  #   nvr: proj-9.6.0-2.fc44
+  #   note: "cartographic projections"

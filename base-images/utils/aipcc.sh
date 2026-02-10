@@ -90,7 +90,7 @@ function install_packages() {
     # RHELAI: pyzmq for vLLM
     PKGS+=("zeromq")
 
-    # RHELAI: for h5py
+    # RHELAI: for h5py (HDF5 1.14.x from Copr rebuild, provides libhdf5.so.310)
     PKGS+=("hdf5")
 
     # RHELAI: faster memory allocator / PyArrow
@@ -365,6 +365,15 @@ function uninstall_epel() {
     dnf remove "${DNF_OPTS[@]}" epel-release
 }
 
+function install_copr_rhelai() {
+    dnf install "${DNF_OPTS[@]}" 'dnf-command(copr)'
+    dnf copr enable "${DNF_OPTS[@]}" opendatahub/rhelai-el9
+}
+
+function uninstall_copr_rhelai() {
+    dnf copr disable "${DNF_OPTS[@]}" opendatahub/rhelai-el9
+}
+
 # AIPCC bases enable codeready-builder, so we need to do the CentOS equivalent
 # In RHEL this is codeready-builder-for-rhel-${RELEASEVER_MAJOR}-${ARCH}-eus-rpms
 # or codeready-builder-for-rhel-${RELEASEVER_MAJOR}-${ARCH}-rpms
@@ -393,6 +402,7 @@ function main() {
     install_csb
 
     install_epel
+    install_copr_rhelai
 
     # install security updates
     dnf update "${DNF_OPTS[@]}" --security
@@ -400,6 +410,10 @@ function main() {
     install_packages
     if ! test -f /usr/lib64/libzmq.so.5; then
         echo "Error: libzmq.so.5 was not found after installation"
+        exit 1
+    fi
+    if ! test -f /usr/lib64/libhdf5.so.310; then
+        echo "Error: libhdf5.so.310 was not found after installation (need HDF5 1.14.x)"
         exit 1
     fi
 
@@ -411,6 +425,7 @@ function main() {
     # Makefile: REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
     dnf install "${DNF_OPTS[@]}" which
 
+    uninstall_copr_rhelai
     uninstall_epel
 }
 
