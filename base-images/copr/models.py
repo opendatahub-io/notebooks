@@ -20,6 +20,14 @@ class Manifest(BaseModel):
     copr_project: str = Field(description="Copr project in owner/name format (e.g. 'opendatahub/rhelai-el9')")
     koji_tag: str = Field(default="f44", description="Fedora tag to pull SRPMs from")
     packages: list[PackageEntry] = Field(description="List of packages to rebuild")
+    chroots: list[str] = Field(
+        default_factory=list,
+        description="Copr chroot names to configure (e.g. ['centos-stream-9-x86_64'])",
+    )
+    chroot_packages: list[str] = Field(
+        default_factory=list,
+        description="Extra packages to install in the mock buildroot (e.g. ['autoconf-latest'])",
+    )
 
 
 class PackageMetadata(BaseModel):

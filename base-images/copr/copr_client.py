@@ -42,6 +42,32 @@ class CoprClient:
         """
         self.project = project
 
+    def configure_chroot_packages(self, chroot: str, packages: list[str]) -> None:
+        """Set additional packages in a Copr mock chroot.
+
+        This configures the mock buildroot to include extra packages beyond the
+        default @buildsys-build group. For example, EL9's default autoconf is
+        2.69, but many Fedora SRPMs need autoconf >= 2.71 (available as
+        ``autoconf-latest`` on EL9).
+
+        Note: this *sets* the additional package list, replacing any previously
+        configured packages for the chroot.
+
+        Args:
+            chroot: Chroot name (e.g. 'centos-stream-9-x86_64').
+            packages: List of package names to install in the buildroot.
+
+        Raises:
+            CoprCliError: If copr-cli returns a non-zero exit code.
+        """
+        chroot_path = f"{self.project}/{chroot}"
+        pkg_str = " ".join(packages)
+        logger.info("Configuring chroot %s with additional packages: %s", chroot_path, pkg_str)
+        cmd = ["copr-cli", "edit-chroot", chroot_path, "--packages", pkg_str]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if result.returncode != 0:
+            raise CoprCliError(cmd, result.returncode, result.stdout, result.stderr)
+
     def submit_build(self, srpm_url: str) -> int:
         """Submit a build to Copr from an SRPM URL.
 

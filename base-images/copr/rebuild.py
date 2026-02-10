@@ -33,6 +33,19 @@ def load_manifest(path: Path) -> Manifest:
     return Manifest.model_validate(raw)
 
 
+def configure_chroots(manifest: Manifest, copr: CoprClient) -> None:
+    """Configure additional packages in Copr chroots.
+
+    Args:
+        manifest: The validated manifest (must have chroots and chroot_packages).
+        copr: Client for Copr operations.
+    """
+    if not manifest.chroot_packages or not manifest.chroots:
+        return
+    for chroot in manifest.chroots:
+        copr.configure_chroot_packages(chroot, manifest.chroot_packages)
+
+
 def run_dry_run(manifest: Manifest, koji_client: KojiClient) -> None:
     """Compute and display the build plan without submitting builds.
 
@@ -50,6 +63,9 @@ def run_dry_run(manifest: Manifest, koji_client: KojiClient) -> None:
 
     print("Build plan:")
     print(f"  Copr project: {manifest.copr_project}")
+    if manifest.chroot_packages and manifest.chroots:
+        print(f"  Chroots: {', '.join(manifest.chroots)}")
+        print(f"  Extra buildroot packages: {', '.join(manifest.chroot_packages)}")
     print(f"  Total packages: {len(packages)}")
     print(f"  Total waves: {len(waves)}")
     print()
@@ -77,6 +93,7 @@ def run_rebuild(manifest: Manifest, koji_client: KojiClient) -> None:
     waves = compute_build_waves(packages)
 
     copr = CoprClient(project=manifest.copr_project)
+    configure_chroots(manifest, copr)
     for wave in waves:
         pkg_names = wave.packages
         print(f"=== Wave {wave.index}: {pkg_names} ===")

@@ -77,7 +77,20 @@ The tool scales to the full RHEL AI package set (approximately 50 source package
 
 The tool supports a `--verbose` flag that enables detailed debug-level logging of Koji queries, dependency graph construction, and build status polling. Default logging reports progress at the INFO level.
 
-### R10: Actionable Error Messages
+### R10: Build Environment Customization
+
+The target EL9 build environment may lack newer versions of build tools that Fedora SRPMs expect. For example, CentOS Stream 9 ships autoconf 2.69 by default, but Fedora SRPMs commonly require autoconf >= 2.71 (available as `autoconf-latest` on EL9).
+
+The manifest declares:
+
+- The target Copr chroots (e.g. `centos-stream-9-x86_64`)
+- A list of extra packages to install in the mock buildroot alongside the default build group
+
+Before submitting any builds, the tool configures each declared chroot with the extra packages. This ensures the build environment matches what the Fedora SRPMs were built against, without requiring per-SRPM spec patching.
+
+The dry-run output includes the chroot configuration that would be applied.
+
+### R11: Actionable Error Messages
 
 When an operation fails, the tool displays a clear, human-readable error message that includes the underlying cause. In particular:
 
@@ -95,6 +108,7 @@ When an operation fails, the tool displays a clear, human-readable error message
 - CLI tool for operators to trigger rebuilds
 - Manifest-driven package list with schema validation
 - Dry-run mode for plan review
+- Build environment customization (extra packages in mock chroots)
 - Integration with existing `aipcc.sh` installation script
 - Post-install verification of critical shared libraries
 
@@ -123,3 +137,4 @@ When an operation fails, the tool displays a clear, human-readable error message
 5. Invalid manifests are rejected before any external service calls
 6. A failed Copr build halts the process immediately with a clear error identifying the failed build
 7. All failures produce actionable error messages (with the underlying cause from the build service), not raw stack traces
+8. Build environment differences between Fedora and EL9 (e.g. autoconf version) are handled declaratively through the manifest, without per-SRPM patching
