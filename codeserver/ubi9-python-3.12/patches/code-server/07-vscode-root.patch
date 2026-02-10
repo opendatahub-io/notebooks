@@ -1,5 +1,14 @@
 --- a/lib/vscode/package.json
 +++ b/lib/vscode/package.json
+@@ -74,7 +74,7 @@
+   "dependencies": {
+     "@microsoft/1ds-core-js": "^3.2.13",
+     "@microsoft/1ds-post-js": "^3.2.13",
+-    "@parcel/watcher": "parcel-bundler/watcher#1ca032aa8339260a8a3bcf825c3a1a71e3e43542",
++    "@parcel/watcher": "file:///cachi2/output/deps/generic/parcel-bundler-watcher-1ca032aa8339260a8a3bcf825c3a1a71e3e43542.tar.gz",
+     "@types/semver": "^7.5.8",
+     "@vscode/deviceid": "^0.1.1",
+     "@vscode/iconv-lite-umd": "0.7.1",
 @@ -108,6 +108,7 @@
      "native-is-elevated": "0.7.0",
      "native-keymap": "^3.3.5",
@@ -10,6 +19,15 @@
      "tas-client-umd": "0.2.0",
 --- a/lib/vscode/package-lock.json
 +++ b/lib/vscode/package-lock.json
+@@ -12,7 +12,7 @@
+       "dependencies": {
+         "@microsoft/1ds-core-js": "^3.2.13",
+         "@microsoft/1ds-post-js": "^3.2.13",
+-        "@parcel/watcher": "parcel-bundler/watcher#1ca032aa8339260a8a3bcf825c3a1a71e3e43542",
++        "@parcel/watcher": "file:///cachi2/output/deps/generic/parcel-bundler-watcher-1ca032aa8339260a8a3bcf825c3a1a71e3e43542.tar.gz",
+         "@types/semver": "^7.5.8",
+         "@vscode/deviceid": "^0.1.1",
+         "@vscode/iconv-lite-umd": "0.7.1",
 @@ -46,6 +46,7 @@
          "native-is-elevated": "0.7.0",
          "native-keymap": "^3.3.5",
@@ -143,6 +161,15 @@
      "node_modules/@octokit/auth-token": {
        "version": "6.0.0",
        "resolved": "https://registry.npmjs.org/@octokit/auth-token/-/auth-token-6.0.0.tgz",
+@@ -1666,7 +1715,7 @@
+     },
+     "node_modules/@parcel/watcher": {
+       "version": "2.5.1",
+-      "resolved": "git+ssh://git@github.com/parcel-bundler/watcher.git#1ca032aa8339260a8a3bcf825c3a1a71e3e43542",
++      "resolved": "file:///cachi2/output/deps/generic/parcel-bundler-watcher-1ca032aa8339260a8a3bcf825c3a1a71e3e43542.tar.gz",
+       "integrity": "sha512-Z0lk8pM5vwuOJU6pfheRXHrOpQYIIEnVl/z8DY6370D4+ZnrOTvFa5BUdf3pGxahT5ILbPWwQSm2Wthy4q1OTg==",
+       "hasInstallScript": true,
+       "license": "MIT",
 @@ -1688,7 +1737,6 @@
        "version": "0.11.0",
        "resolved": "https://registry.npmjs.org/@pkgjs/parseargs/-/parseargs-0.11.0.tgz",
@@ -187,7 +214,7 @@
      },
      "node_modules/bare-events": {
        "version": "2.5.4",
-@@ -4715,6 +4759,174 @@
+@@ -4715,8 +4759,176 @@
        },
        "engines": {
          "node": ">=14.14.0"
@@ -310,8 +337,8 @@
 +      "license": "ISC",
 +      "engines": {
 +        "node": ">=16 || 14 >=14.17"
-+      }
-+    },
+       }
+     },
 +    "node_modules/cacache/node_modules/minizlib": {
 +      "version": "3.1.0",
 +      "resolved": "https://registry.npmjs.org/minizlib/-/minizlib-3.1.0.tgz",
@@ -359,9 +386,11 @@
 +      "license": "BlueOak-1.0.0",
 +      "engines": {
 +        "node": ">=18"
-       }
-     },
++      }
++    },
      "node_modules/cache-base": {
+       "version": "1.0.1",
+       "resolved": "https://registry.npmjs.org/cache-base/-/cache-base-1.0.1.tgz",
 @@ -5303,7 +5515,6 @@
        "version": "2.0.1",
        "resolved": "https://registry.npmjs.org/color-convert/-/color-convert-2.0.1.tgz",
@@ -423,19 +452,19 @@
        "engines": {
          "node": ">=6"
        }
-@@ -6438,6 +6655,12 @@
-       "engines": {
+@@ -6439,6 +6656,12 @@
          "node": ">=4"
        }
-+    },
+     },
 +    "node_modules/err-code": {
 +      "version": "2.0.3",
 +      "resolved": "https://registry.npmjs.org/err-code/-/err-code-2.0.3.tgz",
 +      "integrity": "sha512-2bmlRpNKBxT/CRmPOlyISQpNj+qSeYvcym/uT0Jx2bMOlKLtSy1ZmLuVxSEKKyor/N5yhvp/ZiG1oE3DEYMSFA==",
 +      "license": "MIT"
-     },
++    },
      "node_modules/errno": {
        "version": "0.1.8",
+       "resolved": "https://registry.npmjs.org/errno/-/errno-0.1.8.tgz",
 @@ -7071,6 +7294,12 @@
          "node": ">=0.10.0"
        }
@@ -449,10 +478,12 @@
      "node_modules/ext": {
        "version": "1.4.0",
        "resolved": "https://registry.npmjs.org/ext/-/ext-1.4.0.tgz",
-@@ -7282,6 +7511,23 @@
+@@ -7280,6 +7509,23 @@
+       "integrity": "sha1-JcfInLH5B3+IkbvmHY85Dq4lbx4= sha512-cE1qsB/VwyQozZ+q1dGxR8LBYNZeofhEdUNGSMbQD3Gw2lAzX9Zb3uIU6Ebc/Fmyjo9AWWfnn0AUCHqtevs/8g==",
+       "dependencies": {
          "pend": "~1.2.0"
-       }
-     },
++      }
++    },
 +    "node_modules/fdir": {
 +      "version": "6.5.0",
 +      "resolved": "https://registry.npmjs.org/fdir/-/fdir-6.5.0.tgz",
@@ -468,11 +499,9 @@
 +        "picomatch": {
 +          "optional": true
 +        }
-+      }
-+    },
+       }
+     },
      "node_modules/file-entry-cache": {
-       "version": "8.0.0",
-       "resolved": "https://registry.npmjs.org/file-entry-cache/-/file-entry-cache-8.0.0.tgz",
 @@ -7705,7 +7951,6 @@
        "version": "3.1.1",
        "resolved": "https://registry.npmjs.org/foreground-child/-/foreground-child-3.1.1.tgz",
@@ -491,10 +520,12 @@
      },
      "node_modules/http-errors": {
        "version": "2.0.0",
-@@ -10326,6 +10570,19 @@
+@@ -10324,6 +10568,19 @@
+       "dev": true,
+       "engines": {
          "node": ">=0.8.0"
-       }
-     },
++      }
++    },
 +    "node_modules/iconv-lite": {
 +      "version": "0.6.3",
 +      "resolved": "https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.6.3.tgz",
@@ -506,11 +537,9 @@
 +      },
 +      "engines": {
 +        "node": ">=0.10.0"
-+      }
-+    },
+       }
+     },
      "node_modules/icss-utils": {
-       "version": "5.1.0",
-       "resolved": "https://registry.npmjs.org/icss-utils/-/icss-utils-5.1.0.tgz",
 @@ -10409,7 +10666,6 @@
        "version": "0.1.4",
        "resolved": "https://registry.npmjs.org/imurmurhash/-/imurmurhash-0.1.4.tgz",
@@ -624,7 +653,7 @@
 +        "minipass-sized": "^1.0.3",
 +        "minizlib": "^3.0.1"
 +      },
-       "engines": {
++      "engines": {
 +        "node": "^18.17.0 || >=20.5.0"
 +      },
 +      "optionalDependencies": {
@@ -673,9 +702,9 @@
 +        "yallist": "^4.0.0"
 +      },
 +      "engines": {
-         "node": ">=8"
-       }
-     },
++        "node": ">=8"
++      }
++    },
 +    "node_modules/minipass-flush/node_modules/yallist": {
 +      "version": "4.0.0",
 +      "resolved": "https://registry.npmjs.org/yallist/-/yallist-4.0.0.tgz",
@@ -720,10 +749,10 @@
 +      "dependencies": {
 +        "minipass": "^3.0.0"
 +      },
-+      "engines": {
-+        "node": ">=8"
-+      }
-+    },
+       "engines": {
+         "node": ">=8"
+       }
+     },
 +    "node_modules/minipass-sized/node_modules/minipass": {
 +      "version": "3.3.6",
 +      "resolved": "https://registry.npmjs.org/minipass/-/minipass-3.3.6.tgz",
@@ -915,12 +944,10 @@
        "engines": {
          "node": "14 || >=16.14"
        }
-@@ -14392,6 +14958,15 @@
-       "dev": true,
-       "engines": {
+@@ -14394,6 +14960,15 @@
          "node": ">= 0.8"
-+      }
-+    },
+       }
+     },
 +    "node_modules/proc-log": {
 +      "version": "5.0.0",
 +      "resolved": "https://registry.npmjs.org/proc-log/-/proc-log-5.0.0.tgz",
@@ -928,15 +955,15 @@
 +      "license": "ISC",
 +      "engines": {
 +        "node": "^18.17.0 || >=20.5.0"
-       }
-     },
-     "node_modules/process": {
-@@ -14416,6 +14991,19 @@
-       "dev": true,
-       "engines": {
-         "node": ">=0.4.0"
 +      }
 +    },
+     "node_modules/process": {
+       "version": "0.11.10",
+       "resolved": "https://registry.npmjs.org/process/-/process-0.11.10.tgz",
+@@ -14418,6 +14993,19 @@
+         "node": ">=0.4.0"
+       }
+     },
 +    "node_modules/promise-retry": {
 +      "version": "2.0.1",
 +      "resolved": "https://registry.npmjs.org/promise-retry/-/promise-retry-2.0.1.tgz",
@@ -948,9 +975,11 @@
 +      },
 +      "engines": {
 +        "node": ">=10"
-       }
-     },
++      }
++    },
      "node_modules/promise-stream-reader": {
+       "version": "1.0.1",
+       "resolved": "https://registry.npmjs.org/promise-stream-reader/-/promise-stream-reader-1.0.1.tgz",
 @@ -15128,6 +15716,15 @@
        "dev": true,
        "engines": {
@@ -1067,11 +1096,10 @@
        "dependencies": {
          "ansi-regex": "^5.0.1"
        },
-@@ -16881,7 +17499,35 @@
-       "resolved": "https://registry.npmjs.org/tiny-inflate/-/tiny-inflate-1.0.3.tgz",
+@@ -16882,6 +17500,34 @@
        "integrity": "sha512-pkY1fj1cKHb2seWDy0B16HeWyczlJA9/WW3u3c4z/NiWDsO3DOU5D7nhTLE9CF0yXv/QZFY7sEJmj24dK+Rrqw==",
        "license": "MIT"
-+    },
+     },
 +    "node_modules/tinyglobby": {
 +      "version": "0.2.15",
 +      "resolved": "https://registry.npmjs.org/tinyglobby/-/tinyglobby-0.2.15.tgz",
@@ -1087,7 +1115,7 @@
 +      "funding": {
 +        "url": "https://github.com/sponsors/SuperchupuDev"
 +      }
-     },
++    },
 +    "node_modules/tinyglobby/node_modules/picomatch": {
 +      "version": "4.0.3",
 +      "resolved": "https://registry.npmjs.org/picomatch/-/picomatch-4.0.3.tgz",
@@ -1103,12 +1131,10 @@
      "node_modules/to-absolute-glob": {
        "version": "2.0.2",
        "resolved": "https://registry.npmjs.org/to-absolute-glob/-/to-absolute-glob-2.0.2.tgz",
-@@ -17412,6 +18058,30 @@
-       "dev": true,
-       "engines": {
+@@ -17414,6 +18060,30 @@
          "node": ">=0.10.0"
-+      }
-+    },
+       }
+     },
 +    "node_modules/unique-filename": {
 +      "version": "4.0.0",
 +      "resolved": "https://registry.npmjs.org/unique-filename/-/unique-filename-4.0.0.tgz",
@@ -1131,9 +1157,11 @@
 +      },
 +      "engines": {
 +        "node": "^18.17.0 || >=20.5.0"
-       }
-     },
++      }
++    },
      "node_modules/unique-stream": {
+       "version": "2.3.1",
+       "resolved": "https://registry.npmjs.org/unique-stream/-/unique-stream-2.3.1.tgz",
 @@ -18135,7 +18805,6 @@
        "version": "2.0.2",
        "resolved": "https://registry.npmjs.org/which/-/which-2.0.2.tgz",
