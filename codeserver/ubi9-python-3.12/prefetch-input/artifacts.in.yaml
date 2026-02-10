@@ -21,17 +21,17 @@ input:
 
     # Required for node-gyp builds in npm install
     # Electron headers for main VSCode build (runs on Electron)
-    - url: https://electronjs.org/headers/v37.3.1/node-v37.3.1-headers.tar.gz
-    # Node.js headers for build tools (runs on system Node.js 22.19.0)
-    - url: https://nodejs.org/download/release/v22.19.0/node-v22.19.0-headers.tar.gz
-    # Node.js headers for VSCode remote (targets Node.js 22.18.0)
-    - url: https://nodejs.org/download/release/v22.18.0/node-v22.18.0-headers.tar.gz
+    - url: https://electronjs.org/headers/v37.7.0/node-v37.7.0-headers.tar.gz
+    # Node.js headers for build tools (runs on system Node.js 22.22.0)
+    - url: https://nodejs.org/download/release/v22.22.0/node-v22.22.0-headers.tar.gz
+    # Node.js headers for VSCode remote (targets Node.js 22.20.0)
+    - url: https://nodejs.org/download/release/v22.20.0/node-v22.20.0-headers.tar.gz
     # Node.js runtime binary for bundling with VSCode server
-    - url: https://nodejs.org/download/release/v22.18.0/node-v22.18.0-linux-x64.tar.gz
+    - url: https://nodejs.org/download/release/v22.20.0/node-v22.20.0-linux-x64.tar.gz
     - url: https://playwright.azureedge.net/builds/chromium/1134/chromium-linux.zip
       filename: chromium-1134-linux.zip
-    - url: https://github.com/electron/electron/releases/download/v37.3.1/electron-v37.3.1-linux-x64.zip
-    - url: https://github.com/electron/electron/releases/download/v37.3.1/SHASUMS256.txt
+    - url: https://github.com/electron/electron/releases/download/v37.7.0/electron-v37.7.0-linux-x64.zip
+    - url: https://github.com/electron/electron/releases/download/v37.7.0/SHASUMS256.txt
     - url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
       filename: ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
     - url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-aarch64-unknown-linux-gnu.tar.gz

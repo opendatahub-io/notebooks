@@ -10,7 +10,7 @@ set -euo pipefail
 #
 #   1. npm config: set offline=true, prefer-offline=true, fetch-retries=0
 #   2. Electron: pre-populate ~/.cache/electron/ with the prefetched zip + checksums
-#   3. node-gyp headers: set up ~/.cache/node-gyp/ for Electron v37.3.1, Node 22.19.0, 22.18.0
+#   3. node-gyp headers: set up ~/.cache/node-gyp/ for Electron v37.7.0, Node 22.22.0, 22.20.0
 #   4. Playwright Chromium: unzip into ~/.cache/ms-playwright/chromium-1134/
 #   5. VSCode ripgrep: copy to /tmp/vscode-ripgrep-cache-<version>/
 #   6. VSCode extensions (.vsix): copy to .vscode-offline-cache/ for fetch.js
@@ -41,29 +41,29 @@ npm config set --global fund false
 
 # Setup Electron (ELECTRON_* and PLAYWRIGHT_* are already set by patches/codeserver-offline-env.sh)
 mkdir -p ~/.cache/electron
-cp "${HERMETO_OUTPUT}/deps/generic/electron-v37.3.1-linux-x64.zip" ~/.cache/electron/
-cp "${HERMETO_OUTPUT}/deps/generic/SHASUMS256.txt" ~/.cache/electron/SHASUMS256.txt-37.3.1
+cp "${HERMETO_OUTPUT}/deps/generic/electron-v37.7.0-linux-x64.zip" ~/.cache/electron/
+cp "${HERMETO_OUTPUT}/deps/generic/SHASUMS256.txt" ~/.cache/electron/SHASUMS256.txt-37.7.0
 
-# Setup node-gyp cache for Electron headers (37.3.1)
+# Setup node-gyp cache for Electron headers (37.7.0)
 # node-gyp expects headers at: ~/.cache/node-gyp/<version>/
-mkdir -p ~/.cache/node-gyp/37.3.1
-tar -xzf "${HERMETO_OUTPUT}/deps/generic/node-v37.3.1-headers.tar.gz" \
-    -C ~/.cache/node-gyp/37.3.1 --strip-components=1
-echo "11" > ~/.cache/node-gyp/37.3.1/installVersion
+mkdir -p ~/.cache/node-gyp/37.7.0
+tar -xzf "${HERMETO_OUTPUT}/deps/generic/node-v37.7.0-headers.tar.gz" \
+    -C ~/.cache/node-gyp/37.7.0 --strip-components=1
+echo "11" > ~/.cache/node-gyp/37.7.0/installVersion
 
-# Setup node-gyp cache for Node.js headers (22.19.0)
+# Setup node-gyp cache for Node.js headers (22.22.0)
 # Some build tools may use system Node.js instead of Electron
-mkdir -p ~/.cache/node-gyp/22.19.0
-tar -xzf "${HERMETO_OUTPUT}/deps/generic/node-v22.19.0-headers.tar.gz" \
-    -C ~/.cache/node-gyp/22.19.0 --strip-components=1
-echo "11" > ~/.cache/node-gyp/22.19.0/installVersion
+mkdir -p ~/.cache/node-gyp/22.22.0
+tar -xzf "${HERMETO_OUTPUT}/deps/generic/node-v22.22.0-headers.tar.gz" \
+    -C ~/.cache/node-gyp/22.22.0 --strip-components=1
+echo "11" > ~/.cache/node-gyp/22.22.0/installVersion
 
-# Setup node-gyp cache for Node.js headers (22.18.0)
+# Setup node-gyp cache for Node.js headers (22.20.0)
 # VSCode remote modules target this specific Node.js version
-mkdir -p ~/.cache/node-gyp/22.18.0
-tar -xzf "${HERMETO_OUTPUT}/deps/generic/node-v22.18.0-headers.tar.gz" \
-    -C ~/.cache/node-gyp/22.18.0 --strip-components=1
-echo "11" > ~/.cache/node-gyp/22.18.0/installVersion
+mkdir -p ~/.cache/node-gyp/22.20.0
+tar -xzf "${HERMETO_OUTPUT}/deps/generic/node-v22.20.0-headers.tar.gz" \
+    -C ~/.cache/node-gyp/22.20.0 --strip-components=1
+echo "11" > ~/.cache/node-gyp/22.20.0/installVersion
 
 # Setup Playwright Chromium
 mkdir -p ~/.cache/ms-playwright/chromium-1134
@@ -97,7 +97,7 @@ cp "${HERMETO_OUTPUT}/deps/generic/ms-vscode.js-debug.1.104.0.vsix" "${VSCODE_OF
 cp "${HERMETO_OUTPUT}/deps/generic/ms-vscode.vscode-js-profile-table.1.0.10.vsix" "${VSCODE_OFFLINE_DIR}/"
 
 # Copy Node.js runtime binary (for bundling with VSCode server)
-cp "${HERMETO_OUTPUT}/deps/generic/node-v22.18.0-linux-x64.tar.gz" "${VSCODE_OFFLINE_DIR}/"
+cp "${HERMETO_OUTPUT}/deps/generic/node-v22.20.0-linux-x64.tar.gz" "${VSCODE_OFFLINE_DIR}/"
 
 echo "Copied VSCode offline files to ${VSCODE_OFFLINE_DIR}"
 

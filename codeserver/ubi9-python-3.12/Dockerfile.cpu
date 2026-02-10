@@ -118,7 +118,7 @@ RUN cd ${CODESERVER_SOURCE_CODE} && ./get_code_server_rpm.sh
 
 # [HERMETIC] Extract prefetched Electron/Node.js headers for node-gyp (previously downloaded at build time).
 RUN mkdir -p /tmp/node-headers
-RUN tar -xzf /cachi2/output/deps/generic/node-v37.3.1-headers.tar.gz \
+RUN tar -xzf /cachi2/output/deps/generic/node-v37.7.0-headers.tar.gz \
     -C /tmp/node-headers --strip-components=1
 
 COPY ${CODESERVER_SOURCE_CODE}/setup-offline-binaries.sh ${CODESERVER_SOURCE_CODE}/
