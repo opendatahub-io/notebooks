@@ -307,9 +307,8 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         ("setuptools", ("~=80.9.0", "==80.9.0")),
         ("wheel", ("==0.46.3", "~=0.46.3")),
         ("tensorboard", ("~=2.18.0", "~=2.20.0")),
-        ("torch", ("==2.7.1+cu128", "==2.9.0")),
         ("torchvision", ("==0.24.0", "~=0.24.0")),
-        ("triton", ("~=3.5.0", "==3.3.1")),
+        ("triton", ("~=3.5.0", "==3.5.0")),
         (
             "numpy",
             (
@@ -318,8 +317,8 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             ),
         ),
         ("jupyterlab-lsp", ("~=5.1.0", "~=5.1.1")),
-        ("transformers", ("~=4.57.3", "==4.57.3")),
-        ("datasets", ("~=4.4.1", "==4.4.1")),
+        ("transformers", ("~=5.0.0", "==4.57.3")),
+        ("datasets", ("~=4.5.0", "==4.4.1")),
         ("accelerate", ("~=1.12.0", "==1.12.0")),
         ("requests", ("~=2.32.5", "==2.32.5")),
     )
