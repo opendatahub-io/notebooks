@@ -11,10 +11,10 @@ chroots:
 # Extra packages for the mock buildroot.
 chroot_packages: []
 
-# Skip %check -- we're rebuilding known-good Fedora SRPMs and the test suites
-# (especially HDF5's MPI tests) exceed Copr's build timeout.
-rpmbuild_without:
-  - check
+# Build timeout in seconds.  Copr's default is ~5h (18000s).
+# HDF5's %check runs serial + MPI parallel tests which can take several hours;
+# the MPI test t_pmulti_dset is known to hang on some architectures.
+build_timeout: 36000  # 10 hours
 
 packages:
   - name: autoconf

@@ -47,22 +47,16 @@ class CoprClient:
         chroot: str,
         *,
         packages: list[str] | None = None,
-        rpmbuild_without: list[str] | None = None,
     ) -> None:
         """Configure a Copr mock chroot.
 
-        Calls ``copr-cli edit-chroot`` to set additional buildroot packages
-        and/or rpmbuild bcond options.  Each argument that is non-empty adds
-        the corresponding flag(s) to the command.
+        Calls ``copr-cli edit-chroot`` to set additional buildroot packages.
 
-        Note: ``--packages`` *replaces* the current additional-package list;
-        ``--rpmbuild-without`` *replaces* the current without-list.
+        Note: ``--packages`` *replaces* the current additional-package list.
 
         Args:
             chroot: Chroot name (e.g. 'epel-9-x86_64').
             packages: Extra packages to install in the buildroot.
-            rpmbuild_without: RPM bcond options to disable (e.g. ['check']
-                to skip ``%check``).
 
         Raises:
             CoprCliError: If copr-cli returns a non-zero exit code.
@@ -72,9 +66,6 @@ class CoprClient:
 
         if packages:
             cmd.extend(["--packages", " ".join(packages)])
-        if rpmbuild_without:
-            for opt in rpmbuild_without:
-                cmd.extend(["--rpmbuild-without", opt])
 
         if len(cmd) == 3:
             # Nothing to configure
@@ -85,11 +76,13 @@ class CoprClient:
         if result.returncode != 0:
             raise CoprCliError(cmd, result.returncode, result.stdout, result.stderr)
 
-    def submit_build(self, srpm_url: str) -> int:
+    def submit_build(self, srpm_url: str, *, timeout: int | None = None) -> int:
         """Submit a build to Copr from an SRPM URL.
 
         Args:
             srpm_url: URL to the source RPM to build.
+            timeout: Build timeout in seconds. If not set, Copr's default
+                (~5 hours) applies.
 
         Returns:
             The Copr build ID.
@@ -100,6 +93,8 @@ class CoprClient:
         """
         logger.info("Submitting build to %s: %s", self.project, srpm_url)
         cmd = ["copr-cli", "build", "--nowait", self.project, srpm_url]
+        if timeout is not None:
+            cmd.extend(["--timeout", str(timeout)])
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
         if result.returncode != 0:
             raise CoprCliError(cmd, result.returncode, result.stdout, result.stderr)
@@ -147,16 +142,17 @@ class CoprClient:
                 return False
             time.sleep(poll_interval)
 
-    def submit_wave(self, srpm_urls: list[str]) -> list[int]:
+    def submit_wave(self, srpm_urls: list[str], *, timeout: int | None = None) -> list[int]:
         """Submit all packages in a build wave.
 
         Args:
             srpm_urls: List of SRPM URLs to submit.
+            timeout: Build timeout in seconds per build.
 
         Returns:
             List of Copr build IDs.
         """
-        return [self.submit_build(url) for url in srpm_urls]
+        return [self.submit_build(url, timeout=timeout) for url in srpm_urls]
 
     def wait_for_wave(self, build_ids: list[int], poll_interval: int = 30) -> None:
         """Wait for all builds in a wave to complete.

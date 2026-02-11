@@ -29,9 +29,9 @@ class Manifest(BaseModel):
         default_factory=list,
         description="Extra packages to install in the mock buildroot (e.g. ['autoconf-latest'])",
     )
-    rpmbuild_without: list[str] = Field(
-        default_factory=list,
-        description="RPM bcond options to disable (e.g. ['check'] to skip %check)",
+    build_timeout: int | None = Field(
+        default=None,
+        description="Build timeout in seconds passed to copr-cli build --timeout (default: Copr's 5h)",
     )
 
 

@@ -79,15 +79,15 @@ The tool supports a `--verbose` flag that enables detailed debug-level logging o
 
 ### R10: Build Environment Customization
 
-The target EL9 build environment may differ from Fedora in ways that cause build failures. The manifest declares chroot-level configuration that the tool applies before submitting any builds:
+The target EL9 build environment may differ from Fedora in ways that cause build failures. The manifest declares configuration to address these differences:
 
 - **Target chroots** (e.g. `epel-9-x86_64`, `epel-9-aarch64`) -- the Copr mock environments to configure.
-- **Extra buildroot packages** -- additional packages to install in the mock buildroot alongside the default build group.
-- **RPM build options** (`rpmbuild_without`) -- bcond options to disable globally across all builds. For example, `["check"]` skips `%check` sections, which is appropriate when rebuilding known-good Fedora SRPMs whose test suites may exceed Copr's build timeout (e.g. HDF5's MPI parallel tests).
-
-This configuration is applied to each declared chroot before any builds are submitted. The dry-run output includes the chroot configuration that would be applied.
+- **Extra buildroot packages** -- additional packages to install in the mock buildroot alongside the default build group. Applied to each chroot before any builds are submitted.
+- **Build timeout** -- an optional per-build timeout in seconds, passed to `copr-cli build --timeout`. Some Fedora SRPMs have long-running test suites (e.g. HDF5's MPI parallel tests, where `t_pmulti_dset` is known to hang on certain architectures) that may exceed Copr's default 5-hour limit.
 
 Build tool version mismatches (e.g. EL9 shipping autoconf 2.69 when Fedora SRPMs need >= 2.71) can be resolved by including the required tool as a regular package in the manifest. Copr makes earlier-wave builds available as dependencies for later waves, so a rebuilt autoconf in wave 0 is automatically used by packages in wave 1+.
+
+The dry-run output includes the chroot configuration and timeout that would be applied.
 
 ### R11: Actionable Error Messages
 
@@ -137,4 +137,4 @@ When an operation fails, the tool displays a clear, human-readable error message
 6. A failed Copr build halts the process immediately with a clear error identifying the failed build
 7. All failures produce actionable error messages (with the underlying cause from the build service), not raw stack traces
 8. Build environment differences between Fedora and EL9 (e.g. autoconf version) are handled declaratively through the manifest, without per-SRPM patching
-9. Packages with long-running test suites (e.g. HDF5 MPI tests) build successfully with `%check` disabled via the manifest's `rpmbuild_without` option
+9. Packages with long-running test suites (e.g. HDF5 MPI tests) complete successfully with an extended build timeout configured via the manifest

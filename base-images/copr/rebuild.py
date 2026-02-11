@@ -34,20 +34,16 @@ def load_manifest(path: Path) -> Manifest:
 
 
 def configure_chroots(manifest: Manifest, copr: CoprClient) -> None:
-    """Configure Copr chroots with extra packages and rpmbuild options.
+    """Configure Copr chroots with extra packages.
 
     Args:
         manifest: The validated manifest.
         copr: Client for Copr operations.
     """
-    if not manifest.chroots:
-        return
-    packages = manifest.chroot_packages or None
-    rpmbuild_without = manifest.rpmbuild_without or None
-    if not packages and not rpmbuild_without:
+    if not manifest.chroots or not manifest.chroot_packages:
         return
     for chroot in manifest.chroots:
-        copr.configure_chroot(chroot, packages=packages, rpmbuild_without=rpmbuild_without)
+        copr.configure_chroot(chroot, packages=manifest.chroot_packages)
 
 
 def run_dry_run(manifest: Manifest, koji_client: KojiClient) -> None:
@@ -71,8 +67,8 @@ def run_dry_run(manifest: Manifest, koji_client: KojiClient) -> None:
         print(f"  Chroots: {', '.join(manifest.chroots)}")
         if manifest.chroot_packages:
             print(f"  Extra buildroot packages: {', '.join(manifest.chroot_packages)}")
-        if manifest.rpmbuild_without:
-            print(f"  rpmbuild --without: {', '.join(manifest.rpmbuild_without)}")
+    if manifest.build_timeout is not None:
+        print(f"  Build timeout: {manifest.build_timeout}s ({manifest.build_timeout / 3600:.1f}h)")
     print(f"  Total packages: {len(packages)}")
     print(f"  Total waves: {len(waves)}")
     print()
@@ -105,7 +101,7 @@ def run_rebuild(manifest: Manifest, koji_client: KojiClient) -> None:
         pkg_names = wave.packages
         print(f"=== Wave {wave.index}: {pkg_names} ===")
         urls = [packages[name].srpm_url for name in pkg_names]
-        build_ids = copr.submit_wave(urls)
+        build_ids = copr.submit_wave(urls, timeout=manifest.build_timeout)
         print(f"  Submitted build IDs: {build_ids}")
         copr.wait_for_wave(build_ids)
         print(f"  Wave {wave.index} complete.")
