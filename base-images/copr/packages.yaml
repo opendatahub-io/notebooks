@@ -11,6 +11,11 @@ chroots:
 # Extra packages for the mock buildroot.
 chroot_packages: []
 
+# Skip %check -- we're rebuilding known-good Fedora SRPMs and the test suites
+# (especially HDF5's MPI tests) exceed Copr's build timeout.
+rpmbuild_without:
+  - check
+
 packages:
   - name: autoconf
     nvr: autoconf-2.72-7.fc43
@@ -25,10 +30,3 @@ packages:
   - name: hdf5
     nvr: hdf5-1.14.6-6.fc43
     note: "provides libhdf5.so.310 for h5py"
-  # Future packages from RHEL AI repo:
-  # - name: geos
-  #   nvr: geos-3.13.1-1.fc44
-  #   note: "geometry engine for shapely"
-  # - name: proj
-  #   nvr: proj-9.6.0-2.fc44
-  #   note: "cartographic projections"

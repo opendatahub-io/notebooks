@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
+from pydantic.json_schema import GenerateJsonSchema
 
 
 class PackageEntry(BaseModel):
@@ -27,6 +28,10 @@ class Manifest(BaseModel):
     chroot_packages: list[str] = Field(
         default_factory=list,
         description="Extra packages to install in the mock buildroot (e.g. ['autoconf-latest'])",
+    )
+    rpmbuild_without: list[str] = Field(
+        default_factory=list,
+        description="RPM bcond options to disable (e.g. ['check'] to skip %check)",
     )
 
 
@@ -59,3 +64,22 @@ class BuildResult(BaseModel):
     build_id: int
     status: str = Field(description="Build status: 'succeeded', 'failed', or 'canceled'")
     srpm_url: str
+
+
+def main():
+    """Generate the JSON schema for the Manifest model."""
+    import json
+
+    schema = {
+        "$schema": GenerateJsonSchema.schema_dialect,
+        **Manifest.model_json_schema(schema_generator=GenerateJsonSchema)
+    }
+
+    with open("manifest_schema.json", "w") as f:
+        json.dump(schema, f, indent=2)
+
+    print("Schema generated: manifest_schema.json")
+
+
+if __name__ == "__main__":
+    main()

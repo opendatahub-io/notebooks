@@ -55,7 +55,7 @@ The tool submits packages to the Copr build service in the computed order, build
 
 The tool supports a `--dry-run` mode that queries Fedora Koji for package metadata, computes the build plan (waves, package order, SRPM URLs), and displays it without submitting any builds. This allows operators to review the plan before committing to a potentially long rebuild.
 
-The dry-run output shows: the target Copr project, total package count, total wave count, and for each wave the package NVR and SRPM download URL.
+The dry-run output shows: the target Copr project, chroot configuration (if any), total package count, total wave count, and for each wave the package NVR and SRPM download URL.
 
 ### R5: Manifest Validation
 
@@ -79,16 +79,15 @@ The tool supports a `--verbose` flag that enables detailed debug-level logging o
 
 ### R10: Build Environment Customization
 
-The target EL9 build environment may lack newer versions of build tools that Fedora SRPMs expect. For example, CentOS Stream 9 ships autoconf 2.69 by default, but Fedora SRPMs commonly require autoconf >= 2.71 (available as `autoconf-latest` on EL9).
+The target EL9 build environment may differ from Fedora in ways that cause build failures. The manifest declares chroot-level configuration that the tool applies before submitting any builds:
 
-The manifest declares:
+- **Target chroots** (e.g. `epel-9-x86_64`, `epel-9-aarch64`) -- the Copr mock environments to configure.
+- **Extra buildroot packages** -- additional packages to install in the mock buildroot alongside the default build group.
+- **RPM build options** (`rpmbuild_without`) -- bcond options to disable globally across all builds. For example, `["check"]` skips `%check` sections, which is appropriate when rebuilding known-good Fedora SRPMs whose test suites may exceed Copr's build timeout (e.g. HDF5's MPI parallel tests).
 
-- The target Copr chroots (e.g. `centos-stream-9-x86_64`)
-- A list of extra packages to install in the mock buildroot alongside the default build group
+This configuration is applied to each declared chroot before any builds are submitted. The dry-run output includes the chroot configuration that would be applied.
 
-Before submitting any builds, the tool configures each declared chroot with the extra packages. This ensures the build environment matches what the Fedora SRPMs were built against, without requiring per-SRPM spec patching.
-
-The dry-run output includes the chroot configuration that would be applied.
+Build tool version mismatches (e.g. EL9 shipping autoconf 2.69 when Fedora SRPMs need >= 2.71) can be resolved by including the required tool as a regular package in the manifest. Copr makes earlier-wave builds available as dependencies for later waves, so a rebuilt autoconf in wave 0 is automatically used by packages in wave 1+.
 
 ### R11: Actionable Error Messages
 
@@ -138,3 +137,4 @@ When an operation fails, the tool displays a clear, human-readable error message
 6. A failed Copr build halts the process immediately with a clear error identifying the failed build
 7. All failures produce actionable error messages (with the underlying cause from the build service), not raw stack traces
 8. Build environment differences between Fedora and EL9 (e.g. autoconf version) are handled declaratively through the manifest, without per-SRPM patching
+9. Packages with long-running test suites (e.g. HDF5 MPI tests) build successfully with `%check` disabled via the manifest's `rpmbuild_without` option

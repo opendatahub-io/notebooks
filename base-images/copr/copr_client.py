@@ -42,28 +42,45 @@ class CoprClient:
         """
         self.project = project
 
-    def configure_chroot_packages(self, chroot: str, packages: list[str]) -> None:
-        """Set additional packages in a Copr mock chroot.
+    def configure_chroot(
+        self,
+        chroot: str,
+        *,
+        packages: list[str] | None = None,
+        rpmbuild_without: list[str] | None = None,
+    ) -> None:
+        """Configure a Copr mock chroot.
 
-        This configures the mock buildroot to include extra packages beyond the
-        default @buildsys-build group. For example, EL9's default autoconf is
-        2.69, but many Fedora SRPMs need autoconf >= 2.71 (available as
-        ``autoconf-latest`` on EL9).
+        Calls ``copr-cli edit-chroot`` to set additional buildroot packages
+        and/or rpmbuild bcond options.  Each argument that is non-empty adds
+        the corresponding flag(s) to the command.
 
-        Note: this *sets* the additional package list, replacing any previously
-        configured packages for the chroot.
+        Note: ``--packages`` *replaces* the current additional-package list;
+        ``--rpmbuild-without`` *replaces* the current without-list.
 
         Args:
-            chroot: Chroot name (e.g. 'centos-stream-9-x86_64').
-            packages: List of package names to install in the buildroot.
+            chroot: Chroot name (e.g. 'epel-9-x86_64').
+            packages: Extra packages to install in the buildroot.
+            rpmbuild_without: RPM bcond options to disable (e.g. ['check']
+                to skip ``%check``).
 
         Raises:
             CoprCliError: If copr-cli returns a non-zero exit code.
         """
         chroot_path = f"{self.project}/{chroot}"
-        pkg_str = " ".join(packages)
-        logger.info("Configuring chroot %s with additional packages: %s", chroot_path, pkg_str)
-        cmd = ["copr-cli", "edit-chroot", chroot_path, "--packages", pkg_str]
+        cmd: list[str] = ["copr-cli", "edit-chroot", chroot_path]
+
+        if packages:
+            cmd.extend(["--packages", " ".join(packages)])
+        if rpmbuild_without:
+            for opt in rpmbuild_without:
+                cmd.extend(["--rpmbuild-without", opt])
+
+        if len(cmd) == 3:
+            # Nothing to configure
+            return
+
+        logger.info("Configuring chroot %s: %s", chroot_path, " ".join(cmd[3:]))
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
         if result.returncode != 0:
             raise CoprCliError(cmd, result.returncode, result.stdout, result.stderr)
