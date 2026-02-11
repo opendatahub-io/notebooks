@@ -62,7 +62,7 @@ def main():
     """)
 
     replacements = {
-        "AIPCC pip and uv config files": textwrap.dedent(r"""
+        "AIPCC pip and uv config files": textwrap.dedent(r'''
             ARG INDEX_URL
             COPY --chmod=664 --chown=1001:0 base-images/utils/pip.conf.in /opt/app-root/pip.conf
             COPY --chmod=664 --chown=1001:0 base-images/utils/uv.toml.in /opt/app-root/uv.toml
@@ -76,10 +76,18 @@ def main():
             sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/uv.toml
             EOF
 
-            ENV PIP_CONFIG_FILE=/opt/app-root/pip.conf
-            ENV PIP_NO_CACHE_DIR=off
-            ENV UV_CONFIG_FILE=/opt/app-root/uv.toml
-            ENV UV_NO_CACHE=true"""),
+            # Python and virtual env settings
+            ENV VIRTUAL_ENV=${APP_ROOT} \
+                PIP_CONFIG_FILE=/opt/app-root/pip.conf \
+                UV_CONFIG_FILE=/opt/app-root/uv.toml \
+                PIP_NO_CACHE_DIR=off \
+                UV_NO_CACHE=true \
+                PIP_DISABLE_PIP_VERSION_CHECK=1 \
+                PYTHONUNBUFFERED=1 \
+                PYTHONIOENCODING=utf-8 \
+                LANG=en_US.UTF-8 \
+                LC_ALL=en_US.UTF-8 \
+                PS1="(app-root) \w\$ "'''),
         "RHAIENG-2189: this is AIPCC migration phase 1.5": textwrap.dedent(r"""
             ENV PIP_INDEX_URL=https://pypi.org/simple
             # UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
