@@ -170,11 +170,11 @@ set -Eeuxo pipefail
 sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/pip.conf
 sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/uv.toml
 EOF
+
 ENV PIP_CONFIG_FILE=/opt/app-root/pip.conf
 ENV PIP_NO_CACHE_DIR=off
 ENV UV_CONFIG_FILE=/opt/app-root/uv.toml
 ENV UV_NO_CACHE=true
-
 ### END AIPCC pip and uv config files
 
 # Restore user workspace

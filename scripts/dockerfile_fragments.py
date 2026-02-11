@@ -70,11 +70,11 @@ def main():
             sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/pip.conf
             sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/uv.toml
             EOF
+
             ENV PIP_CONFIG_FILE=/opt/app-root/pip.conf
             ENV PIP_NO_CACHE_DIR=off
             ENV UV_CONFIG_FILE=/opt/app-root/uv.toml
-            ENV UV_NO_CACHE=true
-        """),
+            ENV UV_NO_CACHE=true"""),
         "RHAIENG-2189: this is AIPCC migration phase 1.5": textwrap.dedent(r"""
             ENV PIP_INDEX_URL=https://pypi.org/simple
             # UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
