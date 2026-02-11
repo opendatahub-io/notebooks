@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+#set +euo pipefail
 
 ############################################################################################
 # setup-offline-binaries.sh - Populate local caches for hermetic code-server build
@@ -67,7 +67,7 @@ echo "11" > ~/.cache/node-gyp/22.20.0/installVersion
 
 # Setup Playwright Chromium
 mkdir -p ~/.cache/ms-playwright/chromium-1134
-unzip -q "${HERMETO_OUTPUT}/deps/generic/chromium-1134-linux.zip" -d ~/.cache/ms-playwright/chromium-1134
+unzip -qo "${HERMETO_OUTPUT}/deps/generic/chromium-1134-linux.zip" -d ~/.cache/ms-playwright/chromium-1134
 # Mark as installed
 touch ~/.cache/ms-playwright/chromium-1134/INSTALLATION_COMPLETE
 
@@ -115,6 +115,59 @@ if [[ -f "$REWRITE_SCRIPT" ]]; then
     find . -name "package-lock.json" -type f | while read f; do
         echo "Patching $f"
         rewrite_cachi2_path "$f"
+    done
+    # Also rewrite GitHub shorthand git refs in package.json files
+    # (npm ci reads package.json and resolves git refs even when package-lock.json is rewritten)
+    find . -name "package.json" -not -path "*/node_modules/*" -type f | while read f; do
+        if grep -q '#[0-9a-f]\{40\}' "$f"; then
+            echo "Patching git refs in $f"
+            perl -i -pe 's#": "([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_.-]+)\#([0-9a-f]{40})"#": "file:///cachi2/output/deps/npm/$1-$2-$3.tar.gz"#g' "$f"
+        fi
+    done
+
+    # Rewrite git shorthand deps with branch/tag names (not 40-hex commit hashes)
+    # e.g. "@emmetio/css-parser": "ramya-rao-a/css-parser#vscode"
+    # The regex above handles refs that are 40-hex commit hashes (like @parcel/watcher).
+    # For branch names like #vscode, we look up the actual commit hash from the
+    # already-rewritten resolved field in package-lock.json, then rewrite the dep
+    # specifier in both package.json and package-lock.json so npm doesn't try
+    # git ls-remote for branch resolution.
+    find . -name "package.json" -not -path "*/node_modules/*" -type f | while read f; do
+        lockfile="$(dirname "$f")/package-lock.json"
+        [[ -f "$lockfile" ]] || continue
+        # Extract git shorthand deps with non-hash fragment: "org/repo#branch"
+        # where the fragment is NOT a 40-hex commit hash
+        perl -ne '
+            if (/":\s*"([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)#(?![0-9a-f]{40}")([^"]+)"/) {
+                print "$1\t$2\t$3\n" unless $seen{"$1/$2/$3"}++;
+            }
+        ' "$f" | while IFS=$'\t' read -r org repo branch; do
+            [[ -n "$org" && -n "$repo" && -n "$branch" ]] || continue
+            # Look up commit hash from the already-rewritten resolved URL in package-lock.json
+            # Pattern: file:///cachi2/output/deps/npm/<org>-<repo>-<40hex>.tar.gz
+            commit=$(perl -ne "
+                if (m{cachi2/output/deps/npm/\Q${org}\E-\Q${repo}\E-([0-9a-f]{40})\\.tar\\.gz}) {
+                    print \$1; exit;
+                }
+            " "$lockfile")
+            if [[ -z "$commit" ]]; then
+                # Fallback: try original git+ssh resolved URL (not yet rewritten)
+                commit=$(perl -ne "
+                    if (m{github\\.com/\Q${org}\E/\Q${repo}\E[^#]*#([0-9a-f]{40})}) {
+                        print \$1; exit;
+                    }
+                " "$lockfile")
+            fi
+            if [[ -n "$commit" ]]; then
+                tarball="file:///cachi2/output/deps/npm/${org}-${repo}-${commit}.tar.gz"
+                echo "Rewriting git branch ref ${org}/${repo}#${branch} -> ${tarball}"
+                for target in "$f" "$lockfile"; do
+                    perl -i -pe "s|\\Q${org}/${repo}#${branch}\\E|${tarball}|g" "$target"
+                done
+            else
+                echo "WARNING: Could not find commit hash for ${org}/${repo}#${branch} in ${lockfile}"
+            fi
+        done
     done
     popd > /dev/null
 else

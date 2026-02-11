@@ -25,6 +25,11 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
     # [HERMETIC] CODESERVER_SOURCE_PREFETCH is set by Dockerfile ENV (points to prefetched code-server source).
     cd "${CODESERVER_SOURCE_PREFETCH}"
 
+    # s390x: apply patch (from VSCodium: arch-4-s390x-package.json.patch)
+    if [[ "$ARCH" == "s390x" ]]; then
+        patch -p1 < patches/s390x.patch
+    fi
+
     # # [HERMETIC] Apply offline-build patches (cachi2 rewrites, offline npm, etc.)
     # # Use `patch` instead of `git apply` because the prefetched source contains a
     # # nested git submodule (lib/vscode) whose .git reference is broken inside the
@@ -58,10 +63,7 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
     # cp patches/lib/vscode/remote/package.json lib/vscode/remote/package.json
     # cp patches/lib/vscode/remote/package-lock.json lib/vscode/remote/package-lock.json
 
-    # # s390x: apply patch (from VSCodium: arch-4-s390x-package.json.patch)
-    # if [[ "$ARCH" == "s390x" ]]; then
-    #     patch -p1 < patches/s390x.patch
-    # fi
+    
 
     # ppc64le/s390x: patch @vscode/vsce-sign to skip binary download.
     # vsce-sign's postinstall.js downloads platform-specific signing binaries,
