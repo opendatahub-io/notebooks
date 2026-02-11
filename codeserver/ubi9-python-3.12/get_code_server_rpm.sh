@@ -25,29 +25,43 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
     # [HERMETIC] CODESERVER_SOURCE_PREFETCH is set by Dockerfile ENV (points to prefetched code-server source).
     cd "${CODESERVER_SOURCE_PREFETCH}"
 
-    # [HERMETIC] Apply offline-build patches (cachi2 rewrites, offline npm, etc.)
-    # Use `patch` instead of `git apply` because the prefetched source contains a
-    # nested git submodule (lib/vscode) whose .git reference is broken inside the
-    # container, causing `git apply` to fail on files within that submodule.
-    for p in patches/[0-9]*-*.patch; do
-        echo "Applying $p"
-        patch -p1 < "$p"
-    done
+    # # [HERMETIC] Apply offline-build patches (cachi2 rewrites, offline npm, etc.)
+    # # Use `patch` instead of `git apply` because the prefetched source contains a
+    # # nested git submodule (lib/vscode) whose .git reference is broken inside the
+    # # container, causing `git apply` to fail on files within that submodule.
+    # for p in patches/[0-9]*-*.patch; do
+    #     echo "Applying $p"
+    #     patch -p1 < "$p"
+    # done
 
-    # [HERMETIC] Copy patched lib/vscode/remote/ files (node-gyp, proc-log additions).
-    # These can't be applied as a diff patch because cachi2 npm prefetch has already
-    # rewritten resolved URLs in the source lib/vscode/remote/ directory, making the
-    # diff context lines no longer match. Instead, we copy the stored patched files
-    # (which cachi2 has also processed during its prefetch phase, rewriting their URLs
-    # to file:///cachi2/... paths).
-    echo "Copying patched lib/vscode/remote/ files (node-gyp, proc-log additions)"
-    cp patches/lib/vscode/remote/package.json lib/vscode/remote/package.json
-    cp patches/lib/vscode/remote/package-lock.json lib/vscode/remote/package-lock.json
+    # # [HERMETIC] Copy stored patched package.json/package-lock.json files.
+    # # These directories have git-shorthand dependencies (@parcel/watcher,
+    # # @emmetio/css-parser) that can't be fetched offline. The stored copies
+    # # rewrite them to file:///cachi2/output/deps/generic/... URLs pointing to
+    # # pre-fetched tarballs (listed in artifacts.in.yaml).
+    # #
+    # # We use COPY instead of diff patches because:
+    # # - On Konflux, cachi2 npm prefetch rewrites resolved URLs in the source
+    # #   before the Docker build, so diff context lines no longer match.
+    # # - On local builds, cachi2 prefetch doesn't run, so we need the rewrites.
+    # # The stored copies work in both environments since the generic tarballs
+    # # are always available in the cachi2 cache.
+    # echo "Copying patched lib/vscode/extensions/ files (@parcel/watcher rewrite)"
+    # cp patches/lib/vscode/extensions/package.json lib/vscode/extensions/package.json
+    # cp patches/lib/vscode/extensions/package-lock.json lib/vscode/extensions/package-lock.json
 
-    # s390x: apply patch (from VSCodium: arch-4-s390x-package.json.patch)
-    if [[ "$ARCH" == "s390x" ]]; then
-        patch -p1 < patches/s390x.patch
-    fi
+    # echo "Copying patched lib/vscode/extensions/emmet/ files (@emmetio/css-parser rewrite)"
+    # cp patches/lib/vscode/extensions/emmet/package.json lib/vscode/extensions/emmet/package.json
+    # cp patches/lib/vscode/extensions/emmet/package-lock.json lib/vscode/extensions/emmet/package-lock.json
+
+    # echo "Copying patched lib/vscode/remote/ files (node-gyp, proc-log, @parcel/watcher)"
+    # cp patches/lib/vscode/remote/package.json lib/vscode/remote/package.json
+    # cp patches/lib/vscode/remote/package-lock.json lib/vscode/remote/package-lock.json
+
+    # # s390x: apply patch (from VSCodium: arch-4-s390x-package.json.patch)
+    # if [[ "$ARCH" == "s390x" ]]; then
+    #     patch -p1 < patches/s390x.patch
+    # fi
 
     # ppc64le/s390x: patch @vscode/vsce-sign to skip binary download.
     # vsce-sign's postinstall.js downloads platform-specific signing binaries,

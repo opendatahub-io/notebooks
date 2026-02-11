@@ -164,13 +164,12 @@ spec:
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server
       type: npm
-    - path: codeserver/ubi9-python-3.12/patches/code-server/test
+    # Used to be patches/
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/test
       type: npm
-    - path: codeserver/ubi9-python-3.12/patches/code-server/lib/vscode
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode
       type: npm
-    - path: codeserver/ubi9-python-3.12/patches/code-server/lib/vscode/remote
-      type: npm
-    - path: codeserver/ubi9-python-3.12/patches/code-server/lib/vscode/extensions/microsoft-authentication
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/microsoft-authentication
       type: npm
 
   pipelineRef:
