@@ -60,11 +60,8 @@ input:
     - url: https://mirror.openshift.com/pub/openshift-v4/s390x/clients/ocp/stable/openshift-client-linux.tar.gz
       filename: openshift-client-linux-s390x.tar.gz
 
-    # GitHub tarball dependency for @emmetio/css-parser (used by VSCode emmet extension)
-    - url: https://codeload.github.com/ramya-rao-a/css-parser/tar.gz/370c480ac103bd17c7bcfb34bf5d577dc40d3660
-      filename: ramya-rao-a-css-parser-370c480ac103bd17c7bcfb34bf5d577dc40d3660.tar.gz
-
     # GitHub tarball dependency for @parcel/watcher (v4.106.3 uses git ref instead of npm registry)
+    # Only needed for lib/vscode root (patch 07); extensions/ and remote/ are handled by cachi2 npm prefetch.
     - url: https://codeload.github.com/parcel-bundler/watcher/tar.gz/1ca032aa8339260a8a3bcf825c3a1a71e3e43542
       filename: parcel-bundler-watcher-1ca032aa8339260a8a3bcf825c3a1a71e3e43542.tar.gz
 

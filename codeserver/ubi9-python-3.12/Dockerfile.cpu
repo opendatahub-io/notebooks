@@ -110,6 +110,13 @@ COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server/ ${CODESERVER_SOURCE_P
 # These are applied by get_code_server_rpm.sh via `patch -p1`.
 COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/*.patch ${CODESERVER_SOURCE_PREFETCH}/patches/
 
+# [HERMETIC] Copy stored patched package.json/package-lock.json files.
+# Some directories (lib/vscode/remote/) can't use diff patches because cachi2
+# npm prefetch has already rewritten resolved URLs in the source. Instead, we
+# copy in the pre-patched files (with node-gyp/proc-log additions) which cachi2
+# has also processed during prefetch.
+COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib/ ${CODESERVER_SOURCE_PREFETCH}/patches/lib/
+
 # [HERMETIC] get_code_server_rpm.sh was simplified: it now only enables gcc-toolset-14,
 # installs nfpm from cachi2, and applies patches. The actual npm ci/build/release steps
 # are done below in separate RUN commands for better caching.
@@ -134,7 +141,7 @@ COPY ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh ${CODESERVER_SO
 RUN --network=none cd ${CODESERVER_SOURCE_CODE} && \
     source ./setup-offline-binaries.sh && \
     cd ${CODESERVER_SOURCE_PREFETCH} && \
-    CI=1 npm ci --offline
+    CI=1 npm ci --offline --loglevel silly
 
 # [HERMETIC] Step 2: Build code-server TypeScript
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \

@@ -34,6 +34,16 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
         patch -p1 < "$p"
     done
 
+    # [HERMETIC] Copy patched lib/vscode/remote/ files (node-gyp, proc-log additions).
+    # These can't be applied as a diff patch because cachi2 npm prefetch has already
+    # rewritten resolved URLs in the source lib/vscode/remote/ directory, making the
+    # diff context lines no longer match. Instead, we copy the stored patched files
+    # (which cachi2 has also processed during its prefetch phase, rewriting their URLs
+    # to file:///cachi2/... paths).
+    echo "Copying patched lib/vscode/remote/ files (node-gyp, proc-log additions)"
+    cp patches/lib/vscode/remote/package.json lib/vscode/remote/package.json
+    cp patches/lib/vscode/remote/package-lock.json lib/vscode/remote/package-lock.json
+
     # s390x: apply patch (from VSCodium: arch-4-s390x-package.json.patch)
     if [[ "$ARCH" == "s390x" ]]; then
         patch -p1 < patches/s390x.patch
