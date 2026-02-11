@@ -83,7 +83,7 @@ def main():
             ENV UV_DEFAULT_INDEX=https://pypi.org/simple"""),
 
         "Subscribe with subscription manager": textwrap.dedent(subscription_manager_register_refresh),
-        "upgrade first to avoid fixable vulnerabilities": textwrap.dedent(ntb.process_template_with_indents(r"""
+        "upgrade first to avoid fixable vulnerabilities": textwrap.dedent(ntb.process_template_with_indents(rt"""
             {subscription_manager_register_refresh}
             # Problem: The operation would result in removing the following protected packages: systemd
             #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
