@@ -83,6 +83,11 @@ def run_dry_run(manifest: Manifest, koji_client: KojiClient) -> None:
 def run_rebuild(manifest: Manifest, koji_client: KojiClient) -> None:
     """Execute the full rebuild: resolve dependencies, submit builds, wait for completion.
 
+    All waves are submitted upfront using Copr's batch ordering
+    (``--with-build-id`` / ``--after-build-id``), so Copr enforces the
+    correct build sequence server-side.  The tool then waits for all
+    builds to complete.
+
     Args:
         manifest: The validated manifest.
         koji_client: Client for querying Koji metadata.
@@ -97,16 +102,27 @@ def run_rebuild(manifest: Manifest, koji_client: KojiClient) -> None:
 
     copr = CoprClient(project=manifest.copr_project)
     configure_chroots(manifest, copr)
-    for wave in waves:
-        pkg_names = wave.packages
-        print(f"=== Wave {wave.index}: {pkg_names} ===")
-        urls = [packages[name].srpm_url for name in pkg_names]
-        build_ids = copr.submit_wave(urls, timeout=manifest.build_timeout)
-        print(f"  Submitted build IDs: {build_ids}")
-        copr.wait_for_wave(build_ids)
-        print(f"  Wave {wave.index} complete.")
 
-    print("All waves complete.")
+    # Collect SRPM URLs grouped by wave
+    wave_urls: list[list[str]] = []
+    for wave in waves:
+        urls = [packages[name].srpm_url for name in wave.packages]
+        wave_urls.append(urls)
+
+    # Submit all waves at once; Copr handles ordering via batches
+    print(f"Submitting {len(packages)} packages in {len(waves)} waves ...")
+    all_wave_ids = copr.submit_all_waves(wave_urls, timeout=manifest.build_timeout)
+
+    # Report submitted build IDs
+    for wave, wave_ids in zip(waves, all_wave_ids):
+        print(f"  Wave {wave.index} ({wave.packages}): build IDs {wave_ids}")
+
+    # Wait for all builds to complete
+    all_build_ids = [bid for wave_ids in all_wave_ids for bid in wave_ids]
+    print(f"Waiting for {len(all_build_ids)} builds to complete ...")
+    copr.wait_for_wave(all_build_ids)
+
+    print("All builds complete.")
 
 
 def main(argv: list[str] | None = None) -> None:

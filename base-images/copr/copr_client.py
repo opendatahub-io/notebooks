@@ -76,13 +76,24 @@ class CoprClient:
         if result.returncode != 0:
             raise CoprCliError(cmd, result.returncode, result.stdout, result.stderr)
 
-    def submit_build(self, srpm_url: str, *, timeout: int | None = None) -> int:
+    def submit_build(
+        self,
+        srpm_url: str,
+        *,
+        timeout: int | None = None,
+        with_build_id: int | None = None,
+        after_build_id: int | None = None,
+    ) -> int:
         """Submit a build to Copr from an SRPM URL.
 
         Args:
             srpm_url: URL to the source RPM to build.
             timeout: Build timeout in seconds. If not set, Copr's default
                 (~5 hours) applies.
+            with_build_id: Add this build to the same batch as the given build ID.
+                Builds in the same batch run in parallel.
+            after_build_id: Create a new batch for this build that is blocked until
+                the batch containing the given build ID finishes.
 
         Returns:
             The Copr build ID.
@@ -95,6 +106,10 @@ class CoprClient:
         cmd = ["copr-cli", "build", "--nowait", self.project, srpm_url]
         if timeout is not None:
             cmd.extend(["--timeout", str(timeout)])
+        if with_build_id is not None:
+            cmd.extend(["--with-build-id", str(with_build_id)])
+        if after_build_id is not None:
+            cmd.extend(["--after-build-id", str(after_build_id)])
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
         if result.returncode != 0:
             raise CoprCliError(cmd, result.returncode, result.stdout, result.stderr)
@@ -153,6 +168,52 @@ class CoprClient:
             List of Copr build IDs.
         """
         return [self.submit_build(url, timeout=timeout) for url in srpm_urls]
+
+    def submit_all_waves(
+        self,
+        waves: list[list[str]],
+        *,
+        timeout: int | None = None,
+    ) -> list[list[int]]:
+        """Submit all build waves at once using Copr batch ordering.
+
+        Builds within the same wave are placed in the same batch
+        (``--with-build-id``) so they run in parallel.  Each wave's batch
+        is chained after the previous wave's batch (``--after-build-id``)
+        so Copr enforces the correct build order server-side.
+
+        Args:
+            waves: List of waves, where each wave is a list of SRPM URLs.
+            timeout: Build timeout in seconds per build.
+
+        Returns:
+            List of lists of Copr build IDs (one inner list per wave).
+        """
+        all_wave_ids: list[list[int]] = []
+        prev_wave_anchor: int | None = None
+
+        for wave_urls in waves:
+            wave_ids: list[int] = []
+            wave_anchor: int | None = None
+
+            for i, url in enumerate(wave_urls):
+                if i == 0:
+                    # First build in the wave: chain after previous wave (if any)
+                    build_id = self.submit_build(
+                        url, timeout=timeout, after_build_id=prev_wave_anchor,
+                    )
+                    wave_anchor = build_id
+                else:
+                    # Subsequent builds: same batch as the first build in this wave
+                    build_id = self.submit_build(
+                        url, timeout=timeout, with_build_id=wave_anchor,
+                    )
+                wave_ids.append(build_id)
+
+            all_wave_ids.append(wave_ids)
+            prev_wave_anchor = wave_anchor
+
+        return all_wave_ids
 
     def wait_for_wave(self, build_ids: list[int], poll_interval: int = 30) -> None:
         """Wait for all builds in a wave to complete.

@@ -45,10 +45,10 @@ Circular dependencies within the manifest are detected and reported as errors.
 
 ### R3: Build Execution
 
-The tool submits packages to the Copr build service in the computed order, building each wave of independent packages in parallel and waiting for all builds in a wave to complete before starting the next wave. It:
+The tool submits all packages to the Copr build service upfront using Copr's [batch build ordering](https://pavel.raiskup.cz/blog/build-ordering-by-batches-in-copr.html). Builds within the same wave are grouped into a single batch (run in parallel), and each wave's batch is chained after the previous wave's batch so Copr enforces the correct build sequence server-side. This means the tool does not need to stay running between waves -- all builds are submitted in a single pass. After submission, the tool waits for all builds to complete. It:
 
-- Reports which wave is being built and the submitted build IDs
-- Fails immediately when any build in a wave fails, identifying the failed build
+- Reports all submitted build IDs grouped by wave
+- Detects and reports any build failure during the wait phase
 - Architecture targeting (x86_64, aarch64) is configured at the Copr project level
 
 ### R4: Dry Run
