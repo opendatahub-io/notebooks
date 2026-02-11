@@ -8,7 +8,7 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main" && ( "base-images/utils/**".pathChanged() || "base-images/cpu/c9s-python-3.12/**".pathChanged() || ".tekton/odh-base-image-cpu-py312-c9s-push.yaml".pathChanged() )
+      == "main" && ( "base-images/utils/**".pathChanged() || "base-images/cpu/c9s-python-3.12/**".pathChanged() || "base-images/build-args/cpu.conf".pathChanged() || ".tekton/odh-base-image-cpu-py312-c9s-push.yaml".pathChanged() )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -26,6 +26,8 @@ spec:
     value: quay.io/opendatahub/odh-base-image-cpu-py312-c9s:{{revision}}
   - name: dockerfile
     value: base-images/cpu/c9s-python-3.12/Dockerfile.cpu
+  - name: build-args-file
+    value: base-images/build-args/cpu.conf
   - name: path-context
     value: .
   - name: additional-tags

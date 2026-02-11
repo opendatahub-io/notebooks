@@ -8,7 +8,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main"  && ( "base-images/utils/**".pathChanged() || "base-images/rocm/6.4/ubi9-python-3.12/**".pathChanged() || ".tekton/odh-base-image-rocm-6-4-py312-ubi9-push.yaml".pathChanged() )
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main"  && ( "base-images/utils/**".pathChanged() || "base-images/rocm/6.4/ubi9-python-3.12/**".pathChanged() || "base-images/build-args/rocm6.4.conf".pathChanged() || ".tekton/odh-base-image-rocm-6-4-py312-ubi9-push.yaml".pathChanged() )
   creationTimestamp:
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -26,6 +26,8 @@ spec:
     value: quay.io/opendatahub/odh-base-image-rocm-py312-ubi9:{{revision}}
   - name: dockerfile
     value: base-images/rocm/6.4/ubi9-python-3.12/Dockerfile.rocm
+  - name: build-args-file
+    value: base-images/build-args/rocm6.4.conf
   - name: path-context
     value: .
   - name: additional-tags

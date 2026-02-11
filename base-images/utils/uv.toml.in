@@ -1,0 +1,8 @@
+# Python Package Index
+index-url = "@INDEX_URL@"
+# load TLS certificates from the platform's native certificate store.
+native-tls = true
+# container: if user enables caching, the uv needs to copy from cache mount.
+link-mode = "copy"
+# container: compile Python files to bytecode after installation.
+compile-bytecode = true

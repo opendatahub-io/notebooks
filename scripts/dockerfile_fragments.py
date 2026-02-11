@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 # restricting to the relevant directories significantly speeds up the processing
 docker_directories = (
+    ntb.ROOT_DIR / "base-images",
     ntb.ROOT_DIR / "jupyter",
     ntb.ROOT_DIR / "codeserver",
     ntb.ROOT_DIR / "rstudio",
@@ -61,6 +62,19 @@ def main():
     """)
 
     replacements = {
+        "AIPCC pip and uv config files": textwrap.dedent(r"""
+            COPY --chmod=664 --chown=1001:0 base-images/utils/pip.conf.in /opt/app-root/pip.conf
+            COPY --chmod=664 --chown=1001:0 base-images/utils/uv.toml.in /opt/app-root/uv.toml
+            RUN /bin/bash <<'EOF'
+            set -Eeuxo pipefail
+            sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/pip.conf
+            sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/uv.toml
+            EOF
+            ENV PIP_CONFIG_FILE=/opt/app-root/pip.conf
+            ENV PIP_NO_CACHE_DIR=off
+            ENV UV_CONFIG_FILE=/opt/app-root/uv.toml
+            ENV UV_NO_CACHE=true
+        """),
         "RHAIENG-2189: this is AIPCC migration phase 1.5": textwrap.dedent(r"""
             ENV PIP_INDEX_URL=https://pypi.org/simple
             # UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
@@ -69,7 +83,7 @@ def main():
             ENV UV_DEFAULT_INDEX=https://pypi.org/simple"""),
 
         "Subscribe with subscription manager": textwrap.dedent(subscription_manager_register_refresh),
-        "upgrade first to avoid fixable vulnerabilities": textwrap.dedent(ntb.process_template_with_indents(rt"""
+        "upgrade first to avoid fixable vulnerabilities": textwrap.dedent(ntb.process_template_with_indents(r"""
             {subscription_manager_register_refresh}
             # Problem: The operation would result in removing the following protected packages: systemd
             #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
@@ -159,8 +173,6 @@ def main():
     for docker_dir in docker_directories:
         for dockerfile in docker_dir.glob("**/Dockerfile*"):
             if not dockerfile.is_file():
-                continue
-            if dockerfile.is_relative_to(ntb.ROOT_DIR / "base-images"):
                 continue
             if dockerfile.is_relative_to(ntb.ROOT_DIR / "examples"):
                 continue

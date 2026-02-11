@@ -90,6 +90,21 @@ RUN ldconfig
 # RHEL entitlements. Adding CentOS Stream 9 repos would work but mixing distro repos
 # is not a good practice to promote. The c9s variant of this image has these installed.
 
+### BEGIN AIPCC pip and uv config files
+COPY --chmod=664 --chown=1001:0 base-images/utils/pip.conf.in /opt/app-root/pip.conf
+COPY --chmod=664 --chown=1001:0 base-images/utils/uv.toml.in /opt/app-root/uv.toml
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/pip.conf
+sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/uv.toml
+EOF
+ENV PIP_CONFIG_FILE=/opt/app-root/pip.conf
+ENV PIP_NO_CACHE_DIR=off
+ENV UV_CONFIG_FILE=/opt/app-root/uv.toml
+ENV UV_NO_CACHE=true
+
+### END AIPCC pip and uv config files
+
 # Restore user workspace
 USER 1001
 WORKDIR /opt/app-root/src
