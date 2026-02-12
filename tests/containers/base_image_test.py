@@ -27,8 +27,29 @@ if TYPE_CHECKING:
     import pytest_subtests
 
 
+# see also https://pypi.org/project/pytest-assert-utils/
+def _assert_subdict(subdict: dict[str, str], superdict: dict[str, str]):
+    """Filter subdict to only keys in superdict, then compare the remaining items."""
+    __tracebackhide__ = True
+    assert subdict == {k: superdict[k] for k in subdict if k in superdict}
+
+
 class TestBaseImage:
     """Tests that are applicable for all images we have in this repository."""
+
+    def _has_uv_lock_d(self, image: str) -> bool:
+        """Check if the image is AIPCC-enabled by looking for uv.lock.d in source directory."""
+        image_metadata = conftest.get_image_metadata(image)
+        source_location = image_metadata.labels.get("io.openshift.build.source-location", "")
+
+        # Extract relative path from URL (after /tree/main/)
+        source_dir = None
+        if "/tree/main/" in source_location:
+            source_dir = source_location.split("/tree/main/")[1]
+
+        # Check if uv.lock.d directory exists in source
+        workspace_root = pathlib.Path(__file__).parent.parent.parent
+        return source_dir is not None and (workspace_root / source_dir / "uv.lock.d").is_dir()
 
     def _run_test(self, image: str, test_fn: Callable[[testcontainers.core.container.DockerContainer], None]) -> None:
         with self._test_container(image) as container:
@@ -165,16 +186,32 @@ class TestBaseImage:
         self._run_test(image=image, test_fn=test_fn)
 
     def test_pip_install_cowsay_runs(self, image: str):
-        """Checks that the Python virtualenv in the image is writable."""
+        """Checks that the Python virtualenv in the image is writable.
+
+        For AIPCC-enabled images, cowsay is not available on the restricted index,
+        so we expect the install to fail with a specific error message.
+        """
+        has_uv_lock_d = self._has_uv_lock_d(image)
 
         def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["python3", "-m", "pip", "install", "cowsay"])
-            logging.debug(output.decode())
-            assert ecode == 0
+            output_str = output.decode()
+            logging.debug(output_str)
 
-            ecode, output = container.exec(["python3", "-m", "cowsay", "--text", "Hello world"])
-            logging.debug(output.decode())
-            assert ecode == 0
+            if has_uv_lock_d:
+                # AIPCC-enabled: cowsay should NOT be available
+                assert ecode != 0, "Expected pip install cowsay to fail on AIPCC-enabled image"
+                assert (
+                    "Could not find a version that satisfies the requirement cowsay" in output_str
+                    or "No matching distribution found for cowsay" in output_str
+                ), f"Expected AIPCC error message, got: {output_str}"
+            else:
+                # Non-AIPCC: cowsay should install and run successfully
+                assert ecode == 0, f"Expected pip install cowsay to succeed, got: {output_str}"
+
+                ecode, output = container.exec(["python3", "-m", "cowsay", "--text", "Hello world"])
+                logging.debug(output.decode())
+                assert ecode == 0
 
         self._run_test(image=image, test_fn=test_fn)
 
@@ -263,6 +300,35 @@ class TestBaseImage:
 
         self._run_test(image=image, test_fn=test_fn)
 
+    @staticmethod
+    @allure.step("Verify AIPCC image has config file env vars and no index URL env vars")
+    def _check_aipcc_env_vars(actual: dict[str, str], subtests: pytest_subtests.SubTests) -> None:
+        """AIPCC images use pip.conf and uv.toml config files instead of index URL env vars."""
+        aipcc_config_vars = {
+            "PIP_CONFIG_FILE": "/opt/app-root/pip.conf",
+            "UV_CONFIG_FILE": "/opt/app-root/uv.toml",
+        }
+        pypi_index_vars = ("PIP_INDEX_URL", "UV_INDEX_URL", "UV_DEFAULT_INDEX")
+
+        with subtests.test("AIPCC images have config file env vars"):
+            _assert_subdict(aipcc_config_vars, actual)
+        with subtests.test("AIPCC images do not have index URL env vars"):
+            for key in pypi_index_vars:
+                assert key not in actual, f"Expected {key} to NOT be present (image uses uv.lock.d)"
+
+    @staticmethod
+    @allure.step("Verify non-AIPCC image has PyPI index URL env vars")
+    def _check_pypi_env_vars(actual: dict[str, str], subtests: pytest_subtests.SubTests) -> None:
+        """Non-AIPCC images set PIP_INDEX_URL, UV_INDEX_URL, and UV_DEFAULT_INDEX to pypi.org."""
+        pypi_env_vars = {
+            "PIP_INDEX_URL": "https://pypi.org/simple",
+            "UV_INDEX_URL": "https://pypi.org/simple",
+            # https://docs.astral.sh/uv/reference/environment/#uv_default_index
+            "UV_DEFAULT_INDEX": "https://pypi.org/simple",
+        }
+        with subtests.test("Non-AIPCC images have index URL env vars"):
+            _assert_subdict(pypi_env_vars, actual)
+
     @allure.issue("RHAIENG-2189")
     def test_python_package_index(self, image: str, subtests: pytest_subtests.SubTests):
         """Checks that we use the Python Package Index we mean to use.
@@ -272,39 +338,16 @@ class TestBaseImage:
         are pinned with exact sources in the lockfile (RHAIENG-3056).
         """
 
-        # Get image metadata to determine source directory
-        image_metadata = conftest.get_image_metadata(image)
-        source_location = image_metadata.labels.get("io.openshift.build.source-location", "")
-
-        # Extract relative path from URL (after /tree/main/)
-        source_dir = None
-        if "/tree/main/" in source_location:
-            source_dir = source_location.split("/tree/main/")[1]
-
-        # Check if uv.lock.d directory exists in source
-        workspace_root = pathlib.Path(__file__).parent.parent.parent
-        has_uv_lock_d = source_dir is not None and (workspace_root / source_dir / "uv.lock.d").is_dir()
-
-        pypi_env_vars = {
-            "PIP_INDEX_URL": "https://pypi.org/simple",
-            "UV_INDEX_URL": "https://pypi.org/simple",
-            # https://docs.astral.sh/uv/reference/environment/#uv_default_index
-            "UV_DEFAULT_INDEX": "https://pypi.org/simple",
-        }
+        has_uv_lock_d = self._has_uv_lock_d(image)
 
         with self._test_container(image=image) as container:
             _, output = container.exec(["env"])
             actual = dict(line.split("=", maxsplit=1) for line in output.decode().strip().splitlines())
 
             if has_uv_lock_d:
-                # Images with uv.lock.d should NOT have these env vars
-                for key in pypi_env_vars:
-                    assert key not in actual, f"Expected {key} to NOT be present (image uses uv.lock.d)"
+                self._check_aipcc_env_vars(actual, subtests)
             else:
-                # Images without uv.lock.d should have these env vars
-                assert actual.items() >= pypi_env_vars.items(), (
-                    "actual is not a superset of expected, we are missing some env variables"
-                )
+                self._check_pypi_env_vars(actual, subtests)
 
 
 def encode_python_function_execution_command_interpreter(
