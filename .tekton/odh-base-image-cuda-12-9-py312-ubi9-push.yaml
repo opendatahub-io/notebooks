@@ -7,7 +7,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main"  && ( "base-images/utils/**".pathChanged() || "base-images/cuda/12.9/ubi9-python-3.12/**".pathChanged() || ".tekton/odh-base-image-cuda-12-9-py312-ubi9-push.yaml".pathChanged() )
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main"  && ( "base-images/utils/**".pathChanged() || "base-images/cuda/12.9/ubi9-python-3.12/**".pathChanged() || "base-images/build-args/cuda12.9.conf".pathChanged() || ".tekton/odh-base-image-cuda-12-9-py312-ubi9-push.yaml".pathChanged() )
   creationTimestamp:
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -25,6 +25,8 @@ spec:
     value: quay.io/opendatahub/odh-base-image-cuda-py312-ubi9:{{revision}}
   - name: dockerfile
     value: base-images/cuda/12.9/ubi9-python-3.12/Dockerfile.cuda
+  - name: build-args-file
+    value: base-images/build-args/cuda12.9.conf
   - name: build-platforms
     value:
     - linux-mxlarge/amd64

@@ -13,7 +13,7 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-comment: ^/kfbuild\s+(all|odh\-base\-image\-rocm\-py312\-ubi9|base\-images/rocm/6\.4/ubi9\-python\-3\.12)
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && target_branch == "main"  && ( "base-images/utils/**".pathChanged() || "base-images/rocm/6.4/ubi9-python-3.12/**".pathChanged() || ".tekton/odh-base-image-rocm-6-4-py312-ubi9-pull-request.yaml".pathChanged() )
+      event == "pull_request" && target_branch == "main"  && ( "base-images/utils/**".pathChanged() || "base-images/rocm/6.4/ubi9-python-3.12/**".pathChanged() || "base-images/build-args/rocm6.4.conf".pathChanged() || ".tekton/odh-base-image-rocm-6-4-py312-ubi9-pull-request.yaml".pathChanged() )
       && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -38,6 +38,8 @@ spec:
     - linux-d160-m4xlarge/amd64
   - name: dockerfile
     value: base-images/rocm/6.4/ubi9-python-3.12/Dockerfile.rocm
+  - name: build-args-file
+    value: base-images/build-args/rocm6.4.conf
   - name: path-context
     value: .
 
