@@ -32,6 +32,31 @@ spec:
     value:
     - linux-mxlarge/amd64
     - linux/arm64
+  taskRunSpecs:
+    - pipelineTaskName: build-images
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
+    - pipelineTaskName: clair-scan
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
+    - pipelineTaskName: ecosystem-cert-preflight-checks
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
   pipelineRef:
     name: multiarch-push-pipeline
   taskRunTemplate:
