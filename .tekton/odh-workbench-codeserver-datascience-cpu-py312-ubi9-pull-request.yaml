@@ -166,10 +166,10 @@ spec:
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode
       type: npm
-    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/microsoft-authentication
-      type: npm
     # patches/
     - path: codeserver/ubi9-python-3.12/patches/code-server/test
+      type: npm
+    - path: codeserver/ubi9-python-3.12/patches/code-server/lib/vscode/extensions/microsoft-authentication
       type: npm
   pipelineRef:
     name: multiarch-combined-pipeline
