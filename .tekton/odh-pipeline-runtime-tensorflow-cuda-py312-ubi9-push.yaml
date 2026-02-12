@@ -21,6 +21,8 @@ spec:
   timeouts:
     pipeline: 8h
   params:
+  - name: event-type
+    value: '{{event_type}}'
   - name: git-url
     value: '{{source_url}}'
   - name: revision
@@ -55,7 +57,7 @@ spec:
         cpu: '16'
         memory: 32Gi
   pipelineRef:
-    name: multiarch-push-pipeline
+    name: multiarch-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-pipeline-runtime-tensorflow-cuda-py312-ubi9
   workspaces:

@@ -21,6 +21,8 @@ spec:
   timeouts:
     pipeline: 8h
   params:
+  - name: event-type
+    value: '{{event_type}}'
   - name: git-url
     value: '{{source_url}}'
   - name: revision
@@ -38,7 +40,7 @@ spec:
     - '{{target_branch}}-{{revision}}'
     - 3.4_ea2-v1.42
   pipelineRef:
-    name: multiarch-push-pipeline
+    name: multiarch-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-rstudio-minimal-cpu-py312-c9s
   workspaces:

@@ -4,7 +4,7 @@ metadata:
   labels:
     appstudio.openshift.io/application: opendatahub-release
     pipelines.appstudio.openshift.io/type: build
-  name: multiarch-push-pipeline
+  name: multiarch-combined-pipeline
   namespace: open-data-hub-tenant
 spec:
   description: |
@@ -12,43 +12,14 @@ spec:
 
     _Uses `buildah` to create a container image leveraging [trusted artifacts](https://konflux-ci.dev/architecture/ADR/0036-trusted-artifacts.html). It also optionally creates a source image and runs some build-time tests. Information is shared between tasks using OCI artifacts instead of PVCs. EC will pass the [`trusted_task.trusted`](https://enterprisecontract.dev/docs/ec-policies/release_policy.html#trusted_task__trusted) policy as long as all data used to build the artifact is generated from trusted tasks.
     This pipeline is pushed as a Tekton bundle to [quay.io](https://quay.io/repository/konflux-ci/tekton-catalog/pipeline-docker-build-oci-ta?tab=tags)_
-  finally:
-  - name: show-sbom
-    params:
-    - name: IMAGE_URL
-      value: $(tasks.build-image-index.results.IMAGE_URL)
-    taskRef:
-      params:
-      - name: name
-        value: show-sbom
-      - name: bundle
-        value: quay.io/konflux-ci/tekton-catalog/task-show-sbom:0.1@sha256:beb0616db051952b4b861dd8c3e00fa1c0eccbd926feddf71194d3bb3ace9ce7
-      - name: kind
-        value: task
-      resolver: bundles
-  - name: send-slack-notification
-    params:
-    - name: message
-      value: "$(tasks.rhoai-init.results.slack-message-failure-text)"
-    - name: secret-name
-      value: slack-secret
-    - name: key-name
-      value: slack-webhook
-    taskRef:
-      params:
-      - name: name
-        value: slack-webhook-notification
-      - name: bundle
-        value: quay.io/konflux-ci/tekton-catalog/task-slack-webhook-notification:0.1@sha256:4e68fe2225debc256d403b828ed358345bb56d03327b46d55cb6c42911375750
-      - name: kind
-        value: task
-      resolver: bundles
-    when:
-    - input: $(tasks.status)
-      operator: in
-      values:
-      - "Failed"
+
+    Combined pipeline for PRs and Pushes.
+    Logic is controlled by the 'event-type' parameter.
   params:
+  - name: event-type
+    description: "Event type from Pipelines as Code: 'push' or 'pull_request'"
+    type: string
+    default: "pull_request"
   - description: Source Repository URL
     name: git-url
     type: string
@@ -133,8 +104,59 @@ spec:
   - description: ""
     name: CHAINS-GIT_COMMIT
     value: $(tasks.clone-repository.results.commit)
+
+  finally:
+  - name: show-sbom
+    params:
+    - name: IMAGE_URL
+      value: $(tasks.build-image-index.results.IMAGE_URL)
+    taskRef:
+      params:
+      - name: name
+        value: show-sbom
+      - name: bundle
+        value: quay.io/konflux-ci/tekton-catalog/task-show-sbom:0.1@sha256:beb0616db051952b4b861dd8c3e00fa1c0eccbd926feddf71194d3bb3ace9ce7
+      - name: kind
+        value: task
+      resolver: bundles
+
+  - name: send-slack-notification
+    params:
+    - name: message
+      value: "$(tasks.rhoai-init.results.slack-message-failure-text)"
+    - name: secret-name
+      value: slack-secret
+    - name: key-name
+      value: slack-webhook
+    taskRef:
+      params:
+      - name: name
+        value: slack-webhook-notification
+      - name: bundle
+        value: quay.io/konflux-ci/tekton-catalog/task-slack-webhook-notification:0.1@sha256:4e68fe2225debc256d403b828ed358345bb56d03327b46d55cb6c42911375750
+      - name: kind
+        value: task
+      resolver: bundles
+    when:
+    # Run only on Push
+    - input: $(params.event-type)
+      operator: in
+      values:
+      - "push"
+    # Run only on Failure
+    - input: $(tasks.status)
+      operator: in
+      values:
+      - "Failed"
+
   tasks:
   - name: rhoai-init
+    # Only run on Push
+    when:
+    - input: $(params.event-type)
+      operator: in
+      values:
+      - "push"
     params:
     - name: pipelinerun-name
       value: "$(context.pipelineRun.name)"
@@ -170,6 +192,7 @@ spec:
           slack_message=${slack_message/__BUILD__TIME__/$build_time}
 
           echo -en "${slack_message}" > "$(results.slack-message-failure-text.path)"
+
   - name: init
     params:
     - name: image-url
@@ -187,6 +210,7 @@ spec:
       - name: kind
         value: task
       resolver: bundles
+    # Wait for rhoai-init. If rhoai-init is skipped (PR), this runs immediately.
     runAfter:
     - rhoai-init
   - name: clone-repository
@@ -218,6 +242,7 @@ spec:
     workspaces:
     - name: basic-auth
       workspace: git-auth
+
   - name: prefetch-dependencies
     params:
     - name: input
@@ -244,6 +269,7 @@ spec:
       workspace: git-auth
     - name: netrc
       workspace: netrc
+
   - matrix:
       params:
       - name: PLATFORM
@@ -296,6 +322,7 @@ spec:
       operator: in
       values:
       - "true"
+
   - name: build-image-index
     params:
     - name: IMAGE
@@ -327,6 +354,7 @@ spec:
       operator: in
       values:
       - "true"
+
   - name: build-source-image
     params:
     - name: BINARY_IMAGE
@@ -357,6 +385,7 @@ spec:
       operator: in
       values:
       - "true"
+
   - name: deprecated-base-image-check
     params:
     - name: IMAGE_URL
@@ -379,6 +408,7 @@ spec:
       operator: in
       values:
       - "false"
+
   - matrix:
       params:
       - name: image-platform
@@ -406,6 +436,7 @@ spec:
       operator: in
       values:
       - "false"
+
   - name: ecosystem-cert-preflight-checks
     params:
     - name: image-url
@@ -426,6 +457,7 @@ spec:
       operator: in
       values:
       - "false"
+
   - name: sast-snyk-check
     params:
     - name: image-digest
@@ -452,6 +484,7 @@ spec:
       operator: in
       values:
       - "false"
+
   - name: clamav-scan
     params:
     - name: image-digest
@@ -474,6 +507,7 @@ spec:
       operator: in
       values:
       - "false"
+
   - name: sast-coverity-check
     params:
     - name: image-digest
@@ -523,6 +557,7 @@ spec:
       operator: in
       values:
       - success
+
   - name: coverity-availability-check
     runAfter:
     - build-image-index
@@ -540,6 +575,7 @@ spec:
       operator: in
       values:
       - "false"
+
   - name: sast-shell-check
     params:
     - name: image-digest
@@ -566,6 +602,7 @@ spec:
       operator: in
       values:
       - "false"
+
   - name: sast-unicode-check
     params:
     - name: image-digest
@@ -592,6 +629,7 @@ spec:
       operator: in
       values:
       - "false"
+
   - name: apply-tags
     params:
     - name: IMAGE_URL
@@ -612,6 +650,7 @@ spec:
       - name: kind
         value: task
       resolver: bundles
+
   - name: push-dockerfile
     params:
     - name: IMAGE
@@ -635,6 +674,7 @@ spec:
       - name: kind
         value: task
       resolver: bundles
+
   - name: rpms-signature-scan
     params:
     - name: image-url
@@ -657,6 +697,7 @@ spec:
       operator: in
       values:
       - "false"
+
   workspaces:
   - name: git-auth
     optional: true

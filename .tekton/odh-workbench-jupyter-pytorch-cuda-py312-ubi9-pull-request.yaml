@@ -25,6 +25,8 @@ spec:
   timeouts:
     pipeline: 6h
   params:
+  - name: event-type
+    value: '{{event_type}}'
   - name: git-url
     value: '{{source_url}}'
   - name: revision
@@ -61,7 +63,7 @@ spec:
           cpu: '8'
           memory: 32Gi
   pipelineRef:
-    name: multiarch-pull-request-pipeline
+    name: multiarch-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-jupyter-pytorch-cuda-py312-ubi9
   workspaces:
