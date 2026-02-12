@@ -25,6 +25,8 @@ spec:
   timeouts:
     pipeline: 6h
   params:
+  - name: event-type
+    value: '{{event_type}}'
   - name: git-url
     value: '{{source_url}}'
   - name: revision
@@ -46,7 +48,7 @@ spec:
   - name: build-args-file
     value: codeserver/ubi9-python-3.12/build-args/cpu.conf
   pipelineRef:
-    name: multiarch-pull-request-pipeline
+    name: multiarch-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-codeserver-datascience-cpu-py312-ubi9
   workspaces:

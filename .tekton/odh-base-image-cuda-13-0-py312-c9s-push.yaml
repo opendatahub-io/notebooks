@@ -16,6 +16,8 @@ metadata:
   namespace: open-data-hub-tenant
 spec:
   params:
+  - name: event-type
+    value: '{{event_type}}'
   - name: git-url
     value: '{{source_url}}'
   - name: revision
@@ -62,7 +64,7 @@ spec:
           cpu: '8'
           memory: 32Gi
   pipelineRef:
-    name: multiarch-push-pipeline
+    name: multiarch-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-base-image-cuda-py312-c9s-poc
   workspaces:

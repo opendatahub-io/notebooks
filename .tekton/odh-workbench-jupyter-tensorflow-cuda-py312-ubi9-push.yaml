@@ -18,6 +18,8 @@ metadata:
   namespace: open-data-hub-tenant
 spec:
   params:
+  - name: event-type
+    value: '{{event_type}}'
   - name: git-url
     value: '{{source_url}}'
   - name: revision
@@ -35,7 +37,7 @@ spec:
     - '{{target_branch}}-{{revision}}'
     - 3.4_ea2-v1.42
   pipelineRef:
-    name: multiarch-push-pipeline
+    name: multiarch-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-jupyter-tensorflow-cuda-py312-ubi9
   workspaces:
