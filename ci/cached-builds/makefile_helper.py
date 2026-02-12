@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 
 from gha_pr_changed_files import PROJECT_ROOT
 
+import ntb
+
 if TYPE_CHECKING:
     import pathlib
     from collections.abc import Sequence
@@ -64,7 +66,7 @@ class TestMakefile:
         konflux_default = dry_run_makefile(target=self.MINIMAL_IMAGE, makefile_dir=PROJECT_ROOT)
         konflux_yes = dry_run_makefile(target=self.MINIMAL_IMAGE, makefile_dir=PROJECT_ROOT, env={"KONFLUX": "yes"})
 
-        _assert_subdict(
+        ntb.assert_subdict(
             {
                 "VARIANT": "cpu",
                 "DOCKERFILE_NAME": "Dockerfile.cpu",
@@ -73,7 +75,7 @@ class TestMakefile:
             _extract_assignments(konflux_default),
         )
 
-        _assert_subdict(
+        ntb.assert_subdict(
             {
                 "VARIANT": "cpu",
                 "DOCKERFILE_NAME": "Dockerfile.konflux.cpu",
@@ -99,10 +101,3 @@ def _extract_assignments(makefile_output: str) -> dict[str, str]:
         key, value = line.split(":=", 1)
         assignments[key.strip()] = value.strip()
     return assignments
-
-
-# see also https://pypi.org/project/pytest-assert-utils/
-def _assert_subdict(subdict: dict[str, str], superdict: dict[str, str]):
-    """Filter subdict to only keys in superdict, then compare the remaining items."""
-    __tracebackhide__ = True
-    assert subdict == {k: superdict[k] for k in subdict if k in superdict}

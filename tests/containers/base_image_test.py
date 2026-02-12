@@ -16,6 +16,7 @@ import allure
 import pytest
 import testcontainers.core.container
 
+import ntb
 from tests.containers import conftest, docker_utils, utils
 
 logging.basicConfig(level=logging.DEBUG)
@@ -25,13 +26,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
     import pytest_subtests
-
-
-# see also https://pypi.org/project/pytest-assert-utils/
-def _assert_subdict(subdict: dict[str, str], superdict: dict[str, str]):
-    """Filter subdict to only keys in superdict, then compare the remaining items."""
-    __tracebackhide__ = True
-    assert subdict == {k: superdict[k] for k in subdict if k in superdict}
 
 
 class TestBaseImage:
@@ -311,7 +305,7 @@ class TestBaseImage:
         pypi_index_vars = ("PIP_INDEX_URL", "UV_INDEX_URL", "UV_DEFAULT_INDEX")
 
         with subtests.test("AIPCC images have config file env vars"):
-            _assert_subdict(aipcc_config_vars, actual)
+            ntb.assert_subdict(aipcc_config_vars, actual)
         with subtests.test("AIPCC images do not have index URL env vars"):
             for key in pypi_index_vars:
                 assert key not in actual, f"Expected {key} to NOT be present (image uses uv.lock.d)"
@@ -327,7 +321,7 @@ class TestBaseImage:
             "UV_DEFAULT_INDEX": "https://pypi.org/simple",
         }
         with subtests.test("Non-AIPCC images have index URL env vars"):
-            _assert_subdict(pypi_env_vars, actual)
+            ntb.assert_subdict(pypi_env_vars, actual)
 
     @allure.issue("RHAIENG-2189")
     def test_python_package_index(self, image: str, subtests: pytest_subtests.SubTests):
