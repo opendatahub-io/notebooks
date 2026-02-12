@@ -111,7 +111,9 @@ spec:
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/media-preview
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/merge-conflict
-      type: npm    
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/mermaid-chat-features
+      type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/notebook-renderers
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/npm
@@ -152,11 +154,12 @@ spec:
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server
       type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/microsoft-authentication
+      type: npm
+    # patches/
     - path: codeserver/ubi9-python-3.12/patches/code-server/test
-      type: npm
-    - path: codeserver/ubi9-python-3.12/patches/code-server/lib/vscode
-      type: npm
-    - path: codeserver/ubi9-python-3.12/patches/code-server/lib/vscode/extensions/microsoft-authentication
       type: npm
 
   pipelineRef:
