@@ -46,7 +46,9 @@ USER root
 WORKDIR /root
 
 ENV HOME=/root
-ENV CODESERVER_SOURCE_CODE=${HOME}/codeserver/ubi9-python-3.12
+# Build-context-relative path (for COPY sources — must NOT include /root/ prefix)
+ENV CODESERVER_CONTEXT=codeserver/ubi9-python-3.12
+ENV CODESERVER_SOURCE_CODE=${HOME}/${CODESERVER_CONTEXT}
 ENV CODESERVER_SOURCE_PREFETCH=${CODESERVER_SOURCE_CODE}/prefetch-input/code-server
 
 ARG ARCH
@@ -97,26 +99,27 @@ ENV PKG_CONFIG_PATH=/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
 COPY .git /root/.git
 # [HERMETIC] Rewrite script: used by setup-offline-binaries.sh to rewrite npm
 # "resolved" URLs from https://registry.npmjs.org/... to file:///cachi2/...
-COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-generators/
+#COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-generators/
+COPY scripts/lockfile-generators/rewrite-npm-urls.sh /root/scripts/lockfile-generators/
 
 # [HERMETIC] Copy prefetched code-server source (git submodule checked out at the target version).
-COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server/ ${CODESERVER_SOURCE_PREFETCH}/
+COPY ${CODESERVER_CONTEXT}/prefetch-input/code-server/ ${CODESERVER_SOURCE_PREFETCH}/
 
 # [HERMETIC] Copy offline-build patches and s390x patch into the prefetched source tree.
 # These are applied by get_code_server_rpm.sh via `patch -p1`.
-COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/*.patch ${CODESERVER_SOURCE_PREFETCH}/patches/
+COPY ${CODESERVER_CONTEXT}/patches/code-server/*.patch ${CODESERVER_SOURCE_CODE}/patches/
 
 # [HERMETIC] Copy stored patched package.json/package-lock.json files.
 # Directories with git-shorthand deps (@parcel/watcher, @emmetio/css-parser) need
 # URL rewrites to file:///cachi2/... paths. We use stored copies instead of diff
 # patches because: on Konflux cachi2 npm prefetch rewrites source URLs before the
 # build (breaking diff context), while on local builds no prefetch runs at all.
-#COPY ${CODESERVER_SOURCE_CODE}/patches/code-server/lib/ ${CODESERVER_SOURCE_PREFETCH}/patches/lib/
+#COPY ${CODESERVER_CTX}/patches/code-server/lib/ ${CODESERVER_SOURCE_PREFETCH}/patches/lib/
 
 # [HERMETIC] get_code_server_rpm.sh was simplified: it now only enables gcc-toolset-14,
 # installs nfpm from cachi2, and applies patches. The actual npm ci/build/release steps
 # are done below in separate RUN commands for better caching.
-COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh ${CODESERVER_SOURCE_CODE}/
+COPY ${CODESERVER_CONTEXT}/get_code_server_rpm.sh ${CODESERVER_SOURCE_CODE}/
 
 RUN cp /cachi2/output/deps/generic/npm/* /cachi2/output/deps/npm/
 RUN cd ${CODESERVER_SOURCE_CODE} && ./get_code_server_rpm.sh
@@ -126,451 +129,452 @@ RUN mkdir -p /tmp/node-headers
 RUN tar -xzf /cachi2/output/deps/generic/node-v37.7.0-headers.tar.gz \
     -C /tmp/node-headers --strip-components=1
 
-COPY ${CODESERVER_SOURCE_CODE}/setup-offline-binaries.sh ${CODESERVER_SOURCE_CODE}/
-COPY ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
+COPY ${CODESERVER_CONTEXT}/setup-offline-binaries.sh ${CODESERVER_SOURCE_CODE}/
+COPY ${CODESERVER_CONTEXT}/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
 
 
 
 
-# # [HERMETIC] Step 1: npm ci --offline (install all npm dependencies from local cache).
-# # setup-offline-binaries.sh does all offline preparation in one shot:
-# #   - sources codeserver-offline-env.sh (ELECTRON_SKIP_BINARY_DOWNLOAD, VSCODE_OFFLINE_CACHE, etc.)
-# #   - populates caches for Electron, node-gyp, Playwright, ripgrep, VSCode extensions
-# #   - rewrites package-lock.json "resolved" URLs to file:///cachi2/...
-# # CI=1 makes ci/dev/postinstall.sh run "npm ci" (not "npm install") in subdirs,
-# # so resolved URLs stay absolute (file:///cachi2/...) and lockfiles are never modified.
-# RUN --network=none cd ${CODESERVER_SOURCE_CODE} && \
-#     source ./setup-offline-binaries.sh && \
-#     cd ${CODESERVER_SOURCE_PREFETCH} && \
-#     CI=1 npm ci --offline --loglevel silly
+# [HERMETIC] Step 1: npm ci --offline (install all npm dependencies from local cache).
+# setup-offline-binaries.sh does all offline preparation in one shot:
+#   - sources codeserver-offline-env.sh (ELECTRON_SKIP_BINARY_DOWNLOAD, VSCODE_OFFLINE_CACHE, etc.)
+#   - populates caches for Electron, node-gyp, Playwright, ripgrep, VSCode extensions
+#   - pre-populates .build/node/ and .build/builtInExtensions/ so gulp skips network downloads
+#   - rewrites package-lock.json "resolved" URLs to file:///cachi2/...
+# CI=1 makes ci/dev/postinstall.sh run "npm ci" (not "npm install") in subdirs,
+# so resolved URLs stay absolute (file:///cachi2/...) and lockfiles are never modified.
+RUN --network=none cd ${CODESERVER_SOURCE_CODE} && \
+    source ./setup-offline-binaries.sh && \
+    cd ${CODESERVER_SOURCE_PREFETCH} && \
+    CI=1 npm ci --offline --loglevel silly
 
 # # [HERMETIC] Step 2: Build code-server TypeScript
-# RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-#     npm run build
+RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    npm run build
 
 # # [HERMETIC] Step 3: Build VS Code (the embedded editor)
-# RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-#     VERSION=${CODESERVER_VERSION/v/} npm run build:vscode --verbose
+RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    VERSION=${CODESERVER_VERSION/v/} npm run build:vscode --verbose --loglevel silly
 
-# # [HERMETIC] Step 4: Create release bundle.
-# RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
-#     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
-#     npm run release
+# [HERMETIC] Step 4: Create release bundle.
+RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
+    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    npm run release
 
-# RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
-#     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
-#     npm run release:standalone --loglevel silly
+RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
+    export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    npm run release:standalone --loglevel silly
 
-# # [HERMETIC] Step 5: Package into RPM using nfpm (installed from prefetched RPM).
-# RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-#     VERSION=${CODESERVER_VERSION/v/} npm run package && \
-#     ls -alh release-packages/ && \
-#     mv release-packages/code-server-${CODESERVER_VERSION/v/}-*.rpm /tmp/
+# [HERMETIC] Step 5: Package into RPM using nfpm (installed from prefetched RPM).
+RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    VERSION=${CODESERVER_VERSION/v/} npm run package && \
+    ls -alh release-packages/ && \
+    mv release-packages/code-server-${CODESERVER_VERSION/v/}-*.rpm /tmp/
 
-# # Sentinel file: downstream stages use COPY --from=rpm-base /tmp/control to wait for this stage.
-# RUN echo "done" > /tmp/control
+# Sentinel file: downstream stages use COPY --from=rpm-base /tmp/control to wait for this stage.
+RUN echo "done" > /tmp/control
 
-# ############################################################################################
-# # whl-cache: Build/cache Python wheels for all architectures
-# #
-# # [HERMETIC] On x86_64/aarch64, pre-built wheels exist on PyPI and are prefetched by cachi2.
-# # On ppc64le/s390x, all native Python packages (numpy, scipy, pyarrow, onnx, etc.) use
-# # pre-built RHOAI wheels (prefetched by cachi2 from requirements-rhoai.txt into
-# # /cachi2/output/deps/pip/). OpenBLAS (runtime lib for numpy/scipy) is installed via RPM.
-# #
-# # Previously this stage used `--mount=type=cache,target=/root/.cache/uv` with network
-# # access and `pip install uv` from PyPI. Now it uses --network=none with cachi2.
-# ############################################################################################
-# FROM registry.access.redhat.com/ubi9/python-312:latest AS whl-cache
+############################################################################################
+# whl-cache: Build/cache Python wheels for all architectures
+#
+# [HERMETIC] On x86_64/aarch64, pre-built wheels exist on PyPI and are prefetched by cachi2.
+# On ppc64le/s390x, all native Python packages (numpy, scipy, pyarrow, onnx, etc.) use
+# pre-built RHOAI wheels (prefetched by cachi2 from requirements-rhoai.txt into
+# /cachi2/output/deps/pip/). OpenBLAS (runtime lib for numpy/scipy) is installed via RPM.
+#
+# Previously this stage used `--mount=type=cache,target=/root/.cache/uv` with network
+# access and `pip install uv` from PyPI. Now it uses --network=none with cachi2.
+############################################################################################
+FROM registry.access.redhat.com/ubi9/python-312:latest AS whl-cache
 
-# # hadolint ignore=DL3002
-# USER root
-# WORKDIR /root
+# hadolint ignore=DL3002
+USER root
+WORKDIR /root
 
-# ENV HOME=/root
+ENV HOME=/root
 
-# ARG LOCAL_BUILD
-# ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
-# ARG PYLOCK_FLAVOR
+ARG LOCAL_BUILD
+ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
 
-# # [HERMETIC] Import GPG keys for EPEL, Red Hat, and CentOS repos (needed for dnf to verify prefetched RPMs).
-# # EPEL + CentOS keys are prefetched as generic artifacts (see artifacts.in.yaml).
-# # UBI9 images only ship the Red Hat key; CentOS key is needed for ppc64le/s390x packages
-# # from CentOS Stream repos (mesa-libGL, etc.).
-# RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
-# RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
-# RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+# [HERMETIC] Import GPG keys for EPEL, Red Hat, and CentOS repos (needed for dnf to verify prefetched RPMs).
+# EPEL + CentOS keys are prefetched as generic artifacts (see artifacts.in.yaml).
+# UBI9 images only ship the Red Hat key; CentOS key is needed for ppc64le/s390x packages
+# from CentOS Stream repos (mesa-libGL, etc.).
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# # [HERMETIC] Configure package repos for local testing (same pattern as rpm-base and cpu-base).
-# # In Konflux, cachi2 injects repos automatically. In LOCAL_BUILD mode, we point dnf
-# # at the local cachi2 repo so it can find openblas-threads (from codeready-builder).
-# RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-#         rm -f /etc/yum.repos.d/* && \
-#         dnf config-manager --add-repo file:///cachi2/output/deps/rpm/; \
-#     fi;
+# [HERMETIC] Configure package repos for local testing (same pattern as rpm-base and cpu-base).
+# In Konflux, cachi2 injects repos automatically. In LOCAL_BUILD mode, we point dnf
+# at the local cachi2 repo so it can find openblas-threads (from codeready-builder).
+RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
+        rm -f /etc/yum.repos.d/* && \
+        dnf config-manager --add-repo file:///cachi2/output/deps/rpm/; \
+    fi;
 
-# # [HERMETIC] ppc64le/s390x: install system-level deps.
-# # openblas-threads: provides libopenblasp.so.0 (pthreads variant) that RHOAI numpy/scipy
-# # wheels link against at runtime. The base 'openblas' meta-package only pulls in
-# # openblas-serial (libopenblas.so.0) which has the wrong soname.
-# # gcc/gcc-c++: needed for packages with simple C extensions that only provide sdist
-# # on PyPI and are not available on RHOAI (e.g. psutil, tornado, greenlet).
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
-#     dnf install -y gcc gcc-c++ openblas-threads \
-#         python3.12-devel python3-devel \
-#         tar mesa-libGL libxcrypt-compat
-# fi
-# EOF
+# [HERMETIC] ppc64le/s390x: install system-level deps.
+# openblas-threads: provides libopenblasp.so.0 (pthreads variant) that RHOAI numpy/scipy
+# wheels link against at runtime. The base 'openblas' meta-package only pulls in
+# openblas-serial (libopenblas.so.0) which has the wrong soname.
+# gcc/gcc-c++: needed for packages with simple C extensions that only provide sdist
+# on PyPI and are not available on RHOAI (e.g. psutil, tornado, greenlet).
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
+    dnf install -y gcc gcc-c++ openblas-threads \
+        python3.12-devel python3-devel \
+        tar mesa-libGL libxcrypt-compat
+fi
+EOF
 
-# # [HERMETIC] Git metadata (may be needed by setuptools-scm for version detection in sdist builds).
-# COPY .git /root/.git
-# # All arches: requirements and devel script (script is a no-op on all arches; kept for WHEEL_DIR setup)
-# COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
+# [HERMETIC] Git metadata (may be needed by setuptools-scm for version detection in sdist builds).
+COPY .git /root/.git
+# All arches: requirements and devel script (script is a no-op on all arches; kept for WHEEL_DIR setup)
+COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
 
-# # copy requirements and scripts
-# COPY ${CODESERVER_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
+# copy requirements and scripts
+COPY ${CODESERVER_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
-# # [HERMETIC] requirements.txt is generated by cachi2 from pyproject.toml with pinned hashes.
-# # Previously we used pylock.toml directly; now cachi2 needs requirements.txt format.
-# COPY ${CODESERVER_SOURCE_CODE}/requirements.txt ./
-# COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
+# [HERMETIC] requirements.txt is generated by cachi2 from pyproject.toml with pinned hashes.
+# Previously we used pylock.toml directly; now cachi2 needs requirements.txt format.
+COPY ${CODESERVER_SOURCE_CODE}/requirements.txt ./
+COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
 
-# # [HERMETIC] Install uv + install all Python packages (--network=none).
-# # /cachi2/output/deps/pip/ contains PyPI wheels + RHOAI wheels (prefetched by cachi2
-# # from requirements.txt and requirements-rhoai.txt respectively).
-# RUN --network=none /bin/bash <<'EOF'
-#     set -Eeuxo pipefail
-#     pip install --no-index --find-links /cachi2/output/deps/pip uv
-#     echo "installed uv from cachi2"
-#     source ./devel_env_setup.sh
-#     # Install all packages from the offline cachi2 pip cache.
-#     # /cachi2/output/deps/pip/ contains PyPI wheels + RHOAI wheels (from requirements-rhoai.txt)
-#     UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --no-index \
-#         --find-links /cachi2/output/deps/pip \
-#         --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode \
-#         --requirements=./requirements.txt
+# [HERMETIC] Install uv + install all Python packages (--network=none).
+# /cachi2/output/deps/pip/ contains PyPI wheels + RHOAI wheels (prefetched by cachi2
+# from requirements.txt and requirements-rhoai.txt respectively).
+RUN --network=none /bin/bash <<'EOF'
+    set -Eeuxo pipefail
+    pip install --no-index --find-links /cachi2/output/deps/pip uv
+    echo "installed uv from cachi2"
+    source ./devel_env_setup.sh
+    # Install all packages from the offline cachi2 pip cache.
+    # /cachi2/output/deps/pip/ contains PyPI wheels + RHOAI wheels (from requirements-rhoai.txt)
+    UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --no-index \
+        --find-links /cachi2/output/deps/pip \
+        --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode \
+        --requirements=./requirements.txt
 
-#     # [HERMETIC] Export all installed wheels to /wheelsdir/ for the codeserver stage.
-#     # RHOAI provides pre-built wheels for major native packages (numpy, scipy,
-#     # pyarrow, pyzmq, pillow, etc.), but some smaller PyPI packages (e.g. psutil,
-#     # greenlet, wrapt, uvloop, watchfiles) only ship sdist for ppc64le/s390x.
-#     # Those sdist packages are compiled here (whl-cache has gcc) and exported as
-#     # wheels, since the codeserver stage lacks gcc/build tools.
-#     if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
-#         echo "Exporting all wheels to /wheelsdir/ for codeserver stage..."
-#         pip freeze > /tmp/installed-packages.txt
-#         pip wheel --no-index \
-#             --find-links /cachi2/output/deps/pip \
-#             --find-links /wheelsdir/ \
-#             --no-deps \
-#             --wheel-dir /wheelsdir/ \
-#             -r /tmp/installed-packages.txt
-#     fi
-# EOF
+    # [HERMETIC] Export all installed wheels to /wheelsdir/ for the codeserver stage.
+    # RHOAI provides pre-built wheels for major native packages (numpy, scipy,
+    # pyarrow, pyzmq, pillow, etc.), but some smaller PyPI packages (e.g. psutil,
+    # greenlet, wrapt, uvloop, watchfiles) only ship sdist for ppc64le/s390x.
+    # Those sdist packages are compiled here (whl-cache has gcc) and exported as
+    # wheels, since the codeserver stage lacks gcc/build tools.
+    if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
+        echo "Exporting all wheels to /wheelsdir/ for codeserver stage..."
+        pip freeze > /tmp/installed-packages.txt
+        pip wheel --no-index \
+            --find-links /cachi2/output/deps/pip \
+            --find-links /wheelsdir/ \
+            --no-deps \
+            --wheel-dir /wheelsdir/ \
+            -r /tmp/installed-packages.txt
+    fi
+EOF
 
-# # Sentinel file: downstream stages use COPY --from=whl-cache /tmp/control to wait for this stage.
-# RUN touch /tmp/control
+# Sentinel file: downstream stages use COPY --from=whl-cache /tmp/control to wait for this stage.
+RUN touch /tmp/control
 
-# ############################################################################################
-# # cpu-base: Runtime base image with OS packages, tools (oc, micropipenv, uv)
-# #
-# # [HERMETIC] Previously this stage ran `subscription-manager refresh`, `dnf upgrade --refresh`,
-# # and `curl` to download the oc client. Now all packages come from prefetched RPMs and
-# # the oc client is extracted from a prefetched tarball.
-# ############################################################################################
-# FROM ${BASE_IMAGE} AS cpu-base
+############################################################################################
+# cpu-base: Runtime base image with OS packages, tools (oc, micropipenv, uv)
+#
+# [HERMETIC] Previously this stage ran `subscription-manager refresh`, `dnf upgrade --refresh`,
+# and `curl` to download the oc client. Now all packages come from prefetched RPMs and
+# the oc client is extracted from a prefetched tarball.
+############################################################################################
+FROM ${BASE_IMAGE} AS cpu-base
 
-# # [HERMETIC] Needed for conditional repo setup (same pattern as rpm-base stage).
-# ARG LOCAL_BUILD
+# [HERMETIC] Needed for conditional repo setup (same pattern as rpm-base stage).
+ARG LOCAL_BUILD
 
-# WORKDIR /opt/app-root/bin
+WORKDIR /opt/app-root/bin
 
-# # OS Packages needs to be installed as root
-# USER 0
+# OS Packages needs to be installed as root
+USER 0
 
-# # [HERMETIC] Import GPG keys for prefetched RPM verification.
-# # CentOS key needed because mesa-libGL comes from CentOS Stream repos.
-# RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
-# RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
-# RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+# CentOS key needed because mesa-libGL comes from CentOS Stream repos.
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# # [HERMETIC] Configure package repos (same as rpm-base stage).
-# # Node.js is needed at runtime for code-server.
-# RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-#         rm -f /etc/yum.repos.d/* && \
-#         dnf config-manager --add-repo file:///cachi2/output/deps/rpm/; \
-#     else \
-#         dnf module enable nodejs:22 -y; \
-#     fi;
+# [HERMETIC] Configure package repos (same as rpm-base stage).
+# Node.js is needed at runtime for code-server.
+RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
+        rm -f /etc/yum.repos.d/* && \
+        dnf config-manager --add-repo file:///cachi2/output/deps/rpm/; \
+    else \
+        dnf module enable nodejs:22 -y; \
+    fi;
 
-# # [HERMETIC] Install Node.js runtime from prefetched RPMs (--network=none).
-# RUN --network=none dnf install -y nodejs npm
+# [HERMETIC] Install Node.js runtime from prefetched RPMs (--network=none).
+RUN --network=none dnf install -y nodejs npm
 
-# # Install useful OS packages (runtime dependencies)
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# dnf install -y tar perl mesa-libGL skopeo
-# dnf clean all
-# rm -rf /var/cache/dnf
-# EOF
+# Install useful OS packages (runtime dependencies)
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y tar perl mesa-libGL skopeo
+dnf clean all
+rm -rf /var/cache/dnf
+EOF
 
-# # ppc64le/s390x: install openblas-threads (provides libopenblasp.so.0 at runtime for numpy/scipy)
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
-#     dnf install -y openblas-threads
-#     dnf clean all
-# fi
-# EOF
+# ppc64le/s390x: install openblas-threads (provides libopenblasp.so.0 at runtime for numpy/scipy)
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
+    dnf install -y openblas-threads
+    dnf clean all
+fi
+EOF
 
-# # Other apps and tools installed as default user
-# USER 1001
+# Other apps and tools installed as default user
+USER 1001
 
-# ### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
-# # [HERMETIC] Previously: pip install --extra-index-url https://pypi.org/simple
-# # Now: install from cachi2 pip cache (--no-index --find-links).
-# RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.9.28"
-# ### END Install micropipenv and uv to deploy packages from requirements.txt
+### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
+# [HERMETIC] Previously: pip install --extra-index-url https://pypi.org/simple
+# Now: install from cachi2 pip cache (--no-index --find-links).
+RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.9.28"
+### END Install micropipenv and uv to deploy packages from requirements.txt
 
-# ### BEGIN Install the oc client
-# # [HERMETIC] Previously: curl from mirror.openshift.com at build time.
-# # Now: extract from prefetched arch-specific tarball (see artifacts.in.yaml).
-# RUN --network=none /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# ARCH=$(uname -m)
-# tar -xzvf /cachi2/output/deps/generic/openshift-client-linux-${ARCH}.tar.gz oc
-# EOF
-# ### END Install the oc client
+### BEGIN Install the oc client
+# [HERMETIC] Previously: curl from mirror.openshift.com at build time.
+# Now: extract from prefetched arch-specific tarball (see artifacts.in.yaml).
+RUN --network=none /bin/bash <<'EOF'
+set -Eeuxo pipefail
+ARCH=$(uname -m)
+tar -xzvf /cachi2/output/deps/generic/openshift-client-linux-${ARCH}.tar.gz oc
+EOF
+### END Install the oc client
 
-# ####################
-# # codeserver       #
-# ####################
-# FROM cpu-base AS codeserver
+####################
+# codeserver       #
+####################
+FROM cpu-base AS codeserver
 
-# ARG TARGETOS
-# ARG TARGETARCH
+ARG TARGETOS
+ARG TARGETARCH
 
-# ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
-# ARG CODESERVER_VERSION=v4.106.3
-# ARG PYLOCK_FLAVOR
+ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+ARG CODESERVER_VERSION=v4.106.3
+ARG PYLOCK_FLAVOR
 
-# LABEL name="odh-notebook-code-server-ubi9-python-3.12" \
-#       summary="code-server image with python 3.12 based on UBI 9" \
-#       description="code-server image with python 3.12 based on UBI9" \
-#       io.k8s.display-name="code-server image with python 3.12 based on UBI9" \
-#       io.k8s.description="code-server image with python 3.12 based on UBI9" \
-#       authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-#       io.openshift.build.commit.ref="main" \
-#       io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/codeserver/ubi9-python-3.12" \
-#       io.openshift.build.image="quay.io/opendatahub/workbench-images:codeserver-ubi9-python-3.12"
+LABEL name="odh-notebook-code-server-ubi9-python-3.12" \
+      summary="code-server image with python 3.12 based on UBI 9" \
+      description="code-server image with python 3.12 based on UBI9" \
+      io.k8s.display-name="code-server image with python 3.12 based on UBI9" \
+      io.k8s.description="code-server image with python 3.12 based on UBI9" \
+      authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+      io.openshift.build.commit.ref="main" \
+      io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/codeserver/ubi9-python-3.12" \
+      io.openshift.build.image="quay.io/opendatahub/workbench-images:codeserver-ubi9-python-3.12"
 
-# USER 0
+USER 0
 
-# WORKDIR /opt/app-root/bin
+WORKDIR /opt/app-root/bin
 
-# # [HERMETIC] Install useful OS packages from prefetched RPMs (--network=none).
-# RUN --network=none /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# PACKAGES=(
-#     jq git-lfs libsndfile
-#     # provides envsubst which is required by run-nginx.sh
-#     gettext
-#     # patchelf binary: kept for safety in case any remaining packages use
-#     # meson-python build backend and need to build from sdist.
-#     patchelf
-# )
-# dnf install -y "${PACKAGES[@]}"
-# dnf clean all
-# rm -rf /var/cache/dnf
-# EOF
+# [HERMETIC] Install useful OS packages from prefetched RPMs (--network=none).
+RUN --network=none /bin/bash <<'EOF'
+set -Eeuxo pipefail
+PACKAGES=(
+    jq git-lfs libsndfile
+    # provides envsubst which is required by run-nginx.sh
+    gettext
+    # patchelf binary: kept for safety in case any remaining packages use
+    # meson-python build backend and need to build from sdist.
+    patchelf
+)
+dnf install -y "${PACKAGES[@]}"
+dnf clean all
+rm -rf /var/cache/dnf
+EOF
 
-# # Wait for rpm-base stage (builds code-server RPM from source).
-# COPY --from=rpm-base /tmp/control /dev/null
+# Wait for rpm-base stage (builds code-server RPM from source).
+COPY --from=rpm-base /tmp/control /dev/null
 
-# # [HERMETIC] Copy the built RPM from rpm-base stage.
-# # Previously this used --mount=type=cache,from=rpm-base but bind mounts fail on Konflux.
-# COPY --from=rpm-base /tmp/code-server-*.rpm /tmp/
+# [HERMETIC] Copy the built RPM from rpm-base stage.
+# Previously this used --mount=type=cache,from=rpm-base but bind mounts fail on Konflux.
+COPY --from=rpm-base /tmp/code-server-*.rpm /tmp/
 
-# # Install code-server
-# # Note: Use COPY instead of bind mounts; bind mounts fail on Konflux.
-# # https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1755628065772589?thread_ts=1755597929.335999&cid=C04PZ7H0VA8
-# RUN --network=none /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# # EXPLANATION: dnf installation produces an "unsigned rpm" error from Konflux (Conforma)
-# #  since we're building rpm from source, we will simply unpack it over /
-# # dnf install -y "/code-server-rpm/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm"
-# # dnf -y clean all --enablerepo='*'
-# dnf install -y cpio
-# dnf -y clean all
-# cd /
-# ls /tmp/
-# rpm2cpio "/tmp/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm" | cpio -idmv
-# EOF
-
-# COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/utils utils/
-
-# # Create and intall the extensions though build-time on a temporary directory. Later this directory will copied on the `/opt/app-root/src/.local/share/code-server/extensions` via run-code-server.sh file when it starts up.
-# # https://coder.com/docs/code-server/FAQ#how-do-i-install-an-extension
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# mkdir -p /opt/app-root/extensions-temp
-# code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2026.0.0.vsix --extensions-dir /opt/app-root/extensions-temp
-# code-server --install-extension /opt/app-root/bin/utils/ms-toolsai.jupyter-2025.9.1.vsix --extensions-dir /opt/app-root/extensions-temp
-# EOF
-
-# # Install NGINX to proxy code-server and pass probes check
-# ENV APP_ROOT=/opt/app-root
-
-# ENV NGINX_VERSION=1.24 \
-#     NGINX_SHORT_VER=124 \
-#     NGINX_CONF_PATH=/etc/nginx/nginx.conf \
-#     NGINX_CONTAINER_SCRIPTS_PATH=/usr/share/container-scripts/nginx \
-#     NGINX_LOG_PATH=/var/log/nginx
-
-# ENV NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
-#     NGINX_DEFAULT_CONF_PATH=${APP_ROOT}/etc/nginx.default.d \
-#     NGINX_APP_ROOT=${APP_ROOT} \
-#     NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
-
-# # [HERMETIC] Install nginx/httpd from prefetched RPMs (--network=none).
-# # NOTE: httpd is prefetched from UBI repos (not CentOS Stream) via the
-# # exclude=httpd* rule in centos.repo, ensuring the prefetched version matches
-# # the httpd already in the UBI9 base image and avoids httpd-devel conflicts.
-# RUN --network=none /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# INSTALL_PKGS="bind-utils nginx nginx-mod-stream nginx-mod-http-perl httpd"
-# dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
-# rpm -V $INSTALL_PKGS
+# Install code-server
+# Note: Use COPY instead of bind mounts; bind mounts fail on Konflux.
+# https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1755628065772589?thread_ts=1755597929.335999&cid=C04PZ7H0VA8
+RUN --network=none /bin/bash <<'EOF'
+set -Eeuxo pipefail
+# EXPLANATION: dnf installation produces an "unsigned rpm" error from Konflux (Conforma)
+#  since we're building rpm from source, we will simply unpack it over /
+# dnf install -y "/code-server-rpm/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm"
 # dnf -y clean all --enablerepo='*'
-# EOF
+dnf install -y cpio
+dnf -y clean all
+cd /
+ls /tmp/
+rpm2cpio "/tmp/code-server-${CODESERVER_VERSION/v/}-${TARGETARCH}.rpm" | cpio -idmv
+EOF
 
-# # Configure httpd for CGI processing
-# COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/httpd/httpd.conf /etc/httpd/conf/httpd.conf
-# COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/httpd/codeserver-cgi.conf /etc/httpd/conf.d/codeserver-cgi.conf
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/utils utils/
 
-# # Copy extra files to the image.
-# COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/nginx/root/ /
+# Create and intall the extensions though build-time on a temporary directory. Later this directory will copied on the `/opt/app-root/src/.local/share/code-server/extensions` via run-code-server.sh file when it starts up.
+# https://coder.com/docs/code-server/FAQ#how-do-i-install-an-extension
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+mkdir -p /opt/app-root/extensions-temp
+code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2026.0.0.vsix --extensions-dir /opt/app-root/extensions-temp
+code-server --install-extension /opt/app-root/bin/utils/ms-toolsai.jupyter-2025.9.1.vsix --extensions-dir /opt/app-root/extensions-temp
+EOF
 
-# ## Configure nginx
-# COPY ${CODESERVER_SOURCE_CODE}/nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
-# COPY ${CODESERVER_SOURCE_CODE}/nginx/httpconf/ /opt/app-root/etc/nginx.d/
-# COPY ${CODESERVER_SOURCE_CODE}/nginx/api/ /opt/app-root/api/
+# Install NGINX to proxy code-server and pass probes check
+ENV APP_ROOT=/opt/app-root
 
-# # Changing ownership and user rights to support following use-cases:
-# # 1) running container on OpenShift, whose default security model
-# #    is to run the container under random UID, but GID=0
-# # 2) for working root-less container with UID=1001, which does not have
-# #    to have GID=0
-# # 3) for default use-case, that is running container directly on operating system,
-# #    with default UID and GID (1001:0)
-# # Supported combinations of UID:GID are thus following:
-# # UID=1001 && GID=0
-# # UID=<any>&& GID=0
-# # UID=1001 && GID=<any>
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH}
-# mkdir -p ${NGINX_APP_ROOT}/etc/nginx.d/
-# mkdir -p ${NGINX_APP_ROOT}/etc/nginx.default.d/
-# mkdir -p ${NGINX_APP_ROOT}/api/
-# mkdir -p ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
-# mkdir -p ${NGINX_LOG_PATH}
-# mkdir -p ${NGINX_PERL_MODULE_PATH}
-# # Create httpd directories and set permissions
-# mkdir -p /var/log/httpd /var/run/httpd /etc/httpd/logs
-# chown -R 1001:0 ${NGINX_CONF_PATH}
-# chown -R 1001:0 ${NGINX_APP_ROOT}/etc
-# chown -R 1001:0 ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
-# chown -R 1001:0 /var/lib/nginx /var/log/nginx /run
-# chown -R 1001:0 /var/log/httpd /var/run/httpd /etc/httpd/logs
-# chmod    ug+rw  ${NGINX_CONF_PATH}
-# chmod -R ug+rwX ${NGINX_APP_ROOT}/etc
-# chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
-# chmod -R ug+rwX /var/lib/nginx /var/log/nginx /run
-# chmod -R ug+rwX /var/log/httpd /var/run/httpd /etc/httpd/logs
-# # Make CGI script executable
-# chmod +x /opt/app-root/api/kernels/access.cgi
-# rpm-file-permissions
-# # Ensure the temporary directory and target directory have the correct permissions
-# mkdir -p /opt/app-root/src/.local/share/code-server/extensions
-# mkdir -p /opt/app-root/src/.local/share/code-server/coder-logs
-# mkdir -p /opt/app-root/src/.config/code-server
-# chown -R 1001:0 /opt/app-root/src/.local/share/code-server
-# chown -R 1001:0 /opt/app-root/extensions-temp
-# chown -R 1001:0 /opt/app-root/src/.config/code-server
-# EOF
+ENV NGINX_VERSION=1.24 \
+    NGINX_SHORT_VER=124 \
+    NGINX_CONF_PATH=/etc/nginx/nginx.conf \
+    NGINX_CONTAINER_SCRIPTS_PATH=/usr/share/container-scripts/nginx \
+    NGINX_LOG_PATH=/var/log/nginx
 
-# # Launcher
-# COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/run-code-server.sh ${CODESERVER_SOURCE_CODE}/run-nginx.sh ./
+ENV NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
+    NGINX_DEFAULT_CONF_PATH=${APP_ROOT}/etc/nginx.default.d \
+    NGINX_APP_ROOT=${APP_ROOT} \
+    NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
 
-# ENV SHELL=/bin/bash
+# [HERMETIC] Install nginx/httpd from prefetched RPMs (--network=none).
+# NOTE: httpd is prefetched from UBI repos (not CentOS Stream) via the
+# exclude=httpd* rule in centos.repo, ensuring the prefetched version matches
+# the httpd already in the UBI9 base image and avoids httpd-devel conflicts.
+RUN --network=none /bin/bash <<'EOF'
+set -Eeuxo pipefail
+INSTALL_PKGS="bind-utils nginx nginx-mod-stream nginx-mod-http-perl httpd"
+dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
+rpm -V $INSTALL_PKGS
+dnf -y clean all --enablerepo='*'
+EOF
 
-# ENV PYTHONPATH=/opt/app-root/bin/python3
+# Configure httpd for CGI processing
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/httpd/httpd.conf /etc/httpd/conf/httpd.conf
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/httpd/codeserver-cgi.conf /etc/httpd/conf.d/codeserver-cgi.conf
 
-# # Install useful packages from pylock file
-# COPY ${CODESERVER_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
+# Copy extra files to the image.
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/nginx/root/ /
 
-# # [HERMETIC] Install Python packages from cachi2 pip cache (requirements.txt format).
-# # Previously used pylock.toml; cachi2 prefetch generates requirements.txt with hashes.
-# COPY ${CODESERVER_SOURCE_CODE}/requirements.txt ./
+## Configure nginx
+COPY ${CODESERVER_SOURCE_CODE}/nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
+COPY ${CODESERVER_SOURCE_CODE}/nginx/httpconf/ /opt/app-root/etc/nginx.d/
+COPY ${CODESERVER_SOURCE_CODE}/nginx/api/ /opt/app-root/api/
 
-# # Wait for whl-cache stage (builds/caches Python wheels).
-# COPY --from=whl-cache /tmp/control /dev/null
+# Changing ownership and user rights to support following use-cases:
+# 1) running container on OpenShift, whose default security model
+#    is to run the container under random UID, but GID=0
+# 2) for working root-less container with UID=1001, which does not have
+#    to have GID=0
+# 3) for default use-case, that is running container directly on operating system,
+#    with default UID and GID (1001:0)
+# Supported combinations of UID:GID are thus following:
+# UID=1001 && GID=0
+# UID=<any>&& GID=0
+# UID=1001 && GID=<any>
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+sed -i -f ${NGINX_APP_ROOT}/nginxconf.sed ${NGINX_CONF_PATH}
+mkdir -p ${NGINX_APP_ROOT}/etc/nginx.d/
+mkdir -p ${NGINX_APP_ROOT}/etc/nginx.default.d/
+mkdir -p ${NGINX_APP_ROOT}/api/
+mkdir -p ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
+mkdir -p ${NGINX_LOG_PATH}
+mkdir -p ${NGINX_PERL_MODULE_PATH}
+# Create httpd directories and set permissions
+mkdir -p /var/log/httpd /var/run/httpd /etc/httpd/logs
+chown -R 1001:0 ${NGINX_CONF_PATH}
+chown -R 1001:0 ${NGINX_APP_ROOT}/etc
+chown -R 1001:0 ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
+chown -R 1001:0 /var/lib/nginx /var/log/nginx /run
+chown -R 1001:0 /var/log/httpd /var/run/httpd /etc/httpd/logs
+chmod    ug+rw  ${NGINX_CONF_PATH}
+chmod -R ug+rwX ${NGINX_APP_ROOT}/etc
+chmod -R ug+rwX ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
+chmod -R ug+rwX /var/lib/nginx /var/log/nginx /run
+chmod -R ug+rwX /var/log/httpd /var/run/httpd /etc/httpd/logs
+# Make CGI script executable
+chmod +x /opt/app-root/api/kernels/access.cgi
+rpm-file-permissions
+# Ensure the temporary directory and target directory have the correct permissions
+mkdir -p /opt/app-root/src/.local/share/code-server/extensions
+mkdir -p /opt/app-root/src/.local/share/code-server/coder-logs
+mkdir -p /opt/app-root/src/.config/code-server
+chown -R 1001:0 /opt/app-root/src/.local/share/code-server
+chown -R 1001:0 /opt/app-root/extensions-temp
+chown -R 1001:0 /opt/app-root/src/.config/code-server
+EOF
 
-# # [HERMETIC] Install all Python packages from cachi2 pip cache (--no-index --network=none).
-# # /cachi2/output/deps/pip/ contains both PyPI wheels and RHOAI ppc64le/s390x wheels
-# # (prefetched by cachi2 from requirements.txt and requirements-rhoai.txt).
-# # /wheelsdir/ from whl-cache contains compiled wheels for PyPI packages that only
-# # ship sdist for ppc64le/s390x (e.g. psutil, greenlet, wrapt, uvloop, watchfiles).
-# RUN --network=none --mount=type=cache,target=/root/.cache/uv \
-#     --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# echo "Installing softwares and packages"
-# # Install all requirements from the offline cachi2 pip cache.
-# # --find-links order:
-# #   1. /wheelsdir/ : compiled C-extension wheels from whl-cache stage (ppc64le/s390x)
-# #   2. /cachi2/output/deps/pip/ : PyPI wheels + RHOAI wheels (from requirements-rhoai.txt)
-# #
-# # --no-verify-hashes: requirements.txt contains --hash=sha256:… lines for the
-# # original PyPI/RHOAI files.  Packages compiled from sdist in the whl-cache
-# # stage (e.g. psutil, greenlet) produce wheels with different hashes.
-# # Hash verification already passed in whl-cache; skip it here so uv accepts
-# # the locally compiled wheels from /wheelsdir/.
-# UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --no-index \
-#     --no-verify-hashes \
-#     --find-links /wheelsdir/ \
-#     --find-links /cachi2/output/deps/pip \
-#     --cache-dir /root/.cache/uv \
-#     --requirements=./requirements.txt
+# Launcher
+COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/run-code-server.sh ${CODESERVER_SOURCE_CODE}/run-nginx.sh ./
 
-# # change ownership to default user (all packages were installed as root and has root:root ownership
-# chown -R 1001:0 /opt/app-root
-# EOF
+ENV SHELL=/bin/bash
 
-# USER 1001
+ENV PYTHONPATH=/opt/app-root/bin/python3
 
-# # Fix permissions to support pip in Openshift environments
-# RUN /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# chmod -R g+w /opt/app-root/lib/python3.12/site-packages
-# fix-permissions /opt/app-root -P
-# EOF
+# Install useful packages from pylock file
+COPY ${CODESERVER_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
-# WORKDIR /opt/app-root/src
+# [HERMETIC] Install Python packages from cachi2 pip cache (requirements.txt format).
+# Previously used pylock.toml; cachi2 prefetch generates requirements.txt with hashes.
+COPY ${CODESERVER_SOURCE_CODE}/requirements.txt ./
 
-# CMD ["/opt/app-root/bin/run-code-server.sh"]
+# Wait for whl-cache stage (builds/caches Python wheels).
+COPY --from=whl-cache /tmp/control /dev/null
 
-# # [HERMETIC] Smoke test stage (--network=none to verify no runtime network deps).
-# FROM codeserver as tests
-# ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
-# COPY ${CODESERVER_SOURCE_CODE}/test /tmp/test
-# # TODO(jdanek): add --mount=type=bind,target=/opt/app-root/src
-# RUN --network=none /bin/bash <<'EOF'
-# set -Eeuxo pipefail
-# python3 /tmp/test/test_startup.py 2>&1 | tee /tmp/test_log.txt
-# EOF
+# [HERMETIC] Install all Python packages from cachi2 pip cache (--no-index --network=none).
+# /cachi2/output/deps/pip/ contains both PyPI wheels and RHOAI ppc64le/s390x wheels
+# (prefetched by cachi2 from requirements.txt and requirements-rhoai.txt).
+# /wheelsdir/ from whl-cache contains compiled wheels for PyPI packages that only
+# ship sdist for ppc64le/s390x (e.g. psutil, greenlet, wrapt, uvloop, watchfiles).
+RUN --network=none --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw /bin/bash <<'EOF'
+set -Eeuxo pipefail
+echo "Installing softwares and packages"
+# Install all requirements from the offline cachi2 pip cache.
+# --find-links order:
+#   1. /wheelsdir/ : compiled C-extension wheels from whl-cache stage (ppc64le/s390x)
+#   2. /cachi2/output/deps/pip/ : PyPI wheels + RHOAI wheels (from requirements-rhoai.txt)
+#
+# --no-verify-hashes: requirements.txt contains --hash=sha256:… lines for the
+# original PyPI/RHOAI files.  Packages compiled from sdist in the whl-cache
+# stage (e.g. psutil, greenlet) produce wheels with different hashes.
+# Hash verification already passed in whl-cache; skip it here so uv accepts
+# the locally compiled wheels from /wheelsdir/.
+UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --no-index \
+    --no-verify-hashes \
+    --find-links /wheelsdir/ \
+    --find-links /cachi2/output/deps/pip \
+    --cache-dir /root/.cache/uv \
+    --requirements=./requirements.txt
 
-# FROM codeserver
-# COPY --from=tests /tmp/test_log.txt /tmp/test_log.txt
+# change ownership to default user (all packages were installed as root and has root:root ownership
+chown -R 1001:0 /opt/app-root
+EOF
+
+USER 1001
+
+# Fix permissions to support pip in Openshift environments
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+chmod -R g+w /opt/app-root/lib/python3.12/site-packages
+fix-permissions /opt/app-root -P
+EOF
+
+WORKDIR /opt/app-root/src
+
+CMD ["/opt/app-root/bin/run-code-server.sh"]
+
+# [HERMETIC] Smoke test stage (--network=none to verify no runtime network deps).
+FROM codeserver as tests
+ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
+COPY ${CODESERVER_SOURCE_CODE}/test /tmp/test
+# TODO(jdanek): add --mount=type=bind,target=/opt/app-root/src
+RUN --network=none /bin/bash <<'EOF'
+set -Eeuxo pipefail
+python3 /tmp/test/test_startup.py 2>&1 | tee /tmp/test_log.txt
+EOF
+
+FROM codeserver
+COPY --from=tests /tmp/test_log.txt /tmp/test_log.txt

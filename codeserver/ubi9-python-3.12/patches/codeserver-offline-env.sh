@@ -29,3 +29,11 @@ if [[ "$CODESERVER_SOURCE_PREFETCH" = /* ]]; then
 else
   export VSCODE_OFFLINE_CACHE="${HOME:-/root}/${CODESERVER_SOURCE_PREFETCH}/.vscode-offline-cache"
 fi
+
+# npm offline settings: skip peer dep auto-install and ensure offline mode.
+# These are also set globally by setup-offline-binaries.sh, but we export them
+# here so they apply in every RUN step that sources this file (e.g. release:standalone).
+export npm_config_offline=true
+export npm_config_prefer_offline=true
+export npm_config_fetch_retries=0
+export npm_config_legacy_peer_deps=true

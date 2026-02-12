@@ -15,6 +15,9 @@
 #   5. VSCode ripgrep: copy to /tmp/vscode-ripgrep-cache-<version>/
 #   6. VSCode extensions (.vsix): copy to .vscode-offline-cache/ for fetch.js
 #   7. Node.js runtime binary: copy to .vscode-offline-cache/ for bundling
+#   8. Pre-populate .build/ caches so gulp tasks skip network downloads:
+#      - .build/node/v22.20.0/linux-x64/node (Node.js binary for bundling)
+#      - .build/builtInExtensions/<name>/ (extracted .vsix contents)
 #
 # All artifacts are prefetched by cachi2 via artifacts.in.yaml and stored at
 # /cachi2/output/deps/generic/.
@@ -31,6 +34,7 @@ export npm_config_prefer_offline=true
 export npm_config_fetch_retries=0
 export npm_config_audit=false
 export npm_config_fund=false
+export npm_config_legacy_peer_deps=true
 
 # Also set globally for npm commands run in different contexts (like release:standalone)
 npm config set --global offline true
@@ -38,6 +42,10 @@ npm config set --global prefer-offline true
 npm config set --global fetch-retries 0
 npm config set --global audit false
 npm config set --global fund false
+# Skip auto-installing peer dependencies (e.g. tslib@* from @microsoft/applicationinsights-core-js).
+# The remote/.npmrc has legacy-peer-deps=true but that file is NOT copied into
+# release-standalone/lib/vscode/, so npm install there would try to fetch peer deps.
+npm config set --global legacy-peer-deps true
 
 # Setup Electron (ELECTRON_* and PLAYWRIGHT_* are already set by patches/codeserver-offline-env.sh)
 mkdir -p ~/.cache/electron
@@ -93,7 +101,7 @@ mkdir -p "${VSCODE_OFFLINE_DIR}"
 
 # Copy .vsix extension files
 cp "${HERMETO_OUTPUT}/deps/generic/ms-vscode.js-debug-companion.1.1.3.vsix" "${VSCODE_OFFLINE_DIR}/"
-cp "${HERMETO_OUTPUT}/deps/generic/ms-vscode.js-debug.1.104.0.vsix" "${VSCODE_OFFLINE_DIR}/"
+cp "${HERMETO_OUTPUT}/deps/generic/ms-vscode.js-debug.1.105.0.vsix" "${VSCODE_OFFLINE_DIR}/"
 cp "${HERMETO_OUTPUT}/deps/generic/ms-vscode.vscode-js-profile-table.1.0.10.vsix" "${VSCODE_OFFLINE_DIR}/"
 
 # Copy Node.js runtime binary (for bundling with VSCode server)
@@ -101,77 +109,68 @@ cp "${HERMETO_OUTPUT}/deps/generic/node-v22.20.0-linux-x64.tar.gz" "${VSCODE_OFF
 
 echo "Copied VSCode offline files to ${VSCODE_OFFLINE_DIR}"
 
-# fetch.js is patched via patches/code-server/lib/vscode/build/lib/fetch.js (COPY in Dockerfile)
-# VSCODE_OFFLINE_CACHE is already set by patches/codeserver-offline-env.sh (sourced at top of this script)
+# [HERMETIC] Pre-populate VSCode .build/ caches so that gulp tasks skip network downloads.
+# The VSCode build system checks these directories BEFORE attempting to fetch from the network:
+#   - .build/node/v<version>/<platform>-<arch>/  → skips Node.js binary download
+#   - .build/builtInExtensions/<name>/           → skips extension download from GitHub
+#
+# By populating them here, the build:vscode step (gulp vscode-reh-web-linux-x64-min) runs
+# fully offline without needing to patch fetch.js.
+VSCODE_BUILD_DIR="${CODESERVER_SOURCE_PREFETCH}/lib/vscode/.build"
+
+# --- Pre-populate Node.js binary for bundling with VSCode server ---
+# gulpfile.reh.js: if .build/node/v<ver>/<platform>-<arch>/ exists → skip download
+# The gulp task extracts the tarball, filters for the 'node' binary, and writes it there.
+NODE_BUILD_VERSION="22.20.0"
+NODE_CACHE_DIR="${VSCODE_BUILD_DIR}/node/v${NODE_BUILD_VERSION}/linux-x64"
+if [[ ! -d "${NODE_CACHE_DIR}" ]]; then
+    mkdir -p "${NODE_CACHE_DIR}"
+    tar -xzf "${HERMETO_OUTPUT}/deps/generic/node-v${NODE_BUILD_VERSION}-linux-x64.tar.gz" \
+        -C "${NODE_CACHE_DIR}" --strip-components=1 --wildcards '*/bin/node'
+    # Flatten: gulp expects .build/node/v22.20.0/linux-x64/node (not bin/node)
+    mv "${NODE_CACHE_DIR}/bin/node" "${NODE_CACHE_DIR}/node"
+    rmdir "${NODE_CACHE_DIR}/bin" 2>/dev/null || true
+    chmod +x "${NODE_CACHE_DIR}/node"
+    echo "Pre-populated Node.js ${NODE_BUILD_VERSION} binary at ${NODE_CACHE_DIR}/node"
+fi
+
+# --- Pre-populate built-in extensions from prefetched .vsix files ---
+# builtInExtensions.js: isUpToDate() checks .build/builtInExtensions/<name>/package.json
+# If the version matches product.json, the download is skipped entirely.
+EXTENSIONS_CACHE_DIR="${VSCODE_BUILD_DIR}/builtInExtensions"
+mkdir -p "${EXTENSIONS_CACHE_DIR}"
+
+populate_vsix() {
+    local vsix_file="$1"
+    local ext_name="$2"
+    local ext_dir="${EXTENSIONS_CACHE_DIR}/${ext_name}"
+
+    if [[ -d "${ext_dir}" && -f "${ext_dir}/package.json" ]]; then
+        echo "Extension ${ext_name} already populated, skipping"
+        return
+    fi
+
+    echo "Extracting ${ext_name} from $(basename "${vsix_file}")..."
+    local tmp_dir="/tmp/vsix-extract-$$"
+    rm -rf "${tmp_dir}"
+    mkdir -p "${tmp_dir}"
+    # .vsix is a ZIP; the extension contents are in the extension/ subdirectory
+    unzip -qo "${vsix_file}" "extension/*" -d "${tmp_dir}"
+    rm -rf "${ext_dir}"
+    mv "${tmp_dir}/extension" "${ext_dir}"
+    rm -rf "${tmp_dir}"
+    echo "  -> ${ext_dir}"
+}
+
+populate_vsix "${HERMETO_OUTPUT}/deps/generic/ms-vscode.js-debug-companion.1.1.3.vsix" "ms-vscode.js-debug-companion"
+populate_vsix "${HERMETO_OUTPUT}/deps/generic/ms-vscode.js-debug.1.105.0.vsix" "ms-vscode.js-debug"
+populate_vsix "${HERMETO_OUTPUT}/deps/generic/ms-vscode.vscode-js-profile-table.1.0.10.vsix" "ms-vscode.vscode-js-profile-table"
+
+echo "Pre-populated built-in extensions at ${EXTENSIONS_CACHE_DIR}"
 
 # Rewrite all package-lock.json "resolved" URLs to point to the cachi2 file cache.
 # This is the critical step that makes `npm ci --offline` work: URLs like
 # https://registry.npmjs.org/foo/-/foo-1.0.0.tgz become file:///cachi2/output/deps/npm/...
 echo "Rewriting package-lock.json resolved URLs to cachi2 file cache..."
-REWRITE_SCRIPT="/root/scripts/lockfile-generators/rewrite-cachi2-path.sh"
-if [[ -f "$REWRITE_SCRIPT" ]]; then
-    . "$REWRITE_SCRIPT"
-    pushd "${CODESERVER_SOURCE_PREFETCH}" > /dev/null
-    find . -name "package-lock.json" -type f | while read f; do
-        echo "Patching $f"
-        rewrite_cachi2_path "$f"
-    done
-    # Also rewrite GitHub shorthand git refs in package.json files
-    # (npm ci reads package.json and resolves git refs even when package-lock.json is rewritten)
-    find . -name "package.json" -not -path "*/node_modules/*" -type f | while read f; do
-        if grep -q '#[0-9a-f]\{40\}' "$f"; then
-            echo "Patching git refs in $f"
-            perl -i -pe 's#": "([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_.-]+)\#([0-9a-f]{40})"#": "file:///cachi2/output/deps/npm/$1-$2-$3.tar.gz"#g' "$f"
-        fi
-    done
-
-    # Rewrite git shorthand deps with branch/tag names (not 40-hex commit hashes)
-    # e.g. "@emmetio/css-parser": "ramya-rao-a/css-parser#vscode"
-    # The regex above handles refs that are 40-hex commit hashes (like @parcel/watcher).
-    # For branch names like #vscode, we look up the actual commit hash from the
-    # already-rewritten resolved field in package-lock.json, then rewrite the dep
-    # specifier in both package.json and package-lock.json so npm doesn't try
-    # git ls-remote for branch resolution.
-    find . -name "package.json" -not -path "*/node_modules/*" -type f | while read f; do
-        lockfile="$(dirname "$f")/package-lock.json"
-        [[ -f "$lockfile" ]] || continue
-        # Extract git shorthand deps with non-hash fragment: "org/repo#branch"
-        # where the fragment is NOT a 40-hex commit hash
-        perl -ne '
-            if (/":\s*"([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)#(?![0-9a-f]{40}")([^"]+)"/) {
-                print "$1\t$2\t$3\n" unless $seen{"$1/$2/$3"}++;
-            }
-        ' "$f" | while IFS=$'\t' read -r org repo branch; do
-            [[ -n "$org" && -n "$repo" && -n "$branch" ]] || continue
-            # Look up commit hash from the already-rewritten resolved URL in package-lock.json
-            # Pattern: file:///cachi2/output/deps/npm/<org>-<repo>-<40hex>.tar.gz
-            commit=$(perl -ne "
-                if (m{cachi2/output/deps/npm/\Q${org}\E-\Q${repo}\E-([0-9a-f]{40})\\.tar\\.gz}) {
-                    print \$1; exit;
-                }
-            " "$lockfile")
-            if [[ -z "$commit" ]]; then
-                # Fallback: try original git+ssh resolved URL (not yet rewritten)
-                commit=$(perl -ne "
-                    if (m{github\\.com/\Q${org}\E/\Q${repo}\E[^#]*#([0-9a-f]{40})}) {
-                        print \$1; exit;
-                    }
-                " "$lockfile")
-            fi
-            if [[ -n "$commit" ]]; then
-                tarball="file:///cachi2/output/deps/npm/${org}-${repo}-${commit}.tar.gz"
-                echo "Rewriting git branch ref ${org}/${repo}#${branch} -> ${tarball}"
-                for target in "$f" "$lockfile"; do
-                    perl -i -pe "s|\\Q${org}/${repo}#${branch}\\E|${tarball}|g" "$target"
-                done
-            else
-                echo "WARNING: Could not find commit hash for ${org}/${repo}#${branch} in ${lockfile}"
-            fi
-        done
-    done
-    popd > /dev/null
-else
-    echo "WARNING: $REWRITE_SCRIPT not found, skipping URL rewrite"
-fi
-
+. /root/scripts/lockfile-generators/rewrite-npm-urls.sh prefetch-input/code-server
 echo "Offline binary setup complete!"
