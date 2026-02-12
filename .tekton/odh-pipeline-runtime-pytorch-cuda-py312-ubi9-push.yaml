@@ -48,7 +48,7 @@ spec:
           cpu: '16'
           memory: 32Gi
   pipelineRef:
-    name: singlearch-push-pipeline
+    name: multiarch-push-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-pipeline-runtime-pytorch-cuda-py312-ubi9
   workspaces:

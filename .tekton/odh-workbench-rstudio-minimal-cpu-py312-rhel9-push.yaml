@@ -39,7 +39,7 @@ spec:
     - '{{target_branch}}-{{revision}}'
     - 3.4_ea2-v1.42
   pipelineRef:
-    name: singlearch-push-pipeline
+    name: multiarch-push-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-rstudio-minimal-cpu-py312-rhel9
   workspaces:

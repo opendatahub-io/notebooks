@@ -60,7 +60,7 @@ spec:
           cpu: '8'
           memory: 32Gi
   pipelineRef:
-    name: singlearch-push-pipeline
+    name: multiarch-push-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-base-image-rocm-py312-ubi9-poc
   workspaces:
