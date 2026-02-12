@@ -41,7 +41,6 @@ spec:
     value: base-images/cuda/12.8/ubi9-python-3.12/Dockerfile.cuda
   - name: path-context
     value: .
-  # Added taskRunSpecs to increase compute resources
   taskRunSpecs:
     - pipelineTaskName: build-images
       computeResources:

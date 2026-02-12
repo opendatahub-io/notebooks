@@ -85,6 +85,23 @@ def pull_request_pipelinerun_template(
                 "pipeline": "3h",
             },
             "params": params,
+            # Added taskRunSpecs to increase compute resources
+            "taskRunSpecs": [
+                {
+                    "pipelineTaskName": task_name,
+                    "computeResources": {
+                        "requests": {
+                            "cpu": "8",
+                            "memory": "32Gi",
+                        },
+                        "limits": {
+                            "cpu": "8",
+                            "memory": "32Gi",
+                        },
+                    },
+                }
+                for task_name in ("build-images", "clair-scan", "ecosystem-cert-preflight-checks")
+            ],
             "pipelineRef": {
                 "name": "multiarch-pull-request-pipeline",
             },
