@@ -35,7 +35,7 @@ spec:
     - '{{target_branch}}-{{revision}}'
     - 3.4_ea2-v1.42
   pipelineRef:
-    name: singlearch-push-pipeline
+    name: multiarch-push-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-pipeline-runtime-datascience-cpu-py312-ubi9
   workspaces:
