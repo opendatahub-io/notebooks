@@ -85,6 +85,10 @@ spec:
     description: Whether to enable privileged mode, should be used only with remote VMs
     name: privileged-nested
     type: string
+  - default: []
+    description: Array of extra tags to apply to the resulting image (e.g. commit or release identifiers).
+    name: additional-tags
+    type: array
   - default:
     - linux-mxlarge/amd64
     description: List of platforms to build the container images on. The available set of values is determined by the configuration of the multi-platform-controller.
@@ -624,6 +628,9 @@ spec:
       value: $(tasks.build-image-index.results.IMAGE_URL)
     - name: IMAGE_DIGEST
       value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+    - name: ADDITIONAL_TAGS
+      value:
+      - $(params.additional-tags[*])
     runAfter:
     - build-image-index
     taskRef:
