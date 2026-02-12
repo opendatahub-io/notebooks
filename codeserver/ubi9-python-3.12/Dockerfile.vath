@@ -40,7 +40,7 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
     fi;
 
 # [HERMETIC] Copy updated offline env (adds npm_config_legacy_peer_deps, npm_config_offline, etc.)
-COPY ${CODESERVER_CONTEXT}/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
+COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
 
 # [HERMETIC] Step 4: Create release bundle.
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \

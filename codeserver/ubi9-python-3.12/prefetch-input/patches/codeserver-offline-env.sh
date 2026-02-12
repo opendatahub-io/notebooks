@@ -6,8 +6,8 @@
 # rpm-base stage that runs npm commands. Sets environment variables that tell Electron,
 # Playwright, argon2, and the patched fetch.js to use local caches instead of downloading.
 #
-# Usage: . patches/codeserver-offline-env.sh
-#    or: source patches/codeserver-offline-env.sh
+# Usage: . prefetch-input/patches/codeserver-offline-env.sh
+#    or: source prefetch-input/patches/codeserver-offline-env.sh
 ############################################################################################
 HERMETO_OUTPUT="${HERMETO_OUTPUT:-/cachi2/output}"
 CODESERVER_SOURCE_PREFETCH="${CODESERVER_SOURCE_PREFETCH:-$(pwd)/prefetch-input/code-server}"

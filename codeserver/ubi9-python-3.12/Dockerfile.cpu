@@ -107,14 +107,14 @@ COPY ${CODESERVER_CONTEXT}/prefetch-input/code-server/ ${CODESERVER_SOURCE_PREFE
 
 # [HERMETIC] Copy offline-build patches and s390x patch into the prefetched source tree.
 # These are applied by get_code_server_rpm.sh via `patch -p1`.
-COPY ${CODESERVER_CONTEXT}/patches/code-server/*.patch ${CODESERVER_SOURCE_CODE}/patches/
+COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/code-server/*.patch ${CODESERVER_SOURCE_CODE}/patches/
 
 # [HERMETIC] Copy stored patched package.json/package-lock.json files.
 # Directories with git-shorthand deps (@parcel/watcher, @emmetio/css-parser) need
 # URL rewrites to file:///cachi2/... paths. We use stored copies instead of diff
 # patches because: on Konflux cachi2 npm prefetch rewrites source URLs before the
 # build (breaking diff context), while on local builds no prefetch runs at all.
-#COPY ${CODESERVER_CTX}/patches/code-server/lib/ ${CODESERVER_SOURCE_PREFETCH}/patches/lib/
+#COPY ${CODESERVER_CTX}/prefetch-input/patches/code-server/lib/ ${CODESERVER_SOURCE_PREFETCH}/patches/lib/
 
 # [HERMETIC] get_code_server_rpm.sh was simplified: it now only enables gcc-toolset-14,
 # installs nfpm from cachi2, and applies patches. The actual npm ci/build/release steps
@@ -129,8 +129,8 @@ RUN mkdir -p /tmp/node-headers
 RUN tar -xzf /cachi2/output/deps/generic/node-v37.7.0-headers.tar.gz \
     -C /tmp/node-headers --strip-components=1
 
-COPY ${CODESERVER_CONTEXT}/setup-offline-binaries.sh ${CODESERVER_SOURCE_CODE}/
-COPY ${CODESERVER_CONTEXT}/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
+COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/setup-offline-binaries.sh ${CODESERVER_SOURCE_CODE}/patches/
+COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
 
 
 
@@ -144,7 +144,7 @@ COPY ${CODESERVER_CONTEXT}/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE
 # CI=1 makes ci/dev/postinstall.sh run "npm ci" (not "npm install") in subdirs,
 # so resolved URLs stay absolute (file:///cachi2/...) and lockfiles are never modified.
 RUN --network=none cd ${CODESERVER_SOURCE_CODE} && \
-    source ./setup-offline-binaries.sh && \
+    source ./patches/setup-offline-binaries.sh && \
     cd ${CODESERVER_SOURCE_PREFETCH} && \
     CI=1 npm ci --offline --loglevel silly
 
