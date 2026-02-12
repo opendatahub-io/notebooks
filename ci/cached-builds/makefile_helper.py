@@ -10,8 +10,6 @@ from typing import TYPE_CHECKING
 
 from gha_pr_changed_files import PROJECT_ROOT
 
-import ntb
-
 if TYPE_CHECKING:
     import pathlib
     from collections.abc import Sequence
@@ -63,6 +61,8 @@ class TestMakefile:
     MINIMAL_IMAGE = "jupyter-minimal-ubi9-python-3.12"
 
     def test_makefile__build_image__konflux(self):
+        import ntb  # noqa: PLC0415 `import` should be at the top-level of a file
+
         konflux_default = dry_run_makefile(target=self.MINIMAL_IMAGE, makefile_dir=PROJECT_ROOT)
         konflux_yes = dry_run_makefile(target=self.MINIMAL_IMAGE, makefile_dir=PROJECT_ROOT, env={"KONFLUX": "yes"})
 
