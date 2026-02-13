@@ -45,7 +45,7 @@ OUTPUT_FILE=""
 COMPILE_INPUT=""
 DO_DOWNLOAD=false
 RHOAI_INDEX=""
-DEFAULT_RHOAI_INDEX="https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cpu-ubi9/simple/"
+DEFAULT_RHOAI_INDEX="https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4-EA1/cpu-ubi9/simple/"
 
 # --- Functions ---
 show_help() {
