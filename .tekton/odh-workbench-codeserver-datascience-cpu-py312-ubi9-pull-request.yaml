@@ -65,7 +65,7 @@ spec:
     - path: codeserver/ubi9-python-3.12
       type: pip
       binary: {}
-      requirements_files: ["requirements.txt", "requirements-rhoai.txt"]
+      requirements_files: ["requirements.txt"]
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-selfhost-import-aid
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-selfhost-test-provider
