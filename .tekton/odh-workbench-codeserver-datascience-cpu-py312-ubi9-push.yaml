@@ -54,7 +54,8 @@ spec:
       type: generic
     - path: codeserver/ubi9-python-3.12
       type: pip
-      binary: {}
+      binary:
+        arch: "x86_64,aarch64,ppc64le"
       requirements_files: ["requirements.txt"]
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-selfhost-import-aid
       type: npm
