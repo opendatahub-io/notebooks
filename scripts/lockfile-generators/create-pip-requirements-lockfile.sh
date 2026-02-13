@@ -215,7 +215,8 @@ if [[ -n "$RHOAI_INDEX" ]]; then
       --requirements "${OUTPUT_FILE}" \
       --output "${RHOAI_OUTPUT}" \
       --rhoai-index "${RHOAI_INDEX}" \
-      --merge-hashes
+      --merge-hashes \
+      --prefer-rhoai-version
 
     echo ""
     echo "--- Done: ${RHOAI_OUTPUT} ---"

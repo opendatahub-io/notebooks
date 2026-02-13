@@ -38,6 +38,9 @@ What this script does
   2. Fetch the RHOAI simple-index root → list of available packages.
   3. For each overlap, fetch the package page, collect wheel hashes that
      match the pinned version and the requested Python tag (default: cp312).
+     With --prefer-rhoai-version: if the exact version is not on RHOAI but
+     a different version is, use the latest RHOAI version and update the
+     version pin and hashes in requirements.txt automatically.
   4. Write requirements-rhoai.txt  (consumed by cachi2 as a second pip source).
   5. (--merge-hashes) Append RHOAI hashes into requirements.txt so that
      `uv pip install --verify-hashes` accepts both PyPI and RHOAI wheels.
@@ -47,7 +50,8 @@ Usage
   python3 scripts/lockfile-generators/generate-rhoai-requirements.py \\
     --requirements codeserver/ubi9-python-3.12/requirements.txt \\
     --output       codeserver/ubi9-python-3.12/requirements-rhoai.txt \\
-    [--rhoai-index URL] [--merge-hashes] [--python-tag cp312]
+    [--rhoai-index URL] [--merge-hashes] [--prefer-rhoai-version] \\
+    [--python-tag cp312]
 """
 
 import argparse
@@ -134,6 +138,125 @@ def parse_wheel_version(filename: str):
 
 
 # ---------------------------------------------------------------------------
+# Version helpers
+# ---------------------------------------------------------------------------
+
+def version_sort_key(v: str):
+    """Return a tuple for sorting PEP 440-ish version strings (e.g. '23.0.0')."""
+    try:
+        return tuple(int(x) for x in v.split("."))
+    except (ValueError, AttributeError):
+        return (0,)
+
+
+def _parse_cpython_tag(tag: str):
+    """Parse a CPython tag like 'cp312' into a (major, minor) tuple.
+
+    The tag format is ``cp<major><minor>`` where minor may be 1 or 2 digits
+    (e.g. cp36 → (3, 6), cp312 → (3, 12)).
+    """
+    m = re.match(r"cp(\d)(\d+)$", tag)
+    if m:
+        return (int(m.group(1)), int(m.group(2)))
+    return None
+
+
+def is_wheel_compatible(whl_name: str, python_tag: str) -> bool:
+    """Check whether *whl_name* is compatible with *python_tag* (e.g. 'cp312').
+
+    Handles three cases:
+      1. Exact tag match — ``cp312`` appears in the filename.
+      2. Stable ABI (abi3) — a wheel tagged ``cp36-abi3`` is compatible with
+         any CPython >= 3.6, so it works for cp312.
+      3. Pure-Python — ``py3-none`` / ``py2.py3-none`` wheels are always ok.
+    """
+    if not python_tag:
+        return True
+    # Case 1: exact substring match (covers cp312-cp312 and cp312-abi3)
+    if python_tag in whl_name:
+        return True
+    # Case 3: pure-Python wheels
+    if "-py3-none-" in whl_name or "-py2.py3-none-" in whl_name:
+        return True
+    # Case 2: abi3 stable ABI — the wheel's minimum CPython version may be
+    # lower than the requested tag (e.g. cp36-abi3 is compatible with cp312).
+    if "-abi3-" not in whl_name:
+        return False
+    # Parse the wheel's python tag (3rd field from the end in the filename):
+    #   name-ver[-build]-pytag-abitag-plattag.whl
+    parts = whl_name.rsplit(".whl", 1)[0].split("-")
+    if len(parts) < 5:
+        return False
+    whl_pytag = parts[-3]
+    whl_ver = _parse_cpython_tag(whl_pytag)
+    req_ver = _parse_cpython_tag(python_tag)
+    if whl_ver and req_ver:
+        return req_ver >= whl_ver
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Update versions in requirements.txt (for RHOAI version overrides)
+# ---------------------------------------------------------------------------
+
+def update_versions_in_requirements(req_path: Path, version_overrides: dict):
+    """Replace version pins and hashes for packages where RHOAI provides a
+    different version than what was originally in requirements.txt.
+
+    *version_overrides*: {normalized_name: {"name": str, "old_ver": str,
+                          "new_ver": str, "hashes": set_of_sha256}}
+    """
+    lines = req_path.read_text().splitlines()
+    output = []
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+        m = re.match(r"^([A-Za-z0-9._-]+)==([^\s;]+)", line.strip())
+        if not m:
+            output.append(line)
+            i += 1
+            continue
+
+        pkg_key = normalize_name(m.group(1))
+
+        # Gather entire continuation block
+        block = [line]
+        j = i + 1
+        while j < len(lines) and block[-1].rstrip().endswith("\\"):
+            block.append(lines[j])
+            j += 1
+
+        if pkg_key not in version_overrides:
+            output.extend(block)
+            i = j
+            continue
+
+        ov = version_overrides[pkg_key]
+
+        # Extract the first line: strip trailing backslash and any --hash entries.
+        # Preserves the package name, version, and environment markers.
+        first = re.sub(r"\s*\\$", "", block[0])       # strip trailing \
+        first = re.sub(r"\s+--hash=\S+", "", first)   # strip inline hashes
+        first = first.rstrip()
+
+        # Replace the version pin
+        first = first.replace(f"=={ov['old_ver']}", f"=={ov['new_ver']}", 1)
+
+        # Rebuild block with RHOAI hashes only
+        new_hashes = sorted(ov["hashes"])
+        rebuilt = [f"{first} \\"]
+        for k, h in enumerate(new_hashes):
+            suffix = " \\" if k < len(new_hashes) - 1 else ""
+            rebuilt.append(f"    --hash=sha256:{h}{suffix}")
+
+        output.extend(rebuilt)
+        i = j
+
+    req_path.write_text("\n".join(output) + "\n")
+
+
+# ---------------------------------------------------------------------------
 # Merge RHOAI hashes into requirements.txt
 # ---------------------------------------------------------------------------
 
@@ -207,6 +330,14 @@ def main():
         help="Also merge RHOAI hashes into requirements.txt",
     )
     ap.add_argument(
+        "--prefer-rhoai-version", action="store_true",
+        help="When RHOAI provides a package at a different version than "
+             "requirements.txt, use the latest RHOAI version and update "
+             "the version pin and hashes in requirements.txt. This avoids "
+             "source builds on ppc64le/s390x when RHOAI ships a newer "
+             "pre-built wheel.",
+    )
+    ap.add_argument(
         "--python-tag", default="cp312",
         help="Python version tag to filter wheels (default: cp312)",
     )
@@ -235,6 +366,7 @@ def main():
 
     rhoai_entries = []
     rhoai_hash_map = {}
+    version_overrides = {}  # packages where RHOAI version differs
 
     for key in overlap:
         info = req_pkgs[key]
@@ -242,23 +374,56 @@ def main():
         target_ver = info["version"]
         print(f"  {info['name']}=={target_ver} ... ", end="", flush=True)
 
-        hashes = []
+        # Collect all RHOAI wheels grouped by version
+        wheels_by_ver = {}  # {version_str: [sha256, ...]}
         for whl_name, sha, _url in fetch_rhoai_wheels(args.rhoai_index, raw_name):
+            if not is_wheel_compatible(whl_name, args.python_tag):
+                continue
             _, whl_ver = parse_wheel_version(whl_name)
-            if whl_ver != target_ver:
+            if whl_ver is None:
                 continue
-            if args.python_tag and args.python_tag not in whl_name:
-                continue
-            hashes.append(sha)
+            wheels_by_ver.setdefault(whl_ver, []).append(sha)
+
+        # Select which version to use:
+        #   1. Exact match with requirements.txt → preferred
+        #   2. --prefer-rhoai-version → pick the latest RHOAI version
+        #   3. Otherwise → no match
+        if target_ver in wheels_by_ver:
+            use_ver = target_ver
+            hashes = wheels_by_ver[target_ver]
+        elif args.prefer_rhoai_version and wheels_by_ver:
+            use_ver = max(wheels_by_ver, key=version_sort_key)
+            hashes = wheels_by_ver[use_ver]
+        else:
+            use_ver = target_ver
+            hashes = []
 
         if hashes:
-            print(f"{len(hashes)} wheels")
+            if use_ver != target_ver:
+                print(f"{len(hashes)} wheels "
+                      f"(RHOAI version override: {target_ver} -> {use_ver})")
+                version_overrides[key] = {
+                    "name": info["name"],
+                    "old_ver": target_ver,
+                    "new_ver": use_ver,
+                    "hashes": set(hashes),
+                }
+            else:
+                print(f"{len(hashes)} wheels")
             rhoai_entries.append(
-                {"name": info["name"], "version": target_ver, "hashes": hashes}
+                {"name": info["name"], "version": use_ver, "hashes": hashes}
             )
             rhoai_hash_map[key] = set(hashes)
         else:
-            print("no match")
+            if args.prefer_rhoai_version:
+                print("no match (not on RHOAI)")
+            else:
+                avail = ", ".join(sorted(wheels_by_ver)) if wheels_by_ver else ""
+                if avail:
+                    print(f"no match (RHOAI has: {avail}; "
+                          f"use --prefer-rhoai-version to override)")
+                else:
+                    print("no match")
 
     # ---- 4. Write requirements-rhoai.txt ----------------------------------
     print(f"\nWriting {args.output} ({len(rhoai_entries)} packages) ...")
@@ -275,7 +440,7 @@ def main():
         "# Corresponding hashes are also in requirements.txt so --verify-hashes passes.",
         "#",
         "# Auto-generated by: scripts/lockfile-generators/generate-rhoai-requirements.py",
-        "# Versions must match requirements.txt.",
+        "# Versions match requirements.txt (may differ from uv.lock when --prefer-rhoai-version is used).",
         f"--index-url {args.rhoai_index}",
     ]
 
@@ -288,7 +453,25 @@ def main():
 
     args.output.write_text("\n".join(header + body) + "\n")
 
-    # ---- 5. Merge RHOAI hashes into requirements.txt ----------------------
+    # ---- 5. Apply RHOAI version overrides to requirements.txt --------------
+    if version_overrides:
+        print(f"\nApplying {len(version_overrides)} RHOAI version override(s) "
+              f"to {args.requirements}:")
+        for key in sorted(version_overrides):
+            ov = version_overrides[key]
+            print(f"  {ov['name']}: {ov['old_ver']} -> {ov['new_ver']}")
+        update_versions_in_requirements(args.requirements, version_overrides)
+
+        # Suggest adding override-dependencies to pyproject.toml so that
+        # `uv lock` resolves the same version natively on the next re-lock.
+        print()
+        print("  NOTE: requirements.txt has been updated in-place.  To keep")
+        print("  uv.lock consistent, add to pyproject.toml override-dependencies:")
+        for key in sorted(version_overrides):
+            ov = version_overrides[key]
+            print(f'    "{ov["name"]}=={ov["new_ver"]}",')
+
+    # ---- 6. Merge RHOAI hashes into requirements.txt ----------------------
     if args.merge_hashes and rhoai_hash_map:
         print(f"Merging RHOAI hashes into {args.requirements} ...")
         merge_hashes_into_requirements(args.requirements, rhoai_hash_map)
