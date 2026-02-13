@@ -64,6 +64,9 @@ RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
+RUN ls -alh /cachi2/output/deps/pip/
+RUN ls -alh /cachi2/output/deps/npm/
+
 # [HERMETIC] Configure package repos: local cachi2 repo for testing, or enable nodejs:22 module for Konflux.
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/* && \

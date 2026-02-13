@@ -27,7 +27,7 @@ dependencies = [
 
     # Datascience packages
     "feast~=0.59.0",
-    "debugpy==1.8.19",
+    "debugpy==1.8.20",
 
     # RHAIENG-1475: skl2onnx excluded on s390x for codeserver
     "skl2onnx~=1.19.1; platform_machine != 's390x'",
@@ -44,22 +44,13 @@ dependencies = [
 
 [tool.uv]
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython' and platform_machine == 'x86_64'",
-    "sys_platform == 'linux' and implementation_name == 'cpython' and platform_machine == 'aarch64'",
-    "sys_platform == 'linux' and implementation_name == 'cpython' and platform_machine == 'ppc64le'",
-    "sys_platform == 'linux' and implementation_name == 'cpython' and platform_machine == 's390x'",
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
 
 override-dependencies = [
     # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
     # Upstream: https://github.com/kubernetes-client/python/issues/2458
     "urllib3>=2.6.0",
-    # scikit-learn==1.8.0 build-system.requires: numpy>=2,<2.4.0
-    # Without the cap uv resolves to 2.4.x which breaks scikit-learn's isolated build.
-    "numpy>=2.0,<2.4.0",
-    # Pin onnx to 1.20.0: RHOAI provides pre-built wheels for all architectures
-    # (ppc64le, s390x, aarch64, x86_64). PyPI 1.20.1 lacks ppc64le/s390x wheels.
-    "onnx>=1.20.0,<1.20.1",
 ]
 [tool.uv.sources]
 odh-notebooks-meta-workbench-datascience-deps = { path = "../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
