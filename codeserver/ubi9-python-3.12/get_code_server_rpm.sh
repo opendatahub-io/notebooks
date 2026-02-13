@@ -79,7 +79,8 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
     # Fix: remove the postinstall script from the cached tarball, then strip its
     # integrity hash from the lockfile so npm accepts the modified tarball.
     if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
-        VSCE_TGZ=$(find /cachi2/output/deps/npm -name "vscode-vsce-sign-*.tgz" -type f 2>/dev/null | head -1)
+        # Try to patch the cached tarball (remove postinstall from its package.json)
+        VSCE_TGZ=$(find /cachi2/output/deps/npm -name "*vsce-sign*.tgz" -type f 2>/dev/null | head -1)
         if [[ -n "${VSCE_TGZ}" ]]; then
             echo "Patching vsce-sign: removing postinstall for ${ARCH} (${VSCE_TGZ})"
             tmpdir=$(mktemp -d)
@@ -88,10 +89,17 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
                 > /tmp/pkg-tmp.json && mv /tmp/pkg-tmp.json "$tmpdir/package/package.json"
             tar czf "${VSCE_TGZ}" -C "$tmpdir" package
             rm -rf "$tmpdir"
+        else
+            echo "WARNING: vsce-sign tarball not found in /cachi2/output/deps/npm/"
+            echo "  Searched: find /cachi2/output/deps/npm -name '*vsce-sign*.tgz'"
+            find /cachi2/output/deps/npm -name "*vsce*" -type f 2>/dev/null || true
         fi
-        # Strip integrity so npm accepts the modified tarball
-        jq 'del(.packages["node_modules/@vscode/vsce-sign"].integrity)' \
-            lib/vscode/build/package-lock.json > /tmp/lock-tmp.json \
+        # Tell npm not to run vsce-sign's postinstall (hasInstallScript=false) and
+        # strip integrity so npm accepts the modified tarball if found above.
+        jq '
+            (.packages["node_modules/@vscode/vsce-sign"].hasInstallScript = false) |
+            del(.packages["node_modules/@vscode/vsce-sign"].integrity)
+        ' lib/vscode/build/package-lock.json > /tmp/lock-tmp.json \
             && mv /tmp/lock-tmp.json lib/vscode/build/package-lock.json
     fi
 
