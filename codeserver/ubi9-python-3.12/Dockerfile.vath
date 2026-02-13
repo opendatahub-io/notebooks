@@ -67,7 +67,7 @@ RUN --network=none /bin/bash <<'EOF'
     UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --no-index \
         --find-links /cachi2/output/deps/pip \
         --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode \
-        --index-strategy=unsafe-best-match --requirements=./pylock.toml
+        --index-strategy=unsafe-best-match --requirements=./requirements.txt
 
     # [HERMETIC] Export all installed wheels to /wheelsdir/ for the codeserver stage.
     # RHOAI provides pre-built wheels for major native packages (numpy, scipy,
