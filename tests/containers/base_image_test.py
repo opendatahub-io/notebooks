@@ -16,7 +16,7 @@ import allure
 import pytest
 import testcontainers.core.container
 
-from tests.containers import conftest, docker_utils, utils
+from tests.containers import conftest, docker_utils, skopeo_utils, utils
 
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -41,6 +41,11 @@ class TestBaseImage:
         """Check if the image is AIPCC-enabled by looking for uv.lock.d in source directory."""
         image_metadata = conftest.get_image_metadata(image)
         source_location = image_metadata.labels.get("io.openshift.build.source-location", "")
+
+        # Dockerfile.konflux does not have source-location label
+        if not source_location:
+            image_info = skopeo_utils.get_image_info(image)
+            return "PIP_CONFIG_FILE" in image_info.env
 
         # Extract relative path from URL (after /tree/main/)
         source_dir = None
