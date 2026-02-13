@@ -45,7 +45,7 @@ class TestBaseImage:
         # Dockerfile.konflux does not have source-location label
         if not source_location:
             image_info = skopeo_utils.get_image_info(image)
-            return "PIP_CONFIG_FILE" in image_info.env
+            return "PIP_INDEX_URL" not in image_info.env
 
         # Extract relative path from URL (after /tree/main/)
         source_dir = None
