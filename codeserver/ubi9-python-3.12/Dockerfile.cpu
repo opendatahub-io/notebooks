@@ -29,9 +29,9 @@ ARG LOCAL_BUILD=false
 ############################################################################################
 # rpm-base: Build code-server from source into an RPM (all architectures)
 #
-# [HERMETIC] get_code_server_rpm.sh would git-clone code-server, install nvm,
-# download Node.js, and build everything with full network access. Now the entire build
-# runs offline using prefetched sources:
+# [HERMETIC] apply-patch.sh (formerly get_code_server_rpm.sh) would git-clone code-server,
+# install nvm, download Node.js, and build everything with full network access. Now the
+# entire build runs offline using prefetched sources:
 #   - code-server source: prefetch-input/code-server/ (git submodule)
 #   - Node.js/npm: installed from prefetched RPMs
 #   - npm dependencies: package-lock.json resolved URLs rewritten to file:///cachi2/...
@@ -72,57 +72,35 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         dnf module enable nodejs:22 -y; \
     fi;
 
-# [HERMETIC] Install Node.js 22 and code-server build deps from prefetched RPMs
-# Previously these were fetched via nvm + curl during the build.
+# [HERMETIC] Install Node.js 22 and code-server build deps from prefetched RPMs.
+# libxkbfile-devel: provides xkbfile.h and xkbfile.pc needed by native-keymap
+# (node-gyp native addon in lib/vscode). Available from CentOS Stream 9 CRB repo
+# for all arches (x86_64, aarch64, ppc64le, s390x). Previously compiled from source
+# tarballs (util-macros + libxkbfile) because the original script used git clone and
+# the CRB repo wasn't enabled; replaced with dnf install for simplicity.
 RUN --network=none dnf install -y nodejs nodejs-devel npm
-RUN --network=none dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel
-
-# [HERMETIC] Build libxkbfile from prefetched source tarballs (previously downloaded via curl).
-# Required by native-keymap and other node-gyp deps in lib/vscode.
-RUN export UTIL_MACROS_VERSION=1.20.2 && \
-    tar -xzf /cachi2/output/deps/generic/util-macros-${UTIL_MACROS_VERSION}.tar.gz && \
-    cd util-macros-${UTIL_MACROS_VERSION}/ && \
-    ./configure --prefix=/usr && make install -j ${MAX_JOBS:-} && \
-    cd .. && rm -rf util-macros-${UTIL_MACROS_VERSION}/
-
-RUN export X_KB_FILE_VERSION=1.1.3 && \
-    tar -xzf /cachi2/output/deps/generic/libxkbfile-${X_KB_FILE_VERSION}.tar.gz && \
-    cd libxkbfile-${X_KB_FILE_VERSION}/ && \
-    ./configure --prefix=/usr && make install -j ${MAX_JOBS:-} && \
-    cd .. && rm -rf libxkbfile-${X_KB_FILE_VERSION}/
-
-# native-keymap (and other node-gyp deps in lib/vscode) need xkbfile.pc; libxkbfile installs
-# to /usr/lib64/pkgconfig or /usr/lib/pkgconfig depending on arch. Ensure pkg-config finds it.
-ENV PKG_CONFIG_PATH=/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
+RUN --network=none dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel libxkbfile-devel
 
 # [HERMETIC] Git metadata needed by code-server's build scripts (version detection, submodules).
 COPY .git /root/.git
 # [HERMETIC] Rewrite script: used by setup-offline-binaries.sh to rewrite npm
 # "resolved" URLs from https://registry.npmjs.org/... to file:///cachi2/...
-#COPY scripts/lockfile-generators/rewrite-cachi2-path.sh /root/scripts/lockfile-generators/
 COPY scripts/lockfile-generators/rewrite-npm-urls.sh /root/scripts/lockfile-generators/
 
 # [HERMETIC] Copy prefetched code-server source (git submodule checked out at the target version).
 COPY ${CODESERVER_CONTEXT}/prefetch-input/code-server/ ${CODESERVER_SOURCE_PREFETCH}/
 
 # [HERMETIC] Copy offline-build patches and s390x patch into the prefetched source tree.
-# These are applied by get_code_server_rpm.sh via `patch -p1`.
+# These are applied by apply-patch.sh via `patch -p1`.
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/code-server/*.patch ${CODESERVER_SOURCE_CODE}/patches/
 
-# [HERMETIC] Copy stored patched package.json/package-lock.json files.
-# Directories with git-shorthand deps (@parcel/watcher, @emmetio/css-parser) need
-# URL rewrites to file:///cachi2/... paths. We use stored copies instead of diff
-# patches because: on Konflux cachi2 npm prefetch rewrites source URLs before the
-# build (breaking diff context), while on local builds no prefetch runs at all.
-#COPY ${CODESERVER_CTX}/prefetch-input/patches/code-server/lib/ ${CODESERVER_SOURCE_PREFETCH}/patches/lib/
-
-# [HERMETIC] get_code_server_rpm.sh was simplified: it now only enables gcc-toolset-14,
-# installs nfpm from cachi2, and applies patches. The actual npm ci/build/release steps
-# are done below in separate RUN commands for better caching.
-COPY ${CODESERVER_CONTEXT}/get_code_server_rpm.sh ${CODESERVER_SOURCE_CODE}/
+# [HERMETIC] apply-patch.sh (formerly get_code_server_rpm.sh) was simplified: it now only
+# enables gcc-toolset-14, installs nfpm from cachi2, and applies patches. The actual
+# npm ci/build/release steps are done below in separate RUN commands for better caching.
+COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/apply-patch.sh ${CODESERVER_SOURCE_CODE}/
 
 RUN cp /cachi2/output/deps/generic/npm/* /cachi2/output/deps/npm/
-RUN cd ${CODESERVER_SOURCE_CODE} && ./get_code_server_rpm.sh
+RUN cd ${CODESERVER_SOURCE_CODE} && ./apply-patch.sh
 
 # [HERMETIC] Extract prefetched Electron/Node.js headers for node-gyp (previously downloaded at build time).
 RUN mkdir -p /tmp/node-headers
@@ -131,9 +109,6 @@ RUN tar -xzf /cachi2/output/deps/generic/node-v37.7.0-headers.tar.gz \
 
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/setup-offline-binaries.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
-
-
-
 
 # [HERMETIC] Step 1: npm ci --offline (install all npm dependencies from local cache).
 # setup-offline-binaries.sh does all offline preparation in one shot:
@@ -148,11 +123,11 @@ RUN --network=none cd ${CODESERVER_SOURCE_CODE} && \
     cd ${CODESERVER_SOURCE_PREFETCH} && \
     CI=1 npm ci --offline --loglevel silly
 
-# # [HERMETIC] Step 2: Build code-server TypeScript
+# [HERMETIC] Step 2: Build code-server TypeScript
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     npm run build
 
-# # [HERMETIC] Step 3: Build VS Code (the embedded editor)
+# [HERMETIC] Step 3: Build VS Code (the embedded editor)
 RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     VERSION=${CODESERVER_VERSION/v/} npm run build:vscode --verbose --loglevel silly
 

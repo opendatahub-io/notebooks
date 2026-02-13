@@ -56,6 +56,9 @@ packages:
   - nodejs-devel
   - nodejs-packaging
   - npm
+  # libxkbfile-devel: provides xkbfile.h and xkbfile.pc needed by native-keymap
+  # (node-gyp native addon in lib/vscode). Available in CentOS Stream 9 CRB repo.
+  - libxkbfile-devel
   - policycoreutils
   - policycoreutils-python-utils
   - python3-audit

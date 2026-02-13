@@ -11,9 +11,6 @@ input:
     # CentOS Stream 9 GPG key (needed in whl-cache stage for ppc64le/s390x dnf install
     # from CentOS baseos/appstream/crb repos; UBI9 images only ship the Red Hat key)
     - url: https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official
-    # libxkbfile build deps (previously downloaded via curl in get_code_server_rpm.sh)
-    - url: https://www.x.org/releases/individual/util/util-macros-1.20.2.tar.gz
-    - url: https://www.x.org/releases/individual/lib/libxkbfile-1.1.3.tar.gz
     - url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.x86_64.rpm
     - url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.s390x.rpm
     - url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.aarch64.rpm

@@ -28,56 +28,56 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
     # s390x: apply patch (from VSCodium: arch-4-s390x-package.json.patch)
     if [[ "$ARCH" == "s390x" ]]; then
         patch -p1 < patches/s390x.patch
-    fi
+    fi    
 
-    # # [HERMETIC] Apply offline-build patches (cachi2 rewrites, offline npm, etc.)
-    # # Use `patch` instead of `git apply` because the prefetched source contains a
-    # # nested git submodule (lib/vscode) whose .git reference is broken inside the
-    # # container, causing `git apply` to fail on files within that submodule.
-    # for p in patches/[0-9]*-*.patch; do
-    #     echo "Applying $p"
-    #     patch -p1 < "$p"
-    # done
-
-    # # [HERMETIC] Copy stored patched package.json/package-lock.json files.
-    # # These directories have git-shorthand dependencies (@parcel/watcher,
-    # # @emmetio/css-parser) that can't be fetched offline. The stored copies
-    # # rewrite them to file:///cachi2/output/deps/generic/... URLs pointing to
-    # # pre-fetched tarballs (listed in artifacts.in.yaml).
-    # #
-    # # We use COPY instead of diff patches because:
-    # # - On Konflux, cachi2 npm prefetch rewrites resolved URLs in the source
-    # #   before the Docker build, so diff context lines no longer match.
-    # # - On local builds, cachi2 prefetch doesn't run, so we need the rewrites.
-    # # The stored copies work in both environments since the generic tarballs
-    # # are always available in the cachi2 cache.
-    # echo "Copying patched lib/vscode/extensions/ files (@parcel/watcher rewrite)"
-    # cp patches/lib/vscode/extensions/package.json lib/vscode/extensions/package.json
-    # cp patches/lib/vscode/extensions/package-lock.json lib/vscode/extensions/package-lock.json
-
-    # echo "Copying patched lib/vscode/extensions/emmet/ files (@emmetio/css-parser rewrite)"
-    # cp patches/lib/vscode/extensions/emmet/package.json lib/vscode/extensions/emmet/package.json
-    # cp patches/lib/vscode/extensions/emmet/package-lock.json lib/vscode/extensions/emmet/package-lock.json
-
-    # echo "Copying patched lib/vscode/remote/ files (node-gyp, proc-log, @parcel/watcher)"
-    # cp patches/lib/vscode/remote/package.json lib/vscode/remote/package.json
-    # cp patches/lib/vscode/remote/package-lock.json lib/vscode/remote/package-lock.json
-
-    
-
-    # ppc64le/s390x: @vscode/vsce-sign's postinstall downloads a platform-specific
-    # signing binary, but none exists for ppc64le/s390x so it exits(1) and breaks
-    # npm ci.  The binary is unused in our build:
-    #   - Build time: gulpfile.reh.js (VS Code Remote Extension Host) never references it.
-    #   - Runtime: signature verification is disabled by patches/signature-verification.diff.
+    # ppc64le/s390x: Disable @vscode/vsce-sign's postinstall script.
     #
-    # Reference: b-data.ch builds code-server on ppc64le by downgrading @vscode/vsce
-    # to 2.20.1 (which has no vsce-sign dependency at all), confirming it is safe to
-    # remove.  See: https://gitlab.b-data.ch/coder/code-server-builder
-    #              https://gitlab.b-data.ch/coder/code-server (patches/signature-verification.diff)
+    # WHAT IS @vscode/vsce-sign?
+    #   It is a dependency of @vscode/vsce (the VS Code Extension CLI tool, used to
+    #   package/publish/sign .vsix extension files).  Its postinstall script downloads
+    #   a platform-specific native binary (bin/vsce-sign) that performs cryptographic
+    #   signing and verification of VS Code extension packages.
     #
-    # Fix: remove the postinstall script from the cached tarball, then strip its
-    # integrity hash from the lockfile so npm accepts the modified tarball.
+    # WHY DOES IT FAIL?
+    #   The postinstall script only supports: linux-x64, linux-arm64, linux-arm,
+    #   darwin-x64, darwin-arm64, win32-x64, win32-arm64, alpine-x64, alpine-arm64.
+    #   On ppc64le/s390x, process.arch returns "ppc64"/"s390x" which the script does
+    #   not recognise, so it throws:
+    #     "The current platform (linux) and architecture (ppc64) is not supported."
+    #   Microsoft has no plans to add ppc64le/s390x support (see github.com/microsoft/
+    #   vscode-vsce/issues/1105, closed as "not planned").
+    #
+    # WHY IS IT SAFE TO REMOVE?
+    #   @vscode/vsce-sign provides zero functionality to code-server:
+    #
+    #   1. Build time — @vscode/vsce is a devDependency in lib/vscode/build/package.json.
+    #      code-server builds the VS Code Remote Extension Host (gulpfile.reh.js), which
+    #      has zero references to vsce-sign.  The only reference is in gulpfile.vscode.js
+    #      (desktop ASAR packaging), which code-server does not use.
+    #
+    #   2. Runtime — VS Code's extensionSignatureVerificationService.ts does import
+    #      @vscode/vsce-sign at runtime for extension signature verification, BUT:
+    #      a) code-server already applies patches/signature-verification.diff which
+    #         hard-codes verifySignature=false, so the verify() path is never reached.
+    #      b) Even without the patch, the code has graceful fallback: if the module
+    #         fails to load, it logs a warning and skips verification (returns undefined).
+    #
+    #   3. External validation — b-data.ch (gitlab.b-data.ch/coder/code-server-builder)
+    #      successfully builds and ships code-server on ppc64le/s390x by completely
+    #      removing @vscode/vsce-sign: they downgrade @vscode/vsce from 3.6.1 to 2.20.1
+    #      (which has no vsce-sign dependency at all).  They also apply an identical
+    #      signature-verification.diff patch.  See:
+    #        https://gitlab.b-data.ch/coder/code-server-builder (patches/4.105.0.patch)
+    #        https://gitlab.b-data.ch/coder/code-server (patches/signature-verification.diff)
+    #
+    # HOW THE FIX WORKS:
+    #   1. Patch the cached tarball: remove "postinstall" from its package.json so the
+    #      download-binary script never runs.
+    #   2. Patch the lockfile: set hasInstallScript=false (tells npm to skip lifecycle
+    #      scripts) and remove the integrity hash (so npm accepts the modified tarball).
+    #   Both steps are belt-and-suspenders — the lockfile flag alone is sufficient per
+    #   npm documentation (see github.com/npm/cli/issues/2606), but patching the tarball
+    #   adds defence in depth.
     if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
         # Try to patch the cached tarball (remove postinstall from its package.json)
         VSCE_TGZ=$(find /cachi2/output/deps/npm -name "*vsce-sign*.tgz" -type f 2>/dev/null | head -1)
