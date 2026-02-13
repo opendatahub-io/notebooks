@@ -62,10 +62,6 @@ spec:
     description: Add built image into an OCI image index
     name: build-image-index
     type: string
-  - default: docker
-    description: The format for the resulting image's mediaType. Valid values are oci or docker.
-    name: buildah-format
-    type: string
   - default: "false"
     description: Enable cache proxy configuration
     name: enable-cache-proxy
@@ -326,8 +322,6 @@ spec:
     - name: IMAGES
       value:
       - $(tasks.build-images.results.IMAGE_REF[*])
-    - name: BUILDAH_FORMAT
-      value: $(params.buildah-format)
     runAfter:
     - build-images
     taskRef:
