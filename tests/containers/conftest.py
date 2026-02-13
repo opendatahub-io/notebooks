@@ -69,9 +69,9 @@ def get_image_metadata(image: str) -> Image:
         image_metadata = client.client.images.get(image)
     except docker.errors.ImageNotFound:
         # skopeo inspect
-        labels = skopeo_utils.get_image_labels(image)
-        if labels is not None:
-            return Image(id=None, name=image, labels=labels)
+        image_info = skopeo_utils.get_image_info(image)
+        if image_info.labels is not None:
+            return Image(id=None, name=image, labels=image_info.labels)
         # pull & docker inspect
         image_metadata = client.client.images.pull(image)
         assert isinstance(image_metadata, docker.models.images.Image)
