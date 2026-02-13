@@ -55,7 +55,7 @@ log_error() { echo "    ERROR: $*" >&2; }
 
 
 # =============================================================================
-# Step 2: Find all target JSON files inside the source directory
+# Find all target JSON files inside the source directory
 # =============================================================================
 find_target_files() {
     log_info "Finding target JSON files..."
@@ -76,8 +76,8 @@ find_target_files() {
 }
 
 # =============================================================================
-# Process a single file through all rewrite passes (uses perl, like
-# rewrite-cachi2-path.sh).  Each perl one-liner is one rewrite type.
+# Process a single file through all rewrite passes (uses perl).
+# Each perl one-liner is one rewrite type.
 #
 # Order matters: integrity removal must run BEFORE URL rewrites so we can
 # still identify git+ssh / git+https resolved URLs.

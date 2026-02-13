@@ -1,6 +1,4 @@
 #!/bin/bash
-#set +euo pipefail
-
 ############################################################################################
 # setup-offline-binaries.sh - Populate local caches for hermetic code-server build
 #
@@ -23,20 +21,12 @@
 # /cachi2/output/deps/generic/.
 ############################################################################################
 
-HERMETO_OUTPUT=/cachi2/output
-CODESERVER_SOURCE_PREFETCH="${CODESERVER_SOURCE_PREFETCH:-$(pwd)/prefetch-input/code-server}"
+# codeserver-offline-env.sh is the single source of truth for all env vars
+# (HERMETO_OUTPUT, CODESERVER_SOURCE_PREFETCH, npm_config_*, Electron, Playwright, etc.)
 . ./patches/codeserver-offline-env.sh
 
-# Configure npm for offline mode
-# Use both exports (for current script) and global config (for future npm commands)
-export npm_config_offline=true
-export npm_config_prefer_offline=true
-export npm_config_fetch_retries=0
-export npm_config_audit=false
-export npm_config_fund=false
-export npm_config_legacy_peer_deps=true
-
-# Also set globally for npm commands run in different contexts (like release:standalone)
+# Set npm global config so settings persist for subprocesses and lifecycle scripts
+# (e.g. release:standalone) that may not inherit env vars.
 npm config set --global offline true
 npm config set --global prefer-offline true
 npm config set --global fetch-retries 0
@@ -52,26 +42,14 @@ mkdir -p ~/.cache/electron
 cp "${HERMETO_OUTPUT}/deps/generic/electron-v37.7.0-linux-x64.zip" ~/.cache/electron/
 cp "${HERMETO_OUTPUT}/deps/generic/SHASUMS256.txt" ~/.cache/electron/SHASUMS256.txt-37.7.0
 
-# Setup node-gyp cache for Electron headers (37.7.0)
+# Setup node-gyp header caches: Electron (37.7.0), system Node (22.22.0), VSCode remote (22.20.0)
 # node-gyp expects headers at: ~/.cache/node-gyp/<version>/
-mkdir -p ~/.cache/node-gyp/37.7.0
-tar -xzf "${HERMETO_OUTPUT}/deps/generic/node-v37.7.0-headers.tar.gz" \
-    -C ~/.cache/node-gyp/37.7.0 --strip-components=1
-echo "11" > ~/.cache/node-gyp/37.7.0/installVersion
-
-# Setup node-gyp cache for Node.js headers (22.22.0)
-# Some build tools may use system Node.js instead of Electron
-mkdir -p ~/.cache/node-gyp/22.22.0
-tar -xzf "${HERMETO_OUTPUT}/deps/generic/node-v22.22.0-headers.tar.gz" \
-    -C ~/.cache/node-gyp/22.22.0 --strip-components=1
-echo "11" > ~/.cache/node-gyp/22.22.0/installVersion
-
-# Setup node-gyp cache for Node.js headers (22.20.0)
-# VSCode remote modules target this specific Node.js version
-mkdir -p ~/.cache/node-gyp/22.20.0
-tar -xzf "${HERMETO_OUTPUT}/deps/generic/node-v22.20.0-headers.tar.gz" \
-    -C ~/.cache/node-gyp/22.20.0 --strip-components=1
-echo "11" > ~/.cache/node-gyp/22.20.0/installVersion
+for version in 37.7.0 22.22.0 22.20.0; do
+    mkdir -p ~/.cache/node-gyp/${version}
+    tar -xzf "${HERMETO_OUTPUT}/deps/generic/node-v${version}-headers.tar.gz" \
+        -C ~/.cache/node-gyp/${version} --strip-components=1
+    echo "11" > ~/.cache/node-gyp/${version}/installVersion
+done
 
 # Setup Playwright Chromium
 mkdir -p ~/.cache/ms-playwright/chromium-1134
@@ -88,15 +66,9 @@ RIPGREP_CACHE_DIR="/tmp/vscode-ripgrep-cache-${VSCODE_RIPGREP_VERSION}"
 mkdir -p "${RIPGREP_CACHE_DIR}"
 cp "${HERMETO_OUTPUT}/deps/generic/ripgrep-v13."*.tar.gz "${RIPGREP_CACHE_DIR}/"
 
-echo "VSCode ripgrep cache populated at ${RIPGREP_CACHE_DIR}"
-
-# Setup VSCode marketplace extensions and Node.js binaries from prefetched files
-# Copy files to a location accessible during build (CODESERVER_SOURCE_PREFETCH may be absolute from ENV)
-if [[ "$CODESERVER_SOURCE_PREFETCH" = /* ]]; then
-  VSCODE_OFFLINE_DIR="${CODESERVER_SOURCE_PREFETCH}/.vscode-offline-cache"
-else
-  VSCODE_OFFLINE_DIR="${HOME:-/root}/${CODESERVER_SOURCE_PREFETCH}/.vscode-offline-cache"
-fi
+# Setup VSCode marketplace extensions and Node.js binaries from prefetched files.
+# VSCODE_OFFLINE_CACHE is already exported by codeserver-offline-env.sh.
+VSCODE_OFFLINE_DIR="${VSCODE_OFFLINE_CACHE}"
 mkdir -p "${VSCODE_OFFLINE_DIR}"
 
 # Copy .vsix extension files
@@ -106,8 +78,6 @@ cp "${HERMETO_OUTPUT}/deps/generic/ms-vscode.vscode-js-profile-table.1.0.10.vsix
 
 # Copy Node.js runtime binary (for bundling with VSCode server)
 cp "${HERMETO_OUTPUT}/deps/generic/node-v22.20.0-linux-x64.tar.gz" "${VSCODE_OFFLINE_DIR}/"
-
-echo "Copied VSCode offline files to ${VSCODE_OFFLINE_DIR}"
 
 # [HERMETIC] Pre-populate VSCode .build/ caches so that gulp tasks skip network downloads.
 # The VSCode build system checks these directories BEFORE attempting to fetch from the network:
@@ -131,7 +101,6 @@ if [[ ! -d "${NODE_CACHE_DIR}" ]]; then
     mv "${NODE_CACHE_DIR}/bin/node" "${NODE_CACHE_DIR}/node"
     rmdir "${NODE_CACHE_DIR}/bin" 2>/dev/null || true
     chmod +x "${NODE_CACHE_DIR}/node"
-    echo "Pre-populated Node.js ${NODE_BUILD_VERSION} binary at ${NODE_CACHE_DIR}/node"
 fi
 
 # --- Pre-populate built-in extensions from prefetched .vsix files ---
@@ -166,11 +135,8 @@ populate_vsix "${HERMETO_OUTPUT}/deps/generic/ms-vscode.js-debug-companion.1.1.3
 populate_vsix "${HERMETO_OUTPUT}/deps/generic/ms-vscode.js-debug.1.105.0.vsix" "ms-vscode.js-debug"
 populate_vsix "${HERMETO_OUTPUT}/deps/generic/ms-vscode.vscode-js-profile-table.1.0.10.vsix" "ms-vscode.vscode-js-profile-table"
 
-echo "Pre-populated built-in extensions at ${EXTENSIONS_CACHE_DIR}"
-
 # Rewrite all package-lock.json "resolved" URLs to point to the cachi2 file cache.
 # This is the critical step that makes `npm ci --offline` work: URLs like
 # https://registry.npmjs.org/foo/-/foo-1.0.0.tgz become file:///cachi2/output/deps/npm/...
-echo "Rewriting package-lock.json resolved URLs to cachi2 file cache..."
 . /root/scripts/lockfile-generators/rewrite-npm-urls.sh prefetch-input/code-server
-echo "Offline binary setup complete!"
+echo "Offline binary setup complete."

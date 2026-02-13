@@ -25,9 +25,8 @@ Usage:
   python3 scripts/lockfile-generators/download-pip-packages.py \\
       [-o OUTPUT_DIR] <requirements.txt>
 
-Typically invoked by create-pip-requirements-lockfile.sh --download, which
-calls this script once for requirements.txt (PyPI) and once for
-requirements-rhoai.txt (RHOAI index).
+Can be invoked standalone or by create-requirements-lockfile.sh (which has
+its own inline download step for pylock.toml-based workflows).
 """
 import argparse
 import hashlib

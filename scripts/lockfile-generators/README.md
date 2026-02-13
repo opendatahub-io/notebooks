@@ -41,17 +41,16 @@ All scripts must be run from the **repository root**.
 | 1 | Generic | [create-artifact-lockfile.py](#1-generic-artifacts--create-artifact-lockfilepy) | `artifacts.lock.yaml` |
 | 2 | RPM | [create-rpm-lockfile.sh](#2-rpm-packages--create-rpm-lockfilesh) | `rpms.lock.yaml` |
 | 3 | npm | [download-npm.sh](#3-npm-packages--download-npmsh) | Downloaded tarballs in `cachi2/output/deps/npm/` |
-| 4 | pip | [create-pip-requirements-lockfile.sh](#4-pip-packages--create-pip-requirements-lockfilesh) | `requirements.txt` + `requirements-rhoai.txt` |
+| 4 | pip (RHOAI) | [create-requirements-lockfile.sh](#4-pip-packages-rhoai--create-requirements-lockfilesh) | `pylock.<flavor>.toml` + `requirements.txt` |
 
 ### Helper scripts (used internally by the main tools)
 
 | Helper | Used by | Purpose |
 |--------|---------|---------|
-| `generate-rhoai-requirements.py` | pip | Discover RHOAI wheels, write `requirements-rhoai.txt`, merge hashes into `requirements.txt`. |
 | `download-pip-packages.py` | pip | Download wheels/sdists from PyPI or RHOAI into `cachi2/output/deps/pip/`. |
 | `download-rpms.sh` | RPM | Download RPMs from `rpms.lock.yaml` into `cachi2/output/deps/rpm/` and create DNF repo metadata. |
 | `hermeto-fetch-npm.sh` | npm | Alternative npm fetcher using [Hermeto](https://github.com/hermetoproject/hermeto) in a container. |
-| `rewrite-cachi2-path.sh` | npm (Dockerfile) | Sourceable function that rewrites `resolved` URLs in lockfiles to `file:///cachi2/output/deps/npm/`. |
+| `rewrite-npm-urls.sh` | npm (Dockerfile) | Rewrites `resolved` URLs in `package-lock.json` / `package.json` to `file:///cachi2/output/deps/npm/`. |
 | `utils.sh` | RPM | Runs `rpm-lockfile-prototype` inside the lockfile container. Not for direct host use. |
 | `Dockerfile.rpm-lockfile` | RPM | Builds the container image for `create-rpm-lockfile.sh` (includes `rpm-lockfile-prototype` v0.20.0, `createrepo_c`, `modulemd-tools`). |
 | `rhsm-pulp.repo` | RPM | DNF repo file for RHEL 9 E4S appstream (used inside the lockfile container to install `modulemd-tools`). |
@@ -75,17 +74,18 @@ python3 scripts/lockfile-generators/create-artifact-lockfile.py \
 ./scripts/lockfile-generators/download-npm.sh \
     --tekton-file .tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-pull-request.yaml
 
-# 4. pip packages (numpy, scipy, pandas, pyarrow, etc.) — with RHOAI wheels + download
-./scripts/lockfile-generators/create-pip-requirements-lockfile.sh \
-    --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml --rhoai --download
+# 4. pip packages (numpy, scipy, pandas, pyarrow, etc.) — via RHOAI index + download
+./scripts/lockfile-generators/create-requirements-lockfile.sh \
+    --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml --download
 ```
 
 After running these, the generated files are:
 
 ```
 codeserver/ubi9-python-3.12/
-├── requirements.txt                          # pinned pip packages (PyPI + RHOAI hashes merged)
-├── requirements-rhoai.txt                    # RHOAI-only packages (--index-url to RHOAI mirror)
+├── requirements.txt                          # pinned pip packages (generated from pylock.toml)
+├── uv.lock.d/
+│   └── pylock.cpu.toml                       # PEP 665 lock file (from uv pip compile via RHOAI)
 └── prefetch-input/
     ├── artifacts.in.yaml                     # input: URLs to prefetch
     ├── artifacts.lock.yaml                   # output: URLs + sha256 checksums
@@ -273,40 +273,42 @@ script to choose which directories to fetch.
 
 **Requirements:** `podman`, network access.
 
-### Helper: `rewrite-cachi2-path.sh`
+### Helper: `rewrite-npm-urls.sh`
 
-**Sourced** by other scripts or Dockerfile `RUN` steps (do NOT execute standalone).
-Defines a single function `rewrite_cachi2_path <file>` that performs three `perl`
-in-place substitutions on `package-lock.json` or `npm-shrinkwrap.json`:
+Rewrites all `resolved` URLs in `package-lock.json` and `package.json` files
+to point to the local cachi2 offline cache (`file:///cachi2/output/deps/npm/`).
 
-1. **Registry URLs** — `https://registry.npmjs.org/[@scope/]pkg/-/file.tgz`
+Handles four URL types (in order):
+1. **HTTPS registry URLs** — `https://registry.npmjs.org/[@scope/]pkg/-/file.tgz`
    → `file:///cachi2/output/deps/npm/[scope-]file.tgz`
-2. **Relative `file:` paths** — `file:../../../cachi2/output/deps/npm/...`
-   → `file:///cachi2/output/deps/npm/...`
-3. **Un-prefixed `file:` paths** — `file:cachi2/output/deps/npm/...`
-   → `file:///cachi2/output/deps/npm/...`
+2. **git+ssh:// URLs** — `git+ssh://git@github.com/owner/repo.git#hash`
+   → `file:///cachi2/output/deps/npm/owner-repo-hash.tgz`
+3. **git+https:// URLs** — same as above but with https protocol.
+4. **GitHub shortname refs** — `owner/repo#ref` in dependency values
+   → `file:///cachi2/output/deps/npm/owner-repo-ref.tgz`
+
+Also strips integrity hashes for git-resolved dependencies (tarballs from
+GitHub archives differ from npm-packed tarballs, so the original integrity
+hash won't match).
 
 Used by `setup-offline-binaries.sh` during the Dockerfile `npm ci` stage.
+
+```bash
+# Process a specific directory
+./scripts/lockfile-generators/rewrite-npm-urls.sh prefetch-input/code-server
+```
 
 **Requirements:** `perl`.
 
 ---
 
-## 4. pip packages — `create-pip-requirements-lockfile.sh`
+## 4. pip packages (RHOAI) — `create-requirements-lockfile.sh`
 
-Generates a fully pinned `requirements.txt` with sha256 hashes using `uv`.
-Supports two modes:
+Resolves Python dependencies via the **RHOAI PyPI index** using `uv pip compile`,
+producing a PEP 665 `pylock.<flavor>.toml` with sha256 hashes, then converts it
+to `requirements.txt` for use in hermetic builds.
 
-- **export** (default): resolves from `pyproject.toml` using `uv export`
-  with `--python 3.12` and `--no-annotate`.
-- **compile**: resolves from a plain requirements file using `uv pip compile`
-  with `--generate-hashes`.
-
-With `--rhoai`, also discovers RHOAI pre-built wheels, generates
-`requirements-rhoai.txt`, and merges RHOAI hashes into `requirements.txt`.
-RHOAI generation is **not** supported in compile mode.
-
-### Why `--rhoai`?
+### Why RHOAI?
 
 Public PyPI does not publish pre-built manylinux wheels for **ppc64le** and
 **s390x** for many data-science packages (numpy, scipy, pandas, pyarrow,
@@ -319,45 +321,23 @@ Dockerfile must compile them from source, which:
 - **Bloats the image** — the -devel RPMs and build tools are only needed at build
   time but are hard to cleanly remove afterward.
 
-Red Hat OpenShift AI (RHOAI) maintains an internal PyPI index that publishes
-pre-built wheels for these packages on ppc64le and s390x.  Using `--rhoai`
-eliminates most source compilations from the build.
+Red Hat OpenShift AI (RHOAI) maintains a PyPI index that publishes pre-built
+wheels for all target architectures (x86_64, aarch64, ppc64le, s390x).  Using
+`create-requirements-lockfile.sh` resolves everything through RHOAI, eliminating
+source builds entirely.
 
-### Why merge hashes?
+### How it works
 
-The Dockerfile installs packages with:
+The script performs three steps:
 
-```bash
-uv pip install --find-links /cachi2/output/deps/pip \
-    --verify-hashes -r requirements.txt
-```
-
-The `--verify-hashes` flag requires that **every wheel** `uv` encounters has a
-matching hash in `requirements.txt`.  However, `uv export` (Step 1) only
-generates hashes from **public PyPI** — it has no knowledge of RHOAI wheels.
-When `uv` tries to install an RHOAI wheel (e.g. `numpy` for ppc64le), it finds
-no matching hash and **rejects the install**.
-
-The `--rhoai` flag solves this by calling `generate-rhoai-requirements.py` with
-`--merge-hashes`, which appends the RHOAI wheel sha256 hashes into the
-corresponding package blocks in `requirements.txt`.  After merging, each package
-entry contains hashes from **both** PyPI and RHOAI, so `--verify-hashes` accepts
-whichever wheel matches the target platform.
-
-### Why two requirements files?
-
-Konflux/cachi2 does **not** support `--extra-index-url` inside a single
-`requirements.txt`.  To prefetch from both PyPI and the RHOAI mirror, we
-maintain two files:
-
-| File | Index | Purpose |
-|------|-------|---------|
-| `requirements.txt` | PyPI (default) | All packages with pinned versions.  Contains hashes from **both** PyPI and RHOAI (after merge) so `--verify-hashes` works at install time. |
-| `requirements-rhoai.txt` | RHOAI (`--index-url`) | Same packages that overlap with RHOAI, but with the RHOAI index URL.  cachi2 prefetches these as a second pip source into `/cachi2/output/deps/pip/`. |
-
-At install time, `/cachi2/output/deps/pip/` contains wheels from **both**
-sources.  `uv pip install --find-links` picks whichever wheel matches the
-platform (x86_64 from PyPI, ppc64le/s390x from RHOAI).
+1. **`uv pip compile`** — resolves `pyproject.toml` against the RHOAI index,
+   producing `uv.lock.d/pylock.<flavor>.toml` (PEP 665 format) with exact
+   versions, wheel URLs, and sha256 hashes for all target architectures.
+2. **Convert** — parses the pylock.toml and generates `requirements.txt`
+   (with `--index-url` and `--hash=sha256:…` lines) for compatibility with
+   pip/uv install and cachi2 prefetching.
+3. **Download** (optional, `--download`) — downloads every wheel referenced
+   in the pylock.toml into `cachi2/output/deps/pip/`, verifying checksums.
 
 ### Requirements
 
@@ -366,9 +346,9 @@ platform (x86_64 from PyPI, ppc64le/s390x from RHOAI).
 ### Usage
 
 ```bash
-./scripts/lockfile-generators/create-pip-requirements-lockfile.sh \
-    --pyproject-toml path/to/pyproject.toml [--output FILE] [--compile FILE] \
-    [--rhoai | --rhoai-index URL] [--download]
+./scripts/lockfile-generators/create-requirements-lockfile.sh \
+    --pyproject-toml path/to/pyproject.toml \
+    [--flavor NAME] [--rhoai-index URL] [--download]
 ```
 
 ### Options
@@ -376,75 +356,36 @@ platform (x86_64 from PyPI, ppc64le/s390x from RHOAI).
 | Option | Description |
 |--------|-------------|
 | `--pyproject-toml FILE` | Path to `pyproject.toml` (required). Output files are written to the same directory. |
-| `--output FILE` | Output file path (default: `<project-dir>/requirements.txt` for export, `<project-dir>/prefetch-input/requirements-wheel-build.txt` for compile). |
-| `--compile FILE` | Switch to compile mode with the given input file. |
-| `--rhoai` | After export, generate `requirements-rhoai.txt` and merge RHOAI hashes (uses the default RHOAI index). |
-| `--rhoai-index URL` | Same as `--rhoai` but with a custom RHOAI index URL. |
-| `--download` | Fetch all wheels/sdists into `cachi2/output/deps/pip/` via `download-pip-packages.py`. |
+| `--flavor NAME` | Lock file flavor (default: `cpu`). Determines output filename (`pylock.<flavor>.toml`) and RHOAI index URL (`<flavor>-ubi9`). |
+| `--rhoai-index URL` | Custom RHOAI simple-index URL. If not given, derived from `--flavor`. |
+| `--download` | After generating the lock, download all wheels into `cachi2/output/deps/pip/`. |
 
 ### Example (codeserver)
 
 ```bash
-# Full pipeline: export from pyproject.toml + RHOAI discovery + download all wheels
-./scripts/lockfile-generators/create-pip-requirements-lockfile.sh \
-    --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml --rhoai --download
+# Full pipeline: resolve via RHOAI + generate requirements.txt + download all wheels
+./scripts/lockfile-generators/create-requirements-lockfile.sh \
+    --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml --download
 ```
 
 This single command:
-1. Runs `uv export` against `codeserver/ubi9-python-3.12/pyproject.toml`
-   → `codeserver/ubi9-python-3.12/requirements.txt` (PyPI hashes).
-2. Runs `generate-rhoai-requirements.py`
-   → `codeserver/ubi9-python-3.12/requirements-rhoai.txt` (RHOAI wheels)
-   and merges RHOAI hashes into `requirements.txt`.
-3. Runs `download-pip-packages.py` twice — once for `requirements.txt` (PyPI),
-   once for `requirements-rhoai.txt` (RHOAI) — downloading into
-   `cachi2/output/deps/pip/`.
+1. Runs `uv pip compile` against `codeserver/ubi9-python-3.12/pyproject.toml`
+   with the RHOAI index → `codeserver/ubi9-python-3.12/uv.lock.d/pylock.cpu.toml`.
+2. Converts `pylock.cpu.toml` → `codeserver/ubi9-python-3.12/requirements.txt`
+   (with `--index-url` header and `--hash` lines).
+3. Downloads all wheels from the pylock.toml URLs into `cachi2/output/deps/pip/`,
+   verifying sha256 checksums.
 
 ```bash
-# Export only (no RHOAI, no download)
-./scripts/lockfile-generators/create-pip-requirements-lockfile.sh \
+# Resolve + generate requirements.txt only (no download)
+./scripts/lockfile-generators/create-requirements-lockfile.sh \
     --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml
 
-# Custom RHOAI index URL
-./scripts/lockfile-generators/create-pip-requirements-lockfile.sh \
+# Custom flavor (e.g. cuda) and RHOAI index
+./scripts/lockfile-generators/create-requirements-lockfile.sh \
     --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml \
-    --rhoai-index https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/
-
-# Compile mode (pin a plain requirements file, e.g. for wheel-build deps)
-./scripts/lockfile-generators/create-pip-requirements-lockfile.sh \
-    --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml \
-    --compile some-requirements.in --output some-requirements.txt
+    --flavor cuda --rhoai-index https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4-EA1/cuda-ubi9/simple/
 ```
-
-### Helper: `generate-rhoai-requirements.py`
-
-Discovers which packages from `requirements.txt` are available on the RHOAI PyPI
-index.  For each match, collects wheel hashes that match the pinned version and
-the requested Python tag (default: `cp312`), then:
-
-1. Writes `requirements-rhoai.txt` with `--index-url` header — consumed by cachi2
-   as a second pip prefetch source.
-2. With `--merge-hashes`, appends RHOAI hashes into the matching package blocks
-   in `requirements.txt` so `uv pip install --verify-hashes` accepts both PyPI
-   and RHOAI wheels.
-
-```bash
-# Can also be run standalone
-python3 scripts/lockfile-generators/generate-rhoai-requirements.py \
-    --requirements codeserver/ubi9-python-3.12/requirements.txt \
-    --output codeserver/ubi9-python-3.12/requirements-rhoai.txt \
-    --merge-hashes
-```
-
-| Option | Description |
-|--------|-------------|
-| `--requirements PATH` | Path to `requirements.txt` (input and merge target). Required. |
-| `--output PATH` | Output path for `requirements-rhoai.txt`. Required. |
-| `--rhoai-index URL` | RHOAI simple-index URL (default: `https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cpu-ubi9/simple/`). |
-| `--merge-hashes` | Also merge RHOAI wheel hashes into `requirements.txt`. |
-| `--python-tag TAG` | Python version tag to filter wheels (default: `cp312`). |
-
-**Requirements:** Python 3, network access to the RHOAI index.
 
 ### Helper: `download-pip-packages.py`
 
@@ -458,9 +399,6 @@ are automatically excluded when downloading from PyPI.
 # Can also be run standalone
 python3 scripts/lockfile-generators/download-pip-packages.py \
     codeserver/ubi9-python-3.12/requirements.txt
-
-python3 scripts/lockfile-generators/download-pip-packages.py \
-    codeserver/ubi9-python-3.12/requirements-rhoai.txt
 ```
 
 **Requirements:** Python 3, `wget`.

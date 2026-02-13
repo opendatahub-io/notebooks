@@ -8,11 +8,10 @@ set -euo pipefail
 # already exist are skipped.  This is the local-development equivalent of
 # what cachi2 does for npm dependencies in Konflux CI.
 #
-# Handles the same 4 URL types that rewrite-npm-urls.sh rewrites:
-#   1. HTTPS registry URLs  (https://registry.npmjs.org/.../-/name-ver.tgz)
-#   2. git+ssh:// URLs       (git+ssh://git@github.com/owner/repo.git#hash)
-#   3. git+https:// URLs     (git+https://github.com/owner/repo.git#hash)
-#   4. GitHub shortname refs  (owner/repo#hash-or-branch  in dependency values)
+# Handles the same URL types that rewrite-npm-urls.sh rewrites:
+#   1. HTTPS registry URLs   (https://registry.npmjs.org/.../-/name-ver.tgz)
+#   2. git+ssh/https:// URLs (git+ssh://...#hash or git+https://...#hash)
+#   3. GitHub shortname refs (owner/repo#hash-or-branch  in dependency values)
 #
 # Two modes:
 #   1) --lock-file <path>    Process a single package-lock.json (and its companion package.json).
@@ -53,7 +52,7 @@ error_exit() {
 # ---------------------------------------------------------------------------
 # Extract downloadable package references from a JSON file.
 #
-# Handles the same 4 URL types that rewrite-npm-urls.sh rewrites, and derives
+# Handles the same URL types that rewrite-npm-urls.sh rewrites, and derives
 # filenames using the same conventions so that the downloaded tarballs land
 # where the rewrite script (and npm ci --offline) expect them.
 #
@@ -61,8 +60,7 @@ error_exit() {
 #   ---------------------+----------------------------------------------
 #   Registry URL         | basename after /-/  (e.g. runtime-7.27.6.tgz)
 #     (scoped)           | scope-basename      (e.g. types-cookie-parser-1.4.7.tgz)
-#   git+ssh:// URL       | owner-repo-hash.tgz
-#   git+https:// URL     | owner-repo-hash.tgz
+#   git+ssh/https URL    | owner-repo-hash.tgz
 #   Shortname ref        | owner-repo-ref.tgz
 #
 # Output: one "filename<TAB>download_url" pair per line, unsorted.
@@ -70,7 +68,7 @@ error_exit() {
 extract_refs_from_file() {
     local file="$1"
 
-    # --- Collect all "resolved" field values once (used by types 1-3) --------
+    # --- Collect all "resolved" field values once (used by types 1-2) --------
     local resolved_urls
     resolved_urls=$(jq -r '.. | objects | select(has("resolved")) | .resolved' "$file" 2>/dev/null) || true
 
@@ -97,37 +95,23 @@ extract_refs_from_file() {
             printf '%s\t%s\n' "$fname" "$url"
         done || true
 
-    # --- 2. git+ssh:// URLs -------------------------------------------------
+    # --- 2+3. git+ssh:// and git+https:// URLs --------------------------------
     # Before: "resolved": "git+ssh://git@github.com/owner/repo.git#commithash"
+    #     or: "resolved": "git+https://github.com/owner/repo.git#commithash"
     # Filename: owner-repo-commithash.tgz
     # Download URL: https://github.com/owner/repo/archive/commithash.tar.gz
     echo "$resolved_urls" \
-        | grep '^git+ssh://git@github\.com/' \
+        | grep -E '^git\+(ssh://git@|https://)github\.com/' \
         | while IFS= read -r url; do
-            if [[ "$url" =~ git\+ssh://git@github\.com/([^/]+)/([^.#\"]+)(\.git)?#(.+)$ ]]; then
-                local owner="${BASH_REMATCH[1]}" repo="${BASH_REMATCH[2]}" ref="${BASH_REMATCH[4]}"
+            if [[ "$url" =~ git\+(ssh://git@|https://)github\.com/([^/]+)/([^.#\"]+)(\.git)?#(.+)$ ]]; then
+                local owner="${BASH_REMATCH[2]}" repo="${BASH_REMATCH[3]}" ref="${BASH_REMATCH[5]}"
                 printf '%s\t%s\n' \
                     "${owner}-${repo}-${ref}.tgz" \
                     "https://github.com/${owner}/${repo}/archive/${ref}.tar.gz"
             fi
         done || true
 
-    # --- 3. git+https:// URLs -----------------------------------------------
-    # Before: "resolved": "git+https://github.com/owner/repo.git#commithash"
-    # Filename: owner-repo-commithash.tgz
-    # Download URL: https://github.com/owner/repo/archive/commithash.tar.gz
-    echo "$resolved_urls" \
-        | grep '^git+https://github\.com/' \
-        | while IFS= read -r url; do
-            if [[ "$url" =~ git\+https://github\.com/([^/]+)/([^.#\"]+)(\.git)?#(.+)$ ]]; then
-                local owner="${BASH_REMATCH[1]}" repo="${BASH_REMATCH[2]}" ref="${BASH_REMATCH[4]}"
-                printf '%s\t%s\n' \
-                    "${owner}-${repo}-${ref}.tgz" \
-                    "https://github.com/${owner}/${repo}/archive/${ref}.tar.gz"
-            fi
-        done || true
-
-    # --- 4. GitHub shortname refs (from dependency values) -------------------
+    # --- 3. GitHub shortname refs (from dependency values) -------------------
     # Before: "@parcel/watcher": "parcel-bundler/watcher#1ca032aa..."
     # Filename: parcel-bundler-watcher-1ca032aa....tgz
     # Download URL: https://github.com/parcel-bundler/watcher/archive/1ca032aa....tar.gz
