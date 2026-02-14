@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "PackageEntry": {
+      "description": "A single entry in the rebuild manifest.",
+      "properties": {
+        "name": {
+          "description": "Source package name (e.g. 'hdf5')",
+          "title": "Name",
+          "type": "string"
+        },
+        "nvr": {
+          "description": "Fedora Name-Version-Release (e.g. 'hdf5-1.14.6-7.fc44')",
+          "title": "Nvr",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "description": "Human-readable note about why this package is needed",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "nvr"
+      ],
+      "title": "PackageEntry",
+      "type": "object"
+    }
+  },
+  "description": "Declarative manifest of packages to rebuild on Copr.",
+  "properties": {
+    "copr_project": {
+      "description": "Copr project in owner/name format (e.g. 'opendatahub/rhelai-el9')",
+      "title": "Copr Project",
+      "type": "string"
+    },
+    "koji_tag": {
+      "default": "f44",
+      "description": "Fedora tag to pull SRPMs from",
+      "title": "Koji Tag",
+      "type": "string"
+    },
+    "packages": {
+      "description": "List of packages to rebuild",
+      "items": {
+        "$ref": "#/$defs/PackageEntry"
+      },
+      "title": "Packages",
+      "type": "array"
+    },
+    "chroots": {
+      "description": "Copr chroot names to configure (e.g. ['centos-stream-9-x86_64'])",
+      "items": {
+        "type": "string"
+      },
+      "title": "Chroots",
+      "type": "array"
+    },
+    "chroot_packages": {
+      "description": "Extra packages to install in the mock buildroot (e.g. ['autoconf-latest'])",
+      "items": {
+        "type": "string"
+      },
+      "title": "Chroot Packages",
+      "type": "array"
+    },
+    "build_timeout": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Build timeout in seconds passed to copr-cli build --timeout (default: Copr's 5h)",
+      "title": "Build Timeout"
+    }
+  },
+  "required": [
+    "copr_project",
+    "packages"
+  ],
+  "title": "Manifest",
+  "type": "object"
+}
