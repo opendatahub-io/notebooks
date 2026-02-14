@@ -82,6 +82,8 @@ print("Scikit-learn smoke test completed successfully.")
 
     @allure.description("Check that mysql client functionality is working with SASL plain auth.")
     def test_mysql_connection(self, tf: TestFrame, datascience_image: Image, subtests):
+        MYSQL_CONNECTOR_PYTHON_VERSION = "9.5.0"
+
         network = testcontainers.core.network.Network()
         tf.defer(network.create())
 
@@ -159,7 +161,9 @@ except Exception as e:
 
             # RHOAIENG-140: code-server image users are expected to install their own db clients
             if "-code-server-" in datascience_image.labels["name"]:
-                exit_code, output = container.exec(["python", "-m", "pip", "install", "mysql-connector-python==9.3.0"])
+                exit_code, output = container.exec(
+                    ["python", "-m", "pip", "install", f"mysql-connector-python=={MYSQL_CONNECTOR_PYTHON_VERSION}"]
+                )
                 output_str = output.decode()
                 print(output_str)
 
