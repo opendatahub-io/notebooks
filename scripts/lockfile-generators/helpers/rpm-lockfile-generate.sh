@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# utils.sh — Run rpm-lockfile-prototype inside the lockfile generator container.
+# rpm-lockfile-generate.sh — Run rpm-lockfile-prototype inside the lockfile container.
 #
 # Invoked by create-rpm-lockfile.sh inside the notebook-rpm-lockfile container.
 # NOT meant to be run directly on the host.

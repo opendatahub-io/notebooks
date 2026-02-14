@@ -176,49 +176,20 @@ wc -l "$PYLOCK_FILE"
 
 # =========================================================================
 # Step 2: Convert pylock.toml → requirements.txt
+#
+# The pylock.toml (PEP 665) format is not yet supported by pip or cachi2.
+# This step converts it to a pip-compatible requirements.txt with
+# --hash=sha256:… lines for integrity verification.
+#
+# The helper script (helpers/pylock-to-requirements.py) parses the TOML,
+# extracts name, version, markers, and sha256 hashes from each [[packages]]
+# entry, and writes them in the standard requirements format.
 # =========================================================================
 echo ""
 echo "=== Step 2: Converting pylock.toml → requirements.txt ==="
 
-python3 - "$PYLOCK_FILE" "$REQUIREMENTS_FILE" "$RHOAI_INDEX" << 'PYEOF'
-import sys
-import tomllib
-from pathlib import Path
-
-pylock_path = Path(sys.argv[1])
-output_path = Path(sys.argv[2])
-index_url = sys.argv[3] if len(sys.argv) > 3 else ""
-
-with open(pylock_path, "rb") as f:
-    data = tomllib.load(f)
-
-lines = []
-if index_url:
-    lines.append(f"--index-url {index_url}")
-
-for pkg in data.get("packages", []):
-    name = pkg["name"]
-    version = pkg["version"]
-    marker = pkg.get("marker", "")
-
-    hashes = []
-    for whl in pkg.get("wheels", []):
-        for algo, digest in whl.get("hashes", {}).items():
-            hashes.append(f"--hash={algo}:{digest}")
-
-    entry = f"{name}=={version}"
-    if marker:
-        entry += f" ; {marker}"
-    if hashes:
-        entry += " \\\n" + " \\\n".join(f"    {h}" for h in hashes)
-
-    lines.append(entry)
-
-output_path.parent.mkdir(parents=True, exist_ok=True)
-output_path.write_text("\n".join(lines) + "\n")
-pkg_count = len(lines) - (1 if index_url else 0)
-print(f"  Generated {output_path} ({pkg_count} packages)")
-PYEOF
+python3 "${SCRIPTS_PATH}/helpers/pylock-to-requirements.py" \
+    "$PYLOCK_FILE" "$REQUIREMENTS_FILE" "$RHOAI_INDEX"
 
 echo ""
 echo "--- Done: ${REQUIREMENTS_FILE} ---"
@@ -226,59 +197,69 @@ wc -l "${REQUIREMENTS_FILE}"
 
 # =========================================================================
 # Step 3 (optional): Download all wheels from pylock.toml
+#
+# Downloads every wheel referenced in the pylock.toml into
+# cachi2/output/deps/pip/ for local offline builds (podman).
+# In Konflux, cachi2 handles this automatically via prefetch-input.
+#
+# Each wheel's sha256 checksum is verified after download.
+# Files already present in the output directory are skipped.
 # =========================================================================
 if [[ "$DO_DOWNLOAD" == true ]]; then
   echo ""
   echo "=== Step 3: Downloading wheels ==="
 
-  python3 - "$PYLOCK_FILE" << 'PYEOF'
-import hashlib
-import subprocess
-import sys
-import tomllib
-from pathlib import Path
+  OUT_DIR="cachi2/output/deps/pip"
+  mkdir -p "$OUT_DIR"
 
-OUT_DIR = Path("cachi2/output/deps/pip")
-OUT_DIR.mkdir(parents=True, exist_ok=True)
+  # Detect sha256 command: sha256sum (Linux/GNU), shasum (macOS/BSD)
+  if command -v sha256sum &>/dev/null; then
+    sha256_of() { sha256sum "$1" | cut -d' ' -f1; }
+  else
+    sha256_of() { shasum -a 256 "$1" | cut -d' ' -f1; }
+  fi
 
-pylock_path = Path(sys.argv[1])
-with open(pylock_path, "rb") as f:
-    data = tomllib.load(f)
+  # In pylock.toml, each wheel entry lives on a single line with both the
+  # download URL and its sha256 hash in the same inline TOML table:
+  #   { url = "https://..../pkg-1.0-py3-none-any.whl", hashes = { sha256 = "abc..." } }
+  # We grep for lines containing both fields, then extract with sed.
+  total=$(grep -c 'url = ".*sha256 = "' "$PYLOCK_FILE" || true)
+  echo "  ${total} wheel(s) to download into ${OUT_DIR}/"
+  echo ""
 
-to_fetch = []
-for pkg in data.get("packages", []):
-    name, version = pkg["name"], pkg["version"]
-    for whl in pkg.get("wheels", []):
-        url = whl.get("url", "")
-        sha = whl.get("hashes", {}).get("sha256", "")
-        if url and sha:
-            filename = url.rsplit("/", 1)[-1].split("?")[0].split("#")[0]
-            to_fetch.append((name, version, url, filename, sha))
+  idx=0
+  while IFS= read -r line; do
+    idx=$((idx + 1))
 
-total = len(to_fetch)
-print(f"  {total} wheel(s) to download into {OUT_DIR}/\n")
+    # Extract the URL and expected sha256 hash from the TOML inline table
+    url=$(echo "$line" | sed 's/.*url = "\([^"]*\)".*/\1/')
+    sha=$(echo "$line" | sed 's/.*sha256 = "\([^"]*\)".*/\1/')
 
-for idx, (name, version, url, filename, expected) in enumerate(to_fetch, 1):
-    dest = OUT_DIR / filename
-    print(f"[{idx}/{total}] {name}=={version}  {filename}")
-    if not dest.exists():
-        print(f"  Downloading: {url}")
-        subprocess.run(["wget", "-q", "-O", str(dest), url], check=True)
-    else:
-        print(f"  Already exists, skipping download.")
-    h = hashlib.sha256()
-    with open(dest, "rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            h.update(chunk)
-    actual = h.hexdigest()
-    if actual != expected:
-        print(f"  ERROR: checksum mismatch (got {actual}, expected {expected})",
-              file=sys.stderr)
-        sys.exit(1)
-    print(f"  Checksum OK (sha256:{actual[:16]}...)")
+    # Derive the filename from the URL (strip query string and fragment)
+    filename="${url##*/}"; filename="${filename%%[?#]*}"
+    dest="${OUT_DIR}/${filename}"
 
-print(f"\nDone: {total} file(s) present and validated in {OUT_DIR}/")
-PYEOF
+    echo "[${idx}/${total}] ${filename}"
+
+    # Download only if the file doesn't already exist (skip re-downloads)
+    if [[ ! -f "$dest" ]]; then
+      echo "  Downloading: ${url}"
+      wget -q -O "$dest" "$url"
+    else
+      echo "  Already exists, skipping download."
+    fi
+
+    # Always verify checksum (even for pre-existing files)
+    actual=$(sha256_of "$dest")
+    if [[ "$actual" != "$sha" ]]; then
+      echo "  ERROR: checksum mismatch (got ${actual}, expected ${sha})" >&2
+      exit 1
+    fi
+    echo "  Checksum OK (sha256:${actual:0:16}...)"
+  done < <(grep 'url = ".*sha256 = "' "$PYLOCK_FILE")
+
+  echo ""
+  echo "Done: ${total} file(s) present and validated in ${OUT_DIR}/"
 fi
 
 echo ""

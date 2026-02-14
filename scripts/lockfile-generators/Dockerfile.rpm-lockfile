@@ -31,7 +31,7 @@ RUN if [ -n "$ACTIVATION_KEY" ] && [ -n "$ORG" ]; then \
     fi
 
 # To install modulemd-tools (createrepo_c) for Development only, not for Production
-COPY rhsm-pulp.repo /etc/yum.repos.d/rhsm-pulp.repo
+COPY helpers/rhsm-pulp.repo /etc/yum.repos.d/rhsm-pulp.repo
 
 # Don't run upgrade, it upgrades from 9.6 to 9.7 which is not desired here
 # Add --releasever when RHEL_VERSION is set (e.g. for RHEL/UBI) to pin repo release

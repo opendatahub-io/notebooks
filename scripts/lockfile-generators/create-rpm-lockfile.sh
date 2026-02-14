@@ -12,7 +12,7 @@ set -euo pipefail
 # all listed packages and their transitive dependencies for each architecture
 # listed in rpms.in.yaml and writes rpms.lock.yaml in the same directory.
 #
-# With --download, it also runs download-rpms.sh to fetch all RPMs into
+# With --download, it also runs helpers/download-rpms.sh to fetch all RPMs into
 # cachi2/output/deps/rpm/ and create DNF repo metadata for local offline builds.
 
 # --- Configuration & Defaults ---
@@ -113,7 +113,7 @@ podman run --rm -it \
     -v "$(pwd):/workspace" \
     --platform=linux/x86_64 \
     localhost/notebook-rpm-lockfile:latest \
-    sh -c "cd /workspace/$SCRIPTS_PATH && ./utils.sh prefetch-input=$PREFETCH_DIR"
+    sh -c "cd /workspace/$SCRIPTS_PATH && ./helpers/rpm-lockfile-generate.sh prefetch-input=$PREFETCH_DIR"
 
 # Download RPMs and create repository metadata (for dnf)
 if [[ "$DO_DOWNLOAD" == true ]]; then
@@ -122,5 +122,5 @@ if [[ "$DO_DOWNLOAD" == true ]]; then
     error_exit "Lockfile not found at $LOCKFILE (required for --download)."
   fi
   echo "--- Downloading RPMs from lockfile ---"
-  "$SCRIPTS_PATH/download-rpms.sh" --lock-file "$LOCKFILE"
+  "$SCRIPTS_PATH/helpers/download-rpms.sh" --lock-file "$LOCKFILE"
 fi

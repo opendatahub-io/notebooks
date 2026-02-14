@@ -44,7 +44,7 @@ run_createrepo_in_container() {
 }
 
 # --- Root Directory Validation ---
-if [[ ! -f "$SCRIPTS_PATH/download-rpms.sh" ]]; then
+if [[ ! -f "$SCRIPTS_PATH/helpers/download-rpms.sh" ]]; then
     echo "Current directory: $(pwd)" >&2
     error_exit "This script must be run from the repository root."
 fi
