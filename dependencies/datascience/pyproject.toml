@@ -1,0 +1,32 @@
+[project]
+name = "notebooks-datascience-deps"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    # Python kernel for VSCode/Jupyterlab
+    "ipykernel~=7.1.0",
+
+    # Datascience and ML packages
+    "boto3~=1.40.52",
+    "kafka-python-ng~=2.2.3",
+    "matplotlib~=3.10.7",
+    "numpy~=2.3.4",
+    "pandas~=2.3.3",
+    "plotly~=6.3.1",
+    "scikit-learn~=1.7.2",
+    "scipy~=1.16.2",
+    "skl2onnx~=1.19.1; platform_machine != 's390x'",
+    "onnxconverter-common~=1.13.0; platform_machine != 's390x'",
+
+    # Kubeflow and related
+    "kubeflow-training==1.9.3",
+    "feast~=0.58.0",
+]
+
+[tool.uv]
+package = false
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
+]

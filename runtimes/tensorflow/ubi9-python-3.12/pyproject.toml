@@ -10,23 +10,18 @@ dependencies = [
     "tensorflow[and-cuda]~=2.20.0",
     "tensorboard~=2.20.0",
 
-    # Datascience and useful extensions
-    "codeflare-sdk~=0.34.0",
-    "feast~=0.59.0",
-    "odh-notebooks-meta-runtime-datascience-deps",
-
-    # DB connectors
-    "pymongo~=4.16.0",
-    "psycopg~=3.3.2",
-    "pyodbc~=5.3.0",
-    "mysql-connector-python~=9.5.0",
-
-    "odh-notebooks-meta-runtime-elyra-deps",
-
-    # Base packages
-    "setuptools~=80.9.0",
-    "wheel~=0.46.3",
+    # Subproject dependencies
+    "notebooks-base-deps",
+    "notebooks-elyra-runtime-deps",
+    "notebooks-datascience-deps",
+    "notebooks-db-connectors-deps",
 ]
+
+[tool.uv.sources]
+notebooks-base-deps = { path = "../../../dependencies/base" }
+notebooks-elyra-runtime-deps = { path = "../../../dependencies/elyra-runtime" }
+notebooks-datascience-deps = { path = "../../../dependencies/datascience" }
+notebooks-db-connectors-deps = { path = "../../../dependencies/db-connectors" }
 
 [tool.uv]
 
@@ -39,7 +34,3 @@ override-dependencies = [
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
-
-[tool.uv.sources]
-odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }
-odh-notebooks-meta-runtime-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-datascience-deps" }

@@ -29,37 +29,27 @@ dependencies = [
     "accelerate~=1.12.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
     "trustyai~=0.6.3",
 
-    # Datascience and useful extensions
-    "codeflare-sdk~=0.34.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    "skl2onnx~=1.19.1",
-    "odh-notebooks-meta-workbench-datascience-deps",
-
-    # DB connectors
-    "pymongo~=4.16.0",
-    "psycopg~=3.3.2",
-    "pyodbc~=5.3.0",
-    "mysql-connector-python~=9.5.0",
-
-    # JupyterLab packages
-    "odh-elyra==4.3.2",
-    "odh-jupyter-trash-cleanup==0.1.1",
-
-    "jupyterlab==4.5.2",
-    "jupyter-bokeh~=4.0.5",
-    "jupyter-server~=2.17.0",
-    "jupyter-server-proxy~=4.4.0",
-    "jupyter-server-terminals~=0.5.3",
-    "jupyterlab-git~=0.51.2",
-    "jupyterlab-lsp~=5.1.1",
-    "jupyterlab-widgets~=3.0.15",
-    "jupyter-resource-usage~=1.1.1",
-    "nbdime~=4.0.2",
-    "nbgitpuller~=1.2.2",
-
-    # Base packages
-    "wheel~=0.46.3",
-    "setuptools~=80.9.0",
+    # Subproject dependencies
+    "notebooks-base-deps",
+    "notebooks-jupyterlab-deps",
+    "notebooks-jupyterlab-datascience-deps",
+    "notebooks-datascience-deps",
+    "notebooks-db-connectors-deps",
 ]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cuda" }
+triton = { index = "pytorch-cuda" }
+notebooks-base-deps = { path = "../../../dependencies/base" }
+notebooks-jupyterlab-deps = { path = "../../../dependencies/jupyterlab" }
+notebooks-jupyterlab-datascience-deps = { path = "../../../dependencies/jupyterlab-datascience" }
+notebooks-datascience-deps = { path = "../../../dependencies/datascience" }
+notebooks-db-connectors-deps = { path = "../../../dependencies/db-connectors" }
+
+[[tool.uv.index]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
 
 [tool.uv]
 environments = [
@@ -73,14 +63,8 @@ override-dependencies = [
     # Using >= instead of ~= to allow broader compatibility during resolution
     # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
     "python-lsp-server>=1.11.0",
+    # TrustyAI requires specific versions that differ from standard datascience
+    "jupyter-bokeh~=3.0.5",  # trustyai 0.6.1 depends on jupyter-bokeh~=3.0.5
+    "numpy~=1.26.4",  # TrustyAI requires this specific version
+    "pandas~=1.5.3",  # TrustyAI requires this specific version
 ]
-
-[tool.uv.sources]
-torch = { index = "pytorch-cuda" }
-triton = { index = "pytorch-cuda" }
-odh-notebooks-meta-workbench-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
-
-[[tool.uv.index]]
-name = "pytorch-cuda"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
