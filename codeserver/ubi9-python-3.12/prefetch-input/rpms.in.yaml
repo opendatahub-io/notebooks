@@ -19,10 +19,10 @@ contentOrigin:
     # - /etc/yum.repos.d/redhat.repo
 
     # 2: If no subscription-manager registration
-    - ubi.repo
-    # - rhsm-pulp.repo
-    - epel.repo
-    - centos.repo
+    - repos/ubi.repo
+    # - repos/rhsm-pulp.repo
+    - repos/epel.repo
+    - repos/centos.repo
 context:
   bare: true
 

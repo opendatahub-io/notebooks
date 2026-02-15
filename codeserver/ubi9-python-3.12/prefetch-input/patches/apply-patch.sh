@@ -20,8 +20,7 @@ ARCH="${UNAME_TO_GOARCH[$(uname -m)]}"
 if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then   
     # starting with node-22, c++20 is required (gcc-toolset-14 installed from prefetched RPMs)
     . /opt/rh/gcc-toolset-14/enable
-    # [HERMETIC] Install nfpm (RPM packager) from prefetched RPM (previously fetched from GitHub releases API at build time).
-    dnf install -y /cachi2/output/deps/generic/nfpm-2.44.1-1.$(uname -m).rpm
+
     # [HERMETIC] CODESERVER_SOURCE_PREFETCH is set by Dockerfile ENV (points to prefetched code-server source).
     cd "${CODESERVER_SOURCE_PREFETCH}"
 

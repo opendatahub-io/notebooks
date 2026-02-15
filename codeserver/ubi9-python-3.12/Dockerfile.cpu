@@ -1,5 +1,5 @@
 ############################################################################################
-# Hermetic (--network=none) Dockerfile for codeserver/ubi9-python-3.12
+# Hermetic Dockerfile for codeserver/ubi9-python-3.12
 #
 # RHAIENG-2846: All build steps run without network access. Every dependency
 # (RPMs, npm packages, Python wheels, generic tarballs) is prefetched by cachi2
@@ -22,7 +22,7 @@ ARG BASE_IMAGE
 # Pass with: --build-arg ARCH=<arch>
 ARG ARCH
 
-# [HERMETIC] Set to "true" for local testing to use cachi2/local.repo and remove
+# [HERMETIC] Set to "true" for local testing to use cachi2/ and remove
 # default repos. Omit or set to "false" for production (Konflux/Tekton).
 ARG LOCAL_BUILD=false
 
@@ -64,9 +64,6 @@ RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-RUN ls -alh /cachi2/output/deps/pip/
-RUN ls -alh /cachi2/output/deps/npm/
-
 # [HERMETIC] Configure package repos: local cachi2 repo for testing, or enable nodejs:22 module for Konflux.
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/* && \
@@ -75,14 +72,15 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         dnf module enable nodejs:22 -y; \
     fi;
 
-# [HERMETIC] Install Node.js 22 and code-server build deps from prefetched RPMs.
-# libxkbfile-devel: provides xkbfile.h and xkbfile.pc needed by native-keymap
-# (node-gyp native addon in lib/vscode). Available from CentOS Stream 9 CRB repo
-# for all arches (x86_64, aarch64, ppc64le, s390x). Previously compiled from source
-# tarballs (util-macros + libxkbfile) because the original script used git clone and
-# the CRB repo wasn't enabled; replaced with dnf install for simplicity.
-RUN --network=none dnf install -y nodejs nodejs-devel npm
-RUN --network=none dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel libxkbfile-devel
+# libxkbfile-devel = util-macros + libxkbfile (Previously built from source)
+RUN dnf install -y nodejs nodejs-devel npm
+RUN dnf install -y jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel krb5-devel libX11-devel libxkbfile-devel
+# [HERMETIC] Install nfpm (RPM packager) from prefetched RPM
+RUN dnf install -y /cachi2/output/deps/generic/nfpm-2.44.1-1.$(uname -m).rpm
+
+# There was limitation on Hermeto, it can't fetch npm packages using git/ssh protocol.
+# To work around this, need to fetch some npm packages as generic artifacts and copy to npm directory.
+RUN cp /cachi2/output/deps/generic/npm/* /cachi2/output/deps/npm/
 
 # [HERMETIC] Git metadata needed by code-server's build scripts (version detection, submodules).
 COPY .git /root/.git
@@ -96,17 +94,14 @@ COPY ${CODESERVER_CONTEXT}/prefetch-input/code-server/ ${CODESERVER_SOURCE_PREFE
 # [HERMETIC] Copy offline-build patches and s390x patch into the prefetched source tree.
 # These are applied by apply-patch.sh via `patch -p1`.
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/code-server/*.patch ${CODESERVER_SOURCE_CODE}/patches/
-
-# [HERMETIC] apply-patch.sh (formerly get_code_server_rpm.sh) was simplified: it now only
-# enables gcc-toolset-14, installs nfpm from cachi2, and applies patches. The actual
-# npm ci/build/release steps are done below in separate RUN commands for better caching.
-COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/apply-patch.sh ${CODESERVER_SOURCE_CODE}/
-
-RUN cp /cachi2/output/deps/generic/npm/* /cachi2/output/deps/npm/
-RUN cd ${CODESERVER_SOURCE_CODE} && ./apply-patch.sh
-
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/setup-offline-binaries.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
+COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/apply-patch.sh ${CODESERVER_SOURCE_CODE}/
+
+# [HERMETIC] apply-patch.sh (formerly get_code_server_rpm.sh) was simplified: it now only
+# enables gcc-toolset-14 and applies patches (nfpm is installed above). The actual
+# npm ci/build/release steps are done below in separate RUN commands for better caching.
+RUN cd ${CODESERVER_SOURCE_CODE} && ./apply-patch.sh
 
 # [HERMETIC] Step 1: npm ci --offline (install all npm dependencies from local cache).
 # setup-offline-binaries.sh does all offline preparation in one shot:
@@ -116,30 +111,30 @@ COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/codeserver-offline-env.sh ${CO
 #   - rewrites package-lock.json "resolved" URLs to file:///cachi2/...
 # CI=1 makes ci/dev/postinstall.sh run "npm ci" (not "npm install") in subdirs,
 # so resolved URLs stay absolute (file:///cachi2/...) and lockfiles are never modified.
-RUN --network=none cd ${CODESERVER_SOURCE_CODE} && \
+RUN cd ${CODESERVER_SOURCE_CODE} && \
     source ./patches/setup-offline-binaries.sh && \
     cd ${CODESERVER_SOURCE_PREFETCH} && \
     CI=1 npm ci --offline --loglevel silly
 
 # [HERMETIC] Step 2: Build code-server TypeScript
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     npm run build
 
 # [HERMETIC] Step 3: Build VS Code (the embedded editor)
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     VERSION=${CODESERVER_VERSION/v/} npm run build:vscode --verbose --loglevel silly
 
 # [HERMETIC] Step 4: Create release bundle.
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
+RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
     npm run release
 
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
+RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
     npm run release:standalone --loglevel silly
 
 # [HERMETIC] Step 5: Package into RPM using nfpm (installed from prefetched RPM).
-RUN --network=none . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     VERSION=${CODESERVER_VERSION/v/} npm run package && \
     ls -alh release-packages/ && \
     mv release-packages/code-server-${CODESERVER_VERSION/v/}-*.rpm /tmp/
@@ -156,7 +151,7 @@ RUN echo "done" > /tmp/control
 # /cachi2/output/deps/pip/). OpenBLAS (runtime lib for numpy/scipy) is installed via RPM.
 #
 # Previously this stage used `--mount=type=cache,target=/root/.cache/uv` with network
-# access and `pip install uv` from PyPI. Now it uses --network=none with cachi2.
+# access and `pip install uv` from PyPI. Now it uses cachi2 for hermetic builds.
 ############################################################################################
 FROM registry.access.redhat.com/ubi9/python-312:latest AS whl-cache
 
@@ -214,10 +209,10 @@ COPY ${CODESERVER_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.t
 COPY ${CODESERVER_SOURCE_CODE}/requirements.txt ./
 COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
 
-# [HERMETIC] Install uv + install all Python packages (--network=none).
+# [HERMETIC] Install uv + install all Python packages from cachi2 pip cache.
 # /cachi2/output/deps/pip/ contains PyPI wheels + RHOAI wheels (prefetched by cachi2
 # from requirements.txt and requirements-rhoai.txt respectively).
-RUN --network=none /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
     set -Eeuxo pipefail
     pip install --no-index --find-links /cachi2/output/deps/pip uv
     echo "installed uv from cachi2"
@@ -282,8 +277,8 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         dnf module enable nodejs:22 -y; \
     fi;
 
-# [HERMETIC] Install Node.js runtime from prefetched RPMs (--network=none).
-RUN --network=none dnf install -y nodejs npm
+# [HERMETIC] Install Node.js runtime from prefetched RPMs.
+RUN dnf install -y nodejs npm
 
 # Install useful OS packages (runtime dependencies)
 RUN /bin/bash <<'EOF'
@@ -314,7 +309,7 @@ RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "
 ### BEGIN Install the oc client
 # [HERMETIC] Previously: curl from mirror.openshift.com at build time.
 # Now: extract from prefetched arch-specific tarball (see artifacts.in.yaml).
-RUN --network=none /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 ARCH=$(uname -m)
 tar -xzvf /cachi2/output/deps/generic/openshift-client-linux-${ARCH}.tar.gz oc
@@ -347,8 +342,8 @@ USER 0
 
 WORKDIR /opt/app-root/bin
 
-# [HERMETIC] Install useful OS packages from prefetched RPMs (--network=none).
-RUN --network=none /bin/bash <<'EOF'
+# [HERMETIC] Install useful OS packages from prefetched RPMs.
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 PACKAGES=(
     jq git-lfs libsndfile
@@ -373,7 +368,7 @@ COPY --from=rpm-base /tmp/code-server-*.rpm /tmp/
 # Install code-server
 # Note: Use COPY instead of bind mounts; bind mounts fail on Konflux.
 # https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1755628065772589?thread_ts=1755597929.335999&cid=C04PZ7H0VA8
-RUN --network=none /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 # EXPLANATION: dnf installation produces an "unsigned rpm" error from Konflux (Conforma)
 #  since we're building rpm from source, we will simply unpack it over /
@@ -411,11 +406,11 @@ ENV NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_APP_ROOT=${APP_ROOT} \
     NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
 
-# [HERMETIC] Install nginx/httpd from prefetched RPMs (--network=none).
+# [HERMETIC] Install nginx/httpd from prefetched RPMs.
 # NOTE: httpd is prefetched from UBI repos (not CentOS Stream) via the
 # exclude=httpd* rule in centos.repo, ensuring the prefetched version matches
 # the httpd already in the UBI9 base image and avoids httpd-devel conflicts.
-RUN --network=none /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 INSTALL_PKGS="bind-utils nginx nginx-mod-stream nginx-mod-http-perl httpd"
 dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
@@ -496,12 +491,12 @@ COPY ${CODESERVER_SOURCE_CODE}/requirements.txt ./
 # Wait for whl-cache stage (builds/caches Python wheels).
 COPY --from=whl-cache /tmp/control /dev/null
 
-# [HERMETIC] Install all Python packages from cachi2 pip cache (--no-index --network=none).
+# [HERMETIC] Install all Python packages from cachi2 pip cache (--no-index).
 # /cachi2/output/deps/pip/ contains both PyPI wheels and RHOAI ppc64le/s390x wheels
 # (prefetched by cachi2 from requirements.txt and requirements-rhoai.txt).
 # /wheelsdir/ from whl-cache contains compiled wheels for PyPI packages that only
 # ship sdist for ppc64le/s390x (e.g. psutil, greenlet, wrapt, uvloop, watchfiles).
-RUN --network=none --mount=type=cache,target=/root/.cache/uv \
+RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Installing softwares and packages"
@@ -539,12 +534,12 @@ WORKDIR /opt/app-root/src
 
 CMD ["/opt/app-root/bin/run-code-server.sh"]
 
-# [HERMETIC] Smoke test stage (--network=none to verify no runtime network deps).
+# [HERMETIC] Smoke test stage.
 FROM codeserver as tests
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 COPY ${CODESERVER_SOURCE_CODE}/test /tmp/test
 # TODO(jdanek): add --mount=type=bind,target=/opt/app-root/src
-RUN --network=none /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 python3 /tmp/test/test_startup.py 2>&1 | tee /tmp/test_log.txt
 EOF
