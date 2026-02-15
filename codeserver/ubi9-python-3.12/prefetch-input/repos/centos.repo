@@ -1,0 +1,99 @@
+# CentOS Stream 9 repos for RPM prefetch (cachi2/hermeto).
+#
+# NOTE: Version is hardcoded to "9-stream" (not $releasever) because the
+# rpm-lockfile-prototype tool runs in a container without centos-release,
+# so dnf resolves $releasever to "unknown".
+#
+# Uses baseurl pointing to mirror.stream.centos.org (the official CentOS CDN).
+# metalink is NOT available for CentOS Stream repos (returns 404).
+# If a mirror redirect fails intermittently (e.g. mirror.nodesdirect.com down),
+# retry the prefetch — the CDN will redirect to a different mirror.
+
+[baseos]
+name=CentOS Stream 9 - BaseOS
+baseurl=https://mirror.stream.centos.org/9-stream/BaseOS/$basearch/os/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=6h
+countme=1
+enabled=1
+
+[baseos-debuginfo]
+name=CentOS Stream 9 - BaseOS - Debug
+baseurl=https://mirror.stream.centos.org/9-stream/BaseOS/$basearch/debug/tree/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=6h
+enabled=0
+
+[baseos-source]
+name=CentOS Stream 9 - BaseOS - Source
+baseurl=https://mirror.stream.centos.org/9-stream/BaseOS/source/tree/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=6h
+enabled=0
+
+[appstream]
+name=CentOS Stream 9 - AppStream
+baseurl=https://mirror.stream.centos.org/9-stream/AppStream/$basearch/os/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=6h
+countme=1
+enabled=1
+# Exclude httpd and its sub-packages so the resolver uses the UBI version,
+# which matches the httpd already pre-installed in the UBI9 base image.
+# Without this, CentOS Stream (the upstream) provides a newer httpd that
+# conflicts with the base image's pinned httpd-devel version.
+exclude=httpd*
+
+[appstream-debuginfo]
+name=CentOS Stream 9 - AppStream - Debug
+baseurl=https://mirror.stream.centos.org/9-stream/AppStream/$basearch/debug/tree/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=6h
+enabled=0
+
+[appstream-source]
+name=CentOS Stream 9 - AppStream - Source
+baseurl=https://mirror.stream.centos.org/9-stream/AppStream/source/tree/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=6h
+enabled=0
+
+[crb]
+name=CentOS Stream 9 - CRB
+baseurl=https://mirror.stream.centos.org/9-stream/CRB/$basearch/os/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=6h
+countme=1
+enabled=1
+
+[crb-debuginfo]
+name=CentOS Stream 9 - CRB - Debug
+baseurl=https://mirror.stream.centos.org/9-stream/CRB/$basearch/debug/tree/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=6h
+enabled=0
+
+[crb-source]
+name=CentOS Stream 9 - CRB - Source
+baseurl=https://mirror.stream.centos.org/9-stream/CRB/source/tree/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=6h
+enabled=0

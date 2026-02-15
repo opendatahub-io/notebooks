@@ -1,8 +1,21 @@
 #!/usr/bin/env bash
 
 # Load bash libraries
+# [IMPROVEMENT] Changed from `source ${SCRIPT_DIR}/utils/*.sh` (single glob) to a for-loop.
+# The glob expansion is more robust: handles missing files and avoids issues with spaces in paths.
 SCRIPT_DIR=$(dirname -- "$0")
-source ${SCRIPT_DIR}/utils/*.sh
+for f in "${SCRIPT_DIR}"/utils/*.sh; do
+  [[ -f "$f" ]] && source "$f"
+done
+
+# Fix EACCES errors during test stage and when HOME is /root.
+# In the Docker test stage, HOME is /root but the process runs as UID 1001, so
+# code-server can't write config/logs to /root. Fall back to the writable app-root.
+if [[ -z "$HOME" || "$HOME" == /root ]]; then
+  export HOME=/opt/app-root/src
+fi
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 
 # Start nginx and httpd
 run-nginx.sh &
@@ -124,9 +137,12 @@ else
     echo "IPv6 not detected: falling back to IPv4 only"
 fi
 
-# Start server
+# Start server with explicit --user-data-dir so code-server writes settings,
+# extensions, and logs under /opt/app-root/src/ (writable by UID 1001) instead of defaulting
+# to ~/.local/share/code-server which fails when HOME=/root.
 start_process /usr/bin/code-server \
     --bind-addr "${BIND_ADDR}" \
+    --user-data-dir /opt/app-root/src/.local/share/code-server \
     --disable-telemetry \
     --auth none \
     --disable-update-check \

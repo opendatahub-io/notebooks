@@ -1,0 +1,30 @@
+--- a/lib/vscode/package-lock.json
++++ b/lib/vscode/package-lock.json
+@@ -18539,10 +18539,11 @@
+       }
+     },
+     "node_modules/web-tree-sitter": {
+-      "version": "0.20.8",
+-      "resolved": "https://registry.npmjs.org/web-tree-sitter/-/web-tree-sitter-0.20.8.tgz",
+-      "integrity": "sha512-weOVgZ3aAARgdnb220GqYuh7+rZU0Ka9k9yfKtGAzEYMa6GgiCzW9JjQRJyCJakvibQW+dfjJdihjInKuuCAUQ==",
+-      "dev": true
++      "version": "0.23.0",
++      "resolved": "https://registry.npmjs.org/web-tree-sitter/-/web-tree-sitter-0.23.0.tgz",
++      "integrity": "sha512-p1T+ju2H30fpVX2q5yr+Wv/NfdMMWMjQp9Q+4eEPrHAJpPFh9DPfI2Yr9L1f5SA5KPE+g1cNUqPbpihxUDzmVw==",
++      "dev": true,
++      "license": "MIT"
+     },
+     "node_modules/webidl-conversions": {
+       "version": "3.0.1",
+--- a/lib/vscode/package.json
++++ b/lib/vscode/package.json
+@@ -229,6 +229,9 @@
+     "node-gyp-build": "4.8.1",
+     "kerberos@2.1.1": {
+       "node-addon-api": "7.1.0"
++    },
++    "@vscode/l10n-dev@0.0.35": {
++      "web-tree-sitter": "0.23.0"
+     }
+   },
+   "repository": {
