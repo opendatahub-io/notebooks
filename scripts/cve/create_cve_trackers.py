@@ -28,16 +28,19 @@ import os
 import re
 import ssl
 import sys
+import urllib.parse
 from dataclasses import dataclass, field
 
 try:
     import requests
+
     HAS_REQUESTS = True
 except ImportError:
     import urllib.request
     import urllib.error
-    import urllib.parse
+
     HAS_REQUESTS = False
+
 
 # Create SSL context for urllib - handles macOS certificate issues
 def _create_ssl_context() -> ssl.SSLContext:
@@ -53,7 +56,8 @@ def _create_ssl_context() -> ssl.SSLContext:
         try:
             # Try to get certificates from security command on macOS
             result = subprocess.run(
-                ["security", "find-certificate", "-a", "-p", "/System/Library/Keychains/SystemRootCertificates.keychain"],
+                ["security", "find-certificate", "-a", "-p",
+                 "/System/Library/Keychains/SystemRootCertificates.keychain"],
                 capture_output=True, text=True, timeout=10
             )
             if result.returncode == 0 and result.stdout:
@@ -63,6 +67,7 @@ def _create_ssl_context() -> ssl.SSLContext:
         except (subprocess.SubprocessError, FileNotFoundError, OSError):
             pass  # Fall back to default behavior
     return ctx
+
 
 _SSL_CONTEXT = _create_ssl_context() if not HAS_REQUESTS else None
 
@@ -196,6 +201,10 @@ class JiraClient:
         params = {"fields": fields}
         return self._request("GET", f"/rest/api/2/issue/{issue_key}", params=params)
 
+    def update_issue(self, issue_key: str, fields: dict) -> None:
+        """Update fields on an existing issue."""
+        self._request("PUT", f"/rest/api/2/issue/{issue_key}", data={"fields": fields})
+
 
 def extract_cve_id(text: str) -> str | None:
     """Extract CVE ID from text."""
@@ -239,6 +248,53 @@ def get_blocking_issues(issue: dict) -> list[str]:
             if "inwardIssue" in link:
                 blockers.append(link["inwardIssue"]["key"])
     return blockers
+
+
+JIRA_BASE_URL = "https://issues.redhat.com"
+
+
+def build_description(cve_info: CVEInfo, tracker_key: str | None = None) -> str:
+    """Build a Jira wiki markup description for a CVE tracker issue.
+
+    Includes a static JQL link listing child issue keys explicitly, a plain-text
+    list of blocked issues, and (when tracker_key is provided) a dynamic
+    ``linkedIssues()`` JQL link.
+    """
+    child_keys = sorted(issue["key"] for issue in cve_info.issues)
+    count = len(child_keys)
+
+    lines: list[str] = []
+    lines.append(
+        f"Tracker for {cve_info.cve_id} - {cve_info.description} "
+        f"affecting Notebooks Images components."
+    )
+
+    if child_keys:
+        lines.append("")
+        lines.append(f"*Blocked Issues ({count}):*")
+        lines.append(", ".join(child_keys))
+
+        # Static JQL link with explicit issue keys
+        keys_csv = ", ".join(child_keys)
+        static_jql = f"key in ({keys_csv}) ORDER BY key ASC"
+        static_url = f"{JIRA_BASE_URL}/issues/?jql={urllib.parse.quote(static_jql)}"
+        lines.append("")
+        lines.append("*JQL Query to View All Blocked Issues:*")
+        lines.append("")
+        lines.append(f"[View all {count} blocked issues|{static_url}]")
+
+    if tracker_key and child_keys:
+        # Dynamic JQL link using linkedIssues function
+        dynamic_jql = f'issue in linkedIssues({tracker_key}, "blocks") ORDER BY key ASC'
+        dynamic_url = f"{JIRA_BASE_URL}/issues/?jql={urllib.parse.quote(dynamic_jql)}"
+        lines.append("")
+        lines.append("{code}")
+        lines.append(dynamic_jql)
+        lines.append("{code}")
+        lines.append("")
+        lines.append(f"[View blocked issues (dynamic)|{dynamic_url}]")
+
+    return "\n".join(lines)
 
 
 def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> dict[tuple[str, str], CVEInfo]:
@@ -341,7 +397,7 @@ def create_tracker_issue(client: JiraClient, cve_info: CVEInfo, dry_run: bool = 
         max_desc_len = 250 - len(cve_info.cve_id) - len(cve_info.version_suffix) - 3
         summary = f"{cve_info.cve_id} {cve_info.description[:max_desc_len]}... {cve_info.version_suffix}"
 
-    description = f"Tracker for {cve_info.cve_id} - {cve_info.description} affecting Notebooks Images components."
+    description = build_description(cve_info)
 
     labels = ["CVE", cve_info.cve_id, "security"]
 
@@ -479,12 +535,21 @@ def main():
     created = 0
     linked = 0
 
-    for (cve_id, version), info in sorted(orphans.items()):
+    for (_cve_id, _version), info in sorted(orphans.items()):
         tracker_key = create_tracker_issue(client, info, args.dry_run)
 
         if tracker_key and not args.no_link:
             child_keys = [issue["key"] for issue in info.issues]
             linked += link_issues(client, tracker_key, child_keys, args.dry_run)
+
+        # Update description to include the dynamic linkedIssues() link
+        if tracker_key:
+            try:
+                full_description = build_description(info, tracker_key=tracker_key)
+                client.update_issue(tracker_key, {"description": full_description})
+                print(f"  Updated description with dynamic JQL link")
+            except Exception as e:
+                print(f"  WARNING: could not update description: {e}")
 
         if tracker_key or args.dry_run:
             created += 1
