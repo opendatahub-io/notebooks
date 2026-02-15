@@ -94,7 +94,8 @@ class JiraClient:
                 url,
                 params=params,
                 json=data,
-                headers=self.headers
+                headers=self.headers,
+                timeout=30
             )
             response.raise_for_status()
             if response.text:

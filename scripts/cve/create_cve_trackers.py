@@ -251,10 +251,10 @@ def get_blocking_issues(issue: dict) -> list[str]:
     return blockers
 
 
-JIRA_BASE_URL = "https://issues.redhat.com"
+JIRA_DEFAULT_URL = "https://issues.redhat.com"
 
 
-def build_description(cve_info: CVEInfo, tracker_key: str | None = None) -> str:
+def build_description(cve_info: CVEInfo, base_url: str = JIRA_DEFAULT_URL, tracker_key: str | None = None) -> str:
     """Build a Jira wiki markup description for a CVE tracker issue.
 
     Includes a static JQL link listing child issue keys explicitly, a plain-text
@@ -278,7 +278,7 @@ def build_description(cve_info: CVEInfo, tracker_key: str | None = None) -> str:
         # Static JQL link with explicit issue keys
         keys_csv = ", ".join(child_keys)
         static_jql = f"key in ({keys_csv}) ORDER BY key ASC"
-        static_url = f"{JIRA_BASE_URL}/issues/?jql={urllib.parse.quote(static_jql)}"
+        static_url = f"{base_url}/issues/?jql={urllib.parse.quote(static_jql)}"
         lines.append("")
         lines.append("*JQL Query to View All Blocked Issues:*")
         lines.append("")
@@ -287,7 +287,7 @@ def build_description(cve_info: CVEInfo, tracker_key: str | None = None) -> str:
     if tracker_key and child_keys:
         # Dynamic JQL link using linkedIssues function
         dynamic_jql = f'issue in linkedIssues({tracker_key}, "blocks") ORDER BY key ASC'
-        dynamic_url = f"{JIRA_BASE_URL}/issues/?jql={urllib.parse.quote(dynamic_jql)}"
+        dynamic_url = f"{base_url}/issues/?jql={urllib.parse.quote(dynamic_jql)}"
         lines.append("")
         lines.append("{code}")
         lines.append(dynamic_jql)
@@ -389,16 +389,16 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> dict[tuple[
     return orphans
 
 
-def create_tracker_issue(client: JiraClient, cve_info: CVEInfo, dry_run: bool = False) -> str | None:
+def create_tracker_issue(client: JiraClient, cve_info: CVEInfo, jira_url: str = JIRA_DEFAULT_URL, dry_run: bool = False) -> str | None:
     """Create a tracker issue for a CVE."""
     summary = f"{cve_info.cve_id} {cve_info.description} {cve_info.version_suffix}"
 
     # Truncate summary if too long (Jira limit is 255 chars)
     if len(summary) > 250:
-        max_desc_len = 250 - len(cve_info.cve_id) - len(cve_info.version_suffix) - 3
+        max_desc_len = 250 - len(cve_info.cve_id) - len(cve_info.version_suffix) - 5
         summary = f"{cve_info.cve_id} {cve_info.description[:max_desc_len]}... {cve_info.version_suffix}"
 
-    description = build_description(cve_info)
+    description = build_description(cve_info, base_url=jira_url)
 
     labels = ["CVE", cve_info.cve_id, "security"]
 
@@ -537,7 +537,7 @@ def main():
     linked = 0
 
     for (_cve_id, _version), info in sorted(orphans.items()):
-        tracker_key = create_tracker_issue(client, info, args.dry_run)
+        tracker_key = create_tracker_issue(client, info, jira_url=jira_url, dry_run=args.dry_run)
 
         if tracker_key and not args.no_link:
             child_keys = [issue["key"] for issue in info.issues]
@@ -546,9 +546,9 @@ def main():
         # Update description to include the dynamic linkedIssues() link
         if tracker_key:
             try:
-                full_description = build_description(info, tracker_key=tracker_key)
+                full_description = build_description(info, base_url=jira_url, tracker_key=tracker_key)
                 client.update_issue(tracker_key, {"description": full_description})
-                print(f"  Updated description with dynamic JQL link")
+                print("  Updated description with dynamic JQL link")
             except Exception as e:
                 print(f"  WARNING: could not update description: {e}")
 

@@ -149,6 +149,44 @@ List orphan CVEs without creating trackers:
 python scripts/cve/create_cve_trackers.py --list-only
 ```
 
+## cve/cve_due_dates.py
+
+Manage CVE due dates and find overdue trackers. The script finds CVE tracker issues in RHAIENG, extracts due dates from linked RHOAIENG child issues, reports on overdue trackers, and can sync missing due dates from children to parents. If no action flag is specified, it defaults to `--summary`.
+
+Requires `JIRA_TOKEN` environment variable. `JIRA_URL` defaults to `https://issues.redhat.com`.
+
+### Examples
+
+List trackers that are past their due date:
+
+```sh
+python scripts/cve/cve_due_dates.py --list-overdue
+```
+
+Show trackers missing due dates but whose children have them:
+
+```sh
+python scripts/cve/cve_due_dates.py --list-missing-dates
+```
+
+Preview which trackers would get their due dates synced from child issues:
+
+```sh
+python scripts/cve/cve_due_dates.py --sync-dates --dry-run
+```
+
+Sync due dates from child issues to trackers:
+
+```sh
+python scripts/cve/cve_due_dates.py --sync-dates
+```
+
+Show summary statistics for all trackers:
+
+```sh
+python scripts/cve/cve_due_dates.py --summary
+```
+
 ## buildinputs/
 
 CLI tool written in Go that computes the list of input files required to build a Dockerfile.
