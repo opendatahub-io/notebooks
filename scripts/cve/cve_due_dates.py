@@ -449,7 +449,7 @@ def main():
         print("=" * 60)
 
         if overdue > 0:
-            print(f"\nTop 10 most overdue:")
+            print("\nTop 10 most overdue:")
             overdue_list = list_overdue_trackers(trackers)[:10]
             for t in overdue_list:
                 print(f"  {t.key}: {t.days_overdue} days overdue - {t.cve_id or 'Unknown CVE'}")
