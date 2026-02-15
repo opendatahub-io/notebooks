@@ -8,13 +8,13 @@ version suffixes (e.g., [rhoai-2.25, rhoai-3.0]).
 
 Usage:
     # Dry run - show what would be created
-    python scripts/create_cve_trackers.py --dry-run
+    python scripts/cve/create_cve_trackers.py --dry-run
 
     # Create trackers for all orphan CVEs
-    python scripts/create_cve_trackers.py
+    python scripts/cve/create_cve_trackers.py
 
     # Create tracker for specific CVE
-    python scripts/create_cve_trackers.py --cve CVE-2025-12345
+    python scripts/cve/create_cve_trackers.py --cve CVE-2025-12345
 
 Requires:
     - JIRA_URL environment variable (or defaults to Red Hat Jira)
