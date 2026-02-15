@@ -159,6 +159,8 @@ fi
   uv pip compile pyproject.toml \
     --output-file "uv.lock.d/pylock.${FLAVOR}.toml" \
     --format pylock.toml \
+    --refresh \
+    --upgrade \
     --generate-hashes \
     --emit-index-url \
     --python-version=3.12 \
