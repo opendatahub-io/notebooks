@@ -28,7 +28,6 @@ import os
 import re
 import ssl
 import sys
-from collections import defaultdict
 from dataclasses import dataclass, field
 
 try:
@@ -70,21 +69,20 @@ _SSL_CONTEXT = _create_ssl_context() if not HAS_REQUESTS else None
 
 @dataclass
 class CVEInfo:
-    """Information about a CVE and its associated issues."""
+    """Information about a CVE for a specific version."""
     cve_id: str
+    version: str = ""
     description: str = ""
     issues: list = field(default_factory=list)
-    versions: set = field(default_factory=set)
     has_tracker: bool = False
     tracker_key: str | None = None
 
     @property
     def version_suffix(self) -> str:
         """Get the version suffix for the tracker summary."""
-        if not self.versions:
+        if not self.version:
             return ""
-        sorted_versions = sorted(self.versions, key=lambda v: [int(x) for x in v.replace("rhoai-", "").split(".")])
-        return f"[{', '.join(sorted_versions)}]"
+        return f"[{self.version}]"
 
     @property
     def issue_count(self) -> int:
@@ -243,30 +241,34 @@ def get_blocking_issues(issue: dict) -> list[str]:
     return blockers
 
 
-def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> dict[str, CVEInfo]:
-    """Find CVEs in RHOAIENG that don't have a parent tracker in RHAIENG."""
+def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> dict[tuple[str, str], CVEInfo]:
+    """Find CVEs in RHOAIENG that don't have a parent tracker in RHAIENG.
+
+    Returns a dict keyed by (cve_id, version) tuples, one entry per version.
+    Issues without a version are grouped under version="" (no version).
+    """
     print("Searching for CVE issues in RHOAIENG...")
 
     # NOTE: Identifying CVE tracker issues in RHOAIENG
-    # 
+    #
     # Product Security files CVE issues with varying patterns over time:
     # - Older issues (2023): Used generic "CVE" label
     # - Newer issues (2025+): Use "SecurityTracking" label + issue type Vulnerability/Bug/Weakness
-    # 
+    #
     # We filter by:
     # - issuetype: Vulnerability, Bug, or Weakness (security-related issue types)
     # - labels: SecurityTracking (Product Security's tracking label)
     # - component: "Notebooks Images" (only process CVEs for our team)
-    # 
+    #
     # This ensures we only create parent trackers for Notebooks-related CVEs.
-    
+
     # Get all RHOAIENG CVE issues
     jql = 'project = RHOAIENG AND issuetype in (Bug, Vulnerability, Weakness) AND resolution = Unresolved AND labels = SecurityTracking AND component = "Notebooks Images" ORDER BY created DESC'
     issues = client.search_issues(jql, max_results=max_results)
     print(f"Found {len(issues)} RHOAIENG CVE issues")
 
-    # Group by CVE ID
-    cve_groups: dict[str, CVEInfo] = defaultdict(lambda: CVEInfo(cve_id=""))
+    # Group by (CVE ID, version)
+    cve_groups: dict[tuple[str, str], CVEInfo] = {}
 
     for issue in issues:
         key = issue["key"]
@@ -292,39 +294,40 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> dict[str, C
         blockers = get_blocking_issues(issue)
         has_rhaieng_blocker = any(b.startswith("RHAIENG-") for b in blockers)
 
-        if not cve_groups[cve_id].cve_id:
-            cve_groups[cve_id].cve_id = cve_id
-
         # Extract version from summary
-        version = extract_version(summary)
-        if version:
-            cve_groups[cve_id].versions.add(version)
+        version = extract_version(summary) or ""
+
+        group_key = (cve_id, version)
+
+        if group_key not in cve_groups:
+            cve_groups[group_key] = CVEInfo(cve_id=cve_id, version=version)
+
+        info = cve_groups[group_key]
 
         # Extract description if not already set
-        if not cve_groups[cve_id].description:
+        if not info.description:
             desc = extract_description(summary, cve_id)
             if desc:
-                cve_groups[cve_id].description = desc
+                info.description = desc
 
-        cve_groups[cve_id].issues.append({
+        info.issues.append({
             "key": key,
             "summary": summary,
             "has_parent": has_rhaieng_blocker
         })
 
         if has_rhaieng_blocker:
-            cve_groups[cve_id].has_tracker = True
-            # Find the tracker key
+            info.has_tracker = True
             for b in blockers:
                 if b.startswith("RHAIENG-"):
-                    cve_groups[cve_id].tracker_key = b
+                    info.tracker_key = b
                     break
 
-    # Filter to only orphans (CVEs where no issues have a parent tracker)
+    # Filter to only orphans (CVE+version combos where no issues have a parent tracker)
     orphans = {}
-    for cve_id, info in cve_groups.items():
+    for group_key, info in cve_groups.items():
         if not info.has_tracker:
-            orphans[cve_id] = info
+            orphans[group_key] = info
 
     return orphans
 
@@ -344,7 +347,7 @@ def create_tracker_issue(client: JiraClient, cve_info: CVEInfo, dry_run: bool = 
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Creating tracker for {cve_info.cve_id}:")
     print(f"  Summary: {summary}")
-    print(f"  Versions: {', '.join(sorted(cve_info.versions))}")
+    print(f"  Version: {cve_info.version}")
     print(f"  Child issues: {cve_info.issue_count}")
 
     if dry_run:
@@ -447,17 +450,19 @@ def main():
 
     # Filter to specific CVE if requested
     if args.cve:
-        if args.cve not in orphans:
+        filtered = {k: v for k, v in orphans.items() if k[0] == args.cve}
+        if not filtered:
             print(f"\nCVE {args.cve} not found in orphan list.")
             print("It may already have a tracker or doesn't exist.")
             sys.exit(1)
-        orphans = {args.cve: orphans[args.cve]}
+        orphans = filtered
 
-    print(f"\nFound {len(orphans)} orphan CVEs needing trackers:")
+    print(f"\nFound {len(orphans)} orphan CVE/version trackers needed:")
     print("-" * 80)
 
-    for cve_id, info in sorted(orphans.items()):
-        print(f"  {cve_id}: {info.issue_count} issues, versions: {info.version_suffix}")
+    for (cve_id, version), info in sorted(orphans.items()):
+        version_label = version or "(no version)"
+        print(f"  {cve_id} {version_label}: {info.issue_count} issues")
         if info.description:
             print(f"    Description: {info.description[:60]}...")
 
@@ -474,7 +479,7 @@ def main():
     created = 0
     linked = 0
 
-    for cve_id, info in sorted(orphans.items()):
+    for (cve_id, version), info in sorted(orphans.items()):
         tracker_key = create_tracker_issue(client, info, args.dry_run)
 
         if tracker_key and not args.no_link:
