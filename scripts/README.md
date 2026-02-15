@@ -66,7 +66,7 @@ Updates Dockerfile* blocks demarked using comment blocks of the form
 
 Run the script to to automatically update the block's content to be the same in all Dockerfiles everywhere.
 
-## sbom_analyze.py
+## cve/sbom_analyze.py
 
 Analyze syft SBOM JSON files for CVE investigation. This script helps developers find where vulnerable packages are installed within container images by querying SBOM files from the manifest-box repository.
 
@@ -77,7 +77,7 @@ See [docs/manifestbox.md](../docs/manifestbox.md) for detailed documentation on 
 Find a specific package and its installation location:
 
 ```sh
-python scripts/sbom_analyze.py sbom.json esbuild
+python scripts/cve/sbom_analyze.py sbom.json esbuild
 ```
 
 Output:
@@ -96,25 +96,57 @@ Output:
 Get SBOM metadata (source image, version, distro):
 
 ```sh
-python scripts/sbom_analyze.py sbom.json --info
+python scripts/cve/sbom_analyze.py sbom.json --info
 ```
 
 Summarize packages by ecosystem type:
 
 ```sh
-python scripts/sbom_analyze.py sbom.json --summary
+python scripts/cve/sbom_analyze.py sbom.json --summary
 ```
 
 Find all packages at a specific path:
 
 ```sh
-python scripts/sbom_analyze.py sbom.json --path /code-server/
+python scripts/cve/sbom_analyze.py sbom.json --path /code-server/
 ```
 
 Output as JSON for scripting:
 
 ```sh
-python scripts/sbom_analyze.py sbom.json esbuild --json
+python scripts/cve/sbom_analyze.py sbom.json esbuild --json
+```
+
+## cve/create_cve_trackers.py
+
+Create CVE tracker issues in the RHAIENG Jira project. The script finds CVE issues in RHOAIENG that don't have a parent tracker in RHAIENG, groups them by CVE ID and version, and creates one tracker per version with JQL links to the blocked child issues.
+
+Requires `JIRA_TOKEN` environment variable. `JIRA_URL` defaults to `https://issues.redhat.com`.
+
+### Examples
+
+Dry run -- show what would be created without making changes:
+
+```sh
+python scripts/cve/create_cve_trackers.py --dry-run
+```
+
+Create trackers for all orphan CVEs:
+
+```sh
+python scripts/cve/create_cve_trackers.py
+```
+
+Create tracker for a specific CVE only:
+
+```sh
+python scripts/cve/create_cve_trackers.py --cve CVE-2025-12345
+```
+
+List orphan CVEs without creating trackers:
+
+```sh
+python scripts/cve/create_cve_trackers.py --list-only
 ```
 
 ## buildinputs/
