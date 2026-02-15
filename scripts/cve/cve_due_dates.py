@@ -10,16 +10,16 @@ This script:
 
 Usage:
     # List overdue trackers
-    python scripts/cve_due_dates.py --list-overdue
+    python scripts/cve/cve_due_dates.py --list-overdue
 
     # Show trackers missing due dates
-    python scripts/cve_due_dates.py --list-missing-dates
+    python scripts/cve/cve_due_dates.py --list-missing-dates
 
     # Update trackers with due dates from linked issues (dry run)
-    python scripts/cve_due_dates.py --sync-dates --dry-run
+    python scripts/cve/cve_due_dates.py --sync-dates --dry-run
 
     # Update trackers with due dates from linked issues
-    python scripts/cve_due_dates.py --sync-dates
+    python scripts/cve/cve_due_dates.py --sync-dates
 
 Requires:
     - JIRA_URL environment variable (or defaults to Red Hat Jira)
