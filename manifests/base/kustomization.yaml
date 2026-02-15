@@ -55,7 +55,7 @@ replacements:
           name: jupyter-minimal-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-minimal-cpu-py312-ubi9-n-1
+      fieldPath: data.odh-workbench-jupyter-minimal-cpu-py312-ubi9-2025-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -81,7 +81,7 @@ replacements:
           name: jupyter-datascience-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-datascience-cpu-py312-ubi9-n-1
+      fieldPath: data.odh-workbench-jupyter-datascience-cpu-py312-ubi9-2025-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -107,7 +107,7 @@ replacements:
           name: jupyter-minimal-gpu-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-minimal-cuda-py312-ubi9-n-1
+      fieldPath: data.odh-workbench-jupyter-minimal-cuda-py312-ubi9-2025-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -133,7 +133,7 @@ replacements:
           name: jupyter-pytorch-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py312-ubi9-n-1
+      fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py312-ubi9-2025-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -159,7 +159,7 @@ replacements:
           name: jupyter-tensorflow-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-n-1
+      fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-2025-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -185,7 +185,7 @@ replacements:
           name: jupyter-trustyai-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n-1
+      fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py312-ubi9-2025-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -211,7 +211,7 @@ replacements:
           name: code-server-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-codeserver-datascience-cpu-py312-ubi9-n-1
+      fieldPath: data.odh-workbench-codeserver-datascience-cpu-py312-ubi9-2025-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -237,7 +237,7 @@ replacements:
           name: rstudio-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py312-c9s-n-1
+      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py312-c9s-2025-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -263,7 +263,7 @@ replacements:
           name: rstudio-gpu-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py312-c9s-n-1
+      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py312-c9s-2025-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -289,7 +289,7 @@ replacements:
           name: jupyter-rocm-minimal
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-minimal-rocm-py312-ubi9-n-1
+      fieldPath: data.odh-workbench-jupyter-minimal-rocm-py312-ubi9-2025-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -315,7 +315,7 @@ replacements:
           name: jupyter-rocm-pytorch
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-pytorch-rocm-py312-ubi9-n-1
+      fieldPath: data.odh-workbench-jupyter-pytorch-rocm-py312-ubi9-2025-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -341,7 +341,7 @@ replacements:
           name: jupyter-rocm-tensorflow
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-n-1
+      fieldPath: data.odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-2025-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -367,7 +367,7 @@ replacements:
           name: jupyter-pytorch-llmcompressor
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-n-1
+      fieldPath: data.odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-2025-2
       kind: ConfigMap
       name: notebook-image-params
       version: v1
@@ -393,7 +393,7 @@ replacements:
           name: jupyter-minimal-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-n-1
+      fieldPath: data.odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-2025-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -419,7 +419,7 @@ replacements:
           name: jupyter-datascience-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-datascience-cpu-py312-ubi9-commit-n-1
+      fieldPath: data.odh-workbench-jupyter-datascience-cpu-py312-ubi9-commit-2025-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -445,7 +445,7 @@ replacements:
           name: jupyter-minimal-gpu-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-minimal-cuda-py312-ubi9-commit-n-1
+      fieldPath: data.odh-workbench-jupyter-minimal-cuda-py312-ubi9-commit-2025-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -471,7 +471,7 @@ replacements:
           name: jupyter-pytorch-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py312-ubi9-commit-n-1
+      fieldPath: data.odh-workbench-jupyter-pytorch-cuda-py312-ubi9-commit-2025-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -497,7 +497,7 @@ replacements:
           name: jupyter-tensorflow-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-commit-n-1
+      fieldPath: data.odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-commit-2025-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -523,7 +523,7 @@ replacements:
           name: jupyter-trustyai-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py312-ubi9-commit-n-1
+      fieldPath: data.odh-workbench-jupyter-trustyai-cpu-py312-ubi9-commit-2025-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -549,7 +549,7 @@ replacements:
           name: code-server-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-codeserver-datascience-cpu-py312-ubi9-commit-n-1
+      fieldPath: data.odh-workbench-codeserver-datascience-cpu-py312-ubi9-commit-2025-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -575,7 +575,7 @@ replacements:
           name: rstudio-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py312-c9s-commit-n-1
+      fieldPath: data.odh-workbench-rstudio-minimal-cpu-py312-c9s-commit-2025-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -601,7 +601,7 @@ replacements:
           name: rstudio-gpu-notebook
           version: v1
   - source:
-      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py312-c9s-commit-n-1
+      fieldPath: data.odh-workbench-rstudio-minimal-cuda-py312-c9s-commit-2025-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -627,7 +627,7 @@ replacements:
           name: jupyter-rocm-minimal
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-minimal-rocm-py312-ubi9-commit-n-1
+      fieldPath: data.odh-workbench-jupyter-minimal-rocm-py312-ubi9-commit-2025-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -653,7 +653,7 @@ replacements:
           name: jupyter-rocm-pytorch
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-pytorch-rocm-py312-ubi9-commit-n-1
+      fieldPath: data.odh-workbench-jupyter-pytorch-rocm-py312-ubi9-commit-2025-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -679,7 +679,7 @@ replacements:
           name: jupyter-rocm-tensorflow
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-commit-n-1
+      fieldPath: data.odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-commit-2025-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1
@@ -705,7 +705,7 @@ replacements:
           name: jupyter-pytorch-llmcompressor
           version: v1
   - source:
-      fieldPath: data.odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-commit-n-1
+      fieldPath: data.odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-commit-2025-2
       kind: ConfigMap
       name: notebook-image-commithash
       version: v1

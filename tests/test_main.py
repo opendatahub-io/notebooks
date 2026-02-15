@@ -414,6 +414,207 @@ def test_rhds_pipelines_use_rhds_args(subtests: pytest_subtests.plugin.SubTests)
             )
 
 
+CANONICAL_TAG_ORDER = ["3.4", "2025.2", "2025.1", "2024.2", "2024.1", "2023.2", "2023.1", "1.2"]
+
+_PLACEHOLDER_RE = re.compile(
+    r"""
+    ^
+    ( .+? )                 # Group 1: base key (non-greedy)
+    (                       # Group 2: version suffix
+        -n                  #   latest tag
+      | -n-\d+              #   old positional style (e.g. -n-1) -- a bug when found on rhds
+      | -\d+-\d+            #   year-minor style (e.g. -2025-2)
+    )
+    _PLACEHOLDER
+    $
+    """,
+    re.VERBOSE,
+)
+
+
+def _parse_env_keys(env_path: pathlib.Path) -> set[str]:
+    keys: set[str] = set()
+    if not env_path.exists():
+        return keys
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, _, _ = line.partition("=")
+        keys.add(key.strip())
+    return keys
+
+
+def test_imagestream_kustomization_consistency(subtests: pytest_subtests.plugin.SubTests):
+    """Validate that imagestream YAML files, kustomization.yaml replacements, and .env files are consistent."""
+    base_dir = PROJECT_ROOT / "manifests" / "base"
+
+    kustomization = yaml.safe_load((base_dir / "kustomization.yaml").read_text())
+    replacements = kustomization.get("replacements", [])
+
+    # Build lookup: (imagestream_name, fieldPath_suffix) -> fieldPath_key
+    # e.g. ("s2i-minimal-notebook", "spec.tags.0.from.name") -> "odh-workbench-...-n"
+    params_replacements: dict[tuple[str, str], str] = {}
+    commit_replacements: dict[tuple[str, str], str] = {}
+    for r in replacements:
+        field_path_key = r["source"]["fieldPath"].removeprefix("data.")
+        configmap = r["source"]["name"]
+        for target in r["targets"]:
+            is_name = target["select"]["name"]
+            for fp in target["fieldPaths"]:
+                if configmap == "notebook-image-params":
+                    params_replacements[is_name, fp] = field_path_key
+                elif configmap == "notebook-image-commithash":
+                    commit_replacements[is_name, fp] = field_path_key
+
+    param_env_keys = _parse_env_keys(base_dir / "params.env") | _parse_env_keys(base_dir / "params-latest.env")
+    commit_env_keys = _parse_env_keys(base_dir / "commit.env") | _parse_env_keys(base_dir / "commit-latest.env")
+
+    for is_file in sorted(base_dir.glob("*-imagestream.yaml")):
+        is_data = yaml.safe_load(is_file.read_text())
+        is_name = is_data["metadata"]["name"]
+        tags = is_data["spec"]["tags"]
+        tag_names = [t["name"] for t in tags]
+        is_runtime = is_data["metadata"].get("labels", {}).get("opendatahub.io/runtime-image") == "true"
+        has_kustomize_replacements = any(
+            target["select"]["name"] == is_name for r in replacements for target in r["targets"]
+        )
+
+        with subtests.test(msg=f"imagestream {is_file.name}", imagestream=is_file.name):
+            if is_runtime:
+                # Runtime imagestreams have a single non-version tag; skip ordering/placeholder checks
+                continue
+
+            # --- Check 1: Tag ordering ---
+            with subtests.test(msg=f"tag ordering in {is_file.name}"):
+                # Find where this imagestream's tags fit in the canonical order
+                canonical_positions = []
+                for tn in tag_names:
+                    if tn in CANONICAL_TAG_ORDER:
+                        canonical_positions.append(CANONICAL_TAG_ORDER.index(tn))
+                    else:
+                        pytest.fail(
+                            f"{is_file.name}: tag name {tn!r} is not in CANONICAL_TAG_ORDER. "
+                            f"Update CANONICAL_TAG_ORDER if a new version was added."
+                        )
+                assert canonical_positions == sorted(canonical_positions), (
+                    f"{is_file.name}: tags are not in newest-to-oldest order. "
+                    f"Got {tag_names}, expected order per CANONICAL_TAG_ORDER."
+                )
+
+            # --- Check 2 & 3: Placeholder consistency per tag ---
+            for idx, tag in enumerate(tags):
+                from_placeholder = tag["from"]["name"]
+                commit_placeholder = tag["annotations"].get("opendatahub.io/notebook-build-commit")
+                tag_name = tag["name"]
+
+                with subtests.test(msg=f"placeholder consistency for tag {tag_name} in {is_file.name}"):
+                    m = _PLACEHOLDER_RE.match(from_placeholder)
+                    assert m, (
+                        f"{is_file.name} tag {tag_name}: from.name placeholder {from_placeholder!r} "
+                        f"does not match expected pattern '<base>-<suffix>_PLACEHOLDER'"
+                    )
+                    suffix = m.group(2)
+
+                    if idx == 0:
+                        assert suffix == "-n", (
+                            f"{is_file.name} tag {tag_name} (index 0): expected suffix '-n' for latest tag, "
+                            f"got {suffix!r} in {from_placeholder!r}"
+                        )
+                    else:
+                        expected_suffix = "-" + tag_name.replace(".", "-")
+                        assert suffix == expected_suffix, (
+                            f"{is_file.name} tag {tag_name} (index {idx}): expected suffix {expected_suffix!r} "
+                            f"matching tag name, got {suffix!r} in {from_placeholder!r}"
+                        )
+
+                # Check 3: commit placeholder matches from.name placeholder
+                with subtests.test(msg=f"commit placeholder for tag {tag_name} in {is_file.name}"):
+                    if commit_placeholder is None:
+                        continue
+                    m_from = _PLACEHOLDER_RE.match(from_placeholder)
+                    if m_from is None:
+                        # from.name already failed Check 2; skip derived check
+                        continue
+                    m_commit = _PLACEHOLDER_RE.match(commit_placeholder)
+                    assert m_commit, (
+                        f"{is_file.name} tag {tag_name}: commit placeholder {commit_placeholder!r} "
+                        f"does not match expected pattern"
+                    )
+                    expected_commit = f"{m_from.group(1)}-commit{m_from.group(2)}_PLACEHOLDER"
+                    assert commit_placeholder == expected_commit, (
+                        f"{is_file.name} tag {tag_name}: commit placeholder mismatch. "
+                        f"Expected {expected_commit!r} (derived from from.name), got {commit_placeholder!r}"
+                    )
+
+            if not has_kustomize_replacements:
+                continue
+
+            # --- Check 4: Kustomization replacement presence ---
+            for idx, tag in enumerate(tags):
+                tag_name = tag["name"]
+                from_placeholder = tag["from"]["name"]
+                m = _PLACEHOLDER_RE.match(from_placeholder)
+                if not m:
+                    continue
+                param_key = f"{m.group(1)}{m.group(2)}"
+
+                with subtests.test(msg=f"kustomize params replacement for tag {tag_name} in {is_file.name}"):
+                    expected_target = f"spec.tags.{idx}.from.name"
+                    actual_key = params_replacements.get((is_name, expected_target))
+                    assert actual_key is not None, (
+                        f"{is_file.name} tag {tag_name}: no kustomization replacement found for "
+                        f"({is_name!r}, {expected_target!r})"
+                    )
+                    assert actual_key == param_key, (
+                        f"{is_file.name} tag {tag_name}: kustomization replacement key mismatch. "
+                        f"Expected {param_key!r}, got {actual_key!r}"
+                    )
+
+                commit_placeholder = tag["annotations"].get("opendatahub.io/notebook-build-commit")
+                if commit_placeholder:
+                    m_c = _PLACEHOLDER_RE.match(commit_placeholder)
+                    if m_c:
+                        commit_key = f"{m_c.group(1)}{m_c.group(2)}"
+                        with subtests.test(msg=f"kustomize commit replacement for tag {tag_name} in {is_file.name}"):
+                            expected_target = f"spec.tags.{idx}.annotations.[opendatahub.io/notebook-build-commit]"
+                            actual_key = commit_replacements.get((is_name, expected_target))
+                            assert actual_key is not None, (
+                                f"{is_file.name} tag {tag_name}: no kustomization commit replacement found for "
+                                f"({is_name!r}, {expected_target!r})"
+                            )
+                            assert actual_key == commit_key, (
+                                f"{is_file.name} tag {tag_name}: kustomization commit replacement key mismatch. "
+                                f"Expected {commit_key!r}, got {actual_key!r}"
+                            )
+
+            # --- Check 5: Env file key existence ---
+            for _idx, tag in enumerate(tags):
+                tag_name = tag["name"]
+                from_placeholder = tag["from"]["name"]
+                m = _PLACEHOLDER_RE.match(from_placeholder)
+                if not m:
+                    continue
+                param_key = f"{m.group(1)}{m.group(2)}"
+
+                with subtests.test(msg=f"env key for tag {tag_name} in {is_file.name}"):
+                    assert param_key in param_env_keys, (
+                        f"{is_file.name} tag {tag_name}: param key {param_key!r} not found in "
+                        f"params.env or params-latest.env"
+                    )
+
+                commit_placeholder = tag["annotations"].get("opendatahub.io/notebook-build-commit")
+                if commit_placeholder:
+                    m_c = _PLACEHOLDER_RE.match(commit_placeholder)
+                    if m_c:
+                        commit_key = f"{m_c.group(1)}{m_c.group(2)}"
+                        with subtests.test(msg=f"commit env key for tag {tag_name} in {is_file.name}"):
+                            assert commit_key in commit_env_keys, (
+                                f"{is_file.name} tag {tag_name}: commit key {commit_key!r} not found in "
+                                f"commit.env or commit-latest.env"
+                            )
+
+
 def test_make_disable_pushing():
     # NOTE: the image below needs to exist in the Makefile
     lines = dryrun_make(["rocm-jupyter-tensorflow-ubi9-python-3.12"], env={"PUSH_IMAGES": ""})
