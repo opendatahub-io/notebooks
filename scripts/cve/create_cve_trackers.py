@@ -26,10 +26,11 @@ import argparse
 import json
 import os
 import re
-import ssl
 import sys
 import urllib.parse
 from dataclasses import dataclass, field
+
+from scripts.cve import create_ssl_context
 
 try:
     import requests
@@ -42,37 +43,7 @@ except ImportError:
     HAS_REQUESTS = False
 
 
-# Create SSL context for urllib - handles macOS certificate issues
-def _create_ssl_context() -> ssl.SSLContext:
-    """Create an SSL context that works on macOS with system certificates."""
-    ctx = ssl.create_default_context()
-    try:
-        import certifi
-        ctx.load_verify_locations(certifi.where())
-    except ImportError:
-        # On macOS, try to use the system certificates
-        import subprocess
-        import tempfile
-        try:
-            # Try to get certificates from security command on macOS
-            result = subprocess.run(
-                ["security", "find-certificate", "-a", "-p",
-                 "/System/Library/Keychains/SystemRootCertificates.keychain"],
-                capture_output=True, text=True, timeout=10
-            )
-            if result.returncode == 0 and result.stdout:
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.pem', delete=False) as f:
-                    f.write(result.stdout)
-                try:
-                    ctx.load_verify_locations(f.name)
-                finally:
-                    os.unlink(f.name)
-        except (subprocess.SubprocessError, FileNotFoundError, OSError):
-            pass  # Fall back to default behavior
-    return ctx
-
-
-_SSL_CONTEXT = _create_ssl_context() if not HAS_REQUESTS else None
+_SSL_CONTEXT = create_ssl_context() if not HAS_REQUESTS else None
 
 
 @dataclass

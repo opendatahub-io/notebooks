@@ -34,6 +34,8 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime, date
 
+from scripts.cve import create_ssl_context
+
 try:
     import requests
     HAS_REQUESTS = True
@@ -42,6 +44,9 @@ except ImportError:
     import urllib.error
     import urllib.parse
     HAS_REQUESTS = False
+
+
+_SSL_CONTEXT = create_ssl_context() if not HAS_REQUESTS else None
 
 
 @dataclass
@@ -110,7 +115,7 @@ class JiraClient:
             if data:
                 req.data = json.dumps(data).encode("utf-8")
 
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(req, context=_SSL_CONTEXT) as resp:
                 content = resp.read().decode()
                 if content:
                     return json.loads(content)
