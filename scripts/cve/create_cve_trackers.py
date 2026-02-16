@@ -63,7 +63,10 @@ def _create_ssl_context() -> ssl.SSLContext:
             if result.returncode == 0 and result.stdout:
                 with tempfile.NamedTemporaryFile(mode='w', suffix='.pem', delete=False) as f:
                     f.write(result.stdout)
+                try:
                     ctx.load_verify_locations(f.name)
+                finally:
+                    os.unlink(f.name)
         except (subprocess.SubprocessError, FileNotFoundError, OSError):
             pass  # Fall back to default behavior
     return ctx
@@ -539,9 +542,12 @@ def main():
     for (_cve_id, _version), info in sorted(orphans.items()):
         tracker_key = create_tracker_issue(client, info, jira_url=jira_url, dry_run=args.dry_run)
 
-        if tracker_key and not args.no_link:
+        if not args.no_link:
             child_keys = [issue["key"] for issue in info.issues]
-            linked += link_issues(client, tracker_key, child_keys, args.dry_run)
+            if tracker_key:
+                linked += link_issues(client, tracker_key, child_keys, dry_run=False)
+            elif args.dry_run:
+                linked += link_issues(client, "DRY-RUN", child_keys, dry_run=True)
 
         # Update description to include the dynamic linkedIssues() link
         if tracker_key:
