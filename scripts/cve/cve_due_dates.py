@@ -56,7 +56,7 @@ class TrackerInfo:
     summary: str
     cve_id: str | None = None
     due_date: date | None = None
-    linked_issues: list = field(default_factory=list)
+    linked_issues: list[str] = field(default_factory=list)
     earliest_child_due_date: date | None = None
     status: str = ""
 
