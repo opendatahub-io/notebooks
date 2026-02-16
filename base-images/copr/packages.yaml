@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=./manifest_schema.json
+
+---
+# https://copr.fedorainfracloud.org/coprs/aaiet-notebooks/rhelai-el9/
+copr_project: aaiet-notebooks/rhelai-el9
+koji_tag: f43
+
+# https://copr.fedorainfracloud.org/coprs/aaiet-notebooks/rhelai-el9/edit/
+chroots:
+  - epel-9-x86_64
+  - epel-9-aarch64
+  - epel-9-ppc64le
+  - epel-9-s390x
+
+# Extra packages for the mock buildroot
+chroot_packages: []
+
+# Build timeout in seconds.  Copr's default is ~5h (18000s).
+# HDF5's %check runs serial + MPI parallel tests which can take several hours;
+# the MPI test t_pmulti_dset is known to hang on some architectures.
+build_timeout: 36000  # 10 hours
+
+packages:
+  - name: autoconf
+    nvr: autoconf-2.72-7.fc43
+    note: >-
+      EL9 ships autoconf 2.69 but Fedora SRPMs (including HDF5) need >= 2.71.
+      Rebuilding the standard Fedora autoconf replaces the system version in the
+      Copr buildroot (2.72 > 2.69), so /usr/bin/autoreconf becomes 2.72.
+      Packages that need it pull it in transitively via automake -> autoconf.
+  - name: libaec
+    nvr: libaec-1.1.4-3.fc43
+    note: "szip compression library required by HDF5"
+  - name: hdf5
+    nvr: hdf5-1.14.6-6.fc43
+    note: "provides libhdf5.so.310 for h5py"

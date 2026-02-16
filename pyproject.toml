@@ -14,23 +14,20 @@ dev = [
     "pre-commit",
     "pyright",
     "ruff",
-
     "pytest",
     "allure-pytest",
     "pytest-subtests",
-
     "pyfakefs",
     "pydantic",
     "requests",
-
     "pyyaml",
     "ruamel-yaml",
-
     "testcontainers",
     "docker",
     "podman",
     "kubernetes",
     "openshift-python-wrapper",
+    "koji>=1.35.3",
 ]
 
 [tool.uv]
@@ -62,14 +59,14 @@ reportUnnecessaryTypeIgnoreComment = "error"
 reportPossiblyUnboundVariable = "warning"
 reportOptionalMemberAccess = "none"
 reportOptionalSubscript = "none"
-include = ["ci/", "tests/"]
+include = ["ci/", "tests/", "base-images/"]
 ignore = [ ]
 pythonVersion = "3.14"
 pythonPlatform = "Linux"
 
 # https://docs.astral.sh/ruff/configuration
 [tool.ruff]
-include = ["pyproject.toml", "ci/**/*.py", "ntb/**/*.py", "tests/**/*.py"]
+include = ["pyproject.toml", "ci/**/*.py", "ntb/**/*.py", "tests/**/*.py", "base-images/**/*.py"]
 exclude = [ ]
 target-version = "py314"
 line-length = 120
