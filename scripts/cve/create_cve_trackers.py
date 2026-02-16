@@ -495,7 +495,8 @@ def main():
         version_label = version or "(no version)"
         print(f"  {cve_id} {version_label}: {info.issue_count} issues")
         if info.description:
-            print(f"    Description: {info.description[:60]}...")
+            desc = info.description[:60] + "..." if len(info.description) > 60 else info.description
+            print(f"    Description: {desc}")
 
     if args.list_only:
         return
