@@ -365,6 +365,17 @@ function uninstall_epel() {
     dnf remove "${DNF_OPTS[@]}" epel-release
 }
 
+# COPR repo with newer rebuilds of EPEL packages (e.g. hdf5 with libhdf5.so.310)
+# https://copr.fedorainfracloud.org/coprs/aaiet-notebooks/rhelai-el9/
+function install_copr() {
+    dnf install "${DNF_OPTS[@]}" 'dnf-command(copr)'
+    dnf copr enable -y aaiet-notebooks/rhelai-el9
+}
+
+function uninstall_copr() {
+    dnf copr disable -y aaiet-notebooks/rhelai-el9
+}
+
 # AIPCC bases enable codeready-builder, so we need to do the CentOS equivalent
 # In RHEL this is codeready-builder-for-rhel-${RELEASEVER_MAJOR}-${ARCH}-eus-rpms
 # or codeready-builder-for-rhel-${RELEASEVER_MAJOR}-${ARCH}-rpms
@@ -393,13 +404,20 @@ function main() {
     install_csb
 
     install_epel
+    install_copr
 
     # install security updates
     dnf update "${DNF_OPTS[@]}" --security
 
     install_packages
+    # https://github.com/opendatahub-io/notebooks/pull/2609
     if ! test -f /usr/lib64/libzmq.so.5; then
         echo "Error: libzmq.so.5 was not found after installation"
+        exit 1
+    fi
+    # https://github.com/opendatahub-io/notebooks/issues/2944
+    if ! test -f /usr/lib64/libhdf5.so.310; then
+        echo "Error: libhdf5.so.310 was not found after installation (see https://github.com/opendatahub-io/notebooks/issues/2944)"
         exit 1
     fi
 
@@ -411,6 +429,7 @@ function main() {
     # Makefile: REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
     dnf install "${DNF_OPTS[@]}" which
 
+    uninstall_copr
     uninstall_epel
 }
 
