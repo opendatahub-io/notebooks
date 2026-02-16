@@ -303,6 +303,12 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       --python-version="$PYTHON_VERSION" \
       --universal \
       --no-annotate \
+      --no-emit-package notebooks-base-deps \
+      --no-emit-package notebooks-jupyterlab-deps \
+      --no-emit-package notebooks-jupyterlab-datascience-deps \
+      --no-emit-package notebooks-datascience-deps \
+      --no-emit-package notebooks-db-connectors-deps \
+      --no-emit-package notebooks-elyra-runtime-deps \
       --quiet \
       --no-emit-package odh-notebooks-meta-llmcompressor-deps \
       --no-emit-package odh-notebooks-meta-runtime-elyra-deps \

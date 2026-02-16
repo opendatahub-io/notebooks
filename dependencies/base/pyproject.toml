@@ -1,0 +1,17 @@
+[project]
+name = "notebooks-base-deps"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    # Base packages
+    "wheel~=0.45.1",
+    "setuptools~=80.9.0",
+]
+
+[tool.uv]
+package = false
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
+]
