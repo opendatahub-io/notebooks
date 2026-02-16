@@ -46,6 +46,8 @@ spec:
     - 'odh-pr-{{revision}}'
   - name: pipeline-type
     value: pull-request
+  - name: enable-group-testing
+    value: "true"
   # Added taskRunSpecs to increase compute resources
   taskRunSpecs:
     - pipelineTaskName: clair-scan
