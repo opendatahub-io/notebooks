@@ -48,6 +48,8 @@ spec:
     - 'odh-pr-{{revision}}'
   - name: pipeline-type
     value: pull-request
+  - name: enable-group-testing
+    value: "true"
   taskRunSpecs:
   - pipelineTaskName: build-images
     stepSpecs:
