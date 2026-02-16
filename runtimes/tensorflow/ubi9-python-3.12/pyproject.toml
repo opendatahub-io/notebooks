@@ -4,7 +4,6 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
-    "tf2onnx~=1.16.1",
 
     # TensorFlow packages
     "tensorflow~=2.20.0",
@@ -31,8 +30,6 @@ dependencies = [
 [tool.uv]
 
 override-dependencies = [
-    # tf2onnx has pinned protobuf version, that causes conflict with other packages
-    "protobuf==6.33.5",
     "keras~=3.13.2"
 ]
 
