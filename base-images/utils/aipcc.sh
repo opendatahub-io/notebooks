@@ -7,9 +7,13 @@ _=${VIRTUAL_ENV}
 
 DNF_OPTS=(-y --nodocs --setopt=install_weak_deps=False --setopt=keepcache=True --setopt=max_parallel_downloads=10)
 
+function get_os_vendor() {
+    cut -d: -f3 /etc/system-release-cpe
+}
+
 function install_packages() {
     local os_vendor
-    os_vendor=$(cut -d: -f3 /etc/system-release-cpe)
+    os_vendor=$(get_os_vendor)
 
     PKGS=()
 
@@ -130,7 +134,7 @@ function install_packages() {
 # The list is obtained as explained in c9s-python-3.12/README.md
 function install_scl_packages() {
     local os_vendor
-    os_vendor=$(cut -d: -f3 /etc/system-release-cpe)
+    os_vendor=$(get_os_vendor)
 
     SCL_PACKAGES=(
         "annobin"
@@ -368,12 +372,16 @@ function uninstall_epel() {
 # COPR repo with newer rebuilds of EPEL packages (e.g. hdf5 with libhdf5.so.310)
 # https://copr.fedorainfracloud.org/coprs/aaiet-notebooks/rhelai-el9/
 function install_copr() {
-    dnf install "${DNF_OPTS[@]}" 'dnf-command(copr)'
-    dnf copr enable -y aaiet-notebooks/rhelai-el9
+    if [[ "$(get_os_vendor)" == "centos" ]]; then
+        dnf install "${DNF_OPTS[@]}" 'dnf-command(copr)'
+        dnf copr enable -y aaiet-notebooks/rhelai-el9
+    fi
 }
 
 function uninstall_copr() {
-    dnf copr disable -y aaiet-notebooks/rhelai-el9
+    if [[ "$(get_os_vendor)" == "centos" ]]; then
+        dnf copr disable -y aaiet-notebooks/rhelai-el9
+    fi
 }
 
 # AIPCC bases enable codeready-builder, so we need to do the CentOS equivalent
@@ -383,7 +391,7 @@ function install_csb() {
     dnf install "${DNF_OPTS[@]}" dnf-plugins-core
 
     local os_vendor
-    os_vendor=$(cut -d: -f3 /etc/system-release-cpe)
+    os_vendor=$(get_os_vendor)
 
     if [[ "${os_vendor}" == "centos" ]]; then
       dnf config-manager --set-enabled crb
@@ -416,9 +424,11 @@ function main() {
         exit 1
     fi
     # https://github.com/opendatahub-io/notebooks/issues/2944
-    if ! test -f /usr/lib64/libhdf5.so.310; then
-        echo "Error: libhdf5.so.310 was not found after installation (see https://github.com/opendatahub-io/notebooks/issues/2944)"
-        exit 1
+    if [[ "$(get_os_vendor)" == "centos" ]]; then
+        if ! test -f /usr/lib64/libhdf5.so.310; then
+            echo "Error: libhdf5.so.310 was not found after installation (see https://github.com/opendatahub-io/notebooks/issues/2944)"
+            exit 1
+        fi
     fi
 
     dnf install "${DNF_OPTS[@]}" ${PYTHON}-devel ${PYTHON}-pip
