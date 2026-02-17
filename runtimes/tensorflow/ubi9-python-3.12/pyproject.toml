@@ -7,7 +7,7 @@ dependencies = [
     "tf2onnx~=1.16.1",
 
     # TensorFlow packages
-    "tensorflow[and-cuda]~=2.20.0",
+    "tensorflow~=2.20.0",
     "tensorboard~=2.20.0",
 
     # Datascience and useful extensions
@@ -24,8 +24,8 @@ dependencies = [
     "odh-notebooks-meta-runtime-elyra-deps",
 
     # Base packages
-    "setuptools~=80.9.0",
     "wheel~=0.46.3",
+    "setuptools~=80.9.0",
 ]
 
 [tool.uv]

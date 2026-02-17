@@ -33,8 +33,9 @@ ENV HOME=/root
 WORKDIR /root
 
 ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
 
-COPY ${TRUSTYAI_SOURCE_CODE}/pylock.toml .
+COPY ${TRUSTYAI_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY ${TRUSTYAI_SOURCE_CODE}/devel_env_setup.sh .
 
 RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
@@ -172,16 +173,9 @@ FROM jupyter-datascience AS jupyter-trustyai
 
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
 
 ENV LD_LIBRARY_PATH=/usr/lib:/usr/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
-
-### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-ENV PIP_INDEX_URL=https://pypi.org/simple
-# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-ENV UV_INDEX_URL=https://pypi.org/simple
-# https://docs.astral.sh/uv/reference/environment/#uv_default_index
-ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-### END RHAIENG-2189: this is AIPCC migration phase 1.5
 
 LABEL name="odh-notebook-jupyter-trustyai-ubi9-python-3.12" \
     summary="Jupyter trustyai notebook image for ODH notebooks" \
@@ -215,7 +209,7 @@ fi
 EOF
 
 # Install Python packages and Jupyterlab extensions from requirements.txt
-COPY ${TRUSTYAI_SOURCE_CODE}/pylock.toml ./
+COPY ${TRUSTYAI_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
 # install openblas for ppc64le
 RUN --mount=type=cache,from=whl-cache,source=/root/OpenBLAS/,target=/OpenBlas/,rw /bin/bash <<'EOF'
