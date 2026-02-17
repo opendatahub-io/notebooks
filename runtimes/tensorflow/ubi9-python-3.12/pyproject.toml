@@ -32,8 +32,7 @@ dependencies = [
 
 override-dependencies = [
     # tf2onnx has pinned protobuf version, that causes conflict with other packages
-    "protobuf==6.33.5",
-    "keras~=3.13.2"
+    "protobuf==6.31.1",
 ]
 
 environments = [
