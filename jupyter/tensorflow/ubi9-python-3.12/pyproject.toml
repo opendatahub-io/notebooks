@@ -48,7 +48,6 @@ odh-notebooks-meta-workbench-datascience-deps = { path = "../../../dependencies/
 [tool.uv]
 
 override-dependencies = [
-    "keras~=3.13.2",
     # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
     # appengine-python-standard which has an obnoxious urllib3<2 constraint
     "urllib3>=2.6.0",

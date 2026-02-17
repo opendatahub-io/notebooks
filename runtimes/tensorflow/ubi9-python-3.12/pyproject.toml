@@ -29,10 +29,6 @@ dependencies = [
 
 [tool.uv]
 
-override-dependencies = [
-    "keras~=3.13.2"
-]
-
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]

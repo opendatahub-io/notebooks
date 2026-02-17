@@ -31,10 +31,6 @@ dependencies = [
 
 [tool.uv]
 
-override-dependencies = [
-    "keras~=3.13.2"
-]
-
 constraint-dependencies = [
     # AttributeError: module 'ml_dtypes' has no attribute 'float4_e2m1fn'
     "onnx<1.19.0",
