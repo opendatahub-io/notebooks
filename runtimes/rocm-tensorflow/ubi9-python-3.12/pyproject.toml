@@ -4,7 +4,6 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
-    "tf2onnx~=1.16.1",
 
     # ROCm TensorFlow packages
     # https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/tensorflow-install.html#using-a-wheels-package
@@ -31,11 +30,6 @@ dependencies = [
 ]
 
 [tool.uv]
-
-override-dependencies = [
-    # tf2onnx has pinned protobuf version, that causes conflict with other packages
-    "protobuf==6.31.1",
-]
 
 constraint-dependencies = [
     # AttributeError: module 'ml_dtypes' has no attribute 'float4_e2m1fn'
