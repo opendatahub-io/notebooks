@@ -1,17 +1,32 @@
+# [HERMETIC] pyproject.toml changes for hermetic build:
+#   - Added uv + micropipenv as explicit deps (cachi2 prefetches everything in dependencies[])
+#   - Added ipykernel + debugpy explicitly (previously pulled transitively)
+#   - Added odh-notebooks-meta-workbench-datascience-deps (shared meta-package replacing
+#     individual deps like boto3, kafka-python-ng, numpy, pandas, plotly, scipy, scikit-learn)
+#   - Upgraded feast ~=0.59.0 (pinned for RHOAI 3.4 compatibility)
+#   - Excluded py-spy on ppc64le (maturin can't fetch crates.io in --network=none)
+#   - Added urllib3>=2.6.0 override (CVE-2025-66418)
+#   - Added local path source for the meta-package
 [project]
 name = "notebooks"
 version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
+    # Installer/tooling used in Docker/CI (prefetched with main deps for cachi2 offline)
+    "uv==0.9.28",
+    "micropipenv[toml]==1.10.0",
+
     # Base packages
     "wheel~=0.46.3",
     "setuptools~=80.9.0",
 
     "ipykernel~=7.1.0",
+    "debugpy==1.8.20",
 
     # Datascience packages
     "feast~=0.59.0",
+
     # RHAIENG-1475: skl2onnx excluded on s390x for codeserver
     "skl2onnx~=1.19.1; platform_machine != 's390x'",
     "odh-notebooks-meta-workbench-datascience-deps",
@@ -29,6 +44,7 @@ dependencies = [
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
+
 override-dependencies = [
     # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
     # Upstream: https://github.com/kubernetes-client/python/issues/2458
