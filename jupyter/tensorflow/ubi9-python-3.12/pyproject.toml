@@ -7,7 +7,7 @@ dependencies = [
     "tf2onnx~=1.16.1",
 
     # TensorFlow packages
-    "tensorflow[and-cuda]~=2.20.0",
+    "tensorflow~=2.20.0",
     "tensorboard~=2.20.0",
 
     # Datascience and useful extensions
@@ -50,7 +50,7 @@ odh-notebooks-meta-workbench-datascience-deps = { path = "../../../dependencies/
 
 override-dependencies = [
     # tf2onnx has pinned protobuf version, that causes conflict with other packages
-    "protobuf==6.31.1",
+    "protobuf==6.33.5",
     "keras~=3.13.2",
     # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
     # appengine-python-standard which has an obnoxious urllib3<2 constraint
