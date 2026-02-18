@@ -460,12 +460,22 @@ def test_imagestream_kustomization_consistency(subtests: pytest_subtests.plugin.
         field_path_key = r["source"]["fieldPath"].removeprefix("data.")
         configmap = r["source"]["name"]
         for target in r["targets"]:
-            is_name = target["select"]["name"]
+            select = target.get("select", {})
+            if "name" not in select:
+                continue
+            target_name = select["name"]
             for fp in target["fieldPaths"]:
+                key = (target_name, fp)
                 if configmap == "notebook-image-params":
-                    params_replacements[is_name, fp] = field_path_key
+                    assert key not in params_replacements, (
+                        f"Duplicate params replacement for {key}: {params_replacements[key]!r} vs {field_path_key!r}"
+                    )
+                    params_replacements[key] = field_path_key
                 elif configmap == "notebook-image-commithash":
-                    commit_replacements[is_name, fp] = field_path_key
+                    assert key not in commit_replacements, (
+                        f"Duplicate commit replacement for {key}: {commit_replacements[key]!r} vs {field_path_key!r}"
+                    )
+                    commit_replacements[key] = field_path_key
 
     param_env_keys = _parse_env_keys(base_dir / "params.env") | _parse_env_keys(base_dir / "params-latest.env")
     commit_env_keys = _parse_env_keys(base_dir / "commit.env") | _parse_env_keys(base_dir / "commit-latest.env")
@@ -477,7 +487,7 @@ def test_imagestream_kustomization_consistency(subtests: pytest_subtests.plugin.
         tag_names = [t["name"] for t in tags]
         is_runtime = is_data["metadata"].get("labels", {}).get("opendatahub.io/runtime-image") == "true"
         has_kustomize_replacements = any(
-            target["select"]["name"] == is_name for r in replacements for target in r["targets"]
+            target.get("select", {}).get("name") == is_name for r in replacements for target in r["targets"]
         )
 
         with subtests.test(msg=f"imagestream {is_file.name}", imagestream=is_file.name):
