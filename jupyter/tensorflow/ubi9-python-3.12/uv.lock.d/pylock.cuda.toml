@@ -1649,12 +1649,6 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/terminado-0.18.1-8-py3-none-any.whl", hashes = { sha256 = "0d5259dea20d7f362c24adf7e3422f6e0bb095dd15bb6e40d9a69d532fef5882" } }]
 
 [[packages]]
-name = "tf2onnx"
-version = "1.16.1"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cuda12.9-ubi9/tf2onnx-1.16.1-9-py3-none-any.whl", hashes = { sha256 = "4a43ae808e276c7b775be24f1f1b1dcd2977f439c87eb7298d2c76e55f730b9a" } }]
-
-[[packages]]
 name = "threadpoolctl"
 version = "3.6.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
