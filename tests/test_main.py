@@ -503,9 +503,7 @@ def test_imagestream_kustomization_consistency(subtests: pytest_subtests.plugin.
                 )
 
             with subtests.test(msg=f"no duplicate tag names in {is_file.name}"):
-                assert len(tag_names) == len(set(tag_names)), (
-                    f"{is_file.name}: duplicate tag names found: {tag_names}"
-                )
+                assert len(tag_names) == len(set(tag_names)), f"{is_file.name}: duplicate tag names found: {tag_names}"
 
             # --- Check 2 & 3: Placeholder consistency per tag ---
             for idx, tag in enumerate(tags):
