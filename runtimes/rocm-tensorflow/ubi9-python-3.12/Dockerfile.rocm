@@ -113,8 +113,6 @@ chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P
 EOF
 
-COPY ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monkey_patch_protobuf_6x.py /opt/app-root/lib/python3.12/site-packages/
-
 # Workaround for https://issues.redhat.com/browse/AIPCC-8152
 ENV ROCM_PATH=/opt/rocm
 

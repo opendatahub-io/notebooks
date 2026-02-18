@@ -50,8 +50,8 @@ odh-notebooks-meta-workbench-datascience-deps = { path = "../../../../dependenci
 [tool.uv]
 
 override-dependencies = [
-    # tf2onnx has pinned protobuf version, that causes conflict with other packages
-    "protobuf==6.31.1",
+    # tensorflow-rocm depends on protobuf>=3.20.3, <6.0.0 and kfp depends on protobuf>=6.31.1
+    "protobuf==6.33.5",
     # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
     # appengine-python-standard which has an obnoxious urllib3<2 constraint
     "urllib3>=2.6.0",
