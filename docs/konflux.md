@@ -47,3 +47,15 @@ These GitHub Actions workflows manage the automated synchronization of configura
     * [ODH-io -> RHDS auto-merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/upstream-auto-merge.yaml)
 * **RHDS/main -> RHOAI-* Auto-Merge (Release Propagation):** Manages the promotion of changes from the main RHDS branch to specific release branches (e.g., `rhoai-vX.Y`), facilitating new product releases.
     * [RHDS/main -> rhoai-* auto-merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/main-release-auto-merge.yaml)
+
+## Prefetch (Hermeto) and Cargo version
+
+The **pip** prefetch for the code-server datascience image includes Python packages with Rust dependencies (e.g. **py-spy**, **cryptography**). Hermeto runs `cargo vendor` inside each such package. The **scroll** crate (dependency of py-spy’s build) version 0.13.0 requires Rust **edition 2024**, which needs **Cargo 1.85.0 or newer**. If the prefetch environment uses Cargo 1.84.x (e.g. 1.84.1), you will see:
+
+```text
+error: failed to parse manifest at `.../scroll-0.13.0/Cargo.toml`
+feature `edition2024` is required
+The package requires the Cargo feature called `edition2024`, but that feature is not stabilized in this version of Cargo (1.84.1 ...).
+```
+
+**Fix:** Ensure the Hermeto/cachi2 prefetch image or step uses **Cargo 1.85+** (or the Rust toolchain that ships it). The repo’s root `Cargo.toml` patches `scroll` and `scroll_derive` to a revision that uses edition 2021 for local/workspace builds, but prefetch runs `cargo vendor` inside the extracted pip package, so that patch is not applied during prefetch.

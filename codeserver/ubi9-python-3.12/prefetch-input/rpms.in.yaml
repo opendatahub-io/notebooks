@@ -1,0 +1,135 @@
+---
+# rpms.in.yaml - RPM packages to prefetch for hermetic build
+#
+# This manifest tells cachi2 to download all listed RPM packages (and their
+# dependencies) from the configured repos before the build starts. They are installed
+# with `dnf install` during the Docker build.
+#
+# The packages cover all stages and all architectures (x86_64, aarch64, ppc64le).
+# The lock file (rpms.lock.yaml) is auto-generated with exact versions and hashes.
+#
+# Previously, the Dockerfile ran `dnf install` with network access, and some packages
+# (like EPEL packages, Rust toolchain) were installed via curl from external URLs.
+
+contentOrigin:
+  repofiles:
+    # You must pick 1 or 2 below, can not use both.
+    # 1: If the system is registered with subscription-manager,
+    # use the absolute path to the redhat repo file.
+    # - /etc/yum.repos.d/redhat.repo
+
+    # 2: If no subscription-manager registration
+    - repos/ubi.repo
+    # - repos/rhsm-pulp.repo
+    - repos/epel.repo
+    - repos/centos.repo
+context:
+  bare: true
+
+arches:
+  - x86_64
+  - aarch64
+  - ppc64le
+
+moduleEnable: [nodejs:22]
+
+packages:
+
+  - checkpolicy
+  - diffutils
+  - gcc-toolset-14
+  - gcc-toolset-14-annobin-docs
+  - gcc-toolset-14-annobin-plugin-gcc
+  - gcc-toolset-14-binutils
+  - gcc-toolset-14-dwz
+  - gcc-toolset-14-gcc
+  - gcc-toolset-14-gcc-c++
+  - gcc-toolset-14-gcc-gfortran
+  - gcc-toolset-14-libatomic-devel
+  # - gcc-toolset-14-libquadmath-devel
+  - gcc-toolset-14-libstdc++-devel
+  - gcc-toolset-14-runtime
+  - jansson
+  - libatomic
+  - libselinux-utils
+  - libtool
+  - nodejs-devel
+  - nodejs-packaging
+  - npm
+  # libxkbfile-devel: provides xkbfile.h and xkbfile.pc needed by native-keymap
+  # (node-gyp native addon in lib/vscode). Available in CentOS Stream 9 CRB repo.
+  - libxkbfile-devel
+  - policycoreutils
+  - policycoreutils-python-utils
+  - python3-audit
+  - python3-distro
+  - python3-libselinux
+  - python3-libsemanage
+  - python3-policycoreutils
+  - python3-setools
+  - python3-setuptools
+
+  - tar
+  - perl
+  - mesa-libGL
+  - skopeo
+
+  - jq
+  - git-lfs
+  - libsndfile
+  - gettext
+
+  - bind-utils
+  - nginx
+  - nginx-mod-stream
+  - nginx-mod-http-perl
+  - httpd
+
+  - cpio
+
+  # ppc64le and s390xpackages
+  - cmake
+  - gcc-toolset-13
+  - gcc-toolset-13-libatomic-devel
+  - fribidi-devel
+  - lcms2-devel
+  - openjpeg2-devel
+  - tcl-devel
+  - tk-devel
+  - rust
+  - cargo
+
+  # EPEL used by s390x and ppc64le
+  - patchelf
+  - libimagequant-devel
+  - libraqm-devel
+  - zeromq-devel
+
+  # s390x packages (devel_env_setup.sh)
+  - gcc
+  - gcc-gfortran
+  - gcc-c++
+  - libxcrypt-compat
+  - python3.12-devel
+  - pkgconf-pkg-config
+  - ninja-build
+  - make
+  - openssl-devel
+  - python3-devel
+  - pybind11-devel
+  - autoconf
+  - automake
+  - openblas-devel
+  # openblas-threads provides libopenblasp.so.0 (pthreads variant) needed by
+  # RHOAI numpy/scipy wheels at runtime. The base 'openblas' meta-package only
+  # pulls in openblas-serial (libopenblas.so.0), which has the wrong soname.
+  - openblas-threads
+  - libjpeg-devel
+  - zlib-devel
+  - libtiff-devel
+  - freetype-devel
+  - libwebp-devel
+  - git
+  - wget
+  - boost-devel
+  - qhull-devel
