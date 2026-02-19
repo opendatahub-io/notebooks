@@ -199,6 +199,72 @@ make jupyter-datascience-ubi9-python-3.12
 
 5. **Consider upstream fixes** - If a direct dependency has a newer version that fixes the transitive CVE, prefer upgrading the direct dependency.
 
+## Component-Team-Owned Packages
+
+> [!WARNING]
+> Some Python packages in our images are developed by other Red Hat teams (feast, codeflare-sdk, kubeflow-training, llmcompressor). CVEs in these packages or their transitive dependencies require coordination with the owning team -- do **not** bump versions unilaterally. See the procedure below.
+
+These packages have two distribution paths:
+- **Upstream** (`pylock.toml`): installed from PyPI (`files.pythonhosted.org`)
+- **Downstream/RHOAI** (`uv.lock.d/pylock.*.toml`): installed from AIPCC rh-index (`packages.redhat.com/api/pulp-content/public-rhai/rhoai/...`)
+
+A CVE fix therefore requires both an upstream PyPI release **and** an AIPCC rebuild of the fixed version for downstream images.
+
+### Contact Table
+
+| Package | Owning Team | Slack Channel | Team Handle | Key Contacts |
+|---------|-------------|---------------|-------------|--------------|
+| feast | Feature Store | `TODO` | `TODO` | `TODO` |
+| codeflare-sdk | Distributed Workloads | `TODO` | `TODO` | `TODO` |
+| kubeflow-training | Training Kubeflow | `TODO` | `TODO` | `TODO` |
+| llmcompressor | Model Optimization | `TODO` | `TODO` | `TODO` |
+
+### Procedure
+
+#### Step 1: Alert the Component Team Immediately
+
+Post in the current release channel (e.g. `#wg-3_4-openshift-ai-release`) and tag the relevant team handle from the contact table above. Include:
+- CVE ID and severity
+- Affected package and vulnerable version
+- Which notebook images are affected
+- Whether the CVE is in the SDK itself or in a transitive dependency
+
+Use the team-specific `#forum-...` channel from the table for follow-up discussion.
+
+#### Step 2: Communicate AIPCC Build Need
+
+These packages are served from the AIPCC rh-index in downstream (RHOAI) images. After the component team releases a fixed version to PyPI, an AIPCC build is needed so the fixed wheel appears in the rh-index. Tell the component team whether the AIPCC build is needed for the current release.
+
+See [trigger_aipcc_self_serve_pipeline.md](trigger_aipcc_self_serve_pipeline.md) and [intro-to-aipcc.md](intro-to-aipcc.md) for how to verify availability and trigger test builds.
+
+#### Step 3: Update the Package Per Team Instructions
+
+After the component team develops and releases a fix (and the AIPCC build is available for downstream), bump the version in the relevant `pyproject.toml` files and regenerate both upstream and downstream locks.
+
+Where each package is declared:
+- **feast**: direct dep in `jupyter/datascience/ubi9-python-3.12/pyproject.toml` and other images that list it
+- **codeflare-sdk**: direct dep in `jupyter/datascience/ubi9-python-3.12/pyproject.toml` and other images that list it
+- **kubeflow-training**: pinned in `dependencies/odh-notebooks-meta-workbench-datascience-deps/pyproject.toml` (consumed by all datascience-derived images)
+- **llmcompressor** (and related pins like compressed-tensors, transformers, etc.): pinned in `dependencies/odh-notebooks-meta-llmcompressor-deps/pyproject.toml`
+
+### Fixing Transitive Dependency CVEs
+
+When the CVE is not in the SDK itself but in one of its transitive dependencies (found via `uv tree --invert <package>`), there are two options -- both carry risk:
+
+- **Option A: Update the SDK to a newer version** that pulls in the fixed transitive dep. Risk: a much newer SDK version may have version skew with the corresponding server component shipped in that RHOAI release, and the combination is untested.
+- **Option B: Pin the transitive dep directly** via `dependencies/cve-constraints.txt` or `override-dependencies`. Risk: the SDK was not tested with that version of its dependency; subtle breakage is possible.
+
+In either case, **discuss with the component team first** -- they know which approach is safe for their package. Do not make the decision unilaterally.
+
+### Key Differences from Regular Python CVEs
+
+- We don't control the release cadence -- the component team decides when to release
+- Version bumps may require coordinated changes (API changes, new transitive deps)
+- The component team may provide a patched version different from upstream
+- Bumping to a much newer SDK version risks version skew with the server component in that RHOAI release
+- Downstream images require an AIPCC rebuild of the fixed wheel before we can regenerate rh-index lock files
+- Both upstream (`pylock.toml`) and downstream (`uv.lock.d/`) locks must be updated
+
 ## Related Files
 
 - `dependencies/cve-constraints.txt` - Centralized CVE constraints
