@@ -24,10 +24,10 @@ to process and where to find them:
   - path: codeserver/ubi9-python-3.12/prefetch-input
     type: generic                                          # artifacts.lock.yaml
   - path: codeserver/ubi9-python-3.12
-    type: pip                                              # requirements.txt
+    type: pip                                              # requirements.cpu.txt
     binary:
       arch: "x86_64,aarch64,ppc64le"                      # prefetch wheels for all build platforms
-    requirements_files: ["requirements.txt"]
+    requirements_files: ["requirements.cpu.txt"]
   - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions
     type: npm                                              # package-lock.json (many)
   # ... more npm entries for code-server root, build/, test/, patched lockfiles, etc.
@@ -44,13 +44,13 @@ All scripts must be run from the **repository root**.
 | 1 | Generic | [create-artifact-lockfile.py](#1-generic-artifacts--create-artifact-lockfilepy) | `artifacts.lock.yaml` |
 | 2 | RPM | [create-rpm-lockfile.sh](#2-rpm-packages--create-rpm-lockfilesh) | `rpms.lock.yaml` |
 | 3 | npm | [download-npm.sh](#3-npm-packages--download-npmsh) | Downloaded tarballs in `cachi2/output/deps/npm/` |
-| 4 | pip (RHOAI) | [create-requirements-lockfile.sh](#4-pip-packages-rhoai--create-requirements-lockfilesh) | `pylock.<flavor>.toml` + `requirements.txt` |
+| 4 | pip (RHOAI) | [create-requirements-lockfile.sh](#4-pip-packages-rhoai--create-requirements-lockfilesh) | `pylock.<flavor>.toml` + `requirements.<flavor>.txt` |
 
 ### Helper scripts (used internally by the main tools)
 
 | Helper | Used by | Purpose |
 |--------|---------|---------|
-| `helpers/pylock-to-requirements.py` | pip | Convert `pylock.toml` (PEP 665) to pip-compatible `requirements.txt` with `--hash` lines. |
+| `helpers/pylock-to-requirements.py` | pip | Convert `pylock.<flavor>.toml` (PEP 665) to pip-compatible `requirements.<flavor>.txt` with `--hash` lines. |
 | `helpers/download-pip-packages.py` | pip | Download wheels/sdists from PyPI or RHOAI into `cachi2/output/deps/pip/`. |
 | `helpers/download-rpms.sh` | RPM | Download RPMs from `rpms.lock.yaml` into `cachi2/output/deps/rpm/` and create DNF repo metadata. |
 | `hermeto-fetch-npm.sh` | npm | Alternative npm fetcher using [Hermeto](https://github.com/hermetoproject/hermeto) in a container. |
@@ -92,9 +92,9 @@ After running these, the generated files are:
 
 ```
 codeserver/ubi9-python-3.12/
-├── requirements.txt                          # pinned pip packages (generated from pylock.toml)
+├── requirements.cpu.txt                      # pinned pip packages (generated from pylock.cpu.toml)
 ├── uv.lock.d/
-│   └── pylock.cpu.toml                       # PEP 665 lock file (from uv pip compile via RHOAI)
+│   └── pylock.cpu.toml                       # PEP 665 lock file (from pylocks_generator.sh via RHOAI)
 └── prefetch-input/
     ├── artifacts.in.yaml                     # input: URLs to prefetch
     ├── artifacts.lock.yaml                   # output: URLs + sha256 checksums
@@ -244,8 +244,9 @@ for the `package-lock.json` format.
 The input is a standard `pyproject.toml` following
 [PEP 621](https://peps.python.org/pep-0621/). List your dependencies under
 `[project] dependencies` as you normally would — no custom format is required.
-The script uses `uv pip compile` to resolve versions and generate the lock files
-(`pylock.<flavor>.toml` and `requirements.txt`).
+The script uses `pylocks_generator.sh` (which calls `uv pip compile`) to resolve
+versions and generate the lock files (`pylock.<flavor>.toml` and
+`requirements.<flavor>.txt`).
 
 ---
 
@@ -462,9 +463,9 @@ Used by `setup-offline-binaries.sh` during the Dockerfile `npm ci` stage.
 
 ## 4. pip packages (RHOAI) — `create-requirements-lockfile.sh`
 
-Resolves Python dependencies via the **RHOAI PyPI index** using `uv pip compile`,
-producing a PEP 665 `pylock.<flavor>.toml` with sha256 hashes, then converts it
-to `requirements.txt` for use in hermetic builds.
+Generates `pylock.<flavor>.toml` via `pylocks_generator.sh` (the same script
+CI uses), then converts it to a pip-compatible `requirements.<flavor>.txt`
+for use in hermetic builds.
 
 ### Why RHOAI?
 
@@ -488,17 +489,21 @@ source builds entirely.
 
 The script performs three steps:
 
-1. **`uv pip compile`** — resolves `pyproject.toml` against the RHOAI index,
+1. **`pylocks_generator.sh`** — delegates to `scripts/pylocks_generator.sh`
+   (the same script used by CI's `check-generated-code`) to run `uv pip compile`
+   against `pyproject.toml` with the RHOAI index from `build-args/<flavor>.conf`,
    producing `uv.lock.d/pylock.<flavor>.toml` (PEP 665 format) with exact
    versions, wheel URLs, and sha256 hashes for all target architectures.
+   This ensures the generated pylock is always identical to what CI expects.
 2. **Convert** (`helpers/pylock-to-requirements.py`) — parses the pylock.toml
-   and generates `requirements.txt` (with `--index-url` and `--hash=sha256:…`
-   lines) for compatibility with pip/uv install and cachi2 prefetching.
+   and generates `requirements.<flavor>.txt` (with `--index-url` and
+   `--hash=sha256:…` lines) for compatibility with pip/uv install and cachi2
+   prefetching.
 3. **Download** (optional, `--download`) — for local testing with podman,
    downloads every wheel referenced in the pylock.toml into
    `cachi2/output/deps/pip/`, verifying sha256 checksums.  Files already
    present are skipped.  Not needed in Konflux CI (cachi2 prefetches
-   automatically from `requirements.txt`).
+   automatically from `requirements.<flavor>.txt`).
 
 ### Requirements
 
@@ -509,7 +514,7 @@ The script performs three steps:
 ```bash
 ./scripts/lockfile-generators/create-requirements-lockfile.sh \
     --pyproject-toml path/to/pyproject.toml \
-    [--flavor NAME] [--rhoai-index URL] [--download]
+    [--flavor NAME] [--download]
 ```
 
 ### Options
@@ -517,44 +522,43 @@ The script performs three steps:
 | Option | Description |
 |--------|-------------|
 | `--pyproject-toml FILE` | Path to `pyproject.toml` (required). Output files are written to the same directory. |
-| `--flavor NAME` | Lock file flavor (default: `cpu`). Determines output filename (`pylock.<flavor>.toml`) and RHOAI index URL (`<flavor>-ubi9`). |
-| `--rhoai-index URL` | Custom RHOAI simple-index URL. If not given, derived from `--flavor`. |
+| `--flavor NAME` | Lock file flavor (default: `cpu`). Must match a `Dockerfile.<flavor>` and `build-args/<flavor>.conf` in the project directory. Determines output filenames (`pylock.<flavor>.toml` and `requirements.<flavor>.txt`). |
 | `--download` | After generating the lock, download all wheels into `cachi2/output/deps/pip/` (for local testing with podman; not needed in Konflux CI). |
 
 ### Example (codeserver)
 
 ```bash
-# Full pipeline: resolve via RHOAI + generate requirements.txt + download all wheels
+# Full pipeline: generate pylock + requirements.cpu.txt + download all wheels
 ./scripts/lockfile-generators/create-requirements-lockfile.sh \
     --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml --download
 ```
 
 This single command:
-1. Runs `uv pip compile` against `codeserver/ubi9-python-3.12/pyproject.toml`
-   with the RHOAI index → `codeserver/ubi9-python-3.12/uv.lock.d/pylock.cpu.toml`.
-2. Converts `pylock.cpu.toml` → `codeserver/ubi9-python-3.12/requirements.txt`
+1. Delegates to `pylocks_generator.sh` to resolve `codeserver/ubi9-python-3.12/pyproject.toml`
+   via the RHOAI index (from `build-args/cpu.conf`) → `uv.lock.d/pylock.cpu.toml`.
+2. Converts `pylock.cpu.toml` → `codeserver/ubi9-python-3.12/requirements.cpu.txt`
    (with `--index-url` header and `--hash` lines).
-3. Downloads all wheels from the pylock.toml URLs into `cachi2/output/deps/pip/`,
+3. Downloads all wheels from the pylock URLs into `cachi2/output/deps/pip/`,
    verifying sha256 checksums.
 
 ```bash
-# Resolve + generate requirements.txt only (no download)
+# Generate pylock + requirements.cpu.txt only (no download)
 ./scripts/lockfile-generators/create-requirements-lockfile.sh \
     --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml
 
-# Custom flavor (e.g. cuda) and RHOAI index
+# Custom flavor (e.g. cuda — requires Dockerfile.cuda and build-args/cuda.conf)
 ./scripts/lockfile-generators/create-requirements-lockfile.sh \
     --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml \
-    --flavor cuda --rhoai-index https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4-EA1/cuda-ubi9/simple/
+    --flavor cuda
 ```
 
 ### Helper: `helpers/download-pip-packages.py`
 
-Downloads wheels/sdists from a `requirements.txt` that contains `--hash=sha256:…`
-lines.  Resolves download URLs from PyPI (JSON API) or a PEP 503 simple index
-(auto-detected from `--index-url` in the file, e.g. RHOAI).  Skips files that
-already exist; always verifies sha256 checksums.  Windows, macOS, and iOS wheels
-are automatically excluded when downloading from PyPI.
+Downloads wheels/sdists from a `requirements.<flavor>.txt` that contains
+`--hash=sha256:…` lines.  Resolves download URLs from PyPI (JSON API) or a
+PEP 503 simple index (auto-detected from `--index-url` in the file, e.g. RHOAI).
+Skips files that already exist; always verifies sha256 checksums.  Windows,
+macOS, and iOS wheels are automatically excluded when downloading from PyPI.
 
 This is the **local-development equivalent** of what cachi2 does for pip
 dependencies in Konflux CI.  The downloaded wheels populate
@@ -564,7 +568,7 @@ dependencies in Konflux CI.  The downloaded wheels populate
 ```bash
 # Can also be run standalone (for local testing)
 python3 scripts/lockfile-generators/helpers/download-pip-packages.py \
-    codeserver/ubi9-python-3.12/requirements.txt
+    codeserver/ubi9-python-3.12/requirements.cpu.txt
 ```
 
 **Requirements:** Python 3, `wget`.

@@ -1,81 +1,62 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# create-requirements-lockfile.sh — Resolve deps via RHOAI and download wheels.
+# create-requirements-lockfile.sh — Generate requirements.<flavor>.txt for hermetic builds.
 #
 # Why this script exists
 # ----------------------
 # Hermetic builds need every Python wheel prefetched.  This script:
-#   1. Runs `uv pip compile` against a pyproject.toml with the RHOAI index as
-#      the default source, producing a pylock.toml (PEP 665) that pins every
-#      package to an RHOAI-provided wheel with sha256 hashes.
-#   2. Generates a pip-compatible requirements.txt from the pylock.toml.
-#   3. (--download) Downloads every wheel referenced in the pylock.toml into
-#      cachi2/output/deps/pip/ for offline builds.
-#
-# The RHOAI index provides pre-built wheels for all target architectures
-# (x86_64, aarch64, ppc64le, s390x), eliminating source builds entirely.
+#   1. Delegates to pylocks_generator.sh to generate pylock.<flavor>.toml
+#      (ensures consistency with CI's check-generated-code).
+#   2. Converts the pylock to a pip-compatible requirements.<flavor>.txt.
+#   3. (--download) Downloads every wheel into cachi2/output/deps/pip/.
 #
 # This script MUST be run from the repository root.
 #
 # Examples
 # --------
-#   # Resolve + generate requirements.txt
+#   # Generate pylock + requirements.txt
 #   ./scripts/lockfile-generators/create-requirements-lockfile.sh \
 #       --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml
 #
-#   # Resolve + generate + download all wheels
+#   # Generate + download all wheels
 #   ./scripts/lockfile-generators/create-requirements-lockfile.sh \
 #       --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml --download
 #
-#   # Custom flavor and RHOAI index
+#   # Custom flavor
 #   ./scripts/lockfile-generators/create-requirements-lockfile.sh \
-#       --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml \
-#       --flavor cuda --rhoai-index https://.../.../cuda-ubi9/simple/
+#       --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml --flavor cuda
 
 SCRIPTS_PATH="scripts/lockfile-generators"
+PYLOCKS_GENERATOR="scripts/pylocks_generator.sh"
 
 # --- Defaults ---
 PYPROJECT=""
 FLAVOR="cpu"
-RHOAI_INDEX=""
-DEFAULT_RHOAI_BASE="https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4-EA1"
 DO_DOWNLOAD=false
-
-# Meta-packages that are local path sources — must be excluded from the lock
-# output since they're not real PyPI packages.
-NO_EMIT_PACKAGES=(
-    odh-notebooks-meta-llmcompressor-deps
-    odh-notebooks-meta-runtime-elyra-deps
-    odh-notebooks-meta-runtime-datascience-deps
-    odh-notebooks-meta-workbench-datascience-deps
-)
 
 # --- Functions ---
 show_help() {
   cat << 'EOF'
 Usage: ./scripts/lockfile-generators/create-requirements-lockfile.sh [OPTIONS]
 
-Resolve Python dependencies via the RHOAI index and generate a pylock.toml +
-requirements.txt with sha256 hashes for hermetic builds.
+Generate pylock.<flavor>.toml (via pylocks_generator.sh) and convert it to
+a pip-compatible requirements.<flavor>.txt with sha256 hashes.
 
 Options:
   --pyproject-toml FILE  Path to pyproject.toml (required)
                          (e.g. codeserver/ubi9-python-3.12/pyproject.toml)
   --flavor NAME          Lock file flavor (default: cpu).
-                         Determines the output filename (pylock.<flavor>.toml)
-                         and the RHOAI index URL (<flavor>-ubi9).
-  --rhoai-index URL      Custom RHOAI simple-index URL.  If not given, derived
-                         from --flavor as:
-                           .../rhoai/3.4-EA1/<flavor>-ubi9/simple/
-  --download             After generating the lock, download all wheels into
+                         Must match a Dockerfile.<flavor> and
+                         build-args/<flavor>.conf in the project directory.
+  --download             After generating, download all wheels into
                          cachi2/output/deps/pip/ for offline builds.
   -h, --help             Show this help message and exit
 
 Steps performed:
-  1. uv pip compile → <project>/uv.lock.d/pylock.<flavor>.toml
-  2. Convert pylock.toml → <project>/requirements.txt
-  3. (--download) Download all wheels from pylock.toml URLs
+  1. pylocks_generator.sh → <project>/uv.lock.d/pylock.<flavor>.toml
+  2. Convert pylock.<flavor>.toml → <project>/requirements.<flavor>.txt
+  3. (--download) Download all wheels from pylock.<flavor>.toml URLs
 EOF
 }
 
@@ -89,6 +70,9 @@ error_exit() {
 if [[ ! -d "$SCRIPTS_PATH" ]]; then
   error_exit "This script MUST be run from the repository root."
 fi
+if [[ ! -f "$PYLOCKS_GENERATOR" ]]; then
+  error_exit "pylocks_generator.sh not found at ${PYLOCKS_GENERATOR}"
+fi
 
 # --- Argument Parsing ---
 while [[ $# -gt 0 ]]; do
@@ -96,7 +80,6 @@ while [[ $# -gt 0 ]]; do
     -h|--help)           show_help; exit 0 ;;
     --pyproject-toml)    PYPROJECT="$2"; shift 2 ;;
     --flavor)            FLAVOR="$2"; shift 2 ;;
-    --rhoai-index)       RHOAI_INDEX="$2"; shift 2 ;;
     --download)          DO_DOWNLOAD=true; shift ;;
     *)                   error_exit "Unknown argument: '$1'" ;;
   esac
@@ -107,91 +90,50 @@ done
 
 # Derive paths
 PROJECT_DIR="$(dirname "$PYPROJECT")"
-PYLOCK_DIR="${PROJECT_DIR}/uv.lock.d"
-PYLOCK_FILE="${PYLOCK_DIR}/pylock.${FLAVOR}.toml"
-REQUIREMENTS_FILE="${PROJECT_DIR}/requirements.txt"
+PYLOCK_FILE="${PROJECT_DIR}/uv.lock.d/pylock.${FLAVOR}.toml"
+REQUIREMENTS_FILE="${PROJECT_DIR}/requirements.${FLAVOR}.txt"
 
-# Derive RHOAI index URL from flavor if not explicitly set
-if [[ -z "$RHOAI_INDEX" ]]; then
-  RHOAI_INDEX="${DEFAULT_RHOAI_BASE}/${FLAVOR}-ubi9/simple/"
-fi
-
-# Constraints file (relative to project dir, used by uv pip compile)
-CONSTRAINTS_REL="../../dependencies/cve-constraints.txt"
-CONSTRAINTS_ABS="${PROJECT_DIR}/${CONSTRAINTS_REL}"
-if [[ ! -f "$CONSTRAINTS_ABS" ]]; then
-  echo "Warning: constraints file not found at ${CONSTRAINTS_ABS}" >&2
-  CONSTRAINTS_REL=""
-fi
-
-# --- Check for uv ---
-if ! command -v uv &>/dev/null; then
-  error_exit "'uv' is not installed. Install it with: pip install uv"
+# Read build args from build-args/<flavor>.conf (same source as pylocks_generator.sh)
+CONF_FILE="${PROJECT_DIR}/build-args/${FLAVOR}.conf"
+INDEX_URL=""
+if [[ -f "$CONF_FILE" ]]; then
+  # shellcheck source=/dev/null
+  source "$CONF_FILE"
 fi
 
 # =========================================================================
-# Step 1: uv pip compile → pylock.toml
+# Step 1: Generate pylock.toml via pylocks_generator.sh
+#
+# Delegates to the same script CI uses (ci/generate_code.sh), ensuring the
+# generated pylock.toml is identical to what check-generated-code expects.
 # =========================================================================
-echo "=== Step 1: Generating pylock.toml ==="
-echo "  pyproject.toml : ${PYPROJECT}"
-echo "  output         : ${PYLOCK_FILE}"
-echo "  flavor         : ${FLAVOR}"
-echo "  RHOAI index    : ${RHOAI_INDEX}"
+echo "=== Step 1: Generating pylock via pylocks_generator.sh ==="
+echo "  project dir : ${PROJECT_DIR}"
+echo "  flavor      : ${FLAVOR}"
 echo ""
 
-mkdir -p "$PYLOCK_DIR"
+bash "$PYLOCKS_GENERATOR" rh-index "$PROJECT_DIR"
 
-# Build the --no-emit-package flags
-NO_EMIT_FLAGS=()
-for pkg in "${NO_EMIT_PACKAGES[@]}"; do
-  NO_EMIT_FLAGS+=(--no-emit-package "$pkg")
-done
-
-# Build the constraints flag
-CONSTRAINTS_FLAGS=()
-if [[ -n "$CONSTRAINTS_REL" ]]; then
-  CONSTRAINTS_FLAGS=(--constraints="$CONSTRAINTS_REL")
+if [[ ! -f "$PYLOCK_FILE" ]]; then
+  error_exit "pylocks_generator.sh did not produce ${PYLOCK_FILE}"
 fi
-
-# Run uv pip compile from the project directory so relative paths resolve
-(
-  cd "$PROJECT_DIR"
-  uv pip compile pyproject.toml \
-    --output-file "uv.lock.d/pylock.${FLAVOR}.toml" \
-    --format pylock.toml \
-    --refresh \
-    --upgrade \
-    --generate-hashes \
-    --emit-index-url \
-    --python-version=3.12 \
-    --universal \
-    --no-annotate \
-    "${NO_EMIT_FLAGS[@]}" \
-    "${CONSTRAINTS_FLAGS[@]}" \
-    --default-index="$RHOAI_INDEX" \
-    --index="$RHOAI_INDEX"
-)
 
 echo ""
 echo "--- Done: ${PYLOCK_FILE} ---"
 wc -l "$PYLOCK_FILE"
 
 # =========================================================================
-# Step 2: Convert pylock.toml → requirements.txt
+# Step 2: Convert pylock.<flavor>.toml → requirements.<flavor>.txt
 #
 # The pylock.toml (PEP 665) format is not yet supported by pip or cachi2.
 # This step converts it to a pip-compatible requirements.txt with
 # --hash=sha256:… lines for integrity verification.
-#
-# The helper script (helpers/pylock-to-requirements.py) parses the TOML,
-# extracts name, version, markers, and sha256 hashes from each [[packages]]
-# entry, and writes them in the standard requirements format.
 # =========================================================================
 echo ""
-echo "=== Step 2: Converting pylock.toml → requirements.txt ==="
+echo "=== Step 2: Converting pylock.${FLAVOR}.toml → requirements.${FLAVOR}.txt ==="
 
 python3 "${SCRIPTS_PATH}/helpers/pylock-to-requirements.py" \
-    "$PYLOCK_FILE" "$REQUIREMENTS_FILE" "$RHOAI_INDEX"
+    "$PYLOCK_FILE" "$REQUIREMENTS_FILE" "$INDEX_URL"
 
 echo ""
 echo "--- Done: ${REQUIREMENTS_FILE} ---"
@@ -200,7 +142,7 @@ wc -l "${REQUIREMENTS_FILE}"
 # =========================================================================
 # Step 3 (optional): Download all wheels from pylock.toml
 #
-# Downloads every wheel referenced in the pylock.toml into
+# Downloads every wheel referenced in the pylock into
 # cachi2/output/deps/pip/ for local offline builds (podman).
 # In Konflux, cachi2 handles this automatically via prefetch-input.
 #
@@ -214,17 +156,12 @@ if [[ "$DO_DOWNLOAD" == true ]]; then
   OUT_DIR="cachi2/output/deps/pip"
   mkdir -p "$OUT_DIR"
 
-  # Detect sha256 command: sha256sum (Linux/GNU), shasum (macOS/BSD)
   if command -v sha256sum &>/dev/null; then
     sha256_of() { sha256sum "$1" | cut -d' ' -f1; }
   else
     sha256_of() { shasum -a 256 "$1" | cut -d' ' -f1; }
   fi
 
-  # In pylock.toml, each wheel entry lives on a single line with both the
-  # download URL and its sha256 hash in the same inline TOML table:
-  #   { url = "https://..../pkg-1.0-py3-none-any.whl", hashes = { sha256 = "abc..." } }
-  # We grep for lines containing both fields, then extract with sed.
   total=$(grep -c 'url = ".*sha256 = "' "$PYLOCK_FILE" || true)
   echo "  ${total} wheel(s) to download into ${OUT_DIR}/"
   echo ""
@@ -233,17 +170,14 @@ if [[ "$DO_DOWNLOAD" == true ]]; then
   while IFS= read -r line; do
     idx=$((idx + 1))
 
-    # Extract the URL and expected sha256 hash from the TOML inline table
     url=$(echo "$line" | sed 's/.*url = "\([^"]*\)".*/\1/')
     sha=$(echo "$line" | sed 's/.*sha256 = "\([^"]*\)".*/\1/')
 
-    # Derive the filename from the URL (strip query string and fragment)
     filename="${url##*/}"; filename="${filename%%[?#]*}"
     dest="${OUT_DIR}/${filename}"
 
     echo "[${idx}/${total}] ${filename}"
 
-    # Download only if the file doesn't already exist (skip re-downloads)
     if [[ ! -f "$dest" ]]; then
       echo "  Downloading: ${url}"
       wget -q -O "$dest" "$url"
@@ -251,7 +185,6 @@ if [[ "$DO_DOWNLOAD" == true ]]; then
       echo "  Already exists, skipping download."
     fi
 
-    # Always verify checksum (even for pre-existing files)
     actual=$(sha256_of "$dest")
     if [[ "$actual" != "$sha" ]]; then
       echo "  ERROR: checksum mismatch (got ${actual}, expected ${sha})" >&2
@@ -267,7 +200,7 @@ fi
 echo ""
 echo "=== All done ==="
 echo "  pylock.toml      : ${PYLOCK_FILE}"
-echo "  requirements.txt : ${REQUIREMENTS_FILE}"
+echo "  requirements     : ${REQUIREMENTS_FILE}"
 if [[ "$DO_DOWNLOAD" == true ]]; then
   echo "  wheels           : cachi2/output/deps/pip/"
 fi
