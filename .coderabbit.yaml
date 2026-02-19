@@ -10,3 +10,57 @@ reviews:
     base_branches:
       - main
       - 2024b
+  pre_merge_checks:
+    title:
+      mode: warning   # change to "error" to block merges (with Request Changes Workflow)
+      requirements: |
+        EXEMPT from all rules below:
+        - Titles starting with "Revert " (GitHub UI reverts, e.g. Revert "chore(...): ...")
+        - Titles starting with "Update lock files" or "Update BuildConfigs"
+        - Titles starting with "Sync PipelineRuns"
+        - Titles starting with "Merge pull request"
+        - Any PR authored by a bot account (username ending in [bot])
+
+        For human-authored PRs, apply these rules in order of priority:
+
+        STRICT - Imperative mood (always warn if violated):
+          The title description MUST use imperative mood ("add", "remove", "fix", "update")
+          not past tense ("added", "removed", "fixed", "updated") or gerund ("adding", etc.).
+          No trailing period.
+
+        STRONG SUGGESTION - Issue/ticket reference:
+          Titles SHOULD include a ticket reference in one of these forms:
+            - RHAIENG-XXXX (one or more, comma-separated)
+            - NO-JIRA (for infrastructure, CI, docs, dev workflow changes)
+            - ISSUE #NNN (GitHub issue reference)
+            - [RHAIENG-XXXX] (bracket style, used in downstream repos)
+          If missing, suggest adding one but do not treat as a hard failure.
+
+        GENTLE NUDGE - Preferred format:
+          The ideal format is: "<TICKET>: <scope>, <description>"
+          where <scope> is one of: chore, feat, fix, docs, refactor, test, build,
+          ci, style, perf, revert (optionally scoped like chore(.tekton/)).
+          If the title doesn't follow this format but satisfies the strict rules
+          above, just mention the preferred format as a suggestion.
+
+        Valid examples:
+          - "RHAIENG-3019: chore, remove tf2onnx from pyproject.toml(s)"
+          - "NO-JIRA: chore(.tekton), update multiarch pipeline"
+          - "ISSUE #2944: chore(base-images/aipcc.sh), enable COPR repo"
+          - "[release-2.11] RHAIENG-3019: chore, remove tf2onnx"
+          - "[rhoai-2.25][RHAIENG-3209] chore(workbenches/runtimes), update llmcompressor"
+    custom_checks:
+      - name: "Branch prefix policy"
+        mode: warning   # change to "error" once confirmed with the team
+        instructions: |
+          Validate the PR title's [branch] prefix against the base branch:
+          - If baseRefName is "main": the title MUST NOT start with a branch
+            prefix like "[release-2.11] " or "[rhoai-2.25] ". However, JIRA
+            references in brackets like "[RHAIENG-1234]" are perfectly fine
+            and should NOT be flagged.
+          - If baseRefName is not "main": the title MUST start with "["
+            followed by the base branch name and "] ".
+          Exempt: titles starting with "Revert ", "Update lock files",
+            "Update BuildConfigs", "Sync PipelineRuns", "Merge pull request",
+            or PRs authored by bot accounts.
+          On failure, show the expected prefix and a one-line fix hint.
