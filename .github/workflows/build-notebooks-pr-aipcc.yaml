@@ -31,7 +31,6 @@ jobs:
     name: Generate job matrix
     runs-on: ubuntu-latest
     # rhds/notebooks builds from AIPCC bases and requires pull_request_target trigger
-    if: ${{ github.repository == 'red-hat-data-services/notebooks' }}
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       has_jobs: ${{ steps.gen.outputs.has_jobs }}

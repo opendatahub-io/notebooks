@@ -1,0 +1,105 @@
+ARG TARGETARCH
+
+#########################
+# configuration args    #
+#########################
+ARG BASE_IMAGE
+
+####################
+# cuda-base        #
+####################
+FROM ${BASE_IMAGE} AS cuda-base
+
+WORKDIR /opt/app-root/bin
+
+# OS Packages needs to be installed as root
+USER 0
+
+### BEGIN upgrade first to avoid fixable vulnerabilities
+RUN /bin/bash <<'EOF'
+# If we have a Red Hat subscription prepared, refresh it
+set -Eeuxo pipefail
+if command -v subscription-manager &> /dev/null; then
+  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
+fi
+EOF
+
+# Problem: The operation would result in removing the following protected packages: systemd
+#  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
+# Solution: --best --skip-broken does not work either, so use --nobest
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
+dnf clean all -y
+EOF
+
+### END upgrade first to avoid fixable vulnerabilities
+
+# Install useful OS packages
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+dnf install -y perl mesa-libGL skopeo libxcrypt-compat
+dnf clean all
+rm -rf /var/cache/yum
+EOF
+
+# Other apps and tools installed as default user
+USER 1001
+
+### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
+RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.10.0" "uv==0.9.28"
+### END Install micropipenv and uv to deploy packages from requirements.txt
+
+### BEGIN Install the oc client
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+    -o /tmp/openshift-client-linux.tar.gz
+tar -xzvf /tmp/openshift-client-linux.tar.gz oc
+rm -f /tmp/openshift-client-linux.tar.gz
+EOF
+
+### END Install the oc client
+
+#########################
+# cuda-runtime-pytorch  #
+#########################
+FROM cuda-base AS cuda-runtime-pytorch
+
+ARG PYTORCH_SOURCE_CODE=runtimes/pytorch/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
+
+WORKDIR /opt/app-root/bin
+
+# Install Python packages from pylock file
+COPY ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
+# Copy Elyra dependencies for air-gapped enviroment
+COPY --chown=1001 ${PYTORCH_SOURCE_CODE}/utils ./utils/
+### BEGIN Download Elyra Bootstrapper
+RUN curl -fL https://raw.githubusercontent.com/opendatahub-io/elyra/refs/tags/v4.3.1/elyra/kfp/bootstrapper.py \
+         -o ./utils/bootstrapper.py
+# Prevent Elyra from re-installing the dependencies
+ENV ELYRA_INSTALL_PACKAGES="false"
+
+### END Download Elyra Bootstrapper
+
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+echo "Installing softwares and packages"
+# This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+#  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
+uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+# Fix permissions to support pip in Openshift environments
+chmod -R g+w /opt/app-root/lib/python3.12/site-packages
+fix-permissions /opt/app-root -P
+EOF
+
+WORKDIR /opt/app-root/src
+
+LABEL name="rhoai/odh-pipeline-runtime-pytorch-cuda-py312-rhel9" \
+      com.redhat.component="odh-pipeline-runtime-pytorch-cuda-py312-rhel9" \
+      io.k8s.display-name="odh-pipeline-runtime-pytorch-cuda-py312-rhel9" \
+      summary="Runtime pytorch notebook image for ODH notebooks" \
+      description="Runtime pytorch notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+      io.k8s.description="Runtime pytorch notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
