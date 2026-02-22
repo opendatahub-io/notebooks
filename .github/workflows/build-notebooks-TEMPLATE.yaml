@@ -245,14 +245,14 @@ jobs:
              # disk use roughly in half.
              extra_podman_build_args += ' --layers=false'
              # Cap V8 heap + parallelism to fit GHA runners (4 vCPUs, 16 GB RAM).
-             # JOBS=1 → one transpiler worker thread.
-             # MAX_OLD_SPACE_SIZE=2560: main gulp process (mangler peaks at ~2 GB,
-             #   OOMs at 2048 — 2560 gives 500 MB headroom).
-             # WORKER_MAX_OLD_SPACE_SIZE=3584: transpiler worker (OOMs at 3072 on
-             #   arm64, 3584 gives 512 MB headroom without over-allocating).
-             # Total V8 heap: 2560 + 3584 = 6.1 GB.
-             # Konflux omits these ARGs → Dockerfile defaults (16384) apply.
-             extra_podman_build_args += ' --build-arg=NODE_OPTIONS=--max-old-space-size=1024 --build-arg=JOBS=1 --build-arg=MAX_OLD_SPACE_SIZE=2560 --build-arg=WORKER_MAX_OLD_SPACE_SIZE=3584'
+             # The VS Code build runs 3 groups of V8 heaps concurrently:
+             #   Main gulp     : MAX_OLD_SPACE_SIZE=2560 (~2 GB for mangler data)
+             #   Mangler pool  : MANGLER_WORKERS=1 (default 4 — each ~500-700 MB)
+             #   Transpiler    : WORKER_MAX_OLD_SPACE_SIZE=4096, JOBS=1
+             # Reducing mangler workers from 4→1 frees ~1.5-2 GB, preventing the
+             # transpiler from hitting ERR_WORKER_OUT_OF_MEMORY.
+             # Konflux omits these ARGs → Dockerfile defaults apply (no limits).
+             extra_podman_build_args += ' --build-arg=NODE_OPTIONS=--max-old-space-size=1024 --build-arg=JOBS=1 --build-arg=MAX_OLD_SPACE_SIZE=2560 --build-arg=WORKER_MAX_OLD_SPACE_SIZE=4096 --build-arg=MANGLER_WORKERS=1'
 
           event_name: Literal['push', 'pull_request', 'pull_request_target', 'schedule', 'workflow_dispatch'] = "${{ fromJson(inputs.github).event_name }}"
           cache = "${{ env.CACHE }}"

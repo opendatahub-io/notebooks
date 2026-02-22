@@ -63,9 +63,8 @@ ARG CODESERVER_VERSION=v4.106.3
 ARG NODE_OPTIONS
 ARG JOBS
 ARG MAX_OLD_SPACE_SIZE
-# Worker needs more heap than the main process (arm64 compilation OOMs at 3072).
-# Defaults to MAX_OLD_SPACE_SIZE when not set explicitly.
 ARG WORKER_MAX_OLD_SPACE_SIZE=${MAX_OLD_SPACE_SIZE:-16384}
+ARG MANGLER_WORKERS
 
 # [HERMETIC] Import GPG keys for prefetched RPM verification.
 # CentOS key needed because libX11-devel comes from CentOS Stream repos.
@@ -137,24 +136,30 @@ RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESE
 
 # [HERMETIC] Step 3: Build VS Code (the embedded editor)
 # Memory budget on GHA runners (4 vCPUs, 16 GB RAM):
-#   Main gulp process : MAX_OLD_SPACE_SIZE=2560        (GHA) / 16384 (Konflux)
-#   Transpiler worker : WORKER_MAX_OLD_SPACE_SIZE=3584 (GHA) / 16384 (Konflux)
-#   JOBS=1 on GHA → one worker thread.
-#   Total V8 heap: 2560 + 3584 = 6.1 GB.
-#   Main needs ~2 GB for the mangler (OOMs at 2048).
-#   Worker needs >3072 MB for TS compilation (ERR_WORKER_OUT_OF_MEMORY at 3072).
+#   There are three groups of V8 heaps running concurrently:
+#     Main gulp process : MAX_OLD_SPACE_SIZE (GHA: 2560, Konflux: 16384)
+#     Mangler workers   : MANGLER_WORKERS × uncapped (GHA: 1, Konflux: 4)
+#     Transpiler worker : WORKER_MAX_OLD_SPACE_SIZE (GHA: 4096, Konflux: 16384)
+#   JOBS=1 on GHA → one transpiler worker.
+#   The mangler (build/lib/mangle/) spawns a workerpool with maxWorkers=4 and
+#   minWorkers='max' — all 4 start immediately and overlap with the transpiler.
+#   Each mangler worker runs a TS language service (~500-700 MB V8 heap each).
+#   Reducing MANGLER_WORKERS to 1 saves ~1.5–2 GB, preventing the transpiler
+#   from being starved and hitting ERR_WORKER_OUT_OF_MEMORY.
 #
 # build-vscode.sh hardcodes --max-old-space-size=16384 which OOMs on GHA.
 # Patch it to respect MAX_OLD_SPACE_SIZE (defaults to 16384 when unset).
 # Worker threads don't inherit --max-old-space-size from the parent — set
 # explicit resourceLimits to WORKER_MAX_OLD_SPACE_SIZE.
 # JOBS overrides the transpiler worker count (default: half of CPUs).
+# MANGLER_WORKERS overrides the mangler's workerpool maxWorkers (default: 4).
 # Unset NODE_OPTIONS so the restrictive GHA limit (1024 MB) doesn't constrain
 # npm or other intermediate Node.js processes during this memory-intensive step.
 RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     sed -i "s/--max-old-space-size=16384/--max-old-space-size=\${MAX_OLD_SPACE_SIZE:-16384}/" ci/build/build-vscode.sh && \
     sed -i "s|new node_worker_threads_1.default.Worker(__filename)|new node_worker_threads_1.default.Worker(__filename, { resourceLimits: { maxOldGenerationSizeMb: ${WORKER_MAX_OLD_SPACE_SIZE:-16384} } })|" lib/vscode/build/lib/tsb/transpiler.js && \
     if [ -n "${JOBS}" ]; then sed -i "/static P = /s/=.*/= ${JOBS};/" lib/vscode/build/lib/tsb/transpiler.js; fi && \
+    if [ -n "${MANGLER_WORKERS}" ]; then sed -i "s/maxWorkers: 4/maxWorkers: ${MANGLER_WORKERS}/" lib/vscode/build/lib/mangle/index.js; fi && \
     unset NODE_OPTIONS && \
     VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
 
