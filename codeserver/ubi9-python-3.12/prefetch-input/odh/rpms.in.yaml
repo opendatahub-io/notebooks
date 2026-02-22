@@ -1,0 +1,147 @@
+---
+# rpms.in.yaml - RPM packages to prefetch for hermetic build
+#
+# This manifest tells cachi2 to download all listed RPM packages (and their
+# dependencies) from the configured repos before the build starts. They are installed
+# with `dnf install` during the Docker build.
+#
+# The packages cover all stages and all architectures (x86_64, aarch64, ppc64le).
+# The lock file (rpms.lock.yaml) is auto-generated with exact versions and hashes.
+#
+# Previously, the Dockerfile ran `dnf install` with network access, and some packages
+# (like EPEL packages, Rust toolchain) were installed via curl from external URLs.
+
+contentOrigin:
+  repofiles:
+    # ODH (upstream) — uses UBI + CentOS Stream public repos (no subscription needed)
+    - ../repos/ubi.repo
+    - ../repos/centos.repo
+
+    # EPEL — always needed (patchelf, libimagequant-devel, libraqm-devel, zeromq-devel)
+    - ../repos/epel.repo
+context:
+  bare: true
+
+arches:
+  - x86_64
+  - aarch64
+  - ppc64le
+
+moduleEnable: [nodejs:22]
+
+packages:
+
+  # ── UBI 9 (cdn-ubi.redhat.com — AppStream / BaseOS) ──────────────────
+
+  # GCC toolset 14
+  - gcc-toolset-14
+  - gcc-toolset-14-annobin-docs
+  - gcc-toolset-14-annobin-plugin-gcc
+  - gcc-toolset-14-binutils
+  - gcc-toolset-14-dwz
+  - gcc-toolset-14-gcc
+  - gcc-toolset-14-gcc-c++
+  - gcc-toolset-14-gcc-gfortran
+  - gcc-toolset-14-libatomic-devel
+  - gcc-toolset-14-libstdc++-devel
+  - gcc-toolset-14-runtime
+
+  # GCC toolset 13 (needed on ppc64le where toolset 14 may be unavailable)
+  - gcc-toolset-13
+  - gcc-toolset-13-libatomic-devel
+
+  # Base compilers & build tools
+  - gcc
+  - gcc-c++
+  - gcc-gfortran
+  - cmake
+  - make
+  - rust
+  - cargo
+  - ninja-build
+  - autoconf
+  - automake
+  - libtool
+
+  # Node.js (module nodejs:22)
+  - nodejs-devel
+  - nodejs-packaging
+  - npm
+
+  # Web servers
+  - nginx
+  - nginx-mod-stream
+  - nginx-mod-http-perl
+  - httpd
+
+  # SELinux
+  - checkpolicy
+  - libselinux-utils
+  - policycoreutils
+  - policycoreutils-python-utils
+  - python3-audit
+  - python3-libselinux
+  - python3-libsemanage
+  - python3-policycoreutils
+  - python3-setools
+
+  # Python dev
+  - python3-devel
+  - python3-distro
+  - python3-setuptools
+  - python3.12-devel
+  - pybind11-devel
+
+  # Image / math libraries
+  - openblas-devel
+  # openblas-threads provides libopenblasp.so.0 (pthreads variant) needed by
+  # RHOAI numpy/scipy wheels at runtime. The base 'openblas' meta-package only
+  # pulls in openblas-serial (libopenblas.so.0), which has the wrong soname.
+  - openblas-threads
+  - libjpeg-devel
+  - libtiff-devel
+  - freetype-devel
+  - libwebp-devel
+  - fribidi-devel
+  - lcms2-devel
+  - openjpeg2-devel
+  - mesa-libGL
+
+  # Dev libraries
+  - openssl-devel
+  - zlib-devel
+  - boost-devel
+  - tcl-devel
+  - tk-devel
+  - libatomic
+  - libxcrypt-compat
+  - pkgconf-pkg-config
+
+  # Utilities
+  - bind-utils
+  - cpio
+  - diffutils
+  - gettext
+  - git
+  - git-lfs
+  - jansson
+  - jq
+  - libsndfile
+  - perl
+  - skopeo
+  - tar
+  - wget
+
+  # ── CentOS Stream 9 (mirror.stream.centos.org — CRB) ─────────────────
+
+  # libxkbfile-devel: provides xkbfile.h needed by native-keymap
+  # (node-gyp native addon in lib/vscode)
+  - libxkbfile-devel
+  - qhull-devel
+
+  # ── EPEL 9 (dl.fedoraproject.org) ────────────────────────────────────
+
+  - patchelf
+  - libimagequant-devel
+  - libraqm-devel
+  - zeromq-devel

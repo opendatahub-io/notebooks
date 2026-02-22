@@ -19,9 +19,9 @@ to process and where to find them:
 # .tekton/odh-workbench-codeserver-...-pull-request.yaml (abbreviated)
 - name: prefetch-input
   value:
-  - path: codeserver/ubi9-python-3.12/prefetch-input
+  - path: codeserver/ubi9-python-3.12/prefetch-input/odh   # use 'rhds' for downstream
     type: rpm                                              # rpms.lock.yaml
-  - path: codeserver/ubi9-python-3.12/prefetch-input
+  - path: codeserver/ubi9-python-3.12/prefetch-input/odh
     type: generic                                          # artifacts.lock.yaml
   - path: codeserver/ubi9-python-3.12
     type: pip                                              # requirements.cpu.txt
@@ -37,7 +37,73 @@ All scripts must be run from the **repository root**.
 
 ---
 
-## Main tools
+## Orchestrator — `prefetch-all.sh`
+
+**For most local and CI use, this is the only script you need to run.**
+
+`prefetch-all.sh` orchestrates all four lockfile generators in the correct
+order, downloading dependencies into `cachi2/output/deps/`. After running it,
+the Makefile auto-detects `cachi2/output/` and passes `--volume` +
+`LOCAL_BUILD=true` to `podman build`.
+
+```bash
+# Upstream ODH (default variant, CentOS Stream base, no subscription):
+scripts/lockfile-generators/prefetch-all.sh \
+    --component-dir codeserver/ubi9-python-3.12
+
+# Downstream RHDS (with RHEL subscription for cdn.redhat.com RPMs):
+scripts/lockfile-generators/prefetch-all.sh \
+    --component-dir codeserver/ubi9-python-3.12 --rhds \
+    --activation-key my-key --org my-org
+
+# Custom flavor:
+scripts/lockfile-generators/prefetch-all.sh \
+    --component-dir codeserver/ubi9-python-3.12 --flavor cuda
+```
+
+Then build with make:
+
+```bash
+# On macOS use gmake
+gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
+```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `--component-dir DIR` | Component directory (required), e.g. `codeserver/ubi9-python-3.12` |
+| `--rhds` | Use downstream (RHDS) lockfiles instead of upstream (ODH, the default) |
+| `--flavor NAME` | Lock file flavor (default: `cpu`) |
+| `--tekton-file FILE` | Tekton PipelineRun YAML for npm path discovery (auto-detected from `.tekton/` if omitted) |
+| `--activation-key KEY` | Red Hat activation key for RHEL RPMs (optional) |
+| `--org ORG` | Red Hat organization ID for RHEL RPMs (optional) |
+
+### What it does
+
+| Step | Condition | Script called |
+|------|-----------|---------------|
+| 1. Generic artifacts | `artifacts.in.yaml` exists | `create-artifact-lockfile.py` |
+| 2. Pip wheels | `pyproject.toml` exists | `create-requirements-lockfile.sh --download` |
+| 3. NPM packages | `package-lock.json` files found | `download-npm.sh` |
+| 4. RPMs | `rpms.in.yaml` exists | `hermeto-fetch-rpm.sh` (if lockfile committed) or `create-rpm-lockfile.sh --download` |
+
+Steps are skipped if their input files don't exist. For RPMs, if
+`rpms.lock.yaml` is already committed, it downloads directly (skipping
+lockfile regeneration) — this avoids cross-platform issues on arm64 CI runners.
+
+### GitHub Actions integration
+
+The GHA workflow template (`.github/workflows/build-notebooks-TEMPLATE.yaml`)
+calls `prefetch-all.sh` automatically for codeserver targets before running
+`make`. Non-codeserver targets skip the prefetch step entirely.
+
+---
+
+## Individual tools
+
+The four scripts below can also be run individually for debugging or partial
+updates. `prefetch-all.sh` calls them internally.
 
 | # | Type | Main script | What it generates |
 |---|------|-------------|-------------------|
@@ -50,10 +116,11 @@ All scripts must be run from the **repository root**.
 
 | Helper | Used by | Purpose |
 |--------|---------|---------|
-| `helpers/pylock-to-requirements.py` | pip | Convert `pylock.<flavor>.toml` (PEP 665) to pip-compatible `requirements.<flavor>.txt` with `--hash` lines. |
+| `helpers/pylock-to-requirements.py` | pip | Convert `pylock.<flavor>.toml` (PEP 751) to pip-compatible `requirements.<flavor>.txt` with `--hash` lines. |
 | `helpers/download-pip-packages.py` | pip | Download wheels/sdists from PyPI or RHOAI into `cachi2/output/deps/pip/`. |
-| `helpers/download-rpms.sh` | RPM | Download RPMs from `rpms.lock.yaml` into `cachi2/output/deps/rpm/` and create DNF repo metadata. |
-| `hermeto-fetch-npm.sh` | npm | Alternative npm fetcher using [Hermeto](https://github.com/hermetoproject/hermeto) in a container. |
+| `helpers/download-rpms.sh` | RPM | Download RPMs from `rpms.lock.yaml` via `wget` into `cachi2/output/deps/rpm/` and create DNF repo metadata. Standalone alternative to `hermeto-fetch-rpm.sh`. |
+| `helpers/hermeto-fetch-rpm.sh` | RPM | Download RPMs from `rpms.lock.yaml` using [Hermeto](https://github.com/hermetoproject/hermeto) in a container. Handles RHEL entitlement cert extraction for `cdn.redhat.com` auth. Called by `create-rpm-lockfile.sh --download`. |
+| `helpers/hermeto-fetch-npm.sh` | npm | Alternative npm fetcher using [Hermeto](https://github.com/hermetoproject/hermeto) in a container. |
 | `rewrite-npm-urls.sh` | npm (Dockerfile) | Rewrites `resolved` URLs in `package-lock.json` / `package.json` to `file:///cachi2/output/deps/npm/`. |
 | `helpers/rpm-lockfile-generate.sh` | RPM | Runs `rpm-lockfile-prototype` inside the lockfile container. Not for direct host use. |
 | `Dockerfile.rpm-lockfile` | RPM | Builds the container image for `create-rpm-lockfile.sh` (includes `rpm-lockfile-prototype` v0.20.0, `createrepo_c`, `modulemd-tools`). |
@@ -63,16 +130,29 @@ All scripts must be run from the **repository root**.
 
 ## Quick start — codeserver example
 
-Generate all four lockfile types for `codeserver/ubi9-python-3.12` in one go:
+The fastest way to prefetch everything and build:
+
+```bash
+# Prefetch all dependencies (one command)
+scripts/lockfile-generators/prefetch-all.sh \
+    --component-dir codeserver/ubi9-python-3.12
+
+# Build (Makefile auto-detects cachi2/output/ and mounts it)
+gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
+```
+
+### Alternative: run each generator individually
+
+If you need to regenerate only one dependency type, or for debugging:
 
 ```bash
 # 1. Generic artifacts (GPG keys, node headers, nfpm, oc client, VS Code extensions, etc.)
 python3 scripts/lockfile-generators/create-artifact-lockfile.py \
-    --artifact-input codeserver/ubi9-python-3.12/prefetch-input/artifacts.in.yaml
+    --artifact-input codeserver/ubi9-python-3.12/prefetch-input/odh/artifacts.in.yaml
 
 # 2. RPM packages (gcc, nodejs, nginx, openblas, etc.) — lockfile + download for local testing
 ./scripts/lockfile-generators/create-rpm-lockfile.sh \
-    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rpms.in.yaml --download
+    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml --download
 
 # 3. npm packages (code-server + VSCode extensions) — download for local testing
 ./scripts/lockfile-generators/download-npm.sh \
@@ -94,12 +174,20 @@ After running these, the generated files are:
 codeserver/ubi9-python-3.12/
 ├── requirements.cpu.txt                      # pinned pip packages (generated from pylock.cpu.toml)
 ├── uv.lock.d/
-│   └── pylock.cpu.toml                       # PEP 665 lock file (from pylocks_generator.sh via RHOAI)
+│   └── pylock.cpu.toml                       # PEP 751 lock file (from pylocks_generator.sh via RHOAI)
 └── prefetch-input/
-    ├── artifacts.in.yaml                     # input: URLs to prefetch
-    ├── artifacts.lock.yaml                   # output: URLs + sha256 checksums
-    ├── rpms.in.yaml                          # input: package names + repo files
-    ├── rpms.lock.yaml                        # output: exact RPM URLs + checksums per arch
+    ├── repos/                                # shared DNF repo definitions (ubi, centos, epel, rhsm-pulp)
+    ├── odh/                                  # upstream (ODH) lockfiles
+    │   ├── artifacts.in.yaml                 # input: URLs to prefetch
+    │   ├── artifacts.lock.yaml               # output: URLs + sha256 checksums
+    │   ├── rpms.in.yaml                      # input: references ../repos/*.repo
+    │   └── rpms.lock.yaml                    # output: exact RPM URLs + checksums per arch
+    ├── rhds/                                 # downstream (RHDS) lockfiles
+    │   ├── artifacts.in.yaml
+    │   ├── rpms.in.yaml                      # references ../repos/*.repo + redhat.repo
+    │   └── rpms.lock.yaml                    # (generated)
+    ├── code-server/                          # git submodule (shared)
+    └── patches/                              # patch files (shared)
 
 cachi2/output/deps/
 ├── generic/    # downloaded artifacts (GPG keys, tarballs, etc.)
@@ -277,7 +365,7 @@ python3 scripts/lockfile-generators/create-artifact-lockfile.py \
 
 ```bash
 python3 scripts/lockfile-generators/create-artifact-lockfile.py \
-    --artifact-input codeserver/ubi9-python-3.12/prefetch-input/artifacts.in.yaml
+    --artifact-input codeserver/ubi9-python-3.12/prefetch-input/odh/artifacts.in.yaml
 ```
 
 ### Input format (`artifacts.in.yaml`)
@@ -299,9 +387,12 @@ runs it with the repository mounted, and executes `rpm-lockfile-prototype` again
 `rpms.in.yaml` to produce `rpms.lock.yaml` — exact RPM URLs and checksums for
 each architecture listed in `rpms.in.yaml` (e.g. x86_64, aarch64, ppc64le).
 
-With `--download`, it also calls `helpers/download-rpms.sh` to fetch all RPMs into
-`cachi2/output/deps/rpm/` and generate DNF repo metadata.  This is for **local
+With `--download`, it also calls `helpers/hermeto-fetch-rpm.sh` to fetch all RPMs
+into `cachi2/output/deps/rpm/` and generate DNF repo metadata.  This is for **local
 testing with podman** — in Konflux CI, cachi2 prefetches RPMs automatically.
+When a RHEL subscription is active (`--activation-key` / `--org`), entitlement
+certs are extracted from the lockfile container and passed to Hermeto for
+`cdn.redhat.com` authentication.
 
 **Base image selection:** With `--activation-key` and `--org`, the container uses
 Red Hat UBI9 with subscription-manager registration and release pinning.
@@ -331,35 +422,57 @@ Otherwise it falls back to the ODH base image (CentOS Stream).
 ### Example (codeserver)
 
 ```bash
-# Generate lockfile only (no Red Hat subscription)
+# Generate lockfile only — upstream (ODH, no Red Hat subscription)
 ./scripts/lockfile-generators/create-rpm-lockfile.sh \
-    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rpms.in.yaml
+    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml
 
 # Generate lockfile + download RPMs + create repo metadata
 ./scripts/lockfile-generators/create-rpm-lockfile.sh \
-    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rpms.in.yaml --download
+    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml --download
 
-# With Red Hat subscription (for RHEL-only repos)
+# Downstream (RHDS) with Red Hat subscription
 ./scripts/lockfile-generators/create-rpm-lockfile.sh \
     --activation-key my-key --org my-org \
-    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rpms.in.yaml --download
+    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rhds/rpms.in.yaml --download
 ```
+
+### Helper: `helpers/hermeto-fetch-rpm.sh`
+
+Downloads RPMs from `rpms.lock.yaml` using
+[Hermeto](https://github.com/hermetoproject/hermeto) in a container and generates
+repo metadata.  This is the default downloader called by
+`create-rpm-lockfile.sh --download`.  When `--activation-key` and `--org` are
+provided, it extracts RHEL entitlement certs from the `notebook-rpm-lockfile`
+container and passes them to Hermeto for `cdn.redhat.com` authentication.
+
+```bash
+# Called automatically by create-rpm-lockfile.sh --download, but can also run standalone:
+./scripts/lockfile-generators/helpers/hermeto-fetch-rpm.sh \
+    --prefetch-dir codeserver/ubi9-python-3.12/prefetch-input
+
+# With RHEL entitlement certs (requires notebook-rpm-lockfile image built with subscription):
+./scripts/lockfile-generators/helpers/hermeto-fetch-rpm.sh \
+    --prefetch-dir codeserver/ubi9-python-3.12/prefetch-input \
+    --activation-key my-key --org my-org
+```
+
+**Requirements:** `podman`, network access.
 
 ### Helper: `helpers/download-rpms.sh`
 
-Downloads RPMs from a lockfile into `cachi2/output/deps/rpm/`, verifies checksums
-(when `yq` is available), and creates DNF repo metadata using the first available
-method: `createrepo_c` → `createrepo` → container fallback (runs `createrepo_c` +
-`repo2module` + `modifyrepo_c` inside the `notebook-rpm-lockfile` image via podman).
+Standalone alternative to `hermeto-fetch-rpm.sh` that downloads RPMs directly
+via `wget`.  Downloads RPMs from a lockfile into `cachi2/output/deps/rpm/`,
+verifies checksums (when `yq` is available), and creates DNF repo metadata using
+the first available method: `createrepo_c` → `createrepo` → container fallback
+(runs `createrepo_c` + `repo2module` + `modifyrepo_c` inside the
+`notebook-rpm-lockfile` image via podman).
 
-This is the **local-development equivalent** of what cachi2 does for RPM
-dependencies in Konflux CI.  The downloaded RPMs populate `cachi2/output/deps/rpm/`
-so that podman builds can use `--network=none` with a local DNF repo.
+Does not handle RHEL entitlement — use `hermeto-fetch-rpm.sh` when downloading
+from `cdn.redhat.com` repos that require subscription certs.
 
 ```bash
-# Can also be run standalone (for local testing)
 ./scripts/lockfile-generators/helpers/download-rpms.sh \
-    --lock-file codeserver/ubi9-python-3.12/prefetch-input/rpms.lock.yaml
+    --lock-file codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.lock.yaml
 ```
 
 **Requirements:** `wget`.  `yq` recommended for checksum verification.
@@ -422,7 +535,7 @@ are automatically skipped.
     --lock-file codeserver/ubi9-python-3.12/prefetch-input/code-server/package-lock.json
 ```
 
-### Helper: `hermeto-fetch-npm.sh`
+### Helper: `helpers/hermeto-fetch-npm.sh`
 
 Alternative to `download-npm.sh` that uses the
 [Hermeto Project](https://github.com/hermetoproject/hermeto) tool in a container.
@@ -492,7 +605,7 @@ The script performs three steps:
 1. **`pylocks_generator.sh`** — delegates to `scripts/pylocks_generator.sh`
    (the same script used by CI's `check-generated-code`) to run `uv pip compile`
    against `pyproject.toml` with the RHOAI index from `build-args/<flavor>.conf`,
-   producing `uv.lock.d/pylock.<flavor>.toml` (PEP 665 format) with exact
+   producing `uv.lock.d/pylock.<flavor>.toml` (PEP 751 format) with exact
    versions, wheel URLs, and sha256 hashes for all target architectures.
    This ensures the generated pylock is always identical to what CI expects.
 2. **Convert** (`helpers/pylock-to-requirements.py`) — parses the pylock.toml
@@ -577,13 +690,25 @@ python3 scripts/lockfile-generators/helpers/download-pip-packages.py \
 
 ## Appendix: Local podman build
 
-For developers who want to test the hermetic image build locally, use podman
-with a bind-mount of the prefetched `cachi2/` directory.  The key flags are:
+After running `prefetch-all.sh`, the **recommended** way to build is via make:
+
+```bash
+# Makefile auto-detects cachi2/output/ and injects --volume + LOCAL_BUILD=true
+gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
+```
+
+The Makefile evaluates each target independently: `CACHI2_VOLUME` is only set
+when both `cachi2/output/` exists AND the target directory has a
+`prefetch-input/` subdirectory. Non-hermetic targets are completely unaffected.
+
+### Alternative: manual podman build
+
+For developers who want to run `podman build` directly, the key flags are:
 
 - `-v $(realpath ./cachi2):/cachi2:z` bind-mount the prefetched dependencies
-  so the Dockerfile can install from them with `--network=none`.
+  so the Dockerfile can install from them offline.
 - `--build-arg LOCAL_BUILD=true` signals the Dockerfile that this is a local
-  build (skips steps that only apply in Konflux CI, e.g. sourcing `cachi2.env`).
+  build (configures dnf to use the local cachi2 RPM repo).
 
 ```bash
 podman build \

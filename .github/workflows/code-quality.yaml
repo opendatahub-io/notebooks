@@ -81,8 +81,9 @@ jobs:
         id: validate-yaml-files
         run: |
           type yamllint || sudo apt-get -y install yamllint
-          # We ignore the insta-merge.yaml and .tekton directory with the konflux pipelines definitions as it's managed by devops (and usually violates rules...).
-          find . -name "*.yaml" | grep -v "./.tekton/" | grep -v "./.github/workflows/insta-merge.yaml" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
+          # We ignore .tekton (managed by devops), insta-merge.yaml, and machine-generated .lock.yaml lockfiles
+          # (e.g. rpms.lock.yaml, artifacts.lock.yaml — produced by rpm-lockfile-prototype with non-configurable indentation).
+          find . -name "*.yaml" | grep -v "./.tekton/" | grep -v "./.github/workflows/insta-merge.yaml" | grep -v "\.lock\.yaml$" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
           find . -name "*.yml" | grep -v "./.tekton/" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
 
       # In some YAML files we use JSON strings, let's check these
