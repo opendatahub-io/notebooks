@@ -52,8 +52,8 @@ def sanity_check(dockerfile: pathlib.Path, replacements: dict[str, str]):
 
 def main():
     subscription_manager_register_refresh = textwrap.dedent(r"""
-        # If we have a Red Hat subscription prepared, refresh it
         RUN /bin/bash <<'EOF'
+        # If we have a Red Hat subscription prepared, refresh it
         set -Eeuxo pipefail
         if command -v subscription-manager &> /dev/null; then
           subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
