@@ -63,6 +63,9 @@ ARG CODESERVER_VERSION=v4.106.3
 ARG NODE_OPTIONS
 ARG JOBS
 ARG MAX_OLD_SPACE_SIZE
+# Worker needs more heap than the main process (arm64 compilation OOMs at 3072).
+# Defaults to MAX_OLD_SPACE_SIZE when not set explicitly.
+ARG WORKER_MAX_OLD_SPACE_SIZE=${MAX_OLD_SPACE_SIZE:-16384}
 
 # [HERMETIC] Import GPG keys for prefetched RPM verification.
 # CentOS key needed because libX11-devel comes from CentOS Stream repos.
@@ -134,24 +137,23 @@ RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESE
 
 # [HERMETIC] Step 3: Build VS Code (the embedded editor)
 # Memory budget on GHA runners (4 vCPUs, 16 GB RAM):
-#   Main gulp process : MAX_OLD_SPACE_SIZE (3072 on GHA, 16384 on Konflux)
-#   Transpiler workers: MAX_OLD_SPACE_SIZE each × JOBS workers
-#   JOBS defaults to floor(cpus/2) but GHA sets it to 1 to survive QEMU emulation.
-#   Total V8 heap     : ~6 GB on GHA (3072 + 1×3072) → leaves ~10 GB for OS/podman
+#   Main gulp process : MAX_OLD_SPACE_SIZE      (2048 on GHA, 16384 on Konflux)
+#   Transpiler worker : WORKER_MAX_OLD_SPACE_SIZE (4096 on GHA, 16384 on Konflux)
+#   JOBS=1 on GHA → one worker thread.
+#   Total V8 heap: ~6 GB on GHA (2048 + 1×4096) → leaves ~10 GB for OS/podman.
+#   The worker needs more heap than the main process: arm64 TS compilation
+#   OOMs at 3072 MB (ERR_WORKER_OUT_OF_MEMORY).
 #
 # build-vscode.sh hardcodes --max-old-space-size=16384 which OOMs on GHA.
 # Patch it to respect MAX_OLD_SPACE_SIZE (defaults to 16384 when unset).
 # Worker threads don't inherit --max-old-space-size from the parent — set
-# explicit resourceLimits to the same MAX_OLD_SPACE_SIZE value.
-# JOBS overrides the transpiler worker count (default: half of CPUs). Under
-# QEMU arm64 emulation on GHA, 2 workers exhaust the 16 GB runner even at
-# 3072 MB each. JOBS=1 keeps total V8 heap at ~6 GB (3072 + 1×3072) with
-# ~10 GB left for OS/podman.
+# explicit resourceLimits to WORKER_MAX_OLD_SPACE_SIZE.
+# JOBS overrides the transpiler worker count (default: half of CPUs).
 # Unset NODE_OPTIONS so the restrictive GHA limit (1024 MB) doesn't constrain
 # npm or other intermediate Node.js processes during this memory-intensive step.
 RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
     sed -i "s/--max-old-space-size=16384/--max-old-space-size=\${MAX_OLD_SPACE_SIZE:-16384}/" ci/build/build-vscode.sh && \
-    sed -i "s|new node_worker_threads_1.default.Worker(__filename)|new node_worker_threads_1.default.Worker(__filename, { resourceLimits: { maxOldGenerationSizeMb: ${MAX_OLD_SPACE_SIZE:-16384} } })|" lib/vscode/build/lib/tsb/transpiler.js && \
+    sed -i "s|new node_worker_threads_1.default.Worker(__filename)|new node_worker_threads_1.default.Worker(__filename, { resourceLimits: { maxOldGenerationSizeMb: ${WORKER_MAX_OLD_SPACE_SIZE:-16384} } })|" lib/vscode/build/lib/tsb/transpiler.js && \
     if [ -n "${JOBS}" ]; then sed -i "/static P = /s/=.*/= ${JOBS};/" lib/vscode/build/lib/tsb/transpiler.js; fi && \
     unset NODE_OPTIONS && \
     VERSION=${CODESERVER_VERSION/v/} npm run build:vscode
