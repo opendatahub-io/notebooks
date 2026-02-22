@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import argparse
+import glob
 import logging
 import os
 import pathlib
@@ -86,9 +87,33 @@ def buildinputs(
                                       str(dockerfile)],
                                      text=True, cwd=ROOT_DIR,
                                      env={**os.environ, "TARGETPLATFORM": platform})
-    prereqs = [pathlib.Path(file) for file in json.loads(stdout)]
+    prereqs = list(dict.fromkeys(pathlib.Path(file) for file in json.loads(stdout)))
     print(f"{prereqs=}")
     return prereqs
+
+
+def _copy_tree(src: pathlib.Path, dst: pathlib.Path):
+    """Copy a directory tree, copying only file content (no metadata/xattrs).
+
+    shutil.copytree's internal copystat() on directories fails on macOS with
+    EPERM when extended attributes (quarantine, etc.) cannot be reproduced
+    on the destination.  Walking manually with shutil.copy avoids this.
+    Directories that cannot be created (e.g. macOS EPERM on certain dotfiles
+    in temp directories) are logged and skipped.
+    """
+    for dirpath, dirnames, filenames in os.walk(src, followlinks=True):
+        rel = pathlib.Path(dirpath).relative_to(src)
+        try:
+            (dst / rel).mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            logging.warning(f"cannot create directory, skipping subtree: {rel}")
+            dirnames.clear()
+            continue
+        for fname in filenames:
+            try:
+                shutil.copy(pathlib.Path(dirpath) / fname, dst / rel / fname)
+            except PermissionError:
+                logging.warning(f"cannot copy file, skipping: {rel / fname}")
 
 
 def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
@@ -100,8 +125,21 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
     for dep in prereqs:
         if dep.is_absolute():
             dep = dep.relative_to(ROOT_DIR)
-        if dep.is_dir():
-            shutil.copytree(dep, tmpdir / dep, symlinks=False, dirs_exist_ok=True)
+        # Expand glob patterns (e.g. "dir/*.patch" from Dockerfile COPY instructions)
+        if any(c in str(dep) for c in ('*', '?', '[')):
+            matched = sorted(glob.glob(str(dep)))
+            if not matched:
+                logging.warning(f"glob pattern matched no files: {dep}")
+                continue
+            for m in matched:
+                m_path = pathlib.Path(m)
+                (tmpdir / m_path.parent).mkdir(parents=True, exist_ok=True)
+                if m_path.is_dir():
+                    _copy_tree(m_path, tmpdir / m_path)
+                else:
+                    shutil.copy(m_path, tmpdir / m_path.parent)
+        elif dep.is_dir():
+            _copy_tree(dep, tmpdir / dep)
         else:
             (tmpdir / dep.parent).mkdir(parents=True, exist_ok=True)
             shutil.copy(dep, tmpdir / dep.parent)
