@@ -251,13 +251,16 @@ jobs:
              # (build-vscode.sh hardcodes 16384 which OOMs on 16 GB runners).
              # JOBS=1 limits transpiler workers to 1 thread — under QEMU arm64
              # emulation, 2 workers at any budget exhaust the 16 GB runner.
-             # Budget: 2048 (main) + 1×2048 (worker) = ~4 GB V8 heap → ~12 GB for OS.
+             # Budget: 3072 (main) + 1×3072 (worker) = ~6 GB V8 heap → ~10 GB for OS.
              # V8 actual RSS is ~1.5× the heap limit (young gen, code, externals),
-             # so real usage is ~6 GB for Node.js, leaving ~10 GB for OS/podman.
+             # so real usage is ~9 GB for Node.js, leaving ~7 GB for OS/podman.
+             # 2048 is too low (arm64 hits "heap limit Allocation failed"); 4096
+             # causes swap thrashing that kills the runner.  3072 works with the
+             # reduced 4 GB swap in gha_lvm_overlay.sh (OOM-kill is fast, not slow).
              # Uses --build-arg so the ARG values are available in intermediate stages
              # (--env only applies to the final stage in multi-stage builds).
              # ARG values don't persist in the final image (unlike ENV).
-             extra_podman_build_args += ' --build-arg=NODE_OPTIONS=--max-old-space-size=1024 --build-arg=JOBS=1 --build-arg=MAX_OLD_SPACE_SIZE=2048'
+             extra_podman_build_args += ' --build-arg=NODE_OPTIONS=--max-old-space-size=1024 --build-arg=JOBS=1 --build-arg=MAX_OLD_SPACE_SIZE=3072'
 
           event_name: Literal['push', 'pull_request', 'pull_request_target', 'schedule', 'workflow_dispatch'] = "${{ fromJson(inputs.github).event_name }}"
           cache = "${{ env.CACHE }}"
