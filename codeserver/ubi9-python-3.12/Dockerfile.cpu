@@ -134,10 +134,10 @@ RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESE
 
 # [HERMETIC] Step 3: Build VS Code (the embedded editor)
 # Memory budget on GHA runners (4 vCPUs, 16 GB RAM):
-#   Main gulp process : MAX_OLD_SPACE_SIZE (3072 on GHA, 16384 on Konflux)
+#   Main gulp process : MAX_OLD_SPACE_SIZE (2048 on GHA, 16384 on Konflux)
 #   Transpiler workers: MAX_OLD_SPACE_SIZE each × JOBS workers
 #   JOBS defaults to floor(cpus/2) but GHA sets it to 1 to survive QEMU emulation.
-#   Total V8 heap     : ~6 GB on GHA (3072 + 1×3072) → leaves ~10 GB for OS/podman
+#   Total V8 heap     : ~4 GB on GHA (2048 + 1×2048) → leaves ~12 GB for OS/podman
 #
 # build-vscode.sh hardcodes --max-old-space-size=16384 which OOMs on GHA.
 # Patch it to respect MAX_OLD_SPACE_SIZE (defaults to 16384 when unset).
@@ -145,8 +145,8 @@ RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESE
 # explicit resourceLimits to the same MAX_OLD_SPACE_SIZE value.
 # JOBS overrides the transpiler worker count (default: half of CPUs). Under
 # QEMU arm64 emulation on GHA, 2 workers exhaust the 16 GB runner even at
-# 3072 MB each. JOBS=1 keeps total V8 heap at ~6 GB (3072 + 1×3072) with
-# ~10 GB left for OS/podman.
+# 3072 MB each. JOBS=1 keeps total V8 heap at ~4 GB (2048 + 1×2048) with
+# ~12 GB left for OS/podman.
 # Unset NODE_OPTIONS so the restrictive GHA limit (1024 MB) doesn't constrain
 # npm or other intermediate Node.js processes during this memory-intensive step.
 RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
