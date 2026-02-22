@@ -166,7 +166,7 @@ jobs:
         # NOTE: the arm64 GitHub hosted runner does not have the /mnt-mounted scratch disk
         if: "${{ contains(inputs.target, 'rocm') || contains(inputs.target, 'cuda') ||
          contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') ||
-         inputs.platform == 'linux/arm64' }}"
+         contains(inputs.target, 'codeserver') || inputs.platform == 'linux/arm64' }}"
 
       - id: install-compsize
         run: sudo apt-get install -y btrfs-compsize
@@ -238,6 +238,22 @@ jobs:
              # Compiling pyzmq through UV needs this in CFLAGS
              extra_podman_build_args += '--env=CFLAGS=-Dundefined=64 --env=CXXFLAGS=-Dundefined=64 --unsetenv=CFLAGS --unsetenv=CXXFLAGS'
 
+          if "codeserver" in "${{ inputs.target }}":
+             # Hermetic codeserver builds compile from source on every run — there
+             # is no effective layer cache to reuse.  --layers=false stops podman
+             # from persisting intermediate layers within each stage, cutting peak
+             # disk use roughly in half.
+             extra_podman_build_args += ' --layers=false'
+             # Cap V8 heap + parallelism to fit GHA runners (4 vCPUs, 16 GB RAM).
+             # The VS Code build runs 3 groups of V8 heaps concurrently:
+             #   Main gulp     : MAX_OLD_SPACE_SIZE=2560 (~2 GB for mangler data)
+             #   Mangler pool  : MANGLER_WORKERS=1 (default 4 — each ~500-700 MB)
+             #   Transpiler    : WORKER_MAX_OLD_SPACE_SIZE=4096, JOBS=1
+             # Reducing mangler workers from 4→1 frees ~1.5-2 GB, preventing the
+             # transpiler from hitting ERR_WORKER_OUT_OF_MEMORY.
+             # Konflux omits these ARGs → Dockerfile defaults apply (no limits).
+             extra_podman_build_args += ' --build-arg=NODE_OPTIONS=--max-old-space-size=1024 --build-arg=JOBS=1 --build-arg=MAX_OLD_SPACE_SIZE=2560 --build-arg=WORKER_MAX_OLD_SPACE_SIZE=4096 --build-arg=MANGLER_WORKERS=1'
+
           event_name: Literal['push', 'pull_request', 'pull_request_target', 'schedule', 'workflow_dispatch'] = "${{ fromJson(inputs.github).event_name }}"
           cache = "${{ env.CACHE }}"
 
@@ -283,8 +299,13 @@ jobs:
       - name: "Build: make ${{ inputs.target }}"
         id: make-target
         run: |
-          # print running stats on disk occupancy
-          (while true; do df -h | grep "${HOME}/.local/share/containers"; sleep 30; done) &
+          # print running stats on disk and memory occupancy
+          (while true; do
+            echo "=== $(date -u '+%H:%M:%S') ==="
+            df -h | grep "${HOME}/.local/share/containers"
+            free -h
+            sleep 30
+          done) &
 
           make ${{ inputs.target }}
         env:

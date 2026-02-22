@@ -1,0 +1,72 @@
+# RHSM Pulp repositories for hermetic RPM prefetch
+[rhel-9-for-$basearch-baseos-e4s-rpms__9_DOT_6]
+name = rhel-9-for-$basearch-baseos-e4s-rpms__9_DOT_6
+enabled = 1
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+baseurl = https://rhsm-pulp.corp.redhat.com/content/e4s/rhel9/9.6/$basearch/baseos/os
+
+[rhel-9-for-$basearch-appstream-e4s-rpms__9_DOT_6]
+name = rhel-9-for-$basearch-appstream-e4s-rpms__9_DOT_6
+enabled = 1
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+baseurl = https://rhsm-pulp.corp.redhat.com/content/e4s/rhel9/9.6/$basearch/appstream/os
+
+[rhel-9-for-$basearch-highavailability-e4s-rpms__9_DOT_6]
+name = rhel-9-for-$basearch-highavailability-e4s-rpms__9_DOT_6
+enabled = 1
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+baseurl = https://rhsm-pulp.corp.redhat.com/content/e4s/rhel9/9.6/$basearch/highavailability/os
+
+[codeready-builder-for-rhel-9-$basearch-eus-rpms__9_DOT_6]
+name = codeready-builder-for-rhel-9-$basearch-eus-rpms__9_DOT_6
+baseurl = https://rhsm-pulp.corp.redhat.com/content/eus/rhel9/9.6/$basearch/codeready-builder/os/
+enabled = 1
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# Provide /usr/bin/oc
+[rhocp-4.16-for-rhel-9-$basearch-rpms__pulp]
+name = rhocp-4.16-for-rhel-9-$basearch-rpms__pulp
+baseurl = https://rhsm-pulp.corp.redhat.com/content/dist/layered/rhel9/$basearch/rhocp/4.16/os
+enabled = 1
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# Archived repo definitions below were considered during development but are
+# not currently used. Kept for reference in case they are needed for future
+# workbench images (e.g. rstudio-server, R packages, EPEL metalink).
+
+# mcurlej copr, provides R-*
+# [copr:copr.devel.redhat.com:mcurlej:rstudio-server-dependencies]
+# name=Copr repo for rstudio-server-dependencies owned by mcurlej
+# baseurl=https://coprbe.devel.redhat.com/results/mcurlej/rstudio-server-dependencies/rhel-9-x86_64/
+# type=rpm-md
+# skip_if_unavailable=True
+# gpgcheck=0
+# gpgkey=https://coprbe.devel.redhat.com/results/mcurlej/rstudio-server-dependencies/pubkey.gpg
+# repo_gpgcheck=0
+# enabled=1
+# enabled_metadata=1
+
+# [epel]
+# name=Extra Packages for Enterprise Linux 9 - $basearch
+# metalink=https://mirrors.fedoraproject.org/metalink?repo=epel-9&arch=$basearch&infra=$infra&content=$contentdir
+# enabled=1
+# gpgcheck=1
+# countme=1
+# gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9
+
+# Provide quarto and rstudio-server
+# [copr:copr.fedorainfracloud.org:iucar:rstudio]
+# name=Copr repo for rstudio owned by iucar
+# baseurl=https://download.copr.fedorainfracloud.org/results/iucar/rstudio/fedora-43-x86_64/
+# type=rpm-md
+# skip_if_unavailable=True
+# gpgcheck=1
+# gpgkey=https://download.copr.fedorainfracloud.org/results/iucar/rstudio/pubkey.gpg
+# repo_gpgcheck=0
+# enabled=1
+# enabled_metadata=1

@@ -13,8 +13,13 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-comment: ^/kfbuild\s+(all|odh\-workbench\-codeserver\-datascience\-cpu\-py312\-ubi9|codeserver/ubi9\-python\-3\.12)
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-pull-request.yaml".pathChanged() || "codeserver/ubi9-python-3.12/**".pathChanged() || "codeserver/ubi9-python-3.12/build-args/cpu.conf".pathChanged() )
-      && body.repository.full_name == "opendatahub-io/notebooks"
+      event == "pull_request" && target_branch == "main" &&
+      !("manifests/base/params-latest.env".pathChanged()) &&
+      (
+        ".tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-pull-request.yaml".pathChanged() ||
+        "codeserver/ubi9-python-3.12/**".pathChanged() ||
+        "codeserver/ubi9-python-3.12/build-args/cpu.conf".pathChanged()
+      ) && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
     appstudio.openshift.io/application: opendatahub-release
     appstudio.openshift.io/component: odh-workbench-codeserver-datascience-cpu-py312-ubi9
@@ -27,6 +32,8 @@ spec:
   params:
   - name: event-type
     value: '{{event_type}}'
+  - name: enable-cache-proxy
+    value: "true"
   - name: git-url
     value: '{{source_url}}'
   - name: revision
@@ -47,6 +54,124 @@ spec:
     value: .
   - name: build-args-file
     value: codeserver/ubi9-python-3.12/build-args/cpu.conf
+  - name: hermetic
+    value: "true"
+  - name: prefetch-input
+    value:
+    - path: codeserver/ubi9-python-3.12/prefetch-input/odh
+      type: rpm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/odh
+      type: generic
+    - path: codeserver/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: "x86_64,aarch64,ppc64le"
+      requirements_files: ["requirements.cpu.txt"]
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-selfhost-import-aid
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-selfhost-test-provider
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/build
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/build/npm/gyp
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/configuration-editing
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/css-language-features
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/css-language-features/server
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/debug-auto-launch
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/debug-server-ready
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/emmet
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/extension-editing
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/git
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/git-base
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/github
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/github-authentication
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/grunt
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/gulp
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/html-language-features
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/html-language-features/server
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/ipynb
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/jake
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/json-language-features
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/json-language-features/server
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/markdown-language-features
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/markdown-math
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/media-preview
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/merge-conflict
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/mermaid-chat-features
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/notebook-renderers
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/npm
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/php-language-features
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/references-view
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/simple-browser
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/tunnel-forwarding
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/typescript-language-features
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/vscode-api-tests
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/vscode-colorize-perf-tests
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/vscode-colorize-tests
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/vscode-test-resolver
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/remote
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/remote/web
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/automation
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/integration/browser
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/mcp
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/monaco
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/test/smoke
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/test/e2e/extensions/test-extension
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode
+      type: npm
+    # patches/
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.106.3/test
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.106.3/lib/vscode/extensions/microsoft-authentication
+      type: npm
   pipelineRef:
     name: multiarch-combined-pipeline
   taskRunTemplate:

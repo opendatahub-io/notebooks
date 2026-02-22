@@ -1,0 +1,104 @@
+# CentOS Stream 9 repos for RPM prefetch (cachi2/hermeto).
+#
+# Uses PINNED production composes from composes.stream.centos.org instead of
+# the rolling mirror.stream.centos.org CDN. Each dated compose is an immutable
+# snapshot — its repodata and RPMs never change after publication — which
+# eliminates the 404 errors caused by repodata rotation on the rolling mirror.
+#
+# To update to a newer compose:
+#   1. Browse https://composes.stream.centos.org/production/
+#   2. Pick a recent compose (e.g. CentOS-Stream-9-20260217.0)
+#   3. Replace the compose name in all baseurl= lines below:
+#        sed -i 's|CentOS-Stream-9-[0-9]*\.[0-9]*|CentOS-Stream-9-YYYYMMDD.N|g' centos.repo
+#   4. Regenerate the lockfile
+#
+# NOTE: $basearch is resolved by dnf; no $releasever is needed.
+# metadata_expire=-1 tells dnf to never expire the cache (the snapshot is immutable).
+
+[baseos]
+name=CentOS Stream 9 - BaseOS
+baseurl=https://composes.stream.centos.org/production/CentOS-Stream-9-20260217.0/compose/BaseOS/$basearch/os/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+# CentOS Stream compose repos do not publish signed repomd.xml; repodata
+# signature verification is therefore disabled (package GPG check remains on).
+repo_gpgcheck=0
+metadata_expire=-1
+enabled=1
+
+[baseos-debuginfo]
+name=CentOS Stream 9 - BaseOS - Debug
+baseurl=https://composes.stream.centos.org/production/CentOS-Stream-9-20260217.0/compose/BaseOS/$basearch/debug/tree/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=-1
+enabled=0
+
+[baseos-source]
+name=CentOS Stream 9 - BaseOS - Source
+baseurl=https://composes.stream.centos.org/production/CentOS-Stream-9-20260217.0/compose/BaseOS/source/tree/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=-1
+enabled=0
+
+[appstream]
+name=CentOS Stream 9 - AppStream
+baseurl=https://composes.stream.centos.org/production/CentOS-Stream-9-20260217.0/compose/AppStream/$basearch/os/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=-1
+enabled=1
+# Exclude httpd and its sub-packages so the resolver uses the UBI version,
+# which matches the httpd already pre-installed in the UBI9 base image.
+# Without this, CentOS Stream (the upstream) provides a newer httpd that
+# conflicts with the base image's pinned httpd-devel version.
+exclude=httpd*
+
+[appstream-debuginfo]
+name=CentOS Stream 9 - AppStream - Debug
+baseurl=https://composes.stream.centos.org/production/CentOS-Stream-9-20260217.0/compose/AppStream/$basearch/debug/tree/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=-1
+enabled=0
+
+[appstream-source]
+name=CentOS Stream 9 - AppStream - Source
+baseurl=https://composes.stream.centos.org/production/CentOS-Stream-9-20260217.0/compose/AppStream/source/tree/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=-1
+enabled=0
+
+[crb]
+name=CentOS Stream 9 - CRB
+baseurl=https://composes.stream.centos.org/production/CentOS-Stream-9-20260217.0/compose/CRB/$basearch/os/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=-1
+enabled=1
+
+[crb-debuginfo]
+name=CentOS Stream 9 - CRB - Debug
+baseurl=https://composes.stream.centos.org/production/CentOS-Stream-9-20260217.0/compose/CRB/$basearch/debug/tree/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=-1
+enabled=0
+
+[crb-source]
+name=CentOS Stream 9 - CRB - Source
+baseurl=https://composes.stream.centos.org/production/CentOS-Stream-9-20260217.0/compose/CRB/source/tree/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+gpgcheck=1
+repo_gpgcheck=0
+metadata_expire=-1
+enabled=0

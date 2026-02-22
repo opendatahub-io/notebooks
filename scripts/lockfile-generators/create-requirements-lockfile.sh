@@ -125,7 +125,7 @@ wc -l "$PYLOCK_FILE"
 # =========================================================================
 # Step 2: Convert pylock.<flavor>.toml → requirements.<flavor>.txt
 #
-# The pylock.toml (PEP 665) format is not yet supported by pip or cachi2.
+# The pylock.toml (PEP 751) format is not yet supported by pip or cachi2.
 # This step converts it to a pip-compatible requirements.txt with
 # --hash=sha256:… lines for integrity verification.
 # =========================================================================
@@ -188,6 +188,7 @@ if [[ "$DO_DOWNLOAD" == true ]]; then
     actual=$(sha256_of "$dest")
     if [[ "$actual" != "$sha" ]]; then
       echo "  ERROR: checksum mismatch (got ${actual}, expected ${sha})" >&2
+      rm -f "$dest"
       exit 1
     fi
     echo "  Checksum OK (sha256:${actual:0:16}...)"
