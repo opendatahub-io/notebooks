@@ -137,12 +137,12 @@ RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESE
 
 # [HERMETIC] Step 3: Build VS Code (the embedded editor)
 # Memory budget on GHA runners (4 vCPUs, 16 GB RAM):
-#   Main gulp process : MAX_OLD_SPACE_SIZE      (2048 on GHA, 16384 on Konflux)
+#   Main gulp process : MAX_OLD_SPACE_SIZE       (3072 on GHA, 16384 on Konflux)
 #   Transpiler worker : WORKER_MAX_OLD_SPACE_SIZE (4096 on GHA, 16384 on Konflux)
 #   JOBS=1 on GHA → one worker thread.
-#   Total V8 heap: ~6 GB on GHA (2048 + 1×4096) → leaves ~10 GB for OS/podman.
-#   The worker needs more heap than the main process: arm64 TS compilation
-#   OOMs at 3072 MB (ERR_WORKER_OUT_OF_MEMORY).
+#   Total V8 heap: ~7 GB on GHA (3072 + 1×4096) → leaves ~9 GB for OS/podman.
+#   Main needs ~2 GB for the name mangler phase (OOMs at 2048).
+#   Worker needs 4 GB on arm64 TS compilation (OOMs at 3072).
 #
 # build-vscode.sh hardcodes --max-old-space-size=16384 which OOMs on GHA.
 # Patch it to respect MAX_OLD_SPACE_SIZE (defaults to 16384 when unset).

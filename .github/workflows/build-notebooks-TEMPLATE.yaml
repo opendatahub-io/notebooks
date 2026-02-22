@@ -251,14 +251,13 @@ jobs:
              # (build-vscode.sh hardcodes 16384 which OOMs on 16 GB runners).
              # JOBS=1 limits transpiler workers to 1 thread — under QEMU arm64
              # emulation, 2 workers at any budget exhaust the 16 GB runner.
-             # Budget: 2048 (main) + 1×4096 (worker) = ~6 GB V8 heap → ~10 GB for OS.
-             # The worker (transpiler) needs more heap than the main gulp process:
-             # arm64 compilation OOMs at 3072 MB (ERR_WORKER_OUT_OF_MEMORY).
-             # Main process only orchestrates — 2048 MB is sufficient.
+             # Budget: 3072 (main) + 1×4096 (worker) = ~7 GB V8 heap → ~9 GB for OS.
+             # Main gulp process needs ~2 GB for the name mangler (OOMs at 2048).
+             # Worker (transpiler) needs 4 GB on arm64 (OOMs at 3072).
              # Uses --build-arg so the ARG values are available in intermediate stages
              # (--env only applies to the final stage in multi-stage builds).
              # ARG values don't persist in the final image (unlike ENV).
-             extra_podman_build_args += ' --build-arg=NODE_OPTIONS=--max-old-space-size=1024 --build-arg=JOBS=1 --build-arg=MAX_OLD_SPACE_SIZE=2048 --build-arg=WORKER_MAX_OLD_SPACE_SIZE=4096'
+             extra_podman_build_args += ' --build-arg=NODE_OPTIONS=--max-old-space-size=1024 --build-arg=JOBS=1 --build-arg=MAX_OLD_SPACE_SIZE=3072 --build-arg=WORKER_MAX_OLD_SPACE_SIZE=4096'
 
           event_name: Literal['push', 'pull_request', 'pull_request_target', 'schedule', 'workflow_dispatch'] = "${{ fromJson(inputs.github).event_name }}"
           cache = "${{ env.CACHE }}"
