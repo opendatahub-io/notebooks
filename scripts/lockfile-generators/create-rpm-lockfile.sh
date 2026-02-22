@@ -12,8 +12,10 @@ set -euo pipefail
 # all listed packages and their transitive dependencies for each architecture
 # listed in rpms.in.yaml and writes rpms.lock.yaml in the same directory.
 #
-# With --download, it also runs helpers/download-rpms.sh to fetch all RPMs into
-# cachi2/output/deps/rpm/ and create DNF repo metadata for local offline builds.
+# With --download, it uses hermeto (hermetoproject/hermeto) to fetch all RPMs
+# into cachi2/output/deps/rpm/ and create DNF repo metadata for local offline
+# builds.  When a RHEL subscription is active, entitlement certs are extracted
+# from the lockfile container and passed to hermeto for cdn.redhat.com auth.
 
 # --- Configuration & Defaults ---
 SCRIPTS_PATH="scripts/lockfile-generators"
@@ -35,7 +37,7 @@ generate an RPM lock file. It MUST be run from the repository root.
 
 Options:
   --rpm-input FILE       Path to rpms.in.yaml
-                         (e.g., codeserver/ubi9-python-3.12/prefetch-input/rpms.in.yaml)
+                         (e.g., codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml)
   --activation-key VALUE Red Hat activation key for subscription-manager
   --org VALUE            Red Hat organization ID for subscription-manager
   --download             After generating the lockfile, fetch all RPMs from rpms.lock.yaml
@@ -43,15 +45,17 @@ Options:
   --help                 Show this help message and exit
 
 Examples:
+  # Upstream (ODH):
   ./$SCRIPTS_PATH/create-rpm-lockfile.sh \\
-    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rpms.in.yaml
+    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml
 
   ./$SCRIPTS_PATH/create-rpm-lockfile.sh \\
-    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rpms.in.yaml --download
+    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml --download
 
+  # Downstream (RHDS) with RHEL subscription:
   ./$SCRIPTS_PATH/create-rpm-lockfile.sh \\
     --activation-key my-key --org my-org \\
-    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rpms.in.yaml
+    --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rhds/rpms.in.yaml
 EOF
 }
 
@@ -83,7 +87,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- Required argument check ---
-[[ -z "$RPM_INPUT" ]] && error_exit "--rpm-input is required. E.g. --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rpms.in.yaml"
+[[ -z "$RPM_INPUT" ]] && error_exit "--rpm-input is required. E.g. --rpm-input codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml"
 [[ -f "$RPM_INPUT" ]] || error_exit "rpms.in.yaml not found at: $RPM_INPUT"
 
 # Derive the prefetch-input directory from the rpms.in.yaml path
@@ -103,7 +107,7 @@ fi
 echo "--- Building Lockfile Generator Image ---"
 podman build \
     -f "$SCRIPTS_PATH/Dockerfile.rpm-lockfile" \
-    --platform=linux/x86_64 \
+    --platform linux/x86_64 \
     --build-arg RHEL_VERSION="$RHEL_VERSION" \
     --build-arg BASE_IMAGE="$BASE_IMAGE" \
     --build-arg ACTIVATION_KEY="$ACTIVATION_KEY" \
@@ -116,7 +120,7 @@ TTY_FLAG=""
 [ -t 1 ] && TTY_FLAG="-t"
 podman run --rm -i $TTY_FLAG \
     -v "$(pwd):/workspace" \
-    --platform=linux/x86_64 \
+    --platform linux/x86_64 \
     localhost/notebook-rpm-lockfile:latest \
     sh -c "cd /workspace/$SCRIPTS_PATH && ./helpers/rpm-lockfile-generate.sh prefetch-input=$PREFETCH_DIR"
 
@@ -126,6 +130,10 @@ if [[ "$DO_DOWNLOAD" == true ]]; then
   if [[ ! -f "$LOCKFILE" ]]; then
     error_exit "Lockfile not found at $LOCKFILE (required for --download)."
   fi
-  echo "--- Downloading RPMs from lockfile ---"
-  "$SCRIPTS_PATH/helpers/download-rpms.sh" --lock-file "$LOCKFILE"
+
+  HERMETO_ARGS=(--prefetch-dir "$PREFETCH_DIR")
+  if [[ -n "$ACTIVATION_KEY" ]] && [[ -n "$ORG" ]]; then
+    HERMETO_ARGS+=(--activation-key "$ACTIVATION_KEY" --org "$ORG")
+  fi
+  "$SCRIPTS_PATH/helpers/hermeto-fetch-rpm.sh" "${HERMETO_ARGS[@]}"
 fi

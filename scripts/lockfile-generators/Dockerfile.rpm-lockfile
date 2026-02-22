@@ -44,3 +44,8 @@ RUN releasever_opt=; [ -n "$RHEL_VERSION" ] && releasever_opt="--releasever=${RH
 RUN /usr/bin/python3 -m pip install --no-cache-dir \
     --index-url https://pypi.org/simple/ \
     https://github.com/konflux-ci/rpm-lockfile-prototype/archive/refs/tags/v0.20.0.zip
+
+# Apply local patches to pip-installed packages (e.g. rpm-lockfile-prototype
+# needs module_platform_id and skip_if_unavailable support via env vars).
+COPY patches/ /tmp/patches/
+RUN /tmp/patches/apply-patches.sh && rm -rf /tmp/patches
