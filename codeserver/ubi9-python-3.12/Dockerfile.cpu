@@ -63,7 +63,7 @@ ARG CODESERVER_VERSION=v4.106.3
 ARG NODE_OPTIONS
 ARG JOBS
 ARG MAX_OLD_SPACE_SIZE
-ARG WORKER_MAX_OLD_SPACE_SIZE=${MAX_OLD_SPACE_SIZE:-16384}
+ARG WORKER_MAX_OLD_SPACE_SIZE
 ARG MANGLER_WORKERS
 
 # [HERMETIC] Import GPG keys for prefetched RPM verification.
@@ -156,8 +156,10 @@ RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESE
 # Unset NODE_OPTIONS so the restrictive GHA limit (1024 MB) doesn't constrain
 # npm or other intermediate Node.js processes during this memory-intensive step.
 RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
+    WORKER_HEAP="${WORKER_MAX_OLD_SPACE_SIZE:-${MAX_OLD_SPACE_SIZE:-16384}}" && \
+    echo "Memory budget: MAX_OLD_SPACE_SIZE=${MAX_OLD_SPACE_SIZE:-16384}, WORKER_HEAP=${WORKER_HEAP}, MANGLER_WORKERS=${MANGLER_WORKERS:-4}" && \
     sed -i "s/--max-old-space-size=16384/--max-old-space-size=\${MAX_OLD_SPACE_SIZE:-16384}/" ci/build/build-vscode.sh && \
-    sed -i "s|new node_worker_threads_1.default.Worker(__filename)|new node_worker_threads_1.default.Worker(__filename, { resourceLimits: { maxOldGenerationSizeMb: ${WORKER_MAX_OLD_SPACE_SIZE:-16384} } })|" lib/vscode/build/lib/tsb/transpiler.js && \
+    sed -i "s|new node_worker_threads_1.default.Worker(__filename)|new node_worker_threads_1.default.Worker(__filename, { resourceLimits: { maxOldGenerationSizeMb: ${WORKER_HEAP} } })|" lib/vscode/build/lib/tsb/transpiler.js && \
     if [ -n "${JOBS}" ]; then sed -i "/static P = /s/=.*/= ${JOBS};/" lib/vscode/build/lib/tsb/transpiler.js; fi && \
     if [ -n "${MANGLER_WORKERS}" ]; then sed -i "s/maxWorkers: 4/maxWorkers: ${MANGLER_WORKERS}/" lib/vscode/build/lib/mangle/index.js; fi && \
     unset NODE_OPTIONS && \
