@@ -181,6 +181,14 @@ def main():
         "Copy mongocli from builder": textwrap.dedent(r"""
             # Copy dynamically-linked mongocli built in earlier build stage
             COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/"""),
+        "Install software and packages": textwrap.dedent(r"""
+            echo "Installing software and packages"
+            # Install Python packages from lockfile with hash verification
+            # All dependencies are explicitly listed in pylock.toml (--no-deps)
+            UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+                --strict --no-deps --no-config --no-progress \
+                --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
+                --requirements=./pylock.toml"""),
     }
 
     for docker_dir in docker_directories:

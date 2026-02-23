@@ -22,32 +22,6 @@ EOF
 
 ### END mongocli-builder stage
 
-####################
-# wheel-cache-base #
-####################
-FROM ${BASE_IMAGE} AS whl-cache
-
-# hadolint ignore=DL3002
-USER root
-ENV HOME=/root
-WORKDIR /root
-
-ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
-ARG PYLOCK_FLAVOR
-
-COPY ${TRUSTYAI_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
-COPY ${TRUSTYAI_SOURCE_CODE}/devel_env_setup.sh .
-
-RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
-set -Eeuxo pipefail
-pip install --no-cache-dir uv
-# the devel script is ppc64le and s390x specific - sets up build-time dependencies
-source ./devel_env_setup.sh
-# This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
-#  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-# RHAIENG-2111: building pandas requires cython from PyPI
-UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --extra-index-url https://pypi.org/simple --requirements=./pylock.toml
-EOF
 
 ####################
 # cpu-base         #
@@ -175,7 +149,6 @@ ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-ENV LD_LIBRARY_PATH=/usr/lib:/usr/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 
 LABEL name="odh-notebook-jupyter-trustyai-ubi9-python-3.12" \
     summary="Jupyter trustyai notebook image for ODH notebooks" \
@@ -190,56 +163,38 @@ LABEL name="odh-notebook-jupyter-trustyai-ubi9-python-3.12" \
 USER 0
 
 # Install jre that is needed to run the trustyai library
-# Also install runtime libraries for s390x/ppc64le
-RUN /bin/bash <<'EOF'
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
-INSTALL_PKGS="java-17-openjdk"
-ARCH=$(uname -m)
-if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then
-    # Add runtime libraries needed for s390x/ppc64le (OpenBLAS for PyTorch/NumPy)
-    INSTALL_PKGS="$INSTALL_PKGS openblas openblas-threads"
-fi
-dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
+PACKAGES=(java-17-openjdk)
+dnf install -y --setopt=tsflags=nodocs "${PACKAGES[@]}"
 dnf -y clean all --enablerepo='*'
-# Create symlink for compatibility (openblas package provides libopenblasp.so.0 but PyTorch looks for libopenblas.so.0)
-if [ "$ARCH" = "s390x" ] || [ "$ARCH" = "ppc64le" ]; then
-    ln -sf /usr/lib64/libopenblasp.so.0 /usr/lib64/libopenblas.so.0
-    ldconfig
-fi
 EOF
 
 # Install Python packages and Jupyterlab extensions from requirements.txt
 COPY ${TRUSTYAI_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
-# install openblas for ppc64le
-RUN --mount=type=cache,from=whl-cache,source=/root/OpenBLAS/,target=/OpenBlas/,rw /bin/bash <<'EOF'
-set -Eeuxo pipefail
-ARCH=$(uname -m)
-if [ "$ARCH" = "ppc64le" ]; then
-    PREFIX=/usr/ make install -C /OpenBlas
-fi
-EOF
+USER 1001
 
 # Install packages and cleanup
-# install packages as USER 0 (this will allow us to consume uv cache)
-RUN --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw \
-    --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-ARCH=$(uname -m)
-if [ "$ARCH" = "ppc64le" ] || [ "$ARCH" = "s390x" ]; then
-    UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install /wheelsdir/*.whl accelerate --cache-dir /root/.cache/uv
-fi
+
+### BEGIN Install software and packages
+echo "Installing software and packages"
+# Install Python packages from lockfile with hash verification
+# All dependencies are explicitly listed in pylock.toml (--no-deps)
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+    --strict --no-deps --no-config --no-progress \
+    --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
+    --requirements=./pylock.toml
+### END Install software and packages
+
 EOF
 
-RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
+USER 0
+
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-echo "Installing softwares and packages"
-# we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
-# RHAIENG-2111: building pandas requires cython from PyPI
-UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --cache-dir /root/.cache/uv --strict --no-deps --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --extra-index-url https://pypi.org/simple --requirements=./pylock.toml
-# Note: debugpy wheel availabe on pypi (in uv cache) is none-any but bundles amd64.so files
-#       Build debugpy from source instead
-UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --no-cache git+https://github.com/microsoft/debugpy.git@v$(grep -A1 '\"debugpy\"' ./pylock.toml | grep -Eo '\b[0-9\.]+\b')
 # change ownership to default user (all packages were installed as root and has root:root ownership
 chown -R 1001:0 /opt/app-root/
 chmod -R g=u /opt/app-root

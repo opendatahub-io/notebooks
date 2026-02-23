@@ -20,44 +20,29 @@ ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 ARG NODE_VERSION=22.21.1
 ARG CODESERVER_VERSION=v4.106.3
 COPY ${CODESERVER_SOURCE_CODE}/get_code_server_rpm.sh .
+COPY ${CODESERVER_SOURCE_CODE}/s390x.patch /tmp/
 
-# create dummy file to ensure this stage is awaited before installing rpm
-RUN ./get_code_server_rpm.sh && touch /tmp/control
-
-#######################
-# wheel caching stage #
-#######################
-FROM registry.access.redhat.com/ubi9/python-312:latest AS whl-cache
-
-# hadolint ignore=DL3002
-USER root
-WORKDIR /root
-
-ENV HOME=/root
-
-ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
-ARG PYLOCK_FLAVOR
-
-# copy requirements and scripts
-COPY ${CODESERVER_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
-COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
-
-# This stage installs (builds) all the packages needed and caches it in uv-cache
-# Important: Since HOME & USER for the python-312 has been changed,
-#            we need to ensure the same cache directory is mounted in
-#            the final stage with the necessary permissions to consume from cache
-RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
+### BEGIN Subscribe with subscription manager
+RUN /bin/bash <<'EOF'
+# If we have a Red Hat subscription prepared, refresh it
 set -Eeuxo pipefail
-pip install --no-cache-dir uv
-# the devel script is ppc64le and s390x specific - sets up build-time dependencies
-source ./devel_env_setup.sh
-# This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
-#  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+if command -v subscription-manager &> /dev/null; then
+  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
+fi
 EOF
 
-# dummy file to make image build wait for this stage
-RUN touch /tmp/control
+### END Subscribe with subscription manager
+
+# install build dependencies
+RUN dnf install -y \
+    jq patch libtool rsync gettext gcc-toolset-14 krb5-devel libX11-devel libatomic gcc-toolset-14-libatomic-devel && \
+  dnf clean all
+
+# Build code-server rpm
+RUN ./get_code_server_rpm.sh
+
+RUN echo "done" > /tmp/control
+
 
 ####################
 # cpu-base         #
@@ -95,14 +80,6 @@ set -Eeuxo pipefail
 dnf install -y tar perl mesa-libGL skopeo
 dnf clean all
 rm -rf /var/cache/dnf
-EOF
-
-# (ARCH-ppc64le): since wheels are compiled from source, we need shared libs available at runtime
-RUN --mount=type=cache,from=whl-cache,source=/root/OpenBLAS,target=/OpenBlas,rw /bin/bash <<'EOF'
-set -Eeuxo pipefail
-if [[ $(uname -m) == "ppc64le" ]]; then
-    PREFIX=/usr/ make install -C /OpenBlas
-fi
 EOF
 
 # Other apps and tools installed as default user
@@ -162,7 +139,7 @@ dnf clean all
 rm -rf /var/cache/dnf
 EOF
 
-# wait for rpm-base stage (rpm builds for ppc64le and s390x)
+# wait for rpm-base stage
 COPY --from=rpm-base /tmp/control /dev/null
 
 # Install code-server
@@ -208,9 +185,9 @@ ENV NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
 # Modules does not exist
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-INSTALL_PKGS="bind-utils nginx nginx-mod-stream nginx-mod-http-perl httpd"
-dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS
-rpm -V $INSTALL_PKGS
+PACKAGES=(bind-utils nginx nginx-mod-stream nginx-mod-http-perl httpd)
+dnf install -y --setopt=tsflags=nodocs "${PACKAGES[@]}"
+rpm -V "${PACKAGES[@]}"
 dnf -y clean all --enablerepo='*'
 EOF
 
@@ -279,28 +256,20 @@ ENV PYTHONPATH=/opt/app-root/bin/python3
 # Install useful packages from pylock file
 COPY ${CODESERVER_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
-# wait for whl-cache stage (builds uv cache)
-COPY --from=whl-cache /tmp/control /dev/null
-
 # Install packages and cleanup
-# (ARCH-ppc64le): install packages (eg. pyarrow) that need to be built from source repository on ppc64le
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
-    UV_NO_CACHE=false uv pip install /wheelsdir/*.whl
-fi
-EOF
 
-# install packages as USER 0 (this will allow us to consume uv cache)
-RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
-set -Eeuxo pipefail
-echo "Installing softwares and packages"
-# we can ensure wheels are consumed from the cache only by restricting internet access for uv install with '--offline' flag
-UV_NO_CACHE=false UV_LINK_MODE=copy uv pip install --cache-dir /root/.cache/uv --requirements=./pylock.toml
-# Note: debugpy wheel available on pypi (in uv cache) is none-any but bundles amd64.so files
-#       Build debugpy from source instead
-UV_LINK_MODE=copy uv pip install --no-cache git+https://github.com/microsoft/debugpy.git@v$(grep -A1 '\"debugpy\"' ./pylock.toml | grep -Eo '\b[0-9\.]+\b')
+### BEGIN Install software and packages
+echo "Installing software and packages"
+# Install Python packages from lockfile with hash verification
+# All dependencies are explicitly listed in pylock.toml (--no-deps)
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+    --strict --no-deps --no-config --no-progress \
+    --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
+    --requirements=./pylock.toml
+### END Install software and packages
+
 # change ownership to default user (all packages were installed as root and has root:root ownership
 chown -R 1001:0 /opt/app-root
 EOF
