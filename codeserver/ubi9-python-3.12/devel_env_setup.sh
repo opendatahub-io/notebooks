@@ -24,7 +24,7 @@ build_pillow() {
 
     : ================= Fix Pillow Wheel ====================
     cd /pillowwheel
-    uv pip install auditwheel
+    uv pip install --extra-index-url https://pypi.org/simple auditwheel
     auditwheel repair pillow*.whl
     mv wheelhouse/pillow*.whl ${WHEEL_DIR}
 
@@ -78,7 +78,7 @@ if [[ $(uname -m) == "s390x" ]]; then \
     source "$HOME/.cargo/env"
 
     export MAX_JOBS=${MAX_JOBS:-$(nproc)}
-     
+
     if [[ $(uname -m) == "s390x" ]]; then
         echo "Checking OpenBLAS pkg-config..."
         pkg-config --exists openblas || echo "Warning: openblas.pc not found"
@@ -122,7 +122,7 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/OpenBLAS/lib/
     export PKG_CONFIG_PATH=$(find / -type d -name "pkgconfig" 2>/dev/null | tr '\n' ':')
     export CMAKE_ARGS="-DPython3_EXECUTABLE=python"
-    
+
     PYARROW_VERSION=$(grep -A1 '"pyarrow"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
     build_pyarrow ${PYARROW_VERSION}
 
