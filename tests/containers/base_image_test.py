@@ -142,8 +142,15 @@ class TestBaseImage:
                         continue  # this is expected and we don't use systemd anyway
                     if deps.startswith("libodbc.so.2"):
                         continue  # todo(jdanek): known issue RHOAIENG-18904
+
+                    # NVIDIA Container Toolkit (CTK), Container Device Interface (CDI)
                     if deps.startswith("libcuda.so.1"):
                         continue  # cuda magic will mount this into /usr/lib64/libcuda.so.1 and it will be found
+                    if deps.startswith("libnvidia-ml.so.1"):
+                        continue  # same as the one before
+                    if deps.startswith("libcudart.so.12"):
+                        continue  # todo(AIPCC-11072): bug in cuda 13.0 base images
+
                     if deps.startswith("libjvm.so"):
                         continue  # it's in ../server
                     if deps.startswith("libtracker-extract.so"):
