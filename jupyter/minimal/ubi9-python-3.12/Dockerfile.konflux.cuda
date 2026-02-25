@@ -96,7 +96,6 @@ USER 1001
 COPY ${MINIMAL_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
-# Install Python dependencies from requirements.txt file
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 
