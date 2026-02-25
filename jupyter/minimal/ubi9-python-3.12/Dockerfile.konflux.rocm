@@ -84,8 +84,6 @@ USER 1001
 COPY ${MINIMAL_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
-USER 0
-
 # Install Python dependencies from Pipfile.lock file
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail

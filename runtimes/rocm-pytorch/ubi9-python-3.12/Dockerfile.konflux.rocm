@@ -84,8 +84,6 @@ ENV ELYRA_INSTALL_PACKAGES="false"
 # Copy utility script
 COPY ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
 
-USER 0
-
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 
@@ -110,7 +108,6 @@ EOF
 # Workaround for https://issues.redhat.com/browse/AIPCC-8152
 ENV ROCM_PATH=/opt/rocm
 
-USER 1001
 WORKDIR /opt/app-root/src
 
 LABEL name="rhoai/odh-pipeline-runtime-pytorch-rocm-py312-rhel9" \

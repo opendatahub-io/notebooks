@@ -7,7 +7,6 @@ ARG BASE_IMAGE
 # rocm-base        #
 ####################
 FROM ${BASE_IMAGE} AS rocm-base
-
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root

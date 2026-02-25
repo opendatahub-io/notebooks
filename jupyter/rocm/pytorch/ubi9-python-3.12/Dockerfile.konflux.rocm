@@ -153,8 +153,6 @@ WORKDIR /opt/app-root/bin
 COPY ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
 
-USER 0
-
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 

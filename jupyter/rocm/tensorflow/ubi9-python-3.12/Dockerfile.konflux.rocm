@@ -160,8 +160,6 @@ WORKDIR /opt/app-root/bin
 
 COPY ${TENSORFLOW_SOURCE_CODE}/pylock.toml ./
 
-USER 0
-
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 
@@ -194,6 +192,7 @@ EOF
 
 COPY ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monkey_patch_protobuf_6x.py /opt/app-root/lib/python3.12/site-packages/
 
+USER 0
 COPY ${TENSORFLOW_SOURCE_CODE}/utils/link-solibs.sh /tmp/link-solibs.sh
 RUN /tmp/link-solibs.sh && rm /tmp/link-solibs.sh
 
