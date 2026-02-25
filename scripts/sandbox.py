@@ -100,6 +100,11 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
     for dep in prereqs:
         if dep.is_absolute():
             dep = dep.relative_to(ROOT_DIR)
+
+        if not dep.exists():
+            logging.error(f"File or directory '{dep}' referenced in the Dockerfile was not found on disk. Please ensure the file exists.")
+            sys.exit(1)
+
         if dep.is_dir():
             shutil.copytree(dep, tmpdir / dep, symlinks=False, dirs_exist_ok=True)
         else:
