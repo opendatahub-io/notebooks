@@ -135,7 +135,14 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
     else
 	git clone --depth 1 --branch "v${TORCH_VERSION}" --recurse-submodules --shallow-submodules https://github.com/pytorch/pytorch.git
         cd pytorch
-        uv pip install -r requirements.txt
+        # Filter out lintrunner - it's a dev tool for linting, not needed for building PyTorch
+        #  uv cannot parse lintrunner's pyproject.toml (missing project.version)
+        # Update: the previous solution stopped working: grep -v lintrunner requirements.txt | uv pip install -r /dev/stdin
+        #  fails with error: Error parsing included file in `/dev/stdin` at position 76
+        #   Caused by: failed to read from file `/dev/requirements-build.txt`: No such file or directory (os error 2)
+        #  it seems that pytorch has added some -r included files and now we need to resolve it relative to the input file
+        # ERROR: Could not find a version that satisfies the requirement expecttest>=0.3.0 (from versions: none)
+        pip install --extra-index-url https://pypi.org/simple --no-cache-dir -r requirements.txt
         python setup.py develop
         rm -f dist/torch*+git*whl
         MAX_JOBS=${MAX_JOBS:-$(nproc)} \
