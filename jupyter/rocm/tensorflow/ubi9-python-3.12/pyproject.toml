@@ -61,6 +61,8 @@ override-dependencies = [
     # Using >= instead of ~= to allow broader compatibility during resolution
     # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
     "python-lsp-server>=1.11.0",
+    # kfp has a dependency on click-option-group==0.5.7, but only 0.5.9 is available in AIPCC 
+    "click-option-group==0.5.9",
 ]
 
 constraint-dependencies = [
