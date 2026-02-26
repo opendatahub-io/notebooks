@@ -36,7 +36,7 @@ COPY helpers/rhsm-pulp.repo /etc/yum.repos.d/rhsm-pulp.repo
 # Don't run upgrade, it upgrades from 9.6 to 9.7 which is not desired here
 # Add --releasever when RHEL_VERSION is set (e.g. for RHEL/UBI) to pin repo release
 RUN releasever_opt=; [ -n "$RHEL_VERSION" ] && releasever_opt="--releasever=${RHEL_VERSION}"; \
-    dnf $releasever_opt install -y python3 python3-pip python3-dnf skopeo rpm git modulemd-tools && \
+    dnf $releasever_opt install -y python3 python3-pip python3-dnf skopeo rpm git modulemd-tools patch && \
     dnf clean all
 
 # --index-url: override the base image's pip.conf which may point to a restricted
@@ -44,3 +44,8 @@ RUN releasever_opt=; [ -n "$RHEL_VERSION" ] && releasever_opt="--releasever=${RH
 RUN /usr/bin/python3 -m pip install --no-cache-dir \
     --index-url https://pypi.org/simple/ \
     https://github.com/konflux-ci/rpm-lockfile-prototype/archive/refs/tags/v0.20.0.zip
+
+# Apply local patches to pip-installed packages (e.g. rpm-lockfile-prototype
+# needs module_platform_id and skip_if_unavailable support via env vars).
+COPY patches/ /tmp/patches/
+RUN /tmp/patches/apply-patches.sh && rm -rf /tmp/patches

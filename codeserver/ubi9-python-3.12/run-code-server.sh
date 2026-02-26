@@ -129,9 +129,12 @@ else
     echo "IPv6 not detected: falling back to IPv4 only"
 fi
 
+# Start server with explicit --user-data-dir so code-server writes settings,
+# extensions, and logs under /opt/app-root/src/ (writable by UID 1001).
 start_process /usr/bin/code-server \
     --bind-addr "${BIND_ADDR}" \
     --user-data-dir "${CODE_SERVER_DATA_DIR}" \
+    --extensions-dir "${CODE_SERVER_DATA_DIR}/extensions" \
     --disable-telemetry \
     --auth none \
     --disable-update-check \

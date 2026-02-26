@@ -23,7 +23,7 @@ usage() {
     echo "Usage: $0 --lock-file <path>"
     echo ""
     echo "Options:"
-    echo "  -l, --lock-file    Path to rpms.lock.yaml (e.g. codeserver/ubi9-python-3.12/prefetch-input/rpms.lock.yaml)"
+    echo "  -l, --lock-file    Path to rpms.lock.yaml (e.g. codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.lock.yaml)"
     echo "  -h, --help         Display this help message"
     echo ""
     echo "Note: This script must be run from the project root directory."
