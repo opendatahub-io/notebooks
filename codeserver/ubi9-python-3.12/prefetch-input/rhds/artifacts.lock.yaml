@@ -38,9 +38,6 @@ artifacts:
   - download_url: https://nodejs.org/download/release/v22.20.0/node-v22.20.0-linux-ppc64le.tar.gz
     checksum: sha256:f96e25a3ef6cbaa992c9bdccaf18684d12fbcbc9751bf0a85407715641f1930e
     filename: node-v22.20.0-linux-ppc64le.tar.gz
-  - download_url: https://playwright.azureedge.net/builds/chromium/1134/chromium-linux.zip
-    checksum: sha256:6f4bb701f2ad2d3a77ad5232f43ca719cd8ec7bc418a0a1f5f9495d8edfb953b
-    filename: chromium-1134-linux.zip
   - download_url: https://github.com/electron/electron/releases/download/v37.7.0/electron-v37.7.0-linux-x64.zip
     checksum: sha256:4ae04d20d0ea25bf3451e3d0eaa757190b5813fa58d17bbe3be4332836da6b25
     filename: electron-v37.7.0-linux-x64.zip
@@ -53,15 +50,15 @@ artifacts:
   - download_url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
     checksum: sha256:324cd645481db1ceda8621409c9151fc58d182b90cc5c428db80edb21fb26df3
     filename: ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
-  - download_url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-aarch64-unknown-linux-gnu.tar.gz
-    checksum: sha256:1b0ca509f8707f2128f1b3ef245c3ea666d49a737431288536d49bd74652d143
+  - download_url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-aarch64-unknown-linux-musl.tar.gz
+    checksum: sha256:0f308620a428f56fe871fcc5d7c668c461dfed3244f717b698f3e9e92aca037a
     filename: ripgrep-v13.0.0-13-aarch64-unknown-linux-musl.tar.gz
   - download_url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-powerpc64le-unknown-linux-gnu.tar.gz
     checksum: sha256:a3fdb2c6ef9d4ff927ca1cb1e56f7aed7913d1be4dd4546aec400118c26452ab
-    filename: ripgrep-v13.0.0-13-powerpc64le-unknown-linux-musl.tar.gz
+    filename: ripgrep-v13.0.0-13-powerpc64le-unknown-linux-gnu.tar.gz
   - download_url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-s390x-unknown-linux-gnu.tar.gz
     checksum: sha256:555983c74789d553b107c5a2de90b883727b3e43d680f0cd289a07407efb2755
-    filename: ripgrep-v13.0.0-13-s390x-unknown-linux-musl.tar.gz
+    filename: ripgrep-v13.0.0-13-s390x-unknown-linux-gnu.tar.gz
   - download_url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-4/ripgrep-v13.0.0-4-powerpc64le-unknown-linux-gnu.tar.gz
     checksum: sha256:3ddd7c0797c14cefd3ee61f13f15ac219bfecee8e6f6e27fd15c102ef229653a
     filename: ripgrep-v13.0.0-4-powerpc64le-unknown-linux-gnu.tar.gz

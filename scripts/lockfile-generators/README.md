@@ -96,7 +96,15 @@ lockfile regeneration) — this avoids cross-platform issues on arm64 CI runners
 
 The GHA workflow template (`.github/workflows/build-notebooks-TEMPLATE.yaml`)
 calls `prefetch-all.sh` automatically for codeserver targets before running
-`make`. Non-codeserver targets skip the prefetch step entirely.
+`make`. Non-codeserver targets skip the prefetch step entirely. After the
+build, container tests run (e.g. `tests/containers` with pytest); image
+metadata is read from both Docker `Config` and `ContainerConfig` so labels
+work when the daemon is Podman (see
+[tests/containers/docs/github-vs-local-image-metadata.md](../../tests/containers/docs/github-vs-local-image-metadata.md)).
+
+**uv version:** The repo root `uv.toml` specifies the `uv` version (e.g.
+`required-version = ">=0.10.6,<0.11"`). Use that version when running
+`create-requirements-lockfile.sh` or other scripts that call `uv`.
 
 ---
 
@@ -726,7 +734,6 @@ podman build \
     -f codeserver/ubi9-python-3.12/Dockerfile.cpu \
     --platform linux/amd64 \
     -t code-server-test \
-    --build-arg ARCH=amd64 \
     --build-arg LOCAL_BUILD=true \
     --build-arg BASE_IMAGE=quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest \
     --build-arg PYLOCK_FLAVOR=cpu \

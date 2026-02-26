@@ -48,7 +48,21 @@ class Image:
 
     @classmethod
     def from_docker(cls, image: docker.models.images.Image, name: str):
-        return Image(id=image.id, name=name, labels=image.labels)
+        # docker-py only reads attrs['Config']['Labels']. Podman's compat API sometimes
+        # returns labels in ContainerConfig only (see containers/podman#2017 and compat API).
+        # So we read from both so labels are present when running against Podman (e.g. GHA).
+        labels = _labels_from_docker_attrs(image.attrs)
+        return Image(id=image.id, name=name, labels=labels)
+
+
+def _labels_from_docker_attrs(attrs: dict[str, Any]) -> dict[str, str]:
+    """Extract image labels from Docker/Podman inspect attrs. Prefer Config, fallback to ContainerConfig."""
+    for key in ("Config", "ContainerConfig"):
+        config = attrs.get(key) or {}
+        labels = config.get("Labels")
+        if isinstance(labels, dict) and labels:
+            return dict(labels)
+    return {}
 
 
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_addoption
@@ -68,9 +82,9 @@ def get_image_metadata(image: str) -> Image:
         # docker inspect
         image_metadata = client.client.images.get(image)
     except docker.errors.ImageNotFound:
-        # skopeo inspect
+        # skopeo inspect (may be None if skopeo not installed or inspect failed)
         image_info = skopeo_utils.get_image_info(image)
-        if image_info.labels is not None:
+        if image_info is not None and image_info.labels is not None:
             return Image(id=None, name=image, labels=image_info.labels)
         # pull & docker inspect
         image_metadata = client.client.images.pull(image)
