@@ -62,7 +62,7 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
 	# build codeserver
 	git clone --depth 1 --branch "${CODESERVER_VERSION}" --recurse-submodules --shallow-submodules https://github.com/coder/code-server.git
 	cd code-server
-        
+
 #patch taken from vscodium s390x IBM : https://github.com/VSCodium/vscodium/blob/master/patches/linux/reh/s390x/arch-4-s390x-package.json.patch
 if [[ "$ARCH" == "s390x" ]]; then
 cat > s390x.patch <<EOL
@@ -103,8 +103,8 @@ index a4c7a2a3a35..d7f816248af 100644
 EOL
 
    git apply s390x.patch
-fi	
-        	
+fi
+
 	source ${NVM_DIR}/nvm.sh
 	while IFS= read -r src_patch; do echo "patches/$src_patch"; patch -p1 < "patches/$src_patch"; done < patches/series
 	nvm use ${NODE_VERSION}
