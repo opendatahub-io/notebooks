@@ -106,8 +106,15 @@ class TestBaseImage:
                             continue
 
                         count_scanned += 1
-                        ld_library_path = (
-                            os.environ.get("LD_LIBRARY_PATH", "") + os.path.pathsep + os.path.dirname(dlib)
+
+                        ld_library_path = os.path.pathsep.join(
+                            (
+                                os.environ.get("LD_LIBRARY_PATH", ""),
+                                # $ORIGIN
+                                os.path.dirname(dlib),
+                                # torchvision needs libtorch_cpu.so, libc10_cuda.so from torch
+                                "/opt/app-root/lib/python3.12/site-packages/torch/lib/",
+                            )
                         )
                         output = subprocess.check_output(
                             ["ldd", dlib],
