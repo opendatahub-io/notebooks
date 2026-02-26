@@ -9,7 +9,6 @@ ARG BASE_IMAGE
 # cuda-base        #
 ####################
 FROM ${BASE_IMAGE} AS cuda-base
-
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root

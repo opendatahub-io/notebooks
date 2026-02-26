@@ -3,14 +3,10 @@
 #########################
 ARG BASE_IMAGE
 
-# External image alias for UBI repository configuration
-FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
-
 ####################
 # cpu-base         #
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
-
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
