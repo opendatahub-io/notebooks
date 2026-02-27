@@ -46,7 +46,7 @@ flowchart TD
 
 ### File layout
 
-```
+```text
 manifests/base/
   kustomization.yaml          # generated -- do not edit by hand
   params.env                  # image refs for released versions (e.g. -2025-2)
