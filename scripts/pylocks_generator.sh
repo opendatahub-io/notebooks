@@ -52,6 +52,7 @@ MAIN_DIRS=("jupyter" "runtimes" "rstudio" "codeserver")
 # CVE constraints file - applied to all lock file generations
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+UV="${ROOT_DIR}/uv"
 CVE_CONSTRAINTS_FILE="$ROOT_DIR/dependencies/cve-constraints.txt"
 
 # ----------------------------
@@ -95,7 +96,7 @@ if ! command -v uv &>/dev/null; then
 fi
 
 UV_MIN_VERSION="0.4.0"
-UV_VERSION=$(uv --version 2>/dev/null | awk '{print $2}' || echo "0.0.0")
+UV_VERSION=$("$UV" --version 2>/dev/null | awk '{print $2}' || echo "0.0.0")
 
 version_ge() {
   [ "$(printf '%s\n' "$2" "$1" | sort -V | head -n1)" = "$2" ]
@@ -297,7 +298,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
 
     set +e
     # shellcheck disable=SC2086
-    uv pip compile pyproject.toml \
+    "$UV" pip compile pyproject.toml \
       --output-file "$output" \
       --format pylock.toml \
       --generate-hashes \
