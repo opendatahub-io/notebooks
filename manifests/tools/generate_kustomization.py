@@ -11,9 +11,9 @@ and ImageStream names are auto-discovered from the sibling .env and YAML
 files -- no hardcoded image list to keep in sync.
 
 Usage:
-    uv run manifests/base/generate_kustomization.py              # write kustomization.yaml
-    uv run manifests/base/generate_kustomization.py --check      # verify existing file matches
-    uv run manifests/base/generate_kustomization.py --stdout     # print to stdout instead
+    uv run manifests/tools/generate_kustomization.py              # write kustomization.yaml
+    uv run manifests/tools/generate_kustomization.py --check      # verify existing file matches
+    uv run manifests/tools/generate_kustomization.py --stdout     # print to stdout instead
 """
 
 from __future__ import annotations
@@ -27,7 +27,8 @@ from pathlib import Path
 from ntb.strings import process_template_with_indents
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-OUTPUT_FILE = SCRIPT_DIR / "kustomization.yaml"
+BASE_DIR = SCRIPT_DIR.parent / "base"
+OUTPUT_FILE = BASE_DIR / "kustomization.yaml"
 
 
 # ---------------------------------------------------------------------------
@@ -334,7 +335,7 @@ def _runtime_params_replacement(rt: Runtime) -> str:
     )
 
 
-def generate(base_dir: Path = SCRIPT_DIR) -> str:
+def generate(base_dir: Path = BASE_DIR) -> str:
     """Produce the full kustomization.yaml content."""
     all_resources, workbenches, _runtime_resource_files, runtimes = discover_config(base_dir)
 

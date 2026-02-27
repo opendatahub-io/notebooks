@@ -63,9 +63,9 @@ YAML files by a script.  After changing any `.env` file or adding/removing
 an ImageStream, regenerate it:
 
 ```bash
-uv run manifests/base/generate_kustomization.py            # write kustomization.yaml
-uv run manifests/base/generate_kustomization.py --check    # verify it matches (CI)
-uv run manifests/base/generate_kustomization.py --stdout   # preview without writing
+uv run manifests/tools/generate_kustomization.py            # write kustomization.yaml
+uv run manifests/tools/generate_kustomization.py --check    # verify it matches (CI)
+uv run manifests/tools/generate_kustomization.py --stdout   # preview without writing
 ```
 
 ### Consistency rules
