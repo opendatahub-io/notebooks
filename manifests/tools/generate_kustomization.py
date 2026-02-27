@@ -233,9 +233,10 @@ def _find_resource_file(all_resources: list[str], imagestream_name: str) -> str:
     for res in all_resources:
         if imagestream_name in res:
             return res
-    # If not found, this is likely a buildconfig or similar non-imagestream resource
-    # Return empty and let the caller handle it
-    return ""
+    raise ValueError(
+        f"Could not find resource file for imagestream {imagestream_name!r} "
+        f"in {all_resources}"
+    )
 
 
 def _order_resources(all_resources: list[str]) -> list[str]:
