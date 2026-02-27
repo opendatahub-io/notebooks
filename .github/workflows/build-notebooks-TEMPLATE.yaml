@@ -276,9 +276,13 @@ jobs:
             # AIPCC builds use RHEL-based base images, so prefetch from the rhds
             # variant to avoid RPM conflicts (e.g. openssl-fips-provider vs
             # openssl-fips-provider-so).
-            if [ "${{ inputs.subscription }}" = "true" ] && [ -d "$COMPONENT_DIR/prefetch-input/rhds" ]; then
+            if [ "${{ inputs.subscription }}" = "true" ]; then
+              if [ ! -d "$COMPONENT_DIR/prefetch-input/rhds" ]; then
+                echo "Subscription build requires $COMPONENT_DIR/prefetch-input/rhds" >&2
+                exit 1
+              fi
               echo "Subscription build with rhds variant detected"
-              PREFETCH_ARGS="$PREFETCH_ARGS --rhds
+              PREFETCH_ARGS="$PREFETCH_ARGS --rhds"
             fi
 
             scripts/lockfile-generators/prefetch-all.sh $PREFETCH_ARGS
