@@ -52,6 +52,7 @@ MAIN_DIRS=("jupyter" "runtimes" "rstudio" "codeserver")
 # CVE constraints file - applied to all lock file generations
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+UV="${ROOT_DIR}/uv"
 CVE_CONSTRAINTS_FILE="$ROOT_DIR/dependencies/cve-constraints.txt"
 
 # ----------------------------
@@ -89,13 +90,18 @@ read_conf_value() {
 # ----------------------------
 # PRE-FLIGHT CHECK
 # ----------------------------
+if [[ ! -x "$UV" ]]; then
+  error "Expected uv wrapper at '$UV' but it is missing or not executable."
+  exit 1
+fi
+
 if ! command -v uv &>/dev/null; then
   error "uv command not found. Please install uv: https://github.com/astral-sh/uv"
   exit 1
 fi
 
 UV_MIN_VERSION="0.4.0"
-UV_VERSION=$(uv --version 2>/dev/null | awk '{print $2}' || echo "0.0.0")
+UV_VERSION=$("$UV" --version 2>/dev/null | awk '{print $2}' || echo "0.0.0")
 
 version_ge() {
   [ "$(printf '%s\n' "$2" "$1" | sort -V | head -n1)" = "$2" ]
@@ -273,7 +279,9 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       echo "➡️ Generating $(uppercase "$flavor") lock file..."
     fi
 
-    # The behavior has changed in uv 0.9.17 (https://github.com/astral-sh/uv/pull/16956)
+    # Tag filtering was added in uv 0.9.16 (https://github.com/astral-sh/uv/pull/16956)
+    # but bypassed in --universal mode. uv 0.10.5 (https://github.com/astral-sh/uv/pull/18081)
+    # now filters wheels by requires-python and marker disjointness even in --universal mode.
     # Documentation at https://docs.astral.sh/uv/reference/cli/#uv-pip-compile--python-platform says that
     #  `--python-platform linux` is alias for `x86_64-unknown-linux-gnu`; we cannot use this to get a multiarch pylock
     # Let's use --universal temporarily, and in the future we can switch to using uv.lock
@@ -285,17 +293,17 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
     # Build constraints flag if CVE constraints file exists
     # Use relative path to avoid absolute paths in pylock.toml headers
     # (which would differ between CI and local environments)
-    local constraints_flag=""
+    local -a constraints_flag=()
     if [[ -f "$CVE_CONSTRAINTS_FILE" ]]; then
       local relative_constraints
       # Use Python for cross-platform relative path computation (realpath --relative-to is GNU-only)
       relative_constraints=$(python3 -c "import os; print(os.path.relpath('$CVE_CONSTRAINTS_FILE', '$PWD'))")
-      constraints_flag="--constraints=$relative_constraints"
+      constraints_flag=(--constraints "$relative_constraints")
     fi
 
     set +e
     # shellcheck disable=SC2086
-    uv pip compile pyproject.toml \
+    "$UV" pip compile pyproject.toml \
       --output-file "$output" \
       --format pylock.toml \
       --generate-hashes \
@@ -309,7 +317,7 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       --no-emit-package odh-notebooks-meta-runtime-datascience-deps \
       --no-emit-package odh-notebooks-meta-workbench-datascience-deps \
       $UPGRADE_FLAG \
-      $constraints_flag \
+      "${constraints_flag[@]}" \
       $index
     local status=$?
     set -e

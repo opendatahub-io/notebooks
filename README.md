@@ -62,16 +62,48 @@ Note: To ensure the GitHub Action runs successfully, users must add a `GH_ACCESS
 
 #### Prepare Python + uv + pytest env
 
+This project pins its uv version in `uv.toml` (`required-version`).
+Use the `./uv` wrapper script at the repo root — it reads the pinned
+version and runs it via `uvx`, so your system uv version doesn't matter:
+
 ```shell
 # Linux
 sudo dnf install python3.14
 pip install --user uv
-# MacOS
+# macOS
 brew install python@3.14 uv
 
-uv venv --python $(which python3.14)
-uv sync --locked
+./uv venv --python $(which python3.14)
+./uv sync --locked
 ```
+
+<details>
+<summary>Alternatives to <code>./uv</code></summary>
+
+The `./uv` wrapper is the recommended way, but you can also
+(replace `0.10.6` below with the version from `uv.toml`):
+
+- **Use `uvx` directly** with an explicit version:
+  ```shell
+  uvx uv@0.10.6 sync --locked
+  ```
+- **Use `uv tool run`** (equivalent, longer form):
+  ```shell
+  uv tool run uv@0.10.6 sync --locked
+  ```
+- **Install the exact version** so `uv` works directly:
+  ```shell
+  # Standalone installer (any OS)
+  curl -LsSf https://astral.sh/uv/0.10.6/install.sh | sh
+  # Or with pip
+  pip install uv==0.10.6
+  ```
+
+If your system uv matches the pinned version, you can use `uv` directly —
+`required-version` in `uv.toml` will let it through. If it doesn't match,
+uv exits with a clear error telling you which version is required.
+
+</details>
 
 #### Running Python selftests in Pytest
 By completing configuration in previous section, you are able to run any tests that don't need to start a container using following command:
@@ -106,7 +138,7 @@ sudo dnf install podman
 systemctl --user start podman.service
 systemctl --user status podman.service
 systemctl --user status podman.socket
-DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock uv run pytest tests/containers -m 'not openshift and not cuda and not rocm' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
+DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock ./uv run pytest tests/containers -m 'not openshift and not cuda and not rocm' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
 
 # Mac OS
 brew install podman
@@ -114,7 +146,7 @@ podman machine init
 podman machine set --rootful=false
 sudo podman-mac-helper install
 podman machine start
-uv run pytest tests/containers -m 'not openshift' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
+./uv run pytest tests/containers -m 'not openshift' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
 ```
 
 When using lima on macOS, it might be useful to give yourself access to rootful podman socket
