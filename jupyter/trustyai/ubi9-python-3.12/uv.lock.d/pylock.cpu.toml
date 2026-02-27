@@ -198,9 +198,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "codeflare-sdk"
-version = "0.34.0"
+version = "0.35.0"
 marker = "implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/codeflare_sdk-0.34.0-2-py3-none-any.whl", hashes = { sha256 = "34a714c35a2f67f64945e77f14a298701f6888a8421552eb27c5e51b9b49dc06" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/codeflare_sdk-0.35.0-2-py3-none-any.whl", hashes = { sha256 = "3d6ef355c844223251a038a6ea45708bf5259ce6ccd31c1e563929666258a392" } }]
 
 [[packages]]
 name = "colorama"
@@ -233,13 +233,13 @@ wheels = [
 
 [[packages]]
 name = "cryptography"
-version = "46.0.3"
+version = "46.0.5"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/cryptography-46.0.3-2-cp312-abi3-linux_aarch64.whl", hashes = { sha256 = "1b90ebf281100bae06c6a7378ca6c79aeb0d44b59be760d43c683c394fc82983" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/cryptography-46.0.3-2-cp312-abi3-linux_ppc64le.whl", hashes = { sha256 = "35137a6f487c8786015f5f5434985109d7482af44377ff4e76ff34a1ddcee62e" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/cryptography-46.0.3-2-cp312-abi3-linux_s390x.whl", hashes = { sha256 = "c03d4649d24ebaa00a388b22f4e9b8f9d8a301fe354c1cb4c9d160639b219ae3" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/cryptography-46.0.3-2-cp312-abi3-linux_x86_64.whl", hashes = { sha256 = "96522b9276c0ee070aad5df9721e09efee85c565005970acb1ebc67251291fe8" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/cryptography-46.0.5-2-cp312-abi3-linux_aarch64.whl", hashes = { sha256 = "ec1add1e8525c1e8aaf8e8d396a7dd442efb52383a7d30cd21562c404463699b" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/cryptography-46.0.5-2-cp312-abi3-linux_ppc64le.whl", hashes = { sha256 = "37633985557bae3341cb03ea91a1306b7e45b1d10f1d23a45b365dde45e932c0" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/cryptography-46.0.5-2-cp312-abi3-linux_s390x.whl", hashes = { sha256 = "e542421ec8806f41b533806bcaed8a32f69cddc77924dd5887c9c77c1d3fd53e" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/cryptography-46.0.5-2-cp312-abi3-linux_x86_64.whl", hashes = { sha256 = "b4b7ae29ae7d26ca742f3cca3fe02fd95959c1e1d5c90e93b4ed1e6f3511f69f" } },
 ]
 
 [[packages]]
@@ -327,9 +327,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "executing"
-version = "1.2.0"
+version = "2.2.1"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/executing-1.2.0-2-py2.py3-none-any.whl", hashes = { sha256 = "61180d3d5b0420b328bdd083086ce5564ebbf4793b1ac2f70765cf7862d6526c" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/executing-2.2.1-2-py2.py3-none-any.whl", hashes = { sha256 = "088f0bd7d3b2c2660facae165ac7a21933275be99e42c9071d05ddc4c1263f5b" } }]
 
 [[packages]]
 name = "fastjsonschema"
@@ -443,8 +443,6 @@ version = "1.78.1"
 marker = "python_full_version >= '3.10' and implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux'"
 wheels = [
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/grpcio-1.78.1-2-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "90b6fb3063c20eb3f4bbe351e19b930fca36770a78b5b943ce8371def68fcad0" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/grpcio-1.78.1-2-cp312-cp312-linux_ppc64le.whl", hashes = { sha256 = "6248c2f8f7abc4c78c44f22ce3d6863666e9ee5c46bada70f252c1ed75999a5a" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/grpcio-1.78.1-2-cp312-cp312-linux_s390x.whl", hashes = { sha256 = "08d0bb4d4e687e297741405dca44f8648052f22b544f764946360941077a95f0" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/grpcio-1.78.1-2-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "2ac740898a2827db496f1dc7c187f3724e755aef354e6c06134531bbb5de92b2" } },
 ]
 
@@ -462,8 +460,6 @@ wheels = [
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/hf_xet-1.2.0-2-cp37-abi3-linux_aarch64.whl", hashes = { sha256 = "fda76c500479dda209f839500a876b172716c19e89bb73828dbb07b54b11f594" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/hf_xet-1.2.0-2-cp37-abi3-linux_x86_64.whl", hashes = { sha256 = "c29f043e001bd0cacc97e9285bb2de58e3377f88ba2f21c9c7607bfa12ae9670" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/hf_xet-1.2.0-3-cp37-abi3-linux_aarch64.whl", hashes = { sha256 = "033e050471339a9dc9786c8f4c855c90d58379324318d9ea8aeb7a71d05366db" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/hf_xet-1.2.0-3-cp37-abi3-linux_ppc64le.whl", hashes = { sha256 = "84cac7d4744ed38e6025e1b8f717cdfdaa4c19964adec390c08f455e939dde54" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/hf_xet-1.2.0-3-cp37-abi3-linux_s390x.whl", hashes = { sha256 = "f54beeee93c015d9f2b34d52e4a8387a7137bedb5a85393dcbf6e616f2b9fad0" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/hf_xet-1.2.0-3-cp37-abi3-linux_x86_64.whl", hashes = { sha256 = "3dc1ec4be0672c81701694c53da9682b68c490273738da83d02b1cef54e5bff4" } },
 ]
 
@@ -730,6 +726,12 @@ wheels = [
 ]
 
 [[packages]]
+name = "kube-authkit"
+version = "0.4.0"
+marker = "implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/kube_authkit-0.4.0-2-py3-none-any.whl", hashes = { sha256 = "a39a9edcf4de28999c6c171a04afc1b17caa7810eee2ea4f27f84f35c34eda54" } }]
+
+[[packages]]
 name = "kubeflow-training"
 version = "1.9.3"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -834,8 +836,6 @@ version = "1.1.2"
 marker = "implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux'"
 wheels = [
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/msgpack-1.1.2-2-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "de6180fab1dee6f26e8fc41d1859f81dbaa5e443b8a8425589055660cf542cba" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/msgpack-1.1.2-2-cp312-cp312-linux_ppc64le.whl", hashes = { sha256 = "b40a93f9aeeca86d6d0ac69a1baea430030f0a25d96172dbce6a3a73ee483276" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/msgpack-1.1.2-2-cp312-cp312-linux_s390x.whl", hashes = { sha256 = "9087e44d1e86a8c3813be7b4ce1d618ff81577d6370893572ec22e8c2969c830" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/msgpack-1.1.2-2-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "29ce7557d122e3c00cf95eb41870adb924c0149311a122724c33b85a6bc78c8e" } },
 ]
 
@@ -1239,8 +1239,6 @@ version = "2.41.5"
 marker = "implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux'"
 wheels = [
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/pydantic_core-2.41.5-2-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "58e405778dca478fc44ff10af9965922ef0c2920af07991cb0e0ac75da30eb59" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/pydantic_core-2.41.5-2-cp312-cp312-linux_ppc64le.whl", hashes = { sha256 = "ce56d9bafc1406dc926f6b6d770adeeba5e875b5b9d181e20c76384830c8fa6e" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/pydantic_core-2.41.5-2-cp312-cp312-linux_s390x.whl", hashes = { sha256 = "eee5cf9017dca982cd43074555a6a72e07d62afca3964ee01d02f4528d8334e4" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/pydantic_core-2.41.5-2-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "17652695aa2d8b6d8513b6ee528e01d70535baeda7a81729956b6bd79c80ecfe" } },
 ]
 
@@ -1619,11 +1617,8 @@ version = "2.9.1"
 marker = "implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux'"
 wheels = [
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/torch-2.9.1-3-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "9dd2e4d17dd2b266e60d8f20ae30258b6d4071deb7a90a36d70b6c1ac0dd74bf" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/torch-2.9.1-3-cp312-cp312-linux_ppc64le.whl", hashes = { sha256 = "1749dde4ce01cb64a8251af18f7617c82a9701f965a75840e4a6196d565641b1" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/torch-2.9.1-3-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "04c3c21b28f066a14506e23f3c0dafa1ef1830eb7a0d268232bee90ea0a8c4ec" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/torch-2.9.1-4-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "3009e74e9128b6a4b05714722d574990daf535f24c147cb40bdfbabef536b29d" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/torch-2.9.1-4-cp312-cp312-linux_ppc64le.whl", hashes = { sha256 = "b870a19bc66ec179cd2ff67ba0f6351be1de590838d818a755cdb23586499445" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/torch-2.9.1-4-cp312-cp312-linux_s390x.whl", hashes = { sha256 = "6fa2ee27be11abf4080c8956357f6b3bcdd7d31cdd845928e757f8d6d1cfa0b3" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/torch-2.9.1-4-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "3df4d9a405077b290e4c186dca28b4758da2dff778219cf928bf57a0f8adae10" } },
 ]
 
@@ -1662,7 +1657,6 @@ version = "3.5.1"
 marker = "implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux'"
 wheels = [
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/triton-3.5.1-2-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "9e0941f45f77cf05948f9d54eb40edd116f802c172927d3e263b3aa04fa9aea0" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/triton-3.5.1-2-cp312-cp312-linux_ppc64le.whl", hashes = { sha256 = "73808e604e32f0c9a363119b06df72c8b4232e4035ee29249d264c4c0152fa21" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/triton-3.5.1-2-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "31eb05a00d9d532a37be25a9eed575f68622f03118407e1f65d694e59f09f42a" } },
 ]
 
@@ -1779,8 +1773,6 @@ version = "2.1.1"
 marker = "implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux'"
 wheels = [
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/wrapt-2.1.1-2-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "793b1e6e477e1251781539689dc3609e8b450d0a19b0fa8e407312aef34a0e80" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/wrapt-2.1.1-2-cp312-cp312-linux_ppc64le.whl", hashes = { sha256 = "78c6e2cd40d35aae8323f20496752532fc4beb6aa12ef2b9fd6d4679d1d59385" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/wrapt-2.1.1-2-cp312-cp312-linux_s390x.whl", hashes = { sha256 = "235d852e5cfe9715e81328e3457289baee013441548d4fd2c3becf4cde544d1e" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/wrapt-2.1.1-2-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "3476ed6d2e20c1f78c5c1ebd5f6674375996f065fcaf9fd9b110e245411c92e2" } },
 ]
 
