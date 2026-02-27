@@ -134,16 +134,7 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
     # 2) Collect all param keys from .env files
     param_keys = _parse_env_keys(base_dir / "params.env") | _parse_env_keys(base_dir / "params-latest.env")
 
-    # 3) Build a map: resource_file -> imagestream_name (from YAML files)
-    resource_to_imagestream: dict[str, str] = {}
-    for res_file in all_resources:
-        path = base_dir / res_file
-        if path.exists():
-            name = _parse_imagestream_name(path)
-            if name:
-                resource_to_imagestream[res_file] = name
-
-    # 4) Parse param keys into (base_key, suffix) pairs.
+    # 3) Parse param keys into (base_key, suffix) pairs.
     #    e.g. "odh-workbench-...-ubi9-n"      -> ("odh-workbench-...-ubi9", "-n")
     #         "odh-workbench-...-ubi9-2025-2"  -> ("odh-workbench-...-ubi9", "-2025-2")
     #    We group by imagestream because different py versions share the same imagestream.
@@ -223,7 +214,7 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
 
     # Build final resource list: workbench files + extra files + runtime files
     # Match the ordering in the existing kustomization.yaml
-    ordered_resources = _order_resources(all_resources, workbench_resource_files, extra_resources, runtime_resource_files)
+    ordered_resources = _order_resources(all_resources)
 
     return ordered_resources, workbenches, runtime_resource_files, runtimes
 
@@ -247,23 +238,9 @@ def _find_resource_file(all_resources: list[str], imagestream_name: str) -> str:
     return ""
 
 
-def _order_resources(
-    all_resources: list[str],
-    workbench_files: list[str],
-    extra_files: list[str],
-    runtime_files: list[str],
-) -> list[str]:
-    """Order resources matching the existing kustomization.yaml.
-
-    Walk through all_resources in order and emit each file once, categorized.
-    """
-    result: list[str] = []
-    seen: set[str] = set()
-    for res in all_resources:
-        if res not in seen:
-            result.append(res)
-            seen.add(res)
-    return result
+def _order_resources(all_resources: list[str]) -> list[str]:
+    """Deduplicate resources while preserving the existing kustomization.yaml order."""
+    return list(dict.fromkeys(all_resources))
 
 
 # ---------------------------------------------------------------------------
@@ -419,7 +396,7 @@ def _print_first_difference(existing: str, generated: str) -> None:
     """Print a diagnostic showing the first line that differs."""
     existing_lines = existing.splitlines()
     generated_lines = generated.splitlines()
-    for i, (e, g) in enumerate(zip(existing_lines, generated_lines), 1):
+    for i, (e, g) in enumerate(zip(existing_lines, generated_lines, strict=False), 1):
         if e != g:
             print(f"  First difference at line {i}:", file=sys.stderr)
             print(f"    existing:  {e!r}", file=sys.stderr)
