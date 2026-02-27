@@ -94,8 +94,6 @@ ENV ELYRA_INSTALL_PACKAGES="false"
 # Copy utility script
 COPY ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
 
-USER 0
-
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 
