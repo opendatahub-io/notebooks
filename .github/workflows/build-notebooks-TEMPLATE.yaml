@@ -271,7 +271,21 @@ jobs:
             echo "Hermetic build detected — prefetching dependencies for $COMPONENT_DIR"
             pip3 install --quiet --break-system-packages pyyaml
             command -v uv &>/dev/null || pip3 install --quiet --break-system-packages uv
-            scripts/lockfile-generators/prefetch-all.sh --component-dir "$COMPONENT_DIR"
+
+            PREFETCH_ARGS="--component-dir $COMPONENT_DIR"
+            # AIPCC builds use RHEL-based base images, so prefetch from the rhds
+            # variant to avoid RPM conflicts (e.g. openssl-fips-provider vs
+            # openssl-fips-provider-so).
+            if [ "${{ inputs.subscription }}" = "true" ]; then
+              if [ ! -d "$COMPONENT_DIR/prefetch-input/rhds" ]; then
+                echo "Subscription build requires $COMPONENT_DIR/prefetch-input/rhds" >&2
+                exit 1
+              fi
+              echo "Subscription build with rhds variant detected"
+              PREFETCH_ARGS="$PREFETCH_ARGS --rhds"
+            fi
+
+            scripts/lockfile-generators/prefetch-all.sh $PREFETCH_ARGS
             if [ -x scripts/lockfile-generators/post-prefetch.sh ]; then
               scripts/lockfile-generators/post-prefetch.sh --component-dir "$COMPONENT_DIR"
             fi
@@ -279,6 +293,9 @@ jobs:
           else
             echo "No prefetch-input/ found for $COMPONENT_DIR — skipping"
           fi
+        env:
+          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
 
       - name: "Build: make ${{ inputs.target }}"
         id: make-target
