@@ -93,11 +93,17 @@ USER 0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-echo "Installing softwares and packages"
-# This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
-#  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-# Not using --build-constraints=./requirements.txt because error: Unnamed requirements are not allowed as constraints (found: `https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4/
-uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+
+### BEGIN Install software and packages
+echo "Installing software and packages"
+# Install Python packages from lockfile with hash verification
+# All dependencies are explicitly listed in pylock.toml (--no-deps)
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+    --strict --no-deps --no-config --no-progress \
+    --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
+    --requirements=./pylock.toml
+### END Install software and packages
+
 # Fix permissions to support pip in Openshift environments
 chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P

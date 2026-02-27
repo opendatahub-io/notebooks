@@ -150,9 +150,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "codeflare-sdk"
-version = "0.34.0"
+version = "0.35.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/rocm6.4-ubi9/codeflare_sdk-0.34.0-12-py3-none-any.whl", hashes = { sha256 = "5e33e402326260bf4468f5d0477d081de447b806e643cd202f3f25f4323b79d5" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/rocm6.4-ubi9/codeflare_sdk-0.35.0-12-py3-none-any.whl", hashes = { sha256 = "454ea6e08bc49f70b6d2618ac5625414233522b665cab5a127ddee70ee489a40" } }]
 
 [[packages]]
 name = "colorama"
@@ -180,9 +180,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "cryptography"
-version = "46.0.3"
+version = "46.0.5"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/rocm6.4-ubi9/cryptography-46.0.3-12-cp312-abi3-linux_x86_64.whl", hashes = { sha256 = "49e8e68a2886c9774bcded159876a7fd1571594cda62e0d4b456d38820e55e15" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/rocm6.4-ubi9/cryptography-46.0.5-12-cp312-abi3-linux_x86_64.whl", hashes = { sha256 = "12cd526b94713a7a0fd5bb5e0fd8278d7ec59a6579cf04271afef82aef70335e" } }]
 
 [[packages]]
 name = "cycler"
@@ -246,9 +246,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "executing"
-version = "1.2.0"
+version = "2.2.1"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/rocm6.4-ubi9/executing-1.2.0-12-py2.py3-none-any.whl", hashes = { sha256 = "493e100dd9835dbfbe2e552bcf854fd5155be133a0f21aac5c17ce030cf7f76d" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/rocm6.4-ubi9/executing-2.2.1-12-py2.py3-none-any.whl", hashes = { sha256 = "4f6b4754388c66c50d266bf6cc2d36fd30a4282fb8e0cf7cf3536b333bdf233c" } }]
 
 [[packages]]
 name = "fastapi"
@@ -459,6 +459,12 @@ name = "kiwisolver"
 version = "1.4.9"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/rocm6.4-ubi9/kiwisolver-1.4.9-12-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "0bfe3b2fae4499d6528264ac1cfd02b510338abbf6eaa518075c55f77b675a0f" } }]
+
+[[packages]]
+name = "kube-authkit"
+version = "0.4.0"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/rocm6.4-ubi9/kube_authkit-0.4.0-12-py3-none-any.whl", hashes = { sha256 = "55e285890e3602e9e8b65739f9db60a2677ed7d7a61fd4132428e35d8b800982" } }]
 
 [[packages]]
 name = "kubernetes"

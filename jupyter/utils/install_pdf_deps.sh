@@ -76,10 +76,32 @@ kpsewhich tcolorbox.sty
 
 # pandoc installation
 # https://github.com/jgm/pandoc/releases/3.7.0.2
-curl -fL "https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-${ARCH}.tar.gz"  -o /tmp/pandoc.tar.gz
-mkdir -p /usr/local/pandoc
-tar xvzf /tmp/pandoc.tar.gz --strip-components 1 -C /usr/local/pandoc/
-rm -f /tmp/pandoc.tar.gz
+# alternative installation method (EPEL, currently pandoc-2.14.0.3-17):
+#   dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+#   dnf install -y pandoc
+#   mkdir -p /usr/local/pandoc/bin
+#   ln -s /usr/bin/pandoc /usr/local/pandoc/bin/pandoc
+#   export PATH="/usr/local/pandoc/bin:$PATH"
+#   pandoc --version
+# github installation method (newer version, but missing ppc64le):
+#   curl -fL "https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-${ARCH}.tar.gz"  -o /tmp/pandoc.tar.gz
+#   mkdir -p /usr/local/pandoc
+#   tar xvzf /tmp/pandoc.tar.gz --strip-components 1 -C /usr/local/pandoc/
+#   rm -f /tmp/pandoc.tar.gz
+
+if [[ "$ARCH" == "ppc64le" ]]; then
+  dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+  dnf install -y pandoc
+  mkdir -p /usr/local/pandoc/bin
+  ln -s /usr/bin/pandoc /usr/local/pandoc/bin/pandoc
+  export PATH="/usr/local/pandoc/bin:$PATH"
+  pandoc --version
+else
+  curl -fL "https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-${ARCH}.tar.gz"  -o /tmp/pandoc.tar.gz
+  mkdir -p /usr/local/pandoc
+  tar xvzf /tmp/pandoc.tar.gz --strip-components 1 -C /usr/local/pandoc/
+  rm -f /tmp/pandoc.tar.gz
+fi
 
 # clean up /tmp
 rm -rf /tmp/* /tmp/.[!.]*
