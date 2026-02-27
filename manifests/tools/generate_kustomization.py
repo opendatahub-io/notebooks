@@ -131,6 +131,9 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
     assert resource_section, "Could not find resources section in kustomization.yaml"
     all_resources = [line.strip().lstrip("- ") for line in resource_section.group(1).splitlines() if line.strip()]
 
+    # 1b) Build imagestream name -> resource file mapping from YAML metadata
+    imagestream_to_resource = _build_imagestream_to_resource(base_dir, all_resources)
+
     # 2) Collect all param keys from .env files
     param_keys = _parse_env_keys(base_dir / "params.env") | _parse_env_keys(base_dir / "params-latest.env")
 
@@ -189,13 +192,13 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
         suffix = m.group(2)
 
         if full_key.startswith("odh-pipeline-runtime-"):
-            res_file = _find_resource_file(all_resources, istream)
+            res_file = _find_resource_file(all_resources, istream, imagestream_to_resource)
             runtimes.append(Runtime(base_key, istream, res_file))
             if res_file not in runtime_resource_files:
                 runtime_resource_files.append(res_file)
         else:
             if istream not in seen_workbench_imagestreams:
-                res_file = _find_resource_file(all_resources, istream)
+                res_file = _find_resource_file(all_resources, istream, imagestream_to_resource)
                 wb = Workbench(istream, res_file)
                 seen_workbench_imagestreams[istream] = wb
                 workbenches.append(wb)
@@ -219,16 +222,47 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
     return ordered_resources, workbenches, runtime_resource_files, runtimes
 
 
-def _find_resource_file(all_resources: list[str], imagestream_name: str) -> str:
+def _build_imagestream_to_resource(base_dir: Path, all_resources: list[str]) -> dict[str, str]:
+    """Build a mapping from imagestream metadata.name to resource filename.
+
+    Parses each YAML resource file to extract its ``metadata.name`` field,
+    producing a reverse lookup so that imagestream names that don't match
+    their filenames (e.g. ``s2i-minimal-notebook`` living inside
+    ``jupyter-minimal-notebook-imagestream.yaml``) can still be resolved.
+    """
+    mapping: dict[str, str] = {}
+    for res in all_resources:
+        res_path = base_dir / res
+        if not res_path.exists() or not res.endswith(".yaml"):
+            continue
+        istream_name = _parse_imagestream_name(res_path)
+        if istream_name:
+            if istream_name in mapping:
+                raise ValueError(
+                    f"Duplicate imagestream metadata.name {istream_name!r}: "
+                    f"found in both {mapping[istream_name]!r} and {res!r}"
+                )
+            mapping[istream_name] = res
+    return mapping
+
+
+def _find_resource_file(
+    all_resources: list[str],
+    imagestream_name: str,
+    imagestream_to_resource: dict[str, str],
+) -> str:
     """Find the resource file for a given imagestream name.
 
-    Tries exact match first, then falls back to substring matching.
+    Tries exact match first, then the parsed metadata.name mapping,
+    then falls back to substring matching.
     """
     # Common patterns: imagestream "runtime-minimal" -> "runtime-minimal-imagestream.yaml"
-    #                  imagestream "s2i-minimal-notebook" -> "jupyter-minimal-notebook-imagestream.yaml"
     exact = f"{imagestream_name}-imagestream.yaml"
     if exact in all_resources:
         return exact
+    # Use the parsed metadata.name -> filename mapping
+    if imagestream_name in imagestream_to_resource:
+        return imagestream_to_resource[imagestream_name]
     # Fall back: find any resource containing the imagestream name
     for res in all_resources:
         if imagestream_name in res:
