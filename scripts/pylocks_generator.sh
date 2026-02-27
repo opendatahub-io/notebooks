@@ -273,7 +273,9 @@ for TARGET_DIR in "${TARGET_DIRS[@]}"; do
       echo "➡️ Generating $(uppercase "$flavor") lock file..."
     fi
 
-    # The behavior has changed in uv 0.9.17 (https://github.com/astral-sh/uv/pull/16956)
+    # Tag filtering was added in uv 0.9.16 (https://github.com/astral-sh/uv/pull/16956)
+    # but bypassed in --universal mode. uv 0.10.5 (https://github.com/astral-sh/uv/pull/18081)
+    # now filters wheels by requires-python and marker disjointness even in --universal mode.
     # Documentation at https://docs.astral.sh/uv/reference/cli/#uv-pip-compile--python-platform says that
     #  `--python-platform linux` is alias for `x86_64-unknown-linux-gnu`; we cannot use this to get a multiarch pylock
     # Let's use --universal temporarily, and in the future we can switch to using uv.lock

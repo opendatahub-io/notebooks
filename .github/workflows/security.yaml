@@ -17,10 +17,9 @@ jobs:
     steps:
 
       # https://github.com/astral-sh/setup-uv
-      - name: Install the latest version of uv
+      - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          version: "latest"
           activate-environment: false
           ignore-empty-workdir: true
           enable-cache: false
