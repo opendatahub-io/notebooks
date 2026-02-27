@@ -76,6 +76,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
+        with:
+          version-file: uv.toml
 
       - name: Run make refresh-lock-files
         run: |

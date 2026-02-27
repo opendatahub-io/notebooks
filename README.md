@@ -80,7 +80,8 @@ brew install python@3.14 uv
 <details>
 <summary>Alternatives to <code>./uv</code></summary>
 
-The `./uv` wrapper is the recommended way, but you can also:
+The `./uv` wrapper is the recommended way, but you can also
+(replace `0.10.6` below with the version from `uv.toml`):
 
 - **Use `uvx` directly** with an explicit version:
   ```shell

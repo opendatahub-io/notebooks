@@ -32,7 +32,7 @@ if [[ -z "${version:-}" ]]; then
 fi
 
 # Fast path: use the system uv directly if it already matches the pinned version
-if current=$(uv --version 2>/dev/null) && [[ "$current" == "uv $version "* ]]; then
+if current=$(uv --version 2>/dev/null) && [[ "$current" == "uv $version" || "$current" == "uv $version "* ]]; then
     exec uv "$@"
 fi
 
