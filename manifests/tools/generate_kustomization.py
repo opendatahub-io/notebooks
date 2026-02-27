@@ -169,7 +169,7 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
     # Split into params blocks and commit blocks
     params_pairs: list[tuple[str, str]] = []  # (full_key, imagestream)
     commit_pairs: list[tuple[str, str]] = []
-    for key, istream in zip(field_paths, imagestreams):
+    for key, istream in zip(field_paths, imagestreams, strict=True):
         if "-commit-" in key:
             commit_pairs.append((key, istream))
         else:
