@@ -470,7 +470,8 @@ COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/run-code-server.sh ${CODESERVER_SO
 
 ENV SHELL=/bin/bash
 
-ENV PYTHONPATH=/opt/app-root/bin/python3
+# Directory where uv pip install puts packages; PYTHONPATH must be a directory, not the python binary.
+ENV PYTHONPATH=/opt/app-root/lib/python3.12/site-packages
 
 # Copy requirements files (pylock.toml for metadata; requirements.txt used for installation)
 COPY ${CODESERVER_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
