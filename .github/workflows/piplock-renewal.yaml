@@ -75,7 +75,9 @@ jobs:
           python-version: '3.12'
 
       - name: Install uv
-        run: pip install "uv==0.9.27"
+        uses: astral-sh/setup-uv@v7
+        with:
+          version-file: uv.toml
 
       - name: Run make refresh-lock-files
         run: |

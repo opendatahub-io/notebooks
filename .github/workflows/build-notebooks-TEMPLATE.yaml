@@ -166,7 +166,7 @@ jobs:
         # NOTE: the arm64 GitHub hosted runner does not have the /mnt-mounted scratch disk
         if: "${{ contains(inputs.target, 'rocm') || contains(inputs.target, 'cuda') ||
          contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') ||
-         inputs.platform == 'linux/arm64' }}"
+         contains(inputs.target, 'codeserver') || inputs.platform == 'linux/arm64' }}"
 
       - id: install-compsize
         run: sudo apt-get install -y btrfs-compsize
@@ -238,6 +238,16 @@ jobs:
              # Compiling pyzmq through UV needs this in CFLAGS
              extra_podman_build_args += '--env=CFLAGS=-Dundefined=64 --env=CXXFLAGS=-Dundefined=64 --unsetenv=CFLAGS --unsetenv=CXXFLAGS'
 
+          if "codeserver" in "${{ inputs.target }}":
+             # Hermetic codeserver builds compile from source on every run — there
+             # is no effective layer cache to reuse.  --layers=false stops podman
+             # from persisting intermediate layers within each stage, cutting peak
+             # disk use roughly in half.
+             extra_podman_build_args += ' --layers=false'
+             # GHA runners (16GB RAM) need reduced VS Code build parallelism.
+             # apply-patch.sh checks GHA_BUILD and runs patches/tweak-gha.sh.
+             extra_podman_build_args += ' --build-arg GHA_BUILD=true'
+
           event_name: Literal['push', 'pull_request', 'pull_request_target', 'schedule', 'workflow_dispatch'] = "${{ fromJson(inputs.github).event_name }}"
           cache = "${{ env.CACHE }}"
 
@@ -262,6 +272,10 @@ jobs:
       # Hermetic builds: when the target ships a prefetch-input/ directory,
       # download all dependencies into cachi2/output/ so the Dockerfile can
       # build fully offline.  Targets without prefetch-input/ are unaffected.
+      # For RHDS/AIPCC builds (subscription: true), the --rhds flag selects the
+      # downstream lockfiles and the SUBSCRIPTION_* env vars supply the RHEL
+      # credentials for RPM downloads from cdn.redhat.com — secrets never
+      # appear on the command line.
       - name: "Prefetch hermetic build dependencies"
         id: prefetch
         run: |
@@ -271,7 +285,21 @@ jobs:
             echo "Hermetic build detected — prefetching dependencies for $COMPONENT_DIR"
             pip3 install --quiet --break-system-packages pyyaml
             command -v uv &>/dev/null || pip3 install --quiet --break-system-packages uv
-            scripts/lockfile-generators/prefetch-all.sh --component-dir "$COMPONENT_DIR"
+
+            PREFETCH_ARGS="--component-dir $COMPONENT_DIR"
+            # AIPCC builds use RHEL-based base images, so prefetch from the rhds
+            # variant to avoid RPM conflicts (e.g. openssl-fips-provider vs
+            # openssl-fips-provider-so).
+            if [ "${{ inputs.subscription }}" = "true" ]; then
+              if [ ! -d "$COMPONENT_DIR/prefetch-input/rhds" ]; then
+                echo "Subscription build requires $COMPONENT_DIR/prefetch-input/rhds" >&2
+                exit 1
+              fi
+              echo "Subscription build with rhds variant detected"
+              PREFETCH_ARGS="$PREFETCH_ARGS --rhds"
+            fi
+
+            scripts/lockfile-generators/prefetch-all.sh $PREFETCH_ARGS
             if [ -x scripts/lockfile-generators/post-prefetch.sh ]; then
               scripts/lockfile-generators/post-prefetch.sh --component-dir "$COMPONENT_DIR"
             fi
@@ -279,12 +307,21 @@ jobs:
           else
             echo "No prefetch-input/ found for $COMPONENT_DIR — skipping"
           fi
+        env:
+          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
 
       - name: "Build: make ${{ inputs.target }}"
         id: make-target
         run: |
-          # print running stats on disk occupancy
-          (while true; do df -h | grep "${HOME}/.local/share/containers"; sleep 30; done) &
+          # Print disk and memory stats every 30s so OOM/disk-full failures
+          # leave a breadcrumb trail in the logs.
+          (while true; do
+            echo "=== $(date -u '+%H:%M:%S') ==="
+            df -h | grep "${HOME}/.local/share/containers"
+            free -h
+            sleep 30
+          done) &
 
           make ${{ inputs.target }}
         env:
@@ -302,10 +339,10 @@ jobs:
       # region Pytest image tests
 
       # https://github.com/astral-sh/setup-uv
-      - name: Install the latest version of uv
+      - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          version: "latest"
+          version-file: uv.toml
           python-version: "3.14"
           enable-cache: true
           cache-dependency-glob: "uv.lock"

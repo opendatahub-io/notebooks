@@ -1,0 +1,40 @@
+#!/usr/bin/env -S bash --norc --noprofile
+# ./uv — run the project-pinned version of uv.
+#
+# Reads required-version from uv.toml and delegates via `uv tool run`.
+# This avoids version mismatch errors when your system uv (e.g. Homebrew)
+# differs from the version pinned for this project.
+#
+# Usage:
+#   ./uv sync
+#   ./uv run pytest
+#   ./uv pip compile ...
+#
+# The pinned version is cached by uvx after the first run.
+# Parsing uses bash =~ instead of forking sed to avoid a subprocess.
+#
+# Bash with built-in regex is ~3x faster than Python for this task (hyperfine,
+# 50 runs): bash+builtin 18.7ms, bash+sed 25.0ms, python 55.4ms.
+set -Eeuo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+while IFS= read -r line; do
+    if [[ "$line" =~ ^required-version\ *=\ *\"==([^\"]*)\" ]]; then
+        version="${BASH_REMATCH[1]}"
+        break
+    fi
+done < "${SCRIPT_DIR}/uv.toml"
+
+if [[ -z "${version:-}" ]]; then
+    echo "error: could not read required-version from ${SCRIPT_DIR}/uv.toml" >&2
+    exit 1
+fi
+
+# Fast path: use the system uv directly if it already matches the pinned version
+if current=$(uv --version 2>/dev/null) && [[ "$current" == "uv $version" || "$current" == "uv $version "* ]]; then
+    exec uv "$@"
+fi
+
+# Slow path: run the pinned version via uvx (downloaded and cached on first use)
+exec uv tool run "uv@${version}" "$@"

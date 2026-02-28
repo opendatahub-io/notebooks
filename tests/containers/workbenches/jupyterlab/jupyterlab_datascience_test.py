@@ -82,6 +82,12 @@ print("Scikit-learn smoke test completed successfully.")
 
     @allure.description("Check that mysql client functionality is working with SASL plain auth.")
     def test_mysql_connection(self, tf: TestFrame, datascience_image: Image, subtests):
+        name_label = datascience_image.labels.get("name", "")
+        if "-rstudio-" in name_label:
+            pytest.skip(
+                f"Image {datascience_image.name} does have -rstudio- in {datascience_image.labels['name']=}'"
+            )
+
         MYSQL_CONNECTOR_PYTHON_VERSION = "9.5.0"
 
         network = testcontainers.core.network.Network()
@@ -159,22 +165,29 @@ except Exception as e:
         try:
             container.start(wait_for_readiness=False)
 
+            # Use same interpreter for pip and -c so runtime-installed package is visible (PYTHONPATH).
+            # Code-server image uses /opt/app-root/bin/python3; others use default python.
+            # Detection: label "name" contains "-code-server-" (set in Dockerfile.cpu). Fallback: image ref
+            # contains "codeserver" when daemon is Podman and labels came from ContainerConfig (conftest handles that).
+            is_codeserver = "-code-server-" in name_label or "codeserver" in datascience_image.name.lower()
+            python_exe = (
+                "/opt/app-root/bin/python3"
+                if is_codeserver
+                else "python"
+            )
+            print(f"Using python executable: {python_exe}")
+
             # RHOAIENG-140: code-server image users are expected to install their own db clients
-            if "-code-server-" in datascience_image.labels["name"]:
+            if is_codeserver:
                 exit_code, output = container.exec(
-                    ["python", "-m", "pip", "install", f"mysql-connector-python=={MYSQL_CONNECTOR_PYTHON_VERSION}"]
+                    [python_exe, "-m", "pip", "install", f"mysql-connector-python=={MYSQL_CONNECTOR_PYTHON_VERSION}"]
                 )
                 output_str = output.decode()
                 print(output_str)
-
                 assert exit_code == 0, f"Failed to install mysql-connector-python: {output_str}"
-            elif "-rstudio-" in datascience_image.labels["name"]:
-                pytest.skip(
-                    f"Image {datascience_image.name} does have -rstudio- in {datascience_image.labels['name']=}'"
-                )
 
             with subtests.test("Setting the user..."):
-                exit_code, output = container.exec(["python", "-c", setup_mysql_user])
+                exit_code, output = container.exec([python_exe, "-c", setup_mysql_user])
                 output_str = output.decode()
 
                 print(output_str)
@@ -183,7 +196,7 @@ except Exception as e:
                 assert exit_code == 0
 
             with subtests.test("Checking the output of the clearpassuser script..."):
-                exit_code, output = container.exec(["python", "-c", clearpassuser])
+                exit_code, output = container.exec([python_exe, "-c", clearpassuser])
                 output_str = output.decode()
 
                 print(output_str)

@@ -30,6 +30,7 @@ INDEX_MODE ?= auto
 # KONFLUX: whether to build images from Dockerfile.konflux.* (default: no)
 KONFLUX ?= no
 
+
 # OS dependant: Generate date, select appropriate cmd to locate container engine
 ifdef OS
 	ifeq ($(OS), Windows_NT)
@@ -84,10 +85,14 @@ define build_image
 			awk -F= '!/^#/ && NF {gsub(/^[ \t]+|[ \t]+$$/, "", $$1); gsub(/^[ \t]+|[ \t]+$$/, "", $$2); printf "--build-arg %s=%s ", $$1, $$2}' $(CONF_FILE); \
 		fi))
 
+	# Hermetic local build: when cachi2/output/ exists AND this target has a
+	# prefetch-input/ directory, mount pre-downloaded deps and set LOCAL_BUILD=true.
+	$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)),--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z --build-arg LOCAL_BUILD=true,))
+
 	$(info # Building $(IMAGE_NAME) using $(DOCKERFILE_NAME) with $(CONF_FILE) and $(BUILD_ARGS)...)
 
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
 # Push function for the notebook image:

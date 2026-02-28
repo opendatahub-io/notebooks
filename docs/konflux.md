@@ -2,6 +2,10 @@
 
 This file provides an overview and quick access links to the **Konflux** environments used for building and deploying components for the **Open Data Hub (ODH)** and **Red Hat Data Services (RHDS)** projects.
 
+## Codeserver pipeline resources
+
+The codeserver image is large; the multiarch pipeline’s **build-images** task runs the image build on a remote VM, then **rsyncs** the result back to the cluster. That rsync can OOM or drop the connection if the task has default resource limits. The codeserver PipelineRuns (`.tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-pull-request.yaml` and `-push.yaml`) set **taskRunSpecs** for the `build-images` task with **8 CPU** and **32Gi memory** so the rsync-back step has enough resources. See the `taskRunSpecs` block in those files; other heavy pipelines (e.g. rstudio CUDA) use the same pattern.
+
 ## ODH-io (Open Data Hub)
 
 This section covers the Konflux setup for the upstream **Open Data Hub** community project.

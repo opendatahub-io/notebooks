@@ -16,23 +16,14 @@ input:
     - url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.aarch64.rpm
     - url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.ppc64le.rpm
 
-    # Required for node-gyp builds in npm install
-    # Electron headers for main VSCode build (runs on Electron)
-    - url: https://electronjs.org/headers/v37.7.0/node-v37.7.0-headers.tar.gz
-    # Node.js headers for build tools (runs on system Node.js 22.22.0)
-    - url: https://nodejs.org/download/release/v22.22.0/node-v22.22.0-headers.tar.gz
-    # Node.js headers for VSCode remote (targets Node.js 22.20.0)
+    # node-gyp headers for VS Code remote native modules (targets Node.js 22.20.0).
+    # System Node.js headers come from nodejs-devel RPM (NPM_CONFIG_NODEDIR=/usr);
+    # Electron headers are no longer needed (ELECTRON_SKIP_BINARY_DOWNLOAD=1).
     - url: https://nodejs.org/download/release/v22.20.0/node-v22.20.0-headers.tar.gz
     # Node.js runtime binaries for bundling with VSCode server (one per target arch)
     - url: https://nodejs.org/download/release/v22.20.0/node-v22.20.0-linux-x64.tar.gz
     - url: https://nodejs.org/download/release/v22.20.0/node-v22.20.0-linux-arm64.tar.gz
     - url: https://nodejs.org/download/release/v22.20.0/node-v22.20.0-linux-ppc64le.tar.gz
-    - url: https://playwright.azureedge.net/builds/chromium/1134/chromium-linux.zip
-      filename: chromium-1134-linux.zip
-    # Electron binaries (one per target arch)
-    - url: https://github.com/electron/electron/releases/download/v37.7.0/electron-v37.7.0-linux-x64.zip
-    - url: https://github.com/electron/electron/releases/download/v37.7.0/electron-v37.7.0-linux-arm64.zip
-    - url: https://github.com/electron/electron/releases/download/v37.7.0/SHASUMS256.txt
     - url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
       filename: ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
     # aarch64/ppc64le: no musl builds exist; download GNU builds aliased to musl filenames
@@ -50,7 +41,9 @@ input:
     - url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-4/ripgrep-v13.0.0-4-s390x-unknown-linux-gnu.tar.gz
       filename: ripgrep-v13.0.0-4-s390x-unknown-linux-gnu.tar.gz
     # node-argon2 prebuilts — two versions required because separate transitive
-    # dependencies in the npm tree pin v0.31.2 and v0.28.7 respectively
+    # dependencies in the npm tree pin v0.31.2 and v0.28.7 respectively.
+    # NOTE: Only x86_64 prebuilts are provided. On arm64/ppc64le, argon2 falls
+    # back to source compilation (gcc-toolset-14 is available in the rpm-base stage).
     - url: https://github.com/ranisalt/node-argon2/releases/download/v0.31.2/argon2-v0.31.2-napi-v3-linux-x64-glibc.tar.gz
       filename: v0.31.2/argon2-v0.31.2-napi-v3-linux-x64-glibc.tar.gz
     - url: https://github.com/ranisalt/node-argon2/releases/download/v0.28.7/argon2-v0.28.7-napi-v3-linux-x64-glibc.tar.gz

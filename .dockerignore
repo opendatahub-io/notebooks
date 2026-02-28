@@ -6,7 +6,8 @@ tests/
 .idea/
 
 # git
-.git/
+# .git/ is intentionally NOT ignored: the Dockerfile needs it to resolve the
+# code-server git submodule (COPY .git ...). Ensure CI uses a shallow clone.
 .gitignore
 .gitkeep
 

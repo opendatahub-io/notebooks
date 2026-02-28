@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 # Load bash libraries
+# [IMPROVEMENT] Changed from `source ${SCRIPT_DIR}/utils/*.sh` (single glob) to a for-loop.
+# The glob expansion is more robust: handles missing files and avoids issues with spaces in paths.
 SCRIPT_DIR=$(dirname -- "$0")
 for f in "${SCRIPT_DIR}"/utils/*.sh; do
   # shellcheck source=/dev/null
