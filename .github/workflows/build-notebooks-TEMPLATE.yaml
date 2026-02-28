@@ -272,6 +272,10 @@ jobs:
       # Hermetic builds: when the target ships a prefetch-input/ directory,
       # download all dependencies into cachi2/output/ so the Dockerfile can
       # build fully offline.  Targets without prefetch-input/ are unaffected.
+      # For RHDS/AIPCC builds (subscription: true), the --rhds flag selects the
+      # downstream lockfiles and the SUBSCRIPTION_* env vars supply the RHEL
+      # credentials for RPM downloads from cdn.redhat.com — secrets never
+      # appear on the command line.
       - name: "Prefetch hermetic build dependencies"
         id: prefetch
         run: |

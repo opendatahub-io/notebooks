@@ -86,6 +86,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Fall back to env vars when CLI args are not provided (GHA passes secrets
+# this way so they never appear in shell command traces).
+ACTIVATION_KEY="${ACTIVATION_KEY:-${SUBSCRIPTION_ACTIVATION_KEY:-}}"
+ORG="${ORG:-${SUBSCRIPTION_ORG:-}}"
+
 # --- Required argument check ---
 [[ -z "$RPM_INPUT" ]] && error_exit "--rpm-input is required. E.g. --rpm-input codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml"
 [[ -f "$RPM_INPUT" ]] || error_exit "rpms.in.yaml not found at: $RPM_INPUT"
