@@ -37,9 +37,9 @@ All scripts must be run from the **repository root**.
 
 ---
 
-## Orchestrator — `prefetch-all.sh`
+## Orchestrator `prefetch-all.sh`
 
-**For most local and CI use, this is the only script you need to run.**
+**For most local and CI use, this is the main script you need to run.**
 
 `prefetch-all.sh` orchestrates all four lockfile generators in the correct
 order, downloading dependencies into `cachi2/output/deps/`. After running it,
@@ -66,6 +66,7 @@ Then build with make:
 ```bash
 # On macOS use gmake
 gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
+# OR using Local podman build (Please scroll down to Local podman build section for more detail.)
 ```
 
 ### Options
@@ -75,7 +76,6 @@ gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
 | `--component-dir DIR` | Component directory (required), e.g. `codeserver/ubi9-python-3.12` |
 | `--rhds` | Use downstream (RHDS) lockfiles instead of upstream (ODH, the default) |
 | `--flavor NAME` | Lock file flavor (default: `cpu`) |
-| `--tekton-file FILE` | Tekton PipelineRun YAML for npm path discovery (auto-detected from `.tekton/` if omitted) |
 | `--activation-key KEY` | Red Hat activation key for RHEL RPMs (optional) |
 | `--org ORG` | Red Hat organization ID for RHEL RPMs (optional) |
 
@@ -83,10 +83,23 @@ gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
 
 | Step | Condition | Script called |
 |------|-----------|---------------|
-| 1. Generic artifacts | `artifacts.in.yaml` exists | `create-artifact-lockfile.py` |
-| 2. Pip wheels | `pyproject.toml` exists | `create-requirements-lockfile.sh --download` |
-| 3. NPM packages | `package-lock.json` files found | `download-npm.sh` |
-| 4. RPMs | `rpms.in.yaml` exists | `hermeto-fetch-rpm.sh` (if lockfile committed) or `create-rpm-lockfile.sh --download` |
+| 1. Generic artifacts | `prefetch-input/<variant>/artifacts.in.yaml` exists | `create-artifact-lockfile.py` |
+| 2. Pip wheels | `pyproject.toml` exists in component dir | `create-requirements-lockfile.sh --download` |
+| 3. NPM packages | Tekton PipelineRun found for component (see below) | `download-npm.sh --tekton-file` |
+| 4. RPMs | `prefetch-input/<variant>/rpms.in.yaml` exists | `hermeto-fetch-rpm.sh` (if lockfile committed) or `create-rpm-lockfile.sh --download` |
+
+**Variant directory:** Lockfiles live under `prefetch-input/odh/` (upstream) or
+`prefetch-input/rhds/` (downstream). If that directory is missing, steps 1 and 4
+are skipped; steps 2 (pip) and 3 (npm) still run when their inputs exist
+(`pyproject.toml`, or a Tekton file for the component).
+
+**Step 3 (NPM):** The script finds the Tekton file automatically via
+`find_tekton_yaml`: it looks for a `.tekton/*pull-request*.yaml` whose
+`dockerfile` param matches this component, RHDS first
+(`COMPONENT_DIR/Dockerfile.konflux.*`), then ODH (`COMPONENT_DIR/Dockerfile.*`).
+If no Tekton file is found, npm is skipped. If the Tekton file has no
+`npm`-type `prefetch-input` entries, `download-npm.sh` exits successfully
+(nothing to download).
 
 Steps are skipped if their input files don't exist. For RPMs, if
 `rpms.lock.yaml` is already committed, it downloads directly (skipping
@@ -95,11 +108,13 @@ lockfile regeneration) — this avoids cross-platform issues on arm64 CI runners
 ### GitHub Actions integration
 
 The GHA workflow template (`.github/workflows/build-notebooks-TEMPLATE.yaml`)
-calls `prefetch-all.sh` automatically for codeserver targets before running
-`make`. Non-codeserver targets skip the prefetch step entirely. After the
-build, container tests run (e.g. `tests/containers` with pytest); image
-metadata is read from both Docker `Config` and `ContainerConfig` so labels
-work when the daemon is Podman (see
+derives the component directory from the **Makefile** (dry-run of the build
+target, parsing `#*# Image build directory: <...>`), so it works for all image
+targets (codeserver, jupyter-*, runtime-*, rstudio-*, base-images-*). Prefetch
+runs when `COMPONENT_DIR/prefetch-input` exists; otherwise the step is skipped.
+After the build, container tests run (e.g. `tests/containers` with pytest);
+image metadata is read from both Docker `Config` and `ContainerConfig` so
+labels work when the daemon is Podman (see
 [tests/containers/docs/github-vs-local-image-metadata.md](../../tests/containers/docs/github-vs-local-image-metadata.md)).
 
 **uv version:** The repo root `uv.toml` specifies the `uv` version (e.g.
@@ -110,8 +125,9 @@ work when the daemon is Podman (see
 
 ## Individual tools
 
-The four scripts below can also be run individually for debugging or partial
-updates. `prefetch-all.sh` calls them internally.
+The five options below can be used for hermetic builds. Scripts 1–4 can also be
+run individually for debugging or partial updates; `prefetch-all.sh` calls them
+internally. Option 5 (Git submodule) is a manual setup.
 
 | # | Type | Main script | What it generates |
 |---|------|-------------|-------------------|
@@ -119,6 +135,7 @@ updates. `prefetch-all.sh` calls them internally.
 | 2 | RPM | [create-rpm-lockfile.sh](#2-rpm-packages--create-rpm-lockfilesh) | `rpms.lock.yaml` |
 | 3 | npm | [download-npm.sh](#3-npm-packages--download-npmsh) | Downloaded tarballs in `cachi2/output/deps/npm/` |
 | 4 | pip (RHOAI) | [create-requirements-lockfile.sh](#4-pip-packages-rhoai--create-requirements-lockfilesh) | `pylock.<flavor>.toml` + `requirements.<flavor>.txt` |
+| 5 | Git submodule | (manual setup) | [Pinned repo under prefetch-input/](#5-git-submodule) |
 
 ### Helper scripts (used internally by the main tools)
 
@@ -516,7 +533,8 @@ collisions.  Files that already exist are skipped.
 - `--lock-file <path>` — process a single `package-lock.json`.
 - `--tekton-file <path>` — parse a Tekton PipelineRun YAML to discover all
   `npm`-type `prefetch-input` paths, then process every `package-lock.json`
-  found under them.
+  found under them. If the file has **no** `npm`-type entries, the script
+  exits 0 (nothing to download) instead of erroring.
 
 Both flags can be combined.  URLs that are already local (`file:///cachi2/...`)
 are automatically skipped.
@@ -707,39 +725,89 @@ python3 scripts/lockfile-generators/helpers/download-pip-packages.py \
 
 ---
 
+## 5. Git submodule
+
+The notebooks repository uses external code (e.g. code-server) that is normally
+cloned during the Docker build. For hermetic builds, Konflux can prefetch these
+dependencies via **git submodules**: the external repo is added as a submodule
+under `prefetch-input/` and pinned to a specific commit or tag. The build then
+uses the checked-out tree instead of running `git clone` at build time.
+
+### Setup
+
+Run from the **repository root**. Replace the submodule URL and
+`<component>/prefetch-input/<name>` with your target path (e.g.
+`codeserver/ubi9-python-3.12/prefetch-input/code-server`).
+
+```bash
+# Add the external repo as a submodule under prefetch-input
+git submodule add https://github.com/coder/code-server.git \
+    codeserver/ubi9-python-3.12/prefetch-input/code-server
+
+# Pin to a specific tag (or commit)
+cd codeserver/ubi9-python-3.12/prefetch-input/code-server
+git fetch --tags
+git checkout tags/v4.104.0
+git submodule update --init --recursive   # pull nested submodules if any
+
+# Commit the submodule and .gitmodules
+cd ../..
+git add -A .
+git commit -m "Added submodule code-server"
+```
+
+Use the same tag or commit that your Dockerfile or build scripts expect, so the
+hermetic build uses an identical source tree.
+
+---
+
 ## Appendix: Local podman build
 
 After running `prefetch-all.sh`, the **recommended** way to build is via make:
 
 ```bash
-# Makefile auto-detects cachi2/output/ and injects --volume + LOCAL_BUILD=true
+# Make sets LOCAL_BUILD=true for hermetic targets; mounts cachi2/output when it exists
 gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
 ```
 
-The Makefile evaluates each target independently: `CACHI2_VOLUME` is only set
-when both `cachi2/output/` exists AND the target directory has a
-`prefetch-input/` subdirectory. Non-hermetic targets are completely unaffected.
+The Makefile sets `LOCAL_BUILD=true` for any target that has `prefetch-input/`;
+it adds the cachi2 volume only when `cachi2/output/` exists (after prefetch).
+Non-hermetic targets are unaffected.
 
 ### Alternative: manual podman build
 
-For developers who want to run `podman build` directly, the key flags are:
+Running `podman build` directly differs from `gmake` in these ways:
 
-- `-v $(realpath ./cachi2):/cachi2:z` bind-mount the prefetched dependencies
-  so the Dockerfile can install from them offline.
-- `--build-arg LOCAL_BUILD=true` signals the Dockerfile that this is a local
-  build (configures dnf to use the local cachi2 RPM repo).
+| Aspect | `gmake codeserver-ubi9-python-3.12 BUILD_ARCH=... PUSH_IMAGES=no` | Manual `podman build ...` |
+|--------|-------------------------------------------------------------------|---------------------------|
+| **Build context** | Minimal (via `scripts/sandbox.py`: only files needed by the Dockerfile) | Full repo (`.`). |
+| **Volume** | `--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z` (mounts only `cachi2/output`) | Often `-v ./cachi2:/cachi2` (mounts whole dir); equivalent is `-v ./cachi2/output:/cachi2/output:z`. |
+| **Build args** | From `build-args/cpu.conf`: `INDEX_URL`, `BASE_IMAGE`, `PYLOCK_FLAVOR` | You must pass these (and `LOCAL_BUILD=true`) explicitly. |
+| **Tag** | `$(IMAGE_REGISTRY):codeserver-ubi9-python-3.12-$(RELEASE)_$(DATE)` | Whatever you pass with `-t`. |
+| **Label** | `--label release=$(RELEASE)` | Omitted unless you add it. |
+| **Cache** | Default `CONTAINER_BUILD_CACHE_ARGS ?= --no-cache` | Podman uses its default cache unless you pass `--no-cache`. |
+
+To approximate the make build when running podman manually, use the same volume
+path as make and pass all build-args from `build-args/cpu.conf`:
+
+- Bind-mount **only** `cachi2/output` at `/cachi2/output` (same as make).
+- Pass `LOCAL_BUILD=true` and the same `BASE_IMAGE`, `PYLOCK_FLAVOR`, and
+  `INDEX_URL` as in `codeserver/ubi9-python-3.12/build-args/cpu.conf`.
 
 ```bash
+# Same volume path as Makefile; build-args from build-args/cpu.conf
 podman build \
     -f codeserver/ubi9-python-3.12/Dockerfile.cpu \
-    --platform linux/amd64 \
+    --platform linux/arm64 \
     -t code-server-test \
     --build-arg LOCAL_BUILD=true \
     --build-arg BASE_IMAGE=quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest \
     --build-arg PYLOCK_FLAVOR=cpu \
-    -v "$(realpath ./cachi2):/cachi2:z" \
+    --build-arg INDEX_URL=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4-EA1/cpu-ubi9/simple/ \
+    -v "$(realpath ./cachi2/output):/cachi2/output:z" \
     .
 ```
 
-To build for a different architecture, change `--platform` and `ARCH`
-accordingly (e.g. `linux/arm64` / `aarch64`, `linux/ppc64le` / `ppc64le`).
+To build for a different architecture, change `--platform` (e.g. `linux/amd64`,
+`linux/arm64`, `linux/ppc64le`). The manual command uses the **full repo** as
+context; make uses a **sandboxed** context for reproducibility.
