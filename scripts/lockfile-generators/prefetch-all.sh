@@ -17,7 +17,8 @@ set -euo pipefail
 #      (into cachi2/output/deps/rpm/).
 #
 # Each step is skipped if its input file is not present in the component's
-# prefetch-input/<variant>/ directory.
+# prefetch-input/<variant>/ directory. Step 3 (NPM) discovers the Tekton
+# file via find_tekton_yaml (RHDS = Dockerfile.konflux.*, ODH = Dockerfile.*). No Tekton file → skip npm.
 #
 # After running this script, `make <target>` auto-detects cachi2/output/
 # and passes --volume + --build-arg LOCAL_BUILD=true to podman build.
@@ -43,7 +44,6 @@ SCRIPTS_PATH="scripts/lockfile-generators"
 COMPONENT_DIR=""
 VARIANT="odh"       # "odh" = upstream (CentOS Stream), "rhds" = downstream (RHEL)
 FLAVOR="cpu"        # selects which pylock/requirements files to use (cpu, cuda, rocm)
-TEKTON_FILE=""
 ACTIVATION_KEY=""
 ORG=""
 
@@ -58,8 +58,6 @@ Options:
                           e.g. codeserver/ubi9-python-3.12
   --rhds                  Use downstream (RHDS) lockfiles instead of upstream (ODH)
   --flavor NAME           Lock file flavor (default: cpu)
-  --tekton-file FILE      Tekton PipelineRun YAML for npm path discovery
-                          (auto-detected from .tekton/ if omitted)
   --activation-key KEY    Red Hat activation key for RHEL RPMs (optional)
   --org ORG               Red Hat organization ID for RHEL RPMs (optional)
   -h, --help              Show this help
@@ -73,6 +71,41 @@ HELPEOF
 error_exit() {
   echo "Error: $1" >&2
   exit 1
+}
+
+# find_tekton_yaml COMPONENT_DIR VARIANT
+# Finds .tekton/*pull-request*.yaml files that build this component for the
+# given variant by matching the pipeline's dockerfile param. Requires yq;
+# must be run from repo root.
+#
+#   ODH (upstream):  dockerfile is COMPONENT_DIR/Dockerfile.* (excludes Dockerfile.konflux.*).
+#   RHDS (downstream): dockerfile is COMPONENT_DIR/Dockerfile.konflux.*
+# Outputs matching file paths one per line. Returns 0 if at least one match.
+find_tekton_yaml() {
+  local comp_dir="$1"
+  local variant="$2"
+  local found=0
+  local f dockerfile_path
+  if [[ ! -d ".tekton" ]] || ! command -v yq &>/dev/null; then
+    return 1
+  fi
+  for f in .tekton/*pull-request*.yaml; do
+    [[ -f "$f" ]] || continue
+    dockerfile_path=$(yq -r '.spec.params[] | select(.name == "dockerfile") | .value' "$f" 2>/dev/null)
+    [[ -n "$dockerfile_path" ]] || continue
+    if [[ "$variant" == "odh" ]]; then
+      if [[ "$dockerfile_path" == "$comp_dir/Dockerfile."* ]] && [[ "$dockerfile_path" != "$comp_dir/Dockerfile.konflux."* ]]; then
+        echo "$f"
+        found=1
+      fi
+    elif [[ "$variant" == "rhds" ]]; then
+      if [[ "$dockerfile_path" == "$comp_dir/Dockerfile.konflux."* ]]; then
+        echo "$f"
+        found=1
+      fi
+    fi
+  done
+  [[ $found -eq 1 ]]
 }
 
 # Must run from the repo root because all paths (lockfiles, Tekton YAMLs,
@@ -89,8 +122,6 @@ while [[ $# -gt 0 ]]; do
     --rhds)              VARIANT="rhds"; shift ;;
     --flavor)            [[ $# -ge 2 ]] || error_exit "--flavor requires a value"
                          FLAVOR="$2"; shift 2 ;;
-    --tekton-file)       [[ $# -ge 2 ]] || error_exit "--tekton-file requires a value"
-                         TEKTON_FILE="$2"; shift 2 ;;
     --activation-key)    [[ $# -ge 2 ]] || error_exit "--activation-key requires a value"
                          ACTIVATION_KEY="$2"; shift 2 ;;
     --org)               [[ $# -ge 2 ]] || error_exit "--org requires a value"
@@ -139,7 +170,9 @@ if [[ "$VARIANT" == "odh" ]] && [[ -n "$ACTIVATION_KEY" ]] && [[ -d "$PREFETCH_D
 fi
 
 VARIANT_DIR="$PREFETCH_DIR/$VARIANT"
-[[ -d "$VARIANT_DIR" ]] || error_exit "Variant directory not found: $VARIANT_DIR"
+if [[ ! -d "$VARIANT_DIR" ]]; then
+  echo "Note: Variant directory not found ($VARIANT_DIR). Steps 1 and 4 (generic, RPM) will be skipped if their inputs are missing."
+fi
 
 echo "=============================================="
 echo " prefetch-all.sh"
@@ -198,66 +231,37 @@ fi
 # =========================================================================
 # Step 3: NPM packages (download-npm.sh)
 #
-# Downloads npm tarballs by extracting resolved URLs from package-lock.json
-# files.  Two strategies:
-#
-#   Preferred: use --tekton-file (or auto-detect from .tekton/) to find all
-#   npm directories referenced in the Tekton PipelineRun.  This processes
-#   all lockfiles in a single invocation and requires yq.
-#
-#   Fallback: recursively find package-lock.json files under prefetch-input/
-#   and process each one individually.
+# Auto-detect Tekton file via find_tekton_yaml (RHDS first, then ODH). If found,
+# download npm tarballs from the prefetch-input paths listed there. If no
+# Tekton file is found for this component, skip npm. Requires yq.
 #
 # Output: cachi2/output/deps/npm/
 # =========================================================================
 echo "=== [3/4] NPM packages ==="
 
 npm_done=false
+tekton_file=""
 
-# Try to auto-detect the Tekton PipelineRun YAML that references this
-# component's prefetch-input directory.  The Tekton file lists all npm
-# lockfile paths as task parameters, so download-npm.sh can process them
-# all at once instead of discovering them one by one.
-if [[ -z "$TEKTON_FILE" ]] && [[ -d ".tekton" ]] && command -v yq &>/dev/null; then
-  auto_tekton=$(grep -rl "$COMPONENT_DIR/prefetch-input" .tekton/*pull-request*.yaml 2>/dev/null | head -1) || true
-  if [[ -n "$auto_tekton" ]]; then
-    TEKTON_FILE="$auto_tekton"
-    echo "  Auto-detected tekton file: $TEKTON_FILE"
+# Find the Tekton PipelineRun YAML: RHDS first (dockerfile COMPONENT_DIR/Dockerfile.konflux.*),
+# then ODH (dockerfile COMPONENT_DIR/Dockerfile.*). The file lists npm prefetch-input
+# paths for download-npm.sh to process in one go.
+if [[ -d ".tekton" ]] && command -v yq &>/dev/null; then
+  tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "rhds" 2>/dev/null | head -1) || true
+  if [[ -z "$tekton_file" ]]; then
+    tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "odh" 2>/dev/null | head -1) || true
   fi
-fi
-
-if [[ -n "$TEKTON_FILE" ]]; then
-  if [[ ! -f "$TEKTON_FILE" ]]; then
-    echo "  Warning: Tekton file not found: $TEKTON_FILE — falling back to auto-discovery"
-  elif ! command -v yq &>/dev/null; then
-    echo "  Warning: yq not found — falling back to auto-discovery"
-  else
-    "$SCRIPTS_PATH/download-npm.sh" --tekton-file "$TEKTON_FILE"
+  if [[ -n "$tekton_file" ]]; then
+    echo "  Auto-detected tekton file: $tekton_file"
+    "$SCRIPTS_PATH/download-npm.sh" --tekton-file "$tekton_file"
     npm_done=true
   fi
 fi
 
-# Fallback: find and process package-lock.json files individually.
-# Excludes node_modules/ to avoid processing installed (non-lockfile) copies.
-if [[ "$npm_done" != true ]]; then
-  echo "  Discovering package-lock.json files under $PREFETCH_DIR..."
-  npm_count=0
-  while IFS= read -r -d '' lock; do
-    echo "  Processing: $lock"
-    "$SCRIPTS_PATH/download-npm.sh" --lock-file "$lock"
-    npm_count=$((npm_count + 1))
-  done < <(find "$PREFETCH_DIR" -not -path "*/node_modules/*" -name "package-lock.json" -print0 2>/dev/null)
-
-  if [[ $npm_count -eq 0 ]]; then
-    echo "  No package-lock.json files found — skipping npm download"
-    STEPS_SKIPPED=$((STEPS_SKIPPED + 1))
-  else
-    echo "  Processed $npm_count package-lock.json file(s)"
-  fi
-fi
-
-if [[ "$npm_done" == true ]] || [[ ${npm_count:-0} -gt 0 ]]; then
+if [[ "$npm_done" == true ]]; then
   STEPS_RUN=$((STEPS_RUN + 1))
+else
+  echo "  No Tekton file found for this component — skipping npm download"
+  STEPS_SKIPPED=$((STEPS_SKIPPED + 1))
 fi
 echo ""
 
@@ -307,8 +311,14 @@ fi
 # =========================================================================
 echo "=============================================="
 echo " prefetch-all.sh complete"
-echo "  Steps run    : $STEPS_RUN"
-echo "  Steps skipped: $STEPS_SKIPPED"
+echo "  component : $COMPONENT_DIR"
+echo "  variant   : $VARIANT"
+echo "  flavor    : $FLAVOR"
+echo "  prefetch  : $PREFETCH_DIR"
+echo "  lockfiles : $VARIANT_DIR"
+echo "  tekton file: $tekton_file"
+echo "  steps run    : $STEPS_RUN"
+echo "  steps skipped: $STEPS_SKIPPED"
 echo ""
 echo " Dependencies are in: cachi2/output/deps/"
 if [[ -d "cachi2/output/deps" ]]; then

@@ -197,7 +197,8 @@ if [[ -n "$TEKTON_FILE" ]]; then
     npm_paths=$(extract_npm_paths_from_tekton "$TEKTON_FILE")
 
     if [[ -z "$npm_paths" ]]; then
-        error_exit "No npm-type prefetch-input entries found in $TEKTON_FILE"
+        echo "No npm-type prefetch-input entries in $TEKTON_FILE — nothing to download"
+        exit 0
     fi
 
     while IFS= read -r npm_path; do
