@@ -343,6 +343,7 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
 # [HERMETIC] Install useful OS packages from prefetched RPMs.
 # nodejs: provides libnode.so needed at runtime by code-server's bundled node binary
 #         (installed via rpm2cpio which skips dependency resolution).
+# cpio: required for rpm2cpio | cpio -idmv below (install here to avoid a second dnf call).
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 PACKAGES=(
@@ -352,6 +353,7 @@ PACKAGES=(
     gettext
     # nss_wrapper: required by generate_container_user (LD_PRELOAD=libnss_wrapper.so)
     nss_wrapper
+    cpio
 )
 dnf install -y "${PACKAGES[@]}"
 dnf clean all
@@ -368,8 +370,6 @@ COPY --from=rpm-base /tmp/code-server-*.rpm /tmp/
 # Install code-server via rpm2cpio (dnf rejects unsigned RPMs built from source on Konflux/Conforma)
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y cpio
-dnf -y clean all
 cd /
 rpm2cpio /tmp/code-server-${CODESERVER_VERSION/v/}-*.rpm | cpio -idmv
 EOF
