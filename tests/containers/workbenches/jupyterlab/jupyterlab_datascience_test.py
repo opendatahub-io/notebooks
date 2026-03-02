@@ -84,9 +84,7 @@ print("Scikit-learn smoke test completed successfully.")
     def test_mysql_connection(self, tf: TestFrame, datascience_image: Image, subtests):
         name_label = datascience_image.labels.get("name", "")
         if "-rstudio-" in name_label:
-            pytest.skip(
-                f"Image {datascience_image.name} does have -rstudio- in {datascience_image.labels['name']=}'"
-            )
+            pytest.skip(f"Image {datascience_image.name} has '-rstudio-' in {datascience_image.labels['name']=}")
 
         MYSQL_CONNECTOR_PYTHON_VERSION = "9.5.0"
 
@@ -170,11 +168,7 @@ except Exception as e:
             # Detection: label "name" contains "-code-server-" (set in Dockerfile.cpu). Fallback: image ref
             # contains "codeserver" when daemon is Podman and labels came from ContainerConfig (conftest handles that).
             is_codeserver = "-code-server-" in name_label or "codeserver" in datascience_image.name.lower()
-            python_exe = (
-                "/opt/app-root/bin/python3"
-                if is_codeserver
-                else "python"
-            )
+            python_exe = "/opt/app-root/bin/python3" if is_codeserver else "python"
             print(f"Using python executable: {python_exe}")
 
             # RHOAIENG-140: code-server image users are expected to install their own db clients
