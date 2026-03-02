@@ -57,12 +57,11 @@ ARG CODESERVER_VERSION=v4.106.3
 
 # [HERMETIC] Import GPG keys for prefetched RPM verification.
 # CentOS key needed because libX11-devel comes from CentOS Stream repos.
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
-# Hermeto organises RPMs into per-arch sub-repos (baseos, epel, crb, ubi-*, …), each with
+# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
 # its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/* && \
@@ -80,10 +79,6 @@ RUN dnf install -y \
         krb5-devel libX11-devel libxkbfile-devel \
         /cachi2/output/deps/generic/nfpm-2.44.1-1.$(uname -m).rpm && \
     dnf clean all
-
-# There was limitation on Hermeto, it can't fetch npm packages using git/ssh protocol.
-# To work around this, need to fetch some npm packages as generic artifacts and copy to npm directory.
-RUN cp /cachi2/output/deps/generic/npm/* /cachi2/output/deps/npm/
 
 # [HERMETIC] Git metadata needed by code-server's build scripts (version detection, submodules).
 COPY .git /root/.git
@@ -111,8 +106,9 @@ RUN cd ${CODESERVER_SOURCE_CODE} && GHA_BUILD="${GHA_BUILD}" ./apply-patch.sh
 # [HERMETIC] Step 1: npm ci --offline (install all npm dependencies from local cache).
 # setup-offline-binaries.sh does all offline preparation in one shot:
 #   - sources codeserver-offline-env.sh (ELECTRON_SKIP_BINARY_DOWNLOAD, NPM_CONFIG_NODEDIR, etc.)
-#   - populates node-gyp header cache (22.20.0 for VS Code remote), ripgrep, VSCode extensions
-#   - pre-populates .build/node/ and .build/builtInExtensions/ so gulp skips network downloads
+#   - node-gyp uses system headers (NPM_CONFIG_NODEDIR=/usr from nodejs-devel RPM)
+#   - ripgrep, .vsix extensions from cachi2 generic; .build/node/ = system /usr/bin/node (per-arch)
+#   - pre-populates .build/builtInExtensions/ so gulp skips network downloads
 #   - rewrites package-lock.json "resolved" URLs to file:///cachi2/...
 # CI=1 makes ci/dev/postinstall.sh run "npm ci" (not "npm install") in subdirs,
 # so resolved URLs stay absolute (file:///cachi2/...) and lockfiles are never modified.
@@ -170,11 +166,10 @@ ARG LOCAL_BUILD
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-# [HERMETIC] Import GPG keys for EPEL, Red Hat, and CentOS repos (needed for dnf to verify prefetched RPMs).
-# EPEL + CentOS keys are prefetched as generic artifacts (see artifacts.in.yaml).
+# [HERMETIC] Import GPG keys for Red Hat and CentOS repos (needed for dnf to verify prefetched RPMs).
+# CentOS key is prefetched as a generic artifact (see artifacts.in.yaml).
 # UBI9 images only ship the Red Hat key; CentOS key is needed for ppc64le/s390x packages
 # from CentOS Stream repos (mesa-libGL, etc.).
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
@@ -254,12 +249,11 @@ USER 0
 
 # [HERMETIC] Import GPG keys for prefetched RPM verification.
 # CentOS key needed because mesa-libGL comes from CentOS Stream repos.
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
-# Hermeto organises RPMs into per-arch sub-repos (baseos, epel, crb, ubi-*, …), each with
+# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
 # its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/* && \
@@ -330,7 +324,7 @@ USER 0
 WORKDIR /opt/app-root/bin
 
 # [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
-# Hermeto organises RPMs into per-arch sub-repos (baseos, epel, crb, ubi-*, …), each with
+# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
 # its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/* && \

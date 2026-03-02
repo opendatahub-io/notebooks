@@ -87,8 +87,6 @@ spec:
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/debug-server-ready
       type: npm
-    - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/emmet
-      type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/extension-editing
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions/git
@@ -165,13 +163,39 @@ spec:
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server
       type: npm
-    # patches/
+    # patches/ overlay (overwrites code-server at build); use these so Cachi2 prefetches registry-only lockfiles
     - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.106.3/lib/vscode
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.106.3/lib/vscode/remote
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.106.3/lib/vscode/extensions
+      type: npm
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.106.3/lib/vscode/extensions/emmet
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.106.3/test
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.106.3/lib/vscode/extensions/microsoft-authentication
       type: npm
+    # Registry-only npm deps (ProdSec); @parcel/watcher, @emmetio/css-parser, @playwright/browser-chromium in custom-packages/package.json
+    - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.106.3/custom-packages
+      type: npm
+  taskRunSpecs:
+    - pipelineTaskName: prefetch-dependencies
+      computeResources:
+        requests:
+          cpu: "8"
+          memory: "32Gi"
+        limits:
+          cpu: "8"
+          memory: "32Gi"
+    - pipelineTaskName: build-images
+      computeResources:
+        requests:
+          cpu: "8"
+          memory: "32Gi"
+        limits:
+          cpu: "8"
+          memory: "32Gi"
   pipelineRef:
     name: multiarch-combined-pipeline
   taskRunTemplate:
