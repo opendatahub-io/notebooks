@@ -133,7 +133,6 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
         "${CODESERVER_SOURCE_CODE}/patches/tweak-gha.sh"
     fi
 else
-  # we shall not download rpm for other architectures
   echo "Unsupported architecture: $ARCH" >&2
   exit 1
 fi

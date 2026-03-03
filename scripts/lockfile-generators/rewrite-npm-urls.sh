@@ -36,8 +36,8 @@ TARGET_FILENAMES=(
     "package.json"
 )
 
-# Cachi2 local cache base path (hardcoded like 3b069d43 so rewrite is not env-dependent).
-# Shell-expanded into perl one-liners so it works when script is sourced.
+# Cachi2 npm cache base path. Hardcoded so the rewrite is reproducible in the build container.
+# Shell-expanded into perl one-liners so it works when the script is sourced.
 CACHI2_BASE="file:///cachi2/output/deps/npm"
 
 # =============================================================================

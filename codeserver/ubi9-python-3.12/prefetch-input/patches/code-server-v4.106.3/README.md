@@ -1,6 +1,6 @@
 # Patches for code-server (v4.106.3) — overlay onto prefetch-input/code-server
 
-This directory is **copied over** the read-only `prefetch-input/code-server` submodule during the build (see `apply-patch.sh` and the Dockerfile `COPY`). Files here overwrite the corresponding paths under the code-server source. **Do not modify `prefetch-input/code-server`**; all editable changes belong in this patches tree.
+This directory is **copied over** the read-only `prefetch-input/code-server` submodule during the build (Dockerfile `COPY`). Files here overwrite the corresponding paths under the code-server source. **Do not modify `prefetch-input/code-server`**; all editable changes belong in this patches tree. The script `apply-patch.sh` (run after the COPY) then patches the ripgrep/vsce-sign npm tarballs and applies `patches/series`.
 
 ---
 
@@ -42,6 +42,9 @@ This directory is **copied over** the read-only `prefetch-input/code-server` sub
    - Builds for current arch (no x64 fallback on ppc64le/s390x). Uses system Node from `setup-offline-binaries.sh` cache.
 
 All of the above are **overlays**: at build time the Dockerfile copies this patches tree on top of the read-only `prefetch-input/code-server` submodule, so every `package.json` / `package-lock.json` that referenced the old git/codeload refs is replaced by these files and thus uses the registry versions we define here.
+
+**Argon2 (no prefetch):**  
+- The root code-server dependency **argon2** (password hashing in `src/node/util.ts`) uses **node-pre-gyp** with install script `node-pre-gyp install --fallback-to-build` (see [node-argon2 package.json](https://github.com/ranisalt/node-argon2/blob/v0.31.2/package.json)). We set `npm_config_argon2_binary_host_mirror` to the hermetic deps path so it never hits the network; when the prebuild tarball is missing there, node-pre-gyp falls back to building from source via node-gyp. No prefetch of argon2 prebuilds; gcc-toolset-14 in rpm-base provides the compiler.
 
 **Version notes (compatibility):**  
 - **@parcel/watcher 2.5.6**: The old ref was commit `1ca032aa` (Aug 2025) — “Don’t show error messages when checking if watchman is available” (#198). That commit is **included in 2.5.6** (released Jan 2026); the 2.5.x line is linear after it. So 2.5.6 is a **safe upgrade** and keeps the same watchman behavior.  

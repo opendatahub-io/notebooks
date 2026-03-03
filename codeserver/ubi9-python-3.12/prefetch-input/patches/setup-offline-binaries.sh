@@ -7,17 +7,16 @@ set -euo pipefail
 # stage of Dockerfile.cpu. It populates local caches for all binaries that code-server's
 # build process would normally download at build time:
 #
-#   1. npm config: set offline=true, prefer-offline=true, fetch-retries=0
-#   2. node-gyp: NPM_CONFIG_NODEDIR=/usr uses system Node.js headers (nodejs-devel RPM).
-#   3. VSCode ripgrep: copy to /tmp/vscode-ripgrep-cache-<version>/
-#   4. VSCode extensions (.vsix): copy to .vscode-offline-cache/ for fetch.js
-#   5. Node.js: use system /usr/bin/node (like che-code); pre-populate .build/node/
-#      so gulp skips download. Build is per-arch (patched build-vscode.sh).
-#   6. Pre-populate .build/builtInExtensions/<name>/ (extracted .vsix contents)
+#   1. npm config: offline, prefer-offline, fetch-retries=0 (and legacy-peer-deps).
+#   2. node-gyp: NPM_CONFIG_NODEDIR=/usr (from codeserver-offline-env.sh) → system headers.
+#   3. Ripgrep: copy prefetched tarballs to /tmp/vscode-ripgrep-cache-<version>/.
+#   4. VSCode .vsix: copy to VSCODE_OFFLINE_CACHE for patched fetch.js.
+#   5. Node: pre-populate .build/node/ with system /usr/bin/node so gulp skips download.
+#   6. Pre-populate .build/builtInExtensions/<name>/ from extracted .vsix.
+#   7. Rewrite package-lock.json "resolved" URLs to file:///cachi2/output/deps/npm/...
 #
-# Postinstall runs npm ci in custom-packages first (same install-deps as test),
-# then test, test-extension, lib/vscode. custom-packages uses version ranges in
-# package.json (like test) so npm resolves from the lockfile and populates the cache.
+# Root postinstall (ci/dev/postinstall.sh) runs install-deps custom-packages first, then
+# test, lib/vscode; custom-packages populates the npm cache for lockfile resolution.
 #
 # All artifacts are prefetched by cachi2 via artifacts.in.yaml and stored at
 # /cachi2/output/deps/generic/.
