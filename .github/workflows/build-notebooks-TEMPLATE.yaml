@@ -280,7 +280,13 @@ jobs:
         id: prefetch
         run: |
           set -Eeuxo pipefail
-          COMPONENT_DIR=$(echo "${{ inputs.target }}" | sed 's|-|/|')
+          # Derive component dir from Makefile (single source of truth). Works for all
+          # image targets (codeserver, jupyter-*, runtime-*, rstudio-*, base-images-*).
+          COMPONENT_DIR=$(make -n "${{ inputs.target }}" 2>&1 | sed -n 's/.*#\*# Image build directory: <\([^>]*\)>.*/\1/p' | head -n1)
+          if [ -z "$COMPONENT_DIR" ]; then
+            echo "Could not derive COMPONENT_DIR from Makefile for target ${{ inputs.target }}" >&2
+            exit 1
+          fi
           if [ -d "$COMPONENT_DIR/prefetch-input" ]; then
             echo "Hermetic build detected — prefetching dependencies for $COMPONENT_DIR"
             pip3 install --quiet --break-system-packages pyyaml

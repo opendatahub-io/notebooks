@@ -11,6 +11,8 @@ SHELL := bash
 .DELETE_ON_ERROR:
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
+# Used where we need an empty expansion (avoids undefined variable warning).
+empty :=
 
 # todo: leave the default recipe prefix for now
 ifeq ($(origin .RECIPEPREFIX), undefined)
@@ -85,14 +87,20 @@ define build_image
 			awk -F= '!/^#/ && NF {gsub(/^[ \t]+|[ \t]+$$/, "", $$1); gsub(/^[ \t]+|[ \t]+$$/, "", $$2); printf "--build-arg %s=%s ", $$1, $$2}' $(CONF_FILE); \
 		fi))
 
-	# Hermetic local build: when cachi2/output/ exists AND this target has a
-	# prefetch-input/ directory, mount pre-downloaded deps and set LOCAL_BUILD=true.
-	$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)),--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z --build-arg LOCAL_BUILD=true,))
+	# Make is only used for local and GHA builds (Konflux does not run make).
+	# Default to local build for hermetic-capable targets: always set LOCAL_BUILD=true
+	# when prefetch-input/ exists; mount cachi2/output only when it exists (after prefetch).
+	$(eval LOCAL_BUILD_ARG := $(if $(wildcard $(BUILD_DIR)prefetch-input),--build-arg LOCAL_BUILD=true,))
+	$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)),--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z,))
 
 	$(info # Building $(IMAGE_NAME) using $(DOCKERFILE_NAME) with $(CONF_FILE) and $(BUILD_ARGS)...)
 
+	@if [ -d '$(BUILD_DIR)prefetch-input' ] && [ ! -d cachi2/output ]; then \
+	  echo "Prefetch required for hermetic build. Run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR)) — see scripts/lockfile-generators/README.md"; \
+	  exit 1; \
+	fi
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) $(LOCAL_BUILD_ARG) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
 # Push function for the notebook image:
@@ -111,8 +119,8 @@ endef
 define image
 	$(eval BUILD_DIRECTORY := $(shell echo $(2) | sed 's/\/Dockerfile.*//'))
 	$(eval VARIANT := $(shell echo $(notdir $(2)) | cut -d. -f2))
-	$(eval DOCKERFILE := $(BUILD_DIRECTORY)/Dockerfile$(if $(KONFLUX:no=),.konflux,$()).$(VARIANT))
-	$(eval CONF_FILE := $(BUILD_DIRECTORY)/build-args/$(if $(KONFLUX:no=),konflux.,$())$(shell echo $(VARIANT)).conf)
+	$(eval DOCKERFILE := $(BUILD_DIRECTORY)/Dockerfile$(if $(KONFLUX:no=),.konflux,$(empty)).$(VARIANT))
+	$(eval CONF_FILE := $(BUILD_DIRECTORY)/build-args/$(if $(KONFLUX:no=),konflux.,$(empty))$(shell echo $(VARIANT)).conf)
 	$(info #*# Image build Dockerfile: <$(DOCKERFILE)> #(MACHINE-PARSED LINE)#*#...)
 	$(info #*# Image build directory: <$(BUILD_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
 
