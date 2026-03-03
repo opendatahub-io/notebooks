@@ -9,21 +9,9 @@ input:
     # CentOS Stream 9 GPG key (needed in whl-cache stage for ppc64le/s390x dnf install
     # from CentOS baseos/appstream/crb repos; UBI9 images only ship the Red Hat key)
     - url: https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official
-    - url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.x86_64.rpm
-    - url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.s390x.rpm
-    - url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.aarch64.rpm
-    - url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.ppc64le.rpm
 
-    # Required for node-gyp builds in npm install
-    # Electron headers for main VSCode build (runs on Electron)
-    - url: https://electronjs.org/headers/v37.7.0/node-v37.7.0-headers.tar.gz
-    # Node.js headers for build tools (runs on system Node.js 22.22.0)
-    - url: https://nodejs.org/download/release/v22.22.0/node-v22.22.0-headers.tar.gz
-    # Node: system Node from nodejs RPM is used for VSCode server (like che-code); no 22.20.0 tarballs.
-    # Electron binaries (one per target arch)
-    - url: https://github.com/electron/electron/releases/download/v37.7.0/electron-v37.7.0-linux-x64.zip
-    - url: https://github.com/electron/electron/releases/download/v37.7.0/electron-v37.7.0-linux-arm64.zip
-    - url: https://github.com/electron/electron/releases/download/v37.7.0/SHASUMS256.txt
+    # Node: system Node from nodejs RPM is used (like che-code). ppc64le/s390x use
+    # native gulp task (BUILD_TARGETS patched in setup-offline-binaries.sh); no extra tarball.
     # ripgrep: one version (v13.0.0-13) for all 4 arches; @vscode/ripgrep postinstall patched to use it (see apply-patch.sh).
     - url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
       filename: ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
@@ -35,7 +23,9 @@ input:
     - url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-s390x-unknown-linux-gnu.tar.gz
       filename: ripgrep-v13.0.0-13-s390x-unknown-linux-gnu.tar.gz
     # node-argon2 prebuilts — two versions required because separate transitive
-    # dependencies in the npm tree pin v0.31.2 and v0.28.7 respectively
+    # dependencies in the npm tree pin v0.31.2 and v0.28.7 respectively.
+    # NOTE: Only x86_64 prebuilts are provided. On arm64/ppc64le, argon2 falls
+    # back to source compilation (gcc-toolset-14 is available in the rpm-base stage).
     - url: https://github.com/ranisalt/node-argon2/releases/download/v0.31.2/argon2-v0.31.2-napi-v3-linux-x64-glibc.tar.gz
       filename: v0.31.2/argon2-v0.31.2-napi-v3-linux-x64-glibc.tar.gz
     - url: https://github.com/ranisalt/node-argon2/releases/download/v0.28.7/argon2-v0.28.7-napi-v3-linux-x64-glibc.tar.gz

@@ -55,7 +55,7 @@ scripts/lockfile-generators/prefetch-all.sh \
 ```
 
 This single command orchestrates all four lockfile generators:
-1. Generic artifacts (GPG keys, node headers, nfpm, oc client, VS Code extensions)
+1. Generic artifacts (GPG keys, node headers, oc client, VS Code extensions)
 2. Pip wheels (numpy, scipy, pandas, scikit-learn, etc. via RHOAI index)
 3. NPM packages (code-server + VS Code extensions)
 4. RPMs (gcc, nodejs, nginx, openblas, etc. via Hermeto)
@@ -81,7 +81,7 @@ After running, dependencies are in:
 
 ```
 cachi2/output/deps/
-├── generic/    # GPG keys, tarballs, nfpm RPM, oc client, VS Code extensions
+├── generic/    # GPG keys, tarballs, oc client, VS Code extensions
 ├── rpm/        # RPM packages + repodata/
 ├── npm/        # npm tarballs
 └── pip/        # Python wheels
@@ -255,7 +255,7 @@ the container at `/cachi2`. This gives the Dockerfile the same
 | `/cachi2/output/deps/rpm/` | All RPM packages plus `repodata/` metadata. The Dockerfile points dnf at this directory as a local repo |
 | `/cachi2/output/deps/pip/` | Python wheels prefetched from the RHOAI index. Installed with `uv pip install --no-index --find-links /cachi2/output/deps/pip` |
 | `/cachi2/output/deps/npm/` | npm tarballs. `package-lock.json` resolved URLs are rewritten to `file:///cachi2/output/deps/npm/` so `npm ci --offline` finds them |
-| `/cachi2/output/deps/generic/` | Everything else: GPG keys, node-gyp headers, Electron binaries, ripgrep, nfpm RPM, the oc client tarball, VS Code extensions, etc. |
+| `/cachi2/output/deps/generic/` | Everything else: GPG keys, node-gyp headers, Electron binaries, ripgrep, the oc client tarball, VS Code extensions, etc. |
 
 The `:z` suffix is a SELinux relabel flag for podman — it allows the container
 process to read the bind-mounted directory on SELinux-enabled hosts (Fedora,

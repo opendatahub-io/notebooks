@@ -72,12 +72,10 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
     fi;
 
 # libxkbfile-devel = util-macros + libxkbfile (Previously built from source)
-# [HERMETIC] Install nfpm (RPM packager) from prefetched RPM
 RUN dnf install -y \
         nodejs nodejs-devel npm \
         jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel \
-        krb5-devel libX11-devel libxkbfile-devel \
-        /cachi2/output/deps/generic/nfpm-2.44.1-1.$(uname -m).rpm && \
+        krb5-devel libX11-devel libxkbfile-devel && \
     dnf clean all
 
 # [HERMETIC] Git metadata needed by code-server's build scripts (version detection, submodules).
@@ -99,8 +97,8 @@ COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/tweak-gha.sh ${CODESERVER_SOUR
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/apply-patch.sh ${CODESERVER_SOURCE_CODE}/
 
 # [HERMETIC] apply-patch.sh (formerly get_code_server_rpm.sh) was simplified: it now only
-# enables gcc-toolset-14 and applies patches (nfpm is installed above). The actual
-# npm ci/build/release steps are done below in separate RUN commands for better caching.
+# enables gcc-toolset-14 and applies patches. The actual npm ci/build/release steps are
+# done below in separate RUN commands for better caching.
 RUN cd ${CODESERVER_SOURCE_CODE} && GHA_BUILD="${GHA_BUILD}" ./apply-patch.sh
 
 # [HERMETIC] Step 1: npm ci --offline (install all npm dependencies from local cache).
@@ -133,12 +131,6 @@ RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
 RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
     npm run release:standalone
-
-# [HERMETIC] Step 5: Package into RPM using nfpm (installed from prefetched RPM).
-RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    VERSION=${CODESERVER_VERSION/v/} npm run package && \
-    ls -alh release-packages/ && \
-    mv release-packages/code-server-${CODESERVER_VERSION/v/}-*.rpm /tmp/
 
 # Sentinel file: downstream stages use COPY --from=rpm-base /tmp/control to wait for this stage.
 RUN echo "done" > /tmp/control
@@ -333,9 +325,7 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
     fi;
 
 # [HERMETIC] Install useful OS packages from prefetched RPMs.
-# nodejs: provides libnode.so needed at runtime by code-server's bundled node binary
-#         (installed via rpm2cpio which skips dependency resolution).
-# cpio: required for rpm2cpio | cpio -idmv below (install here to avoid a second dnf call).
+# nodejs: provides libnode.so needed at runtime by code-server's bundled node binary.
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 PACKAGES=(
@@ -345,26 +335,20 @@ PACKAGES=(
     gettext
     # nss_wrapper: required by generate_container_user (LD_PRELOAD=libnss_wrapper.so)
     nss_wrapper
-    cpio
 )
 dnf install -y "${PACKAGES[@]}"
 dnf clean all
 rm -rf /var/cache/dnf
 EOF
 
-# Wait for rpm-base stage (builds code-server RPM from source).
+# Wait for rpm-base stage (builds code-server release-standalone).
 COPY --from=rpm-base /tmp/control /dev/null
 
-# Copy the built RPM from rpm-base stage (COPY instead of bind mounts — bind mounts fail on Konflux).
-# https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1755628065772589?thread_ts=1755597929.335999&cid=C04PZ7H0VA8
-COPY --from=rpm-base /tmp/code-server-*.rpm /tmp/
-
-# Install code-server via rpm2cpio (dnf rejects unsigned RPMs built from source on Konflux/Conforma)
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-cd /
-rpm2cpio /tmp/code-server-${CODESERVER_VERSION/v/}-*.rpm | cpio -idmv
-EOF
+# Install code-server from built tree (no RPM: avoids nfpm and unsigned-package issues on Konflux/Conforma).
+# Path in rpm-base: /root/${CODESERVER_SOURCE_CODE}/prefetch-input/code-server/release-standalone
+COPY --from=rpm-base /root/codeserver/ubi9-python-3.12/prefetch-input/code-server/release-standalone/. /usr/lib/code-server/
+COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server/ci/build/code-server-nfpm.sh /usr/bin/code-server
+RUN chmod 755 /usr/bin/code-server
 
 COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/utils utils/
 

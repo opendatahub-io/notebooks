@@ -9,10 +9,6 @@ input:
     # CentOS Stream 9 GPG key (needed in whl-cache stage for ppc64le/s390x dnf install
     # from CentOS baseos/appstream/crb repos; UBI9 images only ship the Red Hat key)
     - url: https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official
-    - url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.x86_64.rpm
-    - url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.s390x.rpm
-    - url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.aarch64.rpm
-    - url: https://github.com/goreleaser/nfpm/releases/download/v2.44.1/nfpm-2.44.1-1.ppc64le.rpm
 
     # Node: system Node from nodejs RPM is used (like che-code). ppc64le/s390x use
     # native gulp task (BUILD_TARGETS patched in setup-offline-binaries.sh); no extra tarball.
