@@ -72,6 +72,28 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
     #   Both steps are belt-and-suspenders — the lockfile flag alone is sufficient per
     #   npm documentation (see github.com/npm/cli/issues/2606), but patching the tarball
     #   adds defence in depth.
+    #
+    # [RIPGREP] Overwrite @vscode/ripgrep postinstall in the cached npm tarball with our
+    # patched version (ripgrep/postinstall.js) so a single v13.0.0-13 is used for all arches.
+    RIPGREP_PATCHED="${CODESERVER_SOURCE_PREFETCH}/ripgrep/postinstall.js"
+    RIPGREP_TGZ=$(find /cachi2/output/deps/npm -name "*ripgrep*.tgz" -type f 2>/dev/null | head -1)
+    if [[ -n "${RIPGREP_TGZ}" && -f "${RIPGREP_PATCHED}" ]]; then
+        echo "Patching @vscode/ripgrep: overwrite with ${RIPGREP_PATCHED}"
+        tmpdir=$(mktemp -d)
+        tar xzf "${RIPGREP_TGZ}" -C "$tmpdir"
+        cp "${RIPGREP_PATCHED}" "$tmpdir/package/lib/postinstall.js"
+        tar czf "${RIPGREP_TGZ}" -C "$tmpdir" package
+        rm -rf "$tmpdir"
+        # Strip integrity so npm accepts the modified tarball (lib/vscode, remote, and build all depend on @vscode/ripgrep).
+        for lock in lib/vscode/package-lock.json lib/vscode/remote/package-lock.json lib/vscode/build/package-lock.json; do
+            jq 'del(.packages["node_modules/@vscode/ripgrep"].integrity)' "$lock" > /tmp/lock-ripgrep.json && mv /tmp/lock-ripgrep.json "$lock"
+        done
+    elif [[ -z "${RIPGREP_TGZ}" ]]; then
+        echo "WARNING: @vscode/ripgrep tarball not found in /cachi2/output/deps/npm/"
+    elif [[ ! -f "${RIPGREP_PATCHED}" ]]; then
+        echo "WARNING: ripgrep postinstall not found at ${RIPGREP_PATCHED}"
+    fi
+
     if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
         # Try to patch the cached tarball (remove postinstall from its package.json)
         VSCE_TGZ=$(find /cachi2/output/deps/npm -name "*vsce-sign*.tgz" -type f 2>/dev/null | head -1)
@@ -111,7 +133,6 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
         "${CODESERVER_SOURCE_CODE}/patches/tweak-gha.sh"
     fi
 else
-  # we shall not download rpm for other architectures
   echo "Unsupported architecture: $ARCH" >&2
   exit 1
 fi

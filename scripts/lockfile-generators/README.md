@@ -750,9 +750,9 @@ git fetch --tags
 git checkout tags/v4.104.0
 git submodule update --init --recursive   # pull nested submodules if any
 
-# Commit the submodule and .gitmodules
-cd ../..
-git add -A .
+# Commit the submodule and .gitmodules (from repo root so .gitmodules is staged)
+cd ../../../..
+git add .gitmodules codeserver/ubi9-python-3.12/prefetch-input/code-server
 git commit -m "Added submodule code-server"
 ```
 

@@ -84,7 +84,7 @@ print("Scikit-learn smoke test completed successfully.")
     def test_mysql_connection(self, tf: TestFrame, datascience_image: Image, subtests):
         name_label = datascience_image.labels.get("name", "")
         if "-rstudio-" in name_label:
-            pytest.skip(f"Image {datascience_image.name} has '-rstudio-' in {datascience_image.labels['name']=}")
+            pytest.skip(f"Image {datascience_image.name} has '-rstudio-' in {datascience_image.labels['name']}")
 
         MYSQL_CONNECTOR_PYTHON_VERSION = "9.5.0"
 
