@@ -55,7 +55,7 @@ scripts/lockfile-generators/prefetch-all.sh \
 ```
 
 This single command orchestrates all four lockfile generators:
-1. Generic artifacts (GPG keys, node headers, nfpm, oc client, VS Code extensions)
+1. Generic artifacts (GPG keys, node headers, oc client, VS Code extensions)
 2. Pip wheels (numpy, scipy, pandas, scikit-learn, etc. via RHOAI index)
 3. NPM packages (code-server + VS Code extensions)
 4. RPMs (gcc, nodejs, nginx, openblas, etc. via Hermeto)
@@ -81,7 +81,7 @@ After running, dependencies are in:
 
 ```
 cachi2/output/deps/
-├── generic/    # GPG keys, tarballs, nfpm RPM, oc client, VS Code extensions
+├── generic/    # GPG keys, tarballs, oc client, VS Code extensions
 ├── rpm/        # RPM packages + repodata/
 ├── npm/        # npm tarballs
 └── pip/        # Python wheels
@@ -255,7 +255,7 @@ the container at `/cachi2`. This gives the Dockerfile the same
 | `/cachi2/output/deps/rpm/` | All RPM packages plus `repodata/` metadata. The Dockerfile points dnf at this directory as a local repo |
 | `/cachi2/output/deps/pip/` | Python wheels prefetched from the RHOAI index. Installed with `uv pip install --no-index --find-links /cachi2/output/deps/pip` |
 | `/cachi2/output/deps/npm/` | npm tarballs. `package-lock.json` resolved URLs are rewritten to `file:///cachi2/output/deps/npm/` so `npm ci --offline` finds them |
-| `/cachi2/output/deps/generic/` | Everything else: GPG keys, node-gyp headers, Electron binaries, ripgrep, nfpm RPM, the oc client tarball, VS Code extensions, etc. |
+| `/cachi2/output/deps/generic/` | GPG keys, ripgrep binaries, oc client tarball, VS Code .vsix extensions. (Node headers from nodejs-devel RPM; Electron download skipped.) |
 
 The `:z` suffix is a SELinux relabel flag for podman — it allows the container
 process to read the bind-mounted directory on SELinux-enabled hosts (Fedora,
@@ -267,13 +267,39 @@ When `LOCAL_BUILD=true` is set, the Dockerfile:
 
 1. **Removes default yum repos** (`rm -f /etc/yum.repos.d/*`) so dnf does not
    attempt to reach Red Hat CDN or UBI repos.
-2. **Adds the local cachi2 RPM repo** (`dnf config-manager --add-repo
-   file:///cachi2/output/deps/rpm/`) so all `dnf install` commands resolve
-   packages from the prefetched RPMs.
+2. **Adds the local cachi2 RPM repo** by copying
+   `cachi2/output/deps/rpm/$(uname -m)/repos.d/*.repo` into `/etc/yum.repos.d/`
+   so all `dnf install` commands resolve packages from the prefetched RPMs.
 
 In production (Konflux), `LOCAL_BUILD` is unset (defaults to `false`). Konflux
 injects cachi2 repos automatically and manages network isolation at the pipeline
 level.
+
+---
+
+## Running the image locally
+
+After building (e.g. `make codeserver-ubi9-python-3.12` or `podman build ...`), run the
+image with Podman and open code-server in your browser:
+
+```bash
+podman run -d --name codeserver -p 8080:8080 <your-image-name>:latest
+```
+
+Then open **http://localhost:8080**. The container serves the UI via nginx on port 8080
+(proxying to code-server on 8787).
+
+To bind a local directory as the workspace (e.g. for development):
+
+```bash
+podman run -d --name codeserver \
+  -p 8080:8080 \
+  -v /path/to/your/workspace:/opt/app-root/src:Z \
+  <your-image-name>:latest
+```
+
+Use `:Z` on Fedora/RHEL for SELinux; omit on macOS. Stop with `podman stop codeserver`
+and remove with `podman rm codeserver`.
 
 ---
 

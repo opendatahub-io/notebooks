@@ -4,7 +4,7 @@
 #
 # [HERMETIC] Sourced by setup-offline-binaries.sh and every RUN step in the
 # rpm-base stage that runs npm commands. Sets environment variables that tell
-# argon2 and the patched fetch.js to use local caches instead of downloading.
+# argon2 (and the patched fetch.js) to use local caches instead of downloading.
 #
 # Usage: . prefetch-input/patches/codeserver-offline-env.sh
 #    or: source prefetch-input/patches/codeserver-offline-env.sh
@@ -19,7 +19,9 @@ if [[ -f /opt/rh/gcc-toolset-14/enable ]]; then
 fi
 
 export TMPDIR=/tmp
-# argon2 prebuild: redirect binary download to local file mirror
+# argon2: point at local mirror so it never hits the network. We do not prefetch
+# argon2 prebuilds; when the tarball is missing here, node-pre-gyp falls back to
+# building from source (node-gyp; gcc-toolset-14 is available in rpm-base).
 export npm_config_argon2_binary_host_mirror="file://${HERMETO_OUTPUT}/deps/generic/"
 # Electron: skip binary download entirely — code-server builds for the web
 # (vscode-reh-web), not the Electron desktop app. The electron npm package is

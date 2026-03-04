@@ -3,14 +3,19 @@
 # rewrite-npm-urls.sh
 #
 # Rewrites all resolved URLs in package-lock.json and package.json files
-# to point to the local cachi2 offline cache:
-#   file:///cachi2/output/deps/npm/<filename>
+# to point to the cachi2 offline cache. Base URL is configurable via CACHI2_BASE:
+#   - file:///cachi2/output/deps/npm/<filename>  (default; when deps are mounted in build)
+#   - https://<mirror>/deps/npm/<filename>       (when Konflux/similar serves prefetched deps over HTTPS)
+#
+# Lockfiles committed in the repo must use https://registry.npmjs.org/... URLs
+# so Konflux/Hermeto Prefetch-dependencies can fetch them (file:// is not accessible at prefetch time).
 #
 # Handles:
-#   1. HTTPS registry URLs  (https://registry.npmjs.org/.../-/name-ver.tgz)
-#   2. git+ssh:// URLs       (git+ssh://git@github.com/owner/repo.git#hash)
-#   3. git+https:// URLs     (git+https://github.com/owner/repo.git#hash)
-#   4. GitHub shortname refs  (owner/repo#hash-or-branch  in dependency values)
+#   1. HTTPS registry URLs   (https://registry.npmjs.org/.../-/name-ver.tgz)
+#   2. codeload.github.com  (https://codeload.github.com/owner/repo/tar.gz/ref)
+#   3. git+ssh:// URLs      (git+ssh://git@github.com/owner/repo.git#hash)
+#   4. git+https:// URLs   (git+https://github.com/owner/repo.git#hash)
+#   5. GitHub shortname refs (owner/repo#hash-or-branch  in dependency values)
 #
 # Usage:
 #   ./rewrite-npm-urls.sh .                          # run on the current directory
@@ -31,7 +36,8 @@ TARGET_FILENAMES=(
     "package.json"
 )
 
-# Cachi2 local cache base path
+# Cachi2 npm cache base path. Hardcoded so the rewrite is reproducible in the build container.
+# Shell-expanded into perl one-liners so it works when the script is sourced.
 CACHI2_BASE="file:///cachi2/output/deps/npm"
 
 # =============================================================================
@@ -85,19 +91,20 @@ find_target_files() {
 # Rewrite types:
 #   1. Remove integrity hashes for git-resolved deps
 #   2. Registry URLs   https://registry.npmjs.org/...  → file:///cachi2/...
-#   3. git+ssh/https   git+ssh://...#hash              → file:///cachi2/...-hash.tgz
-#   4. Shortname refs  "owner/repo#ref"                → file:///cachi2/...-ref.tgz
+#   3. codeload.github.com (custom-packages / hermetic git workaround) → owner-repo-ref.tgz
+#   4. git+ssh/https   git+ssh://...#hash              → file:///cachi2/...-hash.tgz
+#   5. Shortname refs  "owner/repo#ref"                → file:///cachi2/...-ref.tgz
 # =============================================================================
 process_file() {
     local file="$1"
     log_step "Processing: ${file}"
 
-    # 1) Strip integrity hashes for git deps (npm pack is not reproducible,
-    #    so offline tarballs will have different hashes — safe to remove
-    #    because content is pinned by git commit hash).
+    # 1) Strip integrity hashes for git and codeload deps (tarballs can be
+    #    non-reproducible or fetched by cachi2 with different bytes — safe to
+    #    remove because content is pinned by git ref / URL).
     perl -i -ne '
         if ($s) { $s=0; next if /^\s*"integrity":\s*"/ }
-        $s=1 if /"resolved":\s*"git\+/; print
+        $s=1 if /"resolved":\s*"(git\+|https:\/\/codeload\.github\.com)/; print
     ' "${file}"
 
     # 2) Registry URLs (scoped @scope/pkg and unscoped pkg in one pass).
@@ -105,11 +112,22 @@ process_file() {
     #    Unscoped: express/-/express-4.19.2.tgz                  → express-4.19.2.tgz
     perl -i -pe 's!"resolved": "https?://[^"]*?/(?:\@([^/]+)/)?[^/]+/-/([^"]+)"! "\"resolved\": \"'"${CACHI2_BASE}"'/" . ($1 ? "$1-$2" : "$2") . "\"" !ge' "${file}"
 
-    # 3) git+ssh and git+https URLs → owner-repo-hash.tgz
-    perl -i -pe 's!"resolved": "git\+(ssh://git\@|https://)github\.com/([^/]+)/([^.#"]+)(?:\.git)?#([^"]+)"!"resolved": "'"${CACHI2_BASE}"'/$2-$3-$4.tgz"!g' "${file}"
+    # 2b) Same registry URL → file path for dependency values (e.g. custom-packages package.json
+    #     and lockfile packages."".dependencies). npm with --offline may use these when resolving.
+    perl -i -pe 's!"https?://[^"]*?registry\.npmjs\.org/(?:\@([^/]+)/)?[^/]+/-/([^"]+\.tgz)"! "\"'"${CACHI2_BASE}"'/" . ($1 ? "$1-$2" : "$2") . "\"" !ge' "${file}"
 
-    # 4) GitHub shortname refs: "owner/repo#ref" → cachi2 path
-    perl -i -pe 's!": "([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_.-]+)#([^"]+)"!": "'"${CACHI2_BASE}"'/$1-$2-$3.tgz"!g' "${file}"
+    # 3) codeload.github.com URLs (e.g. custom-packages) → owner-repo-ref.tgz
+    #    Same filename convention as git+ssh so deps/npm/ has one naming scheme.
+    #    Ref is sanitized (e.g. / → -) so branch names like feature/foo don't create nested paths.
+    #    Inner s### uses # delimiter to avoid conflicting with outer s!!!.
+    #    Use q{} so ": " is not parsed as a label.
+    perl -i -pe 's!: "https://codeload\.github\.com/([^/]+)/([^/]+)/tar\.gz/([^"]+)"! do { ($o,$p,$r)=($1,$2,$3); $r=~s#[^A-Za-z0-9._-]+#-#g; q{: "}."'"${CACHI2_BASE}"'"."/".$o."-".$p."-".$r.q{.tgz"} }!ge' "${file}"
+
+    # 4) git+ssh and git+https URLs → owner-repo-hash.tgz (ref sanitized for slashes)
+    perl -i -pe 's!"resolved": "git\+(ssh://git\@|https://)github\.com/([^/]+)/([^.#"]+)(?:\.git)?#([^"]+)"!do { ($o,$p,$r)=($2,$3,$4); $r=~s#[^A-Za-z0-9._-]+#-#g; "\"resolved\": \"'"${CACHI2_BASE}"'/".$o."-".$p."-".$r.".tgz\"" }!ge' "${file}"
+
+    # 5) GitHub shortname refs: "owner/repo#ref" → cachi2 path (ref sanitized for slashes)
+    perl -i -pe 's!": "([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_.-]+)#([^"]+)"!do { ($o,$p,$r)=($1,$2,$3); $r=~s#[^A-Za-z0-9._-]+#-#g; "\": \"'"${CACHI2_BASE}"'/".$o."-".$p."-".$r.".tgz\"" }!ge' "${file}"
 
     TOTAL_FILES_PROCESSED=$((TOTAL_FILES_PROCESSED + 1))
 }

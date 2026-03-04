@@ -6,7 +6,7 @@
 # and mounted at /cachi2/output/deps/{rpm,pip,generic}/ during the build.
 #
 # Multi-stage layout:
-#   rpm-base  -> builds code-server RPM from prefetched source (all arches)
+#   rpm-base  -> builds code-server from prefetched source (release-standalone, all arches)
 #   whl-cache -> installs Python wheels + exports compiled C-extension wheels (ppc64le/s390x)
 #   cpu-base  -> installs OS packages + tools (oc client, micropipenv, uv)
 #   codeserver -> final image (code-server + nginx + Python packages)
@@ -23,11 +23,10 @@ ARG BASE_IMAGE
 ARG LOCAL_BUILD=false
 
 ############################################################################################
-# rpm-base: Build code-server from source into an RPM (all architectures)
+# rpm-base: Build code-server from source (release-standalone tree, all architectures)
 #
-# [HERMETIC] apply-patch.sh (formerly get_code_server_rpm.sh) would git-clone code-server,
-# install nvm, download Node.js, and build everything with full network access. Now the
-# entire build runs offline using prefetched sources:
+# [HERMETIC] The build runs offline using prefetched sources (no git clone, no nvm, no
+# Node download). apply-patch.sh only applies patches and offline fixes. Sources:
 #   - code-server source: prefetch-input/code-server/ (git submodule)
 #   - Node.js/npm: installed from prefetched RPMs
 #   - npm dependencies: package-lock.json resolved URLs rewritten to file:///cachi2/...
@@ -57,12 +56,11 @@ ARG CODESERVER_VERSION=v4.106.3
 
 # [HERMETIC] Import GPG keys for prefetched RPM verification.
 # CentOS key needed because libX11-devel comes from CentOS Stream repos.
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
-# Hermeto organises RPMs into per-arch sub-repos (baseos, epel, crb, ubi-*, …), each with
+# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
 # its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/* && \
@@ -73,17 +71,11 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
     fi;
 
 # libxkbfile-devel = util-macros + libxkbfile (Previously built from source)
-# [HERMETIC] Install nfpm (RPM packager) from prefetched RPM
 RUN dnf install -y \
         nodejs nodejs-devel npm \
         jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel \
-        krb5-devel libX11-devel libxkbfile-devel \
-        /cachi2/output/deps/generic/nfpm-2.44.1-1.$(uname -m).rpm && \
+        krb5-devel libX11-devel libxkbfile-devel && \
     dnf clean all
-
-# There was limitation on Hermeto, it can't fetch npm packages using git/ssh protocol.
-# To work around this, need to fetch some npm packages as generic artifacts and copy to npm directory.
-RUN cp /cachi2/output/deps/generic/npm/* /cachi2/output/deps/npm/
 
 # [HERMETIC] Git metadata needed by code-server's build scripts (version detection, submodules).
 COPY .git /root/.git
@@ -103,16 +95,16 @@ COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/codeserver-offline-env.sh ${CO
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/tweak-gha.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/apply-patch.sh ${CODESERVER_SOURCE_CODE}/
 
-# [HERMETIC] apply-patch.sh (formerly get_code_server_rpm.sh) was simplified: it now only
-# enables gcc-toolset-14 and applies patches (nfpm is installed above). The actual
-# npm ci/build/release steps are done below in separate RUN commands for better caching.
+# [HERMETIC] apply-patch.sh enables gcc-toolset-14 and applies patches (ripgrep, vsce-sign,
+# patches/series). npm ci, build, and release run in separate RUN steps below for caching.
 RUN cd ${CODESERVER_SOURCE_CODE} && GHA_BUILD="${GHA_BUILD}" ./apply-patch.sh
 
 # [HERMETIC] Step 1: npm ci --offline (install all npm dependencies from local cache).
 # setup-offline-binaries.sh does all offline preparation in one shot:
 #   - sources codeserver-offline-env.sh (ELECTRON_SKIP_BINARY_DOWNLOAD, NPM_CONFIG_NODEDIR, etc.)
-#   - populates node-gyp header cache (22.20.0 for VS Code remote), ripgrep, VSCode extensions
-#   - pre-populates .build/node/ and .build/builtInExtensions/ so gulp skips network downloads
+#   - node-gyp uses system headers (NPM_CONFIG_NODEDIR=/usr from nodejs-devel RPM)
+#   - ripgrep, .vsix extensions from cachi2 generic; .build/node/ = system /usr/bin/node (per-arch)
+#   - pre-populates .build/builtInExtensions/ so gulp skips network downloads
 #   - rewrites package-lock.json "resolved" URLs to file:///cachi2/...
 # CI=1 makes ci/dev/postinstall.sh run "npm ci" (not "npm install") in subdirs,
 # so resolved URLs stay absolute (file:///cachi2/...) and lockfiles are never modified.
@@ -137,12 +129,6 @@ RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
 RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && \
     export KEEP_MODULES=1 && cd ${CODESERVER_SOURCE_PREFETCH} && \
     npm run release:standalone
-
-# [HERMETIC] Step 5: Package into RPM using nfpm (installed from prefetched RPM).
-RUN . ${CODESERVER_SOURCE_CODE}/patches/codeserver-offline-env.sh && cd ${CODESERVER_SOURCE_PREFETCH} && \
-    VERSION=${CODESERVER_VERSION/v/} npm run package && \
-    ls -alh release-packages/ && \
-    mv release-packages/code-server-${CODESERVER_VERSION/v/}-*.rpm /tmp/
 
 # Sentinel file: downstream stages use COPY --from=rpm-base /tmp/control to wait for this stage.
 RUN echo "done" > /tmp/control
@@ -170,11 +156,10 @@ ARG LOCAL_BUILD
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-# [HERMETIC] Import GPG keys for EPEL, Red Hat, and CentOS repos (needed for dnf to verify prefetched RPMs).
-# EPEL + CentOS keys are prefetched as generic artifacts (see artifacts.in.yaml).
+# [HERMETIC] Import GPG keys for Red Hat and CentOS repos (needed for dnf to verify prefetched RPMs).
+# CentOS key is prefetched as a generic artifact (see artifacts.in.yaml).
 # UBI9 images only ship the Red Hat key; CentOS key is needed for ppc64le/s390x packages
 # from CentOS Stream repos (mesa-libGL, etc.).
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
@@ -254,12 +239,11 @@ USER 0
 
 # [HERMETIC] Import GPG keys for prefetched RPM verification.
 # CentOS key needed because mesa-libGL comes from CentOS Stream repos.
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
-# Hermeto organises RPMs into per-arch sub-repos (baseos, epel, crb, ubi-*, …), each with
+# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
 # its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/* && \
@@ -330,7 +314,7 @@ USER 0
 WORKDIR /opt/app-root/bin
 
 # [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
-# Hermeto organises RPMs into per-arch sub-repos (baseos, epel, crb, ubi-*, …), each with
+# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
 # its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/* && \
@@ -341,9 +325,7 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
     fi;
 
 # [HERMETIC] Install useful OS packages from prefetched RPMs.
-# nodejs: provides libnode.so needed at runtime by code-server's bundled node binary
-#         (installed via rpm2cpio which skips dependency resolution).
-# cpio: required for rpm2cpio | cpio -idmv below (install here to avoid a second dnf call).
+# nodejs: provides libnode.so needed at runtime by code-server's bundled node binary.
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 PACKAGES=(
@@ -353,26 +335,21 @@ PACKAGES=(
     gettext
     # nss_wrapper: required by generate_container_user (LD_PRELOAD=libnss_wrapper.so)
     nss_wrapper
-    cpio
 )
 dnf install -y "${PACKAGES[@]}"
 dnf clean all
 rm -rf /var/cache/dnf
 EOF
 
-# Wait for rpm-base stage (builds code-server RPM from source).
+# Wait for rpm-base stage (builds code-server release-standalone).
 COPY --from=rpm-base /tmp/control /dev/null
 
-# Copy the built RPM from rpm-base stage (COPY instead of bind mounts — bind mounts fail on Konflux).
-# https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1755628065772589?thread_ts=1755597929.335999&cid=C04PZ7H0VA8
-COPY --from=rpm-base /tmp/code-server-*.rpm /tmp/
-
-# Install code-server via rpm2cpio (dnf rejects unsigned RPMs built from source on Konflux/Conforma)
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-cd /
-rpm2cpio /tmp/code-server-${CODESERVER_VERSION/v/}-*.rpm | cpio -idmv
-EOF
+# Install code-server from built tree (no RPM: avoids unsigned-package issues on Konflux/Conforma).
+# Path in rpm-base: /root/codeserver/ubi9-python-3.12/prefetch-input/code-server/release-standalone
+COPY --from=rpm-base /root/codeserver/ubi9-python-3.12/prefetch-input/code-server/release-standalone/. /usr/lib/code-server/
+# Wrapper script (from code-server ci/build) that execs /usr/lib/code-server/bin/code-server
+COPY ${CODESERVER_SOURCE_CODE}/prefetch-input/code-server/ci/build/code-server-nfpm.sh /usr/bin/code-server
+RUN chmod 755 /usr/bin/code-server
 
 COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/utils utils/
 

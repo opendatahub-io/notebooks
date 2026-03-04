@@ -4,7 +4,7 @@ This file provides an overview and quick access links to the **Konflux** environ
 
 ## Codeserver pipeline resources
 
-The codeserver image is large; the multiarch pipeline’s **build-images** task runs the image build on a remote VM, then **rsyncs** the result back to the cluster. That rsync can OOM or drop the connection if the task has default resource limits. The codeserver PipelineRuns (`.tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-pull-request.yaml` and `-push.yaml`) set **taskRunSpecs** for the `build-images` task with **8 CPU** and **32Gi memory** so the rsync-back step has enough resources. See the `taskRunSpecs` block in those files; other heavy pipelines (e.g. rstudio CUDA) use the same pattern.
+The codeserver image is large; the multiarch pipeline runs **prefetch-dependencies** (Cachi2) and then **build-images** (remote VM build + rsync back). Both can OOM with default resource limits. The codeserver PipelineRuns (`.tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-pull-request.yaml` and `-push.yaml`) set **taskRunSpecs** for `prefetch-dependencies` and `build-images` with **8 CPU** and **32Gi memory** so Cachi2 and the rsync-back step have enough resources. This follows [Konflux: Overriding compute resources](https://konflux-ci.dev/docs/building/overriding-compute-resources/) (PipelineRun `spec.taskRunSpecs` in `.tekton`). See the `taskRunSpecs` block in those files; other heavy pipelines (e.g. rstudio CUDA) use the same pattern.
 
 ## ODH-io (Open Data Hub)
 
