@@ -163,12 +163,12 @@ def find_target_dirs(target_dir: Path | None) -> list[Path]:
         return [target_dir]
 
     info("Scanning main directories for Python projects...")
-    dirs: list[Path] = []
+    dirs: set[Path] = set()
     for base_name in MAIN_DIRS:
         base = ROOT_DIR / base_name
         if base.is_dir():
-            dirs.extend(p.parent for p in base.rglob("pyproject.toml"))
-    return dirs
+            dirs.update(p.parent for p in base.rglob("pyproject.toml"))
+    return sorted(dirs)
 
 
 # =============================================================================
@@ -232,12 +232,12 @@ def run_lock(
     project_dir: Path,
     flavor: str,
     index_flags: list[str],
-    mode: str,
+    mode: IndexMode,
     python_version: str,
     upgrade: bool,
 ) -> bool:
     """Run uv pip compile to generate a lock file. Returns True on success."""
-    if mode == "public-index":
+    if mode == IndexMode.public_index:
         output = "pylock.toml"
         desc = "pylock.toml (public index)"
         print("➡️ Generating pylock.toml from public PyPI index...")
@@ -361,14 +361,14 @@ def main(
 
         # Resolve effective mode
         if index_mode == IndexMode.auto:
-            effective_mode = "rh-index" if (tdir / "uv.lock.d").is_dir() else "public-index"
+            effective_mode = IndexMode.rh_index if (tdir / "uv.lock.d").is_dir() else IndexMode.public_index
         else:
-            effective_mode = index_mode.value
-        info(f"Effective mode for this directory: {effective_mode}")
+            effective_mode = index_mode
+        info(f"Effective mode for this directory: {effective_mode.value}")
 
         dir_success = True
 
-        if effective_mode == "public-index":
+        if effective_mode == IndexMode.public_index:
             if not run_lock(tdir, "cpu", [PUBLIC_INDEX], effective_mode, python_version, upgrade):
                 dir_success = False
         else:

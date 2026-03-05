@@ -112,7 +112,7 @@ echo "  project dir : ${PROJECT_DIR}"
 echo "  flavor      : ${FLAVOR}"
 echo ""
 
-python3 "$PYLOCKS_GENERATOR" rh-index "$PROJECT_DIR"
+./uv run "$PYLOCKS_GENERATOR" rh-index "$PROJECT_DIR"
 
 if [[ ! -f "$PYLOCK_FILE" ]]; then
   error_exit "pylocks_generator.py did not produce ${PYLOCK_FILE}"
