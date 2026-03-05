@@ -8,4 +8,4 @@ uv --version || pip install "uv==0.10.6"
 
 "${REPO_ROOT}/uv" run scripts/dockerfile_fragments.py
 "${REPO_ROOT}/uv" run manifests/tools/generate_kustomization.py
-bash scripts/pylocks_generator.sh
+"${REPO_ROOT}/uv" run scripts/pylocks_generator.py
