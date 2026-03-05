@@ -21,6 +21,23 @@ tmp_pv_loop_path=/mnt/tmp-pv.img
 
 VG_NAME=buildvg
 
+
+# Detect if /mnt is a separate block device from /
+ROOT_DEV=$(df --output=source / | tail -1)
+MNT_DEV=$(df --output=source /mnt | tail -1)
+if [[ "$ROOT_DEV" == "$MNT_DEV" ]]; then
+  echo "Single-disk runner (/mnt on same fs as root) — skipping LVM, using root fs directly."
+  # Keep disk-reclaim behavior consistent with the dual-disk path.
+  sudo swapoff -a || true
+  sudo rm -f /mnt/swapfile || true
+  mkdir -p "${build_mount_path}"
+  sudo chown -R "${build_mount_path_ownership}" "${build_mount_path}"
+  if [[ ! -d "${GITHUB_WORKSPACE}" ]]; then
+    sudo mkdir -p "${GITHUB_WORKSPACE}"
+    sudo chown -R "${WORKSPACE_OWNER}" "${GITHUB_WORKSPACE}"
+  fi
+  exit 0
+fi
 # github runners have an active swap file in /mnt/swapfile
 # we want to reuse the temp disk, so first unmount swap and clean the temp disk
 echo "Unmounting and removing swap file."

@@ -4,11 +4,14 @@ description: 'Removes unnecessary packages and files to free up disk space on Gi
 runs:
   using: "composite"
   steps:
-    - name: Free up additional disk space
+    - name: Free up disk space
       shell: bash
       run: |
         set -x
         df -h
+        sudo docker system prune -af  || true
+        sudo apt-get clean
+        sudo rm -rf /tmp/*
         sudo apt-get update
         sudo apt-get purge -y '^dotnet-.*' '^llvm-.*' 'php.*' '^mongodb-.*'
         sudo apt-get autoremove -y --purge
@@ -20,6 +23,5 @@ runs:
         sudo rm -rf /usr/share/dotnet &
         sudo rm -rf /opt/ghc &
         sudo rm -rf /opt/hostedtoolcache/CodeQL &
-        sudo docker image prune --all --force &
         wait
         df -h

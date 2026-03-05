@@ -68,6 +68,8 @@ jobs:
       # Makefile variables
       BUILD_ARCH: ${{ inputs.platform }}
       RELEASE_PYTHON_VERSION: ${{ inputs.python }}
+      # Faster/smaller cache restore on resource-constrained runners (e.g. arm64). RHAIENG-2819
+      GHA_CACHE_ZSTD_LEVEL: "3"
 
     steps:
 
@@ -160,7 +162,7 @@ jobs:
 
       # region Free up disk space
 
-      - name: Free up additional disk space
+      - name: Free up disk space
         uses: ./.github/actions/free-up-disk-space
         # https://docs.github.com/en/actions/learn-github-actions/expressions
         # NOTE: the arm64 GitHub hosted runner does not have the /mnt-mounted scratch disk
@@ -324,7 +326,7 @@ jobs:
           # leave a breadcrumb trail in the logs.
           (while true; do
             echo "=== $(date -u '+%H:%M:%S') ==="
-            df -h | grep "${HOME}/.local/share/containers"
+            df -h / /mnt "${HOME}/.local/share/containers" 2>/dev/null || df -h
             free -h
             sleep 30
           done) &
@@ -567,7 +569,12 @@ jobs:
       - run: df -h
         if: "${{ !cancelled() }}"
 
-      - run: sudo compsize -x "${HOME}/.local/share/containers"
+      - run: |
+          if mountpoint -q "${HOME}/.local/share/containers"; then
+            sudo compsize -x "${HOME}/.local/share/containers"
+          else
+            echo "Skipping compsize: ${HOME}/.local/share/containers is not a btrfs mountpoint."
+          fi
         if: "${{ !cancelled() && steps.install-compsize.outcome == 'success' }}"
 
       # print system logs, useful when hunting for OOM kills
