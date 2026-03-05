@@ -235,9 +235,23 @@ class TestBaseImage:
     def test_oc_command_runs_fake_fips(self, image: str, subtests: pytest_subtests.SubTests):
         """Establishes a best-effort fake FIPS environment and attempts to execute `oc` binary in it.
 
-        Related issue: RHOAIENG-4350 In workbench the oc CLI tool cannot be used on FIPS enabled cluster"""
+        Related issue: RHOAIENG-4350 In workbench the oc CLI tool cannot be used on FIPS enabled cluster.
+
+        When oc is installed via the openshift-clients RPM (dnf), it is FIPS-aware and requires
+        a real FIPS OpenSSL backend when /proc/sys/crypto/fips_enabled is 1. This test only fakes
+        that proc file, so the RPM oc correctly fails with "required OpenSSL backend is unavailable".
+        On real FIPS-enabled RHEL/UBI the backend would be present. We skip the test for RPM-based oc.
+        """
         if utils.is_rstudio_image(image):
             pytest.skip("oc command is not preinstalled in RStudio images.")
+        # Skip when oc comes from openshift-clients RPM: fake FIPS is insufficient for RPM (needs real OpenSSL).
+        with self._test_container(image=image) as container:
+            rpm_ecode, _ = container.exec(["/bin/sh", "-c", "rpm -q openshift-clients 2>/dev/null"])
+        if rpm_ecode == 0:
+            pytest.skip(
+                "oc from openshift-clients RPM: fake FIPS test not applicable "
+                "(RPM requires real FIPS OpenSSL; on real FIPS nodes oc would work)."
+            )
         with tempfile.TemporaryDirectory() as tmp_crypto:
             # Ubuntu does not even have /proc/sys/crypto directory, unless FIPS is activated and machine
             #  is rebooted, see https://ubuntu.com/security/certifications/docs/fips-enablement
