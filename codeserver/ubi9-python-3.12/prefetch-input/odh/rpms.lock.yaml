@@ -74,6 +74,13 @@ arches:
     name: checkpolicy
     evr: 3.6-1.el9
     sourcerpm: checkpolicy-3.6-1.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/c/compat-openssl11-1.1.1k-5.el9_6.1.aarch64.rpm
+    repoid: ubi-9-for-aarch64-appstream-rpms
+    size: 1437140
+    checksum: sha256:4d62a8fe879ba1da792cc23451678608e37b7a5107c6063a8a18c0dd98b0c5b5
+    name: compat-openssl11
+    evr: 1:1.1.1k-5.el9_6.1
+    sourcerpm: compat-openssl11-1.1.1k-5.el9_6.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/c/criu-3.19-3.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-appstream-rpms
     size: 555523
@@ -1985,6 +1992,13 @@ arches:
     name: bash
     evr: 5.1.8-9.el9
     sourcerpm: bash-5.1.8-9.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/b/bash-completion-2.11-5.el9.noarch.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 469639
+    checksum: sha256:3b4ae87f0e9a13cda47f1c009eb2c63135dc22b2b4dd89a6310f8e8fbb59e30a
+    name: bash-completion
+    evr: 1:2.11-5.el9
+    sourcerpm: bash-completion-2.11-5.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/c/ca-certificates-2025.2.80_v9.0.305-91.el9.noarch.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 1072208
@@ -4841,6 +4855,13 @@ arches:
     name: qhull-devel
     evr: 1:7.2.1-11.el9
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
+  - url: https://mirror.openshift.com/pub/openshift-v4/aarch64/dependencies/rpms/4.12-el8-beta/openshift-clients-4.12.0-202312200531.p0.gd4c9e3c.assembly.stream.el8.aarch64.rpm
+    repoid: openshift-4-12
+    size: 46412656
+    checksum: sha256:7fb967cfdf194b386dc06b7180c1a0d918081596c04c29235d3899d740371f6c
+    name: openshift-clients
+    evr: 4.12.0-202312200531.p0.gd4c9e3c.assembly.stream.el8
+    sourcerpm: openshift-clients-4.12.0-202312200531.p0.gd4c9e3c.assembly.stream.el8.src.rpm
   source: []
   module_metadata:
   - url: https://composes.stream.centos.org/production/CentOS-Stream-9-20260217.0/compose/AppStream/aarch64/os/repodata/e1a9188bff6eb85e2a054de2e42029d9d2053dcc66708735cc0903b585957c7a-modules.yaml.gz
@@ -4919,6 +4940,13 @@ arches:
     name: checkpolicy
     evr: 3.6-1.el9
     sourcerpm: checkpolicy-3.6-1.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/c/compat-openssl11-1.1.1k-5.el9_6.1.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-appstream-rpms
+    size: 1592980
+    checksum: sha256:cc4e307266401ba58b33127e54459d7384b4f6f143204f1e9688a14db94d273f
+    name: compat-openssl11
+    evr: 1:1.1.1k-5.el9_6.1
+    sourcerpm: compat-openssl11-1.1.1k-5.el9_6.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/c/criu-3.19-3.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-appstream-rpms
     size: 603115
@@ -6837,6 +6865,13 @@ arches:
     name: bash
     evr: 5.1.8-9.el9
     sourcerpm: bash-5.1.8-9.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/b/bash-completion-2.11-5.el9.noarch.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 469639
+    checksum: sha256:3b4ae87f0e9a13cda47f1c009eb2c63135dc22b2b4dd89a6310f8e8fbb59e30a
+    name: bash-completion
+    evr: 1:2.11-5.el9
+    sourcerpm: bash-completion-2.11-5.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/c/ca-certificates-2025.2.80_v9.0.305-91.el9.noarch.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 1072208
@@ -9721,6 +9756,13 @@ arches:
     name: qhull-devel
     evr: 1:7.2.1-11.el9
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
+  - url: https://mirror.openshift.com/pub/openshift-v4/ppc64le/dependencies/rpms/4.12-el8-beta/openshift-clients-4.12.0-202301312133.p0.gb05f7d4.assembly.stream.el8.ppc64le.rpm
+    repoid: openshift-4-12
+    size: 41652072
+    checksum: sha256:d157e464ad4c4bb4efed1bf68bbfaac5daba8b4450a533204e8b716b65262c27
+    name: openshift-clients
+    evr: 4.12.0-202301312133.p0.gb05f7d4.assembly.stream.el8
+    sourcerpm: openshift-clients-4.12.0-202301312133.p0.gb05f7d4.assembly.stream.el8.src.rpm
   source: []
   module_metadata:
   - url: https://composes.stream.centos.org/production/CentOS-Stream-9-20260217.0/compose/AppStream/ppc64le/os/repodata/3d16e89520ac23356dc6446a1cff1a49233b375209cca55043ce1a5dcb5ce9ca-modules.yaml.gz
@@ -9799,6 +9841,13 @@ arches:
     name: checkpolicy
     evr: 3.6-1.el9
     sourcerpm: checkpolicy-3.6-1.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/c/compat-openssl11-1.1.1k-5.el9_6.1.x86_64.rpm
+    repoid: ubi-9-for-x86_64-appstream-rpms
+    size: 1524135
+    checksum: sha256:e4573a2f07756624a20d93e967f840d5aee748965827067a7516ce0670a13031
+    name: compat-openssl11
+    evr: 1:1.1.1k-5.el9_6.1
+    sourcerpm: compat-openssl11-1.1.1k-5.el9_6.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/c/criu-3.19-3.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-appstream-rpms
     size: 569988
@@ -11724,6 +11773,13 @@ arches:
     name: bash
     evr: 5.1.8-9.el9
     sourcerpm: bash-5.1.8-9.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/b/bash-completion-2.11-5.el9.noarch.rpm
+    repoid: ubi-9-for-x86_64-baseos-rpms
+    size: 469639
+    checksum: sha256:3b4ae87f0e9a13cda47f1c009eb2c63135dc22b2b4dd89a6310f8e8fbb59e30a
+    name: bash-completion
+    evr: 1:2.11-5.el9
+    sourcerpm: bash-completion-2.11-5.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/c/ca-certificates-2025.2.80_v9.0.305-91.el9.noarch.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 1072208
@@ -14608,6 +14664,13 @@ arches:
     name: qhull-devel
     evr: 1:7.2.1-11.el9
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
+  - url: https://mirror.openshift.com/pub/openshift-v4/x86_64/dependencies/rpms/4.12-el8-beta/openshift-clients-4.12.0-202312200531.p0.gd4c9e3c.assembly.stream.el8.x86_64.rpm
+    repoid: openshift-4-12
+    size: 48103288
+    checksum: sha256:65ca7e4ab4deea83a8010e07acc7a6a854682cf15e1647e260ad77121091b49e
+    name: openshift-clients
+    evr: 4.12.0-202312200531.p0.gd4c9e3c.assembly.stream.el8
+    sourcerpm: openshift-clients-4.12.0-202312200531.p0.gd4c9e3c.assembly.stream.el8.src.rpm
   source: []
   module_metadata:
   - url: https://composes.stream.centos.org/production/CentOS-Stream-9-20260217.0/compose/AppStream/x86_64/os/repodata/677a49b2e0726fb3afee7a5c18a14c3eba91f922041a49e99b9120009925553d-modules.yaml.gz

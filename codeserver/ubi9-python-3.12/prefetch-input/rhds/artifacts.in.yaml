@@ -25,16 +25,6 @@ input:
     # argon2: not prefetched; builds from source via node-gyp (gcc-toolset-14 in rpm-base).
     # The npm package is in the lockfile; when the mirror has no prebuild, it falls back to compile.
 
-    # OpenShift oc client (one per target arch; filenames use uname -m convention)
-    - url: https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.18.33/openshift-client-linux.tar.gz
-      filename: openshift-client-linux-x86_64.tar.gz
-    - url: https://mirror.openshift.com/pub/openshift-v4/aarch64/clients/ocp/4.18.33/openshift-client-linux.tar.gz
-      filename: openshift-client-linux-aarch64.tar.gz
-    - url: https://mirror.openshift.com/pub/openshift-v4/ppc64le/clients/ocp/4.18.33/openshift-client-linux.tar.gz
-      filename: openshift-client-linux-ppc64le.tar.gz
-    - url: https://mirror.openshift.com/pub/openshift-v4/s390x/clients/ocp/4.18.33/openshift-client-linux.tar.gz
-      filename: openshift-client-linux-s390x.tar.gz
-
     # VSCode marketplace extensions (built-in extensions bundled with code-server)
     - url: https://github.com/microsoft/vscode-js-debug-companion/releases/download/v1.1.3/ms-vscode.js-debug-companion.1.1.3.vsix
       filename: ms-vscode.js-debug-companion.1.1.3.vsix

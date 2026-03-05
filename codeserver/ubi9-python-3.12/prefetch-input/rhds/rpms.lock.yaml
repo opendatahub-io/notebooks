@@ -11,6 +11,13 @@ arches:
     name: containers-common
     evr: 3:1-78.rhaos4.16.el9
     sourcerpm: containers-common-1-78.rhaos4.16.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhocp/4.16/os/Packages/o/openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.aarch64.rpm
+    repoid: rhocp-4.16-for-rhel-9-x86_64-rpms
+    size: 54080966
+    checksum: sha256:aca8538e130743bdd3aeae1ec02732402ed7d71840d6ac7016bd27cd63c7540c
+    name: openshift-clients
+    evr: 4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9
+    sourcerpm: openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/aarch64/appstream/os/Packages/a/annobin-12.92-1.el9.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 1106184
@@ -361,6 +368,13 @@ arches:
     name: cmake-rpm-macros
     evr: 3.26.5-2.el9
     sourcerpm: cmake-3.26.5-2.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/aarch64/appstream/os/Packages/c/compat-openssl11-1.1.1k-5.el9_6.1.aarch64.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 1437140
+    checksum: sha256:4d62a8fe879ba1da792cc23451678608e37b7a5107c6063a8a18c0dd98b0c5b5
+    name: compat-openssl11
+    evr: 1:1.1.1k-5.el9_6.1
+    sourcerpm: compat-openssl11-1.1.1k-5.el9_6.1.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/aarch64/appstream/os/Packages/c/cpp-11.5.0-5.el9_5.aarch64.rpm
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 10795955
@@ -3483,6 +3497,13 @@ arches:
     name: bash
     evr: 5.1.8-9.el9
     sourcerpm: bash-5.1.8-9.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/aarch64/baseos/os/Packages/b/bash-completion-2.11-5.el9.noarch.rpm
+    repoid: rhel-9-for-x86_64-baseos-rpms
+    size: 469639
+    checksum: sha256:3b4ae87f0e9a13cda47f1c009eb2c63135dc22b2b4dd89a6310f8e8fbb59e30a
+    name: bash-completion
+    evr: 1:2.11-5.el9
+    sourcerpm: bash-completion-2.11-5.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/aarch64/baseos/os/Packages/b/binutils-2.35.2-63.el9.aarch64.rpm
     repoid: rhel-9-for-x86_64-baseos-rpms
     size: 5023899
@@ -4864,10 +4885,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/aarch64/appstream/os/repodata/8c529c0af1d53c7ae34edc350309cc9b9c25bac4bdfe08df09b32d216367a775-modules.yaml.gz
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/aarch64/appstream/os/repodata/006e812e7f58e5c1211840f071145df075ed994528bc8d2ab3ac112c7657b5b5-modules.yaml.gz
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 34364
-    checksum: sha256:8c529c0af1d53c7ae34edc350309cc9b9c25bac4bdfe08df09b32d216367a775
+    checksum: sha256:006e812e7f58e5c1211840f071145df075ed994528bc8d2ab3ac112c7657b5b5
 - arch: ppc64le
   packages:
   - url: https://cdn.redhat.com/content/dist/layered/rhel9/ppc64le/rhocp/4.16/os/Packages/c/containers-common-1-78.rhaos4.16.el9.ppc64le.rpm
@@ -4877,6 +4898,13 @@ arches:
     name: containers-common
     evr: 3:1-78.rhaos4.16.el9
     sourcerpm: containers-common-1-78.rhaos4.16.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/ppc64le/rhocp/4.16/os/Packages/o/openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.ppc64le.rpm
+    repoid: rhocp-4.16-for-rhel-9-x86_64-rpms
+    size: 51126038
+    checksum: sha256:eadbf175188502377555dc98a03d2359ba7c03ed14bc1b788bbfd3a83cddbab1
+    name: openshift-clients
+    evr: 4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9
+    sourcerpm: openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/ppc64le/appstream/os/Packages/a/annobin-12.92-1.el9.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 1110088
@@ -5227,6 +5255,13 @@ arches:
     name: cmake-rpm-macros
     evr: 3.26.5-2.el9
     sourcerpm: cmake-3.26.5-2.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/ppc64le/appstream/os/Packages/c/compat-openssl11-1.1.1k-5.el9_6.1.ppc64le.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 1592980
+    checksum: sha256:cc4e307266401ba58b33127e54459d7384b4f6f143204f1e9688a14db94d273f
+    name: compat-openssl11
+    evr: 1:1.1.1k-5.el9_6.1
+    sourcerpm: compat-openssl11-1.1.1k-5.el9_6.1.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/ppc64le/appstream/os/Packages/c/cpp-11.5.0-5.el9_5.ppc64le.rpm
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 9618370
@@ -8370,6 +8405,13 @@ arches:
     name: bash
     evr: 5.1.8-9.el9
     sourcerpm: bash-5.1.8-9.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/ppc64le/baseos/os/Packages/b/bash-completion-2.11-5.el9.noarch.rpm
+    repoid: rhel-9-for-x86_64-baseos-rpms
+    size: 469639
+    checksum: sha256:3b4ae87f0e9a13cda47f1c009eb2c63135dc22b2b4dd89a6310f8e8fbb59e30a
+    name: bash-completion
+    evr: 1:2.11-5.el9
+    sourcerpm: bash-completion-2.11-5.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/ppc64le/baseos/os/Packages/b/binutils-2.35.2-63.el9.ppc64le.rpm
     repoid: rhel-9-for-x86_64-baseos-rpms
     size: 5199630
@@ -9765,10 +9807,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/ppc64le/appstream/os/repodata/5b6f42676fc1e04a945f8a63a111e72aaca8bd26d4f69f34abeee1ba6446cb77-modules.yaml.gz
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/ppc64le/appstream/os/repodata/ff1f43b72aea2f957c85e6e34c5d6707e8dc5e275284b6c6982980791db735a1-modules.yaml.gz
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 32808
-    checksum: sha256:5b6f42676fc1e04a945f8a63a111e72aaca8bd26d4f69f34abeee1ba6446cb77
+    checksum: sha256:ff1f43b72aea2f957c85e6e34c5d6707e8dc5e275284b6c6982980791db735a1
 - arch: s390x
   packages:
   - url: https://cdn.redhat.com/content/dist/layered/rhel9/s390x/rhocp/4.16/os/Packages/c/containers-common-1-78.rhaos4.16.el9.s390x.rpm
@@ -9778,6 +9820,13 @@ arches:
     name: containers-common
     evr: 3:1-78.rhaos4.16.el9
     sourcerpm: containers-common-1-78.rhaos4.16.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/s390x/rhocp/4.16/os/Packages/o/openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.s390x.rpm
+    repoid: rhocp-4.16-for-rhel-9-x86_64-rpms
+    size: 52969532
+    checksum: sha256:f64c95c9dbb421beddef5dcaa741d2765c5303f872e9eb7d19c337a5cda3cd6b
+    name: openshift-clients
+    evr: 4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9
+    sourcerpm: openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/s390x/appstream/os/Packages/a/annobin-12.92-1.el9.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 1108217
@@ -10128,6 +10177,13 @@ arches:
     name: cmake-rpm-macros
     evr: 3.26.5-2.el9
     sourcerpm: cmake-3.26.5-2.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/s390x/appstream/os/Packages/c/compat-openssl11-1.1.1k-5.el9_6.1.s390x.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 1215996
+    checksum: sha256:67e641c9a86b684e9e3ff85090c23b2a2654bb3287d544c1d7c89ab40ce6bd0a
+    name: compat-openssl11
+    evr: 1:1.1.1k-5.el9_6.1
+    sourcerpm: compat-openssl11-1.1.1k-5.el9_6.1.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/s390x/appstream/os/Packages/c/cpp-11.5.0-5.el9_5.s390x.rpm
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 8598616
@@ -13299,6 +13355,13 @@ arches:
     name: bash
     evr: 5.1.8-9.el9
     sourcerpm: bash-5.1.8-9.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/s390x/baseos/os/Packages/b/bash-completion-2.11-5.el9.noarch.rpm
+    repoid: rhel-9-for-x86_64-baseos-rpms
+    size: 469639
+    checksum: sha256:3b4ae87f0e9a13cda47f1c009eb2c63135dc22b2b4dd89a6310f8e8fbb59e30a
+    name: bash-completion
+    evr: 1:2.11-5.el9
+    sourcerpm: bash-completion-2.11-5.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/s390x/baseos/os/Packages/b/binutils-2.35.2-63.el9.s390x.rpm
     repoid: rhel-9-for-x86_64-baseos-rpms
     size: 4761844
@@ -14638,10 +14701,10 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/s390x/appstream/os/repodata/618e82350683be2d774e2cbe542232caaff48f4fce79c01ff56b40112bf0b571-modules.yaml.gz
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/s390x/appstream/os/repodata/478aef54553af08c03eca4a999564439c8567318cbeb273ca4626a9b3a27f217-modules.yaml.gz
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 33005
-    checksum: sha256:618e82350683be2d774e2cbe542232caaff48f4fce79c01ff56b40112bf0b571
+    checksum: sha256:478aef54553af08c03eca4a999564439c8567318cbeb273ca4626a9b3a27f217
 - arch: x86_64
   packages:
   - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhocp/4.16/os/Packages/c/containers-common-1-78.rhaos4.16.el9.x86_64.rpm
@@ -14651,6 +14714,13 @@ arches:
     name: containers-common
     evr: 3:1-78.rhaos4.16.el9
     sourcerpm: containers-common-1-78.rhaos4.16.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhocp/4.16/os/Packages/o/openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.x86_64.rpm
+    repoid: rhocp-4.16-for-rhel-9-x86_64-rpms
+    size: 54964214
+    checksum: sha256:ee71ce72f2b9a1804559527a18c68dd2430394425f9ad64e3fe6384fdb28e00b
+    name: openshift-clients
+    evr: 4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9
+    sourcerpm: openshift-clients-4.16.0-202511271316.p2.g6f88b58.assembly.stream.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/appstream/os/Packages/a/annobin-12.92-1.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 1106759
@@ -15001,6 +15071,13 @@ arches:
     name: cmake-rpm-macros
     evr: 3.26.5-2.el9
     sourcerpm: cmake-3.26.5-2.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/appstream/os/Packages/c/compat-openssl11-1.1.1k-5.el9_6.1.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 1524135
+    checksum: sha256:e4573a2f07756624a20d93e967f840d5aee748965827067a7516ce0670a13031
+    name: compat-openssl11
+    evr: 1:1.1.1k-5.el9_6.1
+    sourcerpm: compat-openssl11-1.1.1k-5.el9_6.1.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/appstream/os/Packages/c/cpp-11.5.0-5.el9_5.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 11229073
@@ -18144,6 +18221,13 @@ arches:
     name: bash
     evr: 5.1.8-9.el9
     sourcerpm: bash-5.1.8-9.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/baseos/os/Packages/b/bash-completion-2.11-5.el9.noarch.rpm
+    repoid: rhel-9-for-x86_64-baseos-rpms
+    size: 469639
+    checksum: sha256:3b4ae87f0e9a13cda47f1c009eb2c63135dc22b2b4dd89a6310f8e8fbb59e30a
+    name: bash-completion
+    evr: 1:2.11-5.el9
+    sourcerpm: bash-completion-2.11-5.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/baseos/os/Packages/b/binutils-2.35.2-63.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-rpms
     size: 4818636
@@ -19546,7 +19630,7 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/appstream/os/repodata/618da00859523e2a4bb67ee62e36cf10b141af12f83bd8e2773dd66f668e1e14-modules.yaml.gz
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/appstream/os/repodata/3d64ab4e2d06abcef8a3a5b642f23cca498fceb3054c5d859914d0b59bc4c38b-modules.yaml.gz
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 34742
-    checksum: sha256:618da00859523e2a4bb67ee62e36cf10b141af12f83bd8e2773dd66f668e1e14
+    checksum: sha256:3d64ab4e2d06abcef8a3a5b642f23cca498fceb3054c5d859914d0b59bc4c38b
