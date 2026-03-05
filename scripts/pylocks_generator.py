@@ -65,19 +65,19 @@ RESET = "\033[0m"
 
 
 def info(msg: str) -> None:
-    print(f"\U0001f539 {BLUE}{msg}{RESET}")
+    print(f"🔹 {BLUE}{msg}{RESET}")
 
 
 def warn(msg: str) -> None:
-    print(f"\u26a0\ufe0f {YELLOW}{msg}{RESET}", file=sys.stderr)
+    print(f"⚠️ {YELLOW}{msg}{RESET}", file=sys.stderr)
 
 
 def error(msg: str) -> None:
-    print(f"\u274c {RED}{msg}{RESET}", file=sys.stderr)
+    print(f"❌ {RED}{msg}{RESET}", file=sys.stderr)
 
 
 def ok(msg: str) -> None:
-    print(f"\u2705 {GREEN}{msg}{RESET}", file=sys.stderr)
+    print(f"✅ {GREEN}{msg}{RESET}", file=sys.stderr)
 
 
 def read_conf_value(conf_file: Path, key: str) -> str | None:
@@ -188,7 +188,7 @@ def get_index_flags(project_dir: Path, flavor: str) -> list[str] | None:
         cpu_index_url = read_conf_value(conf_file, "CPU_INDEX_URL")
         if cpu_index_url:
             flags.append(f"--index={cpu_index_url}")
-            print("  \U0001f4ce Using CPU index as fallback", file=sys.stderr)
+            print("  📎 Using CPU index as fallback", file=sys.stderr)
 
     return flags
 
@@ -210,12 +210,12 @@ def run_lock(
     if mode == "public-index":
         output = "pylock.toml"
         desc = "pylock.toml (public index)"
-        print("\u27a1\ufe0f Generating pylock.toml from public PyPI index...")
+        print("➡️ Generating pylock.toml from public PyPI index...")
     else:
         (project_dir / "uv.lock.d").mkdir(exist_ok=True)
         output = f"uv.lock.d/pylock.{flavor}.toml"
         desc = f"{flavor.upper()} lock file"
-        print(f"\u27a1\ufe0f Generating {flavor.upper()} lock file...")
+        print(f"➡️ Generating {flavor.upper()} lock file...")
 
     # Use --universal temporarily; in the future we can switch to uv.lock
     # when https://github.com/astral-sh/uv/issues/6830 is resolved.
@@ -316,10 +316,10 @@ def main(
             warn(f"No Dockerfiles found in {tdir} (cpu/cuda/rocm). Skipping.")
             continue
 
-        print(f"\U0001f4e6 Python version: {python_version}")
-        print("\U0001f9e9 Detected flavors:")
+        print(f"📦 Python version: {python_version}")
+        print("🧩 Detected flavors:")
         for f in sorted(flavors):
-            print(f"  \u2022 {f.upper()}")
+            print(f"  • {f.upper()}")
         print()
 
         # Resolve effective mode
@@ -357,15 +357,15 @@ def main(
     print("=" * 67)
 
     if success_dirs:
-        print("\u2705 Successfully generated locks for:")
+        print("✅ Successfully generated locks for:")
         for d in success_dirs:
-            print(f"  \u2022 {d}")
+            print(f"  • {d}")
 
     if failed_dirs:
         print()
         warn("Failed lock generation for:")
         for d in failed_dirs:
-            print(f"  \u2022 {d}")
+            print(f"  • {d}")
             print("Please comment out the missing package to continue and report the missing package to the RH index maintainers")
         raise SystemExit(1)
 
