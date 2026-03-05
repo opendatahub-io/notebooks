@@ -143,3 +143,8 @@ packages:
   # -- Missing these in RHEL AIPCC ----
   - patch
   - rsync
+
+  # ── OpenShift Clients (rhocp / mirror) ──────────────────
+  # compat-openssl11: provides libcrypto.so.1.1 / libssl.so.1.1 for openshift-clients on EL9 (check-payload FIPS scan).
+  - compat-openssl11
+  - openshift-clients

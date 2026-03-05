@@ -224,8 +224,8 @@ RUN touch /tmp/control
 # cpu-base: Runtime base image with OS packages, tools (oc, micropipenv, uv)
 #
 # [HERMETIC] Previously this stage ran `subscription-manager refresh`, `dnf upgrade --refresh`,
-# and `curl` to download the oc client. Now all packages come from prefetched RPMs and
-# the oc client is extracted from a prefetched tarball.
+# and `curl` to download the oc client. Now all packages come from prefetched RPMs;
+# the oc client is installed via the openshift-clients RPM (see rpms.in.yaml).
 ############################################################################################
 FROM ${BASE_IMAGE} AS cpu-base
 
@@ -256,10 +256,11 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
 # [HERMETIC] Install Node.js runtime from prefetched RPMs.
 RUN dnf install -y nodejs npm && dnf clean all
 
-# Install useful OS packages (runtime dependencies)
+# Install useful OS packages (runtime dependencies); oc from openshift-clients RPM.
+# compat-openssl11 provides libcrypto.so.1.1 for openshift-clients on EL9 (check-payload FIPS scan).
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y tar perl mesa-libGL skopeo
+dnf install -y tar perl mesa-libGL skopeo compat-openssl11 openshift-clients
 dnf clean all
 rm -rf /var/cache/dnf
 EOF
@@ -275,13 +276,6 @@ EOF
 
 # Install micropipenv and uv from cachi2 pip cache
 RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.9.28"
-
-# Install the oc client from prefetched tarball (see artifacts.in.yaml)
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-ARCH=$(uname -m)
-tar -xzvf /cachi2/output/deps/generic/openshift-client-linux-${ARCH}.tar.gz oc
-EOF
 
 # Other apps and tools installed as default user
 USER 1001
