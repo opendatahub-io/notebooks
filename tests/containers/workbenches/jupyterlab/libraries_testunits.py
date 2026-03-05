@@ -127,7 +127,7 @@ class TestDataScienceLibs(unittest.TestCase):
 
         self.assertIsNotNone(feast.__version__, "Feast version is not set.")
 
-        result = subprocess.run(["feast", "version"], capture_output=True, text=True)
+        result = subprocess.run(["feast", "version"], capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 0, f"'feast version' failed: {result.stderr}")
         print(f"✅ Feast test passed (version: {feast.__version__}).")
 
