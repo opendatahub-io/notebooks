@@ -6,7 +6,7 @@ set -euo pipefail
 # Why this script exists
 # ----------------------
 # Hermetic builds need every Python wheel prefetched.  This script:
-#   1. Delegates to pylocks_generator.sh to generate pylock.<flavor>.toml
+#   1. Delegates to pylocks_generator.py to generate pylock.<flavor>.toml
 #      (ensures consistency with CI's check-generated-code).
 #   2. Converts the pylock to a pip-compatible requirements.<flavor>.txt.
 #   3. (--download) Downloads every wheel into cachi2/output/deps/pip/.
@@ -28,7 +28,7 @@ set -euo pipefail
 #       --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml --flavor cuda
 
 SCRIPTS_PATH="scripts/lockfile-generators"
-PYLOCKS_GENERATOR="scripts/pylocks_generator.sh"
+PYLOCKS_GENERATOR="scripts/pylocks_generator.py"
 
 # --- Defaults ---
 PYPROJECT=""
@@ -40,7 +40,7 @@ show_help() {
   cat << 'EOF'
 Usage: ./scripts/lockfile-generators/create-requirements-lockfile.sh [OPTIONS]
 
-Generate pylock.<flavor>.toml (via pylocks_generator.sh) and convert it to
+Generate pylock.<flavor>.toml (via pylocks_generator.py) and convert it to
 a pip-compatible requirements.<flavor>.txt with sha256 hashes.
 
 Options:
@@ -54,7 +54,7 @@ Options:
   -h, --help             Show this help message and exit
 
 Steps performed:
-  1. pylocks_generator.sh → <project>/uv.lock.d/pylock.<flavor>.toml
+  1. pylocks_generator.py → <project>/uv.lock.d/pylock.<flavor>.toml
   2. Convert pylock.<flavor>.toml → <project>/requirements.<flavor>.txt
   3. (--download) Download all wheels from pylock.<flavor>.toml URLs
 EOF
@@ -71,7 +71,7 @@ if [[ ! -d "$SCRIPTS_PATH" ]]; then
   error_exit "This script MUST be run from the repository root."
 fi
 if [[ ! -f "$PYLOCKS_GENERATOR" ]]; then
-  error_exit "pylocks_generator.sh not found at ${PYLOCKS_GENERATOR}"
+  error_exit "pylocks_generator.py not found at ${PYLOCKS_GENERATOR}"
 fi
 
 # --- Argument Parsing ---
@@ -93,7 +93,7 @@ PROJECT_DIR="$(dirname "$PYPROJECT")"
 PYLOCK_FILE="${PROJECT_DIR}/uv.lock.d/pylock.${FLAVOR}.toml"
 REQUIREMENTS_FILE="${PROJECT_DIR}/requirements.${FLAVOR}.txt"
 
-# Read build args from build-args/<flavor>.conf (same source as pylocks_generator.sh)
+# Read build args from build-args/<flavor>.conf (same source as pylocks_generator.py)
 CONF_FILE="${PROJECT_DIR}/build-args/${FLAVOR}.conf"
 INDEX_URL=""
 if [[ -f "$CONF_FILE" ]]; then
@@ -102,20 +102,20 @@ if [[ -f "$CONF_FILE" ]]; then
 fi
 
 # =========================================================================
-# Step 1: Generate pylock.toml via pylocks_generator.sh
+# Step 1: Generate pylock.toml via pylocks_generator.py
 #
 # Delegates to the same script CI uses (ci/generate_code.sh), ensuring the
 # generated pylock.toml is identical to what check-generated-code expects.
 # =========================================================================
-echo "=== Step 1: Generating pylock via pylocks_generator.sh ==="
+echo "=== Step 1: Generating pylock via pylocks_generator.py ==="
 echo "  project dir : ${PROJECT_DIR}"
 echo "  flavor      : ${FLAVOR}"
 echo ""
 
-bash "$PYLOCKS_GENERATOR" rh-index "$PROJECT_DIR"
+./uv run "$PYLOCKS_GENERATOR" rh-index "$PROJECT_DIR"
 
 if [[ ! -f "$PYLOCK_FILE" ]]; then
-  error_exit "pylocks_generator.sh did not produce ${PYLOCK_FILE}"
+  error_exit "pylocks_generator.py did not produce ${PYLOCK_FILE}"
 fi
 
 echo ""
