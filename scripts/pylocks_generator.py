@@ -5,13 +5,43 @@
 This script generates Python dependency lock files (pylock.toml) for multiple
 directories using either internal Red Hat wheel indexes or the public PyPI index.
 
+Features:
+  - Supports multiple Python project directories, detected by pyproject.toml.
+  - Detects available Dockerfile flavors (CPU, CUDA, ROCm) for rh-index mode.
+  - Validates Python version extracted from directory name (expects format .../ubi9-python-X.Y).
+  - Generates per-flavor locks in 'uv.lock.d/' for rh-index mode.
+  - Overwrites existing pylock.toml in-place for public PyPI index mode.
+
 Index Modes:
   auto (default) -- Uses rh-index if uv.lock.d/ exists, public-index otherwise.
   rh-index       -- Uses internal Red Hat wheel indexes. Generates uv.lock.d/pylock.<flavor>.toml.
   public-index   -- Uses public PyPI index and updates pylock.toml in place.
 
-For CUDA and ROCm flavors, if CPU_INDEX_URL is defined in the build-args/*.conf
-file, it will be added as a fallback index (RHAIENG-3071).
+Fallback Index (RHAIENG-3071):
+  For CUDA and ROCm flavors, if CPU_INDEX_URL is defined in the build-args/*.conf file,
+  it will be added as a fallback index for packages not available in the specialized indexes.
+
+Usage:
+  1. Lock using auto mode (default) for all projects in MAIN_DIRS::
+
+       python pylocks_generator.py
+
+  2. Lock using rh-index for a specific directory::
+
+       python pylocks_generator.py rh-index jupyter/minimal/ubi9-python-3.12
+
+  3. Lock using public index for a specific directory::
+
+       python pylocks_generator.py public-index jupyter/minimal/ubi9-python-3.12
+
+  4. Force upgrade all packages to latest versions::
+
+       FORCE_LOCKFILES_UPGRADE=1 python pylocks_generator.py
+
+Notes:
+  - If the script fails for a directory, it lists the failed directories at the end.
+  - Public index mode does not create uv.lock.d directories and keeps the old format.
+  - Python version extraction depends on directory naming convention; invalid formats are skipped.
 """
 
 from __future__ import annotations
@@ -217,9 +247,16 @@ def run_lock(
         desc = f"{flavor.upper()} lock file"
         print(f"➡️ Generating {flavor.upper()} lock file...")
 
-    # Use --universal temporarily; in the future we can switch to uv.lock
-    # when https://github.com/astral-sh/uv/issues/6830 is resolved.
-    # See also tag filtering notes: uv 0.9.16, uv 0.10.5.
+    # Tag filtering was added in uv 0.9.16 (https://github.com/astral-sh/uv/pull/16956)
+    # but bypassed in --universal mode. uv 0.10.5 (https://github.com/astral-sh/uv/pull/18081)
+    # now filters wheels by requires-python and marker disjointness even in --universal mode.
+    # Documentation at https://docs.astral.sh/uv/reference/cli/#uv-pip-compile--python-platform says that
+    #  `--python-platform linux` is alias for `x86_64-unknown-linux-gnu`; we cannot use this to get a multiarch pylock
+    # Let's use --universal temporarily, and in the future we can switch to using uv.lock
+    #  when https://github.com/astral-sh/uv/issues/6830 is resolved, or symlink `ln -s uv.lock.d/uv.${flavor}.lock uv.lock`
+    # Note: currently generating uv.lock.d/pylock.${flavor}.toml; future rename to uv.${flavor}.lock is planned
+    # See also --universal discussion with Gerard
+    #  https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757935641975969?thread_ts=1757542802.032519&cid=C0961HQ858Q
     cmd: list[str] = [
         str(UV),
         "pip",
