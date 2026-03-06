@@ -92,7 +92,7 @@ ENV ELYRA_INSTALL_PACKAGES="false"
 ### END Download Elyra Bootstrapper
 
 # Copy utility script
-COPY ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
+COPY ${PYTORCH_SOURCE_CODE}/de-vendor-torch.py ./
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
@@ -108,12 +108,17 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
 ### END Install software and packages
 
 # De-vendor the ROCm libs that are embedded in Pytorch
-./de-vendor-torch.sh
-rm ./de-vendor-torch.sh
+python3 ./de-vendor-torch.py
+rm ./de-vendor-torch.py
 # Fix permissions to support pip in Openshift environments
 chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P
 EOF
+
+USER 0
+COPY jupyter/rocm/tensorflow/ubi9-python-3.12/utils/link-solibs.py /tmp/link-solibs.py
+RUN python3 /tmp/link-solibs.py && rm /tmp/link-solibs.py
+USER 1001
 
 # Workaround for https://issues.redhat.com/browse/AIPCC-8152
 ENV ROCM_PATH=/opt/rocm
