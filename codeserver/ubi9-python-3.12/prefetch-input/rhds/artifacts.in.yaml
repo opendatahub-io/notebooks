@@ -6,12 +6,6 @@
 # is auto-generated and contains integrity hashes for each URL.
 
 input:
-    # CentOS Stream 9 GPG key (needed in whl-cache stage for ppc64le/s390x dnf install
-    # from CentOS baseos/appstream/crb repos; UBI9 images only ship the Red Hat key)
-    - url: https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official
-
-    # Node: system Node from nodejs RPM (like che-code). ppc64le/s390x use native gulp
-    # task; BUILD_TARGETS added in gulpfile.reh.js overlay. No Node tarball prefetched.
     # ripgrep: one version (v13.0.0-13) for all 4 arches; @vscode/ripgrep postinstall patched to use it (see apply-patch.sh).
     - url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
       filename: ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
@@ -22,13 +16,3 @@ input:
       filename: ripgrep-v13.0.0-13-powerpc64le-unknown-linux-gnu.tar.gz
     - url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-s390x-unknown-linux-gnu.tar.gz
       filename: ripgrep-v13.0.0-13-s390x-unknown-linux-gnu.tar.gz
-    # argon2: not prefetched; builds from source via node-gyp (gcc-toolset-14 in rpm-base).
-    # The npm package is in the lockfile; when the mirror has no prebuild, it falls back to compile.
-
-    # VSCode marketplace extensions (built-in extensions bundled with code-server)
-    - url: https://github.com/microsoft/vscode-js-debug-companion/releases/download/v1.1.3/ms-vscode.js-debug-companion.1.1.3.vsix
-      filename: ms-vscode.js-debug-companion.1.1.3.vsix
-    - url: https://github.com/microsoft/vscode-js-debug/releases/download/v1.105.0/ms-vscode.js-debug.1.105.0.vsix
-      filename: ms-vscode.js-debug.1.105.0.vsix
-    - url: https://github.com/microsoft/vscode-js-profile-visualizer/releases/download/v1.0.10/ms-vscode.vscode-js-profile-table.1.0.10.vsix
-      filename: ms-vscode.vscode-js-profile-table.1.0.10.vsix

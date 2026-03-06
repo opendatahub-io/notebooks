@@ -55,8 +55,8 @@ ARG NODE_VERSION=22.21.1
 ARG CODESERVER_VERSION=v4.106.3
 
 # [HERMETIC] Import GPG keys for prefetched RPM verification.
-# CentOS key needed because libX11-devel comes from CentOS Stream repos.
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
+# CentOS key imported only if prefetched (present in Dockerfile.cpu; may be absent in Konflux).
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
@@ -94,6 +94,8 @@ COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/setup-offline-binaries.sh ${CO
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/codeserver-offline-env.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/tweak-gha.sh ${CODESERVER_SOURCE_CODE}/patches/
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/apply-patch.sh ${CODESERVER_SOURCE_CODE}/
+# [HERMETIC] utils/ contains git-tracked .vsix (built-in extensions + Python/Jupyter); used by setup-offline-binaries.sh and final stage.
+COPY ${CODESERVER_CONTEXT}/utils/ ${CODESERVER_SOURCE_CODE}/utils/
 
 # [HERMETIC] apply-patch.sh enables gcc-toolset-14 and applies patches (ripgrep, vsce-sign,
 # patches/series). npm ci, build, and release run in separate RUN steps below for caching.
@@ -103,7 +105,7 @@ RUN cd ${CODESERVER_SOURCE_CODE} && GHA_BUILD="${GHA_BUILD}" ./apply-patch.sh
 # setup-offline-binaries.sh does all offline preparation in one shot:
 #   - sources codeserver-offline-env.sh (ELECTRON_SKIP_BINARY_DOWNLOAD, NPM_CONFIG_NODEDIR, etc.)
 #   - node-gyp uses system headers (NPM_CONFIG_NODEDIR=/usr from nodejs-devel RPM)
-#   - ripgrep, .vsix extensions from cachi2 generic; .build/node/ = system /usr/bin/node (per-arch)
+#   - ripgrep from cachi2 generic; .vsix from utils/; .build/node/ = system /usr/bin/node (per-arch)
 #   - pre-populates .build/builtInExtensions/ so gulp skips network downloads
 #   - rewrites package-lock.json "resolved" URLs to file:///cachi2/...
 # CI=1 makes ci/dev/postinstall.sh run "npm ci" (not "npm install") in subdirs,
@@ -158,9 +160,8 @@ ARG PYLOCK_FLAVOR
 
 # [HERMETIC] Import GPG keys for Red Hat and CentOS repos (needed for dnf to verify prefetched RPMs).
 # CentOS key is prefetched as a generic artifact (see artifacts.in.yaml).
-# UBI9 images only ship the Red Hat key; CentOS key is needed for ppc64le/s390x packages
-# from CentOS Stream repos (mesa-libGL, etc.).
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
+# UBI9 images only ship the Red Hat key; CentOS key imported only if prefetched (Dockerfile.cpu; may be absent in Konflux).
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # [HERMETIC] Configure package repos: local hermeto repos for testing.
@@ -238,8 +239,8 @@ WORKDIR /opt/app-root/bin
 USER 0
 
 # [HERMETIC] Import GPG keys for prefetched RPM verification.
-# CentOS key needed because mesa-libGL comes from CentOS Stream repos.
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official
+# CentOS key imported only if prefetched (present in Dockerfile.cpu; may be absent in Konflux).
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.

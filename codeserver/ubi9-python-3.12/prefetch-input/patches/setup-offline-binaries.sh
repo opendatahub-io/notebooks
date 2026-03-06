@@ -10,16 +10,16 @@ set -euo pipefail
 #   1. npm config: offline, prefer-offline, fetch-retries=0 (and legacy-peer-deps).
 #   2. node-gyp: NPM_CONFIG_NODEDIR=/usr (from codeserver-offline-env.sh) → system headers.
 #   3. Ripgrep: copy prefetched tarballs to /tmp/vscode-ripgrep-cache-<version>/.
-#   4. VSCode .vsix: copy to VSCODE_OFFLINE_CACHE for patched fetch.js.
+#   4. VSCode .vsix: copy from utils/ (git-tracked) to VSCODE_OFFLINE_CACHE for patched fetch.js.
 #   5. Node: pre-populate .build/node/ with system /usr/bin/node so gulp skips download.
-#   6. Pre-populate .build/builtInExtensions/<name>/ from extracted .vsix.
+#   6. Pre-populate .build/builtInExtensions/<name>/ from extracted .vsix in utils/.
 #   7. Rewrite package-lock.json "resolved" URLs to file:///cachi2/output/deps/npm/...
 #
 # Root postinstall (ci/dev/postinstall.sh) runs install-deps custom-packages first, then
 # test, lib/vscode; custom-packages populates the npm cache for lockfile resolution.
 #
-# All artifacts are prefetched by cachi2 via artifacts.in.yaml and stored at
-# /cachi2/output/deps/generic/.
+# Ripgrep/oc/GPG key are prefetched by cachi2 (artifacts.in.yaml) at /cachi2/output/deps/generic/.
+# Built-in .vsix (js-debug, js-debug-companion, vscode-js-profile-table) are in utils/.
 ############################################################################################
 
 # codeserver-offline-env.sh is the single source of truth for all env vars
@@ -57,12 +57,14 @@ cp "${HERMETO_OUTPUT}/deps/generic/ripgrep-v13."*.tar.gz "${RIPGREP_CACHE_DIR}/"
 
 # Setup VSCode marketplace extensions and Node.js binaries from prefetched files.
 # VSCODE_OFFLINE_CACHE is already exported by codeserver-offline-env.sh.
+# Built-in .vsix (js-debug, etc.) are in repo at utils/ (COPY'd into image); not from cachi2.
 mkdir -p "${VSCODE_OFFLINE_CACHE}"
+VSIX_UTILS="${CODESERVER_SOURCE_CODE}/utils"
 
-# Copy .vsix extension files
-cp "${HERMETO_OUTPUT}/deps/generic/ms-vscode.js-debug-companion.1.1.3.vsix" "${VSCODE_OFFLINE_CACHE}/"
-cp "${HERMETO_OUTPUT}/deps/generic/ms-vscode.js-debug.1.105.0.vsix" "${VSCODE_OFFLINE_CACHE}/"
-cp "${HERMETO_OUTPUT}/deps/generic/ms-vscode.vscode-js-profile-table.1.0.10.vsix" "${VSCODE_OFFLINE_CACHE}/"
+# Copy .vsix extension files from utils/ (git-tracked large files)
+cp "${VSIX_UTILS}/ms-vscode.js-debug-companion.1.1.3.vsix" "${VSCODE_OFFLINE_CACHE}/"
+cp "${VSIX_UTILS}/ms-vscode.js-debug.1.105.0.vsix" "${VSCODE_OFFLINE_CACHE}/"
+cp "${VSIX_UTILS}/ms-vscode.vscode-js-profile-table.1.0.10.vsix" "${VSCODE_OFFLINE_CACHE}/"
 
 # [HERMETIC] Pre-populate .build/node/ with system Node (like che-code) so gulp skips download.
 # build-vscode.sh is patched to build for current arch (vscode-reh-web-linux-${NODE_ARCH}).
@@ -105,9 +107,9 @@ populate_vsix() {
     echo "  -> ${ext_dir}"
 }
 
-populate_vsix "${HERMETO_OUTPUT}/deps/generic/ms-vscode.js-debug-companion.1.1.3.vsix" "ms-vscode.js-debug-companion"
-populate_vsix "${HERMETO_OUTPUT}/deps/generic/ms-vscode.js-debug.1.105.0.vsix" "ms-vscode.js-debug"
-populate_vsix "${HERMETO_OUTPUT}/deps/generic/ms-vscode.vscode-js-profile-table.1.0.10.vsix" "ms-vscode.vscode-js-profile-table"
+populate_vsix "${VSIX_UTILS}/ms-vscode.js-debug-companion.1.1.3.vsix" "ms-vscode.js-debug-companion"
+populate_vsix "${VSIX_UTILS}/ms-vscode.js-debug.1.105.0.vsix" "ms-vscode.js-debug"
+populate_vsix "${VSIX_UTILS}/ms-vscode.vscode-js-profile-table.1.0.10.vsix" "ms-vscode.vscode-js-profile-table"
 
 # Rewrite all package-lock.json "resolved" URLs to point to the cachi2 file cache.
 # https://registry.npmjs.org/foo/-/foo-1.0.0.tgz → file:///cachi2/output/deps/npm/...
