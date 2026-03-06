@@ -440,7 +440,7 @@ refresh-lock-files:
 	@echo "==================================================================="
 	@echo "🔁 Refreshing lock files using INDEX_MODE=$(INDEX_MODE)"
 	@echo "==================================================================="
-	@cd $(ROOT_DIR) && bash scripts/pylocks_generator.sh $(INDEX_MODE) $(DIR)
+	@cd $(ROOT_DIR) && ./uv run scripts/pylocks_generator.py $(INDEX_MODE) $(DIR)
 
 # This is only for the workflow action
 # For running manually, set the required environment variables

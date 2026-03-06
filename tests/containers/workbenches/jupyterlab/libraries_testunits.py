@@ -119,6 +119,18 @@ class TestDataScienceLibs(unittest.TestCase):
         self.assertEqual(waveform.shape, (1, 8000), "Torchaudio waveform shape is incorrect.")
         print("✅ Torchaudio test passed.")
 
+    def test_feast(self):
+        """Tests that the feast module imports and the CLI entry point works."""
+        import subprocess
+
+        import feast  # pyright: ignore[reportMissingImports]
+
+        self.assertIsNotNone(feast.__version__, "Feast version is not set.")
+
+        result = subprocess.run(["feast", "version"], capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 0, f"'feast version' failed: {result.stderr}")
+        print(f"✅ Feast test passed (version: {feast.__version__}).")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

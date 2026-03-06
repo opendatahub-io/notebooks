@@ -39,6 +39,17 @@ class TestRuntimeImage:
             f"Expected success message not found in output. Output: {output_bytes}"
         )
 
+    @allure.description("Check that feast CLI works correctly (imports pyarrow._s3fs transitively).")
+    def test_feast_version(self, runtime_image: conftest.Image) -> None:
+        if "-minimal-" in runtime_image.labels["name"]:
+            pytest.skip("Feast is not installed in minimal runtime images.")
+
+        with running_image(runtime_image.name) as container:
+            exit_code, output_bytes = container.exec(["/bin/sh", "-c", "feast version"])
+
+        output = output_bytes.decode()
+        assert exit_code == 0, f"'feast version' failed: {output}"
+
 
 @contextlib.contextmanager
 def running_image(image: str):
