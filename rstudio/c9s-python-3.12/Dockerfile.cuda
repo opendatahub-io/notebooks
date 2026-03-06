@@ -12,13 +12,6 @@ FROM ${BASE_IMAGE} AS cuda-base
 
 WORKDIR /opt/app-root/bin
 
-### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-ENV PIP_INDEX_URL=https://pypi.org/simple
-# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-ENV UV_INDEX_URL=https://pypi.org/simple
-# https://docs.astral.sh/uv/reference/environment/#uv_default_index
-ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-### END RHAIENG-2189: this is AIPCC migration phase 1.5
 
 # OS Packages needs to be installed as root
 USER root
@@ -62,6 +55,7 @@ WORKDIR /opt/app-root/src
 FROM cuda-base AS cuda-rstudio
 
 ARG RSTUDIO_SOURCE_CODE=rstudio/c9s-python-3.12
+ARG PYLOCK_FLAVOR
 ARG TARGETARCH
 
 WORKDIR /opt/app-root/bin
@@ -223,7 +217,7 @@ COPY ${RSTUDIO_SOURCE_CODE}/run-rstudio.sh ${RSTUDIO_SOURCE_CODE}/setup_rstudio.
 
 USER 1001
 
-COPY ${RSTUDIO_SOURCE_CODE}/pylock.toml ./
+COPY ${RSTUDIO_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail

@@ -54,6 +54,7 @@ WORKDIR /opt/app-root/src
 FROM cpu-base AS cpu-rstudio
 
 ARG RSTUDIO_SOURCE_CODE=rstudio/rhel9-python-3.12
+ARG PYLOCK_FLAVOR
 ARG TARGETARCH
 
 WORKDIR /opt/app-root/bin
@@ -229,7 +230,7 @@ COPY ${RSTUDIO_SOURCE_CODE}/run-rstudio.sh ${RSTUDIO_SOURCE_CODE}/setup_rstudio.
 
 USER 1001
 
-COPY ${RSTUDIO_SOURCE_CODE}/pylock.toml ./
+COPY ${RSTUDIO_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
