@@ -162,6 +162,10 @@ flake8-type-checking.runtime-evaluated-base-classes = ["pydantic.BaseModel"]
 # https://docs.astral.sh/ruff/settings/#lint_pep8-naming_classmethod-decorators
 pep8-naming.classmethod-decorators = ["pydantic.validator"]
 
+[tool.ruff.lint.per-file-ignores]
+# Inner functions are serialized and executed inside containers, so imports must be local.
+"tests/containers/workbenches/gpu_library_loading_test.py" = ["PLC0415"]
+
 # https://docs.astral.sh/ruff/formatter
 [tool.ruff.format]
 line-ending = "lf"
