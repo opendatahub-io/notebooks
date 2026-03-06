@@ -1,18 +1,13 @@
-# https://docs.coderabbit.ai/getting-started/configure-coderabbit/?#configure-coderabbit-using-a-yaml-file
----
-language: en-US
-early_access: false
-enable_free_tier: true
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Inherits from org-wide config: https://github.com/opendatahub-io/coderabbit
+# Only overrides listed below differ from the org baseline.
+
+inheritance: true
+
 reviews:
-  sequence_diagrams: false
-  poem: false
-  auto_review:
-    base_branches:
-      - main
-      - 2024b
   pre_merge_checks:
     title:
-      mode: warning   # change to "error" to block merges (with Request Changes Workflow)
+      mode: warning
       requirements: |
         EXEMPT from all rules below:
         - Titles starting with "Revert " (GitHub UI reverts, e.g. Revert "chore(...): ...")
@@ -51,7 +46,7 @@ reviews:
           - "[rhoai-2.25][RHAIENG-3209] chore(workbenches/runtimes): update llmcompressor"
     custom_checks:
       - name: "Branch prefix policy"
-        mode: warning   # change to "error" once confirmed with the team
+        mode: warning
         instructions: |
           Validate the PR title's [branch] prefix against the base branch:
           - If baseRefName is "main": the title MUST NOT start with a branch
