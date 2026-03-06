@@ -119,6 +119,9 @@ chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P
 EOF
 
+COPY jupyter/rocm/tensorflow/ubi9-python-3.12/utils/link-solibs.py /tmp/link-solibs.py
+RUN python3 /tmp/link-solibs.py && rm /tmp/link-solibs.py
+
 # Workaround for https://issues.redhat.com/browse/AIPCC-8152
 ENV ROCM_PATH=/opt/rocm
 
