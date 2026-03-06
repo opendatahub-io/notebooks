@@ -6,13 +6,6 @@
 # is auto-generated and contains integrity hashes for each URL.
 
 input:
-    # ripgrep: one version (v13.0.0-13) for all 4 arches; @vscode/ripgrep postinstall patched to use it (see apply-patch.sh).
-    - url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
-      filename: ripgrep-v13.0.0-13-x86_64-unknown-linux-musl.tar.gz
-    # aarch64: no musl build upstream; GNU build aliased to musl filename (postinstall expects aarch64-unknown-linux-musl).
-    - url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-aarch64-unknown-linux-gnu.tar.gz
-      filename: ripgrep-v13.0.0-13-aarch64-unknown-linux-musl.tar.gz
-    - url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-powerpc64le-unknown-linux-gnu.tar.gz
-      filename: ripgrep-v13.0.0-13-powerpc64le-unknown-linux-gnu.tar.gz
-    - url: https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-13/ripgrep-v13.0.0-13-s390x-unknown-linux-gnu.tar.gz
-      filename: ripgrep-v13.0.0-13-s390x-unknown-linux-gnu.tar.gz
+    # Temporary add it here, so it won't break the RHDS build, until we have enough time
+    # to update all .tekton files for all versions.
+    - url: https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official

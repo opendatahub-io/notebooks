@@ -9,8 +9,8 @@ set -euo pipefail
 #
 #   1. npm config: offline, prefer-offline, fetch-retries=0 (and legacy-peer-deps).
 #   2. node-gyp: NPM_CONFIG_NODEDIR=/usr (from codeserver-offline-env.sh) → system headers.
-#   3. Ripgrep: copy prefetched tarballs to /tmp/vscode-ripgrep-cache-<version>/.
-#   4. VSCode .vsix: copy from utils/ (git-tracked) to VSCODE_OFFLINE_CACHE for patched fetch.js.
+#   3. Ripgrep: install from RHOAI Python wheel (prefetched in deps/pip), export RIPGREP_BINARY_PATH for postinstall.
+#   4. VSCode .vsix: copy to VSCODE_OFFLINE_CACHE for patched fetch.js.
 #   5. Node: pre-populate .build/node/ with system /usr/bin/node so gulp skips download.
 #   6. Pre-populate .build/builtInExtensions/<name>/ from extracted .vsix in utils/.
 #   7. Rewrite package-lock.json "resolved" URLs to file:///cachi2/output/deps/npm/...
@@ -45,15 +45,16 @@ npm config set --global legacy-peer-deps true
 # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 (set in codeserver-offline-env.sh) prevents
 # the @playwright/browser-chromium postinstall from attempting any download.
 
-# Setup VSCode ripgrep - use the cache directory that @vscode/ripgrep expects
-# Prefetched in prefetch-input/artifacts.in.yaml; Cachi2 puts them in HERMETO_OUTPUT/deps/generic/.
-# Cache dir: <os.tmpdir()>/vscode-ripgrep-cache-<packageVersion>/ (see @vscode/ripgrep lib/download.js).
-# We use a single version (v13.0.0-13) for all 4 arches; apply-patch.sh patches @vscode/ripgrep
-# so its postinstall uses VERSION for every target (no MULTI_ARCH_LINUX_VERSION).
-VSCODE_RIPGREP_VERSION="1.15.14"
-RIPGREP_CACHE_DIR="/tmp/vscode-ripgrep-cache-${VSCODE_RIPGREP_VERSION}"
-mkdir -p "${RIPGREP_CACHE_DIR}"
-cp "${HERMETO_OUTPUT}/deps/generic/ripgrep-v13."*.tar.gz "${RIPGREP_CACHE_DIR}/"
+# Setup VSCode ripgrep from RHOAI Python wheel (ripgrep==15.0.0 in pyproject.toml; prefetched by cachi2 into deps/pip).
+# The patched @vscode/ripgrep postinstall.js copies the binary from RIPGREP_BINARY_PATH into its bin/.
+pip install --no-cache-dir --no-index --find-links "${HERMETO_OUTPUT}/deps/pip" ripgrep
+RIPGREP_BINARY_PATH=$(which rg)
+if [[ -z "${RIPGREP_BINARY_PATH}" || ! -x "${RIPGREP_BINARY_PATH}" ]]; then
+  echo "ERROR: ripgrep binary not found after pip install (which rg: $(which rg))"
+  exit 1
+fi
+export RIPGREP_BINARY_PATH
+echo "Using ripgrep from Python wheel: ${RIPGREP_BINARY_PATH}"
 
 # Setup VSCode marketplace extensions and Node.js binaries from prefetched files.
 # VSCODE_OFFLINE_CACHE is already exported by codeserver-offline-env.sh.

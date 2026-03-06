@@ -8,7 +8,8 @@ set -euo pipefail
 # This script orchestrates downloading all four dependency types:
 #
 #   1. Generic artifacts — GPG keys, nfpm-built RPMs, Node.js headers,
-#      Electron binaries (into cachi2/output/deps/generic/).
+#      Electron binaries, VS Code .vsix (into cachi2/output/deps/generic/).
+#      Component-specific: codeserver gets ripgrep from pip, oc from RPM.
 #   2. Pip wheels — Python packages resolved from pyproject.toml
 #      (into cachi2/output/deps/pip/).
 #   3. NPM packages — tarballs resolved from package-lock.json files

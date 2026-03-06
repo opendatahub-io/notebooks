@@ -36,10 +36,16 @@ class TestBaseImage:
         image_metadata = conftest.get_image_metadata(image)
         source_location = image_metadata.labels.get("io.openshift.build.source-location", "")
 
-        # Dockerfile.konflux does not have source-location label
+        # Dockerfile.konflux does not have source-location label. Use skopeo or local image env.
         if not source_location:
             image_info = skopeo_utils.get_image_info(image)
-            return "PIP_INDEX_URL" not in image_info.env
+            # When skopeo fails (e.g. "manifest unknown" for ephemeral tags), use env from
+            # local image inspect (image is already pulled earlier in the test run).
+            env = image_info.env if image_info is not None else image_metadata.env
+            if not env:
+                # No env from skopeo or local inspect; assume non-AIPCC so PyPI checks run.
+                return False
+            return "PIP_INDEX_URL" not in env
 
         # Extract relative path from URL (after /tree/main/)
         source_dir = None

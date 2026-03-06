@@ -1,6 +1,6 @@
 # Patches for code-server (v4.106.3) — overlay onto prefetch-input/code-server
 
-This directory is **copied over** the read-only `prefetch-input/code-server` submodule during the build (Dockerfile `COPY`). Files here overwrite the corresponding paths under the code-server source. **Do not modify `prefetch-input/code-server`**; all editable changes belong in this patches tree. The script `apply-patch.sh` (run after the COPY) then patches the ripgrep/vsce-sign npm tarballs and applies `patches/series`.
+This directory is **copied over** the read-only `prefetch-input/code-server` submodule during the build (Dockerfile `COPY`). Files here overwrite the corresponding paths under the code-server source. **Do not modify `prefetch-input/code-server`**; all editable changes belong in this patches tree. The script `apply-patch.sh` (run after the COPY) then patches the @vscode/ripgrep and vsce-sign npm tarballs (ripgrep binary is supplied from the RHOAI Python wheel via `RIPGREP_BINARY_PATH`) and applies `patches/series`.
 
 ---
 
