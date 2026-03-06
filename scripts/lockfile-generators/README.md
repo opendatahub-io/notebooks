@@ -173,7 +173,7 @@ gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
 If you need to regenerate only one dependency type, or for debugging:
 
 ```bash
-# 1. Generic artifacts (GPG keys, node headers, nfpm, oc client, VS Code extensions, etc.)
+# 1. Generic artifacts (GPG keys, VS Code .vsix, etc.; codeserver uses pip for ripgrep, RPM for oc)
 python3 scripts/lockfile-generators/create-artifact-lockfile.py \
     --artifact-input codeserver/ubi9-python-3.12/prefetch-input/odh/artifacts.in.yaml
 
@@ -217,10 +217,10 @@ codeserver/ubi9-python-3.12/
     └── patches/                              # patch files (shared)
 
 cachi2/output/deps/
-├── generic/    # downloaded artifacts (GPG keys, tarballs, etc.)
-├── rpm/        # downloaded RPMs + repodata/
+├── generic/    # GPG keys, .vsix, etc. (codeserver: ripgrep in pip, oc in rpm)
+├── rpm/        # downloaded RPMs + repodata/ (includes openshift-clients for codeserver)
 ├── npm/        # downloaded npm tarballs
-└── pip/        # downloaded Python wheels/sdists
+└── pip/        # downloaded Python wheels (RHOAI index: ripgrep, uv, etc.)
 ```
 
 ---
@@ -246,9 +246,9 @@ input:
     # GPG keys for verifying prefetched RPM packages
     - url: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9
 
-    # OpenShift oc client (one per arch, filename distinguishes them)
-    - url: https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz
-      filename: openshift-client-linux-x86_64.tar.gz
+    # OpenShift oc client (one per arch) — optional; codeserver uses openshift-clients RPM in rpms.in.yaml instead
+    # - url: https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz
+    #   filename: openshift-client-linux-x86_64.tar.gz
 
     # VSCode marketplace extensions
     - url: https://github.com/microsoft/vscode-js-debug/releases/download/v1.105.0/ms-vscode.js-debug.1.105.0.vsix
@@ -374,8 +374,10 @@ The downloaded files are used for **local testing with podman**; in Konflux CI,
 cachi2 prefetches them automatically from `artifacts.lock.yaml`.
 
 **Typical artifacts:** GPG keys, X.org source tarballs (libxkbfile, util-macros),
-Node.js/Electron headers, nfpm RPMs, OpenShift `oc` client binaries, Playwright
-Chromium, ripgrep binaries, VS Code marketplace extensions (.vsix).
+Node.js/Electron headers, nfpm RPMs, Playwright Chromium, VS Code marketplace
+extensions (.vsix). For codeserver, ripgrep is supplied via the RHOAI Python
+wheel (deps/pip) and the `oc` client via the openshift-clients RPM (deps/rpm);
+they are not in generic artifacts.
 
 ### Requirements
 
