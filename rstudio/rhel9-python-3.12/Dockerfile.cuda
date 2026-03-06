@@ -148,6 +148,7 @@ WORKDIR /opt/app-root/src
 FROM cuda-base AS cuda-rstudio
 
 ARG RSTUDIO_SOURCE_CODE=rstudio/rhel9-python-3.12
+ARG PYLOCK_FLAVOR
 ARG TARGETARCH
 
 WORKDIR /opt/app-root/bin
@@ -338,7 +339,7 @@ RUN if [ -d "${SECRET_DIR}" ]; then \
 
 USER 1001
 
-COPY ${RSTUDIO_SOURCE_CODE}/pylock.toml ./
+COPY ${RSTUDIO_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
 RUN echo "Installing softwares and packages" && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
