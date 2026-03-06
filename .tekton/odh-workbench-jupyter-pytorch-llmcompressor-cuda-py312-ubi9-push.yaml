@@ -26,6 +26,11 @@ spec:
     value: '{{revision}}'
   - name: output-image
     value: quay.io/opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9:{{revision}}
+  - name: image-expires-after
+    value: 5d
+  - name: build-platforms
+    value:
+    - linux-d160-m4xlarge/amd64
   - name: dockerfile
     value: jupyter/pytorch+llmcompressor/ubi9-python-3.12/Dockerfile.cuda
   - name: build-args-file
@@ -36,17 +41,32 @@ spec:
     value:
     - '{{target_branch}}-{{revision}}'
     - 3.4-v1.43
+  # Added taskRunSpecs to increase compute resources
   taskRunSpecs:
-  - pipelineTaskName: build-container
-    stepSpecs:
-    - name: build
-      computeResources:
-        requests:
-          cpu: '8'
-          memory: 16Gi
-        limits:
-          cpu: '16'
-          memory: 32Gi
+  - pipelineTaskName: clair-scan
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
+  - pipelineTaskName: ecosystem-cert-preflight-checks
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
+  - pipelineTaskName: build-images
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
   pipelineRef:
     name: multiarch-combined-pipeline
   taskRunTemplate:
