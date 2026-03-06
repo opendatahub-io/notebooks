@@ -143,6 +143,10 @@ function _get_notebook_name()
         $rocm_target_prefix*)
             notebook_name=jupyter-rocm${raw_notebook_name#"$rocm_target_prefix"}
             ;;
+        jupyter-pytorch-llmcompressor-ubi9-python-3-12)
+            # Kustomize uses shortened namePrefix/label (llmc) for this notebook
+            notebook_name="jupyter-pytorch-llmc-ubi9-python-3-12"
+            ;;
         *)
             notebook_name="${raw_notebook_name}"
             ;;
@@ -198,6 +202,9 @@ function _get_source_of_truth_filepath()
             ;;
         *$jupyter_datascience_notebook_id* | *$jupyter_trustyai_notebook_id*)
             filename="jupyter-${notebook_id}-${file_suffix}"
+            ;;
+        *llmcompressor*)
+            filename="jupyter-pytorch-llmcompressor-imagestream.yaml"
             ;;
         *$jupyter_pytorch_notebook_id* | *$jupyter_tensorflow_notebook_id*)
             filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
@@ -309,7 +316,7 @@ function _image_derived_from_datascience()
 {
     local notebook_id="${1:-}"
 
-    local datascience_derived_images=("${jupyter_datascience_notebook_id}" "${jupyter_trustyai_notebook_id}" "${jupyter_tensorflow_notebook_id}" "${jupyter_pytorch_notebook_id}")
+    local datascience_derived_images=("${jupyter_datascience_notebook_id}" "${jupyter_trustyai_notebook_id}" "${jupyter_tensorflow_notebook_id}" "${jupyter_pytorch_notebook_id}" "pytorch+llmcompressor")
 
     printf '%s\0' "${datascience_derived_images[@]}" | grep -Fz -- "${notebook_id}"
 }
@@ -339,6 +346,9 @@ function _get_notebook_id() {
             ;;
         *-${jupyter_trustyai_notebook_id}-*)
             notebook_id="${jupyter_trustyai_notebook_id}"
+            ;;
+        *-llmc-*)
+            notebook_id="pytorch+llmcompressor"
             ;;
         *${jupyter_tensorflow_notebook_id}-*)
             notebook_id="${accelerator:+$accelerator/}${jupyter_tensorflow_notebook_id}"
