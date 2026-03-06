@@ -241,8 +241,11 @@ USER 1001
 COPY ${RSTUDIO_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
 RUN set -Eeuxo pipefail && \
-    echo "Installing softwares and packages" && \
-    uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml && \
+    echo "Installing software and packages" && \
+    UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+        --strict --no-deps --no-config --no-progress \
+        --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
+        --requirements=./pylock.toml && \
     chmod -R g+w /opt/app-root/lib/python3.12/site-packages && \
     fix-permissions /opt/app-root -P
 
