@@ -26,17 +26,39 @@ spec:
     value: '{{revision}}'
   - name: output-image
     value: quay.io/opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9:{{revision}}
+  - name: image-expires-after
+    value: 5d
+  - name: build-platforms
+    value:
+    - linux-d160-m4xlarge/amd64
   - name: dockerfile
     value: jupyter/pytorch+llmcompressor/ubi9-python-3.12/Dockerfile.cuda
   - name: build-args-file
     value: jupyter/pytorch+llmcompressor/ubi9-python-3.12/build-args/cuda.conf
   - name: path-context
     value: .
+  # Hermetic build: no network during build; mongocli source from submodule, Go deps prefetched by Cachi2
+  - name: hermetic
+    value: "true"
+  - name: prefetch-input
+    value:
+    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli
+      type: gomod
+    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/odh
+      type: rpm
+    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/odh
+      type: generic
+    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: "x86_64"
+      requirements_files: ["requirements.cuda.txt"]
   - name: additional-tags
     value:
     - '{{target_branch}}-{{revision}}'
     - 3.4-v1.43
-  taskRunSpecs:
+  # Added taskRunSpecs to increase compute resources
+  taskRunSpecs:    
   - pipelineTaskName: build-images
     stepSpecs:
     - name: build

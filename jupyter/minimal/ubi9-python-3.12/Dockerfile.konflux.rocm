@@ -58,6 +58,12 @@ EOF
 
 ### END Install the oc client
 
+# Create unversioned .so symlinks for ROCm libs (RHAIENG-2643)
+USER 0
+COPY jupyter/rocm/tensorflow/ubi9-python-3.12/utils/link-solibs.py /tmp/link-solibs.py
+RUN python3 /tmp/link-solibs.py
+USER 1001
+
 ########################
 # rocm-jupyter-minimal #
 ########################

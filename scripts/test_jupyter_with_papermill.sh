@@ -6,7 +6,7 @@
 ## has been previously executed.  It replaces the legacy 'test_with_papermill' function previously defined in the Makefile.
 ##
 ## The script will first check to ensure a notebook workload is running and have a k8s service object exposed.  Once verified:
-##  - the relevant imagestream manifest from https://github.com/opendatahub-io/notebooks/tree/main/manifests/base is copied
+##  - the relevant imagestream manifest from https://github.com/opendatahub-io/notebooks/tree/main/manifests/odh/base is copied
 ##		into the running pod to act as the "source of truth" when asserting against installed version of py packages
 ##  - a test_notebook.ipynb will be copied into the running pod if it is defined in jupyter/*/test/test_notebook.ipynb
 ##      - for images inherited from the datascience notebook image, the minimal and datascience notebook test files are
@@ -143,6 +143,10 @@ function _get_notebook_name()
         $rocm_target_prefix*)
             notebook_name=jupyter-rocm${raw_notebook_name#"$rocm_target_prefix"}
             ;;
+        jupyter-pytorch-llmcompressor-ubi9-python-3-12)
+            # Kustomize uses shortened namePrefix/label (llmc) for this notebook
+            notebook_name="jupyter-pytorch-llmc-ubi9-python-3-12"
+            ;;
         *)
             notebook_name="${raw_notebook_name}"
             ;;
@@ -199,6 +203,9 @@ function _get_source_of_truth_filepath()
         *$jupyter_datascience_notebook_id* | *$jupyter_trustyai_notebook_id*)
             filename="jupyter-${notebook_id}-${file_suffix}"
             ;;
+        *llmcompressor*)
+            filename="jupyter-pytorch-llmcompressor-imagestream.yaml"
+            ;;
         *$jupyter_pytorch_notebook_id* | *$jupyter_tensorflow_notebook_id*)
             filename="jupyter-${accelerator_flavor:+"$accelerator_flavor"-}${notebook_id}-${file_suffix}"
             if [ "${accelerator_flavor}" = 'cuda' ]; then
@@ -233,7 +240,11 @@ function _create_test_versions_source_of_truth()
     local version_filename='expected_versions.json'
 
     local test_version_truth_filepath=
-    test_version_truth_filepath="$( _get_source_of_truth_filepath "${notebook_id}" )"
+    test_version_truth_filepath="$( _get_source_of_truth_filepath "${notebook_id}" )" || true
+    if ! [ -e "${test_version_truth_filepath}" ]; then
+        printf '%s\n' "Imagestream manifest not found at: ${test_version_truth_filepath}. Check manifests/odh/base for the correct path."
+        exit 1
+    fi
 
     local nbdime_version='4.0'
     local nbgitpuller_version='1.2'
@@ -309,7 +320,7 @@ function _image_derived_from_datascience()
 {
     local notebook_id="${1:-}"
 
-    local datascience_derived_images=("${jupyter_datascience_notebook_id}" "${jupyter_trustyai_notebook_id}" "${jupyter_tensorflow_notebook_id}" "${jupyter_pytorch_notebook_id}")
+    local datascience_derived_images=("${jupyter_datascience_notebook_id}" "${jupyter_trustyai_notebook_id}" "${jupyter_tensorflow_notebook_id}" "${jupyter_pytorch_notebook_id}" "pytorch+llmcompressor")
 
     printf '%s\0' "${datascience_derived_images[@]}" | grep -Fz -- "${notebook_id}"
 }
@@ -339,6 +350,9 @@ function _get_notebook_id() {
             ;;
         *-${jupyter_trustyai_notebook_id}-*)
             notebook_id="${jupyter_trustyai_notebook_id}"
+            ;;
+        *-llmc-*)
+            notebook_id="pytorch+llmcompressor"
             ;;
         *${jupyter_tensorflow_notebook_id}-*)
             notebook_id="${accelerator:+$accelerator/}${jupyter_tensorflow_notebook_id}"

@@ -1,0 +1,85 @@
+---
+# rpms.in.yaml - RPM packages to prefetch for hermetic build
+#
+# This manifest tells cachi2 to download all listed RPM packages (and their
+# dependencies) from the configured repos before the build starts. They are installed
+# with `dnf install` during the Docker build.
+#
+# The packages cover all stages and all architectures (x86_64, aarch64, ppc64le, s390x).
+# The lock file (rpms.lock.yaml) is auto-generated with exact versions and hashes.
+#
+# Previously, the Dockerfile ran `dnf install` with network access.
+
+contentOrigin:
+  repofiles:
+    # ODH (upstream) — uses UBI + CentOS Stream public repos (no subscription needed)
+    - ../repos/ubi.repo
+    - ../repos/centos.repo
+    - ../repos/openshift-clients.repo
+    - ../repos/epel.repo
+
+context:
+  bare: true
+
+arches:
+  - x86_64
+
+packages:
+  - perl
+  - skopeo
+
+  - mesa-dri-drivers
+  - mesa-filesystem
+  - mesa-libEGL
+  - mesa-libGL
+  - mesa-libgbm
+
+  - jq
+  - unixODBC
+  - postgresql
+  - git-lfs
+  - libsndfile
+  - libxcrypt-compat
+
+  - compat-openssl11
+  - openshift-clients
+
+  # texlive
+  - texlive-adjustbox
+  - texlive-bibtex
+  - texlive-charter
+  - texlive-ec
+  - texlive-euro
+  - texlive-eurosym
+  - texlive-fpl
+  - texlive-jknapltx
+  - texlive-knuth-local
+  - texlive-lm-math
+  - texlive-marvosym
+  - texlive-mathpazo
+  - texlive-mflogo-font
+  - texlive-parskip
+  - texlive-plain
+  - texlive-pxfonts
+  - texlive-rsfs
+  # available in epel but not in rhel9
+  # texlive-tcolorbox
+  - texlive-times
+  - texlive-titling
+  - texlive-txfonts
+  - texlive-ulem
+  - texlive-upquote
+  - texlive-utopia
+  - texlive-wasy
+  - texlive-wasy-type1
+  - texlive-wasysym
+  - texlive-xetex
+  # dependencies of texlive-tcolorbox
+  - texlive-environ
+  - texlive-trimspaces
+
+  # From EPEL
+  - texlive-tcolorbox
+  - pandoc
+
+  - cpio
