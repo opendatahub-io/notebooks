@@ -180,7 +180,13 @@ if [[ "$DO_DOWNLOAD" == true ]]; then
 
     if [[ ! -f "$dest" ]]; then
       echo "  Downloading: ${url}"
-      wget -q -O "$dest" "$url"
+      if ! wget -q -O "$dest" "$url"; then
+        echo "  ERROR: download failed for ${filename}" >&2
+        echo "  URL: ${url}" >&2
+        echo "  Run 'wget -O /dev/null \"${url}\"' to see the full error." >&2
+        rm -f "$dest"
+        exit 1
+      fi
     else
       echo "  Already exists, skipping download."
     fi

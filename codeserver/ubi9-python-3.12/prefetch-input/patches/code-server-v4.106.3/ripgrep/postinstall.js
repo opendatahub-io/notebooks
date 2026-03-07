@@ -11,6 +11,8 @@ const download = require('./download');
 
 const fsExists = util.promisify(fs.exists);
 const mkdir = util.promisify(fs.mkdir);
+const copyFile = util.promisify(fs.copyFile);
+const chmod = util.promisify(fs.chmod);
 const exec = util.promisify(child_process.exec);
 
 const forceInstall = process.argv.includes('--force');
@@ -21,6 +23,7 @@ if (forceInstall) {
 const VERSION = 'v13.0.0-13';
 const MULTI_ARCH_LINUX_VERSION = 'v13.0.0-4';// use this for arm-unknown-linux-gnueabihf and powerpc64le-unknown-linux-gnu until we can fix https://github.com/microsoft/ripgrep-prebuilt/issues/24 and https://github.com/microsoft/ripgrep-prebuilt/issues/32 respectively.
 const BIN_PATH = path.join(__dirname, '../bin');
+const RG_BINARY = path.join(BIN_PATH, 'rg');
 
 process.on('unhandledRejection', (reason, promise) => {
  console.log('Unhandled rejection: ', promise, 'reason:', reason);
@@ -91,6 +94,23 @@ async function retry(fn, maxRetries = 5) {
 }
 
 async function main() {
+ // Use ripgrep from RHOAI Python wheel when set (hermetic code-server build).
+ const ripgrepBinaryPath = process.env.RIPGREP_BINARY_PATH;
+ if (ripgrepBinaryPath) {
+  const srcExists = await fsExists(ripgrepBinaryPath);
+  if (srcExists) {
+   if (!(await fsExists(BIN_PATH))) {
+    await mkdir(BIN_PATH);
+   }
+   await copyFile(ripgrepBinaryPath, RG_BINARY);
+   await chmod(RG_BINARY, 0o755);
+   console.log(`Using ripgrep from RIPGREP_BINARY_PATH: ${ripgrepBinaryPath}`);
+   process.exit(0);
+  }
+  console.error(`RIPGREP_BINARY_PATH set but file not found: ${ripgrepBinaryPath}`);
+  process.exit(1);
+ }
+
  const binExists = await fsExists(BIN_PATH);
  if (!forceInstall && binExists) {
  console.log('bin/ folder already exists, exiting');

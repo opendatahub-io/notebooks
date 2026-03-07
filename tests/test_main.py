@@ -158,6 +158,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                             "Accelerate",
                             "Boto3",
                             "Codeflare-SDK",
+                            "Ripgrep",
                             "Datasets",
                             "Feast",
                             "JupyterLab",
@@ -266,6 +267,7 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
         ),
         ("Tensorboard", ("2.18", "2.20")),
         ("PyTorch", ("2.7", "2.9")),
+        ("Sklearn-onnx", ("1.19", "1.20")),
     )
 
     for name, data in packages.items():
@@ -325,6 +327,9 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         ("datasets", ("~=4.5.0", "==4.4.1")),
         ("accelerate", ("~=1.12.0", "==1.12.0")),
         ("requests", ("~=2.32.5", "==2.32.5")),
+        ("feast", ("~=0.59.0", "~=0.60.0")),
+        ("ipykernel", ("~=7.1.0", "~=7.2.0")),
+        ("skl2onnx", ("~=1.19.1", "~=1.20.0")),
     )
 
     for name, data in requirements.items():
