@@ -82,6 +82,12 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/click-8.3.1-2-py3-none-any.whl", hashes = { sha256 = "949b35428b059358c60204174a79c34d0fcdc1e3945bcf044244c5c2f6d5b763" } }]
 
 [[packages]]
+name = "click-option-group"
+version = "0.5.9"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA1/cpu-ubi9/click_option_group-0.5.9-2-py3-none-any.whl", hashes = { sha256 = "b799db2658963ac49ae4105a5a6685e7bc1c285e497f13523a02dfac352513de" } }]
+
+[[packages]]
 name = "cloudpickle"
 version = "3.1.2"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
