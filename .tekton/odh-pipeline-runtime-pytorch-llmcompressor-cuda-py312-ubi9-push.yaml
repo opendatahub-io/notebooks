@@ -39,7 +39,7 @@ spec:
     - '{{target_branch}}-{{revision}}'
     - 3.4-v1.43
   taskRunSpecs:
-  - pipelineTaskName: build-container
+  - pipelineTaskName: build-images
     stepSpecs:
     - name: build
       computeResources:
