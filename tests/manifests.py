@@ -140,7 +140,7 @@ def get_source_of_truth_filepath(
     This is a Python conversion of the shell function `_get_source_of_truth_filepath`.
 
     Returns:
-        The absolute path to the imagestream manifest file.
+        The relative path to the imagestream manifest file.
 
     Raises:
         ValueError: If the logic cannot determine the filename for the given inputs.
@@ -153,9 +153,6 @@ def get_source_of_truth_filepath(
         file_suffix = "imagestream.yaml"
     else:
         file_suffix = "notebook-imagestream.yaml"
-
-    manifest_directory = root_repo_directory / "manifests"
-    imagestream_directory = manifest_directory / "base"
 
     filename = ""
 
@@ -197,9 +194,7 @@ def get_source_of_truth_filepath(
     if not filename:
         raise ValueError(f"Unable to determine imagestream filename for '{metadata=}'")
 
-    filepath = imagestream_directory / filename
-
-    return filepath
+    return Path(filename)
 
 
 class TestManifests:
