@@ -20,6 +20,8 @@ Index Modes:
 Fallback Index (RHAIENG-3071):
   For CUDA and ROCm flavors, if CPU_INDEX_URL is defined in the build-args/*.conf file,
   it will be added as a fallback index for packages not available in the specialized indexes.
+  The resolver also enables `--index-strategy=unsafe-best-match` for these cases,
+  so uv can select versions from fallback indexes when needed.
 
 Usage:
   1. Lock using auto mode (default) for all projects in MAIN_DIRS::
@@ -213,12 +215,18 @@ def get_index_flags(project_dir: Path, flavor: str) -> list[str] | None:
 
     flags = [f"--default-index={index_url}", f"--index={index_url}"]
 
-    # For CUDA and ROCm flavors, add CPU index as fallback (RHAIENG-3071)
+    # For CUDA and ROCm flavors, add CPU index as fallback (RHAIENG-3071).
+    # uv defaults to `first-index`, which can block true fallback when a package
+    # exists on the primary index but not at a compatible version.
     if flavor in ("cuda", "rocm"):
         cpu_index_url = read_conf_value(conf_file, "CPU_INDEX_URL")
         if cpu_index_url:
             flags.append(f"--index={cpu_index_url}")
-            print("  📎 Using CPU index as fallback", file=sys.stderr)
+            flags.append("--index-strategy=unsafe-best-match")
+            print(
+                "  📎 Using CPU index as fallback (--index-strategy=unsafe-best-match)",
+                file=sys.stderr,
+            )
 
     return flags
 
