@@ -151,7 +151,7 @@ ARG PYLOCK_FLAVOR
 WORKDIR /opt/app-root/bin
 
 COPY ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
-COPY ${PYTORCH_SOURCE_CODE}/de-vendor-torch.sh ./
+COPY ${PYTORCH_SOURCE_CODE}/de-vendor-torch.py ./
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
@@ -179,12 +179,16 @@ jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 # Apply JupyterLab addons
 /opt/app-root/bin/utils/addons/apply.sh
 # De-vendor the ROCm libs that are embedded in Pytorch
-./de-vendor-torch.sh
-rm ./de-vendor-torch.sh
+python3 ./de-vendor-torch.py
+rm ./de-vendor-torch.py
 # Fix permissions to support pip in Openshift environments
 chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P
 EOF
+
+USER 0
+COPY jupyter/rocm/tensorflow/ubi9-python-3.12/utils/link-solibs.py /tmp/link-solibs.py
+RUN python3 /tmp/link-solibs.py && rm /tmp/link-solibs.py
 
 # Workaround for https://issues.redhat.com/browse/AIPCC-8152
 ENV ROCM_PATH=/opt/rocm
