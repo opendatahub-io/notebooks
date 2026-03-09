@@ -86,7 +86,7 @@ print("Scikit-learn smoke test completed successfully.")
         if "-rstudio-" in name_label:
             pytest.skip(f"Image {datascience_image.name} has '-rstudio-' in {datascience_image.labels['name']}")
 
-        MYSQL_CONNECTOR_PYTHON_VERSION = "9.5.0"
+        MYSQL_CONNECTOR_PYTHON_VERSION = "9.6.0"
 
         network = testcontainers.core.network.Network()
         tf.defer(network.create())
