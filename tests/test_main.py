@@ -321,7 +321,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             ),
         ),
         ("jupyterlab-lsp", ("~=5.1.0", "~=5.1.1")),
-        ("transformers", ("~=5.0.0", "==4.57.3")),
+        ("transformers", ("~=5.3.0", "==4.57.3")),
         ("datasets", ("~=4.5.0", "==4.4.1")),
         ("accelerate", ("~=1.12.0", "==1.12.0")),
         ("requests", ("~=2.32.5", "==2.32.5")),
