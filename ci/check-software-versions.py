@@ -256,8 +256,9 @@ def process_tag(tag):
         if stop_and_remove_container(container_id) != 0:
             log.error(f"Failed to stop/remove the container '{container_id}' for the '{image_ref}' tag!")
             print_delimiter()
-            return 1  # noqa: B012 `return` inside `finally` blocks cause exceptions to be silenced
-        print_delimiter()
+            ret_code = 1
+        else:
+            print_delimiter()
 
     return ret_code
 

@@ -2,6 +2,7 @@ ARG TARGETARCH
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS buildscripts
 COPY base-images/utils/aipcc.sh /mnt/aipcc.sh
+COPY base-images/utils/fix-permissions /mnt/usr/bin/
 
 ####################
 # base             #
@@ -13,6 +14,13 @@ ARG TARGETARCH
 ENV TARGETARCH=${TARGETARCH}
 ENV PYTHON=python3.12
 ENV VIRTUAL_ENV=/opt/app-root/
+
+# OpenShift s2i / Cloud Native Buildpack user
+ENV CNB_USER_ID=1001 \
+    CNB_GROUP_ID=0
+
+# Custom fix-permissions script that extends sclorg version with chown to UID 1001
+COPY --from=buildscripts /mnt/usr/bin/ /usr/bin/
 
 RUN \
 --mount=from=buildscripts,source=/mnt,target=/mnt \
@@ -54,12 +62,17 @@ RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/amdgpu.repo && \
     dnf install -y \
-      rocm-core hip-runtime-amd \
+    # HIP (Heterogeneous-compute Interface for Portability) libraries meta-package
+    # Includes: hipblas, hipblaslt, hipfft, hiprand, hipsolver, hipsparse, hipsparselt,
+    # hiptensor, rccl, rocalution, rocblas, rocfft, rocm-core, rocm-smi-lib, rocrand,
+    # rocsolver, rocsparse
+      rocm-hip-libraries \
     # system utilities
-      rocm-smi-lib rocminfo \
-      rocblas rocsolver rocfft rocrand rocsparse miopen-hip rccl \
-    # HIP (Heterogeneous-compute Interface for Portability)
-      hipblas hipblaslt hipfft hipsparse hiprand hipsolver \
+      rocminfo amd-smi-lib \
+    # ML libraries (includes miopen-hip)
+      rocm-ml-libraries \
+    # OpenMP runtime support
+      openmp-extras-runtime \
     # suitesparse's /lib64/libspqr.so.2.0.9 needs libtbb.so.2
       tbb && \
     dnf clean all && rm -rf /var/cache/yum
@@ -71,6 +84,39 @@ RUN tee --append /etc/ld.so.conf.d/rocm.conf <<EOF
 EOF
 
 RUN ldconfig
+
+# Runtime dependencies for PyTorch packages (libmpi_cxx.so, libqhull_r.so, libsnappy.so)
+# These packages (openmpi, libqhull_r, snappy) are not available in UBI9 repos without
+# RHEL entitlements. Adding CentOS Stream 9 repos would work but mixing distro repos
+# is not a good practice to promote. The c9s variant of this image has these installed.
+
+### BEGIN AIPCC pip and uv config files
+ARG INDEX_URL
+COPY --chmod=664 --chown=1001:0 base-images/utils/pip.conf.in /opt/app-root/pip.conf
+COPY --chmod=664 --chown=1001:0 base-images/utils/uv.toml.in /opt/app-root/uv.toml
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ -z "${INDEX_URL}" ]; then
+  echo "ERROR: INDEX_URL build arg is required" >&2
+  exit 1
+fi
+sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/pip.conf
+sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/uv.toml
+EOF
+
+# Python and virtual env settings
+ENV VIRTUAL_ENV=${APP_ROOT} \
+    PIP_CONFIG_FILE=/opt/app-root/pip.conf \
+    UV_CONFIG_FILE=/opt/app-root/uv.toml \
+    PIP_NO_CACHE_DIR=off \
+    UV_NO_CACHE=true \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=utf-8 \
+    LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8 \
+    PS1="(app-root) \w\$ "
+### END AIPCC pip and uv config files
 
 # Restore user workspace
 USER 1001

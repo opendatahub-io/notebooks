@@ -1,6 +1,4 @@
-import pathlib
-
-PROJECT_ROOT = pathlib.Path(__file__).parent.parent
+from tests._common import PROJECT_ROOT as PROJECT_ROOT
 
 __all__ = [
     "PROJECT_ROOT",

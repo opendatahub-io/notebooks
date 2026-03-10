@@ -6,50 +6,35 @@ requires-python = "==3.12.*"
 dependencies = [
     # PyTorch packages
     "tensorboard~=2.20.0",
-    "torch==2.7.1",
-    "torchvision==0.22.1",
+    "torch==2.9.1",
+    "torchvision==0.24.1",
 
     # llmcompressor packages
     "odh-notebooks-meta-llmcompressor-deps",
     "lm-eval~=0.4.9",
 
     # Datascience and useful extensions
-    "boto3~=1.40.52",
-    "kafka-python-ng~=2.2.3",
-    "matplotlib~=3.10.7",
-    "numpy~=2.3.5",
-    "pandas~=2.3.3",
-    "plotly~=6.3.1",
-    "scikit-learn~=1.7.2",
-    "scipy~=1.16.2",
-    "skl2onnx~=1.19.1",
-    "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
-    "feast~=0.59.0",
+    "feast~=0.60.0",
+    "odh-notebooks-meta-runtime-datascience-deps",
 
     # DB connectors
-    "pymongo~=4.15.3",
-    "psycopg~=3.2.10",
-    "pyodbc~=5.2.0",
-    "mysql-connector-python~=9.4.0",
+    "pymongo~=4.16.0",
+    "psycopg~=3.3.2",
+    "pyodbc~=5.3.0",
+    "mysql-connector-python~=9.6.0",
 
     "odh-notebooks-meta-runtime-elyra-deps",
 
     # Base packages
     "setuptools~=80.9.0",
-    "wheel==0.45.1",
+    "wheel==0.46.3",
 ]
 
 [tool.uv.sources]
-torch = { index = "pytorch-cuda" }
-torchvision = { index = "pytorch-cuda" }
 # https://github.com/astral-sh/uv/issues/13067#issuecomment-2824190008
 odh-notebooks-meta-llmcompressor-deps = { path = "../../../dependencies/odh-notebooks-meta-llmcompressor-deps" }
 odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }
-
-[[tool.uv.index]]
-name = "pytorch-cuda"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
+odh-notebooks-meta-runtime-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-datascience-deps" }
 
 [tool.uv]
 

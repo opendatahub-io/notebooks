@@ -31,6 +31,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ env.BRANCH_NAME }}
+          persist-credentials: true
 
       # Create a new branch
       - name: Create a new branch
@@ -92,6 +93,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ env.SEC_SCAN_BRANCH }}
+          persist-credentials: true
 
       - name: setup python
         uses: actions/setup-python@v6

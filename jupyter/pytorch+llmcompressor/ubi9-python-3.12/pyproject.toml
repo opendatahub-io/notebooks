@@ -8,8 +8,8 @@ requires-python = "==3.12.*"
 dependencies = [
     # PyTorch packages
     "tensorboard~=2.20.0",
-    "torch==2.7.1",
-    "torchvision~=0.22.1",
+    "torch==2.9.1",
+    "torchvision~=0.24.1",
 
     # llmcompressor packages
     # see https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757007056725559?thread_ts=1756924127.136609&cid=C0961HQ858Q
@@ -19,31 +19,21 @@ dependencies = [
     "lm-eval~=0.4.9",
 
     # Datascience and useful extensions
-    "boto3~=1.40.52",
-    "kafka-python-ng~=2.2.3",
-    "kfp~=2.14.6",
-    "matplotlib~=3.10.7",
-    "numpy~=2.3.5",
-    "pandas~=2.3.3",
-    "plotly~=6.3.1",
-    "scikit-learn~=1.7.2",
-    "scipy~=1.16.2",
-    "skl2onnx~=1.19.1",
-    "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
-    "kubeflow-training==1.9.3",
-    "feast~=0.59.0",
+    "feast~=0.60.0",
+    "skl2onnx~=1.20.0",
+    "odh-notebooks-meta-workbench-datascience-deps",
 
     # DB connectors
-    "pymongo~=4.15.3",
-    "psycopg~=3.2.10",
-    "pyodbc~=5.2.0",
-    "mysql-connector-python~=9.4.0",
+    "pymongo~=4.16.0",
+    "psycopg~=3.3.2",
+    "pyodbc~=5.3.0",
+    "mysql-connector-python~=9.6.0",
 
     # JupyterLab packages
     "odh-elyra==4.3.2",
     "odh-jupyter-trash-cleanup==0.1.1",
 
-    "jupyterlab==4.4.9",
+    "jupyterlab~=4.5.2",
     "jupyter-bokeh~=4.0.5",
     "jupyter-server~=2.17.0",
     "jupyter-server-proxy~=4.4.0",
@@ -56,7 +46,7 @@ dependencies = [
     "nbgitpuller~=1.2.2",
 
     # Base packages
-    "wheel~=0.45.1",
+    "wheel~=0.46.3",
     "setuptools~=80.9.0",
 ]
 
@@ -71,17 +61,9 @@ dependencies = [
 
 # https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-sources
 [tool.uv.sources]
-# https://docs.astral.sh/uv/guides/integration/pytorch/#using-uv-with-pytorch
-torch = { index = "pytorch" }
-torchvision = { index = "pytorch" }
 # https://github.com/astral-sh/uv/issues/13067#issuecomment-2824190008
 odh-notebooks-meta-llmcompressor-deps = { path = "../../../dependencies/odh-notebooks-meta-llmcompressor-deps" }
-
-# https://docs.astral.sh/uv/concepts/indexes/#package-indexes
-[[tool.uv.index]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
+odh-notebooks-meta-workbench-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
 
 # https://docs.astral.sh/uv/concepts/resolution/#dependency-overrides
 # https://docs.astral.sh/uv/reference/settings/#override-dependencies
@@ -91,7 +73,11 @@ environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
 override-dependencies = [
-    # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
-    # Upstream: https://github.com/elyra-ai/elyra/issues/3325
+    # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
+    # appengine-python-standard which has an obnoxious urllib3<2 constraint
     "urllib3>=2.6.0",
+    # AIPCC-8698: python-lsp-server[all] has conflicting pyflakes/pycodestyle requirements
+    # Using >= instead of ~= to allow broader compatibility during resolution
+    # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
+    "python-lsp-server>=1.11.0",
 ]

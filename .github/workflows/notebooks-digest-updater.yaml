@@ -53,6 +53,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ env.BRANCH_NAME }}
+          persist-credentials: true
 
       - name: Create a new branch
         run: |
@@ -65,6 +66,7 @@ jobs:
         with:
           ref: ${{ env.TMP_BRANCH }}
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Invoke ci/sha-digest-updater.sh script to handle the updates
         shell: bash

@@ -39,11 +39,15 @@ def test_dockerfiles_unintended_subscription_manager_pattern():
     # https://github.com/konflux-ci/build-definitions/blob/main/task/buildah/0.6/buildah.yaml#L795-L813
     pattern = re.compile(r"^[^#]*subscription-manager.[^#]*register")
 
+    skip_dirs = (
+        PROJECT_ROOT / "rstudio/rhel9-python-3.12",  # RStudio Dockerfiles
+        PROJECT_ROOT / "scripts/lockfile-generators",  # RPM lockfile image optionally uses subscription-manager
+    )
     for file in PROJECT_ROOT.glob("**/Dockerfile*"):
         if file.is_dir():
             continue
-        if file.is_relative_to(PROJECT_ROOT / "rstudio/rhel9-python-3.12"):
-            continue  # Skip RStudio Dockerfiles
+        if any(file.is_relative_to(d) for d in skip_dirs):
+            continue
         with open(file, "r") as f:
             for line_no, line in enumerate(f, start=1):
                 assert not pattern.match(line), (
@@ -52,7 +56,10 @@ def test_dockerfiles_unintended_subscription_manager_pattern():
                 )
 
 
-def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
+@pytest.mark.parametrize(
+    "manifests_directory", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
+)
+def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path):
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
         with subtests.test(msg="checking pyproject.toml", pipfile=file):
@@ -76,7 +83,10 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                     "pyproject.toml is missing a [project.dependencies] section"
                 )
 
-            pylock = tomllib.loads(file.with_name("pylock.toml").read_text())
+            if (f := file.parent / "uv.lock.d").is_dir():
+                pylock = tomllib.loads(next(f.glob("pylock.*.toml")).read_text())
+            else:
+                pylock = tomllib.loads(file.with_name("pylock.toml").read_text())
             pylock_packages: dict[str, dict[str, Any]] = {p["name"]: p for p in pylock["packages"]}
             with subtests.test(msg="checking pylock.toml consistency with pyproject.toml", pyproject=file):
                 for d in pyproject["project"]["dependencies"]:
@@ -104,7 +114,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
             with subtests.test(msg="checking imagestream manifest consistency with pylock.toml", pyproject=file):
                 _skip_unimplemented_manifests(directory)
 
-                manifest = load_manifests_file_for(directory)
+                manifest = load_manifests_file_for(directory, manifests_directory)
 
                 with subtests.test(msg="checking the `notebook-software` array", pyproject=file):
                     for s in manifest.sw:
@@ -140,6 +150,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                             # TODO(jdanek): is this one intentional?
                             "LLM-Compressor": "llmcompressor",
                             "PyTorch": "torch",
+                            "ROCm-PyTorch": "torch",
                             "Sklearn-onnx": "skl2onnx",
                             "Nvidia-CUDA-CU12-Bundle": "nvidia-cuda-runtime-cu12",
                             "MySQL Connector/Python": "mysql-connector-python",
@@ -182,10 +193,6 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                         if manifest.metadata.scope == "pytorch+llmcompressor" and name == "Codeflare-SDK":
                             continue
 
-                        if name == "ROCm-PyTorch":
-                            # TODO(jdanek): figure out what to do here
-                            continue
-
                         if name == "rstudio-server":
                             # TODO(jdanek): figure out how to check rstudio version statically
                             continue
@@ -219,21 +226,24 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                         )
 
 
-def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubTests):
+@pytest.mark.parametrize(
+    "manifests_directory", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
+)
+def test_image_manifests_version_alignment(
+    subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path
+):
     collected_manifests = []
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
         directory = file.parent  # "ubi9-python-3.11"
-        try:
-            _ubi, _lang, _python = directory.name.split("-")
-        except ValueError:
+        if not is_image_directory(directory):
             logging.debug(f"skipping {directory.name}/pyproject.toml as it is not an image directory")
             continue
 
         if _skip_unimplemented_manifests(directory, call_skip=False):
             continue
 
-        manifest = load_manifests_file_for(directory)
+        manifest = load_manifests_file_for(directory, manifests_directory)
         collected_manifests.append(manifest)
 
     @dataclasses.dataclass
@@ -251,19 +261,19 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
     # TODO(jdanek): review these, if any are unwarranted
     ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
         # ("package name", ("allowed version 1", "allowed version 2", ...))
-        ("Codeflare-SDK", ("0.30", "0.29")),
+        ("Codeflare-SDK", ("0.34", "0.35")),
         ("Scikit-learn", ("1.7", "1.6")),
         ("Pandas", ("2.3", "1.5")),
         (
             "Numpy",
             (
-                "1.26",  # trustyai 0.6.2 depends on numpy~=1.26.4
-                "2.1",  # for tensorflow cuda
-                "2.3",  # this is our latest where possible
+                "2.0",  # for tensorflow rocm (numpy 2.0.2)
+                "2.3",  # this used to be our latest
+                "2.4",  # this is our latest where possible
             ),
         ),
         ("Tensorboard", ("2.18", "2.20")),
-        ("PyTorch", ("2.6", "2.7")),
+        ("PyTorch", ("2.7", "2.9")),
     )
 
     for name, data in packages.items():
@@ -292,10 +302,9 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
         directory = file.parent  # "ubi9-python-3.11"
-        try:
-            _ubi, _lang, _python = directory.name.split("-")
-        except ValueError:
-            logging.debug(f"skipping {directory.name}/pyproject.toml as it is not an image directory")
+
+        if not is_image_directory(directory) and not is_dependencies_directory(file):
+            logging.debug(f"skipping {directory.name}/pyproject.toml as it is not an image or dependencies directory")
             continue
 
         pyproject = tomllib.loads(file.read_text())
@@ -308,27 +317,22 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
     ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
         # ("package name", ("allowed specifier 1", "allowed specifier 2", ...))
         ("setuptools", ("~=80.9.0", "==80.9.0")),
-        ("wheel", ("==0.45.1", "~=0.45.1")),
+        ("wheel", ("==0.46.3", "~=0.46.3")),
         ("tensorboard", ("~=2.18.0", "~=2.20.0")),
-        ("torch", ("==2.7.1", "==2.7.1+cu128", "==2.7.1+rocm6.3")),
-        ("torchvision", ("==0.22.1", "~=0.22.1", "==0.22.1+cu128", "==0.22.1+rocm6.3")),
+        ("torchvision", ("==0.24.1", "~=0.24.1")),
+        ("triton", ("~=3.5.1", "==3.5.1")),
         (
             "numpy",
             (
-                "~=1.26.4",  # trustyai 0.6.2 depends on numpy~=1.26.4
-                "~=2.1.3",
-                "~=2.3.5",  # for llmcompressor, tensorflow cuda, latest possible at the time of writing
-            ),
-        ),
-        ("pandas", ("~=2.3.3", "~=1.5.3")),
-        (
-            "jupyter-bokeh",
-            (
-                "~=3.0.5",  # trustyai 0.6.2 depends on jupyter-bokeh~=3.0.7
-                "~=4.0.5",
+                ">=1.26.4",  # allow the latest possible, see the pylock.toml check for precise pins
+                "==2.3.5",  # llmcompressor pins exact version
             ),
         ),
         ("jupyterlab-lsp", ("~=5.1.0", "~=5.1.1")),
+        ("transformers", ("~=5.3.0", "==4.57.3")),
+        ("datasets", ("~=4.5.0", "==4.4.1")),
+        ("accelerate", ("~=1.12.0", "==1.12.0")),
+        ("requests", ("~=2.32.5", "==2.32.5")),
     )
 
     for name, data in requirements.items():
@@ -358,8 +362,8 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
 def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.SubTests):
     file_groups = {
         "ROCm de-vendor script": [
-            PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.12/de-vendor-torch.sh",
-            PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.12/de-vendor-torch.sh",
+            PROJECT_ROOT / "jupyter/rocm/pytorch/ubi9-python-3.12/de-vendor-torch.py",
+            PROJECT_ROOT / "runtimes/rocm-pytorch/ubi9-python-3.12/de-vendor-torch.py",
         ],
         "nginx/common.sh": [
             PROJECT_ROOT / "codeserver/ubi9-python-3.12/nginx/root/usr/share/container-scripts/nginx/common.sh",
@@ -418,6 +422,221 @@ def test_rhds_pipelines_use_rhds_args(subtests: pytest_subtests.plugin.SubTests)
             )
 
 
+CANONICAL_TAG_ORDER = ["3.4", "2025.2", "2025.1", "2024.2", "2024.1", "2023.2", "2023.1", "1.2"]
+
+_PLACEHOLDER_RE = re.compile(
+    r"""
+    ^
+    ( .+? )                 # Group 1: base key (non-greedy)
+    (                       # Group 2: version suffix
+        -n                  #   latest tag
+      | -n-\d+              #   old positional style (e.g. -n-1) -- a bug when found on rhds
+      | -\d+-\d+            #   year-minor style (e.g. -2025-2)
+    )
+    _PLACEHOLDER
+    $
+    """,
+    re.VERBOSE,
+)
+
+
+def _parse_env_keys(env_path: pathlib.Path) -> set[str]:
+    keys: set[str] = set()
+    if not env_path.exists():
+        return keys
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, _, _ = line.partition("=")
+        keys.add(key.strip())
+    return keys
+
+
+@pytest.mark.parametrize(
+    "base_dir", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
+)
+def test_imagestream_kustomization_consistency(subtests: pytest_subtests.plugin.SubTests, base_dir):
+    """Validate that imagestream YAML files, kustomization.yaml replacements, and .env files are consistent."""
+    kustomization = yaml.safe_load((base_dir / "kustomization.yaml").read_text())
+    replacements = kustomization.get("replacements", [])
+
+    # Build lookup: (imagestream_name, fieldPath_suffix) -> fieldPath_key
+    # e.g. ("s2i-minimal-notebook", "spec.tags.0.from.name") -> "odh-workbench-...-n"
+    params_replacements: dict[tuple[str, str], str] = {}
+    commit_replacements: dict[tuple[str, str], str] = {}
+    for r in replacements:
+        field_path_key = r["source"]["fieldPath"].removeprefix("data.")
+        configmap = r["source"]["name"]
+        for target in r["targets"]:
+            select = target.get("select", {})
+            if "name" not in select:
+                continue
+            target_name = select["name"]
+            for fp in target["fieldPaths"]:
+                key = (target_name, fp)
+                if configmap == "notebook-image-params":
+                    assert key not in params_replacements, (
+                        f"Duplicate params replacement for {key}: {params_replacements[key]!r} vs {field_path_key!r}"
+                    )
+                    params_replacements[key] = field_path_key
+                elif configmap == "notebook-image-commithash":
+                    assert key not in commit_replacements, (
+                        f"Duplicate commit replacement for {key}: {commit_replacements[key]!r} vs {field_path_key!r}"
+                    )
+                    commit_replacements[key] = field_path_key
+
+    param_env_keys = _parse_env_keys(base_dir / "params.env") | _parse_env_keys(base_dir / "params-latest.env")
+    commit_env_keys = _parse_env_keys(base_dir / "commit.env") | _parse_env_keys(base_dir / "commit-latest.env")
+
+    for is_file in sorted(base_dir.glob("*-imagestream.yaml")):
+        is_data = yaml.safe_load(is_file.read_text())
+        is_name = is_data["metadata"]["name"]
+        tags = is_data["spec"]["tags"]
+        tag_names = [t["name"] for t in tags]
+        is_runtime = is_data["metadata"].get("labels", {}).get("opendatahub.io/runtime-image") == "true"
+        has_kustomize_replacements = any(
+            target.get("select", {}).get("name") == is_name for r in replacements for target in r["targets"]
+        )
+
+        with subtests.test(msg=f"imagestream {is_file.name}", imagestream=is_file.name):
+            if is_runtime:
+                # Runtime imagestreams have a single non-version tag; skip ordering/placeholder checks
+                continue
+
+            # --- Check 1: Tag ordering ---
+            with subtests.test(msg=f"tag ordering in {is_file.name}"):
+                # Find where this imagestream's tags fit in the canonical order
+                canonical_positions = []
+                for tn in tag_names:
+                    if tn in CANONICAL_TAG_ORDER:
+                        canonical_positions.append(CANONICAL_TAG_ORDER.index(tn))
+                    else:
+                        pytest.fail(
+                            f"{is_file.name}: tag name {tn!r} is not in CANONICAL_TAG_ORDER. "
+                            f"Update CANONICAL_TAG_ORDER if a new version was added."
+                        )
+                assert canonical_positions == sorted(canonical_positions), (
+                    f"{is_file.name}: tags are not in newest-to-oldest order. "
+                    f"Got {tag_names}, expected order per CANONICAL_TAG_ORDER."
+                )
+
+            with subtests.test(msg=f"no duplicate tag names in {is_file.name}"):
+                assert len(tag_names) == len(set(tag_names)), f"{is_file.name}: duplicate tag names found: {tag_names}"
+
+            # --- Check 2 & 3: Placeholder consistency per tag ---
+            for idx, tag in enumerate(tags):
+                from_placeholder = tag["from"]["name"]
+                commit_placeholder = tag["annotations"].get("opendatahub.io/notebook-build-commit")
+                tag_name = tag["name"]
+
+                with subtests.test(msg=f"placeholder consistency for tag {tag_name} in {is_file.name}"):
+                    m = _PLACEHOLDER_RE.match(from_placeholder)
+                    assert m, (
+                        f"{is_file.name} tag {tag_name}: from.name placeholder {from_placeholder!r} "
+                        f"does not match expected pattern '<base>-<suffix>_PLACEHOLDER'"
+                    )
+                    suffix = m.group(2)
+
+                    if idx == 0:
+                        assert suffix == "-n", (
+                            f"{is_file.name} tag {tag_name} (index 0): expected suffix '-n' for latest tag, "
+                            f"got {suffix!r} in {from_placeholder!r}"
+                        )
+                    else:
+                        expected_suffix = "-" + tag_name.replace(".", "-")
+                        assert suffix == expected_suffix, (
+                            f"{is_file.name} tag {tag_name} (index {idx}): expected suffix {expected_suffix!r} "
+                            f"matching tag name, got {suffix!r} in {from_placeholder!r}"
+                        )
+
+                # Check 3: commit placeholder matches from.name placeholder
+                with subtests.test(msg=f"commit placeholder for tag {tag_name} in {is_file.name}"):
+                    if commit_placeholder is None:
+                        continue
+                    m_from = _PLACEHOLDER_RE.match(from_placeholder)
+                    if m_from is None:
+                        # from.name already failed Check 2; skip derived check
+                        continue
+                    m_commit = _PLACEHOLDER_RE.match(commit_placeholder)
+                    assert m_commit, (
+                        f"{is_file.name} tag {tag_name}: commit placeholder {commit_placeholder!r} "
+                        f"does not match expected pattern"
+                    )
+                    expected_commit = f"{m_from.group(1)}-commit{m_from.group(2)}_PLACEHOLDER"
+                    assert commit_placeholder == expected_commit, (
+                        f"{is_file.name} tag {tag_name}: commit placeholder mismatch. "
+                        f"Expected {expected_commit!r} (derived from from.name), got {commit_placeholder!r}"
+                    )
+
+            if not has_kustomize_replacements:
+                continue
+
+            # --- Check 4: Kustomization replacement presence ---
+            for idx, tag in enumerate(tags):
+                tag_name = tag["name"]
+                from_placeholder = tag["from"]["name"]
+                m = _PLACEHOLDER_RE.match(from_placeholder)
+                if not m:
+                    continue
+                param_key = f"{m.group(1)}{m.group(2)}"
+
+                with subtests.test(msg=f"kustomize params replacement for tag {tag_name} in {is_file.name}"):
+                    expected_target = f"spec.tags.{idx}.from.name"
+                    actual_key = params_replacements.get((is_name, expected_target))
+                    assert actual_key is not None, (
+                        f"{is_file.name} tag {tag_name}: no kustomization replacement found for "
+                        f"({is_name!r}, {expected_target!r})"
+                    )
+                    assert actual_key == param_key, (
+                        f"{is_file.name} tag {tag_name}: kustomization replacement key mismatch. "
+                        f"Expected {param_key!r}, got {actual_key!r}"
+                    )
+
+                commit_placeholder = tag["annotations"].get("opendatahub.io/notebook-build-commit")
+                if commit_placeholder:
+                    m_c = _PLACEHOLDER_RE.match(commit_placeholder)
+                    if m_c:
+                        commit_key = f"{m_c.group(1)}{m_c.group(2)}"
+                        with subtests.test(msg=f"kustomize commit replacement for tag {tag_name} in {is_file.name}"):
+                            expected_target = f"spec.tags.{idx}.annotations.[opendatahub.io/notebook-build-commit]"
+                            actual_key = commit_replacements.get((is_name, expected_target))
+                            assert actual_key is not None, (
+                                f"{is_file.name} tag {tag_name}: no kustomization commit replacement found for "
+                                f"({is_name!r}, {expected_target!r})"
+                            )
+                            assert actual_key == commit_key, (
+                                f"{is_file.name} tag {tag_name}: kustomization commit replacement key mismatch. "
+                                f"Expected {commit_key!r}, got {actual_key!r}"
+                            )
+
+            # --- Check 5: Env file key existence ---
+            for _idx, tag in enumerate(tags):
+                tag_name = tag["name"]
+                from_placeholder = tag["from"]["name"]
+                m = _PLACEHOLDER_RE.match(from_placeholder)
+                if not m:
+                    continue
+                param_key = f"{m.group(1)}{m.group(2)}"
+
+                with subtests.test(msg=f"env key for tag {tag_name} in {is_file.name}"):
+                    assert param_key in param_env_keys, (
+                        f"{is_file.name} tag {tag_name}: param key {param_key!r} not found in "
+                        f"params.env or params-latest.env"
+                    )
+
+                commit_placeholder = tag["annotations"].get("opendatahub.io/notebook-build-commit")
+                if commit_placeholder:
+                    m_c = _PLACEHOLDER_RE.match(commit_placeholder)
+                    if m_c:
+                        commit_key = f"{m_c.group(1)}{m_c.group(2)}"
+                        with subtests.test(msg=f"commit env key for tag {tag_name} in {is_file.name}"):
+                            assert commit_key in commit_env_keys, (
+                                f"{is_file.name} tag {tag_name}: commit key {commit_key!r} not found in "
+                                f"commit.env or commit-latest.env"
+                            )
+
+
 def test_make_disable_pushing():
     # NOTE: the image below needs to exist in the Makefile
     lines = dryrun_make(["rocm-jupyter-tensorflow-ubi9-python-3.12"], env={"PUSH_IMAGES": ""})
@@ -469,6 +688,19 @@ def _skip_unimplemented_manifests(directory: pathlib.Path, call_skip=True) -> bo
     return False
 
 
+def is_image_directory(directory: pathlib.Path) -> bool:
+    """image directory e.g. "ubi9-python-3.11"""
+    try:
+        _ubi, _lang, _python = directory.name.split("-")
+        return True
+    except ValueError:
+        return False
+
+
+def is_dependencies_directory(file: pathlib.Path) -> bool:
+    return "dependencies" in file.relative_to(PROJECT_ROOT).parts
+
+
 @dataclasses.dataclass
 class Manifest:
     filename: pathlib.Path
@@ -478,9 +710,9 @@ class Manifest:
     dep: list[dict[str, Any]]
 
 
-def load_manifests_file_for(directory: pathlib.Path) -> Manifest:
+def load_manifests_file_for(directory: pathlib.Path, manifests_directory: pathlib.Path) -> Manifest:
     metadata = manifests.extract_metadata_from_path(directory)
-    manifest_file = manifests.get_source_of_truth_filepath(
+    manifest_file = manifests_directory / manifests.get_source_of_truth_filepath(
         root_repo_directory=PROJECT_ROOT,
         metadata=metadata,
     )

@@ -40,6 +40,15 @@ Extension packages (`.vsix` files) vendored into this repository are automatical
 
 When adding or updating extensions, place the downloaded `.vsix` artifacts under the appropriate `codeserver/ubiX-python-Y/utils/` directory. Commit them normally; they will be stored as LFS objects.
 
+### Current versions
+
+For `codeserver/ubi9-python-3.12`, the image expects these `.vsix` files in `utils/`:
+
+- **ms-python.python** 2026.0.0: <https://open-vsx.org/api/ms-python/python/2026.0.0/file/ms-python.python-2026.0.0.vsix>
+- **ms-toolsai.jupyter** 2025.9.1: <https://open-vsx.org/api/ms-toolsai/jupyter/2025.9.1/file/ms-toolsai.jupyter-2025.9.1.vsix>
+
+Download with `curl -o <filename> <url>` and place under `codeserver/ubi9-python-3.12/utils/`.
+
 ## Troubleshooting
 
 - If you see errors like "End of central directory record signature not found" when installing `.vsix` files, it usually means LFS pointers were checked out instead of the actual binaries.

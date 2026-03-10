@@ -16,8 +16,8 @@ WORKDIR /opt/app-root/bin
 USER 0
 
 ### BEGIN upgrade first to avoid fixable vulnerabilities
-# If we have a Red Hat subscription prepared, refresh it
 RUN /bin/bash <<'EOF'
+# If we have a Red Hat subscription prepared, refresh it
 set -Eeuxo pipefail
 if command -v subscription-manager &> /dev/null; then
   subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
@@ -47,7 +47,7 @@ EOF
 USER 1001
 
 ### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
-RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.9.6"
+RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.10.0" "uv==0.10.8"
 ### END Install micropipenv and uv to deploy packages from requirements.txt
 
 ### BEGIN Install the oc client
@@ -67,14 +67,7 @@ EOF
 FROM cuda-base AS cuda-runtime-pytorch
 
 ARG PYTORCH_SOURCE_CODE=runtimes/pytorch+llmcompressor/ubi9-python-3.12
-
-### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-ENV PIP_INDEX_URL=https://pypi.org/simple
-# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-ENV UV_INDEX_URL=https://pypi.org/simple
-# https://docs.astral.sh/uv/reference/environment/#uv_default_index
-ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-### END RHAIENG-2189: this is AIPCC migration phase 1.5
+ARG PYLOCK_FLAVOR
 
 LABEL name="odh-notebook-runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12" \
     summary="Runtime CUDA pytorch-llmcompressor notebook image for ODH notebooks" \
@@ -88,8 +81,8 @@ LABEL name="odh-notebook-runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12" \
 
 WORKDIR /opt/app-root/bin
 
-# Install Python packages from requirements.txt
-COPY ${PYTORCH_SOURCE_CODE}/pylock.toml ./
+# Install Python packages from pylock file
+COPY ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 # Copy Elyra dependencies for air-gapped enviroment
 COPY --chown=1001 ${PYTORCH_SOURCE_CODE}/utils ./utils/
 ### BEGIN Download Elyra Bootstrapper
@@ -102,10 +95,17 @@ ENV ELYRA_INSTALL_PACKAGES="false"
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-echo "Installing softwares and packages"
-# This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
-#  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+
+### BEGIN Install software and packages
+echo "Installing software and packages"
+# Install Python packages from lockfile with hash verification
+# All dependencies are explicitly listed in pylock.toml (--no-deps)
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+    --strict --no-deps --no-config --no-progress \
+    --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
+    --requirements=./pylock.toml
+### END Install software and packages
+
 # Fix permissions to support pip in Openshift environments
 chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P

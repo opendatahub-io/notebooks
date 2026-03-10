@@ -232,7 +232,7 @@ def container_exec_with_stdin(
                 raw_io._sock.shutdown(pysocket.SHUT_WR)
             else:
                 stream.shutdown(pysocket.SHUT_WR)
-    except (OSError, AttributeError):
+    except OSError, AttributeError:
         # This is expected if the remote process closes the connection first.
         pass
 

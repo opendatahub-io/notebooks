@@ -13,6 +13,13 @@ runs:
       shell: bash
       run: sudo apt-get -qq remove podman crun
 
+    # Ensure parent dir exists and is runner-owned so cache restore can set file modes (avoids "Cannot change mode: Operation not permitted").
+    - name: Prepare .linuxbrew parent for cache
+      shell: bash
+      run: |
+        sudo mkdir -p /home/linuxbrew
+        sudo chown -R "$(whoami):$(whoami)" /home/linuxbrew
+
     - uses: actions/cache@v5
       # https://docs.github.com/en/actions/reference/variables-reference#default-environment-variables
       # https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables
@@ -20,6 +27,17 @@ runs:
       with:
         path: /home/linuxbrew/.linuxbrew
         key: linuxbrew-${{ runner.os }}-${{ runner.arch }}
+
+    # Restored cache can have wrong ownership or immutable flags; fix so brew/podman and mode changes work.
+    - name: Fix .linuxbrew ownership and permissions after cache restore
+      if: steps.cached-linuxbrew.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        if [[ -d /home/linuxbrew/.linuxbrew ]]; then
+          sudo chattr -R -i /home/linuxbrew/.linuxbrew 2>/dev/null || true
+          sudo chown -R "$(whoami):$(whoami)" /home/linuxbrew/.linuxbrew
+          sudo chmod -R u+rwX,go=rX /home/linuxbrew/.linuxbrew
+        fi
 
     - name: Install podman (linux/amd64, or qemu-user emulation)
       if: contains(fromJSON('["linux/amd64", "linux/s390x", "linux/ppc64le"]'), inputs.platform) && steps.cached-linuxbrew.outputs.cache-hit != 'true'

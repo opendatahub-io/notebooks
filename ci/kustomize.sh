@@ -109,6 +109,26 @@ function check_the_results() {
         echo "There were some logs generated to STDERR during the kustomize build. Please check the log above!"
         return 1
     fi
+
+    echo "---------------------------------------------------------------------------------"
+    echo "Checking for unsubstituted placeholders in generated output:"
+    echo "  - ${kustomize_stdout_1}"
+    echo "---------------------------------------------------------------------------------"
+    # Check for placeholder patterns that should have been substituted by kustomize overlays.
+    # The manifests/base/ files use patterns like:
+    #   - odh-workbench-...-n_PLACEHOLDER (current version image tag)
+    #   - odh-workbench-...-n-1_PLACEHOLDER (previous version image tag)
+    #   - odh-workbench-...-commit-n_PLACEHOLDER (current commit reference)
+    #   - odh-workbench-...-commit-n-1_PLACEHOLDER (previous commit reference)
+    # These should all be replaced with actual values (e.g., sha256 digests) in the final output.
+    local placeholder_patterns="_PLACEHOLDER"
+    if grep -E "${placeholder_patterns}" "${kustomize_stdout_1}"; then
+        echo "ERROR: Found unsubstituted placeholder(s) in the kustomize output!"
+        echo "This indicates that some variable substitutions did not occur properly."
+        echo "Please check the kustomization files and ensure all placeholders are substituted."
+        return 1
+    fi
+    echo "No unsubstituted placeholders found."
 }
 
 function run_check() {

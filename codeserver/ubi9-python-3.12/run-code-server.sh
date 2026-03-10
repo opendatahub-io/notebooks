@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 
 # Load bash libraries
+# [IMPROVEMENT] Changed from `source ${SCRIPT_DIR}/utils/*.sh` (single glob) to a for-loop.
+# The glob expansion is more robust: handles missing files and avoids issues with spaces in paths.
 SCRIPT_DIR=$(dirname -- "$0")
-source ${SCRIPT_DIR}/utils/*.sh
+for f in "${SCRIPT_DIR}"/utils/*.sh; do
+  # shellcheck source=/dev/null
+  [[ -f "$f" ]] && source "$f"
+done
 
 # Start nginx and httpd
 run-nginx.sh &
@@ -39,8 +44,10 @@ create_dir_and_file() {
   fi
 }
 
+CODE_SERVER_DATA_DIR="/opt/app-root/src/.local/share/code-server"
+
 # Define universal settings
-universal_dir="/opt/app-root/src/.local/share/code-server/User/"
+universal_dir="${CODE_SERVER_DATA_DIR}/User/"
 user_settings_filepath="${universal_dir}settings.json"
 universal_json_settings='// vscode settings are written in json-with-comments
 /* https://code.visualstudio.com/docs/languages/json#_json-with-comments */
@@ -51,6 +58,10 @@ universal_json_settings='// vscode settings are written in json-with-comments
   "workbench.enableExperiments": false,
   "extensions.autoCheckUpdates": false,
   "extensions.autoUpdate": false,
+
+  // Disable GitHub Copilot in code-server
+  // official doc https://code.visualstudio.com/docs/copilot/faq#_how-can-i-remove-copilot-from-vs-code
+  "chat.disableAIFeatures": true,
 
   // RHOAIENG-14518: Disable the "Do you trust the authors [...]" startup prompt
   "security.workspace.trust.enabled": false,
@@ -84,7 +95,7 @@ create_dir_and_file "$vscode_dir" "$settings_filepath" "$json_settings"
 create_dir_and_file "$vscode_dir" "$launch_filepath" "$json_launch_settings"
 
 # Ensure the extensions directory exists
-extensions_dir="/opt/app-root/src/.local/share/code-server/extensions"
+extensions_dir="${CODE_SERVER_DATA_DIR}/extensions"
 mkdir -p "$extensions_dir"
 
 # Copy installed extensions to the runtime extensions directory if they do not already exist
@@ -104,7 +115,7 @@ else
 fi
 
 # Ensure log directory exists
-logs_dir="/opt/app-root/src/.local/share/code-server/coder-logs"
+logs_dir="${CODE_SERVER_DATA_DIR}/coder-logs"
 if [ ! -d "$logs_dir" ]; then
   echo "Debug: Log directory not found, creating '$logs_dir'..."
   mkdir -p "$logs_dir"
@@ -120,9 +131,12 @@ else
     echo "IPv6 not detected: falling back to IPv4 only"
 fi
 
-# Start server
+# Start server with explicit --user-data-dir so code-server writes settings,
+# extensions, and logs under /opt/app-root/src/ (writable by UID 1001).
 start_process /usr/bin/code-server \
     --bind-addr "${BIND_ADDR}" \
+    --user-data-dir "${CODE_SERVER_DATA_DIR}" \
+    --extensions-dir "${CODE_SERVER_DATA_DIR}/extensions" \
     --disable-telemetry \
     --auth none \
     --disable-update-check \

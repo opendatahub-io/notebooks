@@ -5,7 +5,7 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # PyTorch packages
-    "torch==2.7.1+cu128; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    "torch==2.9.1; platform_machine != 'ppc64le' and platform_machine != 's390x'",
 
     # Triton here is a dependency of torch, and is just being
     # explicitly re-declared so that the index to pull it from can be
@@ -18,43 +18,34 @@ dependencies = [
     #
     # Since it's a dependency of torch, I've also added same platform
     # exclusion marker to omit for ppc64le.
-    "triton==3.3.1; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    "triton==3.5.1; platform_machine != 'ppc64le' and platform_machine != 's390x'",
 
     # TrustyAI packages
     # More information available at:
     #   - https://pypi.org/project/trustyai/
     #   - https://github.com/trustyai-explainability/trustyai-explainability-python/blob/main/requirements.txt
-    "transformers~=4.56.1",
-    "datasets~=4.0.0",
-    "accelerate~=1.10.1; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    "trustyai~=0.6.2",
+    "transformers~=5.3.0",
+    "datasets~=4.5.0",
+    "accelerate~=1.12.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    "trustyai~=0.6.3",
+
     # Datascience and useful extensions
-    "boto3~=1.40.52",
-    "kafka-python-ng~=2.2.3",
-    "kfp~=2.14.6",
-    "matplotlib~=3.10.7", # Should be pinned down to this version in order to be compatible with trustyai
-    "numpy~=1.26.4", # Should be pinned down to this version in order to be compatible with trustyai
-    "pandas~=1.5.3", # Should be pinned down to this version in order to be compatible with trustyai
-    "plotly~=6.3.1",
-    "scikit-learn~=1.7.2", # Should be pinned down to this version in order to be compatible with trustyai
-    "scipy~=1.16.2",
-    "skl2onnx~=1.19.1",
-    "onnxconverter-common~=1.13.0", # Required for skl2onnx, as upgraded version is not compatible with protobuf
-    "codeflare-sdk~=0.34.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    "kubeflow-training==1.9.3",
+    "codeflare-sdk~=0.35.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    "skl2onnx~=1.20.0",
+    "odh-notebooks-meta-workbench-datascience-deps",
 
     # DB connectors
-    "pymongo~=4.15.3",
-    "psycopg~=3.2.10",
-    "pyodbc~=5.2.0",
-    "mysql-connector-python~=9.4.0",
+    "pymongo~=4.16.0",
+    "psycopg~=3.3.2",
+    "pyodbc~=5.3.0",
+    "mysql-connector-python~=9.6.0",
 
     # JupyterLab packages
     "odh-elyra==4.3.2",
     "odh-jupyter-trash-cleanup==0.1.1",
 
-    "jupyterlab==4.4.9",
-    "jupyter-bokeh~=3.0.5", # trustyai 0.6.1 depends on jupyter-bokeh~=3.0.5
+    "jupyterlab~=4.5.2",
+    "jupyter-bokeh~=4.0.5",
     "jupyter-server~=2.17.0",
     "jupyter-server-proxy~=4.4.0",
     "jupyter-server-terminals~=0.5.3",
@@ -66,7 +57,7 @@ dependencies = [
     "nbgitpuller~=1.2.2",
 
     # Base packages
-    "wheel~=0.45.1",
+    "wheel~=0.46.3",
     "setuptools~=80.9.0",
 ]
 
@@ -75,16 +66,14 @@ environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
 override-dependencies = [
-    # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
-    # Upstream: https://github.com/elyra-ai/elyra/issues/3325
+    # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
+    # appengine-python-standard which has an obnoxious urllib3<2 constraint
     "urllib3>=2.6.0",
+    # AIPCC-8698: python-lsp-server[all] has conflicting pyflakes/pycodestyle requirements
+    # Using >= instead of ~= to allow broader compatibility during resolution
+    # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
+    "python-lsp-server>=1.11.0",
 ]
 
 [tool.uv.sources]
-torch = { index = "pytorch-cuda" }
-triton = { index = "pytorch-cuda" }
-
-[[tool.uv.index]]
-name = "pytorch-cuda"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
+odh-notebooks-meta-workbench-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }

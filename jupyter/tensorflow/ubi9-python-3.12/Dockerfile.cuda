@@ -35,8 +35,8 @@ WORKDIR /opt/app-root/bin
 USER 0
 
 ### BEGIN upgrade first to avoid fixable vulnerabilities
-# If we have a Red Hat subscription prepared, refresh it
 RUN /bin/bash <<'EOF'
+# If we have a Red Hat subscription prepared, refresh it
 set -Eeuxo pipefail
 if command -v subscription-manager &> /dev/null; then
   subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
@@ -66,7 +66,7 @@ EOF
 USER 1001
 
 ### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
-RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.9.6"
+RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.10.0" "uv==0.10.8"
 ### END Install micropipenv and uv to deploy packages from requirements.txt
 
 ### BEGIN Install the oc client
@@ -117,14 +117,6 @@ ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 
 WORKDIR /opt/app-root/bin
 
-### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-ENV PIP_INDEX_URL=https://pypi.org/simple
-# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-ENV UV_INDEX_URL=https://pypi.org/simple
-# https://docs.astral.sh/uv/reference/environment/#uv_default_index
-ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-### END RHAIENG-2189: this is AIPCC migration phase 1.5
-
 # OS Packages needs to be installed as root
 USER root
 
@@ -157,6 +149,7 @@ FROM cuda-jupyter-datascience AS cuda-jupyter-tensorflow
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG TENSORFLOW_SOURCE_CODE=jupyter/tensorflow/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
 
 WORKDIR /opt/app-root/bin
 
@@ -171,14 +164,21 @@ LABEL name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.12" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-tensorflow-ubi9-python-3.12"
 
 # Install Python packages and Jupyterlab extensions from requirements.txt
-COPY ${TENSORFLOW_SOURCE_CODE}/pylock.toml ./
+COPY ${TENSORFLOW_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-echo "Installing softwares and packages"
-# This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
-#  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+
+### BEGIN Install software and packages
+echo "Installing software and packages"
+# Install Python packages from lockfile with hash verification
+# All dependencies are explicitly listed in pylock.toml (--no-deps)
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+    --strict --no-deps --no-config --no-progress \
+    --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
+    --requirements=./pylock.toml
+### END Install software and packages
+
 # setup path for runtime configuration
 mkdir /opt/app-root/runtimes
 # Remove default Elyra runtime-images
@@ -195,7 +195,5 @@ jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P
 EOF
-
-COPY ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monkey_patch_protobuf_6x.py /opt/app-root/lib/python3.12/site-packages/
 
 WORKDIR /opt/app-root/src

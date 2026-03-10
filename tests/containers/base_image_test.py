@@ -16,7 +16,8 @@ import allure
 import pytest
 import testcontainers.core.container
 
-from tests.containers import docker_utils, utils
+import ntb
+from tests.containers import conftest, docker_utils, skopeo_utils, utils
 
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -29,6 +30,25 @@ if TYPE_CHECKING:
 
 class TestBaseImage:
     """Tests that are applicable for all images we have in this repository."""
+
+    def _has_uv_lock_d(self, image: str) -> bool:
+        """Check if the image is AIPCC-enabled by looking for uv.lock.d in source directory."""
+        image_metadata = conftest.get_image_metadata(image)
+        source_location = image_metadata.labels.get("io.openshift.build.source-location", "")
+
+        # Dockerfile.konflux does not have source-location label
+        if not source_location:
+            image_info = skopeo_utils.get_image_info(image)
+            return "PIP_INDEX_URL" not in image_info.env
+
+        # Extract relative path from URL (after /tree/main/)
+        source_dir = None
+        if "/tree/main/" in source_location:
+            source_dir = source_location.split("/tree/main/")[1]
+
+        # Check if uv.lock.d directory exists in source
+        workspace_root = pathlib.Path(__file__).parent.parent.parent
+        return source_dir is not None and (workspace_root / source_dir / "uv.lock.d").is_dir()
 
     def _run_test(self, image: str, test_fn: Callable[[testcontainers.core.container.DockerContainer], None]) -> None:
         with self._test_container(image) as container:
@@ -80,8 +100,15 @@ class TestBaseImage:
                             continue
 
                         count_scanned += 1
-                        ld_library_path = (
-                            os.environ.get("LD_LIBRARY_PATH", "") + os.path.pathsep + os.path.dirname(dlib)
+
+                        ld_library_path = os.path.pathsep.join(
+                            (
+                                os.environ.get("LD_LIBRARY_PATH", ""),
+                                # $ORIGIN
+                                os.path.dirname(dlib),
+                                # torchvision needs libtorch_cpu.so, libc10_cuda.so from torch
+                                "/opt/app-root/lib/python3.12/site-packages/torch/lib/",
+                            )
                         )
                         output = subprocess.check_output(
                             ["ldd", dlib],
@@ -116,8 +143,15 @@ class TestBaseImage:
                         continue  # this is expected and we don't use systemd anyway
                     if deps.startswith("libodbc.so.2"):
                         continue  # todo(jdanek): known issue RHOAIENG-18904
+
+                    # NVIDIA Container Toolkit (CTK), Container Device Interface (CDI)
                     if deps.startswith("libcuda.so.1"):
                         continue  # cuda magic will mount this into /usr/lib64/libcuda.so.1 and it will be found
+                    if deps.startswith("libnvidia-ml.so.1"):
+                        continue  # same as the one before
+                    if deps.startswith("libcudart.so.12"):
+                        continue  # todo(AIPCC-11072): bug in cuda 13.0 base images
+
                     if deps.startswith("libjvm.so"):
                         continue  # it's in ../server
                     if deps.startswith("libtracker-extract.so"):
@@ -128,6 +162,12 @@ class TestBaseImage:
                         continue  # it's in ${MPI_HOME}/lib
                     if deps.startswith("liboshmem.so"):
                         continue  # it's in ${MPI_HOME}/lib
+
+                    # torchvision video_reader requires FFmpeg 6.x - not available in RHEL9/UBI9/CentOS Stream 9
+                    # EPEL 9 and RPM Fusion only provide FFmpeg 5.1.4 (libavcodec.so.59)
+                    # Ignored for ODH; TODO: check if this needs resolution for production Konflux/RHDS builds
+                    if dlib.endswith("video_reader.so"):
+                        continue
 
                     with subtests.test(f"{dlib=}"):
                         pytest.fail(f"{dlib=} has unsatisfied dependencies {deps=}")
@@ -159,16 +199,32 @@ class TestBaseImage:
         self._run_test(image=image, test_fn=test_fn)
 
     def test_pip_install_cowsay_runs(self, image: str):
-        """Checks that the Python virtualenv in the image is writable."""
+        """Checks that the Python virtualenv in the image is writable.
+
+        For AIPCC-enabled images, cowsay is not available on the restricted index,
+        so we expect the install to fail with a specific error message.
+        """
+        has_uv_lock_d = self._has_uv_lock_d(image)
 
         def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["python3", "-m", "pip", "install", "cowsay"])
-            logging.debug(output.decode())
-            assert ecode == 0
+            output_str = output.decode()
+            logging.debug(output_str)
 
-            ecode, output = container.exec(["python3", "-m", "cowsay", "--text", "Hello world"])
-            logging.debug(output.decode())
-            assert ecode == 0
+            if has_uv_lock_d:
+                # AIPCC-enabled: cowsay should NOT be available
+                assert ecode != 0, "Expected pip install cowsay to fail on AIPCC-enabled image"
+                assert (
+                    "Could not find a version that satisfies the requirement cowsay" in output_str
+                    or "No matching distribution found for cowsay" in output_str
+                ), f"Expected AIPCC error message, got: {output_str}"
+            else:
+                # Non-AIPCC: cowsay should install and run successfully
+                assert ecode == 0, f"Expected pip install cowsay to succeed, got: {output_str}"
+
+                ecode, output = container.exec(["python3", "-m", "cowsay", "--text", "Hello world"])
+                logging.debug(output.decode())
+                assert ecode == 0
 
         self._run_test(image=image, test_fn=test_fn)
 
@@ -176,9 +232,23 @@ class TestBaseImage:
     def test_oc_command_runs_fake_fips(self, image: str, subtests: pytest_subtests.SubTests):
         """Establishes a best-effort fake FIPS environment and attempts to execute `oc` binary in it.
 
-        Related issue: RHOAIENG-4350 In workbench the oc CLI tool cannot be used on FIPS enabled cluster"""
+        Related issue: RHOAIENG-4350 In workbench the oc CLI tool cannot be used on FIPS enabled cluster.
+
+        When oc is installed via the openshift-clients RPM (dnf), it is FIPS-aware and requires
+        a real FIPS OpenSSL backend when /proc/sys/crypto/fips_enabled is 1. This test only fakes
+        that proc file, so the RPM oc correctly fails with "required OpenSSL backend is unavailable".
+        On real FIPS-enabled RHEL/UBI the backend would be present. We skip the test for RPM-based oc.
+        """
         if utils.is_rstudio_image(image):
             pytest.skip("oc command is not preinstalled in RStudio images.")
+        # Skip when oc comes from openshift-clients RPM: fake FIPS is insufficient for RPM (needs real OpenSSL).
+        with self._test_container(image=image) as container:
+            rpm_ecode, _ = container.exec(["/bin/sh", "-c", "rpm -q openshift-clients 2>/dev/null"])
+        if rpm_ecode == 0:
+            pytest.skip(
+                "oc from openshift-clients RPM: fake FIPS test not applicable "
+                "(RPM requires real FIPS OpenSSL; on real FIPS nodes oc would work)."
+            )
         with tempfile.TemporaryDirectory() as tmp_crypto:
             # Ubuntu does not even have /proc/sys/crypto directory, unless FIPS is activated and machine
             #  is rebooted, see https://ubuntu.com/security/certifications/docs/fips-enablement
@@ -257,31 +327,54 @@ class TestBaseImage:
 
         self._run_test(image=image, test_fn=test_fn)
 
-    @allure.issue("RHAIENG-2189")
-    def test_python_package_index(self, image: str, subtests: pytest_subtests.SubTests):
-        """Checks that we use the Python Package Index we mean to use.
-        https://redhat-internal.slack.com/archives/C05TTTYG599/p1764240587118899?thread_ts=1764234802.564119&cid=C05TTTYG599
-        """
+    @staticmethod
+    @allure.step("Verify AIPCC image has config file env vars and no index URL env vars")
+    def _check_aipcc_env_vars(actual: dict[str, str], subtests: pytest_subtests.SubTests) -> None:
+        """AIPCC images use pip.conf and uv.toml config files instead of index URL env vars."""
+        aipcc_config_vars = {
+            "PIP_CONFIG_FILE": "/opt/app-root/pip.conf",
+            "UV_CONFIG_FILE": "/opt/app-root/uv.toml",
+        }
+        pypi_index_vars = ("PIP_INDEX_URL", "UV_INDEX_URL", "UV_DEFAULT_INDEX")
 
-        expected_env = {
+        with subtests.test("AIPCC images have config file env vars"):
+            ntb.assert_subdict(aipcc_config_vars, actual)
+        with subtests.test("AIPCC images do not have index URL env vars"):
+            for key in pypi_index_vars:
+                assert key not in actual, f"Expected {key} to NOT be present (image uses uv.lock.d)"
+
+    @staticmethod
+    @allure.step("Verify non-AIPCC image has PyPI index URL env vars")
+    def _check_pypi_env_vars(actual: dict[str, str], subtests: pytest_subtests.SubTests) -> None:
+        """Non-AIPCC images set PIP_INDEX_URL, UV_INDEX_URL, and UV_DEFAULT_INDEX to pypi.org."""
+        pypi_env_vars = {
             "PIP_INDEX_URL": "https://pypi.org/simple",
             "UV_INDEX_URL": "https://pypi.org/simple",
             # https://docs.astral.sh/uv/reference/environment/#uv_default_index
             "UV_DEFAULT_INDEX": "https://pypi.org/simple",
         }
+        with subtests.test("Non-AIPCC images have index URL env vars"):
+            ntb.assert_subdict(pypi_env_vars, actual)
+
+    @allure.issue("RHAIENG-2189")
+    def test_python_package_index(self, image: str, subtests: pytest_subtests.SubTests):
+        """Checks that we use the Python Package Index we mean to use.
+        https://redhat-internal.slack.com/archives/C05TTTYG599/p1764240587118899?thread_ts=1764234802.564119&cid=C05TTTYG599
+
+        Images with uv.lock.d directory do not need these env vars since dependencies
+        are pinned with exact sources in the lockfile (RHAIENG-3056).
+        """
+
+        has_uv_lock_d = self._has_uv_lock_d(image)
 
         with self._test_container(image=image) as container:
             _, output = container.exec(["env"])
-            output = output.decode().strip()
+            actual = dict(line.split("=", maxsplit=1) for line in output.decode().strip().splitlines())
 
-            actual = {}
-            for line in output.splitlines():
-                key, value = line.split("=", maxsplit=1)
-                actual[key] = value
-
-            assert actual.items() >= expected_env.items(), (
-                "actual is not a superset of expected, we are missing some env variables"
-            )
+            if has_uv_lock_d:
+                self._check_aipcc_env_vars(actual, subtests)
+            else:
+                self._check_pypi_env_vars(actual, subtests)
 
 
 def encode_python_function_execution_command_interpreter(

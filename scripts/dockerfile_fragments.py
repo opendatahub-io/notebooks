@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 # restricting to the relevant directories significantly speeds up the processing
 docker_directories = (
+    ntb.ROOT_DIR / "base-images",
     ntb.ROOT_DIR / "jupyter",
     ntb.ROOT_DIR / "codeserver",
     ntb.ROOT_DIR / "rstudio",
@@ -51,8 +52,8 @@ def sanity_check(dockerfile: pathlib.Path, replacements: dict[str, str]):
 
 def main():
     subscription_manager_register_refresh = textwrap.dedent(r"""
-        # If we have a Red Hat subscription prepared, refresh it
         RUN /bin/bash <<'EOF'
+        # If we have a Red Hat subscription prepared, refresh it
         set -Eeuxo pipefail
         if command -v subscription-manager &> /dev/null; then
           subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
@@ -61,6 +62,32 @@ def main():
     """)
 
     replacements = {
+        "AIPCC pip and uv config files": textwrap.dedent(r'''
+            ARG INDEX_URL
+            COPY --chmod=664 --chown=1001:0 base-images/utils/pip.conf.in /opt/app-root/pip.conf
+            COPY --chmod=664 --chown=1001:0 base-images/utils/uv.toml.in /opt/app-root/uv.toml
+            RUN /bin/bash <<'EOF'
+            set -Eeuxo pipefail
+            if [ -z "${INDEX_URL}" ]; then
+              echo "ERROR: INDEX_URL build arg is required" >&2
+              exit 1
+            fi
+            sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/pip.conf
+            sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/uv.toml
+            EOF
+
+            # Python and virtual env settings
+            ENV VIRTUAL_ENV=${APP_ROOT} \
+                PIP_CONFIG_FILE=/opt/app-root/pip.conf \
+                UV_CONFIG_FILE=/opt/app-root/uv.toml \
+                PIP_NO_CACHE_DIR=off \
+                UV_NO_CACHE=true \
+                PIP_DISABLE_PIP_VERSION_CHECK=1 \
+                PYTHONUNBUFFERED=1 \
+                PYTHONIOENCODING=utf-8 \
+                LANG=en_US.UTF-8 \
+                LC_ALL=en_US.UTF-8 \
+                PS1="(app-root) \w\$ "'''),
         "RHAIENG-2189: this is AIPCC migration phase 1.5": textwrap.dedent(r"""
             ENV PIP_INDEX_URL=https://pypi.org/simple
             # UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
@@ -81,7 +108,7 @@ def main():
             EOF
 
         """)),
-        "Install micropipenv and uv to deploy packages from requirements.txt": '''RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.9.0" "uv==0.9.6"''',
+        "Install micropipenv and uv to deploy packages from requirements.txt": '''RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.10.0" "uv==0.10.8"''',
         "Install the oc client": textwrap.dedent(r"""
             RUN /bin/bash <<'EOF'
             set -Eeuxo pipefail
@@ -154,13 +181,19 @@ def main():
         "Copy mongocli from builder": textwrap.dedent(r"""
             # Copy dynamically-linked mongocli built in earlier build stage
             COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/"""),
+        "Install software and packages": textwrap.dedent(r"""
+            echo "Installing software and packages"
+            # Install Python packages from lockfile with hash verification
+            # All dependencies are explicitly listed in pylock.toml (--no-deps)
+            UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+                --strict --no-deps --no-config --no-progress \
+                --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
+                --requirements=./pylock.toml"""),
     }
 
     for docker_dir in docker_directories:
         for dockerfile in docker_dir.glob("**/Dockerfile*"):
             if not dockerfile.is_file():
-                continue
-            if dockerfile.is_relative_to(ntb.ROOT_DIR / "base-images"):
                 continue
             if dockerfile.is_relative_to(ntb.ROOT_DIR / "examples"):
                 continue

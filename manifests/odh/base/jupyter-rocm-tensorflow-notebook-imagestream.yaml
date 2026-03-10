@@ -1,0 +1,93 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/blob/main/jupyter/rocm/tensorflow"
+    opendatahub.io/notebook-image-name: "Jupyter | TensorFlow | ROCm | Python 3.12"
+    opendatahub.io/notebook-image-desc: "Jupyter ROCm optimized TensorFlow notebook image for ODH notebooks."
+    opendatahub.io/notebook-image-order: "16"
+    opendatahub.io/recommended-accelerators: '["amd.com/gpu"]'
+  name: jupyter-rocm-tensorflow
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    # N Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "ROCm", "version": "v6.4"},
+            {"name": "Python", "version": "v3.12"},
+            {"name": "TensorFlow-ROCm", "version": "2.18"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab","version": "4.5"},
+            {"name": "TensorFlow-ROCm", "version": "2.18"},
+            {"name": "Tensorboard", "version": "2.18"},
+            {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Matplotlib", "version": "3.10"},
+            {"name": "Numpy", "version": "2.0"},
+            {"name": "Pandas", "version": "2.3"},
+            {"name": "Scikit-learn", "version": "1.8"},
+            {"name": "Scipy", "version": "1.16"},
+            {"name": "Odh-Elyra", "version": "4.3"},
+            {"name": "PyMongo", "version": "4.16"},
+            {"name": "Pyodbc", "version": "5.3"},
+            {"name": "Codeflare-SDK", "version": "0.35"},
+            {"name": "Sklearn-onnx", "version": "1.20"},
+            {"name": "Psycopg", "version": "3.3"},
+            {"name": "MySQL Connector/Python", "version": "9.6"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-commit-n_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-n_PLACEHOLDER
+      name: "3.4"
+      referencePolicy:
+        type: Source
+    # N - 1 Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "ROCm", "version": "v6.3"},
+            {"name": "Python", "version": "v3.12"},
+            {"name": "TensorFlow-ROCm", "version": "2.18"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "JupyterLab","version": "4.4"},
+            {"name": "TensorFlow-ROCm", "version": "2.18"},
+            {"name": "Tensorboard", "version": "2.18"},
+            {"name": "Kafka-Python-ng", "version": "2.2"},
+            {"name": "Matplotlib", "version": "3.10"},
+            {"name": "Numpy", "version": "1.26"},
+            {"name": "Pandas", "version": "2.3"},
+            {"name": "Scikit-learn", "version": "1.7"},
+            {"name": "Scipy", "version": "1.16"},
+            {"name": "Odh-Elyra", "version": "4.3"},
+            {"name": "PyMongo", "version": "4.15"},
+            {"name": "Pyodbc", "version": "5.2"},
+            {"name": "Codeflare-SDK", "version": "0.34"},
+            {"name": "Sklearn-onnx", "version": "1.19"},
+            {"name": "Psycopg", "version": "3.2"},
+            {"name": "MySQL Connector/Python", "version": "9.4"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        opendatahub.io/workbench-image-recommended: 'false'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-commit-2025-2_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-2025-2_PLACEHOLDER
+      name: "2025.2"
+      referencePolicy:
+        type: Source

@@ -135,8 +135,8 @@ func (r *testResolver) ResolveImageConfig(ctx context.Context, ref string, opt s
 
 	img.Config.WorkingDir = r.dir
 
-	if opt.Platform != nil {
-		r.platform = platforms.Format(*opt.Platform)
+	if opt.ImageOpt != nil && opt.ImageOpt.Platform != nil {
+		r.platform = platforms.Format(*opt.ImageOpt.Platform)
 	}
 
 	dt, err := json.Marshal(img)

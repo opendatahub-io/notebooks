@@ -1,6 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 import * as process from "node:process";
 
+// Default test image used when TEST_TARGET env var is not set.
+// WARNING: This value is parsed by .github/workflows/test-playwright-action.yaml via grep.
+// Keep it as a single-line string assignment (do not split across lines or rename the variable).
+export const DEFAULT_TEST_IMAGE = "quay.io/modh/codeserver:codeserver-ubi9-python-3.9-20241114-aed66a4";
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -64,7 +69,7 @@ function getProjects() {
         connectCDP: false,  // false | number: connect to an existing browser running at given port (e.g. 9222)
         codeServerSource: {  // prefers url if specified, otherwise will start the specified docker image
           // url: "",  // not-present | string
-          image: "quay.io/modh/codeserver:codeserver-ubi9-python-3.9-20241114-aed66a4",  // string
+          image: DEFAULT_TEST_IMAGE,  // string
         }
       },
     }
