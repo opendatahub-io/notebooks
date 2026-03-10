@@ -153,38 +153,65 @@ if [[ "$DO_DOWNLOAD" == true ]]; then
   echo ""
   echo "=== Step 3: Downloading wheels ==="
 
+  # Output directory must match Cachi2 layout so prefetched wheels are found
+  # during hermetic/offline builds (e.g. Docker COPY from cachi2/output/deps/pip).
   OUT_DIR="cachi2/output/deps/pip"
   mkdir -p "$OUT_DIR"
 
+  # Use sha256sum on Linux, shasum -a 256 on macOS (portable).
   if command -v sha256sum &>/dev/null; then
     sha256_of() { sha256sum "$1" | cut -d' ' -f1; }
   else
     sha256_of() { shasum -a 256 "$1" | cut -d' ' -f1; }
   fi
 
+  # Count lines in pylock that look like "url = \"...\" ... sha256 = \"...\""
+  # (one per wheel; multi-line wheel blocks have one such line per wheel).
   total=$(grep -c 'url = ".*sha256 = "' "$PYLOCK_FILE" || true)
   echo "  ${total} wheel(s) to download into ${OUT_DIR}/"
   echo ""
 
   idx=0
+  # Read one line per wheel from the lockfile (same pattern as above).
   while IFS= read -r line; do
     idx=$((idx + 1))
 
+    # Extract URL and expected sha256 from lockfile line (TOML-style).
     url=$(echo "$line" | sed 's/.*url = "\([^"]*\)".*/\1/')
     sha=$(echo "$line" | sed 's/.*sha256 = "\([^"]*\)".*/\1/')
 
+    if [[ -z "$url" || -z "$sha" ]]; then
+      echo "  ERROR: failed to parse url or sha256 from lockfile line (wheel ${idx})" >&2
+      echo "  line: ${line:0:120}..." >&2
+      exit 1
+    fi
+
+    # Filename is the last path segment of the URL, without query/fragment.
     filename="${url##*/}"; filename="${filename%%[?#]*}"
+    if [[ -z "$filename" ]]; then
+      echo "  ERROR: could not derive filename from URL (wheel ${idx})" >&2
+      echo "  URL: ${url}" >&2
+      exit 1
+    fi
     dest="${OUT_DIR}/${filename}"
 
     echo "[${idx}/${total}] ${filename}"
 
+    # Download only if not already present (allows resuming after partial run).
     if [[ ! -f "$dest" ]]; then
       echo "  Downloading: ${url}"
-      wget -q -O "$dest" "$url"
+      if ! wget -q -O "$dest" "$url"; then
+        echo "  ERROR: download failed for ${filename}" >&2
+        echo "  URL: ${url}" >&2
+        echo "  Run 'wget -O /dev/null \"${url}\"' to see the full error." >&2
+        rm -f "$dest"
+        exit 1
+      fi
     else
       echo "  Already exists, skipping download."
     fi
 
+    # Verify digest so corrupted or wrong-version files are detected.
     actual=$(sha256_of "$dest")
     if [[ "$actual" != "$sha" ]]; then
       echo "  ERROR: checksum mismatch (got ${actual}, expected ${sha})" >&2
