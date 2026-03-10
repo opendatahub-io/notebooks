@@ -27,8 +27,7 @@ from pathlib import Path
 from ntb.strings import process_template_with_indents
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent / "base"
-OUTPUT_FILE = BASE_DIR / "kustomization.yaml"
+MANIFESTS_DIR = SCRIPT_DIR.parent
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +88,6 @@ _PARAM_KEY_RE = re.compile(
     """,
     re.VERBOSE
 )
-
 
 
 def _parse_env_keys(env_path: Path) -> set[str]:
@@ -347,7 +345,7 @@ def _runtime_params_replacement(rt: Runtime) -> str:
     )
 
 
-def generate(base_dir: Path = BASE_DIR) -> str:
+def generate(base_dir: Path) -> str:
     """Produce the full kustomization.yaml content."""
     all_resources, workbenches, _runtime_resource_files, runtimes = discover_config(base_dir)
 
@@ -410,21 +408,25 @@ def main() -> None:
     group.add_argument("--stdout", action="store_true", help="Print to stdout instead of writing to file")
     args = parser.parse_args()
 
-    content = generate()
+    for base_dir, output_file in (
+        (MANIFESTS_DIR / "odh" / "base", MANIFESTS_DIR / "odh" / "base" / "kustomization.yaml"),
+        (MANIFESTS_DIR / "rhoai" / "base", MANIFESTS_DIR / "rhoai" / "base" / "kustomization.yaml"),
+    ):
+        content = generate(base_dir=base_dir)
 
-    if args.check:
-        existing = OUTPUT_FILE.read_text()
-        if existing == content:
-            print("OK: kustomization.yaml is up to date.")
+        if args.check:
+            existing = output_file.read_text()
+            if existing == content:
+                print("OK: kustomization.yaml is up to date.")
+            else:
+                print("MISMATCH: kustomization.yaml differs from generated output.", file=sys.stderr)
+                _print_first_difference(existing, content)
+                sys.exit(1)
+        elif args.stdout:
+            sys.stdout.write(content)
         else:
-            print("MISMATCH: kustomization.yaml differs from generated output.", file=sys.stderr)
-            _print_first_difference(existing, content)
-            sys.exit(1)
-    elif args.stdout:
-        sys.stdout.write(content)
-    else:
-        OUTPUT_FILE.write_text(content)
-        print(f"Wrote {OUTPUT_FILE}")
+            output_file.write_text(content)
+            print(f"Wrote {output_file}")
 
 
 def _print_first_difference(existing: str, generated: str) -> None:
