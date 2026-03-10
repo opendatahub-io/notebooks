@@ -56,7 +56,9 @@ def test_dockerfiles_unintended_subscription_manager_pattern():
                 )
 
 
-@pytest.mark.parametrize("manifests_directory", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"])
+@pytest.mark.parametrize(
+    "manifests_directory", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
+)
 def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path):
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
@@ -223,8 +225,13 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                             f"{name}: manifest {manifest.filename} declares {manifest_version}, but pylock.toml pins {locked_version}"
                         )
 
-@pytest.mark.parametrize("manifests_directory", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"])
-def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path):
+
+@pytest.mark.parametrize(
+    "manifests_directory", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
+)
+def test_image_manifests_version_alignment(
+    subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path
+):
     collected_manifests = []
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
@@ -446,7 +453,9 @@ def _parse_env_keys(env_path: pathlib.Path) -> set[str]:
     return keys
 
 
-@pytest.mark.parametrize("base_dir", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"])
+@pytest.mark.parametrize(
+    "base_dir", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
+)
 def test_imagestream_kustomization_consistency(subtests: pytest_subtests.plugin.SubTests, base_dir):
     """Validate that imagestream YAML files, kustomization.yaml replacements, and .env files are consistent."""
     kustomization = yaml.safe_load((base_dir / "kustomization.yaml").read_text())
