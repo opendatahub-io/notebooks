@@ -105,14 +105,6 @@ ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 
 WORKDIR /opt/app-root/bin
 
-### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-ENV PIP_INDEX_URL=https://pypi.org/simple
-# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-ENV UV_INDEX_URL=https://pypi.org/simple
-# https://docs.astral.sh/uv/reference/environment/#uv_default_index
-ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-### END RHAIENG-2189: this is AIPCC migration phase 1.5
-
 # OS Packages needs to be installed as root
 USER root
 
@@ -141,10 +133,11 @@ FROM rocm-jupyter-datascience AS rocm-jupyter-tensorflow
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG TENSORFLOW_SOURCE_CODE=jupyter/rocm/tensorflow/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
 
 WORKDIR /opt/app-root/bin
 
-COPY ${TENSORFLOW_SOURCE_CODE}/pylock.toml ./
+COPY ${TENSORFLOW_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
