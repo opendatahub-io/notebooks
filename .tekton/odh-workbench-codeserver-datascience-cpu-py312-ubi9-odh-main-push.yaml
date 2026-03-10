@@ -177,6 +177,8 @@ spec:
     - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.106.3/custom-packages
       type: npm
 
+  # Override compute resources per Konflux: https://konflux-ci.dev/docs/building/overriding-compute-resources/
+  # See pull-request YAML for troubleshooting notes if build-images OOMs (remote host vs in-cluster, beta feature).
   taskRunSpecs:
     - pipelineTaskName: prefetch-dependencies
       computeResources:

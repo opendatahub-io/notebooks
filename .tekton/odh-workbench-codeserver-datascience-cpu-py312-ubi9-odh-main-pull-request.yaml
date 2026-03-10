@@ -179,23 +179,29 @@ spec:
     # Registry-only npm deps (ProdSec); @parcel/watcher, @emmetio/css-parser, @playwright/browser-chromium in custom-packages/package.json
     - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.106.3/custom-packages
       type: npm
+  # Override compute resources per Konflux: https://konflux-ci.dev/docs/building/overriding-compute-resources/
+  # Using stepSpecs so overrides apply when task-level computeResources beta is disabled.
   taskRunSpecs:
     - pipelineTaskName: prefetch-dependencies
-      computeResources:
-        requests:
-          cpu: "8"
-          memory: "32Gi"
-        limits:
-          cpu: "8"
-          memory: "32Gi"
+      stepSpecs:
+        - name: prefetch-dependencies
+          computeResources:
+            requests:
+              cpu: "8"
+              memory: "32Gi"
+            limits:
+              cpu: "8"
+              memory: "32Gi"
     - pipelineTaskName: build-images
-      computeResources:
-        requests:
-          cpu: "8"
-          memory: "32Gi"
-        limits:
-          cpu: "8"
-          memory: "32Gi"
+      stepSpecs:
+        - name: build
+          computeResources:
+            requests:
+              cpu: "8"
+              memory: "32Gi"
+            limits:
+              cpu: "8"
+              memory: "32Gi"
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
