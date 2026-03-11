@@ -341,10 +341,12 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
 
         if len(actual_specs) == 1:
             # Only one version found - check we're not expecting multiple
-            assert not (exception and len(exception[1]) > 1), (
-                f"{name} now has single specifier {actual_specs} but ignored_exceptions expects multiple: {set(exception[1])}. "
-                f"Please update ignored_exceptions."
-            )
+            if exception and len(exception[1]) > 1:
+                with subtests.test(msg=f"checking stale ignored_exceptions entry for {name}"):
+                    pytest.fail(
+                        f"{name} now has single specifier {actual_specs} but ignored_exceptions expects multiple: {set(exception[1])}. "
+                        f"Please update ignored_exceptions."
+                    )
             continue
 
         with subtests.test(msg=f"checking versions of {name} across all pyproject.tomls"):
