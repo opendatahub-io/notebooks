@@ -937,6 +937,7 @@ source = { editable = "." }
 [package.dev-dependencies]
 dev = [
     { name = "allure-pytest", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "certifi", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "docker", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "kubernetes", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "openshift-python-wrapper", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -960,6 +961,7 @@ dev = [
 [package.metadata.requires-dev]
 dev = [
     { name = "allure-pytest" },
+    { name = "certifi" },
     { name = "docker" },
     { name = "kubernetes" },
     { name = "openshift-python-wrapper" },
