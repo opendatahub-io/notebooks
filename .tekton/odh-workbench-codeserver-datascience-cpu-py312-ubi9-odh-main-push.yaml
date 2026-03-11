@@ -12,7 +12,7 @@ metadata:
       event == "push" && target_branch == "main" &&
       !("manifests/base/params-latest.env".pathChanged()) &&
       (
-        ".tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-push.yaml".pathChanged() ||
+        ".tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-odh-main-push.yaml".pathChanged() ||
         "codeserver/ubi9-python-3.12/**".pathChanged()
       )
   creationTimestamp:

@@ -16,7 +16,7 @@ metadata:
       event == "pull_request" && target_branch == "main" &&
       !("manifests/base/params-latest.env".pathChanged()) &&
       (
-        ".tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-pull-request.yaml".pathChanged() ||
+        ".tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-odh-main-pull-request.yaml".pathChanged() ||
         "codeserver/ubi9-python-3.12/**".pathChanged() ||
         "codeserver/ubi9-python-3.12/build-args/cpu.conf".pathChanged()
       ) && body.repository.full_name == "opendatahub-io/notebooks"
