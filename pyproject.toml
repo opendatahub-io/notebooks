@@ -32,6 +32,9 @@ dev = [
     "kubernetes",
     "openshift-python-wrapper",
     "typer",
+    # certifi provides CA bundle needed on macOS where Python's bundled OpenSSL
+    # does not read from the system Keychain, causing CERTIFICATE_VERIFY_FAILED
+    "certifi",
 ]
 
 [tool.uv]

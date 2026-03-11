@@ -16,6 +16,7 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
+import certifi
 import typer
 
 API_BASE = "https://catalog.redhat.com/api/containers/v1"
@@ -23,11 +24,11 @@ REGISTRY = "registry.access.redhat.com"
 
 
 def get_json(url: str) -> dict[str, Any]:
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    # Use certifi's CA bundle so TLS verification works on macOS, where Python's
+    # bundled OpenSSL does not read from the system Keychain by default.
+    ctx = ssl.create_default_context(cafile=certifi.where())
     req = urllib.request.Request(url)
-    with urllib.request.urlopen(req, context=ctx) as response:
+    with urllib.request.urlopen(req, context=ctx, timeout=30) as response:  # noqa: S310
         return json.loads(response.read().decode("utf-8"))
 
 
