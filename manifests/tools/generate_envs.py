@@ -59,6 +59,7 @@ def main(
 
     params_env_lines = []
     commit_env_lines = []
+    failures: list[str] = []
 
     for repo in sorted(repos):
         # NOTE: We filter by architecture==amd64 here merely to isolate a single
@@ -71,12 +72,13 @@ def main(
 
         try:
             img_resp = get_json(img_url)
-        except Exception as e:
-            print(f"Error fetching images for repo {repo}: {e}", file=sys.stderr)
+        except Exception as e:  # noqa: BLE001
+            failures.append(f"{repo}: {e}")
             continue
 
         data = img_resp.get("data", [])
         if not data:
+            failures.append(f"{repo}: no image found for tag {version_tag}")
             continue
 
         img_data = data[0]
@@ -95,6 +97,7 @@ def main(
                 break
 
         if not manifest_list_digest or not vcs_ref:
+            failures.append(f"{repo}: missing manifest_list_digest or vcs-ref")
             continue
 
         repo_name = repo.split("/")[-1]
@@ -105,6 +108,11 @@ def main(
 
         params_env_lines.append(param_line)
         commit_env_lines.append(commit_line)
+
+    if failures:
+        for failure in failures:
+            print(f"Error: {failure}", file=sys.stderr)
+        raise typer.Exit(code=1)
 
     print("=== params.env ===")
     for line in params_env_lines:
