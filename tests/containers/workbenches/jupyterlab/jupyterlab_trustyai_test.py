@@ -46,10 +46,10 @@ def test_sklearn_trustyai_compatibility():
         print(f"  - scikit-learn version: {sklearn.__version__}")
         print(f"  - trustyai version: {trustyai.__version__}")
 
-        # Verify scikit-learn version is approximately 1.5.x
+        # Verify scikit-learn version is approximately 1.8.x
         sklearn_version = sklearn.__version__
-        if not sklearn_version.startswith('1.5'):
-            print(f"⚠️  Warning: Expected scikit-learn ~1.5.x, got {sklearn_version}")
+        if not sklearn_version.startswith('1.8'):
+            print(f"⚠️  Warning: Expected scikit-learn ~1.8.x, got {sklearn_version}")
 
         # Test basic sklearn functionality
         print("✓ Testing basic scikit-learn functionality...")

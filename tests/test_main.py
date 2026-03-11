@@ -56,7 +56,10 @@ def test_dockerfiles_unintended_subscription_manager_pattern():
                 )
 
 
-def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
+@pytest.mark.parametrize(
+    "manifests_directory", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
+)
+def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path):
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
         with subtests.test(msg="checking pyproject.toml", pipfile=file):
@@ -111,7 +114,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
             with subtests.test(msg="checking imagestream manifest consistency with pylock.toml", pyproject=file):
                 _skip_unimplemented_manifests(directory)
 
-                manifest = load_manifests_file_for(directory)
+                manifest = load_manifests_file_for(directory, manifests_directory)
 
                 with subtests.test(msg="checking the `notebook-software` array", pyproject=file):
                     for s in manifest.sw:
@@ -223,7 +226,12 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                         )
 
 
-def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubTests):
+@pytest.mark.parametrize(
+    "manifests_directory", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
+)
+def test_image_manifests_version_alignment(
+    subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path
+):
     collected_manifests = []
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
@@ -235,7 +243,7 @@ def test_image_manifests_version_alignment(subtests: pytest_subtests.plugin.SubT
         if _skip_unimplemented_manifests(directory, call_skip=False):
             continue
 
-        manifest = load_manifests_file_for(directory)
+        manifest = load_manifests_file_for(directory, manifests_directory)
         collected_manifests.append(manifest)
 
     @dataclasses.dataclass
@@ -321,7 +329,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             ),
         ),
         ("jupyterlab-lsp", ("~=5.1.0", "~=5.1.1")),
-        ("transformers", ("~=5.0.0", "==4.57.3")),
+        ("transformers", ("~=5.3.0", "==4.57.3")),
         ("datasets", ("~=4.5.0", "==4.4.1")),
         ("accelerate", ("~=1.12.0", "==1.12.0")),
         ("requests", ("~=2.32.5", "==2.32.5")),
@@ -445,10 +453,11 @@ def _parse_env_keys(env_path: pathlib.Path) -> set[str]:
     return keys
 
 
-def test_imagestream_kustomization_consistency(subtests: pytest_subtests.plugin.SubTests):
+@pytest.mark.parametrize(
+    "base_dir", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
+)
+def test_imagestream_kustomization_consistency(subtests: pytest_subtests.plugin.SubTests, base_dir):
     """Validate that imagestream YAML files, kustomization.yaml replacements, and .env files are consistent."""
-    base_dir = PROJECT_ROOT / "manifests" / "base"
-
     kustomization = yaml.safe_load((base_dir / "kustomization.yaml").read_text())
     replacements = kustomization.get("replacements", [])
 
@@ -701,9 +710,9 @@ class Manifest:
     dep: list[dict[str, Any]]
 
 
-def load_manifests_file_for(directory: pathlib.Path) -> Manifest:
+def load_manifests_file_for(directory: pathlib.Path, manifests_directory: pathlib.Path) -> Manifest:
     metadata = manifests.extract_metadata_from_path(directory)
-    manifest_file = manifests.get_source_of_truth_filepath(
+    manifest_file = manifests_directory / manifests.get_source_of_truth_filepath(
         root_repo_directory=PROJECT_ROOT,
         metadata=metadata,
     )
