@@ -46,7 +46,7 @@ spec:
   - name: build-args-file
     value: jupyter/tensorflow/ubi9-python-3.12/build-args/cuda.conf
   pipelineRef:
-    name: multiarch-combined-pipeline
+    name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-jupyter-tensorflow-cuda-py312-ubi9
   workspaces:

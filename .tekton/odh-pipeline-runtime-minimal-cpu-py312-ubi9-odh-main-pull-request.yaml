@@ -48,7 +48,7 @@ spec:
   - name: build-args-file
     value: runtimes/minimal/ubi9-python-3.12/build-args/cpu.conf
   pipelineRef:
-    name: multiarch-combined-pipeline
+    name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-pipeline-runtime-minimal-cpu-py312-ubi9
   workspaces:

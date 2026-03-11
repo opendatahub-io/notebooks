@@ -37,7 +37,7 @@ spec:
     - '{{target_branch}}-{{revision}}'
     - 3.4-v1.43
   pipelineRef:
-    name: multiarch-combined-pipeline
+    name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-jupyter-minimal-cuda-py312-ubi9
   workspaces:

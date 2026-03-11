@@ -47,7 +47,7 @@ spec:
   - name: build-args-file
     value: rstudio/rhel9-python-3.12/build-args/cpu.conf
   pipelineRef:
-    name: multiarch-combined-pipeline
+    name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-rstudio-minimal-cpu-py312-rhel9
   workspaces:

@@ -36,7 +36,7 @@ spec:
   - name: image-expires-after
     value: 5d
   - name: build-platforms
-    value:    
+    value:
     - linux-d160-m2xlarge/amd64
   - name: dockerfile
     value: jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.rocm
@@ -63,7 +63,7 @@ spec:
           cpu: '8'
           memory: 32Gi
   pipelineRef:
-    name: multiarch-combined-pipeline
+    name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-jupyter-pytorch-rocm-py312-ubi9
   workspaces:

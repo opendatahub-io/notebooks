@@ -45,7 +45,7 @@ spec:
   - name: build-args-file
     value: rstudio/c9s-python-3.12/build-args/cuda.conf
   pipelineRef:
-    name: multiarch-combined-pipeline
+    name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-rstudio-minimal-cuda-py312-c9s
   workspaces:

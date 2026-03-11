@@ -54,7 +54,7 @@ spec:
           cpu: '16'
           memory: 32Gi
   pipelineRef:
-    name: multiarch-combined-pipeline
+    name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-jupyter-minimal-rocm-py312-ubi9
   workspaces:
