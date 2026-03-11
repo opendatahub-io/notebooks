@@ -241,7 +241,7 @@ Updated PipelineRun YAMLs to:
 - Add `prefetch-input` entries pointing to `prefetch-input/odh/` for RPMs
   and generic artifacts, to the component root for pip (with arch-specific
   binary wheels), and to every `package-lock.json` directory for npm.
-- Reference `multiarch-combined-pipeline` with `enable-cache-proxy: "true"`.
+- Reference `multiarch-odh-main-combined-pipeline` with `enable-cache-proxy: "true"`.
 - **Codeserver only:** Add `taskRunSpecs` for the `build-images` task (8 CPU,
   32Gi memory) so the post-build rsync step (transferring the large image
   from the remote builder) does not OOM or drop the connection. See
