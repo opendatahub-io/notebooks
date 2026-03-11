@@ -77,7 +77,7 @@ def pull_request_pipelinerun_template(
                 "appstudio.openshift.io/component": component,
                 "pipelines.appstudio.openshift.io/type": "build",
             },
-            "name": f"{component}-on-pull-request",
+            "name": f"{component}-odh-main-pull-request",
             "namespace": "open-data-hub-tenant",
         },
         "spec": {
@@ -103,7 +103,7 @@ def pull_request_pipelinerun_template(
                 for task_name in ("build-images", "clair-scan", "ecosystem-cert-preflight-checks")
             ],
             "pipelineRef": {
-                "name": "multiarch-pull-request-pipeline",
+                "name": "multiarch-odh-main-combined-pipeline",
             },
             "taskRunTemplate": {
                 "serviceAccountName": f"build-pipeline-{component}{maybe_poc}",
