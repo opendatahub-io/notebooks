@@ -10,6 +10,7 @@ See docs/fetching_registry_redhat_io_index.md for API documentation and details.
 """
 
 import json
+import re
 import ssl
 import sys
 import urllib.parse
@@ -40,6 +41,24 @@ def main(
         "2025-2", "--suffix", "-s", help="The suffix to append to variables (e.g., 2025-2)"
     ),
 ) -> None:
+    if not re.match(
+        r"""
+        ^v          # leading 'v'
+        \d+         # major
+        \.          # dot
+        \d+         # minor
+        (           # optional patch
+            \.
+            \d+
+        )?
+        $
+        """,
+        version_tag,
+        re.VERBOSE,
+    ):
+        print(f"Error: version_tag '{version_tag}' must match v<major>.<minor>[.<patch>] (e.g. v3.3)", file=sys.stderr)
+        raise typer.Exit(code=1)
+
     try:
         repos: list[str] = []
         page = 0

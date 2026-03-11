@@ -20,13 +20,13 @@ The web UI at `https://catalog.redhat.com/en/software/containers/` is built with
 
 URL pattern for a specific repository page:
 
-```
+```text
 https://catalog.redhat.com/en/software/containers/{namespace}/{repository}/{_id}
 ```
 
 For example:
 
-```
+```text
 https://catalog.redhat.com/en/software/containers/rhoai/odh-workbench-jupyter-pytorch-cuda-py311-rhel9/688d13bc3afbd5eb7202d00d
 ```
 
@@ -36,19 +36,19 @@ The `{_id}` at the end is the Pyxis repository `_id` field (a hex string).
 
 ### List repositories (with filtering)
 
-```
+```text
 GET /v1/repositories?filter=<RSQL>&page_size=<N>&page=<P>
 ```
 
 ### Get images for a repository
 
-```
+```text
 GET /v1/repositories/registry/{registry}/repository/{repository}/images?page_size=<N>&page=<P>&sort_by=<field>&include=<fields>
 ```
 
 ### Get tag history
 
-```
+```text
 GET /v1/tag-history/registry/{registry}/repository/{repository}/tag/{tag}
 ```
 
