@@ -40,9 +40,19 @@ def main(
     ),
 ) -> None:
     try:
-        url = f"{API_BASE}/repositories?filter=repository=regex=rhoai/odh-workbench.*&page_size=100&page=0&include=data.repository"
-        repos_data = get_json(url)
-        repos = [item["repository"] for item in repos_data.get("data", [])]
+        repos: list[str] = []
+        page = 0
+        page_size = 100
+        while True:
+            url = (
+                f"{API_BASE}/repositories?filter=repository=regex=rhoai/odh-workbench.*"
+                f"&page_size={page_size}&page={page}&include=data.repository"
+            )
+            batch = get_json(url).get("data", [])
+            repos.extend(item["repository"] for item in batch)
+            if len(batch) < page_size:
+                break
+            page += 1
     except Exception as e:
         print(f"Error fetching repos: {e}", file=sys.stderr)
         sys.exit(1)
