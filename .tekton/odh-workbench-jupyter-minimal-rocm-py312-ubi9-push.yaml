@@ -39,6 +39,9 @@ spec:
     value:
     - '{{target_branch}}-{{revision}}'
     - 3.4-v1.43
+  - name: build-platforms
+    value:
+    - linux-d160-m4xlarge/amd64
   taskRunSpecs:
   - pipelineTaskName: build-images
     stepSpecs:
