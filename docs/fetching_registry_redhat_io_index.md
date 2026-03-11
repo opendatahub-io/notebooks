@@ -355,24 +355,25 @@ The `params.env` value format is `registry.redhat.io/rhoai/<catalog-repo-name>@s
 
 ## Scripting Tool
 
-The script `scripts/list_rhoai_images.py` automates querying the catalog for all py312 workbench images at a given RHOAI version. Usage:
+The script `manifests/tools/generate_envs.py` automates querying the catalog for all py312 workbench images at a given RHOAI version and generating `params.env` / `commit.env` output. Run it from the `manifests/` directory:
 
 ```bash
-# Multi-arch manifest digests (default, no --architecture)
-python scripts/list_rhoai_images.py --version v3.2
+# Default: version v3.3, suffix 2025-2
+cd manifests && ../uv run tools/generate_envs.py
 
-# Per-architecture digest
-python scripts/list_rhoai_images.py --version v3.2 --architecture amd64
+# Specify a different RHOAI version tag
+cd manifests && ../uv run tools/generate_envs.py --version-tag v3.2
 
-# Generate params.env lines
-python scripts/list_rhoai_images.py --version v3.2 --params-env --suffix 2025-2
-
-# JSON output
-python scripts/list_rhoai_images.py --version v3.2 --json
-
-# Include pipeline runtime images
-python scripts/list_rhoai_images.py --version v3.2 --include-runtimes
+# Specify both version and suffix
+cd manifests && ../uv run tools/generate_envs.py --version-tag v3.3 --suffix 2025-2
 ```
+
+Options:
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--version-tag` | `-v` | `v3.3` | RHOAI version tag to query (e.g. `v3.2`, `v3.3`) |
+| `--suffix` | `-s` | `2025-2` | Suffix appended to variable names in the output |
 
 The script handles the `rhel9` → `ubi9` variable name mapping automatically and reminds about the RStudio images that must be added manually from quay.io.
 
