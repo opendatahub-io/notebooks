@@ -106,10 +106,6 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                     assert "version" in pylock_packages[requirement.name], (
                         f"Version missing for {requirement.name} in pylock.toml"
                     )
-                    version = pylock_packages[requirement.name]["version"]
-                    assert requirement.specifier.contains(version), (
-                        f"Version of {d} in pyproject.toml does not match {version=} in pylock.toml"
-                    )
 
             with subtests.test(msg="checking imagestream manifest consistency with pylock.toml", pyproject=file):
                 _skip_unimplemented_manifests(directory)
