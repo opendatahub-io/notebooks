@@ -10,15 +10,15 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: 'true'
     pipelinesascode.tekton.dev/max-keep-runs: '3'
-    pipelinesascode.tekton.dev/on-comment: ^/kfbuild\s+(all|odh\-pipeline\-runtime\-pytorch\-rocm\-py312\-ubi9|runtimes/rocm\-pytorch/ubi9\-python\-3\.12)
+    pipelinesascode.tekton.dev/on-comment: ^/kfbuild\s+(all|odh\-base\-image\-cuda\-py312\-ubi9|base\-images/cuda/12\.8/ubi9\-python\-3\.12)
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && (target_branch == "main" || target_branch == "stable") && !("manifests/base/params-latest.env".pathChanged()) && (".tekton/odh-pipeline-runtime-pytorch-rocm-py312-ubi9-pull-request.yaml".pathChanged() || "runtimes/rocm-pytorch/ubi9-python-3.12/**".pathChanged() || "runtimes/rocm-pytorch/ubi9-python-3.12/build-args/rocm.conf".pathChanged() )
+      event == "pull_request" && (target_branch == "main" || target_branch == "stable") && ( "base-images/cuda/12.8/ubi9-python-3.12/**".pathChanged() || ".tekton/odh-base-image-cuda-12-8-py312-ubi9-pull-request.yaml".pathChanged() )
       && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
-    appstudio.openshift.io/application: opendatahub-builds
-    appstudio.openshift.io/component: odh-pipeline-runtime-pytorch-rocm-py312-ubi9-ci
+    appstudio.openshift.io/application: opendatahub-release
+    appstudio.openshift.io/component: odh-base-image-cuda-py312-ubi9
     pipelines.appstudio.openshift.io/type: build
-  name: odh-pipeline-runtime-pytorch-rocm-py312-ubi9-on-pull-request
+  name: odh-base-image-cuda-12-8-py312-ubi9-on-pull-request
   namespace: open-data-hub-tenant
 spec:
   timeouts:
@@ -29,25 +29,22 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-pipeline-runtime-pytorch-rocm-py312-ubi9:on-pr
+    value: quay.io/opendatahub/odh-base-image-cuda-py312-ubi9:on-pr
   - name: image-expires-after
     value: 5d
   - name: build-platforms
     value:
-    - linux-d160-m2xlarge/amd64
+    - linux-mxlarge/amd64
+    - linux/arm64
   - name: dockerfile
-    value: runtimes/rocm-pytorch/ubi9-python-3.12/Dockerfile.rocm
+    value: base-images/cuda/12.8/ubi9-python-3.12/Dockerfile.cuda
   - name: path-context
     value: .
-  - name: build-args-file
-    value: runtimes/rocm-pytorch/ubi9-python-3.12/build-args/rocm.conf
   - name: additional-tags
     value:
     - 'odh-pr-{{revision}}'
   - name: pipeline-type
     value: pull-request
-  - name: enable-group-testing
-    value: "true"
   pipelineRef:
     resolver: git
     params:
@@ -58,7 +55,7 @@ spec:
     - name: pathInRepo
       value: pipeline/multi-arch-container-build.yaml
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-pipeline-runtime-pytorch-rocm-py312-poc
+    serviceAccountName: build-pipeline-odh-base-image-cuda-py312-ubi9-poc
   workspaces:
   - name: git-auth
     secret:
