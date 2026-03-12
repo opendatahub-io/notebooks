@@ -284,17 +284,23 @@ jobs:
           set -Eeuxo pipefail
           # Derive component dir from Makefile (single source of truth). Works for all
           # image targets (codeserver, jupyter-*, runtime-*, rstudio-*, base-images-*).
-          COMPONENT_DIR=$(make -n "${{ inputs.target }}" 2>&1 | sed -n 's/.*#\*# Image build directory: <\([^>]*\)>.*/\1/p' | head -n1)
+          # Reuse ci/cached-builds Python helpers (same parsing as has_tests.py, make_test.py)
+          COMPONENT_DIR=$(python3 -c "import sys, os; sys.path.insert(0, 'ci/cached-builds'); import gha_pr_changed_files as g; print(g.get_build_directory(os.environ['MAKE_TARGET']))")
+          DOCKERFILE=$(python3 -c "import sys, os; sys.path.insert(0, 'ci/cached-builds'); import gha_pr_changed_files as g; print(g.get_build_dockerfile(os.environ['MAKE_TARGET']))")
           if [ -z "$COMPONENT_DIR" ]; then
             echo "Could not derive COMPONENT_DIR from Makefile for target ${{ inputs.target }}" >&2
             exit 1
           fi
+          # FLAVOR (cpu/cuda/rocm) must match the Dockerfile suffix so prefetch uses the right pylock.*.toml / requirements.*.txt.
+          # Works for both Dockerfile.<flavor> and Dockerfile.konflux.<flavor> (extract last dot-separated segment).
+          FLAVOR=$(echo "$DOCKERFILE" | sed -n 's/.*\.\([^.]*\)$/\1/p')
+          FLAVOR=${FLAVOR:-cpu}
           if [ -d "$COMPONENT_DIR/prefetch-input" ]; then
-            echo "Hermetic build detected — prefetching dependencies for $COMPONENT_DIR"
+            echo "Hermetic build detected — prefetching dependencies for $COMPONENT_DIR (flavor=$FLAVOR)"
             pip3 install --quiet --break-system-packages pyyaml
             command -v uv &>/dev/null || pip3 install --quiet --break-system-packages uv
 
-            PREFETCH_ARGS="--component-dir $COMPONENT_DIR"
+            PREFETCH_ARGS="--component-dir $COMPONENT_DIR --flavor $FLAVOR"
             # AIPCC builds use RHEL-based base images, so prefetch from the rhds
             # variant to avoid RPM conflicts (e.g. openssl-fips-provider vs
             # openssl-fips-provider-so).
@@ -316,6 +322,7 @@ jobs:
             echo "No prefetch-input/ found for $COMPONENT_DIR — skipping"
           fi
         env:
+          MAKE_TARGET: ${{ inputs.target }}
           SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
           SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
 
