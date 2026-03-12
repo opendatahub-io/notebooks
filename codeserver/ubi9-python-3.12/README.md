@@ -54,11 +54,12 @@ scripts/lockfile-generators/prefetch-all.sh \
     --activation-key my-key --org my-org
 ```
 
-This single command orchestrates all four lockfile generators:
-1. Generic artifacts (GPG keys, VS Code .vsix extensions; ripgrep and oc client come from pip wheel and RPM respectively)
-2. Pip wheels (numpy, scipy, pandas, scikit-learn, ripgrep, uv, etc. via RHOAI index)
+This single command orchestrates all five lockfile generators:
+1. Generic artifacts (GPG keys, node headers, oc client, VS Code extensions)
+2. Pip wheels (numpy, scipy, pandas, scikit-learn, etc. via RHOAI index)
 3. NPM packages (code-server + VS Code extensions)
-4. RPMs (gcc, nodejs, nginx, openblas, openshift-clients, etc. via Hermeto)
+4. RPMs (gcc, nodejs, nginx, openblas, etc. via Hermeto)
+5. Go modules (go.mod/go.sum via Hermeto; used by images that build Go binaries)
 
 Lockfiles are organized into variant subdirectories under `prefetch-input/`:
 
