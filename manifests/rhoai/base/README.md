@@ -4,17 +4,21 @@ Listing the order in which each imagestreams are introduced based on the `openda
 
 ## Notebook Imagestreams (with order annotations):
 
-1. jupyter-minimal-notebook-imagestream.yaml (Order: 1)
-2. jupyter-minimal-gpu-notebook-imagestream.yaml (Order: 3)
-3. jupyter-rocm-minimal-notebook-imagestream.yaml (Order: 5)
-4. jupyter-datascience-notebook-imagestream.yaml (Order: 7)
-5. jupyter-pytorch-notebook-imagestream.yaml (Order: 9)
-6. jupyter-pytorch-llmcompressor-imagestream.yaml (Order: 10)
-7. jupyter-rocm-pytorch-notebook-imagestream.yaml (Order: 12)
-8. jupyter-tensorflow-notebook-imagestream.yaml (Order: 14)
-9. jupyter-trustyai-notebook-imagestream.yaml (Order: 16)
-10. jupyter-rocm-tensorflow-notebook-imagestream.yaml (Order: 16)
-11. code-server-notebook-imagestream.yaml (Order: 19)
+1. training-hub-universal-cpu-imagestream.yaml (Order: 1) [trainer repo]
+2. training-hub-universal-cuda-imagestream.yaml (Order: 2) [trainer repo]
+3. training-hub-universal-rocm-imagestream.yaml (Order: 3) [trainer repo]
+4. jupyter-minimal-notebook-imagestream.yaml (Order: 4)
+5. jupyter-minimal-gpu-notebook-imagestream.yaml (Order: 6)
+6. jupyter-rocm-minimal-notebook-imagestream.yaml (Order: 8)
+7. jupyter-datascience-notebook-imagestream.yaml (Order: 10)
+8. jupyter-pytorch-notebook-imagestream.yaml (Order: 12)
+9. jupyter-pytorch-llmcompressor-imagestream.yaml (Order: 13)
+10. jupyter-rocm-pytorch-notebook-imagestream.yaml (Order: 15)
+11. jupyter-tensorflow-notebook-imagestream.yaml (Order: 17)
+12. jupyter-rocm-tensorflow-notebook-imagestream.yaml (Order: 19)
+13. jupyter-trustyai-notebook-imagestream.yaml (Order: 19)
+14. code-server-notebook-imagestream.yaml (Order: 22)
+15. rstudio-gpu-notebook-imagestream.yaml (Order: 25)
 
 ## Runtime Imagestreams (no order annotations):
 
