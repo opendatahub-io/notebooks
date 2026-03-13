@@ -51,9 +51,8 @@ class TestJupyterLabImage:
             assert response.status_code == 200
             assert "text/html" in response.headers["content-type"]
             # Spinner is injected by addon; accept either spinner in initial HTML or valid JupyterLab shell
-            assert (
-                'class="pf-v6-c-spinner"' in response.text
-                or ('jp-ThemedContainer' in response.text and 'JupyterLab' in response.text)
+            assert 'class="pf-v6-c-spinner"' in response.text or (
+                "jp-ThemedContainer" in response.text and "JupyterLab" in response.text
             ), "Expected PatternFly spinner or JupyterLab shell in initial page HTML"
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
