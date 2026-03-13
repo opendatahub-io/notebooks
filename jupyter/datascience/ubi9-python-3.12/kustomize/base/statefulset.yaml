@@ -45,7 +45,7 @@ spec:
               path: /notebook/opendatahub/jovyan/api
               port: notebook-port
               scheme: HTTP
-            initialDelaySeconds: 45
+            initialDelaySeconds: 90
             periodSeconds: 10
             successThreshold: 1
             failureThreshold: 6
