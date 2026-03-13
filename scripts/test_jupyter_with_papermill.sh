@@ -6,7 +6,7 @@
 ## has been previously executed.  It replaces the legacy 'test_with_papermill' function previously defined in the Makefile.
 ##
 ## The script will first check to ensure a notebook workload is running and have a k8s service object exposed.  Once verified:
-##  - the relevant imagestream manifest from https://github.com/opendatahub-io/notebooks/tree/main/manifests/base is copied
+##  - the relevant imagestream manifest from https://github.com/opendatahub-io/notebooks/tree/main/manifests/odh/base is copied
 ##		into the running pod to act as the "source of truth" when asserting against installed version of py packages
 ##  - a test_notebook.ipynb will be copied into the running pod if it is defined in jupyter/*/test/test_notebook.ipynb
 ##      - for images inherited from the datascience notebook image, the minimal and datascience notebook test files are
@@ -189,7 +189,7 @@ function _get_source_of_truth_filepath()
     local notebook_id="${1##*/}"
 
     local manifest_directory="${root_repo_directory}/manifests"
-    local imagestream_directory="${manifest_directory}/base"
+    local imagestream_directory="${manifest_directory}/odh/base"
 
     local file_suffix='notebook-imagestream.yaml'
     local filename=
