@@ -6,7 +6,6 @@ ARG LOCAL_BUILD=false
 #########################
 ARG BASE_IMAGE
 
-### BEGIN mongocli-builder stage
 ######################################################
 # mongocli-builder (build stage only, not published) #
 # Source: git submodule at jupyter/.../prefetch-input/mongocli;      #
@@ -35,7 +34,6 @@ EOF
 # Other apps and tools installed as default user
 USER 1001
 
-### END mongocli-builder stage
 
 ####################
 # cuda-base        #
@@ -146,10 +144,8 @@ dnf clean all
 rm -rf /var/cache/yum
 EOF
 
-### BEGIN Copy mongocli from builder
 # Copy dynamically-linked mongocli built in earlier build stage
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/mongocli
-### END Copy mongocli from builder
 
 # Other apps and tools installed as default user
 USER 1001
@@ -191,7 +187,6 @@ COPY ${PYTORCH_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 
-### BEGIN Install software and packages
 echo "Installing software and packages"
 # Install Python packages from lockfile (hermetic: use Cachi2 prefetched pip deps)
 # All dependencies are explicitly listed in pylock.toml (--no-deps)
@@ -201,7 +196,6 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
     --no-verify-hashes \
     --find-links /cachi2/output/deps/pip \
     --requirements=./requirements.txt
-### END Install software and packages
 
 # setup path for runtime configuration
 mkdir /opt/app-root/runtimes
