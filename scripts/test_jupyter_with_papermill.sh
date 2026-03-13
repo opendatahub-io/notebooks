@@ -240,7 +240,11 @@ function _create_test_versions_source_of_truth()
     local version_filename='expected_versions.json'
 
     local test_version_truth_filepath=
-    test_version_truth_filepath="$( _get_source_of_truth_filepath "${notebook_id}" )"
+    test_version_truth_filepath="$( _get_source_of_truth_filepath "${notebook_id}" )" || true
+    if ! [ -e "${test_version_truth_filepath}" ]; then
+        printf '%s\n' "Imagestream manifest not found at: ${test_version_truth_filepath}. Check manifests/odh/base for the correct path."
+        exit 1
+    fi
 
     local nbdime_version='4.0'
     local nbgitpuller_version='1.2'
