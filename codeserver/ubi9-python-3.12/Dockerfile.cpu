@@ -1,6 +1,6 @@
 ############################################################################################
 # Hermetic Dockerfile for codeserver/ubi9-python-3.12
-#
+# Test #1
 # RHAIENG-2846: All build steps run without network access. Every dependency
 # (RPMs, npm packages, Python wheels, generic tarballs) is prefetched by cachi2
 # and mounted at /cachi2/output/deps/{rpm,pip,generic}/ during the build.
@@ -31,7 +31,7 @@ ARG LOCAL_BUILD=false
 #   - Node.js/npm: installed from prefetched RPMs
 #   - npm dependencies: package-lock.json resolved URLs rewritten to file:///cachi2/...
 #   - node-gyp: system headers via nodejs-devel RPM (NPM_CONFIG_NODEDIR=/usr),
-#     VS Code remote headers (22.20.0) from prefetched tarballs, ripgrep prefetched
+#     VS Code remote headers (22.20.0) from prefetched tarballs, ripgrep from RHOAI Python wheel (deps/pip)
 #   - Build scripts patched to avoid any network fetches (patches/*.patch)
 ############################################################################################
 # e.g., registry.access.redhat.com/ubi9/python-312:latest
@@ -105,7 +105,7 @@ RUN cd ${CODESERVER_SOURCE_CODE} && GHA_BUILD="${GHA_BUILD}" ./apply-patch.sh
 # setup-offline-binaries.sh does all offline preparation in one shot:
 #   - sources codeserver-offline-env.sh (ELECTRON_SKIP_BINARY_DOWNLOAD, NPM_CONFIG_NODEDIR, etc.)
 #   - node-gyp uses system headers (NPM_CONFIG_NODEDIR=/usr from nodejs-devel RPM)
-#   - ripgrep from cachi2 generic; .vsix from utils/; .build/node/ = system /usr/bin/node (per-arch)
+#   - ripgrep from pip (RHOAI wheel in deps/pip), .vsix from cachi2 generic; .build/node/ = system /usr/bin/node (per-arch)
 #   - pre-populates .build/builtInExtensions/ so gulp skips network downloads
 #   - rewrites package-lock.json "resolved" URLs to file:///cachi2/...
 # CI=1 makes ci/dev/postinstall.sh run "npm ci" (not "npm install") in subdirs,

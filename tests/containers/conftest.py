@@ -45,6 +45,8 @@ class Image:
     id: str | None
     name: str
     labels: dict[str, str]
+    # Env from image config when available (local inspect or skopeo); used when source_location is missing
+    env: dict[str, str] | None = None
 
     @classmethod
     def from_docker(cls, image: docker.models.images.Image, name: str):
@@ -52,7 +54,8 @@ class Image:
         # returns labels in ContainerConfig only (see containers/podman#2017 and compat API).
         # So we read from both so labels are present when running against Podman (e.g. GHA).
         labels = _labels_from_docker_attrs(image.attrs)
-        return Image(id=image.id, name=name, labels=labels)
+        env = _env_from_docker_attrs(image.attrs)
+        return Image(id=image.id, name=name, labels=labels, env=env)
 
 
 def _labels_from_docker_attrs(attrs: dict[str, Any]) -> dict[str, str]:
@@ -62,6 +65,21 @@ def _labels_from_docker_attrs(attrs: dict[str, Any]) -> dict[str, str]:
         labels = config.get("Labels")
         if isinstance(labels, dict) and labels:
             return dict(labels)
+    return {}
+
+
+def _env_from_docker_attrs(attrs: dict[str, Any]) -> dict[str, str]:
+    """Extract env (KEY=VALUE list) from Docker/Podman inspect attrs."""
+    for key in ("Config", "ContainerConfig"):
+        config = attrs.get(key) or {}
+        env_list = config.get("Env")
+        if isinstance(env_list, list) and env_list:
+            parsed = {}
+            for item in env_list:
+                if isinstance(item, str) and "=" in item:
+                    k, v = item.split("=", 1)
+                    parsed[k] = v
+            return parsed
     return {}
 
 
@@ -85,7 +103,7 @@ def get_image_metadata(image: str) -> Image:
         # skopeo inspect (may be None if skopeo not installed or inspect failed)
         image_info = skopeo_utils.get_image_info(image)
         if image_info is not None and image_info.labels is not None:
-            return Image(id=None, name=image, labels=image_info.labels)
+            return Image(id=None, name=image, labels=image_info.labels, env=image_info.env or {})
         # pull & docker inspect
         image_metadata = client.client.images.pull(image)
         assert isinstance(image_metadata, docker.models.images.Image)

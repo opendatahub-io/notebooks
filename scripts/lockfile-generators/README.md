@@ -1,8 +1,8 @@
 # Lockfile Generators
 
 Scripts to generate lockfiles for **generic artifacts**, **RPMs**, **npm packages**,
-and **pip packages**, download the referenced packages and support **offline**
-hermetic image builds via Cachi2/Hermeto.
+**pip packages**, and **Go modules (gomod)**, download the referenced packages and
+support **offline** hermetic image builds via Cachi2/Hermeto.
 
 ## Why lockfiles?
 
@@ -30,6 +30,8 @@ to process and where to find them:
     requirements_files: ["requirements.cpu.txt"]
   - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions
     type: npm                                              # package-lock.json (many)
+  - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli
+    type: gomod                                            # go.mod + go.sum (Go modules)
   # ... more npm entries for code-server root, build/, test/, patched lockfiles, etc.
 ```
 
@@ -41,7 +43,7 @@ All scripts must be run from the **repository root**.
 
 **For most local and CI use, this is the main script you need to run.**
 
-`prefetch-all.sh` orchestrates all four lockfile generators in the correct
+`prefetch-all.sh` orchestrates all five lockfile generators in the correct
 order, downloading dependencies into `cachi2/output/deps/`. After running it,
 the Makefile auto-detects `cachi2/output/` and passes `--volume` +
 `--build-arg LOCAL_BUILD=true` to `podman build`.
@@ -87,11 +89,12 @@ gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
 | 2. Pip wheels | `pyproject.toml` exists in component dir | `create-requirements-lockfile.sh --download` |
 | 3. NPM packages | Tekton PipelineRun found for component (see below) | `download-npm.sh --tekton-file` |
 | 4. RPMs | `prefetch-input/<variant>/rpms.in.yaml` exists | `hermeto-fetch-rpm.sh` (if lockfile committed) or `create-rpm-lockfile.sh --download` |
+| 5. Go modules | Tekton file has `prefetch-input` entries with `type: gomod` | `create-go-lockfile.sh --tekton-file` |
 
 **Variant directory:** Lockfiles live under `prefetch-input/odh/` (upstream) or
 `prefetch-input/rhds/` (downstream). If that directory is missing, steps 1 and 4
-are skipped; steps 2 (pip) and 3 (npm) still run when their inputs exist
-(`pyproject.toml`, or a Tekton file for the component).
+are skipped; steps 2 (pip), 3 (npm), and 5 (gomod) still run when their inputs exist
+(`pyproject.toml`, a Tekton file for the component, or gomod-type prefetch-input).
 
 **Step 3 (NPM):** The script finds the Tekton file automatically via
 `find_tekton_yaml`: it looks for a `.tekton/*pull-request*.yaml` whose
@@ -100,6 +103,12 @@ are skipped; steps 2 (pip) and 3 (npm) still run when their inputs exist
 If no Tekton file is found, npm is skipped. If the Tekton file has no
 `npm`-type `prefetch-input` entries, `download-npm.sh` exits successfully
 (nothing to download).
+
+**Step 5 (Go modules):** Uses the same Tekton file as step 3. If the file has
+one or more `prefetch-input` entries with `type: gomod` and a `path` to a
+directory containing `go.mod` and `go.sum`, `create-go-lockfile.sh` runs Hermeto
+to fetch Go modules into `cachi2/output/deps/gomod/`. If there are no gomod
+entries, the step is skipped.
 
 Steps are skipped if their input files don't exist. For RPMs, if
 `rpms.lock.yaml` is already committed, it downloads directly (skipping
@@ -125,9 +134,9 @@ labels work when the daemon is Podman (see
 
 ## Individual tools
 
-The five options below can be used for hermetic builds. Scripts 1–4 can also be
+The six options below can be used for hermetic builds. Scripts 1–5 can also be
 run individually for debugging or partial updates; `prefetch-all.sh` calls them
-internally. Option 5 (Git submodule) is a manual setup.
+internally. Option 6 (Git submodule) is a manual setup.
 
 | # | Type | Main script | What it generates |
 |---|------|-------------|-------------------|
@@ -135,7 +144,8 @@ internally. Option 5 (Git submodule) is a manual setup.
 | 2 | RPM | [create-rpm-lockfile.sh](#2-rpm-packages--create-rpm-lockfilesh) | `rpms.lock.yaml` |
 | 3 | npm | [download-npm.sh](#3-npm-packages--download-npmsh) | Downloaded tarballs in `cachi2/output/deps/npm/` |
 | 4 | pip (RHOAI) | [create-requirements-lockfile.sh](#4-pip-packages-rhoai--create-requirements-lockfilesh) | `pylock.<flavor>.toml` + `requirements.<flavor>.txt` |
-| 5 | Git submodule | (manual setup) | [Pinned repo under prefetch-input/](#5-git-submodule) |
+| 5 | Go modules (gomod) | [create-go-lockfile.sh](#5-go-modules--create-go-lockfilesh) | Go module cache in `cachi2/output/deps/gomod/` |
+| 6 | Git submodule | (manual setup) | [Pinned repo under prefetch-input/](#6-git-submodule) |
 
 ### Helper scripts (used internally by the main tools)
 
@@ -146,6 +156,7 @@ internally. Option 5 (Git submodule) is a manual setup.
 | `helpers/download-rpms.sh` | RPM | Download RPMs from `rpms.lock.yaml` via `wget` into `cachi2/output/deps/rpm/` and create DNF repo metadata. Standalone alternative to `hermeto-fetch-rpm.sh`. |
 | `helpers/hermeto-fetch-rpm.sh` | RPM | Download RPMs from `rpms.lock.yaml` using [Hermeto](https://github.com/hermetoproject/hermeto) in a container. Handles RHEL entitlement cert extraction for `cdn.redhat.com` auth. Called by `create-rpm-lockfile.sh --download`. |
 | `helpers/hermeto-fetch-npm.sh` | npm | Alternative npm fetcher using [Hermeto](https://github.com/hermetoproject/hermeto) in a container. |
+| `helpers/hermeto-fetch-gomod.sh` | Go modules | Fetches Go dependencies from a directory with `go.mod`/`go.sum` using [Hermeto](https://github.com/hermetoproject/hermeto) in a container. Output: `cachi2/output/deps/gomod/`. Called by `create-go-lockfile.sh`. |
 | `rewrite-npm-urls.sh` | npm (Dockerfile) | Rewrites `resolved` URLs in `package-lock.json` / `package.json` to `file:///cachi2/output/deps/npm/`. |
 | `helpers/rpm-lockfile-generate.sh` | RPM | Runs `rpm-lockfile-prototype` inside the lockfile container. Not for direct host use. |
 | `Dockerfile.rpm-lockfile` | RPM | Builds the container image for `create-rpm-lockfile.sh` (includes `rpm-lockfile-prototype` v0.20.0, `createrepo_c`, `modulemd-tools`). Applies patches from `patches/` at build time. |
@@ -173,7 +184,7 @@ gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
 If you need to regenerate only one dependency type, or for debugging:
 
 ```bash
-# 1. Generic artifacts (GPG keys, node headers, nfpm, oc client, VS Code extensions, etc.)
+# 1. Generic artifacts (GPG keys, VS Code .vsix, etc.; codeserver uses pip for ripgrep, RPM for oc)
 python3 scripts/lockfile-generators/create-artifact-lockfile.py \
     --artifact-input codeserver/ubi9-python-3.12/prefetch-input/odh/artifacts.in.yaml
 
@@ -188,6 +199,13 @@ python3 scripts/lockfile-generators/create-artifact-lockfile.py \
 # 4. pip packages (numpy, scipy, pandas, pyarrow, etc.) — via RHOAI index + download for local testing
 ./scripts/lockfile-generators/create-requirements-lockfile.sh \
     --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml --download
+
+# 5. Go modules (e.g. mongocli) — from Tekton file or single directory
+./scripts/lockfile-generators/create-go-lockfile.sh \
+    --tekton-file .tekton/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-odh-main-pull-request.yaml
+# Or a single directory with go.mod + go.sum:
+./scripts/lockfile-generators/create-go-lockfile.sh \
+    --prefetch-dir jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli
 ```
 
 > **Note:** The `--download` flag (and `download-npm.sh`) fetches packages into
@@ -217,10 +235,11 @@ codeserver/ubi9-python-3.12/
     └── patches/                              # patch files (shared)
 
 cachi2/output/deps/
-├── generic/    # downloaded artifacts (GPG keys, tarballs, etc.)
-├── rpm/        # downloaded RPMs + repodata/
+├── generic/    # GPG keys, .vsix, etc. (codeserver: ripgrep in pip, oc in rpm)
+├── rpm/        # downloaded RPMs + repodata/ (includes openshift-clients for codeserver)
 ├── npm/        # downloaded npm tarballs
-└── pip/        # downloaded Python wheels/sdists
+├── pip/        # downloaded Python wheels/sdists
+└── gomod/      # Go module cache (from go.mod/go.sum via Hermeto)
 ```
 
 ---
@@ -246,9 +265,9 @@ input:
     # GPG keys for verifying prefetched RPM packages
     - url: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9
 
-    # OpenShift oc client (one per arch, filename distinguishes them)
-    - url: https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz
-      filename: openshift-client-linux-x86_64.tar.gz
+    # OpenShift oc client (one per arch) — optional; codeserver uses openshift-clients RPM in rpms.in.yaml instead
+    # - url: https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz
+    #   filename: openshift-client-linux-x86_64.tar.gz
 
     # VSCode marketplace extensions
     - url: https://github.com/microsoft/vscode-js-debug/releases/download/v1.105.0/ms-vscode.js-debug.1.105.0.vsix
@@ -374,8 +393,10 @@ The downloaded files are used for **local testing with podman**; in Konflux CI,
 cachi2 prefetches them automatically from `artifacts.lock.yaml`.
 
 **Typical artifacts:** GPG keys, X.org source tarballs (libxkbfile, util-macros),
-Node.js/Electron headers, nfpm RPMs, OpenShift `oc` client binaries, Playwright
-Chromium, ripgrep binaries, VS Code marketplace extensions (.vsix).
+Node.js/Electron headers, nfpm RPMs, Playwright Chromium, VS Code marketplace
+extensions (.vsix). For codeserver, ripgrep is supplied via the RHOAI Python
+wheel (deps/pip) and the `oc` client via the openshift-clients RPM (deps/rpm);
+they are not in generic artifacts.
 
 ### Requirements
 
@@ -725,7 +746,71 @@ python3 scripts/lockfile-generators/helpers/download-pip-packages.py \
 
 ---
 
-## 5. Git submodule
+## 5. Go modules — `create-go-lockfile.sh`
+
+Prefetches Go dependencies for hermetic builds. Go modules are pinned in
+`go.sum` (no separate lockfile). The script discovers `gomod`-type
+`prefetch-input` paths from a Tekton PipelineRun YAML or a single
+`--prefetch-dir`, then runs [Hermeto](https://github.com/hermetoproject/hermeto)
+`fetch-deps` for each directory that contains `go.mod` and `go.sum`. Output is
+written to `cachi2/output/deps/gomod/` so Dockerfiles can build Go code offline
+(e.g. `GOPROXY=file:///cachi2/output/deps/gomod`).
+
+**Typical use:** Images that build Go binaries (e.g. mongocli) during the
+Docker build. The Tekton file lists the path to the Go module under
+`prefetch-input` with `type: gomod`; the source is usually a git submodule under
+`prefetch-input/` (e.g. `jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli`).
+
+### Requirements
+
+`podman`, `jq`. `yq` required when using `--tekton-file`.
+
+### Usage
+
+```bash
+# From Tekton: discover all gomod prefetch-input paths and fetch each
+./scripts/lockfile-generators/create-go-lockfile.sh --tekton-file .tekton/<pipeline>-pull-request.yaml
+
+# Single directory (must contain go.mod and go.sum)
+./scripts/lockfile-generators/create-go-lockfile.sh --prefetch-dir path/to/gomod/source
+```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `--tekton-file PATH` | Tekton PipelineRun YAML; extract `prefetch-input` entries with `type: gomod`. |
+| `--prefetch-dir PATH` | Single directory containing `go.mod` and `go.sum` (required if not using `--tekton-file`). |
+
+### Example (jupyter pytorch+llmcompressor with mongocli)
+
+```bash
+# From Tekton file (recommended when the pipeline already defines prefetch-input)
+./scripts/lockfile-generators/create-go-lockfile.sh \
+    --tekton-file .tekton/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-odh-main-pull-request.yaml
+
+# Single directory
+./scripts/lockfile-generators/create-go-lockfile.sh \
+    --prefetch-dir jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli
+```
+
+### Helper: `helpers/hermeto-fetch-gomod.sh`
+
+Fetches Go modules for one directory using Hermeto in a container. Called by
+`create-go-lockfile.sh` for each gomod path. Can be run standalone for a single
+module:
+
+```bash
+./scripts/lockfile-generators/helpers/hermeto-fetch-gomod.sh \
+    --prefetch-dir jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli
+```
+
+**Requirements:** `podman`, `jq`. Must be run from the repository root (Hermeto
+expects a git repo for SBOM).
+
+---
+
+## 6. Git submodule
 
 The notebooks repository uses external code (e.g. code-server) that is normally
 cloned during the Docker build. For hermetic builds, Konflux can prefetch these
@@ -737,7 +822,8 @@ uses the checked-out tree instead of running `git clone` at build time.
 
 Run from the **repository root**. Replace the submodule URL and
 `<component>/prefetch-input/<name>` with your target path (e.g.
-`codeserver/ubi9-python-3.12/prefetch-input/code-server`).
+`codeserver/ubi9-python-3.12/prefetch-input/code-server`). For Go modules, the
+same submodule path is listed in the Tekton `prefetch-input` with `type: gomod`.
 
 ```bash
 # Add the external repo as a submodule under prefetch-input

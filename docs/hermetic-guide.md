@@ -149,8 +149,9 @@ one. Key changes in each stage:
   the local cachi2 repo) instead of downloading via nvm.
 - `npm ci --offline` replaces `npm install`: all `resolved` URLs in
   `package-lock.json` are rewritten to `file:///cachi2/output/deps/npm/`.
-- Electron, node-gyp headers, Playwright, ripgrep, and VS Code extensions
-  are copied from prefetched generic artifacts instead of being downloaded.
+- Electron, node-gyp headers, Playwright, and VS Code extensions are copied
+  from prefetched generic artifacts; ripgrep is installed from the RHOAI Python
+  wheel (deps/pip) and the patched @vscode/ripgrep postinstall copies it.
 - `nfpm` (RPM packager) is installed from a prefetched RPM instead of
   downloading from GitHub.
 
@@ -162,8 +163,8 @@ one. Key changes in each stage:
 **`cpu-base` stage**  OS packages and tools:
 - All `dnf install` commands use the local cachi2 RPM repo when
   `LOCAL_BUILD=true`.
-- The `oc` client is installed from a prefetched tarball instead of
-  downloading from mirror.openshift.com.
+- The `oc` client is installed from the openshift-clients RPM (prefetched in
+  deps/rpm) instead of downloading a tarball from mirror.openshift.com.
 
 **`codeserver` stage**  final image:
 - Python packages are installed with `uv pip install --no-index --find-links
@@ -199,11 +200,12 @@ detailed usage.
 
 | Script | Purpose |
 |--------|---------|
-| `prefetch-all.sh` | Orchestrator  runs all four generators in order |
+| `prefetch-all.sh` | Orchestrator — runs all five generators in order |
 | `create-artifact-lockfile.py` | Generic artifacts → `artifacts.lock.yaml` |
 | `create-rpm-lockfile.sh` | RPMs → `rpms.lock.yaml` (via `rpm-lockfile-prototype`) |
 | `download-npm.sh` | npm tarballs → `cachi2/output/deps/npm/` |
 | `create-requirements-lockfile.sh` | pip → `pylock.toml` + `requirements.txt` |
+| `create-go-lockfile.sh` | Go modules → `cachi2/output/deps/gomod/` (via Hermeto) |
 
 ### Makefile
 
