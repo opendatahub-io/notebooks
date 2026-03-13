@@ -200,11 +200,12 @@ detailed usage.
 
 | Script | Purpose |
 |--------|---------|
-| `prefetch-all.sh` | Orchestrator  runs all four generators in order |
+| `prefetch-all.sh` | Orchestrator — runs all five generators in order |
 | `create-artifact-lockfile.py` | Generic artifacts → `artifacts.lock.yaml` |
 | `create-rpm-lockfile.sh` | RPMs → `rpms.lock.yaml` (via `rpm-lockfile-prototype`) |
 | `download-npm.sh` | npm tarballs → `cachi2/output/deps/npm/` |
 | `create-requirements-lockfile.sh` | pip → `pylock.toml` + `requirements.txt` |
+| `create-go-lockfile.sh` | Go modules → `cachi2/output/deps/gomod/` (via Hermeto) |
 
 ### Makefile
 
