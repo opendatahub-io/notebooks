@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Install dependencies required for Notebooks PDF exports
-
 set -Eeuxo pipefail
 
 # Mapping of `uname -m` values to equivalent GOARCH values
