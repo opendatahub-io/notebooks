@@ -42,11 +42,11 @@ Pull requests are the best way to propose changes to the notebooks repository:
 
 ### Working with linters
 
-- Run pre-commit before you commit, to lint the Python sources that have been put under its management
+- Run prek before you commit, to lint the Python sources that have been put under its management
+    ```console
+    uvx prek run --all-files
     ```
-    uv run pre-commit run --all-files
-    ```
-- If you like, you can install pre-commit to run automatically using `uv run pre-commit install`, as per its [install instructions](https://pre-commit.com/#3-install-the-git-hook-scripts)
+- If you like, you can install prek to run automatically using `uvx prek install -f`, as per its [install instructions](https://prek.j178.dev/quickstart)
 
 ### Some basic instructions how to apply the new tests into [openshift-ci](https://github.com/openshift/release)
 
