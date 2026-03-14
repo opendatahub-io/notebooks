@@ -228,11 +228,9 @@ jobs:
 
           env = Env.from_env()
 
-          sanitized_ref = sanitize(env.REF_NAME)
-
           # Fixed-length approach for predictable tag structure: 30(target)+1+40(ref)+1+40(sha) = 112 characters
-          image_tag = f"{sanitized_ref[:40]}_{env.SHA[:40]}"
-          full_tag = f"{env.TARGET[:30]}-{image_tag}"
+          image_tag = f"{sanitize(env.REF_NAME)[:40]}_{env.SHA[:40]}"
+          full_tag = f"{sanitize(env.TARGET)[:30]}-{image_tag}"
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"IMAGE_TAG={image_tag}\n")
