@@ -195,30 +195,49 @@ jobs:
       - name: Calculate image name and tag
         id: calculated_vars
         shell: python
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          TARGET: ${{ inputs.target }}
+          REGISTRY: ${{ env.IMAGE_REGISTRY }}
+          PLATFORM: ${{ inputs.platform }}
         # language=python
         run: |
-          import os
-          import re
+          import os, re
+          from dataclasses import dataclass
+
+          @dataclass
+          class Env:
+              REF_NAME: str
+              SHA: str
+              TARGET: str
+              REGISTRY: str
+              PLATFORM: str
+
+              @classmethod
+              def from_env(cls):
+                  return cls(**{k: os.environ[k] for k in cls.__annotations__})
 
           # Need for sanitization explained in https://github.com/opendatahub-io/notebooks/issues/631
-          # For length, Docker image tags have 128-character limit, and we form them as <target>-<ref_name>_<sha>
-          # sha is 40 characters, ref_name is sanitized and then truncated, target is also limited.
+          # Docker image tags have a 128-character limit.
+          # We use a fixed-length approach for components: <target[:30]>-<ref_name[:40]>_<sha[:40]>.
+          # This guarantees compliance with the 128-character limit.
           INVALID_TAG_CHARS_RE = re.compile(r'[^a-zA-Z0-9._-]')
-          def sanitize(s: str, repl: str = '_') -> str:
-              return INVALID_TAG_CHARS_RE.sub(repl, s)
+          def sanitize(s: str) -> str:
+              return INVALID_TAG_CHARS_RE.sub('_', s)
 
-          ref_name = "${{ github.ref_name }}"
-          sha = "${{ github.sha }}"
-          target = "${{ inputs.target }}"
-          registry = "${{ env.IMAGE_REGISTRY }}"
-          platform = "${{ inputs.platform }}"
+          env = Env.from_env()
 
-          # Image tag length must be <= 128, 30+40+40 = 110 chars, plus 2 separators
-          image_tag = f"{sanitize(ref_name)[:40]}_{sha[:40]}"
+          sanitized_ref = sanitize(env.REF_NAME)
+
+          # Fixed-length approach for predictable tag structure: 30(target)+1+40(ref)+1+40(sha) = 112 characters
+          image_tag = f"{sanitized_ref[:40]}_{env.SHA[:40]}"
+          full_tag = f"{env.TARGET[:30]}-{image_tag}"
+
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"IMAGE_TAG={image_tag}\n")
-              f.write(f"OUTPUT_IMAGE={registry}:{target[:30]}-{image_tag}\n")
-              f.write(f"SANITIZED_PLATFORM={sanitize(platform)}\n")
+              f.write(f"OUTPUT_IMAGE={env.REGISTRY}:{full_tag}\n")
+              f.write(f"SANITIZED_PLATFORM={sanitize(env.PLATFORM)}\n")
 
       # endregion
 
