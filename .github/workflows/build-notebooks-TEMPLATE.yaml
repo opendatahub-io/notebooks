@@ -203,7 +203,7 @@ jobs:
           PLATFORM: ${{ inputs.platform }}
         # language=python
         run: |
-          import os, re
+          import os, re, sys
           from dataclasses import dataclass
 
           @dataclass
@@ -220,17 +220,25 @@ jobs:
 
           # Need for sanitization explained in https://github.com/opendatahub-io/notebooks/issues/631
           # Docker image tags have a 128-character limit.
-          # We use a fixed-length approach for components: <target[:30]>-<ref_name[:40]>_<sha[:40]>.
-          # This guarantees compliance with the 128-character limit.
+          # We calculate the max allowed length for ref_name dynamically to ensure compliance.
           INVALID_TAG_CHARS_RE = re.compile(r'[^a-zA-Z0-9._-]')
           def sanitize(s: str) -> str:
               return INVALID_TAG_CHARS_RE.sub('_', s)
 
           env = Env.from_env()
 
-          # Fixed-length approach for predictable tag structure: 30(target)+1+40(ref)+1+40(sha) = 112 characters
-          image_tag = f"{sanitize(env.REF_NAME)[:40]}_{env.SHA[:40]}"
-          full_tag = f"{sanitize(env.TARGET)[:30]}-{image_tag}"
+          sanitized_ref = sanitize(env.REF_NAME)
+
+          # Total tag length = len(target) + 1(-) + len(ref) + 1(_) + len(sha) <= 128
+          # Therefore, max_ref_len = 128 - len(env.TARGET) - len(env.SHA) - 2
+          max_ref_len = 128 - len(env.TARGET) - len(env.SHA) - 2
+
+          if max_ref_len < 1:
+              print(f"::error::Target name '{env.TARGET}' ({len(env.TARGET)} chars) is too long to accommodate a branch name and commit SHA within the 128-character Docker tag limit.", file=sys.stderr)
+              sys.exit(1)
+
+          image_tag = f"{sanitized_ref[:max_ref_len]}_{env.SHA}"
+          full_tag = f"{env.TARGET}-{image_tag}"
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"IMAGE_TAG={image_tag}\n")
