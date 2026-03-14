@@ -70,11 +70,15 @@ jobs:
       - name: Do not check secrets, they are encrypted
         run: rm -rf ./ci/secrets
 
+      - name: Install linting tools
+        uses: ./.github/actions/apt-install
+        with:
+          packages: yamllint yajl-tools
+
       - name: Validate YAML files (best code practices check included)
         if: ${{ !cancelled() }}
         id: validate-yaml-files
         run: |
-          type yamllint || sudo apt-get -y install yamllint
           # We ignore .tekton (managed by devops), insta-merge.yaml, and machine-generated .lock.yaml lockfiles
           # (e.g. rpms.lock.yaml, artifacts.lock.yaml — produced by rpm-lockfile-prototype with non-configurable indentation).
           find . -name "*.yaml" | grep -v "./.tekton/" | grep -v "./.github/workflows/insta-merge.yaml" | grep -v "\.lock\.yaml$" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
@@ -85,7 +89,6 @@ jobs:
         if: ${{ !cancelled() }}
         id: validate-json-strings-in-yaml-files
         run: |
-          type json_verify || sudo apt-get -y install yajl-tools
           bash ./ci/check-json.sh
 
       - name: Validate JSON files (just syntax)

@@ -46,9 +46,9 @@ jobs:
           echo "image=$TEST_IMAGE" >> "$GITHUB_OUTPUT"
           echo "Using test image: $TEST_IMAGE"
 
-      - name: Install missing dependencies
+      - name: Detect missing dependencies
+        id: detect-packages
         run: |
-          # Collect missing packages
           PACKAGES=()
           if ! command -v podman &> /dev/null; then
             PACKAGES+=(podman)
@@ -56,13 +56,13 @@ jobs:
           if ! command -v setfacl &> /dev/null; then
             PACKAGES+=(acl)
           fi
+          echo "packages=${PACKAGES[*]}" >> "$GITHUB_OUTPUT"
 
-          # Install missing packages if any
-          if [ ${#PACKAGES[@]} -gt 0 ]; then
-            echo "Installing missing packages: ${PACKAGES[*]}"
-            sudo apt-get update
-            sudo apt-get install -y "${PACKAGES[@]}"
-          fi
+      - name: Install missing dependencies
+        if: steps.detect-packages.outputs.packages != ''
+        uses: ./.github/actions/apt-install
+        with:
+          packages: ${{ steps.detect-packages.outputs.packages }}
 
       - name: Configure Podman
         run: |

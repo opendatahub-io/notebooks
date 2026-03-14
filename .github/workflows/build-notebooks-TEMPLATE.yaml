@@ -106,11 +106,15 @@ jobs:
       - run: mkdir -p $TMPDIR
 
       # do this early because it's fast and why not
+      - name: Install git-crypt
+        if: ${{ inputs.subscription }}
+        uses: ./.github/actions/apt-install
+        with:
+          packages: git-crypt
+
       - name: Unlock encrypted secrets with git-crypt
         if: ${{ inputs.subscription }}
         run: |
-          sudo apt-get update
-          sudo apt-get install git-crypt
           echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
           git-crypt unlock ./git-crypt-key
           rm ./git-crypt-key
@@ -151,8 +155,6 @@ jobs:
           go-version: "stable"
           cache-dependency-path: "scripts/buildinputs/go.sum"
 
-      - run: sudo apt-get update
-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -171,7 +173,9 @@ jobs:
          contains(inputs.target, 'codeserver') || inputs.platform == 'linux/arm64' }}"
 
       - id: install-compsize
-        run: sudo apt-get install -y btrfs-compsize
+        uses: ./.github/actions/apt-install
+        with:
+          packages: btrfs-compsize
 
       - name: Mount lvm overlay for podman builds
         run: |
