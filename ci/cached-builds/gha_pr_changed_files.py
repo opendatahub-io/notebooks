@@ -80,13 +80,18 @@ def find_dockerfiles(directory: str) -> list:
     return matching_files
 
 
+def _is_file_in_directory(changed_file: str, directory: str) -> bool:
+    """Returns True if changed_file is exactly the directory or is within it."""
+    return changed_file == directory or changed_file.startswith(directory + "/")
+
+
 def should_build_target(changed_files: list[str], target_directory: str) -> str:
     """Returns truthy if there is at least one changed file necessitating a build.
     Falsy (empty) string is returned otherwise."""
 
     # detect change in the Dockerfile directory
     for changed_file in changed_files:
-        if changed_file.startswith(target_directory):
+        if _is_file_in_directory(changed_file, target_directory):
             return changed_file
     # detect change in any of the files outside
     dockerfiles = find_dockerfiles(target_directory)
@@ -111,7 +116,7 @@ def should_build_target(changed_files: list[str], target_directory: str) -> str:
         dependencies: list[str] = json.loads(stdout)
         for dependency in dependencies:
             for changed_file in changed_files:
-                if changed_file.startswith(dependency):
+                if _is_file_in_directory(changed_file, dependency):
                     return changed_file
     return ""
 
