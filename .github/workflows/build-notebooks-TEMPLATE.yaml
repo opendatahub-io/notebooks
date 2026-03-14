@@ -200,6 +200,9 @@ jobs:
           import os
           import re
 
+          # Need for sanitization explained in https://github.com/opendatahub-io/notebooks/issues/631
+          # For length, Docker image tags have 128-character limit, and we form them as <target>-<ref_name>_<sha>
+          # sha is 40 characters, ref_name is sanitized and then truncated, target is also limited.
           INVALID_TAG_CHARS_RE = re.compile(r'[^a-zA-Z0-9._-]')
           def sanitize(s: str, repl: str = '_') -> str:
               return INVALID_TAG_CHARS_RE.sub(repl, s)
