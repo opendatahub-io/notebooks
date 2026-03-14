@@ -210,10 +210,8 @@ jobs:
           registry = "${{ env.IMAGE_REGISTRY }}"
           platform = "${{ inputs.platform }}"
 
-          sanitized_ref_name = sanitize(ref_name)
-
-          # Image tag length must be <= 128
-          image_tag = f"{sanitized_ref_name[:40]}_{sha[:40]}"
+          # Image tag length must be <= 128, 30+40+40 = 110 chars, plus 2 separators
+          image_tag = f"{sanitize(ref_name)[:40]}_{sha[:40]}"
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"IMAGE_TAG={image_tag}\n")
               f.write(f"OUTPUT_IMAGE={registry}:{target[:30]}-{image_tag}\n")
