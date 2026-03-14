@@ -201,6 +201,8 @@ jobs:
           import re
 
           INVALID_TAG_CHARS_RE = re.compile(r'[^a-zA-Z0-9._-]')
+          def sanitize(s: str, repl: str = '_') -> str:
+              return INVALID_TAG_CHARS_RE.sub(repl, s)
 
           ref_name = "${{ github.ref_name }}"
           sha = "${{ github.sha }}"
@@ -208,24 +210,14 @@ jobs:
           registry = "${{ env.IMAGE_REGISTRY }}"
           platform = "${{ inputs.platform }}"
 
-          sanitized_ref_name = INVALID_TAG_CHARS_RE.sub('_', ref_name)
+          sanitized_ref_name = sanitize(ref_name)
 
-          # Ensure ref_name is short enough so that target + ref_name + sha <= 128
-          # full_tag = f"{target}-{sanitized_ref_name}_{sha}"
-          # 128 - len(target) - 1(dash) - 1(underscore) - len(sha)
-          max_ref_len = 128 - len(target) - 1 - 1 - len(sha)
-          if len(sanitized_ref_name) > max_ref_len:
-              sanitized_ref_name = sanitized_ref_name[:max_ref_len]
-
-          image_tag = f"{sanitized_ref_name}_{sha}"
-          full_tag = f"{target}-{image_tag}"
-
-          sanitized_platform = INVALID_TAG_CHARS_RE.sub('_', platform)
-
+          # Image tag length must be <= 128
+          image_tag = f"{sanitized_ref_name[:40]}_{sha[:40]}"
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"IMAGE_TAG={image_tag}\n")
-              f.write(f"OUTPUT_IMAGE={registry}:{full_tag}\n")
-              f.write(f"SANITIZED_PLATFORM={sanitized_platform}\n")
+              f.write(f"OUTPUT_IMAGE={registry}:{target[:30]}-{image_tag}\n")
+              f.write(f"SANITIZED_PLATFORM={sanitize(platform)}\n")
 
       # endregion
 
