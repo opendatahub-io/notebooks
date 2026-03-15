@@ -73,7 +73,7 @@ jobs:
       - name: Install linting tools
         uses: ./.github/actions/apt-install
         with:
-          packages: yamllint yajl-tools
+          packages: yamllint yajl-tools wget
 
       - name: Validate YAML files (best code practices check included)
         if: ${{ !cancelled() }}
@@ -100,9 +100,8 @@ jobs:
         if: ${{ !cancelled() }}
         id: validate-dockerfiles
         run: |
-          type hadolint || sudo apt-get -y install wget \
-                             && wget --output-document=hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 \
-                             && chmod a+x hadolint
+          wget --output-document=hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+          chmod a+x hadolint
           echo "Starting Hadolint"
           find . -name "Dockerfile*" | xargs ./hadolint --config ./ci/hadolint-config.yaml
           echo "Hadolint done"
