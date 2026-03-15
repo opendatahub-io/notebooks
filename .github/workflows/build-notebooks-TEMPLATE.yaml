@@ -172,7 +172,8 @@ jobs:
          contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') ||
          contains(inputs.target, 'codeserver') || inputs.platform == 'linux/arm64' }}"
 
-      - id: install-compsize
+      - name: Install btrfs-compsize
+        id: install-compsize
         uses: ./.github/actions/apt-install
         with:
           packages: btrfs-compsize
