@@ -4,10 +4,14 @@ on:  # yamllint disable-line rule:truthy
   push:
   pull_request:
     paths:
-      - 'manifests/base/commit.env'
-      - 'manifests/base/params.env'
-      - 'manifests/base/commit-latest.env'
-      - 'manifests/base/params-latest.env'
+      - 'manifests/odh/base/commit.env'
+      - 'manifests/odh/base/params.env'
+      - 'manifests/odh/base/commit-latest.env'
+      - 'manifests/odh/base/params-latest.env'
+      - 'manifests/rhoai/base/commit.env'
+      - 'manifests/rhoai/base/params.env'
+      - 'manifests/rhoai/base/commit-latest.env'
+      - 'manifests/rhoai/base/params-latest.env'
       - 'ci/check-params-env.sh'
   workflow_dispatch:
 
@@ -26,6 +30,6 @@ jobs:
           packages: skopeo jq
           update: 'false'
 
-      - name: Validate the 'manifests/base/params.env' file content
+      - name: Validate the 'manifests/odh/base/params.env' file content
         run: |
           bash ./ci/check-params-env.sh
