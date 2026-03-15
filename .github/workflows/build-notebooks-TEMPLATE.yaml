@@ -468,6 +468,7 @@ jobs:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
           # for make deploy, mandatory to specify for the more exotic cases
           NOTEBOOK_TAG: "${{ inputs.target }}-${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
+          KONFLUX: "${{ inputs.konflux && 'yes' || 'no' }}"
 
       # endregion
 

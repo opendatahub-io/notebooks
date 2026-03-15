@@ -185,7 +185,7 @@ function _get_source_of_truth_filepath()
     local notebook_id="${1##*/}"
 
     local manifest_directory="${root_repo_directory}/manifests"
-    local imagestream_directory="${manifest_directory}/base"
+    local imagestream_directory="${manifest_directory}/$( [ "${KONFLUX:-no}" = 'yes' ] && echo 'rhoai' || echo 'odh' )/base"
 
     local file_suffix='notebook-imagestream.yaml'
     local filename=
