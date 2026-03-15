@@ -149,11 +149,13 @@ jobs:
           SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
           SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
 
-      # for bin/buildinputs in scripts/sandbox.py
+      # for bin/buildinputs in scripts/sandbox.py and check-payload FIPS scan
       - uses: actions/setup-go@v6
         with:
           go-version: "stable"
-          cache-dependency-path: "scripts/buildinputs/go.sum"
+          cache-dependency-path: |
+            scripts/buildinputs/go.mod
+            scripts/check-payload/go.mod
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -546,21 +548,6 @@ jobs:
 
       # region check-payload for FIPS compliance
 
-      - id: check-payload-vars
-        if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
-        run: |
-          echo "GOPATH=${{ github.workspace }}/go-check-payload" >> "$GITHUB_OUTPUT"
-        working-directory: scripts/check-payload
-
-      # for https://github.com/openshift/check-payload to cache the built binary
-      - uses: actions/setup-go@v6
-        if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
-        with:
-          go-version-file: "scripts/check-payload/go.mod"
-          cache-dependency-path: "scripts/check-payload/go.sum"
-        env:
-          GOPATH: ${{ steps.check-payload-vars.outputs.GOPATH }}
-
       # F0512 15:43:03.219076 21568 main.go:294] Error: exec: "oc": executable file not found in $PATH
       - name: Install oc client
         if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
@@ -591,12 +578,13 @@ jobs:
           # mount the image
           IMAGE_MOUNT_DIR=$(sudo "${PODMAN}" image mount "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}")
           # run the check-payload scan
-          sudo --preserve-env=PATH go tool github.com/openshift/check-payload scan local --path "${IMAGE_MOUNT_DIR}"
+          sudo --preserve-env=PATH,GOCACHE,GOMODCACHE go tool github.com/openshift/check-payload scan local --path "${IMAGE_MOUNT_DIR}"
           # unmount the image
           sudo "${PODMAN}" image unmount --all
         working-directory: scripts/check-payload
         env:
-          GOPATH: ${{ steps.check-payload-vars.outputs.GOPATH }}
+          GOCACHE: /home/runner/.cache/go-build
+          GOMODCACHE: /home/runner/go/pkg/mod
 
       # endregion
 

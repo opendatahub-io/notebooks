@@ -35,7 +35,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "stable"
-          cache-dependency-path: "**/*.sum"
+          cache-dependency-path: "scripts/buildinputs/go.mod"
 
       - name: Determine targets to build based on changed files
         run: |
