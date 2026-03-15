@@ -20,14 +20,26 @@
 
 # ----------------------------- GLOBAL VARIABLES ----------------------------- #
 
-COMMIT_LATEST_ENV_PATH="manifests/base/commit-latest.env"
-COMMIT_ENV_PATH="manifests/base/commit.env"
-PARAMS_LATEST_ENV_PATH="manifests/base/params-latest.env"
-PARAMS_ENV_PATH="manifests/base/params.env"
+# When KONFLUX=yes, validate the RHOAI manifests; otherwise default to ODH.
+if [ "${KONFLUX:-no}" = 'yes' ]; then
+    _MANIFESTS_VARIANT="rhoai"
+    # This value needs to be updated everytime we deliberately change number of the
+    # images we want to have in the `params.env` or `params-latest.env` file.
+    EXPECTED_COMMIT_NUM_RECORDS=74
+    EXPECTED_PARAMS_NUM_RECORDS=74
+else
+    _MANIFESTS_VARIANT="odh"
+    # This value needs to be updated everytime we deliberately change number of the
+    # images we want to have in the `params.env` or `params-latest.env` file.
+    EXPECTED_COMMIT_NUM_RECORDS=39
+    EXPECTED_PARAMS_NUM_RECORDS=33
+fi
 
-# This value needs to be updated everytime we deliberately change number of the
-# images we want to have in the `params.env` or `params-latest.env` file.
-EXPECTED_NUM_RECORDS=39
+COMMIT_LATEST_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/commit-latest.env"
+COMMIT_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/commit.env"
+PARAMS_LATEST_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/params-latest.env"
+PARAMS_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/params.env"
+
 EXPECTED_ADDI_RUNTIME_RECORDS=0
 
 # Number of attempts for the skopeo tool to gather data from the repository.
@@ -564,12 +576,14 @@ ret_code=0
 echo "Starting check of image references in files: '${COMMIT_LATEST_ENV_PATH}', '${COMMIT_ENV_PATH}' , '${PARAMS_LATEST_ENV_PATH}' and '${PARAMS_ENV_PATH}'"
 echo "---------------------------------------------"
 
+EXPECTED_NUM_RECORDS="${EXPECTED_COMMIT_NUM_RECORDS}"
 check_variables_uniq "${COMMIT_ENV_PATH}" "${COMMIT_LATEST_ENV_PATH}" "true" "false" || {
     echo "ERROR: Variable names in the '${COMMIT_ENV_PATH}' & '${COMMIT_LATEST_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
     ret_code=1
 }
 
+EXPECTED_NUM_RECORDS="${EXPECTED_PARAMS_NUM_RECORDS}"
 check_variables_uniq "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" "false" "true" || {
     echo "ERROR: Variable names in the '${PARAMS_ENV_PATH}' & '${PARAMS_LATEST_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
