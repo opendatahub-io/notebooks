@@ -58,6 +58,12 @@ EOF
 
 ### END Install the oc client
 
+# Create unversioned .so symlinks for ROCm libs (RHAIENG-2643)
+USER 0
+COPY jupyter/rocm/tensorflow/ubi9-python-3.12/utils/link-solibs.py /tmp/link-solibs.py
+RUN python3 /tmp/link-solibs.py
+USER 1001
+
 ########################
 # rocm-jupyter-minimal #
 ########################
@@ -66,16 +72,6 @@ FROM rocm-base AS rocm-jupyter-minimal
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
-
-LABEL name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.12" \
-    summary="Minimal Jupyter ROCm notebook image for ODH notebooks" \
-    description="Minimal Jupyter ROCm notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    io.k8s.display-name="Minimal Jupyter ROCm notebook image for ODH notebooks" \
-    io.k8s.description="Minimal Jupyter ROCm notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-    io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/minimal/ubi9-python-3.12" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:rocm-jupyter-minimal-ubi9-python-3.12"
 
 WORKDIR /opt/app-root/bin
 
@@ -134,3 +130,13 @@ USER 1001
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
+
+LABEL name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.12" \
+    summary="Minimal Jupyter ROCm notebook image for ODH notebooks" \
+    description="Minimal Jupyter ROCm notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+    io.k8s.display-name="Minimal Jupyter ROCm notebook image for ODH notebooks" \
+    io.k8s.description="Minimal Jupyter ROCm notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+    io.openshift.build.commit.ref="main" \
+    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/minimal/ubi9-python-3.12" \
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:rocm-jupyter-minimal-ubi9-python-3.12"

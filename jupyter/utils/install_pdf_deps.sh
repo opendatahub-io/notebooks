@@ -65,43 +65,42 @@ dnf clean all
 pdflatex --version
 
 # install texlive-tcolorbox by other means
-dnf install -y cpio
+# This is a temporary solution because not all jupyter images are hermetic yet;
+# once we update each image to hermetic build we can just dnf install texlive-tcolorbox
+if [ -n "$(find /cachi2/output/deps/rpm/ -name 'texlive-tcolorbox*' 2>/dev/null)" ]; then
+    dnf install -y texlive-tcolorbox
+else
+    dnf install -y cpio
+    pushd /
+    texlive_toolbox_rpm=https://download.fedoraproject.org/pub/epel/9/Everything/x86_64/Packages/t/texlive-tcolorbox-20200406-37.el9.noarch.rpm
+    curl -sSfL ${texlive_toolbox_rpm} | rpm2cpio /dev/stdin | cpio -idmv
+    popd
+fi
 dnf clean all
-pushd /
-texlive_toolbox_rpm=https://download.fedoraproject.org/pub/epel/9/Everything/x86_64/Packages/t/texlive-tcolorbox-20200406-37.el9.noarch.rpm
-curl -sSfL ${texlive_toolbox_rpm} | rpm2cpio /dev/stdin | cpio -idmv
-popd
 texhash
 kpsewhich tcolorbox.sty
 
-# pandoc installation
-# https://github.com/jgm/pandoc/releases/3.7.0.2
-# alternative installation method (EPEL, currently pandoc-2.14.0.3-17):
-#   dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-#   dnf install -y pandoc
-#   mkdir -p /usr/local/pandoc/bin
-#   ln -s /usr/bin/pandoc /usr/local/pandoc/bin/pandoc
-#   export PATH="/usr/local/pandoc/bin:$PATH"
-#   pandoc --version
-# github installation method (newer version, but missing ppc64le):
-#   curl -fL "https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-${ARCH}.tar.gz"  -o /tmp/pandoc.tar.gz
-#   mkdir -p /usr/local/pandoc
-#   tar xvzf /tmp/pandoc.tar.gz --strip-components 1 -C /usr/local/pandoc/
-#   rm -f /tmp/pandoc.tar.gz
+# We use prebuilt pandoc for now, until AIPCC-7795 is done.
+# Hermetic build: use Cachi2-prefetched tarball (see prefetch-input/*/artifacts.in.yaml).
+# If not in cachi2 (e.g. non-hermetic/local build), download from GitHub releases.
+PANDOC_VERSION="3.7.0.2"
+PANDOC_TGZ="/cachi2/output/deps/generic/pandoc-${PANDOC_VERSION}-linux-${ARCH}.tar.gz"
 
-if [[ "$ARCH" == "ppc64le" ]]; then
-  dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-  dnf install -y pandoc
-  mkdir -p /usr/local/pandoc/bin
-  ln -s /usr/bin/pandoc /usr/local/pandoc/bin/pandoc
-  export PATH="/usr/local/pandoc/bin:$PATH"
-  pandoc --version
+if [[ -f "${PANDOC_TGZ}" ]]; then
+    echo "Using Cachi2-prefetched pandoc tarball."
+    mkdir -p /usr/local/pandoc
+    tar xvzf "${PANDOC_TGZ}" --strip-components 1 -C /usr/local/pandoc/
 else
-  curl -fL "https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-${ARCH}.tar.gz"  -o /tmp/pandoc.tar.gz
-  mkdir -p /usr/local/pandoc
-  tar xvzf /tmp/pandoc.tar.gz --strip-components 1 -C /usr/local/pandoc/
-  rm -f /tmp/pandoc.tar.gz
+    PANDOC_URL="https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-linux-${ARCH}.tar.gz"
+    echo "Pandoc tarball not in cachi2, downloading from ${PANDOC_URL}"
+    curl -fL "${PANDOC_URL}" -o /tmp/pandoc.tar.gz
+    mkdir -p /usr/local/pandoc
+    tar xzf /tmp/pandoc.tar.gz --strip-components 1 -C /usr/local/pandoc/
+    rm -f /tmp/pandoc.tar.gz
 fi
 
-# clean up /tmp
-rm -rf /tmp/* /tmp/.[!.]*
+# dnf install -y pandoc
+# mkdir -p /usr/local/pandoc/bin
+# ln -s /usr/bin/pandoc /usr/local/pandoc/bin/pandoc
+export PATH="/usr/local/pandoc/bin:$PATH"
+pandoc --version

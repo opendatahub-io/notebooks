@@ -77,7 +77,7 @@ def run_tests(target: str) -> None:
     check_call("timeout 10s bash -c 'until kubectl get serviceaccount/default; do sleep 1; done'", shell=True)
 
     check_call(f"make {deploy}-{deploy_target}", shell=True)
-    wait_for_stability(pod)
+    wait_for_stability(pod, target)
 
     try:
         if target.startswith("runtime-"):
@@ -140,13 +140,17 @@ def execute(executor: typing.Callable, args: tuple, kwargs: dict) -> int:
     return result
 
 
+# Heavy images (e.g. datascience, trustyai) need more time to become Ready on constrained nodes.
+_HEAVY_TARGETS = ("jupyter-datascience", "jupyter-trustyai")
+
+
 # TODO(jdanek) this is a dumb impl, needs to be improved
-def wait_for_stability(pod: str) -> None:
+def wait_for_stability(pod: str, target: str = "") -> None:
     """Waits for the pod to be stable. Often I'm seeing that the probes initially fail.
     > error: Internal error occurred: error executing command in container: container is not created or running
     > error: unable to upgrade connection: container not found ("notebook")
     """
-    timeout = 100
+    timeout = 200 if any(h in target for h in _HEAVY_TARGETS) else 100
     for _ in range(3):
         call(
             f"timeout {timeout}s bash -c 'until kubectl wait --for=condition=Ready pods --all --timeout 5s; do sleep 1; done'",
