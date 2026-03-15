@@ -1,0 +1,56 @@
+---
+name: 'Install APT packages'
+description: 'Fast apt-get install with slow repos removed'
+inputs:
+  packages:
+    description: 'Space-separated list of packages to install'
+    required: true
+  update:
+    description: 'Run apt-get update before installing'
+    required: false
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Configure apt for CI
+      shell: bash
+      run: |
+        # These are idempotent and fast — safe to run every time
+        sudo rm -f /var/lib/man-db/auto-update
+
+        # the Microsoft repo's kubelet does not provide /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+        #  [Service]
+        #  EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+        #  ExecStart=/usr/bin/kubelet $KUBELET_KUBEADM_ARGS
+        # and otherwise fetching from microsoft-prod wastes time
+        sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+        sudo rm -f /etc/apt/sources.list.d/azure-cli.list
+
+        cat <<'EOF' | sudo tee /etc/dpkg/dpkg.cfg.d/01_nodoc > /dev/null
+        path-exclude /usr/share/doc/*
+        path-exclude /usr/share/man/*
+        path-exclude /usr/share/locale/*
+        path-include /usr/share/locale/en*
+        EOF
+
+        cat <<'EOF' | sudo tee /etc/apt/apt.conf.d/99-ci-optimizations > /dev/null
+        Acquire::Queue-Mode "access";
+        Acquire::Retries "3";
+        APT::Install-Recommends "false";
+        APT::Install-Suggests "false";
+        APT::Get::Assume-Yes "true";
+        APT::Get::Quiet "true";
+        APT::Get::Show-Upgraded "false";
+        APT::AutoRemove::SuggestsImportant "false";
+        DPkg::Options:: "--force-unsafe-io";
+        EOF
+
+    - name: Update package index
+      if: ${{ inputs.update == 'true' }}
+      shell: bash
+      run: |
+        sudo apt-get update
+
+    - name: Install packages
+      shell: bash
+      run: sudo apt-get install ${{ inputs.packages }}
