@@ -296,9 +296,8 @@ class TestManifests:
         sys.path.insert(0, str(ROOT_DIR / "ci/cached-builds"))
         from ci.cached_builds import gen_gha_matrix_jobs  # noqa: PLC0415
 
-        python_311 = gen_gha_matrix_jobs.extract_image_targets(ROOT_DIR, env={"RELEASE_PYTHON_VERSION": "3.11"})
         python_312 = gen_gha_matrix_jobs.extract_image_targets(ROOT_DIR, env={"RELEASE_PYTHON_VERSION": "3.12"})
-        targets = python_311 + python_312
+        targets = python_312
         # TODO(jdanek): this is again duplicating knowledge, but, what can I do?
         expected_manifest_paths = {
             "jupyter-minimal-ubi9-python-3.12": ROOT_DIR / "manifests/base/jupyter-minimal-notebook-imagestream.yaml",
