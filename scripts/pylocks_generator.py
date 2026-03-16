@@ -101,7 +101,7 @@ def info(msg: str) -> None:
 
 
 def warn(msg: str) -> None:
-    print(f"⚠️ {YELLOW}{msg}{RESET}", file=sys.stderr)
+    print(f"⚠️ {YELLOW}{msg}{RESET}")
 
 
 def error(msg: str) -> None:
@@ -109,7 +109,7 @@ def error(msg: str) -> None:
 
 
 def ok(msg: str) -> None:
-    print(f"✅ {GREEN}{msg}{RESET}", file=sys.stderr)
+    print(f"✅ {GREEN}{msg}{RESET}")
 
 
 def read_conf_value(conf_file: Path, key: str) -> str | None:
@@ -299,6 +299,7 @@ def run_lock(
 
     cmd.extend(index_flags)
 
+    sys.stdout.flush()
     result = subprocess.run(cmd, cwd=project_dir, check=False)
 
     if result.returncode != 0:
