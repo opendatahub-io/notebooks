@@ -7,14 +7,55 @@ Usage:
     import structlog
     log = structlog.get_logger()
     log.info("Processing image", target="minimal", variant="cpu")
+
+    # t-strings (Python 3.14+) auto-extract structured keys:
+    log.info(t"Processing {filepath}")  # adds filepath=... to event dict
 """
 
 from __future__ import annotations
 
 import logging
 import os
+from string.templatelib import Interpolation, Template
 
 import structlog
+
+
+def _render_template(template: Template) -> str:
+    """Render a Template to a plain string, applying format specs."""
+    parts: list[str] = []
+    for part in template:
+        if isinstance(part, Interpolation):
+            value = part.value
+            if part.conversion == "r":
+                value = repr(value)
+            elif part.conversion == "s":
+                value = str(value)
+            elif part.conversion == "a":
+                value = ascii(value)
+            parts.append(format(value, part.format_spec))
+        else:
+            parts.append(part)
+    return "".join(parts)
+
+
+def t_string_processor(logger: object, method_name: str, event_dict: dict) -> dict:
+    """Extract structured keys from t-string Template events.
+
+    When a log call uses a t-string (e.g. ``log.info(t"User {user_id}")``),
+    the event is a ``Template`` object.  This processor extracts each
+    interpolated expression as a key-value pair in the event dict, then
+    renders the template to a plain string for the ``event`` field.
+
+    Explicitly passed kwargs take precedence over auto-extracted values.
+    """
+    event = event_dict.get("event")
+    if isinstance(event, Template):
+        for part in event:
+            if isinstance(part, Interpolation):
+                event_dict.setdefault(part.expression, part.value)
+        event_dict["event"] = _render_template(event)
+    return event_dict
 
 
 def configure_logging(level: str = "INFO", json_output: bool | None = None) -> None:
@@ -31,6 +72,7 @@ def configure_logging(level: str = "INFO", json_output: bool | None = None) -> N
 
     shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
+        t_string_processor,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso"),

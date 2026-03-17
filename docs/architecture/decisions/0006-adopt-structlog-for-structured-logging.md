@@ -74,6 +74,35 @@ configure_logging(json_output=True)        # force JSON (normally auto-detected 
 configure_logging(json_output=False)       # force human-readable
 ```
 
+### t-string support (Python 3.14+)
+
+Since the project targets Python 3.14, log calls can use
+[t-strings (PEP 750)](https://peps.python.org/pep-0750/) for automatic
+structured key extraction:
+
+```python
+# t-string: interpolated values become structured keys automatically
+filepath = "/data/images/minimal"
+log.info(t"Processing {filepath}")
+# → event="Processing /data/images/minimal", filepath="/data/images/minimal"
+
+# Multiple values
+user_id = 123
+action = "login"
+log.info(t"User {user_id} performed {action}")
+# → event="User 123 performed login", user_id=123, action="login"
+```
+
+The `t_string_processor` in `ci/logging_config.py` detects `Template` objects,
+extracts each interpolated expression as a key-value pair, and renders the
+template to a plain string for the `event` field. Explicitly passed kwargs
+take precedence over auto-extracted values.
+
+Unlike f-strings (which immediately render to a fixed string), t-strings
+create a `Template` object that structlog can inspect before rendering.
+This enables lazy evaluation — the string is only rendered if the log level
+is active.
+
 ### Output examples
 
 **Dev mode** (local terminal, colorized):
