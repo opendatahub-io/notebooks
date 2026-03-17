@@ -1,4 +1,4 @@
-# 6. Adopt structlog for structured logging in CI and scripts
+# 6. Adopt structured logging in CI and scripts (structlog for Python, log/slog for Go)
 
 Date: 2026-03-18
 
@@ -26,8 +26,10 @@ Structured Logging / Errors, identifying it as the #3 biggest improvement opport
 
 ## Decision
 
-We adopt [structlog](https://www.structlog.org/) as the structured logging library,
-configured via a shared `ci/logging_config.py` module.
+- **Python**: We adopt [structlog](https://www.structlog.org/), configured via a shared
+  `ci/logging_config.py` module.
+- **Go**: We adopt [`log/slog`](https://pkg.go.dev/log/slog) (stdlib since Go 1.21),
+  with JSON handler enabled when `$CI` is set.
 
 ### Why structlog over a hand-rolled JSON formatter
 
@@ -90,6 +92,47 @@ configure_logging(json_output=False)       # force human-readable
 | Already using `logging` (config swap) | `ci/check-software-versions.py`, `scripts/new_python_based_image.py`, `scripts/sandbox.py`, `scripts/sandbox_tests.py`, `scripts/update-commit-latest-env.py` |
 | Using `print()` for status/errors | `ci/validate_json.py`, `ci/cached-builds/make_test.py`, `ci/cached-builds/has_tests.py`, `ci/cached-builds/makefile_helper.py`, `scripts/pylocks_generator.py`, `scripts/fix_package_naming.py`, `scripts/lockfile-generators/create-artifact-lockfile.py` |
 
+### Go: log/slog in buildinputs
+
+The repository has one Go tool (`scripts/buildinputs/`) that parses Dockerfiles to
+determine build inputs. It used `log.Printf` from the old `log` package.
+
+We switched to `log/slog` (stdlib, no new dependencies) for consistency:
+
+```go
+// Before
+log.Printf(rulename, description, url, fmtmsg, location)
+
+// After
+slog.Warn("Dockerfile lint warning",
+    "rule", rulename,
+    "description", description,
+    "url", url,
+    "message", fmtmsg,
+    "location", location,
+)
+```
+
+JSON handler is activated when `$CI` is set, matching the Python side:
+
+```go
+func init() {
+    if os.Getenv("CI") != "" {
+        slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
+    }
+}
+```
+
+**Dev mode** output:
+```
+2026/03/17 23:10:00 WARN Dockerfile lint warning rule=JSONArgsRecommended description=... url=... message=...
+```
+
+**CI mode** (JSON):
+```json
+{"time":"2026-03-17T23:10:00Z","level":"WARN","msg":"Dockerfile lint warning","rule":"JSONArgsRecommended","description":"...","url":"...","message":"..."}
+```
+
 ### What was NOT converted
 
 - **Data output scripts** that print JSON/YAML/tables to stdout (`package_versions.py`,
@@ -102,12 +145,16 @@ configure_logging(json_output=False)       # force human-readable
 
 ## Consequences
 
-- New dependency: `structlog` (added to `pyproject.toml` dev group)
-- All new scripts in `ci/` and `scripts/` should use `configure_logging()` + `structlog.get_logger()`
-  instead of `logging.basicConfig()` or bare `print()` for status/error messages
+- New dependency: `structlog` (added to `pyproject.toml` dev group); no new Go dependencies
+  (`log/slog` is stdlib)
+- **Python**: new scripts in `ci/` and `scripts/` should use `configure_logging()` +
+  `structlog.get_logger()` instead of `logging.basicConfig()` or bare `print()`
+- **Go**: new Go code should use `log/slog` with key-value pairs instead of `log.Printf`
+  or `fmt.Fprintf(os.Stderr, ...)`
 - CI logs become machine-parseable (JSON) without losing human readability in local dev
-- The `ci/logging_config.py` module is the single source of truth for log configuration;
-  individual scripts should not call `logging.basicConfig()` directly
+- Both languages auto-detect CI mode via the `$CI` environment variable
+- The `ci/logging_config.py` module is the single source of truth for Python log
+  configuration; individual scripts should not call `logging.basicConfig()` directly
 
 ## References
 
