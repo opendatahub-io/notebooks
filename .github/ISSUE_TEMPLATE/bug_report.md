@@ -20,6 +20,7 @@ labels: 'kind/bug'
 - OpenDatahub Version: (please check the operator version)
 - Workbench: (all, data-science, etc)
 - Workbench Version: (2023.1, etc)
+- Workbench Image Digest: (run `podman inspect <image> | grep -i digest` or check the workbench deployment)
 - Specific tool: (jupyterlab, rstudio server, code-server, elyra-pipelines,etc)
 - Notebook-Controller Version: (please check the image version in notebook-controller deployment)
 
