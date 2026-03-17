@@ -57,9 +57,7 @@ def test_dockerfiles_unintended_subscription_manager_pattern():
                 )
 
 
-@pytest.mark.parametrize(
-    "manifests_directory", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
-)
+@pytest.mark.parametrize("manifests_directory", [manifests.MANIFESTS_ODH_DIR, manifests.MANIFESTS_RHOAI_DIR])
 def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path):
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
@@ -251,9 +249,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                         )
 
 
-@pytest.mark.parametrize(
-    "manifests_directory", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
-)
+@pytest.mark.parametrize("manifests_directory", [manifests.MANIFESTS_ODH_DIR, manifests.MANIFESTS_RHOAI_DIR])
 def test_image_manifests_version_alignment(
     subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path
 ):
@@ -725,8 +721,8 @@ class Manifest:
 
 def load_manifests_file_for(directory: pathlib.Path, manifests_directory: pathlib.Path) -> Manifest:
     metadata = manifests.extract_metadata_from_path(directory)
-    manifest_file = manifests_directory / manifests.get_source_of_truth_filepath(
-        root_repo_directory=PROJECT_ROOT,
+    manifest_file = manifests.get_source_of_truth_filepath(
+        manifests_directory=manifests_directory,
         metadata=metadata,
     )
     if not manifest_file.is_file():
