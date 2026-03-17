@@ -4,18 +4,23 @@ on:  # yamllint disable-line rule:truthy
   push:
   pull_request:
     paths:
-      - 'manifests/base/commit.env'
-      - 'manifests/base/params.env'
-      - 'manifests/base/commit-latest.env'
-      - 'manifests/base/params-latest.env'
-      - 'ci/check-params-env.sh'
+      - 'manifests/odh/base/commit.env'
+      - 'manifests/odh/base/params.env'
+      - 'manifests/odh/base/commit-latest.env'
+      - 'manifests/odh/base/params-latest.env'
+      - 'manifests/rhoai/base/commit.env'
+      - 'manifests/rhoai/base/params.env'
+      - 'manifests/rhoai/base/commit-latest.env'
+      - 'manifests/rhoai/base/params-latest.env'
+      - 'ci/check-params-env-odh.sh'
+      - 'ci/check-params-env-rhoai.sh'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  validation-of-params-env:
+  validation-of-params-env-odh:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -26,6 +31,34 @@ jobs:
           packages: skopeo jq
           update: 'false'
 
-      - name: Validate the 'manifests/base/params.env' file content
+      - name: Validate the 'manifests/odh/base/params.env' file content
         run: |
-          bash ./ci/check-params-env.sh
+          bash ./ci/check-params-env-odh.sh
+
+  validation-of-params-env-rhoai:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install dependencies
+        uses: ./.github/actions/apt-install
+        with:
+          packages: skopeo jq git-crypt
+          update: 'false'
+
+      - name: Unlock encrypted secrets with git-crypt
+        run: |
+          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
+          git-crypt unlock ./git-crypt-key
+          rm ./git-crypt-key
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+
+      - name: Configure skopeo auth from pull-secret
+        run: |
+          mkdir -p "$HOME/.config/containers"
+          cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
+
+      - name: Validate the 'manifests/rhoai/base/params.env' file content
+        run: |
+          bash ./ci/check-params-env-rhoai.sh
