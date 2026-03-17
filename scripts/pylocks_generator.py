@@ -51,12 +51,17 @@ from __future__ import annotations
 import os
 import re
 import subprocess
-import sys
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
 
+import structlog
 import typer
+
+from ci.logging_config import configure_logging
+
+configure_logging()
+log = structlog.get_logger()
 
 # =============================================================================
 # CONFIGURATION
@@ -89,27 +94,20 @@ class IndexMode(str, Enum):
 # HELPER FUNCTIONS
 # =============================================================================
 
-BLUE = "\033[1;34m"
-YELLOW = "\033[1;33m"
-RED = "\033[1;31m"
-GREEN = "\033[1;32m"
-RESET = "\033[0m"
-
-
 def info(msg: str) -> None:
-    print(f"🔹 {BLUE}{msg}{RESET}")
+    log.info(msg)
 
 
 def warn(msg: str) -> None:
-    print(f"⚠️ {YELLOW}{msg}{RESET}")
+    log.warning(msg)
 
 
 def error(msg: str) -> None:
-    print(f"❌ {RED}{msg}{RESET}", file=sys.stderr)
+    log.error(msg)
 
 
 def ok(msg: str) -> None:
-    print(f"✅ {GREEN}{msg}{RESET}")
+    log.info(msg)
 
 
 def read_conf_value(conf_file: Path, key: str) -> str | None:
@@ -227,10 +225,7 @@ def get_index_flags(project_dir: Path, flavor: str) -> list[str] | None:
         if cpu_index_url:
             flags.append(f"--index={cpu_index_url}")
             flags.append("--index-strategy=unsafe-best-match")
-            print(
-                "  📎 Using CPU index as fallback (--index-strategy=unsafe-best-match)",
-                file=sys.stderr,
-            )
+            log.info("Using CPU index as fallback (--index-strategy=unsafe-best-match)")
 
     return flags
 
@@ -252,12 +247,12 @@ def run_lock(
     if mode == IndexMode.public_index:
         output = "pylock.toml"
         desc = "pylock.toml (public index)"
-        print("➡️ Generating pylock.toml from public PyPI index...")
+        log.info("Generating pylock.toml from public PyPI index...")
     else:
         (project_dir / "uv.lock.d").mkdir(exist_ok=True)
         output = f"uv.lock.d/pylock.{flavor}.toml"
         desc = f"{flavor.upper()} lock file"
-        print(f"➡️ Generating {flavor.upper()} lock file...")
+        log.info(f"Generating {flavor.upper()} lock file...")
 
     # Tag filtering was added in uv 0.9.16 (https://github.com/astral-sh/uv/pull/16956)
     # but bypassed in --universal mode. uv 0.10.5 (https://github.com/astral-sh/uv/pull/18081)
@@ -350,10 +345,7 @@ def main(
     failed_dirs: list[Path] = []
 
     for tdir in target_dirs:
-        print()
-        print("=" * 67)
-        info(f"Processing directory: {tdir}")
-        print("=" * 67)
+        log.info(f"Processing directory: {tdir}")
 
         python_version = extract_python_version(tdir)
         if python_version is None:
@@ -366,11 +358,7 @@ def main(
             warn(f"No Dockerfiles found in {tdir} (cpu/cuda/rocm). Skipping.")
             continue
 
-        print(f"📦 Python version: {python_version}")
-        print("🧩 Detected flavors:")
-        for f in sorted(flavors):
-            print(f"  • {f.upper()}")
-        print()
+        log.info(f"Python version: {python_version}, flavors: {', '.join(f.upper() for f in sorted(flavors))}")
 
         # Resolve effective mode
         if index_mode == IndexMode.auto:
@@ -401,22 +389,14 @@ def main(
             failed_dirs.append(tdir)
 
     # SUMMARY
-    print()
-    print("=" * 67)
     ok("Lock generation complete.")
-    print("=" * 67)
 
     if success_dirs:
-        print("✅ Successfully generated locks for:")
-        for d in success_dirs:
-            print(f"  • {d}")
+        log.info(f"Successfully generated locks for: {success_dirs}")
 
     if failed_dirs:
-        print()
-        warn("Failed lock generation for:")
-        for d in failed_dirs:
-            print(f"  • {d}")
-            print("Please comment out the missing package to continue and report the missing package to the RH index maintainers")
+        warn(f"Failed lock generation for: {failed_dirs}")
+        log.warning("Please comment out the missing package to continue and report the missing package to the RH index maintainers")
         raise SystemExit(1)
 
 

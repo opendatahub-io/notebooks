@@ -8,12 +8,12 @@ import tempfile
 
 import pyfakefs.fake_filesystem
 
+from ci.logging_config import configure_logging
 from scripts.sandbox import setup_sandbox
 
 ROOT_DIR = pathlib.Path(__file__).parent.parent
 
-logging.basicConfig()
-logging.root.name = pathlib.Path(__file__).name
+configure_logging()
 
 class TestSandbox:
     def test_filesystem_file(self, fs: pyfakefs.fake_filesystem.FakeFilesystem):

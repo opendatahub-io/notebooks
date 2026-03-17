@@ -7,6 +7,11 @@ import typing
 import unittest
 
 import gha_pr_changed_files
+import structlog
+
+from ci.logging_config import configure_logging
+
+log = structlog.get_logger()
 
 """Determines whether we have deploy Makefile tests for this target or not
 
@@ -21,6 +26,7 @@ class Args(argparse.Namespace):
 
 
 def main() -> None:
+    configure_logging()
     parser = argparse.ArgumentParser("make_test.py")
     parser.add_argument("--target", type=str)
     args = typing.cast("Args", parser.parse_args())
@@ -31,7 +37,7 @@ def main() -> None:
         with open(os.environ["GITHUB_OUTPUT"], "at") as f:
             print(f"tests={json.dumps(has_tests)}", file=f)
 
-    print(f"{has_tests=}")
+    log.debug(f"{has_tests=}")
 
 
 def check_tests(target: str) -> bool:

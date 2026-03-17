@@ -31,7 +31,12 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
+import structlog
 import yaml
+
+from ci.logging_config import configure_logging
+
+log = structlog.get_logger()
 
 # Constants
 CACHE_BASE_DIR = Path("cachi2/output/deps/generic")
@@ -74,26 +79,26 @@ def normalize_checksum(checksum: str) -> str:
 def load_artifact_input(input_path: Path) -> list[Any]:
     """Load and parse the YAML input file."""
     if not input_path.exists():
-        print(f"Error: {input_path} not found", file=sys.stderr)
+        log.error(f"{input_path} not found")
         sys.exit(1)
 
     try:
         with open(input_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
     except yaml.YAMLError as e:
-        print(f"Failed to parse YAML input {input_path!r}: {e}", file=sys.stderr)
+        log.error(f"Failed to parse YAML input {input_path!r}: {e}")
         sys.exit(1)
     except OSError as e:
-        print(f"Failed to read {input_path}: {e}", file=sys.stderr)
+        log.error(f"Failed to read {input_path}: {e}")
         sys.exit(1)
 
     if not isinstance(data, dict):
-        print(f"Error: Expected a YAML mapping in {input_path}, got {type(data).__name__}", file=sys.stderr)
+        log.error(f"Expected a YAML mapping in {input_path}, got {type(data).__name__}")
         sys.exit(1)
 
     items = data.get("input") or []
     if not isinstance(items, list):
-        print("Error: 'input' must be a list", file=sys.stderr)
+        log.error("'input' must be a list")
         sys.exit(1)
 
     return items
@@ -103,38 +108,35 @@ def process_artifact(item: dict[str, Any], seen_filenames: set[str]) -> Optional
     """Process a single artifact item. Skips duplicate filenames."""
     url = item.get("url")
     if not url:
-        print(f"Warning: Skipping item without 'url': {item}", file=sys.stderr)
+        log.warning(f"Skipping item without 'url': {item}")
         return None
 
     filename = item.get("filename") or get_default_filename(url)
     if filename in seen_filenames:
-        print(f"  ⊘ Skipping duplicate filename: {filename}", file=sys.stderr)
+        log.warning(f"Skipping duplicate filename: {filename}")
         return None
     seen_filenames.add(filename)
 
     # Guard against path traversal (absolute paths or ".." components)
     cache_file = (CACHE_BASE_DIR / filename).resolve()
     if not cache_file.is_relative_to(CACHE_BASE_DIR.resolve()):
-        print(f"Error: filename '{filename}' escapes cache directory — skipping", file=sys.stderr)
+        log.error(f"filename '{filename}' escapes cache directory — skipping")
         return None
 
     if cache_file.exists():
-        print(f"  ✓ Using existing file: {filename}")
+        log.info(f"Using existing file: {filename}")
         checksum = compute_sha256(cache_file)
     else:
-        print(f"  ↓ Downloading: {url}")
-        print(f"    → Saving to: {filename}")
+        log.info(f"Downloading: {url} -> {filename}")
         download_file(url, cache_file)
         checksum = compute_sha256(cache_file)
-        print(f"    ✓ Downloaded (sha256: {checksum[:16]}...)")
+        log.info(f"Downloaded (sha256: {checksum[:16]}...)")
 
     provided_checksum = item.get("checksum")
     if provided_checksum:
         expected = normalize_checksum(provided_checksum)
         if checksum.lower() != expected:
-            print(f"    ⚠ Warning: Checksum mismatch for {filename}", file=sys.stderr)
-            print(f"      Expected: {expected[:16]}...", file=sys.stderr)
-            print(f"      Got:      {checksum[:16]}...", file=sys.stderr)
+            log.warning(f"Checksum mismatch for {filename}: expected {expected[:16]}..., got {checksum[:16]}...")
 
     return {
         "download_url": url,
@@ -144,6 +146,7 @@ def process_artifact(item: dict[str, Any], seen_filenames: set[str]) -> Optional
 
 
 def main():
+    configure_logging()
     parser = argparse.ArgumentParser(description="Generate artifacts lockfile.")
     parser.add_argument("--artifact-input", required=True, help="Path to input artifacts.in.yaml")
     args = parser.parse_args()
@@ -154,9 +157,9 @@ def main():
     # Create the cache directory if it doesn't exist
     CACHE_BASE_DIR.mkdir(parents=True, exist_ok=True)
 
-    print(f"Reading {input_path}...")
+    log.info(f"Reading {input_path}...")
     items = load_artifact_input(input_path)
-    print(f"Found {len(items)} artifact(s) to process\n")
+    log.info(f"Found {len(items)} artifact(s) to process")
 
     artifacts = []
     seen_filenames: set[str] = set()
@@ -164,7 +167,7 @@ def main():
         if isinstance(item, str):
             item = {"url": item}
         elif not isinstance(item, dict):
-            print(f"Warning: Skipping invalid item (not a dict or string): {item}", file=sys.stderr)
+            log.warning(f"Skipping invalid item (not a dict or string): {item}")
             continue
 
         result = process_artifact(item, seen_filenames)
@@ -172,7 +175,7 @@ def main():
             artifacts.append(result)
 
     if not artifacts:
-        print("Error: No artifacts were processed.", file=sys.stderr)
+        log.error("No artifacts were processed.")
         sys.exit(1)
 
     # Write lockfile
@@ -197,7 +200,7 @@ def main():
             allow_unicode=True,
         )
 
-    print(f"\n✓ Generated {output_path} with {len(artifacts)} artifacts")
+    log.info(f"Generated {output_path} with {len(artifacts)} artifacts")
 
 
 if __name__ == "__main__":

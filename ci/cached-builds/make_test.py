@@ -10,6 +10,12 @@ import typing
 import unittest
 import unittest.mock
 
+import structlog
+
+from ci.logging_config import configure_logging
+
+log = structlog.get_logger()
+
 """Runs the make commands used to deploy, test, and undeploy image in Kubernetes
 
 The make commands this runs are intended to reproduce the commands we define in our OpenShift CI config at
@@ -24,6 +30,7 @@ class Args(argparse.Namespace):
 
 
 def main() -> None:
+    configure_logging()
     parser = argparse.ArgumentParser("make_test.py")
     parser.add_argument("--target", type=str)
     args = typing.cast("Args", parser.parse_args())
@@ -118,7 +125,7 @@ def run_tests(target: str) -> None:
 
     check_call(f"make un{deploy}-{deploy_target}", shell=True)
 
-    print(f"[INFO] Finished testing {target}")
+    log.info(f"Finished testing {target}")
 
 
 @functools.wraps(subprocess.check_call)
@@ -132,11 +139,9 @@ def call(*args, **kwargs) -> int:
 
 
 def execute(executor: typing.Callable, args: tuple, kwargs: dict) -> int:
-    print(f"[INFO] Running command {args, kwargs}")
-    sys.stdout.flush()
+    log.info(f"Running command {args, kwargs}")
     result = executor(*args, **kwargs)
-    print(f"\tDONE running command {args, kwargs}")
-    sys.stdout.flush()
+    log.debug(f"Done running command {args, kwargs}")
     return result
 
 

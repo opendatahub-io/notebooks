@@ -12,14 +12,16 @@
 
 import argparse
 import json
-import logging
 import os
 import subprocess
 import sys
 import uuid
 from enum import Enum
 
+import structlog
 import yaml
+
+from ci.logging_config import configure_logging
 
 # Path to the file with image references to the image registry
 PARAMS_LATEST_ENV_PATH = "manifests/base/params-latest.env"
@@ -31,13 +33,9 @@ class AnnotationType(Enum):
     PYTHON_DEPS = "python-deps"
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+configure_logging()
 
-log = logging.getLogger(__name__)
+log = structlog.get_logger()
 prune_podman_data = False
 
 
