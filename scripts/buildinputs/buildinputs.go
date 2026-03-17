@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 )
@@ -18,6 +19,12 @@ func (f *repeatFlag) String() string {
 func (f *repeatFlag) Set(value string) error {
 	*f = append(*f, value)
 	return nil
+}
+
+func init() {
+	if os.Getenv("CI") != "" {
+		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
+	}
 }
 
 func main() {
