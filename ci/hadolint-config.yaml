@@ -25,7 +25,8 @@ ignored:
   - DL4006
   # DL3007 warning: Using latest is prone to errors if the image will ever update.
   # Pin the version explicitly to a release tag
-  - DL3007
+  # Re-enabled to improve AI Bug Automation Readiness score (+7.5 potential)
+  # - DL3007
   # SC3060 warning: In POSIX sh, string replacement is undefined.
   - SC3060
   # SC3041 warning: In POSIX sh, set flag -E is undefined. (bash-specific ERR trap)
