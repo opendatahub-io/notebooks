@@ -319,15 +319,15 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "jupyterlab"
-version = "4.5.5"
+version = "4.5.6"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/jupyterlab-4.5.5-2-py3-none-any.whl", hashes = { sha256 = "8276d2763880f5281238d5860daba2d88362740babd6b0febecce9f816c7c2c1" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/jupyterlab-4.5.6-2-py3-none-any.whl", hashes = { sha256 = "ac6683f5b5a715822116f85d77ef83ab772257173b06f3d433fbf0c37439169d" } }]
 
 [[packages]]
 name = "jupyterlab-git"
-version = "0.51.4"
+version = "0.52.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/jupyterlab_git-0.51.4-2-py3-none-any.whl", hashes = { sha256 = "4da9d414b68ba0adc7b5c942086c68cb2eb07e3ef0785484f424ba4b746d62fb" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/jupyterlab_git-0.52.0-2-py3-none-any.whl", hashes = { sha256 = "a9e59e21b2beb37a8c9b6a76dbb89b1b25e5e85d932933aa1a0789f06f45bc44" } }]
 
 [[packages]]
 name = "jupyterlab-pygments"
@@ -600,9 +600,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "setuptools"
-version = "80.9.0"
+version = "80.10.2"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/setuptools-80.9.0-2-py3-none-any.whl", hashes = { sha256 = "76229ec78da40e908a24ef1f23e8e81d47da7ef05dcca002ff237a40bf764595" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/setuptools-80.10.2-2-py3-none-any.whl", hashes = { sha256 = "05ef2ee3d34409715c7d0589a3a0c6064a2b117f8489a5b512aef078173d1faf" } }]
 
 [[packages]]
 name = "simpervisor"
@@ -648,13 +648,13 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "tornado"
-version = "6.5.4"
+version = "6.5.5"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/tornado-6.5.4-2-cp39-abi3-linux_aarch64.whl", hashes = { sha256 = "cfbd7badd456905c6923b7a43e85d75ae45587dfeed8262b9e36dd6f27f6cd2e" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/tornado-6.5.4-2-cp39-abi3-linux_ppc64le.whl", hashes = { sha256 = "9c5ad3cfca1100cf697c7559e64e807710beb0fe11d86e82bc30021ee6cd835d" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/tornado-6.5.4-2-cp39-abi3-linux_s390x.whl", hashes = { sha256 = "3da1820c3e5ad37c5e5eb40af25bb3d7568320ae382210cf7ee7191ab0e2eb9f" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/tornado-6.5.4-2-cp39-abi3-linux_x86_64.whl", hashes = { sha256 = "c6b9e80318e38ad54d6c3c4bbb6b38f9f0190c896e82e7c216b74c2bbddcb1ca" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/tornado-6.5.5-2-cp39-abi3-linux_aarch64.whl", hashes = { sha256 = "1a902b88db666a23eb3df3c8249ab13f459524f6bd7073df6a9b39c1f1b65ee5" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/tornado-6.5.5-2-cp39-abi3-linux_ppc64le.whl", hashes = { sha256 = "357b777e0d9cc1cb1de849708e59cf79dfc95aeabce42b584ea818005b022d05" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/tornado-6.5.5-2-cp39-abi3-linux_s390x.whl", hashes = { sha256 = "8c428693b160a32c34a96f954425005f966ce885ecad988134a032f0d3f32cc2" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4-EA2/cpu-ubi9/tornado-6.5.5-2-cp39-abi3-linux_x86_64.whl", hashes = { sha256 = "7c18fd68b9fad8ec2c8dc8ba52641155541478228413244031bfd743b8d965cb" } },
 ]
 
 [[packages]]
