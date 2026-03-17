@@ -232,7 +232,7 @@ def transform_build_pipeline_to_pr_pipeline(push_pipeline_path: pathlib.Path):
             yaml.dump(pr_pipeline, f)
         print(f"  - Successfully generated: {pr_pipeline_path}")
     except Exception as e:
-        print(f"  - Error writing new file: {e}")
+        print(f"  - Error writing new file {pr_pipeline_path!r}: {e}")
 
 
 def get_exact_formatted_value(lines: list[str], key: list[int], val: list[int]):

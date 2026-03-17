@@ -484,7 +484,7 @@ def run_pipenv_lock(pipfile_path: str, target_version: str) -> bool:
         LOGGER.debug(result.stdout)
         return True
     except subprocess.CalledProcessError as e:
-        LOGGER.debug(e.stderr)
+        LOGGER.warning(f"pipenv lock failed for {pipfile_path!r} (exit code {e.returncode}): {e.stderr}")
         return False
 
 
