@@ -95,10 +95,12 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 
             if (f := file.parent / "uv.lock.d").is_dir():
                 pylock_candidates = sorted(f.glob("pylock.*.toml"))
-                if pylock_candidates:
-                    pylock = tomllib.loads(pylock_candidates[0].read_text())
-                else:
-                    pylock = tomllib.loads(file.with_name("pylock.toml").read_text())
+                assert pylock_candidates, (
+                    f"uv.lock.d directory exists at {f} but contains no pylock.*.toml files. "
+                    f"This likely means pylocks_generator.py failed. "
+                    f"Delete the empty uv.lock.d directory or re-run the lockfile generator."
+                )
+                pylock = tomllib.loads(pylock_candidates[0].read_text())
             else:
                 pylock = tomllib.loads(file.with_name("pylock.toml").read_text())
             pylock_packages: dict[str, dict[str, Any]] = {p["name"]: p for p in pylock["packages"]}
