@@ -1,4 +1,4 @@
-# 6. Adopt structured logging in CI and scripts (structlog for Python, log/slog for Go)
+# 6. Adopt structured logging in CI and scripts (structlog, log/slog, tslog)
 
 Date: 2026-03-18
 
@@ -30,6 +30,9 @@ Structured Logging / Errors, identifying it as the #3 biggest improvement opport
   `ci/logging_config.py` module.
 - **Go**: We adopt [`log/slog`](https://pkg.go.dev/log/slog) (stdlib since Go 1.21),
   with JSON handler enabled when `$CI` is set.
+- **TypeScript**: We adopt [tslog](https://tslog.js.org/) for Playwright tests and
+  scripts, configured via `tests/browser/tests/logger.ts`. Playwright built-ins
+  (`test.step()`) are used alongside tslog for test-level structure.
 
 ### Why structlog over a hand-rolled JSON formatter
 
@@ -133,6 +136,48 @@ func init() {
 {"time":"2026-03-17T23:10:00Z","level":"WARN","msg":"Dockerfile lint warning","rule":"JSONArgsRecommended","description":"...","url":"...","message":"..."}
 ```
 
+### TypeScript: tslog in Playwright tests
+
+The Playwright browser tests (`tests/browser/`) used `console.log` for logging, with
+one page object model (`codeserver.ts`) having a custom logger wrapping `console.log`.
+
+We chose [tslog](https://tslog.js.org/) because:
+- **TypeScript-native**: built for TypeScript from the ground up, excellent type safety
+- **Synchronous**: no async flush issues in short-lived test processes
+- **Universal**: works in Node.js, Deno, Bun, and browser
+- **JSON/pretty dual mode**: same `$CI` env var toggle as Python and Go
+
+```typescript
+// tests/browser/tests/logger.ts
+import { Logger } from "tslog";
+
+export const log = new Logger({
+  name: "notebooks-tests",
+  type: process.env.CI ? "json" : "pretty",
+});
+```
+
+Usage in page object models with sub-loggers:
+
+```typescript
+import { log as rootLog } from "../logger";
+
+export class CodeServer {
+    private readonly logger = rootLog.getSubLogger({ name: "CodeServer" });
+
+    async focusTerminal() {
+        this.logger.debug(`retrying terminal focus (${attempts}/∞)`);
+    }
+}
+```
+
+Playwright's built-in `test.step()` is used alongside tslog for test-level structure
+(already in use in `codeserver.spec.ts`), while tslog handles debug/info/error output.
+
+Files converted: `tests/browser/tests/models/codeserver.ts`,
+`tests/browser/tests/codeserver.spec.ts`, `tests/browser/scripts/add_snyk_target.ts`,
+`tests/browser/scripts/start_browser.ts`.
+
 ### What was NOT converted
 
 - **Data output scripts** that print JSON/YAML/tables to stdout (`package_versions.py`,
@@ -145,12 +190,14 @@ func init() {
 
 ## Consequences
 
-- New dependency: `structlog` (added to `pyproject.toml` dev group); no new Go dependencies
-  (`log/slog` is stdlib)
+- New dependencies: `structlog` (Python, `pyproject.toml` dev group), `tslog` (TypeScript,
+  `tests/browser/package.json5`); no new Go dependencies (`log/slog` is stdlib)
 - **Python**: new scripts in `ci/` and `scripts/` should use `configure_logging()` +
   `structlog.get_logger()` instead of `logging.basicConfig()` or bare `print()`
 - **Go**: new Go code should use `log/slog` with key-value pairs instead of `log.Printf`
   or `fmt.Fprintf(os.Stderr, ...)`
+- **TypeScript**: new test utilities should import from `tests/browser/tests/logger.ts`;
+  test specs should combine tslog with `test.step()` for structured test flow
 - CI logs become machine-parseable (JSON) without losing human readability in local dev
 - Both languages auto-detect CI mode via the `$CI` environment variable
 - The `ci/logging_config.py` module is the single source of truth for Python log
