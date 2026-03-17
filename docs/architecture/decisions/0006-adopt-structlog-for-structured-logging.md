@@ -203,6 +203,21 @@ Files converted: `tests/browser/tests/models/codeserver.ts`,
 - The `ci/logging_config.py` module is the single source of truth for Python log
   configuration; individual scripts should not call `logging.basicConfig()` directly
 
+## OpenTelemetry readiness
+
+If the project ever needs to ship logs to an OpenTelemetry collector (e.g. for distributed
+tracing in an OpenShift cluster), the chosen libraries have varying levels of support:
+
+| Language | Library | OTel support | How |
+|----------|---------|-------------|-----|
+| Python | structlog | Good | structlog routes through stdlib `logging`; the OTel SDK's `LoggingHandler` bridges stdlib → OTel Logs transitively. A custom ~5-line processor can inject `trace_id`/`span_id` from the active span. |
+| Go | log/slog | First-class | Official bridge `go.opentelemetry.io/contrib/bridges/otelslog` sends slog records as OTel log entries. Trace context correlation is natural since slog accepts `context.Context`. |
+| TypeScript | tslog | None | No built-in OTel integration. Would require manual trace context extraction, or swapping to Pino which has official support via `@opentelemetry/instrumentation-pino`. |
+
+This is not a current need — the repository's scripts run in CI pipelines and local dev,
+not in instrumented services. Noted here for future reference if observability requirements
+change.
+
 ## References
 
 - Issue: https://github.com/opendatahub-io/notebooks/issues/3119
