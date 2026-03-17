@@ -22,8 +22,10 @@ Usage:
     python scripts/cve/cve_due_dates.py --sync-dates
 
 Requires:
-    - JIRA_URL environment variable (or defaults to Red Hat Jira)
-    - JIRA_TOKEN environment variable for authentication
+    - JIRA_URL environment variable (default: https://redhat.atlassian.net)
+    - JIRA_EMAIL + JIRA_API_TOKEN  for API-token auth (recommended)
+    - JIRA_TOKEN                   for legacy Bearer-token auth
+    - JIRA_OAUTH_CLIENT_SECRET     for OAuth 2.0 browser flow
 """
 
 import argparse
@@ -35,6 +37,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, date
 
 from scripts.cve import create_ssl_context
+from scripts.cve.jira_auth import (
+    JiraAuthError,
+    get_auth_headers,
+    get_cached_api_base_url,
+    resolve_cloud_base_url,
+)
 
 try:
     import requests
@@ -79,15 +87,37 @@ class TrackerInfo:
         return self.due_date is None and self.earliest_child_due_date is not None
 
 
-class JiraClient:
-    """Simple Jira REST API client."""
+JIRA_DEFAULT_URL = "https://redhat.atlassian.net"
 
-    def __init__(self, base_url: str, token: str | None = None):
+
+class JiraClient:
+    """Simple Jira REST API v3 client."""
+
+    def __init__(self, base_url: str, auth_headers: dict | None = None):
+        """Direct constructor — testable, no env var dependencies."""
         self.base_url = base_url.rstrip("/")
-        self.token = token
         self.headers = {"Content-Type": "application/json"}
-        if token:
-            self.headers["Authorization"] = f"Bearer {token}"
+        if auth_headers:
+            self.headers.update(auth_headers)
+
+    @classmethod
+    def from_env(cls) -> "JiraClient":
+        """Factory that reads env vars, resolves auth and base URL."""
+        jira_url = os.environ.get("JIRA_URL", JIRA_DEFAULT_URL)
+        auth_headers = get_auth_headers(jira_url)
+
+        base_url = jira_url
+        auth_value = auth_headers.get("Authorization", "")
+
+        if auth_value.startswith("Bearer ") and not os.environ.get("JIRA_TOKEN"):
+            cached_base = get_cached_api_base_url(jira_url)
+            if cached_base:
+                base_url = cached_base
+            else:
+                token = auth_value.removeprefix("Bearer ")
+                base_url = resolve_cloud_base_url(token, jira_url)
+
+        return cls(base_url, auth_headers)
 
     def _request(self, method: str, endpoint: str, params: dict | None = None, data: dict | None = None) -> dict:
         """Make a request to the Jira API."""
@@ -123,7 +153,7 @@ class JiraClient:
 
     def search_issues(self, jql: str, fields: str = "key,summary,status,labels,duedate,issuelinks",
                       max_results: int = 500) -> list[dict]:
-        """Search for issues using JQL."""
+        """Search for issues using JQL (API v3)."""
         all_issues = []
         start_at = 0
 
@@ -135,7 +165,7 @@ class JiraClient:
                 "fields": fields
             }
 
-            data = self._request("GET", "/rest/api/2/search", params=params)
+            data = self._request("GET", "/rest/api/3/search/jql", params=params)
             issues = data.get("issues", [])
             all_issues.extend(issues)
 
@@ -149,12 +179,12 @@ class JiraClient:
     def get_issue(self, issue_key: str, fields: str = "key,summary,status,duedate,issuelinks") -> dict:
         """Get a single issue."""
         params = {"fields": fields}
-        return self._request("GET", f"/rest/api/2/issue/{issue_key}", params=params)
+        return self._request("GET", f"/rest/api/3/issue/{issue_key}", params=params)
 
     def update_issue(self, issue_key: str, fields: dict) -> None:
         """Update an issue's fields."""
         data = {"fields": fields}
-        self._request("PUT", f"/rest/api/2/issue/{issue_key}", data=data)
+        self._request("PUT", f"/rest/api/3/issue/{issue_key}", data=data)
 
 
 def extract_cve_id(text: str) -> str | None:
@@ -375,8 +405,11 @@ Examples:
   python scripts/cve_due_dates.py --summary
 
 Environment variables:
-  JIRA_URL      Jira server URL (default: https://issues.redhat.com)
-  JIRA_TOKEN    Personal access token for authentication
+  JIRA_URL                Jira server URL (default: https://redhat.atlassian.net)
+  JIRA_EMAIL              User email (used with JIRA_API_TOKEN for Basic auth)
+  JIRA_API_TOKEN          Atlassian API token (recommended for scripts/CI)
+  JIRA_TOKEN              Legacy Bearer token (issues.redhat.com PAT)
+  JIRA_OAUTH_CLIENT_SECRET  OAuth 2.0 client secret (interactive browser flow)
 """
     )
     parser.add_argument("--list-overdue", action="store_true",
@@ -401,17 +434,13 @@ def main():
     if not any([args.list_overdue, args.list_missing_dates, args.sync_dates, args.summary]):
         args.summary = True
 
-    jira_url = os.environ.get("JIRA_URL", "https://issues.redhat.com")
-    jira_token = os.environ.get("JIRA_TOKEN")
-
-    if not jira_token:
-        print("ERROR: JIRA_TOKEN environment variable is required", file=sys.stderr)
-        print("Set it with: export JIRA_TOKEN='your-token-here'", file=sys.stderr)
+    try:
+        client = JiraClient.from_env()
+    except JiraAuthError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    client = JiraClient(jira_url, jira_token)
-
-    print(f"Connecting to {jira_url}...")
+    print(f"Connecting to {client.base_url}...")
 
     # Find all CVE trackers
     trackers = find_cve_trackers(client, args.max_results)
