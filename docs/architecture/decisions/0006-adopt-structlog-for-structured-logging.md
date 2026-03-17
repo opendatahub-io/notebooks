@@ -218,6 +218,23 @@ This is not a current need — the repository's scripts run in CI pipelines and 
 not in instrumented services. Noted here for future reference if observability requirements
 change.
 
+## Log loss on crash / exit
+
+All three chosen libraries write synchronously, so no log entries are lost when a
+process exits unexpectedly (panic, test failure, `sys.exit()`, unhandled exception):
+
+| Library | Write target | Mode | Risk of lost logs on crash |
+|---------|-------------|------|---------------------------|
+| structlog → `StreamHandler(stderr)` | stderr | Sync | None |
+| log/slog → `JSONHandler(stderr)` | stderr | Sync | None |
+| tslog → `console.log` | stdout/stderr | Sync | None |
+
+This was a deliberate consideration in the library choices. Alternatives like Pino
+(TypeScript) default to async buffered writes for performance and require explicit
+`sync: true` to avoid log loss in short-lived processes like test runners. Since our
+use cases are CI scripts and Playwright tests — both short-lived — synchronous output
+is the correct default.
+
 ## References
 
 - Issue: https://github.com/opendatahub-io/notebooks/issues/3119
