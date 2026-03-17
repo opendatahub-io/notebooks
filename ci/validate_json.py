@@ -16,10 +16,10 @@ def validate_json_file(filepath: Path) -> bool:
         return True
     except json.JSONDecodeError as e:
         # Print specific error for easier debugging
-        print(f"  > Invalid JSON: {e}", file=sys.stderr)
+        print(f"  > Invalid JSON in {filepath}: {e}", file=sys.stderr)
         return False
     except OSError as e:
-        print(f"  > Error reading file: {e}", file=sys.stderr)
+        print(f"  > Error reading file {filepath}: {e}", file=sys.stderr)
         return False
 
 
