@@ -20,18 +20,17 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Install Skopeo CLI
-        shell: bash
-        run: |
-          sudo apt-get -y update
-          sudo apt-get -y install skopeo
-
       # Checkout the branch
       - name: Checkout branch
         uses: actions/checkout@v6
         with:
           ref: ${{ env.BRANCH_NAME }}
           persist-credentials: true
+
+      - name: Install Skopeo CLI
+        uses: ./.github/actions/apt-install
+        with:
+          packages: skopeo
 
       # Create a new branch
       - name: Create a new branch

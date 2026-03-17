@@ -59,12 +59,6 @@ jobs:
         id: install-deps
         run: uv sync --locked
 
-      # https://github.com/pre-commit/action
-      - name: Run pre-commit on all files
-        if: ${{ steps.install-deps.conclusion == 'success' && !cancelled() }}
-        run: |
-          uv run pre-commit run --all-files
-
       - run: make test
         if: ${{ steps.install-deps.conclusion == 'success' && !cancelled() }}
 
@@ -76,11 +70,15 @@ jobs:
       - name: Do not check secrets, they are encrypted
         run: rm -rf ./ci/secrets
 
+      - name: Install linting tools
+        uses: ./.github/actions/apt-install
+        with:
+          packages: yamllint yajl-tools wget
+
       - name: Validate YAML files (best code practices check included)
         if: ${{ !cancelled() }}
         id: validate-yaml-files
         run: |
-          type yamllint || sudo apt-get -y install yamllint
           # We ignore .tekton (managed by devops), insta-merge.yaml, and machine-generated .lock.yaml lockfiles
           # (e.g. rpms.lock.yaml, artifacts.lock.yaml — produced by rpm-lockfile-prototype with non-configurable indentation).
           find . -name "*.yaml" | grep -v "./.tekton/" | grep -v "./.github/workflows/insta-merge.yaml" | grep -v "\.lock\.yaml$" | xargs yamllint --strict --config-file ./ci/yamllint-config.yaml
@@ -91,7 +89,6 @@ jobs:
         if: ${{ !cancelled() }}
         id: validate-json-strings-in-yaml-files
         run: |
-          type json_verify || sudo apt-get -y install yajl-tools
           bash ./ci/check-json.sh
 
       - name: Validate JSON files (just syntax)
@@ -103,9 +100,8 @@ jobs:
         if: ${{ !cancelled() }}
         id: validate-dockerfiles
         run: |
-          type hadolint || sudo apt-get -y install wget \
-                             && wget --output-document=hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 \
-                             && chmod a+x hadolint
+          wget --output-document=hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+          chmod a+x hadolint
           echo "Starting Hadolint"
           find . -name "Dockerfile*" | xargs ./hadolint --config ./ci/hadolint-config.yaml
           echo "Hadolint done"
@@ -115,3 +111,35 @@ jobs:
         if: ${{ !cancelled() }}
         id: kustomize-manifests
         run: ./ci/kustomize.sh
+
+  # https://github.com/pre-commit/action
+  prek:
+    name: "prek"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version-file: uv.toml
+          python-version: "3.14"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: "Cache prek"
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/prek
+          key: prek-${{ hashFiles('.pre-commit-config.yaml') }}
+      # https://github.com/astral-sh/ruff/blob/3bfdb1208392802d3b38ec771789a99437c482d0/.github/workflows/ci.yaml#L810
+      - name: "Run prek"
+        run: |
+          echo '```console' > "$GITHUB_STEP_SUMMARY"
+          # Enable color output for prek and remove it for the summary
+          # Use --hook-stage=manual to enable slower hooks that are skipped by default
+          uvx prek run --all-files --show-diff-on-failure --color always --hook-stage manual | \
+            tee >(sed -E 's/\x1B\[([0-9]{1,2}(;[0-9]{1,2})*)?[mGK]//g' >> "$GITHUB_STEP_SUMMARY") >&1
+          exit_code="${PIPESTATUS[0]}"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit "$exit_code"

@@ -106,11 +106,15 @@ jobs:
       - run: mkdir -p $TMPDIR
 
       # do this early because it's fast and why not
+      - name: Install git-crypt
+        if: ${{ inputs.subscription }}
+        uses: ./.github/actions/apt-install
+        with:
+          packages: git-crypt
+
       - name: Unlock encrypted secrets with git-crypt
         if: ${{ inputs.subscription }}
         run: |
-          sudo apt-get update
-          sudo apt-get install git-crypt
           echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
           git-crypt unlock ./git-crypt-key
           rm ./git-crypt-key
@@ -145,13 +149,13 @@ jobs:
           SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
           SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
 
-      # for bin/buildinputs in scripts/sandbox.py
+      # for bin/buildinputs in scripts/sandbox.py and check-payload FIPS scan
       - uses: actions/setup-go@v6
         with:
           go-version: "stable"
-          cache-dependency-path: "scripts/buildinputs/go.sum"
-
-      - run: sudo apt-get update
+          cache-dependency-path: |
+            scripts/buildinputs/go.mod
+            scripts/check-payload/go.mod
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -170,8 +174,11 @@ jobs:
          contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') ||
          contains(inputs.target, 'codeserver') || inputs.platform == 'linux/arm64' }}"
 
-      - id: install-compsize
-        run: sudo apt-get install -y btrfs-compsize
+      - name: Install btrfs-compsize
+        id: install-compsize
+        uses: ./.github/actions/apt-install
+        with:
+          packages: btrfs-compsize
 
       - name: Mount lvm overlay for podman builds
         run: |
@@ -194,17 +201,56 @@ jobs:
 
       - name: Calculate image name and tag
         id: calculated_vars
+        shell: python
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          TARGET: ${{ inputs.target }}
+          REGISTRY: ${{ env.IMAGE_REGISTRY }}
+          PLATFORM: ${{ inputs.platform }}
+        # language=python
         run: |
+          import os, re, sys
+          from dataclasses import dataclass
+
+          @dataclass
+          class Env:
+              REF_NAME: str
+              SHA: str
+              TARGET: str
+              REGISTRY: str
+              PLATFORM: str
+
+              @classmethod
+              def from_env(cls):
+                  return cls(**{k: os.environ[k] for k in cls.__annotations__})
+
           # Need for sanitization explained in https://github.com/opendatahub-io/notebooks/issues/631
-          # For length, Docker image tags have 128-character limit, and we form them as <inputs.target>-<ref_name>_<sha>
-          # therefore since sha is 40 characters, and our target names are <40 chars, we should cut ref_name at 40
-          SANITIZED_REF_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/_/g') | cut -c 1-40
-          IMAGE_TAG="${SANITIZED_REF_NAME}_${{ github.sha }}"
+          # Docker image tags have a 128-character limit.
+          # We calculate the max allowed length for ref_name dynamically to ensure compliance.
+          INVALID_TAG_CHARS_RE = re.compile(r'[^a-zA-Z0-9._-]')
+          def sanitize(s: str) -> str:
+              return INVALID_TAG_CHARS_RE.sub('_', s)
 
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
-          echo "OUTPUT_IMAGE=${{ env.IMAGE_REGISTRY}}:${{ inputs.target }}-${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          env = Env.from_env()
 
-          echo "SANITIZED_PLATFORM=$(echo "${{ inputs.platform }}" | sed 's/[^a-zA-Z0-9._-]/_/g')" >> "$GITHUB_OUTPUT"
+          sanitized_ref = sanitize(env.REF_NAME)
+
+          # Total tag length = len(target) + 1(-) + len(ref) + 1(_) + len(sha) <= 128
+          # Therefore, max_ref_len = 128 - len(env.TARGET) - len(env.SHA) - 2
+          max_ref_len = 128 - len(env.TARGET) - len(env.SHA) - 2
+
+          if max_ref_len < 1:
+              print(f"::error::Target name '{env.TARGET}' ({len(env.TARGET)} chars) is too long to accommodate a branch name and commit SHA within the 128-character Docker tag limit.", file=sys.stderr)
+              sys.exit(1)
+
+          image_tag = f"{sanitized_ref[:max_ref_len]}_{env.SHA}"
+          full_tag = f"{env.TARGET}-{image_tag}"
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"IMAGE_TAG={image_tag}\n")
+              f.write(f"OUTPUT_IMAGE={env.REGISTRY}:{full_tag}\n")
+              f.write(f"SANITIZED_PLATFORM={sanitize(env.PLATFORM)}\n")
 
       # endregion
 
@@ -425,6 +471,7 @@ jobs:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
           # for make deploy, mandatory to specify for the more exotic cases
           NOTEBOOK_TAG: "${{ inputs.target }}-${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
+          KONFLUX: "${{ inputs.konflux && 'yes' || 'no' }}"
 
       # endregion
 
@@ -502,21 +549,6 @@ jobs:
 
       # region check-payload for FIPS compliance
 
-      - id: check-payload-vars
-        if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
-        run: |
-          echo "GOPATH=${{ github.workspace }}/go-check-payload" >> "$GITHUB_OUTPUT"
-        working-directory: scripts/check-payload
-
-      # for https://github.com/openshift/check-payload to cache the built binary
-      - uses: actions/setup-go@v6
-        if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
-        with:
-          go-version-file: "scripts/check-payload/go.mod"
-          cache-dependency-path: "scripts/check-payload/go.sum"
-        env:
-          GOPATH: ${{ steps.check-payload-vars.outputs.GOPATH }}
-
       # F0512 15:43:03.219076 21568 main.go:294] Error: exec: "oc": executable file not found in $PATH
       - name: Install oc client
         if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
@@ -547,12 +579,13 @@ jobs:
           # mount the image
           IMAGE_MOUNT_DIR=$(sudo "${PODMAN}" image mount "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}")
           # run the check-payload scan
-          sudo --preserve-env=PATH go tool github.com/openshift/check-payload scan local --path "${IMAGE_MOUNT_DIR}"
+          sudo --preserve-env=PATH,GOCACHE,GOMODCACHE go tool github.com/openshift/check-payload scan local --path "${IMAGE_MOUNT_DIR}"
           # unmount the image
           sudo "${PODMAN}" image unmount --all
         working-directory: scripts/check-payload
         env:
-          GOPATH: ${{ steps.check-payload-vars.outputs.GOPATH }}
+          GOCACHE: /home/runner/.cache/go-build
+          GOMODCACHE: /home/runner/go/pkg/mod
 
       # endregion
 

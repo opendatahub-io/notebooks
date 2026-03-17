@@ -18,10 +18,9 @@ jobs:
         with:
           fetch-depth: '0'
       - name: Install skopeo
-        shell: bash
-        run: |
-          sudo apt-get -y update
-          sudo apt-get -y install skopeo
+        uses: ./.github/actions/apt-install
+        with:
+          packages: skopeo
       - name: Get Pull Request Number
         uses: actions/github-script@v8
         id: get_pr_number

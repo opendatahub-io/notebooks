@@ -4,21 +4,16 @@ description: 'Installs cri-o and provisions a single-node Kubernetes cluster usi
 runs:
   using: "composite"
   steps:
+    - name: Install prerequisites
+      uses: ./.github/actions/apt-install
+      with:
+        packages: software-properties-common curl
+
     - name: Install cri-o
       id: install-crio
       shell: bash
       run: |
         set -Eeuxo pipefail
-
-        # the Microsoft repo's kubelet does not provide /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
-        #  [Service]
-        #  EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
-        #  ExecStart=/usr/bin/kubelet $KUBELET_KUBEADM_ARGS
-        sudo ls /etc/apt/sources.list.d/
-        sudo rm /etc/apt/sources.list.d/microsoft-prod.list
-
-        sudo apt-get update
-        sudo apt-get install -y software-properties-common curl
 
         # https://github.com/cri-o/packaging?tab=readme-ov-file#distributions-using-deb-packages
 

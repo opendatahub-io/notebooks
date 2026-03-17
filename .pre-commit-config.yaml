@@ -1,6 +1,22 @@
 ---
 # https://github.com/pre-commit/pre-commit-hooks?tab=readme-ov-file#hooks-available
 repos:
+  # https://prek.j178.dev/builtin/#1-automatic-fast-path
+  - repo: https://github.com/pre-commit/pre-commit-hooks  # Enables fast path
+    rev: v6.0.0  # This is ignored for fast path detection
+    hooks:
+      # - id: trailing-whitespace
+      #   exclude: '^ci/secrets/'
+      - id: check-added-large-files
+      # - id: end-of-file-fixer
+      #   exclude: '^ci/secrets/'
+      # - id: check-json
+      - id: check-toml
+      # - id: check-yaml
+      #   args: ['--allow-multiple-documents']
+      - id: check-symlinks
+      - id: check-merge-conflict
+      # - id: check-executables-have-shebangs
   # https://docs.astral.sh/uv/guides/integration/pre-commit/
   # Using a local hook instead of uv-pre-commit so it goes through ./uv,
   # which handles version mismatches without requiring the exact system uv.

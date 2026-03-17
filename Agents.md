@@ -45,6 +45,8 @@ The OpenDataHub Notebooks repository provides a collection of containerized note
 ├── ci/ # Continuous Integration scripts, checks, and configuration
 ├── cuda/ # CUDA-specific files (NVIDIA GPU support), e.g., repo files, licenses
 ├── manifests/ # Kubernetes manifests for deploying the images
+│ ├── odh/base/ # ODH (OpenDataHub) imagestream manifests — used when KONFLUX=no
+│ └── rhoai/base/ # RHOAI (Red Hat AI) imagestream manifests — used when KONFLUX=yes
 ├── scripts/
 ├── tests/
 ├── README.md
@@ -76,6 +78,16 @@ make jupyter-minimal-ubi9-python-3.12
 make jupyter-datascience-ubi9-python-3.12
 make jupyter-pytorch-cuda-ubi9-python-3.12
 ```
+
+#### ODH vs Konflux (RHOAI) builds
+
+The `KONFLUX` Makefile variable (default: `no`) switches between two build variants:
+
+- `KONFLUX=no` — builds from `Dockerfile.*`, uses `manifests/odh/base/` imagestream manifests
+- `KONFLUX=yes` — builds from `Dockerfile.konflux.*`, uses `manifests/rhoai/base/` imagestream manifests
+
+This variable must be set consistently across the build step **and** the test step (`make test-*`), as the test script (`scripts/test_jupyter_with_papermill.sh`) reads the imagestream manifest to derive expected package versions.
+The Python equivalent (`tests/manifests.py::get_source_of_truth_filepath`) accepts a `konflux: bool` keyword argument for the same purpose.
 
 ### Testing Framework
 

@@ -38,22 +38,21 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - name: Install Skopeo CLI
-        shell: bash
-        run: |
-          sudo apt-get -y update
-          sudo apt-get -y install skopeo
-
-      - name: Configure Git
-        run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "GitHub Actions"
-
       - name: Checkout branch
         uses: actions/checkout@v6
         with:
           ref: ${{ env.BRANCH_NAME }}
           persist-credentials: true
+
+      - name: Install Skopeo CLI
+        uses: ./.github/actions/apt-install
+        with:
+          packages: skopeo
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
 
       - name: Create a new branch
         run: |

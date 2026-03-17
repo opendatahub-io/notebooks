@@ -162,7 +162,11 @@ def check_uv() -> None:
 def find_target_dirs(target_dir: Path | None) -> list[Path]:
     """Find directories containing pyproject.toml."""
     if target_dir is not None:
-        return [target_dir]
+        candidate = target_dir if target_dir.is_absolute() else ROOT_DIR / target_dir
+        if not candidate.is_dir() or not (candidate / "pyproject.toml").is_file():
+            error(f"Target directory must exist and contain pyproject.toml: {candidate}")
+            raise SystemExit(1)
+        return [candidate]
 
     info("Scanning main directories for Python projects...")
     dirs: set[Path] = set()

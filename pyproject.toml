@@ -11,7 +11,7 @@ dependencies = []
 
 [dependency-groups]
 dev = [
-    "pre-commit",
+    "prek",
     "pyright",
     "ruff",
 
@@ -20,7 +20,9 @@ dev = [
     "pytest-subtests",
 
     "pyfakefs",
-    "pydantic",
+    # Python 3.14 changed the internal typing._eval_type() function signature - it now includes a new prefer_fwd_module parameter
+    # and so pydantic 2.10+ is required to work with from __future__ import annotations on Python 3.14
+    "pydantic>=2.10.0",
     "requests",
 
     "pyyaml",
@@ -73,7 +75,7 @@ pythonPlatform = "Linux"
 
 # https://docs.astral.sh/ruff/configuration
 [tool.ruff]
-include = ["pyproject.toml", "ci/**/*.py", "ntb/**/*.py", "tests/**/*.py"]
+include = ["pyproject.toml", "ci/**/*.py", "ntb/**/*.py", "tests/**/*.py", "jupyter/**/*.ipynb"]
 exclude = [ ]
 target-version = "py314"
 line-length = 120
@@ -168,6 +170,8 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
 [tool.ruff.lint.per-file-ignores]
 # Inner functions are serialized and executed inside containers, so imports must be local.
 "tests/containers/workbenches/gpu_library_loading_test.py" = ["PLC0415"]
+# Ignore many stylistic and formatting rules for notebooks, but keep Pylint rules like PLW0128
+"jupyter/**/*.ipynb" = ["E", "F", "W", "Q", "I", "PLR0402", "PLC0414", "RUF100", "PLW0108"]
 
 # https://docs.astral.sh/ruff/formatter
 [tool.ruff.format]
