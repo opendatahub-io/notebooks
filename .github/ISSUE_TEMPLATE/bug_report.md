@@ -9,6 +9,7 @@ labels: 'kind/bug'
 
 
 **What did you expect to happen:**
+[Describe the expected behavior.]
 
 
 **Anything else you would like to add:**
