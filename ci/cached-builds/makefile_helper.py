@@ -5,12 +5,10 @@ from __future__ import annotations
 import platform
 import string
 import subprocess
+import sys
 from typing import TYPE_CHECKING
 
-import structlog
 from gha_pr_changed_files import PROJECT_ROOT
-
-log = structlog.get_logger()
 
 if TYPE_CHECKING:
     import pathlib
@@ -36,10 +34,16 @@ def exec_makefile(target: str, makefile_dir: pathlib.Path | str, options: Sequen
             cwd=makefile_dir,
         )
     except subprocess.CalledProcessError as e:
-        log.error(f"Command {cmd!r} in {makefile_dir!r} failed with return code {e.returncode}:\n{e.stderr}")
+        print(
+            f"Command {cmd!r} in {makefile_dir!r} failed with return code {e.returncode}:\n{e.stderr}",
+            file=sys.stderr,
+        )
         raise
     except Exception as e:
-        log.error(f"Error executing command {cmd!r} in {makefile_dir!r}:\n{e!s}")
+        print(
+            f"Error executing command {cmd!r} in {makefile_dir!r}:\n{e!s}",
+            file=sys.stderr,
+        )
         raise
 
     return result.stdout
