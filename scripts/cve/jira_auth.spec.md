@@ -106,7 +106,7 @@ Set as `JIRA_OAUTH_CLIENT_SECRET` env var.
 
 **Prerequisites**: The OAuth app is registered at `developer.atlassian.com`
 with:
-- Redirect URI: `http://127.0.0.1:8080/callback`
+- Redirect URIs: `http://localhost:8080/callback` and `http://127.0.0.1:8080/callback`
 - Scopes: `read:jira-work write:jira-work read:me offline_access`
 
 **Base URL**: OAuth tokens are scoped to `api.atlassian.com`, NOT directly to

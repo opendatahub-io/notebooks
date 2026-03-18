@@ -36,6 +36,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
 
+import keyring
+import keyring.errors
+
 _KEYRING_SERVICE = "jira-cve-scripts"
 _OAUTH_TIMEOUT_S = 120
 _TOKEN_EXPIRY_BUFFER_S = 60
@@ -132,7 +135,6 @@ def _basic_auth_header(email: str, api_token: str) -> dict[str, str]:
 def _load_api_token() -> dict[str, str] | None:
     """Load stored API token from keyring, returning None if unavailable."""
     try:
-        import keyring
         raw = keyring.get_password(_KEYRING_SERVICE, "api-token")
         if raw:
             data = json.loads(raw)
@@ -150,7 +152,6 @@ def store_api_token(email: str, api_token: str) -> None:
     """
     raw = json.dumps({"email": email, "api_token": api_token})
     try:
-        import keyring
         keyring.set_password(_KEYRING_SERVICE, "api-token", raw)
         print(f"API token stored in keychain for {email}")
     except Exception as exc:
@@ -160,8 +161,6 @@ def store_api_token(email: str, api_token: str) -> None:
 def clear_api_token() -> None:
     """Remove stored API token from the OS keychain."""
     try:
-        import keyring
-        import keyring.errors
         keyring.delete_password(_KEYRING_SERVICE, "api-token")
         print("API token removed from keychain")
     except keyring.errors.PasswordDeleteError:
@@ -247,12 +246,14 @@ def _get_oauth_token(client_id: str, client_secret: str, jira_url: str) -> str:
 
     token_data = _do_oauth_flow(client_id, client_secret)
 
-    # Resolve and cache cloud ID
+    # Resolve and cache cloud ID — mandatory for Atlassian Cloud URLs
     try:
         api_base_url = resolve_cloud_base_url(token_data["access_token"], jira_url)
         token_data["api_base_url"] = api_base_url
-    except JiraAuthError as e:
-        print(f"WARNING: Could not resolve cloud ID: {e}", file=sys.stderr)
+    except JiraAuthError:
+        if "atlassian.net" in jira_url:
+            raise
+        print(f"WARNING: Could not resolve cloud ID for {jira_url}, continuing without it.", file=sys.stderr)
 
     _save_token(jira_url, token_data)
     return token_data["access_token"]
@@ -313,15 +314,18 @@ def _do_oauth_flow(client_id: str, client_secret: str) -> dict[str, Any]:
         def log_message(self, *args):
             pass
 
+    server: HTTPServer | None = None
     try:
         server = HTTPServer(("localhost", _CALLBACK_PORT), _CallbackHandler)
-    except OSError as exc:
+        server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        server_thread.start()
+    except (OSError, RuntimeError) as exc:
+        if server is not None:
+            server.server_close()
         raise JiraAuthError(
             f"Cannot start OAuth callback server on localhost:{_CALLBACK_PORT} ({exc}). "
             "Ensure the port is free and retry."
         ) from exc
-    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
-    server_thread.start()
 
     try:
         opened = webbrowser.open(auth_url)
@@ -398,11 +402,19 @@ def _post_token_endpoint(payload: bytes) -> dict[str, Any]:
     except Exception as e:
         raise JiraAuthError(f"Token exchange failed: {e}") from e
 
-    expires_in = data.get("expires_in", 3600)
+    access_token = data.get("access_token")
+    if not isinstance(access_token, str) or not access_token:
+        raise JiraAuthError("Token exchange failed: response missing access_token")
+
+    try:
+        expires_in = int(data.get("expires_in", 3600))
+    except (TypeError, ValueError) as e:
+        raise JiraAuthError(f"Token exchange failed: invalid expires_in={data.get('expires_in')!r}") from e
+
     expires_at = datetime.now(tz=timezone.utc).replace(microsecond=0) + timedelta(seconds=expires_in)
 
     return {
-        "access_token": data["access_token"],
+        "access_token": access_token,
         "refresh_token": data.get("refresh_token", ""),
         "expires_at": expires_at.isoformat(),
     }
@@ -417,7 +429,6 @@ def _load_token(jira_url: str) -> dict[str, Any] | None:
     raw: str | None = None
 
     try:
-        import keyring
         raw = keyring.get_password(_KEYRING_SERVICE, jira_url)
     except Exception:
         raw = None
@@ -442,24 +453,21 @@ def _save_token(jira_url: str, token_data: dict[str, Any]) -> None:
     raw = json.dumps(token_data)
 
     try:
-        import keyring
-        import keyring.errors
-        try:
-            keyring.set_password(_KEYRING_SERVICE, jira_url, raw)
-            return
-        except keyring.errors.NoKeyringError:
-            pass
-        except Exception as exc:
-            print(f"WARNING: keyring write failed ({exc}), falling back to file storage.", file=sys.stderr)
-    except ImportError:
+        keyring.set_password(_KEYRING_SERVICE, jira_url, raw)
+        return
+    except keyring.errors.NoKeyringError:
         pass
+    except Exception as exc:
+        print(f"WARNING: keyring write failed ({exc}), falling back to file storage.", file=sys.stderr)
 
-    _write_token_file(jira_url, raw)
+    try:
+        _write_token_file(jira_url, raw)
+    except OSError as exc:
+        print(f"WARNING: token cache write failed ({exc}), continuing without cached OAuth token.", file=sys.stderr)
 
 
 def _token_file_path(jira_url: str) -> Path:
     config_dir = Path.home() / ".config" / "jira"
-    config_dir.mkdir(parents=True, exist_ok=True)
     digest = hashlib.sha256(jira_url.rstrip("/").encode("utf-8")).hexdigest()[:16]
     return config_dir / f"oauth-token-{digest}.json"
 
@@ -477,6 +485,7 @@ def _read_token_file(jira_url: str) -> str | None:
 def _write_token_file(jira_url: str, raw: str) -> None:
     """Atomically write token file with 0600 permissions."""
     path = _token_file_path(jira_url)
+    path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_path = tempfile.mkstemp(dir=path.parent, prefix=".jira-token-")
     try:
         os.chmod(tmp_path, 0o600)
