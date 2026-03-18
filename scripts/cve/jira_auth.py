@@ -39,6 +39,8 @@ from typing import Any
 _KEYRING_SERVICE = "jira-cve-scripts"
 _OAUTH_TIMEOUT_S = 120
 _TOKEN_EXPIRY_BUFFER_S = 60
+# Use "localhost" not "127.0.0.1" — Atlassian's OAuth redirect fails to
+# deliver the callback when the redirect_uri uses a bare IP address.
 _CALLBACK_PORT = 8080
 
 # Atlassian OAuth 2.0 endpoints and defaults
@@ -261,7 +263,7 @@ def _do_oauth_flow(client_id: str, client_secret: str) -> dict[str, Any]:
     """Run the OAuth 2.0 browser redirect flow with PKCE and return token data."""
     state = base64.urlsafe_b64encode(secrets.token_bytes(16)).decode("ascii")
     verifier, challenge = _pkce_pair()
-    redirect_uri = f"http://127.0.0.1:{_CALLBACK_PORT}/callback"
+    redirect_uri = f"http://localhost:{_CALLBACK_PORT}/callback"
 
     params = {
         "audience": "api.atlassian.com",
@@ -305,10 +307,10 @@ def _do_oauth_flow(client_id: str, client_secret: str) -> dict[str, Any]:
             pass
 
     try:
-        server = HTTPServer(("127.0.0.1", _CALLBACK_PORT), _CallbackHandler)
+        server = HTTPServer(("localhost", _CALLBACK_PORT), _CallbackHandler)
     except OSError as exc:
         raise JiraAuthError(
-            f"Cannot start OAuth callback server on 127.0.0.1:{_CALLBACK_PORT} ({exc}). "
+            f"Cannot start OAuth callback server on localhost:{_CALLBACK_PORT} ({exc}). "
             "Ensure the port is free and retry."
         ) from exc
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
