@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import os
+from string import templatelib
 from string.templatelib import Interpolation, Template
 
 import structlog
@@ -26,13 +27,7 @@ def _render_template(template: Template) -> str:
     parts: list[str] = []
     for part in template:
         if isinstance(part, Interpolation):
-            value = part.value
-            if part.conversion == "r":
-                value = repr(value)
-            elif part.conversion == "s":
-                value = str(value)
-            elif part.conversion == "a":
-                value = ascii(value)
+            value = templatelib.convert(part.value, part.conversion)
             parts.append(format(value, part.format_spec))
         else:
             parts.append(part)
