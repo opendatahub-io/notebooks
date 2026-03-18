@@ -4,7 +4,7 @@ ARG PYLOCK_FLAVOR
 COPY pyproject.toml ./
 COPY uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 
-RUN pip install --no-deps --requirement=./pylock.toml
+RUN pip install --no-cache-dir --no-deps --requirement=./pylock.toml
 
 EXPOSE 8888
 CMD ["jupyter", "lab"]
