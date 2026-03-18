@@ -180,6 +180,8 @@ Key CI files:
 - `.github/workflows/` - GitHub Actions workflows
 - `ci/` - Custom CI scripts and configurations
 
+**Emulated ppc64le (RHAIENG-2818):** GitHub-hosted runners use QEMU user-mode; Jupyter starts slowly. CI widens StatefulSet probes via `ci/cached-builds/patch_jupyter_statefulset_probes_emulated_arch.py` and longer `wait_for_stability` timeouts—production `kustomize/base` probe values stay unchanged.
+
 ### Deployment
 
 1. **Local Development**:
