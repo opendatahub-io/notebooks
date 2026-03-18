@@ -87,7 +87,7 @@ async def get_image_vcs_ref(image_url: str, semaphore: asyncio.Semaphore) -> tup
             log.debug(f"Stdout from skopeo for {image_url}: {stdout.decode(errors='replace')}")
         return image_url, None
     except Exception as e:
-        log.error(f"An unexpected error occurred while processing {image_url}: {e}")
+        log.error("Unexpected error while processing image", image_url=image_url, exc_info=True)
         return image_url, None
 
 
