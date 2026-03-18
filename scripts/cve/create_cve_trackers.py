@@ -106,7 +106,7 @@ class JiraClient:
         auth_value = auth_headers.get("Authorization", "")
 
         # OAuth tokens go through the API gateway — resolve cloud ID
-        if auth_value.startswith("Bearer ") and not os.environ.get("JIRA_TOKEN"):
+        if auth_value.startswith("Bearer ") and not os.environ.get("JIRA_TOKEN", "").strip():
             cached_base = get_cached_api_base_url(jira_url)
             if cached_base:
                 base_url = cached_base
