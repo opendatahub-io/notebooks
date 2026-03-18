@@ -74,6 +74,8 @@ Create a token at https://id.atlassian.com/manage-profile/security/api-tokens.
   through to other auth methods.
 - REQ-A3: The credential string MUST be UTF-8 encoded before base64 encoding.
 - REQ-A4: Keychain read failures MUST be silently ignored (fall through).
+- REQ-A5: If exactly one of `JIRA_EMAIL`/`JIRA_API_TOKEN` is set, MUST raise
+  `JiraAuthError` (fail fast on half-configured credentials).
 
 ---
 
@@ -120,7 +122,7 @@ via `GET https://api.atlassian.com/oauth/token/accessible-resources` and uses
    token; update store.
 3. Generate PKCE code verifier (32 random bytes, base64url) and code challenge
    (SHA-256 of verifier, base64url).
-4. Start a temporary HTTP server on `127.0.0.1:8080`.
+4. Start a temporary HTTP server on `localhost:8080`.
 5. Construct the Atlassian authorization URL with `audience=api.atlassian.com`,
    `code_challenge`, `code_challenge_method=S256`, and open in the browser.
 6. Wait (max 120 s) for the callback containing `code` and `state`.
@@ -131,7 +133,8 @@ via `GET https://api.atlassian.com/oauth/token/accessible-resources` and uses
 
 **Requirements**:
 - REQ-C1: `state` MUST be generated with `secrets.token_bytes(16)` (≥ 128 bits).
-- REQ-C2: The local HTTP server MUST bind to `127.0.0.1` only.
+- REQ-C2: The local HTTP server MUST bind to `localhost` only (Atlassian's
+  OAuth redirect does not deliver callbacks to bare IP addresses like `127.0.0.1`).
 - REQ-C3: If the browser cannot be opened, the URL MUST be printed to stdout.
 - REQ-C4: Timeout after 120 seconds → raise `JiraAuthError`.
 - REQ-C5: Token values MUST NOT be printed to stdout or stderr.
@@ -166,16 +169,19 @@ fields) to avoid re-resolving on every invocation.
 
 ## Token Storage
 
-**Primary**: `keyring` library (dev dependency).
+**Primary**: `keyring` library (mandatory dev dependency, installed via `uv sync`).
 - Service name: `"jira-cve-scripts"`
 - Username key: the Jira base URL (e.g., `https://redhat.atlassian.net`)
 - Stored value: JSON string with fields:
   - `access_token`, `refresh_token`, `expires_at` (ISO-8601 UTC)
   - `cloud_id`, `api_base_url` (cached Cloud ID resolution)
 
-**Fallback** (when `keyring` is unavailable or raises `NoKeyringError`):
-- File: `~/.config/jira/oauth-token.json`
+**Fallback** (when no keyring backend is available, i.e. `NoKeyringError` — e.g.
+headless CI containers, SSH sessions without a desktop keyring service):
+- File: `~/.config/jira/oauth-token-{hash}.json` where `{hash}` is the first 16
+  hex chars of `SHA-256(jira_url)`, namespaced per Jira site.
 - Written atomically (temp file → chmod 0600 → rename).
+- File cache write failures are logged as warnings (best-effort), not fatal.
 
 **Requirements**:
 - REQ-D1: File MUST be created with mode `0600` atomically.
@@ -272,12 +278,15 @@ instead of wiki markup strings.
 | Condition | Behaviour |
 |-----------|-----------|
 | No auth env vars set | Raise `JiraAuthError` with instructions |
+| Half-configured API token (one of JIRA_EMAIL/JIRA_API_TOKEN) | Raise `JiraAuthError` |
 | OAuth flow times out | Raise `JiraAuthError` |
 | OAuth state mismatch | Raise `JiraAuthError` ("possible CSRF") |
 | Token exchange HTTP error | Raise `JiraAuthError` with response body |
 | Token refresh fails | Discard cached token, re-run full browser flow |
-| Cloud ID resolution fails | Raise `JiraAuthError` |
+| Cloud ID resolution fails (Atlassian Cloud URL) | Raise `JiraAuthError` — cloud ID is mandatory for `atlassian.net` |
+| Cloud ID resolution fails (non-Cloud URL) | Warning to stderr, continue without cached cloud ID |
 | Keyring write fails (non-NoKeyringError) | Warning to stderr, file fallback |
+| File cache write fails (OSError) | Warning to stderr, continue without cache |
 | Stored token unparseable | Silently discard, re-run auth |
 
 ---
