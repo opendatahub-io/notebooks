@@ -1,0 +1,15 @@
+{
+  "name": "notebooks-dev",
+  "build": {
+    "dockerfile": "Dockerfile.dev"
+  },
+  "postCreateCommand": "./uv sync --locked",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "ms-python.python"
+      ]
+    }
+  }
+}
