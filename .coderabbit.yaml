@@ -1,17 +1,10 @@
-# https://docs.coderabbit.ai/getting-started/configure-coderabbit/?#configure-coderabbit-using-a-yaml-file
----
-language: en-US
-early_access: false
-enable_free_tier: true
-knowledge_base:
-  opt_out: false
-  learnings:
-    scope: auto
-  issues:
-    scope: auto
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Inherits from org-wide config: https://github.com/opendatahub-io/coderabbit
+# Only overrides listed below differ from the org baseline.
+
+inheritance: true
+
 reviews:
-  sequence_diagrams: false
-  poem: false
   auto_review:
     base_branches:
       - main
