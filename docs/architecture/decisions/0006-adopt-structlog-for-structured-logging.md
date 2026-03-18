@@ -77,7 +77,7 @@ configure_logging(json_output=False)       # force human-readable
 ### Output examples
 
 **Dev mode** (local terminal, colorized):
-```
+```text
 2026-03-17T22:54:03.235342Z [info     ] Container started              [__main__] container_id=abc123 image=quay.io/foo/bar
 ```
 
@@ -127,7 +127,7 @@ func init() {
 ```
 
 **Dev mode** output:
-```
+```text
 2026/03/17 23:10:00 WARN Dockerfile lint warning rule=JSONArgsRecommended description=... url=... message=...
 ```
 
