@@ -226,7 +226,7 @@ class JiraAuthError(RuntimeError):
 ```
 
 ```python
-# scripts/cve/create_cve_trackers.py (and cve_due_dates.py)
+# scripts/cve/jira_client.py
 
 class JiraClient:
     def __init__(self, base_url: str, auth_headers: dict | None = None):
