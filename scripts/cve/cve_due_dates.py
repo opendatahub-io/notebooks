@@ -153,26 +153,29 @@ class JiraClient:
 
     def search_issues(self, jql: str, fields: str = "key,summary,status,labels,duedate,issuelinks",
                       max_results: int = 500) -> list[dict]:
-        """Search for issues using JQL (API v3)."""
-        all_issues = []
-        start_at = 0
+        """Search for issues using JQL (API v3, token-based pagination)."""
+        all_issues: list[dict] = []
+        next_page_token: str | None = None
 
         while len(all_issues) < max_results:
-            params = {
+            params: dict[str, str | int] = {
                 "jql": jql,
                 "maxResults": min(100, max_results - len(all_issues)),
-                "startAt": start_at,
-                "fields": fields
+                "fields": fields,
             }
+            if next_page_token:
+                params["nextPageToken"] = next_page_token
 
             data = self._request("GET", "/rest/api/3/search/jql", params=params)
             issues = data.get("issues", [])
             all_issues.extend(issues)
 
-            if len(all_issues) >= data.get("total", 0) or not issues:
+            if data.get("isLast", True) or not issues:
                 break
 
-            start_at += len(issues)
+            next_page_token = data.get("nextPageToken")
+            if not next_page_token:
+                break
 
         return all_issues
 

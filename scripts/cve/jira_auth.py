@@ -74,11 +74,15 @@ def get_auth_headers(jira_url: str) -> dict[str, str]:
     client_secret = os.environ.get("JIRA_OAUTH_CLIENT_SECRET", "").strip()
 
     # --- Method 1a: API token from env vars ---
-    if email and api_token:
+    if email or api_token:
+        if not (email and api_token):
+            raise JiraAuthError(
+                "Set both JIRA_EMAIL and JIRA_API_TOKEN together, or unset both to use keyring/OAuth."
+            )
         return _basic_auth_header(email, api_token)
 
     # --- Method 1b: API token from keyring ---
-    if not email or not api_token:
+    if not email and not api_token:
         stored = _load_api_token()
         if stored:
             return _basic_auth_header(stored["email"], stored["api_token"])
@@ -157,10 +161,13 @@ def clear_api_token() -> None:
     """Remove stored API token from the OS keychain."""
     try:
         import keyring
+        import keyring.errors
         keyring.delete_password(_KEYRING_SERVICE, "api-token")
         print("API token removed from keychain")
-    except Exception:
+    except keyring.errors.PasswordDeleteError:
         print("No stored API token found")
+    except Exception as exc:
+        print(f"Failed to clear API token: {exc}", file=sys.stderr)
 
 
 def resolve_cloud_base_url(access_token: str, jira_url: str) -> str:
@@ -416,7 +423,7 @@ def _load_token(jira_url: str) -> dict[str, Any] | None:
         raw = None
 
     if not raw:
-        raw = _read_token_file()
+        raw = _read_token_file(jira_url)
 
     if not raw:
         return None
@@ -447,17 +454,18 @@ def _save_token(jira_url: str, token_data: dict[str, Any]) -> None:
     except ImportError:
         pass
 
-    _write_token_file(raw)
+    _write_token_file(jira_url, raw)
 
 
-def _token_file_path() -> Path:
+def _token_file_path(jira_url: str) -> Path:
     config_dir = Path.home() / ".config" / "jira"
     config_dir.mkdir(parents=True, exist_ok=True)
-    return config_dir / "oauth-token.json"
+    digest = hashlib.sha256(jira_url.rstrip("/").encode("utf-8")).hexdigest()[:16]
+    return config_dir / f"oauth-token-{digest}.json"
 
 
-def _read_token_file() -> str | None:
-    path = _token_file_path()
+def _read_token_file(jira_url: str) -> str | None:
+    path = _token_file_path(jira_url)
     if not path.exists():
         return None
     try:
@@ -466,9 +474,9 @@ def _read_token_file() -> str | None:
         return None
 
 
-def _write_token_file(raw: str) -> None:
+def _write_token_file(jira_url: str, raw: str) -> None:
     """Atomically write token file with 0600 permissions."""
-    path = _token_file_path()
+    path = _token_file_path(jira_url)
     fd, tmp_path = tempfile.mkstemp(dir=path.parent, prefix=".jira-token-")
     try:
         os.chmod(tmp_path, 0o600)
