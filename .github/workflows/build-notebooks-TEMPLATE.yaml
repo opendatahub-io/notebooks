@@ -36,12 +36,14 @@ name: Build & Publish Notebook Servers (TEMPLATE)
       PLATFORM_RUNNERS:
         required: false
         # language=json
+        # IBM hosted Power/Z: https://github.com/IBM/actionspz/blob/main/docs/onboarding.md
+        # Override linux/ppc64le|s390x to ubuntu-24.04 to use QEMU on GHA amd64 (e.g. forks without org runners).
         default: >-
           {
             "linux/amd64": "ubuntu-24.04",
             "linux/arm64": "ubuntu-24.04-arm",
-            "linux/ppc64le": "ubuntu-24.04",
-            "linux/s390x": "ubuntu-24.04"
+            "linux/ppc64le": "ubuntu-24.04-ppc64le",
+            "linux/s390x": "ubuntu-24.04-s390x"
           }
         description: "Available contexts for runs-on are: github, inputs, matrix, needs, strategy, vars. Let's use inputs"
         type: string
@@ -97,9 +99,14 @@ jobs:
 
       # https://github.com/docker/setup-qemu-action?tab=readme-ov-file#about
       # https://www.itix.fr/blog/qemu-user-static-with-podman/
+      # Skip when using IBM native runners (labels ubuntu-24.04-ppc64le / ubuntu-24.04-s390x).
       - name: Set up QEMU for non-native architecture
-        if: ${{ contains(fromJSON('["linux/s390x", "linux/ppc64le"]'), inputs.platform) }}
-        run: docker run --rm --privileged tonistiigi/binfmt --install ${platform#*/}
+        if: >-
+          ${{ (inputs.platform == 'linux/ppc64le' &&  
+          !contains(toJSON(fromJSON(inputs.PLATFORM_RUNNERS)[inputs.platform]), 'ppc64le')) ||  
+          (inputs.platform == 'linux/s390x' &&  
+          !contains(toJSON(fromJSON(inputs.PLATFORM_RUNNERS)[inputs.platform]), 's390x')) }}
+        run: docker run --rm --privileged tonistiigi/binfmt@sha256:373093569471770a3f83b54e4c698f621754c20d225538314880f2716f55956d --install ${platform#*/} --verbose
         env:
           platform: ${{ inputs.platform }}
 
