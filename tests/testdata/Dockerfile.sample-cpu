@@ -1,0 +1,10 @@
+FROM quay.io/opendatahub/workbench-images:base-ubi9-python-3.12 AS base
+
+ARG PYLOCK_FLAVOR
+COPY pyproject.toml ./
+COPY uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
+
+RUN pip install --no-deps --requirement=./pylock.toml
+
+EXPOSE 8888
+CMD ["jupyter", "lab"]
