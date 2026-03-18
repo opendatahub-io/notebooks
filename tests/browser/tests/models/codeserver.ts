@@ -4,14 +4,13 @@
 import {Page} from "@playwright/test";
 import * as path from "node:path";
 
+import {log as rootLog} from "../logger";
+
 /**
  * Class for managing code-server.
  */
 export class CodeServer {
-    private readonly logger = {
-        debug: (x) => console.log(x),
-        named: (name) => this.logger,
-    }
+    private readonly logger = rootLog.getSubLogger({name: "CodeServer"});
 
     constructor(public readonly page: Page, public readonly url: string) {
     }
@@ -109,7 +108,7 @@ export class CodeServer {
      * open the menu/popup containing the items through which to navigation.
      */
     async navigateItems(items: string[], selector: string, open?: (selector: string) => void): Promise<void> {
-        const logger = this.logger.named(selector)
+        const logger = this.logger.getSubLogger({name: selector})
 
         /**
          * If the selector loses focus or gets removed this will resolve with false,

@@ -6,6 +6,7 @@ import {GenericContainer} from "testcontainers";
 import {HttpWaitStrategy} from "testcontainers/build/wait-strategies/http-wait-strategy.js";
 
 import {CodeServer} from "./models/codeserver"
+import {log} from "./logger"
 
 import {setupTestcontainers} from "./testcontainers";
 
@@ -63,7 +64,7 @@ test('wait for welcome screen to load', async ({codeServer, page}, testInfo) => 
   await page.goto(codeServer.url);
 
   await codeServer.isEditorVisible()
-  page.on("console", console.log)
+  page.on("console", (msg) => log.info(msg.text()))
 
   await codeServer.isEditorVisible()
   await utils.waitForStableDOM(page, "div.monaco-workbench", 1000, 10000)
