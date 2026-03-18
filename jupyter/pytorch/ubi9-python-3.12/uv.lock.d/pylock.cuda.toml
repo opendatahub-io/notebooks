@@ -986,10 +986,22 @@ wheels = [
 ]
 
 [[packages]]
+name = "onnx-ir"
+version = "0.1.16"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cuda12.9-ubi9-test/onnx_ir-0.1.16-8-py3-none-any.whl", hashes = { sha256 = "8507d8119337ce11e226bd173e8fd34312345a7a90d366e7f52158ff83a5937a" } }]
+
+[[packages]]
 name = "onnxconverter-common"
 version = "1.16.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cuda12.9-ubi9-test/onnxconverter_common-1.16.0-10-py2.py3-none-any.whl", hashes = { sha256 = "a2b32e06cb3e4ab0141ffcfd439f71676232e7344125b41a07098cf85cb2f15d" } }]
+
+[[packages]]
+name = "onnxscript"
+version = "0.6.2"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cuda12.9-ubi9-test/onnxscript-0.6.2-8-py3-none-any.whl", hashes = { sha256 = "504d1bffd7fb59789fca9ccfc4b395fbbe1cccc824c7d56dbb0e5b7fdae938b8" } }]
 
 [[packages]]
 name = "opencensus"

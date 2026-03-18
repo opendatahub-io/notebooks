@@ -917,10 +917,22 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/rocm6.4-ubi9-test/onnx-1.20.0-14-cp312-abi3-linux_x86_64.whl", hashes = { sha256 = "bcbaf21a1b2cc7a90a156f8ce69688e3efe3b486889bdfab1a37f663660c862d" } }]
 
 [[packages]]
+name = "onnx-ir"
+version = "0.1.16"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/rocm6.4-ubi9-test/onnx_ir-0.1.16-12-py3-none-any.whl", hashes = { sha256 = "646decb4a9e6264235323c64ce5827c79c216cc4b3deb85515138f1a04a46c92" } }]
+
+[[packages]]
 name = "onnxconverter-common"
 version = "1.16.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/rocm6.4-ubi9-test/onnxconverter_common-1.16.0-14-py2.py3-none-any.whl", hashes = { sha256 = "99c809969a20cfcda541a9861f72ec2083b7cec786a46a2505c817c6c6dde940" } }]
+
+[[packages]]
+name = "onnxscript"
+version = "0.6.2"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/rocm6.4-ubi9-test/onnxscript-0.6.2-12-py3-none-any.whl", hashes = { sha256 = "12a46ed97a29659405c671f284ef26f414d80e1eae55d45ccfb2c39e293df976" } }]
 
 [[packages]]
 name = "opencensus"
