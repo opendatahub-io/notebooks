@@ -53,7 +53,7 @@ def _query_build(make_target: str, query: str, env: dict[str, str] | None = None
             if m := pattern.match(line):
                 results.append(m["result"])
     except subprocess.CalledProcessError as e:
-        print(e.stderr, e.stdout)
+        print(f"make --just-print for target {make_target!r} failed: {e.stderr}\n{e.stdout}")
         raise
 
     if len(results) != 1:

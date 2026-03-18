@@ -95,11 +95,13 @@ The project uses pytest with testcontainers for container testing:
 
 ```bash
 # Setup environment
-uv venv --python $(which python3.14)
-uv sync --locked
+./uv venv --python $(which python3.14)
+./uv sync --locked
 
 # Run tests
-make test # Non-container tests
+make test              # Quick static tests (pytest + Dockerfile alignment)
+make test-unit         # Python unit tests + doctests + Go tests (no container runtime)
+make test-integration PYTEST_ARGS="--image=<image>"  # Container integration tests
 make test-${NOTEBOOK_NAME} # Specific notebook tests
 ```
 
@@ -158,10 +160,13 @@ make test-${NOTEBOOK_NAME} # Specific notebook tests
 
 ### Testing Guidelines
 
-1. **Unit Tests**: Use pytest for Python code testing
-2. **Container Tests**: Use testcontainers for integration testing
-3. **Browser Tests**: Use Playwright for UI testing (see `tests/browser/`)
-4. **Manual Tests**: Document manual testing procedures in `tests/manual/`
+1. **Unit Tests** (`tests/unit/`): Self-tests for scripts, CI utilities, and shared code.
+   Mirror the source layout (e.g., `scripts/cve/` → `tests/unit/scripts/cve/`).
+   Run with: `./uv run pytest tests/unit/`
+2. **Static Tests** (`tests/*.py`): Use pytest to test config and manifests for consistency
+3. **Container Tests** (`tests/containers/`): Use testcontainers for integration testing
+4. **Browser Tests** (`tests/browser/`): Use Playwright for UI testing
+5. **Manual Tests** (`tests/manual/`): Document manual testing procedures
 
 ### CI/CD Integration
 

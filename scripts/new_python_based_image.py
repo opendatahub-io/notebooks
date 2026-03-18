@@ -1,6 +1,5 @@
 import argparse
 import contextlib
-import logging
 import os
 import platform
 import re
@@ -9,8 +8,11 @@ import subprocess
 import sys
 from dataclasses import dataclass
 
+import structlog
 
-LOGGER = logging.getLogger(__name__)
+from ci.logging_config import configure_logging
+
+LOGGER = structlog.get_logger()
 
 
 def configure_logger(log_level: str) -> None:
@@ -20,13 +22,7 @@ def configure_logger(log_level: str) -> None:
     Args:
         log_level: The logging level to set (e.g., 'INFO', 'DEBUG').
     """
-    level = getattr(logging, log_level.upper(), logging.INFO)
-    logging.basicConfig(
-        level=level,
-        format="[%(levelname)s] %(asctime)s: %(message)s",
-        datefmt="%H:%M:%S"
-    )
-    LOGGER.setLevel(log_level)
+    configure_logging(level=log_level)
 
 
 @dataclass
@@ -484,7 +480,7 @@ def run_pipenv_lock(pipfile_path: str, target_version: str) -> bool:
         LOGGER.debug(result.stdout)
         return True
     except subprocess.CalledProcessError as e:
-        LOGGER.debug(e.stderr)
+        LOGGER.warning(f"pipenv lock failed for {pipfile_path!r} (exit code {e.returncode}): {e.stderr}")
         return False
 
 

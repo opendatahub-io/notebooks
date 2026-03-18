@@ -3,13 +3,18 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 import pathlib
 import re
 import sys
 import typing
 
+import structlog
+
+from ci.logging_config import configure_logging
+
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent
+
+log = structlog.get_logger()
 
 
 async def get_image_vcs_ref(image_url: str, semaphore: asyncio.Semaphore) -> tuple[str, str | None]:
@@ -31,12 +36,12 @@ async def get_image_vcs_ref(image_url: str, semaphore: asyncio.Semaphore) -> tup
     # Use 'inspect --config' which is much faster as it only fetches the config blob.
     command = ["skopeo", "inspect", "--override-os=linux", "--override-arch=amd64", "--retry-times=5", "--config", full_image_url]
 
-    logging.info(f"Starting config inspection for: {image_url}")
+    log.info(f"Starting config inspection for: {image_url}")
 
     stdout, stderr, returncode = None, None, None
     try:
         async with semaphore:
-            logging.info(f"Semaphore acquired, starting skopeo inspect for: {image_url}")
+            log.info(f"Semaphore acquired, starting skopeo inspect for: {image_url}")
             # Create an asynchronous subprocess
             process = await asyncio.create_subprocess_exec(
                 *command,
@@ -49,13 +54,13 @@ async def get_image_vcs_ref(image_url: str, semaphore: asyncio.Semaphore) -> tup
 
         # Process the results outside the semaphore block
         if returncode != 0:
-            logging.error(f"Skopeo command failed for {image_url} with exit code {returncode}.")
+            log.error(f"Skopeo command failed for {image_url} with exit code {returncode}.")
             if stderr:
-                logging.error(f"Stderr: {stderr.decode().strip()}")
+                log.error(f"Stderr: {stderr.decode().strip()}")
             return image_url, None
 
         if not stdout:
-            logging.error(f"Skopeo command returned success but stdout was empty for {image_url}.")
+            log.error(f"Skopeo command returned success but stdout was empty for {image_url}.")
             return image_url, None
 
         # Decode and parse the JSON output from stdout
@@ -66,23 +71,23 @@ async def get_image_vcs_ref(image_url: str, semaphore: asyncio.Semaphore) -> tup
         vcs_ref = image_config.get("config", {}).get("Labels", {}).get("vcs-ref")
 
         if vcs_ref:
-            logging.info(f"Successfully found 'vcs-ref' for {image_url}: {vcs_ref}")
+            log.info(f"Successfully found 'vcs-ref' for {image_url}: {vcs_ref}")
         else:
-            logging.warning(f"'vcs-ref' label not found for {image_url}.")
+            log.warning(f"'vcs-ref' label not found for {image_url}.")
 
         return image_url, vcs_ref
 
     except FileNotFoundError:
-        logging.error("The 'skopeo' command was not found. Please ensure it is installed and in your PATH.")
+        log.error("The 'skopeo' command was not found. Please ensure it is installed and in your PATH.")
         return image_url, None
     except json.JSONDecodeError:
         # This error can now also happen if stdout is None or not valid JSON
-        logging.error(f"Failed to parse skopeo output as JSON for {image_url}.")
+        log.error(f"Failed to parse skopeo output as JSON for {image_url}.")
         if stdout:
-            logging.debug(f"Stdout from skopeo for {image_url}: {stdout.decode(errors='replace')}")
+            log.debug(f"Stdout from skopeo for {image_url}: {stdout.decode(errors='replace')}")
         return image_url, None
     except Exception as e:
-        logging.error(f"An unexpected error occurred while processing {image_url}: {e}")
+        log.error("Unexpected error while processing image", image_url=image_url, exc_info=True)
         return image_url, None
 
 
@@ -102,7 +107,7 @@ async def main():
 
     results = await inspect(value for _, value in images_to_inspect)
     if any(commit_hash is None for variable, commit_hash in results):
-        logging.error("Failed to get commit hash for some images. Quitting, please try again to try again, like.")
+        log.error("Failed to get commit hash for some images. Quitting, please try again to try again, like.")
         sys.exit(1)
 
     output = []
@@ -117,5 +122,5 @@ async def main():
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+    configure_logging()
     asyncio.run(main())

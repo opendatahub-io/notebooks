@@ -483,8 +483,33 @@ endif
 print-release:
 	@echo "$(RELEASE)"
 
+.PHONY: setup
+setup:
+	./uv sync --locked
+
 .PHONY: test
 test:
 	@echo "Running quick static tests"
 	./uv run pytest -m 'not buildonlytest'
 	@./scripts/check_dockerfile_alignment.sh
+
+.PHONY: test-unit
+test-unit:
+	@echo "Running Python unit tests"
+	./uv run pytest -m 'not buildonlytest' --ignore=tests/containers tests/ ntb/
+	@echo "Running Go unit tests"
+	go test -C scripts/buildinputs -cover ./...
+
+PYTEST_ARGS ?=
+
+.PHONY: test-integration
+test-integration:
+ifeq ($(PYTEST_ARGS),)
+	$(error Usage: make test-integration PYTEST_ARGS="--image=<image>")
+endif
+	@echo "Running container integration tests"
+	./uv run pytest tests/containers -m 'not openshift and not cuda and not rocm' $(PYTEST_ARGS)
+
+.PHONY: unit-test integration-test
+unit-test: test-unit
+integration-test: test-integration

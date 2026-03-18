@@ -6,11 +6,16 @@
 # Imports                                                                               #
 #########################################################################################
 
-import re
-import requests
 import argparse
+import re
 from pathlib import Path
-import sys
+
+import requests
+import structlog
+
+from ci.logging_config import configure_logging
+
+log = structlog.get_logger()
 
 #########################################################################################
 # Helper functions                                                                      #
@@ -60,10 +65,10 @@ def normalize_pipfile_packages(pipfile_path):
                 canonical = get_canonical_name(orig_pkg).lower()
                 
                 if canonical == orig_pkg:
-                    print("\t[no-change] Original package name: "+orig_pkg+ "  ->  "+canonical)
+                    log.debug(f"[no-change] {orig_pkg} -> {canonical}")
                     new_line = line
                 else:
-                    print("\t[ changed ] Original package name: "+orig_pkg+ "  ->  "+canonical)
+                    log.info(f"[changed] {orig_pkg} -> {canonical}")
                     new_line = line.replace(orig_pkg, canonical, 1)            
                 new_lines.append(new_line)
             else:
@@ -79,30 +84,31 @@ def normalize_pipfile_packages(pipfile_path):
 #########################################################################################
 
 if __name__ == '__main__':
+    configure_logging()
 
     parser = argparse.ArgumentParser(
         description="Updates package names in all Pipfiles found within a given directory and its subdirectories by querying PyPI for the canonical names.",
         usage="python fix_package_naming.py --context-dir <directory>")
-    
+
     parser.add_argument("--context-dir", help="The directory to be the context for searching.")
 
     args = parser.parse_args()
 
     missing_args = [arg for arg, value in vars(args).items() if value is None]
     if missing_args:
-        print(f"Missing required arguments: {', '.join(missing_args)}")
+        log.error(f"Missing required arguments: {', '.join(missing_args)}")
         parser.print_help()
 
     root_path = Path(args.context_dir).resolve()
     pipfiles = list(root_path.rglob("Pipfile"))
     if not pipfiles:
-        print("No Pipfile found.")
+        log.warning("No Pipfile found.")
         exit()
-    
+
     for pf in pipfiles:
-        print(f"Processing {pf}")
+        log.info(f"Processing {pf}")
         normalize_pipfile_packages(pf)
-        print(f"Updated {pf}")
+        log.info(f"Updated {pf}")
 
 #########################################################################################
 # EOF                                                                                   #

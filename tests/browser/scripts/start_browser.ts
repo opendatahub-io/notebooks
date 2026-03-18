@@ -2,6 +2,7 @@
 // #!/usr/bin/env -S node --no-warnings --loader ts-node/esm
 import {chromium} from 'playwright';
 import type {Browser, Page} from "@playwright/test";
+import {log} from '../tests/logger';
 
 async function main() {
     // https://playwright.dev/docs/browsers#google-chrome--microsoft-edge
@@ -17,8 +18,8 @@ async function main() {
         ]
     });
 
-    console.log("Browser server listening on:\n " + browserServer.wsEndpoint());
-    console.log("CDP socket listening on:\n localhost:9222\n");
+    log.info(`Browser server listening on: ${browserServer.wsEndpoint()}`);
+    log.info("CDP socket listening on: localhost:9222");
 
     // NOTE: unless we open a page, the browser will not materialize its window
 
@@ -43,11 +44,11 @@ async function main() {
         url: 'about:blank',
     });
     await targetCreated;
-    console.log(`\nSuccessfully captured newly created target`);
+    log.info("Successfully captured newly created target");
 
     const page = await getFirstPage(browser);
     await page.bringToFront();
-    console.log(`\nSuccessfully captured page: ${page.constructor.name}`);
+    log.info(`Successfully captured page: ${page.constructor.name}`);
 }
 
 /**

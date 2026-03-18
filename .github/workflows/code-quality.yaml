@@ -62,6 +62,56 @@ jobs:
       - run: make test
         if: ${{ steps.install-deps.conclusion == 'success' && !cancelled() }}
 
+      - name: Upload Python coverage to Codecov
+        if: ${{ !cancelled() && steps.install-deps.conclusion == 'success' }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: opendatahub-io/notebooks
+          files: coverage.xml
+          flags: python
+          fail_ci_if_error: false
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() && steps.install-deps.conclusion == 'success' }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  go-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: scripts/buildinputs/go.mod
+
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@v1.13.0
+
+      - name: Run Go tests with coverage and JUnit output
+        run: gotestsum --junitfile=junit-go.xml -- -coverprofile=coverage-go.out -covermode=atomic ./...
+        working-directory: scripts/buildinputs
+
+      - name: Upload Go coverage to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: opendatahub-io/notebooks
+          files: scripts/buildinputs/coverage-go.out
+          flags: go
+          fail_ci_if_error: false
+
+      - name: Upload Go test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: scripts/buildinputs/junit-go.xml
+
   code-static-analysis:
     runs-on: ubuntu-latest
     steps:

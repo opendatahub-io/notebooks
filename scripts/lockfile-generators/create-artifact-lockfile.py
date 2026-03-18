@@ -81,7 +81,7 @@ def load_artifact_input(input_path: Path) -> list[Any]:
         with open(input_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
     except yaml.YAMLError as e:
-        print(f"Failed to parse YAML input: {e}", file=sys.stderr)
+        print(f"Failed to parse YAML input {input_path!r}: {e}", file=sys.stderr)
         sys.exit(1)
     except OSError as e:
         print(f"Failed to read {input_path}: {e}", file=sys.stderr)

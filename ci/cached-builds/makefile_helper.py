@@ -23,22 +23,27 @@ def exec_makefile(target: str, makefile_dir: pathlib.Path | str, options: Sequen
     else:
         make_command = "make"
 
+    cmd = [make_command, *options, target]
     try:
         # Run the make (or gmake) command and capture the output
         result = subprocess.run(
-            [make_command, *options, target],
+            cmd,
             capture_output=True,
             text=True,
             check=True,
             cwd=makefile_dir,
         )
     except subprocess.CalledProcessError as e:
-        # Handle errors if the make command fails
-        print(f"{make_command} failed with return code: {e.returncode}:\n{e.stderr}", file=sys.stderr)
+        print(
+            f"Command {cmd!r} in {makefile_dir!r} failed with return code {e.returncode}:\n{e.stderr}",
+            file=sys.stderr,
+        )
         raise
     except Exception as e:
-        # Handle any other exceptions
-        print(f"Error occurred attempting to parse Makefile:\n{e!s}", file=sys.stderr)
+        print(
+            f"Error executing command {cmd!r} in {makefile_dir!r}:\n{e!s}",
+            file=sys.stderr,
+        )
         raise
 
     return result.stdout
