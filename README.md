@@ -105,14 +105,15 @@ uv exits with a clear error telling you which version is required.
 
 </details>
 
-#### Running Python selftests in Pytest
-By completing configuration in previous section, you are able to run any tests that don't need to start a container using following command:
+#### Running tests
 
-```
-make test
-```
+By completing configuration in the previous section, you can run tests using the following targets (use `gmake` instead of `make` on macOS):
 
-Use `gmake test` if you're on macOS.
+```bash
+make test              # Quick static tests (pytest + Dockerfile alignment check)
+make test-unit         # Python unit tests + doctests + Go tests (no container runtime needed)
+make test-integration PYTEST_ARGS="--image=<image>"  # Container integration tests
+```
 
 ##### Container selftests
 

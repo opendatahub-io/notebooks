@@ -99,7 +99,9 @@ uv venv --python $(which python3.14)
 uv sync --locked
 
 # Run tests
-make test # Non-container tests
+make test              # Quick static tests (pytest + Dockerfile alignment)
+make test-unit         # Python unit tests + doctests + Go tests (no container runtime)
+make test-integration PYTEST_ARGS="--image=<image>"  # Container integration tests
 make test-${NOTEBOOK_NAME} # Specific notebook tests
 ```
 
