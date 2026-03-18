@@ -14,6 +14,8 @@ from ci.logging_config import configure_logging
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent
 
+log = structlog.get_logger()
+
 
 async def get_image_vcs_ref(image_url: str, semaphore: asyncio.Semaphore) -> tuple[str, str | None]:
     """
@@ -34,7 +36,6 @@ async def get_image_vcs_ref(image_url: str, semaphore: asyncio.Semaphore) -> tup
     # Use 'inspect --config' which is much faster as it only fetches the config blob.
     command = ["skopeo", "inspect", "--override-os=linux", "--override-arch=amd64", "--retry-times=5", "--config", full_image_url]
 
-    log = structlog.get_logger()
     log.info(f"Starting config inspection for: {image_url}")
 
     stdout, stderr, returncode = None, None, None

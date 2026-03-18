@@ -18,7 +18,6 @@ from ci.logging_config import configure_logging
 ROOT_DIR = pathlib.Path(__file__).parent.parent
 MAKE = shutil.which("gmake") or shutil.which("make")
 
-configure_logging()
 log = structlog.get_logger()
 
 
@@ -159,4 +158,5 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
 
 
 if __name__ == '__main__':
+    configure_logging()
     sys.exit(main())
