@@ -339,6 +339,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         "setuptools",
         "wheel",
         "tensorboard",
+        "torch",
         "torchvision",
         "triton",
         "numpy",
