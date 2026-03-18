@@ -8,4 +8,3 @@ Small utility library used across CI scripts and tests. Installed as the `notebo
 - `asserts.py` — Custom assertion helpers for tests
 - `constants.py` — Shared constants
 - `strings.py` — Template processing, string manipulation, blockinfile operations
-- `types.py` — Shared type definitions and Pydantic models
