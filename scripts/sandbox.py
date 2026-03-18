@@ -56,7 +56,7 @@ def main() -> int:
         try:
             subprocess.check_call(command)
         except subprocess.CalledProcessError as err:
-            log.error("Failed to execute process, see errors logged above ^^^")
+            log.error("Failed to execute process", command=err.cmd, returncode=err.returncode)
             return err.returncode
     return 0
 
