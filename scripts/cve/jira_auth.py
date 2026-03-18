@@ -66,10 +66,11 @@ def get_auth_headers(jira_url: str) -> dict[str, str]:
     """Return HTTP headers sufficient to authenticate against *jira_url*.
 
     Auth method priority:
-      1. JIRA_EMAIL + JIRA_API_TOKEN  -> Basic auth
-      2. JIRA_TOKEN                   -> Bearer auth / legacy PAT
-      3. JIRA_OAUTH_CLIENT_SECRET     -> OAuth 2.0 browser flow (PKCE)
-      4. None set                     -> raises JiraAuthError
+      1a. JIRA_EMAIL + JIRA_API_TOKEN env vars -> Basic auth
+      1b. API token from OS keychain           -> Basic auth
+      2.  JIRA_TOKEN                           -> Bearer auth (legacy)
+      3.  JIRA_OAUTH_CLIENT_SECRET             -> OAuth 2.0 flow (PKCE)
+      4.  None set                             -> raises JiraAuthError
     """
     email = os.environ.get("JIRA_EMAIL", "").strip()
     api_token = os.environ.get("JIRA_API_TOKEN", "").strip()

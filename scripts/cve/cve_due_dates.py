@@ -102,7 +102,13 @@ class JiraClient:
 
     @classmethod
     def from_env(cls) -> "JiraClient":
-        """Factory that reads env vars, resolves auth and base URL."""
+        """Factory that reads env vars, resolves auth and base URL.
+
+        For OAuth tokens the Jira REST API must be accessed through the
+        Atlassian API gateway (``api.atlassian.com/ex/jira/{cloudId}``).
+        For API-token (Basic) or legacy Bearer auth the configured
+        ``JIRA_URL`` is used directly.
+        """
         jira_url = os.environ.get("JIRA_URL", JIRA_DEFAULT_URL)
         auth_headers = get_auth_headers(jira_url)
 
