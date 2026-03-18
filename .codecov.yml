@@ -1,0 +1,36 @@
+---
+# Based on opendatahub-io/odh-dashboard .codecov.yml
+codecov:
+  require_ci_to_pass: true
+
+coverage:
+  precision: 2
+  round: down
+  range: "30...70"
+  status:
+    project:
+      default:
+        informational: true
+        target: auto
+        threshold: 2%
+    patch:
+      default:
+        informational: true
+        target: auto
+
+flags:
+  python:
+    paths:
+      - ntb/
+      - ci/
+      - scripts/
+    carryforward: true
+  go:
+    paths:
+      - scripts/buildinputs/
+    carryforward: true
+
+comment:
+  layout: "reach,diff,flags,files,footer"
+  behavior: default
+  require_changes: false

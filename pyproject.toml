@@ -16,6 +16,7 @@ dev = [
     "ruff",
 
     "pytest",
+    "pytest-cov",
     "allure-pytest",
     "pytest-subtests",
 
@@ -55,6 +56,16 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = ["ntb"]
 module-root = ""
+
+# https://coverage.readthedocs.io/en/latest/config.html
+[tool.coverage.run]
+source = ["ntb", "ci", "scripts"]
+branch = true
+omit = ["tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
 
 # inspired from https://github.com/red-hat-data-services/ods-ci/blob/master/pyproject.toml
 
