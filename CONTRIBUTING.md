@@ -108,6 +108,20 @@ When contributing to notebook-related changes in the Red Hat Data Science (RHDS)
 
 This workflow ensures that the OpenDataHub community remains the primary development hub while maintaining compatibility with Red Hat's enterprise tooling and processes.
 
+### Debugging
+
+To debug tests, run pytest with verbose logging:
+
+```console
+./uv run pytest -s --log-cli-level=DEBUG tests/
+```
+
+For container tests, add `--capture=fd` to see container output:
+
+```console
+./uv run pytest --capture=fd tests/containers --image=<image> --log-cli-level=DEBUG
+```
+
 ### Review and Merge Process
 
 - Once the PR is submitted, you can either select specific reviewers or let the bot to select reviewers [automatically](https://prow.ci.openshift.org/plugins?repo=opendatahub-io%2Fnotebooks).

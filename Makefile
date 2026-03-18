@@ -483,6 +483,10 @@ endif
 print-release:
 	@echo "$(RELEASE)"
 
+.PHONY: setup
+setup:
+	./uv sync --locked
+
 .PHONY: test
 test:
 	@echo "Running quick static tests"
@@ -494,7 +498,7 @@ test-unit:
 	@echo "Running Python unit tests"
 	./uv run pytest -m 'not buildonlytest' --ignore=tests/containers tests/ ntb/
 	@echo "Running Go unit tests"
-	go test -C scripts/buildinputs ./...
+	go test -C scripts/buildinputs -cover ./...
 
 PYTEST_ARGS ?=
 
@@ -505,3 +509,7 @@ ifeq ($(PYTEST_ARGS),)
 endif
 	@echo "Running container integration tests"
 	./uv run pytest tests/containers -m 'not openshift and not cuda and not rocm' $(PYTEST_ARGS)
+
+.PHONY: unit-test integration-test
+unit-test: test-unit
+integration-test: test-integration
