@@ -6,9 +6,9 @@ metadata:
     build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
-    pipelinesascode.tekton.dev/max-keep-runs: "3"
-    build.appstudio.openshift.io/build-nudge-files: "manifests/base/params-latest.env"
+    pipelinesascode.tekton.dev/cancel-in-progress: 'false'
+    pipelinesascode.tekton.dev/max-keep-runs: '3'
+    build.appstudio.openshift.io/build-nudge-files: manifests/base/params-latest.env
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && (".tekton/odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-odh-main-push.yaml".pathChanged() || "runtimes/tensorflow/ubi9-python-3.12/**".pathChanged() || "runtimes/tensorflow/ubi9-python-3.12/build-args/cuda.conf".pathChanged() )
   creationTimestamp:
   labels:
@@ -40,6 +40,24 @@ spec:
     - '{{target_branch}}-{{revision}}'
     - 3.4-v1.43
   taskRunSpecs:
+  - pipelineTaskName: build-images
+    stepSpecs:
+    - name: prepare-sboms
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
+    - name: sbom-syft-generate
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
   - pipelineTaskName: ecosystem-cert-preflight-checks
     computeResources:
       requests:

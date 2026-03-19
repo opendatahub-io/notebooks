@@ -5,11 +5,10 @@ metadata:
     build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
-    pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main" && ( "base-images/utils/**".pathChanged() || "base-images/cpu/ubi9-python-3.12/**".pathChanged() || "base-images/build-args/cpu.conf".pathChanged() || ".tekton/odh-base-image-cpu-py312-ubi9-odh-main-push.yaml".pathChanged() )
-  creationTimestamp: null
+    pipelinesascode.tekton.dev/cancel-in-progress: 'false'
+    pipelinesascode.tekton.dev/max-keep-runs: '3'
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && ( "base-images/utils/**".pathChanged() || "base-images/cpu/ubi9-python-3.12/**".pathChanged() || "base-images/build-args/cpu.conf".pathChanged() || ".tekton/odh-base-image-cpu-py312-ubi9-odh-main-push.yaml".pathChanged() )
+  creationTimestamp:
   labels:
     appstudio.openshift.io/application: opendatahub-release
     appstudio.openshift.io/component: odh-base-image-cpu-py312-ubi9
@@ -37,7 +36,9 @@ spec:
     - linux-mxlarge/amd64
     - linux/arm64
   taskRunSpecs:
-    - pipelineTaskName: build-images
+  - pipelineTaskName: build-images
+    stepSpecs:
+    - name: prepare-sboms
       computeResources:
         requests:
           cpu: '8'
@@ -45,7 +46,7 @@ spec:
         limits:
           cpu: '8'
           memory: 32Gi
-    - pipelineTaskName: clair-scan
+    - name: sbom-syft-generate
       computeResources:
         requests:
           cpu: '8'
@@ -53,14 +54,22 @@ spec:
         limits:
           cpu: '8'
           memory: 32Gi
-    - pipelineTaskName: ecosystem-cert-preflight-checks
-      computeResources:
-        requests:
-          cpu: '8'
-          memory: 32Gi
-        limits:
-          cpu: '8'
-          memory: 32Gi
+  - pipelineTaskName: clair-scan
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
+  - pipelineTaskName: ecosystem-cert-preflight-checks
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:

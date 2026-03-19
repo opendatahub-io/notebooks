@@ -23,10 +23,8 @@ metadata:
   namespace: open-data-hub-tenant
 spec:
   timeouts:
-    pipeline: 6h
+    pipeline: 3h
   params:
-  - name: event-type
-    value: '{{event_type}}'
   - name: git-url
     value: '{{source_url}}'
   - name: revision
@@ -37,16 +35,19 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux-d160-m4xlarge/amd64
+    - linux/x86_64
   - name: dockerfile
     value: runtimes/pytorch/ubi9-python-3.12/Dockerfile.cuda
   - name: path-context
     value: .
+  - name: event-type
+    value: '{{event_type}}'
   - name: build-args-file
     value: runtimes/pytorch/ubi9-python-3.12/build-args/cuda.conf
-  # Added taskRunSpecs to increase compute resources
   taskRunSpecs:
-    - pipelineTaskName: clair-scan
+  - pipelineTaskName: build-images
+    stepSpecs:
+    - name: prepare-sboms
       computeResources:
         requests:
           cpu: '8'
@@ -54,7 +55,7 @@ spec:
         limits:
           cpu: '8'
           memory: 32Gi
-    - pipelineTaskName: ecosystem-cert-preflight-checks
+    - name: sbom-syft-generate
       computeResources:
         requests:
           cpu: '8'
@@ -62,6 +63,22 @@ spec:
         limits:
           cpu: '8'
           memory: 32Gi
+  - pipelineTaskName: clair-scan
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
+  - pipelineTaskName: ecosystem-cert-preflight-checks
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
