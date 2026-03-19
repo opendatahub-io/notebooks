@@ -24,7 +24,8 @@ RUN if [ -n "$ACTIVATION_KEY" ] && [ -n "$ORG" ]; then \
         subscription-manager release --set="${RHEL_VERSION}"; \
         # Enable rhocp, to install /usr/bin/oc
         dnf config-manager --set-enabled rhocp-4.16-for-rhel-9-x86_64-rpms; \
-
+        # Enable RHELAI 3.3 for texlive-tcolorbox (Jupyter PDF export, AIPCC-7791)
+        dnf config-manager --set-enabled rhelai-3.3-for-rhel-9-x86_64-rpms || true; \
     else \
         echo "Skipping subscription-manager registration"; \
         # export INJECT_RHEL_VERSION="--releasever=\"${RHEL_VERSION}\" "; \

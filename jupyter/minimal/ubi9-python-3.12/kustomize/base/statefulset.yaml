@@ -32,22 +32,23 @@ spec:
             - name: notebook-port
               protocol: TCP
               containerPort: 8888
+          # Generous delays for slow or constrained nodes (e.g. ppc64le in CI)
           livenessProbe:
             tcpSocket:
               port: notebook-port
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            initialDelaySeconds: 30
+            periodSeconds: 10
             successThreshold: 1
-            failureThreshold: 3
+            failureThreshold: 6
           readinessProbe:
             httpGet:
               path: /notebook/opendatahub/jovyan/api
               port: notebook-port
               scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 5
+            initialDelaySeconds: 45
+            periodSeconds: 10
             successThreshold: 1
-            failureThreshold: 3
+            failureThreshold: 6
           resources:
             limits:
               cpu: 500m

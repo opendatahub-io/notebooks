@@ -372,6 +372,19 @@ jobs:
           SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
           SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
 
+      # Single place we install from uv.lock (dev deps include structlog for scripts/sandbox.py).
+      # Make and later pytest steps all use this venv.
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version-file: uv.toml
+          python-version: "3.14"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install from uv.lock (project + dev deps)
+        run: uv sync --group dev --locked
+
       - name: "Build: make ${{ inputs.target }}"
         id: make-target
         run: |
@@ -384,7 +397,7 @@ jobs:
             sleep 30
           done) &
 
-          make ${{ inputs.target }}
+          uv run make ${{ inputs.target }}
         env:
           IMAGE_TAG: "${{ steps.calculated_vars.outputs.IMAGE_TAG }}"
           CONTAINER_BUILD_CACHE_ARGS: "${{ steps.extra-container-build-args.outputs.CONTAINER_BUILD_CACHE_ARGS }} ${{ steps.prefetch.outputs.EXTRA_BUILD_ARGS }}"
@@ -398,21 +411,6 @@ jobs:
       # endregion
 
       # region Pytest image tests
-
-      # https://github.com/astral-sh/setup-uv
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version-file: uv.toml
-          python-version: "3.14"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Check uv is installed correctly
-        run: uv version
-
-      - name: Install deps
-        run: uv sync --locked
 
       - name: Run Testcontainers container tests (in PyTest)
         id: pytest-testcontainers

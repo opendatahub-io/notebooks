@@ -44,6 +44,22 @@ spec:
     value: .
   - name: build-args-file
     value: jupyter/pytorch+llmcompressor/ubi9-python-3.12/build-args/cuda.conf
+  # Hermetic build: no network during build; mongocli source from submodule, Go deps prefetched by Cachi2
+  - name: hermetic
+    value: "true"
+  - name: prefetch-input
+    value:
+    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli
+      type: gomod
+    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/odh
+      type: rpm
+    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/odh
+      type: generic
+    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: "x86_64"
+      requirements_files: ["requirements.cuda.txt"]
   # Added taskRunSpecs to increase compute resources
   taskRunSpecs:
     - pipelineTaskName: clair-scan
