@@ -77,13 +77,17 @@ NO_EMIT_PACKAGES = (
 
 FLAVORS = ("cpu", "cuda", "rocm")
 
-# Optimal concurrency is ~6 based on benchmarks (17 measurements, macOS 12-core,
-# RH PyPI index without HTTP cache headers).  Each uv process internally uses up to
-# UV_CONCURRENT_DOWNLOADS (default 50) connections and UV_CONCURRENT_BUILDS (default
-# cpu_count) build workers.  The speedup from our outer parallelism comes from
-# overlapping one process's solver CPU time with another's network wait — a pipeline
-# effect that saturates around 6 concurrent processes (Amdahl serial fraction ~47%).
-# Beyond 6, gains are within noise (~±15s run-to-run variance from the index server).
+# Optimal concurrency is 5–6 based on benchmarks (macOS 12-core, RH PyPI index with
+# no HTTP cache headers).  Each uv process internally uses UV_CONCURRENT_DOWNLOADS
+# (default 50) connections and UV_CONCURRENT_BUILDS (default cpu_count) build workers.
+# The outer parallelism gains come from overlapping one solver's CPU time with another's
+# network wait.  Repeated measurements (5–6 reps per value) show:
+#   n=5: mean 107s, std 6s   — indistinguishable from n=6
+#   n=6: mean 107s, std 7s   — best / current default
+#   n=7: mean 119s, std 17s  — worse mean AND variance doubles
+#   n=8: mean 113s, std 11s  — worse than n=6
+# The variance spike at n=7 is the key signal: higher worker counts introduce
+# scheduling jitter without reducing wall time.
 MAX_WORKERS = 6
 
 
