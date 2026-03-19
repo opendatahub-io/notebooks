@@ -53,6 +53,7 @@ import re
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
@@ -96,7 +97,7 @@ class IndexMode(str, Enum):
 
 
 # =============================================================================
-# HELPER FUNCTIONS
+# LOGGING
 # =============================================================================
 
 BLUE = "\033[1;34m"
@@ -106,20 +107,51 @@ GREEN = "\033[1;32m"
 RESET = "\033[0m"
 
 
-def info(msg: str) -> None:
-    print(f"🔹 {BLUE}{msg}{RESET}")
+@dataclass
+class LogBuffer:
+    """Simple logger that either prints immediately or buffers for grouped output.
+
+    Use ``buffered=False`` in the main thread for immediate feedback,
+    and ``buffered=True`` in worker threads so their output doesn't interleave.
+    """
+
+    buffered: bool = True
+    _lines: list[str] = field(default_factory=list)
+
+    def _emit(self, msg: str) -> None:
+        if self.buffered:
+            self._lines.append(msg)
+        else:
+            print(msg, flush=True)
+
+    def info(self, msg: str) -> None:
+        self._emit(f"🔹 {BLUE}{msg}{RESET}")
+
+    def warn(self, msg: str) -> None:
+        self._emit(f"⚠️ {YELLOW}{msg}{RESET}")
+
+    def error(self, msg: str) -> None:
+        if self.buffered:
+            self._lines.append(f"❌ {RED}{msg}{RESET}")
+        else:
+            print(f"❌ {RED}{msg}{RESET}", file=sys.stderr)
+
+    def ok(self, msg: str) -> None:
+        self._emit(f"✅ {GREEN}{msg}{RESET}")
+
+    def print(self, msg: str) -> None:
+        self._emit(msg)
+
+    def flush(self) -> None:
+        if self._lines:
+            sys.stdout.write("\n".join(self._lines) + "\n")
+            sys.stdout.flush()
+            self._lines.clear()
 
 
-def warn(msg: str) -> None:
-    print(f"⚠️ {YELLOW}{msg}{RESET}")
-
-
-def error(msg: str) -> None:
-    print(f"❌ {RED}{msg}{RESET}", file=sys.stderr)
-
-
-def ok(msg: str) -> None:
-    print(f"✅ {GREEN}{msg}{RESET}")
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
 
 
 def read_conf_value(conf_file: Path, key: str) -> str | None:
@@ -139,10 +171,10 @@ def read_conf_value(conf_file: Path, key: str) -> str | None:
 # =============================================================================
 
 
-def check_uv() -> None:
+def check_uv(log: LogBuffer) -> None:
     """Verify the uv wrapper exists and meets the minimum version requirement."""
     if not UV.is_file() or not os.access(UV, os.X_OK):
-        error(f"Expected uv wrapper at '{UV}' but it is missing or not executable.")
+        log.error(f"Expected uv wrapper at '{UV}' but it is missing or not executable.")
         raise SystemExit(1)
 
     try:
@@ -159,8 +191,8 @@ def check_uv() -> None:
     version_tuple = tuple(int(x) for x in version_str.split("."))
     if version_tuple < UV_MIN_VERSION:
         min_ver = ".".join(str(x) for x in UV_MIN_VERSION)
-        error(f"uv version {version_str} found, but >= {min_ver} is required.")
-        error("Please upgrade uv: https://github.com/astral-sh/uv")
+        log.error(f"uv version {version_str} found, but >= {min_ver} is required.")
+        log.error("Please upgrade uv: https://github.com/astral-sh/uv")
         raise SystemExit(1)
 
 
@@ -169,16 +201,16 @@ def check_uv() -> None:
 # =============================================================================
 
 
-def find_target_dirs(target_dir: Path | None) -> list[Path]:
+def find_target_dirs(target_dir: Path | None, log: LogBuffer) -> list[Path]:
     """Find directories containing pyproject.toml."""
     if target_dir is not None:
         candidate = target_dir if target_dir.is_absolute() else ROOT_DIR / target_dir
         if not candidate.is_dir() or not (candidate / "pyproject.toml").is_file():
-            error(f"Target directory must exist and contain pyproject.toml: {candidate}")
+            log.error(f"Target directory must exist and contain pyproject.toml: {candidate}")
             raise SystemExit(1)
         return [candidate]
 
-    info("Scanning main directories for Python projects...")
+    log.info("Scanning main directories for Python projects...")
     dirs: set[Path] = set()
     for base_name in MAIN_DIRS:
         base = ROOT_DIR / base_name
@@ -212,25 +244,19 @@ def extract_python_version(project_dir: Path) -> str | None:
 # =============================================================================
 
 
-def get_index_flags(project_dir: Path, flavor: str, lines: list[str] | None = None) -> list[str] | None:
+def get_index_flags(project_dir: Path, flavor: str, log: LogBuffer) -> list[str] | None:
     """Build uv index flags from build-args/<flavor>.conf.
 
     Returns None on failure (missing conf or INDEX_URL).
     """
-    def _warn(msg: str) -> None:
-        if lines is not None:
-            lines.append(f"⚠️ {YELLOW}{msg}{RESET}")
-        else:
-            warn(msg)
-
     conf_file = project_dir / "build-args" / f"{flavor}.conf"
     if not conf_file.is_file():
-        _warn(f"Missing build-args config for {flavor}: {conf_file}")
+        log.warn(f"Missing build-args config for {flavor}: {conf_file}")
         return None
 
     index_url = read_conf_value(conf_file, "INDEX_URL")
     if not index_url:
-        _warn(f"INDEX_URL not found in {conf_file}")
+        log.warn(f"INDEX_URL not found in {conf_file}")
         return None
 
     flags = [f"--default-index={index_url}", f"--index={index_url}"]
@@ -243,11 +269,7 @@ def get_index_flags(project_dir: Path, flavor: str, lines: list[str] | None = No
         if cpu_index_url:
             flags.append(f"--index={cpu_index_url}")
             flags.append("--index-strategy=unsafe-best-match")
-            msg = "  📎 Using CPU index as fallback (--index-strategy=unsafe-best-match)"
-            if lines is not None:
-                lines.append(msg)
-            else:
-                print(msg, file=sys.stderr)
+            log.print("  📎 Using CPU index as fallback (--index-strategy=unsafe-best-match)")
 
     return flags
 
@@ -264,18 +286,18 @@ def run_lock(
     mode: IndexMode,
     python_version: str,
     upgrade: bool,
-    lines: list[str],
+    log: LogBuffer,
 ) -> bool:
     """Run uv pip compile to generate a lock file. Returns True on success."""
     if mode == IndexMode.public_index:
         output = "pylock.toml"
         desc = "pylock.toml (public index)"
-        lines.append("➡️ Generating pylock.toml from public PyPI index...")
+        log.print("➡️ Generating pylock.toml from public PyPI index...")
     else:
         (project_dir / "uv.lock.d").mkdir(exist_ok=True)
         output = f"uv.lock.d/pylock.{flavor}.toml"
         desc = f"{flavor.upper()} lock file"
-        lines.append(f"➡️ Generating {flavor.upper()} lock file...")
+        log.print(f"➡️ Generating {flavor.upper()} lock file...")
 
     # Tag filtering was added in uv 0.9.16 (https://github.com/astral-sh/uv/pull/16956)
     # but bypassed in --universal mode. uv 0.10.5 (https://github.com/astral-sh/uv/pull/18081)
@@ -320,17 +342,17 @@ def run_lock(
     result = subprocess.run(cmd, cwd=project_dir, capture_output=True, text=True)
 
     if result.stdout:
-        lines.append(result.stdout)
+        log.print(result.stdout)
     if result.stderr:
-        lines.append(result.stderr)
+        log.print(result.stderr)
 
     if result.returncode != 0:
-        lines.append(f"⚠️ {YELLOW}Failed to generate {desc} in {project_dir}{RESET}")
+        log.warn(f"Failed to generate {desc} in {project_dir}")
         output_path = project_dir / output
         output_path.unlink(missing_ok=True)
         return False
 
-    lines.append(f"✅ {GREEN}{desc} generated successfully.{RESET}")
+    log.ok(f"{desc} generated successfully.")
     return True
 
 
@@ -343,55 +365,55 @@ def process_directory(
     tdir: Path,
     index_mode: IndexMode,
     upgrade: bool,
-) -> tuple[Path, bool, str]:
-    """Process one directory. Returns (path, success, log_output)."""
-    lines: list[str] = []
+) -> tuple[Path, bool, LogBuffer]:
+    """Process one directory. Returns (path, success, log)."""
+    log = LogBuffer(buffered=True)
 
-    lines.append("")
-    lines.append("=" * 67)
-    lines.append(f"🔹 {BLUE}Processing directory: {tdir}{RESET}")
-    lines.append("=" * 67)
+    log.print("")
+    log.print("=" * 67)
+    log.info(f"Processing directory: {tdir}")
+    log.print("=" * 67)
 
     python_version = extract_python_version(tdir)
     if python_version is None:
-        lines.append(f"⚠️ {YELLOW}Could not extract valid Python version from directory name: {tdir}{RESET}")
-        lines.append(f"⚠️ {YELLOW}Expected directory format: .../ubi9-python-X.Y{RESET}")
-        return tdir, True, "\n".join(lines)
+        log.warn(f"Could not extract valid Python version from directory name: {tdir}")
+        log.warn("Expected directory format: .../ubi9-python-X.Y")
+        return tdir, True, log
 
     flavors = detect_flavors(tdir)
     if not flavors:
-        lines.append(f"⚠️ {YELLOW}No Dockerfiles found in {tdir} (cpu/cuda/rocm). Skipping.{RESET}")
-        return tdir, True, "\n".join(lines)
+        log.warn(f"No Dockerfiles found in {tdir} (cpu/cuda/rocm). Skipping.")
+        return tdir, True, log
 
-    lines.append(f"📦 Python version: {python_version}")
-    lines.append("🧩 Detected flavors:")
+    log.print(f"📦 Python version: {python_version}")
+    log.print("🧩 Detected flavors:")
     for f in sorted(flavors):
-        lines.append(f"  • {f.upper()}")
-    lines.append("")
+        log.print(f"  • {f.upper()}")
+    log.print("")
 
     if index_mode == IndexMode.auto:
         effective_mode = IndexMode.rh_index if (tdir / "uv.lock.d").is_dir() else IndexMode.public_index
     else:
         effective_mode = index_mode
-    lines.append(f"🔹 {BLUE}Effective mode for this directory: {effective_mode.value}{RESET}")
+    log.info(f"Effective mode for this directory: {effective_mode.value}")
 
     dir_success = True
 
     if effective_mode == IndexMode.public_index:
-        if not run_lock(tdir, "cpu", [PUBLIC_INDEX], effective_mode, python_version, upgrade, lines):
+        if not run_lock(tdir, "cpu", [PUBLIC_INDEX], effective_mode, python_version, upgrade, log):
             dir_success = False
     else:
         for flavor in ("cpu", "cuda", "rocm"):
             if flavor not in flavors:
                 continue
-            flags = get_index_flags(tdir, flavor, lines)
+            flags = get_index_flags(tdir, flavor, log)
             if flags is None:
                 dir_success = False
                 continue
-            if not run_lock(tdir, flavor, flags, effective_mode, python_version, upgrade, lines):
+            if not run_lock(tdir, flavor, flags, effective_mode, python_version, upgrade, log):
                 dir_success = False
 
-    return tdir, dir_success, "\n".join(lines)
+    return tdir, dir_success, log
 
 
 # =============================================================================
@@ -411,20 +433,22 @@ def main(
     ] = None,
 ) -> None:
     """Generate pylock.toml lock files for Python project directories."""
+    log = LogBuffer(buffered=False)
+
     # PRE-FLIGHT
-    check_uv()
+    check_uv(log)
 
     # UPGRADE FLAG
     upgrade = os.environ.get("FORCE_LOCKFILES_UPGRADE", "0") == "1"
     if upgrade:
-        info("FORCE_LOCKFILES_UPGRADE=1 detected. Will upgrade all packages to latest versions.")
+        log.info("FORCE_LOCKFILES_UPGRADE=1 detected. Will upgrade all packages to latest versions.")
 
-    info(f"Using index mode: {index_mode.value}")
+    log.info(f"Using index mode: {index_mode.value}")
 
     # TARGET DIRECTORIES
-    target_dirs = find_target_dirs(target_dir)
+    target_dirs = find_target_dirs(target_dir, log)
     if not target_dirs:
-        error("No directories containing pyproject.toml were found.")
+        log.error("No directories containing pyproject.toml were found.")
         raise SystemExit(1)
 
     # PARALLEL LOCK GENERATION
@@ -433,7 +457,7 @@ def main(
 
     for tdir in target_dirs:
         flavor_names = ", ".join(f.upper() for f in sorted(detect_flavors(tdir)))
-        print(f"🔹 {BLUE}Scheduled: {tdir} [{flavor_names}]{RESET}", flush=True)
+        log.info(f"Scheduled: {tdir} [{flavor_names}]")
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
         futures = {
@@ -441,30 +465,30 @@ def main(
             for tdir in target_dirs
         }
         for future in as_completed(futures):
-            tdir, success, output = future.result()
-            print(output)
+            tdir, success, dir_log = future.result()
+            dir_log.flush()
             if success:
                 success_dirs.append(tdir)
             else:
                 failed_dirs.append(tdir)
 
     # SUMMARY
-    print()
-    print("=" * 67)
-    ok("Lock generation complete.")
-    print("=" * 67)
+    log.print("")
+    log.print("=" * 67)
+    log.ok("Lock generation complete.")
+    log.print("=" * 67)
 
     if success_dirs:
-        print("✅ Successfully generated locks for:")
+        log.ok("Successfully generated locks for:")
         for d in sorted(success_dirs):
-            print(f"  • {d}")
+            log.print(f"  • {d}")
 
     if failed_dirs:
-        print()
-        warn("Failed lock generation for:")
+        log.print("")
+        log.warn("Failed lock generation for:")
         for d in sorted(failed_dirs):
-            print(f"  • {d}")
-            print("Please comment out the missing package to continue and report the missing package to the RH index maintainers")
+            log.print(f"  • {d}")
+            log.print("Please comment out the missing package to continue and report the missing package to the RH index maintainers")
         raise SystemExit(1)
 
 
