@@ -175,6 +175,24 @@ in JupyterLab. The integration chain:
    Elyra's metadata directories so pipelines can discover available runtime images and the
    Data Science Pipelines endpoint
 
+### Security configuration sync
+
+Several security scanning config files are synced automatically from the central
+[opendatahub-io/security-config](https://github.com/opendatahub-io/security-config) repository
+by the `security-config-sync[bot]`:
+
+| File | Purpose |
+|------|---------|
+| `.coderabbit.yaml` | CodeRabbit review configuration (inherits org-wide settings) |
+| `semgrep.yaml` | Semgrep static analysis rules (secrets detection, language-specific checks) |
+| `.gitleaks.toml` | Gitleaks secret scanning configuration |
+| `.gitleaksignore` | Gitleaks false-positive suppressions |
+
+These files are **protected by an org-level push ruleset** — they cannot be modified directly
+in this repo. Changes must go upstream to `security-config`. The yamllint config
+(`ci/yamllint-config.yaml`) suppresses the `document-start` rule for these files since their
+format is controlled externally.
+
 ## Languages
 
 - **Python** — CI scripts, tests, image dependency management

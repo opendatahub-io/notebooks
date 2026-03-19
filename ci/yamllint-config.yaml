@@ -11,3 +11,6 @@ rules:
     ignore:
       # generated file
       - 'pnpm-lock.yaml'
+      # synced from opendatahub-io/security-config, protected by org push ruleset
+      - '.coderabbit.yaml'
+      - 'semgrep.yaml'
