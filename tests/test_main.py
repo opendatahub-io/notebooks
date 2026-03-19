@@ -46,6 +46,7 @@ def _stderr_color_wrap_yellow(text: str) -> str:
         return text
     return f"{_ANSI_YELLOW}{text}{_ANSI_RESET}"
 
+
 # Normalized PyPI names: allowed to use different dependency specifiers across
 # pyproject.toml files. Pylock pins for these are still compared (warning-only)
 # in test_image_pyprojects_version_alignment — across all image pylocks (every
@@ -66,6 +67,7 @@ PYPROJECT_MULTISPEC_IGNORED_PACKAGES: frozenset[str] = frozenset(
         "requests",
     }
 )
+
 
 def _iter_image_pyproject_pylock_files() -> Iterator[pathlib.Path]:
     """Yield every pylock.toml / uv.lock.d/pylock.*.toml for image and dependencies trees."""
