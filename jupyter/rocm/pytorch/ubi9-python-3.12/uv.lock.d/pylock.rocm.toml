@@ -672,15 +672,15 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "kfp-pipeline-spec"
-version = "2.15.2"
+version = "2.16.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/kfp_pipeline_spec-2.15.2-2-py3-none-any.whl", hashes = { sha256 = "dd1ed0d13f80acc9e37182e2b7852dc054ef5e3146c32642e022287415b5229f" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/rocm6.4-ubi9-test/kfp_pipeline_spec-2.16.0-12-py3-none-any.whl", hashes = { sha256 = "1adfd37bf676b60ff30610a4b03c454d4555e34a9559c35458e8f76c5429e88e" } }]
 
 [[packages]]
 name = "kfp-server-api"
-version = "2.15.2"
+version = "2.16.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/kfp_server_api-2.15.2-2-py3-none-any.whl", hashes = { sha256 = "22eec65cff69604b67a1cf3c0df3858c0c3ffe97314bc31db362d3b46793833e" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/rocm6.4-ubi9-test/kfp_server_api-2.16.0-12-py3-none-any.whl", hashes = { sha256 = "78eb47ca35579faee891854744b8a7ce9aa8d575ba3ea10c1ee322ad429dd051" } }]
 
 [[packages]]
 name = "kiwisolver"
@@ -1688,7 +1688,10 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 name = "yarl"
 version = "1.23.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/rocm6.4-ubi9-test/yarl-1.23.0-12-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "1240fc36ab655611db2fa570fcd28d9f1a730c25caff06205f0a008733b9698a" } }]
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/rocm6.4-ubi9-test/yarl-1.23.0-12-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "1240fc36ab655611db2fa570fcd28d9f1a730c25caff06205f0a008733b9698a" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/rocm6.4-ubi9-test/yarl-1.23.0-13-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "b47711ee24a58c958d2c0c7ec1ddd19950c62ba6a094383f5c87d5821868453d" } },
+]
 
 [[packages]]
 name = "yaspin"
