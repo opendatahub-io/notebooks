@@ -54,16 +54,13 @@ import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
-# =============================================================================
-# CONFIGURATION
-# =============================================================================
-
+# region Configuration
 ROOT_DIR = Path(__file__).resolve().parent.parent
 UV = ROOT_DIR / "uv"
 CVE_CONSTRAINTS_FILE = ROOT_DIR / "dependencies" / "cve-constraints.txt"
@@ -90,16 +87,14 @@ FLAVORS = ("cpu", "cuda", "rocm")
 MAX_WORKERS = 6
 
 
-class IndexMode(str, Enum):
+class IndexMode(StrEnum):
     auto = "auto"
     rh_index = "rh-index"
     public_index = "public-index"
+# endregion
 
 
-# =============================================================================
-# LOGGING
-# =============================================================================
-
+# region LogBuffer
 BLUE = "\033[1;34m"
 YELLOW = "\033[1;33m"
 RED = "\033[1;31m"
@@ -127,7 +122,8 @@ class LogBuffer:
     def info(self, msg: str) -> None:
         self._emit(f"🔹 {BLUE}{msg}{RESET}")
 
-    def warn(self, msg: str) -> None:
+    def warning(self, msg: str) -> None:
+        """ruff dislikes log.warn()"""
         self._emit(f"⚠️ {YELLOW}{msg}{RESET}")
 
     def error(self, msg: str) -> None:
@@ -147,13 +143,10 @@ class LogBuffer:
             sys.stdout.write("\n".join(self._lines) + "\n")
             sys.stdout.flush()
             self._lines.clear()
+# endregion
 
 
-# =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
-
-
+# region Helpers
 def read_conf_value(conf_file: Path, key: str) -> str | None:
     """Read a key=value from a .conf file, skipping comments and blank lines."""
     for line in conf_file.read_text().splitlines():
@@ -166,27 +159,20 @@ def read_conf_value(conf_file: Path, key: str) -> str | None:
     return None
 
 
-# =============================================================================
-# PRE-FLIGHT CHECK
-# =============================================================================
-
-
 def check_uv(log: LogBuffer) -> None:
     """Verify the uv wrapper exists and meets the minimum version requirement."""
     if not UV.is_file() or not os.access(UV, os.X_OK):
         log.error(f"Expected uv wrapper at '{UV}' but it is missing or not executable.")
         raise SystemExit(1)
 
-    try:
-        result = subprocess.run(
-            [str(UV), "--version"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        version_str = result.stdout.strip().split()[1] if result.stdout.strip() else "0.0.0"
-    except (IndexError, FileNotFoundError):
-        version_str = "0.0.0"
+    result = subprocess.run(
+        [str(UV), "--version"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    parts = result.stdout.strip().split()
+    version_str = parts[1] if len(parts) >= 2 else "0.0.0"
 
     version_tuple = tuple(int(x) for x in version_str.split("."))
     if version_tuple < UV_MIN_VERSION:
@@ -194,11 +180,6 @@ def check_uv(log: LogBuffer) -> None:
         log.error(f"uv version {version_str} found, but >= {min_ver} is required.")
         log.error("Please upgrade uv: https://github.com/astral-sh/uv")
         raise SystemExit(1)
-
-
-# =============================================================================
-# TARGET DIRECTORY DISCOVERY
-# =============================================================================
 
 
 def find_target_dirs(target_dir: Path | None, log: LogBuffer) -> list[Path]:
@@ -219,11 +200,6 @@ def find_target_dirs(target_dir: Path | None, log: LogBuffer) -> list[Path]:
     return sorted(dirs)
 
 
-# =============================================================================
-# FLAVOR DETECTION
-# =============================================================================
-
-
 def detect_flavors(project_dir: Path) -> set[str]:
     """Detect available Dockerfile flavors (cpu, cuda, rocm) in a directory."""
     return {f for f in FLAVORS if (project_dir / f"Dockerfile.{f}").is_file()}
@@ -237,13 +213,10 @@ def extract_python_version(project_dir: Path) -> str | None:
     if re.fullmatch(r"\d+\.\d+", version):
         return version
     return None
+# endregion
 
 
-# =============================================================================
-# INDEX FLAGS
-# =============================================================================
-
-
+# region Lock generation
 def get_index_flags(project_dir: Path, flavor: str, log: LogBuffer) -> list[str] | None:
     """Build uv index flags from build-args/<flavor>.conf.
 
@@ -251,12 +224,12 @@ def get_index_flags(project_dir: Path, flavor: str, log: LogBuffer) -> list[str]
     """
     conf_file = project_dir / "build-args" / f"{flavor}.conf"
     if not conf_file.is_file():
-        log.warn(f"Missing build-args config for {flavor}: {conf_file}")
+        log.warning(f"Missing build-args config for {flavor}: {conf_file}")
         return None
 
     index_url = read_conf_value(conf_file, "INDEX_URL")
     if not index_url:
-        log.warn(f"INDEX_URL not found in {conf_file}")
+        log.warning(f"INDEX_URL not found in {conf_file}")
         return None
 
     flags = [f"--default-index={index_url}", f"--index={index_url}"]
@@ -272,11 +245,6 @@ def get_index_flags(project_dir: Path, flavor: str, log: LogBuffer) -> list[str]
             log.print("  📎 Using CPU index as fallback (--index-strategy=unsafe-best-match)")
 
     return flags
-
-
-# =============================================================================
-# LOCK FILE GENERATION
-# =============================================================================
 
 
 def run_lock(
@@ -339,7 +307,7 @@ def run_lock(
 
     cmd.extend(index_flags)
 
-    result = subprocess.run(cmd, cwd=project_dir, capture_output=True, text=True)
+    result = subprocess.run(cmd, cwd=project_dir, capture_output=True, text=True, check=False)
 
     if result.stdout:
         log.print(result.stdout)
@@ -347,18 +315,13 @@ def run_lock(
         log.print(result.stderr)
 
     if result.returncode != 0:
-        log.warn(f"Failed to generate {desc} in {project_dir}")
+        log.warning(f"Failed to generate {desc} in {project_dir}")
         output_path = project_dir / output
         output_path.unlink(missing_ok=True)
         return False
 
     log.ok(f"{desc} generated successfully.")
     return True
-
-
-# =============================================================================
-# DIRECTORY PROCESSING
-# =============================================================================
 
 
 def process_directory(
@@ -376,13 +339,13 @@ def process_directory(
 
     python_version = extract_python_version(tdir)
     if python_version is None:
-        log.warn(f"Could not extract valid Python version from directory name: {tdir}")
-        log.warn("Expected directory format: .../ubi9-python-X.Y")
+        log.warning(f"Could not extract valid Python version from directory name: {tdir}")
+        log.warning("Expected directory format: .../ubi9-python-X.Y")
         return tdir, True, log
 
     flavors = detect_flavors(tdir)
     if not flavors:
-        log.warn(f"No Dockerfiles found in {tdir} (cpu/cuda/rocm). Skipping.")
+        log.warning(f"No Dockerfiles found in {tdir} (cpu/cuda/rocm). Skipping.")
         return tdir, True, log
 
     log.print(f"📦 Python version: {python_version}")
@@ -414,11 +377,8 @@ def process_directory(
                 dir_success = False
 
     return tdir, dir_success, log
+# endregion
 
-
-# =============================================================================
-# MAIN
-# =============================================================================
 
 app = typer.Typer(add_completion=False)
 
@@ -485,7 +445,7 @@ def main(
 
     if failed_dirs:
         log.print("")
-        log.warn("Failed lock generation for:")
+        log.warning("Failed lock generation for:")
         for d in sorted(failed_dirs):
             log.print(f"  • {d}")
             log.print("Please comment out the missing package to continue and report the missing package to the RH index maintainers")
