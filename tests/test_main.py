@@ -5,14 +5,13 @@ import json
 import logging
 import os
 import pathlib
-import sys
 import pprint
 import re
 import shutil
 import subprocess
+import sys
 import tomllib
 from collections import defaultdict
-from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 import allure
@@ -25,7 +24,7 @@ import yaml
 from tests import PROJECT_ROOT, manifests
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterator, Sequence
     from typing import Any
 
     import pytest_subtests
@@ -37,9 +36,7 @@ _LOG = logging.getLogger(__name__)
 # Bold yellow + reset; used for pylock mismatch headline and per-package summary lines when stderr is a TTY.
 _ANSI_YELLOW = "\033[1;33m"
 _ANSI_RESET = "\033[0m"
-_PYLOCK_MISMATCH_HEADLINE = (
-    "⚠️ Pylock version mismatches for allowed multispecifier packages "
-)
+_PYLOCK_MISMATCH_HEADLINE = "⚠️ Pylock version mismatches for allowed multispecifier packages"
 
 
 def _stderr_color_wrap_yellow(text: str) -> str:
@@ -69,7 +66,6 @@ PYPROJECT_MULTISPEC_IGNORED_PACKAGES: frozenset[str] = frozenset(
         "requests",
     }
 )
-
 
 def _iter_image_pyproject_pylock_files() -> Iterator[pathlib.Path]:
     """Yield every pylock.toml / uv.lock.d/pylock.*.toml for image and dependencies trees."""
@@ -106,7 +102,7 @@ def _warn_on_pylock_version_mismatch_for_packages(package_names: frozenset[str])
     mismatches: list[tuple[str, dict[str, str]]] = []
     for pkg_name in sorted(versions_by_pkg):
         mapping = versions_by_pkg[pkg_name]
-        if len({v for v in mapping.values()}) <= 1:
+        if len(set(mapping.values())) <= 1:
             continue
         mismatches.append((pkg_name, mapping))
 
@@ -117,7 +113,7 @@ def _warn_on_pylock_version_mismatch_for_packages(package_names: frozenset[str])
     for i, (pkg_name, mapping) in enumerate(mismatches):
         if i:
             lines.append("")
-        versions_joined = ", ".join(sorted({v for v in mapping.values()}))
+        versions_joined = ", ".join(sorted(set(mapping.values())))
         lines.append(_stderr_color_wrap_yellow(f"Package {pkg_name!r}"))
         lines.append(_stderr_color_wrap_yellow(f"  Pinned versions: {versions_joined}"))
         lines.append("  Per lockfile:")
@@ -451,10 +447,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             continue
 
         with subtests.test(
-            msg=(
-                f"checking pyproject [project.dependencies] specifiers for {name} "
-                "across pyproject.toml files"
-            )
+            msg=(f"checking pyproject [project.dependencies] specifiers for {name} across pyproject.toml files")
         ):
             # all hope is lost, the check has failed
             pytest.fail(
