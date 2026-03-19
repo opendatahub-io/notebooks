@@ -313,7 +313,7 @@ def run_lock(
 
     try:
         result = subprocess.run(
-            cmd, cwd=project_dir, capture_output=True, text=True, check=False, timeout=1800
+            cmd, cwd=project_dir, capture_output=True, text=True, check=False, timeout=600
         )
     except subprocess.TimeoutExpired:
         log.warning(f"Timed out generating {desc} in {project_dir}")
