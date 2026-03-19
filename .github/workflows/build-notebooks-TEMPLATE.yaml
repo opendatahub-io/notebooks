@@ -462,7 +462,7 @@ jobs:
       - name: "Run image tests"
         id: makefile-tests
         # skip on s390x because we are unable to install requirements-elyra.txt that's installed by runtime image tests
-        # https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/etc/generic/requirements-elyra.txt
+        # ci/requirements-elyra.txt (synced from opendatahub-io/elyra etc/generic/requirements-elyra.txt)
         if: ${{ !cancelled() && steps.make-target.outcome == 'success' && steps.provision-k8s.outcome == 'success' && !contains(fromJSON('["linux/s390x"]'), inputs.platform) }}
         run: python3 ci/cached-builds/make_test.py --target ${{ inputs.target }}
         env:
