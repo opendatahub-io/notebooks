@@ -48,12 +48,11 @@ Notes:
 
 from __future__ import annotations
 
-import asyncio
 import os
 import re
 import subprocess
 import sys
-from dataclasses import dataclass, field
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
@@ -79,6 +78,15 @@ NO_EMIT_PACKAGES = (
 )
 
 FLAVORS = ("cpu", "cuda", "rocm")
+
+# Optimal concurrency is ~6 based on benchmarks (17 measurements, macOS 12-core,
+# RH PyPI index without HTTP cache headers).  Each uv process internally uses up to
+# UV_CONCURRENT_DOWNLOADS (default 50) connections and UV_CONCURRENT_BUILDS (default
+# cpu_count) build workers.  The speedup from our outer parallelism comes from
+# overlapping one process's solver CPU time with another's network wait — a pipeline
+# effect that saturates around 6 concurrent processes (Amdahl serial fraction ~47%).
+# Beyond 6, gains are within noise (~±15s run-to-run variance from the index server).
+MAX_WORKERS = 6
 
 
 class IndexMode(str, Enum):
@@ -112,33 +120,6 @@ def error(msg: str) -> None:
 
 def ok(msg: str) -> None:
     print(f"✅ {GREEN}{msg}{RESET}")
-
-
-@dataclass
-class LogBuffer:
-    """Collects log lines for deferred, grouped printing."""
-
-    lines: list[str] = field(default_factory=list)
-
-    def info(self, msg: str) -> None:
-        self.lines.append(f"🔹 {BLUE}{msg}{RESET}")
-
-    def warn(self, msg: str) -> None:
-        self.lines.append(f"⚠️ {YELLOW}{msg}{RESET}")
-
-    def error(self, msg: str) -> None:
-        self.lines.append(f"❌ {RED}{msg}{RESET}")
-
-    def ok(self, msg: str) -> None:
-        self.lines.append(f"✅ {GREEN}{msg}{RESET}")
-
-    def print(self, msg: str) -> None:
-        self.lines.append(msg)
-
-    def flush(self) -> None:
-        sys.stdout.write("\n".join(self.lines) + "\n")
-        sys.stdout.flush()
-        self.lines.clear()
 
 
 def read_conf_value(conf_file: Path, key: str) -> str | None:
@@ -231,12 +212,16 @@ def extract_python_version(project_dir: Path) -> str | None:
 # =============================================================================
 
 
-def get_index_flags(project_dir: Path, flavor: str, log: LogBuffer | None = None) -> list[str] | None:
+def get_index_flags(project_dir: Path, flavor: str, lines: list[str] | None = None) -> list[str] | None:
     """Build uv index flags from build-args/<flavor>.conf.
 
     Returns None on failure (missing conf or INDEX_URL).
     """
-    _warn = log.warn if log else warn
+    def _warn(msg: str) -> None:
+        if lines is not None:
+            lines.append(f"⚠️ {YELLOW}{msg}{RESET}")
+        else:
+            warn(msg)
 
     conf_file = project_dir / "build-args" / f"{flavor}.conf"
     if not conf_file.is_file():
@@ -258,8 +243,11 @@ def get_index_flags(project_dir: Path, flavor: str, log: LogBuffer | None = None
         if cpu_index_url:
             flags.append(f"--index={cpu_index_url}")
             flags.append("--index-strategy=unsafe-best-match")
-            _print = log.print if log else lambda m: print(m, file=sys.stderr)
-            _print("  📎 Using CPU index as fallback (--index-strategy=unsafe-best-match)")
+            msg = "  📎 Using CPU index as fallback (--index-strategy=unsafe-best-match)"
+            if lines is not None:
+                lines.append(msg)
+            else:
+                print(msg, file=sys.stderr)
 
     return flags
 
@@ -269,26 +257,25 @@ def get_index_flags(project_dir: Path, flavor: str, log: LogBuffer | None = None
 # =============================================================================
 
 
-async def run_lock(
+def run_lock(
     project_dir: Path,
     flavor: str,
     index_flags: list[str],
     mode: IndexMode,
     python_version: str,
     upgrade: bool,
-    semaphore: asyncio.Semaphore,
-    log: LogBuffer,
+    lines: list[str],
 ) -> bool:
     """Run uv pip compile to generate a lock file. Returns True on success."""
     if mode == IndexMode.public_index:
         output = "pylock.toml"
         desc = "pylock.toml (public index)"
-        log.print("➡️ Generating pylock.toml from public PyPI index...")
+        lines.append("➡️ Generating pylock.toml from public PyPI index...")
     else:
         (project_dir / "uv.lock.d").mkdir(exist_ok=True)
         output = f"uv.lock.d/pylock.{flavor}.toml"
         desc = f"{flavor.upper()} lock file"
-        log.print(f"➡️ Generating {flavor.upper()} lock file...")
+        lines.append(f"➡️ Generating {flavor.upper()} lock file...")
 
     # Tag filtering was added in uv 0.9.16 (https://github.com/astral-sh/uv/pull/16956)
     # but bypassed in --universal mode. uv 0.10.5 (https://github.com/astral-sh/uv/pull/18081)
@@ -330,136 +317,81 @@ async def run_lock(
 
     cmd.extend(index_flags)
 
-    async with semaphore:
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            cwd=project_dir,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
-        stdout, _ = await proc.communicate()
+    result = subprocess.run(cmd, cwd=project_dir, capture_output=True, text=True)
 
-    if stdout:
-        log.print(stdout.decode())
-    if proc.returncode != 0:
-        log.warn(f"Failed to generate {desc} in {project_dir}")
+    if result.stdout:
+        lines.append(result.stdout)
+    if result.stderr:
+        lines.append(result.stderr)
+
+    if result.returncode != 0:
+        lines.append(f"⚠️ {YELLOW}Failed to generate {desc} in {project_dir}{RESET}")
         output_path = project_dir / output
         output_path.unlink(missing_ok=True)
         return False
 
-    log.ok(f"{desc} generated successfully.")
+    lines.append(f"✅ {GREEN}{desc} generated successfully.{RESET}")
     return True
 
 
 # =============================================================================
-# ASYNC TASK HELPERS
+# DIRECTORY PROCESSING
 # =============================================================================
 
 
-@dataclass
-class LockResult:
-    """Result of processing one (directory, flavor) pair."""
-
-    project_dir: Path
-    success: bool
-
-
-async def _safe_process_directory(
+def process_directory(
     tdir: Path,
     index_mode: IndexMode,
     upgrade: bool,
-    semaphore: asyncio.Semaphore,
-    results: list[LockResult],
-) -> None:
-    """Process a single directory, catching all exceptions to isolate failures."""
-    log = LogBuffer()
-    try:
-        await _process_directory(tdir, index_mode, upgrade, semaphore, results, log)
-    except Exception as e:
-        log.error(f"Unexpected error processing {tdir}: {e}")
-        results.append(LockResult(tdir, success=False))
-        log.flush()
+) -> tuple[Path, bool, str]:
+    """Process one directory. Returns (path, success, log_output)."""
+    lines: list[str] = []
 
-
-async def _process_directory(
-    tdir: Path,
-    index_mode: IndexMode,
-    upgrade: bool,
-    semaphore: asyncio.Semaphore,
-    results: list[LockResult],
-    log: LogBuffer,
-) -> None:
-    """Run lock generation for all flavors of a single project directory."""
-    log.print("")
-    log.print("=" * 67)
-    log.info(f"Processing directory: {tdir}")
-    log.print("=" * 67)
+    lines.append("")
+    lines.append("=" * 67)
+    lines.append(f"🔹 {BLUE}Processing directory: {tdir}{RESET}")
+    lines.append("=" * 67)
 
     python_version = extract_python_version(tdir)
     if python_version is None:
-        log.warn(f"Could not extract valid Python version from directory name: {tdir}")
-        log.warn("Expected directory format: .../ubi9-python-X.Y")
-        log.flush()
-        return
+        lines.append(f"⚠️ {YELLOW}Could not extract valid Python version from directory name: {tdir}{RESET}")
+        lines.append(f"⚠️ {YELLOW}Expected directory format: .../ubi9-python-X.Y{RESET}")
+        return tdir, True, "\n".join(lines)
 
     flavors = detect_flavors(tdir)
     if not flavors:
-        log.warn(f"No Dockerfiles found in {tdir} (cpu/cuda/rocm). Skipping.")
-        log.flush()
-        return
+        lines.append(f"⚠️ {YELLOW}No Dockerfiles found in {tdir} (cpu/cuda/rocm). Skipping.{RESET}")
+        return tdir, True, "\n".join(lines)
 
-    log.print(f"📦 Python version: {python_version}")
-    log.print("🧩 Detected flavors:")
+    lines.append(f"📦 Python version: {python_version}")
+    lines.append("🧩 Detected flavors:")
     for f in sorted(flavors):
-        log.print(f"  • {f.upper()}")
-    log.print("")
+        lines.append(f"  • {f.upper()}")
+    lines.append("")
 
     if index_mode == IndexMode.auto:
         effective_mode = IndexMode.rh_index if (tdir / "uv.lock.d").is_dir() else IndexMode.public_index
     else:
         effective_mode = index_mode
-    log.info(f"Effective mode for this directory: {effective_mode.value}")
-
-    # Print a one-liner immediately for real-time liveness
-    flavor_names = ", ".join(f.upper() for f in sorted(flavors))
-    print(f"🔹 {BLUE}Started: {tdir} [{flavor_names}]{RESET}", flush=True)
+    lines.append(f"🔹 {BLUE}Effective mode for this directory: {effective_mode.value}{RESET}")
 
     dir_success = True
 
     if effective_mode == IndexMode.public_index:
-        if not await run_lock(tdir, "cpu", [PUBLIC_INDEX], effective_mode, python_version, upgrade, semaphore, log):
+        if not run_lock(tdir, "cpu", [PUBLIC_INDEX], effective_mode, python_version, upgrade, lines):
             dir_success = False
     else:
         for flavor in ("cpu", "cuda", "rocm"):
             if flavor not in flavors:
                 continue
-            flags = get_index_flags(tdir, flavor, log)
+            flags = get_index_flags(tdir, flavor, lines)
             if flags is None:
                 dir_success = False
                 continue
-            if not await run_lock(tdir, flavor, flags, effective_mode, python_version, upgrade, semaphore, log):
+            if not run_lock(tdir, flavor, flags, effective_mode, python_version, upgrade, lines):
                 dir_success = False
 
-    results.append(LockResult(tdir, success=dir_success))
-    log.flush()
-
-
-async def _run_all_locks(
-    target_dirs: list[Path],
-    index_mode: IndexMode,
-    upgrade: bool,
-) -> list[LockResult]:
-    """Run lock generation for all directories concurrently."""
-    semaphore = asyncio.Semaphore(value=min(8, os.cpu_count() or 4))
-    results: list[LockResult] = []
-
-    async with asyncio.TaskGroup() as tg:
-        for tdir in target_dirs:
-            tg.create_task(
-                _safe_process_directory(tdir, index_mode, upgrade, semaphore, results)
-            )
-
-    return results
+    return tdir, dir_success, "\n".join(lines)
 
 
 # =============================================================================
@@ -496,12 +428,27 @@ def main(
         raise SystemExit(1)
 
     # PARALLEL LOCK GENERATION
-    results = asyncio.run(_run_all_locks(target_dirs, index_mode, upgrade))
+    success_dirs: list[Path] = []
+    failed_dirs: list[Path] = []
+
+    for tdir in target_dirs:
+        flavor_names = ", ".join(f.upper() for f in sorted(detect_flavors(tdir)))
+        print(f"🔹 {BLUE}Scheduled: {tdir} [{flavor_names}]{RESET}", flush=True)
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = {
+            pool.submit(process_directory, tdir, index_mode, upgrade): tdir
+            for tdir in target_dirs
+        }
+        for future in as_completed(futures):
+            tdir, success, output = future.result()
+            print(output)
+            if success:
+                success_dirs.append(tdir)
+            else:
+                failed_dirs.append(tdir)
 
     # SUMMARY
-    success_dirs = [r.project_dir for r in results if r.success]
-    failed_dirs = [r.project_dir for r in results if not r.success]
-
     print()
     print("=" * 67)
     ok("Lock generation complete.")
