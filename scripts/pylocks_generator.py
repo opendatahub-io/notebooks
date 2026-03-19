@@ -77,11 +77,11 @@ NO_EMIT_PACKAGES = (
 
 FLAVORS = ("cpu", "cuda", "rocm")
 
-# Optimal concurrency is 5–6 based on benchmarks (macOS 12-core, RH PyPI index with
+# Optimal concurrency is 5-6 based on benchmarks (macOS 12-core, RH PyPI index with
 # no HTTP cache headers).  Each uv process internally uses UV_CONCURRENT_DOWNLOADS
 # (default 50) connections and UV_CONCURRENT_BUILDS (default cpu_count) build workers.
 # The outer parallelism gains come from overlapping one solver's CPU time with another's
-# network wait.  Repeated measurements (5–6 reps per value) show:
+# network wait.  Repeated measurements (5-6 reps per value) show:
 #   n=5: mean 107s, std 6s   — indistinguishable from n=6
 #   n=6: mean 107s, std 7s   — best / current default
 #   n=7: mean 119s, std 17s  — worse mean AND variance doubles
