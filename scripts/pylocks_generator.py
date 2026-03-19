@@ -311,7 +311,14 @@ def run_lock(
 
     cmd.extend(index_flags)
 
-    result = subprocess.run(cmd, cwd=project_dir, capture_output=True, text=True, check=False)
+    try:
+        result = subprocess.run(
+            cmd, cwd=project_dir, capture_output=True, text=True, check=False, timeout=1800
+        )
+    except subprocess.TimeoutExpired:
+        log.warning(f"Timed out generating {desc} in {project_dir}")
+        (project_dir / output).unlink(missing_ok=True)
+        return False
 
     if result.stdout:
         log.print(result.stdout)
@@ -320,8 +327,7 @@ def run_lock(
 
     if result.returncode != 0:
         log.warning(f"Failed to generate {desc} in {project_dir}")
-        output_path = project_dir / output
-        output_path.unlink(missing_ok=True)
+        (project_dir / output).unlink(missing_ok=True)
         return False
 
     log.ok(f"{desc} generated successfully.")
