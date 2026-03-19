@@ -429,11 +429,16 @@ def main(
         flavor_names = ", ".join(f.upper() for f in sorted(detect_flavors(tdir)))
         log.info(f"Scheduled: {tdir} [{flavor_names}]")
 
+    def _run(directory: Path) -> tuple[Path, bool, LogBuffer]:
+        try:
+            return process_directory(directory, index_mode, upgrade)
+        except Exception as exc:
+            err_log = LogBuffer(buffered=True)
+            err_log.error(f"Unexpected error processing {directory}: {exc}")
+            return directory, False, err_log
+
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {
-            pool.submit(process_directory, tdir, index_mode, upgrade): tdir
-            for tdir in target_dirs
-        }
+        futures = {pool.submit(_run, tdir): tdir for tdir in target_dirs}
         for future in as_completed(futures):
             tdir, success, dir_log = future.result()
             dir_log.flush()
