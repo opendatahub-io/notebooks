@@ -708,15 +708,15 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "kfp-pipeline-spec"
-version = "2.15.2"
+version = "2.16.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/kfp_pipeline_spec-2.15.2-2-py3-none-any.whl", hashes = { sha256 = "dd1ed0d13f80acc9e37182e2b7852dc054ef5e3146c32642e022287415b5229f" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cuda12.9-ubi9-test/kfp_pipeline_spec-2.16.0-8-py3-none-any.whl", hashes = { sha256 = "fb96a8655d56db1562f7bcdad0f562772af2d5c420ec2a570b499d1097869c71" } }]
 
 [[packages]]
 name = "kfp-server-api"
-version = "2.15.2"
+version = "2.16.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/kfp_server_api-2.15.2-2-py3-none-any.whl", hashes = { sha256 = "22eec65cff69604b67a1cf3c0df3858c0c3ffe97314bc31db362d3b46793833e" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cuda12.9-ubi9-test/kfp_server_api-2.16.0-8-py3-none-any.whl", hashes = { sha256 = "211f8e6703253e22de2283cfd0690e2ef9b34c288ca1ec42be1ed2ebe3ce793c" } }]
 
 [[packages]]
 name = "kiwisolver"
@@ -1845,6 +1845,8 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cuda12.9-ubi9-test/yarl-1.23.0-8-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "e0d589b9bd196c3a0f1fae4e24ddb797cc6955247e55a19e5981957679ab2e86" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cuda12.9-ubi9-test/yarl-1.23.0-8-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "157216b1a209178b5d7be8f4854168fffd05c9d074883705a6a7fac1b723cb98" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cuda12.9-ubi9-test/yarl-1.23.0-9-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "3f5c05557bab8c3ebb8d95e863e62b621d262a71c73aa00ef1785d5c63300b61" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cuda12.9-ubi9-test/yarl-1.23.0-9-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "5c4c922a0eb39a1a8b74f68adedf613ed2faeab2df57560d110681507ab8da3d" } },
 ]
 
 [[packages]]
