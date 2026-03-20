@@ -5,7 +5,6 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # Core Data Science Libraries
-
     "numpy",
     "pandas",
     "scikit-learn",
@@ -14,17 +13,14 @@ dependencies = [
     "plotly",
 
     # ML/MLOps Tools
-
     "kfp",
-
-
     "kubeflow-training",
+
     # NOTE: skl2onnx is added directly in consuming pyproject.toml files
     # because codeserver needs s390x exclusion marker while jupyter notebooks don't
     "onnxconverter-common",
 
     # Cloud/Infrastructure
-
     "boto3",
     "kafka-python-ng",
 ]

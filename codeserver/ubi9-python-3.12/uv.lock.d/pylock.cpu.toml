@@ -83,9 +83,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "click-option-group"
-version = "0.5.9"
+version = "0.5.7"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/click_option_group-0.5.9-2-py3-none-any.whl", hashes = { sha256 = "a167acf22658b1ff3c6d8cd2e63a1ca782f4b7d6c097cfe5458a61578369de77" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/click_option_group-0.5.7-2-py3-none-any.whl", hashes = { sha256 = "d6a3f4aacbf550153b112ce5dae7d99ea3fc83cc4fda268e9c5f174c26bb1550" } }]
 
 [[packages]]
 name = "cloudpickle"
@@ -371,9 +371,13 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "kfp"
-version = "2.15.2"
+version = "2.16.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/kfp-2.15.2-2-py3-none-any.whl", hashes = { sha256 = "263194b38a14dca6f4c9ad527200528dca0cbbf8cef7b8fe3578809ecfd0bd3b" } }]
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/kfp-2.16.0-2-py3-none-any.whl", hashes = { sha256 = "e78a8cbfb16bdaae91a5ee53e42468cf08896e45ef35ad8a9208f6f009dd8208" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/kfp-2.16.0-3-py3-none-any.whl", hashes = { sha256 = "d936485aa4a5bbd36e628e96a25456894156eb4f5d4545a6aed78819a7f45b0b" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/kfp-2.16.0-4-py3-none-any.whl", hashes = { sha256 = "202cc1488d8b3b483541c6ea93af6fb1752e61f836172b7b1a3f453ae15fcb04" } },
+]
 
 [[packages]]
 name = "kfp-pipeline-spec"
