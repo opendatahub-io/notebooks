@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-      packages: write
+      # packages: write is only needed for ghcr.io, not for quay.io
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
