@@ -285,6 +285,9 @@ function _run_test()
 		exit 1
 	fi
 
+	# Papermill may not create --stderr-file when the notebook writes nothing to stderr; grep exits 2 if the file is missing.
+	"${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c 'f="'"${output_file_prefix}"'_error.txt"; [ -f "$f" ] || : >"$f"'
+
     local test_result=
     test_result=$("${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "grep FAILED ${output_file_prefix}_error.txt" 2>&1)
     case "$?" in
