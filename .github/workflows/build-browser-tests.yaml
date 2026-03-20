@@ -48,7 +48,6 @@ jobs:
             "${CONTEXT}"
 
       - name: Smoke-test the image (list tests)
-        if: matrix.arch == 'amd64'
         run: |
           podman run --rm \
             "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest-${{ matrix.arch }}" \
