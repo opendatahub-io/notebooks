@@ -351,12 +351,12 @@ def process_directory(
     if python_version is None:
         log.warning(f"Could not extract valid Python version from directory name: {tdir}")
         log.warning("Expected directory format: .../ubi9-python-X.Y")
-        return tdir, True, log
+        return tdir, False, log
 
     flavors = detect_flavors(tdir)
     if not flavors:
         log.warning(f"No Dockerfiles found in {tdir} (cpu/cuda/rocm). Skipping.")
-        return tdir, True, log
+        return tdir, False, log
 
     log.print(f"📦 Python version: {python_version}")
     log.print("🧩 Detected flavors:")
