@@ -3,6 +3,11 @@ name: Build Browser Tests Image
 
 "on":
   workflow_dispatch:
+    inputs:
+      push_image:
+        description: 'Push image to registry'
+        type: boolean
+        default: false
   pull_request:
     paths:
       - 'tests/browser/**'
@@ -24,6 +29,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -43,14 +49,14 @@ jobs:
             --list --project=chromium
 
       - name: Login to Quay.io
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.push_image == true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.IMAGE_REGISTRY }}
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
+          username: ${{ secrets.QUAY_ROBOT_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
 
       - name: Push image
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.push_image == true
         run: |
           podman push "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest"
