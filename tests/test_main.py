@@ -377,6 +377,7 @@ def test_image_manifests_version_alignment(
         # ("package name", ("allowed version 1", "allowed version 2", ...))
         ("Codeflare-SDK", ("0.34", "0.35")),
         ("Scikit-learn", ("1.7", "1.6")),
+        ("Scipy", ("1.16", "1.17")),
         ("Pandas", ("2.3", "1.5")),
         (
             "Numpy",
