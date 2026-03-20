@@ -17,6 +17,9 @@ jobs:
   test-playwright:
     name: Test Playwright Browser Tests
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
     env:
       # Use rootful podman socket so podman run can find the image pulled with sudo
       CONTAINER_HOST: unix:///var/run/podman/podman.sock
@@ -92,3 +95,4 @@ jobs:
           podman-socket: /var/run/podman/podman.sock
           upload-report: 'true'
           artifact-name: playwright-action-test-report
+          grep-pattern: '@codeserver'

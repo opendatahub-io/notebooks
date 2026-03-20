@@ -54,13 +54,13 @@ const test = base.extend<MyFixtures>({
 
 test.beforeAll(setupTestcontainers)
 
-test('open codeserver', async ({codeServer, page}) => {
+test('@codeserver open codeserver', async ({codeServer, page}) => {
   await page.goto(codeServer.url)
 
   await codeServer.isEditorVisible()
 })
 
-test('wait for welcome screen to load', async ({codeServer, page}, testInfo) => {
+test('@codeserver wait for welcome screen to load', async ({codeServer, page}, testInfo) => {
   await page.goto(codeServer.url);
 
   await codeServer.isEditorVisible()
@@ -73,7 +73,7 @@ test('wait for welcome screen to load', async ({codeServer, page}, testInfo) => 
   await utils.takeScreenshot(page, testInfo, "welcome.png")
 })
 
-test('use the terminal to run command', async ({codeServer, page}, testInfo) => {
+test('@codeserver use the terminal to run command', async ({codeServer, page}, testInfo) => {
   await page.goto(codeServer.url);
 
   await test.step("Should always see the code-server editor", async () => {
