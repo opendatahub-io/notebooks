@@ -14,31 +14,31 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # Installer/tooling used in Docker/CI (prefetched with main deps for cachi2 offline)
-    "uv==0.10.8",
-    "micropipenv[toml]==1.10.0",
+    "uv",
+    "micropipenv[toml]",
 
     # Base packages
-    "wheel~=0.46.3",
-    "setuptools~=80.9.0",
+    "wheel",
+    "setuptools",
 
-    "ipykernel~=7.2.0",
-    "debugpy==1.8.20",
+    "ipykernel",
+    "debugpy",
 
     # Datascience packages
-    "feast~=0.60.0",
+    "feast",
 
     # RHAIENG-1475: skl2onnx excluded on s390x for codeserver
-    "skl2onnx~=1.20.0; platform_machine != 's390x'",
+    "skl2onnx; platform_machine != 's390x'",
     "odh-notebooks-meta-workbench-datascience-deps",
 
     # Some extra useful packages
-    "opencensus~=0.11.4",
-    "smart-open~=7.5.0",
-    "virtualenv~=21.1.0",
+    "opencensus",
+    "smart-open",
+    "virtualenv",
     # https://issues.redhat.com/browse/AIPCC-9544 py-spy excluded on ppc64le for codeserver
-    "py-spy~=0.4.1; platform_machine != 's390x' and platform_machine != 'ppc64le'",
-    "prometheus-client~=0.24.1",
-    "ripgrep==15.0.0",
+    "py-spy; platform_machine != 's390x' and platform_machine != 'ppc64le'",
+    "prometheus-client",
+    "ripgrep",
 ]
 
 [tool.uv]
@@ -46,10 +46,7 @@ environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
 
-override-dependencies = [
-    # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
-    # Upstream: https://github.com/kubernetes-client/python/issues/2458
-    "urllib3>=2.6.0",
-]
+override-dependencies = []
+
 [tool.uv.sources]
 odh-notebooks-meta-workbench-datascience-deps = { path = "../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
