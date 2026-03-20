@@ -20,7 +20,16 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: [ ['html', { open: 'never' }], ['line'] ],
+  reporter: [
+    ['html', { open: 'never' }],
+    ['line'],
+    // JUnit XML is required by the shift-left CI pipeline: the pipeline archives
+    // files matching **/*unit*.xml and forwards them to Report Portal.
+    // outputFile must be inside resultsDir (/home/pwuser/tests/browser/results/).
+    ['junit', { outputFile: 'results/junit.xml' }],
+  ],
+  // Artifacts (screenshots, traces) land inside resultsDir so they are archived.
+  outputDir: 'results/playwright-output',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     codeServerSource: {

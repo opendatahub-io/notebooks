@@ -601,6 +601,7 @@ jobs:
           podman-socket: /var/run/podman/podman.sock
           upload-report: ${{ fromJson(inputs.github).event_name == 'pull_request' }}
           artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
+          grep-pattern: '@codeserver'
 
       # endregion
 

@@ -71,6 +71,33 @@ CI captures execution traces that can be opened in [the trace viewer](https://pl
 pnpm playwright show-trace path/to/trace.zip
 ```
 
+## Running the container image locally
+
+Build the image:
+
+```shell
+podman build -t workbench-images-tests:latest -f tests/browser/Dockerfile tests/browser/
+```
+
+List available tests:
+
+```shell
+podman run --rm workbench-images-tests:latest --list --project=chromium
+```
+
+Run `@smoke` tests against an OCP cluster (requires `oc login` first):
+
+```shell
+podman run --rm -t \
+  -e KUBECONFIG=/home/pwuser/tests/browser/.kube/config \
+  -v "$HOME/.kube/config":/home/pwuser/tests/browser/.kube/config:ro,Z \
+  -v "$(pwd)/results":/home/pwuser/tests/browser/results:Z \
+  workbench-images-tests:latest \
+  --project=chromium --grep @smoke
+```
+
+Test results (JUnit XML, screenshots) are written to the `results/` volume mount.
+
 ## Good practices
 
 * https://playwright.dev/docs/best-practices

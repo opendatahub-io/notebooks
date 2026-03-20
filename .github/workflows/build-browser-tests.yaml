@@ -1,0 +1,56 @@
+---
+name: Build Browser Tests Image
+
+"on":
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tests/browser/**'
+      - '.github/workflows/build-browser-tests.yaml'
+  push:
+    branches: [main]
+    paths:
+      - 'tests/browser/**'
+      - '.github/workflows/build-browser-tests.yaml'
+
+env:
+  IMAGE_REGISTRY: quay.io
+  IMAGE_NAME: opendatahub/workbench-images-tests
+  CONTEXT: tests/browser
+
+jobs:
+  build:
+    name: Build and Test Browser Tests Image
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Build container image
+        id: build
+        run: |
+          podman build \
+            -t "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest" \
+            -f "${CONTEXT}/Dockerfile" \
+            "${CONTEXT}"
+
+      - name: Smoke-test the image (list tests)
+        run: |
+          podman run --rm \
+            "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest" \
+            --list --project=chromium
+
+      - name: Login to Quay.io
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
+      - name: Push image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          podman push "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest"
