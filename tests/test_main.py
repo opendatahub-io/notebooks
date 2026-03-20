@@ -9,6 +9,7 @@ import pprint
 import re
 import shutil
 import subprocess
+import sys
 import tomllib
 from collections import defaultdict
 from typing import TYPE_CHECKING
@@ -23,12 +24,104 @@ import yaml
 from tests import PROJECT_ROOT, manifests
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterator, Sequence
     from typing import Any
 
     import pytest_subtests
 
 MAKE = shutil.which("gmake") or shutil.which("make")
+
+_LOG = logging.getLogger(__name__)
+
+# Bold yellow + reset; used for pylock mismatch headline and per-package summary lines when stderr is a TTY.
+_ANSI_YELLOW = "\033[1;33m"
+_ANSI_RESET = "\033[0m"
+_PYLOCK_MISMATCH_HEADLINE = "⚠️ Pylock version mismatches for allowed multispecifier packages"
+
+
+def _stderr_color_wrap_yellow(text: str) -> str:
+    if os.environ.get("NO_COLOR", "").strip():
+        return text
+    if not sys.stderr.isatty():
+        return text
+    return f"{_ANSI_YELLOW}{text}{_ANSI_RESET}"
+
+
+# Normalized PyPI names: allowed to use different dependency specifiers across
+# pyproject.toml files. Pylock pins for these are still compared (warning-only)
+# in test_image_pyprojects_version_alignment — across all image pylocks (every
+# cpu/cuda/rocm/... file) so cross-workbench drift is visible.
+PYPROJECT_MULTISPEC_IGNORED_PACKAGES: frozenset[str] = frozenset(
+    {
+        "setuptools",
+        "wheel",
+        "tensorboard",
+        "torch",
+        "torchvision",
+        "triton",
+        "numpy",
+        "jupyterlab-lsp",
+        "transformers",
+        "datasets",
+        "accelerate",
+        "requests",
+    }
+)
+
+
+def _iter_image_pyproject_pylock_files() -> Iterator[pathlib.Path]:
+    """Yield every pylock.toml / uv.lock.d/pylock.*.toml for image and dependencies trees."""
+    for pyproject_path in PROJECT_ROOT.glob("**/pyproject.toml"):
+        directory = pyproject_path.parent
+        if not is_image_directory(directory) and not is_dependencies_directory(pyproject_path):
+            continue
+        lock_dir = directory / "uv.lock.d"
+        if lock_dir.is_dir():
+            yield from sorted(lock_dir.glob("pylock.*.toml"))
+        else:
+            yield pyproject_path.with_name("pylock.toml")
+
+
+def _warn_on_pylock_version_mismatch_for_packages(package_names: frozenset[str]) -> None:
+    """Log a warning when a package is pinned to different versions across image pylocks.
+
+    All ``pylock*.toml`` files are merged per package name (cpu, cuda, rocm, etc.), so
+    drift between workbench images appears under one ``Package`` section; lock path shows flavor.
+    """
+    versions_by_pkg: dict[str, dict[str, str]] = defaultdict(dict)
+    for lock_path in _iter_image_pyproject_pylock_files():
+        if not lock_path.is_file():
+            continue
+        doc = tomllib.loads(lock_path.read_text())
+        rel = str(lock_path.relative_to(PROJECT_ROOT))
+        for pkg in doc.get("packages", []):
+            name = pkg.get("name")
+            version = pkg.get("version")
+            if name is None or version is None or name not in package_names:
+                continue
+            versions_by_pkg[name][rel] = version
+
+    mismatches: list[tuple[str, dict[str, str]]] = []
+    for pkg_name in sorted(versions_by_pkg):
+        mapping = versions_by_pkg[pkg_name]
+        if len(set(mapping.values())) <= 1:
+            continue
+        mismatches.append((pkg_name, mapping))
+
+    if not mismatches:
+        return
+
+    lines: list[str] = [_stderr_color_wrap_yellow(_PYLOCK_MISMATCH_HEADLINE)]
+    for i, (pkg_name, mapping) in enumerate(mismatches):
+        if i:
+            lines.append("")
+        versions_joined = ", ".join(sorted(set(mapping.values())))
+        lines.append(_stderr_color_wrap_yellow(f"Package {pkg_name!r}"))
+        lines.append(_stderr_color_wrap_yellow(f"  Pinned versions: {versions_joined}"))
+        lines.append("  Per lockfile:")
+        for rel_path, ver in sorted(mapping.items()):
+            lines.append(f"    {rel_path}  ->  {ver}")
+    _LOG.warning("\n".join(lines))
 
 
 def test_dockerfiles_unintended_subscription_manager_pattern():
@@ -333,22 +426,13 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             requirement = packaging.requirements.Requirement(d)
             requirements[requirement.name].append(requirement.specifier)
 
-    # Packages allowed to use multiple dependency specifiers across pyproject.toml files.
-    # Keep only package names here to avoid coupling tests to specific version values.
-    ignored_exceptions: set[str] = {
-        "setuptools",
-        "wheel",
-        "tensorboard",
-        "torch",
-        "torchvision",
-        "triton",
-        "numpy",
-        "jupyterlab-lsp",
-        "transformers",
-        "datasets",
-        "accelerate",
-        "requests",
-    }
+    with subtests.test(
+        msg=(
+            "pylock.toml pinned versions for multispecifier-ignored packages "
+            "(compare across all image lockfiles; logging.warning if pins differ)"
+        )
+    ):
+        _warn_on_pylock_version_mismatch_for_packages(PYPROJECT_MULTISPEC_IGNORED_PACKAGES)
 
     for name, data in requirements.items():
         actual_specs = {str(spec) for spec in data}
@@ -359,9 +443,14 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         if len(non_empty_specs) <= 1:
             continue
 
-        with subtests.test(msg=f"checking versions of {name} across all pyproject.tomls"):
-            if name in ignored_exceptions:
-                continue
+        # Multispecifier packages are intentionally allowed to differ in pyproject.toml;
+        # their pylock pins are checked above (warning-only).
+        if name in PYPROJECT_MULTISPEC_IGNORED_PACKAGES:
+            continue
+
+        with subtests.test(
+            msg=(f"checking pyproject [project.dependencies] specifiers for {name} across pyproject.toml files")
+        ):
             # all hope is lost, the check has failed
             pytest.fail(
                 f"{name} has multiple non-empty specifiers across pyproject.toml files: "
