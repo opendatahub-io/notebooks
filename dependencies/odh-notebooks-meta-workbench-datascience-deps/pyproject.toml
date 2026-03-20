@@ -5,38 +5,24 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # Core Data Science Libraries
-
-    # NOTE: ~=1.26.4 is required for rocm-tensorflow 2.18.1 and ~=2.3.5 everywhere else
-    "numpy>=1.26.4",
-
-    "pandas~=2.3.3",
-    "scikit-learn~=1.8.0",
-    "scipy~=1.16.2",
-    "matplotlib~=3.10.7",
-    "plotly~=6.5.2",
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "scipy",
+    "matplotlib",
+    "plotly",
 
     # ML/MLOps Tools
+    "kfp",
+    "kubeflow-training",
 
-    "kfp~=2.15.2",
-    # AIPCC-9537: kfp in AIPCC 3.3 has stripped dependency metadata
-    # Adding all missing deps that are available in AIPCC:
-    "docstring-parser~=0.17.0",
-    "google-api-core~=2.30.0",
-    "google-cloud-storage~=3.9.0",
-    "kfp-pipeline-spec~=2.16.0",
-    "kfp-server-api~=2.16.0",
-    "requests-toolbelt~=1.0.0",
-    "click-option-group==0.5.9",
-
-    "kubeflow-training==1.9.3",
     # NOTE: skl2onnx is added directly in consuming pyproject.toml files
     # because codeserver needs s390x exclusion marker while jupyter notebooks don't
-    "onnxconverter-common~=1.16.0",
+    "onnxconverter-common",
 
     # Cloud/Infrastructure
-
-    "boto3~=1.42.29",
-    "kafka-python-ng~=2.2.3",
+    "boto3",
+    "kafka-python-ng",
 ]
 
 [tool.uv]
