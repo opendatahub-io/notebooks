@@ -52,4 +52,23 @@ spec:
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
+  taskRunSpecs:
+  - pipelineTaskName: build-images
+    stepSpecs:
+    - name: prepare-sboms
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
+    - name: sbom-syft-generate
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
 status: {}

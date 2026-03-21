@@ -5,9 +5,9 @@ metadata:
     build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
-    pipelinesascode.tekton.dev/max-keep-runs: "3"
-    build.appstudio.openshift.io/build-nudge-files: "manifests/base/params-latest.env"
+    pipelinesascode.tekton.dev/cancel-in-progress: 'false'
+    pipelinesascode.tekton.dev/max-keep-runs: '3'
+    build.appstudio.openshift.io/build-nudge-files: manifests/base/params-latest.env
     pipelinesascode.tekton.dev/on-cel-expression: |
       event == "push" && target_branch == "main" &&
       !("manifests/base/params-latest.env".pathChanged()) &&
@@ -29,7 +29,7 @@ spec:
   - name: event-type
     value: '{{event_type}}'
   - name: enable-cache-proxy
-    value: "true"
+    value: 'true'
   - name: git-url
     value: '{{source_url}}'
   - name: revision
@@ -41,7 +41,7 @@ spec:
   - name: build-args-file
     value: codeserver/ubi9-python-3.12/build-args/cpu.conf
   - name: hermetic
-    value: "true"
+    value: 'true'
   - name: path-context
     value: .
   - name: additional-tags
@@ -62,8 +62,8 @@ spec:
     - path: codeserver/ubi9-python-3.12
       type: pip
       binary:
-        arch: "x86_64,aarch64,ppc64le"
-      requirements_files: ["requirements.cpu.txt"]
+        arch: x86_64,aarch64,ppc64le
+      requirements_files: [requirements.cpu.txt]
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-selfhost-import-aid
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-selfhost-test-provider
@@ -178,22 +178,32 @@ spec:
       type: npm
 
   taskRunSpecs:
-    - pipelineTaskName: prefetch-dependencies
+  - pipelineTaskName: prefetch-dependencies
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
+  - pipelineTaskName: build-images
+    stepSpecs:
+    - name: prepare-sboms
       computeResources:
         requests:
-          cpu: "8"
-          memory: "32Gi"
+          cpu: '8'
+          memory: 32Gi
         limits:
-          cpu: "8"
-          memory: "32Gi"
-    - pipelineTaskName: build-images
+          cpu: '8'
+          memory: 32Gi
+    - name: sbom-syft-generate
       computeResources:
         requests:
-          cpu: "8"
-          memory: "32Gi"
+          cpu: '8'
+          memory: 32Gi
         limits:
-          cpu: "8"
-          memory: "32Gi"
+          cpu: '8'
+          memory: 32Gi
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:

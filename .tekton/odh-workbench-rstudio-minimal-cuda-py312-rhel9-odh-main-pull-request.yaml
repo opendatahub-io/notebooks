@@ -48,7 +48,9 @@ spec:
     value: rstudio/rhel9-python-3.12/build-args/cuda.conf
   # Added taskRunSpecs to increase compute resources
   taskRunSpecs:
-    - pipelineTaskName: clair-scan
+  - pipelineTaskName: build-images
+    stepSpecs:
+    - name: prepare-sboms
       computeResources:
         requests:
           cpu: '8'
@@ -56,7 +58,7 @@ spec:
         limits:
           cpu: '8'
           memory: 32Gi
-    - pipelineTaskName: ecosystem-cert-preflight-checks
+    - name: sbom-syft-generate
       computeResources:
         requests:
           cpu: '8'
@@ -64,6 +66,22 @@ spec:
         limits:
           cpu: '8'
           memory: 32Gi
+  - pipelineTaskName: clair-scan
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
+  - pipelineTaskName: ecosystem-cert-preflight-checks
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
