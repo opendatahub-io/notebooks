@@ -191,12 +191,6 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/click-8.1.8-2-py3-none-any.whl", hashes = { sha256 = "59b100c6704b8539ef99b01c6d6d104dd5d64ff8fa1c8fb8807b66a799b29fc6" } }]
 
 [[packages]]
-name = "click-option-group"
-version = "0.5.9"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/click_option_group-0.5.9-2-py3-none-any.whl", hashes = { sha256 = "a167acf22658b1ff3c6d8cd2e63a1ca782f4b7d6c097cfe5458a61578369de77" } }]
-
-[[packages]]
 name = "codeflare-sdk"
 version = "0.35.0"
 marker = "implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux'"
@@ -302,12 +296,6 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/dnspython-2.8.0-2-py3-none-any.whl", hashes = { sha256 = "a46d9ba7ba633e183d4edc6b06d097e88500c0615d37afa0f2525dbf4d5e0468" } }]
 
 [[packages]]
-name = "docstring-parser"
-version = "0.17.0"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/docstring_parser-0.17.0-2-py3-none-any.whl", hashes = { sha256 = "705e0f66f5e45aa3a4ec0dcb0526eb4685c1bb4492c02bc200040060f32bf5c7" } }]
-
-[[packages]]
 name = "docstring-to-markdown"
 version = "0.17"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -398,7 +386,7 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 [[packages]]
 name = "google-api-core"
 version = "2.30.0"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+marker = "python_full_version >= '3.6' and implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/google_api_core-2.30.0-2-py3-none-any.whl", hashes = { sha256 = "8e6937da0490ab68afeb371edffa186c05e8de8950bb560a4a3eea5df3a8c1b3" } }]
 
 [[packages]]
@@ -408,33 +396,9 @@ marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/google_auth-2.49.1-2-py3-none-any.whl", hashes = { sha256 = "486c8e5c1c1f96e4bc8b747a1ee2332330ec750296a984e37716825afa1382fd" } }]
 
 [[packages]]
-name = "google-cloud-core"
-version = "2.5.0"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/google_cloud_core-2.5.0-2-py3-none-any.whl", hashes = { sha256 = "9c9ee916f16dddfe48519418de0924fb6aeacceaaace9f3587e5ed713213b3c1" } }]
-
-[[packages]]
-name = "google-cloud-storage"
-version = "3.9.0"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/google_cloud_storage-3.9.0-2-py3-none-any.whl", hashes = { sha256 = "6dcadf99481a3467380078c10b56905a2e8c7082b4893073a4948baa7daeab8b" } }]
-
-[[packages]]
-name = "google-crc32c"
-version = "1.8.0"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/google_crc32c-1.8.0-2-py3-none-any.whl", hashes = { sha256 = "edfdfaaf68a74fdd3cb96b6c32d0252d75d1a600f91cdc209de1f83e9efb2326" } }]
-
-[[packages]]
-name = "google-resumable-media"
-version = "2.8.0"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/google_resumable_media-2.8.0-2-py3-none-any.whl", hashes = { sha256 = "3b7950f804158036ba5a343210072e1b1f4047fadb36fd8646de7022f02b091c" } }]
-
-[[packages]]
 name = "googleapis-common-protos"
 version = "1.73.0"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+marker = "python_full_version >= '3.6' and implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/googleapis_common_protos-1.73.0-2-py3-none-any.whl", hashes = { sha256 = "a2abe1c34d079d8fefb05ba82f82b5850e918a207685568caac8ff7bc297a6db" } }]
 
 [[packages]]
@@ -699,18 +663,6 @@ name = "kfp-kubernetes"
 version = "2.15.2"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/kfp_kubernetes-2.15.2-2-py3-none-any.whl", hashes = { sha256 = "988802f1daf1a363ff4f905a02ce44ea2e61df678d96f114aa8f1fdb7cdef7a0" } }]
-
-[[packages]]
-name = "kfp-pipeline-spec"
-version = "2.16.0"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/kfp_pipeline_spec-2.16.0-2-py3-none-any.whl", hashes = { sha256 = "8d6123438226d7ce10b4f30c701b3a3b1e4926d52cd5ad88caf13cf68d26f13d" } }]
-
-[[packages]]
-name = "kfp-server-api"
-version = "2.16.0"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/kfp_server_api-2.16.0-2-py3-none-any.whl", hashes = { sha256 = "6540c1fba0d0901b3273c81ff5486fa5e4b48c56027e502b0531bc2f27c9e8ae" } }]
 
 [[packages]]
 name = "kiwisolver"
@@ -1127,7 +1079,7 @@ wheels = [
 [[packages]]
 name = "proto-plus"
 version = "1.27.1"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+marker = "python_full_version >= '3.6' and implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/proto_plus-1.27.1-2-py3-none-any.whl", hashes = { sha256 = "855356dcbe2b7d27a154ef80d4477813335d11ff51617ba6ae62fdd86a792164" } }]
 
 [[packages]]
@@ -1190,6 +1142,10 @@ wheels = [
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/pyarrow-23.0.1-2-cp312-cp312-linux_ppc64le.whl", hashes = { sha256 = "586f08c129ddf7b39041396a6e532d3a8230bb8b7f51e627ae6b10ef557f3cc5" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/pyarrow-23.0.1-2-cp312-cp312-linux_s390x.whl", hashes = { sha256 = "74159bd221074ba9137e85a4346e19efae57aab9f0f5b7e8612bef79117f9a38" } },
     { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/pyarrow-23.0.1-2-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "b27820345f00dcfe4def2b5b8ab07e2011e040c9f9524665a1b977eb997e4b51" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/pyarrow-23.0.1-3-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "ac715cf85ca4d09f5e2a5f611d24c148b9684cd90db44312130757e1ed547133" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/pyarrow-23.0.1-3-cp312-cp312-linux_ppc64le.whl", hashes = { sha256 = "94a5082113c631f6846f97c1fdd9fbb5a34a9a20f34b5b5df2835e3274a9034c" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/pyarrow-23.0.1-3-cp312-cp312-linux_s390x.whl", hashes = { sha256 = "194830a4d37ad73fdbe40bbae55d1480e4fcb152a8ee6f1e2ab5fde7f2b54b7c" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/pyarrow-23.0.1-3-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "cbb20d9aee74f07f1121cafda347fe3fee77c4b78d78bab6cc17c48386c01164" } },
 ]
 
 [[packages]]
@@ -1405,12 +1361,6 @@ name = "requests-oauthlib"
 version = "2.0.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/requests_oauthlib-2.0.0-2-py2.py3-none-any.whl", hashes = { sha256 = "6fc02f497fb599e42b5811806e49498d26ebb58b6195a37962c8ea1557b44205" } }]
-
-[[packages]]
-name = "requests-toolbelt"
-version = "1.0.0"
-marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/requests_toolbelt-1.0.0-2-py2.py3-none-any.whl", hashes = { sha256 = "3b8db9e1e64c559059b34851b461cd9d1d7c5914025389003343dffb9f65961d" } }]
 
 [[packages]]
 name = "retrying"
