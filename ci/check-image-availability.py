@@ -11,8 +11,8 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import os
 import pathlib
+import shutil
 import sys
 
 import structlog
@@ -60,9 +60,6 @@ async def check_image(image_url: str, semaphore: asyncio.Semaphore) -> tuple[str
         log.info("Image exists", image_url=image_url)
         return image_url, True
 
-    except FileNotFoundError:
-        log.error("The 'skopeo' command was not found. Please ensure it is installed and in your PATH.")
-        return image_url, False
     except Exception:
         log.exception("Unexpected error checking image", image_url=image_url)
         return image_url, False
@@ -74,7 +71,7 @@ def parse_env_file(path: pathlib.Path) -> list[tuple[str, str]]:
     Skips empty lines, comments, and dummy values.
     """
     entries: list[tuple[str, str]] = []
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
@@ -93,6 +90,10 @@ async def main() -> int:
         print(f"Usage: {sys.argv[0]} <env-file> [<env-file> ...]", file=sys.stderr)
         return 2
 
+    if shutil.which("skopeo") is None:
+        log.error("The 'skopeo' command was not found. Please ensure it is installed and in your PATH.")
+        return 2
+
     all_entries: list[tuple[str, str]] = []
     for arg in sys.argv[1:]:
         path = pathlib.Path(arg)
@@ -103,14 +104,24 @@ async def main() -> int:
         log.info("Parsed env file", path=str(path), count=len(entries))
         all_entries.extend(entries)
 
+    # Detect duplicate image URLs — two variables pointing to the same image is a bug
+    seen_urls: dict[str, str] = {}
+    for var, image_url in all_entries:
+        if image_url in seen_urls:
+            log.error(
+                "Duplicate image URL detected",
+                image_url=image_url,
+                variable_1=seen_urls[image_url],
+                variable_2=var,
+            )
+            return 1
+        seen_urls[image_url] = var
+
     semaphore = asyncio.Semaphore(22)
     tasks = [check_image(image_url, semaphore) for _, image_url in all_entries]
     results = await asyncio.gather(*tasks)
 
-    # Build lookup from image_url to variable name for reporting
-    url_to_var = {image_url: var for var, image_url in all_entries}
-
-    failed = [(url_to_var[url], url) for url, exists in results if not exists]
+    failed = [(seen_urls[url], url) for url, exists in results if not exists]
 
     log.info("Check complete", total=len(results), failed=len(failed))
 
@@ -118,17 +129,6 @@ async def main() -> int:
         log.error("The following images were NOT found in their registries:")
         for var, url in failed:
             log.error("Missing image", variable=var, image_url=url)
-
-        # Write to GITHUB_OUTPUT if running in GitHub Actions
-        github_output = os.environ.get("GITHUB_OUTPUT")
-        if github_output:
-            with open(github_output, "a") as f:
-                # Use multiline syntax for GITHUB_OUTPUT
-                f.write("failed_images<<EOF\n")
-                for var, url in failed:
-                    f.write(f"{var}={url}\n")
-                f.write("EOF\n")
-
         return 1
 
     log.info("All images are available in their registries.")
