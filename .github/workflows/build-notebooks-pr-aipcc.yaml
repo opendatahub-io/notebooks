@@ -21,34 +21,50 @@ concurrency:
   group: ${{ format('build-notebooks-pr-apicc-{0}', github.event.pull_request.number) }}
   cancel-in-progress: true
 
-env:
-  # language=json
-  contributors: |
-    ["atheo89", "andyatmiami", "caponetto", "daniellutz", "dibryant", "harshad16", "jesuino", "jiridanek", "jstourac", "paulovmr", "Fiona-Waters", "grdryn", "kryanbeane", "mtchoum1", "obrown1205", "dependabot[bot]", "ide-developer", "ysok", "ayush17"]
-
 jobs:
+  # RHAIENG-3914: standard permission gate recognized by security scanners
+  authorize:
+    name: Authorize
+    runs-on: ubuntu-latest
+    outputs:
+      authorized: ${{ steps.check.outputs.authorized }}
+    steps:
+      - name: Check collaborator permission
+        id: check
+        uses: actions/github-script@v7
+        with:
+          # language=javascript
+          script: |
+            // Same-repo PRs are trusted (not from a fork)
+            const headRepo = context.payload.pull_request.head.repo.full_name;
+            const baseRepo = context.payload.pull_request.base.repo.full_name;
+            if (headRepo === baseRepo) {
+              core.info(`Same-repo PR (${headRepo}) — authorized`);
+              core.setOutput('authorized', 'true');
+              return;
+            }
+            // Fork PRs require write/admin/maintain permission
+            const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.actor,
+            });
+            const allowed = ['write', 'admin', 'maintain'].includes(data.permission);
+            core.setOutput('authorized', String(allowed));
+            if (!allowed) {
+              core.warning(`Fork PR from ${context.actor} has '${data.permission}' permission, requires write/admin/maintain`);
+            }
+
   gen:
     name: Generate job matrix
+    needs: [authorize]
+    if: needs.authorize.outputs.authorized == 'true'
     runs-on: ubuntu-latest
     # rhds/notebooks builds from AIPCC bases and requires pull_request_target trigger
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       has_jobs: ${{ steps.gen.outputs.has_jobs }}
     steps:
-
-      - name: Check permissions and deny untrusted users (this must be done FIRST, for security, before we checkout)
-        if: |-
-          !(
-            github.event.repository.private == true ||
-            contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association) ||
-            contains(fromJSON(env.contributors), github.actor)
-          )
-        run: |
-          echo "GitHub user ${{ github.actor }} is not a registered project contributor, not allowed to run actions requiring secrets!"
-          exit 1
-
-      # Here we are checking out the pull request, so that we can build from the new code
-      # We can do this because we already checked that the submitting user is a contributor
       - uses: actions/checkout@v6
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
@@ -85,7 +101,7 @@ jobs:
         shell: bash
 
   build:
-    needs: ["gen"]
+    needs: ["authorize", "gen"]
     strategy:
       fail-fast: false
       matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
