@@ -64,20 +64,24 @@ jobs:
           go-version: "stable"
           cache-dependency-path: "scripts/buildinputs/go.mod"
 
+      # RHAIENG-3914: use env vars to prevent GitHub Actions expression injection
       - name: Determine targets to build based on changed files
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           set -x
-          git fetch --no-tags origin 'pull/${{ github.event.pull_request.number }}/head:${{ github.event.pull_request.head.ref }}'
-          git fetch --no-tags origin '+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}'
+          git fetch --no-tags origin "pull/${PR_NUMBER}/head:${HEAD_REF}"
+          git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
           python3 ci/cached-builds/gen_gha_matrix_jobs.py \
-            --from-ref 'origin/${{ github.event.pull_request.base.ref }}' \
-            --to-ref '${{ github.event.pull_request.head.ref }}' \
+            --from-ref "origin/${BASE_REF}" \
+            --to-ref "${HEAD_REF}" \
             --rhel-images exclude \
             --s390x-images include
         id: gen
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         shell: bash
 
   build:
