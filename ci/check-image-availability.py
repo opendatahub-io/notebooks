@@ -7,6 +7,7 @@ not their labels, sizes, or other metadata (that's check-params-env-odh.sh's job
 Usage:
     python ci/check-image-availability.py manifests/odh/base/params-latest.env manifests/odh/base/params.env
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -32,8 +33,10 @@ async def check_image(image_url: str, semaphore: asyncio.Semaphore) -> tuple[str
     """
     full_image_url = f"docker://{image_url}"
     command = [
-        "skopeo", "inspect",
-        "--override-os=linux", "--override-arch=amd64",
+        "skopeo",
+        "inspect",
+        "--override-os=linux",
+        "--override-arch=amd64",
         "--retry-times=3",
         "--raw",
         full_image_url,
@@ -61,7 +64,7 @@ async def check_image(image_url: str, semaphore: asyncio.Semaphore) -> tuple[str
         log.error("The 'skopeo' command was not found. Please ensure it is installed and in your PATH.")
         return image_url, False
     except Exception:
-        log.error("Unexpected error checking image", image_url=image_url, exc_info=True)
+        log.exception("Unexpected error checking image", image_url=image_url)
         return image_url, False
 
 
