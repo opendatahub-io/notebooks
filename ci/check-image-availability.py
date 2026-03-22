@@ -50,7 +50,13 @@ async def check_image(image_url: str, semaphore: asyncio.Semaphore) -> tuple[str
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.PIPE,
             )
-            _, stderr = await process.communicate()
+            try:
+                _, stderr = await asyncio.wait_for(process.communicate(), timeout=120)
+            except TimeoutError:
+                process.kill()
+                await process.wait()
+                log.error("Timeout checking image", image_url=image_url)
+                return image_url, False
 
         if process.returncode != 0:
             stderr_text = stderr.decode().strip() if stderr else ""
