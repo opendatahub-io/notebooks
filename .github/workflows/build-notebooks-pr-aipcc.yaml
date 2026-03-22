@@ -25,6 +25,7 @@ jobs:
   # RHAIENG-3914: standard permission gate recognized by security scanners
   authorize:
     name: Authorize
+    permissions: {}  # only needs implicit metadata:read for getCollaboratorPermissionLevel
     runs-on: ubuntu-latest
     outputs:
       authorized: ${{ steps.check.outputs.authorized }}
@@ -43,16 +44,21 @@ jobs:
               core.setOutput('authorized', 'true');
               return;
             }
-            // Fork PRs require write/admin/maintain permission
+            // Fork PRs require the PR author to have write/admin/maintain permission.
+            // NOTE: use pull_request.user.login, NOT context.actor — context.actor is
+            // whoever triggered the event (e.g. a maintainer reopening the PR), not the
+            // PR author. Checking context.actor would bypass the gate if a maintainer
+            // interacts with a fork PR.
+            const prAuthor = context.payload.pull_request.user.login;
             const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              username: context.actor,
+              username: prAuthor,
             });
             const allowed = ['write', 'admin', 'maintain'].includes(data.permission);
             core.setOutput('authorized', String(allowed));
             if (!allowed) {
-              core.warning(`Fork PR from ${context.actor} has '${data.permission}' permission, requires write/admin/maintain`);
+              core.warning(`Fork PR author ${prAuthor} has '${data.permission}' permission, requires write/admin/maintain`);
             }
 
   gen:
