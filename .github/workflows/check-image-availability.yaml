@@ -1,0 +1,91 @@
+---
+name: Check image availability in registries
+on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron: '30 */6 * * *'  # Every 6 hours at :30
+  workflow_dispatch:
+
+jobs:
+  check-odh-images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install skopeo
+        uses: ./.github/actions/apt-install
+        with:
+          packages: skopeo
+          update: 'false'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version-file: uv.toml
+          python-version: "3.14"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Check ODH image availability
+        id: check
+        run: |
+          uv run python ci/check-image-availability.py \
+            manifests/odh/base/params-latest.env \
+            manifests/odh/base/params.env
+
+  notify-on-failure:
+    runs-on: ubuntu-latest
+    needs: check-odh-images
+    if: failure()
+    permissions:
+      issues: write
+    steps:
+      - name: Create or update GitHub issue
+        uses: actions/github-script@v8
+        with:
+          # language=javascript
+          script: |
+            const label = 'image-availability';
+            const title = '[Alert] Container image(s) not found in registry';
+
+            // Check for existing open issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: label,
+              state: 'open',
+            });
+
+            const body = [
+              '## Image Availability Check Failed',
+              '',
+              'One or more images referenced in `params-latest.env` or `params.env` were not found in their container registries.',
+              '',
+              'This likely means a Konflux build pipeline has failed or an image tag no longer exists.',
+              '',
+              `**Workflow run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              'Please investigate and update the params files if needed.',
+            ].join('\n');
+
+            if (issues.length > 0) {
+              // Add comment to existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues[0].number,
+                body: body,
+              });
+              core.info(`Added comment to existing issue #${issues[0].number}`);
+            } else {
+              // Create new issue
+              const { data: issue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: [label],
+              });
+              core.info(`Created new issue #${issue.number}`);
+            }
