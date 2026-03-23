@@ -97,9 +97,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "bigtree"
-version = "1.3.1"
+version = "1.4.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/bigtree-1.3.1-2-py3-none-any.whl", hashes = { sha256 = "99d8d851604d798f73fc4cacad4ad2cc91043a9f6d3a50f43bdf5493f51f30d4" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/bigtree-1.4.0-2-py3-none-any.whl", hashes = { sha256 = "4580948cee2fa29df266c5bc9386090be22f1ef456a798170db63ca709625311" } }]
 
 [[packages]]
 name = "bleach"
@@ -109,15 +109,15 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "boto3"
-version = "1.42.72"
+version = "1.42.73"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/boto3-1.42.72-2-py3-none-any.whl", hashes = { sha256 = "616c1e1e431e7e3227eb0ce0d4d7010e2a37fbbe556a31ce09a3240cfa05617d" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/boto3-1.42.73-2-py3-none-any.whl", hashes = { sha256 = "b126b2ef8026424828e1876049539ccfd8bbb63684a48ce9c1107edaf1892876" } }]
 
 [[packages]]
 name = "botocore"
-version = "1.42.72"
+version = "1.42.74"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/botocore-1.42.72-2-py3-none-any.whl", hashes = { sha256 = "a17ff98e44d2b234412f6bf632362478144bb8fa6f6ee62df29d07e431b1e759" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/botocore-1.42.74-2-py3-none-any.whl", hashes = { sha256 = "5ed0b2978178923d2835f01172a1204cac6098ea5f51e174ae876fadbae58071" } }]
 
 [[packages]]
 name = "certifi"
@@ -271,9 +271,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "fastapi"
-version = "0.135.1"
+version = "0.135.2"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/fastapi-0.135.1-2-py3-none-any.whl", hashes = { sha256 = "376029076bc714d64c931f8e3cb90822ef75217a011e248f72d369c5bc5b8d2d" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/fastapi-0.135.2-2-py3-none-any.whl", hashes = { sha256 = "c77f2262f023c76714ca6de847e40eb580c5a776f6641e0cd80c11f104fa25a3" } }]
 
 [[packages]]
 name = "fastjsonschema"
@@ -283,9 +283,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "feast"
-version = "0.60.0"
+version = "0.61.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/feast-0.60.0-2-py3-none-any.whl", hashes = { sha256 = "5b5ce554984cc9cab77979369a0d69a02e5468890fad14ae848c7ce3d0eb806b" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/feast-0.61.0-2-py3-none-any.whl", hashes = { sha256 = "99b95fd6e311ad8074749cf14736eaf4899e59a41c8856ca7070ac6546c937fc" } }]
 
 [[packages]]
 name = "filelock"
@@ -760,6 +760,17 @@ marker = "implementation_name == 'cpython' and platform_machine != 'ppc64le' and
 wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/opentelemetry_semantic_conventions-0.61b0-2-py3-none-any.whl", hashes = { sha256 = "eb02fc7f6486e1317ed0812800ddea373993a512ba1367a9a9bde93934abf5c6" } }]
 
 [[packages]]
+name = "orjson"
+version = "3.11.7"
+marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/orjson-3.11.7-2-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "b7b7fe68021a7a3308b84455ee6ab33fbb2c38049013c441ff6593bb04bba123" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/orjson-3.11.7-2-cp312-cp312-linux_ppc64le.whl", hashes = { sha256 = "76525857c8369008b67eb89f47fb03de4acb9edcfda5c3f01d206c161c746d12" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/orjson-3.11.7-2-cp312-cp312-linux_s390x.whl", hashes = { sha256 = "29f54691e47a890196fa13f68f08293893375169e86251054e04a1dc936b2286" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/orjson-3.11.7-2-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "e88c94ef170618054e13f4e0c0eae3a0695fc65a3111369619637502ca744325" } },
+]
+
+[[packages]]
 name = "packaging"
 version = "26.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
@@ -837,9 +848,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "plotly"
-version = "6.5.2"
+version = "6.6.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/plotly-6.5.2-2-py3-none-any.whl", hashes = { sha256 = "e1b8ae6cc8aeb7583ce577e15060c0db770d7aaa662725d596420b4da9b78419" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/plotly-6.6.0-2-py3-none-any.whl", hashes = { sha256 = "979bbfb4b682b7c7b2353eacdd0e7f4a487aac45972f74f42ce950c0812391c4" } }]
 
 [[packages]]
 name = "prometheus-client"
@@ -1140,13 +1151,13 @@ wheels = [
 
 [[packages]]
 name = "scipy"
-version = "1.16.3"
+version = "1.17.1"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
 wheels = [
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/scipy-1.16.3-2-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "5cf5aa7dcfb764efb93dcb4d6961068c2888396c0d879da79962908b2e56509d" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/scipy-1.16.3-2-cp312-cp312-linux_ppc64le.whl", hashes = { sha256 = "c2da97b05a8256271f0ddc85bf95220d40ad52256ad458b91141dda8ca31dc71" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/scipy-1.16.3-2-cp312-cp312-linux_s390x.whl", hashes = { sha256 = "eafe9facc19eb1623b801e33ef6e43f078c38210e737ffaacf6e6aa1b7c64abd" } },
-    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/scipy-1.16.3-2-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "948fb60b9f4b6beeb5a5045ea0af7b57225ecbf850535e2b4e678a5afdaba35d" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/scipy-1.17.1-2-cp312-cp312-linux_aarch64.whl", hashes = { sha256 = "a2a217eeb0c6f690e01fec8652370ba23ebd9315804d6ebdfedfc65081a4514e" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/scipy-1.17.1-2-cp312-cp312-linux_ppc64le.whl", hashes = { sha256 = "37cdff1e76140d015a3630368b02ba990209e0df0c72c3eb97b6a7127ff75885" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/scipy-1.17.1-2-cp312-cp312-linux_s390x.whl", hashes = { sha256 = "54d16133288dbe981e143fe8c17fd6b7f8c583dc57c925533f6e6c01488c4ef3" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/scipy-1.17.1-2-cp312-cp312-linux_x86_64.whl", hashes = { sha256 = "db634975201f3747d80d4fef5d7954a1f64b72485eeb1dfe1ce2d9f3d3eebdee" } },
 ]
 
 [[packages]]
@@ -1198,9 +1209,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "starlette"
-version = "0.52.1"
+version = "1.0.0"
 marker = "implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/starlette-0.52.1-2-py3-none-any.whl", hashes = { sha256 = "15cab9abd470878d821725fb268a3faa4afb15d9c1dcede7ea1ff463feb50188" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/cpu-ubi9-test/starlette-1.0.0-2-py3-none-any.whl", hashes = { sha256 = "29638d32f7853f033ce56378a0761108e0b73c0ccdc8969f4988b4ab5fabd9c5" } }]
 
 [[packages]]
 name = "tabulate"
