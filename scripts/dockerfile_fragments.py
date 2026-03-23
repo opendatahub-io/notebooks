@@ -14,7 +14,9 @@ We could also support files, or maybe even `### BEGIN funcname("param1", "param2
 
 from __future__ import annotations
 
+import re
 import textwrap
+import tomllib
 from typing import TYPE_CHECKING
 
 import ntb
@@ -23,6 +25,14 @@ if TYPE_CHECKING:
     import pathlib
 
     from pyfakefs.fake_filesystem import FakeFilesystem
+
+# Default versions keep current behavior when lockfiles do not include these packages.
+DEFAULT_MICROPIPENV_VERSION = "1.10.0"
+DEFAULT_UV_VERSION = "0.10.8"
+MICROPIPENV_UV_REPLACEMENT_KEY = "Install micropipenv and uv to deploy packages from requirements.txt"
+MICROPIPENV_UV_INLINE_LINE_RE = re.compile(
+    r'^(?P<prefix>\s*RUN pip install\s+.+?)\s+"micropipenv\[toml\]==[^"]+"\s+"uv==[^"]+"\s*$'
+)
 
 # restricting to the relevant directories significantly speeds up the processing
 docker_directories = (
@@ -48,6 +58,110 @@ def sanity_check(dockerfile: pathlib.Path, replacements: dict[str, str]):
                             f"Expected replacement for '{prefix} {suffix}' "
                             f"not found in {dockerfile}:{line_no}"
                         )
+
+
+def get_dockerfile_flavor(dockerfile: pathlib.Path) -> str | None:
+    """Extract flavor (cpu/cuda/rocm) from a Dockerfile name."""
+    for flavor in ("cpu", "cuda", "rocm"):
+        if dockerfile.name.endswith(f".{flavor}"):
+            return flavor
+    return None
+
+
+def get_lockfile_for_dockerfile(dockerfile: pathlib.Path) -> pathlib.Path | None:
+    """Resolve lockfile source according to uv.lock.d/pylock fallback rules."""
+    docker_dir = dockerfile.parent
+    uv_lock_dir = docker_dir / "uv.lock.d"
+    if uv_lock_dir.is_dir():
+        flavor = get_dockerfile_flavor(dockerfile)
+        if flavor is None:
+            return None
+        lockfile = uv_lock_dir / f"pylock.{flavor}.toml"
+        return lockfile if lockfile.is_file() else None
+
+    lockfile = docker_dir / "pylock.toml"
+    return lockfile if lockfile.is_file() else None
+
+
+def get_package_versions_from_lockfile(lockfile: pathlib.Path | None) -> dict[str, str]:
+    """Read package versions from a pylock TOML file."""
+    if lockfile is None:
+        return {}
+    try:
+        with open(lockfile, "rb") as fp:
+            lock_data = tomllib.load(fp)
+    except (OSError, tomllib.TOMLDecodeError):
+        return {}
+
+    packages = lock_data.get("packages")
+    if not isinstance(packages, list):
+        return {}
+
+    versions = {}
+    for package in packages:
+        if not isinstance(package, dict):
+            continue
+        name = package.get("name")
+        version = package.get("version")
+        if isinstance(name, str) and isinstance(version, str):
+            versions[name] = version
+    return versions
+
+
+def resolve_micropipenv_uv_versions(
+    dockerfile: pathlib.Path,
+    *,
+    lockfile_cache: dict[pathlib.Path, tuple[str, str]],
+) -> tuple[str, str]:
+    """Resolve micropipenv/uv versions for one Dockerfile with defaults fallback."""
+    lockfile = get_lockfile_for_dockerfile(dockerfile)
+    if lockfile is None:
+        return DEFAULT_MICROPIPENV_VERSION, DEFAULT_UV_VERSION
+    if lockfile in lockfile_cache:
+        return lockfile_cache[lockfile]
+
+    package_versions = get_package_versions_from_lockfile(lockfile)
+    resolved_versions = (
+        package_versions.get("micropipenv", DEFAULT_MICROPIPENV_VERSION),
+        package_versions.get("uv", DEFAULT_UV_VERSION),
+    )
+    lockfile_cache[lockfile] = resolved_versions
+    return resolved_versions
+
+
+def build_micropipenv_uv_install_fragment(micropipenv_version: str, uv_version: str) -> str:
+    return (
+        'RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U '
+        f'"micropipenv[toml]=={micropipenv_version}" "uv=={uv_version}"'
+    )
+
+
+def replace_inline_micropipenv_uv_install_line(
+    dockerfile: pathlib.Path,
+    micropipenv_version: str,
+    uv_version: str,
+) -> None:
+    """Update unmarked inline RUN pip install lines for micropipenv/uv."""
+    with open(dockerfile, "rt") as fp:
+        original_lines = fp.readlines()
+
+    updated_lines: list[str] = []
+    changed = False
+    for line in original_lines:
+        match = MICROPIPENV_UV_INLINE_LINE_RE.match(line.rstrip("\n"))
+        if match:
+            new_line = (
+                f'{match.group("prefix")} '
+                f'"micropipenv[toml]=={micropipenv_version}" "uv=={uv_version}"\n'
+            )
+            updated_lines.append(new_line)
+            changed = changed or (new_line != line)
+            continue
+        updated_lines.append(line)
+
+    if changed:
+        with open(dockerfile, "wt") as fp:
+            fp.writelines(updated_lines)
 
 
 def main():
@@ -108,7 +222,10 @@ def main():
             EOF
 
         """)),
-        "Install micropipenv and uv to deploy packages from requirements.txt": '''RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.10.0" "uv==0.10.8"''',
+        MICROPIPENV_UV_REPLACEMENT_KEY: build_micropipenv_uv_install_fragment(
+            micropipenv_version=DEFAULT_MICROPIPENV_VERSION,
+            uv_version=DEFAULT_UV_VERSION,
+        ),
         "Install the oc client": textwrap.dedent(r"""
             RUN /bin/bash <<'EOF'
             set -Eeuxo pipefail
@@ -190,6 +307,7 @@ def main():
                 --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
                 --requirements=./pylock.toml"""),
     }
+    lockfile_cache: dict[pathlib.Path, tuple[str, str]] = {}
 
     for docker_dir in docker_directories:
         for dockerfile in docker_dir.glob("**/Dockerfile*"):
@@ -198,14 +316,29 @@ def main():
             if dockerfile.is_relative_to(ntb.ROOT_DIR / "examples"):
                 continue
 
-            sanity_check(dockerfile, replacements)
+            micropipenv_version, uv_version = resolve_micropipenv_uv_versions(
+                dockerfile,
+                lockfile_cache=lockfile_cache,
+            )
+            dockerfile_replacements = replacements.copy()
+            dockerfile_replacements[MICROPIPENV_UV_REPLACEMENT_KEY] = build_micropipenv_uv_install_fragment(
+                micropipenv_version=micropipenv_version,
+                uv_version=uv_version,
+            )
 
-            for prefix, contents in replacements.items():
+            sanity_check(dockerfile, dockerfile_replacements)
+
+            for prefix, contents in dockerfile_replacements.items():
                 ntb.blockinfile(
                     filename=dockerfile,
                     contents=contents,
                     prefix=prefix,
                 )
+            replace_inline_micropipenv_uv_install_line(
+                dockerfile=dockerfile,
+                micropipenv_version=micropipenv_version,
+                uv_version=uv_version,
+            )
 
 
 if __name__ == "__main__":
@@ -217,3 +350,116 @@ class TestMain:
         for docker_dir in docker_directories:
             fs.add_real_directory(source_path=docker_dir, read_only=False)
         main()
+
+
+class TestVersionResolution:
+    def test_prefers_uv_lock_variant_when_uv_lock_dir_exists(self, fs: FakeFilesystem):
+        dockerfile = ntb.ROOT_DIR / "tmp/test/ubi9-python-3.12/Dockerfile.cpu"
+        fs.create_file(dockerfile, contents="")
+        fs.create_file(
+            dockerfile.parent / "uv.lock.d/pylock.cpu.toml",
+            contents="""
+[[packages]]
+name = "micropipenv"
+version = "9.9.9"
+
+[[packages]]
+name = "uv"
+version = "0.99.0"
+""",
+        )
+        fs.create_file(
+            dockerfile.parent / "pylock.toml",
+            contents="""
+[[packages]]
+name = "micropipenv"
+version = "1.1.1"
+
+[[packages]]
+name = "uv"
+version = "0.11.1"
+""",
+        )
+
+        assert resolve_micropipenv_uv_versions(dockerfile, lockfile_cache={}) == ("9.9.9", "0.99.0")
+
+    def test_uses_top_level_pylock_when_no_uv_lock_dir(self, fs: FakeFilesystem):
+        dockerfile = ntb.ROOT_DIR / "tmp/runtime/ubi9-python-3.12/Dockerfile.cpu"
+        fs.create_file(dockerfile, contents="")
+        fs.create_file(
+            dockerfile.parent / "pylock.toml",
+            contents="""
+[[packages]]
+name = "micropipenv"
+version = "2.2.2"
+
+[[packages]]
+name = "uv"
+version = "0.22.2"
+""",
+        )
+
+        assert resolve_micropipenv_uv_versions(dockerfile, lockfile_cache={}) == ("2.2.2", "0.22.2")
+
+    def test_falls_back_to_defaults_when_packages_are_missing(self, fs: FakeFilesystem):
+        dockerfile = ntb.ROOT_DIR / "tmp/defaults/ubi9-python-3.12/Dockerfile.cpu"
+        fs.create_file(dockerfile, contents="")
+        fs.create_file(
+            dockerfile.parent / "pylock.toml",
+            contents="""
+[[packages]]
+name = "setuptools"
+version = "80.0.0"
+""",
+        )
+
+        assert resolve_micropipenv_uv_versions(dockerfile, lockfile_cache={}) == (
+            DEFAULT_MICROPIPENV_VERSION,
+            DEFAULT_UV_VERSION,
+        )
+
+
+class TestInlineMicropipenvUvLineReplacement:
+    def test_replaces_unmarked_inline_line_preserving_flags(self, fs: FakeFilesystem):
+        dockerfile = ntb.ROOT_DIR / "tmp/codeserver/ubi9-python-3.12/Dockerfile.cpu"
+        fs.create_file(
+            dockerfile,
+            contents=(
+                'RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip '
+                '"micropipenv[toml]==1.10.0" "uv==0.10.9"\n'
+            ),
+        )
+
+        replace_inline_micropipenv_uv_install_line(
+            dockerfile=dockerfile,
+            micropipenv_version="1.10.0",
+            uv_version="0.10.12",
+        )
+
+        with open(dockerfile, "rt") as fp:
+            assert fp.read().strip() == (
+                'RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip '
+                '"micropipenv[toml]==1.10.0" "uv==0.10.12"'
+            )
+
+    def test_does_not_fallback_to_pylock_toml_when_uv_lock_dir_exists(self, fs: FakeFilesystem):
+        dockerfile = ntb.ROOT_DIR / "tmp/konflux/ubi9-python-3.12/Dockerfile.konflux.cuda"
+        fs.create_file(dockerfile, contents="")
+        fs.create_dir(dockerfile.parent / "uv.lock.d")
+        fs.create_file(
+            dockerfile.parent / "pylock.toml",
+            contents="""
+[[packages]]
+name = "micropipenv"
+version = "7.7.7"
+
+[[packages]]
+name = "uv"
+version = "0.77.0"
+""",
+        )
+
+        assert resolve_micropipenv_uv_versions(dockerfile, lockfile_cache={}) == (
+            DEFAULT_MICROPIPENV_VERSION,
+            DEFAULT_UV_VERSION,
+        )
