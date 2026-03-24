@@ -48,7 +48,18 @@ grep -A1 '^name = "<package>"' jupyter/datascience/ubi9-python-3.12/uv.lock
 
 Build the 4-version table.
 
-### 5. Check for False Positives (SBOM source scan issue)
+### 5. Locate Package in Image (manifestbox + sbom_analyze.py)
+
+If you have a manifestbox SBOM JSON file for the affected image, use the repo's built-in tool:
+```bash
+./uv run scripts/cve/sbom_analyze.py <sbom.json> <package_name>
+```
+
+This shows the package type (npm/Python/RPM), install location, and source info — critical for determining the ecosystem and fix approach.
+
+See also `reference/manifestbox.md` for how to fetch SBOM files from the manifest-box repo.
+
+### 6. Check for False Positives (continued) (SBOM source scan issue)
 
 **Critical**: Konflux source SBOM scans the entire repo (RHAIENG-3006). The package may be in the SBOM but NOT in the specific image. Check:
 - Is the package in `pyproject.toml` for the affected image, or only in a different image?
