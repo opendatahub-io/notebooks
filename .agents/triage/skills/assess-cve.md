@@ -34,7 +34,11 @@ Based on the package name, determine the ecosystem:
 
 ### 4. Check Package Version Across Supported Versions
 
-Check all supported RHOAI versions (2.16, 2.25, 3.3, main):
+Currently supported RHOAI versions (check all four):
+- **2.16 EUS** — branches `release-2024a`/`release-2024b` in red-hat-data-services/notebooks (ends June 30, 2026)
+- **2.25 EUS** — branch `rhoai-2.25` in red-hat-data-services/notebooks
+- **3.3** — branch `rhoai-3.3` in red-hat-data-services/notebooks
+- **main** — local checkout (upcoming RHOAI 3.4+)
 
 For Python packages, use `curl -sL` for large pylock.toml files:
 ```bash
@@ -83,7 +87,13 @@ If already constrained, the fix may already be in place.
 - **RPM**: nonfixable — AIPCC base image concern
 - **False positive (not in image)**: close with VEX
 
-### 8. Label and Comment
+### 8. Useful Scripts
+
+- `scripts/cve/create_cve_trackers.py` — creates RHAIENG tracker issues from orphan RHOAIENG CVEs. Run `./uv run scripts/cve/create_cve_trackers.py --dry-run` to preview.
+- `scripts/cve/cve_due_dates.py` — lists overdue trackers, syncs due dates from children. Run `./uv run scripts/cve/cve_due_dates.py --list-overdue`.
+- `scripts/group_cves_by_id.py` — groups CVE issues by CVE ID for bulk analysis.
+
+### 9. Label and Comment
 
 Apply `ai-triaged` + `ai-fixable` or `ai-nonfixable`. Post comment with:
 - Version table across 2.16/2.25/3.3/main

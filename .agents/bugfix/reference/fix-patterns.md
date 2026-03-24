@@ -11,7 +11,9 @@ Patterns observed in past fixes. Follow these when implementing bugfixes.
 vi jupyter/datascience/ubi9-python-3.12/pyproject.toml
 
 # Regenerate lock files
-make refresh-pipfilelock-files
+gmake refresh-lock-files
+# Or targeted:
+./uv run scripts/pylocks_generator.py auto jupyter/datascience/ubi9-python-3.12
 
 # Verify
 make test
@@ -39,9 +41,11 @@ make test
 **Files**: `manifests/odh/base/*.yaml`, `manifests/rhoai/base/*.yaml`
 
 **Key points**:
-- `params-latest.env` contains image digests — these are auto-updated by nudge
+- `params-latest.env` contains image digests
 - ImageStream YAML files define available notebook options
 - Changes must be consistent between odh/ and rhoai/ variants
+- After changing `.env` files or ImageStreams: `./uv run manifests/tools/generate_kustomization.py`
+- To query Pyxis catalog for image tags/digests: `./uv run manifests/tools/generate_envs.py --version-tag v3.3`
 
 ## 4. Test Fixture Fix
 

@@ -33,10 +33,18 @@ Follow the recommended fix from the root cause analysis. Key conventions from `A
 - Don't add comments, docstrings, or type annotations to unchanged code
 - Don't "improve" adjacent logic
 
-### 4. Regenerate Lock Files (if dependencies changed)
+### 4. Regenerate Derived Files
 
+If **dependencies changed** (pyproject.toml, cve-constraints.txt):
 ```bash
-make refresh-pipfilelock-files
+gmake refresh-lock-files
+# Or targeted:
+./uv run scripts/pylocks_generator.py auto jupyter/datascience/ubi9-python-3.12
+```
+
+If **manifests changed** (imagestream YAML, .env files):
+```bash
+./uv run manifests/tools/generate_kustomization.py
 ```
 
 ### 5. Show Diff

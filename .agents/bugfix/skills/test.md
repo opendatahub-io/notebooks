@@ -26,12 +26,13 @@ This runs pytest for config/manifest consistency plus lint checks.
 ./uv run pytest tests/unit/
 ```
 
-### 3. Run Linting
+### 3. Run Pre-commit Checks
 
 ```bash
-./uv run ruff check
-./uv run pyright
+./uv run prek --from-ref HEAD~1 --to-ref HEAD
 ```
+
+This wraps ruff check, ruff format, pyright, toml validity, uv-lock consistency, and more.
 
 ### 4. Run Targeted Tests (if applicable)
 
