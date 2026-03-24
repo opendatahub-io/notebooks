@@ -1,0 +1,16 @@
+---
+metadata:
+  version: '1.0'
+artifacts:
+  - download_url: https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official
+    checksum: sha256:146059788b214d7ba0dd70c1cf21111e594c6cfde201da8a9a88fe7101be8a78
+    filename: RPM-GPG-KEY-CentOS-Official
+  - download_url: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9
+    checksum: sha256:fcf0eab4f05a1c0de6363ac4b707600a27a9d774e9b491059e59e6921b255a84
+    filename: RPM-GPG-KEY-EPEL-9
+  - download_url: https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-amd64.tar.gz
+    checksum: sha256:8f8f67fdd540b6519326b0ac49d5c55c5d5d15e43920e80a086e02c8aff83268
+    filename: pandoc-3.7.0.2-linux-amd64.tar.gz
+  - download_url: https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-arm64.tar.gz
+    checksum: sha256:4ef2997ff0fa7f86ada5a217722f4f732293e38518b4442ececce16628bd0e44
+    filename: pandoc-3.7.0.2-linux-arm64.tar.gz

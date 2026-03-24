@@ -1,3 +1,5 @@
+ARG LOCAL_BUILD=false
+
 #########################
 # configuration args    #
 #########################
@@ -7,56 +9,37 @@ ARG BASE_IMAGE
 # cpu-base         #
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
+
+ARG LOCAL_BUILD
+
 WORKDIR /opt/app-root/bin
 
-# OS Packages needs to be installed as root
+# OS Packages needs to be installed as root (intermediate stage; final stage ends with USER 1001).
+# hadolint ignore=DL3002
 USER 0
 
-### BEGIN upgrade first to avoid fixable vulnerabilities
-RUN /bin/bash <<'EOF'
-# If we have a Red Hat subscription prepared, refresh it
-set -Eeuxo pipefail
-if command -v subscription-manager &> /dev/null; then
-  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
-fi
-EOF
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+# CentOS key imported only if prefetched (present in Dockerfile.konflux.cpu; may be absent in Konflux).
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# Problem: The operation would result in removing the following protected packages: systemd
-#  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
-# Solution: --best --skip-broken does not work either, so use --nobest
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
-dnf clean all -y
-EOF
+# [HERMETIC] Configure package repos: local hermeto repos for testing, or Konflux-injected repos.
+# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
+# its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
+RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
+        rm -f /etc/yum.repos.d/*.repo \
+        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
+    fi
 
-### END upgrade first to avoid fixable vulnerabilities
+# Install useful OS packages (versions follow UBI stream; pinning each would drift with point releases)
+# compat-openssl11 provides libcrypto.so.1.1 required by FIPS-compliance scanning.
+# hadolint ignore=DL3041
+RUN dnf install -y perl mesa-libGL skopeo compat-openssl11 openshift-clients \
+    && dnf clean all \
+    && rm -rf /var/cache/yum
 
-# Install useful OS packages
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y perl mesa-libGL skopeo
-dnf clean all
-rm -rf /var/cache/yum
-EOF
-
-# Other apps and tools installed as default user
-USER 1001
-
-### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
-RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.10.0" "uv==0.10.8"
-### END Install micropipenv and uv to deploy packages from requirements.txt
-
-### BEGIN Install the oc client
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
-    -o /tmp/openshift-client-linux.tar.gz
-tar -xzvf /tmp/openshift-client-linux.tar.gz oc
-rm -f /tmp/openshift-client-linux.tar.gz
-EOF
-
-### END Install the oc client
+# Install micropipenv/uv from Cachi2 as root.
+RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.0"
 
 ####################
 # jupyter-minimal  #
@@ -66,6 +49,15 @@ FROM cpu-base AS jupyter-minimal
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
+ARG LOCAL_BUILD
+
+LABEL name="rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
+    com.redhat.component="odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
+    io.k8s.display-name="odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
+    summary="Minimal Jupyter CPU notebook image for ODH notebooks" \
+    description="Minimal Jupyter CPU notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+    io.k8s.description="Minimal Jupyter CPU notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+    com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
 
 WORKDIR /opt/app-root/bin
 
@@ -73,29 +65,38 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
 USER 0
 
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# [HERMETIC] Configure package repos: local hermeto repos for testing, or Konflux-injected repos.
+RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
+        rm -f /etc/yum.repos.d/*.repo \
+        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
+    fi
+
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 
 ### END Dependencies for PDF export
 
-USER 1001
-
-COPY ${MINIMAL_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
-COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
+COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
+COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
+COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 
-### BEGIN Install software and packages
 echo "Installing software and packages"
-# Install Python packages from lockfile with hash verification
-# All dependencies are explicitly listed in pylock.toml (--no-deps)
-UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+# Install Python packages from lockfile (Cachi2 prefetched pip deps; --no-deps per pylock.toml)
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
-    --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
-    --requirements=./pylock.toml
-### END Install software and packages
+    --compile-bytecode --index-strategy=unsafe-best-match \
+    --no-verify-hashes \
+    --find-links /cachi2/output/deps/pip \
+    --requirements=./requirements.txt
 
 # Disable announcement plugin of jupyterlab
 jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
@@ -110,14 +111,8 @@ fix-permissions /opt/app-root -P
 /opt/app-root/bin/utils/addons/apply.sh
 EOF
 
+USER 1001
+
 WORKDIR /opt/app-root/src
 
 ENTRYPOINT ["start-notebook.sh"]
-
-LABEL name="rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
-    com.redhat.component="odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
-    io.k8s.display-name="odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
-    summary="Minimal Jupyter CPU notebook image for ODH notebooks" \
-    description="Minimal Jupyter CPU notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    io.k8s.description="Minimal Jupyter CPU notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
