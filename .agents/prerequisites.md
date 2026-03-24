@@ -66,21 +66,41 @@ python3 --version   # expect 3.14+
 which gmake 2>/dev/null || which make
 ```
 
+### 8. Container Runtime
+
+```bash
+podman --version   # or docker --version
+```
+
+### 9. Registry Auth (registry.redhat.io)
+
+```bash
+podman login --get-login registry.redhat.io
+```
+If not authenticated: get pull secret from https://console.redhat.com/openshift/install/pull-secret
+then `podman login registry.redhat.io`.
+
+### 10. Remote Machine (ask user)
+
+Ask the user: "Do you have SSH access to a remote machine with podman? If yes, provide
+the SSH target (e.g., user@host). Image pulls and container tests can run there to avoid
+slow local transfers."
+
 ## Optional (report available/unavailable, don't block)
 
-### 8. Slack MCP
+### 11. Slack MCP
 
 ```
 mcp__slack-mcp-local__search_messages  query="test"  count=1
 ```
 
-### 9. Web Search
+### 12. Web Search
 
 ```
 WebSearch  query="opendatahub notebooks"
 ```
 
-### 10. GitLab CLI (for AIPCC base images)
+### 13. GitLab CLI (for AIPCC base images)
 
 ```bash
 glab auth status
@@ -89,20 +109,20 @@ glab auth status
 If not authenticated: visit https://red.ht/GitLabSSO to auth, then `glab auth login`.
 AIPCC base images repo: `gitlab.com/redhat/rhel-ai/core/base-images/app`
 
-### 11. Cluster Access
+### 14. Cluster Access
 
 ```bash
 oc whoami
 oc get notebooks -A 2>/dev/null | head -5
 ```
 
-### 12. Google Docs
+### 15. Google Docs
 
 ```bash
 gws docs documents get --params '{"documentId": "test"}' 2>&1 | head -1
 ```
 
-### 13. Red Hat Cases Portal
+### 16. Red Hat Cases Portal
 
 See `docs/access_redhat_cases_api.md` for Hydra REST API setup.
 Useful when a Jira issue references a customer support case.

@@ -18,6 +18,9 @@ Call `mcp__atlassian__getJiraIssue` with the issue key. Extract:
 
 - Check for `ai-fixable` label. If absent, warn the user: "This issue is not labeled ai-fixable. Proceed anyway?"
 - Check if it already has an execution label (`ai-fully-automated`, `ai-could-not-fix`, `ai-verification-failed`). If so, warn: "This issue was already attempted."
+- If not already known from preflight: ask the user if they have a **remote machine with podman**
+  available via SSH for image pulls and container tests. Record the answer — it determines
+  whether verification steps run locally or remotely.
 
 ### 3. Load Triage Assessment
 

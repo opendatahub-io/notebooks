@@ -20,10 +20,30 @@ Read the full description. If the description is long, summarize the key facts (
 
 ### 2. Search the Repo for Context
 
+**Important**: this repo builds container images. The local dev venv (from top-level pyproject.toml)
+contains CI/development tools, NOT workbench packages. Never check package availability in the
+local venv — always check the container build context.
+
 Based on error messages or component names in the issue:
 - Use **Grep** to find related files (error strings, class/function names, package names)
 - Use **Glob** to find relevant Dockerfiles, pyproject.toml, test files, manifests
 - Do NOT read entire files — grep for specific patterns
+
+**For "module/package not found" bugs**, check the container's lock files:
+- `*/uv.lock.d/pylock.cpu.toml` or `*/uv.lock.d/requirements.cpu.txt` — resolved versions and source URLs
+- Note the **source URL**: packages from `packages.redhat.com/api/pulp-content/public-rhai/...` are
+  Red Hat custom-built wheels that may differ from upstream PyPI (e.g., missing optional features,
+  different build flags). A wheel suffix like `-2` or `-3` indicates a custom rebuild.
+- Check `pyproject.toml` for the dependency declaration and whether extras are specified
+
+**To verify inside the actual container** (if lock file analysis is insufficient):
+1. Pull a pre-built image from `quay.io/opendatahub/odh-workbench-*` (Konflux builds),
+   `quay.io/rhoai/odh-workbench-*` (downstream), or `registry.redhat.io/rhoai/*` (released,
+   needs `podman login` — see `.agents/reference/registry-redhat-io.md`)
+2. Or build locally: `gmake jupyter-datascience-ubi9-python-3.12` etc.
+3. Or ad-hoc: install packages onto the base image using the correct Python index
+4. If the user has a remote machine with podman (ask first!), pull and run there to avoid
+   slow local image transfers
 
 For complex issues, launch an **Explore subagent** to deep-dive the codebase. The subagent returns a summary of which files are affected and how.
 

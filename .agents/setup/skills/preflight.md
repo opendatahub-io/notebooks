@@ -24,19 +24,30 @@ Run each check and report pass/fail. See `prerequisites.md` (parent directory) f
 
 7. **Build system**: run `which gmake 2>/dev/null || which make`. Pass if found.
 
+8. **Container runtime**: run `podman --version` or `docker --version`. Pass if found.
+
+9. **Registry auth**: run `podman login --get-login registry.redhat.io 2>&1`. Pass if returns a username.
+   If not authenticated, report: "Run `podman login registry.redhat.io` with credentials from
+   https://console.redhat.com/openshift/install/pull-secret"
+
+10. **Remote machine** (ask user): "Do you have SSH access to a remote machine with podman?
+    If yes, image pulls and container tests can run there to avoid slow local transfers.
+    Provide the SSH target (e.g., user@host) or skip."
+    Record the answer for use by bugfix/triage skills.
+
 ### Optional Checks (report but don't block)
 
-8. **Slack MCP**: call `mcp__slack-mcp-local__search_messages` with `query="test" count=1`. Pass if returns results.
+11. **Slack MCP**: call `mcp__slack-mcp-local__search_messages` with `query="test" count=1`. Pass if returns results.
 
-9. **Web search**: call `WebSearch` with `query="opendatahub notebooks"`. Pass if returns results.
+12. **Web search**: call `WebSearch` with `query="opendatahub notebooks"`. Pass if returns results.
 
-10. **GitLab CLI**: run `glab auth status`. If not authenticated, remind: "Visit https://red.ht/GitLabSSO to authenticate, then run `glab auth login`."
+13. **GitLab CLI**: run `glab auth status`. If not authenticated, remind: "Visit https://red.ht/GitLabSSO to authenticate, then run `glab auth login`."
 
-11. **Cluster access**: run `oc whoami`. Pass if returns a username.
+14. **Cluster access**: run `oc whoami`. Pass if returns a username.
 
-12. **Google Docs**: run `which gws`. Pass if found.
+15. **Google Docs**: run `which gws`. Pass if found.
 
-13. **Red Hat Cases API**: check if `docs/access_redhat_cases_api.md` exists. Report availability.
+16. **Red Hat Cases API**: check if `docs/access_redhat_cases_api.md` exists. Report availability.
 
 ### Report Results
 
@@ -51,6 +62,9 @@ Preflight Results
 [PASS] GitHub CLI (authenticated as jdanek)
 [PASS] Python 3.14.1 / uv 0.7.x
 [PASS] gmake
+[PASS] podman 5.x.x
+[PASS] registry.redhat.io (logged in as jdanek)
+[INFO] Remote machine: user@gpu-box.example.com (will use for image ops)
 [SKIP] Slack MCP (not configured)
 [PASS] Web search
 [SKIP] GitLab CLI (visit https://red.ht/GitLabSSO)

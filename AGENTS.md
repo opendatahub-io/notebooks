@@ -107,7 +107,14 @@ make test              # Quick static tests (pytest + Dockerfile alignment)
 make test-unit         # Python unit tests + doctests + Go tests (no container runtime)
 make test-integration PYTEST_ARGS="--image=<image>"  # Container integration tests
 make test-${NOTEBOOK_NAME} # Specific notebook tests
+
+# Pre-commit checks (run before submitting PRs)
+./uv run prek --from-ref HEAD~1 --to-ref HEAD   # changes between two refs
+./uv run prek --all-files                        # all files
 ```
+
+`prek` is a dev dependency that wraps pre-commit hooks: check for large files, toml validity,
+merge conflicts, uv-lock, ruff check, ruff format, pyright.
 
 ## Agent Instructions
 
