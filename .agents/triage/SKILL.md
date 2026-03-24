@@ -24,8 +24,9 @@ Route commands to the appropriate skill.
 ## Default JQL
 
 ```jql
-project = RHAIENG AND status = Backlog
+project = RHAIENG AND statusCategory not in (Done)
 AND issuetype in (Bug) AND component = Notebooks
+AND (labels not in (ai-triaged) OR labels is EMPTY)
 ORDER BY priority DESC, updated DESC
 ```
 

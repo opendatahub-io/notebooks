@@ -10,8 +10,9 @@ Fetch bugs from Jira using JQL and save to the triage ledger.
 
 1. **Determine JQL**: if `$ARGUMENTS` contains a JQL string, use it. Otherwise use:
    ```jql
-   project = RHAIENG AND status = Backlog
+   project = RHAIENG AND statusCategory not in (Done)
    AND issuetype in (Bug) AND component = Notebooks
+   AND (labels not in (ai-triaged) OR labels is EMPTY)
    ORDER BY priority DESC, updated DESC
    ```
 
@@ -51,7 +52,7 @@ Fetch bugs from Jira using JQL and save to the triage ledger.
 
 6. **Report**: print a summary table:
    ```
-   Scanned N bugs from RHAIENG (component=Notebooks, status=Backlog)
+   Scanned N bugs from RHAIENG (component=Notebooks, not Done, not yet triaged)
    Blocker: X | Critical: Y | Major: Z | Normal: W | Minor: V
    Saved to .artifacts/triage/ledger.json
    ```
