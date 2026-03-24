@@ -34,7 +34,9 @@ class NotebookContainer:
         """Stop container with customizable timeout.
 
         DockerContainer.stop() has unchangeable 10s timeout between SIGSTOP and SIGKILL."""
-        self.testcontainer.get_wrapped_container().stop(timeout=timeout)
+        wrapped = self.testcontainer.get_wrapped_container()
+        if wrapped is not None:
+            wrapped.stop(timeout=timeout)
         self.testcontainer.stop()
 
     def wait_for_exit(self) -> int:
