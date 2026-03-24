@@ -15,6 +15,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import allure
+import packaging.markers
 import packaging.requirements
 import packaging.specifiers
 import packaging.version
@@ -194,7 +195,21 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                 pylock = tomllib.loads(pylock_candidates[0].read_text())
             else:
                 pylock = tomllib.loads(file.with_name("pylock.toml").read_text())
-            pylock_packages: dict[str, dict[str, Any]] = {p["name"]: p for p in pylock["packages"]}
+            # Filter packages by marker against the target Python version (universal locks
+            # can fork the same package into multiple entries with mutually exclusive markers).
+            marker_env = {
+                "python_full_version": f"{python}.0",
+                "implementation_name": "cpython",
+                "sys_platform": "linux",
+            }
+            pylock_packages: dict[str, dict[str, Any]] = {}
+            for p in pylock["packages"]:
+                if "marker" in p and not packaging.markers.Marker(p["marker"]).evaluate(marker_env):
+                    continue
+                assert p["name"] not in pylock_packages, (
+                    f"Duplicate package {p['name']} in pylock after marker filtering for Python {python}"
+                )
+                pylock_packages[p["name"]] = p
             with subtests.test(msg="checking pylock.toml consistency with pyproject.toml", pyproject=file):
                 for d in pyproject["project"]["dependencies"]:
                     requirement = packaging.requirements.Requirement(d)
@@ -381,7 +396,7 @@ def test_image_manifests_version_alignment(
         ("Odh-Elyra", ("4.3", "5.0")),
         ("Scikit-learn", ("1.7", "1.6")),
         ("Scipy", ("1.16", "1.17")),
-        ("Pandas", ("2.3", "1.5")),
+        ("Pandas", ("3.0", "2.3")),
         (
             "Numpy",
             (
