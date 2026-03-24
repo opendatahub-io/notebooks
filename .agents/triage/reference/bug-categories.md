@@ -20,10 +20,10 @@ Wrong base image, missing packages, layer ordering, COPY path errors, build argu
 
 Version incompatibilities, missing dependencies, lock file drift, resolver failures.
 
-- **Files**: `*/pyproject.toml`, `*/pylock.toml`, `*/uv.lock`
+- **Files**: `*/pyproject.toml`, `*/pylock.toml`, `*/uv.lock`, `*/uv.lock.d/requirements.*.txt` (cachi2 needs requirements.txt since it doesn't support pylock)
 - **Symptoms**: `pip install` failures, import errors, version mismatch warnings
 - **Related repos**: Upstream PyPI packages, AIPCC wheels index
-- **Notes**: After modifying dependencies: `gmake refresh-lock-files` (or targeted: `./uv run scripts/pylocks_generator.py auto <dir>`). Understand the inheritance model — minimal -> datascience -> specialized.
+- **Notes**: After modifying dependencies: `gmake refresh-lock-files` (or targeted: `./uv run scripts/pylocks_generator.py auto <dir>`). The image inheritance model (minimal → datascience → specialized) is conceptual — a change in a parent's packages should be analogously done in all children.
 
 ## 3. Test Infrastructure
 
