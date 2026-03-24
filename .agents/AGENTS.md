@@ -8,7 +8,9 @@ This directory provides two workflows for AI-driven Jira bug resolution in the O
 |----------|---------|-------------|
 | **setup/** | Preflight checks — verify all tools are accessible | `/setup-preflight` |
 | **triage/** | Analyze bugs, classify fixability, apply labels, post analysis comments | `/triage-run` or `/triage-assess RHAIENG-XXXX` |
+| **triage/** (CVE) | Assess CVE trackers, locate vulnerable packages, close false positives with VEX | `/triage-assess-cve RHAIENG-XXXX` |
 | **bugfix/** | Fix a single ai-fixable bug: diagnose, implement, test, create PR | `/fix-start RHAIENG-XXXX` |
+| **bugfix/** (CVE) | Fix a Python CVE: update constraints, refresh locks, create PR | `/fix-cve RHAIENG-XXXX` |
 
 ## First Time? Run `/setup-preflight`
 

@@ -11,6 +11,9 @@ Route commands to the appropriate skill.
 | `/triage-assess` | `skills/assess.md` | Assess fixability (single issue or all pending) |
 | `/triage-label` | `skills/label.md` | Relabel/retriage a single issue |
 | `/triage-report` | `skills/report.md` | Generate summary report from ledger |
+| `/triage-assess-cve` | `skills/assess-cve.md` | Assess a CVE tracker (RHAIENG → RHOAIENG children) |
+| `/triage-close-vex` | `skills/close-vex.md` | Bulk-close CVE children with VEX justification |
+| `/triage-scan-image` | `skills/scan-image.md` | Scan container image for vulnerabilities |
 
 ## Before Starting
 

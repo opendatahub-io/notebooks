@@ -11,6 +11,7 @@ Route commands to the appropriate skill.
 | `/fix-fix` | `skills/fix.md` | Implement the fix on a feature branch |
 | `/fix-test` | `skills/test.md` | Run tests (max 3 attempts) |
 | `/fix-pr` | `skills/pr.md` | Push, create PR, update Jira |
+| `/fix-cve` | `skills/fix-cve.md` | Fix a Python CVE (constraints + lock refresh) |
 
 ## Before Starting
 

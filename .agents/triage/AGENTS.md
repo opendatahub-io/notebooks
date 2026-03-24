@@ -34,6 +34,13 @@ Override with arguments: `/triage-run project = RHAIENG AND status = New ...`
 - `mcp__atlassian__editJiraIssue` (label)
 - `mcp__atlassian__addCommentToJiraIssue` (post analysis)
 
+## CVE Triage
+
+CVE tracker issues have a different structure — see `skills/assess-cve.md`.
+- `/triage-assess-cve RHAIENG-XXXX` — assess a CVE tracker
+- `/triage-close-vex` — bulk-close false positive CVEs with VEX justification
+- `/triage-scan-image` — scan container image with Syft/Grype/Trivy
+
 ## Key References
 
 - `guidelines.md` — safety rules, allowed tools, escalation
@@ -42,3 +49,7 @@ Override with arguments: `/triage-run project = RHAIENG AND status = New ...`
 - `reference/jql-queries.md` — pre-built JQL variants
 - `reference/ecosystem.md` — related repos and when to consult them
 - `reference/comment-template.md` — starting-point Jira comment format
+- `reference/manifestbox.md` — querying ProdSec manifest-box for SBOM data
+- `reference/cve-remediation-guide.md` — full CVE investigation workflow
+- `reference/cve-python.md` — Python CVE resolution (cve-constraints.txt)
+- `reference/case-study-cve-*.md` — real-world CVE investigation examples
