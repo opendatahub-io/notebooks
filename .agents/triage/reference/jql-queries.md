@@ -8,6 +8,8 @@ Pre-built JQL queries for common triage scenarios.
 - **RHOAIENG**: CVE/security tracking only (for our team). Component: `Notebooks Images`.
   Regular bugs should NOT be in RHOAIENG for this team — only CVEs.
 
+For supported RHOAI versions and their downstream branch names, see `guidelines.md` → "Supported RHOAI Versions" table.
+
 ## Status Conventions
 
 - **New**: Untriaged issues (not yet reviewed by a human)

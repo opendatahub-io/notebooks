@@ -24,6 +24,11 @@ Version incompatibilities, missing dependencies, lock file drift, resolver failu
 - **Symptoms**: `pip install` failures, import errors, version mismatch warnings
 - **Related repos**: Upstream PyPI packages, AIPCC wheels index
 - **Notes**: After modifying dependencies: `gmake refresh-lock-files` (or targeted: `./uv run scripts/pylocks_generator.py auto <dir>`). The image inheritance model (minimal → datascience → specialized) is conceptual — a change in a parent's packages should be analogously done in all children.
+- **Red Hat maintained packages** — coordinate with owning teams before bumping (especially on EUS branches):
+  - *Developed by Red Hat*: `codeflare-sdk` (CodeFlare), `feast` (Feast), `kfp` (DSP), `elyra` (Notebooks/IDE), `training-operator`/`kubeflow-training` (Training)
+  - *Closely related*: `vllm` (vLLM), `llmcompressor` (LLM Compressor), `speculators`, `compressed-tensors`
+  - Upstream packages (tensorflow, keras, urllib3, setuptools, etc.) do NOT need team coordination — just compat testing on EUS.
+- **AIPCC wheels transition**: RHOAI 3.3 is the last release with PyPI wheels. Starting with 3.4+, images use AIPCC-built wheels from `packages.redhat.com`. IBM-arch issues (s390x/ppc64le missing pre-built wheels) may self-resolve in 3.4+. Check the RHOAI version when triaging these.
 
 ## 3. Test Infrastructure
 
@@ -103,5 +108,12 @@ Some bugs span multiple repositories. When the root cause is outside this repo:
 | Extension won't load | opendatahub-io/odh-ide-extensions |
 | Base image CVE | gitlab.com/redhat/rhel-ai/core/base-images/app |
 | Operator doesn't deploy updated image | opendatahub-io/opendatahub-operator |
+| Auth/session behavior changed after upgrade | RHOAI 3.0 Gateway API transition (see below) |
 
 Mark cross-repo issues as `ai-nonfixable` in this repo unless the fix is clearly in notebook code.
+
+## Architecture Changes Between Versions
+
+**RHOAI 3.0: Gateway API auth transition** — RHOAI 3.0 replaced `openshift-auth-proxy`
+with **Gateway API + kube-rbac-proxy** for workbench authentication. Auth/session bugs
+filed before RHOAI 3.0 may be completely different now. Check the Affects Version.

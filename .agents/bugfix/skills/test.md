@@ -36,7 +36,16 @@ This wraps ruff check, ruff format, pyright, toml validity, uv-lock consistency,
 
 ### 4. Run Targeted Tests (if applicable)
 
-Based on what changed:
+Based on what changed, pick the right test type:
+
+| Test type | Command | Verifies |
+|-----------|---------|----------|
+| Static/config | `make test` | Manifest consistency, pyproject validity, lint |
+| Container | `pytest tests/containers --image=<img>` | Package availability, runtime behavior in image |
+| Browser | Playwright (`tests/browser/`) | UI rendering, extensions |
+| GPU | Needs GPU hardware | CUDA/ROCm operations |
+
+Specific guidance:
 - If test files were modified: run those specific tests
 - If Dockerfiles were modified: `make test` covers static checks; container build requires podman
 - If manifests were modified: `make test` covers manifest consistency

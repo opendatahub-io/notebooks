@@ -12,6 +12,22 @@ After assessing the **first issue**, show the analysis comment and label decisio
 
 ## Procedure (per issue)
 
+### 0. Pre-Assessment Checks
+
+Before writing any assessment, do these checks in order:
+
+1. **Read Jira fields, not just description**: pay attention to `Affects Version` (which
+   RHOAI version — critical for determining if it's still relevant), `Target Version`,
+   `Fix Version`, `Labels`, `Components`, and `Issue Links`.
+2. **Search PRs in BOTH repos**:
+   ```bash
+   gh search prs --repo opendatahub-io/notebooks "RHAIENG-XXXX"
+   gh search prs --repo red-hat-data-services/notebooks "RHAIENG-XXXX"
+   ```
+3. **Check branches**: `git branch -a | grep -i <keyword>`. Someone may already be working on it.
+4. **Check linked/cloned issues** — if they have PRs, read those PR diffs before writing any assessment. Linked issues often contain the solution pattern.
+5. **Check blocking issues' current status** — when a Jira says "blocked on AIPCC-XXXX", look up AIPCC-XXXX to see if it's been resolved since that comment was written. Don't parrot stale blocker status.
+
 ### 1. Load Issue Details
 
 If assessing from ledger, read the issue's entry. If assessing a single issue by key, fetch it via `mcp__atlassian__getJiraIssue`.
@@ -45,7 +61,17 @@ Based on error messages or component names in the issue:
 4. If the user has a remote machine with podman (ask first!), pull and run there to avoid
    slow local image transfers
 
-For complex issues, launch an **Explore subagent** to deep-dive the codebase. The subagent returns a summary of which files are affected and how.
+**Read whole build files, not just grep for keywords.** For complex builds (e.g.,
+`devel_env_setup.sh`), reading end-to-end reveals architecture-specific patterns that
+keyword grep misses. If context preservation is a concern (large files), use an
+**Explore subagent** to read the file and summarize the relevant parts.
+
+**When a fix exists for one arch/variant**, read that fix's PR and extend the same approach.
+Don't invent a different solution when a proven one exists.
+
+**Subagent trigger**: if the file is >200 lines OR the investigation requires checking >1
+external repo, spawn an Explore subagent. The subagent returns a summary of which files
+are affected and how.
 
 ### 3. Classify Bug Category
 
@@ -59,6 +85,9 @@ Map the issue to one of the 8 categories from `reference/bug-categories.md`:
 6. CI/CD pipeline — `.tekton/`, `.github/workflows/`
 7. Runtime/GPU — requires cluster/hardware
 8. UI/browser — requires visual testing
+
+For RStudio bugs, only `rstudio/rhel9-python-3.12/` is relevant for RHOAI. The
+`rstudio/c9s-python-3.12/` variant is for ODH upstream only (CentOS Stream 9).
 
 ### 4. Determine Fixability
 
@@ -80,6 +109,23 @@ Map the issue to one of the 8 categories from `reference/bug-categories.md`:
 - Upstream dependency must release a fix first
 
 **When uncertain**: default to `ai-nonfixable`.
+
+**Test type matters** — specify in the assessment which test type verifies the fix:
+- `make test` = static/config consistency tests (pyproject, manifests)
+- `pytest tests/containers --image=<img>` = container integration tests
+- Playwright (`tests/browser/`) = browser/UI tests
+- GPU hardware needed = cannot be tested locally
+
+**Non-CVE bugs**: check all supported versions between Affects Version and main. A bug
+might be fixed on main but still present on a supported release branch that needs a
+z-stream fix. "Fixed on main" is NOT "resolved for all versions."
+
+**Auth-related bugs**: check if Affects Version predates RHOAI 3.0. RHOAI 3.0 replaced
+`openshift-auth-proxy` with **Gateway API + kube-rbac-proxy** — auth/session bugs from
+before 3.0 may be completely different now.
+
+For Red Hat maintained packages, see `reference/bug-categories.md` — these need team
+coordination for version bumps, not just a simple fix.
 
 ### 5. Compose Analysis Comment
 
@@ -128,7 +174,21 @@ Update the issue's entry in `.artifacts/triage/ledger.json`:
 }
 ```
 
-### 9. Move to Next Issue
+### 9. Quality Checklist
+
+Before posting any assessment, verify:
+- [ ] Searched PRs in opendatahub-io/notebooks AND red-hat-data-services/notebooks
+- [ ] Checked Jira issue links (clones, related, blocks)
+- [ ] If linked issues have PRs, read those PR diffs
+- [ ] Read the actual affected files (not just grep for keywords)
+- [ ] If fix exists for another arch/variant, read that fix's approach
+- [ ] If blocker issues mentioned, checked their current status
+- [ ] Identified correct test type (static / container / browser / GPU)
+- [ ] Comment mentions RHOAI product impact in first paragraph
+- [ ] Did not trust Jira description without code verification
+- [ ] "Fixed on main" noted but NOT treated as "resolved for all versions"
+
+### 10. Move to Next Issue
 
 Print a one-line summary (key, verdict, category) and continue to the next pending issue in the ledger.
 

@@ -30,24 +30,26 @@ Run each check and report pass/fail. See `prerequisites.md` (parent directory) f
    If not authenticated, report: "Run `podman login registry.redhat.io` with credentials from
    https://console.redhat.com/openshift/install/pull-secret"
 
-10. **Remote machine** (ask user): "Do you have SSH access to a remote machine with podman?
+10. **Red Hat VPN**: run `curl -sI https://gitlab.cee.redhat.com 2>&1 | head -1`. Pass if HTTP 200 or 302. Required for manifestbox SBOM downloads (CVE triage). If not connected, report: "Red Hat VPN not detected — manifestbox access unavailable. Connect to VPN if CVE triage is planned."
+
+11. **Remote machine** (ask user): "Do you have SSH access to a remote machine with podman?
     If yes, image pulls and container tests can run there to avoid slow local transfers.
     Provide the SSH target (e.g., user@host) or skip."
     Record the answer for use by bugfix/triage skills.
 
 ### Optional Checks (report but don't block)
 
-11. **Slack MCP**: call `mcp__slack-mcp-local__search_messages` with `query="test" count=1`. Pass if returns results.
+12. **Slack MCP**: call `mcp__slack-mcp-local__search_messages` with `query="test" count=1`. Pass if returns results.
 
-12. **Web search**: call `WebSearch` with `query="opendatahub notebooks"`. Pass if returns results.
+13. **Web search**: call `WebSearch` with `query="opendatahub notebooks"`. Pass if returns results.
 
-13. **GitLab CLI**: run `glab auth status`. If not authenticated, remind: "Visit https://red.ht/GitLabSSO to authenticate, then run `glab auth login`."
+14. **GitLab CLI**: run `glab auth status`. If not authenticated, remind: "Visit https://red.ht/GitLabSSO to authenticate, then run `glab auth login`."
 
-14. **Cluster access**: run `oc whoami`. Pass if returns a username.
+15. **Cluster access**: run `oc whoami`. Pass if returns a username.
 
-15. **Google Docs**: run `which gws`. Pass if found.
+16. **Google Docs**: run `which gws`. Pass if found.
 
-16. **Red Hat Cases API**: check if `docs/access_redhat_cases_api.md` exists. Report availability.
+17. **Red Hat Cases API**: check if `docs/access_redhat_cases_api.md` exists. Report availability.
 
 ### Report Results
 
