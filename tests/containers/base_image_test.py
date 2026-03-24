@@ -68,13 +68,8 @@ class TestBaseImage:
         try:
             container.start()
             yield container
-            return
-        except Exception as e:
-            pytest.fail(f"Unexpected exception in test: {e}")
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
-
-        raise RuntimeError("Cannot happen: the test did not pass as expected.")
 
     def test_elf_files_can_link_runtime_libs(self, subtests: pytest_subtests.SubTests, image):
         def test_fn(container: testcontainers.core.container.DockerContainer):

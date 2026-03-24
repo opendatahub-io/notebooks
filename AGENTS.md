@@ -148,6 +148,11 @@ make test-${NOTEBOOK_NAME} # Specific notebook tests
    - Use type hints where appropriate
    - Run `ruff` for linting
    - Use `pyright` for type checking
+   - This project requires Python 3.14. PEP 758 allows `except ExcA, ExcB:` without
+     parentheses to catch multiple exception types. This is NOT the old Python 2 syntax
+     for `except ExcA as ExcB`. Parentheses are still required when binding with `as`:
+     use `except (ExcA, ExcB) as e:`, not `except ExcA, ExcB as e:`. Ruff format
+     enforces the parenthesis-free style when there is no `as` clause.
 
 2. **Dockerfiles**:
    - Minimize layers
