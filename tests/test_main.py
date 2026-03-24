@@ -376,6 +376,9 @@ def test_image_manifests_version_alignment(
     ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
         # ("package name", ("allowed version 1", "allowed version 2", ...))
         ("Codeflare-SDK", ("0.34", "0.35")),
+        ("Kfp", ("2.15", "2.16")),
+        ("Feast", ("0.60", "0.61")),
+        ("Odh-Elyra", ("4.3", "5.0")),
         ("Scikit-learn", ("1.7", "1.6")),
         ("Scipy", ("1.16", "1.17")),
         ("Pandas", ("2.3", "1.5")),
@@ -388,7 +391,7 @@ def test_image_manifests_version_alignment(
             ),
         ),
         ("Tensorboard", ("2.18", "2.20")),
-        ("PyTorch", ("2.7", "2.9")),
+        ("PyTorch", ("2.9", "2.10")),
     )
 
     for name, data in packages.items():

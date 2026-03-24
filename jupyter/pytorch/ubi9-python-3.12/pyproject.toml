@@ -5,64 +5,54 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # PyTorch packages (from AIPCC CUDA index)
-    "tensorboard~=2.20.0",
-    "torch==2.9.1",
-    "torchvision==0.24.1",
+    "tensorboard",
+    "torch",
+    "torchvision",
 
     # Datascience and useful extensions
-    "codeflare-sdk~=0.35.0",
-    "feast~=0.60.0",
-    "skl2onnx~=1.20.0",
-    "onnxscript~=0.6.2",
+    "codeflare-sdk",
+    "feast",
+    "skl2onnx",
+    "onnxscript",
     "odh-notebooks-meta-workbench-datascience-deps",
 
     # DB connectors
-    "pymongo~=4.16.0",
-    "psycopg~=3.3.2",
-    "pyodbc~=5.3.0",
-    "mysql-connector-python~=9.6.0",
+    "pymongo",
+    "psycopg",
+    "pyodbc",
+    "mysql-connector-python",
 
     # JupyterLab packages
-    "odh-elyra==4.3.2",
-    "odh-jupyter-trash-cleanup==0.1.1",
+    "odh-elyra",
+    "odh-jupyter-trash-cleanup",
 
-    "jupyterlab~=4.5.2",
-    "jupyter-bokeh~=4.0.5",
-    "jupyter-server~=2.17.0",
-    "jupyter-server-proxy~=4.4.0",
-    "jupyter-server-terminals~=0.5.3",
-    "jupyterlab-git~=0.51.2",
-    "jupyterlab-lsp~=5.1.1",
-    "jupyterlab-widgets~=3.0.15",
-    "jupyter-resource-usage~=1.1.1",
-    "nbdime~=4.0.2",
-    "nbgitpuller~=1.2.2",
+    "jupyterlab",
+    "jupyter-bokeh",
+    "jupyter-server",
+    "jupyter-server-proxy",
+    "jupyter-server-terminals",
+    "jupyterlab-git",
+    "jupyterlab-lsp",
+    "jupyterlab-widgets",
+    "jupyter-resource-usage",
+    "nbdime",
+    "nbgitpuller",
 
     # Base packages
-    "wheel~=0.46.3",
-    "setuptools~=80.9.0",
+    "wheel",
+    "setuptools",
 ]
-
-[tool.uv.sources]
-odh-notebooks-meta-workbench-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
-
-# https://docs.astral.sh/uv/concepts/indexes/#package-indexes
-[[tool.uv.index]]
-name = "pytorch-cuda"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
 
 [tool.uv]
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
+
 override-dependencies = [
     # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
     # appengine-python-standard which has an obnoxious urllib3<2 constraint
     "urllib3>=2.6.0",
-    # AIPCC-8698: python-lsp-server[all] has conflicting pyflakes/pycodestyle requirements
-    # The [all] extra pulls in linting tools we don't need at runtime
-    # Using >= instead of ~= to allow broader compatibility during resolution
-    # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
-    "python-lsp-server>=1.11.0",
 ]
+
+[tool.uv.sources]
+odh-notebooks-meta-workbench-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
