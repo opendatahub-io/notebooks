@@ -10,7 +10,7 @@ Run each check and report pass/fail. See `prerequisites.md` (parent directory) f
 
 1. **Jira access**: call `mcp__atlassian__getAccessibleAtlassianResources`. Look for cloud ID for `redhat.atlassian.net`. If missing, report: "Atlassian MCP not configured. Check your MCP server settings."
 
-2. **Jira read**: call `mcp__atlassian__getJiraIssue` with `cloudId=<from step 1>` and `issueKey=RHAIENG-3712` (a known issue). If it returns data, pass. If error, report the error.
+2. **Jira read**: call `mcp__atlassian__getJiraIssue` with `cloudId=<from step 1>` and `issueIdOrKey=RHAIENG-3712` (a known issue). If it returns data, pass. If error, report the error.
 
 3. **Jira write**: ask the user "Shall I post a test comment to a Jira issue to verify write access? If yes, which issue key?" If user provides one, post a comment: `[Preflight test] Agent write access confirmed - {date}. This comment can be deleted.` If user declines, mark as SKIP.
 
