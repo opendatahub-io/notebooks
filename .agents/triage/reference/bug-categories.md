@@ -20,10 +20,10 @@ Wrong base image, missing packages, layer ordering, COPY path errors, build argu
 
 Version incompatibilities, missing dependencies, lock file drift, resolver failures.
 
-- **Files**: `*/pyproject.toml`, `*/pylock.toml`, `*/Pipfile`, `*/Pipfile.lock`
+- **Files**: `*/pyproject.toml`, `*/pylock.toml`, `*/uv.lock`
 - **Symptoms**: `pip install` failures, import errors, version mismatch warnings
-- **Related repos**: Upstream PyPI packages
-- **Notes**: After modifying dependencies, regenerate lock files with `make refresh-pipfilelock-files`. Understand the inheritance model — minimal -> datascience -> specialized.
+- **Related repos**: Upstream PyPI packages, AIPCC wheels index
+- **Notes**: After modifying dependencies: `gmake refresh-lock-files` (or targeted: `./uv run scripts/pylocks_generator.py auto <dir>`). Understand the inheritance model — minimal -> datascience -> specialized.
 
 ## 3. Test Infrastructure
 
@@ -45,7 +45,7 @@ Wrong tags in imagestream manifests, missing image entries, version drift betwee
 - **Files**: `manifests/odh/base/*.yaml`, `manifests/rhoai/base/*.yaml`, `manifests/*/base/params-latest.env`
 - **Symptoms**: Wrong image deployed, missing notebook option in dashboard, version mismatch
 - **Related repos**: opendatahub-io/opendatahub-operator (deploys manifests), opendatahub-io/odh-dashboard (reads imagestreams)
-- **Notes**: `params-latest.env` contains image digests, updated by nudge automation.
+- **Notes**: `params-latest.env` format differs by variant: ODH has image tags, RHOAI has placeholder values (operator overrides at deploy time via `RELATED_IMAGE_*`). After changing manifests: `./uv run manifests/tools/generate_kustomization.py`.
 
 ## 5. Security / CVE Updates
 
@@ -53,10 +53,10 @@ Wrong tags in imagestream manifests, missing image entries, version drift betwee
 
 Package version bumps for CVE remediation, vulnerability scanner findings.
 
-- **Files**: Dependency files (pyproject.toml, Pipfile), Dockerfiles (RPM packages)
+- **Files**: Dependency files (pyproject.toml, `dependencies/cve-constraints.txt`), Dockerfiles (RPM packages)
 - **Symptoms**: CVE scan alerts, security tracker issues
 - **Related repos**: AIPCC base images, upstream package registries
-- **Notes**: See `docs/scanning_tools_guide_skill.md` for scanning tools. See `docs/sec_jira_vex_skill.md` for VEX justification workflow. Check if CVE is in base image (AIPCC responsibility) vs. added packages (our responsibility).
+- **Notes**: See `skills/scan-image.md` for scanning tools. See `skills/close-vex.md` for VEX justification workflow. See `skills/assess-cve.md` for CVE tracker triage. Check if CVE is in base image (AIPCC responsibility) vs. added packages (our responsibility).
 
 ## 6. CI/CD Pipeline Configuration
 

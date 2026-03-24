@@ -83,7 +83,7 @@ Post a comment linking to the PR:
 AI Fix Applied - {date}
 PR: {pr-url}
 Summary: {what was fixed}
-Tests: All passing (make test, ruff, pyright)
+Tests: All passing (make test, prek)
 Status: Awaiting human review
 ```
 

@@ -22,7 +22,7 @@ Follow the recommended fix from the root cause analysis. Key conventions from `A
 
 - **Python**: PEP 8, type hints, Python 3.14 syntax (PEP 758 `except ExcA, ExcB:` without parens when no `as`). Run `ruff format` mentally.
 - **Dockerfiles**: minimize layers, keep Dockerfile.cpu and Dockerfile.konflux.cpu in sync
-- **Dependencies**: edit pyproject.toml, then `make refresh-pipfilelock-files`
+- **Dependencies**: edit pyproject.toml, then `gmake refresh-lock-files`
 - **Manifests**: keep odh/ and rhoai/ variants consistent
 - **Tests**: mirror source layout (`scripts/cve/` -> `tests/unit/scripts/cve/`)
 

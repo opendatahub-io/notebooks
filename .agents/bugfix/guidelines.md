@@ -31,8 +31,8 @@ If tests fail after 3 fix attempts:
 |-------|-------|
 | Start | `mcp__atlassian__getJiraIssue`, repo reading (Read, Grep, Glob) |
 | Diagnose | Grep, Glob, Read, Bash (read-only git commands: `git log`, `git blame`), subagents for research |
-| Fix | Edit, Write tools, Bash (`git checkout -b`, `make refresh-pipfilelock-files`) |
-| Test | Bash (`make test`, `./uv run pytest`, `./uv run ruff check`, `./uv run pyright`) |
+| Fix | Edit, Write tools, Bash (`git checkout -b`, `gmake refresh-lock-files`) |
+| Test | Bash (`make test`, `./uv run pytest`, `./uv run prek --from-ref HEAD~1 --to-ref HEAD`) |
 | PR | Bash (`git push`, `gh pr create`), `mcp__atlassian__editJiraIssue`, `mcp__atlassian__addCommentToJiraIssue` |
 
 ## HITL Checkpoints

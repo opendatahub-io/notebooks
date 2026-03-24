@@ -41,7 +41,8 @@ make test
 **Files**: `manifests/odh/base/*.yaml`, `manifests/rhoai/base/*.yaml`
 
 **Key points**:
-- `params-latest.env` contains image digests
+- `params-latest.env` format differs: ODH has image tags, RHOAI has placeholder values
+  (operator overrides them at deploy time via `RELATED_IMAGE_*` from CSV)
 - ImageStream YAML files define available notebook options
 - Changes must be consistent between odh/ and rhoai/ variants
 - After changing `.env` files or ImageStreams: `./uv run manifests/tools/generate_kustomization.py`
