@@ -526,11 +526,11 @@ grep "def:<advisory_number>" results.xml | grep "result="
 
 ## Real-World Case Studies
 
-### Case 1: CVE-2025-13465 (Lodash) - TRUE POSITIVE
+### Case 1: CVE-2025-13465 (Lodash) - SOURCE-SCAN ARTIFACT
 
 **Package:** `lodash@4.17.21`  
 **Location:** `/jupyter/utils/addons/pnpm-lock.yaml`  
-**Type:** npm (build-time dependency)
+**Type:** npm (repository source-scan artifact in the current image layout)
 
 **Investigation:**
 ```bash
@@ -551,13 +551,13 @@ git log -- jupyter/utils/addons/pnpm-lock.yaml
 # No fix found yet
 ```
 
-**Conclusion:** Real vulnerability, requires updating pnpm-lock.yaml.
+**Conclusion:** Do not assume runtime exposure from this path alone. In the current image layout, this should trigger image-specific SBOM verification and likely VEX `Component not Present` review.
 
 ### Case 2: CVE-2025-15284 (qs) - FIXED IN SOURCE
 
 **Package:** `qs@6.13.0` (vulnerable) → `qs@6.14.1` (fixed)  
 **Location:** `/jupyter/utils/addons/pnpm-lock.yaml`  
-**Type:** npm (build-time dependency)
+**Type:** npm (repository source-scan artifact in the current image layout)
 
 **Investigation:**
 ```bash

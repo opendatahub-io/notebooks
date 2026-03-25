@@ -57,6 +57,11 @@ curl -O https://gitlab.cee.redhat.com/product-security/manifest-box/-/raw/main/m
 
 For large operations, use an internal Red Hat VM with better network access to GitLab.
 
+### Option 5: Fetch One SBOM via GitLab API + Git LFS
+
+Use this when you only need one or two SBOM JSON files for triage.
+It avoids downloading the 400MB+ SQLite DB or cloning the full repository.
+
 ## Querying the SQLite Database
 
 The main database for Konflux builds is `manifest-box-konflux.sqlite`.
@@ -178,6 +183,57 @@ https://gitlab.cee.redhat.com/product-security/manifest-box/-/tree/main/manifest
 Files are named according to:
 - **Jira component field**: e.g., `odh-workbench-codeserver-py312-rhel9`
 - **Image hash**: Included in filename for traceability
+
+### Fetch One SBOM via GitLab API + Git LFS
+
+For one-off CVE work, prefer this flow over downloading the SQLite database:
+
+1. **Search the manifest tree for the component**
+```bash
+curl -s \
+  "https://gitlab.cee.redhat.com/api/v4/projects/product-security%2Fmanifest-box/repository/tree?path=manifests/konflux/openshift-ai&per_page=1000" \
+  | python3 -c "import sys, json; items = json.load(sys.stdin); [print(x['name']) for x in items if 'odh-workbench-codeserver-datascience-cpu-py312-rhel9' in x['name']]"
+```
+
+2. **Fetch the manifest file pointer**
+```bash
+encoded_path="manifests%2Fkonflux%2Fopenshift-ai%2Frhoai_odh-workbench-codeserver-datascience-cpu-py312-rhel9%40sha256%3Ad9ad95375705d41dfa4dc47a0ba20b45b0ad8ecb09579f140b2e2cf5b0a83087.json"
+curl -s \
+  "https://gitlab.cee.redhat.com/api/v4/projects/product-security%2Fmanifest-box/repository/files/${encoded_path}/raw?ref=main" \
+  > sbom.pointer
+```
+
+3. **Extract the Git LFS object id and size**
+```bash
+oid=$(python3 -c "from pathlib import Path; lines = Path('sbom.pointer').read_text().splitlines(); print(lines[1].split()[1].split(':', 1)[1])")
+size=$(python3 -c "from pathlib import Path; lines = Path('sbom.pointer').read_text().splitlines(); print(lines[2].split()[1])")
+```
+
+4. **Resolve the real download URL**
+```bash
+curl -s -X POST \
+  "https://gitlab.cee.redhat.com/product-security/manifest-box.git/info/lfs/objects/batch" \
+  -H "Accept: application/vnd.git-lfs+json" \
+  -H "Content-Type: application/vnd.git-lfs+json" \
+  -d "{\"operation\":\"download\",\"transfers\":[\"basic\"],\"objects\":[{\"oid\":\"${oid}\",\"size\":${size}}]}" \
+  > lfs.json
+
+download_url=$(python3 -c "import json; print(json.load(open('lfs.json'))['objects'][0]['actions']['download']['href'])")
+curl -sL "${download_url}" > sbom.json
+```
+
+5. **Inspect the package location**
+```bash
+./uv run scripts/cve/sbom_analyze.py sbom.json undici
+```
+
+If you prefer a wrapper for this flow, use:
+```bash
+./uv run python scripts/cve/fetch_manifestbox_sbom.py --component odh-workbench-codeserver-datascience-cpu-py312-rhel9 --pick 2 --output sbom.json --package undici
+```
+
+If your environment cannot validate the internal GitLab certificate chain, add `--insecure`
+to the helper script or `-k` to the manual `curl` commands above.
 
 ### Determining Product Version
 
@@ -408,6 +464,18 @@ if __name__ == "__main__":
 | `*/node_modules/*/package.json` | npm | package.json or parent package update |
 | `/usr/share/gems/` | Ruby | Gemfile update |
 | `*.jar` | Java | pom.xml or build.gradle |
+
+### Interpreting `sourceInfo`
+
+`sourceInfo` is often the fastest way to tell whether a package is truly shipped in the image or only present in source-scan material.
+
+| `sourceInfo` pattern | Interpretation | Typical action |
+|----------------------|----------------|----------------|
+| `/usr/lib/code-server/.../node_modules/...` | Real shipped code-server npm component | Treat as real exposure |
+| `/tests/browser/pnpm-lock.yaml` or other `/tests/...` path | Test-only or source-scan finding | Likely VEX `Component not Present` review |
+| `/jupyter/utils/addons/pnpm-lock.yaml` | Currently a source-scan artifact from repository content, not shipped runtime image content | Usually review for VEX `Component not Present` unless image-specific evidence shows otherwise |
+| `/usr/lib/python*/site-packages/` or `/opt/app-root/lib/python*/site-packages/` | Real shipped Python dependency | Treat as real image content |
+| `/var/lib/rpm/` | Base OS package | Base image / RPM remediation path |
 
 ## Related Tools
 

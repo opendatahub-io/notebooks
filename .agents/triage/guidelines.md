@@ -71,6 +71,8 @@ For issues in other repos, check the cross-repo table in `reference/bug-categori
 - **Every assessment must include reasoning**: never label without explanation.
 - **Label and comment as you go**: don't batch labels — apply to each issue immediately after assessment. Partial progress is visible in Jira even if the agent stops midway.
 - **Reference repo context**: read `AGENTS.md` (repo root) for the inheritance model, build system, and testing approach before assessing fixability.
+- **For CVEs, built-image SBOM evidence outranks repo grep**: when deciding whether a component is actually in the shipped image, prefer manifest-box `sourceInfo` over source-tree lockfiles or docs.
+- **Sample representative children before generalizing**: if a tracker spans multiple image families (`codeserver`, `jupyter-*`, `runtime-*`), check one child per family before making tracker-wide claims.
 
 ## Hard Limits
 
@@ -121,3 +123,4 @@ After assessing the **first issue**, show the analysis comment and label decisio
 - Similar bugs should receive similar assessments — be consistent.
 - Every `ai-fixable` decision must reference which files in the repo would need to change.
 - Every `ai-nonfixable` decision must explain why (what's blocking autonomous fix).
+- Mixed trackers should clearly separate real remediation targets from likely VEX `Component not Present` candidates.

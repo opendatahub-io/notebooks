@@ -36,22 +36,61 @@ for v in json.load(sys.stdin).get('vulns',[]):
 Ecosystems: `PyPI` for Python, `npm` for Node.js. This gives exact fix versions — verify
 the current version in each branch is actually >= the fix version before claiming "fixed."
 
-### 3. Read ONE Child Issue
+### 3. Read Representative Child Issues
 
-Fetch one linked RHOAIENG child to get:
-- **Fix version**: in the description (e.g., "fixed in 2.12.0")
+Do NOT generalize from one child when the tracker spans multiple image families.
+
+Read one linked RHOAIENG child per distinct `pscomponent:` family when possible:
+- one `codeserver` child if present
+- one representative `jupyter-*` child
+- one representative `runtime-*` child if runtimes are also blocked
+
+For each representative child, extract:
+- **Fix version**: in the description if present
 - **`pscomponent:` label**: identifies the container image (e.g., `pscomponent:rhoai/odh-pipeline-runtime-pytorch-rocm-py312-rhel9`)
 - Note the issuetype is `Vulnerability` (not Bug)
 
-### 4. Identify Ecosystem
+If all children clearly belong to the same family, one child is enough.
 
-Based on the package name, determine the ecosystem:
-- **Python** (~80%): check pylock.toml / pyproject.toml
-- **Node.js (npm)**: likely in code-server (`/usr/lib/code-server/`) or Jupyter addons (`jupyter/utils/addons/`). Use `scripts/cve/sbom_analyze.py` + manifestbox to locate.
-- **Go**: local utils or esbuild in RStudio
+### 4. Fetch Image-Specific SBOMs From Manifest-box Early
+
+When built-image presence is uncertain, manifest-box is the primary evidence source.
+Use it before deep repo inference for:
+- **Node.js/npm** CVEs
+- **mixed trackers** spanning multiple image families
+- **Python** CVEs where source files may not match shipped image contents
+- **Go** CVEs where the vulnerable code may be in embedded tooling, a bundled binary, or another repo
+
+Fetch one SBOM per representative child family.
+
+If you already have an SBOM JSON file locally, use the repo tool:
+```bash
+./uv run scripts/cve/sbom_analyze.py <sbom.json> <package_name>
+```
+
+If you need to fetch one from manifest-box, follow `reference/manifestbox.md`.
+Use the lightweight GitLab API + Git LFS workflow there instead of downloading the large SQLite DB when you only need a small number of files.
+
+**SBOM version must match tracker version.** If tracker says `[rhoai-3.3]`, use v3-3 SBOMs,
+not v2-25. Different versions have different packages.
+
+Treat manifest-box `sourceInfo` as primary evidence for whether a component is really in the shipped image.
+Repo lockfiles and source grep are secondary evidence.
+
+### 5. Identify Ecosystem and Location
+
+Based on the package name and manifest-box `sourceInfo` / location:
+- **Python**: real runtime paths look like `/usr/lib/python*/site-packages/` or `/opt/app-root/lib/python*/site-packages/`
+- **Node.js (npm)**: likely in code-server (`/usr/lib/code-server/`). Paths under `/jupyter/utils/addons/` are currently source-scan artifacts in our images, not shipped runtime content.
+- **Go**: often appears via bundled binaries, embedded tooling, or other repos; use SBOM location first
 - **RPM**: base image concern (AIPCC)
 
-### 5. Check Package Version Across Supported Versions
+Location patterns matter:
+- `/usr/lib/code-server/.../node_modules/...` → real shipped code-server npm component
+- `/tests/browser/pnpm-lock.yaml` or other `/tests/...` paths → likely source-scan / test-only false positive
+- `/jupyter/utils/addons/pnpm-lock.yaml` → currently source-scan artifact from repository content; likely VEX `Component not Present` candidate unless image-specific SBOM evidence shows otherwise
+
+### 6. Check Package Version Across Supported Versions
 
 **CVE trackers are version-specific**: a `[rhoai-3.3]` tracker → only check rhoai-3.3 and
 newer (main). Don't check 2.25/2.16 — they have their own trackers if affected.
@@ -77,7 +116,10 @@ Build the version table (from tracker version up to main).
 **Fixes on main do NOT flow to release branches.** Each version needs its own fix
 (separate PR on separate branch). Never claim "one fix covers all versions."
 
-### 6. Query Red Hat Security Data API
+For Python and npm, use branch files to compare versions only after confirming package presence in the image.
+Do not let repo inspection override manifest-box evidence about whether the package is actually shipped.
+
+### 7. Query Red Hat Security Data API
 
 Covers ALL Red Hat products including RHOAI. No auth needed.
 
@@ -94,25 +136,12 @@ for ps in d.get('package_state',[]):
 Returns per-image fix state (Affected/Not affected/Fixed) for every RHOAI container.
 Web UI: `https://access.redhat.com/security/cve/CVE-XXXX-XXXXX`
 
-### 7. Locate Package in Image (manifestbox + sbom_analyze.py)
-
-If you have a manifestbox SBOM JSON file for the affected image, use the repo's built-in tool:
-```bash
-./uv run scripts/cve/sbom_analyze.py <sbom.json> <package_name>
-```
-
-This shows the package type (npm/Python/RPM), install location, and source info — critical for determining the ecosystem and fix approach.
-
-**SBOM version must match tracker version.** If tracker says `[rhoai-3.3]`, use v3-3 SBOM,
-not v2-25. Different versions have different packages.
-
-See also `reference/manifestbox.md` for how to fetch SBOM files from the manifest-box repo.
-
-### 8. Check for False Positives
+### 8. Check for False Positives and Mixed Trackers
 
 **Critical**: Konflux source SBOM scans the entire repo (RHAIENG-3006). The package may be in the SBOM but NOT in the specific image. Check:
+- Use manifest-box image-specific SBOMs first (see `reference/manifestbox.md`)
+- Is the package present in a shipped runtime path, or only in repo/test/source-scan paths?
 - Is the package in `pyproject.toml` for the affected image, or only in a different image?
-- Use manifestbox image-specific SBOM to verify (see `reference/manifestbox.md`)
 - If false positive: all children should be closed as "Not a Bug" with VEX "Component not Present" (use `skills/close-vex.md`)
 
 **False positive pattern: dev deps in source scan.** A package may exist in the top-level
@@ -120,6 +149,19 @@ See also `reference/manifestbox.md` for how to fetch SBOM files from the manifes
 workbench image's pyproject.toml or lock files. The manifestbox SBOM for hermetic builds
 correctly excludes them, but non-hermetic image SBOMs include the repo source scan →
 false positive CVE tickets. VEX justification: "Component not Present" (in the shipped container).
+
+**False positive pattern: test-only npm paths.** If manifest-box shows the package only under
+`/tests/...` (for example `/tests/browser/pnpm-lock.yaml`), treat it as a likely source-scan
+false positive and route toward VEX review rather than remediation.
+
+**Mixed tracker pattern.** Some children may be real while others are false positives.
+Example: code-server images may carry a real runtime npm dependency under `/usr/lib/code-server/...`,
+while Jupyter or runtime images only pick it up from `/tests/...`.
+In this case:
+- keep the parent tracker `ai-nonfixable`
+- identify which image families are real remediation targets
+- identify which image families are likely VEX `Component not Present` candidates
+- do NOT let one real child justify all blocked children
 
 **"Commit fix but no release" pattern.** Upstream may have a commit fix but no release
 containing it. In this case:
@@ -137,13 +179,15 @@ If already constrained, the fix may already be in place.
 
 ### 10. Determine Fixability
 
-- **Python, package in our pyproject.toml**: ai-fixable — bump version, add to cve-constraints.txt, refresh locks
-- **Python, transitive dep only**: ai-fixable — add to cve-constraints.txt, refresh locks
-- **npm in code-server**: nonfixable by us — needs code-server version bump
-- **npm in jupyter addons**: fixable — update pnpm-lock.yaml in `jupyter/utils/addons/`
-- **Go**: case-by-case
+- **Python, package present in the image and in our pyproject.toml**: ai-fixable — bump version, add to cve-constraints.txt, refresh locks
+- **Python, transitive dep present in the image**: ai-fixable — add to cve-constraints.txt, refresh locks
+- **npm in code-server runtime path**: nonfixable by us — needs code-server version bump or upstream remediation path
+- **npm only in `jupyter/utils/addons/` source-scan paths**: currently treat as likely false positive — review for VEX instead of planning a dependency update
+- **npm only in `/tests/...` or other source-scan-only paths**: false positive — close with VEX
+- **Go present in shipped tooling/binary paths**: case-by-case, often nonfixable in this repo if remediation is upstream or in another bundled component
 - **RPM**: nonfixable — AIPCC base image concern
 - **False positive (not in image)**: close with VEX
+- **Mixed tracker**: usually parent `ai-nonfixable` until child issues are split into real vs VEX candidates
 - **Commit fix but no release**: nonfixable — monitor upstream
 
 ### 11. Useful Scripts
@@ -151,6 +195,8 @@ If already constrained, the fix may already be in place.
 - `scripts/cve/create_cve_trackers.py` — creates RHAIENG tracker issues from orphan RHOAIENG CVEs. Run `./uv run scripts/cve/create_cve_trackers.py --dry-run` to preview.
 - `scripts/cve/cve_due_dates.py` — lists overdue trackers, syncs due dates from children. Run `./uv run scripts/cve/cve_due_dates.py --list-overdue`.
 - `scripts/group_cves_by_id.py` — groups CVE issues by CVE ID for bulk analysis.
+- `scripts/cve/sbom_analyze.py` — inspects SBOM files and shows package type, location, and `sourceInfo`
+- `scripts/cve/fetch_manifestbox_sbom.py` — resolves and downloads one manifest-box SBOM JSON via GitLab API + Git LFS
 
 ### 12. Label and Comment
 
@@ -160,6 +206,7 @@ Apply `ai-triaged` + `ai-fixable` or `ai-nonfixable`. Post comment with:
 - Ecosystem and location
 - Fix approach
 - Due date awareness
+- If the tracker is mixed, separate real remediation targets from VEX `Component not Present` candidates
 
 **Sibling tracker pattern**: for same CVE on a different RHOAI version (e.g., `[rhoai-2.25]`
 after already triaging `[rhoai-3.3]`), reference the prior assessment and just check the
