@@ -11,7 +11,7 @@ Continues from `skills/test.md`. All tests pass on the feature branch.
 Show the user what will be done before proceeding:
 - Branch name and diff summary
 - PR title and body draft
-- Jira label changes
+- Jira label changes (`ai-fully-automated` vs `ai-accelerated-fix` from `.artifacts/bugfix/{key}/test-handoff.md`; see `triage/reference/label-taxonomy.md`)
 - Wait for user confirmation
 
 ## Procedure
@@ -67,7 +67,15 @@ PREOF
 
 ### 4. Update Jira Labels
 
-Fetch current labels, append `ai-fully-automated`:
+Read `.artifacts/bugfix/{key}/test-handoff.md` and parse `test_failure_cycles` (default `0` if missing).
+
+| `test_failure_cycles` | Append this label |
+|------------------------|-------------------|
+| `0` | `ai-fully-automated` |
+| `>= 1` | `ai-accelerated-fix` |
+
+Fetch current labels, append exactly one of the above (never both):
+
 ```json
 {
   "fields": {
@@ -75,6 +83,8 @@ Fetch current labels, append `ai-fully-automated`:
   }
 }
 ```
+
+(use `ai-accelerated-fix` instead when `test_failure_cycles >= 1`)
 
 ### 5. Add Jira Comment
 
@@ -100,6 +110,6 @@ Return to the branch you were on before starting.
 ```
 Fix complete for RHAIENG-XXXX
 PR: {url}
-Jira: labeled ai-fully-automated, comment added
+Jira: labeled {ai-fully-automated|ai-accelerated-fix}, comment added
 Branch: fix/{key}-{desc}
 ```

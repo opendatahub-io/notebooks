@@ -29,11 +29,12 @@ Phases run sequentially with human confirmation between diagnose->fix, fix->test
 
 ## One Issue at a Time
 
-Finish one issue (PR created or `ai-could-not-fix` applied) before starting the next.
+Finish one issue (PR created with `ai-fully-automated` or `ai-accelerated-fix`, or `ai-could-not-fix` / `ai-verification-failed` applied) before starting the next.
 
 ## Artifacts
 
 Per-issue output goes to `.artifacts/bugfix/{key}/`:
 - `context.md` — summarized issue context
 - `root-cause.md` — diagnosis with evidence
+- `test-handoff.md` — written by `test.md` before PR (`test_failure_cycles` → success label)
 - `test-failures.md` — if circuit breaker triggered

@@ -47,7 +47,7 @@ Run each check and report pass/fail. See `prerequisites.md` (parent directory) f
 
 15. **Cluster access**: run `oc whoami`. Pass if returns a username.
 
-16. **Google Docs**: run `which gws`. Pass if found.
+16. **Google Docs**: run `which gws`. Pass if found. For reading docs programmatically, see `skills/google-doc.md`.
 
 17. **Red Hat Cases API**: check if `docs/access_redhat_cases_api.md` exists. Report availability.
 

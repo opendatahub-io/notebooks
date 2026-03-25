@@ -4,7 +4,7 @@ Safety rules, allowed tools, and escalation criteria for AI bug fixing.
 
 ## Principles
 
-- **One issue at a time**: finish one issue (PR created or `ai-could-not-fix` applied) before starting the next. No parallel fixes.
+- **One issue at a time**: finish one issue (PR created with `ai-fully-automated` or `ai-accelerated-fix`, or terminal failure labels applied) before starting the next. No parallel fixes.
 - **Minimal diffs**: change only what's needed. Don't refactor, add docs, or "improve" surrounding code.
 - **Show code, not concepts**: implement the actual fix, don't describe what should be done.
 - **Follow repo conventions**: read `AGENTS.md` (repo root) for PEP 8, Python 3.14 syntax, ruff, pyright, and the inheritance model.

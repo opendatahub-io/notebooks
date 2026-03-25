@@ -66,7 +66,7 @@ ORDER BY updated DESC
 
 ```jql
 project = RHAIENG AND labels = ai-fixable
-AND labels NOT IN (ai-fully-automated, ai-could-not-fix, ai-verification-failed)
+AND labels NOT IN (ai-fully-automated, ai-accelerated-fix, ai-could-not-fix, ai-verification-failed)
 AND component = Notebooks
 ORDER BY priority DESC, updated DESC
 ```

@@ -17,7 +17,7 @@ Call `mcp__atlassian__getJiraIssue` with the issue key. Extract:
 ### 2. Verify Readiness
 
 - Check for `ai-fixable` label. If absent, warn the user: "This issue is not labeled ai-fixable. Proceed anyway?"
-- Check if it already has an execution label (`ai-fully-automated`, `ai-could-not-fix`, `ai-verification-failed`). If so, warn: "This issue was already attempted."
+- Check if it already has a terminal execution label (`ai-fully-automated`, `ai-accelerated-fix`, `ai-could-not-fix`, `ai-verification-failed`). If so, warn: "This issue was already attempted." (`regressions-found` is post-merge and does not by itself mean the fix workflow is incomplete.)
 - If not already known from preflight: ask the user if they have a **remote machine with podman**
   available via SSH for image pulls, container tests, and large artifact downloads (manifest-box
   SBOMs, upstream release tarballs). Record the answer — it determines whether verification

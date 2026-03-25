@@ -81,7 +81,12 @@ PR body should reference:
 
 ### 7. Update Tracker
 
-Add `ai-fully-automated` label. Comment with PR link.
+Add **one** success label (same rules as `skills/pr.md` / `label-taxonomy.md`):
+
+- `ai-fully-automated` — verification (`make test`, lock checks) passed on the first try with no test-failure cycle in this CVE workflow.
+- `ai-accelerated-fix` — you had to re-run verification or adjust the fix after at least one failed test or check before opening the PR.
+
+Comment with PR link.
 
 ## Notes
 

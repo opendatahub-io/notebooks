@@ -4,12 +4,12 @@
 Uses the `gws` CLI tool (Google Workspace CLI) to access the Google Docs API.
 Requires `gws` to be installed and authenticated.
 
-Usage:
-    python docs/fetch_google_doc.py <document-id-or-url> [-o output.md]
+Usage (from repo root):
+    python .agents/tools/fetch_google_doc.py <document-id-or-url> [-o output.md]
 
 Examples:
-    python docs/fetch_google_doc.py 1aLED1gER-YINBjCHp5mUg5ChQf4BNpdRlnoEBKs_RF8
-    python docs/fetch_google_doc.py 'https://docs.google.com/document/d/1aLED.../edit' -o bug-bash.md
+    python .agents/tools/fetch_google_doc.py 1aLED1gER-YINBjCHp5mUg5ChQf4BNpdRlnoEBKs_RF8
+    python .agents/tools/fetch_google_doc.py 'https://docs.google.com/document/d/1aLED.../edit' -o bug-bash.md
 """
 
 from __future__ import annotations

@@ -8,7 +8,9 @@ Continues from `skills/fix.md`. Changes are staged on the feature branch.
 
 ## State
 
-Track the attempt counter. Initialize to 0 on first entry.
+Track **`test_failure_cycles`**: the number of times you take the **Failures** branch in step 5 before eventually reaching **All pass**. Initialize to `0` on first entry. Increment by **1** each time tests fail (each time you loop back to step 1 after a failure).
+
+This value selects the Jira success label in `skills/pr.md` (see **Handoff** below).
 
 ## Procedure
 
@@ -52,12 +54,12 @@ Specific guidance:
 
 ### 5. Evaluate Results
 
-**All pass**: proceed to `skills/pr.md`.
+**All pass**: write the handoff file (below), then proceed to `skills/pr.md`.
 
-**Failures**: increment attempt counter.
+**Failures**: increment `test_failure_cycles` by 1.
 
-- **Attempt <= 3**: analyze the failure, apply a targeted fix, and re-run tests. Go back to step 1.
-- **Attempt > 3**: CIRCUIT BREAKER — stop. See below.
+- **`test_failure_cycles` <= 3**: analyze the failure, apply a targeted fix, and re-run tests. Go back to step 1.
+- **`test_failure_cycles` > 3**: CIRCUIT BREAKER — stop. See below.
 
 ### Circuit Breaker (after 3 failed attempts)
 
@@ -75,3 +77,18 @@ Specific guidance:
    git checkout -
    ```
 7. Report to user: "Tests failed after 3 attempts. Draft PR created for human review."
+
+## Handoff to `pr.md`
+
+After **All pass**, write `.artifacts/bugfix/{key}/test-handoff.md`:
+
+```yaml
+test_failure_cycles: N
+```
+
+Use the final `test_failure_cycles` value (after success). `pr.md` maps this to Jira labels:
+
+| `test_failure_cycles` | Success label |
+|------------------------|---------------|
+| `0` | `ai-fully-automated` |
+| `>= 1` | `ai-accelerated-fix` |

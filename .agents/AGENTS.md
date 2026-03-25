@@ -28,7 +28,7 @@ See `prerequisites.md` for the complete list including optional capabilities.
 | Phase | Labels |
 |-------|--------|
 | Triage | `ai-triaged` + (`ai-fixable` or `ai-nonfixable`) |
-| Execution | `ai-fully-automated`, `ai-could-not-fix`, `ai-verification-failed`, `regressions-found` |
+| Execution | `ai-fully-automated` or `ai-accelerated-fix` (success), or `ai-could-not-fix`, `ai-verification-failed`; post-merge: `regressions-found` |
 
 Full definitions: `triage/reference/label-taxonomy.md`
 

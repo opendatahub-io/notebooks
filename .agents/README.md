@@ -39,7 +39,7 @@ Full checklist: [`prerequisites.md`](prerequisites.md)
 | Phase | Labels |
 |-------|--------|
 | Triage | `ai-triaged` + `ai-fixable` or `ai-nonfixable` |
-| Execution | `ai-fully-automated`, `ai-could-not-fix`, `ai-verification-failed` |
+| Execution | `ai-fully-automated` or `ai-accelerated-fix` (success), `ai-could-not-fix`, `ai-verification-failed` |
 | Post-merge | `regressions-found` |
 
 Full definitions: [`triage/reference/label-taxonomy.md`](triage/reference/label-taxonomy.md)
@@ -49,7 +49,7 @@ Full definitions: [`triage/reference/label-taxonomy.md`](triage/reference/label-
 | Workflow | Location | Contents |
 |----------|----------|----------|
 | Triage | `.artifacts/triage/` | `ledger.json` (state), `report.md` (summary) |
-| Bugfix | `.artifacts/bugfix/{key}/` | `context.md`, `root-cause.md`, `test-failures.md` |
+| Bugfix | `.artifacts/bugfix/{key}/` | `context.md`, `root-cause.md`, `test-handoff.md` (success path), `test-failures.md` (circuit breaker) |
 
 ## Directory Structure
 

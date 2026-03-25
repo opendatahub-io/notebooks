@@ -30,9 +30,12 @@ make test                    # static tests (always)
 
 | Outcome | Label |
 |---------|-------|
-| Tests pass, PR created | `ai-fully-automated` |
+| Tests pass on first verify run, PR created | `ai-fully-automated` |
+| Tests pass after at least one failure cycle, PR created | `ai-accelerated-fix` |
 | Fix attempt failed | `ai-could-not-fix` |
 | Tests failed after max retries | `ai-verification-failed` |
+
+See `skills/test.md` → `test-handoff.md` and `skills/pr.md` for the success-label split.
 
 ## Safety
 
