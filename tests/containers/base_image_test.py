@@ -202,8 +202,11 @@ class TestBaseImage:
     def test_pip_install_cowsay_runs(self, image: str):
         """Checks that the Python virtualenv in the image is writable.
 
-        For AIPCC-enabled images, cowsay is not available on the restricted index,
-        so we expect the install to fail with a specific error message.
+        Images whose source tree uses ``uv.lock.d`` are treated as AIPCC-style for
+        dependency pinning, but runtime ``pip`` may still use the RHOAI mirror, which
+        can include packages like ``cowsay``. If ``pip install cowsay`` fails, we assert
+        the usual resolver error; if it succeeds (mirror carries the package), we assert
+        ``cowsay`` runs — same end state as the non-AIPCC path.
         """
         has_uv_lock_d = self._has_uv_lock_d(image)
 
@@ -212,15 +215,12 @@ class TestBaseImage:
             output_str = output.decode()
             logging.debug(output_str)
 
-            if has_uv_lock_d:
-                # AIPCC-enabled: cowsay should NOT be available
-                assert ecode != 0, "Expected pip install cowsay to fail on AIPCC-enabled image"
+            if has_uv_lock_d and ecode != 0:
                 assert (
                     "Could not find a version that satisfies the requirement cowsay" in output_str
                     or "No matching distribution found for cowsay" in output_str
-                ), f"Expected AIPCC error message, got: {output_str}"
+                ), f"Expected resolver error for cowsay, got: {output_str}"
             else:
-                # Non-AIPCC: cowsay should install and run successfully
                 assert ecode == 0, f"Expected pip install cowsay to succeed, got: {output_str}"
 
                 ecode, output = container.exec(["python3", "-m", "cowsay", "--text", "Hello world"])
