@@ -202,30 +202,21 @@ class TestBaseImage:
     def test_pip_install_cowsay_runs(self, image: str):
         """Checks that the Python virtualenv in the image is writable.
 
-        Images whose source tree uses ``uv.lock.d`` are treated as AIPCC-style for
-        dependency pinning, but runtime ``pip`` may still use the RHOAI mirror, which
-        can include packages like ``cowsay``. If ``pip install cowsay`` fails, we assert
-        the usual resolver error; if it succeeds (mirror carries the package), we assert
-        ``cowsay`` runs — same end state as the non-AIPCC path.
+        The cowsay package is available both on public PyPI and on the AIPCC
+        restricted index (AIPCC-12698), so it should install successfully
+        on all images.
         """
-        has_uv_lock_d = self._has_uv_lock_d(image)
 
         def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["python3", "-m", "pip", "install", "cowsay"])
             output_str = output.decode()
             logging.debug(output_str)
 
-            if has_uv_lock_d and ecode != 0:
-                assert (
-                    "Could not find a version that satisfies the requirement cowsay" in output_str
-                    or "No matching distribution found for cowsay" in output_str
-                ), f"Expected resolver error for cowsay, got: {output_str}"
-            else:
-                assert ecode == 0, f"Expected pip install cowsay to succeed, got: {output_str}"
+            assert ecode == 0, f"Expected pip install cowsay to succeed, got: {output_str}"
 
-                ecode, output = container.exec(["python3", "-m", "cowsay", "--text", "Hello world"])
-                logging.debug(output.decode())
-                assert ecode == 0
+            ecode, output = container.exec(["python3", "-m", "cowsay", "--text", "Hello world"])
+            logging.debug(output.decode())
+            assert ecode == 0
 
         self._run_test(image=image, test_fn=test_fn)
 
