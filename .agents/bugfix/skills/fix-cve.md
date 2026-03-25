@@ -9,7 +9,12 @@ Implement a fix for an ai-fixable Python CVE on the main branch.
 ## Prerequisites
 
 - The tracker must be assessed (`ai-fixable` label) with a known fix version
-- Python ecosystem CVE (not npm/Go/RPM)
+- **Python ecosystem CVE only** (not npm/Go/RPM)
+- If the CVE is npm (e.g., undici in code-server), Go, or RPM: **stop** — this skill does
+  not apply. For npm in code-server, the fix requires an upstream code-server version bump.
+  For mixed trackers, route non-code-server children to VEX closure instead.
+- If no released upstream version contains the fix: **stop** — document "awaiting upstream
+  release" and do not attempt speculative version bumps
 
 ## Procedure
 

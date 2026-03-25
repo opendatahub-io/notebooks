@@ -61,7 +61,13 @@ Use it before deep repo inference for:
 - **Python** CVEs where source files may not match shipped image contents
 - **Go** CVEs where the vulnerable code may be in embedded tooling, a bundled binary, or another repo
 
-Fetch one SBOM per representative child family.
+Fetch one SBOM per representative child family for tracker-level triage.
+For closing individual children, fetch the exact SBOM for each child's `pscomponent:` image (see below).
+
+To derive the `--component` argument from a child's `pscomponent:` label:
+1. Read the label (e.g., `pscomponent:rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9`)
+2. Strip the `rhoai/` prefix
+3. Use the remainder as the `--component` substring
 
 If you already have an SBOM JSON file locally, use the repo tool:
 ```bash
@@ -73,9 +79,16 @@ Use the lightweight GitLab API + Git LFS workflow there instead of downloading t
 
 **SBOM version must match tracker version.** If tracker says `[rhoai-3.3]`, use v3-3 SBOMs,
 not v2-25. Different versions have different packages.
+**Always verify `build_component` after download** — confirm it contains the expected version
+suffix (e.g., `v3-3`). Use `--expect-version v3-3` with the helper script to fail loudly on mismatch.
+"First/second matching digest" is never evidence by itself.
 
 Treat manifest-box `sourceInfo` as primary evidence for whether a component is really in the shipped image.
 Repo lockfiles and source grep are secondary evidence.
+
+**Triage vs closure evidence thresholds:**
+- **Tracker-level triage**: representative-family sampling (one SBOM per family) is acceptable
+- **Closing individual child issues**: requires exact per-child SBOM proof (see `skills/close-vex.md`)
 
 ### 5. Identify Ecosystem and Location
 
@@ -169,6 +182,18 @@ containing it. In this case:
 - Note the commit hash in the assessment for tracking
 - Monitor upstream for a release
 - Don't try to pin to a git commit — pyproject.toml/cve-constraints.txt work with released versions
+
+**Source-vs-release divergence pattern.** Upstream repo `main` or a git tag may show the
+fix (e.g., `package.json` declares `undici ^7.24.0`), but the published release artifact
+still ships the vulnerable version (e.g., `undici 7.19.0` in the tarball). For customer-impact
+decisions, the released artifact wins. Inspect actual release tarballs or manifest-box SBOMs,
+not source tree metadata.
+
+**Anti-patterns to avoid:**
+- Do not infer child-level closure eligibility from one representative image family
+- Do not assume the second matching SBOM file is the right product version
+- Do not proceed from "likely" or "representative" language into actual Jira transitions
+- Stop and verify the exact image if there is any version or digest ambiguity
 
 ### 9. For Python CVEs: Check cve-constraints.txt
 

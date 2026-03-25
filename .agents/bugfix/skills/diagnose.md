@@ -20,7 +20,14 @@ Based on the bug category from start phase:
 
 **Manifest/version**: Read imagestream YAML. Check tag patterns. Compare with Makefile variables and params-latest.env.
 
-**Security/CVE**: Identify the vulnerable package and current version. Check if it's a direct or transitive dependency. See `docs/scanning_tools_guide_skill.md` for tools.
+**Security/CVE**: Identify the vulnerable package and current version. Check if it's a direct
+or transitive dependency. Use manifest-box SBOMs (see `triage/reference/manifestbox.md`) to
+confirm the package is actually in the shipped image, not just in source-scan material.
+Distinguish ecosystem: Python deps use `cve-constraints.txt`; npm in code-server requires
+an upstream version bump; Go and RPM are case-by-case. If the package is only in source-scan
+paths (`/tests/...`, `jupyter/utils/addons/`), route to VEX closure instead of a code fix.
+For upstream dependencies, inspect actual release artifacts — source tree metadata may show
+a fix that the released artifact does not yet contain.
 
 **CI/CD pipeline**: Read the pipeline config. Check for missing steps, wrong parameters, syntax errors.
 

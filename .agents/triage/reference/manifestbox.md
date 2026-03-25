@@ -229,11 +229,49 @@ curl -sL "${download_url}" > sbom.json
 
 If you prefer a wrapper for this flow, use:
 ```bash
-./uv run python scripts/cve/fetch_manifestbox_sbom.py --component odh-workbench-codeserver-datascience-cpu-py312-rhel9 --pick 2 --output sbom.json --package undici
+./uv run python scripts/cve/fetch_manifestbox_sbom.py --component odh-workbench-codeserver-datascience-cpu-py312-rhel9 --pick 2 --expect-version v3-3 --output sbom.json --package undici
 ```
 
 If your environment cannot validate the internal GitLab certificate chain, add `--insecure`
 to the helper script or `-k` to the manual `curl` commands above.
+
+If you need to run large downloads or batch probes on a remote host, see
+`reference/remote-artifact-investigation.md`.
+
+### Selecting the Right SBOM When Multiple Digests Match
+
+Multiple SBOM files often exist for the same image name (one per product version / rebuild).
+Do NOT guess based on filename ordering or `--pick` position.
+
+**Required verification after every download:**
+1. Check `build_component` in the downloaded JSON (e.g., `odh-workbench-jupyter-minimal-cpu-py312-v3-3`)
+2. Confirm the version suffix matches the tracker version (`v3-3`, `v2-25`, etc.)
+3. If mismatched, download the other candidate and re-check
+
+Use `--expect-version` with the helper script to fail loudly on mismatch:
+```bash
+./uv run python scripts/cve/fetch_manifestbox_sbom.py \
+    --component odh-workbench-jupyter-minimal-cpu-py312-rhel9 \
+    --pick 1 --expect-version v3-3 \
+    --output .artifacts/sbom/minimal-v3-3.json
+```
+
+**Anti-pattern:** "first/second matching digest" is never evidence by itself. Always verify `build_component`.
+
+### Deriving `--component` From Jira `pscomponent:` Labels
+
+Child vulnerability issues carry a `pscomponent:` label that maps directly to the manifest-box component substring:
+
+1. Read the label value (e.g., `pscomponent:rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9`)
+2. Strip the `rhoai/` prefix
+3. Use the remainder as the `--component` argument
+
+Example:
+```
+pscomponent:rhoai/odh-pipeline-runtime-pytorch-cuda-py312-rhel9
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                  → --component odh-pipeline-runtime-pytorch-cuda-py312-rhel9
+```
 
 ### Determining Product Version
 

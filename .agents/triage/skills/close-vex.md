@@ -12,21 +12,39 @@ Use this skill when:
 
 ## Quick Reference: Complete Workflow
 
-For bulk closing N CVE issues:
+**Preferred path (API transitions):**
+1. For each verified child: add investigation comment, then call `transitionJiraIssue` with `resolution` + VEX fields
+2. Verify via API that `status=Closed`, `resolution=Not a Bug`, `VEX=Component not Present`
 
+**Fallback path (browser bulk wizard):**
 1. **Add comments** to all N issues via Atlassian MCP `jira_add_comment` (reliable)
 2. **Navigate** to bulk wizard with JQL filter
 3. **Wizard Step 1**: Issues pre-selected → Click Next
 4. **Wizard Step 2**: Select "Transition Issues" → Click Next  
 5. **Wizard Step 3**: Select "Closed" transition → Click Next
-6. **Wizard Step 3.5**: Use JavaScript to set:
-   - Resolution: "Not a Bug"
-   - Assignee: "Assign to me" button OR JavaScript
-   - VEX Justification: "Component not Present"
+6. **Wizard Step 3.5**: Use JavaScript to set Resolution, Assignee, VEX Justification
 7. **Wizard Step 4**: Review confirmation → Click Confirm
 8. **Wait** for bulk operation (20-40 seconds for 20 issues)
 9. **Repeat** steps 2-8 if >20 issues (Jira 20-issue-per-batch limit)
 10. **Verify** via API: Check all issues Closed with correct fields
+
+### Mixed Tracker / Partial Closure
+
+When a tracker has children across multiple image families and only some are false positives:
+
+1. **Identify the exact closable subset** — only children backed by per-child SBOM proof
+2. **Use `key in (...)` JQL** targeting only the verified keys, not the full CVE label
+3. **Leave real-exposure children open** (e.g., code-server children with `/usr/lib/code-server/...` paths)
+4. **Leave unverified children open** until their exact SBOM is checked
+5. **Post a parent tracker comment** explaining what was closed, what remains open, and why
+
+Example JQL for a verified subset:
+```jql
+key in (RHOAIENG-53125, RHOAIENG-53122, RHOAIENG-53120, RHOAIENG-53118, RHOAIENG-53116, RHOAIENG-53110, RHOAIENG-53107, RHOAIENG-53104, RHOAIENG-53101, RHOAIENG-53094) ORDER BY key ASC
+```
+
+**API/bulk efficiency never outranks exact per-child evidence selection.**
+Close fewer issues correctly rather than more issues from inferred evidence.
 
 ## Prerequisites
 
@@ -47,51 +65,69 @@ VEX Justification explains why a reported vulnerability doesn't affect the produ
 | **Vulnerable Code cannot be Controlled by Adversary** | Vulnerable code cannot be exploited due to runtime constraints |
 | **Inline Mitigations already Exist** | Built-in protections prevent exploitation |
 
+## Evidence Requirements
+
+**Hard rule: representative-family sampling is for tracker-level triage only.**
+Closing individual child issues requires exact per-child SBOM proof.
+
+Required evidence chain before closing any child:
+1. Exact child key (e.g., `RHOAIENG-53125`)
+2. Exact `pscomponent:` / image name from the child's labels
+3. Exact product version (`v3-3`, `v2-25`, etc.) matching the tracker
+4. Exact matching SBOM file with verified `build_component`
+5. Exact `sourceInfo` path proving the package is not in a shipped runtime location
+
+Do NOT close children based on:
+- "likely" or "representative" evidence from another image family
+- the second matching SBOM file without checking `build_component`
+- repo grep or lockfile analysis alone
+
 ## Workflow
 
-### Single Issue Resolution (Atlassian MCP)
+### Preferred: API Transition (Sets Resolution + VEX in One Call)
 
-**Limitation**: Atlassian MCP cannot set Resolution or VEX Justification fields via API after an issue is created or closed.
+For `Vulnerability` issues in RHOAIENG, the Jira transition API can set Resolution and
+VEX Justification during the `Closed` transition when those fields are exposed on the
+transition screen. This was confirmed working on CVE-2026-1526 children.
 
-**What works:**
-1. Add explanatory comment to the issue
-2. Transition to "Closed" status
-
-**What doesn't work:**
-- Setting Resolution field to "Not a Bug" via API
-- Setting VEX Justification field via API
-- These must be set via Jira UI or during specific workflow transitions
-
-#### Example: Close Single Issue
-
+**Step 1:** Get available transitions and check for `resolution` and VEX fields:
 ```python
-# Step 1: Add investigation comment
-jira_add_comment(
-    issue_key="RHOAIENG-12345",
-    comment="""Investigation Results - Not a Bug (Component Not Present)
-
-**SBOM Analysis:**
-package@version detected at: `/path/in/image`
-
-**Root Cause:**
-Explanation of why it's a false positive...
-
-**Verification:**
-How to verify the claim...
-
-**Resolution:**
-- VEX Justification: Component not Present
-- Rationale: Detailed explanation..."""
-)
-
-# Step 2: Close the issue (Resolution defaults to "Done")
-jira_transition_issue(
-    issue_key="RHOAIENG-12345",
-    transition_id="61"  # Closed transition
-)
-
-# Step 3: User must manually set Resolution="Not a Bug" and VEX in Jira UI
+transitions = getTransitionsForJiraIssue(issueIdOrKey="RHOAIENG-XXXXX", expand="transitions.fields")
+# Look for transition named "Closed" — note the id
+# Check if fields include "resolution" and "customfield_10873" (VEX Justification)
 ```
+
+**Step 2:** Add investigation comment, then transition with fields:
+```python
+# Add comment first
+addCommentToJiraIssue(issueIdOrKey="RHOAIENG-XXXXX", commentBody="...")
+
+# Transition to Closed with Resolution and VEX set atomically
+transitionJiraIssue(
+    issueIdOrKey="RHOAIENG-XXXXX",
+    transition={"id": "<closed_transition_id>"},
+    fields={
+        "resolution": {"id": "<not_a_bug_id>"},
+        "customfield_10873": {"id": "<component_not_present_id>"}
+    }
+)
+```
+
+**Important:** Do not hardcode transition or field IDs globally. Always discover them
+dynamically from `getTransitionsForJiraIssue` for at least one representative issue,
+since IDs can vary by project and workflow.
+
+**Step 3:** Verify after transition:
+```python
+issue = getJiraIssue(issueIdOrKey="RHOAIENG-XXXXX", fields=["status", "resolution", "customfield_10873"])
+# Confirm: status=Closed, resolution=Not a Bug, VEX=Component not Present
+```
+
+### Fallback: Browser Bulk Operations
+
+If the API transition does not expose Resolution or VEX fields for a particular
+issue type or workflow, fall back to the Jira Bulk Change wizard via browser.
+See the bulk wizard instructions below.
 
 ### Bulk Resolution (Chrome DevTools MCP + Jira UI)
 

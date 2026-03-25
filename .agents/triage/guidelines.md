@@ -71,17 +71,18 @@ For issues in other repos, check the cross-repo table in `reference/bug-categori
 - **Every assessment must include reasoning**: never label without explanation.
 - **Label and comment as you go**: don't batch labels — apply to each issue immediately after assessment. Partial progress is visible in Jira even if the agent stops midway.
 - **Reference repo context**: read `AGENTS.md` (repo root) for the inheritance model, build system, and testing approach before assessing fixability.
-- **For CVEs, built-image SBOM evidence outranks repo grep**: when deciding whether a component is actually in the shipped image, prefer manifest-box `sourceInfo` over source-tree lockfiles or docs.
-- **Sample representative children before generalizing**: if a tracker spans multiple image families (`codeserver`, `jupyter-*`, `runtime-*`), check one child per family before making tracker-wide claims.
+- **For CVEs, built-image SBOM evidence outranks repo grep**: when deciding whether a component is actually in the shipped image, prefer manifest-box `sourceInfo` over source-tree lockfiles or docs. The default question sequence is: (1) is the package in the shipped image? (2) if yes, where? (3) if not, is it only in source-scan material?
+- **Sample representative children before generalizing**: if a tracker spans multiple image families (`codeserver`, `jupyter-*`, `runtime-*`), check one child per family before making tracker-wide claims. Representative sampling is for tracker-level triage only — closing individual child issues requires exact per-child SBOM proof.
+- **Source state is not shipped state**: upstream repo `main`, git tags, and lockfiles may show a fixed version while released artifacts still ship the vulnerable one. For customer-impact decisions, inspect released artifacts or manifest-box SBOMs, not source trees.
 
 ## Hard Limits
 
-- **Never close or transition issues** — only modify labels and add comments.
+- **Never close or transition issues during triage** — only modify labels and add comments. Exception: when following `skills/close-vex.md` with user approval, transitions with Resolution and VEX fields are permitted.
 - **Never modify fields other than labels** — no changing assignee, priority, status, etc.
 - **Never fabricate data** — if you can't determine fixability, say so.
 - **Always add `ai-triaged`** to every processed issue.
 - **`ai-fixable` and `ai-nonfixable` are mutually exclusive** — never apply both.
-- **One Jira at a time** — post one issue's labels+comment, let the user see it, then proceed to the next. Never batch multiple MCP calls for different issues in one message.
+- **One Jira at a time** — post one issue's labels+comment, let the user see it, then proceed to the next. Never batch multiple MCP calls for updating different issues in one message.
 - **Check existing Jira comments before posting** — avoid duplicating analysis someone already wrote.
 - **`parked` is a PM scheduling label, not a fixability assessment** — an issue can be `ai-fixable` AND `parked`.
 - **Jira tracks delivery, not just code**:

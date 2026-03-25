@@ -19,8 +19,25 @@ Call `mcp__atlassian__getJiraIssue` with the issue key. Extract:
 - Check for `ai-fixable` label. If absent, warn the user: "This issue is not labeled ai-fixable. Proceed anyway?"
 - Check if it already has an execution label (`ai-fully-automated`, `ai-could-not-fix`, `ai-verification-failed`). If so, warn: "This issue was already attempted."
 - If not already known from preflight: ask the user if they have a **remote machine with podman**
-  available via SSH for image pulls and container tests. Record the answer — it determines
-  whether verification steps run locally or remotely.
+  available via SSH for image pulls, container tests, and large artifact downloads (manifest-box
+  SBOMs, upstream release tarballs). Record the answer — it determines whether verification
+  steps run locally or remotely. See `triage/reference/remote-artifact-investigation.md` for
+  SSH patterns.
+
+### 2.5. Early Short-Circuit Checks
+
+Stop before diagnose if any of these apply:
+
+- **Not Python + using `/fix-cve`**: `fix-cve.md` only covers Python CVEs. For npm (code-server),
+  Go, or RPM CVEs, stop and explain the correct remediation path instead.
+- **Mixed tracker**: if the tracker spans multiple image families and only a subset are real
+  remediation targets, the correct action is triage + VEX closure (see `triage/skills/close-vex.md`),
+  not a code fix.
+- **No released upstream fix**: if the vulnerable component comes from an upstream project
+  (e.g., code-server, VS Code) and no released artifact from that project contains the fix,
+  stop with "awaiting upstream release" rather than attempting a speculative version bump.
+- **Source-vs-release divergence**: if upstream source `main` shows the fix but the latest
+  released artifact still ships the vulnerable version, document the divergence and stop.
 
 ### 3. Load Triage Assessment
 

@@ -192,6 +192,10 @@ def main() -> int:
         action="store_true",
         help="Pass -k to curl for internal cert environments that lack the CA chain",
     )
+    parser.add_argument(
+        "--expect-version",
+        help="Fail if the downloaded SBOM's build_component does not contain this substring (e.g., v3-3)",
+    )
 
     args = parser.parse_args()
 
@@ -244,6 +248,19 @@ def main() -> int:
     except json.JSONDecodeError as exc:
         print(f"Downloaded file is not valid JSON: {exc}", file=sys.stderr)
         return 1
+
+    if args.expect_version:
+        with output_path.open() as handle:
+            data = json.load(handle)
+        build_component = data.get("build_component", "")
+        if args.expect_version not in build_component:
+            print(
+                f"ERROR: build_component '{build_component}' does not contain "
+                f"expected version '{args.expect_version}'. Wrong SBOM selected.",
+                file=sys.stderr,
+            )
+            return 1
+        print(f"Version check passed: '{args.expect_version}' found in '{build_component}'")
 
     if args.package:
         try:

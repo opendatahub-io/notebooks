@@ -62,3 +62,6 @@ If the agent bails out at any phase:
 - Fix requires changes in another repository
 - Confidence in the fix is below 80%
 - Tests require GPU hardware or a live cluster that isn't available
+- **CVE-specific:** the vulnerable component is npm/Go/RPM and `/fix-cve` (Python-only) is the wrong path
+- **CVE-specific:** upstream source shows the fix but no released artifact contains it yet — document and stop
+- **CVE-specific:** the tracker is mixed and the correct action is VEX closure for false-positive children, not a code fix
