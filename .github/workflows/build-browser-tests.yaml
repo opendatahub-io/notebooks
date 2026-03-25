@@ -3,6 +3,11 @@ name: Build Browser Tests Image
 
 "on":
   workflow_dispatch:
+    inputs:
+      push_image:
+        description: 'Push image to registry'
+        type: boolean
+        default: false
   pull_request:
     paths:
       - 'tests/browser/**'
@@ -18,12 +23,18 @@ env:
   IMAGE_NAME: opendatahub/workbench-images-tests
   CONTEXT: tests/browser
 
+# packages: write is only needed for ghcr.io, not for quay.io
+
 jobs:
   build:
-    name: Build and Test Browser Tests Image
-    runs-on: ubuntu-24.04
+    name: Build (${{ matrix.arch }})
+    runs-on: ${{ fromJSON('{"amd64":"ubuntu-24.04","arm64":"ubuntu-24.04-arm"}')[matrix.arch] }}
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -32,25 +43,50 @@ jobs:
         id: build
         run: |
           podman build \
-            -t "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest" \
+            -t "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest-${{ matrix.arch }}" \
             -f "${CONTEXT}/Dockerfile" \
             "${CONTEXT}"
 
       - name: Smoke-test the image (list tests)
         run: |
           podman run --rm \
-            "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest" \
+            "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest-${{ matrix.arch }}" \
             --list --project=chromium
 
       - name: Login to Quay.io
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.push_image == true
         uses: docker/login-action@v3
         with:
           registry: ${{ env.IMAGE_REGISTRY }}
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
+          username: ${{ secrets.QUAY_ROBOT_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
 
-      - name: Push image
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Push arch image
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.push_image == true
         run: |
-          podman push "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest"
+          podman push "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest-${{ matrix.arch }}"
+
+  manifest:
+    name: Create and push multiarch manifest
+    runs-on: ubuntu-24.04
+    needs: build
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.push_image == true
+    permissions:
+      contents: read
+    steps:
+      - name: Login to Quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ secrets.QUAY_ROBOT_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+
+      - name: Create and push manifest
+        run: |
+          podman manifest create "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest"
+          podman manifest add "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest" \
+            "docker://${IMAGE_REGISTRY}/${IMAGE_NAME}:latest-amd64"
+          podman manifest add "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest" \
+            "docker://${IMAGE_REGISTRY}/${IMAGE_NAME}:latest-arm64"
+          podman manifest push "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest" \
+            "docker://${IMAGE_REGISTRY}/${IMAGE_NAME}:latest" --all
