@@ -52,4 +52,5 @@ CVE tracker issues have a different structure — see `skills/assess-cve.md`.
 - `reference/manifestbox.md` — querying ProdSec manifest-box for SBOM data
 - `reference/cve-remediation-guide.md` — full CVE investigation workflow
 - `reference/cve-python.md` — Python CVE resolution (cve-constraints.txt)
+- `reference/cve-nodejs.md` — Node.js CVE resolution (npm/pnpm)
 - `reference/case-study-cve-*.md` — real-world CVE investigation examples

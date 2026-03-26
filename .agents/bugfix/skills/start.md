@@ -28,8 +28,8 @@ Call `mcp__atlassian__getJiraIssue` with the issue key. Extract:
 
 Stop before diagnose if any of these apply:
 
-- **Not Python + using `/fix-cve`**: `fix-cve.md` only covers Python CVEs. For npm (code-server),
-  Go, or RPM CVEs, stop and explain the correct remediation path instead.
+- **Not Python/Node.js + using `/fix-cve`**: `fix-cve.md` covers Python and Node.js CVEs. For
+  Go or RPM CVEs, stop and explain the correct remediation path instead.
 - **Mixed tracker**: if the tracker spans multiple image families and only a subset are real
   remediation targets, the correct action is triage + VEX closure (see `triage/skills/close-vex.md`),
   not a code fix.

@@ -1,6 +1,6 @@
-# Skill: Fix a Python CVE
+# Skill: Fix a Python or Node.js CVE
 
-Implement a fix for an ai-fixable Python CVE on the main branch.
+Implement a fix for an ai-fixable Python or Node.js CVE on the main branch.
 
 ## Inputs
 
@@ -9,10 +9,8 @@ Implement a fix for an ai-fixable Python CVE on the main branch.
 ## Prerequisites
 
 - The tracker must be assessed (`ai-fixable` label) with a known fix version
-- **Python ecosystem CVE only** (not npm/Go/RPM)
-- If the CVE is npm (e.g., undici in code-server), Go, or RPM: **stop** — this skill does
-  not apply. For npm in code-server, the fix requires an upstream code-server version bump.
-  For mixed trackers, route non-code-server children to VEX closure instead.
+- **Python or Node.js ecosystem CVE only** (not Go/RPM)
+- If the CVE is Go or RPM: **stop** — this skill does not apply.
 - If no released upstream version contains the fix: **stop** — document "awaiting upstream
   release" and do not attempt speculative version bumps
 
@@ -24,6 +22,13 @@ Read the tracker's triage comment to get:
 - Package name and fix version
 - Which images are affected (from `pscomponent:` labels)
 - Whether it's a direct or transitive dependency
+- **Ecosystem**: Python (PyPI) or Node.js (npm)
+
+Branch to the appropriate procedure below.
+
+---
+
+## Python CVE Procedure
 
 ### 2. Check cve-constraints.txt
 
@@ -69,6 +74,49 @@ grep -A1 'name = "<package>"' jupyter/datascience/ubi9-python-3.12/uv.lock
 make test
 ```
 
+---
+
+## Node.js CVE Procedure
+
+### 2. Determine the source of the vulnerability
+
+Use `reference/cve-nodejs.md` (→ `docs/cves/nodejs.md`) to identify the source. Check the
+manifest-box SBOM `sourceInfo` to determine where the vulnerable package comes from:
+
+- `tests/containers` or `tests/browser` → **false positive** (test-only, Component Not Present)
+- `jupyter/utils/addons` → **false positive** (source-scan artifact, Component Not Present)
+- `/usr/lib/code-server/...` → **true finding** (code-server runtime)
+- `rstudio/utils` → **true finding** (RStudio components)
+
+For false positives: route to VEX closure (`skills/close-vex.md`), not a code fix.
+
+### 3. Update the vulnerable package
+
+For **code-server** npm dependencies:
+- The fix typically requires a code-server version bump. If the vulnerable package is a
+  transitive dependency of code-server itself, this may be `ai-nonfixable` (needs upstream).
+
+For **rstudio/utils** or **jupyter/utils/addons** (maintenance fix, not blocking release):
+- In the directory containing `package.json`, run:
+  ```bash
+  pnpm update --latest
+  ```
+- Commit the updated `pnpm-lock.yaml`
+
+### 4. Verify
+
+```bash
+# Check the lockfile for the updated version
+grep "<package>" <path>/pnpm-lock.yaml
+
+# Run tests
+make test
+```
+
+---
+
+## Common Steps (both ecosystems)
+
 ### 6. Create Branch and PR
 
 Branch: `fix/{tracker-key}-cve-{package}`
@@ -91,6 +139,7 @@ Comment with PR link.
 ## Notes
 
 - See `reference/cve-python.md` (→ `docs/cves/python.md`) for the full Python CVE resolution guide
-- For transitive deps: `cve-constraints.txt` is the mechanism, not editing pyproject.toml
+- See `reference/cve-nodejs.md` (→ `docs/cves/nodejs.md`) for the Node.js CVE resolution guide
+- For Python transitive deps: `cve-constraints.txt` is the mechanism, not editing pyproject.toml
 - After the fix lands on main, it flows to RHOAI via the normal upstream → downstream process
 - For z-stream fixes on release branches: go directly to `rhoai-X.Y` in `red-hat-data-services/notebooks`
