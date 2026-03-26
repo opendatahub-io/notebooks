@@ -36,7 +36,6 @@ spec:
     - name: additional-tags
       value:
         - '{{target_branch}}-{{revision}}'
-        - 3.4-v1.43
   taskRunSpecs:
     - pipelineTaskName: build-images
       stepSpecs:

@@ -35,7 +35,6 @@ spec:
   - name: additional-tags
     value:
     - '{{target_branch}}-{{revision}}'
-    - 3.4-v1.43
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
