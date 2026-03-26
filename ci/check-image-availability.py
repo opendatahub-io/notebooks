@@ -29,6 +29,7 @@ from rich.console import Console
 from rich.live import Live
 from rich.table import Table
 from rich.text import Text
+
 from ci.logging_config import configure_logging, make_pretty_log
 
 log = structlog.get_logger()
@@ -322,7 +323,7 @@ def _extract_skopeo_error(stderr_text: str) -> str:
     # The reason is typically after the last ": "
     last_colon = msg.rfind(": ")
     if last_colon != -1:
-        return msg[last_colon + 2:]
+        return msg[last_colon + 2 :]
     return msg
 
 
@@ -526,14 +527,10 @@ async def main() -> int:
     log.info("Check complete", total=len(results), failed=len(failed))
 
     if failed:
-        log.error("The following images were NOT found in their registries:")
-        for result in failed:
-            pretty_log.error(
-                "Missing image",
-                variable=result.variable,
-                image_url=result.image_url,
-                error=result.error,
-            )
+        pretty_log.error(
+            "The following images were NOT found in their registries",
+            failures=[{"variable": r.variable, "image_url": r.image_url, "error": r.error} for r in failed],
+        )
         if rich_table is not None:
             rich_table.print_final_table()
         return 1
