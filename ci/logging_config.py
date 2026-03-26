@@ -14,12 +14,78 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from string import templatelib
 from string.templatelib import Interpolation, Template
 
 import structlog
+from structlog.dev import ConsoleRenderer, KeyValueColumnFormatter
+
+# Syntax highlighting for pretty-printed JSON values.
+# Inspired by structlog-pretty (https://github.com/underyx/structlog-pretty).
+try:
+    from pygments import highlight as _highlight
+    from pygments.formatters import TerminalFormatter as _TerminalFormatter
+    from pygments.lexers import JsonLexer as _JsonLexer
+
+    _json_lexer = _JsonLexer()
+    _terminal_formatter = _TerminalFormatter()
+
+    def _highlight_json(text: str) -> str:
+        return _highlight(text, _json_lexer, _terminal_formatter).rstrip()
+
+except ImportError:
+
+    def _highlight_json(text: str) -> str:
+        return text
+
+
+def _pretty_value_repr(value: object) -> str:
+    """Format values for pretty console output.
+
+    Dicts and lists are rendered as indented, syntax-highlighted JSON.
+    All other values use the default repr().
+    """
+    if isinstance(value, (dict, list)):
+        return _highlight_json(json.dumps(value, indent=2))
+    return repr(value)
+
+
+class PrettyConsoleRenderer(ConsoleRenderer):
+    """ConsoleRenderer that puts each key=value on a separate indented line.
+
+    Dict/list values are pretty-printed as syntax-highlighted JSON.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        original = self._default_column_formatter
+        self._default_column_formatter = KeyValueColumnFormatter(
+            key_style=original.key_style,
+            value_style=original.value_style,
+            reset_style=original.reset_style,
+            value_repr=_pretty_value_repr,
+            prefix="\n  ",
+        )
+
+
+def make_pretty_log() -> structlog.stdlib.BoundLogger:
+    """Create a structlog logger that renders each key=value on a separate indented line."""
+    fmt = structlog.stdlib.ProcessorFormatter(
+        processors=[
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            PrettyConsoleRenderer(),
+        ],
+    )
+    handler = logging.StreamHandler()
+    handler.setFormatter(fmt)
+    logger = logging.getLogger("pretty")
+    logger.handlers = [handler]
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+    return structlog.wrap_logger(logger, wrapper_class=structlog.stdlib.BoundLogger)
 
 
 def _render_template(template: Template) -> str:

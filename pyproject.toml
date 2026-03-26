@@ -14,22 +14,22 @@ dev = [
     "prek",
     "pyright",
     "ruff",
-
+    #
     "pytest",
     "pytest-cov",
     "allure-pytest",
     "pytest-subtests",
-
+    #
     "pyfakefs",
     # Python 3.14 changed the internal typing._eval_type() function signature - it now includes a new prefer_fwd_module parameter
     # and so pydantic 2.10+ is required to work with from __future__ import annotations on Python 3.14
     "pydantic>=2.10.0",
     "requests",
-
+    #
     "pyyaml",
     "ruamel-yaml",
     "structlog",
-
+    #
     "testcontainers",
     "docker",
     "podman",
@@ -44,6 +44,10 @@ dev = [
     # keyring provides OS-level secret storage for OAuth tokens (macOS Keychain,
     # GNOME Keyring, KWallet) used by scripts/cve/jira_auth.py
     "keyring",
+    # pygments provides syntax highlighting for pretty-printed JSON in log output
+    "pygments",
+    # rich powers the local live progress table in ci/check-image-availability.py
+    "rich>=14.3.2",
 ]
 
 [tool.uv]
