@@ -6,6 +6,10 @@ This script finds CVE issues in RHOAIENG that don't have a parent tracker in RHA
 analyzes the versions from linked issues, and creates tracker issues with accurate
 version suffixes (e.g., [rhoai-2.25, rhoai-3.0]).
 
+New trackers always get the literal label ``CVE`` (plus the CVE id and ``security``)
+so they are distinguishable from other Bugs, and the Jira **Team** field set to
+**AAIET Notebooks** (``customfield_10001``), matching RHAIENG process.
+
 Usage:
     # Dry run - show what would be created
     python scripts/cve/create_cve_trackers.py --dry-run
@@ -33,7 +37,27 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from scripts.cve.jira_auth import JiraAuthError
-from scripts.cve.jira_client import JiraClient, JIRA_DEFAULT_URL
+from scripts.cve.jira_client import JIRA_DEFAULT_URL, JiraClient
+
+# Jira "Team" on RHAIENG (verified via RHAIENG-3752 changelog).
+RHAIENG_TEAM_CUSTOM_FIELD = "customfield_10001"
+# Option id for team name "AAIET Notebooks" (override if Jira admin changes teams).
+RHAIENG_TEAM_OPTION_ID_DEFAULT = "ec74d716-af36-4b3c-950f-f79213d08f71-62"
+
+
+def build_tracker_labels(cve_id: str) -> list[str]:
+    """Labels for new CVE trackers: keep literal ``CVE`` first (team Jira hygiene)."""
+    return ["CVE", cve_id, "security"]
+
+
+def build_tracker_team_extra_fields() -> dict[str, str]:
+    """REST ``fields`` fragment for Team = AAIET Notebooks.
+
+    Jira expects a **plain Team ID string** on create/update, not ``{\"id\": ...}``.
+    See https://developer.atlassian.com/platform/teams/components/team-field-in-jira-rest-api/
+    """
+    option_id = os.environ.get("JIRA_RHAIENG_TEAM_OPTION_ID", RHAIENG_TEAM_OPTION_ID_DEFAULT).strip()
+    return {RHAIENG_TEAM_CUSTOM_FIELD: option_id}
 
 
 @dataclass
@@ -60,13 +84,13 @@ class CVEInfo:
 
 def extract_cve_id(text: str) -> str | None:
     """Extract CVE ID from text."""
-    match = re.search(r'CVE-\d{4}-\d+', text)
+    match = re.search(r"CVE-\d{4}-\d+", text)
     return match.group() if match else None
 
 
 def extract_version(summary: str) -> str | None:
     """Extract version suffix from issue summary."""
-    match = re.search(r'\[rhoai-(\d+\.\d+)]', summary)
+    match = re.search(r"\[rhoai-(\d+\.\d+)]", summary)
     if match:
         return f"rhoai-{match.group(1)}"
     return None
@@ -80,13 +104,13 @@ def extract_description(summary: str, cve_id: str) -> str:
         desc = desc.split(cve_id, 1)[1].strip()
 
     # Remove EMBARGOED prefix if present
-    desc = re.sub(r'^EMBARGOED\s+', '', desc)
+    desc = re.sub(r"^EMBARGOED\s+", "", desc)
 
     # Remove component prefix (e.g., "rhoai/odh-xxx:")
-    desc = re.sub(r'^rhoai/[^:]+:\s*', '', desc)
+    desc = re.sub(r"^rhoai/[^:]+:\s*", "", desc)
 
     # Remove version suffix
-    desc = re.sub(r'\s*\[rhoai-[\d.]+]\s*$', '', desc)
+    desc = re.sub(r"\s*\[rhoai-[\d.]+]\s*$", "", desc)
 
     return desc.strip()
 
@@ -252,10 +276,7 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> dict[tuple[
                     break
 
     # Filter to only orphans (CVE+version combos where no issues have a parent tracker)
-    orphans = {}
-    for group_key, info in cve_groups.items():
-        if not info.has_tracker:
-            orphans[group_key] = info
+    orphans = {group_key: info for group_key, info in cve_groups.items() if not info.has_tracker}
 
     return orphans
 
@@ -271,12 +292,15 @@ def create_tracker_issue(client: JiraClient, cve_info: CVEInfo, jira_url: str = 
 
     description = build_description(cve_info, base_url=jira_url)
 
-    labels = ["CVE", cve_info.cve_id, "security"]
+    labels = build_tracker_labels(cve_info.cve_id)
+    team_extra = build_tracker_team_extra_fields()
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Creating tracker for {cve_info.cve_id}:")
     print(f"  Summary: {summary}")
     print(f"  Version: {cve_info.version}")
     print(f"  Child issues: {cve_info.issue_count}")
+    print(f"  Labels: {' '.join(labels)}")
+    print(f"  Team field ({RHAIENG_TEAM_CUSTOM_FIELD}): {team_extra[RHAIENG_TEAM_CUSTOM_FIELD]!r}")
 
     if dry_run:
         return None
@@ -289,13 +313,19 @@ def create_tracker_issue(client: JiraClient, cve_info: CVEInfo, jira_url: str = 
             description=description,
             labels=labels,
             components=["Notebooks"],
-            security_level="Red Hat Employee"
+            security_level="Red Hat Employee",
+            extra_fields=team_extra,
         )
         tracker_key = result.get("key")
         print(f"  Created: {tracker_key}")
         return tracker_key
     except Exception as e:
         print(f"  ERROR creating issue: {e}")
+        resp = getattr(e, "response", None)
+        if resp is not None:
+            text = getattr(resp, "text", None) or ""
+            if text.strip():
+                print(f"  API response: {text[:4000]}")
         return None
 
 
@@ -343,6 +373,8 @@ Environment variables:
   JIRA_API_TOKEN            Atlassian API token (recommended for scripts/CI)
   JIRA_OAUTH_CLIENT_SECRET  OAuth 2.0 client secret (interactive browser flow)
   JIRA_TOKEN                Legacy Bearer token (issues.redhat.com PAT)
+  JIRA_RHAIENG_TEAM_OPTION_ID  Optional. Jira Team option id for AAIET Notebooks
+                            (default: RHAIENG value verified on RHAIENG-3752)
 """
     )
     parser.add_argument("--dry-run", action="store_true",

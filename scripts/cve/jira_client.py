@@ -19,13 +19,18 @@ try:
     HAS_REQUESTS = True
 except ImportError:
     import urllib.request
-    import urllib.error
+
     HAS_REQUESTS = False
 
 
 _SSL_CONTEXT = create_ssl_context() if not HAS_REQUESTS else None
 
 JIRA_DEFAULT_URL = "https://redhat.atlassian.net"
+
+# Keys set explicitly by create_issue(); extra_fields may not override these.
+_CREATE_ISSUE_PROTECTED_FIELD_KEYS = frozenset({
+    "project", "summary", "issuetype", "description", "labels", "components", "security",
+})
 
 
 class JiraClient:
@@ -136,8 +141,14 @@ class JiraClient:
     def create_issue(self, project_key: str, summary: str, issue_type: str,
                      description: dict | None = None, labels: list[str] | None = None,
                      components: list[str] | None = None,
-                     security_level: str | None = None) -> dict:
-        """Create a new Jira issue (API v3, ADF description)."""
+                     security_level: str | None = None,
+                     extra_fields: dict[str, Any] | None = None) -> dict:
+        """Create a new Jira issue (API v3, ADF description).
+
+        ``extra_fields`` are merged into the REST ``fields`` object for custom
+        fields (e.g. Team). Keys in ``_CREATE_ISSUE_PROTECTED_FIELD_KEYS`` are
+        ignored so callers cannot override project, summary, labels, etc.
+        """
         fields: dict[str, Any] = {
             "project": {"key": project_key},
             "summary": summary,
@@ -155,6 +166,13 @@ class JiraClient:
 
         if security_level:
             fields["security"] = {"name": security_level}
+
+        if extra_fields:
+            fields.update({
+                k: v
+                for k, v in extra_fields.items()
+                if k not in _CREATE_ISSUE_PROTECTED_FIELD_KEYS
+            })
 
         data = {"fields": fields}
         return self._request("POST", "/rest/api/3/issue", data=data)
