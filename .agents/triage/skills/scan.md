@@ -8,13 +8,8 @@ Fetch bugs from Jira using JQL and save to the triage ledger.
 
 ## Procedure
 
-1. **Determine JQL**: if `$ARGUMENTS` contains a JQL string, use it. Otherwise use:
-   ```jql
-   project = RHAIENG AND statusCategory not in (Done)
-   AND issuetype in (Bug) AND component = Notebooks
-   AND (labels not in (ai-triaged) OR labels is EMPTY)
-   ORDER BY priority DESC, updated DESC
-   ```
+1. **Determine JQL**: if `$ARGUMENTS` contains a JQL string, use it. Otherwise use the
+   **Canonical Default Triage Queue** from `reference/jql-queries.md`.
 
 2. **Get cloud ID**: call `mcp__atlassian__getAccessibleAtlassianResources` and extract the cloud ID for `redhat.atlassian.net`.
 
@@ -30,7 +25,18 @@ Fetch bugs from Jira using JQL and save to the triage ledger.
    - `created`, `updated`
    - `webUrl`
 
-5. **Write ledger**: save results to `.artifacts/triage/ledger.json` as an array of objects:
+5. **Write ledger**: merge results into `.artifacts/triage/ledger.json` by issue key.
+   - Preserve existing entries for issues already present in the ledger.
+   - Preserve existing `triageStatus` and `assessment` for issues that were already assessed.
+   - New issues discovered by the scan should be appended with `triageStatus: "pending"` and `assessment: null`.
+   - Existing issues that are no longer returned by the current JQL should remain in the ledger; scan is cumulative state, not a destructive replace.
+   - Supported `triageStatus` values:
+     - `pending` — discovered but not yet assessed in this ledger
+     - `assessed` — assessed in this ledger with a structured `assessment`
+     - `previously-assessed` — already triaged before the current run; may rely on Jira labels/comments and can have `assessment: null`
+     - `error` — triage attempted but the assessment/update failed; include an error note if available
+
+   The ledger stores an array of objects like:
    ```json
    [
      {
@@ -52,7 +58,7 @@ Fetch bugs from Jira using JQL and save to the triage ledger.
 
 6. **Report**: print a summary table:
    ```
-   Scanned N bugs from RHAIENG (component=Notebooks, not Done, not yet triaged)
+   Scanned N bugs from RHAIENG (component=Notebooks, active, not yet ai-triaged)
    Blocker: X | Critical: Y | Major: Z | Normal: W | Minor: V
    Saved to .artifacts/triage/ledger.json
    ```

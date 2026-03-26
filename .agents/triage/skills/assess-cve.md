@@ -17,24 +17,17 @@ Fetch the tracker via `mcp__atlassian__getJiraIssue`. Extract:
 - Labels: `CVE`, `CVE-XXXX-XXXXX`, `security`
 - Linked issues (outward "blocks" links → RHOAIENG Vulnerability children)
 
-### 2. Query OSV API for Fix Version
+### 2. Check for a Sibling Tracker First
 
-**Always check OSV before posting any version comparison.** Free, no auth, no rate limits.
+Before doing the full workflow, check whether the same CVE was already triaged for another
+supported RHOAI version.
 
-```bash
-curl -sX POST -d '{"package": {"name": "<package>", "ecosystem": "PyPI"}, "version": "<current_version>"}' \
-  https://api.osv.dev/v1/query | python3 -c "
-import sys,json
-for v in json.load(sys.stdin).get('vulns',[]):
-    for a in v.get('affected',[]):
-        for r in a.get('ranges',[]):
-            for e in r.get('events',[]):
-                if 'fixed' in e: print(f'{v.get(\"aliases\",[\"\"])[0]}: fixed in {e[\"fixed\"]}')
-"
-```
+- If a sibling tracker already has a solid assessment, reuse its reasoning structure.
+- Still verify the current tracker's branch/version-specific facts.
+- Do NOT trust the sibling Jira comment by itself; use it as a pointer for what to verify next.
 
-Ecosystems: `PyPI` for Python, `npm` for Node.js. This gives exact fix versions — verify
-the current version in each branch is actually >= the fix version before claiming "fixed."
+This is especially useful for pairs like `[rhoai-2.25]` and `[rhoai-3.3]`, where the
+package family and blocked image families are often the same.
 
 ### 3. Read Representative Child Issues
 
@@ -102,8 +95,28 @@ Location patterns matter:
 - `/usr/lib/code-server/.../node_modules/...` → real shipped code-server npm component
 - `/tests/browser/pnpm-lock.yaml` or other `/tests/...` paths → likely source-scan / test-only false positive
 - `/jupyter/utils/addons/pnpm-lock.yaml` → currently source-scan artifact from repository content; likely VEX `Component not Present` candidate unless image-specific SBOM evidence shows otherwise
+- repo-only Go tooling paths such as `scripts/buildinputs/go.mod`, `scripts/buildinputs/go.sum`, `ci/dockerfile/go.sum`, or other non-image helper inputs → likely source-scan or build-tooling evidence, not a notebooks runtime dependency
 
-### 6. Check Package Version Across Supported Versions
+### 6. Query OSV API for Fix Version
+
+**Always check OSV before posting any version comparison.** Free, no auth, no rate limits.
+
+```bash
+curl -sX POST -d '{"package": {"name": "<package>", "ecosystem": "PyPI"}, "version": "<current_version>"}' \
+  https://api.osv.dev/v1/query | python3 -c "
+import sys,json
+for v in json.load(sys.stdin).get('vulns',[]):
+    for a in v.get('affected',[]):
+        for r in a.get('ranges',[]):
+            for e in r.get('events',[]):
+                if 'fixed' in e: print(f'{v.get(\"aliases\",[\"\"])[0]}: fixed in {e[\"fixed\"]}')
+"
+```
+
+Ecosystems: `PyPI` for Python, `npm` for Node.js. This gives exact fix versions — verify
+the current version in each branch is actually >= the fix version before claiming "fixed."
+
+### 7. Check Package Version Across Supported Versions
 
 **CVE trackers are version-specific**: a `[rhoai-3.3]` tracker → only check rhoai-3.3 and
 newer (main). Don't check 2.25/2.16 — they have their own trackers if affected.
@@ -132,7 +145,7 @@ Build the version table (from tracker version up to main).
 For Python and npm, use branch files to compare versions only after confirming package presence in the image.
 Do not let repo inspection override manifest-box evidence about whether the package is actually shipped.
 
-### 7. Query Red Hat Security Data API
+### 8. Query Red Hat Security Data API
 
 Covers ALL Red Hat products including RHOAI. No auth needed.
 
@@ -149,7 +162,7 @@ for ps in d.get('package_state',[]):
 Returns per-image fix state (Affected/Not affected/Fixed) for every RHOAI container.
 Web UI: `https://access.redhat.com/security/cve/CVE-XXXX-XXXXX`
 
-### 8. Check for False Positives and Mixed Trackers
+### 9. Check for False Positives and Mixed Trackers
 
 **Critical**: Konflux source SBOM scans the entire repo (RHAIENG-3006). The package may be in the SBOM but NOT in the specific image. Check:
 - Use manifest-box image-specific SBOMs first (see `reference/manifestbox.md`)
@@ -195,14 +208,14 @@ not source tree metadata.
 - Do not proceed from "likely" or "representative" language into actual Jira transitions
 - Stop and verify the exact image if there is any version or digest ambiguity
 
-### 9. For Python CVEs: Check cve-constraints.txt
+### 10. For Python CVEs: Check cve-constraints.txt
 
 ```bash
 grep "<package>" dependencies/cve-constraints.txt
 ```
 If already constrained, the fix may already be in place.
 
-### 10. Determine Fixability
+### 11. Determine Fixability
 
 - **Python, package present in the image and in our pyproject.toml**: ai-fixable — bump version, add to cve-constraints.txt, refresh locks
 - **Python, transitive dep present in the image**: ai-fixable — add to cve-constraints.txt, refresh locks
@@ -210,12 +223,13 @@ If already constrained, the fix may already be in place.
 - **npm only in `jupyter/utils/addons/` source-scan paths**: currently treat as likely false positive — review for VEX instead of planning a dependency update
 - **npm only in `/tests/...` or other source-scan-only paths**: false positive — close with VEX
 - **Go present in shipped tooling/binary paths**: case-by-case, often nonfixable in this repo if remediation is upstream or in another bundled component
+- **Go only in repo-tooling/source paths** (for example `scripts/buildinputs/go.mod`, `ci/dockerfile/go.sum`, or other helper inputs): treat as likely source-scan/external-component evidence until manifest-box proves shipped runtime presence
 - **RPM**: nonfixable — AIPCC base image concern
 - **False positive (not in image)**: close with VEX
 - **Mixed tracker**: usually parent `ai-nonfixable` until child issues are split into real vs VEX candidates
 - **Commit fix but no release**: nonfixable — monitor upstream
 
-### 11. Useful Scripts
+### 12. Useful Scripts
 
 - `scripts/cve/create_cve_trackers.py` — creates RHAIENG tracker issues from orphan RHOAIENG CVEs. Run `./uv run scripts/cve/create_cve_trackers.py --dry-run` to preview.
 - `scripts/cve/cve_due_dates.py` — lists overdue trackers, syncs due dates from children. Run `./uv run scripts/cve/cve_due_dates.py --list-overdue`.
@@ -223,7 +237,7 @@ If already constrained, the fix may already be in place.
 - `scripts/cve/sbom_analyze.py` — inspects SBOM files and shows package type, location, and `sourceInfo`
 - `scripts/cve/fetch_manifestbox_sbom.py` — resolves and downloads one manifest-box SBOM JSON via GitLab API + Git LFS
 
-### 12. Label and Comment
+### 13. Label and Comment
 
 Apply `ai-triaged` + `ai-fixable` or `ai-nonfixable`. Post comment with:
 - Version table across affected versions (from tracker version up to main)
@@ -235,4 +249,4 @@ Apply `ai-triaged` + `ai-fixable` or `ai-nonfixable`. Post comment with:
 
 **Sibling tracker pattern**: for same CVE on a different RHOAI version (e.g., `[rhoai-2.25]`
 after already triaging `[rhoai-3.3]`), reference the prior assessment and just check the
-version-specific branch. No need to repeat the full investigation.
+version-specific branch and shipped-image evidence. No need to repeat the full investigation.

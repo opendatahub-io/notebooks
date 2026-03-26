@@ -16,7 +16,20 @@ For supported RHOAI versions and their downstream branch names, see `guidelines.
 - **Backlog**: Human-triaged issues (reviewed, prioritized, waiting for work)
 - AI triage adds value to both, but **Backlog issues benefit most** — they already have human context, and AI can assess fixability and add fix steps.
 
-## Default Triage Query (Backlog — highest value)
+## Canonical Default Triage Queue
+
+This is the default used by the triage skill unless the user overrides it:
+
+```jql
+project = RHAIENG AND statusCategory not in (Done)
+AND issuetype in (Bug) AND component = Notebooks
+AND (labels not in (ai-triaged) OR labels is EMPTY)
+ORDER BY priority DESC, updated DESC
+```
+
+Use this when you want the current untriaged queue across all active states.
+
+## Backlog-Only Triage Queue (Highest-Value Subset)
 
 Human-triaged bugs ready for AI fixability assessment:
 

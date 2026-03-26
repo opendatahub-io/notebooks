@@ -19,14 +19,22 @@ Before writing any assessment, do these checks in order:
 1. **Read Jira fields, not just description**: pay attention to `Affects Version` (which
    RHOAI version — critical for determining if it's still relevant), `Target Version`,
    `Fix Version`, `Labels`, `Components`, and `Issue Links`.
-2. **Search PRs in BOTH repos**:
-   ```bash
-   gh search prs --repo opendatahub-io/notebooks "RHAIENG-XXXX"
-   gh search prs --repo red-hat-data-services/notebooks "RHAIENG-XXXX"
-   ```
-3. **Check branches**: `git branch -a | grep -i <keyword>`. Someone may already be working on it.
-4. **Check linked/cloned issues** — if they have PRs, read those PR diffs before writing any assessment. Linked issues often contain the solution pattern.
-5. **Check blocking issues' current status** — when a Jira says "blocked on AIPCC-XXXX", look up AIPCC-XXXX to see if it's been resolved since that comment was written. Don't parrot stale blocker status.
+2. **Do a quick repo-signal pass first**:
+   - Run a low-cost `Grep` / `Glob` pass using the issue summary, error string, package name,
+     or component name to identify likely files and repos.
+   - Note issue-shape signals such as: linked issues, mentions of a PR/commit/branch/backport,
+     regression language, "blocked on X", or evidence that the fix may already exist for another
+     variant or release.
+3. **Escalate to higher-cost history checks only when the issue shape justifies it**:
+   - Search PRs in both repos when the Jira references a fix/regression/backport, links to other
+     issues, or the repo-signal pass suggests a prior fix pattern may exist.
+   - Check branches when the issue mentions a branch/backport/release line, or when branch state
+     could reveal active work.
+   - Check linked/cloned issues when links exist; if they have PRs, read those PR diffs before
+     writing the assessment.
+   - Check blocking issues' current status when the Jira explicitly says it is blocked.
+
+Existing Jira comments can be useful clues, but they never replace code verification.
 
 ### 1. Load Issue Details
 
@@ -43,7 +51,9 @@ local venv — always check the container build context.
 Based on error messages or component names in the issue:
 - Use **Grep** to find related files (error strings, class/function names, package names)
 - Use **Glob** to find relevant Dockerfiles, pyproject.toml, test files, manifests
-- Do NOT read entire files — grep for specific patterns
+- Start with grep/glob to shortlist candidate files, then read the actual affected file(s)
+- For Dockerfiles, shell build scripts, and other build orchestration files, read the whole file
+  once shortlisted if partial matches do not explain the behavior
 
 **For "module/package not found" bugs**, check the container's lock files:
 - `*/uv.lock.d/pylock.cpu.toml` or `*/uv.lock.d/requirements.cpu.txt` — resolved versions and source URLs
@@ -177,12 +187,12 @@ Update the issue's entry in `.artifacts/triage/ledger.json`:
 ### 9. Quality Checklist
 
 Before posting any assessment, verify:
-- [ ] Searched PRs in opendatahub-io/notebooks AND red-hat-data-services/notebooks
-- [ ] Checked Jira issue links (clones, related, blocks)
+- [ ] If the issue shape required it, searched PRs in opendatahub-io/notebooks AND red-hat-data-services/notebooks
+- [ ] If Jira issue links exist, checked the linked issues (clones, related, blocks)
 - [ ] If linked issues have PRs, read those PR diffs
 - [ ] Read the actual affected files (not just grep for keywords)
 - [ ] If fix exists for another arch/variant, read that fix's approach
-- [ ] If blocker issues mentioned, checked their current status
+- [ ] If blocker issues were mentioned, checked their current status
 - [ ] Identified correct test type (static / container / browser / GPU)
 - [ ] Comment mentions RHOAI product impact in first paragraph
 - [ ] Did not trust Jira description without code verification

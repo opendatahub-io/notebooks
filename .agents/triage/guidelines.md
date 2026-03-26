@@ -82,7 +82,7 @@ For issues in other repos, check the cross-repo table in `reference/bug-categori
 - **Never fabricate data** — if you can't determine fixability, say so.
 - **Always add `ai-triaged`** to every processed issue.
 - **`ai-fixable` and `ai-nonfixable` are mutually exclusive** — never apply both.
-- **One Jira at a time** — post one issue's labels+comment, let the user see it, then proceed to the next. Never batch multiple MCP calls for updating different issues in one message.
+- **One Jira at a time** — complete one issue's label+comment sequence before starting Jira updates for the next issue. After the first HITL approval, continue serially without pausing for every issue. Never batch updates for multiple issues in one assistant step.
 - **Check existing Jira comments before posting** — avoid duplicating analysis someone already wrote.
 - **`parked` is a PM scheduling label, not a fixability assessment** — an issue can be `ai-fixable` AND `parked`.
 - **Jira tracks delivery, not just code**:
@@ -108,7 +108,7 @@ After assessing the **first issue**, show the analysis comment and label decisio
 
 - Use **subagents** for research that produces large output (Slack search, GitHub PR history, reading external repos). The subagent summarizes; you keep a clean context for assessment.
 - **Concrete trigger**: if the file is >200 lines OR requires checking >1 external repo, spawn an Explore subagent.
-- Use **Grep** to find specific patterns in the repo, not Read to load entire files.
+- Use **Grep** to shortlist candidate files in the repo, then **Read** the specific affected file(s) you need to verify. For build files and shell scripts, reading the whole shortlisted file is preferred over stitching together many partial grep hits.
 - Save scan results to `.artifacts/triage/ledger.json` — all phases read/update this central state file.
 
 ## Escalation: When to Stop

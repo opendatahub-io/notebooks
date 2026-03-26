@@ -13,11 +13,11 @@ Single issue: `/triage-assess RHAIENG-XXXX`
 
 ## Default JQL
 
-```jql
-project = RHAIENG AND status = Backlog
-AND issuetype in (Bug) AND component = Notebooks
-ORDER BY priority DESC, updated DESC
-```
+The canonical default lives in `reference/jql-queries.md` under
+**Canonical Default Triage Queue**.
+
+Use the **Backlog-Only Triage Queue** from that file when you intentionally want
+the narrower, human-triaged subset.
 
 Override with arguments: `/triage-run project = RHAIENG AND status = New ...`
 

@@ -23,12 +23,11 @@ Route commands to the appropriate skill.
 
 ## Default JQL
 
-```jql
-project = RHAIENG AND statusCategory not in (Done)
-AND issuetype in (Bug) AND component = Notebooks
-AND (labels not in (ai-triaged) OR labels is EMPTY)
-ORDER BY priority DESC, updated DESC
-```
+The canonical default lives in `reference/jql-queries.md` under
+**Canonical Default Triage Queue**.
+
+Use the **Backlog-Only Triage Queue** from the same file when the user wants the
+highest-value human-triaged subset rather than the full active untriaged queue.
 
 All commands accept `$ARGUMENTS` to override the JQL or specify an issue key.
 
