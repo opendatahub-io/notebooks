@@ -24,7 +24,8 @@ Read the tracker's triage comment to get:
 - Whether it's a direct or transitive dependency
 - **Ecosystem**: Python (PyPI) or Node.js (npm)
 
-Branch to the appropriate procedure below.
+Branch to the appropriate procedure below. Step 1 applies to both ecosystems;
+per-ecosystem steps restart at 2.
 
 ---
 
@@ -92,11 +93,16 @@ For false positives: route to VEX closure (`skills/close-vex.md`), not a code fi
 
 ### 3. Update the vulnerable package
 
-For **code-server** npm dependencies:
-- The fix typically requires a code-server version bump. If the vulnerable package is a
-  transitive dependency of code-server itself, this may be `ai-nonfixable` (needs upstream).
+For **code-server**, **RStudio**, or **JupyterLab** npm dependencies (packages under
+`/usr/lib/code-server/`, IDE runtime paths):
+- We never patch individual node packages inside these IDEs.
+- The only fix is finding a newer release of the IDE (code-server, RStudio, JupyterLab) that
+  is not affected, and upgrading to that release.
+- Searching for such a release and proposing the upgrade is valuable triage/fix work.
+- If the vulnerable package is a deep transitive of the IDE and no unaffected release exists:
+  mark as `ai-nonfixable` and document "awaiting upstream release."
 
-For **rstudio/utils** or **jupyter/utils/addons** (maintenance fix, not blocking release):
+For **rstudio/utils** or **jupyter/utils/addons** (our own lockfiles, maintenance fix):
 - In the directory containing `package.json`, run:
   ```bash
   pnpm update --latest
