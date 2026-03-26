@@ -4,12 +4,17 @@ Fetch bugs from Jira using JQL and save to the triage ledger.
 
 ## Inputs
 
-- `$ARGUMENTS`: optional JQL override. If not provided, use the default from `reference/jql-queries.md`.
+- `$ARGUMENTS`: optional JQL override or single issue key.
+  - If omitted, use the default from `reference/jql-queries.md`.
+  - If it looks like a single issue key such as `RHAIENG-3611`, normalize it to `key = RHAIENG-3611`.
+  - Otherwise treat it as raw JQL.
 
 ## Procedure
 
-1. **Determine JQL**: if `$ARGUMENTS` contains a JQL string, use it. Otherwise use the
-   **Canonical Default Triage Queue** from `reference/jql-queries.md`.
+1. **Determine JQL**:
+   - if `$ARGUMENTS` is empty, use the **Canonical Default Triage Queue** from `reference/jql-queries.md`
+   - if `$ARGUMENTS` looks like a single issue key (`PROJECT-123`), rewrite it to `key = PROJECT-123`
+   - otherwise use `$ARGUMENTS` as raw JQL
 
 2. **Get cloud ID**: call `mcp__atlassian__getAccessibleAtlassianResources` and extract the cloud ID for `redhat.atlassian.net`.
 

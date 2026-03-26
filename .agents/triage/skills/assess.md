@@ -8,7 +8,7 @@ The core triage skill. For each issue, analyze fixability, immediately label in 
 
 ## HITL Checkpoint
 
-After assessing the **first issue**, show the analysis comment and label decision to the user before posting to Jira. Once approved, proceed with remaining issues without pausing.
+After assessing the **first issue you fully assess and intend to post**, show the analysis comment and label decision to the user before posting to Jira. Once approved, proceed with remaining issues without pausing.
 
 ## Procedure (per issue)
 
@@ -26,13 +26,12 @@ Before writing any assessment, do these checks in order:
      regression language, "blocked on X", or evidence that the fix may already exist for another
      variant or release.
 3. **Escalate to higher-cost history checks only when the issue shape justifies it**:
-   - Search PRs in both repos when the Jira references a fix/regression/backport, links to other
-     issues, or the repo-signal pass suggests a prior fix pattern may exist.
-   - Check branches when the issue mentions a branch/backport/release line, or when branch state
-     could reveal active work.
+   - Search PRs in both repos when the issue references a fix, regression, backport, commit, or
+     "already fixed" claim, or when linked issues suggest a prior solution pattern may exist.
+   - Check branches when the issue mentions a release branch, z-stream, backport, or other branch-specific work.
    - Check linked/cloned issues when links exist; if they have PRs, read those PR diffs before
      writing the assessment.
-   - Check blocking issues' current status when the Jira explicitly says it is blocked.
+   - Check blocking issues' current status only when a blocker is explicitly named or linked.
 
 Existing Jira comments can be useful clues, but they never replace code verification.
 
@@ -155,11 +154,14 @@ Fetch current labels via `mcp__atlassian__getJiraIssue`. Append (do not replace)
 - `ai-triaged` (always)
 - `ai-fixable` or `ai-nonfixable` (exactly one)
 
-Update via `mcp__atlassian__editJiraIssue`:
+Update via `mcp__atlassian__editJiraIssue` after fetching the current labels and merging them
+with `ai-triaged` plus exactly one of `ai-fixable` / `ai-nonfixable`.
+
+Example shape:
 ```json
 {
   "fields": {
-    "labels": ["...existing labels...", "ai-triaged", "ai-fixable"]
+    "labels": ["CVE", "security", "ai-triaged", "ai-fixable"]
   }
 }
 ```

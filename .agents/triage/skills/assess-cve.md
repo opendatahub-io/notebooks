@@ -127,6 +127,10 @@ Currently supported RHOAI versions (see `guidelines.md` for full table):
 - **3.3** — branch `rhoai-3.3` in red-hat-data-services/notebooks
 - **main** — local checkout (upcoming RHOAI 3.4+)
 
+For Python packages, prefer the exact lock artifact the image build consumes. If you use a
+simplified path for speed, say so explicitly in the comment and do not let it override
+shipped-image SBOM evidence.
+
 For Python packages, use `curl -sL` for large pylock.toml files:
 ```bash
 curl -sL "https://raw.githubusercontent.com/red-hat-data-services/notebooks/<branch>/jupyter/datascience/ubi9-python-3.12/pylock.toml" | grep -A1 'name = "<package>"'
@@ -168,7 +172,7 @@ Web UI: `https://access.redhat.com/security/cve/CVE-XXXX-XXXXX`
 - Use manifest-box image-specific SBOMs first (see `reference/manifestbox.md`)
 - Is the package present in a shipped runtime path, or only in repo/test/source-scan paths?
 - Is the package in `pyproject.toml` for the affected image, or only in a different image?
-- If false positive: all children should be closed as "Not a Bug" with VEX "Component not Present" (use `skills/close-vex.md`)
+- If false positive: do not transition children here. Route them to `skills/close-vex.md` / `/triage-close-vex` and get user approval before setting "Not a Bug" with VEX "Component not Present".
 
 **False positive pattern: dev deps in source scan.** A package may exist in the top-level
 `pyproject.toml` (dev dependency) or `uv.lock` (transitive of MCP SDK, etc.) but not in any
@@ -219,13 +223,13 @@ If already constrained, the fix may already be in place.
 
 - **Python, package present in the image and in our pyproject.toml**: ai-fixable — bump version, add to cve-constraints.txt, refresh locks
 - **Python, transitive dep present in the image**: ai-fixable — add to cve-constraints.txt, refresh locks
-- **npm in code-server runtime path**: nonfixable by us — needs code-server version bump or upstream remediation path
+- **npm in code-server runtime path**: ai-nonfixable in this repo — likely needs a code-server version bump or upstream remediation path
 - **npm only in `jupyter/utils/addons/` source-scan paths**: currently treat as likely false positive — review for VEX instead of planning a dependency update
-- **npm only in `/tests/...` or other source-scan-only paths**: false positive — close with VEX
+- **npm only in `/tests/...` or other source-scan-only paths**: false positive — do not transition here; route to `skills/close-vex.md` / `/triage-close-vex` for VEX review with user approval
 - **Go present in shipped tooling/binary paths**: case-by-case, often nonfixable in this repo if remediation is upstream or in another bundled component
 - **Go only in repo-tooling/source paths** (for example `scripts/buildinputs/go.mod`, `ci/dockerfile/go.sum`, or other helper inputs): treat as likely source-scan/external-component evidence until manifest-box proves shipped runtime presence
 - **RPM**: nonfixable — AIPCC base image concern
-- **False positive (not in image)**: close with VEX
+- **False positive (not in image)**: do not transition here; route to `skills/close-vex.md` / `/triage-close-vex` for VEX review with user approval
 - **Mixed tracker**: usually parent `ai-nonfixable` until child issues are split into real vs VEX candidates
 - **Commit fix but no release**: nonfixable — monitor upstream
 

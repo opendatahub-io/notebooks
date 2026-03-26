@@ -78,7 +78,7 @@ For issues in other repos, check the cross-repo table in `reference/bug-categori
 ## Hard Limits
 
 - **Never close or transition issues during triage** — only modify labels and add comments. Exception: when following `skills/close-vex.md` with user approval, transitions with Resolution and VEX fields are permitted.
-- **Never modify fields other than labels** — no changing assignee, priority, status, etc.
+- **Never modify fields other than labels** — no changing assignee, priority, status, etc. Exception: Resolution/VEX fields may be updated only when following `skills/close-vex.md` with user approval.
 - **Never fabricate data** — if you can't determine fixability, say so.
 - **Always add `ai-triaged`** to every processed issue.
 - **`ai-fixable` and `ai-nonfixable` are mutually exclusive** — never apply both.
@@ -102,7 +102,7 @@ For issues in other repos, check the cross-repo table in `reference/bug-categori
 
 ## HITL Checkpoint
 
-After assessing the **first issue**, show the analysis comment and label decision to the user before posting to Jira. Once the user approves the format, proceed with remaining issues without pausing (but the user can interrupt anytime).
+After assessing the **first issue you fully assess and intend to post**, show the analysis comment and label decision to the user before posting to Jira. Once the user approves the format, proceed with remaining issues without pausing (but the user can interrupt anytime).
 
 ## Context Hygiene
 

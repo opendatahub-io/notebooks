@@ -26,10 +26,12 @@ Route commands to the appropriate skill.
 The canonical default lives in `reference/jql-queries.md` under
 **Canonical Default Triage Queue**.
 
-Use the **Backlog-Only Triage Queue** from the same file when the user wants the
+Use the **Backlog-Only Triage Queue** from the same file when the user or runbook wants the
 highest-value human-triaged subset rather than the full active untriaged queue.
 
 All commands accept `$ARGUMENTS` to override the JQL or specify an issue key.
+When a command accepts scan-style input and `$ARGUMENTS` looks like `PROJECT-123`, normalize it
+to `key = PROJECT-123` instead of treating it as raw JQL.
 
 ## Artifacts
 

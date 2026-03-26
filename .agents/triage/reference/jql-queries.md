@@ -1,4 +1,4 @@
-# JQL Queries for AAIET Notebooks Triage
+# JQL Queries for Notebooks Triage
 
 Pre-built JQL queries for common triage scenarios.
 
@@ -59,7 +59,7 @@ ORDER BY priority DESC, updated DESC
 
 ## CVE / Security Issues
 
-CVEs use `issuetype = Vulnerability` (not Bug). CVE triage is a separate workflow (to be added later). This query finds them:
+CVEs use `issuetype = Vulnerability` (not Bug). CVE triage uses the dedicated workflow in `skills/assess-cve.md` and related commands from `SKILL.md`. This query finds them:
 
 ```jql
 project = RHOAIENG AND resolution = Unresolved

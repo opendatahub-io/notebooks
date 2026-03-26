@@ -16,8 +16,8 @@ Single issue: `/triage-assess RHAIENG-XXXX`
 The canonical default lives in `reference/jql-queries.md` under
 **Canonical Default Triage Queue**.
 
-Use the **Backlog-Only Triage Queue** from that file when you intentionally want
-the narrower, human-triaged subset.
+Use the **Backlog-Only Triage Queue** from that file when the user or runbook wants
+the highest-value human-triaged subset rather than the full active untriaged queue.
 
 Override with arguments: `/triage-run project = RHAIENG AND status = New ...`
 
