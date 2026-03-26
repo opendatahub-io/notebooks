@@ -20,6 +20,39 @@ from string import templatelib
 from string.templatelib import Interpolation, Template
 
 import structlog
+from structlog.dev import ConsoleRenderer, KeyValueColumnFormatter
+
+
+class PrettyConsoleRenderer(ConsoleRenderer):
+    """ConsoleRenderer that puts each key=value on a separate indented line."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        original = self._default_column_formatter
+        self._default_column_formatter = KeyValueColumnFormatter(
+            key_style=original.key_style,
+            value_style=original.value_style,
+            reset_style=original.reset_style,
+            value_repr=original.value_repr,
+            prefix="\n  ",
+        )
+
+
+def make_pretty_log() -> structlog.stdlib.BoundLogger:
+    """Create a structlog logger that renders each key=value on a separate indented line."""
+    fmt = structlog.stdlib.ProcessorFormatter(
+        processors=[
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            PrettyConsoleRenderer(),
+        ],
+    )
+    handler = logging.StreamHandler()
+    handler.setFormatter(fmt)
+    logger = logging.getLogger("pretty")
+    logger.handlers = [handler]
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+    return structlog.wrap_logger(logger, wrapper_class=structlog.stdlib.BoundLogger)
 
 
 def _render_template(template: Template) -> str:

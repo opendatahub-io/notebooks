@@ -29,29 +29,10 @@ from rich.console import Console
 from rich.live import Live
 from rich.table import Table
 from rich.text import Text
-from structlog.dev import ConsoleRenderer, KeyValueColumnFormatter
-
-from ci.logging_config import configure_logging
+from ci.logging_config import configure_logging, make_pretty_log
 
 log = structlog.get_logger()
 
-
-class PrettyConsoleRenderer(ConsoleRenderer):
-    """ConsoleRenderer that puts each key=value on a separate indented line."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        original = self._default_column_formatter
-        self._default_column_formatter = KeyValueColumnFormatter(
-            key_style=original.key_style,
-            value_style=original.value_style,
-            reset_style=original.reset_style,
-            value_repr=original.value_repr,
-            prefix="\n  ",
-        )
-
-
-_pretty_renderer = PrettyConsoleRenderer()
 
 COMMAND_TIMEOUT_SECONDS = 120
 MAX_CONCURRENT_CHECKS = 22
@@ -497,6 +478,8 @@ async def run_checks(
 
 
 async def main() -> int:
+    pretty_log = make_pretty_log()
+
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} <env-file> [<env-file> ...]", file=sys.stderr)
         return 2
@@ -545,14 +528,11 @@ async def main() -> int:
     if failed:
         log.error("The following images were NOT found in their registries:")
         for result in failed:
-            print(
-                _pretty_renderer(None, None, {
-                    "event": "Missing image",
-                    "variable": result.variable,
-                    "image_url": result.image_url,
-                    "error": result.error,
-                }),
-                file=sys.stderr,
+            pretty_log.error(
+                "Missing image",
+                variable=result.variable,
+                image_url=result.image_url,
+                error=result.error,
             )
         if rich_table is not None:
             rich_table.print_final_table()
