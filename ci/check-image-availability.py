@@ -15,6 +15,7 @@ import asyncio
 import json
 import os
 import pathlib
+import re
 import shutil
 import sys
 from contextlib import AbstractContextManager
@@ -302,6 +303,29 @@ def should_use_rich_output() -> bool:
     return not os.environ.get("CI") and sys.stderr.isatty()
 
 
+_SKOPEO_MSG_RE = re.compile(r'msg="(.*)"')
+
+
+def _extract_skopeo_error(stderr_text: str) -> str:
+    """Extract a concise error reason from skopeo's logfmt stderr.
+
+    Skopeo emits lines like:
+        time="..." level=fatal msg="Error parsing image name \"docker://REG/REPO:TAG\": ... : manifest unknown"
+
+    This extracts just the tail reason (e.g. "manifest unknown") for readable logging.
+    Falls back to the full stderr if parsing fails.
+    """
+    match = _SKOPEO_MSG_RE.search(stderr_text)
+    if not match:
+        return stderr_text
+    msg = match.group(1).replace('\\"', '"')
+    # The reason is typically after the last ": "
+    last_colon = msg.rfind(": ")
+    if last_colon != -1:
+        return msg[last_colon + 2:]
+    return msg
+
+
 async def check_image(
     variable: str,
     image_url: str,
@@ -354,7 +378,7 @@ async def check_image(
                 variable=variable,
                 image_url=image_url,
                 available=False,
-                error=stderr_text or "Image not found",
+                error=_extract_skopeo_error(stderr_text) if stderr_text else "Image not found",
             )
 
         inspect_data = json.loads(stdout.decode())
