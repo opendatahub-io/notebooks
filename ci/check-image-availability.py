@@ -191,9 +191,7 @@ def build_quay_url(image_url: str) -> str | None:
 def build_image_http_url(image_url: str) -> str | None:
     if image_url.startswith(("http://", "https://")):
         return image_url
-    if image_url.startswith("quay.io/"):
-        return f"https://{image_url}"
-    return None
+    return build_quay_url(image_url)
 
 
 def render_image_cell(image_url: str, supports_hyperlinks: bool) -> Text | str:
@@ -373,13 +371,14 @@ async def check_image(
 
         if process.returncode != 0:
             stderr_text = stderr.decode().strip() if stderr else ""
+            error = _extract_skopeo_error(stderr_text) if stderr_text else "Image not found"
             if emit_immediate_errors:
-                log.error("Image not found", image_url=image_url, stderr=stderr_text)
+                log.error("Image check failed", image_url=image_url, error=error)
             return ImageCheckResult(
                 variable=variable,
                 image_url=image_url,
                 available=False,
-                error=_extract_skopeo_error(stderr_text) if stderr_text else "Image not found",
+                error=error,
             )
 
         inspect_data = json.loads(stdout.decode())
