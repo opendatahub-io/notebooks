@@ -17,11 +17,19 @@ Individual phases: `/fix-diagnose`, `/fix-fix`, `/fix-test`, `/fix-pr`
 
 `fix/{RHAIENG-XXXX}-{short-description}`
 
+## Execution Context
+
+- **Upstream / mainline work**: use the ODH checkout on `main`
+- **Z-stream / release-branch work**: use `red-hat-data-services/notebooks` on the matching
+  `rhoai-X.Y` branch
+- Before diagnose or fix on a release branch, fetch the latest target ref and record which exact
+  branch tip you are using
+
 ## Required Test Commands
 
 ```bash
-make test                    # static tests (always)
-./uv run pytest tests/unit/  # unit tests
+gmake test                   # macOS; use `make test` when make is GNU Make
+./uv run pytest tests/unit/  # unit tests, if the target branch has tests/unit/
 ./uv run ruff check          # linting
 ./uv run pyright             # type checking
 ```

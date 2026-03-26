@@ -12,14 +12,20 @@ Track **`test_failure_cycles`**: the number of times you take the **Failures** b
 
 This value selects the Jira success label in `skills/pr.md` (see **Handoff** below).
 
+Also track **`verification_result`**:
+- `all_pass` — the required verification passed
+- `baseline_failures` — the target branch already fails on unrelated checks outside the fix scope
+- `regression_failures` — the fix introduced or exposed a failure in the changed scope
+
 ## Procedure
 
 ### 1. Run Static Tests (always)
 
 ```bash
-make test
+gmake test
 ```
 
+Use `gmake` on macOS when `make` is BSD make; use `make test` when `make` is GNU Make.
 This runs pytest for config/manifest consistency plus lint checks.
 
 ### 2. Run Unit Tests
@@ -27,6 +33,9 @@ This runs pytest for config/manifest consistency plus lint checks.
 ```bash
 ./uv run pytest tests/unit/
 ```
+
+If the target branch does not contain `tests/unit/`, record that explicitly and do not treat the
+missing directory as a fix regression.
 
 ### 3. Run Pre-commit Checks
 
@@ -56,7 +65,23 @@ Specific guidance:
 
 **All pass**: write the handoff file (below), then proceed to `skills/pr.md`.
 
-**Failures**: increment `test_failure_cycles` by 1.
+**Baseline failures**: if the same command already fails on the clean target branch tip, or if the
+failure is clearly outside the changed scope (for example branch-wide `.tekton` drift, unrelated
+lint, or an absent `tests/unit/` directory), do **not** increment `test_failure_cycles`.
+
+Write the handoff file with:
+```yaml
+test_failure_cycles: 0
+verification_result: baseline_failures
+baseline_failures:
+  - command: <command>
+    summary: <why this is outside the fix scope>
+```
+
+Then proceed to `skills/pr.md` only with explicit user approval to open a **draft PR** and apply
+`ai-verification-failed`.
+
+**Regression failures**: increment `test_failure_cycles` by 1.
 
 - **`test_failure_cycles` <= 3**: analyze the failure, apply a targeted fix, and re-run tests. Go back to step 1.
 - **`test_failure_cycles` > 3**: CIRCUIT BREAKER — stop. See below.
@@ -84,6 +109,7 @@ After **All pass**, write `.artifacts/bugfix/{key}/test-handoff.md`:
 
 ```yaml
 test_failure_cycles: N
+verification_result: all_pass
 ```
 
 Use the final `test_failure_cycles` value (after success). `pr.md` maps this to Jira labels:

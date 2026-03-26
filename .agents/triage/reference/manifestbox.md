@@ -514,6 +514,16 @@ if __name__ == "__main__":
 | `/jupyter/utils/addons/pnpm-lock.yaml` | Currently a source-scan artifact from repository content, not shipped runtime image content | Usually review for VEX `Component not Present` unless image-specific evidence shows otherwise |
 | `/usr/lib/python*/site-packages/` or `/opt/app-root/lib/python*/site-packages/` | Real shipped Python dependency | Treat as real image content |
 | `/var/lib/rpm/` | Base OS package | Base image / RPM remediation path |
+| `/usr/bin/skopeo` or another shipped CLI binary | Real shipped RPM/Go tool | Not VEX; check Red Hat security data, Bugzilla, and errata for package-fix availability |
+
+### After You Confirm A Shipped RPM / CLI Tool
+
+If manifest-box shows the vulnerable component via a shipped binary or RPM-managed tool path:
+1. Do **not** route the tracker to VEX `Component not Present`
+2. Check Red Hat security data to see whether the package is still `Affected` or already `Fixed`
+3. Check the canonical Product Security Bugzilla and any released errata for the same CVE
+4. If no fixed Red Hat package exists yet, the best current triage outcome is usually:
+   real shipped exposure, but `ai-nonfixable` pending fixed RPM / erratum
 
 ## Related Tools
 

@@ -8,6 +8,14 @@ Safety rules, allowed tools, and escalation criteria for AI bug fixing.
 - **Minimal diffs**: change only what's needed. Don't refactor, add docs, or "improve" surrounding code.
 - **Show code, not concepts**: implement the actual fix, don't describe what should be done.
 - **Follow repo conventions**: read `AGENTS.md` (repo root) for PEP 8, Python 3.14 syntax, ruff, pyright, and the inheritance model.
+- **Fetch the real target first**: for release-branch / z-stream work, fetch the latest
+  `rhds/rhoai-X.Y` ref before diagnose begins. Do not rely on a stale local remote-tracking ref.
+- **Probe branch-local mechanisms before editing**: on release branches, check the actual
+  dependency and tooling layout first (`dependencies/`, `scripts/pylocks_generator*`, `uv` /
+  `uv.toml`, affected `pyproject.toml` files). Do not assume the same CVE fix mechanism exists on
+  every branch.
+- **Record lock refresh toolchain**: when relocking on release branches, note the exact command and
+  `uv` / wrapper path used. Different branches may require different toolchain versions.
 
 ## Hard Limits
 
@@ -29,7 +37,7 @@ If tests fail after 3 fix attempts:
 
 | Phase | Tools |
 |-------|-------|
-| Start | `mcp__atlassian__getJiraIssue`, repo reading (Read, Grep, Glob) |
+| Start | `mcp__atlassian__getJiraIssue`, repo reading (Read, Grep, Glob), Bash (`git fetch`, `git branch -a`) |
 | Diagnose | Grep, Glob, Read, Bash (read-only git commands: `git log`, `git blame`), subagents for research |
 | Fix | Edit, Write tools, Bash (`git checkout -b`, `gmake refresh-lock-files`) |
 | Test | Bash (`make test`, `./uv run pytest`, `./uv run prek --from-ref HEAD~1 --to-ref HEAD`) |
@@ -62,6 +70,8 @@ If the agent bails out at any phase:
 - Fix requires changes in another repository
 - Confidence in the fix is below 80%
 - Tests require GPU hardware or a live cluster that isn't available
+- Release-branch verification already fails broadly on unrelated baseline checks and the user does
+  not want a draft-PR handoff path
 - **CVE-specific:** the vulnerable component is Go/RPM and `/fix-cve` does not apply
 - **CVE-specific:** upstream source shows the fix but no released artifact contains it yet — document and stop
 - **CVE-specific:** the tracker is mixed and the correct action is VEX closure for false-positive children, not a code fix

@@ -24,6 +24,19 @@ Call `mcp__atlassian__getJiraIssue` with the issue key. Extract:
   steps run locally or remotely. See `triage/reference/remote-artifact-investigation.md` for
   SSH patterns.
 
+### 2.2. Determine Execution Target
+
+Use the Jira title, triage assessment, and `triage/guidelines.md` supported-version table to
+decide where the fix belongs:
+
+- **ODH / mainline path**: ODH checkout on `main`
+- **RHOAI z-stream path**: `red-hat-data-services/notebooks` on `rhoai-X.Y`
+
+For release-branch work:
+- fetch the latest target branch before diagnose
+- record the exact target ref in the start summary
+- do not proceed from a stale `rhds/rhoai-X.Y` remote-tracking branch
+
 ### 2.5. Early Short-Circuit Checks
 
 Stop before diagnose if any of these apply:
@@ -43,13 +56,23 @@ Stop before diagnose if any of these apply:
 
 If `.artifacts/triage/ledger.json` exists and has an entry for this key, read the assessment (category, files to modify, steps to resolve). This saves re-analysis.
 
-If no assessment exists, do a quick classification using the logic from `triage/skills/assess.md` steps 2-4.
+If the ledger entry is `previously-assessed` or `assessment` is null, fall back to the latest AI
+triage Jira comment and build a minimal local summary from that plus repo evidence. Do not assume
+the ledger always contains enough structured fix detail.
+
+If no assessment exists, do a quick classification using the logic from `triage/skills/assess.md`
+steps 2-4.
 
 ### 4. Identify Affected Files
 
 Based on the assessment category and error description:
 - Use **Grep** to find files matching error messages, package names, or component names
 - Use **Glob** to list candidate files (e.g., `*/Dockerfile.*`, `*/pyproject.toml`)
+- For dependency CVEs on release branches, explicitly probe the branch-local fix mechanism:
+  - shared `dependencies/cve-constraints.txt`
+  - shared dependency subprojects under `dependencies/`
+  - direct image-local `pyproject.toml` / lock updates
+  - branch-local `uv` / `uv.toml` or other lock-refresh toolchain expectations
 - Summarize which files likely need changes
 
 ### 5. Create Artifacts Directory
@@ -64,6 +87,7 @@ Show the user:
 ```
 Issue: RHAIENG-XXXX — {summary}
 Priority: {priority} | Category: {category}
+Execution target: {odh-main | rhds/rhoai-X.Y} @ {ref}
 
 Root cause hypothesis: {brief explanation}
 

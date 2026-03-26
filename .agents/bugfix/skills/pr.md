@@ -4,17 +4,29 @@ Push the fix, create a PR, and update Jira labels/comments.
 
 ## Inputs
 
-Continues from `skills/test.md`. All tests pass on the feature branch.
+Continues from `skills/test.md`.
+
+Supported entry states:
+- **All tests pass** on the feature branch
+- **Baseline failures** were documented and the user approved a draft-PR handoff path
 
 ## HITL Checkpoint
 
 Show the user what will be done before proceeding:
 - Branch name and diff summary
+- Exact files that will be committed
 - PR title and body draft
-- Jira label changes (`ai-fully-automated` vs `ai-accelerated-fix` from `.artifacts/bugfix/{key}/test-handoff.md`; see `triage/reference/label-taxonomy.md`)
+- Jira label changes (`ai-fully-automated`, `ai-accelerated-fix`, or `ai-verification-failed` from `.artifacts/bugfix/{key}/test-handoff.md`; see `triage/reference/label-taxonomy.md`)
 - Wait for user confirmation
 
 ## Procedure
+
+### 0. Verify Commit Scope
+
+Before committing:
+- run `git diff --name-only --cached` (or the equivalent)
+- confirm that only the intended fix files are staged
+- if unexpected files are staged, unstage them before continuing
 
 ### 1. Commit
 
@@ -54,7 +66,7 @@ gh pr create --title "RHAIENG-XXXX: {short description}" --body "$(cat <<'PREOF'
 
 ## Test Results
 
-{Summary of test results — which tests ran, all passed}
+{Summary of test results — either all passed, or baseline failures outside the fix scope}
 
 ## Jira
 
@@ -67,12 +79,16 @@ PREOF
 
 ### 4. Update Jira Labels
 
-Read `.artifacts/bugfix/{key}/test-handoff.md` and parse `test_failure_cycles` (default `0` if missing).
+Read `.artifacts/bugfix/{key}/test-handoff.md` and parse:
+- `test_failure_cycles` (default `0` if missing)
+- `verification_result` (`all_pass` or `baseline_failures`)
 
 | `test_failure_cycles` | Append this label |
 |------------------------|-------------------|
 | `0` | `ai-fully-automated` |
 | `>= 1` | `ai-accelerated-fix` |
+
+If `verification_result = baseline_failures`, append `ai-verification-failed` instead of a success label and keep the PR in **draft** state.
 
 Fetch current labels, append exactly one of the above (never both):
 
@@ -93,8 +109,8 @@ Post a comment linking to the PR:
 AI Fix Applied - {date}
 PR: {pr-url}
 Summary: {what was fixed}
-Tests: All passing (make test, prek)
-Status: Awaiting human review
+Tests: {All passing | Baseline failures documented}
+Status: {Awaiting human review | Draft PR opened because baseline verification is incomplete}
 ```
 
 ### 6. Clean Up
@@ -110,6 +126,6 @@ Return to the branch you were on before starting.
 ```
 Fix complete for RHAIENG-XXXX
 PR: {url}
-Jira: labeled {ai-fully-automated|ai-accelerated-fix}, comment added
+Jira: labeled {ai-fully-automated|ai-accelerated-fix|ai-verification-failed}, comment added
 Branch: fix/{key}-{desc}
 ```

@@ -53,6 +53,8 @@ Use it before deep repo inference for:
 - **mixed trackers** spanning multiple image families
 - **Python** CVEs where source files may not match shipped image contents
 - **Go** CVEs where the vulnerable code may be in embedded tooling, a bundled binary, or another repo
+- **RPM / shipped CLI tool** cases where the same component may be intentionally installed across
+  many image families
 
 Fetch one SBOM per representative child family for tracker-level triage.
 For closing individual children, fetch the exact SBOM for each child's `pscomponent:` image (see below).
@@ -79,6 +81,9 @@ suffix (e.g., `v3-3`). Use `--expect-version v3-3` with the helper script to fai
 Treat manifest-box `sourceInfo` as primary evidence for whether a component is really in the shipped image.
 Repo lockfiles and source grep are secondary evidence.
 
+For broad Go/RPM trackers spanning many image families, do not classify the tracker before this
+manifest-box step. The first question is whether the vulnerable component is really shipped.
+
 **Triage vs closure evidence thresholds:**
 - **Tracker-level triage**: representative-family sampling (one SBOM per family) is acceptable
 - **Closing individual child issues**: requires exact per-child SBOM proof (see `skills/close-vex.md`)
@@ -96,6 +101,7 @@ Location patterns matter:
 - `/tests/browser/pnpm-lock.yaml` or other `/tests/...` paths → likely source-scan / test-only false positive
 - `/jupyter/utils/addons/pnpm-lock.yaml` → currently source-scan artifact from repository content; likely VEX `Component not Present` candidate unless image-specific SBOM evidence shows otherwise
 - repo-only Go tooling paths such as `scripts/buildinputs/go.mod`, `scripts/buildinputs/go.sum`, `ci/dockerfile/go.sum`, or other non-image helper inputs → likely source-scan or build-tooling evidence, not a notebooks runtime dependency
+- shipped CLI paths such as `/usr/bin/skopeo` → real shipped runtime/tooling component; not a VEX `Component not Present` case
 
 ### 6. Query OSV API for Fix Version
 
@@ -166,6 +172,11 @@ for ps in d.get('package_state',[]):
 Returns per-image fix state (Affected/Not affected/Fixed) for every RHOAI container.
 Web UI: `https://access.redhat.com/security/cve/CVE-XXXX-XXXXX`
 
+For RPM / shipped-tool cases, also check:
+- whether the RHEL package itself (for example `skopeo`) is still `Affected`
+- whether the canonical Product Security Bugzilla is still open
+- whether there is a released RHEL / AppStream erratum for this exact CVE
+
 ### 9. Check for False Positives and Mixed Trackers
 
 **Critical**: Konflux source SBOM scans the entire repo (RHAIENG-3006). The package may be in the SBOM but NOT in the specific image. Check:
@@ -228,10 +239,11 @@ If already constrained, the fix may already be in place.
 - **npm only in `/tests/...` or other source-scan-only paths**: false positive — do not transition here; route to `skills/close-vex.md` / `/triage-close-vex` for VEX review with user approval
 - **Go present in shipped tooling/binary paths**: case-by-case, often nonfixable in this repo if remediation is upstream or in another bundled component
 - **Go only in repo-tooling/source paths** (for example `scripts/buildinputs/go.mod`, `ci/dockerfile/go.sum`, or other helper inputs): treat as likely source-scan/external-component evidence until manifest-box proves shipped runtime presence
-- **RPM**: nonfixable — AIPCC base image concern
+- **RPM-installed shipped tool / binary** (for example `/usr/bin/skopeo`): usually `ai-nonfixable` unless a fixed Red Hat package is already available for the branch's RHEL/AppStream source. This is a real shipped exposure, not a VEX false positive; next step is checking Red Hat security data, Bugzilla, and errata.
 - **False positive (not in image)**: do not transition here; route to `skills/close-vex.md` / `/triage-close-vex` for VEX review with user approval
 - **Mixed tracker**: usually parent `ai-nonfixable` until child issues are split into real vs VEX candidates
 - **Commit fix but no release**: nonfixable — monitor upstream
+- **Real shipped exposure, but waiting on Red Hat package fix / erratum**: keep `ai-nonfixable`, explain that the component is shipped and needed, and document that remediation is blocked on package availability rather than notebooks-side source changes
 
 ### 12. Useful Scripts
 

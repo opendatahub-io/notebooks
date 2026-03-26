@@ -1,6 +1,6 @@
 # Skill: Fix a Python or Node.js CVE
 
-Implement a fix for an ai-fixable Python or Node.js CVE on the main branch.
+Implement a fix for an ai-fixable Python or Node.js CVE on the correct target branch.
 
 ## Inputs
 
@@ -23,6 +23,29 @@ Read the tracker's triage comment to get:
 - Which images are affected (from `pscomponent:` labels)
 - Whether it's a direct or transitive dependency
 - **Ecosystem**: Python (PyPI) or Node.js (npm)
+- Which supported RHOAI version the tracker targets (`rhoai-X.Y`) if this is a z-stream fix
+
+Determine the execution target before editing:
+- **Future / mainline-only work**: ODH checkout on `main`
+- **Supported release / z-stream work**: `red-hat-data-services/notebooks` on the matching `rhoai-X.Y` branch
+
+For release-branch work, fetch the latest target branch first and record the exact ref you are
+using for the fix.
+
+### 1.5. Probe the Branch-Local Fix Mechanism
+
+Before editing anything, inspect how this branch expects dependency fixes to be applied:
+- Does it have `dependencies/cve-constraints.txt` already?
+- Does it use shared dependency subprojects under `dependencies/`?
+- Are the affected images wired to those dependency subprojects in `pyproject.toml`?
+- What lock refresh path does the branch use (`./uv`, explicit `uv tool run`, bare `uv`, `gmake`)?
+
+Pick the narrowest branch-native mechanism:
+1. shared CVE constraints file
+2. shared dependency subproject pin
+3. direct image-local dependency update
+
+Do not assume the same mechanism exists on every release branch.
 
 Branch to the appropriate procedure below. Step 1 applies to both ecosystems;
 per-ecosystem steps restart at 2.
@@ -31,49 +54,72 @@ per-ecosystem steps restart at 2.
 
 ## Python CVE Procedure
 
-### 2. Check cve-constraints.txt
+### 2. Choose the Python Pin Location
 
-Read `dependencies/cve-constraints.txt`. If the package is already constrained:
-- Update the version constraint if the new fix version is higher
-If not present:
-- Add a new entry with the CVE reference
+Apply the fix using the branch-local mechanism discovered above:
 
-Format:
-```
-# CVE-XXXX-XXXXX: Description
-# Reference: https://access.redhat.com/security/cve/CVE-XXXX-XXXXX
-package-name>=X.Y.Z
-```
+- **Shared CVE constraints file**:
+  - Read `dependencies/cve-constraints.txt`
+  - If the package is already constrained, update the constraint if the new fix version is higher
+  - If not present, add a new entry with the CVE reference
+
+  Format:
+  ```
+  # CVE-XXXX-XXXXX: Description
+  # Reference: https://access.redhat.com/security/cve/CVE-XXXX-XXXXX
+  package-name>=X.Y.Z
+  ```
+
+- **Shared dependency subproject**:
+  - Update the shared dependency project's `pyproject.toml`
+  - Prefer this when multiple affected images already consume the same dependency subproject
+
+- **Direct image-local dependency update**:
+  - Use only when the branch does not provide a shared mechanism and the package is directly owned there
 
 ### 3. Check if Direct Dependency
 
-Search for the package in pyproject.toml files:
+Search for the package in relevant `pyproject.toml` files:
 ```bash
 grep -r "<package>" */*/pyproject.toml
 ```
 
-If it's a **direct dependency**: bump the version constraint in the affected pyproject.toml files.
-If it's **transitive only**: the cve-constraints.txt entry is sufficient — it will be applied during lock refresh.
+If it's a **direct dependency**: bump the version constraint in the affected `pyproject.toml` files.
+If it's **transitive only**:
+- the shared constraints file is sufficient when that mechanism exists on the branch
+- otherwise prefer the smallest shared dependency project that actually owns the transitive path
 
 ### 4. Refresh Lock Files
 
 ```bash
 # Targeted refresh (faster)
-./uv run scripts/pylocks_generator.py auto jupyter/datascience/ubi9-python-3.12
+./uv run scripts/pylocks_generator.py auto <affected-dir>
 
 # Or full refresh
 gmake refresh-lock-files
 ```
 
+For release-branch work, record the exact lock refresh toolchain used (`./uv`, explicit
+`uv tool run uv@X.Y.Z`, or branch-local equivalent). Different branches may need different `uv`
+versions or wrapper paths.
+
 ### 5. Verify
 
 ```bash
 # Check the package version in the refreshed lock
-grep -A1 'name = "<package>"' jupyter/datascience/ubi9-python-3.12/uv.lock
+grep -A1 'name = "<package>"' <affected-lockfile>
 
 # Run consistency tests
-make test
+gmake test
 ```
+
+Use `make test` when `make` is GNU Make; use `gmake` on macOS when needed.
+
+If a verification command fails:
+- decide whether it is a **baseline branch failure** or a **regression introduced by this fix**
+- only treat true regressions as fix-test loop failures
+- if the target branch already fails broadly on unrelated checks, document that and route to the
+  draft-PR / `ai-verification-failed` path instead of repeatedly fixing unrelated branch issues
 
 ---
 
@@ -146,6 +192,6 @@ Comment with PR link.
 
 - See `reference/cve-python.md` (→ `docs/cves/python.md`) for the full Python CVE resolution guide
 - See `reference/cve-nodejs.md` (→ `docs/cves/nodejs.md`) for the Node.js CVE resolution guide
-- For Python transitive deps: `cve-constraints.txt` is the mechanism, not editing pyproject.toml
+- For Python transitive deps, prefer the branch-native shared mechanism (`cve-constraints.txt` or a shared dependency subproject) rather than duplicating pins across multiple image-local files
 - After the fix lands on main, it flows to RHOAI via the normal upstream → downstream process
 - For z-stream fixes on release branches: go directly to `rhoai-X.Y` in `red-hat-data-services/notebooks`

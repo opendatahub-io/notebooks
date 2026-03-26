@@ -41,8 +41,12 @@ Expected: comment appears on the issue
 
 ```bash
 test -f AGENTS.md && echo "PASS" || echo "FAIL: not in notebooks repo root"
-git remote -v | grep opendatahub-io/notebooks
+git remote -v | grep -E 'opendatahub-io/notebooks|red-hat-data-services/notebooks'
 ```
+
+For z-stream / release-branch work, either checkout may be valid:
+- ODH checkout for upstream / mainline work
+- `red-hat-data-services/notebooks` checkout for `rhoai-X.Y` work
 
 ## Strongly Recommended
 
@@ -59,6 +63,10 @@ Expected: authenticated to github.com
 python3 --version   # expect 3.14+
 ./uv --version
 ```
+
+Some downstream release branches may not yet carry the `./uv` wrapper. In that case, record the
+exact `uv` invocation and version used for relocking (for example `uv tool run uv@X.Y.Z ...`)
+before proceeding with dependency refreshes.
 
 ### 7. Build System
 
