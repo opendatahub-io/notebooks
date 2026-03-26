@@ -495,14 +495,14 @@ async def main() -> int:
 
     write_github_step_summary(results)
 
-    failed = [(result.variable, result.image_url) for result in results if not result.available]
+    failed = [result for result in results if not result.available]
 
     log.info("Check complete", total=len(results), failed=len(failed))
 
     if failed:
         log.error("The following images were NOT found in their registries:")
-        for variable, image_url in failed:
-            log.error("Missing image", variable=variable, image_url=image_url)
+        for result in failed:
+            log.error("Missing image", variable=result.variable, image_url=result.image_url, error=result.error)
         if rich_table is not None:
             rich_table.print_final_table()
         return 1
