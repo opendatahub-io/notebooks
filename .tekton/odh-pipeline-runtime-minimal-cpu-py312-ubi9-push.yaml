@@ -30,6 +30,9 @@ spec:
     value: runtimes/minimal/ubi9-python-3.12/build-args/cpu.conf
   - name: path-context
     value: .
+  - name: additional-tags
+    value:
+    - 3.4-v1.43
   pipelineRef:
     resolver: git
     params:

@@ -32,6 +32,9 @@ spec:
     value: codeserver/ubi9-python-3.12/build-args/cpu.conf
   - name: path-context
     value: .
+  - name: additional-tags
+    value:
+    - 3.4-v1.43
   - name: build-platforms
     value:
     # https://github.com/redhat-appstudio/infra-deployments/blob/main/components/multi-platform-controller/production-downstream/stone-prod-p02/host-config.yaml
