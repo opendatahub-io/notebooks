@@ -103,6 +103,7 @@ jobs:
 
           gh pr create \
             --title "Update lock files" \
+            --head "$BRANCH_NAME" \
             --body "$(cat <<'EOF'
           Automated lock file update.
 
