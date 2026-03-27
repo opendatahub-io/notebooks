@@ -32,6 +32,9 @@ spec:
     value: rstudio/c9s-python-3.12/build-args/cuda.conf
   - name: path-context
     value: .
+  - name: additional-tags
+    value:
+    - 3.4-v1.43
   taskRunSpecs:
     - pipelineTaskName: build-images
       computeResources:

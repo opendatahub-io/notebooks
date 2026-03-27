@@ -32,6 +32,9 @@ spec:
     value: runtimes/rocm-pytorch/ubi9-python-3.12/build-args/rocm.conf
   - name: path-context
     value: .
+  - name: additional-tags
+    value:
+    - 3.4-v1.43
   pipelineRef:
     resolver: git
     params:
