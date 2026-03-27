@@ -81,7 +81,7 @@ jobs:
 
       - name: Run make refresh-lock-files
         run: |
-          make refresh-lock-files INDEX_MODE=${{ env.INDEX_MODE }}
+          make refresh-lock-files INDEX_MODE="$INDEX_MODE"
         env:
           FORCE_LOCKFILES_UPGRADE: ${{ env.FORCE_LOCKFILES_UPGRADE }}
 
@@ -114,7 +114,7 @@ jobs:
           EOF
           )" \
             --label "automated-lockfile-update" \
-            --base "${{ env.BRANCH }}"
+            --base "$BRANCH"
 
   auto-merge-lockfile-prs:
     # Run on auto-merge schedule or manual dispatch with 'auto-merge' operation
