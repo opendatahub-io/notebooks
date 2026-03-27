@@ -2,8 +2,9 @@
 set -x
 
 # Set the elyra config on the right path
-jupyter elyra --generate-config
-cp /opt/app-root/bin/utils/jupyter_elyra_config.py /opt/app-root/src/.jupyter/
+# RHOAIENG-15626: Always copy our custom config to ensure it's up to date (install -D creates directory if needed)
+install -D -m 0644 /opt/app-root/bin/utils/jupyter_elyra_config.py /opt/app-root/src/.jupyter/jupyter_elyra_config.py
+chmod 2770 /opt/app-root/src/.jupyter/ 2>/dev/null || true  # Fix directory perms if created
 
 # create the elyra runtime directory if not present
 if [ ! -d $(jupyter --data-dir)/metadata/runtimes/ ]; then
