@@ -8,7 +8,13 @@ reviews:
   auto_review:
     base_branches:
       - main
+      - stable
+      # opendatahub-io/notebooks
+      - 2024a
       - 2024b
+      # red-hat-data-services/notebooks
+      - rhoai-.*
+      - release-.*
   pre_merge_checks:
     title:
       mode: warning   # change to "error" to block merges (with Request Changes Workflow)
