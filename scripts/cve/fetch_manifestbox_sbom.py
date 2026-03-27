@@ -15,6 +15,20 @@ Examples:
         --pick 2 \
         --output .artifacts/sbom/codeserver-v3-3.json \
         --package undici
+
+    # Auto-select the SBOM whose build_component contains a version substring
+    python scripts/cve/fetch_manifestbox_sbom.py \
+        --component odh-workbench-codeserver-datascience-cpu-py312-rhel9 \
+        --prefer-version v3-3 \
+        --output .artifacts/sbom/codeserver-v3-3.json \
+        --package undici
+
+    # Resolve the exact SBOM via the Pyxis registry API (most accurate, zero guessing)
+    python scripts/cve/fetch_manifestbox_sbom.py \
+        --component odh-workbench-codeserver-datascience-cpu-py312-rhel9 \
+        --version-tag v3.3 \
+        --output .artifacts/sbom/codeserver-v3-3.json \
+        --package undici
 """
 
 from __future__ import annotations
@@ -39,6 +53,13 @@ FILE_RAW_TEMPLATE = (
 )
 LFS_BATCH_URL = (
     "https://gitlab.cee.redhat.com/product-security/manifest-box.git/info/lfs/objects/batch"
+)
+PYXIS_IMAGES_TEMPLATE = (
+    "https://catalog.redhat.com/api/containers/v1/repositories/registry/"
+    "registry.access.redhat.com/repository/rhoai/{repository}/images"
+    "?page_size=1&page=0"
+    "&filter=architecture==amd64;repositories.tags.name=={tag}"
+    "&include=data.repositories.manifest_schema2_digest"
 )
 
 
@@ -133,6 +154,81 @@ def download_to_file(url: str, output_path: Path, insecure: bool = False) -> Non
     subprocess.run([*curl_args, url, "-o", str(output_path)], check=True)
 
 
+def resolve_digest_via_pyxis(component: str, version_tag: str) -> str | None:
+    """Query the Pyxis catalog API for the amd64 image digest at a given version tag.
+
+    The component name (e.g. ``odh-workbench-jupyter-minimal-cpu-py312-rhel9``)
+    maps directly to the Pyxis repository ``rhoai/<component>``.  The returned
+    ``manifest_schema2_digest`` is the per-architecture digest that manifest-box
+    uses in its SBOM filenames.
+    """
+    url = PYXIS_IMAGES_TEMPLATE.format(repository=component, tag=version_tag)
+    try:
+        result = subprocess.run(
+            ["curl", "-fsSL", url],
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        return None
+
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+
+    images = data.get("data", [])
+    if not images:
+        return None
+
+    for repo_entry in images[0].get("repositories", []):
+        digest = repo_entry.get("manifest_schema2_digest")
+        if digest:
+            return digest.removeprefix("sha256:")
+
+    return None
+
+
+def probe_build_component(path: str, insecure: bool = False) -> str | None:
+    """Fetch a file pointer and extract build_component without downloading the full blob.
+
+    For non-LFS files the JSON is returned directly. For LFS files, only the first 4KB
+    of the blob is fetched via an HTTP Range request so we can read build_component from
+    the JSON header without transferring the entire (often 100+ MB) SBOM.
+    """
+    try:
+        pointer_text = fetch_file_pointer(path, insecure=insecure)
+    except subprocess.CalledProcessError:
+        return None
+
+    lfs_info = parse_lfs_pointer(pointer_text)
+    if lfs_info is None:
+        try:
+            data = json.loads(pointer_text)
+            return data.get("build_component")
+        except json.JSONDecodeError:
+            return None
+
+    oid, size = lfs_info
+    try:
+        download_url = request_lfs_download_url(oid, size, insecure=insecure)
+    except (subprocess.CalledProcessError, KeyError, IndexError):
+        return None
+
+    curl_args = ["curl", "-fsSL"]
+    if insecure:
+        curl_args.append("-k")
+    curl_args.extend(["-r", "0-4095", download_url])
+    try:
+        result = subprocess.run(curl_args, text=True, capture_output=True, check=True)
+    except subprocess.CalledProcessError:
+        return None
+
+    match = re.search(r'"build_component"\s*:\s*"([^"]+)"', result.stdout)
+    return match.group(1) if match else None
+
+
 def write_text(output_path: Path, content: str) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(content)
@@ -196,6 +292,19 @@ def main() -> int:
         "--expect-version",
         help="Fail if the downloaded SBOM's build_component does not contain this substring (e.g., v3-3)",
     )
+    parser.add_argument(
+        "--prefer-version",
+        help="Auto-select the first match whose build_component contains this substring (e.g., v3-3). "
+        "Probes each candidate with a small HTTP Range request instead of downloading the full blob. "
+        "Ignored when --pick is also given.",
+    )
+    parser.add_argument(
+        "--version-tag",
+        help="Resolve the exact SBOM via the Pyxis catalog API (e.g., v3.3). "
+        "Queries catalog.redhat.com for the amd64 image digest at this tag and matches "
+        "it against manifest-box filenames. Most accurate method, no auth required. "
+        "Takes priority over --prefer-version when both are given. Ignored when --pick is also given.",
+    )
 
     args = parser.parse_args()
 
@@ -217,17 +326,78 @@ def main() -> int:
         print_matches(matches)
         return 0
 
-    if len(matches) > 1 and args.pick is None:
+    if len(matches) > 1 and args.pick is None and args.version_tag:
+        print(f"Resolving digest for {args.component} at tag '{args.version_tag}' via Pyxis...")
+        digest = resolve_digest_via_pyxis(args.component, args.version_tag)
+        if digest:
+            selected = None
+            for candidate in matches:
+                if digest in candidate.get("name", ""):
+                    print(f"  Pyxis digest {digest[:12]}... matched: {candidate['name']}")
+                    selected = candidate
+                    break
+            if selected is None:
+                print(
+                    f"  Pyxis returned digest {digest[:12]}... but no manifest-box filename contains it.",
+                    file=sys.stderr,
+                )
+                return 1
+        else:
+            print("  Pyxis lookup returned no digest; falling back to --prefer-version probe.")
+            if args.prefer_version:
+                selected = None
+            else:
+                print_matches(matches)
+                print(
+                    "\nPyxis lookup failed and no --prefer-version given; "
+                    "re-run with --pick N.",
+                    file=sys.stderr,
+                )
+                return 2
+
+            if selected is None and args.prefer_version:
+                print(f"  Probing {len(matches)} matches for build_component containing '{args.prefer_version}'...")
+                for candidate in matches:
+                    bc = probe_build_component(candidate["path"], insecure=args.insecure)
+                    if bc and args.prefer_version in bc:
+                        print(f"  Auto-selected: {candidate['name']} (build_component: {bc})")
+                        selected = candidate
+                        break
+                    label = bc or "unknown"
+                    print(f"  Skipped: {candidate['name']} (build_component: {label})")
+                if selected is None:
+                    print(
+                        f"\nNo match has build_component containing '{args.prefer_version}'.",
+                        file=sys.stderr,
+                    )
+                    return 1
+    elif len(matches) > 1 and args.pick is None and args.prefer_version:
+        print(f"Probing {len(matches)} matches for build_component containing '{args.prefer_version}'...")
+        selected = None
+        for candidate in matches:
+            bc = probe_build_component(candidate["path"], insecure=args.insecure)
+            if bc and args.prefer_version in bc:
+                print(f"  Auto-selected: {candidate['name']} (build_component: {bc})")
+                selected = candidate
+                break
+            label = bc or "unknown"
+            print(f"  Skipped: {candidate['name']} (build_component: {label})")
+        if selected is None:
+            print(
+                f"\nNo match has build_component containing '{args.prefer_version}'.",
+                file=sys.stderr,
+            )
+            return 1
+    elif len(matches) > 1 and args.pick is None:
         print_matches(matches)
-        print("\nMultiple matches found; re-run with --pick N.", file=sys.stderr)
+        print("\nMultiple matches found; re-run with --pick N, --version-tag, or --prefer-version.", file=sys.stderr)
         return 2
-
-    selected_index = (args.pick or 1) - 1
-    if selected_index < 0 or selected_index >= len(matches):
-        print(f"Invalid --pick value: {args.pick}", file=sys.stderr)
-        return 1
-
-    selected = matches[selected_index]
+    else:
+        selected_index = (args.pick or 1) - 1
+        if selected_index < 0 or selected_index >= len(matches):
+            print(f"Invalid --pick value: {args.pick}", file=sys.stderr)
+            return 1
+        selected = matches[selected_index]
     output_path = Path(args.output) if args.output else default_output_path(args.component)
 
     try:

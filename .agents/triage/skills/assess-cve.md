@@ -17,6 +17,24 @@ Fetch the tracker via `mcp__atlassian__getJiraIssue`. Extract:
 - Labels: `CVE`, `CVE-XXXX-XXXXX`, `security`
 - Linked issues (outward "blocks" links → RHOAIENG Vulnerability children)
 
+### 1.5. Cross-Project Label Search
+
+Search Jira for all issues with the CVE ID label across all accessible projects:
+
+```jql
+labels = "CVE-XXXX-XXXXX" ORDER BY project ASC, updated DESC
+```
+
+Group results by project key. Note:
+- `OCPBUGS` issues for the same `pscomponent` (e.g., `ose-cli`) → downstream component owner is
+  already tracking; check their status/resolution before deep notebooks investigation
+- `RHOAIENG` children → expected, these are the blocked vulnerabilities
+- Other project hits (`AAP`, `SRVCOM`, `SECURESIGN`) → shared exposure, may show handling patterns
+
+If the search shows the component is tracked in another project with a clear handling path
+(fixed, not-affected, or assigned to an engineering team), reference that in the assessment
+instead of duplicating the investigation.
+
 ### 2. Check for a Sibling Tracker First
 
 Before doing the full workflow, check whether the same CVE was already triaged for another
@@ -253,6 +271,11 @@ If already constrained, the fix may already be in place.
 - `scripts/cve/sbom_analyze.py` — inspects SBOM files and shows package type, location, and `sourceInfo`
 - `scripts/cve/fetch_manifestbox_sbom.py` — resolves and downloads one manifest-box SBOM JSON via GitLab API + Git LFS
 
+**Sandbox note**: `./uv run` may fail in sandboxed environments because `uv` writes
+temp files outside the workspace (e.g., `~/.local/share/uv/tools/`). If that happens,
+either request `all` permissions or invoke the script directly with `python3` when the
+script does not require venv-specific dependencies.
+
 ### 13. Label and Comment
 
 Apply `ai-triaged` + `ai-fixable` or `ai-nonfixable`. Post comment with:
@@ -262,6 +285,11 @@ Apply `ai-triaged` + `ai-fixable` or `ai-nonfixable`. Post comment with:
 - Fix approach
 - Due date awareness
 - If the tracker is mixed, separate real remediation targets from VEX `Component not Present` candidates
+
+**Sync labels locally immediately**: after the Jira `editJiraIssue` call succeeds,
+update the ledger entry's `labels` array to match what was just written to Jira.
+Do not defer this to the report phase. The report skill reads labels from the ledger
+to determine fixability counts; stale labels produce wrong reports.
 
 **Sibling tracker pattern**: for same CVE on a different RHOAI version (e.g., `[rhoai-2.25]`
 after already triaging `[rhoai-3.3]`), reference the prior assessment and just check the

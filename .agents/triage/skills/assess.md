@@ -12,6 +12,14 @@ After assessing the **first issue you fully assess and intend to post**, show th
 
 ## Procedure (per issue)
 
+### 0.0 Route CVE Issues to the CVE Skill
+
+Before any generic assessment, check if this issue is a CVE tracker:
+- summary starts with `CVE-`
+- labels include `CVE` or any `CVE-XXXX-XXXXX` pattern
+
+If yes, stop here and follow `skills/assess-cve.md` instead.
+
 ### 0. Pre-Assessment Checks
 
 Before writing any assessment, do these checks in order:
@@ -185,6 +193,11 @@ Update the issue's entry in `.artifacts/triage/ledger.json`:
   }
 }
 ```
+
+**Sync labels locally immediately**: after the Jira `editJiraIssue` call succeeds,
+update the ledger entry's `labels` array to match what was just written to Jira.
+Do not defer this to the report phase. The report skill reads labels from the ledger
+to determine fixability counts; stale labels produce wrong reports.
 
 ### 9. Quality Checklist
 

@@ -232,8 +232,37 @@ If you prefer a wrapper for this flow, use:
 ./uv run python scripts/cve/fetch_manifestbox_sbom.py --component odh-workbench-codeserver-datascience-cpu-py312-rhel9 --pick 2 --expect-version v3-3 --output sbom.json --package undici
 ```
 
+Or use `--prefer-version` to auto-select the correct SBOM without guessing `--pick`:
+```bash
+./uv run python scripts/cve/fetch_manifestbox_sbom.py \
+    --component odh-workbench-codeserver-datascience-cpu-py312-rhel9 \
+    --prefer-version v3-3 \
+    --output sbom.json --package undici
+```
+`--prefer-version` probes each candidate's `build_component` with a small HTTP Range
+request (first 4KB) and picks the first match. This avoids downloading the wrong full
+SBOM blob and re-trying.
+
+Or use `--version-tag` for exact digest-based selection via the Pyxis catalog API (most
+accurate, zero guessing):
+```bash
+python3 scripts/cve/fetch_manifestbox_sbom.py \
+    --component odh-workbench-codeserver-datascience-cpu-py312-rhel9 \
+    --version-tag v3.3 \
+    --output sbom.json --package undici --insecure
+```
+`--version-tag` queries `catalog.redhat.com` (public, no auth) for the amd64 image digest
+at the given tag, then matches it directly against the manifest-box SBOM filename. This is
+a single HTTP call that gives an exact match -- no probing, no partial downloads, no
+guessing.
+
 If your environment cannot validate the internal GitLab certificate chain, add `--insecure`
 to the helper script or `-k` to the manual `curl` commands above.
+
+**Sandbox note**: `./uv run` may fail in sandboxed environments because `uv` writes
+temp files outside the workspace (e.g., `~/.local/share/uv/tools/`). If that happens,
+either request `all` permissions or invoke the script directly with `python3` when the
+script does not require venv-specific dependencies.
 
 If you need to run large downloads or batch probes on a remote host, see
 `reference/remote-artifact-investigation.md`.
@@ -243,7 +272,29 @@ If you need to run large downloads or batch probes on a remote host, see
 Multiple SBOM files often exist for the same image name (one per product version / rebuild).
 Do NOT guess based on filename ordering or `--pick` position.
 
-**Required verification after every download:**
+**Best approach — exact digest via Pyxis (`--version-tag`):**
+```bash
+python3 scripts/cve/fetch_manifestbox_sbom.py \
+    --component odh-workbench-jupyter-minimal-cpu-py312-rhel9 \
+    --version-tag v3.3 \
+    --output .artifacts/sbom/minimal-v3-3.json --insecure
+```
+This queries the Red Hat catalog API for the per-architecture image digest at the given
+version tag, then matches the digest directly against manifest-box filenames. One public
+API call, exact match, zero ambiguity.
+
+**Good approach — probe `build_component` (`--prefer-version`):**
+```bash
+python3 scripts/cve/fetch_manifestbox_sbom.py \
+    --component odh-workbench-jupyter-minimal-cpu-py312-rhel9 \
+    --prefer-version v3-3 \
+    --output .artifacts/sbom/minimal-v3-3.json --insecure
+```
+Fetches the first 4KB of each candidate SBOM to read `build_component` without
+downloading the full blob. Use this when Pyxis is unavailable or the version tag format
+does not match the catalog (e.g., pre-release builds not yet in the catalog).
+
+**Fallback — manual pick with post-download verification:**
 1. Check `build_component` in the downloaded JSON (e.g., `odh-workbench-jupyter-minimal-cpu-py312-v3-3`)
 2. Confirm the version suffix matches the tracker version (`v3-3`, `v2-25`, etc.)
 3. If mismatched, download the other candidate and re-check
@@ -257,6 +308,37 @@ Use `--expect-version` with the helper script to fail loudly on mismatch:
 ```
 
 **Anti-pattern:** "first/second matching digest" is never evidence by itself. Always verify `build_component`.
+
+### How `--version-tag` Works (Pyxis Digest Resolution)
+
+The manifest-box SBOM filenames embed the per-architecture image digest:
+```
+rhoai_odh-workbench-jupyter-minimal-cpu-py312-rhel9@sha256:44c8c278...json
+                                                          ^^^^^^^^^^
+                                                          this is manifest_schema2_digest (amd64)
+```
+
+The Pyxis catalog API at `catalog.redhat.com` returns this exact digest when queried by
+version tag:
+```
+GET /v1/repositories/registry/registry.access.redhat.com/repository/rhoai/{component}/images
+    ?filter=architecture==amd64;repositories.tags.name=={tag}
+    &include=data.repositories.manifest_schema2_digest
+    &page_size=1
+```
+
+The `--component` argument maps directly to the Pyxis repository path `rhoai/{component}`.
+The `--version-tag` uses the catalog tag format (e.g., `v3.3`, `v2.25`) — note the dot, not
+a dash. This differs from the `build_component` suffix format (`v3-3`, `v2-25`) used by
+`--prefer-version` and `--expect-version`.
+
+The Pyxis API is public and requires no authentication for read-only queries.
+
+| Method | Flag | Accuracy | Network cost | When to use |
+|--------|------|----------|-------------|-------------|
+| Pyxis digest | `--version-tag v3.3` | Exact (digest match) | 1 public API call | Default — use whenever the image is in the Red Hat catalog |
+| Build-component probe | `--prefer-version v3-3` | High (substring match) | 2-6 internal GitLab calls | When Pyxis is unavailable or the build is not yet in the catalog |
+| Manual pick | `--pick N --expect-version v3-3` | Post-hoc verification | 1 full download per attempt | Last resort |
 
 ### Deriving `--component` From Jira `pscomponent:` Labels
 
