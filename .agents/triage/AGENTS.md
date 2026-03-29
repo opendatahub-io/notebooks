@@ -49,8 +49,9 @@ CVE tracker issues have a different structure — see `skills/assess-cve.md`.
 - `reference/jql-queries.md` — pre-built JQL variants
 - `reference/ecosystem.md` — related repos and when to consult them
 - `reference/comment-template.md` — starting-point Jira comment format
+- [ProdSec scanning guide](https://gitlab.cee.redhat.com/data-hub/guide/-/blob/main/docs/notebooks/product-security-scanning.md) — how Konflux/ProdSec generate CVE tickets and why we get false positives (Red Hat internal; use `glab` CLI to fetch)
 - `reference/manifestbox.md` — querying ProdSec manifest-box for SBOM data
 - `reference/cve-remediation-guide.md` — full CVE investigation workflow
-- `reference/cve-python.md` — Python CVE resolution (cve-constraints.txt)
+- `reference/cve-python.md` — Python CVE resolution (cve-constraints.txt); [internal version](https://gitlab.cee.redhat.com/data-hub/guide/-/blob/main/docs/notebooks/cves/python.md) has team handles and contacts
 - `reference/cve-nodejs.md` — Node.js CVE resolution (npm/pnpm)
 - `reference/case-study-cve-*.md` — real-world CVE investigation examples
