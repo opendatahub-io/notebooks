@@ -31,6 +31,27 @@ import tempfile
 from collections import defaultdict
 from pathlib import Path
 
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class Location(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    path: str | None = None
+
+
+class Artifact(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    name: str = ""
+    version: str | None = None
+    type: str = "unknown"
+    locations: list[Location] = Field(default_factory=list)
+    purl: str | None = None
+
+
+class SyftOutput(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    artifacts: list[Artifact] = Field(default_factory=list)
+
 
 def find_repo_root() -> Path:
     """Walk up from this script to find the repo root (contains .syft.yaml or .git)."""
@@ -41,8 +62,8 @@ def find_repo_root() -> Path:
     return Path.cwd()
 
 
-def run_syft(repo_root: Path, *, use_config: bool = True) -> dict:
-    """Run syft scan on the repo root and return parsed JSON."""
+def run_syft(repo_root: Path, *, use_config: bool = True) -> SyftOutput:
+    """Run syft scan on the repo root and return parsed output."""
     syft_bin = shutil.which("syft")
     if not syft_bin:
         print("Error: syft not found in PATH. Install from https://github.com/anchore/syft", file=sys.stderr)
@@ -54,16 +75,17 @@ def run_syft(repo_root: Path, *, use_config: bool = True) -> dict:
     if not use_config:
         config_file = repo_root / ".syft.yaml"
         if config_file.exists():
-            empty_config = tempfile.NamedTemporaryFile(
-                mode="w", suffix=".yaml", prefix="syft-empty-", delete=False
-            )
+            empty_config = tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", prefix="syft-empty-", delete=False)
             empty_config.write("exclude: []\n")
             empty_config.close()
             extra_args = ["--config", empty_config.name]
 
     cmd = [
-        syft_bin, "scan", f"dir:{repo_root}",
-        "-o", "syft-json",
+        syft_bin,
+        "scan",
+        f"dir:{repo_root}",
+        "-o",
+        "syft-json",
         "-q",
         *extra_args,
     ]
@@ -79,38 +101,23 @@ def run_syft(repo_root: Path, *, use_config: bool = True) -> dict:
             print(result.stderr[:2000], file=sys.stderr)
         sys.exit(1)
 
-    return json.loads(result.stdout)
-
-
-def extract_artifacts(data: dict) -> list[dict]:
-    """Extract normalized artifact records from syft JSON."""
-    artifacts = []
-    for a in data.get("artifacts", []):
-        locations = [loc.get("path", "?") for loc in a.get("locations", [])]
-        artifacts.append({
-            "name": a.get("name", ""),
-            "version": a.get("version", "?"),
-            "type": a.get("type", "unknown"),
-            "locations": locations,
-            "purl": a.get("purl", ""),
-        })
-    return artifacts
+    return SyftOutput.model_validate_json(result.stdout)
 
 
 def filter_artifacts(
-    artifacts: list[dict],
+    artifacts: list[Artifact],
     *,
     package: str | None = None,
     pkg_type: str | None = None,
-) -> list[dict]:
+) -> list[Artifact]:
     """Filter artifacts by package name substring and/or ecosystem type."""
     result = artifacts
     if package:
         pkg_lower = package.lower()
-        result = [a for a in result if pkg_lower in a["name"].lower()]
+        result = [a for a in result if pkg_lower in a.name.lower()]
     if pkg_type:
         type_lower = pkg_type.lower()
-        result = [a for a in result if a["type"].lower() == type_lower]
+        result = [a for a in result if a.type.lower() == type_lower]
     return result
 
 
@@ -118,14 +125,17 @@ def cmd_scan(args: argparse.Namespace) -> int:
     """Scan mode: list packages with their source locations."""
     repo_root = find_repo_root()
     data = run_syft(repo_root, use_config=not args.no_config)
-    artifacts = extract_artifacts(data)
-    artifacts = filter_artifacts(artifacts, package=args.package, pkg_type=args.type)
+    artifacts = filter_artifacts(data.artifacts, package=args.package, pkg_type=args.type)
 
     if args.json:
-        print(json.dumps(artifacts, indent=2))
+        print(
+            json.dumps(
+                [a.model_dump(include={"name", "version", "type", "locations", "purl"}) for a in artifacts], indent=2
+            )
+        )
         return 0
 
-    artifacts.sort(key=lambda a: (a["locations"][0] if a["locations"] else "", a["name"]))
+    artifacts.sort(key=lambda a: (a.locations[0].path or "" if a.locations else "", a.name))
 
     if not artifacts:
         print("No matching packages found.")
@@ -134,9 +144,10 @@ def cmd_scan(args: argparse.Namespace) -> int:
     print(f"{'Package':<45} {'Version':<18} {'Type':<16} {'Location'}")
     print("-" * 120)
     for a in artifacts:
-        loc = a["locations"][0] if a["locations"] else "?"
-        dupes = f" (+{len(a['locations']) - 1})" if len(a["locations"]) > 1 else ""
-        print(f"{a['name']:<45} {a['version']:<18} {a['type']:<16} {loc}{dupes}")
+        loc = a.locations[0].path or "?" if a.locations else "?"
+        ver = a.version or "?"
+        dupes = f" (+{len(a.locations) - 1})" if len(a.locations) > 1 else ""
+        print(f"{a.name:<45} {ver:<18} {a.type:<16} {loc}{dupes}")
 
     print(f"\nTotal: {len(artifacts)} package(s)")
     return 0
@@ -146,16 +157,15 @@ def cmd_report(args: argparse.Namespace) -> int:
     """Report mode: summary grouped by source directory."""
     repo_root = find_repo_root()
     data = run_syft(repo_root, use_config=not args.no_config)
-    artifacts = extract_artifacts(data)
-    artifacts = filter_artifacts(artifacts, package=args.package, pkg_type=args.type)
+    artifacts = filter_artifacts(data.artifacts, package=args.package, pkg_type=args.type)
 
     by_type: dict[str, int] = defaultdict(int)
-    by_dir: dict[str, list[dict]] = defaultdict(list)
+    by_dir: dict[str, list[Artifact]] = defaultdict(list)
 
     for a in artifacts:
-        by_type[a["type"]] += 1
-        if a["locations"]:
-            loc = a["locations"][0]
+        by_type[a.type] += 1
+        if a.locations and a.locations[0].path:
+            loc = a.locations[0].path
             parts = loc.strip("/").split("/")
             dir_key = "/".join(parts[:3]) if len(parts) > 3 else "/".join(parts[:-1]) if len(parts) > 1 else loc
             by_dir[dir_key].append(a)
@@ -167,7 +177,7 @@ def cmd_report(args: argparse.Namespace) -> int:
             "total": len(artifacts),
             "by_type": dict(sorted(by_type.items(), key=lambda x: -x[1])),
             "by_directory": {
-                k: {"count": len(v), "packages": [f"{a['name']}@{a['version']}" for a in v]}
+                k: {"count": len(v), "packages": [f"{a.name}@{a.version or '?'}" for a in v]}
                 for k, v in sorted(by_dir.items(), key=lambda x: -len(x[1]))
             },
         }
@@ -185,15 +195,15 @@ def cmd_report(args: argparse.Namespace) -> int:
 
     print(f"\nBy source directory ({len(by_dir)} directories):")
     for dir_key, pkgs in sorted(by_dir.items(), key=lambda x: -len(x[1])):
-        types_in_dir = defaultdict(int)
+        types_in_dir: dict[str, int] = defaultdict(int)
         for p in pkgs:
-            types_in_dir[p["type"]] += 1
+            types_in_dir[p.type] += 1
         type_summary = ", ".join(f"{t}: {c}" for t, c in sorted(types_in_dir.items(), key=lambda x: -x[1]))
         print(f"\n  {dir_key}/ ({len(pkgs)} packages)")
         print(f"    {type_summary}")
         if len(pkgs) <= 10:
-            for p in sorted(pkgs, key=lambda x: x["name"]):
-                print(f"      {p['name']}@{p['version']}")
+            for p in sorted(pkgs, key=lambda x: x.name):
+                print(f"      {p.name}@{p.version or '?'}")
 
     return 0
 
@@ -207,28 +217,34 @@ def main() -> int:
 
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument(
-        "--no-config", action="store_true",
+        "--no-config",
+        action="store_true",
         help="Ignore the repo .syft.yaml (run syft without exclusions)",
     )
     common.add_argument(
-        "-p", "--package",
+        "-p",
+        "--package",
         help="Filter to packages matching this name substring",
     )
     common.add_argument(
-        "-t", "--type",
+        "-t",
+        "--type",
         help="Filter to a specific ecosystem type (npm, go-module, python, etc.)",
     )
     common.add_argument(
-        "--json", action="store_true",
+        "--json",
+        action="store_true",
         help="Output results as JSON",
     )
 
     subparsers.add_parser(
-        "scan", parents=[common],
+        "scan",
+        parents=[common],
         help="List packages with their source file locations",
     )
     subparsers.add_parser(
-        "report", parents=[common],
+        "report",
+        parents=[common],
         help="Summary report grouped by directory and ecosystem",
     )
 
