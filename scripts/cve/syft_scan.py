@@ -54,7 +54,7 @@ class SyftOutput(BaseModel):
 
 
 def find_repo_root() -> Path:
-    """Walk up from this script to find the repo root (contains .syft.yaml or .git)."""
+    """Walk up from this script to find the repo root (contains .git)."""
     current = Path(__file__).resolve().parent
     for parent in [current, *current.parents]:
         if (parent / ".git").exists():
