@@ -59,6 +59,7 @@ def find_repo_root() -> Path:
     for parent in [current, *current.parents]:
         if (parent / ".git").exists():
             return parent
+    print("Warning: .git not found, falling back to current directory", file=sys.stderr)
     return Path.cwd()
 
 
@@ -90,10 +91,14 @@ def run_syft(repo_root: Path, *, use_config: bool = True) -> SyftOutput:
         *extra_args,
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False, env=env)
-
-    if not use_config and extra_args:
-        Path(extra_args[-1]).unlink(missing_ok=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False, env=env, timeout=600)
+    except subprocess.TimeoutExpired:
+        print("Error: syft timed out after 600 seconds", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        if not use_config and extra_args:
+            Path(extra_args[-1]).unlink(missing_ok=True)
 
     if result.returncode != 0:
         print(f"Error: syft exited with code {result.returncode}", file=sys.stderr)
