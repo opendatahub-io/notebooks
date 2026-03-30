@@ -120,9 +120,9 @@
   "packageRules": [
     {
       // Group all base image build updates into a single PR
-      "description": "Group base image updates from build-args conf files",
+      "description": "Group quay.io base image updates from build-args conf files",
       "matchManagers": ["custom.regex"],
-      "groupName": "base image updates",
+      "groupName": "quay.io image updates",
       "semanticCommits": "enabled",
     },
     {
@@ -132,6 +132,17 @@
       "matchManagers": ["custom.regex"],
       "matchUpdateTypes": ["major", "minor"],
       "enabled": false,
+    },
+    {
+      "description": "Track registry.redhat.io base images",
+      "matchManagers": ["custom.regex"],
+      "matchDatasources": ["docker"],
+      // matchPackageNames supports exact, glob, regex (/pattern/), and negation (!)
+      // https://docs.renovatebot.com/configuration-options/#matchpackagenames
+      "matchPackageNames": ["/^registry\\.redhat\\.io\\/rhai\\//"],
+      "enabled": true,
+      "groupName": "Red Hat registry base images",
+      "semanticCommits": "enabled",
     },
   ],
 
