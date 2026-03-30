@@ -49,8 +49,8 @@
     "packageRules": [
       {
         "matchPackageNames": [
-          "/^quay.io/redhat-appstudio-tekton-catalog//",
-          "/^quay.io/konflux-ci/tekton-catalog//",
+          "/^quay\\.io\\/redhat-appstudio-tekton-catalog\\//",
+          "/^quay\\.io\\/konflux-ci\\/tekton-catalog\\//",
         ],
         "enabled": true,
         "groupName": "Konflux references",
@@ -67,6 +67,10 @@
           "Notes",
         ],
         "prBodyDefinitions": {
+          // The replace pattern below is a Handlebars template string, not a Renovate regex matcher —
+          // it's passed to Renovate's replace helper which uses its own regex syntax.
+          // Leaving dots unescaped since changing it could break PR body rendering
+          // (and it was inherited from the upstream Konflux config).
           "Notes": "{{#if (or (containsString updateType 'minor') (containsString updateType 'major'))}}:warning:[migration](https://github.com/redhat-appstudio/build-definitions/blob/main/task/{{{replace '^quay.io/(redhat-appstudio-tekton-catalog|konflux-ci/tekton-catalog)/task-' '' packageName}}}/{{{newVersion}}}/MIGRATION.md):warning:{{/if}}",
         },
         "prBodyTemplate": "{{{header}}}{{{table}}}{{{notes}}}{{{changelogs}}}{{{configDescription}}}{{{controls}}}{{{footer}}}",
