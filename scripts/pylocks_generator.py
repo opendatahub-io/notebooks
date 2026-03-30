@@ -40,6 +40,11 @@ Usage:
 
        FORCE_LOCKFILES_UPGRADE=1 python pylocks_generator.py
 
+  5. Only regenerate requirements.txt from existing pylock files (no lock refresh)::
+
+       python pylocks_generator.py --requirements-only
+       python pylocks_generator.py rh-index jupyter/minimal/ubi9-python-3.12 --requirements-only
+
 Reproducible CI checks (PYLOCKS_CI_CHECK):
   When ``PYLOCKS_CI_CHECK=1`` (set only by ``check-generated-code`` in CI),
   ``uv pip compile`` always passes ``--exclude-newer`` parsed from the existing
@@ -79,6 +84,7 @@ import typer
 ROOT_DIR = Path(__file__).resolve().parent.parent
 UV = ROOT_DIR / "uv"
 CVE_CONSTRAINTS_FILE = ROOT_DIR / "dependencies" / "cve-constraints.txt"
+PYLOCK_TO_REQUIREMENTS = ROOT_DIR / "scripts" / "lockfile-generators" / "helpers" / "pylock-to-requirements.py"
 PUBLIC_INDEX = "--default-index=https://pypi.org/simple"
 MAIN_DIRS = ("jupyter", "runtimes", "rstudio", "codeserver")
 UV_MIN_VERSION = (0, 4, 0)
@@ -422,12 +428,40 @@ def run_lock(
     return True
 
 
+def generate_requirements_txt(
+    project_dir: Path,
+    flavor: str,
+    log: LogBuffer,
+) -> bool:
+    """Convert pylock.<flavor>.toml → requirements.<flavor>.txt via helper script."""
+    pylock_path = project_dir / "uv.lock.d" / f"pylock.{flavor}.toml"
+    requirements_path = project_dir / f"requirements.{flavor}.txt"
+
+    index_url = read_conf_value(project_dir / "build-args" / f"{flavor}.conf", "INDEX_URL") or ""
+
+    cmd = [sys.executable, str(PYLOCK_TO_REQUIREMENTS), str(pylock_path), str(requirements_path)]
+    if index_url:
+        cmd.append(index_url)
+
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if result.stdout:
+        log.print(result.stdout.rstrip())
+    if result.stderr:
+        log.print(result.stderr.rstrip())
+    if result.returncode != 0:
+        log.warning(f"Failed to generate {requirements_path}")
+        return False
+    log.ok(f"requirements.{flavor}.txt generated.")
+    return True
+
+
 def process_directory(
     tdir: Path,
     index_mode: IndexMode,
     upgrade: bool,
     ci_check: bool,
     live_timestamp: str,
+    requirements_only: bool = False,
 ) -> tuple[Path, bool, LogBuffer]:
     """Process one directory. Returns (path, success, log)."""
     log = LogBuffer(buffered=True)
@@ -463,21 +497,31 @@ def process_directory(
     dir_success = True
 
     if effective_mode == IndexMode.public_index:
-        if not run_lock(
-            tdir,
-            "cpu",
-            [PUBLIC_INDEX],
-            effective_mode,
-            python_version,
-            upgrade,
-            ci_check,
-            live_timestamp,
-            log,
-        ):
-            dir_success = False
+        if not requirements_only:
+            if not run_lock(
+                tdir,
+                "cpu",
+                [PUBLIC_INDEX],
+                effective_mode,
+                python_version,
+                upgrade,
+                ci_check,
+                live_timestamp,
+                log,
+            ):
+                dir_success = False
     else:
         for flavor in ("cpu", "cuda", "rocm"):
             if flavor not in flavors:
+                continue
+            if requirements_only:
+                pylock_path = tdir / "uv.lock.d" / f"pylock.{flavor}.toml"
+                if not pylock_path.is_file():
+                    log.warning(f"No {pylock_path} found, skipping {flavor}.")
+                    dir_success = False
+                    continue
+                if not generate_requirements_txt(tdir, flavor, log):
+                    dir_success = False
                 continue
             flags = get_index_flags(tdir, flavor, log)
             if flags is None:
@@ -495,6 +539,8 @@ def process_directory(
                 log,
             ):
                 dir_success = False
+            elif not generate_requirements_txt(tdir, flavor, log):
+                dir_success = False
 
     return tdir, dir_success, log
 # endregion
@@ -511,23 +557,31 @@ def main(
     target_dir: Annotated[
         Path | None, typer.Argument(help="Specific project directory to process")
     ] = None,
+    requirements_only: Annotated[
+        bool, typer.Option("--requirements-only", help="Only regenerate requirements.txt from existing pylock files, skip lock generation")
+    ] = False,
 ) -> None:
     """Generate pylock.toml lock files for Python project directories."""
     log = LogBuffer(buffered=False)
 
     # PRE-FLIGHT
-    check_uv(log)
+    if not requirements_only:
+        check_uv(log)
+
+    if requirements_only:
+        log.info("--requirements-only: skipping lock generation, converting existing pylock files.")
 
     # UPGRADE FLAG
     upgrade = os.environ.get("FORCE_LOCKFILES_UPGRADE", "0") == "1"
-    if upgrade:
+    if upgrade and not requirements_only:
         log.info("FORCE_LOCKFILES_UPGRADE=1 detected. Will upgrade all packages to latest versions.")
 
-    log.info(f"Using index mode: {index_mode.value}")
+    if not requirements_only:
+        log.info(f"Using index mode: {index_mode.value}")
 
     ci_check = os.environ.get("PYLOCKS_CI_CHECK", "") == "1"
     live_ts = utc_now_iso()
-    if ci_check:
+    if ci_check and not requirements_only:
         log.info("PYLOCKS_CI_CHECK=1: using pinned --exclude-newer from each lockfile header when present.")
 
     # TARGET DIRECTORIES
@@ -546,7 +600,7 @@ def main(
 
     def _run(directory: Path) -> tuple[Path, bool, LogBuffer]:
         try:
-            return process_directory(directory, index_mode, upgrade, ci_check, live_ts)
+            return process_directory(directory, index_mode, upgrade, ci_check, live_ts, requirements_only)
         except Exception as exc:
             err_log = LogBuffer(buffered=True)
             err_log.error(f"Unexpected error processing {directory}: {exc}")
