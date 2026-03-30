@@ -1,0 +1,12 @@
+# https://github.com/anchore/syft/wiki/configuration#config-file
+---
+# Exclude everything from Syft's source scan (#3206).
+#
+# This is a monorepo: each image has its own lockfiles/requirements, but Syft's
+# source scan sees ALL of them and attributes every dependency to every image,
+# producing massive false-positive CVE counts.  The image scan (which runs on
+# the built container) already captures what's actually installed — that's the
+# authoritative SBOM.  Disabling the source scan eliminates the cross-image
+# contamination without hopefully losing real data.
+exclude:
+  - "./**"
