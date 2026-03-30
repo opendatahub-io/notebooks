@@ -149,9 +149,9 @@ gunicorn==25.3.0 ; python_full_version >= '3.12' and implementation_name == 'cpy
     --hash=sha256:a5474e700dadf569d1574956eaa56960067e73c7680bd6a8cbd36f3d546967f2
 h11==0.16.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:1efbb25e940b100840df3840025ed3fb9f76be0cb1051e210338e1a9357c256e
-h5py==3.16.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:e4ab11fd4c57f5a61f618747c2782332dd207c860dadbd330c16cba40649cb87 \
-    --hash=sha256:06c2af2af837032114f0b5d8ab3160eb162b4206548255e9e8ca205bb0079d4e
+h5py==3.14.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:27a22861d38298d2cd5a95ee5239ce8dbef4eefd7247cd6bc2bbd8fe074847be \
+    --hash=sha256:34c4c778a84cf8be7a11b2d864a50bbbe938ce95cfb2079ac6bf99e39d6538a1
 httptools==0.7.1 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:ad4c9c4c6df8e3bf1b815545388f947a6fd86b90c72f817b5df4bd6a79e6f39b \
     --hash=sha256:afe377fce9167ecb88bb9c6f592e0eace5f88824da7180cb387cca06596911e7
@@ -428,8 +428,8 @@ scikit-learn==1.8.0 ; python_full_version >= '3.12' and implementation_name == '
 scipy==1.17.1 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:2a4075e891f8be58b6e27353f1923dd4759dd2979f60468e1fed163cc6ec8e97 \
     --hash=sha256:2bfce23544f9533af0f586e19edb8015a00216961541af5fd37debd922d25284
-setuptools==80.9.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:7d94d67ca26b5daf4ea2656f1cb0ecde4672ccffb19da1f5beaca942f37f4d1a
+setuptools==80.10.2 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:26cb7c8d3a737628b711ff9ceb852e6ef1aa12596e6c9a3609e5196f31f386dd
 six==1.17.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:b7524f231a60a6f76439f5ed2e11ab49ab9ab8a29b18dd3d86bebd9d3d06331d
 skl2onnx==1.20.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -459,9 +459,11 @@ tensorboard==2.20.0 ; python_full_version >= '3.12' and implementation_name == '
     --hash=sha256:9dc9f978cb84c0723acf9a345d96c184f0293d18f166bb8d59ee098e6cfaaba6
 tensorboard-data-server==0.7.2 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:7e0610d205889588983836ec05dc098e80f97b7e7bbff7e994ebb78f578d0ddb
-tensorflow==2.20.0+redhat ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:f1e2bbd79c3ca7ca530c14ed82f2427d1ef8f0bffea12b810f1b9abc6cbc9cea \
-    --hash=sha256:785a537953525190f1e6d999c105c4a276d4b1b3c179109cfff0f2f1992930ec
+tensorflow==2.21.0+redhat ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:144b420237548395b38cd082b0d75ada93a655a6e353e5156b1e306a8e7dd4c7 \
+    --hash=sha256:a486fccfb824759c58e22127563f5bd0c047d05809698fba0d1d83b4995e6678 \
+    --hash=sha256:b590d0e0fd75ae117fd2463c8994fb6b6231561303f6723c766b680afefd70c4 \
+    --hash=sha256:1d58fe680ea8a2939fbdb42ea0ef825522f6dd77ba269e6388322ba1f988b3c0
 termcolor==3.3.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:f92943af8bf4e6d0f6c932ef01570a68a4641cfd73ca55b814601f6ba4dd2583
 threadpoolctl==3.6.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
