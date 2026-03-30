@@ -126,12 +126,23 @@
       "semanticCommits": "enabled",
     },
     {
-      // Only allow new builds of the same version (patch/build updates).
-      // Cross-version upgrades (e.g. 3.4.0 -> 3.5.0) require manual bumps.
-      "description": "Block major/minor base image version upgrades",
+      // Block major/minor upgrades by default on all branches.
+      // Only patch/build updates (e.g. 3.4.0-1773428606 -> 3.4.0-1774635932) are allowed.
+      "description": "Block major/minor base image version upgrades (default)",
       "matchManagers": ["custom.regex"],
       "matchUpdateTypes": ["major", "minor"],
       "enabled": false,
+    },
+    {
+      // Exception: allow major/minor on main branch of upstream repo only.
+      // main is the development branch where version bumps are expected.
+      // Forks (e.g. red-hat-data-services/notebooks) and release branches stay blocked.
+      "description": "Allow major/minor base image upgrades on upstream main",
+      "matchManagers": ["custom.regex"],
+      "matchUpdateTypes": ["major", "minor"],
+      "matchBaseBranches": ["main"],
+      "matchRepositories": ["opendatahub-io/notebooks"],
+      "enabled": true,
     },
     {
       "description": "Track registry.redhat.io base images",
@@ -140,7 +151,6 @@
       // matchPackageNames supports exact, glob, regex (/pattern/), and negation (!)
       // https://docs.renovatebot.com/configuration-options/#matchpackagenames
       "matchPackageNames": ["/^registry\\.redhat\\.io\\/rhai\\//"],
-      "enabled": true,
       "groupName": "Red Hat registry base images",
       "semanticCommits": "enabled",
     },
