@@ -131,7 +131,7 @@ class TestEnsureJsonFormatParam:
         )
 
     def test_real_aipcc_url(self) -> None:
-        url = "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9-test/simple/"
+        url = "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/"
         result = pg.ensure_json_format_param(url)
         assert result == url + "?format=json"
         assert pg.ensure_json_format_param(result) == result

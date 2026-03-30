@@ -889,7 +889,7 @@ podman build \
     --build-arg LOCAL_BUILD=true \
     --build-arg BASE_IMAGE=quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest \
     --build-arg PYLOCK_FLAVOR=cpu \
-    --build-arg INDEX_URL=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4-EA2/cpu-ubi9/simple/ \
+    --build-arg INDEX_URL=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/ \
     -v "$(realpath ./cachi2/output):/cachi2/output:z" \
     .
 ```
