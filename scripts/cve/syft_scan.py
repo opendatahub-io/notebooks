@@ -169,13 +169,20 @@ def cmd_report(args: argparse.Namespace) -> int:
 
     for a in artifacts:
         by_type[a.type] += 1
-        if a.locations and a.locations[0].path:
-            loc = a.locations[0].path
+        dir_keys: set[str] = set()
+        for loc_obj in a.locations:
+            if not loc_obj.path:
+                continue
+            loc = loc_obj.path
             parts = loc.strip("/").split("/")
             dir_key = "/".join(parts[:3]) if len(parts) > 3 else "/".join(parts[:-1]) if len(parts) > 1 else loc
+            dir_keys.add(dir_key)
+
+        if not dir_keys:
+            dir_keys.add("(no location)")
+
+        for dir_key in dir_keys:
             by_dir[dir_key].append(a)
-        else:
-            by_dir["(no location)"].append(a)
 
     if args.json:
         report = {
