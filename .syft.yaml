@@ -1,24 +1,12 @@
+# https://github.com/anchore/syft/wiki/configuration#config-file
 ---
+# Exclude everything from Syft's source scan (#3206).
+#
+# This is a monorepo: each image has its own lockfiles/requirements, but Syft's
+# source scan sees ALL of them and attributes every dependency to every image,
+# producing massive false-positive CVE counts.  The image scan (which runs on
+# the built container) already captures what's actually installed — that's the
+# authoritative SBOM.  Disabling the source scan eliminates the cross-image
+# contamination without hopefully losing real data.
 exclude:
-  # Development and tools dependencies should not be part of built container image's SBOM
-  - "./pyproject.toml"
-  - "./uv.lock"
-
-  # Syft's **/*requirements*.txt glob matches every `requirements.<flavor>.txt` in the
-  # repo and associates all of them with every image during source scans, producing
-  # false-positive CVEs for packages that belong to unrelated images (#3206).
-  - "./**/requirements.*.txt"
-
-  - "./ci/dockerfile/**"
-  - "./docs/**"
-  - "./example/**"
-  - "./scripts/buildinputs/**"
-  - "./scripts/check-payload/**"
-  - "./scripts/validate-imagestreams/**"
-  - "./tests/**"
-
-  - "./jupyter/utils/addons/**"
-
-  - "./.artifacts/**"
-  - "./tmp/**"
-  - "./bin/**"
+  - "./**"
