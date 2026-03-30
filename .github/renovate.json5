@@ -1,0 +1,170 @@
+// Renovate bot configuration for opendatahub-io/notebooks
+// This file is ignored if `.github/renovate.json` is also present,
+// see https://docs.renovatebot.com/configuration-options/ and https://json5.org.
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "https://konflux.pages.redhat.com/docs/users/mintmaker/user.html",
+    "https://github.com/konflux-ci/mintmaker/blob/main/config/renovate/renovate.json",
+  ],
+  "extends": [
+    "config:recommended",
+    ":gitSignOff",
+    ":disableDependencyDashboard",
+  ],
+  "ignorePresets": [
+    ":dependencyDashboard",
+  ],
+  "onboarding": false,
+  "requireConfig": "optional",
+  "inheritConfig": true,
+  "platformCommit": "enabled",
+  "autodiscover": false,
+  "pruneStaleBranches": false,
+  "branchConcurrentLimit": 0,
+  "customEnvVariables": {
+    "GOTOOLCHAIN": "auto",
+  },
+  "vulnerabilityAlerts": {
+    "enabled": false,
+  },
+  "additionalBranchPrefix": "{{baseBranch}}/",
+  "branchPrefix": "konflux/mintmaker/",
+  "enabledManagers": [
+    "tekton",
+    "dockerfile",
+    "custom.regex",
+  ],
+
+  // Tekton task digest updates in .tekton/ pipeline definitions
+  "tekton": {
+    "additionalBranchPrefix": "",
+    "fileMatch": [
+      "\\.yaml$",
+      "\\.yml$",
+    ],
+    "includePaths": [
+      ".tekton/**",
+    ],
+    "packageRules": [
+      {
+        "matchPackageNames": [
+          "/^quay\\.io\\/redhat-appstudio-tekton-catalog\\//",
+          "/^quay\\.io\\/konflux-ci\\/tekton-catalog\\//",
+        ],
+        "enabled": true,
+        "groupName": "Konflux references",
+        "branchPrefix": "konflux/references/",
+        "group": {
+          "branchTopic": "{{{baseBranch}}}",
+          "commitMessageTopic": "{{{groupName}}}",
+        },
+        "commitMessageTopic": "Konflux references",
+        "semanticCommits": "enabled",
+        "prBodyColumns": [
+          "Package",
+          "Change",
+          "Notes",
+        ],
+        "prBodyDefinitions": {
+          // The replace pattern below is a Handlebars template string, not a Renovate regex matcher —
+          // it's passed to Renovate's replace helper which uses its own regex syntax.
+          // Leaving dots unescaped since changing it could break PR body rendering
+          // (and it was inherited from the upstream Konflux config).
+          "Notes": "{{#if (or (containsString updateType 'minor') (containsString updateType 'major'))}}:warning:[migration](https://github.com/redhat-appstudio/build-definitions/blob/main/task/{{{replace '^quay.io/(redhat-appstudio-tekton-catalog|konflux-ci/tekton-catalog)/task-' '' packageName}}}/{{{newVersion}}}/MIGRATION.md):warning:{{/if}}",
+        },
+        "prBodyTemplate": "{{{header}}}{{{table}}}{{{notes}}}{{{changelogs}}}{{{configDescription}}}{{{controls}}}{{{footer}}}",
+        "recreateWhen": "always",
+        "rebaseWhen": "behind-base-branch",
+      },
+      {
+        "matchManagers": [
+          "gomod",
+        ],
+        "matchDepTypes": [
+          "indirect",
+        ],
+        "enabled": true,
+      },
+    ],
+    "schedule": [
+      "after 5am on saturday",
+    ],
+  },
+
+  // Dockerfile FROM statement updates
+  "dockerfile": {
+    "enabled": true,
+    "schedule": [
+      "before 5am",
+    ],
+  },
+
+  // Track BASE_IMAGE references in konflux build-args conf files.
+  // These files use shell-variable syntax (BASE_IMAGE=registry/repo:tag)
+  // which the built-in dockerfile manager cannot parse.
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update BASE_IMAGE in konflux build-args conf files",
+      "fileMatch": [
+        // Workbenches and runtimes only — excludes base-images/
+        "(jupyter|rstudio|codeserver|runtimes)/.+/build-args/konflux\\..+\\.conf$",
+      ],
+      "matchStrings": [
+        "BASE_IMAGE=(?<depName>[^:]+):(?<currentValue>\\S+)",
+      ],
+      "datasourceTemplate": "docker",
+      // Parses 3.4.0-1773428606 as major=3, minor=4, patch=0, build=1773428606
+      // so Renovate can correctly classify update types and block cross-version upgrades.
+      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-(?<build>\\d+)$",
+    },
+  ],
+
+  "packageRules": [
+    {
+      // Group all base image build updates into a single PR
+      "description": "Group quay.io base image updates from build-args conf files",
+      "matchManagers": ["custom.regex"],
+      "groupName": "quay.io image updates",
+      "semanticCommits": "enabled",
+    },
+    {
+      // Block major/minor upgrades by default on all branches.
+      // Only patch/build updates (e.g. 3.4.0-1773428606 -> 3.4.0-1774635932) are allowed.
+      "description": "Block major/minor base image version upgrades (default)",
+      "matchManagers": ["custom.regex"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false,
+    },
+    {
+      // Exception: allow major/minor on main branch of upstream repo only.
+      // main is the development branch where version bumps are expected.
+      // Forks (e.g. red-hat-data-services/notebooks) and release branches stay blocked.
+      "description": "Allow major/minor base image upgrades on upstream main",
+      "matchManagers": ["custom.regex"],
+      "matchUpdateTypes": ["major", "minor"],
+      "matchBaseBranches": ["main"],
+      "matchRepositories": ["opendatahub-io/notebooks"],
+      "enabled": true,
+    },
+    {
+      "description": "Track registry.redhat.io base images",
+      "matchManagers": ["custom.regex"],
+      "matchDatasources": ["docker"],
+      // matchPackageNames supports exact, glob, regex (/pattern/), and negation (!)
+      // https://docs.renovatebot.com/configuration-options/#matchpackagenames
+      "matchPackageNames": ["/^registry\\.redhat\\.io\\/rhai\\//"],
+      "groupName": "Red Hat registry base images",
+      "semanticCommits": "enabled",
+    },
+  ],
+
+  "forkProcessing": "enabled",
+  "allowedCommands": [
+    "^rpm-lockfile-prototype rpms.in.yaml$",
+  ],
+  "updateNotScheduled": false,
+  "dependencyDashboard": false,
+  "stopUpdatingLabel": "konflux-nudge",
+}
