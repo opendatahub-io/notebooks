@@ -1,7 +1,13 @@
 ---
 exclude:
-  - "./uv.lock"
+  # Development and tools dependencies should not be part of built container image's SBOM
   - "./pyproject.toml"
+  - "./uv.lock"
+
+  # Syft's **/*requirements*.txt glob matches every `requirements.<flavor>.txt` in the
+  # repo and associates all of them with every image during source scans, producing
+  # false-positive CVEs for packages that belong to unrelated images (#3206).
+  - "./**/requirements.*.txt"
 
   - "./ci/dockerfile/**"
   - "./docs/**"
