@@ -47,7 +47,11 @@ Multiple Red Hat teams have hit the same issue:
    proposes pipeline-level params to opt out of prefetch/source SBOM inclusion.
    Requires Conforma policy exception. Status: under discussion.
 
-3. **Mobster improvements**: ProdSec acknowledges the issue and is working on more accurate
+3. **`SBOM_SOURCE_SCAN_ENABLED=false`**: Konflux pipeline env var that disables the source
+   scan entirely. Wired through the buildah task but not currently used by notebooks
+   (`.syft.yaml` achieves the same effect at the repo level).
+
+4. **Mobster improvements**: ProdSec acknowledges the issue and is working on more accurate
    SBOM merging. Atlas/Trustify migration may help.
 
 ## How to Verify SBOMs
@@ -121,6 +125,10 @@ the source scan is contaminating the SBOM.
 ```
 
 Note: First run downloads ~400MB manifest-box SQLite DB. Requires VPN.
+Path is relative to the notebooks repo root (`opendatahub-io/notebooks`).
+
+**Timing**: manifest-box updates from Konflux SBOMs every ~4 hours. A freshly built image
+may not appear in newcli results immediately.
 
 ### Deptopia API Quick Queries
 
@@ -158,9 +166,9 @@ When closing CVE trackers as false positives, use **Resolution: "Not a Bug"** wi
 
 | VEX Justification | When to Use |
 |-------------------|-------------|
-| `Vulnerable Code Not Present` | Package only appears in source-scan SBOM, not in shipped image |
+| `Vulnerable Code Not Present` | Package only appears in source-scan SBOM, not in shipped image. Preferred for source-scan false positives. |
 | `Vulnerable Code not in Execute Path` | Code exists in base image but is unreachable in our product |
-| `Component Not Present` | Component not actually shipped in this product version |
+| `Component not Present` | Entire component was never part of this product version (not just a scan artifact) |
 
 **NEVER use "Won't Do"** — this is prohibited by ProdSec policy and will cause the CVE to
 show as an unpatched vulnerability in the product.
@@ -180,6 +188,17 @@ Reference: [VEX Not Affected Justifications](https://spaces.redhat.com/spaces/PR
 - Be careful creating trackers — avoid leaking embargo details to non-affected teams
 - Container grade may still show 'A' because the CVE is not yet public
 - Close tracker as "Not a Bug" if the embargoed CVE doesn't affect our code
+
+## Hermeto Build-Dependency Annotations
+
+Hermeto/Cachi2 marks build-only dependencies with SBOM annotations:
+```json
+{"name": "hermeto:pip:package:build-dependency", "value": "true"}
+```
+
+If a package has this annotation, it was prefetched for the build but may not be installed
+at runtime. This can serve as additional evidence for VEX closure, though ProdSec may still
+file trackers for annotated build deps. Always verify with the image-scan SBOM.
 
 ## References
 

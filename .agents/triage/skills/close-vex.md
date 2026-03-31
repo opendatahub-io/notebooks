@@ -80,7 +80,8 @@ Use this to select the correct justification:
 ```
 Is the vulnerable package in the shipped container image?
 ├── NO (source-scan artifact, test dep, build tooling)
-│   └── Use: "Component not Present"
+│   └── Use: "Vulnerable Code Not Present"
+│       (the vulnerable code is not in the shipped artifact)
 │
 ├── YES, but in base image (RPM from RHEL/UBI, not our code)
 │   └── Is the code reachable in our product?
@@ -91,10 +92,18 @@ Is the vulnerable package in the shipped container image?
     └── Do NOT close as VEX. This is a real finding — fix it or label ai-nonfixable.
 ```
 
+**Terminology note**: ProdSec uses `Vulnerable Code Not Present` (not `Component not Present`)
+for source-scan false positives. Both are valid VEX justifications but have different meanings:
+- `Vulnerable Code Not Present` — the vulnerable code itself is absent from the shipped artifact
+- `Component not Present` — the entire component is absent from the product
+
+For source-scan artifacts (package found in repo but not in image), prefer `Vulnerable Code Not Present`.
+For components that were never part of the product at all, use `Component not Present`.
+
 Common scenarios for notebooks:
-- `sourceInfo` contains `/tests/browser/pnpm-lock.yaml` → **Component not Present**
-- `sourceInfo` contains `/jupyter/utils/addons/pnpm-lock.yaml` → **Component not Present**
-- `sourceInfo` contains `scripts/buildinputs/go.mod` → **Component not Present**
+- `sourceInfo` contains `/tests/browser/pnpm-lock.yaml` → **Vulnerable Code Not Present**
+- `sourceInfo` contains `/jupyter/utils/addons/pnpm-lock.yaml` → **Vulnerable Code Not Present**
+- `sourceInfo` contains `scripts/buildinputs/go.mod` → **Vulnerable Code Not Present**
 - Package inherited from base image, unreachable → **Vulnerable Code not in Execute Path**
 - Package in `/usr/bin/skopeo` (shipped binary) → NOT a VEX case, keep open
 
