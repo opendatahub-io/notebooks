@@ -1,5 +1,7 @@
 # ProdSec Scanning, SBOMs, and False Positive CVEs
 
+**Extended version with Slack references**: [prodsec-tooling-api-landscape.md](https://gitlab.cee.redhat.com/data-hub/guide/-/blob/main/docs/notebooks/cves/prodsec-tooling-api-landscape.md)
+
 ## How Konflux Generates SBOMs
 
 Konflux runs **two separate scans** per image build:
