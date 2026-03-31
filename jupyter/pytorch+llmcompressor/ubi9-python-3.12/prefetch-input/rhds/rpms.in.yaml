@@ -44,6 +44,8 @@ packages:
   - git-lfs
   - libsndfile
   - libxcrypt-compat
+  # PyArrow / RHOAI wheels link libprotobuf.so.25; C++ runtime (not protobuf-c).
+  - protobuf
 
   - compat-openssl11
   - openshift-clients
