@@ -141,7 +141,7 @@ endif
 
 bin/buildinputs: scripts/buildinputs/buildinputs.go scripts/buildinputs/go.mod scripts/buildinputs/go.sum
 	$(info Building a Go helper for Dockerfile dependency analysis...)
-	GOTOOLCHAIN=auto GONOSUMCHECK=golang.org/toolchain \
+	GOTOOLCHAIN=auto GONOSUMDB=golang.org/toolchain \
 	  go build -C "scripts/buildinputs" -o "$(ROOT_DIR)/$@" ./...
 
 ####################################### Buildchain for Python using ubi9 #####################################
@@ -500,7 +500,7 @@ test-unit:
 	@echo "Running Python unit tests"
 	./uv run pytest -m 'not buildonlytest' --ignore=tests/containers tests/ ntb/
 	@echo "Running Go unit tests"
-	GOTOOLCHAIN=auto GONOSUMCHECK=golang.org/toolchain \
+	GOTOOLCHAIN=auto GONOSUMDB=golang.org/toolchain \
 	  go test -C scripts/buildinputs -cover ./...
 
 PYTEST_ARGS ?=
