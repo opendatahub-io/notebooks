@@ -1,19 +1,25 @@
 #! /usr/bin/env python3
 
 import glob
-import logging
 import pathlib
-import sys
 import tempfile
 
 import pyfakefs.fake_filesystem
+import pytest
+import structlog
 
+from ci.logging_config import configure_logging
 from scripts.sandbox import setup_sandbox
+
+log = structlog.get_logger()
 
 ROOT_DIR = pathlib.Path(__file__).parent.parent
 
-logging.basicConfig()
-logging.root.name = pathlib.Path(__file__).name
+
+@pytest.fixture(autouse=True)
+def _setup_logging():
+    configure_logging()
+
 
 class TestSandbox:
     def test_filesystem_file(self, fs: pyfakefs.fake_filesystem.FakeFilesystem):
@@ -49,7 +55,7 @@ class TestSandbox:
         with tempfile.TemporaryDirectory(delete=True) as tmpdir:
             setup_sandbox([pathlib.Path("a/b/c")], pathlib.Path(tmpdir))
             for g in glob.glob("**/*", recursive=True):
-                logging.debug("%s", g)
+                log.debug(g)
             assert (pathlib.Path(tmpdir) / "a").is_dir()
             assert (pathlib.Path(tmpdir) / "a" / "b").is_dir()
             assert (pathlib.Path(tmpdir) / "a" / "b" / "c").is_file()

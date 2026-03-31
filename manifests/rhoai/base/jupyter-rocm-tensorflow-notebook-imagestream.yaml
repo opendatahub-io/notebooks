@@ -8,7 +8,7 @@ metadata:
     opendatahub.io/notebook-image-url: "https://github.com/red-hat-data-services/notebooks/blob/main/jupyter/rocm/tensorflow"
     opendatahub.io/notebook-image-name: "Jupyter | TensorFlow | ROCm | Python 3.12"
     opendatahub.io/notebook-image-desc: "Jupyter ROCm optimized TensorFlow notebook image for ODH notebooks."
-    opendatahub.io/notebook-image-order: "16"
+    opendatahub.io/notebook-image-order: "19"
     opendatahub.io/recommended-accelerators: '["amd.com/gpu"]'
   name: jupyter-rocm-tensorflow
 spec:
@@ -35,14 +35,15 @@ spec:
             {"name": "Numpy", "version": "2.0"},
             {"name": "Pandas", "version": "2.3"},
             {"name": "Scikit-learn", "version": "1.8"},
-            {"name": "Scipy", "version": "1.16"},
-            {"name": "Odh-Elyra", "version": "4.3"},
+            {"name": "Scipy", "version": "1.17"},
+            {"name": "Odh-Elyra", "version": "5.0"},
             {"name": "PyMongo", "version": "4.16"},
             {"name": "Pyodbc", "version": "5.3"},
             {"name": "Codeflare-SDK", "version": "0.35"},
             {"name": "Sklearn-onnx", "version": "1.20"},
             {"name": "Psycopg", "version": "3.3"},
-            {"name": "MySQL Connector/Python", "version": "9.6"}
+            {"name": "MySQL Connector/Python", "version": "9.6"},
+            {"name": "MLflow", "version": "3.10"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'true'
@@ -74,7 +75,7 @@ spec:
             {"name": "Pandas", "version": "2.3"},
             {"name": "Scikit-learn", "version": "1.7"},
             {"name": "Scipy", "version": "1.16"},
-            {"name": "Odh-Elyra", "version": "4.3"},
+            {"name": "Odh-Elyra", "version": "5.0"},
             {"name": "PyMongo", "version": "4.15"},
             {"name": "Pyodbc", "version": "5.2"},
             {"name": "Codeflare-SDK", "version": "0.34"},

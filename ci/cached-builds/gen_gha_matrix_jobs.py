@@ -55,7 +55,16 @@ def extract_image_targets(
 
     # Extract the 'all-images' entry and its values
     all_images = []
-    match = re.search(rf"^{makefile_all_target}:\s+(.*)$", output, re.MULTILINE)
+    match = re.search(
+        rf"""
+        ^{makefile_all_target}:  # target name
+        \s+                      # colon and whitespace separator
+        ( [^#]* )                # prerequisites (stop before any inline comment)
+        $                        # end of line
+        """,
+        output,
+        re.MULTILINE | re.VERBOSE,
+    )
     if match:
         all_images = match.group(1).split()
 

@@ -21,33 +21,55 @@ concurrency:
   group: ${{ format('build-notebooks-pr-rhel-{0}', github.event.pull_request.number) }}
   cancel-in-progress: true
 
-env:
-  # language=json
-  contributors: |
-    ["atheo89", "andyatmiami", "caponetto", "daniellutz", "dibryant", "harshad16", "jesuino", "jiridanek", "jstourac", "paulovmr", "Fiona-Waters", "grdryn", "kryanbeane", "mtchoum1", "obrown1205", "dependabot[bot]", "ide-developer", "ysok", "ayush17"]
-
 jobs:
+  # RHAIENG-3914: standard permission gate recognized by security scanners
+  authorize:
+    name: Authorize
+    permissions: {}  # only needs implicit metadata:read for getCollaboratorPermissionLevel
+    runs-on: ubuntu-latest
+    outputs:
+      authorized: ${{ steps.check.outputs.authorized }}
+    steps:
+      - name: Check collaborator permission
+        id: check
+        uses: actions/github-script@v7
+        with:
+          # language=javascript
+          script: |
+            // Same-repo PRs are trusted (not from a fork)
+            const headRepo = context.payload.pull_request.head.repo.full_name;
+            const baseRepo = context.payload.pull_request.base.repo.full_name;
+            if (headRepo === baseRepo) {
+              core.info(`Same-repo PR (${headRepo}) — authorized`);
+              core.setOutput('authorized', 'true');
+              return;
+            }
+            // Fork PRs require the PR author to have write/admin/maintain permission.
+            // NOTE: use pull_request.user.login, NOT context.actor — context.actor is
+            // whoever triggered the event (e.g. a maintainer reopening the PR), not the
+            // PR author. Checking context.actor would bypass the gate if a maintainer
+            // interacts with a fork PR.
+            const prAuthor = context.payload.pull_request.user.login;
+            const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: prAuthor,
+            });
+            const allowed = ['write', 'admin', 'maintain'].includes(data.permission);
+            core.setOutput('authorized', String(allowed));
+            if (!allowed) {
+              core.warning(`Fork PR author ${prAuthor} has '${data.permission}' permission, requires write/admin/maintain`);
+            }
+
   gen:
     name: Generate job matrix
+    needs: [authorize]
+    if: needs.authorize.outputs.authorized == 'true'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       has_jobs: ${{ steps.gen.outputs.has_jobs }}
     steps:
-
-      - name: Check permissions and deny untrusted users (this must be done FIRST, for security, before we checkout)
-        if: |-
-          !(
-            github.event.repository.private == true ||
-            contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association) ||
-            contains(fromJSON(env.contributors), github.actor)
-          )
-        run: |
-          echo "GitHub user ${{ github.actor }} is not a registered project contributor, not allowed to run actions on RHEL!"
-          exit 1
-
-      # Here we are checking out the pull request, so that we can build from the new code
-      # We can do this because we already checked that the submitting user is a contributor
       - uses: actions/checkout@v6
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
@@ -61,25 +83,29 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "stable"
-          cache-dependency-path: "**/*.sum"
+          cache-dependency-path: "scripts/buildinputs/go.mod"
 
+      # RHAIENG-3914: use env vars to prevent GitHub Actions expression injection
       - name: Determine targets to build based on changed files
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           set -x
-          git fetch --no-tags origin 'pull/${{ github.event.pull_request.number }}/head:${{ github.event.pull_request.head.ref }}'
-          git fetch --no-tags origin '+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}'
+          git fetch --no-tags origin "pull/${PR_NUMBER}/head:${HEAD_REF}"
+          git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
           python3 ci/cached-builds/gen_gha_matrix_jobs.py \
-            --from-ref 'origin/${{ github.event.pull_request.base.ref }}' \
-            --to-ref '${{ github.event.pull_request.head.ref }}' \
+            --from-ref "origin/${BASE_REF}" \
+            --to-ref "${HEAD_REF}" \
             --rhel-images include-only
         id: gen
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         shell: bash
 
   build:
-    needs: ["gen"]
+    needs: ["authorize", "gen"]
     strategy:
       fail-fast: false
       matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"

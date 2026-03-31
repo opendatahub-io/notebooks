@@ -2,6 +2,8 @@
 # This GitHub action is meant to update the lock files (pylock.toml)
 name: Lock Files Renewal Action
 
+permissions: {}  # least-privilege: grant per-job below
+
 on:  # yamllint disable-line rule:truthy
   # Triggers the workflow every Wednesday at 1am UTC
   schedule:
@@ -48,8 +50,7 @@ jobs:
       group: refresh-lock-files-${{ github.ref }}
       cancel-in-progress: false
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read  # checkout only; push and PR creation use the PAT
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
       INDEX_MODE: ${{ github.event.inputs.index_mode || 'auto' }}
@@ -61,8 +62,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ env.BRANCH }}
-          token: ${{ secrets.GH_ACCESS_TOKEN }}
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Configure Git
         run: |
@@ -81,7 +81,7 @@ jobs:
 
       - name: Run make refresh-lock-files
         run: |
-          make refresh-lock-files INDEX_MODE=${{ env.INDEX_MODE }}
+          make refresh-lock-files INDEX_MODE="$INDEX_MODE"
         env:
           FORCE_LOCKFILES_UPGRADE: ${{ env.FORCE_LOCKFILES_UPGRADE }}
 
@@ -98,10 +98,12 @@ jobs:
           BRANCH_NAME="lockfile-update-$(date +%Y%m%d-%H%M)"
           git checkout -b "$BRANCH_NAME"
           git commit -m "Update lock files"
-          git push -u origin "$BRANCH_NAME"
+          # https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation#using-an-installation-access-token-to-authenticate-as-an-app-installation
+          git push -u "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH_NAME"
 
           gh pr create \
             --title "Update lock files" \
+            --head "$BRANCH_NAME" \
             --body "$(cat <<'EOF'
           Automated lock file update.
 
@@ -112,15 +114,14 @@ jobs:
           EOF
           )" \
             --label "automated-lockfile-update" \
-            --base "${{ env.BRANCH }}"
+            --base "$BRANCH"
 
   auto-merge-lockfile-prs:
     # Run on auto-merge schedule or manual dispatch with 'auto-merge' operation
     if: (github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'auto-merge') || (github.event_name == 'schedule' && github.event.schedule == '0 9,15 * * 1-5')
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      pull-requests: write  # github.token is only used for PR approval (line 225)
     steps:
       - name: Auto-merge eligible lockfile PRs
         env:

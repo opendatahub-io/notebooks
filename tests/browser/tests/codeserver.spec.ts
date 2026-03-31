@@ -6,6 +6,7 @@ import {GenericContainer} from "testcontainers";
 import {HttpWaitStrategy} from "testcontainers/build/wait-strategies/http-wait-strategy.js";
 
 import {CodeServer} from "./models/codeserver"
+import {log} from "./logger"
 
 import {setupTestcontainers} from "./testcontainers";
 
@@ -53,17 +54,17 @@ const test = base.extend<MyFixtures>({
 
 test.beforeAll(setupTestcontainers)
 
-test('open codeserver', async ({codeServer, page}) => {
+test('@codeserver open codeserver', async ({codeServer, page}) => {
   await page.goto(codeServer.url)
 
   await codeServer.isEditorVisible()
 })
 
-test('wait for welcome screen to load', async ({codeServer, page}, testInfo) => {
+test('@codeserver wait for welcome screen to load', async ({codeServer, page}, testInfo) => {
   await page.goto(codeServer.url);
 
   await codeServer.isEditorVisible()
-  page.on("console", console.log)
+  page.on("console", (msg) => log.info(msg.text()))
 
   await codeServer.isEditorVisible()
   await utils.waitForStableDOM(page, "div.monaco-workbench", 1000, 10000)
@@ -72,7 +73,7 @@ test('wait for welcome screen to load', async ({codeServer, page}, testInfo) => 
   await utils.takeScreenshot(page, testInfo, "welcome.png")
 })
 
-test('use the terminal to run command', async ({codeServer, page}, testInfo) => {
+test('@codeserver use the terminal to run command', async ({codeServer, page}, testInfo) => {
   await page.goto(codeServer.url);
 
   await test.step("Should always see the code-server editor", async () => {

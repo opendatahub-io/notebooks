@@ -6,6 +6,10 @@ This script finds CVE issues in RHOAIENG that don't have a parent tracker in RHA
 analyzes the versions from linked issues, and creates tracker issues with accurate
 version suffixes (e.g., [rhoai-2.25, rhoai-3.0]).
 
+New trackers always get the literal label ``CVE`` (plus the CVE id and ``security``)
+so they are distinguishable from other Bugs, and the Jira **Team** field set to
+**AAIET Notebooks** (``customfield_10001``), matching RHAIENG process.
+
 Usage:
     # Dry run - show what would be created
     python scripts/cve/create_cve_trackers.py --dry-run
@@ -17,33 +21,43 @@ Usage:
     python scripts/cve/create_cve_trackers.py --cve CVE-2025-12345
 
 Requires:
-    - JIRA_URL environment variable (or defaults to Red Hat Jira)
-    - JIRA_TOKEN environment variable for authentication
+    - JIRA_URL environment variable (default: https://redhat.atlassian.net)
+    - JIRA_EMAIL + JIRA_API_TOKEN  for API-token auth (recommended)
+    - JIRA_OAUTH_CLIENT_SECRET     for OAuth 2.0 browser flow
+    - JIRA_TOKEN                   for legacy Bearer-token auth
     - requests library: pip install requests
 """
 
 import argparse
-import json
 import os
 import re
 import sys
 import urllib.parse
 from dataclasses import dataclass, field
+from typing import Any
 
-from scripts.cve import create_ssl_context
+from scripts.cve.jira_auth import JiraAuthError
+from scripts.cve.jira_client import JIRA_DEFAULT_URL, JiraClient
 
-try:
-    import requests
-
-    HAS_REQUESTS = True
-except ImportError:
-    import urllib.request
-    import urllib.error
-
-    HAS_REQUESTS = False
+# Jira "Team" on RHAIENG (verified via RHAIENG-3752 changelog).
+RHAIENG_TEAM_CUSTOM_FIELD = "customfield_10001"
+# Option id for team name "AAIET Notebooks" (override if Jira admin changes teams).
+RHAIENG_TEAM_OPTION_ID_DEFAULT = "ec74d716-af36-4b3c-950f-f79213d08f71-62"
 
 
-_SSL_CONTEXT = create_ssl_context() if not HAS_REQUESTS else None
+def build_tracker_labels(cve_id: str) -> list[str]:
+    """Labels for new CVE trackers: keep literal ``CVE`` first (team Jira hygiene)."""
+    return ["CVE", cve_id, "security"]
+
+
+def build_tracker_team_extra_fields() -> dict[str, str]:
+    """REST ``fields`` fragment for Team = AAIET Notebooks.
+
+    Jira expects a **plain Team ID string** on create/update, not ``{\"id\": ...}``.
+    See https://developer.atlassian.com/platform/teams/components/team-field-in-jira-rest-api/
+    """
+    option_id = os.environ.get("JIRA_RHAIENG_TEAM_OPTION_ID", RHAIENG_TEAM_OPTION_ID_DEFAULT).strip()
+    return {RHAIENG_TEAM_CUSTOM_FIELD: option_id}
 
 
 @dataclass
@@ -68,128 +82,15 @@ class CVEInfo:
         return len(self.issues)
 
 
-class JiraClient:
-    """Simple Jira REST API client."""
-
-    def __init__(self, base_url: str, token: str | None = None):
-        self.base_url = base_url.rstrip("/")
-        self.token = token
-        self.headers = {"Content-Type": "application/json"}
-        if token:
-            self.headers["Authorization"] = f"Bearer {token}"
-
-    def _request(self, method: str, endpoint: str, params: dict | None = None, data: dict | None = None) -> dict:
-        """Make a request to the Jira API."""
-        url = f"{self.base_url}{endpoint}"
-
-        if HAS_REQUESTS:
-            response = requests.request(
-                method,
-                url,
-                params=params,
-                json=data,
-                headers=self.headers,
-                timeout=30
-            )
-            response.raise_for_status()
-            if response.text:
-                return response.json()
-            return {}
-        else:
-            if params:
-                query_string = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in params.items())
-                url = f"{url}?{query_string}"
-
-            req = urllib.request.Request(url, headers=self.headers, method=method)
-            if data:
-                req.data = json.dumps(data).encode("utf-8")
-
-            with urllib.request.urlopen(req, context=_SSL_CONTEXT) as resp:
-                content = resp.read().decode()
-                if content:
-                    return json.loads(content)
-                return {}
-
-    def search_issues(self, jql: str, fields: str = "key,summary,status,labels,components,issuelinks",
-                      max_results: int = 500) -> list[dict]:
-        """Search for issues using JQL."""
-        all_issues = []
-        start_at = 0
-
-        while len(all_issues) < max_results:
-            params = {
-                "jql": jql,
-                "maxResults": min(100, max_results - len(all_issues)),
-                "startAt": start_at,
-                "fields": fields
-            }
-
-            data = self._request("GET", "/rest/api/2/search", params=params)
-            issues = data.get("issues", [])
-            all_issues.extend(issues)
-
-            if len(all_issues) >= data.get("total", 0) or not issues:
-                break
-
-            start_at += len(issues)
-
-        return all_issues
-
-    def create_issue(self, project_key: str, summary: str, issue_type: str,
-                     description: str = "", labels: list[str] | None = None,
-                     components: list[str] | None = None,
-                     security_level: str | None = None) -> dict:
-        """Create a new Jira issue."""
-        fields = {
-            "project": {"key": project_key},
-            "summary": summary,
-            "issuetype": {"name": issue_type},
-        }
-
-        if description:
-            fields["description"] = description
-
-        if labels:
-            fields["labels"] = labels
-
-        if components:
-            fields["components"] = [{"name": c} for c in components]
-
-        if security_level:
-            fields["security"] = {"name": security_level}
-
-        data = {"fields": fields}
-        result = self._request("POST", "/rest/api/2/issue", data=data)
-        return result
-
-    def create_issue_link(self, link_type: str, inward_key: str, outward_key: str) -> None:
-        """Create a link between two issues."""
-        data = {
-            "type": {"name": link_type},
-            "inwardIssue": {"key": inward_key},
-            "outwardIssue": {"key": outward_key}
-        }
-        self._request("POST", "/rest/api/2/issueLink", data=data)
-
-    def get_issue(self, issue_key: str, fields: str = "key,summary,status,labels,issuelinks") -> dict:
-        """Get a single issue."""
-        params = {"fields": fields}
-        return self._request("GET", f"/rest/api/2/issue/{issue_key}", params=params)
-
-    def update_issue(self, issue_key: str, fields: dict) -> None:
-        """Update fields on an existing issue."""
-        self._request("PUT", f"/rest/api/2/issue/{issue_key}", data={"fields": fields})
-
-
 def extract_cve_id(text: str) -> str | None:
     """Extract CVE ID from text."""
-    match = re.search(r'CVE-\d{4}-\d+', text)
+    match = re.search(r"CVE-\d{4}-\d+", text)
     return match.group() if match else None
 
 
 def extract_version(summary: str) -> str | None:
     """Extract version suffix from issue summary."""
-    match = re.search(r'\[rhoai-(\d+\.\d+)\]', summary)
+    match = re.search(r"\[rhoai-(\d+\.\d+)]", summary)
     if match:
         return f"rhoai-{match.group(1)}"
     return None
@@ -203,13 +104,13 @@ def extract_description(summary: str, cve_id: str) -> str:
         desc = desc.split(cve_id, 1)[1].strip()
 
     # Remove EMBARGOED prefix if present
-    desc = re.sub(r'^EMBARGOED\s+', '', desc)
+    desc = re.sub(r"^EMBARGOED\s+", "", desc)
 
     # Remove component prefix (e.g., "rhoai/odh-xxx:")
-    desc = re.sub(r'^rhoai/[^:]+:\s*', '', desc)
+    desc = re.sub(r"^rhoai/[^:]+:\s*", "", desc)
 
     # Remove version suffix
-    desc = re.sub(r'\s*\[rhoai-[\d.]+\]\s*$', '', desc)
+    desc = re.sub(r"\s*\[rhoai-[\d.]+]\s*$", "", desc)
 
     return desc.strip()
 
@@ -225,51 +126,71 @@ def get_blocking_issues(issue: dict) -> list[str]:
     return blockers
 
 
-JIRA_DEFAULT_URL = "https://issues.redhat.com"
+def _adf_text(text: str, marks: list[dict] | None = None) -> dict:
+    """Create an ADF text node."""
+    node: dict[str, Any] = {"type": "text", "text": text}
+    if marks:
+        node["marks"] = marks
+    return node
 
 
-def build_description(cve_info: CVEInfo, base_url: str = JIRA_DEFAULT_URL, tracker_key: str | None = None) -> str:
-    """Build a Jira wiki markup description for a CVE tracker issue.
+def _adf_paragraph(*content: dict) -> dict:
+    """Create an ADF paragraph node."""
+    return {"type": "paragraph", "content": list(content)}
 
-    Includes a static JQL link listing child issue keys explicitly, a plain-text
-    list of blocked issues, and (when tracker_key is provided) a dynamic
-    ``linkedIssues()`` JQL link.
+
+def _adf_link(text: str, href: str) -> dict:
+    """Create an ADF text node with a link mark."""
+    return _adf_text(text, marks=[{"type": "link", "attrs": {"href": href}}])
+
+
+def _adf_code_block(text: str) -> dict:
+    """Create an ADF code block node."""
+    return {"type": "codeBlock", "content": [_adf_text(text)]}
+
+
+def build_description(cve_info: CVEInfo, base_url: str = JIRA_DEFAULT_URL, tracker_key: str | None = None) -> dict:
+    """Build an ADF (Atlassian Document Format) description for a CVE tracker issue.
+
+    Returns a dict suitable for the API v3 ``description`` field.
     """
     child_keys = sorted(issue["key"] for issue in cve_info.issues)
     count = len(child_keys)
 
-    lines: list[str] = []
-    lines.append(
-        f"Tracker for {cve_info.cve_id} - {cve_info.description} "
-        f"affecting Notebooks Images components."
-    )
+    content: list[dict] = [_adf_paragraph(
+        _adf_text(
+            f"Tracker for {cve_info.cve_id} - {cve_info.description} "
+            f"affecting Notebooks Images components."
+        )
+    )]
 
     if child_keys:
-        lines.append("")
-        lines.append(f"*Blocked Issues ({count}):*")
-        lines.append(", ".join(child_keys))
+        content.append(_adf_paragraph(
+            _adf_text(f"Blocked Issues ({count}): ", marks=[{"type": "strong"}]),
+            _adf_text(", ".join(child_keys)),
+        ))
 
-        # Static JQL link with explicit issue keys
         keys_csv = ", ".join(child_keys)
         static_jql = f"key in ({keys_csv}) ORDER BY key ASC"
         static_url = f"{base_url}/issues/?jql={urllib.parse.quote(static_jql)}"
-        lines.append("")
-        lines.append("*JQL Query to View All Blocked Issues:*")
-        lines.append("")
-        lines.append(f"[View all {count} blocked issues|{static_url}]")
+
+        content.append(_adf_paragraph(
+            _adf_text("JQL Query to View All Blocked Issues: ", marks=[{"type": "strong"}]),
+        ))
+        content.append(_adf_paragraph(
+            _adf_link(f"View all {count} blocked issues", static_url),
+        ))
 
     if tracker_key and child_keys:
-        # Dynamic JQL link using linkedIssues function
         dynamic_jql = f'issue in linkedIssues({tracker_key}, "blocks") ORDER BY key ASC'
         dynamic_url = f"{base_url}/issues/?jql={urllib.parse.quote(dynamic_jql)}"
-        lines.append("")
-        lines.append("{code}")
-        lines.append(dynamic_jql)
-        lines.append("{code}")
-        lines.append("")
-        lines.append(f"[View blocked issues (dynamic)|{dynamic_url}]")
 
-    return "\n".join(lines)
+        content.append(_adf_code_block(dynamic_jql))
+        content.append(_adf_paragraph(
+            _adf_link("View blocked issues (dynamic)", dynamic_url),
+        ))
+
+    return {"version": 1, "type": "doc", "content": content}
 
 
 def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> dict[tuple[str, str], CVEInfo]:
@@ -295,7 +216,7 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> dict[tuple[
 
     # Get all RHOAIENG CVE issues
     jql = 'project = RHOAIENG AND issuetype in (Bug, Vulnerability, Weakness) AND resolution = Unresolved AND labels = SecurityTracking AND component = "Notebooks Images" ORDER BY created DESC'
-    issues = client.search_issues(jql, max_results=max_results)
+    issues = client.search_issues(jql, fields="key,summary,status,labels,issuelinks", max_results=max_results)
     print(f"Found {len(issues)} RHOAIENG CVE issues")
 
     # Group by (CVE ID, version)
@@ -355,10 +276,7 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> dict[tuple[
                     break
 
     # Filter to only orphans (CVE+version combos where no issues have a parent tracker)
-    orphans = {}
-    for group_key, info in cve_groups.items():
-        if not info.has_tracker:
-            orphans[group_key] = info
+    orphans = {group_key: info for group_key, info in cve_groups.items() if not info.has_tracker}
 
     return orphans
 
@@ -374,12 +292,15 @@ def create_tracker_issue(client: JiraClient, cve_info: CVEInfo, jira_url: str = 
 
     description = build_description(cve_info, base_url=jira_url)
 
-    labels = ["CVE", cve_info.cve_id, "security"]
+    labels = build_tracker_labels(cve_info.cve_id)
+    team_extra = build_tracker_team_extra_fields()
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Creating tracker for {cve_info.cve_id}:")
     print(f"  Summary: {summary}")
     print(f"  Version: {cve_info.version}")
     print(f"  Child issues: {cve_info.issue_count}")
+    print(f"  Labels: {' '.join(labels)}")
+    print(f"  Team field ({RHAIENG_TEAM_CUSTOM_FIELD}): {team_extra[RHAIENG_TEAM_CUSTOM_FIELD]!r}")
 
     if dry_run:
         return None
@@ -392,13 +313,19 @@ def create_tracker_issue(client: JiraClient, cve_info: CVEInfo, jira_url: str = 
             description=description,
             labels=labels,
             components=["Notebooks"],
-            security_level="Red Hat Employee"
+            security_level="Red Hat Employee",
+            extra_fields=team_extra,
         )
         tracker_key = result.get("key")
         print(f"  Created: {tracker_key}")
         return tracker_key
     except Exception as e:
         print(f"  ERROR creating issue: {e}")
+        resp = getattr(e, "response", None)
+        if resp is not None:
+            text = getattr(resp, "text", None) or ""
+            if text.strip():
+                print(f"  API response: {text[:4000]}")
         return None
 
 
@@ -441,8 +368,13 @@ Examples:
   python scripts/create_cve_trackers.py --list-only
 
 Environment variables:
-  JIRA_URL      Jira server URL (default: https://issues.redhat.com)
-  JIRA_TOKEN    Personal access token for authentication
+  JIRA_URL                  Jira server URL (default: https://redhat.atlassian.net)
+  JIRA_EMAIL                User email (used with JIRA_API_TOKEN for Basic auth)
+  JIRA_API_TOKEN            Atlassian API token (recommended for scripts/CI)
+  JIRA_OAUTH_CLIENT_SECRET  OAuth 2.0 client secret (interactive browser flow)
+  JIRA_TOKEN                Legacy Bearer token (issues.redhat.com PAT)
+  JIRA_RHAIENG_TEAM_OPTION_ID  Optional. Jira Team option id for AAIET Notebooks
+                            (default: RHAIENG value verified on RHAIENG-3752)
 """
     )
     parser.add_argument("--dry-run", action="store_true",
@@ -460,17 +392,14 @@ Environment variables:
 def main():
     args = parse_args()
 
-    jira_url = os.environ.get("JIRA_URL", "https://issues.redhat.com")
-    jira_token = os.environ.get("JIRA_TOKEN")
-
-    if not jira_token:
-        print("ERROR: JIRA_TOKEN environment variable is required", file=sys.stderr)
-        print("Set it with: export JIRA_TOKEN='your-token-here'", file=sys.stderr)
+    try:
+        client = JiraClient.from_env()
+    except JiraAuthError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    client = JiraClient(jira_url, jira_token)
-
-    print(f"Connecting to {jira_url}...")
+    jira_url = os.environ.get("JIRA_URL", JIRA_DEFAULT_URL)
+    print(f"Connecting to {client.base_url}...")
 
     # Find orphan CVEs
     orphans = find_orphan_cves(client, args.max_results)

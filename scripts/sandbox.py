@@ -2,21 +2,23 @@
 
 import argparse
 import glob
-import logging
+import json
 import os
 import pathlib
 import shutil
 import subprocess
 import sys
 import tempfile
-import json
 from typing import cast, Literal
+
+import structlog
+
+from ci.logging_config import configure_logging
 
 ROOT_DIR = pathlib.Path(__file__).parent.parent
 MAKE = shutil.which("gmake") or shutil.which("make")
 
-logging.basicConfig()
-logging.root.name = pathlib.Path(__file__).name
+log = structlog.get_logger()
 
 
 class Args(argparse.Namespace):
@@ -54,7 +56,7 @@ def main() -> int:
         try:
             subprocess.check_call(command)
         except subprocess.CalledProcessError as err:
-            logging.error("Failed to execute process, see errors logged above ^^^")
+            log.error("Failed to execute process", command=err.cmd, returncode=err.returncode)
             return err.returncode
     return 0
 
@@ -106,14 +108,14 @@ def _copy_tree(src: pathlib.Path, dst: pathlib.Path):
         try:
             (dst / rel).mkdir(parents=True, exist_ok=True)
         except PermissionError:
-            logging.warning(f"cannot create directory, skipping subtree: {rel}")
+            log.warning(f"cannot create directory, skipping subtree: {rel}")
             dirnames.clear()
             continue
         for fname in filenames:
             try:
                 shutil.copy(pathlib.Path(dirpath) / fname, dst / rel / fname)
             except PermissionError:
-                logging.warning(f"cannot copy file, skipping: {rel / fname}")
+                log.warning(f"cannot copy file, skipping: {rel / fname}")
 
 
 def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
@@ -133,7 +135,7 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
         if any(c in str(dep) for c in ('*', '?', '[')):
             matched = sorted(glob.glob(str(dep)))
             if not matched:
-                logging.warning(f"glob pattern matched no files: {dep}")
+                log.warning(f"glob pattern matched no files: {dep}")
                 continue
             for m in matched:
                 m_path = pathlib.Path(m)
@@ -145,7 +147,7 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
             continue
 
         if not dep.exists():
-            logging.error(f"File or directory '{dep}' referenced in the Dockerfile was not found on disk. Please ensure the file exists.")
+            log.error(f"File or directory '{dep}' referenced in the Dockerfile was not found on disk. Please ensure the file exists.")
             sys.exit(1)
 
         if dep.is_dir():
@@ -156,4 +158,5 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
 
 
 if __name__ == '__main__':
+    configure_logging()
     sys.exit(main())

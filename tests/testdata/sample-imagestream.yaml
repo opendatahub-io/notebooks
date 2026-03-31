@@ -1,0 +1,22 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-name: "Test Minimal"
+    opendatahub.io/notebook-image-order: "1"
+  name: test-minimal-notebook
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - from:
+        kind: DockerImage
+        name: test-image-n_PLACEHOLDER
+      name: "N"
+    - from:
+        kind: DockerImage
+        name: test-image-2025-2_PLACEHOLDER
+      name: "2025.2"

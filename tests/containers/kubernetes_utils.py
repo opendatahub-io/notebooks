@@ -10,7 +10,6 @@ import time
 import traceback
 from typing import TYPE_CHECKING, Any, Literal, Self
 
-import kubernetes
 import kubernetes.client.api.core_v1_api
 import kubernetes.dynamic.exceptions
 import kubernetes.stream.ws_client
@@ -51,24 +50,11 @@ LOGGER = logging.getLogger(__name__)
 
 def get_client() -> kubernetes.dynamic.DynamicClient:
     try:
-        # client = kubernetes.dynamic.DynamicClient(client=kubernetes.config.new_client_from_config())
-        # probably same as above
         client = ocp_resources.resource.get_client()
         return client
-    except kubernetes.config.ConfigException as e:
-        # probably bad config
-        logging.error(e)
-    except kubernetes.dynamic.exceptions.UnauthorizedError as e:
-        # wrong or expired credentials
-        logging.error(e)
-    except kubernetes.client.ApiException as e:
-        # unexpected, we catch unauthorized above
-        logging.error(e)
     except Exception as e:
-        # unexpected error, assert here
         logging.error(e)
-
-    raise RuntimeError("Failed to instantiate client")
+        raise RuntimeError("Failed to instantiate client") from e
 
 
 def get_username(client: kubernetes.dynamic.DynamicClient) -> str:
@@ -417,6 +403,7 @@ class Wait:
         new_exception_appearance: int = 0
 
         stack_trace_error: str | None = None
+        last_exception: Exception | None = None
 
         while True:
             try:
@@ -426,6 +413,7 @@ class Wait:
             except SyntaxError:  # this actually won't happen, but it's good to keep in mind
                 raise  # quick exit in cases developer obviously screwed up
             except Exception as e:
+                last_exception = e
                 exception_message = str(e)
 
                 exception_count += 1
@@ -461,7 +449,7 @@ class Wait:
                     on_timeout()
                 wait_exception: WaitError = WaitError(f"Timeout after {timeout} s waiting for {description}")
                 logging.error(wait_exception)
-                raise wait_exception
+                raise wait_exception from last_exception
 
             sleep_time: float = min(poll_interval, time_left)
             time.sleep(sleep_time)

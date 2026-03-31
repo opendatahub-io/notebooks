@@ -82,13 +82,13 @@ def get_variable_value(variable_name, params_file_path=[PARAMS_LATEST_ENV_PATH, 
             for line in params_file:
                 if variable_name in line:
                     return line.split("=")[1].strip()
-        log.error(f"Variable '{variable_name}' not found in '{params_file_path}'!")
+        log.error(f"Variable {variable_name!r} not found in {params_file_path!r}!")
         return None
     except FileNotFoundError:
-        log.error(f"'{params_file_path}' not found!")
+        log.error(f"{params_file_path!r} not found while looking up variable {variable_name!r}!")
         return None
     except Exception as e:
-        log.error(f"An unexpected error occurred: {e}")
+        log.error(f"An unexpected error occurred while looking up {variable_name!r} in {params_file_path!r}: {e}")
         return None
 
 
@@ -148,7 +148,7 @@ def parse_json_string(json_string):
     try:
         return json.loads(json_string)
     except (json.JSONDecodeError, Exception) as e:
-        log.error(f"Error parsing JSON: {e}")
+        log.error(f"Error parsing JSON string {str(json_string)[:100]!r}: {e}")
         return None
 
 
@@ -174,6 +174,7 @@ def process_dependency_item(item, container_id, annotation_type):
         "MySQL Connector/Python": ["/bin/bash", "-c", "pip show mysql-connector-python | grep 'Version: '"],
         "Nvidia-CUDA-CU12-Bundle": ["/bin/bash", "-c", "pip show nvidia-cuda-runtime-cu12 | grep 'Version: '"],
         "Feast": ["/bin/bash", "-c", "pip show feast | grep 'Version: '"],
+        "MLflow": ["/bin/bash", "-c", "pip show mlflow | grep 'Version: '"],
         "Python": ["/bin/bash", "-c", "python --version"],
         "CUDA": ["/bin/bash", "-c", "nvcc --version"],
     }

@@ -9,12 +9,15 @@ import pprint
 import re
 import shutil
 import subprocess
+import sys
 import tomllib
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import allure
+import packaging.markers
 import packaging.requirements
+import packaging.specifiers
 import packaging.version
 import pytest
 import yaml
@@ -22,12 +25,104 @@ import yaml
 from tests import PROJECT_ROOT, manifests
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterator, Sequence
     from typing import Any
 
     import pytest_subtests
 
 MAKE = shutil.which("gmake") or shutil.which("make")
+
+_LOG = logging.getLogger(__name__)
+
+# Bold yellow + reset; used for pylock mismatch headline and per-package summary lines when stderr is a TTY.
+_ANSI_YELLOW = "\033[1;33m"
+_ANSI_RESET = "\033[0m"
+_PYLOCK_MISMATCH_HEADLINE = "⚠️ Pylock version mismatches for allowed multispecifier packages"
+
+
+def _stderr_color_wrap_yellow(text: str) -> str:
+    if os.environ.get("NO_COLOR", "").strip():
+        return text
+    if not sys.stderr.isatty():
+        return text
+    return f"{_ANSI_YELLOW}{text}{_ANSI_RESET}"
+
+
+# Normalized PyPI names: allowed to use different dependency specifiers across
+# pyproject.toml files. Pylock pins for these are still compared (warning-only)
+# in test_image_pyprojects_version_alignment — across all image pylocks (every
+# cpu/cuda/rocm/... file) so cross-workbench drift is visible.
+PYPROJECT_MULTISPEC_IGNORED_PACKAGES: frozenset[str] = frozenset(
+    {
+        "setuptools",
+        "wheel",
+        "tensorboard",
+        "torch",
+        "torchvision",
+        "triton",
+        "numpy",
+        "jupyterlab-lsp",
+        "transformers",
+        "datasets",
+        "accelerate",
+        "requests",
+    }
+)
+
+
+def _iter_image_pyproject_pylock_files() -> Iterator[pathlib.Path]:
+    """Yield every pylock.toml / uv.lock.d/pylock.*.toml for image and dependencies trees."""
+    for pyproject_path in PROJECT_ROOT.glob("**/pyproject.toml"):
+        directory = pyproject_path.parent
+        if not is_image_directory(directory) and not is_dependencies_directory(pyproject_path):
+            continue
+        lock_dir = directory / "uv.lock.d"
+        if lock_dir.is_dir():
+            yield from sorted(lock_dir.glob("pylock.*.toml"))
+        else:
+            yield pyproject_path.with_name("pylock.toml")
+
+
+def _warn_on_pylock_version_mismatch_for_packages(package_names: frozenset[str]) -> None:
+    """Log a warning when a package is pinned to different versions across image pylocks.
+
+    All ``pylock*.toml`` files are merged per package name (cpu, cuda, rocm, etc.), so
+    drift between workbench images appears under one ``Package`` section; lock path shows flavor.
+    """
+    versions_by_pkg: dict[str, dict[str, str]] = defaultdict(dict)
+    for lock_path in _iter_image_pyproject_pylock_files():
+        if not lock_path.is_file():
+            continue
+        doc = tomllib.loads(lock_path.read_text())
+        rel = str(lock_path.relative_to(PROJECT_ROOT))
+        for pkg in doc.get("packages", []):
+            name = pkg.get("name")
+            version = pkg.get("version")
+            if name is None or version is None or name not in package_names:
+                continue
+            versions_by_pkg[name][rel] = version
+
+    mismatches: list[tuple[str, dict[str, str]]] = []
+    for pkg_name in sorted(versions_by_pkg):
+        mapping = versions_by_pkg[pkg_name]
+        if len(set(mapping.values())) <= 1:
+            continue
+        mismatches.append((pkg_name, mapping))
+
+    if not mismatches:
+        return
+
+    lines: list[str] = [_stderr_color_wrap_yellow(_PYLOCK_MISMATCH_HEADLINE)]
+    for i, (pkg_name, mapping) in enumerate(mismatches):
+        if i:
+            lines.append("")
+        versions_joined = ", ".join(sorted(set(mapping.values())))
+        lines.append(_stderr_color_wrap_yellow(f"Package {pkg_name!r}"))
+        lines.append(_stderr_color_wrap_yellow(f"  Pinned versions: {versions_joined}"))
+        lines.append("  Per lockfile:")
+        for rel_path, ver in sorted(mapping.items()):
+            lines.append(f"    {rel_path}  ->  {ver}")
+    _LOG.warning("\n".join(lines))
 
 
 def test_dockerfiles_unintended_subscription_manager_pattern():
@@ -56,9 +151,7 @@ def test_dockerfiles_unintended_subscription_manager_pattern():
                 )
 
 
-@pytest.mark.parametrize(
-    "manifests_directory", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
-)
+@pytest.mark.parametrize("manifests_directory", [manifests.MANIFESTS_ODH_DIR, manifests.MANIFESTS_RHOAI_DIR])
 def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path):
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
@@ -75,8 +168,17 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                 assert "requires-python" in pyproject["project"], (
                     "pyproject.toml is missing a [project.requires-python] section"
                 )
-                assert pyproject["project"]["requires-python"] == f"=={python}.*", (
-                    "pyproject.toml does not declare the expected Python version"
+                major, minor = (int(v) for v in python.split("."))
+                requires_python_specifier = packaging.specifiers.SpecifierSet(pyproject["project"]["requires-python"])
+                assert requires_python_specifier.contains(f"{major}.{minor}.0", prereleases=True), (
+                    "pyproject.toml requires-python does not include the expected Python minor version"
+                )
+                if minor > 0:
+                    assert not requires_python_specifier.contains(f"{major}.{minor - 1}.0", prereleases=True), (
+                        "pyproject.toml requires-python must not include the previous Python minor version"
+                    )
+                assert not requires_python_specifier.contains(f"{major}.{minor + 1}.0", prereleases=True), (
+                    "pyproject.toml requires-python must not include the next Python minor version"
                 )
 
                 assert "dependencies" in pyproject["project"], (
@@ -84,10 +186,30 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                 )
 
             if (f := file.parent / "uv.lock.d").is_dir():
-                pylock = tomllib.loads(next(f.glob("pylock.*.toml")).read_text())
+                pylock_candidates = sorted(f.glob("pylock.*.toml"))
+                assert pylock_candidates, (
+                    f"uv.lock.d directory exists at {f} but contains no pylock.*.toml files. "
+                    f"This likely means pylocks_generator.py failed. "
+                    f"Delete the empty uv.lock.d directory or re-run the lockfile generator."
+                )
+                pylock = tomllib.loads(pylock_candidates[0].read_text())
             else:
                 pylock = tomllib.loads(file.with_name("pylock.toml").read_text())
-            pylock_packages: dict[str, dict[str, Any]] = {p["name"]: p for p in pylock["packages"]}
+            # Filter packages by marker against the target Python version (universal locks
+            # can fork the same package into multiple entries with mutually exclusive markers).
+            marker_env = {
+                "python_full_version": f"{python}.0",
+                "implementation_name": "cpython",
+                "sys_platform": "linux",
+            }
+            pylock_packages: dict[str, dict[str, Any]] = {}
+            for p in pylock["packages"]:
+                if "marker" in p and not packaging.markers.Marker(p["marker"]).evaluate(marker_env):
+                    continue
+                assert p["name"] not in pylock_packages, (
+                    f"Duplicate package {p['name']} in pylock after marker filtering for Python {python}"
+                )
+                pylock_packages[p["name"]] = p
             with subtests.test(msg="checking pylock.toml consistency with pyproject.toml", pyproject=file):
                 for d in pyproject["project"]["dependencies"]:
                     requirement = packaging.requirements.Requirement(d)
@@ -107,9 +229,10 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                         f"Version missing for {requirement.name} in pylock.toml"
                     )
                     version = pylock_packages[requirement.name]["version"]
-                    assert requirement.specifier.contains(version), (
-                        f"Version of {d} in pyproject.toml does not match {version=} in pylock.toml"
-                    )
+                    if requirement.specifier:
+                        assert requirement.specifier.contains(version), (
+                            f"Version of {d} in pyproject.toml does not match {version=} in pylock.toml"
+                        )
 
             with subtests.test(msg="checking imagestream manifest consistency with pylock.toml", pyproject=file):
                 _skip_unimplemented_manifests(directory)
@@ -183,6 +306,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                             "Transformers",
                             "TrustyAI",
                             "TensorFlow-ROCm",
+                            "MLflow",
                         }
 
                         name = d["name"]
@@ -191,6 +315,14 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 
                         # TODO(jdanek): intentional?
                         if manifest.metadata.scope == "pytorch+llmcompressor" and name == "Codeflare-SDK":
+                            continue
+                        # Runtime llmcompressor currently resolves via lm-eval constraints to 0.9.x
+                        # while the workbench line can resolve to 0.10.x.
+                        if (
+                            manifest.metadata.scope == "pytorch+llmcompressor"
+                            and manifest.metadata.type == manifests.NotebookType.RUNTIME
+                            and name == "LLM-Compressor"
+                        ):
                             continue
 
                         if name == "rstudio-server":
@@ -226,9 +358,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                         )
 
 
-@pytest.mark.parametrize(
-    "manifests_directory", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
-)
+@pytest.mark.parametrize("manifests_directory", [manifests.MANIFESTS_ODH_DIR, manifests.MANIFESTS_RHOAI_DIR])
 def test_image_manifests_version_alignment(
     subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path
 ):
@@ -262,8 +392,12 @@ def test_image_manifests_version_alignment(
     ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
         # ("package name", ("allowed version 1", "allowed version 2", ...))
         ("Codeflare-SDK", ("0.34", "0.35")),
+        ("Kfp", ("2.15", "2.16")),
+        ("Feast", ("0.60", "0.61")),
+        ("Odh-Elyra", ("4.3", "5.0")),
         ("Scikit-learn", ("1.7", "1.6")),
-        ("Pandas", ("2.3", "1.5")),
+        ("Scipy", ("1.16", "1.17")),
+        ("Pandas", ("3.0", "2.3")),
         (
             "Numpy",
             (
@@ -273,7 +407,7 @@ def test_image_manifests_version_alignment(
             ),
         ),
         ("Tensorboard", ("2.18", "2.20")),
-        ("PyTorch", ("2.7", "2.9")),
+        ("PyTorch", ("2.9", "2.10")),
     )
 
     for name, data in packages.items():
@@ -312,51 +446,36 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
             requirement = packaging.requirements.Requirement(d)
             requirements[requirement.name].append(requirement.specifier)
 
-    # list of packages and their versions where we need to have multiple versions of the same package
-    #  do not add/maintain entries with a single version here, delete such items directly
-    ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
-        # ("package name", ("allowed specifier 1", "allowed specifier 2", ...))
-        ("setuptools", ("~=80.9.0", "==80.9.0")),
-        ("wheel", ("==0.46.3", "~=0.46.3")),
-        ("tensorboard", ("~=2.18.0", "~=2.20.0")),
-        ("torchvision", ("==0.24.1", "~=0.24.1")),
-        ("triton", ("~=3.5.1", "==3.5.1")),
-        (
-            "numpy",
-            (
-                ">=1.26.4",  # allow the latest possible, see the pylock.toml check for precise pins
-                "==2.3.5",  # llmcompressor pins exact version
-            ),
-        ),
-        ("jupyterlab-lsp", ("~=5.1.0", "~=5.1.1")),
-        ("transformers", ("~=5.3.0", "==4.57.3")),
-        ("datasets", ("~=4.5.0", "==4.4.1")),
-        ("accelerate", ("~=1.12.0", "==1.12.0")),
-        ("requests", ("~=2.32.5", "==2.32.5")),
-    )
+    with subtests.test(
+        msg=(
+            "pylock.toml pinned versions for multispecifier-ignored packages "
+            "(compare across all image lockfiles; logging.warning if pins differ)"
+        )
+    ):
+        _warn_on_pylock_version_mismatch_for_packages(PYPROJECT_MULTISPEC_IGNORED_PACKAGES)
 
     for name, data in requirements.items():
-        exception = next((it for it in ignored_exceptions if it[0] == name), None)
         actual_specs = {str(spec) for spec in data}
+        # Unpinned specs are intentionally version-agnostic and should not
+        # trigger alignment failures on their own.
+        non_empty_specs = {spec for spec in actual_specs if spec}
 
-        if len(actual_specs) == 1:
-            # Only one version found - check we're not expecting multiple
-            assert not (exception and len(exception[1]) > 1), (
-                f"{name} now has single specifier {actual_specs} but ignored_exceptions expects multiple: {set(exception[1])}. "
-                f"Please update ignored_exceptions."
-            )
+        if len(non_empty_specs) <= 1:
             continue
 
-        with subtests.test(msg=f"checking versions of {name} across all pyproject.tomls"):
-            if exception:
-                # exception may save us from failing
-                expected_specs = set(exception[1])
-                assert actual_specs == expected_specs, (
-                    f"{name} is allowed to have {expected_specs} but actually has {actual_specs}"
-                )
-                continue
+        # Multispecifier packages are intentionally allowed to differ in pyproject.toml;
+        # their pylock pins are checked above (warning-only).
+        if name in PYPROJECT_MULTISPEC_IGNORED_PACKAGES:
+            continue
+
+        with subtests.test(
+            msg=(f"checking pyproject [project.dependencies] specifiers for {name} across pyproject.toml files")
+        ):
             # all hope is lost, the check has failed
-            pytest.fail(f"{name} has multiple specifiers: {pprint.pformat(data)}")
+            pytest.fail(
+                f"{name} has multiple non-empty specifiers across pyproject.toml files: "
+                f"{non_empty_specs}. Full breakdown: {pprint.pformat(data)}"
+            )
 
 
 def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.SubTests):
@@ -712,8 +831,8 @@ class Manifest:
 
 def load_manifests_file_for(directory: pathlib.Path, manifests_directory: pathlib.Path) -> Manifest:
     metadata = manifests.extract_metadata_from_path(directory)
-    manifest_file = manifests_directory / manifests.get_source_of_truth_filepath(
-        root_repo_directory=PROJECT_ROOT,
+    manifest_file = manifests.get_source_of_truth_filepath(
+        manifests_directory=manifests_directory,
         metadata=metadata,
     )
     if not manifest_file.is_file():

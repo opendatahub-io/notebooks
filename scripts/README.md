@@ -121,7 +121,13 @@ python scripts/cve/sbom_analyze.py sbom.json esbuild --json
 
 Create CVE tracker issues in the RHAIENG Jira project. The script finds CVE issues in RHOAIENG that don't have a parent tracker in RHAIENG, groups them by CVE ID and version, and creates one tracker per version with JQL links to the blocked child issues.
 
-Requires `JIRA_TOKEN` environment variable. `JIRA_URL` defaults to `https://issues.redhat.com`.
+Each new tracker is created with:
+
+- **Labels:** `CVE`, the CVE id (e.g. `CVE-2026-28498`), and `security`, so CVE work is distinguishable from other Bugs.
+- **Team:** Jira field `customfield_10001` set to the **AAIET Notebooks** team id as a **plain string** (required by the [REST create API](https://developer.atlassian.com/platform/teams/components/team-field-in-jira-rest-api/); default id from RHAIENG-3752). Override with **`JIRA_RHAIENG_TEAM_OPTION_ID`** if your site differs.
+- **Component:** `Notebooks` (unchanged).
+
+Requires Jira auth (e.g. `JIRA_EMAIL` + `JIRA_API_TOKEN`, or `JIRA_TOKEN` / OAuth per [`scripts/cve/jira_auth.py`](cve/jira_auth.py)). `JIRA_URL` defaults to `https://redhat.atlassian.net` in code; some docs still mention `issues.redhat.com` for legacy flows.
 
 ### Examples
 

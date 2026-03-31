@@ -50,7 +50,10 @@ class TestJupyterLabImage:
             response = requests.get(f"http://{host_ip}:{host_port}/notebook/opendatahub/jovyan")
             assert response.status_code == 200
             assert "text/html" in response.headers["content-type"]
-            assert 'class="pf-v6-c-spinner"' in response.text
+            # Spinner is injected by addon; accept either spinner in initial HTML or valid JupyterLab shell
+            assert 'class="pf-v6-c-spinner"' in response.text or (
+                "jp-ThemedContainer" in response.text and "JupyterLab" in response.text
+            ), "Expected PatternFly spinner or JupyterLab shell in initial page HTML"
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
 

@@ -36,10 +36,16 @@ class TestBaseImage:
         image_metadata = conftest.get_image_metadata(image)
         source_location = image_metadata.labels.get("io.openshift.build.source-location", "")
 
-        # Dockerfile.konflux does not have source-location label
+        # Dockerfile.konflux does not have source-location label. Use skopeo or local image env.
         if not source_location:
             image_info = skopeo_utils.get_image_info(image)
-            return "PIP_INDEX_URL" not in image_info.env
+            # When skopeo fails (e.g. "manifest unknown" for ephemeral tags), use env from
+            # local image inspect (image is already pulled earlier in the test run).
+            env = image_info.env if image_info is not None else image_metadata.env
+            if not env:
+                # No env from skopeo or local inspect; assume non-AIPCC so PyPI checks run.
+                return False
+            return "PIP_INDEX_URL" not in env
 
         # Extract relative path from URL (after /tree/main/)
         source_dir = None
@@ -62,13 +68,8 @@ class TestBaseImage:
         try:
             container.start()
             yield container
-            return
-        except Exception as e:
-            pytest.fail(f"Unexpected exception in test: {e}")
         finally:
             docker_utils.NotebookContainer(container).stop(timeout=0)
-
-        raise RuntimeError("Cannot happen: the test did not pass as expected.")
 
     def test_elf_files_can_link_runtime_libs(self, subtests: pytest_subtests.SubTests, image):
         def test_fn(container: testcontainers.core.container.DockerContainer):
@@ -201,30 +202,21 @@ class TestBaseImage:
     def test_pip_install_cowsay_runs(self, image: str):
         """Checks that the Python virtualenv in the image is writable.
 
-        For AIPCC-enabled images, cowsay is not available on the restricted index,
-        so we expect the install to fail with a specific error message.
+        The cowsay package is available both on public PyPI and on the AIPCC
+        restricted index (AIPCC-12698), so it should install successfully
+        on all images.
         """
-        has_uv_lock_d = self._has_uv_lock_d(image)
 
         def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["python3", "-m", "pip", "install", "cowsay"])
             output_str = output.decode()
             logging.debug(output_str)
 
-            if has_uv_lock_d:
-                # AIPCC-enabled: cowsay should NOT be available
-                assert ecode != 0, "Expected pip install cowsay to fail on AIPCC-enabled image"
-                assert (
-                    "Could not find a version that satisfies the requirement cowsay" in output_str
-                    or "No matching distribution found for cowsay" in output_str
-                ), f"Expected AIPCC error message, got: {output_str}"
-            else:
-                # Non-AIPCC: cowsay should install and run successfully
-                assert ecode == 0, f"Expected pip install cowsay to succeed, got: {output_str}"
+            assert ecode == 0, f"Expected pip install cowsay to succeed, got: {output_str}"
 
-                ecode, output = container.exec(["python3", "-m", "cowsay", "--text", "Hello world"])
-                logging.debug(output.decode())
-                assert ecode == 0
+            ecode, output = container.exec(["python3", "-m", "cowsay", "--text", "Hello world"])
+            logging.debug(output.decode())
+            assert ecode == 0
 
         self._run_test(image=image, test_fn=test_fn)
 

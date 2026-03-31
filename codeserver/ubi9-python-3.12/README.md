@@ -54,11 +54,12 @@ scripts/lockfile-generators/prefetch-all.sh \
     --activation-key my-key --org my-org
 ```
 
-This single command orchestrates all four lockfile generators:
+This single command orchestrates all five lockfile generators:
 1. Generic artifacts (GPG keys, node headers, oc client, VS Code extensions)
 2. Pip wheels (numpy, scipy, pandas, scikit-learn, etc. via RHOAI index)
 3. NPM packages (code-server + VS Code extensions)
 4. RPMs (gcc, nodejs, nginx, openblas, etc. via Hermeto)
+5. Go modules (go.mod/go.sum via Hermeto; used by images that build Go binaries)
 
 Lockfiles are organized into variant subdirectories under `prefetch-input/`:
 
@@ -81,10 +82,10 @@ After running, dependencies are in:
 
 ```
 cachi2/output/deps/
-├── generic/    # GPG keys, tarballs, oc client, VS Code extensions
-├── rpm/        # RPM packages + repodata/
+├── generic/    # GPG keys, VS Code .vsix extensions (ripgrep from pip, oc from RPM)
+├── rpm/        # RPM packages + repodata/ (includes openshift-clients)
 ├── npm/        # npm tarballs
-└── pip/        # Python wheels
+└── pip/        # Python wheels (RHOAI index: ripgrep, uv, micropipenv, etc.)
 ```
 
 > **Tip:** You only need to re-run this when inputs change (e.g. after editing
@@ -255,7 +256,7 @@ the container at `/cachi2`. This gives the Dockerfile the same
 | `/cachi2/output/deps/rpm/` | All RPM packages plus `repodata/` metadata. The Dockerfile points dnf at this directory as a local repo |
 | `/cachi2/output/deps/pip/` | Python wheels prefetched from the RHOAI index. Installed with `uv pip install --no-index --find-links /cachi2/output/deps/pip` |
 | `/cachi2/output/deps/npm/` | npm tarballs. `package-lock.json` resolved URLs are rewritten to `file:///cachi2/output/deps/npm/` so `npm ci --offline` finds them |
-| `/cachi2/output/deps/generic/` | GPG keys, ripgrep binaries, oc client tarball, VS Code .vsix extensions. (Node headers from nodejs-devel RPM; Electron download skipped.) |
+| `/cachi2/output/deps/generic/` | GPG keys, VS Code .vsix extensions. Ripgrep comes from the RHOAI Python wheel in deps/pip; the oc client is installed via the openshift-clients RPM (deps/rpm). Node headers from nodejs-devel RPM; Electron download skipped. |
 
 The `:z` suffix is a SELinux relabel flag for podman — it allows the container
 process to read the bind-mounted directory on SELinux-enabled hosts (Fedora,

@@ -22,31 +22,20 @@ Usage:
     python scripts/cve/cve_due_dates.py --sync-dates
 
 Requires:
-    - JIRA_URL environment variable (or defaults to Red Hat Jira)
-    - JIRA_TOKEN environment variable for authentication
+    - JIRA_URL environment variable (default: https://redhat.atlassian.net)
+    - JIRA_EMAIL + JIRA_API_TOKEN  for API-token auth (recommended)
+    - JIRA_TOKEN                   for legacy Bearer-token auth
+    - JIRA_OAUTH_CLIENT_SECRET     for OAuth 2.0 browser flow
 """
 
 import argparse
-import json
-import os
 import re
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, date
 
-from scripts.cve import create_ssl_context
-
-try:
-    import requests
-    HAS_REQUESTS = True
-except ImportError:
-    import urllib.request
-    import urllib.error
-    import urllib.parse
-    HAS_REQUESTS = False
-
-
-_SSL_CONTEXT = create_ssl_context() if not HAS_REQUESTS else None
+from scripts.cve.jira_auth import JiraAuthError
+from scripts.cve.jira_client import JiraClient
 
 
 @dataclass
@@ -78,83 +67,6 @@ class TrackerInfo:
         """True if tracker has no due date but linked issues do."""
         return self.due_date is None and self.earliest_child_due_date is not None
 
-
-class JiraClient:
-    """Simple Jira REST API client."""
-
-    def __init__(self, base_url: str, token: str | None = None):
-        self.base_url = base_url.rstrip("/")
-        self.token = token
-        self.headers = {"Content-Type": "application/json"}
-        if token:
-            self.headers["Authorization"] = f"Bearer {token}"
-
-    def _request(self, method: str, endpoint: str, params: dict | None = None, data: dict | None = None) -> dict:
-        """Make a request to the Jira API."""
-        url = f"{self.base_url}{endpoint}"
-
-        if HAS_REQUESTS:
-            response = requests.request(
-                method,
-                url,
-                params=params,
-                json=data,
-                headers=self.headers,
-                timeout=30
-            )
-            response.raise_for_status()
-            if response.text:
-                return response.json()
-            return {}
-        else:
-            if params:
-                query_string = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in params.items())
-                url = f"{url}?{query_string}"
-
-            req = urllib.request.Request(url, headers=self.headers, method=method)
-            if data:
-                req.data = json.dumps(data).encode("utf-8")
-
-            with urllib.request.urlopen(req, context=_SSL_CONTEXT) as resp:
-                content = resp.read().decode()
-                if content:
-                    return json.loads(content)
-                return {}
-
-    def search_issues(self, jql: str, fields: str = "key,summary,status,labels,duedate,issuelinks",
-                      max_results: int = 500) -> list[dict]:
-        """Search for issues using JQL."""
-        all_issues = []
-        start_at = 0
-
-        while len(all_issues) < max_results:
-            params = {
-                "jql": jql,
-                "maxResults": min(100, max_results - len(all_issues)),
-                "startAt": start_at,
-                "fields": fields
-            }
-
-            data = self._request("GET", "/rest/api/2/search", params=params)
-            issues = data.get("issues", [])
-            all_issues.extend(issues)
-
-            if len(all_issues) >= data.get("total", 0) or not issues:
-                break
-
-            start_at += len(issues)
-
-        return all_issues
-
-    def get_issue(self, issue_key: str, fields: str = "key,summary,status,duedate,issuelinks") -> dict:
-        """Get a single issue."""
-        params = {"fields": fields}
-        return self._request("GET", f"/rest/api/2/issue/{issue_key}", params=params)
-
-    def update_issue(self, issue_key: str, fields: dict) -> None:
-        """Update an issue's fields."""
-        data = {"fields": fields}
-        self._request("PUT", f"/rest/api/2/issue/{issue_key}", data=data)
 
 
 def extract_cve_id(text: str) -> str | None:
@@ -190,7 +102,7 @@ def find_cve_trackers(client: JiraClient, max_results: int = 500) -> list[Tracke
 
     # Get RHAIENG CVE issues (trackers)
     jql = 'project = RHAIENG AND labels in ("CVE") AND resolution = unresolved ORDER BY duedate ASC'
-    issues = client.search_issues(jql, max_results=max_results)
+    issues = client.search_issues(jql, fields="key,summary,status,labels,duedate,issuelinks", max_results=max_results)
     print(f"Found {len(issues)} RHAIENG CVE tracker issues")
 
     trackers = []
@@ -375,8 +287,11 @@ Examples:
   python scripts/cve_due_dates.py --summary
 
 Environment variables:
-  JIRA_URL      Jira server URL (default: https://issues.redhat.com)
-  JIRA_TOKEN    Personal access token for authentication
+  JIRA_URL                Jira server URL (default: https://redhat.atlassian.net)
+  JIRA_EMAIL              User email (used with JIRA_API_TOKEN for Basic auth)
+  JIRA_API_TOKEN          Atlassian API token (recommended for scripts/CI)
+  JIRA_TOKEN              Legacy Bearer token (issues.redhat.com PAT)
+  JIRA_OAUTH_CLIENT_SECRET  OAuth 2.0 client secret (interactive browser flow)
 """
     )
     parser.add_argument("--list-overdue", action="store_true",
@@ -401,17 +316,13 @@ def main():
     if not any([args.list_overdue, args.list_missing_dates, args.sync_dates, args.summary]):
         args.summary = True
 
-    jira_url = os.environ.get("JIRA_URL", "https://issues.redhat.com")
-    jira_token = os.environ.get("JIRA_TOKEN")
-
-    if not jira_token:
-        print("ERROR: JIRA_TOKEN environment variable is required", file=sys.stderr)
-        print("Set it with: export JIRA_TOKEN='your-token-here'", file=sys.stderr)
+    try:
+        client = JiraClient.from_env()
+    except JiraAuthError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    client = JiraClient(jira_url, jira_token)
-
-    print(f"Connecting to {jira_url}...")
+    print(f"Connecting to {client.base_url}...")
 
     # Find all CVE trackers
     trackers = find_cve_trackers(client, args.max_results)

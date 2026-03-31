@@ -2,6 +2,7 @@
 // #!/usr/bin/env -S node --no-warnings --loader ts-node/esm
 import {chromium} from 'playwright';
 import type {BrowserContext, Page} from 'playwright';
+import {log} from '../tests/logger';
 
 // TODO: log-in at https://app.snyk.io/org/red-hat-openshift-data-science-rhods/projects
 // TODO: then modify these values before running
@@ -20,7 +21,7 @@ async function main() {
     const page = await findVisiblePage(context);
     for (const pipfile of PIPFILES) {
         const target = pipfile.replace(/^\./, "");
-        console.log(" - processing " + target);
+        log.info(`Processing target: ${target}`);
         await addPipfile(page, target, BRANCH);
     }
 
@@ -49,7 +50,7 @@ async function addPipfile(page: Page, target: string, branch: string) {
         // seen the following error once, but navigation succeeded,
         // it cleared up when I restarted browser, but let's tolerate it
         // > page.goto: net::ERR_ABORTED
-        console.log(error);
+        log.warn(`Navigation error (may be benign): ${error}`);
     }
     await page.waitForURL(url);
 
@@ -76,9 +77,9 @@ async function addPipfile(page: Page, target: string, branch: string) {
 (async () => {
     try {
         await main();
-        console.log('Script completed successfully');
+        log.info('Script completed successfully');
     } catch (error) {
-        console.error('Script failed:', error);
+        log.error('Script failed', { error: error instanceof Error ? error.message : String(error) });
         process.exit(1);
     }
 })();

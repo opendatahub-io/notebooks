@@ -18,11 +18,12 @@ main() {
     echo "Scanning ${start_dirs[*]} for directories containing Dockerfile.konflux.*"
     echo "Comparing Dockerfiles, ignoring comments and LABEL blocks..."
 
-    # Populate array of directories
+    # Populate array of directories (while-read is portable; mapfile requires Bash 4+)
     local docker_dirs=()
     for dir in "${start_dirs[@]}"; do
-        mapfile -t dirs < <(find_docker_dirs "$dir")
-        docker_dirs+=("${dirs[@]}")
+        while IFS= read -r line; do
+            docker_dirs+=("$line")
+        done < <(find_docker_dirs "$dir")
     done
 
     # Process all directories and check for differences
@@ -111,9 +112,9 @@ find_diff() {
 
     echo "---- diff $file_orig $file_konflux ----"
 
-    # Use process substitution to feed stripped files to diff
+    # Use process substitution to feed stripped files to diff (plain diff for Mac/BSD and Linux/GNU portability)
     local diff_output
-    diff_output=$(diff --color=always <(strip <"$dir/$file_orig") <(strip <"$dir/$file_konflux") || true)
+    diff_output=$(diff <(strip <"$dir/$file_orig") <(strip <"$dir/$file_konflux") || true)
 
     if [ -n "$diff_output" ]; then
         echo "❌ Differences found between $file_orig and $file_konflux"

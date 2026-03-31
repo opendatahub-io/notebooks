@@ -42,6 +42,10 @@ inputs:
     description: 'Number of days to retain the artifact'
     required: false
     default: '30'
+  grep-pattern:
+    description: 'Grep pattern passed to --grep to filter tests (e.g. "@codeserver", "@smoke"). Empty string runs all tests.'
+    required: false
+    default: ''
 
 outputs:
   outcome:
@@ -102,7 +106,7 @@ runs:
             set -Eeuxo pipefail
             cd /mnt
             npm install -g pnpm && pnpm install
-            pnpm exec playwright test
+            pnpm exec playwright test ${GREP_PATTERN:+--grep "$GREP_PATTERN"}
             exit 0
         EOF
       working-directory: ${{ inputs.working-directory }}
@@ -111,6 +115,7 @@ runs:
         TEST_TARGET: ${{ inputs.test-target || '' }}
         PODMAN_SOCKET: ${{ inputs.podman-socket }}
         PLAYWRIGHT_VERSION: ${{ steps.playwright-version.outputs.version }}
+        GREP_PATTERN: ${{ inputs.grep-pattern }}
 
     - name: Upload Playwright report
       if: ${{ !cancelled() && inputs.upload-report == 'true' }}

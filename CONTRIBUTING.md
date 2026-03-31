@@ -42,11 +42,11 @@ Pull requests are the best way to propose changes to the notebooks repository:
 
 ### Working with linters
 
-- Run pre-commit before you commit, to lint the Python sources that have been put under its management
+- Run prek before you commit, to lint the Python sources that have been put under its management
+    ```console
+    uvx prek run --all-files
     ```
-    uv run pre-commit run --all-files
-    ```
-- If you like, you can install pre-commit to run automatically using `uv run pre-commit install`, as per its [install instructions](https://pre-commit.com/#3-install-the-git-hook-scripts)
+- If you like, you can install prek to run automatically using `uvx prek install -f`, as per its [install instructions](https://prek.j178.dev/quickstart)
 
 ### Some basic instructions how to apply the new tests into [openshift-ci](https://github.com/openshift/release)
 
@@ -107,6 +107,20 @@ When contributing to notebook-related changes in the Red Hat Data Science (RHDS)
 - **Coordinate changes**: When making related changes across repositories, ensure consistency and proper sequencing
 
 This workflow ensures that the OpenDataHub community remains the primary development hub while maintaining compatibility with Red Hat's enterprise tooling and processes.
+
+### Debugging
+
+To debug tests, run pytest with verbose logging:
+
+```console
+./uv run pytest -s --log-cli-level=DEBUG tests/
+```
+
+For container tests, add `--capture=fd` to see container output:
+
+```console
+./uv run pytest --capture=fd tests/containers --image=<image> --log-cli-level=DEBUG
+```
 
 ### Review and Merge Process
 

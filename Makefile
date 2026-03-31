@@ -332,6 +332,7 @@ test-%: bin/kubectl
 
 # Validate that runtime image meets minimum criteria
 # This validation is created from subset of https://github.com/elyra-ai/elyra/blob/9c417d2adc9d9f972de5f98fd37f6945e0357ab9/Makefile#L325
+# Elyra pins are applied from ci/requirements-elyra.txt (kubectl cp) so CI stays reproducible when PyPI drops a pin.
 .PHONY: validate-runtime-image
 validate-runtime-image: bin/kubectl
 	$(eval NOTEBOOK_NAME := $(subst .,-,$(subst cuda-,,$*)))
@@ -352,9 +353,9 @@ validate-runtime-image: bin/kubectl
 		fi
 		if [ $$cmd == "python3" ]; then
 			echo "=> Checking notebook execution..."
-			if ! $(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "curl https://raw.githubusercontent.com/opendatahub-io/elyra/refs/heads/main/etc/generic/requirements-elyra.txt --output req.txt && \
-					python3 -m pip install -r req.txt > /dev/null && \
-					curl https://raw.githubusercontent.com/nteract/papermill/main/papermill/tests/notebooks/simple_execute.ipynb --output simple_execute.ipynb && \
+			if ! $(KUBECTL_BIN) cp "$(CURDIR)/ci/requirements-elyra.txt" runtime-pod:/tmp/requirements-elyra.txt || \
+				! $(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "python3 -m pip install -r /tmp/requirements-elyra.txt > /dev/null && \
+					curl -fsSL https://raw.githubusercontent.com/nteract/papermill/main/papermill/tests/notebooks/simple_execute.ipynb --output simple_execute.ipynb && \
 					python3 -m papermill simple_execute.ipynb output.ipynb > /dev/null" ; then
 				echo "ERROR: Image does not meet Python requirements criteria in pipfile"
 				fail=1
@@ -483,8 +484,33 @@ endif
 print-release:
 	@echo "$(RELEASE)"
 
+.PHONY: setup
+setup:
+	./uv sync --locked
+
 .PHONY: test
 test:
 	@echo "Running quick static tests"
-	uv run pytest -m 'not buildonlytest'
+	./uv run pytest -m 'not buildonlytest'
 	@./scripts/check_dockerfile_alignment.sh
+
+.PHONY: test-unit
+test-unit:
+	@echo "Running Python unit tests"
+	./uv run pytest -m 'not buildonlytest' --ignore=tests/containers tests/ ntb/
+	@echo "Running Go unit tests"
+	go test -C scripts/buildinputs -cover ./...
+
+PYTEST_ARGS ?=
+
+.PHONY: test-integration
+test-integration:
+ifeq ($(PYTEST_ARGS),)
+	$(error Usage: make test-integration PYTEST_ARGS="--image=<image>")
+endif
+	@echo "Running container integration tests"
+	./uv run pytest tests/containers -m 'not openshift and not cuda and not rocm' $(PYTEST_ARGS)
+
+.PHONY: unit-test integration-test
+unit-test: test-unit
+integration-test: test-integration

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,7 +38,13 @@ func getDockerfileDeps(dockerfile string, targetArch string, buildArgs map[strin
 			BuildPlatforms: []ocispecs.Platform{{OS: "linux", Architecture: targetArch}},
 		},
 		Warn: func(rulename, description, url, fmtmsg string, location []parser.Range) {
-			log.Printf(rulename, description, url, fmtmsg, location)
+			slog.Warn("Dockerfile lint warning",
+				"rule", rulename,
+				"description", description,
+				"url", url,
+				"message", fmtmsg,
+				"location", location,
+			)
 		},
 	})
 	noErr(err)

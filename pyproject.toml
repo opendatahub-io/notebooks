@@ -11,27 +11,43 @@ dependencies = []
 
 [dependency-groups]
 dev = [
-    "pre-commit",
+    "prek",
     "pyright",
     "ruff",
-
+    #
     "pytest",
+    "pytest-cov",
     "allure-pytest",
     "pytest-subtests",
-
+    #
     "pyfakefs",
-    "pydantic",
+    # Python 3.14 changed the internal typing._eval_type() function signature - it now includes a new prefer_fwd_module parameter
+    # and so pydantic 2.10+ is required to work with from __future__ import annotations on Python 3.14
+    "pydantic>=2.10.0",
     "requests",
-
+    #
     "pyyaml",
     "ruamel-yaml",
-
+    "structlog",
+    #
     "testcontainers",
     "docker",
     "podman",
     "kubernetes",
     "openshift-python-wrapper",
+    # Transitive via openshift-python-wrapper → fastmcp;
+    "authlib>=1.6.9",
     "typer",
+    # certifi provides CA bundle needed on macOS where Python's bundled OpenSSL
+    # does not read from the system Keychain, causing CERTIFICATE_VERIFY_FAILED
+    "certifi",
+    # keyring provides OS-level secret storage for OAuth tokens (macOS Keychain,
+    # GNOME Keyring, KWallet) used by scripts/cve/jira_auth.py
+    "keyring",
+    # pygments provides syntax highlighting for pretty-printed JSON in log output
+    "pygments",
+    # rich powers the local live progress table in ci/check-image-availability.py
+    "rich>=14.3.2",
 ]
 
 [tool.uv]
@@ -50,6 +66,16 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = ["ntb"]
 module-root = ""
+
+# https://coverage.readthedocs.io/en/latest/config.html
+[tool.coverage.run]
+source = ["ntb", "ci", "scripts"]
+branch = true
+omit = ["tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
 
 # inspired from https://github.com/red-hat-data-services/ods-ci/blob/master/pyproject.toml
 
@@ -70,7 +96,7 @@ pythonPlatform = "Linux"
 
 # https://docs.astral.sh/ruff/configuration
 [tool.ruff]
-include = ["pyproject.toml", "ci/**/*.py", "ntb/**/*.py", "tests/**/*.py"]
+include = ["pyproject.toml", "ci/**/*.py", "ntb/**/*.py", "tests/**/*.py", "jupyter/**/*.ipynb"]
 exclude = [ ]
 target-version = "py314"
 line-length = 120
@@ -165,6 +191,8 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
 [tool.ruff.lint.per-file-ignores]
 # Inner functions are serialized and executed inside containers, so imports must be local.
 "tests/containers/workbenches/gpu_library_loading_test.py" = ["PLC0415"]
+# Ignore many stylistic and formatting rules for notebooks, but keep Pylint rules like PLW0128
+"jupyter/**/*.ipynb" = ["E", "F", "W", "Q", "I", "PLR0402", "PLC0414", "RUF100", "PLW0108"]
 
 # https://docs.astral.sh/ruff/formatter
 [tool.ruff.format]

@@ -5,16 +5,19 @@ set -euo pipefail
 #
 # Hermetic builds (Konflux/Tekton and local) require every dependency to be
 # prefetched so the Dockerfile can build fully offline (no network access).
-# This script orchestrates downloading all four dependency types:
+# This script orchestrates downloading all five dependency types:
 #
 #   1. Generic artifacts — GPG keys, nfpm-built RPMs, Node.js headers,
-#      Electron binaries (into cachi2/output/deps/generic/).
+#      Electron binaries, VS Code .vsix (into cachi2/output/deps/generic/).
+#      Component-specific: codeserver gets ripgrep from pip, oc from RPM.
 #   2. Pip wheels — Python packages resolved from pyproject.toml
 #      (into cachi2/output/deps/pip/).
 #   3. NPM packages — tarballs resolved from package-lock.json files
 #      (into cachi2/output/deps/npm/).
 #   4. RPMs — system packages resolved from rpms.lock.yaml via Hermeto
 #      (into cachi2/output/deps/rpm/).
+#   5. Go modules — Go deps from go.mod/go.sum via Hermeto (gomod)
+#      (into cachi2/output/deps/gomod/).
 #
 # Each step is skipped if its input file is not present in the component's
 # prefetch-input/<variant>/ directory. Step 3 (NPM) discovers the Tekton
@@ -197,13 +200,13 @@ STEPS_SKIPPED=0
 # =========================================================================
 ARTIFACTS_INPUT="$VARIANT_DIR/artifacts.in.yaml"
 if [[ -f "$ARTIFACTS_INPUT" ]]; then
-  echo "=== [1/4] Generic artifacts ==="
+  echo "=== [1/5] Generic artifacts ==="
   python3 "$SCRIPTS_PATH/create-artifact-lockfile.py" \
       --artifact-input "$ARTIFACTS_INPUT"
   STEPS_RUN=$((STEPS_RUN + 1))
   echo ""
 else
-  echo "=== [1/4] Generic artifacts — SKIPPED (no $ARTIFACTS_INPUT) ==="
+  echo "=== [1/5] Generic artifacts — SKIPPED (no $ARTIFACTS_INPUT) ==="
   STEPS_SKIPPED=$((STEPS_SKIPPED + 1))
 fi
 
@@ -218,13 +221,13 @@ fi
 # =========================================================================
 PYPROJECT="$COMPONENT_DIR/pyproject.toml"
 if [[ -f "$PYPROJECT" ]]; then
-  echo "=== [2/4] Pip wheels ==="
+  echo "=== [2/5] Pip wheels ==="
   "$SCRIPTS_PATH/create-requirements-lockfile.sh" \
       --pyproject-toml "$PYPROJECT" --flavor "$FLAVOR" --download
   STEPS_RUN=$((STEPS_RUN + 1))
   echo ""
 else
-  echo "=== [2/4] Pip wheels — SKIPPED (no $PYPROJECT) ==="
+  echo "=== [2/5] Pip wheels — SKIPPED (no $PYPROJECT) ==="
   STEPS_SKIPPED=$((STEPS_SKIPPED + 1))
 fi
 
@@ -237,7 +240,7 @@ fi
 #
 # Output: cachi2/output/deps/npm/
 # =========================================================================
-echo "=== [3/4] NPM packages ==="
+echo "=== [3/5] NPM packages ==="
 
 npm_done=false
 tekton_file=""
@@ -291,7 +294,7 @@ echo ""
 RPM_INPUT="$VARIANT_DIR/rpms.in.yaml"
 RPM_LOCKFILE="$VARIANT_DIR/rpms.lock.yaml"
 if [[ -f "$RPM_INPUT" ]]; then
-  echo "=== [4/4] RPMs ==="
+  echo "=== [4/5] RPMs ==="
   if [[ -f "$RPM_LOCKFILE" ]]; then
     echo "  rpms.lock.yaml exists — downloading RPMs only (skipping lockfile regeneration)"
     "$SCRIPTS_PATH/helpers/hermeto-fetch-rpm.sh" --prefetch-dir "$VARIANT_DIR"
@@ -302,9 +305,38 @@ if [[ -f "$RPM_INPUT" ]]; then
   STEPS_RUN=$((STEPS_RUN + 1))
   echo ""
 else
-  echo "=== [4/4] RPMs — SKIPPED (no $RPM_INPUT) ==="
+  echo "=== [4/5] RPMs — SKIPPED (no $RPM_INPUT) ==="
   STEPS_SKIPPED=$((STEPS_SKIPPED + 1))
 fi
+
+# =========================================================================
+# Step 5: Go modules (create-go-lockfile.sh)
+#
+# Prefetches Go dependencies from go.mod/go.sum via Hermeto (gomod). Uses
+# the same Tekton file as NPM to discover gomod-type prefetch-input paths.
+# Output: cachi2/output/deps/gomod/
+# =========================================================================
+echo "=== [5/5] Go modules ==="
+if [[ -n "$tekton_file" ]] && command -v yq &>/dev/null; then
+  gomod_paths=$(yq eval '
+    .spec.params[]
+    | select(.name == "prefetch-input")
+    | .value[]
+    | select(.type == "gomod")
+    | .path
+  ' "$tekton_file" 2>/dev/null) || true
+  if [[ -n "$gomod_paths" ]] && [[ "$(echo "$gomod_paths" | grep -c .)" -gt 0 ]]; then
+    "$SCRIPTS_PATH/create-go-lockfile.sh" --tekton-file "$tekton_file"
+    STEPS_RUN=$((STEPS_RUN + 1))
+  else
+    echo "  No gomod-type prefetch-input in Tekton file — skipping"
+    STEPS_SKIPPED=$((STEPS_SKIPPED + 1))
+  fi
+else
+  echo "  No Tekton file or yq — skipping Go modules"
+  STEPS_SKIPPED=$((STEPS_SKIPPED + 1))
+fi
+echo ""
 
 # =========================================================================
 # Summary — show what ran, what was skipped, and disk usage per dep type.
