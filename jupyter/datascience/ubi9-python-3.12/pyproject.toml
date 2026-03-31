@@ -9,33 +9,30 @@ dependencies = [
     "micropipenv[toml]==1.10.0",
 
     # Datascience and useful extensions
-    "codeflare-sdk~=0.35.0; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    "feast~=0.61.0",
-    "skl2onnx~=1.20.0",
+    "codeflare-sdk; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    "feast",
+    "skl2onnx",
     "odh-notebooks-meta-workbench-datascience-deps",
     "odh-notebooks-meta-db-connectors-deps",
     "odh-notebooks-meta-jupyterlab-deps",
     "odh-notebooks-meta-jupyterlab-datascience-deps",
 
     # Base packages
-    "wheel~=0.46.3",
-    "setuptools~=80.9.0",
+    "wheel",
+    "setuptools",
 ]
 
 [tool.uv]
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
+
 override-dependencies = [
     # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
     # appengine-python-standard which has an obnoxious urllib3<2 constraint
     "urllib3>=2.6.0",
-    # AIPCC-8698: python-lsp-server[all] has conflicting pyflakes/pycodestyle requirements
-    # The [all] extra pulls in linting tools we don't need at runtime
-    # Using >= instead of ~= to allow broader compatibility during resolution
-    # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
-    "python-lsp-server>=1.11.0",
 ]
+
 [tool.uv.sources]
 odh-notebooks-meta-workbench-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
 odh-notebooks-meta-db-connectors-deps = { path = "../../../dependencies/odh-notebooks-meta-db-connectors-deps" }
