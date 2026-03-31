@@ -65,6 +65,42 @@ VEX Justification explains why a reported vulnerability doesn't affect the produ
 | **Vulnerable Code cannot be Controlled by Adversary** | Vulnerable code cannot be exploited due to runtime constraints |
 | **Inline Mitigations already Exist** | Built-in protections prevent exploitation |
 
+## Critical Policy: NEVER Use "Won't Do"
+
+Per [ProdSec policy](https://spaces.redhat.com/spaces/PRODSEC/pages/436147380/),
+**"Won't Do" is prohibited** as a Resolution for any CVE tracker. Using it will cause the
+CVE to appear as an unpatched vulnerability in the product's security posture.
+
+Always use **"Not a Bug"** with the appropriate VEX Justification.
+
+## VEX Justification Decision Tree
+
+Use this to select the correct justification:
+
+```
+Is the vulnerable package in the shipped container image?
+├── NO (source-scan artifact, test dep, build tooling)
+│   └── Use: "Component not Present"
+│
+├── YES, but in base image (RPM from RHEL/UBI, not our code)
+│   └── Is the code reachable in our product?
+│       ├── NO → Use: "Vulnerable Code not in Execute Path"
+│       └── YES → Do NOT close as VEX. Label ai-nonfixable, wait for base image fix.
+│
+└── YES, in our shipped code/deps
+    └── Do NOT close as VEX. This is a real finding — fix it or label ai-nonfixable.
+```
+
+Common scenarios for notebooks:
+- `sourceInfo` contains `/tests/browser/pnpm-lock.yaml` → **Component not Present**
+- `sourceInfo` contains `/jupyter/utils/addons/pnpm-lock.yaml` → **Component not Present**
+- `sourceInfo` contains `scripts/buildinputs/go.mod` → **Component not Present**
+- Package inherited from base image, unreachable → **Vulnerable Code not in Execute Path**
+- Package in `/usr/bin/skopeo` (shipped binary) → NOT a VEX case, keep open
+
+Reference: [VEX Not Affected Justifications](https://spaces.redhat.com/spaces/PRODSEC/pages/580257978/)
+and [SPDX VEX Spec](https://spdx.github.io/spdx-spec/v3.0.1/model/Security/Vocabularies/VexJustificationType/)
+
 ## Evidence Requirements
 
 **Hard rule: representative-family sampling is for tracker-level triage only.**

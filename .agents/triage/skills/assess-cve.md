@@ -241,6 +241,36 @@ not source tree metadata.
 - Do not proceed from "likely" or "representative" language into actual Jira transitions
 - Stop and verify the exact image if there is any version or digest ambiguity
 
+### 9.5. Base Image CVEs
+
+If the vulnerable component is in the **base image** (RPM from RHEL/UBI, not installed by
+our Dockerfiles or pyproject.toml):
+
+- Close as **"Not a Bug"** with VEX justification `Vulnerable Code Not Present` or
+  `Vulnerable Code not in Execute Path` (depending on whether the code is reachable)
+- We do NOT include base image CVEs in our release notes or errata
+- Container grades (visible at [catalog.redhat.com](https://catalog.redhat.com)) handle
+  base image vulnerability tracking for customers
+- We cannot take action — we wait for the base image team to release a fixed version
+- Label as `ai-nonfixable` if you want to keep it open for tracking, or route to
+  `skills/close-vex.md` for closure
+
+Example from OSSM: Kiali operator inherited `ansible-core` from the base image
+`ose-ansible-rhel9-operator`. The tracker should have been closed as "Not a Bug" since
+Kiali does not ship or control ansible-core.
+
+### 9.6. Embargoed CVEs
+
+If the CVE is **embargoed** (not yet public):
+
+- Do NOT include in release advisories
+- Be careful creating or sharing trackers — avoid leaking embargo details to teams
+  that are not affected
+- Container grade may still show 'A' because the CVE is not public yet
+- If the embargoed CVE is in a base image and doesn't affect our code, close as "Not a Bug"
+- **Never use "Won't Do"** as a resolution — ProdSec policy prohibits it and it will cause
+  the CVE to appear as an unpatched vulnerability in the product
+
 ### 10. For Python CVEs: Check cve-constraints.txt
 
 ```bash

@@ -724,6 +724,66 @@ The field mapping:
 | `.artifacts[].purl` | `.packages[].externalRefs[].referenceLocator` | Package URL |
 | `.artifacts[].foundBy` | (not directly available) | Cataloger that found it |
 
+## Running newcli on macOS
+
+newcli is ProdSec's CLI for querying manifest-box and deptopia. It is not on PyPI but can
+be installed from the internal GitLab repo via uvx:
+
+```bash
+# Use the wrapper script (handles clone + deps automatically)
+.agents/tools/newcli-wrapper.sh --help
+
+# Or manually:
+git clone --depth 1 https://gitlab.cee.redhat.com/prodsec-dev/newtopia-cli.git /tmp/newtopia-cli
+uvx --no-config \
+  --from /tmp/newtopia-cli/python/newtopia_cli \
+  --with /tmp/newtopia-cli/python/deptopia-client \
+  --with requests --with appdirs --with packageurl-python --with argcomplete \
+  newcli --help
+```
+
+### Common newcli Queries
+
+```bash
+# Search for a package across all products (verbose output)
+newcli -vvv -s -e pypi wheel
+
+# Filter by ecosystem
+newcli -vvv -s -e npm undici
+
+# Find which streams ship a specific image component
+newcli -a odh-workbench-jupyter-minimal-cpu-py312-rhel9
+```
+
+### newcli Data Sources
+
+newcli queries **two** backends:
+1. **Deptopia REST API** (fast, no download) — covers Brew/CPaaS builds only
+2. **manifest-box SQLite** (~400MB download) — covers Konflux builds
+
+For notebooks (Konflux), the SQLite download is unavoidable on first run. Set
+`konflux_path` in `~/.config/newcli/config.ini` to use a pre-downloaded local file.
+
+## Deptopia vs manifest-box
+
+| | Deptopia | manifest-box |
+|---|---------|-------------|
+| Build system | Brew / CPaaS | Konflux |
+| Access | REST API (fast) | SQLite download (~400MB) |
+| Queried by | newcli (automatic), direct API | newcli (automatic) |
+| Products | Older RHOAI versions (pre-Konflux) | Current RHOAI versions |
+
+## Atlas/Trustify (Next-Gen)
+
+Atlas (Red Hat Trusted Profile Analyzer) is the next-gen SBOM management platform replacing
+manifest-box and deptopia. Built on [Trustify](https://github.com/guacsec/trustify) (open-source Rust).
+
+- **Live at**: `https://atlas.build.devshift.net/`
+- **Swagger UI**: `https://atlas.build.devshift.net/swagger-ui/`
+- **Auth**: Red Hat Employee SSO (OIDC)
+- **API**: 49 endpoints at `/api/v2/` — SBOMs, PURLs, vulnerabilities, advisories, products
+- **Status**: In production, coverage expanding. ProdSec is migrating from manifest-box.
+
 ## Related Tools
 
 - **NewCLI** (`newtopia-cli`): Uses manifest-box data for vulnerability queries
@@ -731,12 +791,16 @@ The field mapping:
 - **Cosign**: Used to pull SBOMs from container registries
 - **ORAS**: OCI Registry As Storage — fetch any OCI artifact (SBOMs, attestations, etc.)
 - **Skopeo**: Inspect and copy container images and metadata
+- **Atlas/Trustify**: Next-gen SBOM platform at `atlas.build.devshift.net`
 
 ## References
 
 - [manifest-box GitLab Repository](https://gitlab.cee.redhat.com/product-security/manifest-box)
 - [NewCLI (newtopia-cli)](https://gitlab.cee.redhat.com/prodsec-dev/newtopia-cli)
 - [Product Definitions](https://gitlab.cee.redhat.com/prodsec/product-definitions)
+- [Atlas/Trustify](https://atlas.build.devshift.net/) (requires Employee SSO)
+- [Trustify source code](https://github.com/guacsec/trustify)
+- [ProdSec Scanning Reference](prodsec-scanning.md) — full API landscape and false positive handling
 
 ---
 
