@@ -1,0 +1,21 @@
+{
+  // tsconfig.json natively supports comments (JSONC format)
+  "compilerOptions": {
+    "target": "es2025",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    // Playwright runs TS directly; no compilation step needed
+    "noEmit": true,
+    // Avoid errors from transitive type declarations (e.g. isomorphic-ws missing @types/ws)
+    "skipLibCheck": true,
+    // TS 6.0 defaults types to [] — we need Node.js types explicitly
+    "types": ["node"]
+  },
+  "include": [
+    "playwright.config.ts",
+    "tests/**/*.ts",
+    "scripts/**/*.ts"
+  ]
+  // cypress/ excluded: no cypress dependency or types installed
+}
