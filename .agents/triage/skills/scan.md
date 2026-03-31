@@ -58,15 +58,15 @@ Fetch bugs from Jira using JQL and save to the triage ledger.
        "assessment": null
      }
    ]
-   ```
+```
    Create the `.artifacts/triage/` directory if it doesn't exist.
 
 6. **Report**: print a summary table:
-   ```
+```sql
    Scanned N bugs from RHAIENG (component=Notebooks, active, not yet ai-triaged)
    Blocker: X | Critical: Y | Major: Z | Normal: W | Minor: V
    Saved to .artifacts/triage/ledger.json
-   ```
+```
 
 ## Next Step
 

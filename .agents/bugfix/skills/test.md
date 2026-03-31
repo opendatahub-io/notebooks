@@ -95,12 +95,12 @@ Then proceed to `skills/pr.md` only with explicit user approval to open a **draf
    ```bash
    git push -u origin fix/{key}-{desc}
    gh pr create --draft --title "WIP: fix/{key} — needs human review" --body "AI attempted 3 fixes but tests still fail. See .artifacts/bugfix/{key}/test-failures.md"
-   ```
+```
 5. Update Jira: add `ai-verification-failed` label, post a comment explaining the failures.
 6. Clean up: return to the previous branch.
    ```bash
    git checkout -
-   ```
+```
 7. Report to user: "Tests failed after 3 attempts. Draft PR created for human review."
 
 ## Handoff to `pr.md`

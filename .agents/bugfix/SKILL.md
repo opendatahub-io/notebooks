@@ -21,7 +21,7 @@ Route commands to the appropriate skill.
 
 ## Usage
 
-```
+```text
 /fix-start RHAIENG-3611
 ```
 

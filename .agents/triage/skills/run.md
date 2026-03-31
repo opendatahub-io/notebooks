@@ -22,7 +22,7 @@ Chains scan -> assess -> report without pausing between phases.
 ## On Completion
 
 Print:
-```
+```text
 Triage complete.
 - Scanned: N issues
 - Fixable: X | Not fixable: Y

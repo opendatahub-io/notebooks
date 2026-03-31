@@ -9,7 +9,7 @@ Or verify manually using the commands below.
 
 **Tool**: Atlassian MCP
 
-```
+```text
 mcp__atlassian__getAccessibleAtlassianResources
 ```
 Expected: returns cloud ID for `redhat.atlassian.net`
@@ -19,7 +19,7 @@ Expected: returns cloud ID for `redhat.atlassian.net`
 **Tool**: Atlassian MCP
 
 Test with a known issue:
-```
+```text
 mcp__atlassian__getJiraIssue  cloudId=<cloud-id>  issueKey=RHAIENG-3712
 ```
 Expected: returns issue details
@@ -29,7 +29,7 @@ Expected: returns issue details
 **Tool**: Atlassian MCP
 
 Dry-run on a test issue (confirm with user first):
-```
+```text
 mcp__atlassian__addCommentToJiraIssue  cloudId=<cloud-id>  issueKey=<test-issue>
   comment="[Preflight test] Agent write access confirmed. This comment can be deleted."
 ```
@@ -98,13 +98,13 @@ slow local transfers."
 
 ### 11. Slack MCP
 
-```
+```bash
 mcp__slack-mcp-local__search_messages  query="test"  count=1
 ```
 
 ### 12. Web Search
 
-```
+```text
 WebSearch  query="opendatahub notebooks"
 ```
 
@@ -139,7 +139,7 @@ Useful when a Jira issue references a customer support case.
 
 After checking, report results as:
 
-```
+```text
 Preflight Results
 -----------------
 [PASS] Jira access

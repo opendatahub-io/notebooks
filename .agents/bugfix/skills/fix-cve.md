@@ -64,7 +64,7 @@ Apply the fix using the branch-local mechanism discovered above:
   - If not present, add a new entry with the CVE reference
 
   Format:
-  ```
+```yaml
   # CVE-XXXX-XXXXX: Description
   # Reference: https://access.redhat.com/security/cve/CVE-XXXX-XXXXX
   package-name>=X.Y.Z
@@ -152,7 +152,7 @@ For **rstudio/utils** or **jupyter/utils/addons** (our own lockfiles, maintenanc
 - In the directory containing `package.json`, run:
   ```bash
   pnpm update --latest
-  ```
+```
 - Commit the updated `pnpm-lock.yaml`
 
 ### 4. Verify

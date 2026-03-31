@@ -23,7 +23,7 @@ Standalone skill for re-assessing and relabeling a single issue that was previou
    - Add `ai-retriage` if not already present
    - If changing from fixable to nonfixable, add `ai-initiallymarkedfixable`
 5. Post a new comment noting this is a retriage:
-   ```
+```text
    AI Retriage Analysis - {date}
    Previous verdict: {ai-fixable/ai-nonfixable}
    Updated verdict: {ai-fixable/ai-nonfixable}

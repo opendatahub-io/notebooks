@@ -54,7 +54,7 @@ Run each check and report pass/fail. See `prerequisites.md` (parent directory) f
 ### Report Results
 
 Print a summary table:
-```
+```text
 Preflight Results
 -----------------
 [PASS] Jira access (cloud ID: 2b9e35e3-...)

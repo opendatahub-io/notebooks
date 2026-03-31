@@ -16,7 +16,7 @@ The resolution strategy differs based on which type is affected.
 
 To prevent CVEs from returning through transitive dependencies, we maintain a centralized constraints file:
 
-```
+```text
 dependencies/cve-constraints.txt
 ```
 
@@ -25,7 +25,7 @@ This file is automatically applied during lock file generation via `uv pip compi
 ### How It Works
 
 1. **Constraints file format** (requirements.txt style):
-   ```
+```yaml
    # CVE-ID: Description
    # Reference: https://...
    package>=fixed_version
@@ -38,7 +38,7 @@ This file is automatically applied during lock file generation via `uv pip compi
 ### Adding a New CVE Constraint
 
 1. Add the constraint to `dependencies/cve-constraints.txt`:
-   ```
+```yaml
    # RHAIENG-XXXX: CVE-YYYY-ZZZZZ package_name vulnerability description
    # Upstream: https://github.com/...
    package_name>=fixed_version
@@ -49,7 +49,7 @@ This file is automatically applied during lock file generation via `uv pip compi
    make refresh-lock-files
    # or
    bash scripts/pylocks_generator.sh public-index
-   ```
+```
 
 3. If resolution fails due to conflicts, add `override-dependencies` to the affected image's `pyproject.toml`.
 
@@ -106,17 +106,17 @@ Example: Tornado is typically pulled in by `jupyter-server`.
 3. Update the version in your `pyproject.toml`:
    ```toml
    "jupyter-server~=2.17.0",  # Updated for tornado CVE fix
-   ```
+```
 
 #### Option B: Use Centralized CVE Constraints
 
 If the direct dependency can't be upgraded but the transitive package version is flexible:
 
 1. Add to `dependencies/cve-constraints.txt`:
-   ```
+```text
    # RHAIENG-2448: CVE-XXXX-YYYY tornado quadratic DoS
    tornado>=6.5.3
-   ```
+```
 
 2. Regenerate lock files - the constraint will be applied automatically.
 
@@ -173,10 +173,10 @@ make jupyter-datascience-ubi9-python-3.12
 
 **Solution**:
 1. Add to `dependencies/cve-constraints.txt` for general protection:
-   ```
+```text
    # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
    urllib3>=2.6.0
-   ```
+```
 
 2. Add override to jupyter images with odh-elyra (due to conflict):
    ```toml
@@ -185,7 +185,7 @@ make jupyter-datascience-ubi9-python-3.12
        # appengine-python-standard which has an obnoxious urllib3<2 constraint
        "urllib3>=2.6.0",
    ]
-   ```
+```
 
 ## Best Practices
 

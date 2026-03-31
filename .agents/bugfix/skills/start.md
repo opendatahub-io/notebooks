@@ -84,7 +84,7 @@ mkdir -p .artifacts/bugfix/RHAIENG-XXXX
 ### 6. Present Plan
 
 Show the user:
-```
+```text
 Issue: RHAIENG-XXXX — {summary}
 Priority: {priority} | Category: {category}
 Execution target: {odh-main | rhds/rhoai-X.Y} @ {ref}

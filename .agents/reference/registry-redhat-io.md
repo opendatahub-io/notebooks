@@ -107,7 +107,7 @@ The GraphQL API returns richer data in a single call (vulnerability info, RPM ma
 
 The catalog also queries the Red Hat Hydra search API for faceted search:
 
-```
+```text
 GET https://access.redhat.com/hydra/rest/search/kcs?redhat_client=ecosystem-catalog&fq=language:(en)&fq=-documentKind:Cve&fq=documentKind:"ContainerRepository"&q=id:{repository_id}&wt=json&facet=true&facet.field={!ex=architecture_tag}architecture
 ```
 

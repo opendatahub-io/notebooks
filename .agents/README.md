@@ -4,7 +4,7 @@ Tool-agnostic workflows for AI-driven Jira bug triage and fixing in the OpenData
 
 ## Quick Start
 
-```
+```text
 /setup-preflight                    # verify tools are accessible
 /triage-run                         # triage all backlog bugs
 /triage-assess RHAIENG-3611         # triage a single bug
@@ -53,7 +53,7 @@ Full definitions: [`triage/reference/label-taxonomy.md`](triage/reference/label-
 
 ## Directory Structure
 
-```
+```text
 .agents/
 ├── AGENTS.md              # AI tool context (auto-loaded)
 ├── README.md              # This file

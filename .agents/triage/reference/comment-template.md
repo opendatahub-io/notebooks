@@ -5,7 +5,7 @@ This is a guideline, not gospel — adapt as needed for clarity.
 
 ## Template
 
-```
+```markdown
 AI Triage Analysis - {YYYY-MM-DD}
 {issue_url} : {issue_summary}
 Priority: {priority} | Status: {status} | Component: {component}
@@ -46,7 +46,7 @@ but replace Steps to Resolve with a brief explanation of why it's not AI-fixable
 For `ai-nonfixable` issues where the vulnerable component is shipped via a packaged
 binary owned by another team (e.g., `oc` via OpenShift, `skopeo` via RHEL), use:
 
-```
+```text
 AI Triage Analysis - {YYYY-MM-DD}
 {issue_url} : {issue_summary}
 Priority: {priority} | Status: {status} | Component: {component}

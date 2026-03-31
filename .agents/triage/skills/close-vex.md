@@ -77,7 +77,7 @@ Always use **"Not a Bug"** with the appropriate VEX Justification.
 
 Use this to select the correct justification:
 
-```
+```text
 Is the vulnerable package in the shipped container image?
 ├── NO (source-scan artifact, test dep, build tooling)
 │   └── Use: "Component not Present"
@@ -449,7 +449,7 @@ If you have more than 20 issues to close:
            "return 'Navigating to next batch'; "
        "}"
    )
-   ```
+```
 
 2. **Repeat Steps 3-8** for the new batch
 

@@ -105,7 +105,7 @@ Fetch current labels, append exactly one of the above (never both):
 ### 5. Add Jira Comment
 
 Post a comment linking to the PR:
-```
+```text
 AI Fix Applied - {date}
 PR: {pr-url}
 Summary: {what was fixed}
@@ -123,7 +123,7 @@ Return to the branch you were on before starting.
 
 ### 7. Report
 
-```
+```text
 Fix complete for RHAIENG-XXXX
 PR: {url}
 Jira: labeled {ai-fully-automated|ai-accelerated-fix|ai-verification-failed}, comment added

@@ -162,7 +162,7 @@ WHERE name LIKE '%tensorflow%rocm%';
 ```
 
 Example output:
-```
+```bash
 .../rhoai_odh-workbench-jupyter-tensorflow-rocm-py312-rhel9:v2.25.1-...json
 .../rhoai_odh-workbench-jupyter-tensorflow-rocm-py312-rhel9:v3.0.0-...json
 ```
@@ -176,7 +176,7 @@ When the SQLite database doesn't provide enough detail (e.g., you need to know e
 ### Locating SBOM Files
 
 SBOM files are stored at:
-```
+```text
 https://gitlab.cee.redhat.com/product-security/manifest-box/-/tree/main/manifests/konflux/openshift-ai
 ```
 
@@ -312,7 +312,7 @@ Use `--expect-version` with the helper script to fail loudly on mismatch:
 ### How `--version-tag` Works (Pyxis Digest Resolution)
 
 The manifest-box SBOM filenames embed the per-architecture image digest:
-```
+```text
 rhoai_odh-workbench-jupyter-minimal-cpu-py312-rhel9@sha256:44c8c278...json
                                                           ^^^^^^^^^^
                                                           this is manifest_schema2_digest (amd64)
@@ -320,7 +320,7 @@ rhoai_odh-workbench-jupyter-minimal-cpu-py312-rhel9@sha256:44c8c278...json
 
 The Pyxis catalog API at `catalog.redhat.com` returns this exact digest when queried by
 version tag:
-```
+```text
 GET /v1/repositories/registry/registry.access.redhat.com/repository/rhoai/{component}/images
     ?filter=architecture==amd64;repositories.tags.name=={tag}
     &include=data.repositories.manifest_schema2_digest
@@ -349,7 +349,7 @@ Child vulnerability issues carry a `pscomponent:` label that maps directly to th
 3. Use the remainder as the `--component` argument
 
 Example:
-```
+```text
 pscomponent:rhoai/odh-pipeline-runtime-pytorch-cuda-py312-rhel9
                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                   → --component odh-pipeline-runtime-pytorch-cuda-py312-rhel9
@@ -554,17 +554,17 @@ if __name__ == "__main__":
    
    # Find files for your component
    ls manifests/konflux/openshift-ai/*codeserver*
-   ```
+```
 
 3. **Check product version** from the first few lines:
    ```bash
    head -20 <sbom-file>.json | jq '.source'
-   ```
+```
 
 4. **Search for the vulnerable package**:
    ```bash
    jq '.artifacts[] | select(.name | test("vulnerable-pkg"; "i")) | {name, version, type, locations: [.locations[].path]}' <sbom-file>.json
-   ```
+```
 
 5. **Determine remediation path** based on the location:
    - `/lib/apk/db/installed` → Alpine system package (update base image or install newer version)
@@ -832,7 +832,7 @@ sqlite3 database.sqlite "PRAGMA foreign_key_list(tablename);"
 
 ### Understanding the manifest-box Data Model
 
-```
+```text
 streams (product streams)
     └── builds (container image builds)
             └── build_components (junction table)
