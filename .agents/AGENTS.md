@@ -1,6 +1,6 @@
 # AI Bug Bash Workflows
 
-This directory provides two workflows for AI-driven Jira bug resolution in the OpenDataHub Notebooks repository.
+This directory provides three workflows for AI-driven Jira bug resolution in the OpenDataHub Notebooks repository.
 
 ## Workflows
 

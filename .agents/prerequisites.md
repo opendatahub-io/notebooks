@@ -12,23 +12,23 @@ Or verify manually using the commands below.
 ```text
 mcp__atlassian__getAccessibleAtlassianResources
 ```
-Expected: returns cloud ID for `redhat.atlassian.net`
+Expected: returns cloud ID for `redhat.atlassian.net`. Save this value — it's needed for all subsequent Jira calls.
 
 ### 2. Jira Read
 
 **Tool**: Atlassian MCP
 
-Test with a known issue:
+Test with any open issue from the current backlog (the specific key below may not exist — use a known open issue instead):
 ```text
 mcp__atlassian__getJiraIssue  cloudId=<cloud-id>  issueKey=RHAIENG-3712
 ```
-Expected: returns issue details
+Expected: returns issue details. If the issue doesn't exist, try another key from the backlog.
 
 ### 3. Jira Write
 
 **Tool**: Atlassian MCP
 
-Dry-run on a test issue (confirm with user first):
+Write-test on a real issue, e.g., TEST-1, TEST-2, ... (confirm with user first — this posts a real comment):
 ```text
 mcp__atlassian__addCommentToJiraIssue  cloudId=<cloud-id>  issueKey=<test-issue>
   comment="[Preflight test] Agent write access confirmed. This comment can be deleted."
@@ -40,7 +40,7 @@ Expected: comment appears on the issue
 **Tool**: filesystem
 
 ```bash
-test -f AGENTS.md && echo "PASS" || echo "FAIL: not in notebooks repo root"
+test -f AGENTS.md && test -d jupyter/ && echo "PASS" || echo "FAIL: not in notebooks repo root"
 git remote -v | grep -E 'opendatahub-io/notebooks|red-hat-data-services/notebooks'
 ```
 
@@ -55,7 +55,7 @@ For z-stream / release-branch work, either checkout may be valid:
 ```bash
 gh auth status
 ```
-Expected: authenticated to github.com
+Expected: authenticated to GitHub.com
 
 ### 6. Python / uv
 
@@ -114,7 +114,7 @@ WebSearch  query="opendatahub notebooks"
 glab auth status
 ```
 
-If not authenticated: visit https://red.ht/GitLabSSO to auth, then `glab auth login`.
+If not authenticated: visit https://gitlab.cee.redhat.com/-/profile/personal_access_tokens to create a token, then `glab auth login`.
 AIPCC base images repo: `gitlab.com/redhat/rhel-ai/core/base-images/app`
 
 ### 14. Cluster Access
@@ -127,7 +127,7 @@ oc get notebooks -A 2>/dev/null | head -5
 ### 15. Google Docs
 
 ```bash
-gws docs documents get --params '{"documentId": "test"}' 2>&1 | head -1
+gws docs documents get --params '{"documentId": "1aLED1gER-YINBjCHp5mUg5ChQf4BNpdRlnoEBKs_RF8"}' 2>&1 | head -1
 ```
 
 ### 16. Red Hat Cases Portal

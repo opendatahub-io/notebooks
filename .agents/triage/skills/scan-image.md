@@ -387,7 +387,7 @@ Quick package search and location finding in SBOM files.
 
 ```bash
 # Already in repository
-/Users/jdanek/IdeaProjects/notebooks/scripts/sbom_analyze.py
+scripts/cve/sbom_analyze.py
 ```
 
 ### Usage
