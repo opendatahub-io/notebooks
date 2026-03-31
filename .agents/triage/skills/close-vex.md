@@ -80,8 +80,13 @@ Use this to select the correct justification:
 ```
 Is the vulnerable package in the shipped container image?
 ├── NO (source-scan artifact, test dep, build tooling)
-│   └── Use: "Vulnerable Code Not Present"
-│       (the vulnerable code is not in the shipped artifact)
+│   └── Use: "Component not Present"
+│       (the component is not included in the shipped product;
+│        its presence in the SBOM is a manifest error from source scanning)
+│
+├── YES, but we ship an older/patched version without the vulnerable code
+│   └── Use: "Vulnerable Code not Present"
+│       (we ship the component but our version doesn't contain the vuln code)
 │
 ├── YES, but in base image (RPM from RHEL/UBI, not our code)
 │   └── Is the code reachable in our product?
@@ -92,18 +97,23 @@ Is the vulnerable package in the shipped container image?
     └── Do NOT close as VEX. This is a real finding — fix it or label ai-nonfixable.
 ```
 
-**Terminology note**: ProdSec uses `Vulnerable Code Not Present` (not `Component not Present`)
-for source-scan false positives. Both are valid VEX justifications but have different meanings:
-- `Vulnerable Code Not Present` — the vulnerable code itself is absent from the shipped artifact
-- `Component not Present` — the entire component is absent from the product
+**Terminology** (per [ProdSec Confluence](https://redhat.atlassian.net/wiki/spaces/PRODSEC/pages/289223326)):
+- `Component not Present` — the component is **not included** in the product. ProdSec notes
+  "this scenario should be rare and may indicate an error in the software manifest" — which
+  is exactly what source-scan contamination is.
+- `Vulnerable Code not Present` — the component **is** shipped, but our version doesn't
+  include the vulnerable code (e.g., older version without the vulnerable feature).
+- `Vulnerable Code not in Execute Path` — vulnerable code is shipped but never executed.
 
-For source-scan artifacts (package found in repo but not in image), prefer `Vulnerable Code Not Present`.
-For components that were never part of the product at all, use `Component not Present`.
+**Note**: Some Slack discussions use "Vulnerable Code not Present" loosely for source-scan
+false positives. The Confluence definitions are authoritative — use `Component not Present`
+when the component is absent from the image entirely.
 
 Common scenarios for notebooks:
-- `sourceInfo` contains `/tests/browser/pnpm-lock.yaml` → **Vulnerable Code Not Present**
-- `sourceInfo` contains `/jupyter/utils/addons/pnpm-lock.yaml` → **Vulnerable Code Not Present**
-- `sourceInfo` contains `scripts/buildinputs/go.mod` → **Vulnerable Code Not Present**
+- `sourceInfo` contains `/tests/browser/pnpm-lock.yaml` → **Component not Present**
+- `sourceInfo` contains `/jupyter/utils/addons/pnpm-lock.yaml` → **Component not Present**
+- `sourceInfo` contains `scripts/buildinputs/go.mod` → **Component not Present**
+- We ship the package but an older version without the vuln → **Vulnerable Code not Present**
 - Package inherited from base image, unreachable → **Vulnerable Code not in Execute Path**
 - Package in `/usr/bin/skopeo` (shipped binary) → NOT a VEX case, keep open
 

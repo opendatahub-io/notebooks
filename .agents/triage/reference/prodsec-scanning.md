@@ -166,9 +166,14 @@ When closing CVE trackers as false positives, use **Resolution: "Not a Bug"** wi
 
 | VEX Justification | When to Use |
 |-------------------|-------------|
-| `Vulnerable Code Not Present` | Package only appears in source-scan SBOM, not in shipped image. Preferred for source-scan false positives. |
-| `Vulnerable Code not in Execute Path` | Code exists in base image but is unreachable in our product |
-| `Component not Present` | Entire component was never part of this product version (not just a scan artifact) |
+| `Component not Present` | Component is absent from the shipped image (source-scan artifact, test dep). Use for source-scan false positives. |
+| `Vulnerable Code not Present` | Component is shipped but our version lacks the vulnerable code (e.g., older version) |
+| `Vulnerable Code not in Execute Path` | Vulnerable code is shipped but never executed in our product |
+
+Per [ProdSec Confluence](https://redhat.atlassian.net/wiki/spaces/PRODSEC/pages/289223326):
+`Component not Present` is the correct choice for source-scan false positives — ProdSec
+notes this "may indicate an error in the software manifest," which is exactly what
+source-scan SBOM contamination is.
 
 **NEVER use "Won't Do"** — this is prohibited by ProdSec policy and will cause the CVE to
 show as an unpatched vulnerability in the product.
