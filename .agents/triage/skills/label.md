@@ -17,12 +17,14 @@ Standalone skill for re-assessing and relabeling a single issue that was previou
 1. Fetch the issue via `mcp__atlassian__getJiraIssue`.
 2. Note existing labels and any previous AI triage comments.
 3. Re-run the assessment logic from `skills/assess.md` (steps 2-4).
-4. Update labels:
-   - Keep `ai-triaged`
-   - Replace `ai-fixable` with `ai-nonfixable` (or vice versa)
-   - When applying a new verdict label (`ai-fixable` or `ai-nonfixable`), first remove the opposite label if present. Labels should be replaced, not accumulated.
-   - Add `ai-retriage` if not already present
-   - If changing from fixable to nonfixable, add `ai-initiallymarkedfixable`
+4. Update labels (fetch-remove-add pattern to avoid accumulation):
+   a. Fetch current labels from the issue
+   b. Keep `ai-triaged`
+   c. Remove the old verdict label (`ai-fixable` or `ai-nonfixable`)
+   d. Add the new verdict label
+   e. Add `ai-retriage` if not already present
+   f. If changing from fixable to nonfixable, add `ai-initiallymarkedfixable`
+   g. Write the rebuilt labels array back in a single `editJiraIssue` call
 5. Post a new comment noting this is a retriage:
 ```text
    AI Retriage Analysis - {date}
