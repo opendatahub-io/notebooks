@@ -33,20 +33,27 @@ def extract_document_id(doc_id_or_url: str) -> str:
 
 def fetch_document(doc_id: str) -> dict:
     """Fetch document JSON via gws CLI."""
-    result = subprocess.run(
-        [
-            "gws",
-            "docs",
-            "documents",
-            "get",
-            "--params",
-            json.dumps({"documentId": doc_id, "includeTabsContent": True}),
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            [
+                "gws",
+                "docs",
+                "documents",
+                "get",
+                "--params",
+                json.dumps({"documentId": doc_id, "includeTabsContent": True}),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired:
+        print("Error: gws timed out after 60 seconds", file=sys.stderr)
+        sys.exit(1)
+
     if result.returncode != 0:
+        # Do print raw stderr which may contain tokens or internal paths
         print(f"Error: gws failed: {result.stderr}", file=sys.stderr)
         sys.exit(1)
 
@@ -54,10 +61,14 @@ def fetch_document(doc_id: str) -> dict:
     output = result.stdout
     json_start = output.find("{")
     if json_start == -1:
-        print(f"Error: no JSON found in gws output:\n{output[:500]}", file=sys.stderr)
+        print(f"Error: no JSON object found in gws output:\n{output[:500]}", file=sys.stderr)
         sys.exit(1)
 
-    return json.loads(output[json_start:])
+    try:
+        return json.loads(output[json_start:])
+    except json.JSONDecodeError as exc:
+        print(f"Error: malformed JSON in gws output: {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 def extract_text(content: list) -> str:

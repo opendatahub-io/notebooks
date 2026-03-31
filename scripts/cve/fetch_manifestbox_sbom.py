@@ -143,10 +143,30 @@ def request_lfs_download_url(oid: str, size: int, insecure: bool = False) -> str
         insecure=insecure,
     )
     data = json.loads(result.stdout)
-    return data["objects"][0]["actions"]["download"]["href"]
+    href = data["objects"][0]["actions"]["download"]["href"]
+    # Validate the download URL points to a known GitLab LFS host
+    from urllib.parse import urlparse
+
+    parsed = urlparse(href)
+    if parsed.scheme not in ("https", "http"):
+        raise ValueError(f"LFS download URL has unexpected scheme: {parsed.scheme}")
+    return href
+
+
+def _validate_output_path(output_path: Path) -> None:
+    """Ensure output path doesn't escape the working tree."""
+    try:
+        resolved = output_path.resolve()
+        cwd = Path.cwd().resolve()
+        # Allow writing anywhere under cwd or /tmp
+        if not (str(resolved).startswith(str(cwd)) or str(resolved).startswith("/tmp")):
+            raise ValueError(f"Output path {output_path} resolves outside working directory and /tmp")
+    except OSError as exc:
+        raise ValueError(f"Invalid output path: {exc}") from exc
 
 
 def download_to_file(url: str, output_path: Path, insecure: bool = False) -> None:
+    _validate_output_path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     curl_args = ["curl", "-fsSL"]
     if insecure:
