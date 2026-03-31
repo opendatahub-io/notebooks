@@ -219,6 +219,5 @@ Print a one-line summary (key, verdict, category) and continue to the next pendi
 
 ## Error Handling
 
-- If Jira API fails, log the error and skip to the next issue. Don't stop the whole batch.
-- If a label update fails (e.g., permission denied), report clearly and continue.
-- If the Jira API call fails (`editJiraIssue` or `addCommentToJiraIssue`), set the ledger entry status to `jira-update-failed` and continue to the next issue rather than stopping.
+- If Jira API fails, log the error, update the ledger entry with `"triageStatus": "error"` and `"errorMessage": "<details>"`, then skip to the next issue. Don't stop the whole batch.
+- If a label update fails (e.g., permission denied), report clearly, set ledger status to `jira-update-failed`, and continue.
