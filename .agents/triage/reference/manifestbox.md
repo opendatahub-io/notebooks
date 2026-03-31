@@ -607,11 +607,130 @@ If manifest-box shows the vulnerable component via a shipped binary or RPM-manag
 4. If no fixed Red Hat package exists yet, the best current triage outcome is usually:
    real shipped exposure, but `ai-nonfixable` pending fixed RPM / erratum
 
+## Fetching SBOMs Directly from Quay.io (Without manifest-box)
+
+Konflux attaches SBOMs to built images in the OCI registry as tagged artifacts. You can
+fetch them directly from `quay.io` without needing access to the internal manifest-box
+GitLab repository.
+
+### Prerequisites
+
+Install one of: `oras`, `cosign`, or `skopeo`.
+
+```bash
+brew install oras        # recommended — cleanest workflow
+brew install cosign      # alternative
+brew install skopeo      # useful for inspecting image metadata
+```
+
+### Step 1: Find the Image Digest
+
+SBOMs are stored under tags derived from the image digest. First, get the per-architecture
+digest (not the manifest list digest):
+
+```bash
+# List available tags
+skopeo list-tags docker://quay.io/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9 \
+  | python3 -c "import sys,json; [print(t) for t in sorted(json.load(sys.stdin)['Tags']) if not t.startswith('sha256-')]"
+
+# Get the amd64 digest from a version tag
+skopeo inspect docker://quay.io/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9:rhoai-3.4-linux-x86-64 \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['Digest'])"
+# → sha256:8a1646277f754072416b4256bc47d299c754c50647ca32d5aeb469b3169ce0ee
+```
+
+### Step 2: Download the SBOM
+
+The SBOM is stored at the tag `sha256-<digest>.sbom` (replace `:` with `-`):
+
+```bash
+# Using oras (recommended)
+DIGEST="8a1646277f754072416b4256bc47d299c754c50647ca32d5aeb469b3169ce0ee"
+IMAGE="quay.io/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9"
+
+oras copy "${IMAGE}:sha256-${DIGEST}.sbom" --to-oci-layout /tmp/sbom-download
+
+# The SBOM is the largest blob in the layout
+ls -lS /tmp/sbom-download/blobs/sha256/ | head -3
+# Copy out the SBOM JSON (it's the blob with media type text/spdx+json)
+SBOM_BLOB=$(ls -S /tmp/sbom-download/blobs/sha256/ | head -1)
+cp "/tmp/sbom-download/blobs/sha256/${SBOM_BLOB}" sbom.json
+```
+
+### Step 3: Analyze the SBOM
+
+The Konflux SBOM is SPDX 2.3 format. Key fields per package:
+- `name`, `version`: Package identification
+- `sourceInfo`: Where the package was found (critical for false positive detection)
+- `externalRefs`: PURLs for cross-referencing with vulnerability databases
+
+```bash
+# Quick summary: list all sourceInfo patterns
+python3 -c "
+import json
+from collections import Counter
+with open('sbom.json') as f:
+    sbom = json.load(f)
+print(f'Total packages: {len(sbom[\"packages\"])}')
+for si, count in Counter(
+    p.get('sourceInfo','')[:120] for p in sbom['packages']
+).most_common():
+    print(f'  {count:4d}  {si}')
+"
+
+# Search for a specific package
+python3 -c "
+import json
+with open('sbom.json') as f:
+    sbom = json.load(f)
+for p in sbom['packages']:
+    if 'requests' in p.get('name','').lower():
+        print(f\"{p['name']} {p.get('version','')}  — {p.get('sourceInfo','')[:100]}\")
+"
+```
+
+### Other Tags Available per Digest
+
+Konflux publishes several artifacts alongside each image:
+
+| Tag suffix | Content |
+|------------|---------|
+| `.sbom` | SPDX SBOM (Software Bill of Materials) |
+| `.att` | In-toto attestation (build provenance) |
+| `.sig` | Cosign signature |
+| `.src` | Source container reference |
+| `.dockerfile` | Dockerfile used for the build |
+
+```bash
+# Download the build attestation
+oras copy "${IMAGE}:sha256-${DIGEST}.att" --to-oci-layout /tmp/att-download
+
+# Download the Dockerfile
+oras copy "${IMAGE}:sha256-${DIGEST}.dockerfile" --to-oci-layout /tmp/dockerfile-download
+```
+
+### SPDX vs Syft Format
+
+- **manifest-box** SBOMs use **Syft JSON** format (`.artifacts[]`, `.source`, `.descriptor`)
+- **Quay.io/Konflux** SBOMs use **SPDX 2.3** format (`.packages[]`, `.relationships[]`)
+
+The field mapping:
+
+| Syft JSON | SPDX 2.3 | Description |
+|-----------|----------|-------------|
+| `.artifacts[].name` | `.packages[].name` | Package name |
+| `.artifacts[].version` | `.packages[].versionInfo` | Version |
+| `.artifacts[].locations[].path` | `.packages[].sourceInfo` | Where found |
+| `.artifacts[].purl` | `.packages[].externalRefs[].referenceLocator` | Package URL |
+| `.artifacts[].foundBy` | (not directly available) | Cataloger that found it |
+
 ## Related Tools
 
 - **NewCLI** (`newtopia-cli`): Uses manifest-box data for vulnerability queries
 - **Syft**: Used to generate SBOMs from container images
 - **Cosign**: Used to pull SBOMs from container registries
+- **ORAS**: OCI Registry As Storage — fetch any OCI artifact (SBOMs, attestations, etc.)
+- **Skopeo**: Inspect and copy container images and metadata
 
 ## References
 
