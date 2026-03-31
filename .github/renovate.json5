@@ -39,9 +39,9 @@
   // Tekton task digest updates in .tekton/ pipeline definitions
   "tekton": {
     "additionalBranchPrefix": "",
-    "fileMatch": [
-      "\\.yaml$",
-      "\\.yml$",
+    "managerFilePatterns": [
+      "/\\.yaml$/",
+      "/\\.yml$/",
     ],
     "includePaths": [
       ".tekton/**",
@@ -107,9 +107,9 @@
     {
       "customType": "regex",
       "description": "Update BASE_IMAGE in konflux build-args conf files",
-      "fileMatch": [
+      "managerFilePatterns": [
         // Workbenches and runtimes only — excludes base-images/
-        "(jupyter|rstudio|codeserver|runtimes)/.+/build-args/konflux\\..+\\.conf$",
+        "/(jupyter|rstudio|codeserver|runtimes)/.+/build-args/konflux\\..+\\.conf$/",
       ],
       "matchStrings": [
         "BASE_IMAGE=(?<depName>[^:]+):(?<currentValue>\\S+)",
