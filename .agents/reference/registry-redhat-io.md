@@ -133,7 +133,7 @@ The API uses an RSQL-based filter language. Key operators:
 ### 1. Find all py312 workbench repositories
 
 ```bash
-curl -s 'https://catalog.redhat.com/api/containers/v1/repositories?filter=repository=regex=rhoai/odh-workbench.*py312&page_size=50&page=0&include=data.repository,data._id,data.display_data.name' | python3 -m json.tool
+curl -fsS 'https://catalog.redhat.com/api/containers/v1/repositories?filter=repository=regex=rhoai/odh-workbench.*py312&page_size=50&page=0&include=data.repository,data._id,data.display_data.name' | python3 -m json.tool
 ```
 
 This returns a JSON response like:
@@ -159,7 +159,7 @@ The `{registry}` in the Pyxis REST API path is `registry.access.redhat.com`. The
 > **Note**: The API uses `registry.access.redhat.com` in its URL paths, but the actual pull registry shown in the UI is `registry.redhat.io`. Both registries serve the same images; `registry.redhat.io` is the one to use in pull commands (see [Registries](#registries) below).
 
 ```bash
-curl -s 'https://catalog.redhat.com/api/containers/v1/repositories/registry/registry.access.redhat.com/repository/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9/images?page_size=5&page=0&sort_by=last_update_date%5Bdesc%5D&include=data.repositories.tags.name,data.architecture,data.last_update_date' | python3 -m json.tool
+curl -fsS 'https://catalog.redhat.com/api/containers/v1/repositories/registry/registry.access.redhat.com/repository/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9/images?page_size=5&page=0&sort_by=last_update_date%5Bdesc%5D&include=data.repositories.tags.name,data.architecture,data.last_update_date' | python3 -m json.tool
 ```
 
 Response:
@@ -194,13 +194,13 @@ REGISTRY="registry.access.redhat.com"
 API="https://catalog.redhat.com/api/containers/v1"
 
 # Step 1: Get all matching repository names
-repos=$(curl -s "${API}/repositories?filter=repository=regex=rhoai/odh-workbench.*py312&page_size=50&page=0&include=data.repository" \
+repos=$(curl -fsS "${API}/repositories?filter=repository=regex=rhoai/odh-workbench.*py312&page_size=50&page=0&include=data.repository" \
   | python3 -c "import sys,json; [print(r['repository']) for r in json.load(sys.stdin)['data']]")
 
 # Step 2: For each repo, get the latest image tags (amd64)
 for repo in $repos; do
   echo "=== $repo ==="
-  curl -s "${API}/repositories/registry/${REGISTRY}/repository/${repo}/images?page_size=1&page=0&sort_by=last_update_date%5Bdesc%5D&filter=architecture==amd64&include=data.repositories.tags.name,data.last_update_date" \
+  curl -fsS "${API}/repositories/registry/${REGISTRY}/repository/${repo}/images?page_size=1&page=0&sort_by=last_update_date%5Bdesc%5D&filter=architecture==amd64&include=data.repositories.tags.name,data.last_update_date" \
     | python3 -m json.tool
   echo
 done
@@ -291,7 +291,7 @@ To get the multi-arch digest from the API, query any architecture entry for the 
 
 ```bash
 # No architecture filter needed -- just grab the first result and read manifest_list_digest
-curl -s 'https://catalog.redhat.com/api/containers/v1/repositories/registry/registry.access.redhat.com/repository/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9/images?page_size=1&page=0&filter=repositories.tags.name==v3.2&include=data.repositories.manifest_list_digest,data.repositories.manifest_schema2_digest,data.architecture' | python3 -m json.tool
+curl -fsS 'https://catalog.redhat.com/api/containers/v1/repositories/registry/registry.access.redhat.com/repository/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9/images?page_size=1&page=0&filter=repositories.tags.name==v3.2&include=data.repositories.manifest_list_digest,data.repositories.manifest_schema2_digest,data.architecture' | python3 -m json.tool
 ```
 
 ## Image Labels
@@ -319,7 +319,7 @@ The `vcs-ref` label provides the full 40-character git commit hash. The `commit.
 
 ```bash
 # Get the vcs-ref label for a specific image
-curl -s 'https://catalog.redhat.com/api/containers/v1/repositories/registry/registry.access.redhat.com/repository/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9/images?page_size=1&page=0&filter=architecture==amd64;repositories.tags.name==v3.2&include=data.parsed_data.labels' \
+curl -fsS 'https://catalog.redhat.com/api/containers/v1/repositories/registry/registry.access.redhat.com/repository/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9/images?page_size=1&page=0&filter=architecture==amd64;repositories.tags.name==v3.2&include=data.parsed_data.labels' \
   | python3 -c "
 import sys, json
 labels = json.load(sys.stdin)['data'][0]['parsed_data']['labels']
