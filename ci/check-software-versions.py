@@ -174,6 +174,7 @@ def process_dependency_item(item, container_id, annotation_type):
         "MySQL Connector/Python": ["/bin/bash", "-c", "pip show mysql-connector-python | grep 'Version: '"],
         "Nvidia-CUDA-CU12-Bundle": ["/bin/bash", "-c", "pip show nvidia-cuda-runtime-cu12 | grep 'Version: '"],
         "Feast": ["/bin/bash", "-c", "pip show feast | grep 'Version: '"],
+        "MLflow": ["/bin/bash", "-c", "pip show mlflow | grep 'Version: '"],
         "Python": ["/bin/bash", "-c", "python --version"],
         "CUDA": ["/bin/bash", "-c", "nvcc --version"],
     }

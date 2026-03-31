@@ -306,6 +306,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                             "Transformers",
                             "TrustyAI",
                             "TensorFlow-ROCm",
+                            "MLflow",
                         }
 
                         name = d["name"]
