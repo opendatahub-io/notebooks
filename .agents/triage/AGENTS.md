@@ -26,6 +26,7 @@ Override with arguments: `/triage-run project = RHAIENG AND status = New ...`
 - Always add `ai-triaged` to every processed issue
 - Add exactly one of `ai-fixable` or `ai-nonfixable` (mutually exclusive)
 - When uncertain, default to `ai-nonfixable`
+- When re-triaging an issue that already has `ai-triaged`, remove the existing verdict labels (`ai-fixable`, `ai-nonfixable`) before applying updated ones. Never leave contradictory verdict labels.
 
 ## Required MCP Tools
 

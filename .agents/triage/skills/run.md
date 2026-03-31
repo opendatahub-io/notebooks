@@ -15,6 +15,7 @@ Chains scan -> assess -> report without pausing between phases.
 2. **Assess**: execute `skills/assess.md` (processes all pending issues in the ledger).
    - HITL checkpoint on first issue (see assess.md).
    - Continue through all issues, labeling and commenting as you go.
+   - If the scan returns zero `ai-fixable` issues, report "No fixable issues found in current backlog" and stop — do not proceed to bugfix phase.
 
 3. **Report**: execute `skills/report.md`.
    - Generates `.artifacts/triage/report.md` and prints summary.

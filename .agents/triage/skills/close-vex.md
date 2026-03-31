@@ -632,7 +632,7 @@ Current limitations suggest these improvements:
 
 - [docs/cve-remediation-guide.md](cve-remediation-guide.md) - Complete CVE investigation workflow
 - [docs/case-study-cve-2025-13465.md](case-study-cve-2025-13465.md) - Real example with 36 issues
-- [scripts/create_cve_trackers.py](../scripts/create_cve_trackers.py) - Create parent trackers in RHAIENG
+- [scripts/create_cve_trackers.py](../scripts/create_cve_trackers.py) - Create parent trackers in RHOAIENG
 
 ## Template Comment for "Component not Present"
 

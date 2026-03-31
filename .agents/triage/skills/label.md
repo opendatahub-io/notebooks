@@ -20,6 +20,7 @@ Standalone skill for re-assessing and relabeling a single issue that was previou
 4. Update labels:
    - Keep `ai-triaged`
    - Replace `ai-fixable` with `ai-nonfixable` (or vice versa)
+   - When applying a new verdict label (`ai-fixable` or `ai-nonfixable`), first remove the opposite label if present. Labels should be replaced, not accumulated.
    - Add `ai-retriage` if not already present
    - If changing from fixable to nonfixable, add `ai-initiallymarkedfixable`
 5. Post a new comment noting this is a retriage:
