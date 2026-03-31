@@ -1,0 +1,19 @@
+[project]
+name = "odh-notebooks-meta-jupyterlab-datascience-deps"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    "odh-elyra",
+    "jupyter-bokeh",
+    "jupyterlab-lsp",
+    "jupyterlab-widgets",
+    "jupyter-resource-usage",
+]
+
+[tool.uv]
+package = false
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
+]

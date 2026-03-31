@@ -7,21 +7,15 @@ dependencies = [
     "uv",
     "micropipenv[toml]",
 
-    # JupyterLab packages
-    "odh-jupyter-trash-cleanup",
-
-    "jupyterlab",
-    "jupyter-server",
-    "jupyter-server-proxy",
-    "jupyter-server-terminals",
-    "jupyterlab-git",
-    "nbdime",
-    "nbgitpuller",
+    "odh-notebooks-meta-jupyterlab-deps",
 
     # Base packages
     "wheel",
     "setuptools",
 ]
+
+[tool.uv.sources]
+odh-notebooks-meta-jupyterlab-deps = { path = "../../../dependencies/odh-notebooks-meta-jupyterlab-deps" }
 
 [tool.uv]
 environments = [

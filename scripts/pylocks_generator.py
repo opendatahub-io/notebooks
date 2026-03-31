@@ -90,6 +90,9 @@ MAIN_DIRS = ("jupyter", "runtimes", "rstudio", "codeserver")
 UV_MIN_VERSION = (0, 4, 0)
 
 NO_EMIT_PACKAGES = (
+    "odh-notebooks-meta-db-connectors-deps",
+    "odh-notebooks-meta-jupyterlab-datascience-deps",
+    "odh-notebooks-meta-jupyterlab-deps",
     "odh-notebooks-meta-llmcompressor-deps",
     "odh-notebooks-meta-runtime-elyra-deps",
     "odh-notebooks-meta-runtime-datascience-deps",

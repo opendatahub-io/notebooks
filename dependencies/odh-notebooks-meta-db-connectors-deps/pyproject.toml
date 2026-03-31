@@ -1,0 +1,18 @@
+[project]
+name = "odh-notebooks-meta-db-connectors-deps"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    "pymongo",
+    "psycopg",
+    "pyodbc",
+    "mysql-connector-python",
+]
+
+[tool.uv]
+package = false
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
+]
