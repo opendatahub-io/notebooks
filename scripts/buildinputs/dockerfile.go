@@ -24,7 +24,7 @@ func getDockerfileDeps(dockerfile string, targetArch string, buildArgs map[strin
 	ctx := context.Background()
 	data := noErr2(os.ReadFile(dockerfile))
 
-	st, _, _, _, err := dockerfile2llb.Dockerfile2LLB(ctx, data, dockerfile2llb.ConvertOpt{
+	result, err := dockerfile2llb.Dockerfile2LLB(ctx, data, dockerfile2llb.ConvertOpt{
 		// building an image requires fetching the metadata for its parent
 		// this fakes a parent so that this tool does not need to do network i/o
 		MetaResolver: &testResolver{
@@ -49,7 +49,7 @@ func getDockerfileDeps(dockerfile string, targetArch string, buildArgs map[strin
 	})
 	noErr(err)
 
-	definition := noErr2(st.Marshal(ctx))
+	definition := noErr2(result.State.Marshal(ctx))
 	return getOpSourceFollowPaths(definition)
 }
 
