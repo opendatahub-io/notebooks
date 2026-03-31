@@ -73,6 +73,7 @@ override-dependencies = [
     # Using >= instead of ~= to allow broader compatibility during resolution
     # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
     "python-lsp-server>=1.11.0",
+    "pandas>=3.0.1",
 ]
 
 [tool.uv.sources]
