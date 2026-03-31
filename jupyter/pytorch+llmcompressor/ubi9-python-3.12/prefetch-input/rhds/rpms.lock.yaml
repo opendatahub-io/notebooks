@@ -459,13 +459,6 @@ arches:
     name: libtiff
     evr: 4.4.0-13.el9_6.2
     sourcerpm: libtiff-4.4.0-13.el9_6.2.src.rpm
-  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/appstream/os/Packages/l/libtool-ltdl-2.4.6-46.el9.x86_64.rpm
-    repoid: rhel-9-for-x86_64-appstream-rpms
-    size: 38043
-    checksum: sha256:44f7303229bdb4c2975f9829e3dd13dc7984e2cb53ef0f85baf894b39f605c38
-    name: libtool-ltdl
-    evr: 2.4.6-46.el9
-    sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/appstream/os/Packages/l/libvorbis-1.3.7-5.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 201508
@@ -2293,6 +2286,13 @@ arches:
     name: postgresql-private-libs
     evr: 13.22-1.el9_6
     sourcerpm: postgresql-13.22-1.el9_6.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/appstream/os/Packages/p/protobuf-3.14.0-16.el9.x86_64.rpm
+    repoid: rhel-9-for-x86_64-appstream-rpms
+    size: 1057844
+    checksum: sha256:b1708ff32307536de8c9edcf530f7a057533566f3013297cf2239534b24a5ef6
+    name: protobuf
+    evr: 3.14.0-16.el9
+    sourcerpm: protobuf-3.14.0-16.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/appstream/os/Packages/p/pyproject-srpm-macros-1.16.2-1.el9.noarch.rpm
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 14828
@@ -4393,6 +4393,13 @@ arches:
     name: libtasn1
     evr: 4.16.0-9.el9
     sourcerpm: libtasn1-4.16.0-9.el9.src.rpm
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/baseos/os/Packages/l/libtool-ltdl-2.4.6-46.el9.x86_64.rpm
+    repoid: rhel-9-for-x86_64-baseos-rpms
+    size: 38043
+    checksum: sha256:44f7303229bdb4c2975f9829e3dd13dc7984e2cb53ef0f85baf894b39f605c38
+    name: libtool-ltdl
+    evr: 2.4.6-46.el9
+    sourcerpm: libtool-2.4.6-46.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/baseos/os/Packages/l/libunistring-0.9.10-15.el9.x86_64.rpm
     repoid: rhel-9-for-x86_64-baseos-rpms
     size: 510558

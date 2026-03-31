@@ -40,10 +40,13 @@ packages:
 
   - jq
   - unixODBC
+  - unixODBC-devel
   - postgresql
   - git-lfs
   - libsndfile
   - libxcrypt-compat
+  # PyArrow (RHOAI wheels) links libprotobuf.so.25; install C++ runtime (not protobuf-c).
+  - protobuf
 
   - compat-openssl11
   - openshift-clients
@@ -84,3 +87,16 @@ packages:
   - texlive-tcolorbox
 
   - cpio
+
+  # Jupyter datascience cpu-base: build toolchain on s390x
+  - gcc
+  - gcc-c++
+  - make
+  - openssl-devel
+  - autoconf
+  - automake
+  - libtool
+  - cmake
+  - python3-devel
+  - pybind11-devel
+  - openblas-devel

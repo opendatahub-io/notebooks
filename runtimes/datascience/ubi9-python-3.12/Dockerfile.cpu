@@ -41,7 +41,8 @@ EOF
 RUN --mount=type=cache,target=/var/cache/dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Building for architecture: ${TARGETARCH}"
-PACKAGES=(perl mesa-libGL skopeo libxcrypt-compat)
+# protobuf: RHOAI pyarrow wheels need libprotobuf.so.25 (C++ runtime), not protobuf-c.
+PACKAGES=(perl mesa-libGL skopeo libxcrypt-compat protobuf)
 # Datascience packages devel dependencies
 if [ "$TARGETARCH" = "s390x" ] || [ "$TARGETARCH" = "ppc64le" ]; then
     PACKAGES+=(
