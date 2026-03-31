@@ -5,12 +5,16 @@ Load a Jira issue, understand the context, and present a fix plan for user appro
 ## Inputs
 
 - `$ARGUMENTS`: Jira issue key (e.g., `RHAIENG-3611`). Required.
+  Must match pattern `[A-Z]+-[0-9]+`. Reject other formats immediately.
 
 ## Procedure
 
 ### 1. Fetch Issue
 
-Call `mcp__atlassian__getJiraIssue` with the issue key. Extract:
+Call `mcp__atlassian__getJiraIssue` with the issue key. If the call fails (network error,
+404, auth failure), report the error and stop — do not proceed with a partial or missing issue.
+
+Extract:
 - Summary, description, priority, status, labels, assignee
 - Any existing AI triage comments
 
@@ -78,8 +82,10 @@ Based on the assessment category and error description:
 ### 5. Create Artifacts Directory
 
 ```bash
-mkdir -p .artifacts/bugfix/RHAIENG-XXXX
+mkdir -p ".artifacts/bugfix/${ISSUE_KEY}"
 ```
+
+(Replace `${ISSUE_KEY}` with the actual key, e.g., `mkdir -p .artifacts/bugfix/RHAIENG-3611`)
 
 ### 6. Present Plan
 
@@ -110,3 +116,8 @@ Proceed to /fix-diagnose? [waiting for user confirmation]
 ## Next Step
 
 Wait for user confirmation, then proceed to `skills/diagnose.md`.
+
+If the user declines:
+- Do not proceed to diagnose or fix
+- Do not apply any labels or comments to Jira
+- Report "Fix declined by user" and stop cleanly

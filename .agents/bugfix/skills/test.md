@@ -89,7 +89,7 @@ Then proceed to `skills/pr.md` only with explicit user approval to open a **draf
 ### Circuit Breaker (after 3 failed attempts)
 
 1. Stop fixing.
-2. Write a summary of what was tried and why tests keep failing to `.artifacts/bugfix/{key}/test-failures.md`.
+2. Ensure the directory exists (`mkdir -p .artifacts/bugfix/{key}`), then write a summary of what was tried and why tests keep failing to `.artifacts/bugfix/{key}/test-failures.md`.
 3. Commit the current state with a WIP message.
 4. Push as a **draft PR** for human review:
    ```bash

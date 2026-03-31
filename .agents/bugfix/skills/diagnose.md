@@ -80,4 +80,8 @@ Save to `.artifacts/bugfix/{key}/root-cause.md`:
 
 Present the root cause analysis to the user. Wait for confirmation before proceeding to `skills/fix.md`.
 
-If confidence is below 80%, recommend stopping and labeling `ai-could-not-fix`.
+If confidence is below 80%, recommend stopping and applying `ai-could-not-fix` label:
+```text
+mcp__atlassian__editJiraIssue  issueKey=<key>  fields={"labels": [...existing, "ai-could-not-fix"]}
+```
+Add a comment explaining why confidence is low and what was investigated.

@@ -90,7 +90,9 @@ Read `.artifacts/bugfix/{key}/test-handoff.md` and parse:
 
 If `verification_result = baseline_failures`, append `ai-verification-failed` instead of a success label and keep the PR in **draft** state.
 
-Fetch current labels, append exactly one of the above (never both):
+Fetch current labels. Remove any stale execution labels (`ai-fully-automated`,
+`ai-accelerated-fix`, `ai-could-not-fix`, `ai-verification-failed`) first, then append
+exactly one of the above (never both):
 
 ```json
 {

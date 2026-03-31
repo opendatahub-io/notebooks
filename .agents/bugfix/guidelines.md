@@ -23,12 +23,14 @@ Safety rules, allowed tools, and escalation criteria for AI bug fixing.
 - **No force-push** — ever.
 - **No skipping CI** — no `--no-verify`, no bypassing hooks.
 - **No modifying security-critical code without human review** — flag it and pause.
+  Security-critical code includes: authentication/authorization logic, secret/credential
+  handling, input validation, cryptographic operations, access control, RBAC enforcement.
 
 ## Circuit Breaker: Max 3 Fix Attempts
 
 If tests fail after 3 fix attempts:
 1. Stop immediately.
-2. Label the issue `ai-could-not-fix`.
+2. Label the issue `ai-verification-failed`.
 3. Push the branch as a **draft PR** for human review.
 4. Add a Jira comment explaining what was tried and why it failed.
 5. Clean up local state and return to previous branch.
@@ -60,6 +62,7 @@ Explicit human confirmation required at:
 
 If the agent bails out at any phase:
 - `git stash` or `git checkout -- .` to restore clean working tree
+- `git clean -fd` to remove untracked files created during the fix attempt
 - If a remote branch was pushed, note it in the Jira comment for human cleanup
 - Return to the branch you were on before starting
 
