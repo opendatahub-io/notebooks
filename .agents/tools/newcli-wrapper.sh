@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 # newcli-wrapper.sh — Run ProdSec's newcli (newtopia-cli) via uvx on macOS/Linux
 #
-# Clones the internal GitLab repo if not cached, then runs newcli with all
-# required dependencies. Uses uvx --no-config to avoid interference from
-# the repo's uv.toml version pin.
+# No manual clone needed — uvx fetches directly from GitLab and caches automatically.
 #
 # Prerequisites:
 #   - uv/uvx installed (brew install uv)
-#   - VPN access to gitlab.cee.redhat.com (for clone + manifest-box DB download)
+#   - VPN access to gitlab.cee.redhat.com (for fetch + manifest-box DB download)
 #
 # Usage:
 #   ./newcli-wrapper.sh --help
@@ -23,20 +21,11 @@
 
 set -Eeuo pipefail
 
-CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/newcli-wrapper"
-CLONE_DIR="${CACHE_DIR}/newtopia-cli"
-REPO_URL="https://gitlab.cee.redhat.com/prodsec-dev/newtopia-cli.git"
-
-# Clone if not cached
-if [ ! -d "${CLONE_DIR}/python/newtopia_cli" ]; then
-    echo "Cloning newtopia-cli to ${CLONE_DIR}..." >&2
-    mkdir -p "${CACHE_DIR}"
-    git clone --depth 1 "${REPO_URL}" "${CLONE_DIR}" 2>&1 | tail -1 >&2
-fi
+REPO="git+https://gitlab.cee.redhat.com/prodsec-dev/newtopia-cli.git"
 
 exec uvx --no-config \
-    --from "${CLONE_DIR}/python/newtopia_cli" \
-    --with "${CLONE_DIR}/python/deptopia-client" \
+    --from "newtopia-cli @ ${REPO}#subdirectory=python/newtopia_cli" \
+    --with "deptopia-client @ ${REPO}#subdirectory=python/deptopia-client" \
     --with requests \
     --with appdirs \
     --with packageurl-python \
