@@ -82,6 +82,7 @@ Present the root cause analysis to the user. Wait for confirmation before procee
 
 If confidence is below 80%, recommend stopping and applying `ai-could-not-fix` label:
 ```text
-mcp__atlassian__editJiraIssue  issueKey=<key>  fields={"labels": [...existing, "ai-could-not-fix"]}
+mcp__atlassian__editJiraIssue  issueKey=RHAIENG-XXXX  fields={"labels": [...existing, "ai-could-not-fix"]}
 ```
+(Replace `RHAIENG-XXXX` with the actual issue key from the start phase.)
 Add a comment explaining why confidence is low and what was investigated.
