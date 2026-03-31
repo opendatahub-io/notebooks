@@ -14,12 +14,7 @@ dependencies = [
     "feast",
     "odh-notebooks-meta-runtime-datascience-deps",
 
-    # DB connectors
-    "pymongo",
-    "psycopg",
-    "pyodbc",
-    "mysql-connector-python",
-
+    "odh-notebooks-meta-db-connectors-deps",
     "odh-notebooks-meta-runtime-elyra-deps",
 
     # Base packages
@@ -36,3 +31,4 @@ override-dependencies = []
 [tool.uv.sources]
 odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }
 odh-notebooks-meta-runtime-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-datascience-deps" }
+odh-notebooks-meta-db-connectors-deps = { path = "../../../dependencies/odh-notebooks-meta-db-connectors-deps" }

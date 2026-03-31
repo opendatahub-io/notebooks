@@ -15,28 +15,9 @@ dependencies = [
     "skl2onnx",
     "onnxscript",
     "odh-notebooks-meta-workbench-datascience-deps",
-
-    # DB connectors
-    "pymongo",
-    "psycopg",
-    "pyodbc",
-    "mysql-connector-python",
-
-    # JupyterLab packages
-    "odh-elyra",
-    "odh-jupyter-trash-cleanup",
-
-    "jupyterlab",
-    "jupyter-bokeh",
-    "jupyter-server",
-    "jupyter-server-proxy",
-    "jupyter-server-terminals",
-    "jupyterlab-git",
-    "jupyterlab-lsp",
-    "jupyterlab-widgets",
-    "jupyter-resource-usage",
-    "nbdime",
-    "nbgitpuller",
+    "odh-notebooks-meta-db-connectors-deps",
+    "odh-notebooks-meta-jupyterlab-deps",
+    "odh-notebooks-meta-jupyterlab-datascience-deps",
 
     # Base packages
     "wheel",
@@ -56,3 +37,6 @@ override-dependencies = [
 
 [tool.uv.sources]
 odh-notebooks-meta-workbench-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
+odh-notebooks-meta-db-connectors-deps = { path = "../../../dependencies/odh-notebooks-meta-db-connectors-deps" }
+odh-notebooks-meta-jupyterlab-deps = { path = "../../../dependencies/odh-notebooks-meta-jupyterlab-deps" }
+odh-notebooks-meta-jupyterlab-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-jupyterlab-datascience-deps" }
