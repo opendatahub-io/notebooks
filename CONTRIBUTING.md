@@ -40,6 +40,15 @@ Pull requests are the best way to propose changes to the notebooks repository:
 - Run the [piplock-renewal.yaml](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/piplock-renewal.yaml) against your fork branch, check [here](https://github.com/opendatahub-io/notebooks/blob/main/README.md) for more info.
 - Test the changes locally, by manually running the `$ make jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8` from the terminal.
 
+### Go toolchain
+
+The project requires Go 1.26+ for building helper tools (`scripts/buildinputs`, `scripts/check-payload`).
+The Makefile sets `GOTOOLCHAIN=auto` so Go will auto-download the correct version if yours is older.
+
+If you're on **Fedora** and the auto-download fails with a `GOSUMDB=off` error, either:
+- Run `export GOSUMDB=sum.golang.org` before `make`, or
+- Install Go 1.26+ manually from https://go.dev/dl/
+
 ### Working with linters
 
 - Run prek before you commit, to lint the Python sources that have been put under its management

@@ -1,6 +1,6 @@
 module check-payload
 
-go 1.25.0
+go 1.26.1
 
 // https://golang.org/doc/go1.24#tools
 tool github.com/openshift/check-payload
