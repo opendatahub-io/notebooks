@@ -9,7 +9,9 @@ export const DEFAULT_TEST_IMAGE = "quay.io/modh/codeserver:codeserver-ubi9-pytho
 // Custom fixture options used in codeserver.spec.ts — typed here so defineConfig accepts them.
 type MyFixtures = {
   connectCDP: false | number;
-  codeServerSource: {url?: string, image?: string};
+  codeServerSource:
+    | { url: string; image?: never }
+    | { image: string; url?: never };
 };
 
 /**
@@ -38,9 +40,10 @@ export default defineConfig<MyFixtures>({
   outputDir: 'results/playwright-output',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    codeServerSource: {
-      image: process.env['TEST_TARGET'],
-    },
+    // Only override the fixture default when TEST_TARGET is set
+    ...(process.env['TEST_TARGET'] ? {
+      codeServerSource: { image: process.env['TEST_TARGET'] },
+    } : {}),
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
