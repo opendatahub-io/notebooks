@@ -11,9 +11,9 @@ async function getConsoleUrl(): Promise<string> {
   const customApi = kc.makeApiClient(k8s.CustomObjectsApi);
   let route: object;
   try {
-    ({ body: route } = await customApi.getNamespacedCustomObject(
-      'route.openshift.io', 'v1', 'openshift-console', 'routes', 'console'
-    ));
+    route = await customApi.getNamespacedCustomObject({
+      group: 'route.openshift.io', version: 'v1', namespace: 'openshift-console', plural: 'routes', name: 'console'
+    });
   } catch (e) {
     throw new Error(`Failed to fetch openshift-console route: ${e instanceof Error ? e.message : e}`);
   }

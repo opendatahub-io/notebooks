@@ -1,104 +1,81 @@
+ARG LOCAL_BUILD=false
+
 #########################
 # configuration args    #
 #########################
 ARG BASE_IMAGE
 
-### BEGIN mongocli-builder stage with s390x support
 ######################################################
 # mongocli-builder (build stage only, not published) #
+# Source: shared git submodule; Go modules from Cachi2 #
 ######################################################
-FROM registry.access.redhat.com/ubi9/go-toolset:latest AS mongocli-builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.24 AS mongocli-builder
 
-ARG MONGOCLI_VERSION=2.0.4
+USER 0
 
-WORKDIR /tmp/
+# Same submodule path as jupyter/pytorch+llmcompressor (Konflux gomod prefetch).
+COPY jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli /tmp/mongocli-src
 
-ARG TARGETARCH
+WORKDIR /tmp/mongocli-src
 
-# Keep s390x special-case from original (create dummy binary) but
-# include explicit curl/unzip steps from the delta for non-s390x.
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-arch="${TARGETARCH:-$(uname -m)}"
-arch=$(echo "$arch" | cut -d- -f1)
-if [ "$arch" = "s390x" ]; then
-    echo "Skipping mongocli build for ${arch}, creating dummy binary"
-    mkdir -p /tmp && printf '#!/bin/sh\necho "mongocli not supported on s390x"\n' > /tmp/mongocli
+if [ "$(uname -m)" = "s390x" ]; then
+    echo "Skipping mongocli build for s390x, creating dummy binary"
+    mkdir -p /tmp
+    printf '#!/bin/sh\necho "mongocli not supported on s390x"\n' > /tmp/mongocli
     chmod +x /tmp/mongocli
 else
-    echo "Building mongocli for ${arch}"
-    curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
-    unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
-    cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/
-    CGO_ENABLED=1 GOOS=linux GOARCH=${arch} GO111MODULE=on go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
+    export GOCACHE=/cachi2/output/deps/gomod
+    export GOMODCACHE=/cachi2/output/deps/gomod/pkg/mod
+    export GOPATH=/cachi2/output/deps/gomod
+    export GOPROXY=file:///cachi2/output/deps/gomod/pkg/mod/cache/download
+    CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
 fi
 EOF
 
-### END mongocli-builder stage with s390x support
+USER 1001
 
 ####################
 # cpu-base         #
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
 
+ARG LOCAL_BUILD
+
 WORKDIR /opt/app-root/bin
 
-# OS Packages needs to be installed as root
-USER root
-ARG TARGETARCH
+# hadolint ignore=DL3002
+USER 0
 
-### BEGIN upgrade first to avoid fixable vulnerabilities
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# COPY committed lockfile so this layer invalidates when RPM prefetch input changes.
+COPY jupyter/datascience/ubi9-python-3.12/prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
+
+# [HERMETIC] Configure package repos for local hermeto testing (Konflux injects repos when LOCAL_BUILD is false).
+RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
+        rm -f /etc/yum.repos.d/*.repo \
+        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
+    fi
+
+# hadolint ignore=DL3041
 RUN /bin/bash <<'EOF'
-# If we have a Red Hat subscription prepared, refresh it
 set -Eeuxo pipefail
-if command -v subscription-manager &> /dev/null; then
-  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
+BASE_PKGS=(perl mesa-libGL skopeo compat-openssl11 openshift-clients)
+if [ "$(uname -m)" = "s390x" ]; then
+    BASE_PKGS+=(gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel)
 fi
-EOF
-
-# Problem: The operation would result in removing the following protected packages: systemd
-#  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
-# Solution: --best --skip-broken does not work either, so use --nobest
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
-dnf clean all -y
-EOF
-
-### END upgrade first to avoid fixable vulnerabilities
-
-# Install useful OS packages
-RUN --mount=type=cache,target=/var/cache/dnf /bin/bash <<'EOF'
-set -Eeuxo pipefail
-echo "Building for architecture: ${TARGETARCH}"
-if [ "$TARGETARCH" = "s390x" ]; then
-    PACKAGES=(perl mesa-libGL skopeo gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel)
-else
-    PACKAGES=(perl mesa-libGL skopeo)
-fi
-echo "Installing: ${PACKAGES[@]}"
-dnf install -y "${PACKAGES[@]}"
+dnf install -y "${BASE_PKGS[@]}"
 dnf clean all
 rm -rf /var/cache/yum
 EOF
 
-# Other apps and tools installed as default user
+RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.0"
+
 USER 1001
-
-### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
-RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.10.0" "uv==0.10.8"
-### END Install micropipenv and uv to deploy packages from requirements.txt
-
-### BEGIN Install the oc client
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
-    -o /tmp/openshift-client-linux.tar.gz
-tar -xzvf /tmp/openshift-client-linux.tar.gz oc
-rm -f /tmp/openshift-client-linux.tar.gz
-EOF
-
-### END Install the oc client
 
 ####################
 # jupyter-minimal #
@@ -107,19 +84,32 @@ FROM cpu-base AS jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
+ARG LOCAL_BUILD
 
 WORKDIR /opt/app-root/bin
 
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
-COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 USER 0
+
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+COPY jupyter/datascience/ubi9-python-3.12/prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
+
+RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
+        rm -f /etc/yum.repos.d/*.repo \
+        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
+    fi
 
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
 ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
 
 ### END Dependencies for PDF export
+
+COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 USER 1001
 
@@ -129,12 +119,13 @@ ENTRYPOINT ["start-notebook.sh"]
 
 
 ########################
-# jupytyer-datascience #
+# jupyter-datascience #
 ########################
 FROM jupyter-minimal AS jupyter-datascience
 
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
+ARG LOCAL_BUILD
 
 LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.12" \
     summary="Jupyter data science notebook image for ODH notebooks" \
@@ -148,65 +139,51 @@ LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.12" \
 
 WORKDIR /opt/app-root/bin
 
-# OS Packages needs to be installed as root
-USER root
+USER 0
 
-# Install useful OS packages
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat
-dnf clean all
-rm -rf /var/cache/yum
-EOF
+# [HERMETIC] Configure package repos for local hermeto testing (Konflux injects repos when LOCAL_BUILD is false).
+RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
+        rm -f /etc/yum.repos.d/*.repo \
+        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
+    fi
 
-### BEGIN Copy mongocli from builder
-# Copy dynamically-linked mongocli built in earlier build stage
+RUN dnf install -y jq unixODBC unixODBC-devel postgresql git-lfs libsndfile libxcrypt-compat protobuf \
+    && dnf clean all \
+    && rm -rf /var/cache/yum
+
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
-### END Copy mongocli from builder
 
-# Other apps and tools installed as default user
-USER 1001
-
-ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
-
-USER 1001:0
-
-# Install Python packages and Jupyterlab extensions from pylock file
-COPY ${DATASCIENCE_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
-# Copy Elyra setup to utils so that it's sourced at startup
+# hadolint ignore=DL3002
+# Run as root (same as jupyter-minimal): uv/micropipenv from cpu-base are root-owned; chmod g+w must be root.
+COPY ${DATASCIENCE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 
-### BEGIN Install software and packages
 echo "Installing software and packages"
-# Install Python packages from lockfile with hash verification
-# All dependencies are explicitly listed in pylock.toml (--no-deps)
-UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
-    --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
-    --requirements=./pylock.toml
-### END Install software and packages
+    --compile-bytecode --index-strategy=unsafe-best-match \
+    --no-verify-hashes \
+    --find-links /cachi2/output/deps/pip \
+    --requirements=./requirements.txt
 
-# setup path for runtime configuration
 mkdir /opt/app-root/runtimes
 mkdir /opt/app-root/pipeline-runtimes
-# Remove default Elyra runtime-images
 rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json
-# Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
 sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" \
     /opt/app-root/share/jupyter/kernels/python3/kernel.json
-# copy jupyter configuration
 install -D -m 0644 /opt/app-root/bin/utils/jupyter_server_config.py \
   /opt/app-root/etc/jupyter/jupyter_server_config.py
-# Disable announcement plugin of jupyterlab
 jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
-# Apply JupyterLab addons
 /opt/app-root/bin/utils/addons/apply.sh
-# Fix permissions to support pip in Openshift environments
 chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P
 EOF
+
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
+
+USER 1001
 
 WORKDIR /opt/app-root/src

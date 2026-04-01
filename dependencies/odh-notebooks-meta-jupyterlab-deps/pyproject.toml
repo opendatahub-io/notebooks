@@ -1,0 +1,22 @@
+[project]
+name = "odh-notebooks-meta-jupyterlab-deps"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+dependencies = [
+    "jupyterlab",
+    "jupyter-server",
+    "jupyter-server-proxy",
+    "jupyter-server-terminals",
+    "jupyterlab-git",
+    "nbdime",
+    "nbgitpuller",
+    "odh-jupyter-trash-cleanup",
+]
+
+[tool.uv]
+package = false
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
+]

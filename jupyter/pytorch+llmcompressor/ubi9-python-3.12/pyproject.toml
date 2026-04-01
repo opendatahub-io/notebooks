@@ -6,7 +6,7 @@ requires-python = "==3.12.*"
 
 # https://docs.astral.sh/uv/concepts/projects/workspaces/#when-not-to-use-workspaces
 dependencies = [
-    "uv==0.10.8",
+    "uv==0.11.0",
     "micropipenv[toml]==1.10.0",
 
     # PyTorch packages
@@ -27,27 +27,9 @@ dependencies = [
     "onnxscript~=0.6.2",
     "odh-notebooks-meta-workbench-datascience-deps",
 
-    # DB connectors
-    "pymongo~=4.16.0",
-    "psycopg~=3.3.2",
-    "pyodbc~=5.3.0",
-    "mysql-connector-python~=9.6.0",
-
-    # JupyterLab packages
-    "odh-elyra==5.0.0",
-    "odh-jupyter-trash-cleanup==0.1.1",
-
-    "jupyterlab~=4.5.2",
-    "jupyter-bokeh~=4.0.5",
-    "jupyter-server~=2.17.0",
-    "jupyter-server-proxy~=4.4.0",
-    "jupyter-server-terminals~=0.5.3",
-    "jupyterlab-git~=0.51.2",
-    "jupyterlab-lsp~=5.1.1",
-    "jupyterlab-widgets~=3.0.15",
-    "jupyter-resource-usage~=1.1.1",
-    "nbdime~=4.0.2",
-    "nbgitpuller~=1.2.2",
+    "odh-notebooks-meta-db-connectors-deps",
+    "odh-notebooks-meta-jupyterlab-deps",
+    "odh-notebooks-meta-jupyterlab-datascience-deps",
 
     # Base packages
     "wheel~=0.46.3",
@@ -68,6 +50,9 @@ dependencies = [
 # https://github.com/astral-sh/uv/issues/13067#issuecomment-2824190008
 odh-notebooks-meta-llmcompressor-deps = { path = "../../../dependencies/odh-notebooks-meta-llmcompressor-deps" }
 odh-notebooks-meta-workbench-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
+odh-notebooks-meta-db-connectors-deps = { path = "../../../dependencies/odh-notebooks-meta-db-connectors-deps" }
+odh-notebooks-meta-jupyterlab-deps = { path = "../../../dependencies/odh-notebooks-meta-jupyterlab-deps" }
+odh-notebooks-meta-jupyterlab-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-jupyterlab-datascience-deps" }
 
 # https://docs.astral.sh/uv/concepts/resolution/#dependency-overrides
 # https://docs.astral.sh/uv/reference/settings/#override-dependencies
