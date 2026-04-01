@@ -6,10 +6,18 @@ import * as process from "node:process";
 // Keep it as a single-line string assignment (do not split across lines or rename the variable).
 export const DEFAULT_TEST_IMAGE = "quay.io/modh/codeserver:codeserver-ubi9-python-3.9-20241114-aed66a4";
 
+// Custom fixture options used in codeserver.spec.ts — typed here so defineConfig accepts them.
+type MyFixtures = {
+  connectCDP: false | number;
+  codeServerSource:
+    | { url: string; image?: never }
+    | { image: string; url?: never };
+};
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
-export default defineConfig({
+export default defineConfig<MyFixtures>({
   testDir: './tests',
   /* Run tests in files in parallel */
   fullyParallel: true,
@@ -32,9 +40,10 @@ export default defineConfig({
   outputDir: 'results/playwright-output',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    codeServerSource: {
-      image: process.env['TEST_TARGET'],
-    },
+    // Only override the fixture default when TEST_TARGET is set
+    ...(process.env['TEST_TARGET'] ? {
+      codeServerSource: { image: process.env['TEST_TARGET'] },
+    } : {}),
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -75,7 +84,7 @@ function getProjects() {
       use: { ...devices['Desktop Chrome'], channel: 'chrome',
         headless: false,  // the CDP browser configured below is not affected by this
         /* custom properties, comment out as needed */
-        connectCDP: false,  // false | number: connect to an existing browser running at given port (e.g. 9222)
+        connectCDP: false as const,  // false | number: connect to an existing browser running at given port (e.g. 9222)
         codeServerSource: {  // prefers url if specified, otherwise will start the specified docker image
           // url: "",  // not-present | string
           image: DEFAULT_TEST_IMAGE,  // string

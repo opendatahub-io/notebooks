@@ -59,7 +59,7 @@ async function getFirstPage(browser: Browser): Promise<Page> {
     const timeout = 5 * 1000;
     const started = Date.now();
 
-    let page: Page = undefined;
+    let page: Page | undefined = undefined;
     while ((page === null || page === undefined) && Date.now() - started < timeout) {
         const context = browser.contexts()[0];
         page = context?.pages()[0];

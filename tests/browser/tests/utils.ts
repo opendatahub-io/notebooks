@@ -1,10 +1,13 @@
-import {Page} from "@playwright/test";
+import {Page, TestInfo} from "@playwright/test";
 
 export async function waitForStableDOM(page: Page, pageRootSelector: string, checkPeriod: number, timeout: number): Promise<void> {
     // https://github.com/cypress-io/cypress/issues/5275#issuecomment-1003669708
     const parameters: [string, number, number] = [pageRootSelector, checkPeriod, timeout]
     await page.evaluate( ([pageRootSelector, checkPeriod, timeout]) => {
         const targetNode = document.querySelector(pageRootSelector);
+        if (!targetNode) {
+            throw new Error(`Selector "${pageRootSelector}" did not match any element`);
+        }
         const config = { attributes: true, childList: true, subtree: true };
 
         var started = performance.now();
@@ -67,13 +70,13 @@ export async function waitForNextRender(page: Page) {
 }
 
 // https://github.com/microsoft/playwright/issues/14854#issuecomment-1155347129
-export async function screenshotOnFailure({ page }, testInfo) {
+export async function screenshotOnFailure({ page }: { page: Page }, testInfo: TestInfo) {
     if (testInfo.status !== testInfo.expectedStatus) {
         await takeScreenshot(page, testInfo, `failure.png`)
     }
 }
 
-export async function takeScreenshot( page , testInfo, filename) {
+export async function takeScreenshot(page: Page, testInfo: TestInfo, filename: string) {
     // Get a unique place for the screenshot.
     const screenshotPath = testInfo.outputPath(filename);
     // Add it to the report.

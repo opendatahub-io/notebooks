@@ -13,15 +13,15 @@
     // NOTE: This is the single source of truth for Playwright version.
     // The container image tag (v{version}-noble) is derived from @playwright/test version
     // by .github/actions/playwright-test/action.yml
-    "playwright": "=1.58.1",
-    "@playwright/test": "=1.58.1",
+    "playwright": "=1.58.2",
+    "@playwright/test": "=1.58.2",
 
-    "testcontainers": "^11.11.0",
+    "testcontainers": "^11.13.0",
 
     "tslog": "^4",
-    "typescript": "^5.9.3",
-    "@types/node": "^25.2.1",
-    "@kubernetes/client-node": "^0.22.0"
+    "typescript": "^6.0.2",
+    "@types/node": "^25.5.0",
+    "@kubernetes/client-node": "^1.4.0"
   },
   "packageManager": "pnpm@10.8.0"
 }

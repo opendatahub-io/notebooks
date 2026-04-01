@@ -15,7 +15,9 @@ import * as utils from './utils'
 // Declare the types of your fixtures.
 type MyFixtures = {
   connectCDP: false | number;
-  codeServerSource: {url?: string, image?: string};
+  codeServerSource:
+    | { url: string; image?: never }
+    | { image: string; url?: never };
   codeServer: CodeServer
 };
 const test = base.extend<MyFixtures>({
