@@ -1,23 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
 import * as process from "node:process";
+import type { ConfigFixtures } from "./tests/fixtures";
 
 // Default test image used when TEST_TARGET env var is not set.
 // WARNING: This value is parsed by .github/workflows/test-playwright-action.yaml via grep.
 // Keep it as a single-line string assignment (do not split across lines or rename the variable).
 export const DEFAULT_TEST_IMAGE = "quay.io/modh/codeserver:codeserver-ubi9-python-3.9-20241114-aed66a4";
 
-// Custom fixture options used in codeserver.spec.ts — typed here so defineConfig accepts them.
-type MyFixtures = {
-  connectCDP: false | number;
-  codeServerSource:
-    | { url: string; image?: never }
-    | { image: string; url?: never };
-};
-
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
-export default defineConfig<MyFixtures>({
+export default defineConfig<ConfigFixtures>({
   testDir: './tests',
   /* Run tests in files in parallel */
   fullyParallel: true,
