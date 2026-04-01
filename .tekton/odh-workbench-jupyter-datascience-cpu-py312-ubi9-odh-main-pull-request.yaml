@@ -13,7 +13,7 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-comment: ^/kfbuild\s+(all|odh\-workbench\-jupyter\-datascience\-cpu\-py312\-ubi9|jupyter/datascience/ubi9\-python\-3\.12)
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-workbench-jupyter-datascience-cpu-py312-ubi9-odh-main-pull-request.yaml".pathChanged() || "jupyter/utils/**".pathChanged() || "jupyter/datascience/ubi9-python-3.12/**".pathChanged() || "jupyter/datascience/ubi9-python-3.12/start-notebook.sh".pathChanged() || "jupyter/datascience/ubi9-python-3.12/build-args/cpu.conf".pathChanged() )
+      event == "pull_request" && target_branch == "main" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-workbench-jupyter-datascience-cpu-py312-ubi9-odh-main-pull-request.yaml".pathChanged() || "jupyter/utils/**".pathChanged() || "jupyter/datascience/ubi9-python-3.12/**".pathChanged() || "jupyter/datascience/ubi9-python-3.12/start-notebook.sh".pathChanged() || "jupyter/datascience/ubi9-python-3.12/build-args/cpu.conf".pathChanged() || "jupyter/minimal/ubi9-python-3.12/prefetch-input/odh/**".pathChanged() || "jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli/**".pathChanged() )
       && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -46,6 +46,22 @@ spec:
     value: .
   - name: build-args-file
     value: jupyter/datascience/ubi9-python-3.12/build-args/cpu.conf
+  # Hermetic: Cachi2 prefetches gomod (mongocli), RPMs+generic (shared minimal/odh), pip (requirements.cpu.txt)
+  - name: hermetic
+    value: 'true'
+  - name: prefetch-input
+    value:
+    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli
+      type: gomod
+    - path: jupyter/minimal/ubi9-python-3.12/prefetch-input/odh
+      type: rpm
+    - path: jupyter/minimal/ubi9-python-3.12/prefetch-input/odh
+      type: generic
+    - path: jupyter/datascience/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: x86_64, ppc64le, s390x
+      requirements_files: [requirements.cpu.txt]
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
@@ -55,6 +71,14 @@ spec:
     secret:
       secretName: '{{ git_auth_secret }}'
   taskRunSpecs:
+  - pipelineTaskName: prefetch-dependencies
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
   - pipelineTaskName: build-images
     stepSpecs:
     - name: prepare-sboms
