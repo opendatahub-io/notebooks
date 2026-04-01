@@ -5,6 +5,9 @@ export async function waitForStableDOM(page: Page, pageRootSelector: string, che
     const parameters: [string, number, number] = [pageRootSelector, checkPeriod, timeout]
     await page.evaluate( ([pageRootSelector, checkPeriod, timeout]) => {
         const targetNode = document.querySelector(pageRootSelector);
+        if (!targetNode) {
+            throw new Error(`Selector "${pageRootSelector}" did not match any element`);
+        }
         const config = { attributes: true, childList: true, subtree: true };
 
         var started = performance.now();
@@ -23,7 +26,7 @@ export async function waitForStableDOM(page: Page, pageRootSelector: string, che
         };
 
         const observer = new MutationObserver(callback);
-        observer.observe(targetNode!, config);
+        observer.observe(targetNode, config);
 
         return new Promise<void>((resolve, reject) => {
             let loop = () => {
