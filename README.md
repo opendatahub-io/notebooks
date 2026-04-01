@@ -42,6 +42,10 @@ Using  `IMAGE_REGISTRY` and `RELEASE` variables you can overwrite the default va
 
 Using `CONTAINER_BUILD_CACHE_ARGS` (default: `--no-cache`), and `PUSH_IMAGES` variables you can further customize the build process.
 
+### Hermetic prefetch (`prefetch-input/`)
+
+Jupyter images that build **hermetically** (Konflux and local builds with Cachi2) share **repo-root** [`prefetch-input/`](prefetch-input/README.md): RPM lock inputs (`odh/`, `rhds/`), `repos/`, and the **mongocli** submodule. Each hermetic image directory under `jupyter/*/ubi9-python-3.12/` contains a **symlink** `prefetch-input` → `../../../prefetch-input`. **Code-server** keeps its own `codeserver/ubi9-python-3.12/prefetch-input/` (different dependency set). To prefetch dependencies locally, see [`scripts/lockfile-generators/README.md`](scripts/lockfile-generators/README.md).
+
 ### Local Execution
 
 The notebook can be run as container on the local systems.

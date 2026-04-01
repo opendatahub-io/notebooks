@@ -159,8 +159,9 @@ if [[ -n "$ACTIVATION_KEY" ]]; then
 fi
 
 # --- Variant selection ---
-# Each component has prefetch-input/odh/ (upstream, CentOS Stream packages)
-# and optionally prefetch-input/rhds/ (downstream, RHEL packages).
+# Each component uses COMPONENT_DIR/prefetch-input (often a symlink to the
+# repo-root prefetch-input/ for Jupyter hermetic images). Under that: odh/
+# (upstream, CentOS Stream packages) and optionally rhds/ (downstream, RHEL).
 # The variant determines which lockfiles are used for all four steps.
 #
 # In GHA CI, the template passes --rhds explicitly for subscription builds.
