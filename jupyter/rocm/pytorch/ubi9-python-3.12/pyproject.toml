@@ -5,16 +5,16 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # ROCm PyTorch packages (from AIPCC ROCm index)
-    "tensorboard~=2.20.0",
-    "torch==2.9.1",
-    "torchvision==0.24.1",
-    "triton~=3.5.1",
+    "tensorboard",
+    "torch",
+    "torchvision",
+    "triton",
 
     # Datascience and useful extensions
-    "codeflare-sdk~=0.35.0",
-    "feast~=0.61.0",
-    "skl2onnx~=1.20.0",
-    "onnxscript~=0.6.2",
+    "codeflare-sdk",
+    "feast",
+    "skl2onnx",
+    "onnxscript",
     "odh-notebooks-meta-workbench-datascience-deps",
 
     "odh-notebooks-meta-db-connectors-deps",
@@ -22,8 +22,8 @@ dependencies = [
     "odh-notebooks-meta-jupyterlab-datascience-deps",
 
     # Base packages
-    "wheel~=0.46.3",
-    "setuptools~=80.9.0",
+    "wheel",
+    "setuptools",
 ]
 
 [tool.uv.sources]
@@ -40,9 +40,4 @@ override-dependencies = [
     # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
     # appengine-python-standard which has an obnoxious urllib3<2 constraint
     "urllib3>=2.6.0",
-    # AIPCC-8698: python-lsp-server[all] has conflicting pyflakes/pycodestyle requirements
-    # The [all] extra pulls in linting tools we don't need at runtime
-    # Using >= instead of ~= to allow broader compatibility during resolution
-    # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
-    "python-lsp-server>=1.11.0",
 ]
