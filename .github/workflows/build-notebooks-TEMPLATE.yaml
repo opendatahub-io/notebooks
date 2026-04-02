@@ -208,6 +208,7 @@ jobs:
           TARGET: ${{ inputs.target }}
           REGISTRY: ${{ env.IMAGE_REGISTRY }}
           PLATFORM: ${{ inputs.platform }}
+          KONFLUX: ${{ inputs.konflux }}
         # language=python
         run: |
           import os, re, sys
@@ -220,6 +221,7 @@ jobs:
               TARGET: str
               REGISTRY: str
               PLATFORM: str
+              KONFLUX: str
 
               @classmethod
               def from_env(cls):
@@ -235,22 +237,31 @@ jobs:
           env = Env.from_env()
 
           sanitized_ref = sanitize(env.REF_NAME)
+          sanitized_platform = sanitize(env.PLATFORM)
 
-          # Total tag length = len(target) + 1(-) + len(ref) + 1(_) + len(sha) <= 128
-          # Therefore, max_ref_len = 128 - len(env.TARGET) - len(env.SHA) - 2
-          max_ref_len = 128 - len(env.TARGET) - len(env.SHA) - 2
+          # Build a suffix from build type and platform so that different
+          # odh/rhoai builds and architectures get distinct tags.
+          build_type = "rhoai" if env.KONFLUX == "true" else "odh"
+          suffix = f"{build_type}_{sanitized_platform}"
+
+          # 7-char SHA prefix is enough to identify a commit uniquely
+          short_sha = env.SHA[:7]
+
+          # Total tag = {target}-{ref}_{short_sha}_{suffix}
+          # Separators: 1 '-' + 2 '_' = 3 fixed chars
+          max_ref_len = 128 - len(env.TARGET) - len(short_sha) - len(suffix) - 3
 
           if max_ref_len < 1:
               print(f"::error::Target name '{env.TARGET}' ({len(env.TARGET)} chars) is too long to accommodate a branch name and commit SHA within the 128-character Docker tag limit.", file=sys.stderr)
               sys.exit(1)
 
-          image_tag = f"{sanitized_ref[:max_ref_len]}_{env.SHA}"
+          image_tag = f"{sanitized_ref[:max_ref_len]}_{short_sha}_{suffix}"
           full_tag = f"{env.TARGET}-{image_tag}"
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"IMAGE_TAG={image_tag}\n")
               f.write(f"OUTPUT_IMAGE={env.REGISTRY}:{full_tag}\n")
-              f.write(f"SANITIZED_PLATFORM={sanitize(env.PLATFORM)}\n")
+              f.write(f"SANITIZED_PLATFORM={sanitized_platform}\n")
 
       # endregion
 
