@@ -92,13 +92,17 @@ function install_packages() {
     PKGS+=("loguru")
 
     # AIPCC-5427: not supported on big endian machines
-    if [[ "$ARCH" != "s390x" ]]; then
+    # if [[ "$ARCH" != "s390x" ]]; then
         # RHELAI: pypdfium2
-        PKGS+=("libpdfium")
-    fi
+        # libpdfium is not available publicly
+        # PKGS+=("libpdfium")
+    # fi
 
     # RHELAI: pyzmq for vLLM
-    PKGS+=("zeromq >= 4.3.5")
+    # zeromq >= 4.3.5 is not available on ubi9
+    if [[ "${os_vendor}" == "centos" ]]; then
+        PKGS+=("zeromq >= 4.3.5")
+    fi
 
     # RHELAI: for h5py
     PKGS+=("hdf5")
@@ -128,13 +132,20 @@ function install_packages() {
     fi
 
     # For opencv-python-headless, torchaudio, torchvision with FFmpeg support
-    PKGS+=("ffmpeg-free-rhai")
+    # ffmpeg-free-rhai is not available publicly
+    # PKGS+=("ffmpeg-free-rhai")
 
     # Geospatial support in RHAIIS (pyproj, rasterio, shapely), AIPCC-6717
-    PKGS+=("gdal-libs" "proj")
+    # gdal-libs and proj are not available on ubi9
+    if [[ "${os_vendor}" == "centos" ]]; then
+        PKGS+=("gdal-libs" "proj")
+    fi
 
     # For onnx
-    PKGS+=("protobuf")
+    # protobuf is not available on ubi9
+    if [[ "${os_vendor}" == "centos" ]]; then
+        PKGS+=("protobuf")
+    fi
 
     # For memray
     PKGS+=("libunwind")
