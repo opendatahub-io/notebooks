@@ -131,6 +131,15 @@ class TestDataScienceLibs(unittest.TestCase):
         self.assertEqual(result.returncode, 0, f"'feast version' failed: {result.stderr}")
         print(f"✅ Feast test passed (version: {feast.__version__}).")
 
+    def test_mlflow(self):
+        """Tests MLflow module import and basic functionality."""
+        import mlflow  # pyright: ignore[reportMissingImports]
+
+        self.assertIsNotNone(mlflow.__version__, "MLflow version is not set.")
+        self.assertTrue(hasattr(mlflow, "start_run"), "MLflow does not have start_run function.")
+        self.assertTrue(hasattr(mlflow, "log_param"), "MLflow does not have log_param function.")
+        print(f"✅ MLflow test passed (version: {mlflow.__version__}).")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

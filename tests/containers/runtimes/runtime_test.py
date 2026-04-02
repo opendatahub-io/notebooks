@@ -56,6 +56,29 @@ class TestRuntimeImage:
         output = output_bytes.decode()
         assert exit_code == 0, f"'feast version' failed: {output}"
 
+    @allure.description("Check that MLflow module imports and core functions are available.")
+    def test_mlflow_import(self, runtime_image: conftest.Image) -> None:
+        if "-minimal-" in runtime_image.labels["name"]:
+            pytest.skip("MLflow is not installed in minimal runtime images.")
+
+        def check_mlflow():
+            # ruff: noqa: PLC0415 `import` should be at the top-level of a file
+            import mlflow  # pyright: ignore reportMissingImports
+
+            assert hasattr(mlflow, "start_run"), "MLflow does not have start_run function"
+            assert hasattr(mlflow, "log_param"), "MLflow does not have log_param function"
+            print(f"MLflow imported successfully (version: {mlflow.__version__})")
+
+        with running_image(runtime_image.name) as container:
+            exit_code, output_bytes = container.exec(
+                base_image_test.encode_python_function_execution_command_interpreter("python3", check_mlflow)
+            )
+
+        assert exit_code == 0, f"Python script execution failed. Output: {output_bytes}"
+        assert b"MLflow imported successfully" in output_bytes, (
+            f"Expected success message not found in output. Output: {output_bytes}"
+        )
+
 
 @contextlib.contextmanager
 def running_image(image: str):
