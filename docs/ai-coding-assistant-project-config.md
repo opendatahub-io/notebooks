@@ -93,7 +93,7 @@ The practical problem: your team has Jira conventions, coding standards, or work
 
 Each tool's instructions file contains a one-line pointer to the canonical source.
 
-```
+```markdown
 # CLAUDE.md
 ## References
 - Jira conventions: see `.cursor/rules/jira-conventions.mdc`
@@ -106,7 +106,7 @@ Each tool's instructions file contains a one-line pointer to the canonical sourc
 
 Place skills in `.agents/skills/` where 32+ tools can discover them natively.
 
-```
+```text
 .agents/skills/jira-reference/
     SKILL.md    # name + description frontmatter, then instructions
 ```
