@@ -108,7 +108,10 @@ endef
 define push_image
 	$(eval IMAGE_NAME := $(IMAGE_REGISTRY):$(subst /,-,$(1))-$(IMAGE_TAG))
 	$(info # Pushing $(IMAGE_NAME) image...)
-	$(CONTAINER_ENGINE) push $(IMAGE_NAME)
+	DIGEST_FILE=$$(mktemp)
+	$(CONTAINER_ENGINE) push --digestfile="$${DIGEST_FILE}" $(IMAGE_NAME)
+	echo "# Pushed $(IMAGE_NAME)@$$(cat $${DIGEST_FILE})"
+	rm -f "$${DIGEST_FILE}"
 endef
 
 # Build and push the notebook images:
