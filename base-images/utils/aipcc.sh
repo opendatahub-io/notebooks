@@ -22,14 +22,14 @@ function install_packages() {
     # additional tools
     PKGS+=("skopeo" "jq" "nvtop")
     # additional developer tools
-    PKGS+=("make" "ninja-build" "gdb")
+    PKGS+=("make" "ninja-build >= 1.11.1" "gdb")
     # PKGS+=("vim")
 
     # for LANG / LC_ALL=en_US.UTF-8
     PKGS+=("glibc-langpack-en")
 
     # compiler for Torch Dynamo JIT and Triton
-    PKGS+=("gcc")
+    PKGS+=("gcc" "gcc-c++")
 
     # font and image libraries
     PKGS+=("freetype" "lcms2" "libjpeg" "libpng" "libtiff" "libwebp" "openjpeg2")
@@ -91,8 +91,14 @@ function install_packages() {
     # RHELAI: loguru
     PKGS+=("loguru")
 
+    # AIPCC-5427: not supported on big endian machines
+    if [[ "$ARCH" != "s390x" ]]; then
+        # RHELAI: pypdfium2
+        PKGS+=("libpdfium")
+    fi
+
     # RHELAI: pyzmq for vLLM
-    PKGS+=("zeromq")
+    PKGS+=("zeromq >= 4.3.5")
 
     # RHELAI: for h5py
     PKGS+=("hdf5")
@@ -121,10 +127,31 @@ function install_packages() {
         PKGS+=("libqhull_r")
     fi
 
+    # For opencv-python-headless, torchaudio, torchvision with FFmpeg support
+    PKGS+=("ffmpeg-free-rhai")
+
+    # Geospatial support in RHAIIS (pyproj, rasterio, shapely), AIPCC-6717
+    PKGS+=("gdal-libs" "proj")
+
+    # For onnx
+    PKGS+=("protobuf")
+
+    # For memray
+    PKGS+=("libunwind")
+
+    # AIPCC-11329: For nixl UCCL backend
+    PKGS+=("glog")
+
     PKGS+=(
         "${PYTHON:?}"
         "${PYTHON}-devel"
     )
+
+    # AIPCC-9953, required by tacozip
+    PKGS+=("libzip")
+
+    # For mysqlclient
+    PKGS+=("mariadb-connector-c")
 
     dnf install "${DNF_OPTS[@]}" "${PKGS[@]}"
 }
