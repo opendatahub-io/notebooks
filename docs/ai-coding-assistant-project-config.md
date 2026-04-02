@@ -25,7 +25,7 @@ The spec recommends scanning both a **client-specific directory** and the **`.ag
 | User | `~/.<your-client>/skills/` | Tool's native location |
 | User | `~/.agents/skills/` | Cross-client sharing |
 
-**Adopters** (32+): Claude Code, Cursor, Gemini CLI, GitHub Copilot (+ VS Code), OpenAI Codex, JetBrains Kiro, JetBrains Junie, Roo Code, OpenCode, OpenHands, Goose, Spring AI, Databricks, Snowflake, Mistral Vibe, and others. Full list at [agentskills.io](https://agentskills.io).
+**Adopters** (45+): Claude Code, Cursor, Gemini CLI, GitHub Copilot (+ VS Code), OpenAI Codex, JetBrains Kiro, JetBrains Junie, Roo Code, OpenCode, OpenHands, Goose, Spring AI, Databricks, Snowflake, Mistral Vibe, and others. Full list at [agentskills.io](https://agentskills.io).
 
 The Vercel Labs [`skills`](https://github.com/vercel-labs/skills) CLI (`npx skills add/list/remove`) is a package manager that installs community-maintained skills into the appropriate directories for each tool.
 
@@ -104,7 +104,7 @@ Each tool's instructions file contains a one-line pointer to the canonical sourc
 
 ### Approach 2: Agent Skills in `.agents/skills/`
 
-Place skills in `.agents/skills/` where 32+ tools can discover them natively.
+Place skills in `.agents/skills/` where 45+ tools can discover them natively.
 
 ```text
 .agents/skills/jira-reference/
@@ -121,14 +121,14 @@ Symlink one tool's directory to another (e.g., `.claude/skills/jira` -> `.cursor
 **Pros:** Single source of truth.
 **Cons:** Fragile across OS and git. Frontmatter formats differ between tools.
 
-The [`dotagents`](https://github.com/iannuttall/dotagents) CLI (663 stars) automates this — it maintains `.agents/` as the source of truth and symlinks into each tool's expected directory (`.claude/skills/`, `.cursor/skills/`, etc.).
+The [`dotagents`](https://github.com/iannuttall/dotagents) CLI automates this — it maintains `.agents/` as the source of truth and symlinks into each tool's expected directory (`.claude/skills/`, `.cursor/skills/`, etc.). Note: Sentry maintains a separate [`getsentry/dotagents`](https://github.com/getsentry/dotagents) that takes a different approach, declaring skills, MCP servers, and hooks in a single `agents.toml` file.
 
 ### Approach 4: Vercel Labs `skills` CLI
 
 The [`skills`](https://github.com/vercel-labs/skills) npm package (`npx skills add/list/remove`) is a package manager for community-maintained Agent Skills. It downloads SKILL.md files and installs them into each tool's expected directory.
 
 ```bash
-npx skills add vercel/ai    # installs into .claude/skills/, .agents/skills/, etc.
+npx skills add vercel-labs/agent-skills    # installs into .claude/skills/, .agents/skills/, etc.
 npx skills list              # shows installed skills
 ```
 
@@ -146,5 +146,5 @@ npx skills list              # shows installed skills
 1. **Keep instructions in one canonical file** and point other tools to it
 2. **For simple project context**, use the tool's native instructions file (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`)
 3. **For complex reusable workflows**, use Agent Skills in `.agents/skills/` for cross-tool portability, or `.claude/skills/` for Claude-specific features
-4. **For cross-tool teams**, adopt `.agents/skills/` — it's the closest thing to a universal standard, with 32+ tools supporting it
+4. **For cross-tool teams**, adopt `.agents/skills/` — it's the closest thing to a universal standard, with 45+ tools supporting it
 5. **For community skills**, use the Vercel Labs `skills` CLI or `dotagents` to manage installation and syncing
