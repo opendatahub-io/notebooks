@@ -116,7 +116,7 @@ Place skills in `.agents/skills/` where 45+ tools can discover them natively.
 
 ### Approach 3: Symlinks
 
-Symlink one tool's directory to another (e.g., `.claude/skills/jira` -> `.cursor/rules/jira-conventions.mdc`).
+Symlink equivalent structures (e.g., `.claude/skills/jira-reference` -> `.agents/skills/jira-reference`).
 
 **Pros:** Single source of truth.
 **Cons:** Fragile across OS and git. Frontmatter formats differ between tools.
