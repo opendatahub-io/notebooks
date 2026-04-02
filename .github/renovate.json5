@@ -10,10 +10,6 @@
   "extends": [
     "config:recommended",
     ":gitSignOff",
-    ":disableDependencyDashboard",
-  ],
-  "ignorePresets": [
-    ":dependencyDashboard",
   ],
   "onboarding": false,
   "requireConfig": "optional",
@@ -165,6 +161,6 @@
     "^rpm-lockfile-prototype rpms.in.yaml$",
   ],
   "updateNotScheduled": false,
-  "dependencyDashboard": false,
+  "dependencyDashboard": true,
   "stopUpdatingLabel": "konflux-nudge",
 }
