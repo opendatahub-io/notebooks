@@ -17,12 +17,6 @@ Index Modes:
   rh-index       -- Uses internal Red Hat wheel indexes. Generates uv.lock.d/pylock.<flavor>.toml.
   public-index   -- Uses public PyPI index and updates pylock.toml in place.
 
-Fallback Index (RHAIENG-3071):
-  For CUDA and ROCm flavors, if CPU_INDEX_URL is defined in the build-args/*.conf file,
-  it will be added as a fallback index for packages not available in the specialized indexes.
-  The resolver also enables `--index-strategy=unsafe-best-match` for these cases,
-  so uv can select versions from fallback indexes when needed.
-
 Usage:
   1. Lock using auto mode (default) for all projects in MAIN_DIRS::
 
@@ -324,18 +318,7 @@ def get_index_flags(project_dir: Path, flavor: str, log: LogBuffer) -> list[str]
         return None
 
     index_url = ensure_json_format_param(index_url)
-    flags = [f"--default-index={index_url}", f"--index={index_url}"]
-
-    # For CUDA and ROCm flavors, add CPU index as fallback (RHAIENG-3071).
-    # uv defaults to `first-index`, which can block true fallback when a package
-    # exists on the primary index but not at a compatible version.
-    if flavor in ("cuda", "rocm"):
-        cpu_index_url = read_conf_value(conf_file, "CPU_INDEX_URL")
-        if cpu_index_url:
-            cpu_index_url = ensure_json_format_param(cpu_index_url)
-            flags.append(f"--index={cpu_index_url}")
-            flags.append("--index-strategy=unsafe-best-match")
-            log.print("  📎 Using CPU index as fallback (--index-strategy=unsafe-best-match)")
+    flags = [f"--default-index={index_url}"]
 
     return flags
 
