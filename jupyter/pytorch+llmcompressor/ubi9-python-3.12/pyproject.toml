@@ -6,25 +6,25 @@ requires-python = "==3.12.*"
 
 # https://docs.astral.sh/uv/concepts/projects/workspaces/#when-not-to-use-workspaces
 dependencies = [
-    "uv==0.11.0",
-    "micropipenv[toml]==1.10.0",
+    "uv",
+    "micropipenv[toml]",
 
     # PyTorch packages
-    "tensorboard~=2.20.0",
-    "torch==2.9.1",
-    "torchvision~=0.24.1",
+    "tensorboard",
+    "torch",
+    "torchvision",
 
     # llmcompressor packages
     # see https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757007056725559?thread_ts=1756924127.136609&cid=C0961HQ858Q
-
-    # llmcompressor packages
     "odh-notebooks-meta-llmcompressor-deps",
-    "lm-eval~=0.4.9",
+    # RHOAI 3.4.0: required alpha for compressed-tensors / llmcompressor stack
+    "speculators==0.4.0a1",
+    "lm-eval",
 
     # Datascience and useful extensions
-    "feast~=0.61.0",
-    "skl2onnx~=1.20.0",
-    "onnxscript~=0.6.2",
+    "feast",
+    "skl2onnx",
+    "onnxscript",
     "odh-notebooks-meta-workbench-datascience-deps",
 
     "odh-notebooks-meta-db-connectors-deps",
@@ -32,9 +32,15 @@ dependencies = [
     "odh-notebooks-meta-jupyterlab-datascience-deps",
 
     # Base packages
-    "wheel~=0.46.3",
-    "setuptools~=80.9.0",
+    "wheel",
+    "setuptools",
 ]
+
+# speculators 0.4.0a1 is published on PyPI; RH CUDA index may not mirror pre-releases yet
+[[tool.uv.index]]
+name = "pypi-explicit"
+url = "https://pypi.org/simple"
+explicit = true
 
 ## https://docs.astral.sh/uv/concepts/resolution/#dependency-metadata
 #[[tool.uv.dependency-metadata]]
@@ -47,6 +53,10 @@ dependencies = [
 
 # https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-sources
 [tool.uv.sources]
+# Resolve from PyPI: RH CUDA indexes publish linux-only uv wheels (breaks `uv run` on macOS dev hosts).
+uv = { index = "pypi-explicit" }
+micropipenv = { index = "pypi-explicit" }
+speculators = { index = "pypi-explicit" }
 # https://github.com/astral-sh/uv/issues/13067#issuecomment-2824190008
 odh-notebooks-meta-llmcompressor-deps = { path = "../../../dependencies/odh-notebooks-meta-llmcompressor-deps" }
 odh-notebooks-meta-workbench-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
@@ -65,8 +75,4 @@ override-dependencies = [
     # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
     # appengine-python-standard which has an obnoxious urllib3<2 constraint
     "urllib3>=2.6.0",
-    # AIPCC-8698: python-lsp-server[all] has conflicting pyflakes/pycodestyle requirements
-    # Using >= instead of ~= to allow broader compatibility during resolution
-    # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
-    "python-lsp-server>=1.11.0",
 ]

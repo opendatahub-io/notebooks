@@ -438,6 +438,9 @@ validate-rstudio-image: bin/kubectl
 #   gmake refresh-lock-files                                                   <- auto mode (rh-index if uv.lock.d/ exists, else public-index)
 #   gmake refresh-lock-files INDEX_MODE=public-index                           <- force public-index
 #   gmake refresh-lock-files INDEX_MODE=public-index DIR=jupyter/minimal/ubi9-python-3.12
+# Optional: UV_EXTRA_INDEX_URL / PIP_EXTRA_INDEX_URL (e.g. RH CUDA *-test/simple/) are
+# forwarded to the lock generator as UV_LOCK_* / PIP_LOCK_* only, then unset so
+# `uv run` at the repo root is not affected (see scripts/pylocks_generator.py).
 # ======================================================================================
 DIR ?=
 .PHONY: refresh-lock-files
@@ -445,7 +448,11 @@ refresh-lock-files:
 	@echo "==================================================================="
 	@echo "🔁 Refreshing lock files using INDEX_MODE=$(INDEX_MODE)"
 	@echo "==================================================================="
-	@cd $(ROOT_DIR) && ./uv run scripts/pylocks_generator.py $(INDEX_MODE) $(DIR)
+	@cd $(ROOT_DIR) && \
+		UV_LOCK_EXTRA_INDEX_URL="$(UV_EXTRA_INDEX_URL)" \
+		PIP_LOCK_EXTRA_INDEX_URL="$(PIP_EXTRA_INDEX_URL)" \
+		env -u UV_EXTRA_INDEX_URL -u PIP_EXTRA_INDEX_URL \
+		./uv run scripts/pylocks_generator.py $(INDEX_MODE) $(DIR)
 
 # This is only for the workflow action
 # For running manually, set the required environment variables
