@@ -137,12 +137,34 @@
       // Exception: allow major/minor on main branch of upstream repo only.
       // main is the development branch where version bumps are expected.
       // Forks (e.g. red-hat-data-services/notebooks) and release branches stay blocked.
+      //
+      // NOTE: Renovate warns "You must configure baseBranchPatterns in order to
+      // use them inside matchBaseBranches."  This warning is cosmetic:
+      //   - MintMaker sets baseBranchPatterns per-branch at the self-hosted level
+      //     (konflux-ci/mintmaker internal/component/github/github.go), so
+      //     matchBaseBranches works correctly at runtime.
+      //   - Do NOT add a top-level baseBranches/baseBranchPatterns here — repo-level
+      //     baseBranchPatterns overrides MintMaker's per-branch config, breaking
+      //     release branch processing on the downstream fork
+      //     (red-hat-data-services/notebooks: rhoai-2.25, rhoai-3.3, etc.).
+      //     Ref: https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1774946461904449
+      //   - Local dry-runs (--platform=local) cannot evaluate matchBaseBranches;
+      //     this is a known limitation of local mode.
       "description": "Allow major/minor base image upgrades on upstream main",
       "matchManagers": ["custom.regex"],
       "matchUpdateTypes": ["major", "minor"],
       "matchBaseBranches": ["main"],
       "matchRepositories": ["opendatahub-io/notebooks"],
       "enabled": true,
+    },
+    {
+      // ubi9/go-toolset tags use Go version (1.24, 1.25) but Red Hat also
+      // publishes UBI version tags (9.7).  Renovate can't tell them apart
+      // and proposes 1.24 → 9.7 as a "major" upgrade.  Restrict to 1.x.
+      "description": "Restrict go-toolset to Go 1.x version tags",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["registry.access.redhat.com/ubi9/go-toolset"],
+      "allowedVersions": "/^1\\./",
     },
     {
       "description": "Track registry.redhat.io base images",

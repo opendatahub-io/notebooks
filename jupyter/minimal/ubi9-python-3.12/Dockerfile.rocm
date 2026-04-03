@@ -23,6 +23,10 @@ RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # [HERMETIC] Configure package repos: local hermeto repos for testing, or Konflux-injected repos.
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/*.repo \
         && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
@@ -75,6 +79,10 @@ RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # [HERMETIC] Configure package repos: local hermeto repos for testing, or Konflux-injected repos.
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/*.repo \
         && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \

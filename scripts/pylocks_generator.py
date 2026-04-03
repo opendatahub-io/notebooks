@@ -340,6 +340,29 @@ def get_index_flags(project_dir: Path, flavor: str, log: LogBuffer) -> list[str]
     return flags
 
 
+def lock_extra_index_flags_from_env() -> list[str]:
+    """Extra ``--index=`` flags for ``uv pip compile`` only.
+
+    ``UV_EXTRA_INDEX_URL`` / ``PIP_EXTRA_INDEX_URL`` must **not** be set while running
+    ``uv run`` at the repo root: they make uv prefer RH indexes for *all* packages
+    (e.g. ``uv``) and break macOS lock generation. The Makefile copies them into
+    ``UV_LOCK_EXTRA_INDEX_URL`` / ``PIP_LOCK_EXTRA_INDEX_URL`` and unsets the originals.
+    """
+    seen: set[str] = set()
+    flags: list[str] = []
+    for key in ("UV_LOCK_EXTRA_INDEX_URL", "PIP_LOCK_EXTRA_INDEX_URL"):
+        raw = (os.environ.get(key) or "").strip()
+        if not raw:
+            continue
+        for part in re.split(r"[\s,]+", raw):
+            url = part.strip()
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            flags.append(f"--index={ensure_json_format_param(url)}")
+    return flags
+
+
 def run_lock(
     project_dir: Path,
     flavor: str,
@@ -407,10 +430,28 @@ def run_lock(
     cmd.append(f"--exclude-newer={exclude_newer}")
 
     cmd.extend(index_flags)
+    extra_idx = lock_extra_index_flags_from_env()
+    if extra_idx:
+        cmd.extend(extra_idx)
+        log.print(
+            "  📎 Extra lock indexes from UV_LOCK_EXTRA_INDEX_URL / PIP_LOCK_EXTRA_INDEX_URL"
+        )
+
+    compile_env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in ("UV_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL")
+    }
 
     try:
         result = subprocess.run(
-            cmd, cwd=project_dir, capture_output=True, text=True, check=False, timeout=600
+            cmd,
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=600,
+            env=compile_env,
         )
     except subprocess.TimeoutExpired:
         log.warning(f"Timed out generating {desc} in {project_dir}")
