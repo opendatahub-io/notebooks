@@ -268,7 +268,9 @@ function _create_test_versions_source_of_truth()
         exit 1
     fi
 
-    # Get the requirements file path for this notebook to extract actual package versions
+    # Get the requirements file path for this notebook to extract actual package versions.
+    # CUDA/ROCm images use requirements.{cuda,rocm}.txt only (no requirements.cpu.txt); using
+    # .cpu.txt there misses pins and falls back to stale defaults (e.g. nbgitpuller 1.2 vs 1.3).
     local notebook_dir
     notebook_dir="$(_get_jupyter_notebook_directory "${notebook_id}")"
     # CUDA/ROCM stacks use requirements.{cuda,rocm}.txt only (e.g. pytorch+llmcompressor has no requirements.cpu.txt)
@@ -293,7 +295,7 @@ function _create_test_versions_source_of_truth()
 
     local nbgitpuller_version
     nbgitpuller_version="$(_get_package_version_from_requirements 'nbgitpuller' "${requirements_file}")"
-    nbgitpuller_version="${nbgitpuller_version:-1.2}"
+    nbgitpuller_version="${nbgitpuller_version:-1.3}"
 
     expected_versions=$("${yqbin}" '.spec.tags[0].annotations | .["opendatahub.io/notebook-software"] + .["opendatahub.io/notebook-python-dependencies"]' "${test_version_truth_filepath}" |
         "${yqbin}" -N -p json -o yaml |
