@@ -55,6 +55,10 @@ RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 # [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
 # Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
 # its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/*.repo \
         && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
@@ -94,6 +98,10 @@ RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 # [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
 # Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
 # its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/*.repo \
         && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
@@ -131,6 +139,10 @@ WORKDIR /opt/app-root/bin
 # [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
 # Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
 # its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/*.repo \
         && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
