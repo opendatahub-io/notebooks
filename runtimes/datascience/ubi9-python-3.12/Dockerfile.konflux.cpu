@@ -61,10 +61,10 @@ if [ "$TARGETARCH" = "s390x" ] || [ "$TARGETARCH" = "ppc64le" ]; then
 fi
 # Additional dev tools only for s390x
 if [ "$TARGETARCH" = "s390x" ]; then
-    PACKAGES+=("gcc" "gcc-c++" "make" "openssl-devel" "autoconf" "automake" "libtool" "cmake" "python3-devel" "pybind11-devel" "openblas-devel" "unixODBC-devel" "openssl" "zlib-devel")
+    PACKAGES+=("gcc" "gcc-c++" "make" "openssl-devel" "autoconf" "automake" "libtool" "cmake" "python3-devel" "pybind11-devel" "openblas-devel" "openssl" "zlib-devel")
 fi
 if [ "$TARGETARCH" = "ppc64le" ]; then
-    PACKAGES+=(git gcc-toolset-13 make wget unzip rust cargo unixODBC-devel cmake ninja-build)
+    PACKAGES+=(git gcc-toolset-13 make wget unzip rust cargo cmake ninja-build)
 fi
 if [ -n "$PACKAGES" ]; then
     echo "Installing: $PACKAGES"
