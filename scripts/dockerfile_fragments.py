@@ -60,6 +60,7 @@ def sanity_check(dockerfile: pathlib.Path, replacements: dict[str, str]):
                         )
 
 
+
 def get_dockerfile_flavor(dockerfile: pathlib.Path) -> str | None:
     """Extract flavor (cpu/cuda/rocm) from a Dockerfile name."""
     for flavor in ("cpu", "cuda", "rocm"):
@@ -212,14 +213,8 @@ def main():
         "Subscribe with subscription manager": textwrap.dedent(subscription_manager_register_refresh),
         "upgrade first to avoid fixable vulnerabilities": textwrap.dedent(ntb.process_template_with_indents(rt"""
             {subscription_manager_register_refresh}
-            # Problem: The operation would result in removing the following protected packages: systemd
-            #  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
-            # Solution: --best --skip-broken does not work either, so use --nobest
-            RUN /bin/bash <<'EOF'
-            set -Eeuxo pipefail
-            dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
-            dnf clean all -y
-            EOF
+            RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+                /utils/dnf-helper.sh upgrade
 
         """)),
         MICROPIPENV_UV_REPLACEMENT_KEY: build_micropipenv_uv_install_fragment(

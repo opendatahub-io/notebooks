@@ -34,7 +34,8 @@ RUN set -Eeuxo pipefail && \
 
 # Install useful OS packages
 # remove skopeo, CVE-2025-4674
-RUN dnf install -y perl mesa-libGL && dnf clean all && rm -rf /var/cache/yum
+RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+    /utils/dnf-helper.sh install perl mesa-libGL
 
 # Other apps and tools installed as default user
 USER 1001

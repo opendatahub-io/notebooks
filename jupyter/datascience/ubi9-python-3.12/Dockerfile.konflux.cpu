@@ -154,9 +154,8 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
     fi
 
-RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat protobuf \
-    && dnf clean all \
-    && rm -rf /var/cache/yum
+RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+    /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat protobuf
 
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 
