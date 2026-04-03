@@ -52,10 +52,11 @@ USER 0
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# COPY committed lockfile so this layer invalidates when RPM prefetch input changes.
-COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
-
 # [HERMETIC] Configure package repos for local hermeto testing (Konflux injects repos when LOCAL_BUILD is false).
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/*.repo \
         && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
@@ -96,7 +97,10 @@ RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
+
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/*.repo \
@@ -141,10 +145,12 @@ WORKDIR /opt/app-root/bin
 
 USER 0
 
-# Invalidate cached layer when RPM prefetch input changes.
-COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
 
 # [HERMETIC] Configure package repos for local hermeto testing (Konflux injects repos when LOCAL_BUILD is false).
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/*.repo \
         && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \

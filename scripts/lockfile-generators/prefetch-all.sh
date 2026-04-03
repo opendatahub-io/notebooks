@@ -164,11 +164,12 @@ fi
 # (upstream, CentOS Stream packages) and optionally rhds/ (downstream, RHEL).
 # The variant determines which lockfiles are used for all four steps.
 #
-# In GHA CI, the template passes --rhds explicitly for subscription builds.
-# For standalone/local use, auto-detect: if the caller provided subscription
-# credentials and the rhds lockfiles exist, switch automatically.
+# In GHA CI, the template passes --rhds explicitly for subscription builds;
+# secrets are globally available so auto-detection would wrongly switch ODH
+# builds to RHDS, contaminating the layer cache (see #3256).
+# For standalone/local use, auto-detect from credentials when not in CI.
 PREFETCH_DIR="$COMPONENT_DIR/prefetch-input"
-if [[ "$VARIANT" == "odh" ]] && [[ -n "$ACTIVATION_KEY" ]] && [[ -d "$PREFETCH_DIR/rhds" ]]; then
+if [[ -z "${CI:-}" ]] && [[ "$VARIANT" == "odh" ]] && [[ -n "$ACTIVATION_KEY" ]] && [[ -d "$PREFETCH_DIR/rhds" ]]; then
   echo "Subscription credentials provided — switching to RHDS variant"
   VARIANT="rhds"
 fi
