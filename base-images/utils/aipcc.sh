@@ -22,7 +22,12 @@ function install_packages() {
     # additional tools
     PKGS+=("skopeo" "jq" "nvtop")
     # additional developer tools
-    PKGS+=("make" "ninja-build >= 1.11.1" "gdb")
+    # COPR has ninja-build 1.11.1+, ubi9 CRB only has 1.10.2
+    if [[ "${os_vendor}" == "centos" ]]; then
+        PKGS+=("make" "ninja-build >= 1.11.1" "gdb")
+    else
+        PKGS+=("make" "ninja-build" "gdb")
+    fi
     # PKGS+=("vim")
 
     # for LANG / LC_ALL=en_US.UTF-8
