@@ -99,9 +99,11 @@ function install_packages() {
     # fi
 
     # RHELAI: pyzmq for vLLM
-    # zeromq >= 4.3.5 is not available on ubi9
+    # COPR has zeromq 4.3.5, EPEL (ubi9) only has 4.3.4; both provide libzmq.so.5
     if [[ "${os_vendor}" == "centos" ]]; then
         PKGS+=("zeromq >= 4.3.5")
+    else
+        PKGS+=("zeromq")
     fi
 
     # RHELAI: for h5py
