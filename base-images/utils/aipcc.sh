@@ -99,12 +99,7 @@ function install_packages() {
     # fi
 
     # RHELAI: pyzmq for vLLM
-    # COPR has zeromq 4.3.5, EPEL (ubi9) only has 4.3.4; both provide libzmq.so.5
-    if [[ "${os_vendor}" == "centos" ]]; then
-        PKGS+=("zeromq >= 4.3.5")
-    else
-        PKGS+=("zeromq")
-    fi
+    PKGS+=("zeromq >= 4.3.5")
 
     # RHELAI: for h5py
     PKGS+=("hdf5")
@@ -410,16 +405,12 @@ function uninstall_epel() {
 # COPR repo with newer rebuilds of EPEL packages (e.g. hdf5 with libhdf5.so.310)
 # https://copr.fedorainfracloud.org/coprs/aaiet-notebooks/rhelai-el9/
 function install_copr() {
-    if [[ "$(get_os_vendor)" == "centos" ]]; then
-        dnf install "${DNF_OPTS[@]}" 'dnf-command(copr)'
-        dnf copr enable -y aaiet-notebooks/rhelai-el9
-    fi
+    dnf install "${DNF_OPTS[@]}" 'dnf-command(copr)'
+    dnf copr enable -y aaiet-notebooks/rhelai-el9
 }
 
 function uninstall_copr() {
-    if [[ "$(get_os_vendor)" == "centos" ]]; then
-        dnf copr disable -y aaiet-notebooks/rhelai-el9
-    fi
+    dnf copr disable -y aaiet-notebooks/rhelai-el9
 }
 
 # AIPCC bases enable codeready-builder, so we need to do the CentOS equivalent
