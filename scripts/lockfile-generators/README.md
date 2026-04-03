@@ -30,7 +30,7 @@ to process and where to find them:
     requirements_files: ["requirements.cpu.txt"]
   - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/extensions
     type: npm                                              # package-lock.json (many)
-  - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli
+  - path: prefetch-input/mongocli
     type: gomod                                            # go.mod + go.sum (Go modules)
   # ... more npm entries for code-server root, build/, test/, patched lockfiles, etc.
 ```
@@ -205,7 +205,7 @@ python3 scripts/lockfile-generators/create-artifact-lockfile.py \
     --tekton-file .tekton/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-odh-main-pull-request.yaml
 # Or a single directory with go.mod + go.sum:
 ./scripts/lockfile-generators/create-go-lockfile.sh \
-    --prefetch-dir jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli
+    --prefetch-dir prefetch-input/mongocli
 ```
 
 > **Note:** The `--download` flag (and `download-npm.sh`) fetches packages into

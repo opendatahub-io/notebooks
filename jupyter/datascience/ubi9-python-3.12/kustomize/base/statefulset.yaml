@@ -32,11 +32,12 @@ spec:
             - name: notebook-port
               protocol: TCP
               containerPort: 8888
-          # Generous delays for slow or constrained nodes (e.g. ppc64le in CI)
+          # Generous delays for slow or constrained nodes (e.g. ppc64le in CI).
+          # Liveness must allow Jupyter + datascience deps to bind before first check (avoids restart loops).
           livenessProbe:
             tcpSocket:
               port: notebook-port
-            initialDelaySeconds: 30
+            initialDelaySeconds: 120
             periodSeconds: 10
             successThreshold: 1
             failureThreshold: 6
@@ -49,10 +50,11 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             failureThreshold: 6
+          # Jupyter + papermill share the pod cgroup; keep headroom for single-cell datascience tests on ppc64le.
           resources:
             limits:
               cpu: 500m
-              memory: 2Gi
+              memory: 4Gi
             requests:
               cpu: 500m
-              memory: 2Gi
+              memory: 4Gi

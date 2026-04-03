@@ -19,8 +19,7 @@ metadata:
         ".tekton/odh-workbench-jupyter-minimal-cpu-py312-ubi9-odh-main-pull-request.yaml".pathChanged() ||
         "jupyter/utils/**".pathChanged() ||
         "jupyter/minimal/ubi9-python-3.12/**".pathChanged() ||
-        "jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf".pathChanged() ||
-        "jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/odh/**".pathChanged()
+        "jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf".pathChanged()
       ) && body.repository.full_name == "opendatahub-io/notebooks"
   labels:
     appstudio.openshift.io/application: opendatahub-release
@@ -53,14 +52,14 @@ spec:
     value: .
   - name: build-args-file
     value: jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf
-  # Hermetic build: RPMs + generic artifacts shared with jupyter/pytorch+llmcompressor prefetch-input/odh; pip from requirements.cpu.txt
+  # Hermetic build: RPMs + generic artifacts from repo-root prefetch-input/odh; pip from requirements.cpu.txt
   - name: hermetic
     value: 'true'
   - name: prefetch-input
     value:
-    - path: jupyter/minimal/ubi9-python-3.12/prefetch-input/odh
+    - path: prefetch-input/odh
       type: rpm
-    - path: jupyter/minimal/ubi9-python-3.12/prefetch-input/odh
+    - path: prefetch-input/odh
       type: generic
     - path: jupyter/minimal/ubi9-python-3.12
       type: pip

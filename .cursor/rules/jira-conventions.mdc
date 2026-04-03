@@ -1,0 +1,60 @@
+---
+description: Jira project IDs, custom fields, and conventions for creating issues in RHAIENG and related projects
+alwaysApply: false
+---
+
+# Jira Conventions for Notebooks Team
+
+## Atlassian Cloud Instance
+
+- **Site**: `redhat.atlassian.net`
+- **Cloud ID (UUID)**: `2b9e35e3-6bd3-4cec-b838-f4249ee02432`
+- Either value works as `cloudId` in MCP calls (the schema accepts "UUID or site URL"). Use the UUID directly to avoid the agent making a preliminary `getAccessibleAtlassianResources` call to discover it.
+
+## Projects
+
+- **RHAIENG** -- engineering work (Epics, Stories, Tasks, Bugs)
+- **RHAIRFE** -- inbound feature requests (Feature Request type)
+- **RHAISTRAT** -- strategy-level Initiatives and Features
+
+## Component and Team
+
+- **Component**: `Notebooks` (id: `49589`)
+- **Team** (custom field `customfield_10001`): pass as a plain string ID `ec74d716-af36-4b3c-950f-f79213d08f71-62` (displays as "Notebooks" / "AAIET Notebooks")
+
+## Key Custom Fields (RHAIENG)
+
+| Field | Field ID | Notes |
+|-------|----------|-------|
+| Team | `customfield_10001` | Atlassian team type; pass the team UUID string directly |
+| Epic Link | `customfield_10014` | Legacy field; prefer `parent` for linking Stories to Epics |
+| Epic Name | `customfield_10011` | Auto-populated from summary |
+
+## Issue Hierarchy (RHAIENG)
+
+- **Outcome** (level 3)
+- **Initiative / Feature / Feature Request** (level 2)
+- **Epic** (level 1) -- use `parent` field to link to a level-2 issue (works cross-project)
+- **Story / Task / Bug / Spike** (level 0) -- use `parent` field to link to an Epic
+
+## Creating Issues via MCP
+
+- Use `createJiraIssue` with `cloudId: "redhat.atlassian.net"`
+- Components go in `additional_fields`: `{"components": [{"name": "Notebooks"}]}`
+- Team goes in `additional_fields`: `{"customfield_10001": "ec74d716-af36-4b3c-950f-f79213d08f71-62"}`
+- Use `contentFormat: "markdown"` for description
+- Cross-project parent links work (e.g., RHAIENG Epic parented to RHAIRFE Feature Request)
+
+## Link Types (commonly used)
+
+- `Related` (id: 10077) -- general association
+- `Blocks` (id: 10000) -- dependency
+- `Depend` (id: 10076) -- dependency (alternative)
+
+## Recently Created Issues (reference)
+
+- Epic [RHAIENG-4244](https://redhat.atlassian.net/browse/RHAIENG-4244) -- ARM workbench support, parented to RHAIRFE-1439
+  - [RHAIENG-4245](https://redhat.atlassian.net/browse/RHAIENG-4245) -- Konflux multi-arch config
+  - [RHAIENG-4246](https://redhat.atlassian.net/browse/RHAIENG-4246) -- Review Gerard's ARM spike
+  - [RHAIENG-4247](https://redhat.atlassian.net/browse/RHAIENG-4247) -- Initial ARM testing
+  - [RHAIENG-4248](https://redhat.atlassian.net/browse/RHAIENG-4248) -- Ongoing ARM regression testing

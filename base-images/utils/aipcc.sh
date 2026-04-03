@@ -22,14 +22,19 @@ function install_packages() {
     # additional tools
     PKGS+=("skopeo" "jq" "nvtop")
     # additional developer tools
-    PKGS+=("make" "ninja-build" "gdb")
+    # COPR has ninja-build 1.11.1+, ubi9 CRB only has 1.10.2
+    if [[ "${os_vendor}" == "centos" ]]; then
+        PKGS+=("make" "ninja-build >= 1.11.1" "gdb")
+    else
+        PKGS+=("make" "ninja-build" "gdb")
+    fi
     # PKGS+=("vim")
 
     # for LANG / LC_ALL=en_US.UTF-8
     PKGS+=("glibc-langpack-en")
 
     # compiler for Torch Dynamo JIT and Triton
-    PKGS+=("gcc")
+    PKGS+=("gcc" "gcc-c++")
 
     # font and image libraries
     PKGS+=("freetype" "lcms2" "libjpeg" "libpng" "libtiff" "libwebp" "openjpeg2")
@@ -91,8 +96,21 @@ function install_packages() {
     # RHELAI: loguru
     PKGS+=("loguru")
 
+    # AIPCC-5427: not supported on big endian machines
+    # if [[ "$ARCH" != "s390x" ]]; then
+        # RHELAI: pypdfium2
+        # libpdfium is not available publicly
+        # PKGS+=("libpdfium")
+    # fi
+
     # RHELAI: pyzmq for vLLM
-    PKGS+=("zeromq")
+    # COPR has zeromq 4.3.5, EPEL (ubi9) only has 4.3.4; both provide libzmq.so.5
+    # COPR can't be enabled on ubi9 (its autoconf pulls gettext-devel which is missing)
+    if [[ "${os_vendor}" == "centos" ]]; then
+        PKGS+=("zeromq >= 4.3.5")
+    else
+        PKGS+=("zeromq")
+    fi
 
     # RHELAI: for h5py
     PKGS+=("hdf5")
@@ -121,10 +139,38 @@ function install_packages() {
         PKGS+=("libqhull_r")
     fi
 
+    # For opencv-python-headless, torchaudio, torchvision with FFmpeg support
+    # ffmpeg-free-rhai is not available publicly
+    # PKGS+=("ffmpeg-free-rhai")
+
+    # Geospatial support in RHAIIS (pyproj, rasterio, shapely), AIPCC-6717
+    # gdal-libs and proj are not available on ubi9
+    if [[ "${os_vendor}" == "centos" ]]; then
+        PKGS+=("gdal-libs" "proj")
+    fi
+
+    # For onnx
+    # protobuf is not available on ubi9
+    if [[ "${os_vendor}" == "centos" ]]; then
+        PKGS+=("protobuf")
+    fi
+
+    # For memray
+    PKGS+=("libunwind")
+
+    # AIPCC-11329: For nixl UCCL backend
+    PKGS+=("glog")
+
     PKGS+=(
         "${PYTHON:?}"
         "${PYTHON}-devel"
     )
+
+    # AIPCC-9953, required by tacozip
+    PKGS+=("libzip")
+
+    # For mysqlclient
+    PKGS+=("mariadb-connector-c")
 
     dnf install "${DNF_OPTS[@]}" "${PKGS[@]}"
 }
@@ -164,7 +210,6 @@ function install_scl_packages() {
         "fontconfig-devel"
         "fonts-srpm-macros"
         "freetype-devel"
-        "gcc-c++"
         "gcc-gfortran"
         "gcc-plugin-annobin"
         "gd"
@@ -231,7 +276,6 @@ function install_scl_packages() {
         "lua-srpm-macros"
         "m4"
         "mailcap"
-        "mariadb-connector-c"
         "mariadb-connector-c-config"
         "mariadb-connector-c-devel"
         "mod_auth_gssapi"
@@ -371,6 +415,7 @@ function uninstall_epel() {
 
 # COPR repo with newer rebuilds of EPEL packages (e.g. hdf5 with libhdf5.so.310)
 # https://copr.fedorainfracloud.org/coprs/aaiet-notebooks/rhelai-el9/
+# CentOS-only: enabling COPR on ubi9 causes dep failures (e.g. autoconf needs gettext-devel)
 function install_copr() {
     if [[ "$(get_os_vendor)" == "centos" ]]; then
         dnf install "${DNF_OPTS[@]}" 'dnf-command(copr)'
