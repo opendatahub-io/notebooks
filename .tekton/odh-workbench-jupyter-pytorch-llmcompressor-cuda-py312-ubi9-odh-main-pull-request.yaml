@@ -49,11 +49,11 @@ spec:
     value: 'true'
   - name: prefetch-input
     value:
-    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli
+    - path: prefetch-input/mongocli
       type: gomod
-    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/odh
+    - path: prefetch-input/odh
       type: rpm
-    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/odh
+    - path: prefetch-input/odh
       type: generic
     - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12
       type: pip

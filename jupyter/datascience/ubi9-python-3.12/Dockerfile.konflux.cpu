@@ -13,8 +13,8 @@ FROM registry.access.redhat.com/ubi9/go-toolset:1.24 AS mongocli-builder
 
 USER 0
 
-# Same submodule path as jupyter/pytorch+llmcompressor (Konflux gomod prefetch).
-COPY jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli /tmp/mongocli-src
+# Mongocli source: git submodule at prefetch-input/mongocli (Konflux gomod prefetch).
+COPY prefetch-input/mongocli /tmp/mongocli-src
 
 WORKDIR /tmp/mongocli-src
 
@@ -53,7 +53,7 @@ RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # COPY committed lockfile so this layer invalidates when RPM prefetch input changes.
-COPY jupyter/datascience/ubi9-python-3.12/prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
+COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
 
 # [HERMETIC] Configure package repos for local hermeto testing (Konflux injects repos when LOCAL_BUILD is false).
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
@@ -96,7 +96,7 @@ RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-COPY jupyter/datascience/ubi9-python-3.12/prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
+COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
 
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
         rm -f /etc/yum.repos.d/*.repo \
@@ -138,6 +138,9 @@ LABEL name="rhoai/odh-workbench-jupyter-datascience-cpu-py312-rhel9" \
 WORKDIR /opt/app-root/bin
 
 USER 0
+
+# Invalidate cached layer when RPM prefetch input changes.
+COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
 
 # [HERMETIC] Configure package repos for local hermeto testing (Konflux injects repos when LOCAL_BUILD is false).
 RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
