@@ -24,6 +24,12 @@ dependencies = [
 
 [tool.uv]
 
+override-dependencies = [
+    # AIPCC-13675: https://redhat.atlassian.net/browse/AIPCC-13675
+    # https://github.com/tensorflow/tensorflow/blob/r2.21/requirements_lock_3_12.txt#L552
+    "protobuf==6.31.1",
+]
+
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
