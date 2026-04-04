@@ -3,6 +3,7 @@ name: Test Provision K8s Action
 
 "on":
   push:
+    branches: [main, stable, 'rhoai-*']
     paths:
       - 'ci/cached-builds/**'
       - '.github/actions/provision-k8s/**'
@@ -11,6 +12,10 @@ name: Test Provision K8s Action
       - 'ci/cached-builds/**'
       - '.github/actions/provision-k8s/**'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test-provisioning:

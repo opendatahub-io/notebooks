@@ -2,6 +2,7 @@
 name: Validation of software versions referenced in ImageStream manifests
 on:  # yamllint disable-line rule:truthy
   push:
+    branches: [main, stable, 'rhoai-*']
     # Since this check is so resource demanding, let's restrict also push action here.
     paths:
       - 'manifests/base/params.env'
@@ -14,6 +15,10 @@ on:  # yamllint disable-line rule:truthy
       - 'ci/check-software-versions.py'
   workflow_dispatch:
   release:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
