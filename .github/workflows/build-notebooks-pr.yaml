@@ -81,12 +81,7 @@ jobs:
       fail-fast: false
       matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
     uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
-    if: >-
-      ${{
-        fromJson(needs.gen.outputs.has_jobs)
-        && github.repository != 'red-hat-data-services/notebooks'
-        && (needs.gen.outputs.is_fork == 'false' || !matrix.subscription)
-      }}
+    if: ${{ fromJson(needs.gen.outputs.has_jobs) && github.repository != 'red-hat-data-services/notebooks' }}
     with:
       target: "${{ matrix.target }}"
       python: "${{ matrix.python }}"
