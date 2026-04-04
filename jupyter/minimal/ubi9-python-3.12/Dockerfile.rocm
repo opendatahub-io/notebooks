@@ -33,12 +33,8 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
     fi
 
 # Install useful OS packages
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y perl mesa-libGL skopeo compat-openssl11 openshift-clients
-dnf clean all
-rm -rf /var/cache/yum
-EOF
+RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+    /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
 # Install micropipenv/uv from Cachi2 as root.
 RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.2"

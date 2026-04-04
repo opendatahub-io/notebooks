@@ -42,24 +42,14 @@ if command -v subscription-manager &> /dev/null; then
 fi
 EOF
 
-# Problem: The operation would result in removing the following protected packages: systemd
-#  (try to add '--allowerasing' to command line to replace conflicting packages or '--skip-broken' to skip uninstallable packages)
-# Solution: --best --skip-broken does not work either, so use --nobest
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf -y upgrade --refresh --nobest --skip-broken --nodocs --noplugins --setopt=install_weak_deps=0 --setopt=keepcache=0
-dnf clean all -y
-EOF
+RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+    /utils/dnf-helper.sh upgrade
 
 ### END upgrade first to avoid fixable vulnerabilities
 
 # Install useful OS packages
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y perl mesa-libGL skopeo
-dnf clean all
-rm -rf /var/cache/yum
-EOF
+RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+    /utils/dnf-helper.sh install perl mesa-libGL skopeo
 
 # Other apps and tools installed as default user
 USER 1001
@@ -120,12 +110,8 @@ WORKDIR /opt/app-root/bin
 USER root
 
 # Install useful OS packages
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-dnf install -y jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat
-dnf clean all
-rm -rf /var/cache/yum
-EOF
+RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+    /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat
 
 ### BEGIN Copy mongocli from builder
 # Copy dynamically-linked mongocli built in earlier build stage
@@ -160,7 +146,7 @@ LABEL name="rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9" \
 USER 0
 
 # Install jre that is needed to run the trustyai library
-RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked,id=notebooks-dnf /bin/bash <<'EOF'
+RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 PACKAGES=(java-17-openjdk)
 dnf install -y --setopt=tsflags=nodocs "${PACKAGES[@]}"
