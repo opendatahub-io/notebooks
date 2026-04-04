@@ -1,11 +1,11 @@
 --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/
 aiohappyeyeballs==2.6.1 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:c6a86408878a5b6b76ae6cd305f79ac9f690a38b21af183e00c150ef3f569d29
-aiohttp==3.13.3 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:6f7678ffb1d442355c7a521ce0b3216e743a4237b9c78fc5f08d63233a875f31 \
-    --hash=sha256:5d87989e585b0bfb8ae5d768eebf4e391b1314bb754160e5c4641e8ae96a23fc \
-    --hash=sha256:92f523cdce332133d8373b7fff256c2e948c46b44549149f0121b5725843f23f \
-    --hash=sha256:1b0433c52ce2bc5fa58a6905b0bb09fd9e0824d267e0e723a9ad02ef9a19b3eb
+aiohttp==3.13.5 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:0a21be8c31e3003f3048497eb6bdc06b41c1f5d49965756d1733d348aeba3a3a \
+    --hash=sha256:2dff684e08fc7a6218d2734c68af9a373e424e20eb0f3a775588f31c9f94b0e8 \
+    --hash=sha256:3e19b8f9371abe5982de97eb14db2b4a64746ba20424510bc97686b182404624 \
+    --hash=sha256:c3c5a929f196ad21662d203252e1e2673a7ed0fc9818e0d51a55930956641f45
 aiosignal==1.4.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:0894850b54c871dd0365925589ad5dfa70e673059596187e7097e076ea571b1d
 argon2-cffi==25.1.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -60,8 +60,8 @@ idna==3.11 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:f49cfba12c88423b9da3ddee7c73978947fd1d85fdd6f64e4c7dda2f5b3c83a1
 ipykernel==7.2.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:501c657ab65863d470e0732d7f72e2c420899b1578583877a595d9fe2feb0015
-ipython==9.11.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:02a46d0ea1fcc1c926a2f662501611619bd9aa9ad55370c3fbc6643f5ab02d2e
+ipython==9.12.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:fe8712386487eb4cb895117199822d395fba6ac1e5751a6cdd2830672ba66d53
 ipython-genutils==0.2.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:71b20607b749ab859d595506ada549ac9338e3c2c4665d9a478a90f00b45d8cc
 ipython-pygments-lexers==1.1.1 ; implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -139,8 +139,8 @@ pycryptodome==3.23.0 ; implementation_name == 'cpython' and sys_platform == 'lin
     --hash=sha256:819780bb1970d2777cb8ce5ec3e4e0bebcf4287c57d25529f9806f377e7e45ce \
     --hash=sha256:b54dee7bd2857f868f5ae9dcb35421de57da8b8623b193b8c6506c8798cf2b92 \
     --hash=sha256:a39c9ae53843661363247ea2aa104b94715bfdc45ea9bd64a55918f2ae8fb44b
-pygments==2.19.2 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:377dd756e82d894e0324cfb1566e34aaa00e4207f81c453997aefacf21703267
+pygments==2.20.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:22eb8865e5accd0fc529e4fdc5cf74db3e6b2b6348b43a089950c8ce671dedb3
 python-dateutil==2.9.0.post0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:89e5d6f444e51ac0a18370406b265fa1f51c88824476fd08c56db669dd317775
 pyyaml==6.0.3 ; implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -155,8 +155,8 @@ pyzmq==27.1.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:79912a523e83ca03fea9724555c734db8c97dc14c27e42355fe88d637fc325da
 referencing==0.37.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:2848a91042246ed5cb2da615736b66252fb95d7b5385e9d1f889ea2b8ba01e3d
-requests==2.32.5 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:af6aa2bee8c69065be96492f10319117e4e5e637f57c559e6938e23b34f5c402
+requests==2.33.1 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:9c2503525e436b4ffd8ac71815590e2048603adcc72e4b5d3218ee1e622deb03
 rpds-py==0.30.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:11729e4f36a649a22271d688f0edf12b4d5a3ea0c6f6d5c2a0adaa659be540a8 \
     --hash=sha256:5218e8a6c45c31def0d833f4c6a713943cc8e13122c5c04d8e0506c49502ebf0 \
