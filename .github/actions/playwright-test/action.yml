@@ -119,7 +119,7 @@ runs:
 
     - name: Upload Playwright report
       if: ${{ !cancelled() && inputs.upload-report == 'true' }}
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.artifact-name }}
         path: ${{ inputs.working-directory }}/playwright-report/
