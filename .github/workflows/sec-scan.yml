@@ -22,7 +22,7 @@ jobs:
     steps:
       # Checkout the branch
       - name: Checkout branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           ref: ${{ env.BRANCH_NAME }}
           persist-credentials: true
@@ -52,7 +52,7 @@ jobs:
 
       # Get the latest weekly build commit hash: https://github.com/opendatahub-io/notebooks/commits/2023b
       - name: Checkout upstream notebooks repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: opendatahub-io/notebooks.git
           ref: ${{ env.RELEASE_VERSION_N }}
@@ -64,7 +64,7 @@ jobs:
           echo "HASH_N=$(git rev-parse --short HEAD)" >> ${GITHUB_OUTPUT}
 
       - name: Checkout "N - 1" branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: opendatahub-io/notebooks.git
           ref: ${{ env.RELEASE_VERSION_N_1 }}
@@ -76,7 +76,7 @@ jobs:
           echo "HASH_N_1=$(git rev-parse --short HEAD)" >> ${GITHUB_OUTPUT}
 
       - name: Checkout "main" branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: opendatahub-io/notebooks.git
           ref: main
@@ -89,13 +89,13 @@ jobs:
 
       # Checkout the release branch to apply the updates
       - name: Checkout release branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           ref: ${{ env.SEC_SCAN_BRANCH }}
           persist-credentials: true
 
       - name: setup python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version-file: '.python-version'
 
@@ -127,10 +127,10 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: pull-request
-        uses: repo-sync/pull-request@v2
+        uses: repo-sync/pull-request@7e79a9f5dc3ad0ce53138f01df2fad14a04831c5  # v2.12.1
         with:
           source_branch: ${{ env.SEC_SCAN_BRANCH }}
           destination_branch: ${{ env.BRANCH_NAME}}
