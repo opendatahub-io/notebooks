@@ -45,6 +45,11 @@ jobs:
             echo "is_fork=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Print GitHub Actions fancy error message if PR is from a fork
+        if: steps.fork-check.outputs.is_fork == 'true'
+        run: |
+          echo "::error::PR is from a fork. CI cannot run subscription builds (RHEL, AIPCC) without secrets. Non-secret checks (code quality, ODH image builds) still run."
+
       # RHAIENG-3914: use env vars to prevent GitHub Actions expression injection
       - name: Determine targets to build based on changed files
         run: |
@@ -76,7 +81,12 @@ jobs:
       fail-fast: false
       matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
     uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
-    if: ${{ fromJson(needs.gen.outputs.has_jobs) && github.repository != 'red-hat-data-services/notebooks' }}
+    if: >-
+      ${{
+        fromJson(needs.gen.outputs.has_jobs)
+        && github.repository != 'red-hat-data-services/notebooks'
+        && (needs.gen.outputs.is_fork == 'false' || !matrix.subscription)
+      }}
     with:
       target: "${{ matrix.target }}"
       python: "${{ matrix.python }}"
