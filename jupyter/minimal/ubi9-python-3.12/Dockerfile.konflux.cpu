@@ -43,7 +43,7 @@ RUN dnf install -y perl mesa-libGL skopeo compat-openssl11 openshift-clients \
     && rm -rf /var/cache/yum
 
 # Install micropipenv/uv from Cachi2 as root.
-RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.0"
+RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.2"
 
 ####################
 # jupyter-minimal  #
