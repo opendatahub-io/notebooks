@@ -10,12 +10,11 @@ on:  # yamllint disable-line rule:truthy
     branches:
       - 'main'
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
   instant-merge:
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - name: insta-merge
