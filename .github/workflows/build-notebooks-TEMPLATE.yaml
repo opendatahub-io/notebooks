@@ -48,6 +48,7 @@ name: Build & Publish Notebook Servers (TEMPLATE)
 
 jobs:
   build:
+    name: "${{ inputs.konflux && 'rhoai' || 'odh' }}"
     # https://docs.github.com/en/actions/how-tos/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
     runs-on: ${{ fromJSON(inputs.PLATFORM_RUNNERS)[inputs.platform] || 'no-such-runner' }}
     env:
@@ -262,8 +263,42 @@ jobs:
               f.write(f"IMAGE_TAG={image_tag}\n")
               f.write(f"OUTPUT_IMAGE={env.REGISTRY}:{full_tag}\n")
               f.write(f"SANITIZED_PLATFORM={sanitized_platform}\n")
+              f.write(f"BUILD_TYPE={build_type}\n")
 
       # endregion
+
+      - name: "${{ steps.calculated_vars.outputs.BUILD_TYPE }} · ${{ inputs.target }}"
+        shell: python
+        env:
+          BUILD_TYPE: ${{ steps.calculated_vars.outputs.BUILD_TYPE }}
+          TARGET: ${{ inputs.target }}
+          PLATFORM: ${{ inputs.platform }}
+          OUTPUT_IMAGE: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}
+        # language=python
+        run: |
+          import os, sys
+          from dataclasses import dataclass
+          from typing import TextIO
+
+          @dataclass
+          class BuildInfo:
+              BUILD_TYPE: str
+              TARGET: str
+              PLATFORM: str
+              OUTPUT_IMAGE: str
+
+              @classmethod
+              def from_env(cls):
+                  return cls(**{k: os.environ[k] for k in cls.__annotations__})
+
+              def write(self, f: TextIO):
+                  for attr, value in self.__dict__.items():
+                      key = attr.title().replace("_", " ")
+                      f.write(f"**{key}**: {value}\n")
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("### Build Info\n")
+              BuildInfo.from_env().write(f)
 
       # region Image build
 

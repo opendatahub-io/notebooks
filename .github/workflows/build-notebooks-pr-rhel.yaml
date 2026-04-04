@@ -105,6 +105,7 @@ jobs:
         shell: bash
 
   build:
+    name: "${{ matrix.target }} · ${{ matrix.platform }}"
     needs: ["authorize", "gen"]
     strategy:
       fail-fast: false
