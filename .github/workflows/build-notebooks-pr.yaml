@@ -57,6 +57,7 @@ jobs:
         shell: bash
 
   build:
+    name: "${{ matrix.target }} · ${{ matrix.platform }}"
     needs: ["gen"]
     strategy:
       fail-fast: false
