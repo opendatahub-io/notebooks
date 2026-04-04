@@ -505,6 +505,11 @@ test:
 	./uv run pytest -m 'not buildonlytest'
 	@./scripts/check_dockerfile_alignment.sh
 
+.PHONY: check-actions
+check-actions:
+	@echo "Checking GitHub Actions SHA pinning"
+	@set +x; GITHUB_TOKEN=$$(gh auth token) pinact run --check --verify
+
 .PHONY: test-unit
 test-unit:
 	@echo "Running Python unit tests"

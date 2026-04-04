@@ -49,6 +49,24 @@ If you're on **Fedora** and the auto-download fails with a `GOSUMDB=off` error, 
 - Run `export GOSUMDB=sum.golang.org` before `make`, or
 - Install Go 1.26+ manually from https://go.dev/dl/
 
+### GitHub Actions
+
+All third-party actions must be pinned by full commit SHA with a version comment:
+
+```yaml
+uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+```
+
+After adding or modifying any `uses:` line in `.github/`, run:
+
+```bash
+# Install: brew install pinact (or: go install github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@v3.9.0)
+GITHUB_TOKEN=$(gh auth token) pinact run
+```
+
+CI enforces this via `pinact run --check --verify` in the code-quality workflow.
+See [ADR 0008](docs/architecture/decisions/0008-harden-github-actions-pin-sha-digests.md) for background.
+
 ### Working with linters
 
 - Run prek before you commit, to lint the Python sources that have been put under its management
