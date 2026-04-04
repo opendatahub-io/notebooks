@@ -85,6 +85,16 @@ jobs:
         env:
           FORCE_LOCKFILES_UPGRADE: ${{ env.FORCE_LOCKFILES_UPGRADE }}
 
+      # Regenerate Dockerfiles after lockfile changes.
+      # Lockfiles may bump package versions (e.g. uv) that dockerfile_fragments.py
+      # derives and embeds in Dockerfiles. Without this step, Dockerfiles drift
+      # out of sync and check-generated-code fails.
+      # See: commit 41aed2702 (lockfile-derived versions), PR #3239 (broke main).
+      - name: Regenerate Dockerfiles from updated lockfiles
+        run: |
+          ./uv run scripts/dockerfile_fragments.py
+          ./uv run manifests/tools/generate_kustomization.py
+
       - name: Create Pull Request
         env:
           GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
