@@ -45,11 +45,6 @@ jobs:
             echo "is_fork=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Print GitHub Actions fancy error message if PR is from a fork
-        if: steps.fork-check.outputs.is_fork == 'true'
-        run: |
-          echo "::error::PR is from a fork. CI cannot run subscription builds (RHEL, AIPCC) without secrets. Non-secret checks (code quality, ODH image builds) still run."
-
       # RHAIENG-3914: use env vars to prevent GitHub Actions expression injection
       - name: Determine targets to build based on changed files
         run: |
@@ -68,6 +63,15 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         shell: bash
+
+      - name: Annotate PR for fork guidance
+        if: steps.fork-check.outputs.is_fork == 'true'
+        run: |
+          FIRST_FILE=$(git diff --name-only "origin/${BASE_REF}...${HEAD_REF}" | head -1)
+          echo "::warning file=${FIRST_FILE},line=1::PR is from a fork — subscription builds (RHEL, AIPCC) were skipped (no secrets). Push your branch to the main repo for full CI. See CONTRIBUTING.md."
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
 
   # ODH builds — run for all PRs (fork and same-repo) on opendatahub-io only
   # rhds/notebooks builds from quay.io/aipcc bases via build-rhoai below
