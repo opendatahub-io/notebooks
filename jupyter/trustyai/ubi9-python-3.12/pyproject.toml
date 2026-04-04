@@ -4,6 +4,11 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
+    "uv",
+    "micropipenv[toml]",
+
+    "feast",
+
     # PyTorch packages
     "torch; platform_machine != 'ppc64le' and platform_machine != 's390x'",
 
