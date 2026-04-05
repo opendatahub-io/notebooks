@@ -26,15 +26,27 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Read pnpm version
+        id: pnpm-ver
+        run: |
+          ver=$(grep -oP '"packageManager":\s*"pnpm@\K[0-9.]+' tests/browser/package.json5)
+          if [[ -z "${ver}" ]]; then
+            echo "::error::Failed to extract pnpm version from package.json5"
+            exit 1
+          fi
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5.0.0
         with:
+          version: ${{ steps.pnpm-ver.outputs.version }}
           cache: true
-          package_json_file: tests/browser/package.json5
           cache_dependency_path: tests/browser/pnpm-lock.yaml
           # language=yaml
           run_install: |
             - cwd: tests/browser
               args: [--frozen-lockfile]
+
       - run: pnpm typecheck && pnpm lint
         working-directory: tests/browser
 

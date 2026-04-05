@@ -4,7 +4,7 @@
 FROM mcr.microsoft.com/playwright:v1.58.1-noble
 # NOTE: image tag version must match @playwright/test version in package.json5
 
-RUN npm install -g pnpm@10.8.0
+RUN npm install -g pnpm@10.33.0
 
 WORKDIR /home/pwuser/tests/browser
 USER pwuser
