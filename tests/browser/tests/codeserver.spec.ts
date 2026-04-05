@@ -44,8 +44,11 @@ const test = base.extend<TestFixtures>({
             .withExposedPorts(8787)
             .withWaitStrategy(new HttpWaitStrategy('/?folder=/opt/app-root/src', 8787, {abortOnContainerExit: true}))
             .start();
-        await use(new CodeServer(page, `http://${container.getHost()}:${container.getMappedPort(8787)}`))
-        await container.stop()
+        try {
+          await use(new CodeServer(page, `http://${container.getHost()}:${container.getMappedPort(8787)}`))
+        } finally {
+          await container.stop()
+        }
         break;
       }
       default:
