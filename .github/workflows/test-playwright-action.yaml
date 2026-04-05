@@ -19,6 +19,20 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  lint:
+    name: Lint & Typecheck
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Install pnpm
+        run: npm install -g pnpm@$(grep -oP '"packageManager":\s*"pnpm@\K[^"]+' tests/browser/package.json5)
+      - run: pnpm install --frozen-lockfile
+        working-directory: tests/browser
+      - run: pnpm typecheck && pnpm lint
+        working-directory: tests/browser
+
   test-playwright:
     name: Test Playwright Browser Tests
     runs-on: ubuntu-24.04

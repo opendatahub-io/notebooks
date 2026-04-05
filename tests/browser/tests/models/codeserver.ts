@@ -19,7 +19,7 @@ export class CodeServer {
      * Checks if the editor is visible
      */
      async isEditorVisible(): Promise<boolean> {
-        let editorSelector = "div.monaco-workbench"
+        const editorSelector = "div.monaco-workbench"
 
         await this.page.waitForSelector(editorSelector, {timeout: 10000})  // this waits for initial load, let's wait longer
         const visible = await this.page.isVisible(editorSelector)
@@ -50,7 +50,7 @@ export class CodeServer {
                 await this.page.waitForLoadState("load")
                 await this.page.waitForSelector("textarea.xterm-helper-textarea:focus-within", { timeout: 5000 })
                 return true
-            } catch (error) {
+            } catch (_error) {
                 return false
             }
         }
