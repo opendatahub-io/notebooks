@@ -65,8 +65,8 @@ export async function waitForNextRender(page: Page) {
      */
     // wait for next frame being rendered
     await page.evaluate( () => {
-        return new window.Promise<void>((callback) => {
-            window.requestAnimationFrame(() => window.setTimeout(callback));
+        return new window.Promise<void>((resolve) => {
+            window.requestAnimationFrame(() => window.setTimeout(resolve));
         });
     });
 }
