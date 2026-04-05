@@ -26,11 +26,14 @@ const test = base.extend<TestFixtures>({
     } else {
       // we close the provided page and send onwards our own
       await page.close()
-      {
-        const browser = await chromium.connectOverCDP(`http://localhost:${connectCDP}`);
+      const browser = await chromium.connectOverCDP(`http://localhost:${connectCDP}`);
+      try {
         const defaultContext = browser.contexts()[0]!;
         const page = defaultContext.pages()[0]!;
         await use(page)
+      } finally {
+        // For CDP-connected browsers, close() disconnects without killing the process
+        await browser.close()
       }
     }
   },
