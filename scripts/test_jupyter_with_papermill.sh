@@ -247,7 +247,7 @@ function _create_test_versions_source_of_truth()
     fi
 
     local nbdime_version='4.0'
-    local nbgitpuller_version='1.2'
+    local nbgitpuller_version='1.3'
 
     expected_versions=$("${yqbin}" '.spec.tags[0].annotations | .["opendatahub.io/notebook-software"] + .["opendatahub.io/notebook-python-dependencies"]' "${test_version_truth_filepath}" |
         "${yqbin}" -N -p json -o yaml |

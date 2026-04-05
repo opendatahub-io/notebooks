@@ -30,6 +30,7 @@
     "tekton",
     "dockerfile",
     "custom.regex",
+    "github-actions",
   ],
 
   // Tekton task digest updates in .tekton/ pipeline definitions
@@ -118,6 +119,26 @@
   ],
 
   "packageRules": [
+    {
+      "description": "Group GitHub Actions digest updates into a single PR",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "pinDigests": true,
+    },
+    {
+      // astral-sh/setup-uv uses exact version tags (v8.0.0), not major tags (v8).
+      "description": "Track exact versions for setup-uv (no major tags published)",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["astral-sh/setup-uv"],
+      "versioning": "semver",
+    },
+    {
+      // actions/add-to-project uses exact version tags (v1.0.2), not major tags (v1).
+      "description": "Track exact versions for add-to-project (no major tags published)",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["actions/add-to-project"],
+      "versioning": "semver",
+    },
     {
       // Group all base image build updates into a single PR
       "description": "Group quay.io base image updates from build-args conf files",
