@@ -1,7 +1,7 @@
 //import {spawnSync} from "node:child_process";
 import * as process from "node:process";
 
-var testcontainersSetup: boolean = false;
+let testcontainersSetup: boolean = false;
 
 export function setupTestcontainers() {
     if (testcontainersSetup) {return}
@@ -15,7 +15,7 @@ export function setupTestcontainers() {
         case "linux": {
             if ('PODMAN_SOCK' in process.env) { process.env['DOCKER_HOST'] = process.env['PODMAN_SOCK'] }
             else {
-                let XDG_RUNTIME_DIR = process.env['XDG_RUNTIME_DIR'] || `/var/run/user/${process.env['UID']}`
+                const XDG_RUNTIME_DIR = process.env['XDG_RUNTIME_DIR'] || `/var/run/user/${process.env['UID']}`
                 process.env['DOCKER_HOST'] = `unix://${XDG_RUNTIME_DIR}/podman/podman.sock`;
             }
             process.env['TESTCONTAINERS_RYUK_DISABLED'] = 'false';

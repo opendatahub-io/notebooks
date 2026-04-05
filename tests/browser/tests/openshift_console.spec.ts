@@ -6,16 +6,16 @@ async function getConsoleUrl(): Promise<string> {
   try {
     kc.loadFromDefault(); // reads KUBECONFIG env var set by shift-left
   } catch (e) {
-    throw new Error(`Failed to load kubeconfig: ${e instanceof Error ? e.message : e}`);
+    throw new Error(`Failed to load kubeconfig: ${e instanceof Error ? e.message : String(e)}`, { cause: e });
   }
   const customApi = kc.makeApiClient(k8s.CustomObjectsApi);
   let route: object;
   try {
     route = await customApi.getNamespacedCustomObject({
       group: 'route.openshift.io', version: 'v1', namespace: 'openshift-console', plural: 'routes', name: 'console'
-    });
+    }) as object;
   } catch (e) {
-    throw new Error(`Failed to fetch openshift-console route: ${e instanceof Error ? e.message : e}`);
+    throw new Error(`Failed to fetch openshift-console route: ${e instanceof Error ? e.message : String(e)}`, { cause: e });
   }
   const host = (route as { spec?: { host?: string } }).spec?.host;
   if (!host) {

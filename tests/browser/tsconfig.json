@@ -1,10 +1,15 @@
 {
   // tsconfig.json natively supports comments (JSONC format)
   "compilerOptions": {
-    "target": "es2025",
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
+    // noEmit project — no need for Node's strict ESM resolution ("nodenext").
+    // "bundler" assumes ESM without checking package.json for "type" field,
+    // working around tsc not recognizing package.json5.
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
     // Playwright runs TS directly; no compilation step needed
     "noEmit": true,
     // Avoid errors from transitive type declarations (e.g. isomorphic-ws missing @types/ws)
@@ -14,6 +19,7 @@
   },
   "include": [
     "playwright.config.ts",
+    "eslint.config.ts",
     "tests/**/*.ts",
     "scripts/**/*.ts"
   ]

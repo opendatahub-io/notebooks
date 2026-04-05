@@ -5,7 +5,11 @@
   "version": "1.0.0",
   "description": "Tests for Open Data Hub / OpenShift AI Notebook / Workbench images in TypeScript.",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit"
+  },
   "keywords": [],
   "author": "",
   "license": "MIT",
@@ -21,7 +25,14 @@
     "tslog": "^4",
     "typescript": "^6.0.2",
     "@types/node": "^25.5.0",
-    "@kubernetes/client-node": "^1.4.0"
+    "@kubernetes/client-node": "^1.4.0",
+
+    // ESLint with type-aware rules + Playwright plugin (see ADR 0012)
+    "eslint": "^10.2.0",
+    "@eslint/js": "^10.0.1",
+    "typescript-eslint": "^8.58.0",
+    "eslint-plugin-playwright": "^2.10.1",
+    "jiti": "^2.6.1"
   },
-  "packageManager": "pnpm@10.8.0"
+  "packageManager": "pnpm@10.33.0"
 }

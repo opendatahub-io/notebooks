@@ -16,7 +16,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
-          ref: main
+          ref: ${{ github.ref }}
           fetch-depth: 0
           persist-credentials: true
 
@@ -85,6 +85,6 @@ jobs:
             --title "chore: update image tags ${prev_tag} → ${new_tag}" \
             --body "$body" \
             --head "$branch" \
-            --base main
+            --base "${{ github.ref_name }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
