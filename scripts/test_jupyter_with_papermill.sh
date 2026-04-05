@@ -271,7 +271,20 @@ function _create_test_versions_source_of_truth()
     # Get the requirements file path for this notebook to extract actual package versions
     local notebook_dir
     notebook_dir="$(_get_jupyter_notebook_directory "${notebook_id}")"
+    # CUDA/ROCM stacks use requirements.{cuda,rocm}.txt only (e.g. pytorch+llmcompressor has no requirements.cpu.txt)
     local requirements_file="${notebook_dir}/requirements.cpu.txt"
+    case "${accelerator_flavor}" in
+        cuda)
+            if [ -f "${notebook_dir}/requirements.cuda.txt" ]; then
+                requirements_file="${notebook_dir}/requirements.cuda.txt"
+            fi
+            ;;
+        rocm)
+            if [ -f "${notebook_dir}/requirements.rocm.txt" ]; then
+                requirements_file="${notebook_dir}/requirements.rocm.txt"
+            fi
+            ;;
+    esac
 
     # Extract versions from the notebook's requirements file, with fallbacks for compatibility
     local nbdime_version

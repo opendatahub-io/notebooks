@@ -69,7 +69,7 @@ RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
 # hadolint ignore=DL3041
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
     /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
-RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.3"
+RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]" "uv"
 
 # Other apps and tools installed as default user
 USER 1001
