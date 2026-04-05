@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import * as process from "node:process";
-import type { ConfigFixtures } from "./tests/fixtures";
+import {CodeServerSource, ConfigFixtures} from "./tests/fixtures";
 
 // Default test image used when TEST_TARGET env var is not set.
 // WARNING: This value is parsed by .github/workflows/test-playwright-action.yaml via grep.
@@ -35,7 +35,7 @@ export default defineConfig<ConfigFixtures>({
   use: {
     // Only override the fixture default when TEST_TARGET is set
     ...(process.env['TEST_TARGET'] ? {
-      codeServerSource: { image: process.env['TEST_TARGET'] },
+      codeServerSource: CodeServerSource.image(process.env['TEST_TARGET']),
     } : {}),
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
@@ -78,10 +78,9 @@ function getProjects() {
         headless: false,  // the CDP browser configured below is not affected by this
         /* custom properties, comment out as needed */
         connectCDP: false as const,  // false | number: connect to an existing browser running at given port (e.g. 9222)
-        codeServerSource: {  // prefers url if specified, otherwise will start the specified docker image
-          // url: "",  // not-present | string
-          image: DEFAULT_TEST_IMAGE,  // string
-        }
+        codeServerSource:  // prefers url if specified, otherwise will start the specified docker image
+          // CodeServerSource.url(""),  // not-present | string
+          CodeServerSource.image(DEFAULT_TEST_IMAGE),  // string
       },
     }
   ]

@@ -10,8 +10,8 @@ export async function waitForStableDOM(page: Page, pageRootSelector: string, che
         }
         const config = { attributes: true, childList: true, subtree: true };
 
-        var started = performance.now();
-        var mutated = started;
+        const started = performance.now();
+        let mutated = started;
 
         const callback: MutationCallback = (mutationList, _observer) => {
             for (const mutation of mutationList) {
@@ -29,17 +29,19 @@ export async function waitForStableDOM(page: Page, pageRootSelector: string, che
         observer.observe(targetNode, config);
 
         return new Promise<void>((resolve, reject) => {
-            let loop = () => {
-                let now = performance.now();
+            const loop = () => {
+                const now = performance.now();
                 if (now - mutated > checkPeriod) {
                     observer.disconnect();
                     resolve();
+                    return;
                 }
                 if (now - started > timeout) {
                     observer.disconnect();
-                    reject();
+                    reject(new Error(`DOM not stable after ${timeout}ms`));
+                    return;
                 }
-                window.setInterval(loop, checkPeriod);
+                window.setTimeout(loop, checkPeriod);
             };
             loop()
         })
@@ -63,8 +65,8 @@ export async function waitForNextRender(page: Page) {
      */
     // wait for next frame being rendered
     await page.evaluate( () => {
-        return new window.Promise((callback: Function) => {
-            window.requestAnimationFrame(() => window.setTimeout(callback));
+        return new window.Promise<void>((resolve) => {
+            window.requestAnimationFrame(() => window.setTimeout(resolve));
         });
     });
 }

@@ -16,7 +16,7 @@ const PIPFILES = [
 
 async function main() {
     const browser = await chromium.connectOverCDP("http://localhost:9222");
-    const context = browser.contexts()[0];
+    const context = browser.contexts()[0]!;
 
     const page = await findVisiblePage(context);
     for (const pipfile of PIPFILES) {

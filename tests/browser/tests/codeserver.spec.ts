@@ -11,7 +11,7 @@ import {log} from "./logger"
 import {setupTestcontainers} from "./testcontainers";
 
 import * as utils from './utils'
-import type { ConfigFixtures } from "./fixtures";
+import { assertUnreachable, type ConfigFixtures } from "./fixtures";
 
 // Extend shared config fixture types with test-specific fixtures.
 type TestFixtures = ConfigFixtures & {
@@ -19,34 +19,43 @@ type TestFixtures = ConfigFixtures & {
 };
 const test = base.extend<TestFixtures>({
   connectCDP: [false, {option: true}],
-  codeServerSource: [{url:'http://localhost:8787'}, {option: true}],
+  codeServerSource: [{kind: 'url', url:'http://localhost:8787'}, {option: true}],
   page: async ({ page, connectCDP }, use) => {
     if (!connectCDP) {
       await use(page)
     } else {
       // we close the provided page and send onwards our own
       await page.close()
-      {
-        const browser = await chromium.connectOverCDP(`http://localhost:${connectCDP}`);
-        const defaultContext = browser.contexts()[0];
-        const page = defaultContext.pages()[0];
+      const browser = await chromium.connectOverCDP(`http://localhost:${connectCDP}`);
+      try {
+        const defaultContext = browser.contexts()[0]!;
+        const page = defaultContext.pages()[0]!;
         await use(page)
+      } finally {
+        // For CDP-connected browsers, close() disconnects without killing the process
+        await browser.close()
       }
     }
   },
   codeServer: [async ({ page, codeServerSource }, use) => {
-    if (codeServerSource?.url) {
-      await use(new CodeServer(page, codeServerSource.url))
-    } else {
-      const image = codeServerSource.image ?? (() => {
-        throw new Error("invalid config: codeserver image not specified")
-      })()
-      const container = await new GenericContainer(image)
-          .withExposedPorts(8787)
-          .withWaitStrategy(new HttpWaitStrategy('/?folder=/opt/app-root/src', 8787, {abortOnContainerExit: true}))
-          .start();
-      await use(new CodeServer(page, `http://${container.getHost()}:${container.getMappedPort(8787)}`))
-      await container.stop()
+    switch (codeServerSource.kind) {
+      case 'url':
+        await use(new CodeServer(page, codeServerSource.url));
+        break;
+      case 'image': {
+        const container = await new GenericContainer(codeServerSource.image)
+            .withExposedPorts(8787)
+            .withWaitStrategy(new HttpWaitStrategy('/?folder=/opt/app-root/src', 8787, {abortOnContainerExit: true}))
+            .start();
+        try {
+          await use(new CodeServer(page, `http://${container.getHost()}:${container.getMappedPort(8787)}`))
+        } finally {
+          await container.stop()
+        }
+        break;
+      }
+      default:
+        assertUnreachable(codeServerSource);
     }
   }, {timeout: 10 * 60 * 1000}],
 });
@@ -72,7 +81,7 @@ test('@codeserver wait for welcome screen to load', async ({codeServer, page}, t
   await utils.takeScreenshot(page, testInfo, "welcome.png")
 })
 
-test('@codeserver use the terminal to run command', async ({codeServer, page}, testInfo) => {
+test('@codeserver use the terminal to run command', async ({codeServer, page}, _testInfo) => {
   await page.goto(codeServer.url);
 
   await test.step("Should always see the code-server editor", async () => {
@@ -81,7 +90,7 @@ test('@codeserver use the terminal to run command', async ({codeServer, page}, t
 
   await test.step("should show the Integrated Terminal", async () => {
     await codeServer.focusTerminal()
-    expect(await page.isVisible("#terminal")).toBe(true)
+    await expect(page.locator("#terminal")).toBeVisible()
   })
 
   await test.step("should execute Terminal command successfully", async () => {
