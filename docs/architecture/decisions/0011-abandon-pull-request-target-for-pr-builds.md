@@ -77,6 +77,17 @@ For non-PR events (push, workflow_dispatch), the fallback determines concurrency
 
 We start with `github.ref` and will revisit based on practical experience.
 
+For workflows triggered only by `pull_request` (e.g., `build-notebooks-pr.yaml`), the PR
+number is always available and no fallback is needed:
+
+```yaml
+concurrency:
+  group: ${{ format('{0}-{1}', github.workflow, github.event.pull_request.number) }}
+  cancel-in-progress: true
+```
+
+For workflows triggered by both `push` and `pull_request`, add a fallback:
+
 ```yaml
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

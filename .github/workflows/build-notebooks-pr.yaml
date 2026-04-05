@@ -10,7 +10,7 @@
       - manifests/**
 
 concurrency:
-  group: ${{ format('build-notebooks-pr-{0}', github.event.pull_request.number) }}
+  group: ${{ format('{0}-{1}', github.workflow, github.event.pull_request.number) }}
   cancel-in-progress: true
 
 jobs:
