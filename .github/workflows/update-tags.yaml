@@ -85,6 +85,6 @@ jobs:
             --title "chore: update image tags ${prev_tag} → ${new_tag}" \
             --body "$body" \
             --head "$branch" \
-            --base main
+            --base "${{ github.ref_name }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
