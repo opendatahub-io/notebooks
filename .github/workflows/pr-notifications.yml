@@ -11,6 +11,8 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'konflux-nudge') == false
     permissions:
       issues: write
+      # addLabels on PRs needs this despite docs saying issues:write suffices
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
 
@@ -44,6 +46,8 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           AUTHOR: ${{ github.event.pull_request.user.login }}
           REPO: ${{ github.repository }}
+          # gh cli needs this (no checkout)
+          GH_REPO: ${{ github.repository }}
         run: |
           set -Eeuxo pipefail
           # Check both author and unique marker to avoid false positives from
