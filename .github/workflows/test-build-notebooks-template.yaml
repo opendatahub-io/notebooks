@@ -7,6 +7,7 @@ permissions:
 
 "on":
   push:
+    branches: [main, stable, 'rhoai-*']
     paths:
       - '.github/workflows/build-notebooks-TEMPLATE.yaml'
       - '.github/workflows/test-build-notebooks-template.yaml'
@@ -23,6 +24,10 @@ permissions:
       - '.github/actions/free-up-disk-space/**'
       - 'ci/cached-builds/**'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test-template-minimal:

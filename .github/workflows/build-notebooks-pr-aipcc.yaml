@@ -18,7 +18,7 @@ permissions:
   packages: read
 
 concurrency:
-  group: ${{ format('build-notebooks-pr-apicc-{0}', github.event.pull_request.number) }}
+  group: ${{ format('build-notebooks-pr-aipcc-{0}', github.event.pull_request.number) }}
   cancel-in-progress: true
 
 jobs:
@@ -36,12 +36,13 @@ jobs:
         with:
           # language=javascript
           script: |
-            // Same-repo PRs are trusted (not from a fork)
+            // Same-repo PRs are handled by build-notebooks-pr.yaml (build-rhoai job)
+            // which uses pull_request trigger — no need for pull_request_target here.
             const headRepo = context.payload.pull_request.head.repo.full_name;
             const baseRepo = context.payload.pull_request.base.repo.full_name;
             if (headRepo === baseRepo) {
-              core.info(`Same-repo PR (${headRepo}) — authorized`);
-              core.setOutput('authorized', 'true');
+              core.info(`Same-repo PR (${headRepo}) — skipping, handled by build-notebooks-pr.yaml`);
+              core.setOutput('authorized', 'false');
               return;
             }
             // Fork PRs require the PR author to have write/admin/maintain permission.
