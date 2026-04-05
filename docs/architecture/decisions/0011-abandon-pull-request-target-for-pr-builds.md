@@ -68,12 +68,18 @@ Use `github.event.pull_request.number` (not `github.head_ref`) in concurrency gr
 `head_ref` is just the branch name without fork owner — two forks with the same branch name
 would collide. PR number is unique per PR.
 
-For non-PR events (push, workflow_dispatch), fall back to `github.run_id` for parallel
-execution, not `github.ref` which would serialize all pushes to main.
+For non-PR events (push, workflow_dispatch), the fallback determines concurrency behavior:
+
+- **`github.ref`**: Groups by branch — serializes pushes to the same branch (e.g., two rapid
+  pushes to `main` queue instead of running in parallel). Simple and predictable.
+- **`github.run_id`**: Unique per run — allows full parallelism. Risk: many concurrent runs
+  on the same branch could waste runners.
+
+We start with `github.ref` and will revisit based on practical experience.
 
 ```yaml
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 ```
 
