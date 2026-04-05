@@ -11,7 +11,7 @@ import {log} from "./logger"
 import {setupTestcontainers} from "./testcontainers";
 
 import * as utils from './utils'
-import type { ConfigFixtures } from "./fixtures";
+import { assertUnreachable, type ConfigFixtures } from "./fixtures";
 
 // Extend shared config fixture types with test-specific fixtures.
 type TestFixtures = ConfigFixtures & {
@@ -19,7 +19,7 @@ type TestFixtures = ConfigFixtures & {
 };
 const test = base.extend<TestFixtures>({
   connectCDP: [false, {option: true}],
-  codeServerSource: [{url:'http://localhost:8787'}, {option: true}],
+  codeServerSource: [{kind: 'url', url:'http://localhost:8787'}, {option: true}],
   page: async ({ page, connectCDP }, use) => {
     if (!connectCDP) {
       await use(page)
@@ -35,18 +35,21 @@ const test = base.extend<TestFixtures>({
     }
   },
   codeServer: [async ({ page, codeServerSource }, use) => {
-    if (codeServerSource.url) {
-      await use(new CodeServer(page, codeServerSource.url))
-    } else {
-      // Type is string | undefined because TS can't exclude the url="" case,
-      // but the fixture default is always { url: "..." } or { image: "..." }.
-      const image = codeServerSource.image!
-      const container = await new GenericContainer(image)
-          .withExposedPorts(8787)
-          .withWaitStrategy(new HttpWaitStrategy('/?folder=/opt/app-root/src', 8787, {abortOnContainerExit: true}))
-          .start();
-      await use(new CodeServer(page, `http://${container.getHost()}:${container.getMappedPort(8787)}`))
-      await container.stop()
+    switch (codeServerSource.kind) {
+      case 'url':
+        await use(new CodeServer(page, codeServerSource.url));
+        break;
+      case 'image': {
+        const container = await new GenericContainer(codeServerSource.image)
+            .withExposedPorts(8787)
+            .withWaitStrategy(new HttpWaitStrategy('/?folder=/opt/app-root/src', 8787, {abortOnContainerExit: true}))
+            .start();
+        await use(new CodeServer(page, `http://${container.getHost()}:${container.getMappedPort(8787)}`))
+        await container.stop()
+        break;
+      }
+      default:
+        assertUnreachable(codeServerSource);
     }
   }, {timeout: 10 * 60 * 1000}],
 });
