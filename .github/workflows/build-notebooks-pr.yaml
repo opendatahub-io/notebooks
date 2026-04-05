@@ -9,24 +9,20 @@
       # In fact, skip the build if there are only changes in manifests and nowhere else
       - manifests/**
 
-permissions:
-  contents: read
-  packages: read
-  pull-requests: read
-
 concurrency:
-  group: ${{ format('build-notebooks-pr-{0}', github.event.pull_request.number) }}
+  group: ${{ format('{0}-{1}', github.workflow, github.event.pull_request.number) }}
   cancel-in-progress: true
 
 jobs:
   gen:
     name: Generate job matrix
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
-    # rhds/notebooks builds from quay.io/aipcc bases and requires pull_request_target trigger
-    if: ${{ github.repository != 'red-hat-data-services/notebooks' }}
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       has_jobs: ${{ steps.gen.outputs.has_jobs }}
+      is_fork: ${{ steps.fork-check.outputs.is_fork }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
@@ -37,6 +33,23 @@ jobs:
           go-version: "stable"
           cache-dependency-path: "scripts/buildinputs/go.mod"
 
+      - name: Check if PR is from a fork
+        id: fork-check
+        env:
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
+        run: |
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "is_fork=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_fork=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Flag fork PR in workflow summary
+        if: steps.fork-check.outputs.is_fork == 'true'
+        run: |
+          echo "::error title=Fork PR — subscription builds skipped::This PR is from a fork. Subscription builds (RHEL, AIPCC) need secrets unavailable to forks. Push your branch to the main repo for full CI."
+
       # RHAIENG-3914: use env vars to prevent GitHub Actions expression injection
       - name: Determine targets to build based on changed files
         run: |
@@ -46,7 +59,7 @@ jobs:
           python3 ci/cached-builds/gen_gha_matrix_jobs.py \
             --from-ref "origin/${BASE_REF}" \
             --to-ref "${HEAD_REF}" \
-            --rhel-images exclude \
+            --rhel-images include \
             --s390x-images include
         id: gen
         env:
@@ -56,18 +69,54 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         shell: bash
 
-  build:
-    name: "${{ matrix.target }} · ${{ matrix.platform }}"
+      - name: Annotate PR for fork guidance
+        if: steps.fork-check.outputs.is_fork == 'true'
+        run: |
+          FIRST_FILE=$(git diff --name-only "origin/${BASE_REF}...${HEAD_REF}" | head -1)
+          FIRST_FILE="${FIRST_FILE:-CONTRIBUTING.md}"
+          echo "::warning file=${FIRST_FILE},line=1,title=Fork PR — subscription builds skipped::Push your branch to the main repo for full CI. See CONTRIBUTING.md."
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+
+  # ODH builds — run for all PRs (fork and same-repo) on opendatahub-io only
+  # rhds/notebooks builds from quay.io/aipcc bases via build-rhoai below
+  build-odh:
+    name: "${{ matrix.target }} · ${{ matrix.platform }} [odh]"
+    permissions:
+      contents: read
+      packages: read
     needs: ["gen"]
     strategy:
       fail-fast: false
       matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
     uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
-    if: ${{ fromJson(needs.gen.outputs.has_jobs) }}
+    if: ${{ fromJson(needs.gen.outputs.has_jobs) && github.repository != 'red-hat-data-services/notebooks' }}
     with:
       target: "${{ matrix.target }}"
       python: "${{ matrix.python }}"
       github: "${{ toJSON(github) }}"
       platform: "${{ matrix.platform }}"
       subscription: "${{ matrix.subscription }}"
+    secrets: inherit
+
+  # RHOAI builds — same-repo PRs only (secrets available via pull_request trigger)
+  build-rhoai:
+    name: "${{ matrix.target }} · ${{ matrix.platform }} [rhoai]"
+    permissions:
+      contents: read
+      packages: read
+    needs: ["gen"]
+    strategy:
+      fail-fast: false
+      matrix: "${{ fromJson(needs.gen.outputs.matrix) }}"
+    uses: ./.github/workflows/build-notebooks-TEMPLATE.yaml
+    if: ${{ fromJson(needs.gen.outputs.has_jobs) && needs.gen.outputs.is_fork == 'false' }}
+    with:
+      target: "${{ matrix.target }}"
+      python: "${{ matrix.python }}"
+      github: "${{ toJSON(github) }}"
+      platform: "${{ matrix.platform }}"
+      subscription: ${{ true }}
+      konflux: ${{ true }}
     secrets: inherit

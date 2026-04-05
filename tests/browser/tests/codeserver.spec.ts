@@ -11,16 +11,13 @@ import {log} from "./logger"
 import {setupTestcontainers} from "./testcontainers";
 
 import * as utils from './utils'
+import type { ConfigFixtures } from "./fixtures";
 
-// Declare the types of your fixtures.
-type MyFixtures = {
-  connectCDP: false | number;
-  codeServerSource:
-    | { url: string; image?: never }
-    | { image: string; url?: never };
+// Extend shared config fixture types with test-specific fixtures.
+type TestFixtures = ConfigFixtures & {
   codeServer: CodeServer
 };
-const test = base.extend<MyFixtures>({
+const test = base.extend<TestFixtures>({
   connectCDP: [false, {option: true}],
   codeServerSource: [{url:'http://localhost:8787'}, {option: true}],
   page: async ({ page, connectCDP }, use) => {

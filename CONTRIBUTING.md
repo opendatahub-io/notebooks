@@ -67,6 +67,22 @@ GITHUB_TOKEN=$(gh auth token) pinact run
 CI enforces this via `pinact run --check --verify` in the code-quality workflow.
 See [ADR 0008](docs/architecture/decisions/0008-harden-github-actions-pin-sha-digests.md) for background.
 
+### Contributing from branches vs forks
+
+**Recommended:** If you have write access to the repo, push your branch directly
+and create the PR from there:
+
+```bash
+git push origin HEAD:<your-initials>/branch-name
+```
+
+This gives CI full access to build secrets (RHEL subscription, AIPCC registry) and
+uses the org's paid runners with higher concurrency limits.
+
+**Fork PRs:** If you open a PR from a fork, CI will run non-secret checks (code
+quality, ODH image builds) but subscription builds (RHEL, AIPCC) will be skipped.
+A bot will comment with instructions for re-creating the PR from a same-repo branch.
+
 ### Working with linters
 
 - Run prek before you commit, to lint the Python sources that have been put under its management

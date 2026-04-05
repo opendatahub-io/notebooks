@@ -3,6 +3,7 @@ name: Test Install Podman
 
 "on":
   push:
+    branches: [main, stable, 'rhoai-*']
     paths:
       - 'ci/cached-builds/**'
       - '.github/actions/install-podman-action/**'
@@ -13,6 +14,10 @@ name: Test Install Podman
       - '.github/actions/install-podman-action/**'
       - '.github/workflows/test-install-podman.yaml'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   TMPDIR: /home/runner/.local/share/containers/tmpdir
