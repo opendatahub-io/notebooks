@@ -44,7 +44,7 @@ jobs:
             xargs -0 -I{} perl -0777 -i -pe "s/\Q$prev_tag\E/$new_tag/g" "{}"
 
           # Update params-latest.env
-          perl -pi -e "s/\Q$prev_tag\E/$new_tag/g" manifests/base/params-latest.env
+          perl -pi -e "s/\Q$prev_tag\E/$new_tag/g" manifests/odh/base/params-latest.env
 
           # Export previous tag for later steps
           echo "previous_tag=$prev_tag" >> $GITHUB_OUTPUT
@@ -65,7 +65,7 @@ jobs:
           fi
 
           git checkout -b "$branch"
-          git add .tekton/*.yaml manifests/base/params-latest.env
+          git add .tekton/*.yaml manifests/odh/base/params-latest.env
           git commit -m "chore: update tags from ${prev_tag} to ${new_tag}"
           git push origin "$branch"
           echo "branch=$branch" >> $GITHUB_OUTPUT
