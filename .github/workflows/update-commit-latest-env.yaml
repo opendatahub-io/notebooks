@@ -10,7 +10,8 @@ name: Update commit-latest.env on params-latest.env change
       - main
       - rhoai-*
     paths:
-      - 'manifests/base/params-latest.env'
+      - 'manifests/odh/base/params-latest.env'
+      - 'manifests/rhoai/base/params-latest.env'
 
 jobs:
   sync-commit:
@@ -26,22 +27,29 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
+      
+      - name: Setup uv
+        uses: ./.github/actions/setup-uv
 
-      - name: Update manifests/base/commit-latest.env
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Update commit-latest.env (ODH and RHOAI)
         id: update_env
-        run: |
-          python3 scripts/update-commit-latest-env.py
+        run: uv run python scripts/update-commit-latest-env.py
 
       - name: Commit and push changes
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-          # Check for changes before committing
-          if ! git diff --quiet manifests/base/commit-latest.env; then
-            git add manifests/base/commit-latest.env
+          if ! git diff --quiet \
+            manifests/odh/base/commit-latest.env \
+            manifests/rhoai/base/commit-latest.env
+          then
+            git add manifests/odh/base/commit-latest.env manifests/rhoai/base/commit-latest.env
             git commit -m "ci: update commit SHAs for image digests changes"
             git push
           else
-            echo "No effective changes in manifests/base/commit-latest.env, skipping commit."
+            echo "No effective changes in commit-latest.env files, skipping commit."
           fi
