@@ -25,6 +25,8 @@ RELEASE	 		 ?= 2025b
 RELEASE_PYTHON_VERSION	 ?= 3.12
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
+# security options for podman (label=disable fixes permission denied on macOS rootful)
+CONTAINER_BUILD_SECURITY_ARGS ?= $(if $(filter podman,$(CONTAINER_ENGINE)),--security-opt label=disable,)
 # whether to push the images to a registry as they are built
 PUSH_IMAGES ?= yes
 # INDEX_MODE: auto (default), public-index, or rh-index - controls lock file generation
@@ -100,7 +102,7 @@ define build_image
 	  exit 1; \
 	fi
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) $(LOCAL_BUILD_ARG) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_SECURITY_ARGS) $(CONTAINER_BUILD_CACHE_ARGS) $(LOCAL_BUILD_ARG) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
 # Push function for the notebook image:
