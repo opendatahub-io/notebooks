@@ -70,11 +70,19 @@ no-build = true
 # Workaround for https://github.com/astral-sh/uv/issues/12607 —
 # no-build blocks local source trees too
 no-binary-package = [
-    # exempt our own package
+    # exempt our own packages
     "notebooks",
+    "copr-rebuild",
     # sdist-only deps (pure Python, no system library requirements)
     "openshift-python-wrapper", "pyhelper-utils", "python-simple-logger", "timeout-sampler",
 ]
+# koji hard-depends on requests-gssapi, but we only use unauthenticated
+# XML-RPC calls (koji.ClientSession) — no GSSAPI auth needed.
+# gssapi has no Linux wheels and needs libkrb5-dev to build from source.
+exclude-dependencies = ["requests-gssapi"]
+
+[tool.uv.workspace]
+members = ["base-images/copr"]
 
 # https://github.com/astral-sh/uv/issues/3957#issuecomment-2659350181
 [build-system]
@@ -108,14 +116,14 @@ reportUnnecessaryTypeIgnoreComment = "error"
 reportPossiblyUnboundVariable = "warning"
 reportOptionalMemberAccess = "none"
 reportOptionalSubscript = "none"
-include = ["ci/", "tests/"]
+include = ["ci/", "tests/", "base-images/"]
 ignore = [ ]
 pythonVersion = "3.14"
 pythonPlatform = "Linux"
 
 # https://docs.astral.sh/ruff/configuration
 [tool.ruff]
-include = ["pyproject.toml", "ci/**/*.py", "ntb/**/*.py", "tests/**/*.py", "jupyter/**/*.ipynb"]
+include = ["pyproject.toml", "ci/**/*.py", "ntb/**/*.py", "tests/**/*.py", "base-images/**/*.py", "jupyter/**/*.ipynb"]
 exclude = [ ]
 target-version = "py314"
 line-length = 120

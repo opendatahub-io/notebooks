@@ -112,7 +112,7 @@ function install_packages() {
         PKGS+=("zeromq")
     fi
 
-    # RHELAI: for h5py
+    # RHELAI: for h5py (HDF5 1.14.x from Copr rebuild, provides libhdf5.so.310)
     PKGS+=("hdf5")
 
     # RHELAI: faster memory allocator / PyArrow

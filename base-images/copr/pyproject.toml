@@ -1,0 +1,22 @@
+# https://docs.astral.sh/uv/concepts/projects/config/
+[project]
+name = "copr-rebuild"
+version = "0.1.0"
+description = "Rebuild Fedora packages for EL9 on Copr with automatic dependency ordering."
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "koji>=1.35.3",
+    "stamina",
+    "pydantic>=2.10.0",
+    "pyyaml",
+]
+
+[project.scripts]
+copr-rebuild = "copr_rebuild.rebuild:main"
+
+[build-system]
+requires = ["uv-build"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = ["copr_rebuild"]
