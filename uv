@@ -1,7 +1,7 @@
 #!/usr/bin/env -S bash --norc --noprofile
 # ./uv — run the project-pinned version of uv.
 #
-# Reads required-version from uv.toml and delegates via `uv tool run`.
+# Reads required-version from pyproject.toml and delegates via `uv tool run`.
 # This avoids version mismatch errors when your system uv (e.g. Homebrew)
 # differs from the version pinned for this project.
 #
@@ -24,10 +24,10 @@ while IFS= read -r line; do
         version="${BASH_REMATCH[1]}"
         break
     fi
-done < "${SCRIPT_DIR}/uv.toml"
+done < "${SCRIPT_DIR}/pyproject.toml"
 
 if [[ -z "${version:-}" ]]; then
-    echo "error: could not read required-version from ${SCRIPT_DIR}/uv.toml" >&2
+    echo "error: could not read required-version from ${SCRIPT_DIR}/pyproject.toml [tool.uv]" >&2
     exit 1
 fi
 

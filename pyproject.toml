@@ -51,10 +51,29 @@ dev = [
 ]
 
 [tool.uv]
+required-version = "==0.10.6"
 package = true
 environments = [
     "sys_platform == 'darwin'",
     "sys_platform == 'linux'",
+]
+# Assert the lockfile is installable on our two target platforms.
+# uv lock will fail if any dependency can't be resolved for these.
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+]
+# Reject source distributions — require pre-built wheels for all deps.
+# Catches packages that need system libraries to build from source
+# (e.g. gssapi needing libkrb5-dev) before they reach CI.
+no-build = true
+# Workaround for https://github.com/astral-sh/uv/issues/12607 —
+# no-build blocks local source trees too
+no-binary-package = [
+    # exempt our own package
+    "notebooks",
+    # sdist-only deps (pure Python, no system library requirements)
+    "openshift-python-wrapper", "pyhelper-utils", "python-simple-logger", "timeout-sampler",
 ]
 
 # https://github.com/astral-sh/uv/issues/3957#issuecomment-2659350181

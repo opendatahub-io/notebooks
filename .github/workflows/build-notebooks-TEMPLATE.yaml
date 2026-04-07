@@ -424,13 +424,8 @@ jobs:
 
       # Single place we install from uv.lock (dev deps include structlog for scripts/sandbox.py).
       # Make and later pytest steps all use this venv.
-      - name: Install uv
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57  # v8.0.0
-        with:
-          version-file: uv.toml
-          python-version: "3.14"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
 
       - name: Install from uv.lock (project + dev deps)
         run: uv sync --group dev --locked
