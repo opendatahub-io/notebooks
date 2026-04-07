@@ -14,8 +14,13 @@ import stamina
 
 logger = logging.getLogger(__name__)
 
-# Default timeout for waiting on a single build (12 hours)
-_DEFAULT_WAIT_TIMEOUT = 12 * 3600
+_DEFAULT_WAIT_TIMEOUT = 12 * 3600  # 12 hours
+
+# Terminal build statuses
+_SUCCEEDED = "succeeded"
+_FAILED = "failed"
+_CANCELED = "canceled"
+_TERMINAL_STATUSES = frozenset({_SUCCEEDED, _FAILED, _CANCELED})
 
 _SKIP_TESTS_SCRIPT_TEMPLATE = """\
 #!/bin/bash
@@ -120,6 +125,22 @@ class CoprClient:
         logger.info("Configuring chroot %s: %s", chroot_path, " ".join(cmd[3:]))
         self._run_copr_cli(cmd)
 
+    @staticmethod
+    def _append_batch_args(
+        cmd: list[str],
+        *,
+        timeout: int | None = None,
+        with_build_id: int | None = None,
+        after_build_id: int | None = None,
+    ) -> None:
+        """Append timeout and batch-ordering flags to a copr-cli command."""
+        if timeout is not None:
+            cmd.extend(["--timeout", str(timeout)])
+        if with_build_id is not None:
+            cmd.extend(["--with-build-id", str(with_build_id)])
+        if after_build_id is not None:
+            cmd.extend(["--after-build-id", str(after_build_id)])
+
     def submit_build(
         self,
         srpm_url: str,
@@ -148,12 +169,7 @@ class CoprClient:
         """
         logger.info("Submitting build to %s: %s", self.project, srpm_url)
         cmd = ["copr-cli", "build", "--nowait", self.project, srpm_url]
-        if timeout is not None:
-            cmd.extend(["--timeout", str(timeout)])
-        if with_build_id is not None:
-            cmd.extend(["--with-build-id", str(with_build_id)])
-        if after_build_id is not None:
-            cmd.extend(["--after-build-id", str(after_build_id)])
+        self._append_batch_args(cmd, timeout=timeout, with_build_id=with_build_id, after_build_id=after_build_id)
         stdout = self._run_copr_cli(cmd)
         return self._parse_build_id(stdout)
 
@@ -207,12 +223,7 @@ class CoprClient:
                 "on",
                 self.project,
             ]
-            if timeout is not None:
-                cmd.extend(["--timeout", str(timeout)])
-            if with_build_id is not None:
-                cmd.extend(["--with-build-id", str(with_build_id)])
-            if after_build_id is not None:
-                cmd.extend(["--after-build-id", str(after_build_id)])
+            self._append_batch_args(cmd, timeout=timeout, with_build_id=with_build_id, after_build_id=after_build_id)
 
             stdout = self._run_copr_cli(cmd)
             return self._parse_build_id(stdout)
@@ -270,7 +281,7 @@ class CoprClient:
             polls += 1
             elapsed = timeout - (deadline - time.monotonic())
 
-            if status in ("succeeded", "failed", "canceled"):
+            if status in _TERMINAL_STATUSES:
                 logger.info("Build %d: %s (after %d polls, %.0fs)", build_id, status, polls, elapsed)
                 return status
 
@@ -386,9 +397,9 @@ class CoprClient:
             for bid in list(pending):
                 status = self.get_build_status(bid)
                 logger.info("Build %d: %s", bid, status)
-                if status == "succeeded":
+                if status == _SUCCEEDED:
                     pending.discard(bid)
-                elif status in ("failed", "canceled"):
+                elif status in (_FAILED, _CANCELED):
                     raise CoprBuildError(bid, status)
             if pending:
                 if time.monotonic() + poll_interval > deadline:
