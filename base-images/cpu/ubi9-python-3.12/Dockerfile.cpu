@@ -1,38 +1,35 @@
 ARG TARGETARCH
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS buildscripts
+FROM registry.access.redhat.com/ubi9/python-312:latest AS buildscripts
 COPY base-images/utils/aipcc.sh /mnt/aipcc.sh
-COPY base-images/utils/fix-permissions base-images/utils/rpm-file-permissions /mnt/usr/bin/
+COPY base-images/utils/fix-permissions /mnt/usr/bin/
 
 ####################
 # base             #
 ####################
-FROM registry.access.redhat.com/ubi9/ubi:latest AS base
-
-ARG PYTHON_VERSION=3.12
-ENV PYTHON=python${PYTHON_VERSION}
-
-ARG VARIANT=cpu
-ARG NAME=odh-base-image-cpu-py312-ubi9
-ARG SUMMARY="Open Data Hub Notebooks Base Image for ${VARIANT} with Python ${PYTHON_VERSION}"
-# https://github.com/projectatomic/ContainerApplicationGenericLabels
-ARG DESCRIPTION="${SUMMARY} with Python ${PYTHON_VERSION}"
-
-LABEL summary="${SUMMARY}" \
-      description="${DESCRIPTION}" \
-      io.k8s.display-name="${SUMMARY}" \
-      io.k8s.description="${DESCRIPTION}"
+FROM registry.access.redhat.com/ubi9/python-312:latest AS base
 
 USER 0
 ARG TARGETARCH
 ENV TARGETARCH=${TARGETARCH}
+ENV PYTHON=python3.12
+ENV VIRTUAL_ENV=/opt/app-root/
 
-# MPI implementation (default: OpenMPI)
-ENV MPI_HOME=/usr/lib64/openmpi
+# OpenShift s2i / Cloud Native Buildpack user
+ENV CNB_USER_ID=1001 \
+    CNB_GROUP_ID=0
 
-ENV APP_ROOT=/opt/app-root
-ENV HOME=${APP_ROOT}/src
-ENV PATH=${HOME}/bin:${HOME}/.local/bin:${APP_ROOT}/bin:/usr/local/sbin:/usr/local/bin:${MPI_HOME}/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Custom fix-permissions script that extends sclorg version with chown to UID 1001
+COPY --from=buildscripts /mnt/usr/bin/ /usr/bin/
+
+RUN \
+--mount=from=buildscripts,source=/mnt,target=/mnt \
+--mount=type=cache,sharing=locked,id=dnf-ubi9,target=/var/cache/dnf \
+/bin/bash <<'EOF'
+set -Eeuxo pipefail
+/mnt/aipcc.sh
+fix-permissions ${APP_ROOT} -P
+EOF
 
 ### BEGIN AIPCC pip and uv config files
 ARG INDEX_URL
@@ -62,34 +59,6 @@ ENV VIRTUAL_ENV=${APP_ROOT} \
     PS1="(app-root) \w\$ "
 ### END AIPCC pip and uv config files
 
-# OpenShift s2i / Cloud Native Buildpack user
-ENV CNB_USER_ID=1001 \
-    CNB_GROUP_ID=0
-
-# Create home directory and XDG cache directory group-writable. $HOME
-# is owned by 1001:0. All directories are writable by gid 0.
-# hadolint ignore=DL3046
-RUN useradd -u ${CNB_USER_ID} -g ${CNB_GROUP_ID} -d ${HOME} -K HOME_MODE=0770 -K UMASK=0007 -m -s /bin/bash -c "Default Application User" default \
-    && mkdir -m 770 "${HOME}/.cache"
-
-# Custom fix-permissions script that extends sclorg version with chown to UID 1001
-COPY --from=buildscripts /mnt/usr/bin/ /usr/bin/
-
-RUN \
---mount=from=buildscripts,source=/mnt,target=/mnt \
---mount=type=cache,sharing=locked,id=dnf-ubi9,target=/var/cache/dnf \
-/bin/bash <<'EOF'
-set -Eeuxo pipefail
-/mnt/aipcc.sh
-fix-permissions ${APP_ROOT} -P
-EOF
-
-RUN rpm-file-permissions
-
 # Restore user workspace
-WORKDIR ${APP_ROOT}
-USER ${CNB_USER_ID}:${CNB_GROUP_ID}
-
-# RHELAI-2417, RHELAI-1720: workaround for PyArrow
-# libjemalloc.so.2: cannot allocate memory in static TLS block
-ENV LD_PRELOAD=/usr/lib64/libjemalloc.so.2
+USER 1001
+WORKDIR /opt/app-root/src
