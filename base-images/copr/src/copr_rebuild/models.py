@@ -88,6 +88,7 @@ def main():
 
     with open(out, "w", encoding="utf-8") as f:
         json.dump(schema, f, indent=2)
+        f.write("\n")
 
     print(f"Schema generated: {out}")
 

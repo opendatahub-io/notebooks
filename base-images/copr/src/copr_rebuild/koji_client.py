@@ -25,7 +25,7 @@ class KojiClient:
     def __init__(self, hub_url: str = "https://koji.fedoraproject.org/kojihub") -> None:
         self.session = koji.ClientSession(hub_url)
 
-    @stamina.retry(on=xmlrpc.client.ProtocolError, attempts=5, wait_initial=2.0, wait_max=60.0, wait_jitter=5.0)
+    @stamina.retry(on=(xmlrpc.client.ProtocolError, ConnectionError, TimeoutError), attempts=5, wait_initial=2.0, wait_max=60.0, wait_jitter=5.0)
     def get_package_metadata(self, nvr: str) -> PackageMetadata:
         """Query Koji for a build's subpackages, provides, and BuildRequires.
 

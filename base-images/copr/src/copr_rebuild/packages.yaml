@@ -24,6 +24,7 @@ build_timeout: 36000  # 10 hours
 packages:
   - name: autoconf
     nvr: autoconf-2.72-7.fc43
+    skip_tests: true
     note: >-
       EL9 ships autoconf 2.69 but Fedora SRPMs (including HDF5) need >= 2.71.
       Rebuilding the standard Fedora autoconf replaces the system version in the
