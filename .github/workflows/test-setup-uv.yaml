@@ -1,0 +1,47 @@
+---
+name: Test setup-uv action
+
+"on":
+  push:
+    branches: [main, stable, 'rhoai-*']
+    paths:
+      - '.github/actions/setup-uv/**'
+      - '.github/workflows/test-setup-uv.yaml'
+      - '.python-version'
+      - 'pyproject.toml'
+  pull_request:
+    paths:
+      - '.github/actions/setup-uv/**'
+      - '.github/workflows/test-setup-uv.yaml'
+      - '.python-version'
+      - 'pyproject.toml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test-setup-uv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Verify uv version matches pyproject.toml
+        run: uv version
+
+      - name: Verify Python version matches .python-version
+        run: |
+          expected=$(cat .python-version)
+          actual=$(python3 --version | grep -oE '[0-9]+\.[0-9]+')
+          echo "Expected: $expected, Actual: $actual"
+          [[ "$actual" == "$expected" ]]
+
+      - name: Verify uv sync works
+        run: uv sync --locked

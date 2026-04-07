@@ -66,7 +66,7 @@ Note: To ensure the GitHub Action runs successfully, users must add a `GH_ACCESS
 
 #### Prepare Python + uv + pytest env
 
-This project pins its uv version in `uv.toml` (`required-version`).
+This project pins its uv version in `pyproject.toml` (`[tool.uv] required-version`).
 Use the `./uv` wrapper script at the repo root — it reads the pinned
 version and runs it via `uvx`, so your system uv version doesn't matter:
 
@@ -85,7 +85,7 @@ brew install python@3.14 uv
 <summary>Alternatives to <code>./uv</code></summary>
 
 The `./uv` wrapper is the recommended way, but you can also
-(replace `0.10.6` below with the version from `uv.toml`):
+(replace `0.10.6` below with the version from `pyproject.toml`):
 
 - **Use `uvx` directly** with an explicit version:
   ```shell
@@ -104,7 +104,7 @@ The `./uv` wrapper is the recommended way, but you can also
   ```
 
 If your system uv matches the pinned version, you can use `uv` directly —
-`required-version` in `uv.toml` will let it through. If it doesn't match,
+`required-version` in `pyproject.toml` will let it through. If it doesn't match,
 uv exits with a clear error telling you which version is required.
 
 </details>
