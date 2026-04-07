@@ -459,7 +459,7 @@ COPY --from=whl-cache /tmp/control /dev/null
 # ship sdist for ppc64le/s390x (e.g. psutil, greenlet, wrapt, uvloop, watchfiles).
 RUN --mount=type=cache,from=whl-cache,source=/wheelsdir/,target=/wheelsdir/,rw /bin/bash <<'EOF'
 set -Eeuxo pipefail
-echo "Installing softwares and packages"
+echo "Installing software and packages"
 # Install all requirements from the offline cachi2 pip cache.
 # --find-links order:
 #   1. /wheelsdir/ : compiled C-extension wheels from whl-cache stage (ppc64le/s390x)
