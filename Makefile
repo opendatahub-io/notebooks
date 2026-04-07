@@ -449,7 +449,6 @@ refresh-lock-files:
 	@echo "🔁 Refreshing lock files using INDEX_MODE=$(INDEX_MODE)"
 	@echo "==================================================================="
 	@cd $(ROOT_DIR) && \
-		UV_REQUIRED_VERSION="==0.10.6" \
 		UV_LOCK_EXTRA_INDEX_URL="$(UV_EXTRA_INDEX_URL)" \
 		PIP_LOCK_EXTRA_INDEX_URL="$(PIP_EXTRA_INDEX_URL)" \
 		env -u UV_EXTRA_INDEX_URL -u PIP_EXTRA_INDEX_URL \

@@ -37,11 +37,17 @@ jobs:
         run: uv version
 
       - name: Verify Python version matches .python-version
+        shell: python3 {0}
         run: |
-          expected=$(cat .python-version)
-          actual=$(python3 --version | grep -oE '[0-9]+\.[0-9]+')
-          echo "Expected: $expected, Actual: $actual"
-          [[ "$actual" == "$expected" ]]
+          import pathlib, subprocess
+          expected = pathlib.Path(".python-version").read_text().strip().split("\n")[0]
+          expected_minor = ".".join(expected.split(".")[:2])
+          # Use uv run python to get the version uv resolves via UV_PYTHON,
+          # not the system python3 running this script.
+          out = subprocess.check_output(["uv", "run", "python", "--version"], text=True)
+          actual = ".".join(out.strip().split()[1].split(".")[:2])
+          print(f"Expected: {expected_minor} (from {expected!r}), Actual: {actual}")
+          assert actual == expected_minor, f"Python version mismatch: {actual} != {expected_minor}"
 
       - name: Verify uv sync works
         run: uv sync --locked

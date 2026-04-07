@@ -6,8 +6,12 @@ runs:
   steps:
     - name: Read Python version from .python-version
       id: python-version
-      shell: bash
-      run: echo "version=$(cat .python-version)" >> "$GITHUB_OUTPUT"
+      shell: python3 {0}
+      run: |
+        import os, pathlib
+        version = pathlib.Path(".python-version").read_text().strip().split("\n")[0]
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            print(f"version={version}", file=f)
 
     # https://github.com/astral-sh/setup-uv
     - name: Install uv and Python
