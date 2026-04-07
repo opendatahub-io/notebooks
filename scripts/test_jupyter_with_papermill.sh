@@ -305,6 +305,9 @@ function _run_test()
 {
     local notebook_id="${1:-}"
 
+    # Create expected_versions.json from the correct imagestream for THIS test
+    _create_test_versions_source_of_truth "${notebook_id}"
+
     local test_notebook_file='test_notebook.ipynb'
     local repo_test_directory=
     repo_test_directory="$(_get_jupyter_notebook_directory "${notebook_id}" "test")"
@@ -415,8 +418,6 @@ function _handle_test()
 {
     local notebook_id=
     notebook_id=$(_get_notebook_id)
-
-    _create_test_versions_source_of_truth "${notebook_id}"
 
     "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "python3 -m pip install papermill"
 
