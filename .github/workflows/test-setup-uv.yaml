@@ -1,0 +1,53 @@
+---
+name: Test setup-uv action
+
+"on":
+  push:
+    branches: [main, stable, 'rhoai-*']
+    paths:
+      - '.github/actions/setup-uv/**'
+      - '.github/workflows/test-setup-uv.yaml'
+      - '.python-version'
+      - 'pyproject.toml'
+  pull_request:
+    paths:
+      - '.github/actions/setup-uv/**'
+      - '.github/workflows/test-setup-uv.yaml'
+      - '.python-version'
+      - 'pyproject.toml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test-setup-uv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Verify uv version matches pyproject.toml
+        run: uv version
+
+      - name: Verify Python version matches .python-version
+        shell: python3 {0}
+        run: |
+          import pathlib, subprocess
+          expected = pathlib.Path(".python-version").read_text().strip().split("\n")[0]
+          expected_minor = ".".join(expected.split(".")[:2])
+          # Use uv run python to get the version uv resolves via UV_PYTHON,
+          # not the system python3 running this script.
+          out = subprocess.check_output(["uv", "run", "python", "--version"], text=True)
+          actual = ".".join(out.strip().split()[1].split(".")[:2])
+          print(f"Expected: {expected_minor} (from {expected!r}), Actual: {actual}")
+          assert actual == expected_minor, f"Python version mismatch: {actual} != {expected_minor}"
+
+      - name: Verify uv sync works
+        run: uv sync --locked

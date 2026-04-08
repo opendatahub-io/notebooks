@@ -226,6 +226,28 @@ function _get_source_of_truth_filepath()
 }
 
 # Description:
+#   Extracts the major.minor version of a package from the requirements.txt file
+#
+# Arguments:
+#   $1 : Package name (e.g., nbgitpuller)
+#   $2 : Path to requirements.txt file
+#
+# Returns:
+#   Major.minor version string (e.g., "1.3") or empty if not found
+function _get_package_version_from_requirements()
+{
+    local package_name="${1:-}"
+    local requirements_file="${2:-}"
+
+    if [ -f "${requirements_file}" ]; then
+        # Extract version like "1.3.0" from "nbgitpuller==1.3.0 ; ..." and return major.minor
+        local full_version
+        full_version=$(grep -E "^${package_name}==" "${requirements_file}" | sed -E 's/.*==([0-9]+\.[0-9]+).*/\1/' | head -1)
+        printf '%s' "${full_version}"
+    fi
+}
+
+# Description:
 #   Creates an 'expected_version.json' file based on the relevant imagestream manifest within the notebooks repo relevant to the notebook under test on the
 #   running pod to be used as the "source of truth" for test_notebook.ipynb tests that assert on package version.
 #
@@ -246,8 +268,32 @@ function _create_test_versions_source_of_truth()
         exit 1
     fi
 
-    local nbdime_version='4.0'
-    local nbgitpuller_version='1.3'
+    # Get the requirements file path for this notebook to extract actual package versions
+    local notebook_dir
+    notebook_dir="$(_get_jupyter_notebook_directory "${notebook_id}")"
+    # CUDA/ROCM stacks use requirements.{cuda,rocm}.txt only (e.g. pytorch+llmcompressor has no requirements.cpu.txt)
+    local requirements_file="${notebook_dir}/requirements.cpu.txt"
+    case "${accelerator_flavor}" in
+        cuda)
+            if [ -f "${notebook_dir}/requirements.cuda.txt" ]; then
+                requirements_file="${notebook_dir}/requirements.cuda.txt"
+            fi
+            ;;
+        rocm)
+            if [ -f "${notebook_dir}/requirements.rocm.txt" ]; then
+                requirements_file="${notebook_dir}/requirements.rocm.txt"
+            fi
+            ;;
+    esac
+
+    # Extract versions from the notebook's requirements file, with fallbacks for compatibility
+    local nbdime_version
+    nbdime_version="$(_get_package_version_from_requirements 'nbdime' "${requirements_file}")"
+    nbdime_version="${nbdime_version:-4.0}"
+
+    local nbgitpuller_version
+    nbgitpuller_version="$(_get_package_version_from_requirements 'nbgitpuller' "${requirements_file}")"
+    nbgitpuller_version="${nbgitpuller_version:-1.2}"
 
     expected_versions=$("${yqbin}" '.spec.tags[0].annotations | .["opendatahub.io/notebook-software"] + .["opendatahub.io/notebook-python-dependencies"]' "${test_version_truth_filepath}" |
         "${yqbin}" -N -p json -o yaml |
@@ -271,6 +317,9 @@ function _create_test_versions_source_of_truth()
 function _run_test()
 {
     local notebook_id="${1:-}"
+
+    # Create expected_versions.json from the correct imagestream for THIS test
+    _create_test_versions_source_of_truth "${notebook_id}"
 
     local test_notebook_file='test_notebook.ipynb'
     local repo_test_directory=
@@ -382,8 +431,6 @@ function _handle_test()
 {
     local notebook_id=
     notebook_id=$(_get_notebook_id)
-
-    _create_test_versions_source_of_truth "${notebook_id}"
 
     "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "python3 -m pip install papermill"
 

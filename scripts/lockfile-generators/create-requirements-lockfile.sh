@@ -146,8 +146,9 @@ wc -l "${REQUIREMENTS_FILE}"
 # cachi2/output/deps/pip/ for local offline builds (podman).
 # In Konflux, cachi2 handles this automatically via prefetch-input.
 #
-# Each wheel's sha256 checksum is verified after download.
-# Files already present in the output directory are skipped.
+# Each wheel's sha256 checksum is verified after download (or on cache hit).
+# A file is skipped only when present on disk and its digest matches this URL's
+# expected hash; otherwise it is removed and fetched again.
 # =========================================================================
 if [[ "$DO_DOWNLOAD" == true ]]; then
   echo ""
@@ -197,7 +198,21 @@ if [[ "$DO_DOWNLOAD" == true ]]; then
 
     echo "[${idx}/${total}] ${filename}"
 
-    # Download only if not already present (allows resuming after partial run).
+    # Resume partial runs: reuse a file only if its digest matches this wheel.
+    if [[ -f "$dest" ]]; then
+      actual=$(sha256_of "$dest")
+      if [[ "$actual" == "$sha" ]]; then
+        echo "  Already present (checksum OK), skipping download."
+      else
+        echo "  WARNING: Ignoring stale or mismatched cached wheel (digest does not match this lockfile entry)." >&2
+        echo "    file:     ${dest}" >&2
+        echo "    got:      ${actual}" >&2
+        echo "    expected: ${sha}" >&2
+        echo "  Removing cached file and re-downloading." >&2
+        rm -f "$dest"
+      fi
+    fi
+
     if [[ ! -f "$dest" ]]; then
       echo "  Downloading: ${url}"
       if ! wget -q -O "$dest" "$url"; then
@@ -207,11 +222,9 @@ if [[ "$DO_DOWNLOAD" == true ]]; then
         rm -f "$dest"
         exit 1
       fi
-    else
-      echo "  Already exists, skipping download."
     fi
 
-    # Verify digest so corrupted or wrong-version files are detected.
+    # Verify digest so corrupted downloads are detected.
     actual=$(sha256_of "$dest")
     if [[ "$actual" != "$sha" ]]; then
       echo "  ERROR: checksum mismatch (got ${actual}, expected ${sha})" >&2
