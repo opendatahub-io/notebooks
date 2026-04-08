@@ -12,6 +12,7 @@ dependencies = [
     # tensorflow-rocm==2.x needs tensorboard>=2.x,<2.x+1
     "tensorboard",
     # ROCm TensorFlow extra PyPI packages (pinned)
+    # This should be removed once AIPCC-9503 is fully in place
     "odh-notebooks-meta-tensorflow-rocm-extrernal-deps",
 
     # Datascience and useful extensions
