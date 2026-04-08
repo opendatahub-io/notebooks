@@ -10,7 +10,7 @@ name: Update commit-latest.env on params-latest.env change
       - main
       - rhoai-*
     paths:
-      - 'manifests/base/params-latest.env'
+      - 'manifests/odh/base/params-latest.env'
 
 jobs:
   sync-commit:
@@ -27,10 +27,18 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
+      - name: Install Skopeo CLI
+        uses: ./.github/actions/apt-install
+        with:
+          packages: skopeo
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
       - name: Update manifests/base/commit-latest.env
         id: update_env
         run: |
-          python3 scripts/update-commit-latest-env.py
+          ./uv run python scripts/update-commit-latest-env.py
 
       - name: Commit and push changes
         run: |
