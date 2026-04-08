@@ -108,11 +108,17 @@ def _parse_imagestream_name(yaml_path: Path) -> str | None:
     """Extract ``metadata.name`` from an ImageStream YAML file.
 
     Uses a simple regex to avoid a PyYAML dependency at runtime.
+    Multi-line annotation values (e.g. folded ``notebook-image-desc``) break a
+    naive walk from ``metadata:`` to ``name:``; we isolate the metadata block
+    up to ``spec:`` and match ``name`` there instead.
     """
     text = yaml_path.read_text()
-    # Match the top-level "  name: <value>" line that follows "metadata:"
-    m = re.search(r"^metadata:\s*\n(?:\s+\S+:.*\n)*?\s+name:\s+(\S+)", text, re.MULTILINE)
-    return m.group(1) if m else None
+    m = re.search(r"(?ms)^metadata:.*?(?=^spec:)", text)
+    if not m:
+        return None
+    block = m.group(0)
+    m2 = re.search(r"^  name:\s+(\S+)", block, re.MULTILINE)
+    return m2.group(1) if m2 else None
 
 
 def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[str], list[Runtime]]:
