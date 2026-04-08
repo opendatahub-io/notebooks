@@ -391,7 +391,8 @@ def test_image_manifests_version_alignment(
     # TODO(jdanek): review these, if any are unwarranted
     ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
         # ("package name", ("allowed version 1", "allowed version 2", ...))
-        ("Codeflare-SDK", ("0.34", "0.35")),
+        ("Codeflare-SDK", ("0.35", "0.36")),
+        ("MLflow", ("3.10", "3.11")),
         ("Kfp", ("2.15", "2.16")),
         ("Feast", ("0.60", "0.61")),
         ("Odh-Elyra", ("4.3", "5.0")),

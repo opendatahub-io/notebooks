@@ -276,7 +276,7 @@ fi
 EOF
 
 # Install micropipenv and uv from cachi2 pip cache
-RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.2"
+RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.3"
 
 # Other apps and tools installed as default user
 USER 1001
