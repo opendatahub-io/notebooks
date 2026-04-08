@@ -1,5 +1,4 @@
 ARG TARGETARCH
-ARG LOCAL_BUILD=false
 
 #########################
 # configuration args    #
@@ -40,8 +39,6 @@ USER 1001
 ####################
 FROM ${BASE_IMAGE} AS cuda-base
 
-ARG LOCAL_BUILD
-
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
@@ -52,17 +49,9 @@ USER 0
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
-# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
-# its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
-
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/*.repo \
-        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
-    fi
 
 # Install useful OS packages (versions follow UBI stream; pinning each would drift with point releases)
 # compat-openssl11 provides libcrypto.so.1.1 required by FIPS-compliance scanning.
@@ -81,7 +70,6 @@ FROM cuda-base AS cuda-jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
-ARG LOCAL_BUILD
 
 # OS Packages needs to be installed as root
 USER 0
@@ -94,17 +82,9 @@ RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
-# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
-# its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
-
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/*.repo \
-        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
-    fi
 
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
@@ -128,24 +108,15 @@ ENTRYPOINT ["start-notebook.sh"]
 FROM cuda-jupyter-minimal AS cuda-jupyter-datascience
 
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
-ARG LOCAL_BUILD
 
 # OS Packages needs to be installed as root
 USER root
 
 WORKDIR /opt/app-root/bin
 
-# [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
-# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
-# its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
-
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/*.repo \
-        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
-    fi
 
 # Install useful OS packages
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \

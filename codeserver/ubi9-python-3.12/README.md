@@ -102,8 +102,8 @@ scripts/lockfile-generators/prefetch-all.sh \
 
 ### Step 3 — Build the image
 
-The Makefile auto-detects `cachi2/output/` and adds the volume mount +
-`LOCAL_BUILD=true` build arg automatically:
+The Makefile auto-detects `cachi2/output/` and adds the volume mount
+automatically:
 
 ```bash
 # On macOS, use gmake (GNU Make 4.0+)
@@ -119,11 +119,9 @@ gmake codeserver-ubi9-python-3.12 \
 | `CONTAINER_BUILD_CACHE_ARGS` | `--no-cache` | Pass `""` to enable layer caching |
 
 The Makefile evaluates each target independently: if the target directory has
-a `prefetch-input/` subdirectory AND `cachi2/output/` exists, it injects:
-- `--volume .../cachi2/output:/cachi2/output:Z`
-- `--build-arg LOCAL_BUILD=true`
-
-Other (non-hermetic) image targets are completely unaffected.
+a `prefetch-input/` subdirectory AND `cachi2/output/` exists, it injects
+`--volume .../cachi2/output:/cachi2/output:Z`. Other (non-hermetic) image
+targets are completely unaffected.
 
 ### Alternative: manual podman build
 
@@ -134,10 +132,10 @@ podman build \
     -f codeserver/ubi9-python-3.12/Dockerfile.cpu \
     --platform linux/amd64 \
     -t codeserver-test \
-    --build-arg LOCAL_BUILD=true \
     --build-arg BASE_IMAGE=quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest \
     --build-arg PYLOCK_FLAVOR=cpu \
-    -v "$(realpath ./cachi2)":/cachi2:z \
+    -v "$(realpath ./cachi2/output)":/cachi2/output:z \
+    -v "$(realpath ./cachi2/output/deps/rpm/x86_64/repos.d)":/etc/yum.repos.d/:z \
     .
 ```
 
@@ -146,7 +144,6 @@ podman build \
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `BASE_IMAGE` | Yes | Base image to build from (e.g. `quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest`) |
-| `LOCAL_BUILD` | Yes | Set to `true` for local builds. Configures dnf to use the local cachi2 RPM repo instead of Konflux-injected repos |
 | `PYLOCK_FLAVOR` | Yes | Python lockfile flavor (`cpu` or `cuda`). Selects `uv.lock.d/pylock.<flavor>.toml` |
 
 ---
@@ -161,7 +158,7 @@ hermetic builds automatically for codeserver targets:
    `pyyaml` and `uv`, and executes `prefetch-all.sh`.
 2. The **"Build"** step runs `make codeserver-ubi9-python-3.12` as usual.
    The Makefile auto-detects the `cachi2/output/` directory created in step 1
-   and injects the volume mount + `LOCAL_BUILD=true`.
+   and injects the volume mount.
 
 This is transparent — no special CI configuration is needed beyond the
 workflow template. Non-codeserver targets skip the prefetch step entirely.
@@ -201,8 +198,8 @@ mechanism:
    all dependencies into `/cachi2/output/deps/`.
 3. The build uses `Dockerfile.konflux.cpu` (not `Dockerfile.cpu`) which is
    tailored for the Konflux environment.
-4. `LOCAL_BUILD` is **not set** — Konflux injects cachi2 repos automatically
-   and manages network isolation at the pipeline level.
+4. Konflux injects cachi2 repos automatically and manages network isolation
+   at the pipeline level.
 5. **Resource limits:** The codeserver PipelineRuns set `taskRunSpecs` for the
    `build-images` task (8 CPU, 32Gi memory) so the post-build rsync step
    (which transfers the large image from the remote builder) does not OOM or
@@ -262,19 +259,19 @@ The `:z` suffix is a SELinux relabel flag for podman — it allows the container
 process to read the bind-mounted directory on SELinux-enabled hosts (Fedora,
 RHEL). On macOS or systems without SELinux you can omit it.
 
-## `LOCAL_BUILD=true` vs production
+## How repo injection works
 
-When `LOCAL_BUILD=true` is set, the Dockerfile:
+Repos are injected by the **infrastructure**, not by the Dockerfile:
 
-1. **Removes default yum repos** (`rm -f /etc/yum.repos.d/*`) so dnf does not
-   attempt to reach Red Hat CDN or UBI repos.
-2. **Adds the local cachi2 RPM repo** by copying
-   `cachi2/output/deps/rpm/$(uname -m)/repos.d/*.repo` into `/etc/yum.repos.d/`
-   so all `dnf install` commands resolve packages from the prefetched RPMs.
+- **Local/GHA**: The Makefile volume-mounts `cachi2/output/deps/rpm/{arch}/repos.d/`
+  at `/etc/yum.repos.d/`, overlaying the base image's default repos.
+- **Konflux**: The `buildah-oci-ta` task volume-mounts `YUM_REPOS_D_FETCHED`
+  at `/etc/yum.repos.d/` in the same way.
 
-In production (Konflux), `LOCAL_BUILD` is unset (defaults to `false`). Konflux
-injects cachi2 repos automatically and manages network isolation at the pipeline
-level.
+Both environments replace the base image's default repos with hermeto-generated
+repos. These repos include module metadata (`modules.yaml`) because
+`rpms.in.yaml` declares `moduleEnable: [nodejs:22]`. The Dockerfile then runs
+`dnf module enable nodejs:22 -y` in each stage that installs nodejs packages.
 
 ---
 

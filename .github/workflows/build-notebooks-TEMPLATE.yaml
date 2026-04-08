@@ -413,7 +413,7 @@ jobs:
             if [ -x scripts/lockfile-generators/post-prefetch.sh ]; then
               scripts/lockfile-generators/post-prefetch.sh --component-dir "$COMPONENT_DIR"
             fi
-            echo "EXTRA_BUILD_ARGS=--volume $(pwd)/cachi2/output:/cachi2/output:Z --build-arg LOCAL_BUILD=true" >> "$GITHUB_OUTPUT"
+            echo "EXTRA_BUILD_ARGS=" >> "$GITHUB_OUTPUT"
           else
             echo "No prefetch-input/ found for $COMPONENT_DIR — skipping"
           fi

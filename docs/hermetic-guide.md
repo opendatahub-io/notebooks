@@ -84,9 +84,9 @@ gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
 ```
 
 The Makefile detects `cachi2/output/` and the target's `prefetch-input/`
-directory, then injects `--volume .../cachi2/output:/cachi2/output:Z` and
-`--build-arg LOCAL_BUILD=true` automatically. Non-hermetic targets are
-unaffected.
+directory, then injects two volume mounts: `cachi2/output` at `/cachi2/output`
+(prefetched deps) and `repos.d/` at `/etc/yum.repos.d/` (hermeto-generated RPM
+repos). Non-hermetic targets are unaffected.
 
 See the full [codeserver README](../codeserver/ubi9-python-3.12/README.md) for
 prerequisites, build arguments, and manual `podman build` instructions.
@@ -99,13 +99,17 @@ handles hermetic builds transparently for any target that ships a
 
 1. **Prefetch step** -- gated by `[ -d "$COMPONENT_DIR/prefetch-input" ]`.
    Installs `pyyaml` and `uv`, then runs `prefetch-all.sh`.
+   For subscription builds (AIPCC base images), the step automatically
+   passes `--rhds --activation-key ... --org ...` so that the RHDS variant
+   lockfiles are used instead of the ODH (CentOS Stream) ones. This avoids
+   RPM conflicts between the RHEL-based base image and CentOS Stream
+   packages (e.g. `openssl-fips-provider` vs `openssl-fips-provider-so`).
    If `post-prefetch.sh` exists, it is called next -- this script moves
    the prefetched data (~2-3 GB) from the root partition to the
    LVM-backed build volume and leaves a symlink behind, preventing `/`
    from filling up.
-2. **Build step** -- runs `make` as usual. The volume mount and
-   `LOCAL_BUILD=true` are appended to `CONTAINER_BUILD_CACHE_ARGS` by the
-   prefetch step itself.
+2. **Build step** -- runs `make` as usual. The volume mount is appended to
+   `CONTAINER_BUILD_CACHE_ARGS` by the prefetch step itself.
 3. **Resource limits** -- GHA runners have 4 vCPUs and 16 GB RAM, which is
    tight for compiling VS Code from source. For codeserver targets the
    workflow passes `--build-arg GHA_BUILD=true`. Inside the Dockerfile,
@@ -127,8 +131,8 @@ In the Konflux environment, hermetic builds use the Tekton pipeline:
    `prefetch-input/odh/` (or `rhds/` for downstream).
 2. The `prefetch-dependencies` Tekton task runs cachi2 to download all
    dependencies before the build.
-3. `LOCAL_BUILD` is **not set** (defaults to `false`). Konflux injects repos
-   automatically and manages network isolation at the pipeline level.
+3. Konflux injects cachi2 repos automatically and manages network isolation
+   at the pipeline level.
 4. No `NODE_OPTIONS` or `JOBS` limits  Konflux VMs have significantly
    more resources than GHA runners.
 
@@ -161,8 +165,8 @@ one. Key changes in each stage:
   `.whl` files for reuse by the final stage.
 
 **`cpu-base` stage**  OS packages and tools:
-- All `dnf install` commands use the local cachi2 RPM repo when
-  `LOCAL_BUILD=true`.
+- All `dnf install` commands use the local cachi2 RPM repo (hermeto repos
+  are injected unconditionally).
 - The `oc` client is installed from the openshift-clients RPM (prefetched in
   deps/rpm) instead of downloading a tarball from mirror.openshift.com.
 
@@ -212,13 +216,16 @@ detailed usage.
 The `build_image` macro was updated to auto-detect hermetic builds:
 
 ```makefile
-$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)), \
-    --volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z --build-arg LOCAL_BUILD=true,))
+$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)),\
+    --volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z \
+    --volume $(ROOT_DIR)cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
 ```
 
 This evaluates per-target: only targets with both `cachi2/output/` and a
-`prefetch-input/` directory get the volume mount and `LOCAL_BUILD=true`.
-All other targets are completely unaffected.
+`prefetch-input/` directory get the volume mounts. The second mount overlays
+`/etc/yum.repos.d/` with hermeto-generated repos, making local builds behave
+like Konflux (repos are already in place when the Dockerfile runs). All other
+targets are completely unaffected.
 
 ### GitHub Actions workflow
 
@@ -287,20 +294,20 @@ scripts/lockfile-generators/prefetch-all.sh --component-dir codeserver/ubi9-pyth
 Tekton PipelineRun YAMLs point at `prefetch-input/odh` for upstream or
 `prefetch-input/rhds` for downstream.
 
-## LOCAL_BUILD=true vs production
+## How repo injection works
 
-When `LOCAL_BUILD=true` is set (automatically by the Makefile for local and GHA
-builds), the Dockerfile:
+Repos are injected by the **infrastructure**, not by the Dockerfile:
 
-1. Removes default yum repos (`rm -f /etc/yum.repos.d/*`).
-2. Copies hermeto-generated `.repo` files from the cachi2 RPM directory so
-   `dnf` resolves packages from prefetched RPMs only.
-3. Disables the `nodejs` module stream (hermeto repos provide nodejs directly).
+- **Local/GHA**: The Makefile volume-mounts `repos.d/` at `/etc/yum.repos.d/`,
+  overlaying the base image's default repos.
+- **Konflux**: The [`buildah-oci-ta`](https://github.com/konflux-ci/build-definitions/blob/main/task/buildah-oci-ta/)
+  task volume-mounts `YUM_REPOS_D_FETCHED` at `/etc/yum.repos.d/` in the same way.
 
-When `LOCAL_BUILD` is unset or `false` (Konflux), the Dockerfile:
-
-1. Keeps the default repos (Konflux injects cachi2 repos automatically).
-2. Enables `nodejs:22` module stream via `dnf module enable nodejs:22 -y`.
+Both environments replace the base image's default repos with
+hermeto-generated repos. For targets that need nodejs (e.g. codeserver),
+`rpms.in.yaml` declares `moduleEnable: [nodejs:22]`, which makes hermeto
+include module metadata (`modules.yaml`) in the repodata. The Dockerfile
+then runs `dnf module enable nodejs:22 -y` to activate the module stream.
 
 ## Container tests (GHA vs local)
 

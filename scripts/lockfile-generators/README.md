@@ -45,8 +45,8 @@ All scripts must be run from the **repository root**.
 
 `prefetch-all.sh` orchestrates all five lockfile generators in the correct
 order, downloading dependencies into `cachi2/output/deps/`. After running it,
-the Makefile auto-detects `cachi2/output/` and passes `--volume` +
-`--build-arg LOCAL_BUILD=true` to `podman build`.
+the Makefile auto-detects `cachi2/output/` and passes `--volume` to
+`podman build`.
 
 ```bash
 # Upstream ODH (default variant, CentOS Stream base, no subscription):
@@ -489,16 +489,17 @@ Otherwise it falls back to the ODH base image (CentOS Stream).
 Downloads RPMs from `rpms.lock.yaml` using
 [Hermeto](https://github.com/hermetoproject/hermeto) in a container and generates
 repo metadata.  This is the default downloader called by
-`create-rpm-lockfile.sh --download`.  When `--activation-key` and `--org` are
-provided, it extracts RHEL entitlement certs from the `notebook-rpm-lockfile`
-container and passes them to Hermeto for `cdn.redhat.com` authentication.
+`create-rpm-lockfile.sh --download`.  When entitlement certs are needed for `cdn.redhat.com`, the helper resolves
+them in order: (1) `entitlement/` directory if present (GHA subscription step),
+(2) explicit `--cert-dir` with pre-extracted PEM files, (3) `--activation-key`
+and `--org` to register a temporary UBI container and extract fresh certs.
 
 ```bash
 # Called automatically by create-rpm-lockfile.sh --download, but can also run standalone:
 ./scripts/lockfile-generators/helpers/hermeto-fetch-rpm.sh \
     --prefetch-dir codeserver/ubi9-python-3.12/prefetch-input
 
-# With RHEL entitlement certs (requires notebook-rpm-lockfile image built with subscription):
+# With RHEL entitlement certs:
 ./scripts/lockfile-generators/helpers/hermeto-fetch-rpm.sh \
     --prefetch-dir codeserver/ubi9-python-3.12/prefetch-input \
     --activation-key my-key --org my-org
@@ -852,13 +853,12 @@ hermetic build uses an identical source tree.
 After running `prefetch-all.sh`, the **recommended** way to build is via make:
 
 ```bash
-# Make sets LOCAL_BUILD=true for hermetic targets; mounts cachi2/output when it exists
+# Makefile auto-detects cachi2/output/ and injects --volume
 gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
 ```
 
-The Makefile sets `LOCAL_BUILD=true` for any target that has `prefetch-input/`;
-it adds the cachi2 volume only when `cachi2/output/` exists (after prefetch).
-Non-hermetic targets are unaffected.
+The Makefile adds the cachi2 volume only when both `prefetch-input/` and
+`cachi2/output/` exist (after prefetch). Non-hermetic targets are unaffected.
 
 ### Alternative: manual podman build
 
@@ -868,7 +868,7 @@ Running `podman build` directly differs from `gmake` in these ways:
 |--------|-------------------------------------------------------------------|---------------------------|
 | **Build context** | Minimal (via `scripts/sandbox.py`: only files needed by the Dockerfile) | Full repo (`.`). |
 | **Volume** | `--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z` (mounts only `cachi2/output`) | Often `-v ./cachi2:/cachi2` (mounts whole dir); equivalent is `-v ./cachi2/output:/cachi2/output:z`. |
-| **Build args** | From `build-args/cpu.conf`: `INDEX_URL`, `BASE_IMAGE`, `PYLOCK_FLAVOR` | You must pass these (and `LOCAL_BUILD=true`) explicitly. |
+| **Build args** | From `build-args/cpu.conf`: `INDEX_URL`, `BASE_IMAGE`, `PYLOCK_FLAVOR` | You must pass these explicitly. |
 | **Tag** | `$(IMAGE_REGISTRY):codeserver-ubi9-python-3.12-$(RELEASE)_$(DATE)` | Whatever you pass with `-t`. |
 | **Label** | `--label release=$(RELEASE)` | Omitted unless you add it. |
 | **Cache** | Default `CONTAINER_BUILD_CACHE_ARGS ?= --no-cache` | Podman uses its default cache unless you pass `--no-cache`. |
@@ -876,8 +876,10 @@ Running `podman build` directly differs from `gmake` in these ways:
 To approximate the make build when running podman manually, use the same volume
 path as make and pass all build-args from `build-args/cpu.conf`:
 
-- Bind-mount **only** `cachi2/output` at `/cachi2/output` (same as make).
-- Pass `LOCAL_BUILD=true` and the same `BASE_IMAGE`, `PYLOCK_FLAVOR`, and
+- `-v $(realpath ./cachi2/output):/cachi2/output:z` — prefetched deps (pip, npm, generic, RPMs).
+- `-v $(realpath ./cachi2/output/deps/rpm/<arch>/repos.d):/etc/yum.repos.d/:z` — hermeto-generated
+  RPM repo files (replace `<arch>` with `x86_64`, `aarch64`, etc.).
+- Pass the same `BASE_IMAGE`, `PYLOCK_FLAVOR`, and
   `INDEX_URL` as in `codeserver/ubi9-python-3.12/build-args/cpu.conf`.
 
 ```bash
@@ -886,11 +888,11 @@ podman build \
     -f codeserver/ubi9-python-3.12/Dockerfile.cpu \
     --platform linux/arm64 \
     -t code-server-test \
-    --build-arg LOCAL_BUILD=true \
     --build-arg BASE_IMAGE=quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest \
     --build-arg PYLOCK_FLAVOR=cpu \
     --build-arg INDEX_URL=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/ \
     -v "$(realpath ./cachi2/output):/cachi2/output:z" \
+    -v "$(realpath ./cachi2/output/deps/rpm/aarch64/repos.d):/etc/yum.repos.d/:z" \
     .
 ```
 
