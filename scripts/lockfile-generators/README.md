@@ -127,7 +127,7 @@ labels work when the daemon is Podman (see
 [tests/containers/docs/github-vs-local-image-metadata.md](../../tests/containers/docs/github-vs-local-image-metadata.md)).
 
 **uv version:** The repo root `uv.toml` specifies the `uv` version (e.g.
-`required-version = ">=0.10.6,<0.11"`). Use that version when running
+`required-version = ">=0.10.9,<0.11"`). Use that version when running
 `create-requirements-lockfile.sh` or other scripts that call `uv`.
 
 ---

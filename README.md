@@ -85,22 +85,22 @@ brew install python@3.14 uv
 <summary>Alternatives to <code>./uv</code></summary>
 
 The `./uv` wrapper is the recommended way, but you can also
-(replace `0.10.6` below with the version from `pyproject.toml`):
+(replace `0.10.9` below with the version from `pyproject.toml`):
 
 - **Use `uvx` directly** with an explicit version:
   ```shell
-  uvx uv@0.10.6 sync --locked
+  uvx uv@0.10.9 sync --locked
   ```
 - **Use `uv tool run`** (equivalent, longer form):
   ```shell
-  uv tool run uv@0.10.6 sync --locked
+  uv tool run uv@0.10.9 sync --locked
   ```
 - **Install the exact version** so `uv` works directly:
   ```shell
   # Standalone installer (any OS)
-  curl -LsSf https://astral.sh/uv/0.10.6/install.sh | sh
+  curl -LsSf https://astral.sh/uv/0.10.9/install.sh | sh
   # Or with pip
-  pip install uv==0.10.6
+  pip install uv==0.10.9
   ```
 
 If your system uv matches the pinned version, you can use `uv` directly —
