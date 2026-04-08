@@ -1,5 +1,3 @@
-ARG LOCAL_BUILD=false
-
 #########################
 # configuration args    #
 #########################
@@ -9,8 +7,6 @@ ARG BASE_IMAGE
 # cpu-base         #
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
-
-ARG LOCAL_BUILD
 
 WORKDIR /opt/app-root/bin
 
@@ -23,17 +19,9 @@ USER 0
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# [HERMETIC] Configure package repos: local hermeto repos for testing, or Konflux-injected repos.
-# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
-# its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
-
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/*.repo \
-        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
-    fi
 
 # Install useful OS packages (versions follow UBI stream; pinning each would drift with point releases)
 # compat-openssl11 provides libcrypto.so.1.1 required by FIPS-compliance scanning.
@@ -52,7 +40,6 @@ FROM cpu-base AS jupyter-minimal
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
-ARG LOCAL_BUILD
 
 LABEL name="odh-notebook-jupyter-minimal-ubi9-python-3.12" \
     summary="Minimal Jupyter notebook image for ODH notebooks" \
@@ -75,15 +62,9 @@ RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# [HERMETIC] Configure package repos: local hermeto repos for testing, or Konflux-injected repos.
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
-
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/*.repo \
-        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
-    fi
 
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh

@@ -859,9 +859,8 @@ After running `prefetch-all.sh`, the **recommended** way to build is via make:
 gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
 ```
 
-The Makefile sets `LOCAL_BUILD=true` for any target that has `prefetch-input/`;
-it adds the cachi2 volume only when `cachi2/output/` exists (after prefetch).
-Non-hermetic targets are unaffected.
+The Makefile adds the cachi2 volume only when both `prefetch-input/` and
+`cachi2/output/` exist (after prefetch). Non-hermetic targets are unaffected.
 
 ### Alternative: manual podman build
 

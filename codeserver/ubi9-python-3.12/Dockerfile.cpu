@@ -269,7 +269,6 @@ ARG TARGETARCH
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 ARG CODESERVER_VERSION=v4.106.3
 ARG PYLOCK_FLAVOR
-ARG LOCAL_BUILD
 
 LABEL name="odh-notebook-code-server-ubi9-python-3.12" \
       summary="code-server image with python 3.12 based on UBI 9" \

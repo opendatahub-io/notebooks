@@ -96,6 +96,8 @@ define build_image
 # The repos.d mount overlays /etc/yum.repos.d/ with hermeto-generated repos,
 # making local builds behave like Konflux (repos already in place when the
 # Dockerfile runs). The mount hides the base image's default repos.
+# Konflux buildah-oci-ta task mounts YUM_REPOS_D_FETCHED at YUM_REPOS_D_TARGET (/etc/yum.repos.d).
+# See https://github.com/konflux-ci/build-definitions/blob/main/task/buildah-oci-ta/
 $(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)),\
 	--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z \
 	--volume $(ROOT_DIR)cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
@@ -106,7 +108,7 @@ $(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_
 	  exit 1; \
 	fi
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_SECURITY_ARGS) $(CONTAINER_BUILD_CACHE_ARGS) $(LOCAL_BUILD_ARG) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_SECURITY_ARGS) $(CONTAINER_BUILD_CACHE_ARGS) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
 # Push function for the notebook image:

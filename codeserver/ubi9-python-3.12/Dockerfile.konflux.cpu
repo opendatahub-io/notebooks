@@ -268,7 +268,6 @@ ARG TARGETARCH
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 ARG CODESERVER_VERSION=v4.106.3
 ARG PYLOCK_FLAVOR
-ARG LOCAL_BUILD
 
 LABEL name="rhoai/odh-workbench-codeserver-datascience-cpu-py312-rhel9" \
       com.redhat.component="odh-workbench-codeserver-datascience-cpu-py312-rhel9" \
