@@ -91,6 +91,7 @@ NO_EMIT_PACKAGES = (
     "odh-notebooks-meta-runtime-elyra-deps",
     "odh-notebooks-meta-runtime-datascience-deps",
     "odh-notebooks-meta-workbench-datascience-deps",
+    "odh-notebooks-meta-tensorflow-rocm-extrernal-deps",
 )
 
 FLAVORS = ("cpu", "cuda", "rocm")
