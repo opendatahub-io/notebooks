@@ -24,7 +24,7 @@ set -euo pipefail
 # file via find_tekton_yaml (RHDS = Dockerfile.konflux.*, ODH = Dockerfile.*). No Tekton file → skip npm.
 #
 # After running this script, `make <target>` auto-detects cachi2/output/
-# and passes --volume + --build-arg LOCAL_BUILD=true to podman build.
+# and passes --volume to podman build.
 #
 # Usage:
 #   # Upstream ODH (CentOS Stream base, no subscription):
@@ -361,5 +361,5 @@ if [[ -d "cachi2/output/deps" ]]; then
 fi
 echo ""
 echo " Next: run 'make <target>' — it will auto-detect cachi2/output/"
-echo "       and mount it with LOCAL_BUILD=true."
+echo "       and mount it automatically."
 echo "=============================================="
