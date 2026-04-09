@@ -133,6 +133,9 @@ RUN set -Eeuxo pipefail && \
     wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/${RSTUDIO_RPM} && \
     dnf install -y ${RSTUDIO_RPM} && \
     rm ${RSTUDIO_RPM} && \
+    # Remove statically-linked Copilot language server binaries (disabled by default, flagged by check-payload) \
+    rm -f /usr/lib/rstudio-server/bin/copilot-language-server-js/bin/linux/arm64/rg \
+          /usr/lib/rstudio-server/bin/copilot-language-server-js/bin/linux/x64/rg && \
     dnf -y clean all --enablerepo='*' && \
     chmod 1777 /var/run/rstudio-server && \
     mkdir -p /usr/share/doc/R && \
