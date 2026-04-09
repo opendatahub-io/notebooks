@@ -18,9 +18,6 @@
 #########################
 ARG BASE_IMAGE
 
-# [HERMETIC] Set to "true" for local testing to use cachi2/ and remove
-# default repos. Omit or set to "false" for production (Konflux/Tekton).
-ARG LOCAL_BUILD=false
 
 ############################################################################################
 # rpm-base: Build code-server from source (release-standalone tree, all architectures)
@@ -48,7 +45,6 @@ ENV CODESERVER_SOURCE_CODE=${HOME}/${CODESERVER_CONTEXT}
 ENV CODESERVER_SOURCE_PREFETCH=${CODESERVER_SOURCE_CODE}/prefetch-input/code-server
 
 ARG BASE_IMAGE
-ARG LOCAL_BUILD
 ARG GHA_BUILD=false
 
 ARG NODE_VERSION=22.21.1
@@ -59,16 +55,10 @@ ARG CODESERVER_VERSION=v4.106.3
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
-# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
-# its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/* && \
-        cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/ && \
-        dnf module disable nodejs -y; \
-    else \
-        dnf module enable nodejs:22 -y; \
-    fi;
+# [HERMETIC] Enable nodejs:22 module stream so DNF can resolve nodejs-devel
+# and other modular packages. The hermeto repos include module metadata
+# (modules.yaml) because rpms.in.yaml declares moduleEnable: [nodejs:22].
+RUN dnf module enable nodejs:22 -y
 
 # libxkbfile-devel = util-macros + libxkbfile (Previously built from source)
 RUN dnf install -y \
@@ -154,7 +144,6 @@ WORKDIR /root
 
 ENV HOME=/root
 
-ARG LOCAL_BUILD
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
@@ -164,12 +153,6 @@ ARG PYLOCK_FLAVOR
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# [HERMETIC] Configure package repos: local hermeto repos for testing.
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/* && \
-        cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/ && \
-        dnf module disable nodejs -y; \
-    fi;
 # [HERMETIC] ppc64le/s390x: install system-level deps.
 # openblas-threads: provides libopenblasp.so.0 (pthreads variant) that RHOAI numpy/scipy
 # wheels link against at runtime. The base 'openblas' meta-package only pulls in
@@ -230,9 +213,6 @@ RUN touch /tmp/control
 ############################################################################################
 FROM ${BASE_IMAGE} AS cpu-base
 
-# [HERMETIC] Needed for conditional repo setup (same pattern as rpm-base stage).
-ARG LOCAL_BUILD
-
 WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
@@ -243,16 +223,8 @@ USER 0
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
-# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
-# its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/* && \
-        cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/ && \
-        dnf module disable nodejs -y; \
-    else \
-        dnf module enable nodejs:22 -y; \
-    fi;
+# [HERMETIC] Enable nodejs:22 module stream (see rpm-base comment).
+RUN dnf module enable nodejs:22 -y
 
 # [HERMETIC] Install Node.js runtime from prefetched RPMs.
 RUN dnf install -y nodejs npm && dnf clean all
@@ -292,7 +264,6 @@ ARG TARGETARCH
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 ARG CODESERVER_VERSION=v4.106.3
 ARG PYLOCK_FLAVOR
-ARG LOCAL_BUILD
 
 LABEL name="odh-notebook-code-server-ubi9-python-3.12" \
       summary="code-server image with python 3.12 based on UBI 9" \
@@ -308,16 +279,8 @@ USER 0
 
 WORKDIR /opt/app-root/bin
 
-# [HERMETIC] Configure package repos: local hermeto repos for testing, or enable nodejs:22 module for Konflux.
-# Hermeto organises RPMs into per-arch sub-repos (baseos, crb, ubi-*, …), each with
-# its own repodata/. The generated hermeto.repo already points at the correct file:// paths.
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/* && \
-        cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/ && \
-        dnf module disable nodejs -y; \
-    else \
-        dnf module enable nodejs:22 -y; \
-    fi;
+# [HERMETIC] Enable nodejs:22 module stream (see rpm-base comment).
+RUN dnf module enable nodejs:22 -y
 
 # [HERMETIC] Install useful OS packages from prefetched RPMs.
 # nodejs: provides libnode.so needed at runtime by code-server's bundled node binary.

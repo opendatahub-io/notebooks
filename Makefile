@@ -49,6 +49,8 @@ WHERE_WHICH ?= which
 # linux/amd64 or darwin/arm64
 OS_ARCH=$(shell go env GOOS)/$(shell go env GOARCH)
 BUILD_ARCH ?= linux/amd64
+# Map OCI platform arch to RPM arch (e.g. linux/amd64 → x86_64, linux/arm64 → aarch64)
+RPM_ARCH := $(subst amd64,x86_64,$(subst arm64,aarch64,$(lastword $(subst /, ,$(BUILD_ARCH)))))
 
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
@@ -89,20 +91,28 @@ define build_image
 			awk -F= '!/^#/ && NF {gsub(/^[ \t]+|[ \t]+$$/, "", $$1); gsub(/^[ \t]+|[ \t]+$$/, "", $$2); printf "--build-arg %s=%s ", $$1, $$2}' $(CONF_FILE); \
 		fi))
 
-	# Make is only used for local and GHA builds (Konflux does not run make).
-	# Default to local build for hermetic-capable targets: always set LOCAL_BUILD=true
-	# when prefetch-input/ exists; mount cachi2/output only when it exists (after prefetch).
-	$(eval LOCAL_BUILD_ARG := $(if $(wildcard $(BUILD_DIR)prefetch-input),--build-arg LOCAL_BUILD=true,))
-	$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)),--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z,))
-
+# Hermetic local build: when cachi2/output/ exists AND this target has a
+# prefetch-input/ directory, mount pre-downloaded deps into the build.
+# The repos.d mount overlays /etc/yum.repos.d/ with hermeto-generated repos,
+# making local builds behave like Konflux (repos already in place when the
+# Dockerfile runs). The mount hides the base image's default repos.
+# Konflux buildah-oci-ta task mounts YUM_REPOS_D_FETCHED at YUM_REPOS_D_TARGET (/etc/yum.repos.d).
+# See https://github.com/konflux-ci/build-definitions/blob/main/task/buildah-oci-ta/
+$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)),\
+	--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z \
+	--volume $(ROOT_DIR)cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
 	$(info # Building $(IMAGE_NAME) using $(DOCKERFILE_NAME) with $(CONF_FILE) and $(BUILD_ARGS)...)
 
 	@if [ -d '$(BUILD_DIR)prefetch-input' ] && [ ! -d cachi2/output ]; then \
 	  echo "Prefetch required for hermetic build. Run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR)) -- see scripts/lockfile-generators/README.md"; \
 	  exit 1; \
 	fi
+	@if [ -d cachi2/output ] && [ -d '$(BUILD_DIR)prefetch-input' ] && [ ! -d 'cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d' ]; then \
+	  echo "Missing RPM repos for $(RPM_ARCH). Re-run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR))"; \
+	  exit 1; \
+	fi
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_SECURITY_ARGS) $(CONTAINER_BUILD_CACHE_ARGS) $(LOCAL_BUILD_ARG) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_SECURITY_ARGS) $(CONTAINER_BUILD_CACHE_ARGS) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
 # Push function for the notebook image:

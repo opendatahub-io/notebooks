@@ -1,5 +1,3 @@
-ARG LOCAL_BUILD=false
-
 #########################
 # configuration args    #
 #########################
@@ -41,8 +39,6 @@ USER 1001
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
 
-ARG LOCAL_BUILD
-
 WORKDIR /opt/app-root/bin
 
 # hadolint ignore=DL3002
@@ -52,15 +48,9 @@ USER 0
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# [HERMETIC] Configure package repos for local hermeto testing (Konflux injects repos when LOCAL_BUILD is false).
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
-
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/*.repo \
-        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
-    fi
 
 # hadolint ignore=DL3041
 RUN /bin/bash <<'EOF'
@@ -85,7 +75,6 @@ FROM cpu-base AS jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
-ARG LOCAL_BUILD
 
 WORKDIR /opt/app-root/bin
 
@@ -97,15 +86,9 @@ RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
-
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/*.repo \
-        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
-    fi
 
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
@@ -129,7 +112,6 @@ FROM jupyter-minimal AS jupyter-datascience
 
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
-ARG LOCAL_BUILD
 
 LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.12" \
     summary="Jupyter data science notebook image for ODH notebooks" \
@@ -146,15 +128,9 @@ WORKDIR /opt/app-root/bin
 USER 0
 
 
-# [HERMETIC] Configure package repos for local hermeto testing (Konflux injects repos when LOCAL_BUILD is false).
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
-
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/*.repo \
-        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
-    fi
 
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
     /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat protobuf
