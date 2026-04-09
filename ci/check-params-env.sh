@@ -43,8 +43,6 @@ COMMIT_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/commit.env"
 PARAMS_LATEST_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/params-latest.env"
 PARAMS_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/params.env"
 
-EXPECTED_ADDI_RUNTIME_RECORDS=0
-
 # Number of attempts for the skopeo tool to gather data from the repository.
 SKOPEO_RETRY=3
 
@@ -84,7 +82,7 @@ function check_variables_uniq() {
     if test "${allow_value_duplicity}" = "false"; then
         echo "Checking that all values assigned to variables in the file '${env_file_path_1}' & '${env_file_path_2}' are unique and expected"
 
-        content=$(sed '/^$/d' "${env_file_path_1}" "${env_file_path_2}" | sed 's#\(.*\)=.*#\1#' | sort)
+        content=$(sed '/^$/d' "${env_file_path_1}" "${env_file_path_2}" | sed 's#.*=##' | sort)
 
         local num_values
         num_values=$(echo "${content}" | wc -l)
@@ -101,11 +99,6 @@ function check_variables_uniq() {
     # ----
     echo "Checking that there are expected number of records in the file '${env_file_path_1}' + '${env_file_path_2}'"
 
-    if test "${is_params_env}" = "true"; then
-        # In case of params.env file, we need to additionally the number of
-        # runtime images that are defined in the file
-        EXPECTED_NUM_RECORDS=$((EXPECTED_NUM_RECORDS + EXPECTED_ADDI_RUNTIME_RECORDS))
-    fi
     test "${num_records}" -eq "${EXPECTED_NUM_RECORDS}" || {
         echo "Number of records in the file is incorrect - expected '${EXPECTED_NUM_RECORDS}' but got '${num_records}'!"
         ret_code=1
@@ -1015,11 +1008,6 @@ function check_image() {
         return 1
     }
 
-    test -n "${image_name}" || {
-        echo "Couldn't retrieve the name of the image - got empty value!"
-        return 1
-    }
-
     echo "Image name retrieved: '${image_name}'"
     echo "Image created: '${image_created}'"
     echo "Image size: ${image_size_mb} MB"
@@ -1114,7 +1102,7 @@ for file_ in  "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}"; do
         continue
     fi
     echo "Checking file: '${file_}'"
-    if process_file "${file_}" -eq 0; then
+    if process_file "${file_}"; then
         echo "Validation of '${file_}' was successful! Congrats :)"
         echo "------------------------"
     else
