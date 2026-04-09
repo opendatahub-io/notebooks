@@ -313,9 +313,6 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                         if name in workbench_only_packages and manifest.metadata.type == manifests.NotebookType.RUNTIME:
                             continue
 
-                        # TODO(jdanek): intentional?
-                        if manifest.metadata.scope == "pytorch+llmcompressor" and name == "Codeflare-SDK":
-                            continue
                         # Runtime llmcompressor currently resolves via lm-eval constraints to 0.9.x
                         # while the workbench line can resolve to 0.10.x.
                         if (
