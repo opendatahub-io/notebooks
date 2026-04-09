@@ -7,7 +7,7 @@ ARG BASE_IMAGE
 ######################################################
 # mongocli-builder (build stage only, not published) #
 ######################################################
-FROM registry.access.redhat.com/ubi9/go-toolset:latest AS mongocli-builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.25.8-1775491036 AS mongocli-builder
 
 ARG MONGOCLI_VERSION=2.0.4
 
