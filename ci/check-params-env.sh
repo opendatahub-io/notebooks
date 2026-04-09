@@ -12,7 +12,10 @@
 # This script uses `skopeo` and `jq` tools installed locally for retrieving
 # information about the particular remote images.
 #
-# Local execution: ./ci/check-params-env-rhoai.sh
+# Local execution:
+#   ./ci/check-params-env.sh              # validates ODH manifests
+#   KONFLUX=yes ./ci/check-params-env.sh  # validates RHOAI manifests
+#
 #   Note: please execute from the root directory so that relative path matches
 #
 # In case of the PR on GitHub, this check is tied to GitHub actions automatically,
@@ -20,14 +23,26 @@
 
 # ----------------------------- GLOBAL VARIABLES ----------------------------- #
 
-COMMIT_LATEST_ENV_PATH="manifests/rhoai/base/commit-latest.env"
-COMMIT_ENV_PATH="manifests/rhoai/base/commit.env"
-PARAMS_LATEST_ENV_PATH="manifests/rhoai/base/params-latest.env"
-PARAMS_ENV_PATH="manifests/rhoai/base/params.env"
+# When KONFLUX=yes, validate the RHOAI manifests; otherwise default to ODH.
+if [ "${KONFLUX:-no}" = 'yes' ]; then
+    _MANIFESTS_VARIANT="rhoai"
+    # This value needs to be updated everytime we deliberately change number of the
+    # images we want to have in the `params.env` or `params-latest.env` file.
+    EXPECTED_COMMIT_NUM_RECORDS=74
+    EXPECTED_PARAMS_NUM_RECORDS=74
+else
+    _MANIFESTS_VARIANT="odh"
+    # This value needs to be updated everytime we deliberately change number of the
+    # images we want to have in the `params.env` or `params-latest.env` file.
+    EXPECTED_COMMIT_NUM_RECORDS=39
+    EXPECTED_PARAMS_NUM_RECORDS=33
+fi
 
-# This value needs to be updated everytime we deliberately change number of the
-# images we want to have in the `params.env` or `params-latest.env` file.
-EXPECTED_NUM_RECORDS=74
+COMMIT_LATEST_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/commit-latest.env"
+COMMIT_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/commit.env"
+PARAMS_LATEST_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/params-latest.env"
+PARAMS_ENV_PATH="manifests/${_MANIFESTS_VARIANT}/base/params.env"
+
 EXPECTED_ADDI_RUNTIME_RECORDS=0
 
 # Number of attempts for the skopeo tool to gather data from the repository.
@@ -162,10 +177,18 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_img_size=1169
             ;;
         odh-workbench-jupyter-minimal-cpu-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9"
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_name="rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9"
+            else
+                expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.12"
+            fi
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=1132
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=1132
+            else
+                expected_img_size=1224
+            fi
             ;;
         odh-workbench-jupyter-minimal-cuda-py311-ubi9-2025-1)
             expected_name="rhoai/odh-workbench-jupyter-minimal-cuda-py311-rhel9"
@@ -207,13 +230,25 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_name="odh-notebook-jupyter-cuda-minimal-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=3357
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=3357
+            else
+                expected_img_size=6757
+            fi
             ;;
         odh-workbench-jupyter-minimal-cuda-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-workbench-jupyter-minimal-cuda-py312-rhel9"
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_name="rhoai/odh-workbench-jupyter-minimal-cuda-py312-rhel9"
+            else
+                expected_name="odh-notebook-jupyter-cuda-minimal-ubi9-python-3.12"
+            fi
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=4876
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=4876
+            else
+                expected_img_size=8252
+            fi
             ;;
         odh-workbench-jupyter-pytorch-cuda-py311-ubi9-2025-1)
             expected_name="rhoai/odh-workbench-jupyter-pytorch-cuda-py311-rhel9"
@@ -255,19 +290,39 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=6964
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=6964
+            else
+                expected_img_size=11590
+            fi
             ;;
         odh-workbench-jupyter-pytorch-cuda-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9"
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_name="rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9"
+            else
+                expected_name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.12"
+            fi
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=9372
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=9372
+            else
+                expected_img_size=12872
+            fi
             ;;
         odh-workbench-jupyter-minimal-rocm-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-workbench-jupyter-minimal-rocm-py312-rhel9"
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_name="rhoai/odh-workbench-jupyter-minimal-rocm-py312-rhel9"
+            else
+                expected_name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.12"
+            fi
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=5190
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=5190
+            else
+                expected_img_size=4698
+            fi
             ;;
         odh-workbench-jupyter-datascience-cpu-py311-ubi9-2025-1)
             expected_name="rhoai/odh-workbench-jupyter-datascience-cpu-py311-rhel9"
@@ -312,10 +367,18 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_img_size=1731
             ;;
         odh-workbench-jupyter-datascience-cpu-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-workbench-jupyter-datascience-cpu-py312-rhel9"
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_name="rhoai/odh-workbench-jupyter-datascience-cpu-py312-rhel9"
+            else
+                expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.12"
+            fi
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=1625
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=1625
+            else
+                expected_img_size=1724
+            fi
             ;;
         odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-2025-1)
             expected_name="rhoai/odh-workbench-jupyter-tensorflow-cuda-py311-rhel9"
@@ -357,13 +420,25 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=6373
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=6373
+            else
+                expected_img_size=13198
+            fi
             ;;
         odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-workbench-jupyter-tensorflow-cuda-py312-rhel9"
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_name="rhoai/odh-workbench-jupyter-tensorflow-cuda-py312-rhel9"
+            else
+                expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.12"
+            fi
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=8814
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=8814
+            else
+                expected_img_size=12322
+            fi
             ;;
         odh-workbench-jupyter-trustyai-cpu-py311-ubi9-2025-1)
             expected_name="rhoai/odh-workbench-jupyter-trustyai-cpu-py311-rhel9"
@@ -399,13 +474,25 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=5034
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=5034
+            else
+                expected_img_size=2312
+            fi
             ;;
         odh-workbench-jupyter-trustyai-cpu-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9"
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_name="rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9"
+            else
+                expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.12"
+            fi
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=5746
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=5746
+            else
+                expected_img_size=5917
+            fi
             ;;
         odh-workbench-codeserver-datascience-cpu-py311-ubi9-n)
             expected_name="odh-notebook-code-server-ubi9-python-3.11"
@@ -441,25 +528,49 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_name="odh-notebook-code-server-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=971
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=971
+            else
+                expected_img_size=1140
+            fi
             ;;
         odh-workbench-codeserver-datascience-cpu-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-workbench-codeserver-datascience-cpu-py312-rhel9"
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_name="rhoai/odh-workbench-codeserver-datascience-cpu-py312-rhel9"
+            else
+                expected_name="odh-notebook-code-server-ubi9-python-3.12"
+            fi
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=1228
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=1228
+            else
+                expected_img_size=1289
+            fi
             ;;
         odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-n)
             expected_name="odh-notebook-jupyter-cuda-pytorch-llmcompressor-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=6977
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=6977
+            else
+                expected_img_size=11565
+            fi
             ;;
         odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-rhel9"
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_name="rhoai/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-rhel9"
+            else
+                expected_name="odh-notebook-jupyter-cuda-pytorch-llmcompressor-ubi9-python-3.12"
+            fi
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=9347
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=9347
+            else
+                expected_img_size=12720
+            fi
             ;;
         odh-workbench-jupyter-minimal-rocm-py311-ubi9-n)
             expected_name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.11"
@@ -483,7 +594,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=6474
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=6474
+            else
+                expected_img_size=5295
+            fi
             ;;
         odh-workbench-jupyter-pytorch-rocm-py311-ubi9-n)
             expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11"
@@ -510,10 +625,18 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_img_size=6409
             ;;
         odh-workbench-jupyter-pytorch-rocm-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-workbench-jupyter-pytorch-rocm-py312-rhel9"
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_name="rhoai/odh-workbench-jupyter-pytorch-rocm-py312-rhel9"
+            else
+                expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.12"
+            fi
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=8805
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=8805
+            else
+                expected_img_size=6471
+            fi
             ;;
         odh-workbench-jupyter-tensorflow-rocm-py311-ubi9-n)
             expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11"
@@ -537,13 +660,25 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=5953
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=5953
+            else
+                expected_img_size=6367
+            fi
             ;;
         odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-2025-2)
-            expected_name="rhoai/odh-workbench-jupyter-tensorflow-rocm-py312-rhel9"
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_name="rhoai/odh-workbench-jupyter-tensorflow-rocm-py312-rhel9"
+            else
+                expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.12"
+            fi
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=6264
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=6264
+            else
+                expected_img_size=5779
+            fi
             ;;
         # The following are pipeline runtime images
         odh-pipeline-runtime-minimal-cpu-py311-ubi9-n)
@@ -562,7 +697,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_name="odh-notebook-runtime-minimal-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=954
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=954
+            else
+                expected_img_size=887
+            fi
             ;;
         odh-pipeline-runtime-datascience-cpu-py312-ubi9-n)
             expected_name="odh-notebook-runtime-datascience-ubi9-python-3.12"
@@ -574,19 +713,31 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_name="odh-notebook-runtime-datascience-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=8506
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=8506
+            else
+                expected_img_size=1317
+            fi
             ;;
         odh-pipeline-runtime-pytorch-cuda-py312-ubi9-n)
             expected_name="odh-notebook-runtime-pytorch-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=6253
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=6253
+            else
+                expected_img_size=11180
+            fi
             ;;
         odh-pipeline-runtime-pytorch-cuda-py312-ubi9-n-1)
             expected_name="odh-notebook-runtime-pytorch-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=7413
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=7413
+            else
+                expected_img_size=8149
+            fi
             ;;
         odh-pipeline-runtime-pytorch-rocm-py312-ubi9-n)
             expected_name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.12"
@@ -598,7 +749,11 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.12"
             expected_commitref="main"
             expected_build_name="konflux"
-            expected_img_size=7917
+            if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                expected_img_size=7917
+            else
+                expected_img_size=5131
+            fi
             ;;
         odh-pipeline-runtime-tensorflow-rocm-py311-ubi9-n)
             expected_name="odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.11"
@@ -636,6 +791,31 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_build_name="konflux"
             expected_img_size=5358
             ;;
+        # RStudio images (ODH only — not published to registry.redhat.io)
+        odh-workbench-rstudio-minimal-cpu-py312-c9s-n)
+            expected_name="odh-notebook-rstudio-server-c9s-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=1502
+            ;;
+        odh-workbench-rstudio-minimal-cpu-py312-c9s-2025-2)
+            expected_name="odh-notebook-rstudio-server-c9s-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=1503
+            ;;
+        odh-workbench-rstudio-minimal-cuda-py312-c9s-n)
+            expected_name="odh-notebook-rstudio-server-cuda-c9s-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=9614
+            ;;
+        odh-workbench-rstudio-minimal-cuda-py312-c9s-2025-2)
+            expected_name="odh-notebook-rstudio-server-cuda-c9s-python-3.12"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=8653
+            ;;
         *)
             echo "Unimplemented variable name: '${image_variable}'"
             return 1
@@ -646,10 +826,14 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         return 1
     }
 
-    test -z "${image_commitref}" || test "${image_commitref}" = "${expected_commitref}" || {
-        echo "Image URL points to an incorrect image: expected commitref '${expected_commitref}'; actual '${image_commitref}'"
-        return 1
-    }
+    # For Konflux images, commitref is empty (label doesn't exist) — skip the check.
+    # For OpenShift-CI images, commitref must match exactly.
+    if test -n "${image_commitref}"; then
+        test "${image_commitref}" = "${expected_commitref}" || {
+            echo "Image URL points to an incorrect image: expected commitref '${expected_commitref}'; actual '${image_commitref}'"
+            return 1
+        }
+    fi
 
     test "${openshift_build_name}" = "${expected_build_name}" || {
         echo "Image URL points to an incorrect image: expected OPENSHIFT_BUILD_NAME '${expected_build_name}'; actual '${openshift_build_name}'"
@@ -719,7 +903,7 @@ function check_image_repo_name() {
     image_variable_filtered=$(echo "${image_variable}" | sed -E 's/(.*)-([0-9]{4}-[0-9]+|n.*)$/\1/' | sed -E 's/-(ubi9|rhel9|c9s)$//')
     image_repo="${image_url%@*}"
     image_repo="${image_repo%:*}"
-    repository_name=$(echo "${image_repo##*/}" | sed -E 's/-(ubi9|rhel9)$//')
+    repository_name=$(echo "${image_repo##*/}" | sed -E 's/-(ubi9|rhel9|c9s)$//')
 
     test "${image_variable_filtered}" == "${repository_name}" || {
         echo "The image repository name '${repository_name}' doesn't match the filtered image variable value '${image_variable_filtered}'!"
@@ -747,17 +931,28 @@ function check_image() {
         echo "Couldn't parse '.config.Labels.name' from image metadata!"
         return 1
     }
-    image_commit_id=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Labels."io.openshift.build.commit.id"') || {
-        echo "Couldn't parse '.config.Labels."io.openshift.build.commit.id"' from image metadata, maybe this is a Konflux build?"
-        image_commit_id=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Labels."vcs-ref"') || {
-            echo "Couldn't parse '.config.Labels."vcs-ref"' from image metadata!"
+    # Detect build system: Konflux images use vcs-ref, OpenShift-CI uses io.openshift.build.commit.id
+    local build_system
+    if echo "${image_metadata_config}" | jq -e '.config.Labels."io.openshift.build.commit.id"' >/dev/null 2>&1; then
+        build_system="openshift-ci"
+        image_commit_id=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Labels."io.openshift.build.commit.id"') || {
+            echo "OpenShift-CI image: couldn't parse '.config.Labels.\"io.openshift.build.commit.id\"'!"
             return 1
         }
-    }
-    image_commitref=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Labels."io.openshift.build.commit.ref"') || {
-        echo "Couldn't parse '.config.Labels."io.openshift.build.commit.ref"' from image metadata, skipping commitref check"
+        image_commitref=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Labels."io.openshift.build.commit.ref"') || {
+            echo "OpenShift-CI image: couldn't parse '.config.Labels.\"io.openshift.build.commit.ref\"'!"
+            return 1
+        }
+    else
+        build_system="konflux"
+        image_commit_id=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.config.Labels."vcs-ref"') || {
+            echo "Konflux image: couldn't parse '.config.Labels.\"vcs-ref\"'!"
+            return 1
+        }
+        # Konflux images don't have the commitref label
         image_commitref=""
-    }
+    fi
+    echo "Detected build system: ${build_system}"
     image_created=$(echo "${image_metadata_config}" | jq --exit-status --raw-output '.created') || {
         echo "Couldn't parse '.created' from image metadata!"
         return 1
@@ -849,12 +1044,14 @@ ret_code=0
 echo "Starting check of image references in files: '${COMMIT_LATEST_ENV_PATH}', '${COMMIT_ENV_PATH}' , '${PARAMS_LATEST_ENV_PATH}' and '${PARAMS_ENV_PATH}'"
 echo "---------------------------------------------"
 
+EXPECTED_NUM_RECORDS="${EXPECTED_COMMIT_NUM_RECORDS}"
 check_variables_uniq "${COMMIT_ENV_PATH}" "${COMMIT_LATEST_ENV_PATH}" "true" "false" || {
     echo "ERROR: Variable names in the '${COMMIT_ENV_PATH}' & '${COMMIT_LATEST_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
     ret_code=1
 }
 
+EXPECTED_NUM_RECORDS="${EXPECTED_PARAMS_NUM_RECORDS}"
 check_variables_uniq "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" "false" "true" || {
     echo "ERROR: Variable names in the '${PARAMS_ENV_PATH}' & '${PARAMS_LATEST_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
@@ -909,6 +1106,13 @@ process_file() {
 }
 
 for file_ in  "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}"; do
+    # RHOAI params-latest.env contains only dummy placeholder values
+    # (replaced by Kustomize at deployment time). Skip image validation for it.
+    if [ "${_MANIFESTS_VARIANT}" = "rhoai" ] && [ "${file_}" = "${PARAMS_LATEST_ENV_PATH}" ]; then
+        echo "Skipping image validation for '${file_}' (RHOAI uses dummy placeholders in params-latest.env)"
+        echo "------------------------"
+        continue
+    fi
     echo "Checking file: '${file_}'"
     if process_file "${file_}" -eq 0; then
         echo "Validation of '${file_}' was successful! Congrats :)"
