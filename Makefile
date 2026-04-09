@@ -149,7 +149,7 @@ endef
 #######################################        Build helpers                 #######################################
 
 # https://stackoverflow.com/questions/78899903/how-to-create-a-make-target-which-is-an-implicit-dependency-for-all-other-target
-skip-init-for := all-images deploy% undeploy% test% validate% refresh-lock-files scan-image-vulnerabilities print-release
+skip-init-for := all-images deploy% undeploy% test% validate% refresh-lock-files sync-commit-env-files update-imagestream-annotations refresh-imagestream-metadata scan-image-vulnerabilities print-release
 ifneq (,$(filter-out $(skip-init-for),$(MAKECMDGOALS) $(.DEFAULT_GOAL)))
 $(SELF): bin/buildinputs
 endif
@@ -465,6 +465,35 @@ refresh-lock-files:
 		PIP_LOCK_EXTRA_INDEX_URL="$(PIP_EXTRA_INDEX_URL)" \
 		env -u UV_EXTRA_INDEX_URL -u PIP_EXTRA_INDEX_URL \
 		./uv run scripts/pylocks_generator.py $(INDEX_MODE) $(DIR)
+
+# ======================================================================================
+#   gmake update-imagestream-annotations
+#   gmake update-imagestream-annotations IMAGESTREAM_VARIANT=rhoai DRY_RUN=1
+# Prerequisites:
+#   - ./uv sync --locked (or make setup) so scripts run in the project venv
+#   - skopeo on PATH (sync-commit-env-files inspects images from params*.env)
+#   - For private registry pulls: mkdir -p ~/.config/containers &&
+#       cp ci/secrets/pull-secret.json ~/.config/containers/auth.json
+#   - Full clone / fetch-depth 0 helps update-imagestream-annotations when git show needs SHAs
+#       not already in the local object database (script can fetch from GitHub when needed).
+# ======================================================================================
+IMAGESTREAM_VARIANT ?=
+DRY_RUN ?=
+.PHONY: update-imagestream-annotations
+update-imagestream-annotations:
+	@echo "==================================================================="
+	@echo "📋 Refreshing ImageStream notebook dependency annotations (IMAGESTREAM_VARIANT=$(or $(IMAGESTREAM_VARIANT),odh+rhoai))"
+	@echo "==================================================================="
+	@cd $(ROOT_DIR) && \
+	if [[ -n "$(IMAGESTREAM_VARIANT)" ]]; then \
+		./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py \
+			--variant "$(IMAGESTREAM_VARIANT)" $(if $(filter 1 true yes,$(DRY_RUN)),--dry-run,); \
+	else \
+		./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant odh \
+			$(if $(filter 1 true yes,$(DRY_RUN)),--dry-run,) && \
+		./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant rhoai \
+			$(if $(filter 1 true yes,$(DRY_RUN)),--dry-run,); \
+	fi
 
 # This is only for the workflow action
 # For running manually, set the required environment variables
