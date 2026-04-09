@@ -149,6 +149,32 @@ def _strip_os_suffix(name: str) -> str:
     return re.sub(r'-(ubi9|rhel9|c9s)$', '', name)
 
 
+def _extract_repo_name(image_url: str) -> str:
+    """Extract the repository name from an image URL, stripping tag/digest and OS suffix.
+
+    quay.io/.../odh-workbench-jupyter-minimal-cpu-py312-ubi9@sha256:abc → odh-workbench-jupyter-minimal-cpu-py312
+    registry.redhat.io/rhoai/odh-workbench-...-py312-rhel9@sha256:abc  → odh-workbench-...-py312
+    quay.io/.../odh-pipeline-runtime-minimal-cpu-py312-ubi9:3.5_ea1    → odh-pipeline-runtime-minimal-cpu-py312
+    """
+    last = image_url.split("/")[-1]
+    name = last.split("@")[0].split(":")[0]
+    return _strip_os_suffix(name)
+
+
+def _find_commit_value(variable: str, commit_entries: dict[str, str]) -> str | None:
+    """Find the commit.env value matching a params.env variable.
+
+    commit.env keys insert ``-commit`` before the version suffix::
+
+        params.env:  odh-workbench-...-ubi9-2025-2
+        commit.env:  odh-workbench-...-ubi9-commit-2025-2
+    """
+    for ck, cv in commit_entries.items():
+        if ck.replace("-commit", "") == variable:
+            return cv
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -235,28 +261,53 @@ def test_params_env_image_metadata(
             if image_url == "dummy":
                 continue
 
-            expected = expected_metadata.get(variable)
-            if expected is None:
-                with subtests.test(msg=f"{variable}: not in expected-image-metadata.yaml"):
-                    pytest.fail(f"Image variable {variable} not found in ci/expected-image-metadata.yaml")
-                continue
-
-            # Check variant applicability
-            if variant not in expected.get("variants", []):
-                continue
-
             _LOG.info(f"Checking {variable}: {image_url}")
 
             config = _skopeo_inspect_config(image_url)
             if config is None:
-                with subtests.test(msg=f"{variable}: skopeo inspect failed"):
+                with subtests.test(msg=f"{variable}: skopeo inspect"):
                     pytest.fail(f"Could not inspect {image_url}")
                 continue
 
             labels = config.get("config", {}).get("Labels", {})
-            env_vars = config.get("config", {}).get("Env", [])
 
-            # --- Check image name label ---
+            # --- Detect build system ---
+            is_konflux = "io.openshift.build.commit.id" not in labels
+
+            if is_konflux:
+                commit_id = labels.get("vcs-ref", "")
+
+                # Repo name check (no YAML needed)
+                with subtests.test(msg=f"{variable}: repo name"):
+                    var_stripped = _strip_os_suffix(_strip_version_suffix(variable))
+                    repo_name = _extract_repo_name(image_url)
+                    assert var_stripped == repo_name, (
+                        f"Repo name '{repo_name}' doesn't match variable '{var_stripped}'"
+                    )
+            else:
+                commit_id = labels.get("io.openshift.build.commit.id", "")
+
+            # --- Commit ID check (no YAML needed) ---
+            if commit_id and "odh-pipeline-runtime-" not in variable:
+                file_commit = _find_commit_value(variable, commit_entries)
+                if file_commit:
+                    short_commit = commit_id[:7]
+                    with subtests.test(msg=f"{variable}: commit ID"):
+                        assert short_commit == file_commit, (
+                            f"Image commit '{short_commit}' != commit.env '{file_commit}'"
+                        )
+
+            # --- YAML-dependent checks below ---
+            expected = expected_metadata.get(variable)
+            if expected is None:
+                with subtests.test(msg=f"{variable}: metadata entry"):
+                    pytest.fail(f"Not in ci/expected-image-metadata.yaml")
+                continue
+
+            if variant not in expected.get("variants", []):
+                continue
+
+            # Check image name label
             expected_name = _resolve_expected(expected, variant, "name")
             actual_name = labels.get("name")
             if expected_name and actual_name:
@@ -265,54 +316,17 @@ def test_params_env_image_metadata(
                         f"Expected name '{expected_name}', got '{actual_name}'"
                     )
 
-            # --- Detect build system and check accordingly ---
-            is_konflux = "io.openshift.build.commit.id" not in labels
-
-            if is_konflux:
-                # Konflux: use vcs-ref, skip commitref, check repo name
-                commit_id = labels.get("vcs-ref", "")
-
-                with subtests.test(msg=f"{variable}: repo name"):
-                    var_filtered = _strip_os_suffix(_strip_version_suffix(variable))
-                    repo = image_url.split("@")[0].split(":")[-1] if "@" in image_url else image_url
-                    repo_name = _strip_os_suffix(repo.split("/")[-1])
-                    assert var_filtered == repo_name, (
-                        f"Repo name '{repo_name}' doesn't match variable '{var_filtered}'"
-                    )
-            else:
-                # OpenShift-CI: use commit.id, check commitref
-                commit_id = labels.get("io.openshift.build.commit.id", "")
+            # Check commitref (OpenShift-CI only)
+            if not is_konflux:
                 commitref = labels.get("io.openshift.build.commit.ref", "")
                 expected_commitref = expected.get("commitref", "")
-
                 if expected_commitref:
                     with subtests.test(msg=f"{variable}: commitref"):
                         assert commitref == expected_commitref, (
                             f"Expected commitref '{expected_commitref}', got '{commitref}'"
                         )
 
-            # --- Check commit ID matches commit.env ---
-            if commit_id and "odh-pipeline-runtime-" not in variable:
-                short_commit = commit_id[:7]
-                # commit.env keys have "-commit" inserted
-                commit_key = re.sub(r'-commit', '', variable)  # variable without -commit
-                # Actually look up: the commit.env key is the variable name itself
-                # but commit.env stores: key-commit-suffix=hash
-                file_commit = commit_entries.get(variable.replace(variable, variable), "")
-                # Find matching key in commit entries by stripping -commit from commit.env keys
-                for ck, cv in commit_entries.items():
-                    stripped = ck.replace("-commit", "")
-                    if stripped == variable:
-                        file_commit = cv
-                        break
-
-                if file_commit:
-                    with subtests.test(msg=f"{variable}: commit ID"):
-                        assert short_commit == file_commit, (
-                            f"Image commit '{short_commit}' != commit.env '{file_commit}'"
-                        )
-
-            # --- Check image size ---
+            # Check image size
             expected_size = _resolve_expected(expected, variant, "size_mb")
             if expected_size:
                 actual_size = _get_image_size_mb(image_url)
