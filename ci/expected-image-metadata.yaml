@@ -1,0 +1,511 @@
+# Expected image metadata for params.env validation.
+# Generated from ci/check-params-env.sh case statement.
+# Each entry maps a params.env variable name to expected image properties.
+#
+# size_mb thresholds: 10% or 100MB max change from expected.
+# When name/size_mb is a dict, values differ between ODH and RHOAI.
+
+odh-workbench-jupyter-minimal-cpu-py311-ubi9-n:
+  name: odh-notebook-jupyter-minimal-ubi9-python-3.11
+  commitref: main
+  build_name: konflux
+  size_mb: 1219
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-cpu-py311-ubi9-2025-1:
+  name: odh-notebook-jupyter-minimal-ubi9-python-3.11
+  commitref: main
+  build_name: konflux
+  size_mb: 1258
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-cpu-py311-ubi9-2024-2:
+  name: odh-notebook-jupyter-minimal-ubi9-python-3.11
+  commitref: release-2024b
+  build_name: jupyter-minimal-ubi9-python-3.11-amd64
+  size_mb: 528
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-cpu-py311-ubi9-2024-1:
+  name: odh-notebook-jupyter-minimal-ubi9-python-3.9
+  commitref: release-2024a
+  build_name: jupyter-minimal-ubi9-python-3.9-amd64
+  size_mb: 489
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-cpu-py311-ubi9-2023-2:
+  name: odh-notebook-jupyter-minimal-ubi9-python-3.9
+  commitref: release-2023b
+  build_name: jupyter-minimal-ubi9-python-3.9-amd64
+  size_mb: 486
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-cpu-py311-ubi9-2023-1:
+  name: odh-notebook-jupyter-minimal-ubi9-python-3.9
+  commitref: release-2023a
+  build_name: jupyter-minimal-ubi9-python-3.9-amd64
+  size_mb: 475
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-cpu-py311-ubi9-1-2:
+  name: odh-notebook-jupyter-minimal-ubi8-python-3.8
+  commitref: release-1.2
+  build_name: jupyter-minimal-ubi8-python-3.8-amd64
+  size_mb: 479
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-cpu-py312-ubi9-n:
+  name: odh-notebook-jupyter-minimal-ubi9-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb: 1169
+  variants:
+  - odh
+  - rhoai
+odh-workbench-jupyter-minimal-cuda-py311-ubi9-2025-1:
+  name: rhoai/odh-workbench-jupyter-minimal-cuda-py311-rhel9
+  commitref: main
+  build_name: konflux
+  size_mb:
+    odh: 6757
+    rhoai: 3357
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-cuda-py311-ubi9-2024-2:
+  name: odh-notebook-jupyter-minimal-ubi9-python-3.11
+  commitref: release-2024b
+  build_name: cuda-jupyter-minimal-ubi9-python-3.11-amd64
+  size_mb: 5157
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-cuda-py311-ubi9-2024-1:
+  name: odh-notebook-jupyter-minimal-ubi9-python-3.9
+  commitref: release-2024a
+  build_name: cuda-jupyter-minimal-ubi9-python-3.9-amd64
+  size_mb: 6026
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-cuda-py311-ubi9-2023-2:
+  name: odh-notebook-jupyter-minimal-ubi9-python-3.9
+  commitref: release-2023b
+  build_name: cuda-jupyter-minimal-ubi9-python-3.9-amd64
+  size_mb: 5326
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-cuda-py311-ubi9-2023-1:
+  name: odh-notebook-jupyter-minimal-ubi9-python-3.9
+  commitref: release-2023a
+  build_name: cuda-jupyter-minimal-ubi9-python-3.9-amd64
+  size_mb: 5038
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-cuda-py311-ubi9-1-2:
+  name: odh-notebook-jupyter-minimal-ubi8-python-3.8
+  commitref: release-1.2
+  build_name: cuda-jupyter-minimal-ubi8-python-3.8-amd64
+  size_mb: 5333
+  variants:
+  - rhoai
+odh-workbench-jupyter-pytorch-cuda-py311-ubi9-2025-1:
+  name: rhoai/odh-workbench-jupyter-pytorch-cuda-py311-rhel9
+  commitref: main
+  build_name: konflux
+  size_mb:
+    odh: 11590
+    rhoai: 6964
+  variants:
+  - rhoai
+odh-workbench-jupyter-pytorch-cuda-py311-ubi9-2024-2:
+  name: odh-notebook-jupyter-pytorch-ubi9-python-3.11
+  commitref: release-2024b
+  build_name: jupyter-pytorch-ubi9-python-3.11-amd64
+  size_mb: 8571
+  variants:
+  - rhoai
+odh-workbench-jupyter-pytorch-cuda-py311-ubi9-2024-1:
+  name: odh-notebook-jupyter-pytorch-ubi9-python-3.9
+  commitref: release-2024a
+  build_name: jupyter-pytorch-ubi9-python-3.9-amd64
+  size_mb: 9354
+  variants:
+  - rhoai
+odh-workbench-jupyter-pytorch-cuda-py311-ubi9-2023-2:
+  name: odh-notebook-jupyter-pytorch-ubi9-python-3.9
+  commitref: release-2023b
+  build_name: jupyter-pytorch-ubi9-python-3.9-amd64
+  size_mb: 8711
+  variants:
+  - rhoai
+odh-workbench-jupyter-pytorch-cuda-py311-ubi9-2023-1:
+  name: odh-notebook-jupyter-pytorch-ubi9-python-3.9
+  commitref: release-2023a
+  build_name: jupyter-pytorch-ubi9-python-3.9-amd64
+  size_mb: 7130
+  variants:
+  - rhoai
+odh-workbench-jupyter-pytorch-cuda-py311-ubi9-1-2:
+  name: odh-notebook-cuda-jupyter-pytorch-ubi8-python-3.8
+  commitref: release-1.2
+  build_name: jupyter-pytorch-ubi8-python-3.8-amd64
+  size_mb: 6592
+  variants:
+  - rhoai
+odh-workbench-jupyter-datascience-cpu-py311-ubi9-2025-1:
+  name: rhoai/odh-workbench-jupyter-datascience-cpu-py311-rhel9
+  commitref: main
+  build_name: konflux
+  size_mb:
+    odh: 1724
+    rhoai: 1625
+  variants:
+  - rhoai
+odh-workbench-jupyter-datascience-cpu-py311-ubi9-2024-2:
+  name: odh-notebook-jupyter-datascience-ubi9-python-3.11
+  commitref: release-2024b
+  build_name: jupyter-datascience-ubi9-python-3.11-amd64
+  size_mb: 961
+  variants:
+  - rhoai
+odh-workbench-jupyter-datascience-cpu-py311-ubi9-2024-1:
+  name: odh-notebook-jupyter-datascience-ubi9-python-3.9
+  commitref: release-2024a
+  build_name: jupyter-datascience-ubi9-python-3.9-amd64
+  size_mb: 890
+  variants:
+  - rhoai
+odh-workbench-jupyter-datascience-cpu-py311-ubi9-2023-2:
+  name: odh-notebook-jupyter-datascience-ubi9-python-3.9
+  commitref: release-2023b
+  build_name: jupyter-datascience-ubi9-python-3.9-amd64
+  size_mb: 883
+  variants:
+  - rhoai
+odh-workbench-jupyter-datascience-cpu-py311-ubi9-2023-1:
+  name: odh-notebook-jupyter-datascience-ubi9-python-3.9
+  commitref: release-2023a
+  build_name: jupyter-datascience-ubi9-python-3.9-amd64
+  size_mb: 685
+  variants:
+  - rhoai
+odh-workbench-jupyter-datascience-cpu-py311-ubi9-1-2:
+  name: odh-notebook-jupyter-datascience-ubi8-python-3.8
+  commitref: release-1.2
+  build_name: jupyter-datascience-ubi8-python-3.8-amd64
+  size_mb: 865
+  variants:
+  - rhoai
+odh-workbench-jupyter-datascience-cpu-py312-ubi9-n:
+  name: odh-notebook-jupyter-datascience-ubi9-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb: 1731
+  variants:
+  - odh
+  - rhoai
+odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-2025-1:
+  name: rhoai/odh-workbench-jupyter-tensorflow-cuda-py311-rhel9
+  commitref: main
+  build_name: konflux
+  size_mb:
+    odh: 13198
+    rhoai: 6373
+  variants:
+  - rhoai
+odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-2024-2:
+  name: odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.11
+  commitref: release-2024b
+  build_name: cuda-jupyter-tensorflow-ubi9-python-3.11-amd64
+  size_mb: 8211
+  variants:
+  - rhoai
+odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-2024-1:
+  name: odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.9
+  commitref: release-2024a
+  build_name: cuda-jupyter-tensorflow-ubi9-python-3.9-amd64
+  size_mb: 6984
+  variants:
+  - rhoai
+odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-2023-2:
+  name: odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.9
+  commitref: release-2023b
+  build_name: cuda-jupyter-tensorflow-ubi9-python-3.9-amd64
+  size_mb: 6301
+  variants:
+  - rhoai
+odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-2023-1:
+  name: odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.9
+  commitref: release-2023a
+  build_name: cuda-jupyter-tensorflow-ubi9-python-3.9-amd64
+  size_mb: 5927
+  variants:
+  - rhoai
+odh-workbench-jupyter-tensorflow-cuda-py311-ubi9-1-2:
+  name: odh-notebook-cuda-jupyter-tensorflow-ubi8-python-3.8
+  commitref: release-1.2
+  build_name: cuda-jupyter-tensorflow-ubi8-python-3.8-amd64
+  size_mb: 6309
+  variants:
+  - rhoai
+odh-workbench-jupyter-trustyai-cpu-py311-ubi9-2025-1:
+  name: rhoai/odh-workbench-jupyter-trustyai-cpu-py311-rhel9
+  commitref: main
+  build_name: konflux
+  size_mb:
+    odh: 2312
+    rhoai: 5034
+  variants:
+  - rhoai
+odh-workbench-jupyter-trustyai-cpu-py311-ubi9-2024-2:
+  name: odh-notebook-jupyter-trustyai-ubi9-python-3.11
+  commitref: release-2024b
+  build_name: jupyter-trustyai-ubi9-python-3.11-amd64
+  size_mb: 4197
+  variants:
+  - rhoai
+odh-workbench-jupyter-trustyai-cpu-py311-ubi9-2024-1:
+  name: odh-notebook-jupyter-trustyai-ubi9-python-3.9
+  commitref: release-2024a
+  build_name: jupyter-trustyai-ubi9-python-3.9-amd64
+  size_mb: 1123
+  variants:
+  - rhoai
+odh-workbench-jupyter-trustyai-cpu-py311-ubi9-2023-2:
+  name: odh-notebook-jupyter-trustyai-ubi9-python-3.9
+  commitref: release-2023b
+  build_name: jupyter-trustyai-ubi9-python-3.9-amd64
+  size_mb: 1057
+  variants:
+  - rhoai
+odh-workbench-jupyter-trustyai-cpu-py311-ubi9-2023-1:
+  name: odh-notebook-jupyter-trustyai-ubi9-python-3.9
+  commitref: release-2023a
+  build_name: jupyter-trustyai-ubi9-python-3.9-amd64
+  size_mb: 883
+  variants:
+  - rhoai
+odh-workbench-codeserver-datascience-cpu-py311-ubi9-n:
+  name: odh-notebook-code-server-ubi9-python-3.11
+  commitref: main
+  build_name: konflux
+  size_mb:
+    odh: 1140
+    rhoai: 971
+  variants:
+  - rhoai
+odh-workbench-codeserver-datascience-cpu-py311-ubi9-2025-1:
+  name: rhoai/odh-workbench-codeserver-datascience-cpu-py311-rhel9
+  commitref: main
+  build_name: konflux
+  size_mb: 1017
+  variants:
+  - rhoai
+odh-workbench-codeserver-datascience-cpu-py311-ubi9-2024-2:
+  name: odh-notebook-code-server-ubi9-python-3.11
+  commitref: release-2024b
+  build_name: codeserver-ubi9-python-3.11-amd64
+  size_mb: 893
+  variants:
+  - rhoai
+odh-workbench-codeserver-datascience-cpu-py311-ubi9-2024-1:
+  name: odh-notebook-code-server-ubi9-python-3.9
+  commitref: release-2024a
+  build_name: codeserver-ubi9-python-3.9-amd64
+  size_mb: 837
+  variants:
+  - rhoai
+odh-workbench-codeserver-datascience-cpu-py311-ubi9-2023-2:
+  name: odh-notebook-code-server-ubi9-python-3.9
+  commitref: release-2023b
+  build_name: codeserver-ubi9-python-3.9-amd64
+  size_mb: 778
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-rocm-py311-ubi9-n:
+  name: odh-notebook-jupyter-rocm-minimal-ubi9-python-3.11
+  commitref: main
+  build_name: konflux
+  size_mb:
+    odh: 5295
+    rhoai: 6474
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-rocm-py311-ubi9-2025-1:
+  name: rhoai/odh-workbench-jupyter-minimal-rocm-py311-rhel9
+  commitref: main
+  build_name: konflux
+  size_mb: 6519
+  variants:
+  - rhoai
+odh-workbench-jupyter-minimal-rocm-py311-ubi9-2024-2:
+  name: odh-notebook-jupyter-minimal-ubi9-python-3.11
+  commitref: release-2024b
+  build_name: rocm-jupyter-minimal-ubi9-python-3.11-amd64
+  size_mb: 4830
+  variants:
+  - rhoai
+odh-workbench-jupyter-pytorch-rocm-py311-ubi9-n:
+  name: odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11
+  commitref: main
+  build_name: konflux
+  size_mb:
+    odh: 6471
+    rhoai: 8805
+  variants:
+  - rhoai
+odh-workbench-jupyter-pytorch-rocm-py311-ubi9-2025-1:
+  name: rhoai/odh-workbench-jupyter-pytorch-rocm-py311-rhel9
+  commitref: main
+  build_name: konflux
+  size_mb: 8177
+  variants:
+  - rhoai
+odh-workbench-jupyter-pytorch-rocm-py311-ubi9-2024-2:
+  name: odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.11
+  commitref: release-2024b
+  build_name: rocm-jupyter-pytorch-ubi9-python-3.11-amd64
+  size_mb: 6571
+  variants:
+  - rhoai
+odh-workbench-jupyter-pytorch-rocm-py312-ubi9-n:
+  name: odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb: 6409
+  variants:
+  - odh
+  - rhoai
+odh-workbench-jupyter-tensorflow-rocm-py311-ubi9-n:
+  name: odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11
+  commitref: main
+  build_name: konflux
+  size_mb:
+    odh: 6367
+    rhoai: 5953
+  variants:
+  - rhoai
+odh-workbench-jupyter-tensorflow-rocm-py311-ubi9-2025-1:
+  name: rhoai/odh-workbench-jupyter-tensorflow-rocm-py311-rhel9
+  commitref: main
+  build_name: konflux
+  size_mb: 7473
+  variants:
+  - rhoai
+odh-workbench-jupyter-tensorflow-rocm-py311-ubi9-2024-2:
+  name: odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.11
+  commitref: release-2024b
+  build_name: rocm-jupyter-tensorflow-ubi9-python-3.11-amd64
+  size_mb: 5782
+  variants:
+  - rhoai
+odh-pipeline-runtime-minimal-cpu-py311-ubi9-n:
+  name: odh-notebook-runtime-minimal-ubi9-python-3.11
+  commitref: main
+  build_name: konflux
+  size_mb:
+    odh: 887
+    rhoai: 954
+  variants:
+  - rhoai
+odh-pipeline-runtime-minimal-cpu-py312-ubi9-n:
+  name: odh-notebook-runtime-minimal-ubi9-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb: 832
+  variants:
+  - odh
+  - rhoai
+odh-pipeline-runtime-datascience-cpu-py312-ubi9-n:
+  name: odh-notebook-runtime-datascience-ubi9-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb:
+    odh: 1317
+    rhoai: 8506
+  variants:
+  - odh
+  - rhoai
+odh-pipeline-runtime-pytorch-rocm-py312-ubi9-n:
+  name: odh-notebook-runtime-rocm-pytorch-ubi9-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb:
+    odh: 5131
+    rhoai: 7917
+  variants:
+  - odh
+  - rhoai
+odh-pipeline-runtime-tensorflow-rocm-py311-ubi9-n:
+  name: odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.11
+  commitref: main
+  build_name: konflux
+  size_mb: 6705
+  variants:
+  - rhoai
+odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9-n:
+  name: odh-notebook-runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb: 11144
+  variants:
+  - odh
+  - rhoai
+odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-n:
+  name: odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb: 12781
+  variants:
+  - odh
+  - rhoai
+odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-n-1:
+  name: odh-notebook-cuda-runtime-tensorflow-ubi9-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb: 7596
+  variants:
+  - odh
+  - rhoai
+odh-pipeline-runtime-tensorflow-rocm-py312-ubi9-n:
+  name: odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb: 5953
+  variants:
+  - odh
+  - rhoai
+odh-pipeline-runtime-tensorflow-rocm-py312-ubi9-n-1:
+  name: odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb: 5358
+  variants:
+  - odh
+  - rhoai
+odh-workbench-rstudio-minimal-cpu-py312-c9s-n:
+  name: odh-notebook-rstudio-server-c9s-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb: 1502
+  variants:
+  - odh
+odh-workbench-rstudio-minimal-cpu-py312-c9s-2025-2:
+  name: odh-notebook-rstudio-server-c9s-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb: 1503
+  variants:
+  - odh
+odh-workbench-rstudio-minimal-cuda-py312-c9s-n:
+  name: odh-notebook-rstudio-server-cuda-c9s-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb: 9614
+  variants:
+  - odh
+odh-workbench-rstudio-minimal-cuda-py312-c9s-2025-2:
+  name: odh-notebook-rstudio-server-cuda-c9s-python-3.12
+  commitref: main
+  build_name: konflux
+  size_mb: 8653
+  variants:
+  - odh
