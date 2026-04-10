@@ -15,6 +15,10 @@ dependencies = [
     # Base packages
     "setuptools",
     "wheel",
+
+    # Hermetic bootstrap: locked in requirements.*.txt; Dockerfile installs unpinned from find-links.
+    "micropipenv[toml]",
+    "uv",
 ]
 
 [tool.uv]

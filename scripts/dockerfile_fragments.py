@@ -235,12 +235,6 @@ def main():
             RUN ./utils/install_pdf_deps.sh
             ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
         """),
-        "Download Elyra Bootstrapper": textwrap.dedent(r"""
-            RUN curl -fL https://raw.githubusercontent.com/opendatahub-io/elyra/refs/tags/v4.3.1/elyra/kfp/bootstrapper.py \
-                     -o ./utils/bootstrapper.py
-            # Prevent Elyra from re-installing the dependencies
-            ENV ELYRA_INSTALL_PACKAGES="false"
-        """),
 
         "mongocli-builder stage": textwrap.dedent(r"""
             ######################################################

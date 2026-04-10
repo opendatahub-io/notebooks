@@ -12,90 +12,31 @@ ARG TARGETARCH
 
 WORKDIR /opt/app-root/bin
 
-# OS Packages needs to be installed as root
+# hadolint ignore=DL3002
 USER 0
 
-ARG TARGETARCH
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-### BEGIN upgrade first to avoid fixable vulnerabilities
-RUN /bin/bash <<'EOF'
-# If we have a Red Hat subscription prepared, refresh it
-set -Eeuxo pipefail
-if command -v subscription-manager &> /dev/null; then
-  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
-fi
-EOF
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
-RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh upgrade
-
-### END upgrade first to avoid fixable vulnerabilities
-
-# Install useful OS packages
+# hadolint ignore=DL3041
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-echo "Building for architecture: ${TARGETARCH}"
-# protobuf: RHOAI pyarrow wheels need libprotobuf.so.25 (C++ runtime), not protobuf-c.
-PACKAGES=(perl mesa-libGL skopeo libxcrypt-compat protobuf)
-# Datascience packages devel dependencies
-if [ "$TARGETARCH" = "s390x" ] || [ "$TARGETARCH" = "ppc64le" ]; then
-    PACKAGES+=(
-    # required to compile pillow
-    zlib-devel libjpeg-turbo-devel
-    # optional pillow deps https://pillow.readthedocs.io/en/latest/installation/building-from-source.html#external-libraries
-    #libtiff-devel libwebp-devel openjpeg2-devel lcms2-devel freetype-devel
-    #libimagequant-devel harfbuzz-devel fribidi-devel
-
-    # required to compile maturin
-    openssl-devel
-
-    # required to compile scikit-learn
-    gcc-gfortran
-    )
+BASE_PKGS=(perl mesa-libGL skopeo compat-openssl11 openshift-clients)
+if [ "$(uname -m)" = "s390x" ]; then
+    BASE_PKGS+=(gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel)
 fi
-# Additional dev tools only for s390x
-if [ "$TARGETARCH" = "s390x" ]; then
-    PACKAGES+=("gcc" "gcc-c++" "make" "openssl-devel" "autoconf" "automake" "libtool" "cmake" "python3-devel" "pybind11-devel" "openblas-devel" "openssl" "zlib-devel")
-fi
-if [ "$TARGETARCH" = "ppc64le" ]; then
-    PACKAGES+=(git gcc-toolset-13 make wget unzip rust cargo cmake ninja-build)
-fi
-if [ -n "$PACKAGES" ]; then
-    echo "Installing: $PACKAGES"
-    dnf install -y "${PACKAGES[@]}"
-    dnf clean all
-    rm -rf /var/cache/yum
-fi
+dnf install -y "${BASE_PKGS[@]}"
+dnf clean all
+rm -rf /var/cache/yum
 EOF
 
-# Set python alternatives only for s390x (not needed for other arches)
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-if [ "$TARGETARCH" = "s390x" ]; then
-    alternatives --install /usr/bin/python python /usr/bin/python3.12 1
-    alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
-    python --version && python3 --version
-fi
-EOF
+RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]" "uv"
 
-# Other apps and tools installed as default user
 USER 1001
-
-### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
-RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.10.0" "uv==0.10.8"
-### END Install micropipenv and uv to deploy packages from requirements.txt
-
-### BEGIN Install the oc client
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
-    -o /tmp/openshift-client-linux.tar.gz
-tar -xzvf /tmp/openshift-client-linux.tar.gz oc
-rm -f /tmp/openshift-client-linux.tar.gz
-EOF
-
-### END Install the oc client
-
 
 #######################
 # runtime-datascience #
@@ -117,37 +58,36 @@ LABEL name="odh-notebook-runtime-datascience-ubi9-python-3.12" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:runtime-datascience-ubi9-python-3.12"
 
 WORKDIR /opt/app-root/bin
+
 USER 0
 
-# Install Python packages from pylock file
-COPY ${DATASCIENCE_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
-# Copy Elyra dependencies for air-gapped enviroment
-COPY --chown=1001 ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
-### BEGIN Download Elyra Bootstrapper
-RUN curl -fL https://raw.githubusercontent.com/opendatahub-io/elyra/refs/tags/v4.3.1/elyra/kfp/bootstrapper.py \
-         -o ./utils/bootstrapper.py
-# Prevent Elyra from re-installing the dependencies
-ENV ELYRA_INSTALL_PACKAGES="false"
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
-### END Download Elyra Bootstrapper
+RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+    /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat protobuf
+
+COPY --chown=1001:0 ${DATASCIENCE_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
+COPY --chown=1001:0 ${DATASCIENCE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
+COPY --chown=1001:0 ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
+
+COPY --chown=1001:0 prefetch-input/elyra-v4.3.1/elyra/kfp/bootstrapper.py /opt/app-root/bin/utils/bootstrapper.py
+
+ENV ELYRA_INSTALL_PACKAGES="false"
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 
-### BEGIN Install software and packages
 echo "Installing software and packages"
-# Install Python packages from lockfile with hash verification
-# All dependencies are explicitly listed in pylock.toml (--no-deps)
-UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
-    --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
-    --requirements=./pylock.toml
-### END Install software and packages
+    --compile-bytecode --index-strategy=unsafe-best-match \
+    --no-verify-hashes \
+    --find-links /cachi2/output/deps/pip \
+    --requirements=./requirements.txt
 
-# change ownership to default user (all packages were installed as root and has root:root ownership
 chown -R 1001:0 /opt/app-root/
 chmod -R g=u /opt/app-root
-# Fix permissions to support pip in Openshift environments
 chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P
 EOF

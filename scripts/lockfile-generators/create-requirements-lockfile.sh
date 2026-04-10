@@ -6,8 +6,8 @@ set -euo pipefail
 # Why this script exists
 # ----------------------
 # Hermetic builds need every Python wheel prefetched.  This script:
-#   1. Delegates to pylocks_generator.py to generate pylock.<flavor>.toml
-#      (or pylock.toml + sync when PROJECT_DIR is under PUBLIC_INDEX_PROJECTS).
+#   1. Delegates to pylocks_generator.py to generate a lockfile
+#      (PUBLIC_INDEX_PROJECTS → public-index → root pylock.toml; else rh-index → uv.lock.d/pylock.<flavor>.toml).
 #      (ensures consistency with CI's check-generated-code).
 #   2. Converts the pylock to a pip-compatible requirements.<flavor>.txt.
 #   3. (--download) Downloads every wheel into cachi2/output/deps/pip/.
@@ -101,9 +101,11 @@ if [[ -f "$CONF_FILE" ]]; then
   source "$CONF_FILE"
 fi
 
-# Use public-index when PROJECT_DIR equals a listed path or is a subdirectory (e.g. .../tensorflow/ubi9-python-3.12).
+# Use public-index when PROJECT_DIR equals a listed path or is a subdirectory (e.g. .../ubi9-python-3.12).
+# Produces root pylock.toml (not uv.lock.d/pylock.<flavor>.toml) — same layout as jupyter/rocm/tensorflow.
 PUBLIC_INDEX_PROJECTS=(
   jupyter/rocm/tensorflow
+  runtimes/rocm-tensorflow
 )
 
 PYLOCKS_MODE="rh-index"
@@ -151,7 +153,7 @@ wc -l "$PYLOCK_FILE"
 # --hash=sha256:… lines for integrity verification.
 # =========================================================================
 echo ""
-echo "=== Step 2: Converting pylock.${FLAVOR}.toml → requirements.${FLAVOR}.txt ==="
+echo "=== Step 2: Converting $(basename "$PYLOCK_FILE") → requirements.${FLAVOR}.txt ==="
 
 if [[ -n "$REQUIREMENTS_INDEX_URL" ]]; then
   python3 "${SCRIPTS_PATH}/helpers/pylock-to-requirements.py" \
