@@ -6,6 +6,7 @@
 #   - Upgraded feast ~=0.59.0 (pinned for RHOAI 3.4 compatibility)
 #   - Excluded py-spy on ppc64le (maturin can't fetch crates.io in --network=none)
 #   - Added urllib3>=2.6.0 override (CVE-2025-66418)
+#   - protobuf==6.31.1 override (AIPCC-13675: UPB C extension segfault on s390x)
 #   - Added local path source for the meta-package
 [project]
 name = "notebooks"
@@ -46,7 +47,10 @@ environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
 
-override-dependencies = []
+override-dependencies = [
+    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
+    "protobuf==6.31.1",
+]
 
 [tool.uv.sources]
 odh-notebooks-meta-workbench-datascience-deps = { path = "../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
