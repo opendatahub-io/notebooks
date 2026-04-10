@@ -364,17 +364,20 @@ def update_rhoaieng_teams(client: JiraClient, issues: list[dict], dry_run: bool 
     for issue in issues:
         fields = issue.get("fields", {})
         current_team = fields.get(RHAIENG_TEAM_CUSTOM_FIELD)
+        key = issue["key"]
         
-        needs_update = False
-        if current_team is None:
-            needs_update = True
-        elif isinstance(current_team, dict) and current_team.get("id") != expected_team_id:
-            needs_update = True
-        elif isinstance(current_team, str) and current_team != expected_team_id:
-            needs_update = True
-            
-        if needs_update:
-            key = issue["key"]
+        current_team_id = None
+        match current_team:
+            case {"id": team_id}:
+                current_team_id = team_id
+            case str() as team_id:
+                current_team_id = team_id
+            case None:
+                pass
+            case _:
+                print(f"  WARNING: Unexpected type for Team field on {key}: {type(current_team)} ({current_team})")
+                
+        if current_team_id != expected_team_id:
             if dry_run:
                 print(f"  [DRY RUN] Would set Team to AAIET Notebooks on {key}")
             else:
