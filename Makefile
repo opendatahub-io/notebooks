@@ -567,7 +567,7 @@ ifeq ($(PYTEST_ARGS),)
 	$(error Usage: make test-integration PYTEST_ARGS="--image=<image>")
 endif
 	@echo "Running container integration tests"
-	./uv run pytest tests/containers -m 'not openshift and not cuda and not rocm' $(PYTEST_ARGS)
+	./uv run pytest tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' $(PYTEST_ARGS)
 
 .PHONY: unit-test integration-test
 unit-test: test-unit

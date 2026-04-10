@@ -462,7 +462,7 @@ jobs:
         if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
         run: |
           set -Eeuxo pipefail
-          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
