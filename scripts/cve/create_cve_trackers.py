@@ -378,15 +378,15 @@ def update_rhoaieng_teams(client: JiraClient, issues: list[dict], dry_run: bool 
                 print(f"  WARNING: Unexpected type for Team field on {key}: {type(current_team)} ({current_team})")
                 
         if current_team_id != expected_team_id:
-            if dry_run:
-                print(f"  [DRY RUN] Would set Team to AAIET Notebooks on {key}")
-            else:
-                try:
+            try:
+                if dry_run:
+                    print(f"  [DRY RUN] Would set Team to AAIET Notebooks on {key}")
+                else:
                     client.update_issue(key, team_extra)
                     print(f"  Set Team to AAIET Notebooks on {key}")
-                except Exception as e:
-                    print(f"  ERROR setting Team on {key}: {e}")
-            updated_count += 1
+                updated_count += 1
+            except Exception as e:
+                print(f"  ERROR setting Team on {key}: {e}")
             
     if updated_count > 0:
         verb = "Would update" if dry_run else "Updated"
