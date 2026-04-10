@@ -31,6 +31,7 @@ from rich.table import Table
 from rich.text import Text
 
 from ci.logging_config import configure_logging, make_pretty_log
+from manifests.tools.commit_env_refs import parse_env_file as _parse_env_dict
 
 log = structlog.get_logger()
 
@@ -448,19 +449,7 @@ def parse_env_file(path: pathlib.Path) -> list[tuple[str, str]]:
 
     Skips empty lines, comments, and dummy values.
     """
-    entries: list[tuple[str, str]] = []
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" not in line:
-                continue
-            variable, _, image_url = line.partition("=")
-            if not image_url or image_url == "dummy":
-                continue
-            entries.append((variable, image_url))
-    return entries
+    return [(k, v) for k, v in _parse_env_dict(path).items() if v and v != "dummy"]
 
 
 async def run_checks(
