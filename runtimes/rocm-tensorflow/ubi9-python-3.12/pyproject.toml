@@ -10,19 +10,19 @@ dependencies = [
     # TODO(jdanek): consider adding #sha256=814a5e4842b0c92d63c7a0bb4df0baf51ff2db8615535d83fe8958204b840598
     "tensorflow-rocm @ https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4/tensorflow_rocm-2.18.1-cp312-cp312-manylinux_2_28_x86_64.whl",
     # tensorflow-rocm==2.x needs tensorboard>=2.x,<2.x+1
-    "tensorboard~=2.18.0",
+    "tensorboard",
 
     # Datascience and useful extensions
-    "codeflare-sdk~=0.35.0",
-    "feast~=0.61.0",
+    "codeflare-sdk",
+    "feast",
     "odh-notebooks-meta-runtime-datascience-deps",
 
     "odh-notebooks-meta-db-connectors-deps",
     "odh-notebooks-meta-runtime-elyra-deps",
 
     # Base packages
-    "setuptools==80.9.0",
-    "wheel==0.46.3",
+    "setuptools",
+    "wheel",
 ]
 
 [tool.uv]
@@ -30,9 +30,6 @@ dependencies = [
 constraint-dependencies = [
     # AttributeError: module 'ml_dtypes' has no attribute 'float4_e2m1fn'
     "onnx<1.19.0",
-    # Universal lock otherwise forks pandas 2.3 vs 3.0 with inverted python_full_version
-    # markers (uv bug/mis-emission); image is 3.12-only and manifests advertise Pandas 2.3.
-    "pandas>=2.3,<3",
 ]
 
 environments = [
