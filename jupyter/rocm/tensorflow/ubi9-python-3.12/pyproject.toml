@@ -10,12 +10,12 @@ dependencies = [
     # TODO(jdanek): consider adding #sha256=814a5e4842b0c92d63c7a0bb4df0baf51ff2db8615535d83fe8958204b840598
     "tensorflow-rocm @ https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4/tensorflow_rocm-2.18.1-cp312-cp312-manylinux_2_28_x86_64.whl",
     # tensorflow-rocm==2.x needs tensorboard>=2.x,<2.x+1
-    "tensorboard~=2.18.0",
+    "tensorboard",
 
     # Datascience and useful extensions
-    "codeflare-sdk~=0.35.0",
-    "feast~=0.61.0",
-    "skl2onnx~=1.20.0",
+    "codeflare-sdk",
+    "feast",
+    "skl2onnx",
     "odh-notebooks-meta-workbench-datascience-deps",
 
     "odh-notebooks-meta-db-connectors-deps",
@@ -23,8 +23,8 @@ dependencies = [
     "odh-notebooks-meta-jupyterlab-datascience-deps",
 
     # Base packages
-    "wheel~=0.46.3",
-    "setuptools~=80.9.0",
+    "wheel",
+    "setuptools",
 ]
 
 [tool.uv.sources]
@@ -38,17 +38,12 @@ odh-notebooks-meta-jupyterlab-datascience-deps = { path = "../../../../dependenc
 override-dependencies = [
     # Conflict between kfp and codeflare-sdk over kubernetes version
     "kubernetes>=35.0.0",
-    # tensorflow-rocm depends on protobuf>=3.20.3, <6.0.0 and kfp depends on protobuf>=6.31.1
-    "protobuf==6.33.5",
+    # tensorflow-rocm depends on protobuf>=3.20.3, <6.0.0 and kfp depends on protobuf>=6.31.1.
+    # AIPCC-13675: protobuf 6.33.5+ UPB C extension segfaults on s390x; pin to last good release.
+    "protobuf==6.31.1",
     # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
     # appengine-python-standard which has an obnoxious urllib3<2 constraint
     "urllib3>=2.6.0",
-    # AIPCC-8698: python-lsp-server[all] has conflicting pyflakes/pycodestyle requirements
-    # Using >= instead of ~= to allow broader compatibility during resolution
-    # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved
-    "python-lsp-server>=1.11.0",
-    # kfp has a dependency on click-option-group==0.5.7, but only 0.5.9 is available in AIPCC 
-    "click-option-group==0.5.9",
 ]
 
 constraint-dependencies = [

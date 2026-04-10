@@ -21,6 +21,10 @@ dependencies = [
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
+override-dependencies = [
+    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
+    "protobuf==6.31.1",
+]
 
 [tool.uv.sources]
 odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }

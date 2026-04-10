@@ -313,9 +313,6 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                         if name in workbench_only_packages and manifest.metadata.type == manifests.NotebookType.RUNTIME:
                             continue
 
-                        # TODO(jdanek): intentional?
-                        if manifest.metadata.scope == "pytorch+llmcompressor" and name == "Codeflare-SDK":
-                            continue
                         # Runtime llmcompressor currently resolves via lm-eval constraints to 0.9.x
                         # while the workbench line can resolve to 0.10.x.
                         if (
@@ -362,6 +359,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 def test_image_manifests_version_alignment(
     subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path
 ):
+    """Check that the recommended (latest, "N") tag across all imagestreams agrees on package versions."""
     collected_manifests = []
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
@@ -391,10 +389,10 @@ def test_image_manifests_version_alignment(
     # TODO(jdanek): review these, if any are unwarranted
     ignored_exceptions: tuple[tuple[str, tuple[str, ...]], ...] = (
         # ("package name", ("allowed version 1", "allowed version 2", ...))
-        ("Codeflare-SDK", ("0.34", "0.35")),
+        ("Codeflare-SDK", ("0.35", "0.36")),
+        ("MLflow", ("3.10", "3.11")),
         ("Kfp", ("2.15", "2.16")),
         ("Feast", ("0.60", "0.61")),
-        ("Odh-Elyra", ("4.3", "5.0")),
         ("Scikit-learn", ("1.7", "1.6")),
         ("Scipy", ("1.16", "1.17")),
         ("Pandas", ("3.0", "2.3")),

@@ -4,7 +4,7 @@
 Downloads all packages listed in a requirements.txt (with --hash=sha256:…
 lines) into cachi2/output/deps/pip/.  This is the local-development equivalent
 of what cachi2 does automatically in Konflux CI — it populates the same
-directory so that `podman build --build-arg LOCAL_BUILD=true` can install
+directory so that `podman build` can install
 packages with --no-index --find-links /cachi2/output/deps/pip.
 
 Supports two index backends:

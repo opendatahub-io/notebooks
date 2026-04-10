@@ -3,18 +3,22 @@ name: Validation of software versions referenced in ImageStream manifests
 on:  # yamllint disable-line rule:truthy
   push:
     branches: [main, stable, 'rhoai-*']
-    # Since this check is so resource demanding, let's restrict also push action here.
-    paths:
-      - 'manifests/base/params.env'
-      - 'manifests/base/*-imagestream.yaml'
-      - 'ci/check-software-versions.py'
+    # We use a YAML anchor (&trigger_paths) and alias (*trigger_paths) to deduplicate paths.
+    # Docs: https://yaml.org/spec/1.2.2/#3222-anchors-and-aliases
+    # Tutorial & Gotchas: https://frenck.dev/github-actions-yaml-anchors-aliases-merge-keys/
+    paths: &trigger_paths
+      - '.github/workflows/software-versions.yaml'
+      - '.github/actions/apt-install/**'
+      - '.github/actions/setup-uv/**'
+      - 'manifests/odh/base/params.env'
+      - 'manifests/odh/base/*-imagestream.yaml'
+      - 'manifests/rhoai/base/params.env'
+      - 'manifests/rhoai/base/*-imagestream.yaml'
+      - 'pytest.ini'
+      - 'tests/containers/manifest_validation_test.py'
   pull_request:
-    paths:
-      - 'manifests/base/params.env'
-      - 'manifests/base/*-imagestream.yaml'
-      - 'ci/check-software-versions.py'
+    paths: *trigger_paths
   workflow_dispatch:
-  release:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -26,40 +30,38 @@ permissions:
 jobs:
   validation-of-sw-versions-in-imagestreams:
     runs-on: ubuntu-latest
-    env:
-      # Some pieces of code (image pulls for example) in podman consult TMPDIR or default to /var/tmp
-      TMPDIR: /home/runner/.local/share/containers/tmpdir
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      - name: Mount lvm overlay for podman operations
+      - name: Install dependencies
+        uses: ./.github/actions/apt-install
+        with:
+          packages: skopeo git-crypt
+          update: 'false'
+
+      - name: Install cosign
         run: |
-          df -h
-          free -h
+          curl -fsSL https://github.com/sigstore/cosign/releases/download/v2.5.0/cosign-linux-amd64 -o /usr/local/bin/cosign
+          chmod +x /usr/local/bin/cosign
 
-          bash ./ci/cached-builds/gha_lvm_overlay.sh
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
 
-          df -h
-          free -h
-
-      - name: Configure Podman
+      - name: Unlock encrypted secrets with git-crypt
         run: |
-          set -Eeuxo pipefail
+          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
+          trap 'rm -f ./git-crypt-key' EXIT
+          git-crypt unlock ./git-crypt-key
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
 
-          sudo cp ci/cached-builds/storage.conf /etc/containers/storage.conf
-
-          # should reset storage when changing storage.conf
-          sudo mkdir -p $HOME/.local/share/containers/storage/tmp
-          # remote (CONTAINER_HOST) podman does not do reset (and refuses --force option)
-          sudo podman system reset --force
-          # podman running as service ignores the TMPDIR env var here, let's give it a bind-mount to /var/tmp
-          sudo mkdir -p $TMPDIR
-          sudo mount --bind -o rw,noexec,nosuid,nodev,bind $TMPDIR /var/tmp
-
-          # quick check that podman works
-          sudo podman info
-
-      - name: Check software versions in manifest referencing the images
-        id: software-versions-check
+      - name: Configure registry auth from pull-secret
         run: |
-          sudo ./ci/check-software-versions.py --prune-podman-data
+          mkdir -p "$HOME/.config/containers"
+          cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
+          mkdir -p "$HOME/.docker"
+          cp ci/secrets/pull-secret.json "$HOME/.docker/config.json"
+
+      - name: Validate manifest annotations against image SBOMs
+        run: |
+          uv run pytest tests/containers/manifest_validation_test.py::test_old_tag_annotations_match_sbom -v

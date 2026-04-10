@@ -413,7 +413,7 @@ jobs:
             if [ -x scripts/lockfile-generators/post-prefetch.sh ]; then
               scripts/lockfile-generators/post-prefetch.sh --component-dir "$COMPONENT_DIR"
             fi
-            echo "EXTRA_BUILD_ARGS=--volume $(pwd)/cachi2/output:/cachi2/output:Z --build-arg LOCAL_BUILD=true" >> "$GITHUB_OUTPUT"
+            echo "EXTRA_BUILD_ARGS=" >> "$GITHUB_OUTPUT"
           else
             echo "No prefetch-input/ found for $COMPONENT_DIR — skipping"
           fi
@@ -462,7 +462,7 @@ jobs:
         if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
         run: |
           set -Eeuxo pipefail
-          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
