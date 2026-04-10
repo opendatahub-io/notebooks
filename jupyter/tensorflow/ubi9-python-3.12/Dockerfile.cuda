@@ -5,24 +5,34 @@ ARG TARGETARCH
 #########################
 ARG BASE_IMAGE
 
-### BEGIN mongocli-builder stage
 ######################################################
 # mongocli-builder (build stage only, not published) #
+# Source: git submodule at prefetch-input/mongocli;                   #
+# Go deps prefetched by Konflux/Cachi2 (gomod).     #
 ######################################################
 FROM registry.access.redhat.com/ubi9/go-toolset:1.25.8-1775491036 AS mongocli-builder
 
-ARG MONGOCLI_VERSION=2.0.4
+# OS Packages needs to be installed as root
+USER 0
 
-WORKDIR /tmp/
+# Mongocli source from repo submodule (no download; ProdSec/Conforma compliant)
+COPY prefetch-input/mongocli /tmp/mongocli-src
+WORKDIR /tmp/mongocli-src
+
+# [HERMETIC] Use prefetched Go modules from cachi2 (Konflux/Hermeto gomod). See
+# https://hermetoproject.github.io/hermeto/gomod/#using-fetched-dependencies
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
-unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
-cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/
+export GOCACHE=/cachi2/output/deps/gomod
+export GOMODCACHE=/cachi2/output/deps/gomod/pkg/mod
+export GOPATH=/cachi2/output/deps/gomod
+export GOPROXY=file:///cachi2/output/deps/gomod/pkg/mod/cache/download
 CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
 EOF
 
-### END mongocli-builder stage
+# Other apps and tools installed as default user
+USER 1001
+
 
 ####################
 # cuda-base        #
@@ -34,41 +44,24 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER 0
 
-### BEGIN upgrade first to avoid fixable vulnerabilities
-RUN /bin/bash <<'EOF'
-# If we have a Red Hat subscription prepared, refresh it
-set -Eeuxo pipefail
-if command -v subscription-manager &> /dev/null; then
-  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
-fi
-EOF
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+# CentOS key imported only if prefetched (present in Dockerfile.cpu; may be absent in Konflux).
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
+# Install useful OS packages (versions follow UBI stream; pinning each would drift with point releases)
+# compat-openssl11 provides libcrypto.so.1.1 required for FIPS-compliance scanning.
+# hadolint ignore=DL3041
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh upgrade
-
-### END upgrade first to avoid fixable vulnerabilities
-
-# Install useful OS packages
-RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh install perl mesa-libGL skopeo
+    /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
+RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]" "uv"
 
 # Other apps and tools installed as default user
 USER 1001
-
-### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
-RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.10.0" "uv==0.10.8"
-### END Install micropipenv and uv to deploy packages from requirements.txt
-
-### BEGIN Install the oc client
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
-    -o /tmp/openshift-client-linux.tar.gz
-tar -xzvf /tmp/openshift-client-linux.tar.gz oc
-rm -f /tmp/openshift-client-linux.tar.gz
-EOF
-
-### END Install the oc client
 
 #########################
 # cuda-jupyter-minimal  #
@@ -78,13 +71,24 @@ FROM cuda-base AS cuda-jupyter-minimal
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
 
+# OS Packages needs to be installed as root
+USER 0
+
 WORKDIR /opt/app-root/bin
+
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+# CentOS key imported only if prefetched (present in Dockerfile.cpu; may be absent in Konflux).
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
 
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
-
-USER 0
 
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
@@ -105,25 +109,27 @@ FROM cuda-jupyter-minimal AS cuda-jupyter-datascience
 
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 
-WORKDIR /opt/app-root/bin
-
 # OS Packages needs to be installed as root
 USER root
 
+WORKDIR /opt/app-root/bin
+
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
 # Install useful OS packages
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat
+    /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat protobuf
 
-### BEGIN Copy mongocli from builder
 # Copy dynamically-linked mongocli built in earlier build stage
-COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
-### END Copy mongocli from builder
+COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/mongocli
 
 # Other apps and tools installed as default user
 USER 1001
 
 # Copy Elyra setup to utils so that it's sourced at startup
-COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
+COPY "${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh" "${DATASCIENCE_SOURCE_CODE}/utils" ./utils/
 
 WORKDIR /opt/app-root/src
 
@@ -132,12 +138,14 @@ WORKDIR /opt/app-root/src
 ############################
 FROM cuda-jupyter-datascience AS cuda-jupyter-tensorflow
 
-ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
-ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG TENSORFLOW_SOURCE_CODE=jupyter/tensorflow/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
 WORKDIR /opt/app-root/bin
+
+# Root required for uv pip install and runtime setup; switch to 1001 before WORKDIR at end
+# hadolint ignore=DL3002
+USER root
 
 LABEL name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.12" \
     summary="Jupyter CUDA tensorflow notebook image for ODH notebooks" \
@@ -149,21 +157,22 @@ LABEL name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.12" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/tensorflow/ubi9-python-3.12" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:cuda-jupyter-tensorflow-ubi9-python-3.12"
 
-# Install Python packages and Jupyterlab extensions from requirements.txt
+# Install Python packages and Jupyterlab extensions from lockfile (requirements.cuda.txt used only for Cachi2 prefetch)
 COPY ${TENSORFLOW_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
+COPY ${TENSORFLOW_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 
-### BEGIN Install software and packages
 echo "Installing software and packages"
-# Install Python packages from lockfile with hash verification
+# Install Python packages from lockfile (hermetic: use Cachi2 prefetched pip deps)
 # All dependencies are explicitly listed in pylock.toml (--no-deps)
-UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
-    --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
-    --requirements=./pylock.toml
-### END Install software and packages
+    --compile-bytecode --index-strategy=unsafe-best-match \
+    --no-verify-hashes \
+    --find-links /cachi2/output/deps/pip \
+    --requirements=./requirements.txt
 
 # setup path for runtime configuration
 mkdir /opt/app-root/runtimes
@@ -182,4 +191,5 @@ chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P
 EOF
 
+USER 1001
 WORKDIR /opt/app-root/src
