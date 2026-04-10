@@ -359,25 +359,23 @@ def update_rhoaieng_teams(client: JiraClient, issues: list[dict], dry_run: bool 
     """Ensure all fetched RHOAIENG issues have the correct Team assigned."""
     team_extra = build_tracker_team_extra_fields()
     expected_team_id = team_extra[RHAIENG_TEAM_CUSTOM_FIELD]
-    
+
     updated_count = 0
     for issue in issues:
         fields = issue.get("fields", {})
         current_team = fields.get(RHAIENG_TEAM_CUSTOM_FIELD)
         key = issue["key"]
-        
-        current_team_id = None
+
+        team_id: str | None = None
         match current_team:
-            case {"id": team_id}:
-                current_team_id = team_id
-            case str() as team_id:
-                current_team_id = team_id
+            case {"id": extracted} | str(extracted):
+                team_id = extracted
             case None:
                 pass
             case _:
                 print(f"  WARNING: Unexpected type for Team field on {key}: {type(current_team)} ({current_team})")
-                
-        if current_team_id != expected_team_id:
+
+        if team_id != expected_team_id:
             try:
                 if dry_run:
                     print(f"  [DRY RUN] Would set Team to AAIET Notebooks on {key}")
@@ -387,7 +385,7 @@ def update_rhoaieng_teams(client: JiraClient, issues: list[dict], dry_run: bool 
                 updated_count += 1
             except Exception as e:
                 print(f"  ERROR setting Team on {key}: {e}")
-            
+
     if updated_count > 0:
         verb = "Would update" if dry_run else "Updated"
         print(f"\n{verb} Team field on {updated_count} RHOAIENG issues.")
