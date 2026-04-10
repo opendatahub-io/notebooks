@@ -193,10 +193,10 @@ def build_description(cve_info: CVEInfo, base_url: str = JIRA_DEFAULT_URL, track
     return {"version": 1, "type": "doc", "content": content}
 
 
-def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> dict[tuple[str, str], CVEInfo]:
+def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> tuple[dict[tuple[str, str], CVEInfo], list[dict]]:
     """Find CVEs in RHOAIENG that don't have a parent tracker in RHAIENG.
 
-    Returns a dict keyed by (cve_id, version) tuples, one entry per version.
+    Returns a tuple of (orphans_dict, all_fetched_issues).
     Issues without a version are grouped under version="" (no version).
     """
     print("Searching for CVE issues in RHOAIENG...")
@@ -216,7 +216,7 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> dict[tuple[
 
     # Get all RHOAIENG CVE issues
     jql = 'project = RHOAIENG AND issuetype in (Bug, Vulnerability, Weakness) AND resolution = Unresolved AND labels = SecurityTracking AND component = "Notebooks Images" ORDER BY created DESC'
-    issues = client.search_issues(jql, fields="key,summary,status,labels,issuelinks", max_results=max_results)
+    issues = client.search_issues(jql, fields=f"key,summary,status,labels,issuelinks,{RHAIENG_TEAM_CUSTOM_FIELD}", max_results=max_results)
     print(f"Found {len(issues)} RHOAIENG CVE issues")
 
     # Group by (CVE ID, version)
@@ -278,7 +278,7 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> dict[tuple[
     # Filter to only orphans (CVE+version combos where no issues have a parent tracker)
     orphans = {group_key: info for group_key, info in cve_groups.items() if not info.has_tracker}
 
-    return orphans
+    return orphans, issues
 
 
 def create_tracker_issue(client: JiraClient, cve_info: CVEInfo, jira_url: str = JIRA_DEFAULT_URL, dry_run: bool = False) -> str | None:
@@ -348,6 +348,41 @@ def link_issues(client: JiraClient, tracker_key: str, child_keys: list[str], dry
     return linked
 
 
+def update_rhoaieng_teams(client: JiraClient, issues: list[dict], dry_run: bool = False) -> None:
+    """Ensure all fetched RHOAIENG issues have the correct Team assigned."""
+    team_extra = build_tracker_team_extra_fields()
+    expected_team_id = team_extra[RHAIENG_TEAM_CUSTOM_FIELD]
+    
+    updated_count = 0
+    for issue in issues:
+        fields = issue.get("fields", {})
+        current_team = fields.get(RHAIENG_TEAM_CUSTOM_FIELD)
+        
+        needs_update = False
+        if current_team is None:
+            needs_update = True
+        elif isinstance(current_team, dict) and current_team.get("id") != expected_team_id:
+            needs_update = True
+        elif isinstance(current_team, str) and current_team != expected_team_id:
+            needs_update = True
+            
+        if needs_update:
+            key = issue["key"]
+            if dry_run:
+                print(f"  [DRY RUN] Would set Team to AAIET Notebooks on {key}")
+            else:
+                try:
+                    client.update_issue(key, team_extra)
+                    print(f"  Set Team to AAIET Notebooks on {key}")
+                except Exception as e:
+                    print(f"  ERROR setting Team on {key}: {e}")
+            updated_count += 1
+            
+    if updated_count > 0:
+        verb = "Would update" if dry_run else "Updated"
+        print(f"\n{verb} Team field on {updated_count} RHOAIENG issues.")
+
+
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
@@ -402,7 +437,12 @@ def main():
     print(f"Connecting to {client.base_url}...")
 
     # Find orphan CVEs
-    orphans = find_orphan_cves(client, args.max_results)
+    orphans, all_issues = find_orphan_cves(client, args.max_results)
+
+    print("\n" + "=" * 80)
+    print("CHECKING RHOAIENG TEAM ASSIGNMENTS")
+    print("=" * 80)
+    update_rhoaieng_teams(client, all_issues, dry_run=args.dry_run)
 
     if not orphans:
         print("\nNo orphan CVEs found - all CVEs have parent trackers!")
