@@ -86,6 +86,12 @@ def _env_from_docker_attrs(attrs: dict[str, Any]) -> dict[str, str]:
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_addoption
 def pytest_addoption(parser: Parser) -> None:
     parser.addoption("--image", action="append", default=[], help="Image to use, can be specified multiple times")
+    parser.addoption(
+        "--no-cleanup-images",
+        action="store_true",
+        default=False,
+        help="Don't remove images pulled during manifest validation tests",
+    )
 
 
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_generate_tests
