@@ -193,7 +193,14 @@ def build_description(cve_info: CVEInfo, base_url: str = JIRA_DEFAULT_URL, track
     return {"version": 1, "type": "doc", "content": content}
 
 
-def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> tuple[dict[tuple[str, str], CVEInfo], list[dict]]:
+@dataclass
+class OrphanCVEsResult:
+    """Result of finding orphan CVEs in RHOAIENG."""
+    orphans: dict[tuple[str, str], CVEInfo]
+    issues: list[dict]
+
+
+def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> OrphanCVEsResult:
     """Find CVEs in RHOAIENG that don't have a parent tracker in RHAIENG.
 
     Returns a tuple of (orphans_dict, all_fetched_issues).
@@ -278,7 +285,7 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> tuple[dict[
     # Filter to only orphans (CVE+version combos where no issues have a parent tracker)
     orphans = {group_key: info for group_key, info in cve_groups.items() if not info.has_tracker}
 
-    return orphans, issues
+    return OrphanCVEsResult(orphans=orphans, issues=issues)
 
 
 def create_tracker_issue(client: JiraClient, cve_info: CVEInfo, jira_url: str = JIRA_DEFAULT_URL, dry_run: bool = False) -> str | None:
@@ -437,7 +444,9 @@ def main():
     print(f"Connecting to {client.base_url}...")
 
     # Find orphan CVEs
-    orphans, all_issues = find_orphan_cves(client, args.max_results)
+    cves_result = find_orphan_cves(client, args.max_results)
+    orphans = cves_result.orphans
+    all_issues = cves_result.issues
 
     print("\n" + "=" * 80)
     print("CHECKING RHOAIENG TEAM ASSIGNMENTS")
