@@ -203,7 +203,7 @@ class OrphanCVEsResult:
 def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> OrphanCVEsResult:
     """Find CVEs in RHOAIENG that don't have a parent tracker in RHAIENG.
 
-    Returns a tuple of (orphans_dict, all_fetched_issues).
+    Returns an OrphanCVEsResult containing orphans dict and all fetched issues.
     Issues without a version are grouped under version="" (no version).
     """
     print("Searching for CVE issues in RHOAIENG...")
