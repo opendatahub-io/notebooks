@@ -51,21 +51,13 @@ if str(ROOT) not in sys.path:
 
 from manifests.tools.commit_env_refs import parse_env_file  # noqa: E402
 from manifests.tools.generate_kustomization import Workbench, discover_config  # noqa: E402
+from manifests.tools.package_names import manifest_name_to_pip  # noqa: E402
 from tests.manifests import (  # noqa: E402
     extract_metadata_from_path,
     get_source_of_truth_filepath,
 )
 
 logger = logging.getLogger(__name__)
-
-_MANIFEST_TO_PYLOCK = {
-    "LLM-Compressor": "llmcompressor",
-    "PyTorch": "torch",
-    "ROCm-PyTorch": "torch",
-    "Sklearn-onnx": "skl2onnx",
-    "Nvidia-CUDA-CU12-Bundle": "nvidia-cuda-runtime-cu12",
-    "MySQL Connector/Python": "mysql-connector-python",
-}
 
 # Force accelerator flavor when resolving ImageStream paths. ``extract_metadata_from_path`` may
 # infer "cuda" from Dockerfile.cuda even for the CPU ImageStream (same tree builds both), and
@@ -135,35 +127,6 @@ def _workbench_dir_consistent_with_rocm_policy(wb: Workbench, directory: Path) -
     if rf.startswith("jupyter-") and rocm_tree:
         return False
     return True
-
-
-_MANIFEST_CAP = {
-    "Accelerate",
-    "Boto3",
-    "Codeflare-SDK",
-    "Datasets",
-    "Feast",
-    "JupyterLab",
-    "Kafka-Python-ng",
-    "Kfp",
-    "Kubeflow-Training",
-    "Matplotlib",
-    "Numpy",
-    "Odh-Elyra",
-    "Pandas",
-    "Psycopg",
-    "PyMongo",
-    "Pyodbc",
-    "Scikit-learn",
-    "Scipy",
-    "TensorFlow",
-    "Tensorboard",
-    "Torch",
-    "Transformers",
-    "TrustyAI",
-    "TensorFlow-ROCm",
-    "MLflow",
-}
 
 
 def _is_image_directory(directory: Path) -> bool:
@@ -395,11 +358,7 @@ def _git_show_text(rev: str, rel_path: str) -> str | None:
 
 
 def _normalized_pkg_name(manifest_name: str) -> str:
-    if manifest_name in _MANIFEST_TO_PYLOCK:
-        return _MANIFEST_TO_PYLOCK[manifest_name]
-    if manifest_name in _MANIFEST_CAP:
-        return manifest_name.lower()
-    return manifest_name
+    return manifest_name_to_pip(manifest_name)
 
 
 def _format_dep_version(pep440: str) -> str:
