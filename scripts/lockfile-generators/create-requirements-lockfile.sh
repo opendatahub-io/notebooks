@@ -7,6 +7,7 @@ set -euo pipefail
 # ----------------------
 # Hermetic builds need every Python wheel prefetched.  This script:
 #   1. Delegates to pylocks_generator.py to generate pylock.<flavor>.toml
+#      (or pylock.toml + sync when PROJECT_DIR is under PUBLIC_INDEX_PROJECTS).
 #      (ensures consistency with CI's check-generated-code).
 #   2. Converts the pylock to a pip-compatible requirements.<flavor>.txt.
 #   3. (--download) Downloads every wheel into cachi2/output/deps/pip/.
@@ -54,9 +55,9 @@ Options:
   -h, --help             Show this help message and exit
 
 Steps performed:
-  1. pylocks_generator.py → <project>/uv.lock.d/pylock.<flavor>.toml
-  2. Convert pylock.<flavor>.toml → <project>/requirements.<flavor>.txt
-  3. (--download) Download all wheels from pylock.<flavor>.toml URLs
+  1. pylocks_generator.py rh-index or public-index (see PUBLIC_INDEX_PROJECTS in script)
+  2. Convert pylock → <project>/requirements.<flavor>.txt
+  3. (--download) Download all wheels from the lockfile URLs
 EOF
 }
 
@@ -90,7 +91,6 @@ done
 
 # Derive paths
 PROJECT_DIR="$(dirname "$PYPROJECT")"
-PYLOCK_FILE="${PROJECT_DIR}/uv.lock.d/pylock.${FLAVOR}.toml"
 REQUIREMENTS_FILE="${PROJECT_DIR}/requirements.${FLAVOR}.txt"
 
 # Read build args from build-args/<flavor>.conf (same source as pylocks_generator.py)
@@ -99,6 +99,26 @@ INDEX_URL=""
 if [[ -f "$CONF_FILE" ]]; then
   # shellcheck source=/dev/null
   source "$CONF_FILE"
+fi
+
+# Use public-index when PROJECT_DIR equals a listed path or is a subdirectory (e.g. .../tensorflow/ubi9-python-3.12).
+PUBLIC_INDEX_PROJECTS=(
+  jupyter/rocm/tensorflow
+)
+
+PYLOCKS_MODE="rh-index"
+for _d in "${PUBLIC_INDEX_PROJECTS[@]}"; do
+  if [[ "$PROJECT_DIR" == "$_d" || "$PROJECT_DIR" == "$_d/"* ]]; then
+    PYLOCKS_MODE="public-index"
+    break
+  fi
+done
+
+PYLOCK_FILE="${PROJECT_DIR}/uv.lock.d/pylock.${FLAVOR}.toml"
+REQUIREMENTS_INDEX_URL="$INDEX_URL"
+if [[ "$PYLOCKS_MODE" == "public-index" ]]; then
+  PYLOCK_FILE="${PROJECT_DIR}/pylock.toml"
+  REQUIREMENTS_INDEX_URL=""
 fi
 
 # =========================================================================
@@ -110,9 +130,10 @@ fi
 echo "=== Step 1: Generating pylock via pylocks_generator.py ==="
 echo "  project dir : ${PROJECT_DIR}"
 echo "  flavor      : ${FLAVOR}"
+echo "  index mode  : ${PYLOCKS_MODE}"
 echo ""
 
-./uv run "$PYLOCKS_GENERATOR" rh-index "$PROJECT_DIR"
+./uv run "$PYLOCKS_GENERATOR" "$PYLOCKS_MODE" "$PROJECT_DIR"
 
 if [[ ! -f "$PYLOCK_FILE" ]]; then
   error_exit "pylocks_generator.py did not produce ${PYLOCK_FILE}"
@@ -132,8 +153,13 @@ wc -l "$PYLOCK_FILE"
 echo ""
 echo "=== Step 2: Converting pylock.${FLAVOR}.toml → requirements.${FLAVOR}.txt ==="
 
-python3 "${SCRIPTS_PATH}/helpers/pylock-to-requirements.py" \
-    "$PYLOCK_FILE" "$REQUIREMENTS_FILE" "$INDEX_URL"
+if [[ -n "$REQUIREMENTS_INDEX_URL" ]]; then
+  python3 "${SCRIPTS_PATH}/helpers/pylock-to-requirements.py" \
+      "$PYLOCK_FILE" "$REQUIREMENTS_FILE" "$REQUIREMENTS_INDEX_URL"
+else
+  python3 "${SCRIPTS_PATH}/helpers/pylock-to-requirements.py" \
+      "$PYLOCK_FILE" "$REQUIREMENTS_FILE"
+fi
 
 echo ""
 echo "--- Done: ${REQUIREMENTS_FILE} ---"
