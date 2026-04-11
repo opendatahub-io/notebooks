@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import binascii
 import json
 import os
 import sys
@@ -19,8 +20,11 @@ from pathlib import Path
 
 
 def _auth_entry_to_credentials(entry: dict[str, str]) -> tuple[str, str] | None:
-    if "auth" in entry and entry["auth"]:
-        raw = base64.b64decode(entry["auth"]).decode()
+    if entry.get("auth"):
+        try:
+            raw = base64.b64decode(entry["auth"]).decode()
+        except binascii.Error, UnicodeDecodeError:
+            return None
         if ":" in raw:
             user, password = raw.split(":", 1)
             return (user, password)
