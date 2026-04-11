@@ -208,6 +208,15 @@
       "allowedVersions": "/^1\\./",
     },
     {
+      // Fedora 45 is not yet released but registry.fedoraproject.org publishes
+      // a rawhide/development tag for it, causing Renovate to propose 43 → 45.
+      // Pin to current stable release until Fedora 45 GA.
+      "description": "Pin Fedora to current stable release (43)",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["registry.fedoraproject.org/fedora"],
+      "allowedVersions": "/^43$/",
+    },
+    {
       "description": "Track registry.redhat.io base images",
       "matchManagers": ["custom.regex"],
       "matchDatasources": ["docker"],
