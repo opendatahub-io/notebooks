@@ -44,14 +44,14 @@ All scripts must be run from the **repository root**.
 **For most local and CI use, this is the main script you need to run.**
 
 `prefetch-all.sh` orchestrates all five lockfile generators in the correct
-order, downloading dependencies into `cachi2/output/deps/`. After running it,
-the Makefile auto-detects `cachi2/output/` and passes `--volume` to
+order, downloading dependencies into `cachi2/output/<hash>/deps/` (where `<hash>` is the MD5 hash of the component directory name to allow concurrent local builds). After running it,
+the Makefile auto-detects the component's `cachi2/output/<hash>` directory and passes `--volume` to
 `podman build`.
 
 ```bash
 # Upstream ODH (default variant, CentOS Stream base, no subscription):
 scripts/lockfile-generators/prefetch-all.sh \
-    --component-dir codeserver/ubi9-python-3.12
+    --component-dir codeserver/ubi9-python-3.12 --arch aarch64
 
 # Downstream RHDS (with RHEL subscription for cdn.redhat.com RPMs):
 scripts/lockfile-generators/prefetch-all.sh \
@@ -78,6 +78,7 @@ gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
 | `--component-dir DIR` | Component directory (required), e.g. `codeserver/ubi9-python-3.12` |
 | `--rhds` | Use downstream (RHDS) lockfiles instead of upstream (ODH, the default) |
 | `--flavor NAME` | Lock file flavor (default: `cpu`) |
+| `--arch ARCH` | Target architecture to filter downloads (default: host architecture) |
 | `--activation-key KEY` | Red Hat activation key for RHEL RPMs (optional) |
 | `--org ORG` | Red Hat organization ID for RHEL RPMs (optional) |
 
