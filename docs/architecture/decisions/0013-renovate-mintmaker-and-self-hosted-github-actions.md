@@ -119,6 +119,14 @@ gh secret set AIPCC_QUAY_BOT_PASSWORD --repo OWNER/REPO < aipcc-password.txt
 
 Replace `OWNER/REPO` (for example `jiridanek/notebooks` on a fork or `opendatahub-io/notebooks` upstream). Use `gh auth refresh -s write:packages` if `gh secret set` fails on scope.
 
+### Self-hosted run log quirks (forks)
+
+- **Private image lookups (`no-result`)** — `renovatebot/github-action` runs Renovate in Docker and, by default, **does not pass `DOCKER_CONFIG`** into the container. The workflow sets **`env-regex`** to include `DOCKER_CONFIG` and stores merged **`config.json` under `/tmp`** so the action’s default **`/tmp:/tmp`** mount exposes registry auth inside the container.
+- **`allowedCommands`, `inheritConfig`, `onboarding`, … “global only”** — Those keys exist for **MintMaker’s** merged global config. Self-hosted runs **warn** when they appear in repo `renovate.json5`; MintMaker continues to use them upstream. Harmless noise unless something actually fails.
+- **`matchBaseBranches` / `baseBranchPatterns`** — Same as upstream comment in `renovate.json5`: top-level `baseBranchPatterns` is avoided so MintMaker’s per-branch behavior is not overridden; local dry-runs may warn.
+- **`gitAuthor` / unverified commits** — Set **`RENOVATE_GIT_AUTHOR`** in the workflow env (or `gitAuthor` in config) to your own **`Name <email>`** if you dislike the default Mend address.
+- **Dependency dashboard issue** — Requires **GitHub Issues enabled** on the repository; enable on the fork or ignore the log line.
+
 ## References
 
 - `.github/renovate.json5`

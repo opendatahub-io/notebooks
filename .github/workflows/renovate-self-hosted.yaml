@@ -14,6 +14,11 @@
 # Config: .github/renovate.json5
 # If inheritConfig fails without Mend, set "inheritConfig": false there or add
 #   RENOVATE_INHERIT_CONFIG=false under env on the Run Renovate step.
+#
+# Registry auth: renovatebot/github-action runs Renovate in Docker. By default it does
+# not pass DOCKER_CONFIG into the container (env-regex). We set env-regex below and keep
+# config under /tmp so the default /tmp:/tmp mount exposes the same files on host and
+# in the container (workspace paths are not always mounted identically).
 name: Renovate (self-hosted)
 
 permissions: {}  # least-privilege; Renovate uses RENOVATE_TOKEN
@@ -32,8 +37,8 @@ jobs:
     if: github.event_name != 'schedule' || github.repository_owner == 'opendatahub-io'
     runs-on: ubuntu-latest
     env:
-      # Merged registry auth (pull-secret + optional docker login) for Renovate image lookups.
-      DOCKER_CONFIG: ${{ github.workspace }}/.docker-renovate
+      # Shared with Renovate container via /tmp mount + env-regex (see Run Renovate step).
+      DOCKER_CONFIG: /tmp/renovate-docker-config
     permissions:
       contents: read
     steps:
@@ -76,6 +81,10 @@ jobs:
         env:
           LOG_LEVEL: info
           RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_GIT_AUTHOR: "ide-developer <rhoai-ide-konflux@redhat.com>"
         with:
           configurationFile: .github/renovate.json5
           token: ${{ secrets.RENOVATE_TOKEN }}
+          # Default only passes RENOVATE_* / LOG_LEVEL / proxy vars — not DOCKER_CONFIG.
+          env-regex: >-
+            ^(?:RENOVATE_\w+|LOG_LEVEL|GITHUB_COM_TOKEN|NODE_OPTIONS|NO_COLOR|DOCKER_CONFIG|(?:HTTPS?|NO)_PROXY|(?:https?|no)_proxy)$
