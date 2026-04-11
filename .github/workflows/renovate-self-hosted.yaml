@@ -1,0 +1,134 @@
+# yamllint disable rule:line-length
+---
+# Self-hosted Renovate when MintMaker does not run on opendatahub-io/notebooks.
+# - workflow_dispatch: any fork/org (manual runs).
+# - schedule: opendatahub-io only (avoids surprise cron + secrets use on forks).
+# If MintMaker later covers upstream, drop the schedule or remove this workflow to avoid
+# duplicate PRs.
+#
+# Secrets (repository):
+#   - RENOVATE_TOKEN — PAT (repo + workflow or fine-grained) so PRs run CI
+#   - GIT_CRYPT_KEY — base64-encoded git-crypt key (same as build workflows)
+#   - AIPCC_QUAY_BOT_USERNAME / AIPCC_QUAY_BOT_PASSWORD — optional; quay.io/aipcc login
+#
+# Config: .github/renovate.json5
+# If inheritConfig fails without Mend, set "inheritConfig": false there or add
+#   RENOVATE_INHERIT_CONFIG=false under env on the Run Renovate step.
+#
+# Registry auth: scripts/ci/renovate_run.py runs the Renovate image with Docker (CONTAINER_ENGINE).
+# DOCKER_CONFIG points at /tmp; we export RENOVATE_HOST_RULES from merged config.json so
+# quay.io / registry.redhat.io resolve (docker datasource + hostRules).
+name: Renovate (self-hosted)
+
+permissions: {}  # least-privilege; Renovate uses RENOVATE_TOKEN
+
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Enable dry-run mode (no branches or PRs will be created)"
+        type: boolean
+        default: false
+      dry_run_mode:
+        description: "Dry-run mode (only used when dry-run is enabled)"
+        type: choice
+        options:
+          - lookup
+          - full
+          - extract
+        default: lookup
+      log_level:
+        description: Renovate log level
+        type: choice
+        options:
+          - trace
+          - debug
+          - info
+          - warn
+          - error
+          - fatal
+        default: info
+  schedule:
+    - cron: "0 5 * * *"  # daily 05:00 UTC
+
+concurrency:
+  group: renovate-self-hosted-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    if: >-
+      github.event_name != 'schedule'
+      || github.repository_owner == 'opendatahub-io'
+      || github.repository == 'red-hat-data-services/notebooks'
+    runs-on: ubuntu-latest
+    env:
+      CONTAINER_ENGINE: docker
+      # Pin with scripts/ci/renovate_run.py default; bump both when upgrading Renovate.
+      RENOVATE_IMAGE: ghcr.io/renovatebot/renovate:43
+      DOCKER_CONFIG: /tmp/renovate-docker-config
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Install git-crypt
+        uses: ./.github/actions/apt-install
+        with:
+          packages: git-crypt
+          update: "false"
+
+      - name: Unlock encrypted secrets with git-crypt
+        run: |
+          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
+          trap 'rm -f ./git-crypt-key' EXIT
+          git-crypt unlock ./git-crypt-key
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+
+      - name: Configure registry auth for Renovate (pull-secret)
+        run: |
+          mkdir -p "${DOCKER_CONFIG}"
+          cp ci/secrets/pull-secret.json "${DOCKER_CONFIG}/config.json"
+
+      - name: Login to quay.io/aipcc (if secrets present)
+        shell: bash
+        env:
+          AIPCC_USER: ${{ secrets.AIPCC_QUAY_BOT_USERNAME }}
+          AIPCC_PASS: ${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}
+        run: |
+          if [[ -z "${AIPCC_USER}" ]]; then
+            echo "AIPCC_QUAY_BOT_USERNAME is not set, skipping quay.io/aipcc login"
+            exit 0
+          fi
+          echo "${AIPCC_PASS}" | docker login quay.io/aipcc \
+            -u "${AIPCC_USER}" --password-stdin
+
+      - name: Export RENOVATE_HOST_RULES from Docker config
+        run: python3 scripts/ci/docker_config_to_renovate_host_rules.py >> "$GITHUB_ENV"
+
+      - name: Set base branches per repository
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          case "${REPO}" in
+            red-hat-data-services/notebooks)
+              echo 'RENOVATE_BASE_BRANCHES=["rhoai-2.25","rhoai-3.3"]' >> "$GITHUB_ENV" ;;
+          esac
+
+      - name: Apply workflow_dispatch Renovate options
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
+        env:
+          DRY_RUN_MODE: ${{ github.event.inputs.dry_run_mode }}
+        run: echo "RENOVATE_DRY_RUN=${DRY_RUN_MODE}" >> "${GITHUB_ENV}"
+
+      - name: Run Renovate
+        env:
+          LOG_LEVEL: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.log_level || 'info' }}
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_GIT_AUTHOR: "ide-developer <rhoai-ide-konflux@redhat.com>"
+          RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+        run: python3 scripts/ci/renovate_run.py remote

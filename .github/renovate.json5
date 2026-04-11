@@ -75,6 +75,18 @@
         "rebaseWhen": "behind-base-branch",
       },
       {
+        // Bundle refs are image:tag@sha256:… Renovate can propose both a digest
+        // bump (newValue still the tag, e.g. 0.1) and a tag bump (e.g. 0.1→0.3).
+        // branchify.ts dedupes by packageFile:depName:currentValue and logs
+        // "Ignoring upgrade collision" while dropping one. Prefer task version
+        // bumps; new tags ship with the correct digest for Konflux catalog tasks.
+        "description": "Tekton bundles: disable digest-only updates (avoid collision with tag bumps)",
+        "matchManagers": ["tekton"],
+        "matchDatasources": ["docker"],
+        "matchUpdateTypes": ["digest"],
+        "enabled": false,
+      },
+      {
         "matchManagers": [
           "gomod",
         ],
@@ -111,6 +123,10 @@
       "matchStrings": [
         "BASE_IMAGE=(?<depName>[^:]+):(?<currentValue>\\S+)",
       ],
+      // Renovate's auto-replace locates the full match (replaceString) first, then
+      // substitutes with this template.  Without it the default template may not
+      // reconstruct the BASE_IMAGE=… line correctly.
+      "autoReplaceStringTemplate": "BASE_IMAGE={{{depName}}}:{{{newValue}}}",
       "datasourceTemplate": "docker",
       // Parses 3.4.0-1773428606 as major=3, minor=4, patch=0, build=1773428606
       // so Renovate can correctly classify update types and block cross-version upgrades.
@@ -140,10 +156,14 @@
       "versioning": "semver",
     },
     {
-      // Group all base image build updates into a single PR
-      "description": "Group quay.io base image updates from build-args conf files",
+      // One PR per quay.io/aipcc image (cpu, cuda-*, …); registry.redhat.io/rhai
+      // uses the packageRule below.
+      "description": "Group konflux build-args by image (custom.regex / docker)",
       "matchManagers": ["custom.regex"],
-      "groupName": "quay.io image updates",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^quay\\.io\\/aipcc\\//"],
+      "groupName": "konflux BASE_IMAGE {{{depNameSanitized}}}",
+      "recreateWhen": "always",
       "semanticCommits": "enabled",
     },
     {
@@ -186,6 +206,15 @@
       "matchManagers": ["dockerfile"],
       "matchPackageNames": ["registry.access.redhat.com/ubi9/go-toolset"],
       "allowedVersions": "/^1\\./",
+    },
+    {
+      // Fedora 45 is not yet released but registry.fedoraproject.org publishes
+      // a rawhide/development tag for it, causing Renovate to propose 43 → 45.
+      // Pin to current stable release until Fedora 45 GA.
+      "description": "Pin Fedora to current stable release (43)",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["registry.fedoraproject.org/fedora"],
+      "allowedVersions": "/^43$/",
     },
     {
       "description": "Track registry.redhat.io base images",
