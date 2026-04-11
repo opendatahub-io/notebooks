@@ -10,6 +10,7 @@ inside the renovate container is brittle across renovatebot/github-action versio
 
 from __future__ import annotations
 
+import argparse
 import base64
 import json
 import os
@@ -54,7 +55,24 @@ def docker_config_to_host_rules(config_path: Path) -> list[dict[str, str]]:
     return rules
 
 
+def _emit_github_env(rules: list[dict[str, str]]) -> None:
+    payload = json.dumps(rules, separators=(",", ":"))
+    delim = "RENOHOST"
+    # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#multiline-strings
+    print(f"RENOVATE_HOST_RULES<<{delim}")
+    print(payload)
+    print(delim)
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print compact JSON only (for RENOVATE_HOST_RULES in a shell env).",
+    )
+    args = parser.parse_args()
+
     docker_config = os.environ.get("DOCKER_CONFIG", "").strip()
     if not docker_config:
         print("DOCKER_CONFIG is not set", file=sys.stderr)
@@ -64,12 +82,10 @@ def main() -> None:
         print(f"Missing Docker config: {path}", file=sys.stderr)
         sys.exit(1)
     rules = docker_config_to_host_rules(path)
-    payload = json.dumps(rules, separators=(",", ":"))
-    delim = "RENOHOST"
-    # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#multiline-strings
-    print(f"RENOVATE_HOST_RULES<<{delim}")
-    print(payload)
-    print(delim)
+    if args.json:
+        print(json.dumps(rules, separators=(",", ":")))
+        return
+    _emit_github_env(rules)
 
 
 if __name__ == "__main__":

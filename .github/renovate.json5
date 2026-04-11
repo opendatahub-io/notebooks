@@ -111,6 +111,11 @@
       "matchStrings": [
         "BASE_IMAGE=(?<depName>[^:]+):(?<currentValue>\\S+)",
       ],
+      // Rebuild the line from depName + newVersion instead of replacing a cached
+      // full-line literal — avoids "Cannot find replaceString" when main moved
+      // ahead or grouped PR state lags behind the file on disk.
+      // Regex manager field name: lib/modules/manager/custom/regex/types.ts
+      "autoReplaceStringTemplate": "BASE_IMAGE={{{depName}}}:{{{newVersion}}}",
       "datasourceTemplate": "docker",
       // Parses 3.4.0-1773428606 as major=3, minor=4, patch=0, build=1773428606
       // so Renovate can correctly classify update types and block cross-version upgrades.
