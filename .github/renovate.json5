@@ -123,11 +123,10 @@
       "matchStrings": [
         "BASE_IMAGE=(?<depName>[^:]+):(?<currentValue>\\S+)",
       ],
-      // Rebuild the line from depName + newVersion instead of replacing a cached
-      // full-line literal — avoids "Cannot find replaceString" when main moved
-      // ahead or grouped PR state lags behind the file on disk.
+      // Template is only the replacement text; the locate step still uses the
+      // extracted full-match replaceString (lib/workers/repository/update/branch/auto-replace.ts).
       // Regex manager field name: lib/modules/manager/custom/regex/types.ts
-      "autoReplaceStringTemplate": "BASE_IMAGE={{{depName}}}:{{{newVersion}}}",
+      "autoReplaceStringTemplate": "BASE_IMAGE={{{depName}}}:{{{newValue}}}",
       "datasourceTemplate": "docker",
       // Parses 3.4.0-1773428606 as major=3, minor=4, patch=0, build=1773428606
       // so Renovate can correctly classify update types and block cross-version upgrades.
@@ -157,10 +156,14 @@
       "versioning": "semver",
     },
     {
-      // Group all base image build updates into a single PR
-      "description": "Group quay.io base image updates from build-args conf files",
+      // One PR per quay.io/aipcc image (cpu, cuda-*, …); registry.redhat.io/rhai
+      // uses the packageRule below.
+      "description": "Group konflux build-args by image (custom.regex / docker)",
       "matchManagers": ["custom.regex"],
-      "groupName": "quay.io image updates",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^quay\\.io\\/aipcc\\//"],
+      "groupName": "konflux BASE_IMAGE {{{depNameSanitized}}}",
+      "recreateWhen": "always",
       "semanticCommits": "enabled",
     },
     {
