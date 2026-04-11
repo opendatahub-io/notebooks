@@ -22,8 +22,8 @@ Steps:
   5. Verify every file's sha256 checksum (whether freshly downloaded or cached).
 
 Usage:
-  python3 scripts/lockfile-generators/download-pip-packages.py \\
-      [-o OUTPUT_DIR] <requirements.txt>
+  python3 scripts/lockfile-generators/download-pip-packages.py \
+      [-o OUTPUT_DIR] [--arch ARCH] <requirements.txt>
 
 Can be invoked standalone or by create-requirements-lockfile.sh (which has
 its own inline download step for pylock.toml-based workflows).
@@ -35,9 +35,11 @@ import re
 import subprocess
 import sys
 import urllib.request
+import os
+import concurrent.futures
 from pathlib import Path
 
-OUT_DIR = Path("cachi2/output/deps/pip")
+OUT_DIR = Path(os.environ.get("CACHI2_OUT_DIR", "cachi2/output")) / "deps" / "pip"
 PYPI_JSON = "https://pypi.org/pypi/{name}/{version}/json"
 
 
@@ -47,6 +49,9 @@ def get_and_validate_args():
     parser.add_argument(
         "-o", "--output-dir", type=Path, default=OUT_DIR, help=f"Output directory (default: {OUT_DIR})",
     )
+    parser.add_argument(
+        "--arch", type=str, default=os.environ.get("ARCH", "amd64"), help="Target architecture (e.g. amd64, arm64)"
+    )
     args = parser.parse_args()
     req_path = args.requirements.resolve()
     out_dir = args.output_dir.resolve()
@@ -54,7 +59,7 @@ def get_and_validate_args():
         print(f"Error: not a file: {req_path}", file=sys.stderr)
         sys.exit(1)
     out_dir.mkdir(parents=True, exist_ok=True)
-    return req_path, out_dir
+    return req_path, out_dir, args.arch
 
 
 def detect_index_url(req_path: Path):
@@ -104,8 +109,9 @@ def fetch_pypi_urls(name: str, version: str, wanted_hashes: set):
     """Return list of (url, filename, sha256) for urls whose sha256 is in wanted_hashes."""
     url = PYPI_JSON.format(name=name, version=version)
     try:
-        with urllib.request.urlopen(url, timeout=30) as r:
-            data = json.load(r)
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            data = json.loads(r.read().decode())
     except Exception as e:
         print(f"Error fetching {url}: {e}", file=sys.stderr)
         return []
@@ -127,15 +133,11 @@ def fetch_pypi_urls(name: str, version: str, wanted_hashes: set):
 
 
 def fetch_simple_index_urls(index_url: str, name: str, version: str, wanted_hashes: set):
-    """Return list of (url, filename, sha256) from a PEP 503 simple index page.
-
-    Used for RHOAI and other custom indexes that don't provide a JSON API.
-    """
-    # Normalize name for URL: PEP 503 uses lowercase with hyphens
+    """Return list of (url, filename, sha256) from a PEP 503 simple index page."""
     normalized = re.sub(r"[-_.]+", "-", name).lower()
     page_url = f"{index_url.rstrip('/')}/{normalized}/"
     try:
-        req = urllib.request.Request(page_url, headers={"Accept": "text/html"})
+        req = urllib.request.Request(page_url, headers={"Accept": "text/html", "User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=30) as r:
             html = r.read().decode()
     except Exception as e:
@@ -162,17 +164,60 @@ def wget(url: str, path: Path):
     subprocess.run(["wget", "-q", "-O", str(path), url], check=True)
 
 
-def main():
-    req_path, out_dir = get_and_validate_args()
+def download_and_verify(item):
+    path, expected_hash, url, name, version, filename = item
+    if not path.exists():
+        print(f"  Downloading: {filename}")
+        try:
+            wget(url, path)
+        except subprocess.CalledProcessError as e:
+            return False, f"Error downloading {filename}: {e}"
+    
+    actual = file_sha256(path)
+    if actual != expected_hash:
+        return False, f"{filename} checksum mismatch (got {actual}, expected {expected_hash})"
+    return True, f"{filename} OK"
 
-    # Detect --index-url in requirements file (e.g. RHOAI)
+
+def should_keep_for_arch(filename: str, arch: str) -> bool:
+    if "any" in filename or "noarch" in filename:
+        return True
+        
+    arch_tags = []
+    if arch in ["amd64", "x86_64"]:
+        arch_tags = ["x86_64", "amd64"]
+    elif arch in ["arm64", "aarch64"]:
+        arch_tags = ["aarch64", "arm64"]
+    elif arch == "ppc64le":
+        arch_tags = ["ppc64le"]
+    elif arch == "s390x":
+        arch_tags = ["s390x"]
+        
+    all_arches = ["x86_64", "amd64", "aarch64", "arm64", "ppc64le", "s390x"]
+    has_arch = False
+    for a in all_arches:
+        if a in filename:
+            has_arch = True
+            break
+            
+    if not has_arch:
+        return True
+        
+    for a in arch_tags:
+        if a in filename:
+            return True
+    return False
+
+
+def main():
+    req_path, out_dir, arch = get_and_validate_args()
+
     index_url = detect_index_url(req_path)
     use_simple_index = index_url is not None and "pypi.org" not in index_url
     if use_simple_index:
         print(f"Detected custom index: {index_url}")
         print(f"Using PEP 503 simple index for downloads.\n")
 
-    # Build list of (path, expected_sha256, url, name, version, filename) per file to have
     to_fetch = []
     for block in get_packages_and_checksums(req_path):
         name, version, hashes = block_to_name_version_hashes(block)
@@ -185,21 +230,25 @@ def main():
             results = fetch_pypi_urls(name, version, set(hashes))
 
         for url, filename, expected_hash in results:
-            to_fetch.append((out_dir / filename, expected_hash, url, name, version, filename))
+            if should_keep_for_arch(filename, arch):
+                to_fetch.append((out_dir / filename, expected_hash, url, name, version, filename))
 
     total = len(to_fetch)
-    for idx, (path, expected_hash, url, name, version, filename) in enumerate(to_fetch, 1):
-        print(f"[{idx}/{total}] {name}=={version}  {filename}")
-        if not path.exists():
-            print(f"  Downloading: {url}")
-            wget(url, path)
-        else:
-            print(f"  Already exists, skipping download.")
-        actual = file_sha256(path)
-        if actual != expected_hash:
-            print(f"Error: {path.name} checksum mismatch (got {actual}, expected {expected_hash})", file=sys.stderr)
-            sys.exit(1)
-        print(f"  Checksum OK (sha256:{actual[:16]}...)")
+    print(f"Found {total} wheels to fetch for arch {arch}.")
+    
+    success = True
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(download_and_verify, item): item for item in to_fetch}
+        for future in concurrent.futures.as_completed(futures):
+            ok, msg = future.result()
+            if not ok:
+                print(f"Error: {msg}", file=sys.stderr)
+                success = False
+            else:
+                print(f"  {msg}")
+
+    if not success:
+        sys.exit(1)
     print(f"Done: {total} file(s) present and validated.")
 
 

@@ -98,17 +98,20 @@ define build_image
 # Dockerfile runs). The mount hides the base image's default repos.
 # Konflux buildah-oci-ta task mounts YUM_REPOS_D_FETCHED at YUM_REPOS_D_TARGET (/etc/yum.repos.d).
 # See https://github.com/konflux-ci/build-definitions/blob/main/task/buildah-oci-ta/
-$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)),\
-	--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z \
-	--volume $(ROOT_DIR)cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
+	$(eval COMPONENT_DIR_STR := $(patsubst %/,%,$(BUILD_DIR)))
+	$(eval CACHI2_HASH := $(shell python3 -c "import hashlib; print(hashlib.md5('$(COMPONENT_DIR_STR)'.encode()).hexdigest())"))
+	$(eval CACHI2_DIR := cachi2/output/$(CACHI2_HASH))
+	$(eval CACHI2_VOLUME := $(if $(and $(wildcard $(CACHI2_DIR)),$(wildcard $(BUILD_DIR)prefetch-input)),\
+		--volume $(ROOT_DIR)$(CACHI2_DIR):/cachi2/output:Z \
+		--volume $(ROOT_DIR)$(CACHI2_DIR)/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
 	$(info # Building $(IMAGE_NAME) using $(DOCKERFILE_NAME) with $(CONF_FILE) and $(BUILD_ARGS)...)
 
-	@if [ -d '$(BUILD_DIR)prefetch-input' ] && [ ! -d cachi2/output ]; then \
-	  echo "Prefetch required for hermetic build. Run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR)) -- see scripts/lockfile-generators/README.md"; \
+	@if [ -d '$(BUILD_DIR)prefetch-input' ] && [ ! -d '$(CACHI2_DIR)' ]; then \
+	  echo "Prefetch required for hermetic build. Run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(COMPONENT_DIR_STR) -- see scripts/lockfile-generators/README.md"; \
 	  exit 1; \
 	fi
-	@if [ -d cachi2/output ] && [ -d '$(BUILD_DIR)prefetch-input' ] && [ ! -d 'cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d' ]; then \
-	  echo "Missing RPM repos for $(RPM_ARCH). Re-run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR))"; \
+	@if [ -d '$(CACHI2_DIR)' ] && [ -d '$(BUILD_DIR)prefetch-input' ] && [ ! -d '$(CACHI2_DIR)/deps/rpm/$(RPM_ARCH)/repos.d' ]; then \
+	  echo "Missing RPM repos for $(RPM_ARCH). Re-run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(COMPONENT_DIR_STR)"; \
 	  exit 1; \
 	fi
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' -- \

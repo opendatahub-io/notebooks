@@ -8,16 +8,16 @@ set -euo pipefail
 # This script orchestrates downloading all five dependency types:
 #
 #   1. Generic artifacts — GPG keys, nfpm-built RPMs, Node.js headers,
-#      Electron binaries, VS Code .vsix (into cachi2/output/deps/generic/).
+#      Electron binaries, VS Code .vsix (into ${CACHI2_OUT_DIR:-cachi2/output}/deps/generic/).
 #      Component-specific: codeserver gets ripgrep from pip, oc from RPM.
 #   2. Pip wheels — Python packages resolved from pyproject.toml
-#      (into cachi2/output/deps/pip/).
+#      (into ${CACHI2_OUT_DIR:-cachi2/output}/deps/pip/).
 #   3. NPM packages — tarballs resolved from package-lock.json files
-#      (into cachi2/output/deps/npm/).
+#      (into ${CACHI2_OUT_DIR:-cachi2/output}/deps/npm/).
 #   4. RPMs — system packages resolved from rpms.lock.yaml via Hermeto
-#      (into cachi2/output/deps/rpm/).
+#      (into ${CACHI2_OUT_DIR:-cachi2/output}/deps/rpm/).
 #   5. Go modules — Go deps from go.mod/go.sum via Hermeto (gomod)
-#      (into cachi2/output/deps/gomod/).
+#      (into ${CACHI2_OUT_DIR:-cachi2/output}/deps/gomod/).
 #
 # Each step is skipped if its input file is not present in the component's
 # prefetch-input/<variant>/ directory. Step 3 (NPM) discovers the Tekton
@@ -47,6 +47,9 @@ SCRIPTS_PATH="scripts/lockfile-generators"
 COMPONENT_DIR=""
 VARIANT="odh"       # "odh" = upstream (CentOS Stream), "rhds" = downstream (RHEL)
 FLAVOR="cpu"        # selects which pylock/requirements files to use (cpu, cuda, rocm)
+ARCH=$(uname -m)
+[[ "$ARCH" == "x86_64" ]] && ARCH="amd64"
+[[ "$ARCH" == "aarch64" ]] && ARCH="arm64"
 ACTIVATION_KEY=""
 ORG=""
 
@@ -54,13 +57,14 @@ show_help() {
   cat << 'HELPEOF'
 Usage: scripts/lockfile-generators/prefetch-all.sh [OPTIONS]
 
-Download all hermetic build dependencies into cachi2/output/deps/.
+Download all hermetic build dependencies into ${CACHI2_OUT_DIR:-cachi2/output}/deps/.
 
 Options:
   --component-dir DIR     Component directory (required)
                           e.g. codeserver/ubi9-python-3.12
   --rhds                  Use downstream (RHDS) lockfiles instead of upstream (ODH)
   --flavor NAME           Lock file flavor (default: cpu)
+  --arch NAME             Target architecture (default: host architecture)
   --activation-key KEY    Red Hat activation key for RHEL RPMs (optional)
   --org ORG               Red Hat organization ID for RHEL RPMs (optional)
   -h, --help              Show this help
@@ -125,6 +129,8 @@ while [[ $# -gt 0 ]]; do
     --rhds)              VARIANT="rhds"; shift ;;
     --flavor)            [[ $# -ge 2 ]] || error_exit "--flavor requires a value"
                          FLAVOR="$2"; shift 2 ;;
+    --arch)              [[ $# -ge 2 ]] || error_exit "--arch requires a value"
+                         ARCH="$2"; shift 2 ;;
     --activation-key)    [[ $# -ge 2 ]] || error_exit "--activation-key requires a value"
                          ACTIVATION_KEY="$2"; shift 2 ;;
     --org)               [[ $# -ge 2 ]] || error_exit "--org requires a value"
@@ -136,6 +142,9 @@ done
 
 [[ -z "$COMPONENT_DIR" ]] && error_exit "--component-dir is required."
 [[ -d "$COMPONENT_DIR" ]] || error_exit "Component directory not found: $COMPONENT_DIR"
+
+export CACHI2_OUT_DIR="cachi2/output/$(python3 -c "import hashlib; print(hashlib.md5('$COMPONENT_DIR'.encode()).hexdigest())")"
+export ARCH
 
 # CLI args take priority; fall back to env vars so GHA can pass secrets
 # without exposing them on the command line.  GitHub Actions masks env var
@@ -198,7 +207,7 @@ STEPS_SKIPPED=0
 # Downloads non-package artifacts listed in artifacts.in.yaml: GPG keys
 # for RPM signature verification, nfpm-packaged RPMs (e.g. code-server),
 # Node.js headers for native addons, Electron binaries, etc.
-# Output: cachi2/output/deps/generic/
+# Output: ${CACHI2_OUT_DIR:-cachi2/output}/deps/generic/
 # =========================================================================
 ARTIFACTS_INPUT="$VARIANT_DIR/artifacts.in.yaml"
 if [[ -f "$ARTIFACTS_INPUT" ]]; then
@@ -219,7 +228,7 @@ fi
 # pylock.<flavor>.toml + requirements.<flavor>.txt, then downloads all
 # wheels.  The --flavor flag selects which optional dependency groups
 # to include (e.g. cpu vs cuda have different torch/triton packages).
-# Output: cachi2/output/deps/pip/
+# Output: ${CACHI2_OUT_DIR:-cachi2/output}/deps/pip/
 # =========================================================================
 PYPROJECT="$COMPONENT_DIR/pyproject.toml"
 if [[ -f "$PYPROJECT" ]]; then
@@ -240,7 +249,7 @@ fi
 # download npm tarballs from the prefetch-input paths listed there. If no
 # Tekton file is found for this component, skip npm. Requires yq.
 #
-# Output: cachi2/output/deps/npm/
+# Output: ${CACHI2_OUT_DIR:-cachi2/output}/deps/npm/
 # =========================================================================
 echo "=== [3/5] NPM packages ==="
 
@@ -273,7 +282,7 @@ echo ""
 # =========================================================================
 # Step 4: RPMs (hermeto-fetch-rpm.sh or create-rpm-lockfile.sh --download)
 #
-# Downloads OS-level RPM packages into cachi2/output/deps/rpm/ and creates
+# Downloads OS-level RPM packages into ${CACHI2_OUT_DIR:-cachi2/output}/deps/rpm/ and creates
 # DNF repo metadata so the Dockerfile can `dnf install` offline.
 #
 # Two modes depending on whether rpms.lock.yaml already exists:
@@ -291,7 +300,7 @@ echo ""
 # exported env vars (SUBSCRIPTION_ACTIVATION_KEY / SUBSCRIPTION_ORG),
 # not command-line args.  hermeto-fetch-rpm.sh handles cert extraction.
 #
-# Output: cachi2/output/deps/rpm/
+# Output: ${CACHI2_OUT_DIR:-cachi2/output}/deps/rpm/
 # =========================================================================
 RPM_INPUT="$VARIANT_DIR/rpms.in.yaml"
 RPM_LOCKFILE="$VARIANT_DIR/rpms.lock.yaml"
@@ -316,7 +325,7 @@ fi
 #
 # Prefetches Go dependencies from go.mod/go.sum via Hermeto (gomod). Uses
 # the same Tekton file as NPM to discover gomod-type prefetch-input paths.
-# Output: cachi2/output/deps/gomod/
+# Output: ${CACHI2_OUT_DIR:-cachi2/output}/deps/gomod/
 # =========================================================================
 echo "=== [5/5] Go modules ==="
 if [[ -n "$tekton_file" ]] && command -v yq &>/dev/null; then
@@ -354,10 +363,10 @@ echo "  tekton file: $tekton_file"
 echo "  steps run    : $STEPS_RUN"
 echo "  steps skipped: $STEPS_SKIPPED"
 echo ""
-echo " Dependencies are in: cachi2/output/deps/"
-if [[ -d "cachi2/output/deps" ]]; then
+echo " Dependencies are in: ${CACHI2_OUT_DIR:-cachi2/output}/deps/"
+if [[ -d "${CACHI2_OUT_DIR:-cachi2/output}/deps" ]]; then
   echo ""
-  du -sh cachi2/output/deps/*/ 2>/dev/null || true
+  du -sh ${CACHI2_OUT_DIR:-cachi2/output}/deps/*/ 2>/dev/null || true
 fi
 echo ""
 echo " Next: run 'make <target>' — it will auto-detect cachi2/output/"
