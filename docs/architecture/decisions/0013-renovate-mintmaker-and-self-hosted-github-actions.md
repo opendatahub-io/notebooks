@@ -121,7 +121,7 @@ Replace `OWNER/REPO` (for example `jiridanek/notebooks` on a fork or `opendatahu
 
 ### Self-hosted run log quirks (forks)
 
-- **Private image lookups (`no-result`)** — `renovatebot/github-action` runs Renovate in Docker and, by default, **does not pass `DOCKER_CONFIG`** into the container. The workflow sets **`env-regex`** to include `DOCKER_CONFIG` and stores merged **`config.json` under `/tmp`** so the action’s default **`/tmp:/tmp`** mount exposes registry auth inside the container.
+- **Private image lookups (`no-result`)** — The workflow merges pull-secret (and optional `quay.io/aipcc` login) into **`config.json` under `DOCKER_CONFIG`**, passes **`DOCKER_CONFIG`** via **`env-regex`**, and runs **`scripts/ci/docker_config_to_renovate_host_rules.py`** to set **`RENOVATE_HOST_RULES`** so the docker datasource uses explicit registry credentials (Renovate often still reports `no-result` for private tags when only `DOCKER_CONFIG` is present).
 - **`allowedCommands`, `inheritConfig`, `onboarding`, … “global only”** — Those keys exist for **MintMaker’s** merged global config. Self-hosted runs **warn** when they appear in repo `renovate.json5`; MintMaker continues to use them upstream. Harmless noise unless something actually fails.
 - **`matchBaseBranches` / `baseBranchPatterns`** — Same as upstream comment in `renovate.json5`: top-level `baseBranchPatterns` is avoided so MintMaker’s per-branch behavior is not overridden; local dry-runs may warn.
 - **`gitAuthor` / unverified commits** — Set **`RENOVATE_GIT_AUTHOR`** in the workflow env (or `gitAuthor` in config) to your own **`Name <email>`** if you dislike the default Mend address.
@@ -131,5 +131,6 @@ Replace `OWNER/REPO` (for example `jiridanek/notebooks` on a fork or `opendatahu
 
 - `.github/renovate.json5`
 - `.github/workflows/renovate-self-hosted.yaml`
+- `scripts/ci/docker_config_to_renovate_host_rules.py`
 - `.github/workflows/piplock-renewal.yaml`
 - [ADR 0008 — Pin GitHub Actions by SHA](0008-harden-github-actions-pin-sha-digests.md)

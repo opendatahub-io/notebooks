@@ -15,10 +15,10 @@
 # If inheritConfig fails without Mend, set "inheritConfig": false there or add
 #   RENOVATE_INHERIT_CONFIG=false under env on the Run Renovate step.
 #
-# Registry auth: renovatebot/github-action runs Renovate in Docker. By default it does
-# not pass DOCKER_CONFIG into the container (env-regex). We set env-regex below and keep
-# config under /tmp so the default /tmp:/tmp mount exposes the same files on host and
-# in the container (workspace paths are not always mounted identically).
+# Registry auth: renovatebot/github-action runs Renovate in Docker. We pass DOCKER_CONFIG
+# (env-regex) and keep config under /tmp so /tmp:/tmp is shared with the container.
+# Renovate still often skips docker config for HTTP registry lookups — we export
+# RENOVATE_HOST_RULES from the merged config.json so quay.io / registry.redhat.io resolve.
 name: Renovate (self-hosted)
 
 permissions: {}  # least-privilege; Renovate uses RENOVATE_TOKEN
@@ -75,6 +75,9 @@ jobs:
           fi
           echo "${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}" | docker login quay.io/aipcc \
             -u "${{ secrets.AIPCC_QUAY_BOT_USERNAME }}" --password-stdin
+
+      - name: Export RENOVATE_HOST_RULES from Docker config
+        run: python3 scripts/ci/docker_config_to_renovate_host_rules.py >> "$GITHUB_ENV"
 
       - name: Run Renovate
         uses: renovatebot/github-action@b67590ea780158ccd13192c22a3655a5231f869d  # v46.1.8
