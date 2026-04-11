@@ -396,7 +396,9 @@ jobs:
             pip3 install --quiet --break-system-packages pyyaml
             command -v uv &>/dev/null || pip3 install --quiet --break-system-packages uv
 
-            PREFETCH_ARGS="--component-dir $COMPONENT_DIR --flavor $FLAVOR"
+            ARCH="${{ inputs.platform }}"
+            ARCH="${ARCH#*/}"
+            PREFETCH_ARGS="--component-dir $COMPONENT_DIR --flavor $FLAVOR --arch $ARCH"
             # AIPCC builds use RHEL-based base images, so prefetch from the rhds
             # variant to avoid RPM conflicts (e.g. openssl-fips-provider vs
             # openssl-fips-provider-so).
