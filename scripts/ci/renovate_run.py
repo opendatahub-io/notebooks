@@ -33,6 +33,7 @@ DEFAULT_GIT_AUTHOR = "ide-developer <rhoai-ide-konflux@redhat.com>"
 OPTIONAL_ENV_PASSTHROUGH = (
     "LOG_FORMAT",
     "RENOVATE_TOKEN",
+    "RENOVATE_BASE_BRANCHES",
     "RENOVATE_HOST_RULES",
     "RENOVATE_REPOSITORIES",
     "GITHUB_COM_TOKEN",
@@ -116,7 +117,7 @@ def build_command(mode: str, engine: str, renovate_image: str, docker_config: st
     if Path(docker_config).is_dir():
         cmd.extend(["-e", "DOCKER_CONFIG", "-v", f"{docker_config}:{docker_config}:ro"])
 
-    if mode == "local":
+    if mode in ("local", "lookup"):
         os.environ["RENOVATE_CONFIG_FILE"] = str(ROOT / ".github/renovate.json5")
         cmd.extend(
             [
@@ -131,6 +132,8 @@ def build_command(mode: str, engine: str, renovate_image: str, docker_config: st
                 "--platform=local",
             ]
         )
+        if mode == "lookup":
+            cmd.append("--dry-run=lookup")
     elif mode == "remote":
         os.environ["RENOVATE_CONFIG_FILE"] = "/github-action/renovate.json5"
         cmd.extend(
@@ -140,22 +143,6 @@ def build_command(mode: str, engine: str, renovate_image: str, docker_config: st
                 "-e",
                 "RENOVATE_CONFIG_FILE",
                 renovate_image,
-            ]
-        )
-    elif mode == "lookup":
-        os.environ["RENOVATE_CONFIG_FILE"] = str(ROOT / ".github/renovate.json5")
-        cmd.extend(
-            [
-                "-v",
-                f"{ROOT}:{ROOT}",
-                "-w",
-                str(ROOT),
-                "-e",
-                "RENOVATE_CONFIG_FILE",
-                renovate_image,
-                "renovate",
-                "--platform=local",
-                "--dry-run=lookup",
             ]
         )
     else:
@@ -184,14 +171,9 @@ def main(argv: list[str] | None = None) -> int:
     docker_config = os.environ.get("DOCKER_CONFIG", str(Path.home() / ".docker"))
     os.environ["DOCKER_CONFIG"] = docker_config
 
-    token = os.environ.get("RENOVATE_TOKEN") or ""
-    if mode != "lookup":
-        if not token:
-            print(f"error: set RENOVATE_TOKEN (required for {mode})", file=sys.stderr)
-            return 1
-        os.environ["RENOVATE_TOKEN"] = token
-    elif token:
-        os.environ["RENOVATE_TOKEN"] = token
+    if mode != "lookup" and not os.environ.get("RENOVATE_TOKEN"):
+        print(f"error: set RENOVATE_TOKEN (required for {mode})", file=sys.stderr)
+        return 1
 
     if not (Path(docker_config) / "config.json").is_file():
         print(

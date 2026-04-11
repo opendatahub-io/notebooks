@@ -94,13 +94,16 @@ jobs:
 
       - name: Login to quay.io/aipcc (if secrets present)
         shell: bash
+        env:
+          AIPCC_USER: ${{ secrets.AIPCC_QUAY_BOT_USERNAME }}
+          AIPCC_PASS: ${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}
         run: |
-          if [[ "${{ secrets.AIPCC_QUAY_BOT_USERNAME }}" == "" ]]; then
+          if [[ -z "${AIPCC_USER}" ]]; then
             echo "AIPCC_QUAY_BOT_USERNAME is not set, skipping quay.io/aipcc login"
             exit 0
           fi
-          echo "${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}" | docker login quay.io/aipcc \
-            -u "${{ secrets.AIPCC_QUAY_BOT_USERNAME }}" --password-stdin
+          echo "${AIPCC_PASS}" | docker login quay.io/aipcc \
+            -u "${AIPCC_USER}" --password-stdin
 
       - name: Export RENOVATE_HOST_RULES from Docker config
         run: python3 scripts/ci/docker_config_to_renovate_host_rules.py >> "$GITHUB_ENV"

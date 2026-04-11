@@ -123,9 +123,9 @@
       "matchStrings": [
         "BASE_IMAGE=(?<depName>[^:]+):(?<currentValue>\\S+)",
       ],
-      // Template is only the replacement text; the locate step still uses the
-      // extracted full-match replaceString (lib/workers/repository/update/branch/auto-replace.ts).
-      // Regex manager field name: lib/modules/manager/custom/regex/types.ts
+      // Renovate's auto-replace locates the full match (replaceString) first, then
+      // substitutes with this template.  Without it the default template may not
+      // reconstruct the BASE_IMAGE=… line correctly.
       "autoReplaceStringTemplate": "BASE_IMAGE={{{depName}}}:{{{newValue}}}",
       "datasourceTemplate": "docker",
       // Parses 3.4.0-1773428606 as major=3, minor=4, patch=0, build=1773428606
