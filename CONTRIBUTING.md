@@ -36,7 +36,7 @@ Pull requests are the best way to propose changes to the notebooks repository:
     jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8: jupyter-minimal-ubi8-python-3.8
 	$(call image,$@,jupyter/${NOTEBOOK_NAME}/ubi8-python-3.8,$<)
     ```
-- Add the paths of the new pipfiles under `refresh-pipfilelock-files`
+- Add the paths of the new pipfiles under `refresh-lock-files`
 - Run the [piplock-renewal.yaml](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/piplock-renewal.yaml) against your fork branch, check [here](https://github.com/opendatahub-io/notebooks/blob/main/README.md) for more info.
 - Test the changes locally, by manually running the `$ make jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8` from the terminal.
 

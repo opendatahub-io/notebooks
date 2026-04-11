@@ -129,7 +129,7 @@ make test-${NOTEBOOK_NAME} # Specific notebook tests
 
 2. **Package Management**:
    - Use `pyproject.toml` and `pylock.toml` for Python dependencies
-   - Always regenerate lock files after dependency changes by running `make refresh-pipfilelock-files`
+   - Always regenerate lock files after dependency changes by running `make refresh-lock-files`
 
 3. **Testing**:
    - Run `make test` and analyze logs
