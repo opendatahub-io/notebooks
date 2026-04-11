@@ -180,33 +180,38 @@ def download_and_verify(item):
 
 
 def should_keep_for_arch(filename: str, arch: str) -> bool:
-    if "any" in filename or "noarch" in filename:
+    # sdists and non-wheel files have no platform tag — always keep
+    if not filename.endswith(".whl"):
         return True
-        
-    arch_tags = []
-    if arch in ["amd64", "x86_64"]:
-        arch_tags = ["x86_64", "amd64"]
-    elif arch in ["arm64", "aarch64"]:
-        arch_tags = ["aarch64", "arm64"]
-    elif arch == "ppc64le":
-        arch_tags = ["ppc64le"]
-    elif arch == "s390x":
-        arch_tags = ["s390x"]
-        
-    all_arches = ["x86_64", "amd64", "aarch64", "arm64", "ppc64le", "s390x"]
-    has_arch = False
-    for a in all_arches:
-        if a in filename:
-            has_arch = True
-            break
-            
-    if not has_arch:
+
+    # Wheel format: {name}-{ver}(-{build})?-{python}-{abi}-{platform}.whl
+    # The platform tag is the last segment before .whl
+    stem = filename[:-4]  # strip .whl
+    parts = stem.split("-")
+    if len(parts) < 3:
         return True
-        
-    for a in arch_tags:
-        if a in filename:
-            return True
-    return False
+    platform_tag = parts[-1]
+
+    # Pure-python wheels use "any" or "none" platform tags
+    if platform_tag in ("any", "none") or "any" in platform_tag.split("_"):
+        return True
+
+    ARCH_ALIASES = {
+        "amd64": ["x86_64", "amd64"],
+        "x86_64": ["x86_64", "amd64"],
+        "arm64": ["aarch64", "arm64"],
+        "aarch64": ["aarch64", "arm64"],
+        "ppc64le": ["ppc64le"],
+        "s390x": ["s390x"],
+    }
+    ALL_ARCHES = {"x86_64", "amd64", "aarch64", "arm64", "ppc64le", "s390x"}
+
+    # Check if the platform tag mentions any known architecture
+    if not any(a in platform_tag for a in ALL_ARCHES):
+        return True
+
+    # Keep only if it matches the target architecture
+    return any(a in platform_tag for a in ARCH_ALIASES.get(arch, []))
 
 
 def main():

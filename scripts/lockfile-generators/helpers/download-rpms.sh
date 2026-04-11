@@ -15,7 +15,7 @@ set -euo pipefail
 
 # --- Configuration & Defaults ---
 SCRIPTS_PATH="scripts/lockfile-generators"
-DEST_DIR="./cachi2/output/deps/rpm"
+DEST_DIR="${CACHI2_OUT_DIR:-cachi2/output}/deps/rpm"
 LOCKFILE=""
 
 # --- Functions ---

@@ -245,10 +245,6 @@ fi
 mkdir -p "$DEST_DIR"
 
 total=$(echo "$refs" | wc -l | tr -d ' ')
-count=0
-downloaded=0
-skipped=0
-failed=0
 
 echo ""
 echo "Found $total unique packages to download."
@@ -266,12 +262,16 @@ download_file() {
         else
             echo "FAIL  Failed: $download_url" >&2
             rm -f "$DEST_DIR/$filename"
+            return 1
         fi
     fi
 }
 export -f download_file
 
-echo "$refs" | xargs -n 2 -P 10 bash -c 'download_file "$1" "$2"' _
+if ! echo "$refs" | xargs -n 2 -P 10 bash -c 'download_file "$1" "$2"' _; then
+    echo "Some npm downloads failed" >&2
+    exit 1
+fi
 
 echo ""
 echo "Finished! Location: $DEST_DIR"

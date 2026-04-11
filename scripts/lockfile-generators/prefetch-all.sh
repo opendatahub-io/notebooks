@@ -141,9 +141,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -z "$COMPONENT_DIR" ]] && error_exit "--component-dir is required."
+COMPONENT_DIR="${COMPONENT_DIR%/}"
 [[ -d "$COMPONENT_DIR" ]] || error_exit "Component directory not found: $COMPONENT_DIR"
 
-export CACHI2_OUT_DIR="cachi2/output/$(python3 -c "import hashlib; print(hashlib.md5('$COMPONENT_DIR'.encode()).hexdigest())")"
+CACHI2_HASH="$(python3 -c "import hashlib, sys; print(hashlib.md5(sys.argv[1].encode()).hexdigest())" "$COMPONENT_DIR")"
+export CACHI2_OUT_DIR="cachi2/output/${CACHI2_HASH}"
 export ARCH
 
 # CLI args take priority; fall back to env vars so GHA can pass secrets

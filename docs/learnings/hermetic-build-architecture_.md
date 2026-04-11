@@ -21,11 +21,11 @@ Orchestrates five lockfile generators in sequence:
 
 | Step | Generator | Input | Output |
 |------|-----------|-------|--------|
-| 1 | `create-artifact-lockfile.py` | `artifacts.in.yaml` | `cachi2/output/deps/generic/` (GPG keys, nfpm, node headers, oc client, VS Code extensions) |
-| 2 | `create-requirements-lockfile.sh` | `pyproject.toml` | `cachi2/output/deps/pip/` (Python wheels) |
-| 3 | `download-npm.sh` | `package-lock.json` files | `cachi2/output/deps/npm/` (npm tarballs) |
-| 4 | `hermeto-fetch-rpm.sh` | `rpms.lock.yaml` | `cachi2/output/deps/rpm/{arch}/` (RPMs + repo metadata) |
-| 5 | `create-go-lockfile.sh` | `go.mod` (via git submodule) | `cachi2/output/deps/gomod/` (Go modules) |
+| 1 | `create-artifact-lockfile.py` | `artifacts.in.yaml` | `cachi2/output/<hash>/deps/generic/` (GPG keys, nfpm, node headers, oc client, VS Code extensions) |
+| 2 | `create-requirements-lockfile.sh` | `pyproject.toml` | `cachi2/output/<hash>/deps/pip/` (Python wheels) |
+| 3 | `download-npm.sh` | `package-lock.json` files | `cachi2/output/<hash>/deps/npm/` (npm tarballs) |
+| 4 | `hermeto-fetch-rpm.sh` | `rpms.lock.yaml` | `cachi2/output/<hash>/deps/rpm/{arch}/` (RPMs + repo metadata) |
+| 5 | `create-go-lockfile.sh` | `go.mod` (via git submodule) | `cachi2/output/<hash>/deps/gomod/` (Go modules) |
 
 Variants are selected via `--rhds` flag:
 - Default (`odh`): uses CentOS Stream + UBI repos (no subscription needed)
@@ -34,15 +34,20 @@ Variants are selected via `--rhds` flag:
 ### Makefile auto-detection
 
 ```makefile
-$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)),\
-    --volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z \
-    --volume $(ROOT_DIR)cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
+$(eval COMPONENT_DIR_STR := $(patsubst %/,%,$(BUILD_DIR)))
+$(eval CACHI2_HASH := $(shell python3 -c "import hashlib; print(hashlib.md5('$(COMPONENT_DIR_STR)'.encode()).hexdigest())"))
+$(eval CACHI2_DIR := cachi2/output/$(CACHI2_HASH))
+$(eval CACHI2_VOLUME := $(if $(and $(wildcard $(CACHI2_DIR)),$(wildcard $(BUILD_DIR)prefetch-input)),\
+    --volume $(ROOT_DIR)$(CACHI2_DIR):/cachi2/output:Z \
+    --volume $(ROOT_DIR)$(CACHI2_DIR)/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
 ```
 
-When both `cachi2/output/` and `<target>/prefetch-input/` exist, the Makefile
-automatically mounts the prefetched dependencies into the build. The second
-mount overlays `/etc/yum.repos.d/` with hermeto-generated repos, making local
-builds behave like Konflux (repos are already in place when the Dockerfile runs).
+When both `cachi2/output/<hash>/` and `<target>/prefetch-input/` exist, the Makefile
+automatically mounts the per-component prefetched dependencies into the build.
+The `<hash>` is the MD5 of the component directory name, allowing concurrent
+builds of different components without collisions. The second mount overlays
+`/etc/yum.repos.d/` with hermeto-generated repos, making local builds behave
+like Konflux (repos are already in place when the Dockerfile runs).
 
 ### sandbox.py
 
@@ -57,24 +62,32 @@ build context.
 
 ## cachi2/output Directory Structure
 
-After prefetching, the directory looks like:
+After prefetching, each component gets its own namespaced directory under
+`cachi2/output/<hash>/` (where `<hash>` is the MD5 of the component directory
+name, e.g. `cachi2/output/a1b2c3.../`). This prevents collisions when building
+multiple components in parallel.
 
 ```text
 cachi2/output/
-├── deps/
-│   ├── rpm/
-│   │   ├── x86_64/
-│   │   │   ├── <repo-name>/       # RPM files + repodata/
-│   │   │   └── repos.d/           # Generated .repo files with file:// URLs
-│   │   ├── aarch64/
-│   │   ├── ppc64le/
-│   │   └── s390x/
-│   ├── npm/                       # npm tarballs
-│   ├── pip/                       # Python wheels
-│   └── generic/                   # GPG keys, tarballs, etc.
-├── bom.json
-└── .build-config.json
+└── <hash>/                        # per-component namespace (MD5 of component dir)
+    ├── deps/
+    │   ├── rpm/
+    │   │   ├── x86_64/
+    │   │   │   ├── <repo-name>/   # RPM files + repodata/
+    │   │   │   └── repos.d/       # Generated .repo files with file:// URLs
+    │   │   ├── aarch64/
+    │   │   ├── ppc64le/
+    │   │   └── s390x/
+    │   ├── npm/                   # npm tarballs
+    │   ├── pip/                   # Python wheels
+    │   └── generic/               # GPG keys, tarballs, etc.
+    ├── bom.json
+    └── .build-config.json
 ```
+
+The Makefile mounts `cachi2/output/<hash>/` at `/cachi2/output/` inside the
+container, so the Dockerfile always sees `/cachi2/output/deps/...` regardless
+of which component is being built.
 
 Key detail: when `rpms.in.yaml` declares `moduleEnable: [nodejs:22]`, hermeto
 downloads module metadata (`modules.yaml`) alongside the RPMs and includes it
@@ -91,7 +104,7 @@ scripts/lockfile-generators/prefetch-all.sh --component-dir codeserver/ubi9-pyth
 make codeserver-ubi9-python-3.12
 ```
 
-Makefile detects `cachi2/output/` and auto-injects the volume mount.
+Makefile detects `cachi2/output/<hash>/` and auto-injects the volume mount.
 
 ### GitHub Actions
 
@@ -108,11 +121,13 @@ The TEMPLATE workflow (`build-notebooks-TEMPLATE.yaml`) handles it transparently
 
 1. PipelineRun YAML declares `prefetch-input` entries pointing to lockfiles
 2. cachi2's `prefetch-dependencies` task downloads everything using hermeto
-3. Build task mounts `/cachi2/output/` automatically
+3. Build task mounts deps at `/cachi2/output/` automatically
 4. Network isolation enforced at the pipeline level
 
-All three environments produce the same `/cachi2/output/deps/` structure because
-they all use hermeto under the hood for RPM prefetching.
+All three environments produce the same `/cachi2/output/deps/` layout inside
+the container because they all use hermeto under the hood for RPM prefetching.
+On the host, local/GHA builds use `cachi2/output/<hash>/deps/` while Konflux
+uses its own staging directory.
 
 ## Variant Directories (ODH vs RHDS)
 

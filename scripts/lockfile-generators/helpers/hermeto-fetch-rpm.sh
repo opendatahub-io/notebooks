@@ -214,7 +214,8 @@ HERMETO_STAGING=$(mktemp -d)
 trap 'rm -rf "$HERMETO_STAGING" ${CDN_CERT_DIR:+"$CDN_CERT_DIR"} ${CLEANUP_SOURCE:+"$HERMETO_SOURCE"}' EXIT
 
 HERMETO_SOURCE="$(pwd)/$PREFETCH_DIR"
-if [[ -n "$ARCH" ]] && command -v yq &>/dev/null; then
+if [[ -n "$ARCH" ]]; then
+  command -v yq &>/dev/null || error_exit "--arch requires yq to filter rpms.lock.yaml"
   # Translate generic arch to rpm arch format
   rpm_arch="$ARCH"
   [[ "$ARCH" == "amd64" ]] && rpm_arch="x86_64"
@@ -223,8 +224,10 @@ if [[ -n "$ARCH" ]] && command -v yq &>/dev/null; then
   echo "--- Filtering rpms.lock.yaml for architecture: $rpm_arch ---"
   HERMETO_SOURCE=$(mktemp -d)
   CLEANUP_SOURCE=1
-  cp -r "$PREFETCH_DIR"/* "$HERMETO_SOURCE/"
-  yq eval "del(.arches[] | select(.arch != \"$rpm_arch\" and .arch != \"noarch\"))" -i "$HERMETO_SOURCE/rpms.lock.yaml"
+  # Symlink everything, then replace rpms.lock.yaml with a filtered copy
+  ln -s "$(pwd)/$PREFETCH_DIR"/* "$HERMETO_SOURCE/" 2>/dev/null || true
+  rm -f "$HERMETO_SOURCE/rpms.lock.yaml"
+  yq eval "del(.arches[] | select(.arch != \"$rpm_arch\" and .arch != \"noarch\"))" "$(pwd)/$PREFETCH_DIR/rpms.lock.yaml" > "$HERMETO_SOURCE/rpms.lock.yaml"
 fi
 
 echo "--- Downloading RPMs via hermeto ---"
