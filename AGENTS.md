@@ -188,6 +188,7 @@ The project uses GitHub Actions for:
 Key CI files:
 - `.github/workflows/` - GitHub Actions workflows
 - `ci/` - Custom CI scripts and configurations
+- `scripts/ci/renovate_run.py` - Self-hosted Renovate (Podman or Docker via `CONTAINER_ENGINE`, same detection order as the Makefile); see `.github/workflows/renovate-self-hosted.yaml` and ADR 0013
 
 ### Deployment
 
