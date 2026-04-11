@@ -1,0 +1,81 @@
+# yamllint disable rule:line-length
+---
+# Self-hosted Renovate when MintMaker does not run on opendatahub-io/notebooks.
+# - workflow_dispatch: any fork/org (manual runs).
+# - schedule: opendatahub-io only (avoids surprise cron + secrets use on forks).
+# If MintMaker later covers upstream, drop the schedule or remove this workflow to avoid
+# duplicate PRs.
+#
+# Secrets (repository):
+#   - RENOVATE_TOKEN — PAT (repo + workflow or fine-grained) so PRs run CI
+#   - GIT_CRYPT_KEY — base64-encoded git-crypt key (same as build workflows)
+#   - AIPCC_QUAY_BOT_USERNAME / AIPCC_QUAY_BOT_PASSWORD — optional; quay.io/aipcc login
+#
+# Config: .github/renovate.json5
+# If inheritConfig fails without Mend, set "inheritConfig": false there or add
+#   RENOVATE_INHERIT_CONFIG=false under env on the Run Renovate step.
+name: Renovate (self-hosted)
+
+permissions: {}  # least-privilege; Renovate uses RENOVATE_TOKEN
+
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * *"  # daily 05:00 UTC
+
+concurrency:
+  group: renovate-self-hosted-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    if: github.event_name != 'schedule' || github.repository_owner == 'opendatahub-io'
+    runs-on: ubuntu-latest
+    env:
+      # Merged registry auth (pull-secret + optional docker login) for Renovate image lookups.
+      DOCKER_CONFIG: ${{ github.workspace }}/.docker-renovate
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Install git-crypt
+        uses: ./.github/actions/apt-install
+        with:
+          packages: git-crypt
+          update: "false"
+
+      - name: Unlock encrypted secrets with git-crypt
+        run: |
+          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
+          trap 'rm -f ./git-crypt-key' EXIT
+          git-crypt unlock ./git-crypt-key
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+
+      - name: Configure registry auth for Renovate (pull-secret)
+        run: |
+          mkdir -p "${DOCKER_CONFIG}"
+          cp ci/secrets/pull-secret.json "${DOCKER_CONFIG}/config.json"
+
+      - name: Login to quay.io/aipcc (if secrets present)
+        shell: bash
+        run: |
+          if [[ "${{ secrets.AIPCC_QUAY_BOT_USERNAME }}" == "" ]]; then
+            echo "AIPCC_QUAY_BOT_USERNAME is not set, skipping quay.io/aipcc login"
+            exit 0
+          fi
+          echo "${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}" | docker login quay.io/aipcc \
+            -u "${{ secrets.AIPCC_QUAY_BOT_USERNAME }}" --password-stdin
+
+      - name: Run Renovate
+        uses: renovatebot/github-action@b67590ea780158ccd13192c22a3655a5231f869d  # v46.1.8
+        env:
+          LOG_LEVEL: info
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+        with:
+          configurationFile: .github/renovate.json5
+          token: ${{ secrets.RENOVATE_TOKEN }}
