@@ -104,8 +104,39 @@ processing this remote.
 
 Configure repository secrets before the workflow can succeed. Using the [GitHub CLI](https://cli.github.com/):
 
+### RENOVATE_TOKEN: GitHub PAT permissions
+
+Renovate clones with the token, **pushes** update branches, and opens or updates **pull requests**. A read-only or metadata-only token can still “work” until the first `git push`, which then fails with **HTTP 403** (`Permission denied` / `unable to access`).
+
+GitHub publishes the same scope names for **classic PATs** as in [Scopes for OAuth apps](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps#available-scopes) (see the **Available scopes** table).
+
+**Classic PAT (tokens “classic”)**
+
+| Scope | When you need it |
+| --- | --- |
+| **`repo`** | Full read/write to **public and private** repositories you can access, including code. Use for **private** repos or when you want one broad scope. ([`repo`](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps#available-scopes)) |
+| **`public_repo`** | Read/write limited to **public** repositories only—narrower than `repo` when Renovate targets only a **public** fork (for example `YOUR_USER/notebooks`). ([`public_repo`](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps#available-scopes)) |
+| **`workflow`** | Required when commits change **GitHub Actions workflow** files under `.github/workflows/`. This repository enables the **`github-actions`** Renovate manager, so PRs often retarget action SHAs in workflows; without `workflow`, pushes that touch those files can be rejected. ([`workflow`](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps#available-scopes)) |
+
+For PRs from Renovate to run **GitHub Actions** checks on the fork, the token must be allowed to do that (the workflow already documents **`workflow`** on the classic PAT; org policies may still block workflows from forks).
+
+**Fine-grained PAT**
+
+1. Under **Repository access**, choose **Only select repositories** and include **exactly** the repo Renovate updates (for example your fork).
+2. Under **Repository permissions**, set at least:
+   - **Contents**: **Read and write** — push branches and commits (GitHub’s token UI labels this “Read and write”; the REST prefill parameter is `contents=write`). See [Managing your personal access tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) and the permissions table under **Repository Permissions** (`contents`, `pull_requests`, `workflows`).
+   - **Pull requests**: **Read and write** — create and update PRs.
+   - **Workflows**: **Write** (the only access level GitHub documents for this permission) — same reason as classic `workflow` when Renovate updates `.github/workflows/**`.
+3. Optional: **Issues**: **Read and write** — only if you rely on Renovate’s **dependency dashboard** (`dependencyDashboard`), which creates an issue.
+4. **Metadata** is read-only and always included.
+
+GitHub’s own “update code and open a PR” template pre-selects **`contents=write`**, **`pull_requests=write`**, and **`workflows=write`** ([link to token creation with those parameters](https://github.com/settings/personal-access-tokens/new?name=Core-loop+token&description=Write%20code%20and%20push%20it%20to%20main%21%20Includes%20permission%20to%20edit%20workflow%20files%20for%20Actions%20-%20remove%20%60workflows%3Awrite%60%20if%20you%20don%27t%20need%20to%20do%20that&contents=write&pull_requests=write&workflows=write)).
+
+Fine-grained PATs **cannot do everything** classic PATs can (for example some org/outside-collaborator and public-repo scenarios). See [Fine-grained personal access tokens limitations](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#fine-grained-personal-access-tokens-limitations). Renovate’s bot also documents tradeoffs (for example some GraphQL/Checks-related behavior) in [renovatebot/renovate discussions](https://github.com/renovatebot/renovate/discussions/25545).
+
 ```bash
-# PAT: classic `repo` + `workflow` (or fine-grained equivalent on this repo only).
+# PAT: classic — typically `public_repo` or `repo`, plus `workflow` (see table above).
+# Or fine-grained — Contents + Pull requests + Workflows (and optional Issues) on this repo only.
 # Prefer reading from a file or env var; do not commit the token.
 gh secret set RENOVATE_TOKEN --repo OWNER/REPO < pat-renovate.txt
 
@@ -121,6 +152,7 @@ Replace `OWNER/REPO` (for example `jiridanek/notebooks` on a fork or `opendatahu
 
 ### Self-hosted run log quirks (forks)
 
+- **HTTP 403 on `git push`** — The PAT can read the repo but cannot **write** contents (or **workflows** when workflow files change). Fix scopes or fine-grained permissions per **RENOVATE_TOKEN: GitHub PAT permissions** above; **Contents: Read-only** on a fine-grained token is a common cause.
 - **Private image lookups (`no-result`)** — The workflow merges pull-secret (and optional `quay.io/aipcc` login) into **`config.json` under `DOCKER_CONFIG`**, passes **`DOCKER_CONFIG`** via **`env-regex`**, and runs **`scripts/ci/docker_config_to_renovate_host_rules.py`** to set **`RENOVATE_HOST_RULES`** so the docker datasource uses explicit registry credentials (Renovate often still reports `no-result` for private tags when only `DOCKER_CONFIG` is present).
 - **`allowedCommands`, `inheritConfig`, `onboarding`, … “global only”** — Those keys exist for **MintMaker’s** merged global config. Self-hosted runs **warn** when they appear in repo `renovate.json5`; MintMaker continues to use them upstream. Harmless noise unless something actually fails.
 - **`matchBaseBranches` / `baseBranchPatterns`** — Same as upstream comment in `renovate.json5`: top-level `baseBranchPatterns` is avoided so MintMaker’s per-branch behavior is not overridden; local dry-runs may warn.
