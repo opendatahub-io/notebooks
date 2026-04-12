@@ -75,18 +75,6 @@
         "rebaseWhen": "behind-base-branch",
       },
       {
-        // Bundle refs are image:tag@sha256:… Renovate can propose both a digest
-        // bump (newValue still the tag, e.g. 0.1) and a tag bump (e.g. 0.1→0.3).
-        // branchify.ts dedupes by packageFile:depName:currentValue and logs
-        // "Ignoring upgrade collision" while dropping one. Prefer task version
-        // bumps; new tags ship with the correct digest for Konflux catalog tasks.
-        "description": "Tekton bundles: disable digest-only updates (avoid collision with tag bumps)",
-        "matchManagers": ["tekton"],
-        "matchDatasources": ["docker"],
-        "matchUpdateTypes": ["digest"],
-        "enabled": false,
-      },
-      {
         "matchManagers": [
           "gomod",
         ],

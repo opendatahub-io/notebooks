@@ -149,6 +149,29 @@ gh secret set AIPCC_QUAY_BOT_PASSWORD --repo OWNER/REPO < aipcc-password.txt
 
 Replace `OWNER/REPO` (for example `jiridanek/notebooks` on a fork or `opendatahub-io/notebooks` upstream). Use `gh auth refresh -s write:packages` if `gh secret set` fails on scope.
 
+### GitHub org ruleset: "File path is restricted" (422 on `POST /git/trees`)
+
+The `opendatahub-io` org has a **file path restriction** ruleset (managed in
+[`opendatahub-io/security-config`](https://github.com/opendatahub-io/security-config))
+that protects files like `semgrep.yaml`, `.coderabbit.yaml`, and `.gitleaksignore`
+from modification by non-bypass actors.
+
+Renovate's `pushFiles` sends the **entire repo tree** (via `listCommitTree`) to
+`POST /repos/{owner}/{repo}/git/trees` without `base_tree`. GitHub validates all
+file paths in the submitted tree — including unchanged protected files — and returns
+**422 "Repository rule violations found / File path is restricted"**, even when
+Renovate only changed unrestricted paths like `build-args/konflux.*.conf`.
+
+- **Upstream bug**: [renovatebot/renovate#42554](https://github.com/renovatebot/renovate/issues/42554)
+- **`platformCommit: "disabled"`** does NOT help — `commitFiles()` always calls `pushFiles()`
+- **Workaround**: ask the org admin (Ugo Giordano / `@U02AADEDP7B` in Slack
+  `#wg-openshift-ai-odh-github`) to add the Renovate PAT user (`ide-developer`)
+  as a **bypass actor** on the file path restriction ruleset. This was already done
+  for [`opendatahub-io/opendatahub-tests`](https://redhat-internal.slack.com/archives/C09BV0L6ULQ/p1773076687051249?thread_ts=1772554653.543679&cid=C09BV0L6ULQ).
+- **Proposed fix**: use `base_tree` + only changed files in `POST /git/trees` instead of
+  the full tree. A patched image is available at `quay.io/jdanek/renovate:43-fix42554`
+  (amd64 + arm64); to test, set `RENOVATE_IMAGE` in the workflow env.
+
 ### Self-hosted run log quirks (forks)
 
 - **HTTP 403 on `git push`** — The PAT can read the repo but cannot **write** contents (or **workflows** when workflow files change). Fix scopes or fine-grained permissions per **RENOVATE_TOKEN: GitHub PAT permissions** above; **Contents: Read-only** on a fine-grained token is a common cause.
