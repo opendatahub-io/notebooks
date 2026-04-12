@@ -37,11 +37,11 @@ on:  # yamllint disable-line rule:truthy
           - full
           - extract
         default: lookup
+      # https://docs.renovatebot.com/troubleshooting/#log-debug-levels
       log_level:
         description: Renovate log level
         type: choice
         options:
-          - trace
           - debug
           - info
           - warn
@@ -65,7 +65,7 @@ jobs:
     env:
       CONTAINER_ENGINE: docker
       # Pin with scripts/ci/renovate_run.py default; bump both when upgrading Renovate.
-      RENOVATE_IMAGE: ghcr.io/renovatebot/renovate:43
+      RENOVATE_IMAGE: quay.io/jdanek/renovate:43-fix42554
       DOCKER_CONFIG: /tmp/renovate-docker-config
     permissions:
       contents: read
@@ -74,6 +74,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 0
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
 
       - name: Install git-crypt
         uses: ./.github/actions/apt-install
@@ -108,7 +111,7 @@ jobs:
             -u "${AIPCC_USER}" --password-stdin
 
       - name: Export RENOVATE_HOST_RULES from Docker config
-        run: python3 scripts/ci/docker_config_to_renovate_host_rules.py >> "$GITHUB_ENV"
+        run: ./uv run scripts/ci/docker_config_to_renovate_host_rules.py >> "$GITHUB_ENV"
 
       - name: Set base branches per repository
         env:
@@ -130,5 +133,8 @@ jobs:
           LOG_LEVEL: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.log_level || 'info' }}
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_GIT_AUTHOR: "ide-developer <rhoai-ide-konflux@redhat.com>"
+          # Exclude tekton — MintMaker handles Tekton bundle updates with
+          # server-side migration scripts (allowedCommands) we don't have.
+          RENOVATE_ENABLED_MANAGERS: '["dockerfile","custom.regex","github-actions"]'
           RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
-        run: python3 scripts/ci/renovate_run.py remote
+        run: ./uv run scripts/ci/renovate_run.py remote
