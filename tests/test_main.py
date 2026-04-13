@@ -22,7 +22,7 @@ import packaging.version
 import pytest
 import yaml
 
-from manifests.tools.package_names import MANIFEST_LOWER_NAMES, MANIFEST_TO_PIP
+from manifests.tools.package_names import manifest_name_to_pip
 from tests import PROJECT_ROOT, manifests
 
 if TYPE_CHECKING:
@@ -286,12 +286,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                             # TODO(jdanek): figure out how to check rstudio version statically
                             continue
 
-                        if name in MANIFEST_TO_PIP:
-                            normalized_name = MANIFEST_TO_PIP[name]
-                        elif name in MANIFEST_LOWER_NAMES:
-                            normalized_name = name.lower()
-                        else:
-                            normalized_name = name
+                        normalized_name = manifest_name_to_pip(name)
 
                         # assert on name
 

@@ -357,7 +357,7 @@ def _git_show_text(rev: str, rel_path: str) -> str | None:
     return p.stdout
 
 
-def _normalized_pkg_name(manifest_name: str) -> str:
+def _translated_pkg_name(manifest_name: str) -> str:
     return manifest_name_to_pip(manifest_name)
 
 
@@ -477,7 +477,7 @@ def _update_tag_annotations(
         name = d.get("name")
         if not name:
             continue
-        norm = _normalized_pkg_name(name)
+        norm = _translated_pkg_name(name)
         pkg = pylock_pkgs.get(norm)
         if pkg is None:
             pkg = pylock_pkgs.get(canonicalize_name(norm))
