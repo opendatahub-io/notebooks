@@ -56,6 +56,12 @@ jobs:
           mkdir -p "$HOME/.docker"
           cp ci/secrets/pull-secret.json "$HOME/.docker/config.json"
 
+      - name: Configure Quay.io API auth for RHOAI namespace
+        if: secrets.RHOAI_QUAY_BOT_USERNAME != ''
+        run: |
+          QUAY_AUTH=$(echo -n "${{ secrets.RHOAI_QUAY_BOT_USERNAME }}:${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}" | base64)
+          echo "QUAY_AUTH=$QUAY_AUTH" >> "$GITHUB_ENV"
+
       - name: Validate manifest annotations against Quay.io Clair scan
         run: |
           uv run pytest tests/containers/manifest_validation_test.py::test_old_tag_annotations_match_quay -v

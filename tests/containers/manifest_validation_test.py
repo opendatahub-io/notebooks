@@ -31,6 +31,7 @@ import collections
 import dataclasses
 import json
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -712,7 +713,15 @@ def test_old_tag_annotations_match_image_content(
 
 
 def _get_quay_auth() -> str | None:
-    """Extract quay.io Basic auth from container registry config files."""
+    """Extract quay.io Basic auth from container registry config files.
+
+    Also checks the ``QUAY_AUTH`` environment variable (base64-encoded
+    ``user:password``), which takes precedence over config files.
+    """
+    env_auth = os.environ.get("QUAY_AUTH")
+    if env_auth:
+        return env_auth
+
     for path in [
         pathlib.Path.home() / ".docker" / "config.json",
         pathlib.Path.home() / ".config" / "containers" / "auth.json",
