@@ -61,6 +61,7 @@ _MANIFEST_TO_PIP: dict[str, str] = {
     "Sklearn-onnx": "skl2onnx",
     "Nvidia-CUDA-CU12-Bundle": "nvidia-cuda-runtime-cu12",
     "MySQL Connector/Python": "mysql-connector-python",
+    "ROCm-TensorFlow": "tensorflow-rocm",  # old name used in 2024.2 and earlier
     "TensorFlow-ROCm": "tensorflow-rocm",
 }
 
@@ -822,6 +823,14 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
         m = re.match(r"(\d+\.\d+)", py3_ver)
         if m:
             packages[f"rpm:python{m.group(1)}"] = py3_ver
+
+    # On RHEL 8 the Python 3.8 RPM is named "python38" (no dot).
+    # _resolve_software_version looks for "rpm:python3.8", so add an alias.
+    if "rpm:python38" in packages:
+        py38_ver = packages["rpm:python38"]
+        m = re.match(r"(\d+\.\d+)", py38_ver)
+        if m:
+            packages[f"rpm:python{m.group(1)}"] = py38_ver
 
     return packages
 
