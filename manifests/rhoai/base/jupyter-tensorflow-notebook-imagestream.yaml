@@ -298,14 +298,11 @@ spec:
         opendatahub.io/notebook-software: |
           [
             {"name":"CUDA","version":"11.4"},
-            {"name":"Python","version":"v3.8"},
-            {"name":"TensorFlow","version":"2.7"}
+            {"name":"Python","version":"v3.8"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
-            {"name":"TensorFlow","version":"2.7"},
-            {"name":"Tensorboard","version":"2.6"},
             {"name":"Boto3","version":"1.17"},
             {"name":"Kafka-Python","version":"2.0"},
             {"name":"Matplotlib","version":"3.4"},
