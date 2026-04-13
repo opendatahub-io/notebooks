@@ -753,11 +753,28 @@ def _image_ref_to_quay(image_ref: str) -> tuple[str, str]:
 def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     """Extract {normalized_name: version} from Quay.io Clair security scan.
 
-    Uses the Quay.io security API which provides per-image package data
-    from Clair's filesystem scan — no duplicate-resolution needed.
-    Requires ``skopeo`` on PATH for multi-arch resolution.
+    Clair scans each OCI layer independently, so the same package can appear
+    multiple times with different versions.  We resolve duplicates by
+    preferring the version from the topmost (last) layer, using the
+    ``AddedBy`` field (compressed layer digest) matched against the image
+    manifest's layer list.
+
+    Requires ``skopeo`` on PATH for multi-arch resolution and layer ordering.
     """
     image_ref = _resolve_amd64(image_ref)
+
+    # Get layer order from the image manifest for duplicate resolution.
+    # Clair's AddedBy matches the compressed layer digests from the manifest,
+    # not the uncompressed DiffIDs from the image config.
+    raw = subprocess.run(
+        ["skopeo", "inspect", "--raw", f"docker://{image_ref}"],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=30,
+    )
+    manifest = json.loads(raw.stdout)
+    layer_order: dict[str, int] = {l["digest"]: i for i, l in enumerate(manifest.get("layers", []))}
 
     repo, digest = _image_ref_to_quay(image_ref)
     url = f"https://quay.io/api/v1/repository/{repo}/manifest/{digest}/security?vulnerabilities=false"
@@ -773,7 +790,9 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
             raise RuntimeError(f"Clair scan not ready for {image_ref} (status={status})")
         raise RuntimeError(f"No features in Clair response for {image_ref}")
 
-    packages: dict[str, str] = {}
+    # Collect all entries keyed by both rpm: and normalized-pip forms,
+    # tracking layer index for disambiguation.
+    entries: dict[str, list[tuple[str, int]]] = collections.defaultdict(list)
     for feat in features:
         name = feat.get("Name", "")
         version = feat.get("Version", "")
@@ -784,10 +803,17 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
         if "github.com/" in name or ":" in name:
             continue
 
-        # Add as rpm:name (covers RPMs, CUDA toolkit packages, etc.)
-        packages[f"rpm:{name}"] = version
-        # Add as normalized pip name (covers pip packages)
-        packages[_normalize_pip_name(name)] = version
+        layer_idx = layer_order.get(feat.get("AddedBy", ""), -1)
+        entries[f"rpm:{name}"].append((version, layer_idx))
+        entries[_normalize_pip_name(name)].append((version, layer_idx))
+
+    # Resolve: for duplicates, prefer the version from the topmost layer.
+    packages: dict[str, str] = {}
+    for key, versions in entries.items():
+        if len(versions) == 1:
+            packages[key] = versions[0][0]
+        else:
+            packages[key] = max(versions, key=lambda v: v[1])[0]
 
     # On RHEL 9 the system Python 3.9 RPM is named "python3" (not "python39").
     # _resolve_software_version looks for "rpm:python3.9", so add an alias.
