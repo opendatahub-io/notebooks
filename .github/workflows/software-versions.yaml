@@ -39,11 +39,6 @@ jobs:
           packages: skopeo git-crypt
           update: 'false'
 
-      - name: Install cosign
-        run: |
-          curl -fsSL https://github.com/sigstore/cosign/releases/download/v2.5.0/cosign-linux-amd64 -o /usr/local/bin/cosign
-          chmod +x /usr/local/bin/cosign
-
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv
 
@@ -62,6 +57,6 @@ jobs:
           mkdir -p "$HOME/.docker"
           cp ci/secrets/pull-secret.json "$HOME/.docker/config.json"
 
-      - name: Validate manifest annotations against image SBOMs
+      - name: Validate manifest annotations against Quay.io Clair scan
         run: |
-          uv run pytest tests/containers/manifest_validation_test.py::test_old_tag_annotations_match_sbom -v
+          uv run pytest tests/containers/manifest_validation_test.py::test_old_tag_annotations_match_quay -v
