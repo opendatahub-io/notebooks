@@ -26,14 +26,15 @@ from pathlib import Path
 
 SCRIPTS_CI = Path(__file__).resolve().parent
 ROOT = SCRIPTS_CI.parent.parent
-REMOTE_DEFAULT_REPO = "jiridanek/notebooks"
-DEFAULT_RENOVATE_IMAGE = "ghcr.io/renovatebot/renovate:43"
+REMOTE_DEFAULT_REPO = "opendatahub-io/notebooks"
+DEFAULT_RENOVATE_IMAGE = "quay.io/jdanek/renovate:43-fix42554"
 DEFAULT_GIT_AUTHOR = "ide-developer <rhoai-ide-konflux@redhat.com>"
 
 OPTIONAL_ENV_PASSTHROUGH = (
     "LOG_FORMAT",
     "RENOVATE_TOKEN",
     "RENOVATE_BASE_BRANCHES",
+    "RENOVATE_ENABLED_MANAGERS",
     "RENOVATE_HOST_RULES",
     "RENOVATE_REPOSITORIES",
     "GITHUB_COM_TOKEN",
