@@ -60,6 +60,7 @@ jobs:
         if: env.RHOAI_QUAY_BOT_USERNAME != ''
         run: |
           QUAY_AUTH=$(echo -n "${RHOAI_QUAY_BOT_USERNAME}:${RHOAI_QUAY_BOT_PASSWORD}" | base64 -w 0)
+          echo "::add-mask::$QUAY_AUTH"
           echo "QUAY_AUTH=$QUAY_AUTH" >> "$GITHUB_ENV"
         env:
           RHOAI_QUAY_BOT_USERNAME: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
