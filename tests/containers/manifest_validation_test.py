@@ -32,6 +32,7 @@ import dataclasses
 import json
 import logging
 import os
+import pathlib
 import re
 import shutil
 import subprocess
@@ -45,8 +46,6 @@ import pytest
 import yaml
 
 from tests import PROJECT_ROOT
-
-import pathlib
 
 if TYPE_CHECKING:
     import pytest_subtests
@@ -204,7 +203,7 @@ def _resolve_amd64(image_ref: str) -> str:
             None,
         )
         if amd64 is None:
-            pytest.skip(f"No amd64 manifest in {image_ref}")
+            raise RuntimeError(f"No amd64 manifest in {image_ref}")
         base = image_ref.rsplit("@", 1)[0]
         return f"{base}@{amd64}"
     return image_ref
@@ -215,9 +214,7 @@ def _resolve_amd64(image_ref: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _packages_from_sbom(
-    image_ref: str, *, source_hint: str = "", python_version: str = ""
-) -> dict[str, str]:
+def _packages_from_sbom(image_ref: str, *, source_hint: str = "", python_version: str = "") -> dict[str, str]:
     """Extract {normalized_name: version} from the SBOM attached to *image_ref*.
 
     For multi-arch manifest lists, resolves the amd64 image first.
@@ -301,9 +298,7 @@ def _resolve_pypi_duplicates(
         # Step 1: filter by Python version
         if python_version:
             py_filtered = [
-                (v, s)
-                for v, s in candidates
-                if f"python-{python_version}" in s or f"python{python_version}" in s
+                (v, s) for v, s in candidates if f"python-{python_version}" in s or f"python{python_version}" in s
             ]
             if py_filtered:
                 candidates = py_filtered
@@ -733,7 +728,7 @@ def _get_quay_auth() -> str | None:
             auth = config.get("auths", {}).get("quay.io", {}).get("auth")
             if auth:
                 return auth
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             continue
     return None
 
@@ -861,8 +856,14 @@ def test_old_tag_annotations_match_quay(
         _LOG.info(f"Fetching Quay packages for {t.is_name} tag {t.tag_name}: {t.image_ref}")
         try:
             actual_packages = _packages_from_quay(t.image_ref, quay_auth)
-        except (RuntimeError, ValueError, urllib.error.URLError, json.JSONDecodeError,
-                subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        except (
+            RuntimeError,
+            ValueError,
+            urllib.error.URLError,
+            json.JSONDecodeError,
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+        ) as exc:
             with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Quay fetch"):
                 pytest.fail(f"Failed to fetch Quay packages for {t.image_ref}: {exc}")
             continue
