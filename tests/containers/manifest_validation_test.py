@@ -34,9 +34,11 @@ import logging
 import re
 import shutil
 import subprocess
+import urllib.error
 import urllib.request
 from typing import TYPE_CHECKING
 
+import packaging.utils
 import packaging.version
 import pytest
 import yaml
@@ -98,7 +100,6 @@ _MANIFEST_LOWER_NAMES: frozenset[str] = frozenset(
         "Torch",
         "Transformers",
         "TrustyAI",
-        "TensorFlow-ROCm",
         "MLflow",
     }
 )
@@ -153,7 +154,7 @@ def _manifest_name_to_pip(name: str) -> str:
 
 def _normalize_pip_name(name: str) -> str:
     """Normalize pip package name per PEP 503 (lowercase, hyphens)."""
-    return re.sub(r"[-_.]+", "-", name).lower()
+    return packaging.utils.canonicalize_name(name)
 
 
 def _parse_params_env(env_path: pathlib.Path) -> dict[str, str]:
@@ -323,7 +324,8 @@ def _resolve_pypi_duplicates(
 
         # Step 4: highest version tie-breaker
         try:
-            candidates.sort(
+            candidates = sorted(
+                candidates,
                 key=lambda e: packaging.version.Version(e[0].split("+")[0]),
                 reverse=True,
             )
@@ -563,15 +565,15 @@ def _compare_manifest_vs_actual(
         if is_software:
             if manifest_name in _SKIP_SOFTWARE:
                 continue
+            lookup = manifest_name
             actual_version_str = _resolve_software_version(dep, actual_packages)
         else:
             if manifest_name in _NON_PIP_PACKAGES:
                 continue
-            pip_name = _normalize_pip_name(_manifest_name_to_pip(manifest_name))
-            actual_version_str = actual_packages.get(pip_name)
+            lookup = _normalize_pip_name(_manifest_name_to_pip(manifest_name))
+            actual_version_str = actual_packages.get(lookup)
 
         if actual_version_str is None:
-            lookup = manifest_name if is_software else _normalize_pip_name(_manifest_name_to_pip(manifest_name))
             with subtests.test(msg=f"{is_name} tag {tag_name}: {manifest_name} not found"):
                 pytest.fail(
                     f"Manifest lists {manifest_name} ({lookup}) v{manifest_version} but it was not found in the image"
@@ -815,7 +817,8 @@ def test_old_tag_annotations_match_quay(
         _LOG.info(f"Fetching Quay packages for {t.is_name} tag {t.tag_name}: {t.image_ref}")
         try:
             actual_packages = _packages_from_quay(t.image_ref, quay_auth)
-        except Exception as exc:
+        except (RuntimeError, ValueError, urllib.error.URLError, json.JSONDecodeError,
+                subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
             with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Quay fetch"):
                 pytest.fail(f"Failed to fetch Quay packages for {t.image_ref}: {exc}")
             continue
