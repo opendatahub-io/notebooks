@@ -27,14 +27,20 @@ incorrectly bumped the N-1 annotation to 5.0, even though the N-1 image still ha
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import json
 import logging
+import os
+import pathlib
 import re
 import shutil
 import subprocess
+import urllib.error
+import urllib.request
 from typing import TYPE_CHECKING
 
+import packaging.utils
 import packaging.version
 import pytest
 import yaml
@@ -42,20 +48,20 @@ import yaml
 from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
-    import pathlib
-
     import pytest_subtests
 
 _LOG = logging.getLogger(__name__)
 
 # Translation from manifest display names to pip package names.
 _MANIFEST_TO_PIP: dict[str, str] = {
+    "Elyra": "elyra-server",  # old (pre-odh-elyra) package name in 2023.x images
     "LLM-Compressor": "llmcompressor",
     "PyTorch": "torch",
     "ROCm-PyTorch": "torch",
     "Sklearn-onnx": "skl2onnx",
     "Nvidia-CUDA-CU12-Bundle": "nvidia-cuda-runtime-cu12",
     "MySQL Connector/Python": "mysql-connector-python",
+    "ROCm-TensorFlow": "tensorflow-rocm",  # old name used in 2024.2 and earlier
     "TensorFlow-ROCm": "tensorflow-rocm",
 }
 
@@ -95,10 +101,47 @@ _MANIFEST_LOWER_NAMES: frozenset[str] = frozenset(
         "Torch",
         "Transformers",
         "TrustyAI",
-        "TensorFlow-ROCm",
         "MLflow",
     }
 )
+
+
+def _imagestream_to_source_hint(is_name: str) -> str:
+    """Derive SBOM sourceInfo path fragment from imagestream filename.
+
+    SBOMs aggregate packages from a source-repo scan (all Pipfile.lock files in the
+    monorepo) and an image-filesystem scan.  When the same pypi package appears in
+    multiple Pipfile.lock files with different versions, we prefer the one whose
+    sourceInfo matches the notebook type implied by the imagestream name.
+    """
+    stem = is_name.removesuffix("-imagestream.yaml")
+    if stem.startswith("jupyter-"):
+        middle = stem.removeprefix("jupyter-").removesuffix("-notebook")
+        middle = middle.replace("pytorch-llmcompressor", "pytorch+llmcompressor")
+        middle = middle.removesuffix("-gpu")
+        if middle.startswith("rocm-"):
+            middle = middle.replace("rocm-", "rocm/", 1)
+        return f"/jupyter/{middle}/"
+    if stem.startswith("code-server"):
+        return "/codeserver/"
+    if stem.startswith("rstudio"):
+        return "/rstudio/"
+    if stem.startswith("runtime-"):
+        middle = stem.removeprefix("runtime-")
+        middle = middle.replace("pytorch-llmcompressor", "pytorch+llmcompressor")
+        return f"/runtimes/{middle}/"
+    return ""
+
+
+def _extract_python_version(image_ref: str) -> str:
+    """Extract Python minor version from image reference.
+
+    Example: ``...py311...`` -> ``3.11``, ``...py312...`` -> ``3.12``.
+    """
+    m = re.search(r"py(\d)(\d+)", image_ref)
+    if m:
+        return f"{m.group(1)}.{m.group(2)}"
+    return ""
 
 
 def _manifest_name_to_pip(name: str) -> str:
@@ -112,7 +155,7 @@ def _manifest_name_to_pip(name: str) -> str:
 
 def _normalize_pip_name(name: str) -> str:
     """Normalize pip package name per PEP 503 (lowercase, hyphens)."""
-    return re.sub(r"[-_.]+", "-", name).lower()
+    return packaging.utils.canonicalize_name(name)
 
 
 def _parse_params_env(env_path: pathlib.Path) -> dict[str, str]:
@@ -136,17 +179,16 @@ def _parse_params_env(env_path: pathlib.Path) -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Package extraction backends
+# Multi-arch resolution
 # ---------------------------------------------------------------------------
 
 
-def _packages_from_sbom(image_ref: str) -> dict[str, str]:
-    """Extract {normalized_name: version} from the SBOM attached to *image_ref*.
+def _resolve_amd64(image_ref: str) -> str:
+    """Resolve a multi-arch manifest list to the amd64 image digest.
 
-    For multi-arch manifest lists, resolves the amd64 image first.
-    Requires ``cosign`` and ``skopeo`` on PATH.
+    If *image_ref* already points to a single-arch image, returns it unchanged.
+    Requires ``skopeo`` on PATH.
     """
-    # Resolve multi-arch → amd64 digest
     raw = subprocess.run(
         ["skopeo", "inspect", "--raw", f"docker://{image_ref}"],
         capture_output=True,
@@ -161,10 +203,30 @@ def _packages_from_sbom(image_ref: str) -> dict[str, str]:
             None,
         )
         if amd64 is None:
-            pytest.skip(f"No amd64 manifest in {image_ref}")
-        # Replace digest in the ref
+            raise RuntimeError(f"No amd64 manifest in {image_ref}")
         base = image_ref.rsplit("@", 1)[0]
-        image_ref = f"{base}@{amd64}"
+        return f"{base}@{amd64}"
+    return image_ref
+
+
+# ---------------------------------------------------------------------------
+# Package extraction backends
+# ---------------------------------------------------------------------------
+
+
+def _packages_from_sbom(image_ref: str, *, source_hint: str = "", python_version: str = "") -> dict[str, str]:
+    """Extract {normalized_name: version} from the SBOM attached to *image_ref*.
+
+    For multi-arch manifest lists, resolves the amd64 image first.
+    Requires ``cosign`` and ``skopeo`` on PATH.
+
+    SBOMs for workbench images are generated by squashing two Syft runs (source
+    repo scan + image filesystem scan).  The source scan picks up every
+    Pipfile.lock in the monorepo, so the same pypi package can appear multiple
+    times with different versions.  *source_hint* and *python_version* are used
+    to disambiguate duplicates — see :func:`_resolve_pypi_duplicates`.
+    """
+    image_ref = _resolve_amd64(image_ref)
 
     result = subprocess.run(
         ["cosign", "download", "sbom", image_ref],
@@ -176,6 +238,8 @@ def _packages_from_sbom(image_ref: str) -> dict[str, str]:
     sbom = json.loads(result.stdout)
 
     packages: dict[str, str] = {}
+    pypi_entries: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+
     for pkg in sbom.get("packages", []):
         refs = pkg.get("externalRefs", [])
         purl = next(
@@ -187,7 +251,8 @@ def _packages_from_sbom(image_ref: str) -> dict[str, str]:
         if not name or not version or version == "UNKNOWN":
             continue
         if "pkg:pypi/" in purl:
-            packages[_normalize_pip_name(name)] = version
+            source_info = pkg.get("sourceInfo", "")
+            pypi_entries[_normalize_pip_name(name)].append((version, source_info))
         elif "pkg:rpm/" in purl:
             # Store RPM packages for software annotation validation
             # e.g. python3.12=3.12.12-1.el9, cuda-nvcc-12-8=12.8.93-1, rocm-core=6.4.3...
@@ -199,7 +264,73 @@ def _packages_from_sbom(image_ref: str) -> dict[str, str]:
             # keep whichever entry isn't 0.0.0 (dev placeholder).
             if key not in packages or packages[key] == "0.0.0":
                 packages[key] = version
+
+    packages.update(_resolve_pypi_duplicates(pypi_entries, source_hint, python_version))
     return packages
+
+
+def _resolve_pypi_duplicates(
+    pypi_entries: dict[str, list[tuple[str, str]]],
+    source_hint: str,
+    python_version: str,
+) -> dict[str, str]:
+    """Pick the best version for each pypi package when the SBOM has duplicates.
+
+    Resolution chain (first match wins):
+
+    1. **Python version filter** — drop entries whose ``sourceInfo`` refers to
+       a different Python minor version (e.g. keep ``python-3.11``, drop
+       ``python-3.12``).
+    2. **Source-hint match** — prefer the entry whose ``sourceInfo`` contains
+       *source_hint* (e.g. ``/jupyter/trustyai/``).
+    3. **Datascience hierarchy fallback** — prefer ``/jupyter/datascience/``
+       (common parent for all jupyter notebook types).
+    4. **Highest version** — heuristic tie-breaker.
+    """
+    result: dict[str, str] = {}
+    for name, entries in pypi_entries.items():
+        if len(entries) == 1:
+            result[name] = entries[0][0]
+            continue
+
+        candidates = entries
+
+        # Step 1: filter by Python version
+        if python_version:
+            py_filtered = [
+                (v, s) for v, s in candidates if f"python-{python_version}" in s or f"python{python_version}" in s
+            ]
+            if py_filtered:
+                candidates = py_filtered
+        if len(candidates) == 1:
+            result[name] = candidates[0][0]
+            continue
+
+        # Step 2: prefer source matching the notebook type
+        if source_hint:
+            matching = [v for v, s in candidates if source_hint in s]
+            if matching:
+                result[name] = matching[0]
+                continue
+
+        # Step 3: hierarchy fallback — prefer datascience parent
+        ds = [v for v, s in candidates if "/jupyter/datascience/" in s]
+        if ds:
+            result[name] = ds[0]
+            continue
+
+        # Step 4: highest version tie-breaker
+        try:
+            candidates = sorted(
+                candidates,
+                key=lambda e: packaging.version.Version(e[0].split("+")[0]),
+                reverse=True,
+            )
+        except packaging.version.InvalidVersion:
+            pass
+        result[name] = candidates[0][0]
+
+    return result
 
 
 def _exec_or_none(container: object, cmd: list[str]) -> str | None:
@@ -431,15 +562,15 @@ def _compare_manifest_vs_actual(
         if is_software:
             if manifest_name in _SKIP_SOFTWARE:
                 continue
+            lookup = manifest_name
             actual_version_str = _resolve_software_version(dep, actual_packages)
         else:
             if manifest_name in _NON_PIP_PACKAGES:
                 continue
-            pip_name = _normalize_pip_name(_manifest_name_to_pip(manifest_name))
-            actual_version_str = actual_packages.get(pip_name)
+            lookup = _normalize_pip_name(_manifest_name_to_pip(manifest_name))
+            actual_version_str = actual_packages.get(lookup)
 
         if actual_version_str is None:
-            lookup = manifest_name if is_software else _normalize_pip_name(_manifest_name_to_pip(manifest_name))
             with subtests.test(msg=f"{is_name} tag {tag_name}: {manifest_name} not found"):
                 pytest.fail(
                     f"Manifest lists {manifest_name} ({lookup}) v{manifest_version} but it was not found in the image"
@@ -516,7 +647,22 @@ def test_old_tag_annotations_match_sbom(
     subtests: pytest_subtests.SubTests,
     base_dir: pathlib.Path,
 ):
-    """Fast: validate N-1 tag annotations against SBOM artifacts (cosign + skopeo, no image pull)."""
+    """Fast: validate N-1 tag annotations against SBOM artifacts (cosign + skopeo, no image pull).
+
+    The SBOM is generated by squashing two Syft runs: a source-repo scan (all
+    Pipfile.lock files in the monorepo) and an image-filesystem scan.  The
+    source scan produces the bulk of pypi entries; the image scan contributes
+    RPMs and a handful of pip packages whose dist-info was not already covered
+    by a lockfile (site-packages entries are mostly missing from the scan).
+
+    Because every Pipfile.lock in the monorepo ends up in the SBOM, the same
+    pip package often appears multiple times with different versions.
+    ``_resolve_pypi_duplicates`` disambiguates using the Python version and
+    notebook-type source hint, but the heuristic is not perfect — for some
+    packages it picks a version that differs from what is actually installed
+    (e.g. tensorboard in pytorch images).  Prefer ``test_old_tag_annotations_match_quay``
+    when an authoritative per-image check is needed.
+    """
     if not shutil.which("cosign") or not shutil.which("skopeo"):
         pytest.skip("cosign and/or skopeo not found on PATH")
 
@@ -526,8 +672,10 @@ def test_old_tag_annotations_match_sbom(
             _LOG.info(f"Skipping pre-Konflux image (no SBOM): {t.image_ref}")
             continue
 
+        source_hint = _imagestream_to_source_hint(t.is_name)
+        python_version = _extract_python_version(t.image_ref)
         try:
-            actual_packages = _packages_from_sbom(t.image_ref)
+            actual_packages = _packages_from_sbom(t.image_ref, source_hint=source_hint, python_version=python_version)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
             with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: SBOM fetch"):
                 pytest.fail(f"Failed to fetch SBOM for {t.image_ref}: {exc}")
@@ -552,3 +700,175 @@ def test_old_tag_annotations_match_image_content(
         actual_packages = _packages_from_pip_list(t.image_ref, cleanup=cleanup)
         _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, t.python_deps, actual_packages)
         _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, t.software, actual_packages, is_software=True)
+
+
+# ---------------------------------------------------------------------------
+# Quay.io Clair backend
+# ---------------------------------------------------------------------------
+
+
+def _get_quay_auth() -> str | None:
+    """Extract quay.io Basic auth from container registry config files.
+
+    Also checks the ``QUAY_AUTH`` environment variable (base64-encoded
+    ``user:password``), which takes precedence over config files.
+    """
+    env_auth = os.environ.get("QUAY_AUTH")
+    if env_auth:
+        return env_auth
+
+    for path in [
+        pathlib.Path.home() / ".docker" / "config.json",
+        pathlib.Path.home() / ".config" / "containers" / "auth.json",
+    ]:
+        if not path.exists():
+            continue
+        try:
+            config = json.loads(path.read_text())
+            auth = config.get("auths", {}).get("quay.io", {}).get("auth")
+            if auth:
+                return auth
+        except json.JSONDecodeError, OSError:
+            continue
+    return None
+
+
+def _image_ref_to_quay(image_ref: str) -> tuple[str, str]:
+    """Map an image reference to a Quay.io (repo, digest) pair.
+
+    Handles ``registry.redhat.io/rhoai/X@sha256:abc``,
+    ``quay.io/modh/X@sha256:abc``, etc.
+    """
+    # Strip the registry prefix and split off the digest
+    ref, _, digest = image_ref.partition("@")
+    if not digest:
+        raise ValueError(f"Image reference has no digest: {image_ref}")
+
+    # registry.redhat.io/rhoai/X → rhoai/X (same repo name on quay.io)
+    if ref.startswith("registry.redhat.io/"):
+        repo = ref.removeprefix("registry.redhat.io/")
+    elif ref.startswith("quay.io/"):
+        repo = ref.removeprefix("quay.io/")
+    else:
+        raise ValueError(f"Cannot map to quay.io: {image_ref}")
+
+    return repo, digest
+
+
+def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
+    """Extract {normalized_name: version} from Quay.io Clair security scan.
+
+    Clair scans each OCI layer independently, so the same package can appear
+    multiple times with different versions.  We resolve duplicates by
+    preferring the version from the topmost (last) layer, using the
+    ``AddedBy`` field (compressed layer digest) matched against the image
+    manifest's layer list.
+
+    Requires ``skopeo`` on PATH for multi-arch resolution and layer ordering.
+    """
+    image_ref = _resolve_amd64(image_ref)
+
+    # Get layer order from the image manifest for duplicate resolution.
+    # Clair's AddedBy matches the compressed layer digests from the manifest,
+    # not the uncompressed DiffIDs from the image config.
+    raw = subprocess.run(
+        ["skopeo", "inspect", "--raw", f"docker://{image_ref}"],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=30,
+    )
+    manifest = json.loads(raw.stdout)
+    layer_order: dict[str, int] = {layer["digest"]: i for i, layer in enumerate(manifest.get("layers", []))}
+
+    repo, digest = _image_ref_to_quay(image_ref)
+    url = f"https://quay.io/api/v1/repository/{repo}/manifest/{digest}/security?vulnerabilities=false"
+
+    req = urllib.request.Request(url, headers={"Authorization": f"Basic {quay_auth}"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        data = json.loads(resp.read())
+
+    features = data.get("data", {}).get("Layer", {}).get("Features", [])
+    if not features:
+        status = data.get("status")
+        if status in {"queued", "scanning"}:
+            raise RuntimeError(f"Clair scan not ready for {image_ref} (status={status})")
+        raise RuntimeError(f"No features in Clair response for {image_ref}")
+
+    # Collect all entries keyed by both rpm: and normalized-pip forms,
+    # tracking layer index for disambiguation.
+    entries: dict[str, list[tuple[str, int]]] = collections.defaultdict(list)
+    for feat in features:
+        name = feat.get("Name", "")
+        version = feat.get("Version", "")
+        if not name or not version:
+            continue
+
+        # Skip Go modules and Java artifacts
+        if "github.com/" in name or ":" in name:
+            continue
+
+        layer_idx = layer_order.get(feat.get("AddedBy", ""), -1)
+        entries[f"rpm:{name}"].append((version, layer_idx))
+        entries[_normalize_pip_name(name)].append((version, layer_idx))
+
+    # Resolve: for duplicates, prefer the version from the topmost layer.
+    packages: dict[str, str] = {}
+    for key, versions in entries.items():
+        if len(versions) == 1:
+            packages[key] = versions[0][0]
+        else:
+            packages[key] = max(versions, key=lambda v: v[1])[0]
+
+    # On RHEL 9 the system Python 3.9 RPM is named "python3" (not "python39").
+    # _resolve_software_version looks for "rpm:python3.9", so add an alias.
+    if "rpm:python3" in packages:
+        py3_ver = packages["rpm:python3"]
+        m = re.match(r"(\d+\.\d+)", py3_ver)
+        if m:
+            packages[f"rpm:python{m.group(1)}"] = py3_ver
+
+    # On RHEL 8 the Python 3.8 RPM is named "python38" (no dot).
+    # _resolve_software_version looks for "rpm:python3.8", so add an alias.
+    if "rpm:python38" in packages:
+        py38_ver = packages["rpm:python38"]
+        m = re.match(r"(\d+\.\d+)", py38_ver)
+        if m:
+            packages[f"rpm:python{m.group(1)}"] = py38_ver
+
+    return packages
+
+
+@pytest.mark.manifest_validation
+@pytest.mark.parametrize("base_dir", _BASE_DIRS, ids=["odh", "rhoai"])
+def test_old_tag_annotations_match_quay(
+    subtests: pytest_subtests.SubTests,
+    base_dir: pathlib.Path,
+):
+    """Validate N-1 tag annotations against Quay.io Clair security scan data."""
+    quay_auth = _get_quay_auth()
+    if quay_auth is None:
+        pytest.skip("No quay.io auth found in ~/.docker/config.json or ~/.config/containers/auth.json")
+    if not shutil.which("skopeo"):
+        pytest.skip("skopeo not found on PATH")
+
+    for t in _iter_old_tags(base_dir):
+        _LOG.info(f"Fetching Quay packages for {t.is_name} tag {t.tag_name}: {t.image_ref}")
+        try:
+            actual_packages = _packages_from_quay(t.image_ref, quay_auth)
+        except (
+            RuntimeError,
+            ValueError,
+            urllib.error.URLError,
+            json.JSONDecodeError,
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+        ) as exc:
+            with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Quay fetch"):
+                pytest.fail(f"Failed to fetch Quay packages for {t.image_ref}: {exc}")
+            continue
+
+        _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, t.python_deps, actual_packages)
+        # Clair cannot resolve code-server (npm package with 0.0.0 dev version).
+        quay_software = [sw for sw in t.software if sw["name"] != "code-server"]
+        _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, quay_software, actual_packages, is_software=True)
