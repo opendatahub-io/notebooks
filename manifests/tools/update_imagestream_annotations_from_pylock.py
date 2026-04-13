@@ -12,9 +12,11 @@ For each workbench ImageStream tag, resolves the git tree-ish as:
 Those SHAs match ``manifests/tools/generate_kustomization.py`` / ConfigMap keys.
 
 Dependency *names* and ordering are taken from the existing manifest; versions are updated from
-the resolved lockfile at each ref (same translation rules as ``tests/test_main.py``). Older commits
-may only have ``requirements.txt`` (e.g. ``jupyter/rocm/tensorflow/.../requirements.txt``) instead of
-``pylock.toml`` / ``uv.lock.d/pylock.*.toml``; those are parsed as pinned PEP 508 requirements.
+the resolved lockfile at each ref (same translation rules as ``tests/test_main.py``). Older commits may only have ``requirements.txt`` or flavor files such as ``requirements.cpu.txt``
+instead of ``pylock.toml`` / ``uv.lock.d/pylock.*.toml``; those are parsed as pinned PEP 508 requirements.
+Image directories are discovered via ``pyproject.toml`` or those requirements files at the
+``<os>-python-<ver>/`` root. If that Python version exists only in git history, the path is derived
+from a sibling on-disk tree so ``git show <sha>:…`` can load lockfiles.
 
 JSON annotations are written as YAML literal blocks (``|``) with the same bracket layout as
 ``opendatahub-io`` / ``mtchoum1`` ImageStreams: opening ``[`` on the first line of the block, two
@@ -177,28 +179,43 @@ def _manifests_variant_dir(variant: str) -> Path:
     return ROOT / "manifests" / variant
 
 
-def _iter_candidate_dirs() -> list[Path]:
-    globs = [
-        ROOT.glob("jupyter/**/pyproject.toml"),
-        ROOT.glob("codeserver/**/pyproject.toml"),
-        ROOT.glob("rstudio/**/pyproject.toml"),
-    ]
+def _discover_candidate_dirs() -> list[Path]:
+    """Discover ``<os>-python-<ver>/`` trees via ``pyproject.toml`` or requirements lockfiles.
+
+    Marker filenames match what :func:`pylock_candidate_rel_paths` may read (no unrelated
+    ``requirements.*.txt`` such as dev/build-only files).
+    """
+    marker_names = (
+        "pyproject.toml",
+        "requirements.txt",
+        "requirements.cpu.txt",
+        "requirements.cuda.txt",
+        "requirements.rocm.txt",
+    )
+    roots = ("jupyter", "codeserver", "rstudio")
+    seen: set[Path] = set()
     out: list[Path] = []
-    for g in globs:
-        for pyproject in g:
-            d = pyproject.parent
-            if _is_image_directory(d):
+    for root in roots:
+        for name in marker_names:
+            for marker in ROOT.glob(f"{root}/**/{name}"):
+                d = marker.parent
+                if not _is_image_directory(d):
+                    continue
+                key = d.resolve()
+                if key in seen:
+                    continue
+                seen.add(key)
                 out.append(d)
     return out
 
 
-def _dirs_for_workbench(manifests_dir: Path, wb: Workbench) -> list[Path]:
+def _dirs_for_workbench(manifests_dir: Path, wb: Workbench, candidate_dirs: list[Path]) -> list[Path]:
     target = (manifests_dir / "base" / wb.resource_file).resolve()
     if wb.resource_file in _RSTUDIO_NOTEBOOK_RESOURCES:
-        return [d for d in _iter_candidate_dirs() if "rstudio" in d.parts]
+        return [d for d in candidate_dirs if "rstudio" in d.parts]
 
     found: list[Path] = []
-    for d in _iter_candidate_dirs():
+    for d in candidate_dirs:
         if not _workbench_dir_consistent_with_rocm_policy(wb, d):
             continue
         try:
@@ -216,32 +233,63 @@ def _dirs_for_workbench(manifests_dir: Path, wb: Workbench) -> list[Path]:
     return found
 
 
-def _pick_dir_for_base_key(candidates: list[Path], base_key: str) -> Path | None:
+def notebook_dirname_from_base_key(base_key: str) -> str | None:
+    """Return ``<os>-python-<major.minor>`` when ``base_key`` encodes it (e.g. ``...-py311-ubi9``)."""
+    m_os = re.search(r"-py(\d)(\d+)-([^-]+)(?:$|-)", base_key)
+    if not m_os:
+        return None
+    py = f"{m_os.group(1)}.{m_os.group(2)}"
+    return f"{m_os.group(3)}-python-{py}"
+
+
+def pick_notebook_dir_for_base_key(candidates: list[Path], base_key: str) -> Path | None:
+    """Return an on-disk notebook tree path when it exists for this tag's Python/OS."""
     if not candidates:
         return None
-    if len(candidates) == 1:
-        return candidates[0]
 
-    m_os = re.search(r"-py(\d)(\d+)-(c9s|rhel9|ubi9|ubi8)(?:$|-)", base_key)
-    if m_os:
-        py = f"{m_os.group(1)}.{m_os.group(2)}"
-        os_flavor = m_os.group(3)
-        want = f"{os_flavor}-python-{py}"
+    want = notebook_dirname_from_base_key(base_key)
+    if want is not None:
         for d in candidates:
             if d.name == want:
                 return d
         return None
 
     m = re.search(r"-py(\d)(\d+)-", base_key)
-    if not m:
+    if m:
+        py = f"{m.group(1)}.{m.group(2)}"
+        matching = [d for d in candidates if f"python-{py}" in d.name]
+        if len(matching) == 1:
+            return matching[0]
+        if len(matching) > 1:
+            return None
         return None
-    py = f"{m.group(1)}.{m.group(2)}"
-    matching = [d for d in candidates if f"python-{py}" in d.name]
-    if len(matching) == 1:
-        return matching[0]
-    if len(matching) > 1:
+
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def resolve_notebook_directory(candidates: list[Path], base_key: str) -> Path | None:
+    """Resolve the notebook tree path for lockfile lookup (worktree or ``git show``).
+
+    Prefer an on-disk ``<os>-python-<ver>/`` directory. If it is missing locally but another Python
+    tree exists for the same ImageStream (e.g. only ``3.12`` on disk, tag is ``py311``), synthesize
+    ``…/<os>-python-3.11/`` from a sibling's parent so ``git show <commit>:jupyter/.../ubi9-python-3.11/…``
+    can still succeed.
+    """
+    if not candidates:
         return None
-    return None
+    picked = pick_notebook_dir_for_base_key(candidates, base_key)
+    if picked is not None:
+        return picked
+    want = notebook_dirname_from_base_key(base_key)
+    if want is None:
+        return None
+    os_prefix, _, _ = want.partition("-python-")
+    if os_prefix:
+        for d in candidates:
+            if d.name.startswith(f"{os_prefix}-python-"):
+                return d.with_name(want)
+        return None
+    return candidates[0].with_name(want)
 
 
 def _pylock_kind_from_tag(wb_resource_file: str, base_key: str) -> str:
@@ -263,14 +311,16 @@ def _pylock_kind_from_tag(wb_resource_file: str, base_key: str) -> str:
     return "cpu"
 
 
-def _pylock_candidate_rel_paths(notebook_dir: Path, kind: str) -> list[str]:
-    """Paths to try with ``git show`` (``uv.lock.d``, ``pylock.toml``, then legacy ``requirements.txt``)."""
+def pylock_candidate_rel_paths(notebook_dir: Path, kind: str) -> list[str]:
+    """Paths to try: pylock TOMLs, ``requirements.<kind>.txt``, then ``requirements.txt``."""
     rel_uv = notebook_dir / "uv.lock.d" / f"pylock.{kind}.toml"
     rel_legacy = notebook_dir / "pylock.toml"
+    rel_req_kind = notebook_dir / f"requirements.{kind}.txt"
     rel_req = notebook_dir / "requirements.txt"
     out: list[str] = [
         str(rel_uv.relative_to(ROOT)),
         str(rel_legacy.relative_to(ROOT)),
+        str(rel_req_kind.relative_to(ROOT)),
         str(rel_req.relative_to(ROOT)),
     ]
     seen: set[str] = set()
@@ -418,8 +468,9 @@ def _parse_requirements_txt_packages(text: str, python_minor: str) -> dict[str, 
     return packages
 
 
-def _load_lockfile_packages(text: str, source_rel_path: str, python_minor: str) -> dict[str, dict[str, Any]]:
-    if Path(source_rel_path).name == "requirements.txt":
+def load_packages_from_lockfile(text: str, source_rel_path: str, python_minor: str) -> dict[str, dict[str, Any]]:
+    name = Path(source_rel_path).name
+    if name == "requirements.txt" or (name.startswith("requirements.") and name.endswith(".txt")):
         return _parse_requirements_txt_packages(text, python_minor)
     return _load_pylock_packages(text, python_minor)
 
@@ -530,8 +581,9 @@ def run_variant(variant: str, dry_run: bool) -> int:
 
     changed = 0
     lockfile_errors: list[str] = []
+    candidate_dirs = _discover_candidate_dirs()
     for wb in workbenches:
-        candidates = _dirs_for_workbench(manifests_dir, wb)
+        candidates = _dirs_for_workbench(manifests_dir, wb, candidate_dirs)
         path = base / wb.resource_file
         if not path.is_file():
             continue
@@ -545,12 +597,17 @@ def run_variant(variant: str, dry_run: bool) -> int:
             if idx >= len(tags):
                 break
             sha = _sha_for_tag(base_key, suffix, latest, released)
-            nb_dir = _pick_dir_for_base_key(candidates, base_key)
+            nb_dir = resolve_notebook_directory(candidates, base_key)
             if nb_dir is None:
-                print(f"skip {path.name} tag {idx}: no notebook dir for {base_key}", file=sys.stderr)
+                want = notebook_dirname_from_base_key(base_key)
+                hint = f" (expected …/{want}/ in git or on disk)" if want else ""
+                print(
+                    f"skip {path.name} tag {idx}: no notebook dir for {base_key}{hint}",
+                    file=sys.stderr,
+                )
                 continue
             kind = _pylock_kind_from_tag(wb.resource_file, base_key)
-            rel_paths = _pylock_candidate_rel_paths(nb_dir, kind)
+            rel_paths = pylock_candidate_rel_paths(nb_dir, kind)
 
             shown: tuple[str, str] | None
             if suffix == "-n":
@@ -579,7 +636,7 @@ def run_variant(variant: str, dry_run: bool) -> int:
             rel_used, text = shown
             py_minor = _python_minor_from_dir(nb_dir)
             try:
-                pkgs = _load_lockfile_packages(text, rel_used, py_minor)
+                pkgs = load_packages_from_lockfile(text, rel_used, py_minor)
             except Exception as e:
                 lockfile_errors.append(f"{path.name} tag {idx}: lockfile parse error: {e}")
                 continue
