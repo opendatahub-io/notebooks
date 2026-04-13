@@ -775,7 +775,7 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
         timeout=30,
     )
     manifest = json.loads(raw.stdout)
-    layer_order: dict[str, int] = {l["digest"]: i for i, l in enumerate(manifest.get("layers", []))}
+    layer_order: dict[str, int] = {layer["digest"]: i for i, layer in enumerate(manifest.get("layers", []))}
 
     repo, digest = _image_ref_to_quay(image_ref)
     url = f"https://quay.io/api/v1/repository/{repo}/manifest/{digest}/security?vulnerabilities=false"
@@ -787,7 +787,7 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     features = data.get("data", {}).get("Layer", {}).get("Features", [])
     if not features:
         status = data.get("status")
-        if status == "queued" or status == "scanning":
+        if status in {"queued", "scanning"}:
             raise RuntimeError(f"Clair scan not ready for {image_ref} (status={status})")
         raise RuntimeError(f"No features in Clair response for {image_ref}")
 
