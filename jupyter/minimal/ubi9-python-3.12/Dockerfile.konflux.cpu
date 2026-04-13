@@ -30,7 +30,7 @@ RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-h
     /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
 # Install micropipenv/uv from Cachi2 as root.
-RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.3"
+RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.6"
 
 ####################
 # jupyter-minimal  #

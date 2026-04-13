@@ -392,7 +392,7 @@ def test_image_manifests_version_alignment(
         ("Codeflare-SDK", ("0.35", "0.36")),
         ("MLflow", ("3.10", "3.11")),
         ("Kfp", ("2.15", "2.16")),
-        ("Feast", ("0.60", "0.61")),
+        ("Feast", ("0.61", "0.62")),
         ("Scikit-learn", ("1.7", "1.6")),
         ("Scipy", ("1.16", "1.17")),
         ("Pandas", ("3.0", "2.3")),
