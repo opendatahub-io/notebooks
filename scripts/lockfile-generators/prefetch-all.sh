@@ -159,16 +159,27 @@ if [[ -n "$ACTIVATION_KEY" ]]; then
 fi
 
 # --- Variant selection ---
-# Each component uses COMPONENT_DIR/prefetch-input (often a symlink to the
-# repo-root prefetch-input/ for Jupyter hermetic images). Under that: odh/
-# (upstream, CentOS Stream packages) and optionally rhds/ (downstream, RHEL).
-# The variant determines which lockfiles are used for all four steps.
+# Each component uses COMPONENT_DIR/prefetch-input when present; Jupyter
+# notebook dirs that share upstream RPM/generic locks use repo-root
+# prefetch-input/ (no symlink — Konflux Hermeto rejects symlink path segments
+# for git submodule resolution). Under that: odh/ (upstream, CentOS Stream
+# packages) and optionally rhds/ (downstream, RHEL). The variant determines
+# which lockfiles are used for all four steps.
 #
 # In GHA CI, the template passes --rhds explicitly for subscription builds;
 # secrets are globally available so auto-detection would wrongly switch ODH
 # builds to RHDS, contaminating the layer cache (see #3256).
 # For standalone/local use, auto-detect from credentials when not in CI.
 PREFETCH_DIR="$COMPONENT_DIR/prefetch-input"
+if [[ ! -d "$PREFETCH_DIR" ]] && [[ -d prefetch-input ]]; then
+  # Check if any Dockerfile in the component dir references repo-root prefetch-input/.
+  # This catches components whose symlinks were removed (Konflux Hermeto rejects
+  # symlink segments in git submodule paths) but whose Dockerfiles still use
+  # COPY prefetch-input/... relative to the repo-root build context.
+  if grep -rq 'prefetch-input/' "$COMPONENT_DIR"/Dockerfile* 2>/dev/null; then
+    PREFETCH_DIR="prefetch-input"
+  fi
+fi
 if [[ -z "${CI:-}" ]] && [[ "$VARIANT" == "odh" ]] && [[ -n "$ACTIVATION_KEY" ]] && [[ -d "$PREFETCH_DIR/rhds" ]]; then
   echo "Subscription credentials provided — switching to RHDS variant"
   VARIANT="rhds"
