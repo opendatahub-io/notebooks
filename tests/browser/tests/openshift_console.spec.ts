@@ -27,15 +27,17 @@ async function getConsoleUrl(): Promise<string> {
 // Resolved in beforeAll so a hung K8s API call fails fast with a clear message.
 let consoleUrl: string;
 
-test.beforeAll("fetch consoleUrl", async () => {
-  test.setTimeout(30_000);
-  consoleUrl = await getConsoleUrl();
-});
+test.describe('OpenShift console', { tag: '@openshift' }, () => {
+  test.beforeAll('fetch consoleUrl', async () => {
+    test.setTimeout(30_000);
+    consoleUrl = await getConsoleUrl();
+  });
 
-test.use({ ignoreHTTPSErrors: true });
+  test.use({ ignoreHTTPSErrors: true });
 
-test('@smoke @openshift OCP console loads', async ({ page }) => {
-  await page.goto(consoleUrl, { waitUntil: 'load' });
-  // Console shows login page or redirects to OAuth — either counts
-  await expect(page).toHaveTitle(/Log in|OpenShift|Red Hat/i);
+  test('OCP console loads', { tag: ['@smoke', '@stage1', '@stage2', '@stage3'] }, async ({ page }) => {
+    await page.goto(consoleUrl, { waitUntil: 'load' });
+    // Console shows login page or redirects to OAuth — either counts
+    await expect(page).toHaveTitle(/Log in|OpenShift|Red Hat/i);
+  });
 });
