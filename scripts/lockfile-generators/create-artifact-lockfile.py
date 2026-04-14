@@ -27,14 +27,14 @@ Usage:
 import argparse
 import hashlib
 import subprocess
-import sys
+import sys, os
 from pathlib import Path
 from typing import Any, Optional
 
 import yaml
 
 # Constants
-CACHE_BASE_DIR = Path("cachi2/output/deps/generic")
+CACHE_BASE_DIR = Path(os.environ.get("CACHI2_OUT_DIR", "cachi2/output")) / "deps" / "generic"
 METADATA_VERSION = "1.0"
 CHUNK_SIZE = 8192
 

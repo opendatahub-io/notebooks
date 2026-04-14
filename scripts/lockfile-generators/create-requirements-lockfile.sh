@@ -156,86 +156,13 @@ if [[ "$DO_DOWNLOAD" == true ]]; then
 
   # Output directory must match Cachi2 layout so prefetched wheels are found
   # during hermetic/offline builds (e.g. Docker COPY from cachi2/output/deps/pip).
-  OUT_DIR="cachi2/output/deps/pip"
+  OUT_DIR="${CACHI2_OUT_DIR:-cachi2/output}/deps/pip"
   mkdir -p "$OUT_DIR"
 
-  # Use sha256sum on Linux, shasum -a 256 on macOS (portable).
-  if command -v sha256sum &>/dev/null; then
-    sha256_of() { sha256sum "$1" | cut -d' ' -f1; }
-  else
-    sha256_of() { shasum -a 256 "$1" | cut -d' ' -f1; }
-  fi
+  # Delegate to python script for parallel downloading and filtering.
+  python3 scripts/lockfile-generators/helpers/download-pip-packages.py \
+    --output-dir "$OUT_DIR" ${ARCH:+--arch "$ARCH"} "$REQUIREMENTS_FILE"
 
-  # Count lines in pylock that look like "url = \"...\" ... sha256 = \"...\""
-  # (one per wheel; multi-line wheel blocks have one such line per wheel).
-  total=$(grep -c 'url = ".*sha256 = "' "$PYLOCK_FILE" || true)
-  echo "  ${total} wheel(s) to download into ${OUT_DIR}/"
-  echo ""
-
-  idx=0
-  # Read one line per wheel from the lockfile (same pattern as above).
-  while IFS= read -r line; do
-    idx=$((idx + 1))
-
-    # Extract URL and expected sha256 from lockfile line (TOML-style).
-    url=$(echo "$line" | sed 's/.*url = "\([^"]*\)".*/\1/')
-    sha=$(echo "$line" | sed 's/.*sha256 = "\([^"]*\)".*/\1/')
-
-    if [[ -z "$url" || -z "$sha" ]]; then
-      echo "  ERROR: failed to parse url or sha256 from lockfile line (wheel ${idx})" >&2
-      echo "  line: ${line:0:120}..." >&2
-      exit 1
-    fi
-
-    # Filename is the last path segment of the URL, without query/fragment.
-    filename="${url##*/}"; filename="${filename%%[?#]*}"
-    if [[ -z "$filename" ]]; then
-      echo "  ERROR: could not derive filename from URL (wheel ${idx})" >&2
-      echo "  URL: ${url}" >&2
-      exit 1
-    fi
-    dest="${OUT_DIR}/${filename}"
-
-    echo "[${idx}/${total}] ${filename}"
-
-    # Resume partial runs: reuse a file only if its digest matches this wheel.
-    if [[ -f "$dest" ]]; then
-      actual=$(sha256_of "$dest")
-      if [[ "$actual" == "$sha" ]]; then
-        echo "  Already present (checksum OK), skipping download."
-      else
-        echo "  WARNING: Ignoring stale or mismatched cached wheel (digest does not match this lockfile entry)." >&2
-        echo "    file:     ${dest}" >&2
-        echo "    got:      ${actual}" >&2
-        echo "    expected: ${sha}" >&2
-        echo "  Removing cached file and re-downloading." >&2
-        rm -f "$dest"
-      fi
-    fi
-
-    if [[ ! -f "$dest" ]]; then
-      echo "  Downloading: ${url}"
-      if ! wget -q -O "$dest" "$url"; then
-        echo "  ERROR: download failed for ${filename}" >&2
-        echo "  URL: ${url}" >&2
-        echo "  Run 'wget -O /dev/null \"${url}\"' to see the full error." >&2
-        rm -f "$dest"
-        exit 1
-      fi
-    fi
-
-    # Verify digest so corrupted downloads are detected.
-    actual=$(sha256_of "$dest")
-    if [[ "$actual" != "$sha" ]]; then
-      echo "  ERROR: checksum mismatch (got ${actual}, expected ${sha})" >&2
-      rm -f "$dest"
-      exit 1
-    fi
-    echo "  Checksum OK (sha256:${actual:0:16}...)"
-  done < <(grep 'url = ".*sha256 = "' "$PYLOCK_FILE")
-
-  echo ""
-  echo "Done: ${total} file(s) present and validated in ${OUT_DIR}/"
 fi
 
 echo ""
@@ -243,5 +170,5 @@ echo "=== All done ==="
 echo "  pylock.toml      : ${PYLOCK_FILE}"
 echo "  requirements     : ${REQUIREMENTS_FILE}"
 if [[ "$DO_DOWNLOAD" == true ]]; then
-  echo "  wheels           : cachi2/output/deps/pip/"
+  echo "  wheels           : ${OUT_DIR}/"
 fi

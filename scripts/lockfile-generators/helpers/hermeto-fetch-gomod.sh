@@ -12,7 +12,7 @@ set -euo pipefail
 # directory. No separate lockfile is needed — go.sum pins dependencies.
 
 HERMETO_IMAGE="ghcr.io/hermetoproject/hermeto:0.46.2"
-HERMETO_OUTPUT="./cachi2/output"
+HERMETO_OUTPUT="${CACHI2_OUT_DIR:-cachi2/output}"
 
 PREFETCH_DIR=""
 

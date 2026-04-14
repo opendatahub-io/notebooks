@@ -24,7 +24,7 @@ set -euo pipefail
 
 # --- Configuration & Defaults ---
 SCRIPTS_PATH="scripts/lockfile-generators"
-DEST_DIR="./cachi2/output/deps/npm"
+DEST_DIR="${CACHI2_OUT_DIR:-cachi2/output}/deps/npm"
 LOCKFILE=""
 TEKTON_FILE=""
 
@@ -245,34 +245,33 @@ fi
 mkdir -p "$DEST_DIR"
 
 total=$(echo "$refs" | wc -l | tr -d ' ')
-count=0
-downloaded=0
-skipped=0
-failed=0
 
 echo ""
 echo "Found $total unique packages to download."
 echo ""
 
-while IFS=$'\t' read -r filename download_url; do
-    count=$((count + 1))
-
+export DEST_DIR
+download_file() {
+    local filename="$1"
+    local download_url="$2"
     if [[ -f "$DEST_DIR/$filename" ]]; then
-        echo "[$count/$total] SKIP  Already exists: $filename"
-        skipped=$((skipped + 1))
+        echo "SKIP  Already exists: $filename"
     else
         if wget -q -O "$DEST_DIR/$filename" "$download_url"; then
-            echo "[$count/$total] OK    Downloaded: $filename"
-            downloaded=$((downloaded + 1))
+            echo "OK    Downloaded: $filename"
         else
-            echo "[$count/$total] FAIL  Failed: $download_url" >&2
-            failed=$((failed + 1))
-            # Clean up partial download
+            echo "FAIL  Failed: $download_url" >&2
             rm -f "$DEST_DIR/$filename"
+            return 1
         fi
     fi
-done <<< "$refs"
+}
+export -f download_file
+
+if ! echo "$refs" | xargs -n 2 -P 10 bash -c 'download_file "$1" "$2"' _; then
+    echo "Some npm downloads failed" >&2
+    exit 1
+fi
 
 echo ""
-echo "Finished! Total: $total  Downloaded: $downloaded  Skipped: $skipped  Failed: $failed"
-echo "Location: $DEST_DIR"
+echo "Finished! Location: $DEST_DIR"

@@ -21,12 +21,13 @@ set -euo pipefail
 
 UBI9_IMAGE="registry.access.redhat.com/ubi9/ubi"
 HERMETO_IMAGE="ghcr.io/hermetoproject/hermeto:0.46.2"
-HERMETO_OUTPUT="./cachi2/output"
+HERMETO_OUTPUT="${CACHI2_OUT_DIR:-cachi2/output}"
 
 PREFETCH_DIR=""
 CERT_DIR=""
 ACTIVATION_KEY=""
 ORG=""
+ARCH="${ARCH:-}"
 
 show_help() {
   cat << 'EOF'
@@ -39,6 +40,7 @@ Options:
   --cert-dir DIR         Directory with pre-extracted entitlement PEM files
   --activation-key KEY   Red Hat activation key for RHEL cert extraction
   --org ORG              Red Hat organization ID for RHEL cert extraction
+  --arch ARCH            Target architecture (e.g. amd64, aarch64) to filter downloads
   --help                 Show this help
 
 Environment variables (fallback when CLI args are not provided):
@@ -63,6 +65,8 @@ while [[ $# -gt 0 ]]; do
                        ACTIVATION_KEY="$2"; shift 2 ;;
     --org)             [[ $# -ge 2 ]] || error_exit "--org requires a value"
                        ORG="$2"; shift 2 ;;
+    --arch)            [[ $# -ge 2 ]] || error_exit "--arch requires a value"
+                       ARCH="$2"; shift 2 ;;
     -h|--help)         show_help; exit 0 ;;
     *)                 error_exit "Unknown argument: '$1'" ;;
   esac
@@ -207,11 +211,28 @@ fi
 # prefetch steps already placed in cachi2/output/deps/.
 # =========================================================================
 HERMETO_STAGING=$(mktemp -d)
-trap 'rm -rf "$HERMETO_STAGING" ${CDN_CERT_DIR:+"$CDN_CERT_DIR"}' EXIT
+trap 'rm -rf "$HERMETO_STAGING" ${CDN_CERT_DIR:+"$CDN_CERT_DIR"} ${CLEANUP_SOURCE:+"$HERMETO_SOURCE"}' EXIT
+
+HERMETO_SOURCE="$(pwd)/$PREFETCH_DIR"
+if [[ -n "$ARCH" ]]; then
+  command -v yq &>/dev/null || error_exit "--arch requires yq to filter rpms.lock.yaml"
+  # Translate generic arch to rpm arch format
+  rpm_arch="$ARCH"
+  [[ "$ARCH" == "amd64" ]] && rpm_arch="x86_64"
+  [[ "$ARCH" == "arm64" ]] && rpm_arch="aarch64"
+  
+  echo "--- Filtering rpms.lock.yaml for architecture: $rpm_arch ---"
+  HERMETO_SOURCE=$(mktemp -d)
+  CLEANUP_SOURCE=1
+  # Symlink everything, then replace rpms.lock.yaml with a filtered copy
+  ln -s "$(pwd)/$PREFETCH_DIR"/* "$HERMETO_SOURCE/" 2>/dev/null || true
+  rm -f "$HERMETO_SOURCE/rpms.lock.yaml"
+  yq eval "del(.arches[] | select(.arch != \"$rpm_arch\" and .arch != \"noarch\"))" "$(pwd)/$PREFETCH_DIR/rpms.lock.yaml" > "$HERMETO_SOURCE/rpms.lock.yaml"
+fi
 
 echo "--- Downloading RPMs via hermeto ---"
 podman run --rm \
-  -v "$(pwd)/$PREFETCH_DIR:/source:z" \
+  -v "$HERMETO_SOURCE:/source:z" \
   -v "$HERMETO_STAGING:/output:z" \
   ${CDN_CERT_DIR:+-v "$CDN_CERT_DIR:/certs:ro,z"} \
   "$HERMETO_IMAGE" \

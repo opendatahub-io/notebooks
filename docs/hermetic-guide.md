@@ -40,7 +40,7 @@ Benefits:
 ┌──────────────────────────────────────────────────────────────────┐
 │               Prefetch  (before podman build)                    │
 │                                                                  │
-│  Local/GHA:   prefetch-all.sh → cachi2/output/deps/             │
+│  Local/GHA:   prefetch-all.sh → cachi2/output/<hash>/deps/       │
 │  Konflux:     prefetch-dependencies Tekton task                  │
 └──────────────────┬───────────────────────────────────────────────┘
                    │
@@ -216,9 +216,12 @@ detailed usage.
 The `build_image` macro was updated to auto-detect hermetic builds:
 
 ```makefile
-$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)),\
-    --volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z \
-    --volume $(ROOT_DIR)cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
+	$(eval COMPONENT_DIR_STR := $(patsubst %/,%,$(BUILD_DIR)))
+	$(eval CACHI2_HASH := $(shell python3 -c "import hashlib; print(hashlib.md5('$(COMPONENT_DIR_STR)'.encode()).hexdigest())"))
+	$(eval CACHI2_DIR := cachi2/output/$(CACHI2_HASH))
+	$(eval CACHI2_VOLUME := $(if $(and $(wildcard $(CACHI2_DIR)),$(wildcard $(BUILD_DIR)prefetch-input)),\
+		--volume $(ROOT_DIR)$(CACHI2_DIR):/cachi2/output:Z \
+		--volume $(ROOT_DIR)$(CACHI2_DIR)/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
 ```
 
 This evaluates per-target: only targets with both `cachi2/output/` and a
