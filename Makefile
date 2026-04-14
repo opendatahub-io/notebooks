@@ -91,23 +91,29 @@ define build_image
 			awk -F= '!/^#/ && NF {gsub(/^[ \t]+|[ \t]+$$/, "", $$1); gsub(/^[ \t]+|[ \t]+$$/, "", $$2); printf "--build-arg %s=%s ", $$1, $$2}' $(CONF_FILE); \
 		fi))
 
-# Hermetic local build: when cachi2/output/ exists AND this target has a
-# prefetch-input/ directory, mount pre-downloaded deps into the build.
+# Hermetic local build: when cachi2/output/ exists AND this target uses a
+# prefetch-input tree, mount pre-downloaded deps into the build.
+# Some images (e.g. jupyter/minimal, datascience, pytorch+llmcompressor)
+# reference repo-root prefetch-input/ in their Dockerfiles without having
+# a local prefetch-input/ directory (symlinks were removed to work around
+# Konflux Hermeto rejecting symlink segments in git submodule paths).
 # The repos.d mount overlays /etc/yum.repos.d/ with hermeto-generated repos,
 # making local builds behave like Konflux (repos already in place when the
 # Dockerfile runs). The mount hides the base image's default repos.
 # Konflux buildah-oci-ta task mounts YUM_REPOS_D_FETCHED at YUM_REPOS_D_TARGET (/etc/yum.repos.d).
 # See https://github.com/konflux-ci/build-definitions/blob/main/task/buildah-oci-ta/
-$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)),\
+$(eval _DOCKERFILE_USES_PREFETCH := $(shell grep -q 'prefetch-input/' $(2) 2>/dev/null && echo yes))
+$(eval PREFETCH_INPUT_DIR := $(or $(wildcard $(BUILD_DIR)prefetch-input),$(if $(_DOCKERFILE_USES_PREFETCH),$(wildcard $(ROOT_DIR)prefetch-input),)))
+$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(PREFETCH_INPUT_DIR)),\
 	--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z \
 	--volume $(ROOT_DIR)cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
 	$(info # Building $(IMAGE_NAME) using $(DOCKERFILE_NAME) with $(CONF_FILE) and $(BUILD_ARGS)...)
 
-	@if [ -d '$(BUILD_DIR)prefetch-input' ] && [ ! -d cachi2/output ]; then \
+	@if [ -n '$(PREFETCH_INPUT_DIR)' ] && [ ! -d cachi2/output ]; then \
 	  echo "Prefetch required for hermetic build. Run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR)) -- see scripts/lockfile-generators/README.md"; \
 	  exit 1; \
 	fi
-	@if [ -d cachi2/output ] && [ -d '$(BUILD_DIR)prefetch-input' ] && [ ! -d 'cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d' ]; then \
+	@if [ -d cachi2/output ] && [ -n '$(PREFETCH_INPUT_DIR)' ] && [ ! -d 'cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d' ]; then \
 	  echo "Missing RPM repos for $(RPM_ARCH). Re-run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR))"; \
 	  exit 1; \
 	fi
