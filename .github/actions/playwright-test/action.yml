@@ -105,7 +105,7 @@ runs:
           /bin/bash <<EOF
             set -Eeuxo pipefail
             cd /mnt
-            npm install -g pnpm && pnpm install
+            npm install -g pnpm@10.33.0 && pnpm install --frozen-lockfile
             pnpm exec playwright test ${GREP_PATTERN:+--grep "$GREP_PATTERN"}
             exit 0
         EOF
