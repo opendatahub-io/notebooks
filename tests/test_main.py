@@ -186,6 +186,14 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                     "pyproject.toml is missing a [project.dependencies] section"
                 )
 
+                for dep_str in pyproject["project"]["dependencies"]:
+                    req = packaging.requirements.Requirement(dep_str)
+                    canonical = packaging.utils.canonicalize_name(req.name)
+                    assert req.name == canonical, (
+                        f"pyproject.toml dependency {req.name!r} is not canonical; "
+                        f"should be {canonical!r}"
+                    )
+
             if (f := file.parent / "uv.lock.d").is_dir():
                 pylock_candidates = sorted(f.glob("pylock.*.toml"))
                 assert pylock_candidates, (
