@@ -22,6 +22,7 @@ import packaging.version
 import pytest
 import yaml
 
+from manifests.tools.commit_env_refs import parse_env_file
 from manifests.tools.package_names import manifest_name_to_pip
 from tests import PROJECT_ROOT, manifests
 
@@ -521,16 +522,7 @@ _PLACEHOLDER_RE = re.compile(
 
 
 def _parse_env_keys(env_path: pathlib.Path) -> set[str]:
-    keys: set[str] = set()
-    if not env_path.exists():
-        return keys
-    for line in env_path.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        key, _, _ = line.partition("=")
-        keys.add(key.strip())
-    return keys
+    return set(parse_env_file(env_path).keys())
 
 
 @pytest.mark.parametrize(

@@ -10,6 +10,7 @@ import argparse
 import re
 from pathlib import Path
 
+import packaging.utils
 import requests
 import structlog
 
@@ -26,11 +27,10 @@ def get_canonical_name(name):
     try:
         resp = requests.get(url, timeout=5)
         if resp.ok:
-            pypi_name = resp.json()['info']['name']
-            return re.sub(r"[-_.]+", "-", name).lower() 
+            return packaging.utils.canonicalize_name(name)
     except Exception:
         pass
-    return name 
+    return name
 
 def normalize_pipfile_packages(pipfile_path):
     with open(pipfile_path, 'r', encoding='utf-8') as f:

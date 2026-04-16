@@ -24,6 +24,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from manifests.tools.commit_env_refs import parse_env_file
 from ntb.strings import process_template_with_indents
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -92,16 +93,7 @@ _PARAM_KEY_RE = re.compile(
 
 def _parse_env_keys(env_path: Path) -> set[str]:
     """Read an .env file and return the set of keys (left side of '=')."""
-    keys: set[str] = set()
-    if not env_path.exists():
-        return keys
-    for line in env_path.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        key, _, _ = line.partition("=")
-        keys.add(key.strip())
-    return keys
+    return set(parse_env_file(env_path).keys())
 
 
 def _parse_imagestream_name(yaml_path: Path) -> str | None:
