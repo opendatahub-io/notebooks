@@ -54,8 +54,9 @@ MANIFEST_LOWER_NAMES: frozenset[str] = frozenset(
 
 def manifest_name_to_pip(name: str) -> str:
     """Convert a manifest display name to a pip/pylock package name."""
-    if name in MANIFEST_TO_PIP:
-        return MANIFEST_TO_PIP[name]
+    translated = MANIFEST_TO_PIP.get(name)
+    if translated is not None:
+        return translated
     if name in MANIFEST_LOWER_NAMES:
         return name.lower()
     return name

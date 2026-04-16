@@ -502,11 +502,10 @@ def _compare_manifest_vs_actual(
         else:
             if manifest_name in _NON_PIP_PACKAGES:
                 continue
-            pip_name = _normalize_pip_name(manifest_name_to_pip(manifest_name))
-            actual_version_str = actual_packages.get(pip_name)
+            lookup = _normalize_pip_name(manifest_name_to_pip(manifest_name))
+            actual_version_str = actual_packages.get(lookup)
 
         if actual_version_str is None:
-            lookup = manifest_name if is_software else _normalize_pip_name(manifest_name_to_pip(manifest_name))
             with subtests.test(msg=f"{is_name} tag {tag_name}: {manifest_name} not found"):
                 pytest.fail(
                     f"Manifest lists {manifest_name} ({lookup}) v{manifest_version} but it was not found in the image"
