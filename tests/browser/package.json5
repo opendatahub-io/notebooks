@@ -17,20 +17,20 @@
     // NOTE: This is the single source of truth for Playwright version.
     // The container image tag (v{version}-noble) is derived from @playwright/test version
     // by .github/actions/playwright-test/action.yml
-    "playwright": "=1.58.2",
-    "@playwright/test": "=1.58.2",
+    "playwright": "=1.59.1",
+    "@playwright/test": "=1.59.1",
 
-    "testcontainers": "^11.13.0",
+    "testcontainers": "^11.14.0",
 
     "tslog": "^4",
     "typescript": "^6.0.2",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.6.0",
     "@kubernetes/client-node": "^1.4.0",
 
     // ESLint with type-aware rules + Playwright plugin (see ADR 0012)
     "eslint": "^10.2.0",
     "@eslint/js": "^10.0.1",
-    "typescript-eslint": "^8.58.0",
+    "typescript-eslint": "^8.58.1",
     "eslint-plugin-playwright": "^2.10.1",
     "jiti": "^2.6.1"
   },

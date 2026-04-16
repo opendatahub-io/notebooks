@@ -63,8 +63,8 @@ runs:
           echo "version=${INPUT_PLAYWRIGHT_VERSION}" >> "$GITHUB_OUTPUT"
         else
           # Extract version from package.json5 (single source of truth)
-          # package.json5 has: "@playwright/test": "=1.58.1"
-          # Container tag format is: v1.58.1-noble
+          # package.json5 has: "@playwright/test": "=1.59.1"
+          # Container tag format is: v1.59.1-noble
           PKG_VERSION=$(grep -oP '"@playwright/test":\s*"=?\K[0-9.]+' "${WORKING_DIRECTORY}/package.json5")
           if [[ -z "$PKG_VERSION" ]]; then
             echo "::error::Failed to extract Playwright version from package.json5"
@@ -105,7 +105,7 @@ runs:
           /bin/bash <<EOF
             set -Eeuxo pipefail
             cd /mnt
-            npm install -g pnpm && pnpm install
+            npm install -g pnpm@10.33.0 && pnpm install --frozen-lockfile
             pnpm exec playwright test ${GREP_PATTERN:+--grep "$GREP_PATTERN"}
             exit 0
         EOF
