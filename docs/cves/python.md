@@ -97,6 +97,44 @@ uv tree --invert tornado
 
 Example: Tornado is typically pulled in by `jupyter-server`.
 
+### Step 4.5: Verify Package Availability on the RH Index
+
+Before attempting to fix the CVE, check that the fixed version is actually available
+on the RH index. A version may exist on PyPI but not on the RH index — this is a
+common blocker for downstream (RHOAI) images.
+
+```bash
+# Check which versions are on the production RH index
+curl -sL "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/<package>/?format=json" \
+  | python3 -c "
+import json,sys
+data = json.load(sys.stdin)
+versions = sorted({f['filename'].split('-')[1] for f in data.get('files',[])})
+print('\n'.join(versions))
+"
+```
+
+There are **three layers** that can block a CVE fix from resolving:
+
+1. **RH index**: The fixed version may not have been built by AIPCC yet.
+   If missing, request it via the [AIPCC dashboard](https://dashboard.aipcc.redhat.com/package-request).
+
+2. **Builder constraints**: The `wheels/builder` project may pin an older version
+   in `collections/torch-*/constraints.txt`. For example, `onnx==1.20.0` was pinned
+   with `# AIPCC-7623 - Constraining onnx while we carry patches`, preventing
+   1.21.0 from appearing on the index even after the onboarding pipeline ran.
+   Check with: `glab api --hostname gitlab.com "projects/58339326/search?scope=blobs&search=<package>%3D%3D"`
+
+3. **Upstream SDK exact pins**: Packages like `codeflare-sdk` may exact-pin the
+   vulnerable version (e.g., `cryptography==46.0.6`, `ray[data]==2.53.0`). These
+   conflicts surface during `make refresh-lock-files` as "unsatisfiable" errors.
+   Coordinate with the owning team per the
+   [component-team-owned packages](https://gitlab.cee.redhat.com/data-hub/guide/-/blob/main/docs/notebooks/cves/python.md)
+   procedure.
+
+If the fixed version is not on the RH index, **do not proceed to Step 5** — the
+lock refresh will fail. Instead, request the build and revisit once it is available.
+
 ### Step 5: Resolve the CVE
 
 #### Option A: Upgrade the Direct Dependency
