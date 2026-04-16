@@ -191,8 +191,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                     req = packaging.requirements.Requirement(dep_str)
                     canonical = packaging.utils.canonicalize_name(req.name)
                     assert req.name == canonical, (
-                        f"pyproject.toml dependency {req.name!r} is not canonical; "
-                        f"should be {canonical!r}"
+                        f"pyproject.toml dependency {req.name!r} is not canonical; should be {canonical!r}"
                     )
 
             if (f := file.parent / "uv.lock.d").is_dir():
@@ -521,10 +520,6 @@ _PLACEHOLDER_RE = re.compile(
 )
 
 
-def _parse_env_keys(env_path: pathlib.Path) -> set[str]:
-    return set(parse_env_file(env_path).keys())
-
-
 @pytest.mark.parametrize(
     "base_dir", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
 )
@@ -558,8 +553,12 @@ def test_imagestream_kustomization_consistency(subtests: pytest_subtests.plugin.
                     )
                     commit_replacements[key] = field_path_key
 
-    param_env_keys = _parse_env_keys(base_dir / "params.env") | _parse_env_keys(base_dir / "params-latest.env")
-    commit_env_keys = _parse_env_keys(base_dir / "commit.env") | _parse_env_keys(base_dir / "commit-latest.env")
+    param_env_keys = set(parse_env_file(base_dir / "params.env").keys()) | set(
+        parse_env_file(base_dir / "params-latest.env").keys()
+    )
+    commit_env_keys = set(parse_env_file(base_dir / "commit.env").keys()) | set(
+        parse_env_file(base_dir / "commit-latest.env").keys()
+    )
 
     for is_file in sorted(base_dir.glob("*-imagestream.yaml")):
         is_data = yaml.safe_load(is_file.read_text())
