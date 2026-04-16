@@ -9,7 +9,7 @@ RUN npm install -g pnpm@10.33.0
 WORKDIR /home/pwuser/tests/browser
 USER pwuser
 
-COPY --chown=pwuser:pwuser package.json5 pnpm-lock.yaml ./
+COPY --chown=pwuser:pwuser package.json5 pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY --chown=pwuser:pwuser . .
