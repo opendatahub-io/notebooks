@@ -163,10 +163,10 @@ spec:
           ]
         openshift.io/imported-from: quay.io/modh/codeserver
         opendatahub.io/image-tag-outdated: "true"
-        opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py311-ubi9-commit-2024-1_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py39-ubi9-commit-2024-1_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-codeserver-datascience-cpu-py311-ubi9-2024-1_PLACEHOLDER
+        name: odh-workbench-codeserver-datascience-cpu-py39-ubi9-2024-1_PLACEHOLDER
       name: "2024.1"
       referencePolicy:
         type: Source
@@ -176,10 +176,10 @@ spec:
         opendatahub.io/notebook-python-dependencies: '[{"name":"code-server","version":"4.16"}]'
         openshift.io/imported-from: quay.io/modh/codeserver
         opendatahub.io/image-tag-outdated: 'true'
-        opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py311-ubi9-commit-2023-2_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py39-ubi9-commit-2023-2_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-codeserver-datascience-cpu-py311-ubi9-2023-2_PLACEHOLDER
+        name: odh-workbench-codeserver-datascience-cpu-py39-ubi9-2023-2_PLACEHOLDER
       name: "2023.2"
       referencePolicy:
         type: Source
