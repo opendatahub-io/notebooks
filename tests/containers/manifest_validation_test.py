@@ -45,25 +45,14 @@ import packaging.version
 import pytest
 import yaml
 
+from manifests.tools.commit_env_refs import parse_env_file
+from manifests.tools.package_names import manifest_name_to_pip
 from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
     import pytest_subtests
 
 _LOG = logging.getLogger(__name__)
-
-# Translation from manifest display names to pip package names.
-_MANIFEST_TO_PIP: dict[str, str] = {
-    "Elyra": "elyra-server",  # old (pre-odh-elyra) package name in 2023.x images
-    "LLM-Compressor": "llmcompressor",
-    "PyTorch": "torch",
-    "ROCm-PyTorch": "torch",
-    "Sklearn-onnx": "skl2onnx",
-    "Nvidia-CUDA-CU12-Bundle": "nvidia-cuda-runtime-cu12",
-    "MySQL Connector/Python": "mysql-connector-python",
-    "ROCm-TensorFlow": "tensorflow-rocm",  # old name used in 2024.2 and earlier
-    "TensorFlow-ROCm": "tensorflow-rocm",
-}
 
 # Software annotation items that cannot be validated from SBOM data.
 _SKIP_SOFTWARE: frozenset[str] = frozenset()
@@ -72,36 +61,6 @@ _SKIP_SOFTWARE: frozenset[str] = frozenset()
 _NON_PIP_PACKAGES: frozenset[str] = frozenset(
     {
         "rstudio-server",
-    }
-)
-
-# Manifest names where .lower() gives the pip name.
-_MANIFEST_LOWER_NAMES: frozenset[str] = frozenset(
-    {
-        "Accelerate",
-        "Boto3",
-        "Codeflare-SDK",
-        "Datasets",
-        "Feast",
-        "JupyterLab",
-        "Kafka-Python-ng",
-        "Kfp",
-        "Kubeflow-Training",
-        "Matplotlib",
-        "Numpy",
-        "Odh-Elyra",
-        "Pandas",
-        "Psycopg",
-        "PyMongo",
-        "Pyodbc",
-        "Scikit-learn",
-        "Scipy",
-        "TensorFlow",
-        "Tensorboard",
-        "Torch",
-        "Transformers",
-        "TrustyAI",
-        "MLflow",
     }
 )
 
@@ -144,33 +103,9 @@ def _extract_python_version(image_ref: str) -> str:
     return ""
 
 
-def _manifest_name_to_pip(name: str) -> str:
-    """Convert a manifest display name to a pip package name."""
-    if name in _MANIFEST_TO_PIP:
-        return _MANIFEST_TO_PIP[name]
-    if name in _MANIFEST_LOWER_NAMES:
-        return name.lower()
-    return name
-
-
 def _normalize_pip_name(name: str) -> str:
-    """Normalize pip package name per PEP 503 (lowercase, hyphens)."""
+    """Normalize pip package name per PEP 503."""
     return packaging.utils.canonicalize_name(name)
-
-
-def _parse_params_env(env_path: pathlib.Path) -> dict[str, str]:
-    """Parse params.env into {key: image_reference}."""
-    result: dict[str, str] = {}
-    if not env_path.exists():
-        return result
-    for line in env_path.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        key, _, value = line.partition("=")
-        if key and value:
-            result[key.strip()] = value.strip()
-    return result
 
 
 # ---------------------------------------------------------------------------
@@ -537,7 +472,7 @@ def _resolve_software_version(sw_item: dict[str, str], actual_packages: dict[str
         return None
 
     # PyTorch, TensorFlow, LLM-Compressor, etc. — look up as pip package
-    pip_name = _normalize_pip_name(_manifest_name_to_pip(name))
+    pip_name = _normalize_pip_name(manifest_name_to_pip(name))
     return actual_packages.get(pip_name)
 
 
@@ -567,7 +502,7 @@ def _compare_manifest_vs_actual(
         else:
             if manifest_name in _NON_PIP_PACKAGES:
                 continue
-            lookup = _normalize_pip_name(_manifest_name_to_pip(manifest_name))
+            lookup = _normalize_pip_name(manifest_name_to_pip(manifest_name))
             actual_version_str = actual_packages.get(lookup)
 
         if actual_version_str is None:
@@ -596,7 +531,7 @@ class _TagInfo:
 
 def _iter_old_tags(base_dir: pathlib.Path) -> list[_TagInfo]:
     """Yield tag info for every non-recommended tag (N-1, N-2, ...) with a params.env entry."""
-    params = _parse_params_env(base_dir / "params.env")
+    params = parse_env_file(base_dir / "params.env")
     if not params:
         return []
 

@@ -22,6 +22,7 @@ import packaging.version
 import pytest
 import yaml
 
+from manifests.tools.package_names import manifest_name_to_pip
 from tests import PROJECT_ROOT, manifests
 
 if TYPE_CHECKING:
@@ -185,6 +186,14 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                     "pyproject.toml is missing a [project.dependencies] section"
                 )
 
+                for dep_str in pyproject["project"]["dependencies"]:
+                    req = packaging.requirements.Requirement(dep_str)
+                    canonical = packaging.utils.canonicalize_name(req.name)
+                    assert req.name == canonical, (
+                        f"pyproject.toml dependency {req.name!r} is not canonical; "
+                        f"should be {canonical!r}"
+                    )
+
             if (f := file.parent / "uv.lock.d").is_dir():
                 pylock_candidates = sorted(f.glob("pylock.*.toml"))
                 assert pylock_candidates, (
@@ -268,47 +277,6 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                             "Codeflare-SDK",
                         ]
 
-                        # complex translation from names used in imagestream manifest to python package name
-                        manifest_to_pylock_translation = {
-                            # TODO(jdanek): is this one intentional?
-                            "LLM-Compressor": "llmcompressor",
-                            "PyTorch": "torch",
-                            "ROCm-PyTorch": "torch",
-                            "Sklearn-onnx": "skl2onnx",
-                            "Nvidia-CUDA-CU12-Bundle": "nvidia-cuda-runtime-cu12",
-                            "MySQL Connector/Python": "mysql-connector-python",
-                        }
-
-                        # when .lower() is all it takes to do the translation
-                        manifest_to_pylock_capitalization: set[str] = {
-                            "Accelerate",
-                            "Boto3",
-                            "Codeflare-SDK",
-                            "Datasets",
-                            "Feast",
-                            "JupyterLab",
-                            "Kafka-Python-ng",
-                            "Kfp",
-                            "Kubeflow-Training",
-                            "Matplotlib",
-                            "Numpy",
-                            "Odh-Elyra",
-                            "Pandas",
-                            "Psycopg",
-                            "PyMongo",
-                            "Pyodbc",
-                            "Scikit-learn",
-                            "Scipy",
-                            "TensorFlow",
-                            "Tensorboard",
-                            # TODO(jdanek): inconsistent with PyTorch elsewhere
-                            "Torch",
-                            "Transformers",
-                            "TrustyAI",
-                            "TensorFlow-ROCm",
-                            "MLflow",
-                        }
-
                         name = d["name"]
                         if name in workbench_only_packages and manifest.metadata.type == manifests.NotebookType.RUNTIME:
                             continue
@@ -326,12 +294,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                             # TODO(jdanek): figure out how to check rstudio version statically
                             continue
 
-                        if name in manifest_to_pylock_translation:
-                            normalized_name = manifest_to_pylock_translation[name]
-                        elif name in manifest_to_pylock_capitalization:
-                            normalized_name = name.lower()
-                        else:
-                            normalized_name = name
+                        normalized_name = manifest_name_to_pip(name)
 
                         # assert on name
 
