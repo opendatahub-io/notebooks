@@ -3,25 +3,36 @@
 #########################
 ARG BASE_IMAGE
 
-### BEGIN mongocli-builder stage
 ######################################################
 # mongocli-builder (build stage only, not published) #
+# Source: shared git submodule; Go modules from Cachi2 #
 ######################################################
 FROM registry.access.redhat.com/ubi9/go-toolset:1.25.8-1775491036 AS mongocli-builder
 
-ARG MONGOCLI_VERSION=2.0.4
+USER 0
 
-WORKDIR /tmp/
+# Mongocli source: git submodule at prefetch-input/mongocli (Konflux gomod prefetch).
+COPY prefetch-input/mongocli /tmp/mongocli-src
+
+WORKDIR /tmp/mongocli-src
+
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
-unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
-cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/
-CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
+if [ "$(uname -m)" = "s390x" ]; then
+    echo "Skipping mongocli build for s390x, creating dummy binary"
+    mkdir -p /tmp
+    printf '#!/bin/sh\necho "mongocli not supported on s390x"\n' > /tmp/mongocli
+    chmod +x /tmp/mongocli
+else
+    export GOCACHE=/cachi2/output/deps/gomod
+    export GOMODCACHE=/cachi2/output/deps/gomod/pkg/mod
+    export GOPATH=/cachi2/output/deps/gomod
+    export GOPROXY=file:///cachi2/output/deps/gomod/pkg/mod/cache/download
+    CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
+fi
 EOF
 
-### END mongocli-builder stage
-
+USER 1001
 
 ####################
 # cpu-base         #
@@ -30,44 +41,25 @@ FROM ${BASE_IMAGE} AS cpu-base
 
 WORKDIR /opt/app-root/bin
 
-# OS Packages needs to be installed as root
-USER root
+# hadolint ignore=DL3002
+USER 0
 
-### BEGIN upgrade first to avoid fixable vulnerabilities
-RUN /bin/bash <<'EOF'
-# If we have a Red Hat subscription prepared, refresh it
-set -Eeuxo pipefail
-if command -v subscription-manager &> /dev/null; then
-  subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."
-fi
-EOF
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh upgrade
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
-### END upgrade first to avoid fixable vulnerabilities
-
+# hadolint ignore=DL3041
 # Install useful OS packages
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh install perl mesa-libGL skopeo
+    /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
-# Other apps and tools installed as default user
+RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]" "uv"
+
 USER 1001
-
-### BEGIN Install micropipenv and uv to deploy packages from requirements.txt
-RUN pip install --no-cache-dir --extra-index-url https://pypi.org/simple -U "micropipenv[toml]==1.10.0" "uv==0.10.8"
-### END Install micropipenv and uv to deploy packages from requirements.txt
-
-### BEGIN Install the oc client
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
-    -o /tmp/openshift-client-linux.tar.gz
-tar -xzvf /tmp/openshift-client-linux.tar.gz oc
-rm -f /tmp/openshift-client-linux.tar.gz
-EOF
-
-### END Install the oc client
 
 ####################
 # jupyter-minimal #
@@ -83,6 +75,14 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 USER 0
+
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
@@ -106,23 +106,25 @@ ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 
 WORKDIR /opt/app-root/bin
 
-# OS Packages needs to be installed as root
-USER root
+USER 0
+
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 # Install useful OS packages
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat
+    /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat protobuf
 
-### BEGIN Copy mongocli from builder
-# Copy dynamically-linked mongocli built in earlier build stage
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
-### END Copy mongocli from builder
 
-# Other apps and tools installed as default user
-USER 1001
-
-# Copy Elyra setup to utils so that it's sourced at startup
+# hadolint ignore=DL3002
+# Run as root (same as jupyter-minimal): uv/micropipenv from cpu-base are root-owned; chmod g+w must be root.
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
+
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
+
+USER 1001
 
 WORKDIR /opt/app-root/src
 
@@ -131,10 +133,8 @@ WORKDIR /opt/app-root/src
 ####################
 FROM jupyter-datascience AS jupyter-trustyai
 
-ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
-
 
 LABEL name="odh-notebook-jupyter-trustyai-ubi9-python-3.12" \
     summary="Jupyter trustyai notebook image for ODH notebooks" \
@@ -146,7 +146,13 @@ LABEL name="odh-notebook-jupyter-trustyai-ubi9-python-3.12" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/trustyai/ubi9-python-3.12" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:jupyter-trustyai-ubi9-python-3.12"
 
+WORKDIR /opt/app-root/bin
+
 USER 0
+
+# Bust layer cache when prefetched RPM set changes
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 # Install jre that is needed to run the trustyai library
 RUN /bin/bash <<'EOF'
@@ -156,28 +162,18 @@ dnf install -y --setopt=tsflags=nodocs "${PACKAGES[@]}"
 dnf -y clean all --enablerepo='*'
 EOF
 
-# Install Python packages and Jupyterlab extensions from requirements.txt
-COPY ${TRUSTYAI_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
+COPY ${TRUSTYAI_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements-trustyai.txt
 
-USER 1001
-
-# Install packages and cleanup
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-
-### BEGIN Install software and packages
-echo "Installing software and packages"
-# Install Python packages from lockfile with hash verification
-# All dependencies are explicitly listed in pylock.toml (--no-deps)
-UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
+echo "Installing trustworthy-ai stack"
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
-    --require-hashes --compile-bytecode --index-strategy=unsafe-best-match \
-    --requirements=./pylock.toml
-### END Install software and packages
-
+    --compile-bytecode --index-strategy=unsafe-best-match \
+    --no-verify-hashes \
+    --find-links /cachi2/output/deps/pip \
+    --requirements=./requirements-trustyai.txt
 EOF
-
-USER 0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
@@ -207,3 +203,5 @@ set -Eeuxo pipefail
 #chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 #fix-permissions /opt/app-root -P
 EOF
+
+WORKDIR /opt/app-root/src
