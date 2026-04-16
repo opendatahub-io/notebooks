@@ -480,8 +480,8 @@ async def main() -> int:
     all_entries: list[tuple[str, str]] = []
     for arg in sys.argv[1:]:
         path = pathlib.Path(arg)
-        if not path.exists():
-            log.error("File not found", path=str(path))
+        if not path.is_file():
+            log.error("Env file not found or not a regular file", path=str(path))
             return 2
         entries = parse_env_file(path)
         log.info("Parsed env file", path=str(path), count=len(entries))
