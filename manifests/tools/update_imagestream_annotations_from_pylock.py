@@ -14,6 +14,7 @@ Those SHAs match ``manifests/tools/generate_kustomization.py`` / ConfigMap keys.
 Dependency *names* and ordering are taken from the existing manifest; versions are updated from
 the resolved lockfile at each ref (same translation rules as ``tests/test_main.py``). Older commits may only have ``requirements.txt`` or flavor files such as ``requirements.cpu.txt``
 instead of ``pylock.toml`` / ``uv.lock.d/pylock.*.toml``; those are parsed as pinned PEP 508 requirements.
+Some historical trees use pipenv only: ``Pipfile.lock`` (or ``Pipfile.lock.cpu`` / ``Pipfile.lock.gpu``); the ``default`` section is parsed for pinned versions.
 Image directories are discovered via ``pyproject.toml`` or those requirements files at the
 ``<os>-python-<ver>/`` root. If that Python version exists only in git history, the path is derived
 from a sibling on-disk tree so ``git show <sha>:…`` can load lockfiles.
@@ -154,6 +155,9 @@ def _discover_candidate_dirs() -> list[Path]:
         "requirements.cpu.txt",
         "requirements.cuda.txt",
         "requirements.rocm.txt",
+        "Pipfile.lock",
+        "Pipfile.lock.cpu",
+        "Pipfile.lock.gpu",
     )
     roots = ("jupyter", "codeserver", "rstudio")
     seen: set[Path] = set()
@@ -197,12 +201,20 @@ def _dirs_for_workbench(manifests_dir: Path, wb: Workbench, candidate_dirs: list
 
 
 def notebook_dirname_from_base_key(base_key: str) -> str | None:
-    """Return ``<os>-python-<major.minor>`` when ``base_key`` encodes it (e.g. ``...-py311-ubi9``)."""
+    """Return ``<os>-python-<major.minor>`` when ``base_key`` encodes it (e.g. ``...-py311-ubi9``).
+
+    Historical Python 3.8 workbench keys still use ``-py38-ubi9-`` in params, but source trees at the
+    pinned commits use ``ubi8-python-3.8`` paths; that case is normalized to ``ubi8`` here so
+    ``git show <sha>:jupyter/.../ubi8-python-3.8/...`` resolves.
+    """
     m_os = re.search(r"-py(\d)(\d+)-([^-]+)(?:$|-)", base_key)
     if not m_os:
         return None
     py = f"{m_os.group(1)}.{m_os.group(2)}"
-    return f"{m_os.group(3)}-python-{py}"
+    os_name = m_os.group(3)
+    if py == "3.8":
+        os_name = "ubi8"
+    return f"{os_name}-python-{py}"
 
 
 def pick_notebook_dir_for_base_key(candidates: list[Path], base_key: str) -> Path | None:
@@ -236,7 +248,8 @@ def resolve_notebook_directory(candidates: list[Path], base_key: str) -> Path | 
     Prefer an on-disk ``<os>-python-<ver>/`` directory. If it is missing locally but another Python
     tree exists for the same ImageStream (e.g. only ``3.12`` on disk, tag is ``py311``), synthesize
     ``…/<os>-python-3.11/`` from a sibling's parent so ``git show <commit>:jupyter/.../ubi9-python-3.11/…``
-    can still succeed.
+    can still succeed. If the tag expects ``ubi8-python-3.8`` but only ``ubi9`` trees exist locally
+    (py38 keys still say ``ubi9``), synthesize from any candidate under the same notebook subtree.
     """
     if not candidates:
         return None
@@ -251,7 +264,7 @@ def resolve_notebook_directory(candidates: list[Path], base_key: str) -> Path | 
         for d in candidates:
             if d.name.startswith(f"{os_prefix}-python-"):
                 return d.with_name(want)
-        return None
+        return candidates[0].with_name(want)
     return candidates[0].with_name(want)
 
 
@@ -275,16 +288,22 @@ def _pylock_kind_from_tag(wb_resource_file: str, base_key: str) -> str:
 
 
 def pylock_candidate_rel_paths(notebook_dir: Path, kind: str) -> list[str]:
-    """Paths to try: pylock TOMLs, ``requirements.<kind>.txt``, then ``requirements.txt``."""
+    """Paths to try: pylock TOMLs, requirements files, then pipenv ``Pipfile.lock*``."""
     rel_uv = notebook_dir / "uv.lock.d" / f"pylock.{kind}.toml"
     rel_legacy = notebook_dir / "pylock.toml"
     rel_req_kind = notebook_dir / f"requirements.{kind}.txt"
     rel_req = notebook_dir / "requirements.txt"
+    pipenv_flavor = notebook_dir / (
+        "Pipfile.lock.cpu" if kind == "cpu" else "Pipfile.lock.gpu"
+    )
+    rel_pipenv = notebook_dir / "Pipfile.lock"
     out: list[str] = [
         str(rel_uv.relative_to(ROOT)),
         str(rel_legacy.relative_to(ROOT)),
         str(rel_req_kind.relative_to(ROOT)),
         str(rel_req.relative_to(ROOT)),
+        str(pipenv_flavor.relative_to(ROOT)),
+        str(rel_pipenv.relative_to(ROOT)),
     ]
     seen: set[str] = set()
     deduped: list[str] = []
@@ -423,8 +442,59 @@ def _parse_requirements_txt_packages(text: str, python_minor: str) -> dict[str, 
     return packages
 
 
+def _parse_pipfile_lock_packages(text: str, python_minor: str) -> dict[str, dict[str, Any]]:
+    """Parse pipenv ``Pipfile.lock`` JSON (``default`` section; pinned ``version`` fields)."""
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"invalid Pipfile.lock JSON: {e}") from e
+    marker_env = {
+        "python_full_version": f"{python_minor}.0",
+        "python_version": python_minor,
+        "implementation_name": "cpython",
+        "sys_platform": "linux",
+    }
+    packages: dict[str, dict[str, Any]] = {}
+    section = data.get("default")
+    if not isinstance(section, dict):
+        return packages
+    for name, meta in section.items():
+        if not isinstance(meta, dict):
+            continue
+        raw_markers = meta.get("markers")
+        if raw_markers:
+            try:
+                if not packaging.markers.Marker(str(raw_markers)).evaluate(marker_env):
+                    continue
+            except (AttributeError, TypeError, ValueError) as e:
+                logger.debug("skip Pipfile.lock package %r: bad markers %r (%s)", name, raw_markers, e)
+                continue
+        ver = meta.get("version")
+        if not ver or not isinstance(ver, str):
+            continue
+        ver_stripped = ver.strip()
+        if ver_stripped == "*":
+            continue
+        if not ver_stripped.startswith("=="):
+            logger.debug("skip Pipfile.lock package %r: non-pinned version %r", name, ver_stripped)
+            continue
+        pinned = ver_stripped[2:].split(",")[0].strip()
+        if not pinned:
+            continue
+        try:
+            packaging.version.Version(pinned)
+        except packaging.version.InvalidVersion:
+            logger.debug("skip Pipfile.lock package %r: invalid pinned version %r", name, pinned)
+            continue
+        key = canonicalize_name(name)
+        packages[key] = {"name": key, "version": pinned}
+    return packages
+
+
 def load_packages_from_lockfile(text: str, source_rel_path: str, python_minor: str) -> dict[str, dict[str, Any]]:
     name = Path(source_rel_path).name
+    if name == "Pipfile.lock" or (name.startswith("Pipfile.lock.") and name.endswith((".cpu", ".gpu"))):
+        return _parse_pipfile_lock_packages(text, python_minor)
     if name == "requirements.txt" or (name.startswith("requirements.") and name.endswith(".txt")):
         return _parse_requirements_txt_packages(text, python_minor)
     return _load_pylock_packages(text, python_minor)
