@@ -4,7 +4,9 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
-    "uv",
+    # RHAIENG-4600 - Work around to avoid uv 0.11.7 issue when using public index.
+    # Once we move to RH-ROCM index, can safely remove this url.
+    "uv @ https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/rocm6.4-ubi9/uv-0.11.6-12-py3-none-linux_x86_64.whl",
     "micropipenv[toml]",
 
     # ROCm TensorFlow packages
