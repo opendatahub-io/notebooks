@@ -63,7 +63,7 @@ jobs:
       # GitHub image registry used for storing $(CONTAINER_ENGINE)'s cache
       CACHE: "ghcr.io/${{ github.repository }}/workbench-images/build-cache"
       # https://github.com/aquasecurity/trivy
-      TRIVY_VERSION: 0.68.2
+      TRIVY_VERSION: 0.70.0
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
       TRIVY_SCAN_FS_JSON: '{}'
       # Makefile variables
