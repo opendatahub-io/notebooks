@@ -359,6 +359,7 @@ def test_image_manifests_version_alignment(
         ("Scikit-learn", ("1.7", "1.6")),
         ("Scipy", ("1.16", "1.17")),
         ("Pandas", ("3.0", "2.3")),
+        ("PyMongo", ("4.16", "4.17")),
         (
             "Numpy",
             (
