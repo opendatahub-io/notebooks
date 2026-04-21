@@ -11,8 +11,7 @@ dependencies = [
 
     # llmcompressor packages
     "odh-notebooks-meta-llmcompressor-deps",
-    # RHOAI 3.4.0: required alpha for compressed-tensors / llmcompressor stack
-    "speculators==0.4.0a1",
+    "speculators",
     "lm-eval",
 
     # Datascience and useful extensions
@@ -25,16 +24,15 @@ dependencies = [
     # Base packages
     "setuptools",
     "wheel",
+
+    # Hermetic bootstrap: locked in requirements.*.txt; Dockerfile installs unpinned from find-links.
+    "micropipenv[toml]",
+    "uv",
 ]
 
-[[tool.uv.index]]
-name = "pypi-explicit"
-url = "https://pypi.org/simple"
-explicit = true
-
 [tool.uv.sources]
-speculators = { index = "pypi-explicit" }
-# https://github.com/astral-sh/uv/issues/13067#issuecomment-2824190008
+# speculators: resolve from default RH cuda index (same as cachi2 --index-url), not PyPI — RH wheels
+# differ from PyPI (e.g. …-8-… suffix) and mismatched hashes break Konflux prefetch.
 odh-notebooks-meta-llmcompressor-deps = { path = "../../../dependencies/odh-notebooks-meta-llmcompressor-deps" }
 odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }
 odh-notebooks-meta-runtime-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-datascience-deps" }
