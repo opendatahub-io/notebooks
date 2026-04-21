@@ -30,6 +30,7 @@ dependencies = [
 constraint-dependencies = [
     # AttributeError: module 'ml_dtypes' has no attribute 'float4_e2m1fn'
     "onnx<1.19.0",
+    "pymongo==4.16",
 ]
 
 environments = [
