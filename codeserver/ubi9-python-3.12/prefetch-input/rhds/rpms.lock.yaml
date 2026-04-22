@@ -4,6 +4,13 @@ lockfileVendor: redhat
 arches:
 - arch: aarch64
   packages:
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhelai/3.3/os/Packages/n/ninja-build-1.11.1-9.el9ai.aarch64.rpm
+    repoid: rhelai-3.3-for-rhel-9-x86_64-rpms
+    size: 160500
+    checksum: sha256:c9f5bffa24b9414a00944306669c04358bc353ef6ef7f8aec228ad4e5771441e
+    name: ninja-build
+    evr: 1.11.1-9.el9ai
+    sourcerpm: ninja-build-1.11.1-9.el9ai.src.rpm
   - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhocp/4.16/os/Packages/c/containers-common-1-78.rhaos4.16.el9.aarch64.rpm
     repoid: rhocp-4.16-for-rhel-9-x86_64-rpms
     size: 100637
@@ -4792,13 +4799,6 @@ arches:
     name: libxkbfile-devel
     evr: 1.1.0-8.el9
     sourcerpm: libxkbfile-1.1.0-8.el9.src.rpm
-  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/aarch64/codeready-builder/os/Packages/n/ninja-build-1.10.2-6.el9.aarch64.rpm
-    repoid: codeready-builder-for-rhel-9-x86_64-rpms
-    size: 146570
-    checksum: sha256:c6de7ce1a2bf12de2a6a5bc204e2be8a80adeba77c2074bc0bb7b8fdb1259e40
-    name: ninja-build
-    evr: 1.10.2-6.el9
-    sourcerpm: ninja-build-1.10.2-6.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/aarch64/codeready-builder/os/Packages/o/openblas-devel-0.3.26-2.el9.aarch64.rpm
     repoid: codeready-builder-for-rhel-9-x86_64-rpms
     size: 89186
@@ -4885,12 +4885,19 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/aarch64/appstream/os/repodata/006e812e7f58e5c1211840f071145df075ed994528bc8d2ab3ac112c7657b5b5-modules.yaml.gz
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/aarch64/appstream/os/repodata/66213d53bb50768764c849aa384098e69e48ab60e993f08a3c3d60285d26d502-modules.yaml.gz
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 34364
-    checksum: sha256:006e812e7f58e5c1211840f071145df075ed994528bc8d2ab3ac112c7657b5b5
+    checksum: sha256:66213d53bb50768764c849aa384098e69e48ab60e993f08a3c3d60285d26d502
 - arch: ppc64le
   packages:
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/ppc64le/rhelai/3.3/os/Packages/n/ninja-build-1.11.1-9.el9ai.ppc64le.rpm
+    repoid: rhelai-3.3-for-rhel-9-x86_64-rpms
+    size: 176237
+    checksum: sha256:6e1cc13ee672d1b3e1e01fca6d3bdddb0ba223136d74b8f1f4d090ed849115eb
+    name: ninja-build
+    evr: 1.11.1-9.el9ai
+    sourcerpm: ninja-build-1.11.1-9.el9ai.src.rpm
   - url: https://cdn.redhat.com/content/dist/layered/rhel9/ppc64le/rhocp/4.16/os/Packages/c/containers-common-1-78.rhaos4.16.el9.ppc64le.rpm
     repoid: rhocp-4.16-for-rhel-9-x86_64-rpms
     size: 100652
@@ -9714,13 +9721,6 @@ arches:
     name: libxkbfile-devel
     evr: 1.1.0-8.el9
     sourcerpm: libxkbfile-1.1.0-8.el9.src.rpm
-  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/ppc64le/codeready-builder/os/Packages/n/ninja-build-1.10.2-6.el9.ppc64le.rpm
-    repoid: codeready-builder-for-rhel-9-x86_64-rpms
-    size: 159924
-    checksum: sha256:733bc0851d34fe333574b07d8cebda15e562f5f141989d5155196cc5925797d7
-    name: ninja-build
-    evr: 1.10.2-6.el9
-    sourcerpm: ninja-build-1.10.2-6.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/ppc64le/codeready-builder/os/Packages/o/openblas-devel-0.3.26-2.el9.ppc64le.rpm
     repoid: codeready-builder-for-rhel-9-x86_64-rpms
     size: 89175
@@ -9807,12 +9807,19 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/ppc64le/appstream/os/repodata/ff1f43b72aea2f957c85e6e34c5d6707e8dc5e275284b6c6982980791db735a1-modules.yaml.gz
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/ppc64le/appstream/os/repodata/d3bf378fbe1c1c2f513fe8d245838bd15ddc18b9ae1e2eea8f0a2a89adb90ebc-modules.yaml.gz
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 32808
-    checksum: sha256:ff1f43b72aea2f957c85e6e34c5d6707e8dc5e275284b6c6982980791db735a1
+    checksum: sha256:d3bf378fbe1c1c2f513fe8d245838bd15ddc18b9ae1e2eea8f0a2a89adb90ebc
 - arch: s390x
   packages:
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/s390x/rhelai/3.3/os/Packages/n/ninja-build-1.11.1-9.el9ai.s390x.rpm
+    repoid: rhelai-3.3-for-rhel-9-x86_64-rpms
+    size: 162288
+    checksum: sha256:26719929c0928782efcf84cc2e6d241469ef5a703f64f3e6adc7622a38a308a0
+    name: ninja-build
+    evr: 1.11.1-9.el9ai
+    sourcerpm: ninja-build-1.11.1-9.el9ai.src.rpm
   - url: https://cdn.redhat.com/content/dist/layered/rhel9/s390x/rhocp/4.16/os/Packages/c/containers-common-1-78.rhaos4.16.el9.s390x.rpm
     repoid: rhocp-4.16-for-rhel-9-x86_64-rpms
     size: 100645
@@ -14608,13 +14615,6 @@ arches:
     name: libxkbfile-devel
     evr: 1.1.0-8.el9
     sourcerpm: libxkbfile-1.1.0-8.el9.src.rpm
-  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/s390x/codeready-builder/os/Packages/n/ninja-build-1.10.2-6.el9.s390x.rpm
-    repoid: codeready-builder-for-rhel-9-x86_64-rpms
-    size: 148716
-    checksum: sha256:cf488d4dc7518d6ca1df602e07f5d5962ad50e035a40c2b4d22865665af357fa
-    name: ninja-build
-    evr: 1.10.2-6.el9
-    sourcerpm: ninja-build-1.10.2-6.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/s390x/codeready-builder/os/Packages/o/openblas-devel-0.3.26-2.el9.s390x.rpm
     repoid: codeready-builder-for-rhel-9-x86_64-rpms
     size: 89995
@@ -14701,12 +14701,19 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/s390x/appstream/os/repodata/478aef54553af08c03eca4a999564439c8567318cbeb273ca4626a9b3a27f217-modules.yaml.gz
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/s390x/appstream/os/repodata/72b57bf33df5d181fd032b5ee042282603a9bfc7367db0fa1bdc8981bc36490f-modules.yaml.gz
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 33005
-    checksum: sha256:478aef54553af08c03eca4a999564439c8567318cbeb273ca4626a9b3a27f217
+    checksum: sha256:72b57bf33df5d181fd032b5ee042282603a9bfc7367db0fa1bdc8981bc36490f
 - arch: x86_64
   packages:
+  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhelai/3.3/os/Packages/n/ninja-build-1.11.1-9.el9ai.x86_64.rpm
+    repoid: rhelai-3.3-for-rhel-9-x86_64-rpms
+    size: 167689
+    checksum: sha256:9147cfdf19fc9a8107c59769a55a9aa8ffa2d4e8ce34bf12da4767482a8d1f77
+    name: ninja-build
+    evr: 1.11.1-9.el9ai
+    sourcerpm: ninja-build-1.11.1-9.el9ai.src.rpm
   - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhocp/4.16/os/Packages/c/containers-common-1-78.rhaos4.16.el9.x86_64.rpm
     repoid: rhocp-4.16-for-rhel-9-x86_64-rpms
     size: 100670
@@ -19537,13 +19544,6 @@ arches:
     name: libxkbfile-devel
     evr: 1.1.0-8.el9
     sourcerpm: libxkbfile-1.1.0-8.el9.src.rpm
-  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/codeready-builder/os/Packages/n/ninja-build-1.10.2-6.el9.x86_64.rpm
-    repoid: codeready-builder-for-rhel-9-x86_64-rpms
-    size: 153299
-    checksum: sha256:1140bec45c316942f870c28fdede79c185a2e09adc48bada42a5610783d56400
-    name: ninja-build
-    evr: 1.10.2-6.el9
-    sourcerpm: ninja-build-1.10.2-6.el9.src.rpm
   - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/codeready-builder/os/Packages/o/openblas-devel-0.3.26-2.el9.x86_64.rpm
     repoid: codeready-builder-for-rhel-9-x86_64-rpms
     size: 90130
@@ -19630,7 +19630,7 @@ arches:
     sourcerpm: qhull-7.2.1-11.el9.src.rpm
   source: []
   module_metadata:
-  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/appstream/os/repodata/3d64ab4e2d06abcef8a3a5b642f23cca498fceb3054c5d859914d0b59bc4c38b-modules.yaml.gz
+  - url: https://cdn.redhat.com/content/dist/rhel9/9.6/x86_64/appstream/os/repodata/77c3d51a99c45d0e4ac6ca5200447bb6dd78e70df7640074b87bfcd130a8410e-modules.yaml.gz
     repoid: rhel-9-for-x86_64-appstream-rpms
     size: 34742
-    checksum: sha256:3d64ab4e2d06abcef8a3a5b642f23cca498fceb3054c5d859914d0b59bc4c38b
+    checksum: sha256:77c3d51a99c45d0e4ac6ca5200447bb6dd78e70df7640074b87bfcd130a8410e
