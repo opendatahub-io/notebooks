@@ -22,6 +22,8 @@ import packaging.version
 import pytest
 import yaml
 
+from manifests.tools.commit_env_refs import parse_env_file
+from manifests.tools.package_names import manifest_name_to_pip
 from tests import PROJECT_ROOT, manifests
 
 if TYPE_CHECKING:
@@ -185,6 +187,13 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                     "pyproject.toml is missing a [project.dependencies] section"
                 )
 
+                for dep_str in pyproject["project"]["dependencies"]:
+                    req = packaging.requirements.Requirement(dep_str)
+                    canonical = packaging.utils.canonicalize_name(req.name)
+                    assert req.name == canonical, (
+                        f"pyproject.toml dependency {req.name!r} is not canonical; should be {canonical!r}"
+                    )
+
             if (f := file.parent / "uv.lock.d").is_dir():
                 pylock_candidates = sorted(f.glob("pylock.*.toml"))
                 assert pylock_candidates, (
@@ -268,47 +277,6 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                             "Codeflare-SDK",
                         ]
 
-                        # complex translation from names used in imagestream manifest to python package name
-                        manifest_to_pylock_translation = {
-                            # TODO(jdanek): is this one intentional?
-                            "LLM-Compressor": "llmcompressor",
-                            "PyTorch": "torch",
-                            "ROCm-PyTorch": "torch",
-                            "Sklearn-onnx": "skl2onnx",
-                            "Nvidia-CUDA-CU12-Bundle": "nvidia-cuda-runtime-cu12",
-                            "MySQL Connector/Python": "mysql-connector-python",
-                        }
-
-                        # when .lower() is all it takes to do the translation
-                        manifest_to_pylock_capitalization: set[str] = {
-                            "Accelerate",
-                            "Boto3",
-                            "Codeflare-SDK",
-                            "Datasets",
-                            "Feast",
-                            "JupyterLab",
-                            "Kafka-Python-ng",
-                            "Kfp",
-                            "Kubeflow-Training",
-                            "Matplotlib",
-                            "Numpy",
-                            "Odh-Elyra",
-                            "Pandas",
-                            "Psycopg",
-                            "PyMongo",
-                            "Pyodbc",
-                            "Scikit-learn",
-                            "Scipy",
-                            "TensorFlow",
-                            "Tensorboard",
-                            # TODO(jdanek): inconsistent with PyTorch elsewhere
-                            "Torch",
-                            "Transformers",
-                            "TrustyAI",
-                            "TensorFlow-ROCm",
-                            "MLflow",
-                        }
-
                         name = d["name"]
                         if name in workbench_only_packages and manifest.metadata.type == manifests.NotebookType.RUNTIME:
                             continue
@@ -326,12 +294,7 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                             # TODO(jdanek): figure out how to check rstudio version statically
                             continue
 
-                        if name in manifest_to_pylock_translation:
-                            normalized_name = manifest_to_pylock_translation[name]
-                        elif name in manifest_to_pylock_capitalization:
-                            normalized_name = name.lower()
-                        else:
-                            normalized_name = name
+                        normalized_name = manifest_name_to_pip(name)
 
                         # assert on name
 
@@ -392,10 +355,11 @@ def test_image_manifests_version_alignment(
         ("Codeflare-SDK", ("0.35", "0.36")),
         ("MLflow", ("3.10", "3.11")),
         ("Kfp", ("2.15", "2.16")),
-        ("Feast", ("0.60", "0.61")),
+        ("Feast", ("0.61", "0.62")),
         ("Scikit-learn", ("1.7", "1.6")),
         ("Scipy", ("1.16", "1.17")),
         ("Pandas", ("3.0", "2.3")),
+        ("PyMongo", ("4.16", "4.17")),
         (
             "Numpy",
             (
@@ -557,19 +521,6 @@ _PLACEHOLDER_RE = re.compile(
 )
 
 
-def _parse_env_keys(env_path: pathlib.Path) -> set[str]:
-    keys: set[str] = set()
-    if not env_path.exists():
-        return keys
-    for line in env_path.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        key, _, _ = line.partition("=")
-        keys.add(key.strip())
-    return keys
-
-
 @pytest.mark.parametrize(
     "base_dir", [PROJECT_ROOT / "manifests" / "odh" / "base", PROJECT_ROOT / "manifests" / "rhoai" / "base"]
 )
@@ -603,8 +554,12 @@ def test_imagestream_kustomization_consistency(subtests: pytest_subtests.plugin.
                     )
                     commit_replacements[key] = field_path_key
 
-    param_env_keys = _parse_env_keys(base_dir / "params.env") | _parse_env_keys(base_dir / "params-latest.env")
-    commit_env_keys = _parse_env_keys(base_dir / "commit.env") | _parse_env_keys(base_dir / "commit-latest.env")
+    param_env_keys = set(parse_env_file(base_dir / "params.env").keys()) | set(
+        parse_env_file(base_dir / "params-latest.env").keys()
+    )
+    commit_env_keys = set(parse_env_file(base_dir / "commit.env").keys()) | set(
+        parse_env_file(base_dir / "commit-latest.env").keys()
+    )
 
     for is_file in sorted(base_dir.glob("*-imagestream.yaml")):
         is_data = yaml.safe_load(is_file.read_text())

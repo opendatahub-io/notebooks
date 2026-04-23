@@ -37,14 +37,29 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux-d160-m2xlarge/amd64
-    - linux-d160-m2xlarge/arm64
+    - linux-d160-m4xlarge/amd64
   - name: dockerfile
     value: jupyter/tensorflow/ubi9-python-3.12/Dockerfile.cuda
   - name: path-context
     value: .
   - name: build-args-file
     value: jupyter/tensorflow/ubi9-python-3.12/build-args/cuda.conf
+  # Hermetic build: no network during build; mongocli source from submodule, Go deps prefetched by Cachi2
+  - name: hermetic
+    value: 'true'
+  - name: prefetch-input
+    value:
+    - path: prefetch-input/mongocli
+      type: gomod
+    - path: prefetch-input/odh
+      type: rpm
+    - path: prefetch-input/odh
+      type: generic
+    - path: jupyter/tensorflow/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: x86_64
+      requirements_files: [requirements.cuda.txt]
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
@@ -72,4 +87,20 @@ spec:
         limits:
           cpu: '8'
           memory: 32Gi
+  - pipelineTaskName: clair-scan
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
+  - pipelineTaskName: ecosystem-cert-preflight-checks
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
 status: {}

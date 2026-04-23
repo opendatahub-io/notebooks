@@ -35,10 +35,37 @@ spec:
       value: jupyter/rocm/tensorflow/ubi9-python-3.12/build-args/rocm.conf
     - name: path-context
       value: .
+    # Hermetic: Cachi2 prefetches gomod (mongocli), RPMs+generic (prefetch-input/odh), pip (requirements.rocm.txt)
+    - name: hermetic
+      value: 'true'
+    - name: prefetch-input
+      value:
+        - path: prefetch-input/mongocli
+          type: gomod
+        - path: prefetch-input/odh
+          type: rpm
+        - path: prefetch-input/odh
+          type: generic
+        - path: jupyter/rocm/tensorflow/ubi9-python-3.12
+          type: pip
+          binary:
+            arch: x86_64
+          requirements_files: [requirements.rocm.txt]
+    - name: build-platforms
+      value:
+        - linux-d160-m4xlarge/amd64
     - name: additional-tags
       value:
         - '{{target_branch}}-{{revision}}'
   taskRunSpecs:
+    - pipelineTaskName: prefetch-dependencies
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
     - pipelineTaskName: build-images
       stepSpecs:
         - name: prepare-sboms
@@ -56,6 +83,14 @@ spec:
               memory: 32Gi
             limits:
               cpu: '8'
+              memory: 32Gi
+        - name: build
+          computeResources:
+            requests:
+              cpu: '8'
+              memory: 16Gi
+            limits:
+              cpu: '16'
               memory: 32Gi
     - pipelineTaskName: clair-scan
       computeResources:

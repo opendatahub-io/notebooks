@@ -90,13 +90,13 @@ spec:
           [
             {"name": "Boto3", "version": "1.37"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
-            {"name": "Matplotlib", "version": "3.6"},
+            {"name": "Matplotlib", "version": "3.10"},
             {"name": "Numpy", "version": "2.2"},
             {"name": "Pandas", "version": "2.2"},
-            {"name": "Scikit-learn", "version": "1.7"},
+            {"name": "Scikit-learn", "version": "1.6"},
             {"name": "Scipy", "version": "1.15"},
             {"name": "Sklearn-onnx", "version": "1.18"},
-            {"name": "ipykernel", "version": "6.30"},
+            {"name": "ipykernel", "version": "6.29"},
             {"name": "Kubeflow-Training", "version": "1.9"}
           ]
         openshift.io/imported-from: quay.io/modh/codeserver
@@ -163,23 +163,29 @@ spec:
           ]
         openshift.io/imported-from: quay.io/modh/codeserver
         opendatahub.io/image-tag-outdated: "true"
-        opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py311-ubi9-commit-2024-1_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py39-ubi9-commit-2024-1_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-codeserver-datascience-cpu-py311-ubi9-2024-1_PLACEHOLDER
+        name: odh-workbench-codeserver-datascience-cpu-py39-ubi9-2024-1_PLACEHOLDER
       name: "2024.1"
       referencePolicy:
         type: Source
     # N - 5 Version of the image
     - annotations:
-        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
-        opendatahub.io/notebook-python-dependencies: '[{"name":"code-server","version":"4.16"}]'
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "Python", "version": "v3.9"}
+          ]
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "code-server", "version": "4.16"}
+          ]
         openshift.io/imported-from: quay.io/modh/codeserver
         opendatahub.io/image-tag-outdated: 'true'
-        opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py311-ubi9-commit-2023-2_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py39-ubi9-commit-2023-2_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-codeserver-datascience-cpu-py311-ubi9-2023-2_PLACEHOLDER
+        name: odh-workbench-codeserver-datascience-cpu-py39-ubi9-2023-2_PLACEHOLDER
       name: "2023.2"
       referencePolicy:
         type: Source

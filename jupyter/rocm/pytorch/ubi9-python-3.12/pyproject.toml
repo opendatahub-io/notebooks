@@ -4,6 +4,9 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
+    "uv",
+    "micropipenv[toml]",
+
     # ROCm PyTorch packages (from AIPCC ROCm index)
     "tensorboard",
     "torch",

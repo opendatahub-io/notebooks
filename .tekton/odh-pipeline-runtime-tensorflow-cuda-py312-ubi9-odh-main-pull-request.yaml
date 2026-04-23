@@ -44,6 +44,19 @@ spec:
     value: .
   - name: build-args-file
     value: runtimes/tensorflow/ubi9-python-3.12/build-args/cuda.conf
+  - name: hermetic
+    value: 'true'
+  - name: prefetch-input
+    value:
+    - path: prefetch-input/odh
+      type: rpm
+    - path: prefetch-input/odh
+      type: generic
+    - path: runtimes/tensorflow/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: x86_64
+      requirements_files: [requirements.cuda.txt]
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
@@ -53,22 +66,62 @@ spec:
     secret:
       secretName: '{{ git_auth_secret }}'
   taskRunSpecs:
+  - pipelineTaskName: prefetch-dependencies
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
   - pipelineTaskName: build-images
     stepSpecs:
     - name: prepare-sboms
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
     - name: sbom-syft-generate
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
+    - name: build
+      computeResources:
+        requests:
+          cpu: '4'
+          memory: 8Gi
+        limits:
+          cpu: '4'
+          memory: 8Gi
+  - pipelineTaskName: clair-scan
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
+  - pipelineTaskName: sast-shell-check
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
+  - pipelineTaskName: sast-unicode-check
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
 status: {}

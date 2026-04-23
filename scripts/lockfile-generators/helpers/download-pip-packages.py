@@ -37,6 +37,8 @@ import sys
 import urllib.request
 from pathlib import Path
 
+import packaging.utils
+
 OUT_DIR = Path("cachi2/output/deps/pip")
 PYPI_JSON = "https://pypi.org/pypi/{name}/{version}/json"
 
@@ -132,7 +134,7 @@ def fetch_simple_index_urls(index_url: str, name: str, version: str, wanted_hash
     Used for RHOAI and other custom indexes that don't provide a JSON API.
     """
     # Normalize name for URL: PEP 503 uses lowercase with hyphens
-    normalized = re.sub(r"[-_.]+", "-", name).lower()
+    normalized = packaging.utils.canonicalize_name(name)
     page_url = f"{index_url.rstrip('/')}/{normalized}/"
     try:
         req = urllib.request.Request(page_url, headers={"Accept": "text/html"})

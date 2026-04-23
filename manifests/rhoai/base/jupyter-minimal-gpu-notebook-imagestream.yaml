@@ -115,14 +115,14 @@ spec:
         opendatahub.io/notebook-python-dependencies: |
           [
             {"name": "JupyterLab", "version": "3.6"},
-            {"name": "Notebook","version": "6.5"}
+            {"name": "Notebook", "version": "6.5"}
           ]
         openshift.io/imported-from: quay.io/modh/cuda-notebooks
         opendatahub.io/image-tag-outdated: 'true'
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-2024-1_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py39-ubi9-commit-2024-1_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-jupyter-minimal-cuda-py311-ubi9-2024-1_PLACEHOLDER
+        name: odh-workbench-jupyter-minimal-cuda-py39-ubi9-2024-1_PLACEHOLDER
       name: "2024.1"
       referencePolicy:
         type: Source
@@ -131,21 +131,21 @@ spec:
         # language=json
         opendatahub.io/notebook-software: |
           [
-            {"name":"CUDA","version":"11.8"},
-            {"name":"Python","version":"v3.9"}
+            {"name": "CUDA", "version": "11.8"},
+            {"name": "Python", "version": "v3.9"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
-            {"name":"JupyterLab","version":"3.6"},
-            {"name":"Notebook","version":"6.5"}
+            {"name": "JupyterLab", "version": "3.6"},
+            {"name": "Notebook", "version": "6.5"}
           ]
         openshift.io/imported-from: quay.io/modh/cuda-notebooks
         opendatahub.io/image-tag-outdated: "true"
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-2023-2_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py39-ubi9-commit-2023-2_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-jupyter-minimal-cuda-py311-ubi9-2023-2_PLACEHOLDER
+        name: odh-workbench-jupyter-minimal-cuda-py39-ubi9-2023-2_PLACEHOLDER
       name: "2023.2"
       referencePolicy:
         type: Source
@@ -154,21 +154,21 @@ spec:
         # language=json
         opendatahub.io/notebook-software: |
           [
-            {"name":"CUDA","version":"11.8"},
-            {"name":"Python","version":"v3.9"}
+            {"name": "CUDA", "version": "11.8"},
+            {"name": "Python", "version": "v3.9"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
-            {"name":"JupyterLab","version":"3.5"},
-            {"name":"Notebook","version":"6.5"}
+            {"name": "JupyterLab", "version": "3.5"},
+            {"name": "Notebook", "version": "6.5"}
           ]
         openshift.io/imported-from: quay.io/modh/cuda-notebooks
         opendatahub.io/image-tag-outdated: "true"
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-2023-1_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py39-ubi9-commit-2023-1_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-jupyter-minimal-cuda-py311-ubi9-2023-1_PLACEHOLDER
+        name: odh-workbench-jupyter-minimal-cuda-py39-ubi9-2023-1_PLACEHOLDER
       name: "2023.1"
       referencePolicy:
         type: Source
@@ -177,21 +177,21 @@ spec:
         # language=json
         opendatahub.io/notebook-software: |
           [
-            {"name":"CUDA","version":"11.4"},
-            {"name":"Python","version":"v3.8"}
+            {"name": "CUDA", "version": "11.4"},
+            {"name": "Python", "version": "v3.8"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
-            {"name":"JupyterLab","version":"3.2"},
-            {"name":"Notebook","version":"6.4"}
+            {"name": "JupyterLab", "version": "3.2"},
+            {"name": "Notebook", "version": "6.4"}
           ]
         openshift.io/imported-from: quay.io/modh/cuda-notebooks
         opendatahub.io/image-tag-outdated: 'true'
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py311-ubi9-commit-1-2_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cuda-py38-ubi9-commit-1-2_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-jupyter-minimal-cuda-py311-ubi9-1-2_PLACEHOLDER
+        name: odh-workbench-jupyter-minimal-cuda-py38-ubi9-1-2_PLACEHOLDER
       name: "1.2"
       referencePolicy:
         type: Source

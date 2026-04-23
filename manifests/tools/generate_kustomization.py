@@ -24,6 +24,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from manifests.tools.commit_env_refs import parse_env_file
 from ntb.strings import process_template_with_indents
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -90,20 +91,6 @@ _PARAM_KEY_RE = re.compile(
 )
 
 
-def _parse_env_keys(env_path: Path) -> set[str]:
-    """Read an .env file and return the set of keys (left side of '=')."""
-    keys: set[str] = set()
-    if not env_path.exists():
-        return keys
-    for line in env_path.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        key, _, _ = line.partition("=")
-        keys.add(key.strip())
-    return keys
-
-
 def _parse_imagestream_name(yaml_path: Path) -> str | None:
     """Extract ``metadata.name`` from an ImageStream YAML file.
 
@@ -139,7 +126,7 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
     imagestream_to_resource = _build_imagestream_to_resource(base_dir, all_resources)
 
     # 2) Collect all param keys from .env files
-    param_keys = _parse_env_keys(base_dir / "params.env") | _parse_env_keys(base_dir / "params-latest.env")
+    param_keys = set(parse_env_file(base_dir / "params.env").keys()) | set(parse_env_file(base_dir / "params-latest.env").keys())
 
     # 3) Parse param keys into (base_key, suffix) pairs.
     #    e.g. "odh-workbench-...-ubi9-n"      -> ("odh-workbench-...-ubi9", "-n")

@@ -1,0 +1,28 @@
+---
+scan:
+  # Teach Trivy to recognize our non-standard Python requirements filenames:
+  #   requirements.cpu.txt, requirements.cuda.txt, requirements.rocm.txt
+  #   requirements-elyra.txt
+  # By default Trivy only matches "requirements.txt" exactly.
+  file-patterns:
+    - "pip:requirements.*\\.txt"
+
+  scanners:
+    - vuln
+
+  # Skip vendored code-server VS Code sources. These package-lock.json files are
+  # upstream dependencies that cannot be patched independently — only by upgrading
+  # code-server itself. The directory is copied into the build for hermetic Konflux
+  # builds (offline npm install). Scanning it produces ~31 non-actionable alerts
+  # from VS Code extension host internals that obscure real findings.
+  # Re-evaluate after code-server upgrades.
+  skip-dirs:
+    - codeserver/ubi9-python-3.12/prefetch-input/patches
+
+severity:
+  - MEDIUM
+  - HIGH
+  - CRITICAL
+
+vulnerability:
+  ignore-unfixed: false

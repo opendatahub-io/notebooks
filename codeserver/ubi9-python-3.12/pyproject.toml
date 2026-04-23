@@ -52,5 +52,10 @@ override-dependencies = [
     "protobuf==6.31.1",
 ]
 
+constraint-dependencies = [
+    # latest 1.21.0: Wheels are available for `onnx` (v1.21.0) on the following platform: `linux_s390x` so pin to 1.20
+    "onnx<=1.20.0",
+]
+
 [tool.uv.sources]
 odh-notebooks-meta-workbench-datascience-deps = { path = "../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }

@@ -7,7 +7,7 @@ ARG BASE_IMAGE
 # mongocli-builder (build stage only, not published) #
 # Source: shared git submodule; Go modules from Cachi2 #
 ######################################################
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25.8-1775491036 AS mongocli-builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.25.8-1776370298 AS mongocli-builder
 
 USER 0
 
