@@ -16,7 +16,6 @@ dependencies = [
     # tensorflow-rocm==2.x needs tensorboard>=2.x,<2.x+1
     "tensorboard",
     
-
     # Datascience and useful extensions
     "codeflare-sdk",
     "feast",
@@ -32,12 +31,6 @@ dependencies = [
     "setuptools",
 ]
 
-[tool.uv.sources]
-odh-notebooks-meta-workbench-datascience-deps = { path = "../../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
-odh-notebooks-meta-db-connectors-deps = { path = "../../../../dependencies/odh-notebooks-meta-db-connectors-deps" }
-odh-notebooks-meta-jupyterlab-deps = { path = "../../../../dependencies/odh-notebooks-meta-jupyterlab-deps" }
-odh-notebooks-meta-jupyterlab-datascience-deps = { path = "../../../../dependencies/odh-notebooks-meta-jupyterlab-datascience-deps" }
-
 [tool.uv]
 
 override-dependencies = [
@@ -48,10 +41,14 @@ override-dependencies = [
     "urllib3>=2.6.0",
 ]
 
-constraint-dependencies = [
-
-]
-
 environments = [
+    # Keep this explicit upper bound: with `uv pip compile --universal`, transitive
+    # markers can still create a >=3.13 split, and tensorflow-rocm is cp312-only.
     "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version < '3.13'",
 ]
+
+[tool.uv.sources]
+odh-notebooks-meta-workbench-datascience-deps = { path = "../../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
+odh-notebooks-meta-db-connectors-deps = { path = "../../../../dependencies/odh-notebooks-meta-db-connectors-deps" }
+odh-notebooks-meta-jupyterlab-deps = { path = "../../../../dependencies/odh-notebooks-meta-jupyterlab-deps" }
+odh-notebooks-meta-jupyterlab-datascience-deps = { path = "../../../../dependencies/odh-notebooks-meta-jupyterlab-datascience-deps" }
