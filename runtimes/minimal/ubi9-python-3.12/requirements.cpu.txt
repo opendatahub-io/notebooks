@@ -1,4 +1,4 @@
---index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/
+--index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA1/cpu-ubi9-test/simple/
 aiohappyeyeballs==2.6.1 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:c6a86408878a5b6b76ae6cd305f79ac9f690a38b21af183e00c150ef3f569d29
 aiohttp==3.13.5 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -56,8 +56,8 @@ frozenlist==1.8.0 ; python_full_version == '3.12.*' and implementation_name == '
     --hash=sha256:8735b812251aed24e97acb3d98c8b98b0a3d6cb98bc47ebc1a744ce9cb93205f \
     --hash=sha256:bacc478cc32f63619aa33aedbe6451fa09904a96808942352c99094c7ea0986d \
     --hash=sha256:38fc5ff1cc2847d7b36cc48253868269dfbaabed631c3a71e2d5bcb26cc5ff03
-idna==3.11 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:f49cfba12c88423b9da3ddee7c73978947fd1d85fdd6f64e4c7dda2f5b3c83a1
+idna==3.12 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:922463aef1b37c33fdb5512285b993298ca36c5d48683d9bc41ce6a5ddb14ab9
 ipykernel==7.2.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:501c657ab65863d470e0732d7f72e2c420899b1578583877a595d9fe2feb0015
 ipython==9.12.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -191,11 +191,11 @@ typing-extensions==4.15.0 ; implementation_name == 'cpython' and sys_platform ==
     --hash=sha256:429f20623a355887563afc68041e782f059f26031a5e00e2dd302d37799f672c
 urllib3==2.6.3 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:e0260bcb8dc9a00766b1263632d4cea3d51ce498787c24062ef187f6ce351fdc
-uv==0.11.6 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:2c56180b8ba73865f1c578b62f8d8cca387709fbc17042eb4711edb33d2ef3da \
-    --hash=sha256:9a4ebb3a9e5a4d6bf220d920520f5adab99440b5a99179c9f455bf9ceb2734fd \
-    --hash=sha256:0e7f4e4a9249eb9e870845ae5921b1a4740751bbe6eb1c01bec51fb7cf4f28ff \
-    --hash=sha256:5a4d77bdf7f4421327179bf04f4faac5a5da4fafd971c3db28cd1ccfc13a970d
+uv==0.11.7 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:1014ad537dd560e2ff4c82a833b2dfb05829ce126374e2aa7893e379bce909f2 \
+    --hash=sha256:1c92f77c7d273eb7554a389fc3fcdc9b61b3937d11404ac18371890662fe38f5 \
+    --hash=sha256:a352770eb7d35e65912086831dadf230ba220bd9582a170607ea0548f6437512 \
+    --hash=sha256:78bca9cc1afcc426f1c9cc56960f8d79785615f6198e80b9d8ad9881edab14ce
 wcwidth==0.6.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:6e7d56e6c81b100adfb5386104fe87eb4c407fc287532b22a712de4121193db3
 webencodings==0.5.1 ; implementation_name == 'cpython' and sys_platform == 'linux' \
