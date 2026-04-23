@@ -308,20 +308,14 @@ function _create_test_versions_source_of_truth()
 }
 
 # Description:
-#   Main "test runner" function that copies the relevant test_notebook.ipynb file for the notebook under test into
-#	the running pod and then invokes papermill within the pod to actually execute test suite.
-#
-#	Script will return non-zero exit code in the event all unit tests were not successfully executed.  Diagnostic messages
-#	are printed in the event of a failure.
+#   Internal function that runs test notebooks WITHOUT creating expected_versions.json.
+#   Used by _test_datascience_notebook to run parent tests using the derived image's manifest.
 #
 # Arguments:
-#   $1 : Name of the notebook identifier
-function _run_test()
+#   $1 : Name of the notebook identifier (for locating test files)
+function _run_test_notebooks_only()
 {
     local notebook_id="${1:-}"
-
-    # Create expected_versions.json from the correct imagestream for THIS test
-    _create_test_versions_source_of_truth "${notebook_id}"
 
     local test_notebook_file='test_notebook.ipynb'
     local repo_test_directory=
@@ -360,6 +354,26 @@ function _run_test()
 }
 
 # Description:
+#   Main "test runner" function that copies the relevant test_notebook.ipynb file for the notebook under test into
+#	the running pod and then invokes papermill within the pod to actually execute test suite.
+#
+#	Script will return non-zero exit code in the event all unit tests were not successfully executed.  Diagnostic messages
+#	are printed in the event of a failure.
+#
+# Arguments:
+#   $1 : Name of the notebook identifier
+function _run_test()
+{
+    local notebook_id="${1:-}"
+
+    # Create expected_versions.json from the correct imagestream for THIS test
+    _create_test_versions_source_of_truth "${notebook_id}"
+
+    # Run the test notebooks
+    _run_test_notebooks_only "${notebook_id}"
+}
+
+# Description:
 #	Checks if the notebook under test is derived from the datasciences notebook.  This determination is subsequently used to know whether or not
 #	additional papermill tests should be invoked against the running notebook resource.
 #
@@ -381,10 +395,22 @@ function _image_derived_from_datascience()
 
 # Description:
 #	Convenience function that will invoke the minimal and datascience papermill tests against the running notebook workload
+#
+# Arguments:
+#   $1 : [optional] The actual image's notebook_id to use for expected_versions.json
+#        If not provided, uses datascience manifest (original behavior)
 function _test_datascience_notebook()
 {
-    _run_test "${jupyter_minimal_notebook_id}"
-    _run_test "${jupyter_datascience_notebook_id}"
+    local actual_image_id="${1:-${jupyter_datascience_notebook_id}}"
+
+    # Create expected_versions.json once from the ACTUAL image being tested
+    # This ensures derived images (pytorch+llmcompressor, trustyai, etc.) use their own
+    # manifest versions, not the parent datascience manifest
+    _create_test_versions_source_of_truth "${actual_image_id}"
+
+    # Run minimal and datascience tests without recreating expected_versions.json
+    _run_test_notebooks_only "${jupyter_minimal_notebook_id}"
+    _run_test_notebooks_only "${jupyter_datascience_notebook_id}"
 }
 
 function _get_notebook_id() {
@@ -437,7 +463,9 @@ function _handle_test()
     "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "python3 -m pip install papermill"
 
     if _image_derived_from_datascience "${notebook_id}" ; then
-        _test_datascience_notebook
+        # Pass the actual notebook_id so derived images use their own manifest
+        # for expected_versions.json, not the parent datascience manifest
+        _test_datascience_notebook "${notebook_id}"
     fi
 
     if [ -n "${notebook_id}" ] && ! [ "${notebook_id}" = "${jupyter_datascience_notebook_id}" ]; then
