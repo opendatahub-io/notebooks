@@ -56,48 +56,50 @@ spec:
       from:
         kind: DockerImage
         name: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-n_PLACEHOLDER
-      name: "3.4"
+      name: "3.5"
       referencePolicy:
         type: Source
     - annotations:
         # language=json
         opendatahub.io/notebook-software: |
           [
-            {"name": "CUDA", "version": "12.8"},
+            {"name": "CUDA", "version": "12.9"},
             {"name": "Python", "version": "v3.12"},
-            {"name": "PyTorch", "version": "2.7"},
-            {"name": "LLM-Compressor", "version": "0.8"}
+            {"name": "PyTorch", "version": "2.9"},
+            {"name": "LLM-Compressor", "version": "0.9"}
           ]
         # language=json
         opendatahub.io/notebook-python-dependencies: |
           [
-            {"name": "JupyterLab", "version": "4.4"},
-            {"name": "PyTorch", "version": "2.7"},
-            {"name": "LLM-Compressor", "version": "0.8"},
+            {"name": "JupyterLab", "version": "4.5"},
+            {"name": "PyTorch", "version": "2.9"},
+            {"name": "LLM-Compressor", "version": "0.9"},
             {"name": "Tensorboard", "version": "2.20"},
-            {"name": "Boto3", "version": "1.40"},
+            {"name": "Boto3", "version": "1.42"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
-            {"name": "Kfp", "version": "2.14"},
+            {"name": "Kfp", "version": "2.15"},
             {"name": "Matplotlib", "version": "3.10"},
-            {"name": "Numpy", "version": "2.2"},
+            {"name": "Numpy", "version": "2.3"},
             {"name": "Pandas", "version": "2.3"},
-            {"name": "Scikit-learn", "version": "1.7"},
+            {"name": "Scikit-learn", "version": "1.8"},
             {"name": "Scipy", "version": "1.16"},
             {"name": "Odh-Elyra", "version": "4.3"},
-            {"name": "PyMongo", "version": "4.15"},
-            {"name": "Pyodbc", "version": "5.2"},
-            {"name": "Feast", "version": "0.58"},
-            {"name": "Sklearn-onnx", "version": "1.19"},
-            {"name": "Psycopg", "version": "3.2"},
-            {"name": "MySQL Connector/Python", "version": "9.4"},
-            {"name": "Kubeflow-Training", "version": "1.9"}
+            {"name": "PyMongo", "version": "4.16"},
+            {"name": "Pyodbc", "version": "5.3"},
+            {"name": "Codeflare-SDK", "version": "0.36"},
+            {"name": "Feast", "version": "0.60"},
+            {"name": "Sklearn-onnx", "version": "1.20"},
+            {"name": "Psycopg", "version": "3.3"},
+            {"name": "MySQL Connector/Python", "version": "9.6"},
+            {"name": "Kubeflow-Training", "version": "1.9"},
+            {"name": "MLflow", "version": "3.10"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-commit-2025-2_PLACEHOLDER
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-commit-3-4_PLACEHOLDER
       from:
         kind: DockerImage
-        name: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-2025-2_PLACEHOLDER
-      name: "2025.2"
+        name: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-3-4_PLACEHOLDER
+      name: "3.4"
       referencePolicy:
         type: Source

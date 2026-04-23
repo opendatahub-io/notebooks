@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""Refresh ``manifests/odh/base/commit-latest.env`` from ``vcs-ref`` image labels.
+
+Reads ``params-latest.env``, inspects each image with ``skopeo``, writes 7-char git prefixes.
+Run after changing ``params-latest.env`` (e.g. pinning workbench images to digests from ``params.env``).
+"""
 from __future__ import annotations
 
 import asyncio
@@ -101,7 +106,7 @@ async def inspect(images_to_inspect: typing.Iterable[str]) -> list[tuple[str, st
 
 
 async def main():
-    with open(PROJECT_ROOT / "manifests/base/params-latest.env", "rt") as file:
+    with open(PROJECT_ROOT / "manifests/odh/base/params-latest.env", "rt") as file:
         images_to_inspect: list[list[str]] = [line.strip().split('=', 1) for line in file.readlines()
                                               if line.strip() and not line.strip().startswith("#")]
 
@@ -116,7 +121,7 @@ async def main():
         _, commit_hash = result
         output.append((re.sub(r'-n$', "-commit-n", variable), commit_hash[:7]))
 
-    with open(PROJECT_ROOT / "manifests/base/commit-latest.env", "wt") as file:
+    with open(PROJECT_ROOT / "manifests/odh/base/commit-latest.env", "wt") as file:
         for line in sorted(output):
             print(*line, file=file, sep="=", end="\n")
 

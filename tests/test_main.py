@@ -503,7 +503,7 @@ def test_rhds_pipelines_use_rhds_args(subtests: pytest_subtests.plugin.SubTests)
             )
 
 
-CANONICAL_TAG_ORDER = ["3.4", "2025.2", "2025.1", "2024.2", "2024.1", "2023.2", "2023.1", "1.2"]
+CANONICAL_TAG_ORDER = ["3.5", "3.4", "2025.2", "2025.1", "2024.2", "2024.1", "2023.2", "2023.1", "1.2"]
 
 _PLACEHOLDER_RE = re.compile(
     r"""
