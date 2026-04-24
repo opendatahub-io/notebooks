@@ -363,12 +363,12 @@ def test_image_manifests_version_alignment(
         (
             "Numpy",
             (
-                "2.0",  # for tensorflow rocm (numpy 2.0.2)
+                "2.1",  # for tensorflow rocm (numpy 2.1.x)
                 "2.3",  # this used to be our latest
                 "2.4",  # this is our latest where possible
             ),
         ),
-        ("Tensorboard", ("2.18", "2.20")),
+        ("Tensorboard", ("2.19", "2.20")),
         ("PyTorch", ("2.9", "2.10")),
     )
 

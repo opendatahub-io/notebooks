@@ -158,14 +158,6 @@ LABEL name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.12" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/rocm/tensorflow/ubi9-python-3.12" \
     io.openshift.build.image="quay.io/opendatahub/workbench-images:rocm-jupyter-tensorflow-ubi9-python-3.12"
 
-### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-ENV PIP_INDEX_URL=https://pypi.org/simple
-# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-ENV UV_INDEX_URL=https://pypi.org/simple
-# https://docs.astral.sh/uv/reference/environment/#uv_default_index
-ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-### END RHAIENG-2189: this is AIPCC migration phase 1.5
-
 # Install Python packages from lockfile (requirements.rocm.txt used only for Cachi2 prefetch)
 COPY ${TENSORFLOW_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 

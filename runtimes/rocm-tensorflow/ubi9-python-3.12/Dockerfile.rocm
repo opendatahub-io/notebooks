@@ -34,14 +34,6 @@ FROM rocm-base AS rocm-runtime-tensorflow
 ARG TENSORFLOW_SOURCE_CODE=runtimes/rocm-tensorflow/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-### BEGIN RHAIENG-2189: this is AIPCC migration phase 1.5
-ENV PIP_INDEX_URL=https://pypi.org/simple
-# UV_INDEX_URL is deprecated in favor of UV_DEFAULT_INDEX
-ENV UV_INDEX_URL=https://pypi.org/simple
-# https://docs.astral.sh/uv/reference/environment/#uv_default_index
-ENV UV_DEFAULT_INDEX=https://pypi.org/simple
-### END RHAIENG-2189: this is AIPCC migration phase 1.5
-
 LABEL name="odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.12" \
     summary="Runtime ROCm tensorflow notebook image for ODH notebooks" \
     description="Runtime ROCm tensorflow notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
@@ -54,7 +46,7 @@ LABEL name="odh-notebook-rocm-runtime-tensorflow-ubi9-python-3.12" \
 
 WORKDIR /opt/app-root/bin
 
-COPY --chown=1001:0 ${TENSORFLOW_SOURCE_CODE}/pylock.toml ./pylock.toml
+COPY --chown=1001:0 ${TENSORFLOW_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY --chown=1001:0 ${TENSORFLOW_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY --chown=1001:0 ${TENSORFLOW_SOURCE_CODE}/utils ./utils/
 
