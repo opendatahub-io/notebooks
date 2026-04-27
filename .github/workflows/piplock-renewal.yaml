@@ -112,6 +112,12 @@ jobs:
             exit 0
           fi
 
+          # Skip PR creation if only timestamp changes
+          if git diff --cached -I '^#.*--exclude-newer' --quiet; then
+            echo "Only timestamp changes. Skipping PR creation."
+            exit 0
+          fi
+
           BRANCH_NAME="lockfile-update-$(date +%Y%m%d-%H%M)"
           git checkout -b "$BRANCH_NAME"
           git commit -m "Update lock files and ImageStream dependency annotations"
