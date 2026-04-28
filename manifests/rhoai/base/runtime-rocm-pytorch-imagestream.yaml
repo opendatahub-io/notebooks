@@ -7,7 +7,9 @@ metadata:
   annotations:
     opendatahub.io/runtime-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/runtimes"
     opendatahub.io/runtime-image-name: "Runtime | Pytorch | ROCm | Python 3.12"
-    opendatahub.io/runtime-image-desc: "ROCm optimized PyTorch runtime image for Elyra, enabling pipeline execution from Workbenches with PyTorch libraries and dependencies, supporting different runtimes for various pipeline nodes."
+    opendatahub.io/runtime-image-desc: "ROCm optimized PyTorch runtime image for Elyra,
+      enabling pipeline execution from Workbenches with PyTorch libraries and dependencies,
+      supporting different runtimes for various pipeline nodes."
   name: runtime-rocm-pytorch
 spec:
   lookupPolicy:
@@ -33,6 +35,29 @@ spec:
       from:
         kind: DockerImage
         name: odh-pipeline-runtime-pytorch-rocm-py312-ubi9-n_PLACEHOLDER
-      name: "rocm-pytorch"
+      name: "3.5"
+      referencePolicy:
+        type: Source
+    - annotations:
+        # language=json
+        opendatahub.io/runtime-image-metadata: |
+          [
+            {
+              "display_name": "Runtime | Pytorch | ROCm | Python 3.12",
+              "metadata": {
+                "tags": [
+                  "rocm-pytorch"
+                ],
+                "display_name": "Runtime | Pytorch | ROCm | Python 3.12",
+                "pull_policy": "IfNotPresent"
+              },
+              "schema_name": "runtime-image"
+            }
+          ]
+        openshift.io/imported-from: quay.io/modh/runtime-images
+      from:
+        kind: DockerImage
+        name: odh-pipeline-runtime-pytorch-rocm-py312-ubi9-3-4_PLACEHOLDER
+      name: "3.4"
       referencePolicy:
         type: Source
