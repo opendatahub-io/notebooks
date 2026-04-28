@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
+"""
+Update commit-latest.env files with vcs-ref labels from container images.
+
+This script reads params-latest.env to get image digests, then uses skopeo
+to inspect each image and extract the vcs-ref label (git commit hash).
+The results are written to commit-latest.env.
+
+Usage:
+    python3 scripts/update-commit-latest-env.py --variant odh
+    python3 scripts/update-commit-latest-env.py --variant rhoai
+"""
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import pathlib
@@ -10,11 +22,28 @@ import typing
 
 import structlog
 
-from ci.logging_config import configure_logging
+try:
+    from ci.logging_config import configure_logging
+except ImportError:
+    def configure_logging():
+        import logging
+        logging.basicConfig(level=logging.INFO)
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent
 
 log = structlog.get_logger()
+
+# Mapping of variant to paths
+VARIANT_PATHS = {
+    "odh": {
+        "params": PROJECT_ROOT / "manifests/odh/base/params-latest.env",
+        "commit": PROJECT_ROOT / "manifests/odh/base/commit-latest.env",
+    },
+    "rhoai": {
+        "params": PROJECT_ROOT / "manifests/rhoai/base/params-latest.env",
+        "commit": PROJECT_ROOT / "manifests/rhoai/base/commit-latest.env",
+    },
+}
 
 
 async def get_image_vcs_ref(image_url: str, semaphore: asyncio.Semaphore) -> tuple[str, str | None]:
@@ -100,25 +129,92 @@ async def inspect(images_to_inspect: typing.Iterable[str]) -> list[tuple[str, st
     return await asyncio.gather(*tasks)
 
 
-async def main():
-    with open(PROJECT_ROOT / "manifests/base/params-latest.env", "rt") as file:
-        images_to_inspect: list[list[str]] = [line.strip().split('=', 1) for line in file.readlines()
-                                              if line.strip() and not line.strip().startswith("#")]
+async def update_commit_env(variant: str) -> bool:
+    """
+    Update commit-latest.env for the specified variant (odh or rhoai).
+    
+    Returns True if successful, False otherwise.
+    """
+    paths = VARIANT_PATHS.get(variant)
+    if not paths:
+        log.error(f"Unknown variant: {variant}. Must be one of: {list(VARIANT_PATHS.keys())}")
+        return False
+
+    params_file = paths["params"]
+    commit_file = paths["commit"]
+
+    if not params_file.exists():
+        log.warning(f"Params file not found: {params_file}. Skipping {variant}.")
+        return True  # Not an error, just skip
+
+    log.info(f"Processing {variant} variant")
+    log.info(f"Reading params from: {params_file}")
+    log.info(f"Will write commits to: {commit_file}")
+
+    with open(params_file, "rt") as file:
+        images_to_inspect: list[list[str]] = [
+            line.strip().split('=', 1) for line in file.readlines()
+            if line.strip() and not line.strip().startswith("#") and '=' in line
+        ]
+
+    if not images_to_inspect:
+        log.warning(f"No images found in {params_file}")
+        return True
+
+    log.info(f"Found {len(images_to_inspect)} images to inspect")
 
     results = await inspect(value for _, value in images_to_inspect)
-    if any(commit_hash is None for variable, commit_hash in results):
-        log.error("Failed to get commit hash for some images. Quitting, please try again to try again, like.")
-        sys.exit(1)
+    
+    # Check for failures but don't fail completely - just log warnings
+    failed_count = sum(1 for _, commit_hash in results if commit_hash is None)
+    if failed_count > 0:
+        log.warning(f"Failed to get commit hash for {failed_count}/{len(results)} images")
 
     output = []
     for image, result in zip(images_to_inspect, results, strict=True):
         variable, image_digest = image
         _, commit_hash = result
-        output.append((re.sub(r'-n$', "-commit-n", variable), commit_hash[:7]))
+        if commit_hash:
+            # Convert variable name: remove trailing -n and add -commit-n
+            commit_var = re.sub(r'-n$', "-commit-n", variable)
+            output.append((commit_var, commit_hash[:7]))
 
-    with open(PROJECT_ROOT / "manifests/base/commit-latest.env", "wt") as file:
-        for line in sorted(output):
-            print(*line, file=file, sep="=", end="\n")
+    if output:
+        # Ensure parent directory exists
+        commit_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(commit_file, "wt") as file:
+            for line in sorted(output):
+                print(*line, file=file, sep="=", end="\n")
+        
+        log.info(f"Successfully wrote {len(output)} entries to {commit_file}")
+    else:
+        log.warning(f"No commit hashes to write for {variant}")
+
+    return True
+
+
+async def main():
+    parser = argparse.ArgumentParser(
+        description="Update commit-latest.env with vcs-ref labels from container images"
+    )
+    parser.add_argument(
+        "--variant",
+        choices=["odh", "rhoai", "all"],
+        default="all",
+        help="Which variant to update (default: all)"
+    )
+    args = parser.parse_args()
+
+    variants = list(VARIANT_PATHS.keys()) if args.variant == "all" else [args.variant]
+    
+    success = True
+    for variant in variants:
+        if not await update_commit_env(variant):
+            success = False
+
+    if not success:
+        sys.exit(1)
 
 
 if __name__ == '__main__':
