@@ -12,6 +12,8 @@ files -- no hardcoded image list to keep in sync.
 
 Usage:
     uv run manifests/tools/generate_kustomization.py              # write kustomization.yaml
+    uv run manifests/tools/generate_kustomization.py --target rhoai
+                                                            # write only manifests/rhoai/base/kustomization.yaml
     uv run manifests/tools/generate_kustomization.py --check      # verify existing file matches
     uv run manifests/tools/generate_kustomization.py --stdout     # print to stdout instead
 """
@@ -151,21 +153,26 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
         f"Mismatch: {len(field_paths)} fieldPaths vs {len(imagestreams)} imagestreams"
     )
 
-    # Split into params blocks and commit blocks
-    params_pairs: list[tuple[str, str]] = []  # (full_key, imagestream)
-    commit_pairs: list[tuple[str, str]] = []
+    # Split into params and commit blocks
+    replacement_params_pairs: list[tuple[str, str]] = []  # (full_key, imagestream)
     for key, istream in zip(field_paths, imagestreams, strict=True):
-        if "-commit-" in key:
-            commit_pairs.append((key, istream))
-        else:
-            params_pairs.append((key, istream))
+        if "-commit-" not in key:
+            replacement_params_pairs.append((key, istream))
 
-    # Sanity check, ensure all params have corresponding imagestreams
-    import unittest
-    tc = unittest.TestCase()
-    tc.maxDiff = None
-    tc.assertCountEqual(param_keys, {full_key for full_key, _imagestream in params_pairs},
-                        "Missing imagestream for param key")
+    replacement_param_keys = {full_key for full_key, _imagestream in replacement_params_pairs}
+    missing_param_keys = sorted(param_keys - replacement_param_keys)
+    assert not missing_param_keys, (
+        "Missing imagestream replacement for params key(s): "
+        + ", ".join(missing_param_keys)
+    )
+
+    # Keep only keys that still exist in params*.env.
+    #
+    # This lets the generator recover after tag removals where stale replacements
+    # still exist in kustomization.yaml (the script should remove those blocks).
+    params_pairs = [
+        (full_key, istream) for full_key, istream in replacement_params_pairs if full_key in param_keys
+    ]
 
     # 5) Build workbenches and runtimes from the params pairs
     workbench_resource_files: list[str] = []
@@ -399,20 +406,29 @@ def main() -> None:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--check", action="store_true", help="Verify existing kustomization.yaml matches generated output")
     group.add_argument("--stdout", action="store_true", help="Print to stdout instead of writing to file")
+    parser.add_argument(
+        "--target",
+        choices=("all", "odh", "rhoai"),
+        default="all",
+        help="Generate only one manifests base directory (default: all)",
+    )
     args = parser.parse_args()
 
-    for base_dir, output_file in (
-        (MANIFESTS_DIR / "odh" / "base", MANIFESTS_DIR / "odh" / "base" / "kustomization.yaml"),
-        (MANIFESTS_DIR / "rhoai" / "base", MANIFESTS_DIR / "rhoai" / "base" / "kustomization.yaml"),
-    ):
+    targets = {
+        "odh": (MANIFESTS_DIR / "odh" / "base", MANIFESTS_DIR / "odh" / "base" / "kustomization.yaml"),
+        "rhoai": (MANIFESTS_DIR / "rhoai" / "base", MANIFESTS_DIR / "rhoai" / "base" / "kustomization.yaml"),
+    }
+    selected_targets = list(targets.items()) if args.target == "all" else [(args.target, targets[args.target])]
+
+    for _target_name, (base_dir, output_file) in selected_targets:
         content = generate(base_dir=base_dir)
 
         if args.check:
             existing = output_file.read_text()
             if existing == content:
-                print("OK: kustomization.yaml is up to date.")
+                print(f"OK: {output_file} is up to date.")
             else:
-                print("MISMATCH: kustomization.yaml differs from generated output.", file=sys.stderr)
+                print(f"MISMATCH: {output_file} differs from generated output.", file=sys.stderr)
                 _print_first_difference(existing, content)
                 sys.exit(1)
         elif args.stdout:
