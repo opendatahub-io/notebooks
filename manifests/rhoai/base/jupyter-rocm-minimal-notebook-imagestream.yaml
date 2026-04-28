@@ -81,25 +81,3 @@ spec:
       name: "2025.1"
       referencePolicy:
         type: Source
-    # N - 3 Version of the image
-    - annotations:
-        # language=json
-        opendatahub.io/notebook-software: |
-          [
-            {"name": "ROCm", "version": "6.1"},
-            {"name": "Python", "version": "v3.11"}
-          ]
-        # language=json
-        opendatahub.io/notebook-python-dependencies: |
-          [
-            {"name": "JupyterLab", "version": "4.2"}
-          ]
-        openshift.io/imported-from: quay.io/modh/rocm-notebooks
-        opendatahub.io/image-tag-outdated: "true"
-        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-rocm-py311-ubi9-commit-2024-2_PLACEHOLDER
-      from:
-        kind: DockerImage
-        name: odh-workbench-jupyter-minimal-rocm-py311-ubi9-2024-2_PLACEHOLDER
-      name: "2024.2"
-      referencePolicy:
-        type: Source
