@@ -1,47 +1,94 @@
 ---
-name: Update commit-latest.env on params-latest.env change
+name: Update commit-latest.env with image vcs-ref labels
 
 "on":
   workflow_dispatch:
   schedule:
-    - cron: '0 11 * * *'  # Daily at midnight UTC
+    - cron: '0 11 * * *'  # Daily at 11am UTC
   push:
     branches:
       - main
-      - rhoai-*
     paths:
-      - 'manifests/base/params-latest.env'
+      - 'manifests/odh/base/params-latest.env'
+      - 'manifests/rhoai/base/params-latest.env'
+      - '**/Dockerfile*'
+      - '**/pyproject.toml'
+      - '**/pylock*.toml'
 
 jobs:
-  sync-commit:
+  update-commit-hashes:
     runs-on: ubuntu-latest
     concurrency:
       group: update-commit-latest-env-${{ github.ref }}
       cancel-in-progress: false
     permissions:
-      contents: write
+      contents: read  # checkout only; push and PR creation use the PAT
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: true
+          ref: ${{ github.ref }}
+          persist-credentials: false
+          fetch-depth: 0
 
-      - name: Update manifests/base/commit-latest.env
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install structlog
+
+      - name: Install skopeo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo
+
+      - name: Update commit-latest.env files
         id: update_env
         run: |
-          python3 scripts/update-commit-latest-env.py
+          python3 scripts/update-commit-latest-env.py --variant odh
+          python3 scripts/update-commit-latest-env.py --variant rhoai
 
-      - name: Commit and push changes
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          # Check for any changes
+          git add manifests/odh/base/commit-latest.env manifests/rhoai/base/commit-latest.env 2>/dev/null || true
 
-          # Check for changes before committing
-          if ! git diff --quiet manifests/base/commit-latest.env; then
-            git add manifests/base/commit-latest.env
-            git commit -m "ci: update commit SHAs for image digests changes"
-            git push
-          else
-            echo "No effective changes in manifests/base/commit-latest.env, skipping commit."
+          if git diff --cached --quiet; then
+            echo "No changes to commit-latest.env files, skipping PR creation."
+            exit 0
           fi
+
+          BRANCH_NAME="commit-hash-update-$(date +%Y%m%d-%H%M)"
+          git checkout -b "$BRANCH_NAME"
+          git commit -m "ci: update commit SHAs from image vcs-ref labels"
+
+          # Push using PAT for branch protection bypass
+          git push -u "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH_NAME"
+
+          gh pr create \
+            --title "ci: Update commit-latest.env with latest image commit hashes" \
+            --head "$BRANCH_NAME" \
+            --body "$(cat <<'EOF'
+          Automated update of commit hashes in `commit-latest.env` files.
+
+          This PR updates the `opendatahub.io/notebook-build-commit` annotation values
+          by reading the `vcs-ref` label from each built image using `skopeo inspect`.
+
+          **Files updated:**
+          - `manifests/odh/base/commit-latest.env` (ODH)
+          - `manifests/rhoai/base/commit-latest.env` (RHOAI)
+
+          **Auto-merge:** This PR can be merged once CI passes.
+          EOF
+          )" \
+            --base main
