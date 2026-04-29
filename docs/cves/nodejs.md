@@ -47,7 +47,7 @@ For example, here is a vulnerability about a "php" package:
 
 Use the `scripts/sbom_analyze.py` to analyze the manifest-box sbom, or use Ctrl+F in your IDE of choice, that works too.
 
-```
+```bash
 ❯ uv run scripts/sbom_analyze.py rhoai_odh-workbench-codeserver-datascience-cpu-py312-rhel9@sha256_56572.json php
 
 === Searching for 'php' ===
