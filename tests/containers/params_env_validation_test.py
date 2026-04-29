@@ -348,7 +348,7 @@ def test_params_env_image_metadata(
             # Check image name label
             expected_name = _resolve_expected(expected, variant, "name")
             actual_name = labels.get("name")
-            if expected_name and actual_name:
+            if expected_name:
                 with subtests.test(msg=f"{variable}: image name"):
                     assert actual_name == expected_name, f"Expected name '{expected_name}', got '{actual_name}'"
 
@@ -366,7 +366,10 @@ def test_params_env_image_metadata(
             expected_size = _resolve_expected(expected, variant, "size_mb")
             if expected_size:
                 actual_size = _get_image_size_mb(image_url)
-                if actual_size is not None:
+                if actual_size is None:
+                    with subtests.test(msg=f"{variable}: image size fetch"):
+                        pytest.fail(f"Could not determine size for {image_url}")
+                else:
                     with subtests.test(msg=f"{variable}: image size"):
                         percent_change = abs(100 * actual_size // expected_size - 100)
                         abs_change = abs(actual_size - expected_size)
