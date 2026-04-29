@@ -221,9 +221,16 @@ def test_params_env_variable_uniqueness(
         all_keys: list[str] = []
         all_values: list[str] = []
         for f in files:
-            entries = _parse_env(f)
-            all_keys.extend(entries.keys())
-            all_values.extend(entries.values())
+            if not f.exists():
+                continue
+            for line in f.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                key, _, value = line.partition("=")
+                if key and value:
+                    all_keys.append(key.strip())
+                    all_values.append(value.strip())
 
         with subtests.test(msg=f"{env_name}.env variable name uniqueness"):
             seen: dict[str, int] = {}
