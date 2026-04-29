@@ -83,7 +83,8 @@ function check_variables_uniq() {
     if test "${allow_value_duplicity}" = "false"; then
         echo "Checking that all values assigned to variables in the file '${env_file_path_1}' & '${env_file_path_2}' are unique and expected"
 
-        content=$(sed '/^$/d' "${env_file_path_1}" "${env_file_path_2}" | sed 's#.*=##' | sort)
+        # Exclude "dummy" placeholder values (RHOAI params-latest.env uses these)
+        content=$(sed '/^$/d' "${env_file_path_1}" "${env_file_path_2}" | sed 's#.*=##' | grep -v '^dummy$' | sort)
 
         local num_values
         num_values=$(echo "${content}" | wc -l)
