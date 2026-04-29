@@ -111,12 +111,16 @@ WORKDIR /tmp/
 COPY /rstudio/utils /tmp/utils
 
 # Install RStudio
-ARG RSTUDIO_RPM=rstudio-server-rhel-2025.09.0-387-x86_64.rpm
+ARG RSTUDIO_RPM=rstudio-server-rhel-2026.01.1-403-x86_64.rpm
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 wget --progress=dot:giga https://download2.rstudio.org/server/rhel9/x86_64/${RSTUDIO_RPM}
 dnf install -y ${RSTUDIO_RPM}
 rm ${RSTUDIO_RPM}
+# Remove statically-linked Copilot language server binaries (disabled by default,
+# flagged by check-payload as not dynamically linked)
+rm -f /usr/lib/rstudio-server/bin/copilot-language-server-js/bin/linux/arm64/rg \
+      /usr/lib/rstudio-server/bin/copilot-language-server-js/bin/linux/x64/rg
 dnf -y clean all  --enablerepo='*'
 # Specific RStudio config and fixes
 chmod 1777 /var/run/rstudio-server
