@@ -58,8 +58,8 @@ SIZE_ABSOLUTE_TRESHOLD=100
 function check_variables_uniq() {
     local env_file_path_1="${1}"
     local env_file_path_2="${2}"
-    local allow_value_duplicity="${3:=false}"
-    local is_params_env="${4:=false}"
+    local allow_value_duplicity="${3:-false}"
+    local is_params_env="${4:-false}"
     local ret_code=0
 
 
@@ -842,14 +842,14 @@ function check_image_variable_matches_name_and_commitref_and_size() {
 
     # 1. Percentual size change
     percent_change=$((100 * actual_img_size / expected_img_size - 100))
-    abs_percent_change=${percent_change#-*}
+    abs_percent_change=${percent_change#-}
     test ${abs_percent_change} -le ${SIZE_PERCENTUAL_TRESHOLD} || {
         echo "Image size changed by ${abs_percent_change}% (expected: ${expected_img_size} MB; actual: ${actual_img_size} MB; treshold: ${SIZE_PERCENTUAL_TRESHOLD}%)."
         return 1
     }
     # 2. Absolute size change
     size_difference=$((actual_img_size - expected_img_size))
-    abs_size_difference=${size_difference#-*}
+    abs_size_difference=${size_difference#-}
     test ${abs_size_difference} -le ${SIZE_ABSOLUTE_TRESHOLD} || {
         echo "Image size changed by ${abs_size_difference} MB (expected: ${expected_img_size} MB; actual: ${actual_img_size} MB; treshold: ${SIZE_ABSOLUTE_TRESHOLD} MB)."
         return 1
