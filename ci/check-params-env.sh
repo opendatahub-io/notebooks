@@ -29,8 +29,8 @@ if [ "${KONFLUX:-no}" = 'yes' ]; then
     _MANIFESTS_VARIANT="rhoai"
     # This value needs to be updated everytime we deliberately change number of the
     # images we want to have in the `params.env` or `params-latest.env` file.
-    EXPECTED_COMMIT_NUM_RECORDS=74
-    EXPECTED_PARAMS_NUM_RECORDS=74
+    EXPECTED_COMMIT_NUM_RECORDS=39
+    EXPECTED_PARAMS_NUM_RECORDS=39
 else
     _MANIFESTS_VARIANT="odh"
     # This value needs to be updated everytime we deliberately change number of the
