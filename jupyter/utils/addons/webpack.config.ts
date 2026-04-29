@@ -10,9 +10,10 @@ import HtmlWebpackPlugin from "html-webpack-plugin";
 import {PurgeCSSPlugin} from 'purgecss-webpack-plugin';
 
 // Define __dirname for ES modules
-// import { fileURLToPath } from 'node:url';
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
+// https://webpack.js.org/configuration/configuration-languages/#typescript
+import { fileURLToPath } from 'node:url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Define the PatternFly CSS entry point
 const patternflyCssEntry = './node_modules/@patternfly/patternfly/patternfly-no-globals.css';

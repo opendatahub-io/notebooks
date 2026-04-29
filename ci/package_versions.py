@@ -72,9 +72,7 @@ class Tag:
         return json.loads(self._data["annotations"]["opendatahub.io/notebook-python-dependencies"])
 
 
-def main():
-    pathname = "manifests/base/*.yaml"
-    # pathname = 'manifests/overlays/additional/*.yaml'
+def _load_imagestreams(pathname: str) -> list[Manifest]:
     imagestreams: list[Manifest] = []
     for fn in glob.glob(pathname, root_dir=ROOT_DIR):
         # there may be more than one yaml document in a file (e.g. rstudio buildconfigs)
@@ -89,9 +87,11 @@ def main():
                     or data["metadata"]["labels"]["opendatahub.io/notebook-image"] != "true"
                 ):
                     continue
-                imagestream = Manifest(data)
-                imagestreams.append(imagestream)
+                imagestreams.append(Manifest(data))
+    return imagestreams
 
+
+def _generate_table(imagestreams: list[Manifest]) -> list[tuple[str, str, str]]:
     tabular_data: list[tuple[str, str, str]] = []
 
     # todo(jdanek): maybe we want to change to sorting by `imagestream.order`
@@ -128,8 +128,7 @@ def main():
                 sw_version = sw_version.lstrip("v")
                 software.append(f"{sw_name}: {sw_version}")
 
-            # in 2.16.1 we only have RStudio as tech preview, and that is not a prebuilt image we ship
-            tech_preview_names = ()  # or define the actual names you want to check
+            tech_preview_names = ()
             maybe_techpreview = "" if name not in tech_preview_names else " (Technology Preview)"
             maybe_recommended = "" if not recommended or len(imagestream.tags) == 1 else " (Recommended)"
 
@@ -143,6 +142,12 @@ def main():
 
             prev_tag = tag
 
+    return tabular_data
+
+
+def _print_section(heading: str, tabular_data: list[tuple[str, str, str]]) -> None:
+    print(f"## {heading}")
+    print()
     print("| Image name | Image version | Preinstalled packages |")
     print("|------------|---------------|-----------------------|")
     for row in tabular_data:
@@ -150,7 +155,7 @@ def main():
 
     print()
 
-    print("## Source")
+    print(f"### {heading} Source")
     print()
     print("_mouse hover reveals copy button in top right corner of the box_")
     print()
@@ -160,6 +165,20 @@ def main():
     for row in tabular_data:
         print(f"{' | '.join(escape(r) for r in row)}")
     print("```")
+
+
+MANIFEST_DIRS = {
+    "ODH": "manifests/odh/base/*.yaml",
+    "RHOAI": "manifests/rhoai/base/*.yaml",
+}
+
+
+def main():
+    for heading, pathname in MANIFEST_DIRS.items():
+        imagestreams = _load_imagestreams(pathname)
+        tabular_data = _generate_table(imagestreams)
+        _print_section(heading, tabular_data)
+        print()
 
 
 def escape(s: str) -> str:

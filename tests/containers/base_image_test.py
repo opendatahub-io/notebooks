@@ -142,9 +142,6 @@ class TestBaseImage:
                         continue  # this is some kind of self test or what
                     if re.search(r"^/lib64/systemd/libsystemd-core-\d+.so", dlib) is not None:
                         continue  # this is expected and we don't use systemd anyway
-                    if deps.startswith("libodbc.so.2"):
-                        continue  # todo(jdanek): known issue RHOAIENG-18904
-
                     # NVIDIA Container Toolkit (CTK), Container Device Interface (CDI)
                     if deps.startswith("libcuda.so.1"):
                         continue  # cuda magic will mount this into /usr/lib64/libcuda.so.1 and it will be found

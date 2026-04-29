@@ -63,6 +63,7 @@ jobs:
         with:
           ref: ${{ env.BRANCH }}
           persist-credentials: false
+          fetch-depth: 0  # update_imagestream_annotations_from_pylock.py uses git show for tag SHAs
 
       - name: Configure Git
         run: |
@@ -71,6 +72,11 @@ jobs:
 
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
+        with:
+          go-version-file: scripts/buildinputs/go.mod
 
       - name: Run make refresh-lock-files
         run: |
@@ -88,6 +94,14 @@ jobs:
           ./uv run scripts/dockerfile_fragments.py
           ./uv run manifests/tools/generate_kustomization.py
 
+      - name: Refresh ImageStream notebook dependency annotations from pylocks
+        run: |
+          ./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant odh
+          ./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant rhoai
+
+      - name: Validate manifests (make test)
+        run: make test
+
       - name: Create Pull Request
         env:
           GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
@@ -98,17 +112,23 @@ jobs:
             exit 0
           fi
 
+          # Skip PR creation if only timestamp changes
+          if git diff --cached -I '^#.*--exclude-newer' --quiet; then
+            echo "Only timestamp changes. Skipping PR creation."
+            exit 0
+          fi
+
           BRANCH_NAME="lockfile-update-$(date +%Y%m%d-%H%M)"
           git checkout -b "$BRANCH_NAME"
-          git commit -m "Update lock files"
+          git commit -m "Update lock files and ImageStream dependency annotations"
           # https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation#using-an-installation-access-token-to-authenticate-as-an-app-installation
           git push -u "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH_NAME"
 
           gh pr create \
-            --title "Update lock files" \
+            --title "Update lock files and ImageStream dependency annotations" \
             --head "$BRANCH_NAME" \
             --body "$(cat <<'EOF'
-          Automated lock file update.
+          Automated lock file update, Dockerfile/kustomization regeneration, and ImageStream `notebook-python-dependencies` / `notebook-software` annotations from pylocks.
 
           **Auto-merge policy:** This PR will be automatically merged after 1 working day unless:
           - Moved to draft status

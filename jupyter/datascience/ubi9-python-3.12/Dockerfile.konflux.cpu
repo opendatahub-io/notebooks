@@ -1,5 +1,3 @@
-ARG LOCAL_BUILD=false
-
 #########################
 # configuration args    #
 #########################
@@ -9,7 +7,7 @@ ARG BASE_IMAGE
 # mongocli-builder (build stage only, not published) #
 # Source: shared git submodule; Go modules from Cachi2 #
 ######################################################
-FROM registry.access.redhat.com/ubi9/go-toolset:1.24 AS mongocli-builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.25.8-1776370298 AS mongocli-builder
 
 USER 0
 
@@ -41,8 +39,6 @@ USER 1001
 ####################
 FROM ${BASE_IMAGE} AS cpu-base
 
-ARG LOCAL_BUILD
-
 WORKDIR /opt/app-root/bin
 
 # hadolint ignore=DL3002
@@ -52,23 +48,14 @@ USER 0
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# [HERMETIC] Configure package repos for local hermeto testing (Konflux injects repos when LOCAL_BUILD is false).
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
-
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/*.repo \
-        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
-    fi
 
 # hadolint ignore=DL3041
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 BASE_PKGS=(perl mesa-libGL skopeo compat-openssl11 openshift-clients)
-if [ "$(uname -m)" = "s390x" ]; then
-    BASE_PKGS+=(gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel)
-fi
 dnf install -y "${BASE_PKGS[@]}"
 dnf clean all
 rm -rf /var/cache/yum
@@ -85,7 +72,6 @@ FROM cpu-base AS jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
-ARG LOCAL_BUILD
 
 WORKDIR /opt/app-root/bin
 
@@ -97,15 +83,9 @@ RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
-
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/*.repo \
-        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
-    fi
 
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
@@ -129,7 +109,6 @@ FROM jupyter-minimal AS jupyter-datascience
 
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
-ARG LOCAL_BUILD
 
 LABEL name="rhoai/odh-workbench-jupyter-datascience-cpu-py312-rhel9" \
       com.redhat.component="odh-workbench-jupyter-datascience-cpu-py312-rhel9" \
@@ -144,15 +123,9 @@ WORKDIR /opt/app-root/bin
 USER 0
 
 
-# [HERMETIC] Configure package repos for local hermeto testing (Konflux injects repos when LOCAL_BUILD is false).
 # Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
-
-RUN if [ "${LOCAL_BUILD}" = "true" ]; then \
-        rm -f /etc/yum.repos.d/*.repo \
-        && cp /cachi2/output/deps/rpm/"$(uname -m)"/repos.d/*.repo /etc/yum.repos.d/; \
-    fi
 
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
     /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat protobuf

@@ -45,12 +45,6 @@ class TestRuntimeImage:
             pytest.skip("Feast is not installed in minimal runtime images.")
 
         with running_image(runtime_image.name) as container:
-            exit_code, arch_output = container.exec(["uname", "-m"])
-            arch = arch_output.decode().strip()
-            if exit_code == 0 and arch == "s390x":
-                pytest.skip(
-                    "Feast CLI check skipped for s390x images (PyArrow/Feast native stack unreliable under CI QEMU)."
-                )
             exit_code, output_bytes = container.exec(["/bin/sh", "-c", "feast version"])
 
         output = output_bytes.decode()
@@ -70,6 +64,12 @@ class TestRuntimeImage:
             print(f"MLflow imported successfully (version: {mlflow.__version__})")
 
         with running_image(runtime_image.name) as container:
+            exit_code, arch_output = container.exec(["uname", "-m"])
+            arch = arch_output.decode().strip()
+            if exit_code == 0 and arch == "s390x":
+                pytest.skip(
+                    "MLflow import skipped for s390x images (native stack unreliable under CI QEMU user emulation)."
+                )
             exit_code, output_bytes = container.exec(
                 base_image_test.encode_python_function_execution_command_interpreter("python3", check_mlflow)
             )

@@ -15,11 +15,19 @@ dependencies = [
     # Base packages
     "setuptools",
     "wheel",
+
+    # Hermetic bootstrap: locked in requirements.*.txt; Dockerfile installs unpinned from find-links.
+    "micropipenv[toml]",
+    "uv",
 ]
 
 [tool.uv]
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
+]
+override-dependencies = [
+    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
+    "protobuf==6.31.1",
 ]
 
 [tool.uv.sources]

@@ -63,7 +63,7 @@ jobs:
       # GitHub image registry used for storing $(CONTAINER_ENGINE)'s cache
       CACHE: "ghcr.io/${{ github.repository }}/workbench-images/build-cache"
       # https://github.com/aquasecurity/trivy
-      TRIVY_VERSION: 0.68.2
+      TRIVY_VERSION: 0.70.0
       # Targets (and their folder) that should be scanned using FS instead of IMAGE scan due to resource constraints
       TRIVY_SCAN_FS_JSON: '{}'
       # Makefile variables
@@ -391,8 +391,12 @@ jobs:
           # Works for both Dockerfile.<flavor> and Dockerfile.konflux.<flavor> (extract last dot-separated segment).
           FLAVOR=$(echo "$DOCKERFILE" | sed -n 's/.*\.\([^.]*\)$/\1/p')
           FLAVOR=${FLAVOR:-cpu}
-          if [ -d "$COMPONENT_DIR/prefetch-input" ]; then
-            echo "Hermetic build detected — prefetching dependencies for $COMPONENT_DIR (flavor=$FLAVOR)"
+          if [ -d "$COMPONENT_DIR/prefetch-input" ] || { grep -q 'prefetch-input/' "$DOCKERFILE" 2>/dev/null && [ -d prefetch-input ]; }; then
+            PREFETCH_ROOT="$COMPONENT_DIR/prefetch-input"
+            if [[ ! -d "$PREFETCH_ROOT" ]]; then
+              PREFETCH_ROOT="prefetch-input"
+            fi
+            echo "Hermetic build detected — prefetching dependencies for $COMPONENT_DIR (prefetch root $PREFETCH_ROOT, flavor=$FLAVOR)"
             pip3 install --quiet --break-system-packages pyyaml
             command -v uv &>/dev/null || pip3 install --quiet --break-system-packages uv
 
@@ -401,8 +405,8 @@ jobs:
             # variant to avoid RPM conflicts (e.g. openssl-fips-provider vs
             # openssl-fips-provider-so).
             if [ "${{ inputs.subscription }}" = "true" ]; then
-              if [ ! -d "$COMPONENT_DIR/prefetch-input/rhds" ]; then
-                echo "Subscription build requires $COMPONENT_DIR/prefetch-input/rhds" >&2
+              if [ ! -d "$PREFETCH_ROOT/rhds" ]; then
+                echo "Subscription build requires $PREFETCH_ROOT/rhds" >&2
                 exit 1
               fi
               echo "Subscription build with rhds variant detected"
@@ -413,7 +417,7 @@ jobs:
             if [ -x scripts/lockfile-generators/post-prefetch.sh ]; then
               scripts/lockfile-generators/post-prefetch.sh --component-dir "$COMPONENT_DIR"
             fi
-            echo "EXTRA_BUILD_ARGS=--volume $(pwd)/cachi2/output:/cachi2/output:Z --build-arg LOCAL_BUILD=true" >> "$GITHUB_OUTPUT"
+            echo "EXTRA_BUILD_ARGS=" >> "$GITHUB_OUTPUT"
           else
             echo "No prefetch-input/ found for $COMPONENT_DIR — skipping"
           fi
@@ -462,7 +466,7 @@ jobs:
         if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
         run: |
           set -Eeuxo pipefail
-          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
@@ -645,7 +649,7 @@ jobs:
           test-target: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}
           podman-socket: /var/run/podman/podman.sock
           upload-report: ${{ fromJson(inputs.github).event_name == 'pull_request' }}
-          artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
+          artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
           grep-pattern: '@codeserver'
 
       # endregion

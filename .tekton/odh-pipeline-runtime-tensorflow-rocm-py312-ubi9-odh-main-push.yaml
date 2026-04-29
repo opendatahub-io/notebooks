@@ -28,60 +28,106 @@ spec:
     value: '{{revision}}'
   - name: output-image
     value: quay.io/opendatahub/odh-pipeline-runtime-tensorflow-rocm-py312-ubi9:{{revision}}
+  - name: build-platforms
+    value:
+    - linux-d160-m4xlarge/amd64
   - name: dockerfile
     value: runtimes/rocm-tensorflow/ubi9-python-3.12/Dockerfile.rocm
   - name: build-args-file
     value: runtimes/rocm-tensorflow/ubi9-python-3.12/build-args/rocm.conf
   - name: path-context
     value: .
+  - name: hermetic
+    value: 'true'
+  - name: prefetch-input
+    value:
+    - path: prefetch-input/odh
+      type: rpm
+    - path: prefetch-input/odh
+      type: generic
+    - path: runtimes/rocm-tensorflow/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: x86_64
+      requirements_files: [requirements.rocm.txt]
   - name: additional-tags
     value:
     - '{{target_branch}}-{{revision}}'
   taskRunSpecs:
+  - pipelineTaskName: prefetch-dependencies
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
   - pipelineTaskName: build-images
     stepSpecs:
     - name: prepare-sboms
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
     - name: sbom-syft-generate
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
     - name: build
       computeResources:
         requests:
-          cpu: '8'
-          memory: 16Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '16'
-          memory: 32Gi
-  # clair-scan / ecosystem-cert-preflight-checks: use task-level computeResources
-  # (their Task steps are not named "build"; see Konflux overriding-compute-resources)
+          cpu: '4'
+          memory: 8Gi
   - pipelineTaskName: ecosystem-cert-preflight-checks
     computeResources:
       requests:
-        cpu: '8'
-        memory: 16Gi
+        cpu: '4'
+        memory: 8Gi
       limits:
-        cpu: '16'
-        memory: 32Gi
+        cpu: '4'
+        memory: 8Gi
   - pipelineTaskName: clair-scan
     computeResources:
       requests:
-        cpu: '8'
-        memory: 16Gi
+        cpu: '4'
+        memory: 8Gi
       limits:
-        cpu: '16'
-        memory: 32Gi
+        cpu: '4'
+        memory: 8Gi
+  - pipelineTaskName: sast-shell-check
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
+  - pipelineTaskName: sast-unicode-check
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
+  - pipelineTaskName: clamav-scan
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:

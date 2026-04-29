@@ -1,6 +1,5 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
-#test
 metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
@@ -29,50 +28,90 @@ spec:
     value: '{{revision}}'
   - name: output-image
     value: quay.io/opendatahub/odh-pipeline-runtime-tensorflow-cuda-py312-ubi9:{{revision}}
+  - name: build-platforms
+    value:
+    - linux-d160-m4xlarge/amd64
   - name: dockerfile
     value: runtimes/tensorflow/ubi9-python-3.12/Dockerfile.cuda
   - name: build-args-file
     value: runtimes/tensorflow/ubi9-python-3.12/build-args/cuda.conf
   - name: path-context
     value: .
+  - name: hermetic
+    value: 'true'
+  - name: prefetch-input
+    value:
+    - path: prefetch-input/odh
+      type: rpm
+    - path: prefetch-input/odh
+      type: generic
+    - path: runtimes/tensorflow/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: x86_64
+      requirements_files: [requirements.cuda.txt]
   - name: additional-tags
     value:
     - '{{target_branch}}-{{revision}}'
   taskRunSpecs:
+  - pipelineTaskName: prefetch-dependencies
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
   - pipelineTaskName: build-images
     stepSpecs:
     - name: prepare-sboms
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
     - name: sbom-syft-generate
       computeResources:
         requests:
-          cpu: '8'
-          memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
         limits:
-          cpu: '8'
-          memory: 32Gi
-  - pipelineTaskName: ecosystem-cert-preflight-checks
-    computeResources:
-      requests:
-        cpu: '8'
-        memory: 16Gi
-      limits:
-        cpu: '16'
-        memory: 32Gi
+          cpu: '4'
+          memory: 8Gi
+    - name: build
+      computeResources:
+        requests:
+          cpu: '4'
+          memory: 8Gi
+        limits:
+          cpu: '4'
+          memory: 8Gi
   - pipelineTaskName: clair-scan
     computeResources:
       requests:
-        cpu: '8'
-        memory: 16Gi
+        cpu: '4'
+        memory: 8Gi
       limits:
-        cpu: '16'
-        memory: 32Gi
+        cpu: '4'
+        memory: 8Gi
+  - pipelineTaskName: sast-shell-check
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
+  - pipelineTaskName: sast-unicode-check
+    computeResources:
+      requests:
+        cpu: '4'
+        memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:

@@ -21,10 +21,12 @@ endif
 .RECIPEPREFIX =
 
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
-RELEASE	 		 ?= 2025b
+RELEASE	 		 ?= 3.5
 RELEASE_PYTHON_VERSION	 ?= 3.12
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
 CONTAINER_BUILD_CACHE_ARGS ?= --no-cache
+# security options for podman (label=disable fixes permission denied on macOS rootful)
+CONTAINER_BUILD_SECURITY_ARGS ?= $(if $(filter podman,$(CONTAINER_ENGINE)),--security-opt label=disable,)
 # whether to push the images to a registry as they are built
 PUSH_IMAGES ?= yes
 # INDEX_MODE: auto (default), public-index, or rh-index - controls lock file generation
@@ -47,6 +49,8 @@ WHERE_WHICH ?= which
 # linux/amd64 or darwin/arm64
 OS_ARCH=$(shell go env GOOS)/$(shell go env GOARCH)
 BUILD_ARCH ?= linux/amd64
+# Map OCI platform arch to RPM arch (e.g. linux/amd64 → x86_64, linux/arm64 → aarch64)
+RPM_ARCH := $(subst amd64,x86_64,$(subst arm64,aarch64,$(lastword $(subst /, ,$(BUILD_ARCH)))))
 
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
@@ -87,20 +91,34 @@ define build_image
 			awk -F= '!/^#/ && NF {gsub(/^[ \t]+|[ \t]+$$/, "", $$1); gsub(/^[ \t]+|[ \t]+$$/, "", $$2); printf "--build-arg %s=%s ", $$1, $$2}' $(CONF_FILE); \
 		fi))
 
-	# Make is only used for local and GHA builds (Konflux does not run make).
-	# Default to local build for hermetic-capable targets: always set LOCAL_BUILD=true
-	# when prefetch-input/ exists; mount cachi2/output only when it exists (after prefetch).
-	$(eval LOCAL_BUILD_ARG := $(if $(wildcard $(BUILD_DIR)prefetch-input),--build-arg LOCAL_BUILD=true,))
-	$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(wildcard $(BUILD_DIR)prefetch-input)),--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z,))
-
+# Hermetic local build: when cachi2/output/ exists AND this target uses a
+# prefetch-input tree, mount pre-downloaded deps into the build.
+# Some images (e.g. jupyter/minimal, datascience, pytorch+llmcompressor)
+# reference repo-root prefetch-input/ in their Dockerfiles without having
+# a local prefetch-input/ directory (symlinks were removed to work around
+# Konflux Hermeto rejecting symlink segments in git submodule paths).
+# The repos.d mount overlays /etc/yum.repos.d/ with hermeto-generated repos,
+# making local builds behave like Konflux (repos already in place when the
+# Dockerfile runs). The mount hides the base image's default repos.
+# Konflux buildah-oci-ta task mounts YUM_REPOS_D_FETCHED at YUM_REPOS_D_TARGET (/etc/yum.repos.d).
+# See https://github.com/konflux-ci/build-definitions/blob/main/task/buildah-oci-ta/
+$(eval _DOCKERFILE_USES_PREFETCH := $(shell grep -q 'prefetch-input/' $(2) 2>/dev/null && echo yes))
+$(eval PREFETCH_INPUT_DIR := $(or $(wildcard $(BUILD_DIR)prefetch-input),$(if $(_DOCKERFILE_USES_PREFETCH),$(wildcard $(ROOT_DIR)prefetch-input),)))
+$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(PREFETCH_INPUT_DIR)),\
+	--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z \
+	--volume $(ROOT_DIR)cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
 	$(info # Building $(IMAGE_NAME) using $(DOCKERFILE_NAME) with $(CONF_FILE) and $(BUILD_ARGS)...)
 
-	@if [ -d '$(BUILD_DIR)prefetch-input' ] && [ ! -d cachi2/output ]; then \
+	@if [ -n '$(PREFETCH_INPUT_DIR)' ] && [ ! -d cachi2/output ]; then \
 	  echo "Prefetch required for hermetic build. Run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR)) -- see scripts/lockfile-generators/README.md"; \
 	  exit 1; \
 	fi
+	@if [ -d cachi2/output ] && [ -n '$(PREFETCH_INPUT_DIR)' ] && [ ! -d 'cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d' ]; then \
+	  echo "Missing RPM repos for $(RPM_ARCH). Re-run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR))"; \
+	  exit 1; \
+	fi
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) $(LOCAL_BUILD_ARG) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_SECURITY_ARGS) $(CONTAINER_BUILD_CACHE_ARGS) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
 # Push function for the notebook image:
@@ -137,7 +155,7 @@ endef
 #######################################        Build helpers                 #######################################
 
 # https://stackoverflow.com/questions/78899903/how-to-create-a-make-target-which-is-an-implicit-dependency-for-all-other-target
-skip-init-for := all-images deploy% undeploy% test% validate% refresh-lock-files scan-image-vulnerabilities print-release
+skip-init-for := all-images deploy% undeploy% test% validate% refresh-lock-files sync-commit-env-files update-imagestream-annotations refresh-imagestream-metadata scan-image-vulnerabilities print-release
 ifneq (,$(filter-out $(skip-init-for),$(MAKECMDGOALS) $(.DEFAULT_GOAL)))
 $(SELF): bin/buildinputs
 endif
@@ -454,6 +472,35 @@ refresh-lock-files:
 		env -u UV_EXTRA_INDEX_URL -u PIP_EXTRA_INDEX_URL \
 		./uv run scripts/pylocks_generator.py $(INDEX_MODE) $(DIR)
 
+# ======================================================================================
+#   gmake update-imagestream-annotations
+#   gmake update-imagestream-annotations IMAGESTREAM_VARIANT=rhoai DRY_RUN=1
+# Prerequisites:
+#   - ./uv sync --locked (or make setup) so scripts run in the project venv
+#   - skopeo on PATH (sync-commit-env-files inspects images from params*.env)
+#   - For private registry pulls: mkdir -p ~/.config/containers &&
+#       cp ci/secrets/pull-secret.json ~/.config/containers/auth.json
+#   - Full clone / fetch-depth 0 helps update-imagestream-annotations when git show needs SHAs
+#       not already in the local object database (script can fetch from GitHub when needed).
+# ======================================================================================
+IMAGESTREAM_VARIANT ?=
+DRY_RUN ?=
+.PHONY: update-imagestream-annotations
+update-imagestream-annotations:
+	@echo "==================================================================="
+	@echo "📋 Refreshing ImageStream notebook dependency annotations (IMAGESTREAM_VARIANT=$(or $(IMAGESTREAM_VARIANT),odh+rhoai))"
+	@echo "==================================================================="
+	@cd $(ROOT_DIR) && \
+	if [[ -n "$(IMAGESTREAM_VARIANT)" ]]; then \
+		./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py \
+			--variant "$(IMAGESTREAM_VARIANT)" $(if $(filter 1 true yes,$(DRY_RUN)),--dry-run,); \
+	else \
+		./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant odh \
+			$(if $(filter 1 true yes,$(DRY_RUN)),--dry-run,) && \
+		./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant rhoai \
+			$(if $(filter 1 true yes,$(DRY_RUN)),--dry-run,); \
+	fi
+
 # This is only for the workflow action
 # For running manually, set the required environment variables
 .PHONY: scan-image-vulnerabilities
@@ -526,7 +573,7 @@ ifeq ($(PYTEST_ARGS),)
 	$(error Usage: make test-integration PYTEST_ARGS="--image=<image>")
 endif
 	@echo "Running container integration tests"
-	./uv run pytest tests/containers -m 'not openshift and not cuda and not rocm' $(PYTEST_ARGS)
+	./uv run pytest tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' $(PYTEST_ARGS)
 
 .PHONY: unit-test integration-test
 unit-test: test-unit

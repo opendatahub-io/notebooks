@@ -41,6 +41,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          # Full history so tests/test_pylock_downgrade.py can `git show origin/main:…/pylock.toml`.
+          fetch-depth: 0
 
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv
@@ -52,8 +55,12 @@ jobs:
         id: install-deps
         run: uv sync --locked
 
-      - run: make test
+      - name: Static tests (pytest + Dockerfile alignment)
+        run: make test
         if: ${{ steps.install-deps.conclusion == 'success' && !cancelled() }}
+        env:
+          # Prefer the PR base commit so fork PRs compare pylocks to upstream main, not the fork's main.
+          NOTEBOOKS_DOWNGRADE_BASE_REF: ${{ github.event.pull_request.base.sha }}
 
       - name: Upload Python coverage to Codecov
         if: ${{ !cancelled() && steps.install-deps.conclusion == 'success' }}
@@ -166,7 +173,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-uv
       - name: "Cache prek"
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7  # v5.0.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: ~/.cache/prek
           key: prek-${{ hashFiles('.pre-commit-config.yaml') }}

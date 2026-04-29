@@ -4,6 +4,11 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
+    "uv",
+    "micropipenv[toml]",
+
+    "feast",
+
     # PyTorch packages
     "torch; platform_machine != 'ppc64le' and platform_machine != 's390x'",
 
@@ -51,6 +56,8 @@ override-dependencies = [
     # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
     # appengine-python-standard which has an obnoxious urllib3<2 constraint
     "urllib3>=2.6.0",
+    # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
+    "protobuf==6.31.1",
     # AIPCC-8698: python-lsp-server[all] has conflicting pyflakes/pycodestyle requirements
     # Using >= instead of ~= to allow broader compatibility during resolution
     # TODO: Remove this override before RHOAI 3.4 GA once AIPCC-8698 is resolved

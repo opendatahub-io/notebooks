@@ -232,14 +232,6 @@ if ! test -w "$HERMETO_STAGING/deps/rpm" 2>/dev/null; then
   sudo chown -R "$(id -u):$(id -g)" "$HERMETO_STAGING" 2>/dev/null || true
 fi
 
-# Hermeto's .repo files lack module_hotfixes=1, which causes DNF's
-# modular filtering to block packages (e.g. nodejs-devel) when the base
-# image has a default module stream enabled (like nodejs:18 on UBI9).
-# Injecting module_hotfixes=1 into every [repo] section disables that
-# filtering so all prefetched packages are installable.
-find "$HERMETO_STAGING/deps/rpm" -name '*.repo' -exec \
-  perl -pi -e '$_ .= "module_hotfixes=1\n" if /^\[/' {} +
-
 # Merge RPM output into the shared cachi2/output/ tree.  Other prefetch
 # scripts (pip, npm, generic artifacts) may have already placed their
 # output under cachi2/output/deps/, so we only replace the rpm/ subtree.

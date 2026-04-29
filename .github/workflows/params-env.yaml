@@ -13,8 +13,7 @@ on:  # yamllint disable-line rule:truthy
       - 'manifests/rhoai/base/params.env'
       - 'manifests/rhoai/base/commit-latest.env'
       - 'manifests/rhoai/base/params-latest.env'
-      - 'ci/check-params-env-odh.sh'
-      - 'ci/check-params-env-rhoai.sh'
+      - 'ci/check-params-env.sh'
   workflow_dispatch:
 
 concurrency:
@@ -25,33 +24,30 @@ permissions:
   contents: read
 
 jobs:
-  validation-of-params-env-odh:
+  validation-of-params-env:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: odh
+            packages: skopeo jq
+            konflux: ''
+          - variant: rhoai
+            packages: skopeo jq git-crypt
+            konflux: 'yes'
+    name: validation-of-params-env-${{ matrix.variant }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Install dependencies
         uses: ./.github/actions/apt-install
         with:
-          packages: skopeo jq
-          update: 'false'
-
-      - name: Validate the 'manifests/odh/base/params.env' file content
-        run: |
-          bash ./ci/check-params-env-odh.sh
-
-  validation-of-params-env-rhoai:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-
-      - name: Install dependencies
-        uses: ./.github/actions/apt-install
-        with:
-          packages: skopeo jq git-crypt
+          packages: ${{ matrix.packages }}
           update: 'false'
 
       - name: Unlock encrypted secrets with git-crypt
+        if: matrix.variant == 'rhoai'
         run: |
           echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
           git-crypt unlock ./git-crypt-key
@@ -60,10 +56,13 @@ jobs:
           GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
 
       - name: Configure skopeo auth from pull-secret
+        if: matrix.variant == 'rhoai'
         run: |
           mkdir -p "$HOME/.config/containers"
           cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
 
-      - name: Validate the 'manifests/rhoai/base/params.env' file content
+      - name: Validate the 'manifests/${{ matrix.variant }}/base/params.env' file content
         run: |
-          bash ./ci/check-params-env-rhoai.sh
+          bash ./ci/check-params-env.sh
+        env:
+          KONFLUX: ${{ matrix.konflux }}

@@ -60,48 +60,50 @@ const test = base.extend<TestFixtures>({
   }, {timeout: 10 * 60 * 1000}],
 });
 
-test.beforeAll(setupTestcontainers)
+test.describe('code-server', { tag: '@codeserver' }, () => {
+  test.beforeAll(setupTestcontainers)
 
-test('@codeserver open codeserver', async ({codeServer, page}) => {
-  await page.goto(codeServer.url)
+  test('open codeserver', async ({codeServer, page}) => {
+    await page.goto(codeServer.url)
 
-  await codeServer.isEditorVisible()
-})
-
-test('@codeserver wait for welcome screen to load', async ({codeServer, page}, testInfo) => {
-  await page.goto(codeServer.url);
-
-  await codeServer.isEditorVisible()
-  page.on("console", (msg) => log.info(msg.text()))
-
-  await codeServer.isEditorVisible()
-  await utils.waitForStableDOM(page, "div.monaco-workbench", 1000, 10000)
-  await utils.waitForNextRender(page)
-
-  await utils.takeScreenshot(page, testInfo, "welcome.png")
-})
-
-test('@codeserver use the terminal to run command', async ({codeServer, page}, _testInfo) => {
-  await page.goto(codeServer.url);
-
-  await test.step("Should always see the code-server editor", async () => {
-    expect(await codeServer.isEditorVisible()).toBe(true)
+    await codeServer.isEditorVisible()
   })
 
-  await test.step("should show the Integrated Terminal", async () => {
-    await codeServer.focusTerminal()
-    await expect(page.locator("#terminal")).toBeVisible()
+  test('wait for welcome screen to load', async ({codeServer, page}, testInfo) => {
+    await page.goto(codeServer.url);
+
+    await codeServer.isEditorVisible()
+    page.on("console", (msg) => log.info(msg.text()))
+
+    await codeServer.isEditorVisible()
+    await utils.waitForStableDOM(page, "div.monaco-workbench", 1000, 10000)
+    await utils.waitForNextRender(page)
+
+    await utils.takeScreenshot(page, testInfo, "welcome.png")
   })
 
-  await test.step("should execute Terminal command successfully", async () => {
-    await page.keyboard.type('echo The answer is $(( 6 * 7 )). > answer.txt', {delay: 100})
-    await page.keyboard.press('Enter', {delay: 100})
-  })
+  test('use the terminal to run command', async ({codeServer, page}, _testInfo) => {
+    await page.goto(codeServer.url);
 
-  await test.step("should open the file", async() => {
-    const file = path.join('/opt/app-root/src', 'answer.txt')
-    await codeServer.openFile(file)
-    await expect(page.getByText("The answer is 42.")).toBeVisible()
-  })
+    await test.step("Should always see the code-server editor", async () => {
+      expect(await codeServer.isEditorVisible()).toBe(true)
+    })
 
-})
+    await test.step("should show the Integrated Terminal", async () => {
+      await codeServer.focusTerminal()
+      await expect(page.locator("#terminal")).toBeVisible()
+    })
+
+    await test.step("should execute Terminal command successfully", async () => {
+      await page.keyboard.type('echo The answer is $(( 6 * 7 )). > answer.txt', {delay: 100})
+      await page.keyboard.press('Enter', {delay: 100})
+    })
+
+    await test.step("should open the file", async() => {
+      const file = path.join('/opt/app-root/src', 'answer.txt')
+      await codeServer.openFile(file)
+      await expect(page.getByText("The answer is 42.")).toBeVisible()
+    })
+
+  })
+});
