@@ -152,7 +152,9 @@ def _get_image_size_mb(image_url: str) -> int | None:
         return None
 
     base = image_url.rsplit("@", 1)[0]
-    base = base.rsplit(":", 1)[0]
+    # Strip tag but not port (port has a / after the colon, tag doesn't)
+    if "/" not in base.rsplit(":", 1)[-1]:
+        base = base.rsplit(":", 1)[0]
     platform_raw = _skopeo_inspect_raw(f"{base}@{amd64['digest']}")
     if platform_raw is None:
         return None

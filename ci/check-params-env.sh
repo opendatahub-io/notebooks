@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 #
 # This script serves to check and validate the `params.env` file that contains
 # definitions of the notebook images that are supposed to be used in the resulting
