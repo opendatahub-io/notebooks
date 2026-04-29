@@ -59,7 +59,6 @@ function check_variables_uniq() {
     local env_file_path_1="${1}"
     local env_file_path_2="${2}"
     local allow_value_duplicity="${3:-false}"
-    local is_params_env="${4:-false}"
     local ret_code=0
 
 
@@ -730,14 +729,14 @@ echo "Starting check of image references in files: '${COMMIT_LATEST_ENV_PATH}', 
 echo "---------------------------------------------"
 
 EXPECTED_NUM_RECORDS="${EXPECTED_COMMIT_NUM_RECORDS}"
-check_variables_uniq "${COMMIT_ENV_PATH}" "${COMMIT_LATEST_ENV_PATH}" "true" "false" || {
+check_variables_uniq "${COMMIT_ENV_PATH}" "${COMMIT_LATEST_ENV_PATH}" "true" || {
     echo "ERROR: Variable names in the '${COMMIT_ENV_PATH}' & '${COMMIT_LATEST_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
     ret_code=1
 }
 
 EXPECTED_NUM_RECORDS="${EXPECTED_PARAMS_NUM_RECORDS}"
-check_variables_uniq "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" "false" "true" || {
+check_variables_uniq "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}" "false" || {
     echo "ERROR: Variable names in the '${PARAMS_ENV_PATH}' & '${PARAMS_LATEST_ENV_PATH}' file failed validation!"
     echo "----------------------------------------------------"
     ret_code=1

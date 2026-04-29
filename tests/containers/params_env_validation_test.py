@@ -331,6 +331,10 @@ def test_params_env_image_metadata(
                     pytest.fail("Not in ci/expected-image-metadata.yaml")
                 continue
 
+            with subtests.test(msg=f"{variable}: variant allow-list"):
+                assert variant in expected.get("variants", []), (
+                    f"{variable} is not declared for the {variant} manifests"
+                )
             if variant not in expected.get("variants", []):
                 continue
 
