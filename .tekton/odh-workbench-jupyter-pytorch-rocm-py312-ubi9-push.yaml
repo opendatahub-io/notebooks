@@ -35,6 +35,17 @@ spec:
   - name: additional-tags
     value:
     - 3.5_ea1-v1.44
+  taskRunSpecs:
+  - pipelineTaskName: build-images
+    stepSpecs:
+    - name: build
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 16Gi
+        limits:
+          cpu: '16'
+          memory: 32Gi
   pipelineRef:
     resolver: git
     params:
