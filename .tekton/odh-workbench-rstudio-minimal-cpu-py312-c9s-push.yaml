@@ -12,7 +12,7 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "stable" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-workbench-rstudio-minimal-cpu-py312-c9s-push.yaml".pathChanged() || "rstudio/c9s-python-3.12/**".pathChanged() || "rstudio/c9s-python-3.12/build-args/cpu.conf".pathChanged() )
   labels:
     appstudio.openshift.io/application: opendatahub-builds
-    appstudio.openshift.io/component: odh-workbench-rstudio-minimal-cpu-py312-c9s
+    appstudio.openshift.io/component: odh-workbench-rstudio-minimal-cpu-py312-c9s-ci
     pipelines.appstudio.openshift.io/type: build
   name: odh-workbench-rstudio-minimal-cpu-py312-c9s-on-push
   namespace: open-data-hub-tenant
@@ -34,7 +34,7 @@ spec:
     value: .
   - name: additional-tags
     value:
-    - 3.4-v1.43
+    - 3.5_ea1-v1.44
   pipelineRef:
     resolver: git
     params:

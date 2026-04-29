@@ -17,6 +17,8 @@ metadata:
   name: odh-workbench-jupyter-pytorch-cuda-py312-ubi9-on-push
   namespace: open-data-hub-tenant
 spec:
+  timeouts:
+    pipeline: 8h
   params:
   - name: git-url
     value: '{{source_url}}'
@@ -32,7 +34,7 @@ spec:
     value: .
   - name: additional-tags
     value:
-    - 3.4-v1.43
+    - 3.5_ea1-v1.44
   taskRunSpecs:
     - pipelineTaskName: build-images
       computeResources:
@@ -68,7 +70,7 @@ spec:
     - name: pathInRepo
       value: pipeline/multi-arch-container-build.yaml
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-workbench-jupyter-pytorch-cuda-py312-poc
+    serviceAccountName: build-pipeline-odh-workbench-jupyter-pytorch-cuda-py312-ubi9
   workspaces:
   - name: git-auth
     secret:
