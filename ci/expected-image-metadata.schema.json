@@ -1,14 +1,58 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Expected image metadata for params.env validation. Each top-level key is a params.env variable name mapped to its expected image properties.",
-  "type": "object",
-  "additionalProperties": {
-    "$ref": "#/$defs/ImageEntry"
-  },
   "$defs": {
     "ImageEntry": {
-      "type": "object",
       "additionalProperties": false,
+      "description": "Expected metadata for a single params.env image variable.",
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/VariantNames"
+            }
+          ],
+          "description": "Expected image name label, or per-variant dict when ODH and RHOAI differ.",
+          "title": "Name"
+        },
+        "commitref": {
+          "description": "Expected git branch (e.g. 'main', 'release-2024b').",
+          "title": "Commitref",
+          "type": "string"
+        },
+        "build_name": {
+          "description": "Expected OPENSHIFT_BUILD_NAME or 'konflux' for Konflux builds.",
+          "title": "Build Name",
+          "type": "string"
+        },
+        "size_mb": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "$ref": "#/$defs/VariantSizes"
+            }
+          ],
+          "description": "Expected compressed image size in MB, or per-variant dict. Validated with 10%/100MB tolerance.",
+          "title": "Size Mb"
+        },
+        "variants": {
+          "description": "Which manifest variants include this image.",
+          "items": {
+            "enum": [
+              "odh",
+              "rhoai"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Variants",
+          "type": "array"
+        }
+      },
       "required": [
         "name",
         "commitref",
@@ -16,78 +60,84 @@
         "size_mb",
         "variants"
       ],
+      "title": "ImageEntry",
+      "type": "object"
+    },
+    "VariantNames": {
+      "additionalProperties": false,
+      "description": "Per-variant image names when ODH and RHOAI differ.",
       "properties": {
-        "name": {
-          "description": "Expected image name label, or per-variant dict when ODH and RHOAI differ.",
-          "oneOf": [
+        "odh": {
+          "anyOf": [
             {
               "type": "string"
             },
             {
-              "$ref": "#/$defs/VariantValues"
+              "type": "null"
             }
-          ]
+          ],
+          "default": null,
+          "description": "Image name label for ODH",
+          "title": "Odh"
         },
-        "commitref": {
-          "description": "Expected git branch (e.g. 'main', 'release-2024b').",
-          "type": "string"
-        },
-        "build_name": {
-          "description": "Expected OPENSHIFT_BUILD_NAME or 'konflux' for Konflux builds.",
-          "type": "string"
-        },
-        "size_mb": {
-          "description": "Expected compressed image size in MB, or per-variant dict when ODH and RHOAI differ. Validated with 10%/100MB tolerance.",
-          "oneOf": [
+        "rhoai": {
+          "anyOf": [
             {
-              "type": "integer",
-              "minimum": 1
+              "type": "string"
             },
             {
-              "$ref": "#/$defs/VariantSizes"
+              "type": "null"
             }
-          ]
-        },
-        "variants": {
-          "description": "Which manifest variants include this image.",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "odh",
-              "rhoai"
-            ]
-          },
-          "minItems": 1,
-          "uniqueItems": true
+          ],
+          "default": null,
+          "description": "Image name label for RHOAI",
+          "title": "Rhoai"
         }
-      }
-    },
-    "VariantValues": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "odh": {
-          "type": "string"
-        },
-        "rhoai": {
-          "type": "string"
-        }
-      }
+      },
+      "title": "VariantNames",
+      "type": "object"
     },
     "VariantSizes": {
-      "type": "object",
       "additionalProperties": false,
+      "description": "Per-variant image sizes when ODH and RHOAI differ.",
       "properties": {
         "odh": {
-          "type": "integer",
-          "minimum": 1
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Compressed image size in MB for ODH",
+          "title": "Odh"
         },
         "rhoai": {
-          "type": "integer",
-          "minimum": 1
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Compressed image size in MB for RHOAI",
+          "title": "Rhoai"
         }
-      }
+      },
+      "title": "VariantSizes",
+      "type": "object"
     }
-  }
+  },
+  "additionalProperties": {
+    "$ref": "#/$defs/ImageEntry"
+  },
+  "description": "Top-level schema: variable name \u2192 expected image metadata.",
+  "title": "ImageMetadataFile",
+  "type": "object"
 }
