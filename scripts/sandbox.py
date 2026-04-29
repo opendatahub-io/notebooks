@@ -94,7 +94,41 @@ def buildinputs(
     return prereqs
 
 
-def _copy_tree(src: pathlib.Path, dst: pathlib.Path):
+def _load_dockerignore(root: pathlib.Path) -> list[str]:
+    """Read .dockerignore from *root* and return the non-comment, non-empty lines."""
+    dockerignore = root / ".dockerignore"
+    if not dockerignore.exists():
+        return []
+    lines = []
+    for line in dockerignore.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            lines.append(line)
+    return lines
+
+
+def _ignored_dir_names(root: pathlib.Path) -> set[str]:
+    """Return a set of bare directory names that should be skipped during os.walk.
+
+    Only ``**/name/`` patterns are handled — these unambiguously mean "skip a
+    directory named *name* at any depth".  Root-relative patterns such as
+    ``node_modules/`` (no ``**/`` prefix) are intentionally excluded because
+    they only apply at the root of the build context, not inside nested
+    prerequisite directories.
+    """
+    ignored: set[str] = set()
+    for pattern in _load_dockerignore(root):
+        # Only accept "**/<name>/" – i.e., starts with "**/" and ends with "/"
+        # with no additional "/" in between.
+        if not pattern.startswith("**/") or not pattern.endswith("/"):
+            continue
+        name = pattern[3:-1]  # strip leading "**/" and trailing "/"
+        if name and "/" not in name:
+            ignored.add(name)
+    return ignored
+
+
+def _copy_tree(src: pathlib.Path, dst: pathlib.Path, dir_ignore_names: set[str] | None = None):
     """Copy a directory tree, copying only file content (no metadata/xattrs).
 
     shutil.copytree's internal copystat() on directories fails on macOS with
@@ -102,8 +136,17 @@ def _copy_tree(src: pathlib.Path, dst: pathlib.Path):
     on the destination.  Walking manually with shutil.copy avoids this.
     Directories that cannot be created (e.g. macOS EPERM on certain dotfiles
     in temp directories) are logged and skipped.
+
+    *dir_ignore_names* is an optional set of bare directory names (e.g.
+    ``{"node_modules", ".pnpm-store"}``) that will be pruned from each
+    ``dirnames`` list during the walk so that os.walk never descends into them.
+    This mirrors the ``**/name/`` patterns in ``.dockerignore`` and avoids the
+    ``OSError: [Errno 63] File name too long`` crash caused by deeply-nested
+    content-addressed stores such as ``.pnpm-store``.
     """
     for dirpath, dirnames, filenames in os.walk(src, followlinks=True):
+        if dir_ignore_names:
+            dirnames[:] = [d for d in dirnames if d not in dir_ignore_names]
         rel = pathlib.Path(dirpath).relative_to(src)
         try:
             (dst / rel).mkdir(parents=True, exist_ok=True)
@@ -124,6 +167,8 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
     if gitignore.exists():
         shutil.copy(gitignore, tmpdir)
 
+    dir_ignore_names = _ignored_dir_names(ROOT_DIR)
+
     for dep in prereqs:
         if dep.is_absolute():
             dep = dep.relative_to(ROOT_DIR)
@@ -141,7 +186,7 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
                 m_path = pathlib.Path(m)
                 (tmpdir / m_path.parent).mkdir(parents=True, exist_ok=True)
                 if m_path.is_dir():
-                    _copy_tree(m_path, tmpdir / m_path)
+                    _copy_tree(m_path, tmpdir / m_path, dir_ignore_names=dir_ignore_names)
                 else:
                     shutil.copy(m_path, tmpdir / m_path.parent)
             continue
@@ -151,7 +196,7 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
             sys.exit(1)
 
         if dep.is_dir():
-            _copy_tree(dep, tmpdir / dep)
+            _copy_tree(dep, tmpdir / dep, dir_ignore_names=dir_ignore_names)
         else:
             (tmpdir / dep.parent).mkdir(parents=True, exist_ok=True)
             shutil.copy(dep, tmpdir / dep.parent)
