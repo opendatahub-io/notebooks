@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Expected image metadata for params.env validation. Each top-level key is a params.env variable name mapped to its expected image properties.",
+  "type": "object",
+  "additionalProperties": {
+    "$ref": "#/$defs/ImageEntry"
+  },
+  "$defs": {
+    "ImageEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "commitref",
+        "build_name",
+        "size_mb",
+        "variants"
+      ],
+      "properties": {
+        "name": {
+          "description": "Expected image name label, or per-variant dict when ODH and RHOAI differ.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/VariantValues"
+            }
+          ]
+        },
+        "commitref": {
+          "description": "Expected git branch (e.g. 'main', 'release-2024b').",
+          "type": "string"
+        },
+        "build_name": {
+          "description": "Expected OPENSHIFT_BUILD_NAME or 'konflux' for Konflux builds.",
+          "type": "string"
+        },
+        "size_mb": {
+          "description": "Expected compressed image size in MB, or per-variant dict when ODH and RHOAI differ. Validated with 10%/100MB tolerance.",
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "$ref": "#/$defs/VariantSizes"
+            }
+          ]
+        },
+        "variants": {
+          "description": "Which manifest variants include this image.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "odh",
+              "rhoai"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "VariantValues": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "odh": {
+          "type": "string"
+        },
+        "rhoai": {
+          "type": "string"
+        }
+      }
+    },
+    "VariantSizes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "odh": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rhoai": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}
