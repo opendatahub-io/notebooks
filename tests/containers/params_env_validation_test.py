@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import logging
-import pathlib
 import re
 import shutil
 import subprocess
@@ -27,6 +26,8 @@ import yaml
 from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
+    import pathlib
+
     import pytest_subtests
 
 _LOG = logging.getLogger(__name__)
@@ -75,10 +76,22 @@ def _skopeo_inspect_config(image_url: str) -> dict | None:
     """Run skopeo inspect --config and return parsed JSON."""
     try:
         result = subprocess.run(
-            ["skopeo", "inspect", "--retry-times", str(_SKOPEO_RETRY),
-             "--override-arch", "amd64", "--override-os", "linux",
-             "--config", f"docker://{image_url}"],
-            capture_output=True, text=True, check=True, timeout=60,
+            [
+                "skopeo",
+                "inspect",
+                "--retry-times",
+                str(_SKOPEO_RETRY),
+                "--override-arch",
+                "amd64",
+                "--override-os",
+                "linux",
+                "--config",
+                f"docker://{image_url}",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=60,
         )
         return json.loads(result.stdout)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
@@ -90,10 +103,22 @@ def _skopeo_inspect_raw(image_url: str) -> dict | None:
     """Run skopeo inspect --raw and return parsed JSON."""
     try:
         result = subprocess.run(
-            ["skopeo", "inspect", "--retry-times", str(_SKOPEO_RETRY),
-             "--override-arch", "amd64", "--override-os", "linux",
-             "--raw", f"docker://{image_url}"],
-            capture_output=True, text=True, check=True, timeout=60,
+            [
+                "skopeo",
+                "inspect",
+                "--retry-times",
+                str(_SKOPEO_RETRY),
+                "--override-arch",
+                "amd64",
+                "--override-os",
+                "linux",
+                "--raw",
+                f"docker://{image_url}",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=60,
         )
         return json.loads(result.stdout)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
@@ -116,9 +141,11 @@ def _get_image_size_mb(image_url: str) -> int | None:
     # Multi-arch: resolve amd64 manifest
     manifests = raw.get("manifests", [])
     amd64 = next(
-        (m for m in manifests
-         if m.get("platform", {}).get("os") == "linux"
-         and m.get("platform", {}).get("architecture") == "amd64"),
+        (
+            m
+            for m in manifests
+            if m.get("platform", {}).get("os") == "linux" and m.get("platform", {}).get("architecture") == "amd64"
+        ),
         None,
     )
     if amd64 is None:
@@ -141,12 +168,12 @@ def _strip_version_suffix(variable: str) -> str:
     'odh-workbench-jupyter-minimal-cpu-py312-ubi9-2025-2' → 'odh-workbench-jupyter-minimal-cpu-py312-ubi9'
     'odh-workbench-jupyter-minimal-cpu-py312-ubi9-n'      → 'odh-workbench-jupyter-minimal-cpu-py312-ubi9'
     """
-    return re.sub(r'-(\d{4}-\d+|n.*)$', '', variable)
+    return re.sub(r"-(\d{4}-\d+|n.*)$", "", variable)
 
 
 def _strip_os_suffix(name: str) -> str:
     """Strip OS suffix (-ubi9, -rhel9, -c9s) from a name."""
-    return re.sub(r'-(ubi9|rhel9|c9s)$', '', name)
+    return re.sub(r"-(ubi9|rhel9|c9s)$", "", name)
 
 
 def _extract_repo_name(image_url: str) -> str:
@@ -156,7 +183,7 @@ def _extract_repo_name(image_url: str) -> str:
     registry.redhat.io/rhoai/odh-workbench-...-py312-rhel9@sha256:abc  → odh-workbench-...-py312
     quay.io/.../odh-pipeline-runtime-minimal-cpu-py312-ubi9:3.5_ea1    → odh-pipeline-runtime-minimal-cpu-py312
     """
-    last = image_url.split("/")[-1]
+    last = image_url.rsplit("/", maxsplit=1)[-1]
     name = last.split("@")[0].split(":")[0]
     return _strip_os_suffix(name)
 
@@ -166,8 +193,8 @@ def _find_commit_value(variable: str, commit_entries: dict[str, str]) -> str | N
 
     commit.env keys insert ``-commit`` before the version suffix::
 
-        params.env:  odh-workbench-...-ubi9-2025-2
-        commit.env:  odh-workbench-...-ubi9-commit-2025-2
+        params.env: odh - workbench - ... - ubi9 - 2025 - 2
+        commit.env: odh - workbench - ... - ubi9 - commit - 2025 - 2
     """
     for ck, cv in commit_entries.items():
         if ck.replace("-commit", "") == variable:
@@ -281,9 +308,7 @@ def test_params_env_image_metadata(
                 with subtests.test(msg=f"{variable}: repo name"):
                     var_stripped = _strip_os_suffix(_strip_version_suffix(variable))
                     repo_name = _extract_repo_name(image_url)
-                    assert var_stripped == repo_name, (
-                        f"Repo name '{repo_name}' doesn't match variable '{var_stripped}'"
-                    )
+                    assert var_stripped == repo_name, f"Repo name '{repo_name}' doesn't match variable '{var_stripped}'"
             else:
                 commit_id = labels.get("io.openshift.build.commit.id", "")
 
@@ -301,7 +326,7 @@ def test_params_env_image_metadata(
             expected = expected_metadata.get(variable)
             if expected is None:
                 with subtests.test(msg=f"{variable}: metadata entry"):
-                    pytest.fail(f"Not in ci/expected-image-metadata.yaml")
+                    pytest.fail("Not in ci/expected-image-metadata.yaml")
                 continue
 
             if variant not in expected.get("variants", []):
@@ -312,9 +337,7 @@ def test_params_env_image_metadata(
             actual_name = labels.get("name")
             if expected_name and actual_name:
                 with subtests.test(msg=f"{variable}: image name"):
-                    assert actual_name == expected_name, (
-                        f"Expected name '{expected_name}', got '{actual_name}'"
-                    )
+                    assert actual_name == expected_name, f"Expected name '{expected_name}', got '{actual_name}'"
 
             # Check commitref (OpenShift-CI only)
             if not is_konflux:
