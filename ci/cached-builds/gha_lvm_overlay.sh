@@ -11,7 +11,9 @@ set -Eeuo pipefail
 root_reserve_mb=4096
 temp_reserve_mb=100
 # compilation from sources needs memory, for now that's codeserver
-swap_size_mb=16384
+# 16GB is wasteful, 0.5GB is not enough, arm64 froze with 2GB and 4GB
+# https://github.com/opendatahub-io/notebooks/issues/2404
+swap_size_mb=8196
 
 build_mount_path="${HOME}/.local/share/containers"
 build_mount_path_ownership="runner:runner"

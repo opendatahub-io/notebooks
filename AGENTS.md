@@ -190,6 +190,23 @@ Key CI files:
 - `ci/` - Custom CI scripts and configurations
 - `scripts/ci/renovate_run.py` - Self-hosted Renovate (Podman or Docker via `CONTAINER_ENGINE`, same detection order as the Makefile); see `.github/workflows/renovate-self-hosted.yaml` and ADR 0013
 
+### Running Container Images
+
+Notebook images have an entrypoint (`start-notebook.sh`) that launches
+Jupyter Lab.  When you need to inspect the image (check installed RPMs,
+list files, run a shell), **override the entrypoint**:
+
+```bash
+# Interactive shell — won't start Jupyter
+podman run --rm -it --entrypoint="" quay.io/opendatahub/workbench-images:jupyter-minimal-ubi9-python-3.12-latest bash
+
+# One-off command
+podman run --rm --entrypoint="" <image> rpm -qa | sort
+```
+
+Without `--entrypoint=""`, `podman run <image> rpm -qa` is passed as
+arguments to `start-notebook.sh`, which ignores them and starts Jupyter.
+
 ### Deployment
 
 1. **Local Development**:
