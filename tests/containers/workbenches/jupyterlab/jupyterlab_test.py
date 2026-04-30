@@ -69,17 +69,9 @@ class TestJupyterLabImage:
 
     @allure.issue("RHOAIENG-16568")
     @allure.description("Check that PDF export is working correctly")
-    def test_pdf_export(self, jupyterlab_image: conftest.Image) -> None:
-        container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
-        # Skip if we're running architectures where PDF export is not supported
-        container.start(wait_for_readiness=False)
-        try:
-            exit_code, arch_output = container.exec(["uname", "-m"])
-            arch = arch_output.decode().strip()
-            if exit_code == 0 and arch in ("s390x", "ppc64le"):
-                pytest.skip("PDF export functionality is not supported on s390x/ppc64le architecture")
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)
+    def test_pdf_export(self, jupyterlab_image: conftest.Image, container_arch: str) -> None:
+        if container_arch in ("s390x", "ppc64le"):
+            pytest.skip(f"PDF export not supported on {container_arch} architecture")
         test_file_name = "test.ipybn"
         test_file_content = """{
                 "cells": [
@@ -107,7 +99,7 @@ class TestJupyterLabImage:
                 "nbformat_minor": 5
             }
         """.replace("\n", "")
-        try:
+        with WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0]) as container:
             container.start(wait_for_readiness=True)
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir = pathlib.Path(tmpdir)
@@ -118,8 +110,6 @@ class TestJupyterLabImage:
             exit_code, convert_output = container.exec(["jupyter", "nbconvert", test_file_name, "--to", "pdf"])
             assert "PDF successfully created" in convert_output.decode()
             assert 0 == exit_code
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)
 
     @allure.issue("RHOAIENG-24348")
     @allure.description("Check that custom-built (to be FIPS-compliant) mongocli binary runs.")

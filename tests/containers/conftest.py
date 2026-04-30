@@ -163,6 +163,20 @@ def image(request):
     yield request.param
 
 
+@pytest.fixture(scope="session")
+def container_arch(image: str) -> str:
+    """Detect the CPU architecture of the container image. Runs once per session."""
+    container = testcontainers.core.container.DockerContainer(image=image, user=0)
+    container.with_command("/bin/sh -c 'sleep infinity'")
+    try:
+        container.start()
+        exit_code, output = container.exec(["uname", "-m"])
+        assert exit_code == 0, f"uname -m failed: {output}"
+        return output.decode().strip()
+    finally:
+        docker_utils.NotebookContainer(container).stop(timeout=0)
+
+
 @pytest.fixture(scope="function")
 def runtime_image(image: str):
     image_metadata = get_image_metadata(image)
