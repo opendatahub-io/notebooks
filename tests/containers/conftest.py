@@ -97,7 +97,11 @@ def pytest_addoption(parser: Parser) -> None:
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_generate_tests
 def pytest_generate_tests(metafunc: Metafunc) -> None:
     if image.__name__ in metafunc.fixturenames:
-        metafunc.parametrize(image.__name__, metafunc.config.getoption("--image"))
+        # scope="session" is required here to match the fixture's declared scope.
+        # Without it, metafunc.parametrize defaults to function scope and silently
+        # overrides the fixture scope (https://github.com/pytest-dev/pytest/issues/634),
+        # causing ScopeMismatch for any session-scoped fixture that depends on `image`.
+        metafunc.parametrize(image.__name__, metafunc.config.getoption("--image"), scope="session")
 
 
 def get_image_metadata(image: str) -> Image:
@@ -177,7 +181,7 @@ def container_arch(image: str) -> str:
         docker_utils.NotebookContainer(container).stop(timeout=0)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def runtime_image(image: str):
     image_metadata = get_image_metadata(image)
 
@@ -187,25 +191,25 @@ def runtime_image(image: str):
     yield image_metadata
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def workbench_image(image: str):
     skip_if_not_workbench_image(image)
     yield image
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def cuda_image(image: str):
     skip_if_not_cuda_image(image)
     yield image
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def rocm_image(image: str):
     skip_if_not_rocm_image(image)
     yield image
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def jupyterlab_image(image: str) -> Image:
     image_metadata = skip_if_not_workbench_image(image)
     if "-jupyter-" not in image_metadata.labels["name"]:
@@ -214,7 +218,7 @@ def jupyterlab_image(image: str) -> Image:
     return image_metadata
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def jupyterlab_datascience_image(jupyterlab_image: Image) -> Image:
     if "-minimal-" in jupyterlab_image.labels["name"]:
         pytest.skip(
@@ -224,7 +228,7 @@ def jupyterlab_datascience_image(jupyterlab_image: Image) -> Image:
     return jupyterlab_image
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def jupyterlab_trustyai_image(jupyterlab_image: Image) -> Image:
     if "-trustyai-" not in jupyterlab_image.labels["name"]:
         pytest.skip(
@@ -234,7 +238,7 @@ def jupyterlab_trustyai_image(jupyterlab_image: Image) -> Image:
     return jupyterlab_image
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def datascience_image(image: str) -> Image:
     image_metadata = get_image_metadata(image)
     if "-minimal-" in image_metadata.labels["name"]:
@@ -245,7 +249,7 @@ def datascience_image(image: str) -> Image:
     return image_metadata
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def rstudio_image(image: str) -> Image:
     image_metadata = skip_if_not_workbench_image(image)
     if not utils.is_rstudio_image(image):
@@ -254,7 +258,7 @@ def rstudio_image(image: str) -> Image:
     return image_metadata
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def codeserver_image(image: str) -> Image:
     image_metadata = skip_if_not_workbench_image(image)
     if "-code-server-" not in image_metadata.labels["name"]:
