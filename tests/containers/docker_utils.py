@@ -62,9 +62,8 @@ def running_container(
 
     GID 0 is always added (OpenShift runs with root supplemental group for /opt/app-root access).
     """
-    container = testcontainers.core.container.DockerContainer(
-        image=image, user=user, group_add=group_add or [0], **kwargs
-    )
+    groups = sorted({0, *(group_add or [])})
+    container = testcontainers.core.container.DockerContainer(image=image, user=user, group_add=groups, **kwargs)
     if env:
         for key, value in env.items():
             container.with_env(key, value)
