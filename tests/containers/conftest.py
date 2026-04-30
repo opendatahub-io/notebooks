@@ -172,11 +172,15 @@ def container_arch(image: str) -> str:
     """Detect the CPU architecture of the container image. Runs once per session."""
     container = testcontainers.core.container.DockerContainer(image=image, user=0)
     container.with_command("/bin/sh -c 'sleep infinity'")
+    known_architectures = {"x86_64", "aarch64", "s390x", "ppc64le"}
     try:
         container.start()
         exit_code, output = container.exec(["uname", "-m"])
         assert exit_code == 0, f"uname -m failed: {output}"
-        return output.decode().strip()
+        arch = output.decode().strip()
+        if arch not in known_architectures:
+            raise ValueError(f"Unexpected architecture {arch!r}, expected one of {known_architectures}")
+        return arch
     finally:
         docker_utils.NotebookContainer(container).stop(timeout=0)
 
