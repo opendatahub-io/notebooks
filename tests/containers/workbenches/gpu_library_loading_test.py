@@ -89,11 +89,10 @@ class TestGPULibraryLoading:
         with docker_utils.running_container(image, user=1001, env=env) as container:
             cmd = encode_python_function("/opt/app-root/bin/python3", test_fn)
             ecode, output = container.exec(cmd)
-            LOGGER.info("Container process exited with code %s", ecode)
-            if ecode != 0:
-                LOGGER.warning("Non-zero exit code %s from container", ecode)
-
             output_str = output.decode()
+            if ecode != 0:
+                pytest.fail(f"Container command failed with exit code {ecode}:\n{output_str}")
+
             for line in output_str.splitlines():
                 LOGGER.debug(line)
                 if line.startswith("RESULT>"):
@@ -649,7 +648,9 @@ class TestLibrarySymlinks:
 
         with docker_utils.running_container(rocm_image, user=1001) as container:
             cmd = encode_python_function("/opt/app-root/bin/python3", check_symlinks)
-            _ecode, output = container.exec(cmd)
+            ecode, output = container.exec(cmd)
+            if ecode != 0:
+                pytest.fail(f"Symlink check failed with exit code {ecode}:\n{output.decode()}")
 
             result = None
             for line in output.decode().splitlines():
