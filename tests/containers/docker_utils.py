@@ -58,7 +58,10 @@ def running_container(
     env: dict[str, str] | None = None,
     **kwargs,
 ) -> Generator[testcontainers.core.container.DockerContainer]:
-    """Start a container with 'sleep infinity' and stop it on exit."""
+    """Start a container with 'sleep infinity' and stop it on exit.
+
+    GID 0 is always added (OpenShift runs with root supplemental group for /opt/app-root access).
+    """
     container = testcontainers.core.container.DockerContainer(
         image=image, user=user, group_add=group_add or [0], **kwargs
     )
