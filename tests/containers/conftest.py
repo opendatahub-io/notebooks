@@ -182,7 +182,8 @@ def container_arch(image: str) -> str:
             raise ValueError(f"Unexpected architecture {arch!r}, expected one of {known_architectures}")
         return arch
     finally:
-        docker_utils.NotebookContainer(container).stop(timeout=0)
+        with docker_utils.BestEffortCleanup():
+            docker_utils.NotebookContainer(container).stop(timeout=0)
 
 
 @pytest.fixture(scope="session")
