@@ -277,7 +277,8 @@ class TestBaseImage:
                     ecode, output = container.exec(["/bin/sh", "-c", "oc version"])
                     assert ecode == 0, output.decode()
             finally:
-                docker_utils.NotebookContainer(container).stop(timeout=0)
+                with docker_utils.BestEffortCleanup():
+                    docker_utils.NotebookContainer(container).stop(timeout=0)
 
     def test_file_permissions(self, image: str, subtests: pytest_subtests.SubTests):
         """Checks the permissions and ownership for some selected files/directories."""

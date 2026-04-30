@@ -23,6 +23,52 @@ if TYPE_CHECKING:
     from docker.models.containers import Container
 
 
+class BestEffortCleanup:
+    """Context manager that suppresses cleanup errors only when another exception is in-flight.
+
+    If cleanup raises and no other exception is active, the error propagates normally.
+    If cleanup raises while handling another exception, the error is logged and suppressed
+    so the original exception is not masked.
+
+    Design choices:
+
+    - Class-based, not @contextmanager: a generator-based CM's try/yield/except
+      catches body and cleanup exceptions indistinguishably.
+
+    - Auto-detection uses sys.exc_info() in __enter__, not __exit__: inside
+      __exit__, sys.exc_info() already reflects the cleanup error being handled,
+      not the original. Capturing in __enter__ gets the correct answer.
+
+    Usage in __exit__ (pass exc_type so auto-detect is skipped):
+        with BestEffortCleanup(exc_type):
+            container.stop()
+
+    Usage in @contextmanager finally (auto-detects via sys.exc_info):
+        with BestEffortCleanup():
+            container.stop()
+    """
+
+    def __init__(self, exc_type: type[BaseException] | None = None) -> None:
+        self._has_active_exception = exc_type is not None
+
+    def __enter__(self) -> None:
+        if not self._has_active_exception:
+            self._has_active_exception = sys.exc_info()[0] is not None
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> bool:
+        if exc_type is None:
+            return False
+        if not self._has_active_exception:
+            return False
+        logging.exception("Cleanup failed (suppressed because another exception is active)")
+        return True
+
+
 class NotebookContainer:
     @classmethod
     def wrap(cls, container: testcontainers.core.container.DockerContainer):
@@ -72,13 +118,8 @@ def running_container(
         container.start()
         yield container
     finally:
-        had_active_exception = sys.exc_info()[0] is not None
-        try:
+        with BestEffortCleanup():
             NotebookContainer(container).stop(timeout=0)
-        except Exception:
-            if not had_active_exception:
-                raise
-            logging.exception("Failed to stop container during teardown")
 
 
 def container_cp(
