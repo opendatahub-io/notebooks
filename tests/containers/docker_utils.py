@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import io
 import logging
 import os.path
@@ -11,14 +12,14 @@ from os import PathLike
 from typing import TYPE_CHECKING
 
 import podman
+import testcontainers.core.container
 
 import tests.containers.pydantic_schemas
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Generator, Iterable
 
     import docker.client
-    import testcontainers.core.container
     from docker.models.containers import Container
 
 
@@ -46,6 +47,22 @@ class NotebookContainer:
             time.sleep(0.2)
             container.reload()
         return container.attrs["State"]["ExitCode"]
+
+
+@contextlib.contextmanager
+def running_container(
+    image: str, *, user: int = 23456, group_add: list[int] | None = None, **kwargs
+) -> Generator[testcontainers.core.container.DockerContainer]:
+    """Start a container with 'sleep infinity' and stop it on exit."""
+    container = testcontainers.core.container.DockerContainer(
+        image=image, user=user, group_add=group_add or [0], **kwargs
+    )
+    container.with_command("/bin/sh -c 'sleep infinity'")
+    try:
+        container.start()
+        yield container
+    finally:
+        NotebookContainer(container).stop(timeout=0)
 
 
 def container_cp(

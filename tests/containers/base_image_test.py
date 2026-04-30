@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import binascii
-import contextlib
 import inspect
 import json
 import logging
@@ -23,7 +22,7 @@ logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    from collections.abc import Callable
 
     import pytest_subtests
 
@@ -57,19 +56,8 @@ class TestBaseImage:
         return source_dir is not None and (workspace_root / source_dir / "uv.lock.d").is_dir()
 
     def _run_test(self, image: str, test_fn: Callable[[testcontainers.core.container.DockerContainer], None]) -> None:
-        with self._test_container(image) as container:
+        with docker_utils.running_container(image) as container:
             test_fn(container)
-
-    @contextlib.contextmanager
-    def _test_container(self, image: str) -> Generator[testcontainers.core.container.DockerContainer]:
-        """Context manager that starts a test container and yields it."""
-        container = testcontainers.core.container.DockerContainer(image=image, user=23456, group_add=[0])
-        container.with_command("/bin/sh -c 'sleep infinity'")
-        try:
-            container.start()
-            yield container
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)
 
     def test_elf_files_can_link_runtime_libs(self, subtests: pytest_subtests.SubTests, image):
         def test_fn(container: testcontainers.core.container.DockerContainer):
@@ -231,7 +219,7 @@ class TestBaseImage:
         if utils.is_rstudio_image(image):
             pytest.skip("oc command is not preinstalled in RStudio images.")
         # Skip when oc comes from openshift-clients RPM: fake FIPS is insufficient for RPM (needs real OpenSSL).
-        with self._test_container(image=image) as container:
+        with docker_utils.running_container(image=image) as container:
             rpm_ecode, _ = container.exec(["/bin/sh", "-c", "rpm -q openshift-clients 2>/dev/null"])
         if rpm_ecode == 0:
             pytest.skip(
@@ -356,7 +344,7 @@ class TestBaseImage:
 
         has_uv_lock_d = self._has_uv_lock_d(image)
 
-        with self._test_container(image=image) as container:
+        with docker_utils.running_container(image=image) as container:
             _, output = container.exec(["env"])
             actual = dict(line.split("=", maxsplit=1) for line in output.decode().strip().splitlines())
 

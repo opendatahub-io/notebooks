@@ -22,7 +22,6 @@ if TYPE_CHECKING:
 
 import pydantic
 import pytest
-import testcontainers.core.container
 
 from tests.containers import conftest, docker_utils
 
@@ -87,17 +86,11 @@ class TestGPULibraryLoading:
         self, image: str, test_fn: types.FunctionType, env: dict[str, str] | None = None
     ) -> dict[str, Any]:
         """Run a test function inside a container and return its result."""
-        container = testcontainers.core.container.DockerContainer(image=image, user=1001, group_add=[0])
-        container.with_command("/bin/sh -c 'sleep infinity'")
+        with docker_utils.running_container(image, user=1001) as container:
+            if env:
+                for key, value in env.items():
+                    container.with_env(key, value)
 
-        if env:
-            for key, value in env.items():
-                container.with_env(key, value)
-
-        started = False
-        try:
-            container.start()
-            started = True
             cmd = encode_python_function("/opt/app-root/bin/python3", test_fn)
             ecode, output = container.exec(cmd)
             LOGGER.info("Container process exited with code %s", ecode)
@@ -111,9 +104,6 @@ class TestGPULibraryLoading:
                     return json.loads(line[len("RESULT>") :])
 
             pytest.fail(f"Test function did not return a result. Exit code: {ecode}, Output: {output_str}")
-        finally:
-            if started:
-                docker_utils.NotebookContainer(container).stop(timeout=0)
 
     @pytest.mark.parametrize("loading_mode", ["LAZY", "EAGER"])
     def test_pytorch_cuda_library_loading(self, cuda_image: str, subtests: pytest_subtests.SubTests, loading_mode: str):
@@ -661,11 +651,7 @@ class TestLibrarySymlinks:
 
             return results
 
-        container = testcontainers.core.container.DockerContainer(image=rocm_image, user=1001, group_add=[0])
-        container.with_command("/bin/sh -c 'sleep infinity'")
-
-        try:
-            container.start()
+        with docker_utils.running_container(rocm_image, user=1001) as container:
             cmd = encode_python_function("/opt/app-root/bin/python3", check_symlinks)
             _ecode, output = container.exec(cmd)
 
@@ -692,6 +678,3 @@ class TestLibrarySymlinks:
             LOGGER.info(f"Missing (may be optional): {result.missing}")
             if result.hipsparselt_in_rocm:
                 LOGGER.warning("hipsparselt exists in ROCm but not symlinked to torch/lib")
-
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)

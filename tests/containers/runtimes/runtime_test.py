@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import contextlib
-
 import allure
 import pytest
-import testcontainers.core.container
 
 from tests.containers import base_image_test, conftest, docker_utils
 
@@ -28,7 +25,7 @@ class TestRuntimeImage:
                     socket.close(0)  # linger=0
                 context.term()
 
-        with running_image(runtime_image.name) as container:
+        with docker_utils.running_container(runtime_image.name) as container:
             exit_code, output_bytes = container.exec(
                 # NOTE: /usr/bin/python3 would not find zmq, we need python3 in user's venv
                 base_image_test.encode_python_function_execution_command_interpreter("python3", check_zmq)
@@ -44,7 +41,7 @@ class TestRuntimeImage:
         if "-minimal-" in runtime_image.labels["name"]:
             pytest.skip("Feast is not installed in minimal runtime images.")
 
-        with running_image(runtime_image.name) as container:
+        with docker_utils.running_container(runtime_image.name) as container:
             exit_code, output_bytes = container.exec(["/bin/sh", "-c", "feast version"])
 
         output = output_bytes.decode()
@@ -63,7 +60,7 @@ class TestRuntimeImage:
             assert hasattr(mlflow, "log_param"), "MLflow does not have log_param function"
             print(f"MLflow imported successfully (version: {mlflow.__version__})")
 
-        with running_image(runtime_image.name) as container:
+        with docker_utils.running_container(runtime_image.name) as container:
             exit_code, arch_output = container.exec(["uname", "-m"])
             arch = arch_output.decode().strip()
             if exit_code == 0 and arch == "s390x":
@@ -78,17 +75,3 @@ class TestRuntimeImage:
         assert b"MLflow imported successfully" in output_bytes, (
             f"Expected success message not found in output. Output: {output_bytes}"
         )
-
-
-@contextlib.contextmanager
-def running_image(image: str):
-    """Usage: with running_image("quay.io/...") as container:"""
-    container = testcontainers.core.container.DockerContainer(image=image, user=23456, group_add=[0])
-    container.with_command("/bin/sh -c 'sleep infinity'")
-    try:
-        container.start()
-        yield container
-    except Exception as e:
-        pytest.fail(f"Unexpected exception in test: {e}")
-    finally:
-        docker_utils.NotebookContainer(container).stop(timeout=0)
