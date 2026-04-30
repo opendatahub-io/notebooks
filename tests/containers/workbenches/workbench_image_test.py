@@ -190,7 +190,12 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None:
-        docker_utils.NotebookContainer(self).stop(timeout=0)
+        try:
+            docker_utils.NotebookContainer(self).stop(timeout=0)
+        except Exception:
+            if exc_type is None:
+                raise
+            logging.exception("Failed to stop container during context exit")
 
     def start(self, wait_for_readiness: bool = True) -> WorkbenchContainer:
         super().start()
