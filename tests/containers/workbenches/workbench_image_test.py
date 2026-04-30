@@ -213,7 +213,11 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         dest: str = "/opt/app-root/src",
         python: str = "python",
     ) -> tuple[int, str]:
-        """Copy a Python script into the container and execute it."""
+        """Copy a Python script into the container and execute it.
+
+        Note: script_name and dest are not sanitized against path traversal (CWE-22)
+        because all callers are hardcoded test code in this repo, not user input.
+        """
         with tempfile.TemporaryDirectory() as tmpdir:
             script_path = pathlib.Path(tmpdir) / script_name
             script_path.write_text(script_content)
