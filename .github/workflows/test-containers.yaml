@@ -1,0 +1,135 @@
+---
+name: Test Infrastructure Self-Test
+
+"on":
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tests/containers/**'
+      - 'tests/conftest.py'
+      - 'pytest.ini'
+      - '.github/workflows/test-containers.yaml'
+  push:
+    branches: [main, stable, 'rhoai-*']
+    paths:
+      - 'tests/containers/**'
+      - 'tests/conftest.py'
+      - 'pytest.ini'
+      - '.github/workflows/test-containers.yaml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  TESTCONTAINERS_RYUK_DISABLED: "true"
+  IMAGE_REGISTRY: "ghcr.io/opendatahub-io/notebooks/workbench-images"
+
+jobs:
+  find-images:
+    name: Find test images
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.find.outputs.matrix }}
+    steps:
+      - name: Find images for test matrix
+        id: find
+        env:
+          IMAGE_REGISTRY: ${{ env.IMAGE_REGISTRY }}
+          GH_TOKEN: ${{ github.token }}
+        shell: python
+        # language=python
+        run: |
+          import json, os, subprocess, sys
+
+          registry = os.environ["IMAGE_REGISTRY"]
+          suffix = "_odh_linux_amd64"
+          required = [
+              "jupyter-minimal-ubi9-python-3.12",
+              "jupyter-datascience-ubi9-python-3.12",
+              "runtime-datascience-ubi9-python-3.12",
+          ]
+
+          result = subprocess.run(
+              ["skopeo", "list-tags", "--creds", f"token:{os.environ['GH_TOKEN']}", f"docker://{registry}"],
+              capture_output=True, text=True, timeout=180,
+          )
+          if result.returncode != 0:
+              print(f"::error::skopeo list-tags failed: {result.stderr}", file=sys.stderr)
+              sys.exit(1)
+
+          tags = set(json.loads(result.stdout)["Tags"])
+
+          sha_sets = []
+          for img in required:
+              prefix = f"{img}-main_"
+              shas = {t.removeprefix(prefix).removesuffix(suffix) for t in tags if t.startswith(prefix) and t.endswith(suffix)}
+              print(f"  {img}: {len(shas)} builds")
+              sha_sets.append(shas)
+
+          common = set.intersection(*sha_sets)
+          if not common:
+              print(f"::error::No SHA has all required images: {required}", file=sys.stderr)
+              sys.exit(1)
+
+          sha = common.pop()
+          matrix = {"include": [
+              {"image": f"{registry}:{img}-main_{sha}{suffix}"} for img in required
+          ]}
+          print(f"Using SHA {sha} ({len(common)+1} candidates)")
+          print(json.dumps(matrix, indent=2))
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"matrix={json.dumps(matrix)}\n")
+
+  container-tests:
+    name: "${{ matrix.image }}"
+    needs: find-images
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.find-images.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Install deps
+        run: uv sync --locked
+
+      - name: Start Podman socket
+        run: |
+          podman --version
+          systemctl --user enable --now podman.socket
+          echo "DOCKER_HOST=unix://$(podman info --format '{{.Host.RemoteSocket.Path}}')" >> "$GITHUB_ENV"
+
+      - name: Login to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and run tests
+        env:
+          TEST_IMAGE: ${{ matrix.image }}
+        run: |
+          set -Eeuxo pipefail
+          podman pull "${TEST_IMAGE}"
+          uv run pytest tests/containers \
+            -m 'not openshift and not cuda and not rocm and not manifest_validation' \
+            --image="${TEST_IMAGE}" \
+            -v
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3  # v1.2.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: junit.xml
