@@ -35,8 +35,7 @@ class TestRStudioImage:
                 "ISSUE-957, RHOAIENG-17256(comments): RStudio workbench on RHEL does not come with knitr preinstalled"
             )
 
-        container = WorkbenchContainer(image=rstudio_image.name, user=1000, group_add=[0])
-        try:
+        with WorkbenchContainer(image=rstudio_image.name, user=1000, group_add=[0]) as container:
             container.start(wait_for_readiness=False)
 
             # language=R
@@ -103,27 +102,20 @@ class TestRStudioImage:
                     attachment_type=allure.attachment_type.PDF,
                 )
 
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)
-
     @allure.issue("RHOAIENG-23584")
     def test_arbitrary_env_propagates_unchanged(self, rstudio_image: conftest.Image) -> None:
         """
         Checks that environment variables are propagated into the RStudio environment.
         """
 
-        container = WorkbenchContainer(image=rstudio_image.name, user=1000, group_add=[0])
-        container.with_env("SOME_VARIABLE", "Some Value")
+        with WorkbenchContainer(image=rstudio_image.name, user=1000, group_add=[0]) as container:
+            container.with_env("SOME_VARIABLE", "Some Value")
 
-        try:
             # We need to wait for the IDE to be completely loaded so that the envs are processed properly.
             container.start(wait_for_readiness=True)
 
             # Once the RStudio IDE is fully up and running, the processed envs should include the variable.
             assert_has_env_variable(container, "SOME_VARIABLE", "Some Value")
-
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)
 
     @allure.issue("RHOAIENG-16604")
     def test_http_proxy_env_propagates(
@@ -145,11 +137,10 @@ class TestRStudioImage:
             TestCase("NO_PROXY", "no_proxy", "google.com"),
         ]
 
-        container = WorkbenchContainer(image=rstudio_image.name, user=1000, group_add=[0])
-        for tc in test_cases:
-            container.with_env(tc.name, tc.value)
+        with WorkbenchContainer(image=rstudio_image.name, user=1000, group_add=[0]) as container:
+            for tc in test_cases:
+                container.with_env(tc.name, tc.value)
 
-        try:
             # We need to wait for the IDE to be completely loaded so that the envs are processed properly.
             container.start(wait_for_readiness=True)
 
@@ -157,9 +148,6 @@ class TestRStudioImage:
             for tc in test_cases:
                 with subtests.test(tc.name):
                     assert_has_env_variable(container, tc.name_lc, tc.value)
-
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)
 
 
 def assert_has_env_variable(container: WorkbenchContainer, name: str, value: str) -> None:

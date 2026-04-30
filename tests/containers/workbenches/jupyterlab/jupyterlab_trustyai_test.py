@@ -98,7 +98,7 @@ if __name__ == "__main__":
     sys.exit(0 if success else 1)
 '''
         test_script_name = "test_trustyai.py"
-        try:
+        with container:
             container.start(wait_for_readiness=False)
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir_path = pathlib.Path(tmpdir)
@@ -119,6 +119,3 @@ if __name__ == "__main__":
             assert exit_code == 0, f"Script execution failed with exit code {exit_code}. Output:\n{output_str}"
             assert "🎉 All compatibility tests passed!" in output_str
             assert "- Statistical Parity Difference calculated: 1.000" in output_str
-
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)

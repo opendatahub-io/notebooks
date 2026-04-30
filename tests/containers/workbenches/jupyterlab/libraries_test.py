@@ -19,8 +19,7 @@ class TestWorkbenchImage:
     def test_image_entrypoint_starts(
         self, subtests: pytest_subtests.SubTests, jupyterlab_datascience_image: Image
     ) -> None:
-        container = WorkbenchContainer(image=jupyterlab_datascience_image.name, user=1000, group_add=[0])
-        try:
+        with WorkbenchContainer(image=jupyterlab_datascience_image.name, user=1000, group_add=[0]) as container:
             try:
                 container.start()
                 # check explicitly that we can connect to the ide running in the workbench
@@ -41,7 +40,4 @@ class TestWorkbenchImage:
                 print(stdout_decoded)
                 assert ecode == 0, stdout_decoded
             finally:
-                # try to grab logs regardless of whether container started or not
                 grab_and_check_logs(subtests, container)
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)

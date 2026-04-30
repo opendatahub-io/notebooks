@@ -8,7 +8,7 @@ import platform
 import time
 import urllib.error
 import urllib.request
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import docker.types
 import pytest
@@ -20,6 +20,8 @@ import testcontainers.core.waiting_utils
 from tests.containers import docker_utils, kubernetes_utils, podman_machine_utils
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     import pytest_subtests
 
 
@@ -36,18 +38,14 @@ class TestWorkbenchImage:
         ],
     )
     def test_image_entrypoint_starts(self, subtests: pytest_subtests.SubTests, workbench_image: str, sysctls) -> None:
-        container = WorkbenchContainer(image=workbench_image, user=1000, group_add=[0], sysctls=sysctls)
-        try:
+        with WorkbenchContainer(image=workbench_image, user=1000, group_add=[0], sysctls=sysctls) as container:
             try:
                 container.start()
                 # check explicitly that we can connect to the ide running in the workbench
                 with subtests.test("Attempting to connect to the workbench..."):
                     container._connect()
             finally:
-                # try to grab logs regardless of whether container started or not
                 grab_and_check_logs(subtests, container)
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)
 
     def test_ipv6_only(self, subtests: pytest_subtests.SubTests, workbench_image: str, test_frame):
         """Test that workbench image is accessible via IPv6.
@@ -67,9 +65,8 @@ class TestWorkbenchImage:
         )
         test_frame.append(network)
 
-        container = WorkbenchContainer(image=workbench_image)
-        container.with_network(network)
-        try:
+        with WorkbenchContainer(image=workbench_image) as container:
+            container.with_network(network)
             try:
                 client = testcontainers.core.docker_client.DockerClient()
                 rootless: bool = client.client.info()["Rootless"]
@@ -107,10 +104,7 @@ class TestWorkbenchImage:
 
                     container._connect(container_host=host, container_port=port)
             finally:
-                # try to grab logs regardless of whether container started or not
                 grab_and_check_logs(subtests, container)
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)
 
     @pytest.mark.openshift
     def test_image_run_on_openshift(self, workbench_image: str):
@@ -185,6 +179,14 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
                 raise ConnectionError(f"Failed to connect to container, {result.status=}")
         finally:
             result.close()
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+    ) -> None:
+        docker_utils.NotebookContainer(self).stop(timeout=0)
 
     def start(self, wait_for_readiness: bool = True) -> WorkbenchContainer:
         super().start()
