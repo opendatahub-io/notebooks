@@ -51,12 +51,20 @@ class NotebookContainer:
 
 @contextlib.contextmanager
 def running_container(
-    image: str, *, user: int = 23456, group_add: list[int] | None = None, **kwargs
+    image: str,
+    *,
+    user: int = 23456,
+    group_add: list[int] | None = None,
+    env: dict[str, str] | None = None,
+    **kwargs,
 ) -> Generator[testcontainers.core.container.DockerContainer]:
     """Start a container with 'sleep infinity' and stop it on exit."""
     container = testcontainers.core.container.DockerContainer(
         image=image, user=user, group_add=group_add or [0], **kwargs
     )
+    if env:
+        for key, value in env.items():
+            container.with_env(key, value)
     container.with_command("/bin/sh -c 'sleep infinity'")
     try:
         container.start()

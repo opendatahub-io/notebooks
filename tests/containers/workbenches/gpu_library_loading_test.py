@@ -86,11 +86,7 @@ class TestGPULibraryLoading:
         self, image: str, test_fn: types.FunctionType, env: dict[str, str] | None = None
     ) -> dict[str, Any]:
         """Run a test function inside a container and return its result."""
-        with docker_utils.running_container(image, user=1001) as container:
-            if env:
-                for key, value in env.items():
-                    container.with_env(key, value)
-
+        with docker_utils.running_container(image, user=1001, env=env) as container:
             cmd = encode_python_function("/opt/app-root/bin/python3", test_fn)
             ecode, output = container.exec(cmd)
             LOGGER.info("Container process exited with code %s", ecode)
