@@ -4,7 +4,9 @@ import functools
 import http.cookiejar
 import logging
 import os
+import pathlib
 import platform
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -45,6 +47,7 @@ class TestWorkbenchImage:
                 with subtests.test("Attempting to connect to the workbench..."):
                     container._connect()
             finally:
+                # try to grab logs regardless of whether container started or not
                 grab_and_check_logs(subtests, container)
 
     def test_ipv6_only(self, subtests: pytest_subtests.SubTests, workbench_image: str, test_frame):
@@ -104,6 +107,7 @@ class TestWorkbenchImage:
 
                     container._connect(container_host=host, container_port=port)
             finally:
+                # try to grab logs regardless of whether container started or not
                 grab_and_check_logs(subtests, container)
 
     @pytest.mark.openshift
@@ -196,6 +200,21 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         if wait_for_readiness:
             self._connect()
         return self
+
+    def exec_script(
+        self,
+        script_content: str,
+        script_name: str = "test_script.py",
+        dest: str = "/opt/app-root/src",
+        python: str = "python",
+    ) -> tuple[int, str]:
+        """Copy a Python script into the container and execute it."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            script_path = pathlib.Path(tmpdir) / script_name
+            script_path.write_text(script_content)
+            docker_utils.container_cp(self.get_wrapped_container(), src=str(script_path), dst=dest)
+        exit_code, output = self.exec([python, f"{dest}/{script_name}"])
+        return exit_code, output.decode()
 
 
 def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: WorkbenchContainer) -> None:

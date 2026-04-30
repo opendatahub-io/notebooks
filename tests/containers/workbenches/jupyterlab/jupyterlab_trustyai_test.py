@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import pathlib
-import tempfile
+from typing import TYPE_CHECKING
 
 import allure
 
-from tests.containers import conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
+
+if TYPE_CHECKING:
+    from tests.containers import conftest
 
 
 class TestJupyterLabDatascienceImage:
@@ -97,22 +98,9 @@ if __name__ == "__main__":
     success = test_sklearn_trustyai_compatibility()
     sys.exit(0 if success else 1)
 '''
-        test_script_name = "test_trustyai.py"
         with container:
             container.start(wait_for_readiness=False)
-            with tempfile.TemporaryDirectory() as tmpdir:
-                tmpdir_path = pathlib.Path(tmpdir)
-                script_path = tmpdir_path / test_script_name
-                script_path.write_text(test_script_content)
-                docker_utils.container_cp(
-                    container.get_wrapped_container(),
-                    src=str(script_path),
-                    dst=self.APP_ROOT_HOME,
-                )
-
-            script_container_path = f"{self.APP_ROOT_HOME}/{test_script_name}"
-            exit_code, output = container.exec(["python", script_container_path])
-            output_str = output.decode()
+            exit_code, output_str = container.exec_script(test_script_content, script_name="test_trustyai.py")
 
             print(f"Script output:\n{output_str}")
 
