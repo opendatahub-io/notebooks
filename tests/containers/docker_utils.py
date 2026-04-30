@@ -72,10 +72,11 @@ def running_container(
         container.start()
         yield container
     finally:
+        had_active_exception = sys.exc_info()[0] is not None
         try:
             NotebookContainer(container).stop(timeout=0)
         except Exception:
-            if sys.exc_info()[0] is None:
+            if not had_active_exception:
                 raise
             logging.exception("Failed to stop container during teardown")
 
