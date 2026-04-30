@@ -254,6 +254,10 @@ def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: Workbench
         "WARNING: The Jupyter server is listening on all IP addresses and not using encryption. This is not recommended.",
     ]
 
+    if container.get_wrapped_container() is None:
+        logging.warning("Skipping log check: container was never started")
+        return
+
     # Let's wait a couple of seconds to give a chance to log eventual extra startup messages just to be sure we don't
     # miss anything important in this test.
     time.sleep(3)
