@@ -20,6 +20,8 @@ project: `open-data-hub-tenant`
     * [odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central):
         * [pipelines](https://github.com/opendatahub-io/odh-konflux-central/tree/main/pipelines/notebooks): Definitions of the **Tekton** pipelines used for building and testing components (e.g., notebook images).
         * [gitops](https://github.com/opendatahub-io/odh-konflux-central/tree/main/gitops): Configuration for deployed components and End-to-End (e2e) tests.
+* **Build Notifications (Slack):** Push pipeline results (successes and failures) are posted automatically.
+    * [#odh-build-notifications](https://redhat-internal.slack.com/archives/C07ANR0T9KJ)
 * **Release Data (`konflux-release-data`):** Release engineering configuration for the ODH tenant.
     * [konflux-release-data](https://gitlab.cee.redhat.com/releng/konflux-release-data)
         * [stone-prd-rh01/tenants/open-data-hub-tenant](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config/cluster/stone-prd-rh01/tenants/open-data-hub-tenant)
@@ -37,6 +39,8 @@ project: `rhoai-tenant`
 * **Configuration Repository (`konflux-central`):** GitOps repository for RHDS Konflux definitions.
     * [konflux-central](https://github.com/red-hat-data-services/konflux-central):
         * [pipelineruns](https://github.com/red-hat-data-services/konflux-central/tree/main/pipelineruns/notebooks/.tekton): Specific **PipelineRun** definitions used for execution.
+* **Build Notifications (Slack):** Push pipeline failures are posted automatically.
+    * [#rhoai-build-notifications](https://redhat-internal.slack.com/archives/C07ANR2U56C)
 * **Release Data (`konflux-release-data`):** Release engineering configuration for the RHDS tenant.
     * [konflux-release-data](https://gitlab.cee.redhat.com/releng/konflux-release-data)
         * [stone-prod-p02/tenants/rhoai-tenant](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config/cluster/stone-prod-p02/tenants/rhoai-tenant)
