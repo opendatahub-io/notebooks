@@ -42,6 +42,12 @@ spec:
       value: main
     - name: pathInRepo
       value: pipeline/multi-arch-container-build.yaml
+  taskRunSpecs:
+  - pipelineTaskName: sast-unicode-check
+    computeResources:
+      limits:
+        memory: 8Gi
+
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-pipeline-runtime-datascience-cpu-py312-ubi9
   workspaces:

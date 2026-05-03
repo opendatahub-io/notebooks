@@ -103,4 +103,8 @@ spec:
       limits:
         cpu: '4'
         memory: 8Gi
+  - pipelineTaskName: sast-unicode-check
+    computeResources:
+      limits:
+        memory: 8Gi
 status: {}
