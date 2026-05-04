@@ -24,7 +24,7 @@ log = structlog.get_logger()
 class Args(argparse.Namespace):
     dockerfile: pathlib.Path
     platform: Literal["linux/amd64", "linux/arm64", "linux/s390x", "linux/ppc64le"]
-    build_arg_file: pathlib.Path | None
+    build_arg_file: list[pathlib.Path]
     remaining: list[str]
 
 
@@ -34,7 +34,7 @@ def main() -> int:
     p.add_argument("--platform", type=str,
                    choices=["linux/amd64", "linux/arm64", "linux/s390x", "linux/ppc64le"],
                    required=True)
-    p.add_argument("--build-arg-file", type=pathlib.Path, default=None)
+    p.add_argument("--build-arg-file", type=pathlib.Path, action="append", default=[])
     p.add_argument('remaining', nargs=argparse.REMAINDER)
 
     args = cast(Args, p.parse_args())
@@ -49,8 +49,8 @@ def main() -> int:
         return 1
 
     file_build_args: dict[str, str] = {}
-    if args.build_arg_file:
-        file_build_args = parse_build_arg_file(args.build_arg_file)
+    for arg_file in args.build_arg_file:
+        file_build_args.update(parse_build_arg_file(arg_file))
 
     cmd_build_args = extract_build_args(args.remaining[1:])
     build_args = {**file_build_args, **cmd_build_args}
