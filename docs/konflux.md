@@ -64,7 +64,7 @@ Release engineering toolbox for RHOAI. It is the glue between Konflux builds and
 
 Automated synchronization infrastructure between upstream ODH and downstream RHDS repositories.
 
-- **[Upstream to Downstream Auto-Merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/upstream-auto-merge.yaml)** -- Runs daily at UTC 0:00. Syncs changes from upstream repos (e.g., `opendatahub-io/notebooks`) to downstream repos (e.g., `red-hat-data-services/notebooks`) based on [upstream-source-map.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/blob/main/src/config/upstream-source-map.yaml). Can be manually triggered per-component.
+- **[Upstream to Downstream Auto-Merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/upstream-auto-merge.yaml)** -- Runs daily at 00:00 UTC. Syncs changes from upstream repos (e.g., `opendatahub-io/notebooks`) to downstream repos (e.g., `red-hat-data-services/notebooks`) based on [upstream-source-map.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/blob/main/src/config/upstream-source-map.yaml). It can also be manually triggered per component.
 - **[Main to Release Auto-Merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/main-release-auto-merge.yaml)** -- Runs daily at UTC 1:00. Syncs from downstream `main` to `rhoai-x.y` release branches based on [main-release-source-map.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/blob/main/src/config/main-release-source-map.yaml). Automatically creates release branches on sprint start and disables auto-merge after code freeze.
 - **Jira Ticket Automation** -- Generates sprint tickets from YAML templates via [create-jira-tickets.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/create-jira-tickets.yaml).
 
@@ -330,4 +330,4 @@ The [E2E TestOps Ecosystem across ODH & RHOAI](https://docs.google.com/document/
 6. **ODH Nightly Pipeline Ownership & Triage** -- Weekly on-call rotation for ODH nightly smoke pipeline triage, automated via Slack bot.
 7. **Component-Based Pipelines in Jenkins CI** -- Standardized per-component Jenkins pipelines (implemented via [RHOAIENG-43188](https://issues.redhat.com/browse/RHOAIENG-43188)).
 8. **Test Reporting System** -- Bot-based architecture using Data Router + ReportPortal as central hub, with Jira TFA integration and Slack notifications.
-9. **Sign Off** -- Team sign-off tracking.
+9. **Sign-off** -- Team sign-off tracking.
