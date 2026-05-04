@@ -44,7 +44,7 @@ def main() -> int:
     if not args.remaining or args.remaining[0] != "--":
         print("must specify command to execute after double dashes at the end, such as `-- command --args ...`")
         return 1
-    if not "{};" in args.remaining:
+    if "{};" not in args.remaining:
         print("must give a `{};` parameter that will be replaced with new build context")
         return 1
 
@@ -59,9 +59,10 @@ def main() -> int:
     with tempfile.TemporaryDirectory(delete=True) as tmpdir:
         setup_sandbox(prereqs, pathlib.Path(tmpdir))
         extra_args = [f"--build-arg={k}={v}" for k, v in file_build_args.items()]
-        brace_idx = args.remaining.index("{};")
-        command_parts = args.remaining[1:brace_idx] + extra_args + args.remaining[brace_idx:]
-        command = [tmpdir if arg == "{};" else arg for arg in command_parts]
+        command = list(args.remaining[1:])
+        brace_idx = command.index("{};")
+        command[brace_idx:brace_idx] = extra_args
+        command = [tmpdir if arg == "{};" else arg for arg in command]
         print(f"running {command=}")
         try:
             subprocess.check_call(command)
