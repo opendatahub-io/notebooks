@@ -46,15 +46,29 @@ FROM cpu-base AS runtime-minimal
 ARG MINIMAL_SOURCE_CODE=runtimes/minimal/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-LABEL name="odh-notebook-runtime-minimal-ubi9-python-3.12" \
-    summary="Runtime minimal image for ODH notebooks" \
-    description="Runtime minimal image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    io.k8s.display-name="Runtime minimal image for ODH notebooks" \
-    io.k8s.description="Runtime minimal image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-    io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/minimal/ubi9-python-3.12" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:runtime-minimal-ubi9-python-3.12"
+ARG LABEL_NAME=""
+ARG LABEL_SUMMARY=""
+ARG LABEL_DESCRIPTION=""
+ARG LABEL_DISPLAY_NAME=""
+ARG LABEL_K8S_DESCRIPTION=""
+ARG LABEL_COM_REDHAT_COMPONENT=""
+ARG LABEL_COM_REDHAT_LICENSE_TERMS=""
+ARG LABEL_AUTHORITATIVE_SOURCE_URL=""
+ARG LABEL_BUILD_COMMIT_REF=""
+ARG LABEL_BUILD_SOURCE_LOCATION=""
+ARG LABEL_BUILD_IMAGE=""
+
+LABEL name="${LABEL_NAME}" \
+      summary="${LABEL_SUMMARY}" \
+      description="${LABEL_DESCRIPTION}" \
+      io.k8s.display-name="${LABEL_DISPLAY_NAME}" \
+      io.k8s.description="${LABEL_K8S_DESCRIPTION}" \
+      com.redhat.component="${LABEL_COM_REDHAT_COMPONENT}" \
+      com.redhat.license_terms="${LABEL_COM_REDHAT_LICENSE_TERMS}" \
+      authoritative-source-url="${LABEL_AUTHORITATIVE_SOURCE_URL}" \
+      io.openshift.build.commit.ref="${LABEL_BUILD_COMMIT_REF}" \
+      io.openshift.build.source-location="${LABEL_BUILD_SOURCE_LOCATION}" \
+      io.openshift.build.image="${LABEL_BUILD_IMAGE}"
 
 WORKDIR /opt/app-root/bin
 

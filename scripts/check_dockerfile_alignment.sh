@@ -84,6 +84,9 @@ strip() {
             next
         }
 
+        # Skip ARG declarations for label parameters
+        /^[[:space:]]*ARG[[:space:]]+LABEL_/ { next }
+
         # Print all other lines (trimmed)
         {
             # Trim leading and trailing whitespace

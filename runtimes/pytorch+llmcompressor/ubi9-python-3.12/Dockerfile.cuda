@@ -36,15 +36,29 @@ FROM cuda-base AS cuda-runtime-pytorch
 ARG PYTORCH_SOURCE_CODE=runtimes/pytorch+llmcompressor/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-LABEL name="odh-notebook-runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12" \
-    summary="Runtime CUDA pytorch-llmcompressor notebook image for ODH notebooks" \
-    description="Runtime CUDA pytorch-llmcompressor notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    io.k8s.display-name="Runtime CUDA pytorch-llmcompressor notebook image for ODH notebooks" \
-    io.k8s.description="Runtime CUDA pytorch-llmcompressor notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-    io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/pytorch+llmcompressor/ubi9-python-3.12" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:runtime-pytorch-llmcompressor-ubi9-python-3.12"
+ARG LABEL_NAME=""
+ARG LABEL_SUMMARY=""
+ARG LABEL_DESCRIPTION=""
+ARG LABEL_DISPLAY_NAME=""
+ARG LABEL_K8S_DESCRIPTION=""
+ARG LABEL_COM_REDHAT_COMPONENT=""
+ARG LABEL_COM_REDHAT_LICENSE_TERMS=""
+ARG LABEL_AUTHORITATIVE_SOURCE_URL=""
+ARG LABEL_BUILD_COMMIT_REF=""
+ARG LABEL_BUILD_SOURCE_LOCATION=""
+ARG LABEL_BUILD_IMAGE=""
+
+LABEL name="${LABEL_NAME}" \
+      summary="${LABEL_SUMMARY}" \
+      description="${LABEL_DESCRIPTION}" \
+      io.k8s.display-name="${LABEL_DISPLAY_NAME}" \
+      io.k8s.description="${LABEL_K8S_DESCRIPTION}" \
+      com.redhat.component="${LABEL_COM_REDHAT_COMPONENT}" \
+      com.redhat.license_terms="${LABEL_COM_REDHAT_LICENSE_TERMS}" \
+      authoritative-source-url="${LABEL_AUTHORITATIVE_SOURCE_URL}" \
+      io.openshift.build.commit.ref="${LABEL_BUILD_COMMIT_REF}" \
+      io.openshift.build.source-location="${LABEL_BUILD_SOURCE_LOCATION}" \
+      io.openshift.build.image="${LABEL_BUILD_IMAGE}"
 
 WORKDIR /opt/app-root/bin
 
