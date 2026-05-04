@@ -25,7 +25,9 @@ This document covers Konflux group testing for the notebooks repo — how to tri
 2. `audit-snapshot` — prints the resolved snapshot for verification
 3. `provision-eaas-space` — provisions an EaaS namespace on the management cluster
 4. `provision-cluster` — creates a HyperShift cluster on AWS (10–20 min)
-5. `deploy-and-test` — deploys workbenches to the cluster and runs tests
+5. `deploy-and-test` — clones the PR's repo (for Makefile/test harness), then for each workbench: deploys to the cluster, runs tests, undeploys
+
+**Error handling:** The `deploy-and-test` step deliberately does **not** use `set -e`. Each workbench runs inside a `run_workbench_test` helper that captures failures via `|| ((FAILURES++))`. All workbenches are attempted regardless of individual failures, and a summary (PASS/FAIL per workbench) is printed at the end. The step exits with the failure count.
 
 **Reference:** The same pattern is used by kubeflow, kserve, and feast in [odh-konflux-central/integration-tests/](https://github.com/opendatahub-io/odh-konflux-central/tree/main/integration-tests).
 
@@ -55,6 +57,8 @@ The `generate-snapshot` task (from [rhoai-konflux-tasks](https://github.com/red-
 **Implication:** On a manual `/group-test` trigger for a non-build PR (e.g., only `.tekton/` changes), all components fall back to stable images. On a real build PR, rebuilt components get their PR-specific images.
 
 **Changed vs reused:** The snapshot JSON distinguishes them. Components with populated `git.url`/`git.commit` were rebuilt for the PR; those with empty values are reused stable images. The `image_tag` field shows `odh-pr-<N>` vs `odh-stable`.
+
+**Empty `git.url` fallback:** When a component wasn't rebuilt, its `git.url` and `git.commit` are empty. The `deploy-and-test` script needs a repo to clone for the Makefile and test harness (deploy manifests, test scripts), so it falls back to the PR's own `{{repo_url}}` and `{{revision}}` (passed as pipeline params `repo-url` and `revision` from PaC template variables). This ensures tests always run against the PR's source tree.
 
 ## Future: Test Only Modified Images
 
@@ -149,6 +153,18 @@ Supported instance types: `m5.large`, `m5.xlarge`, `m5.2xlarge`, `m6g.large`, `m
 **Cleanup:** automatic — the EaaS Namespace claim is owned by the PipelineRun, so deletion of the PipelineRun triggers cluster teardown.
 
 **Quota:** managed by the CaaS Operator at the namespace level; specific limits for `open-data-hub-tenant` not directly queryable without admin access.
+
+## Interactive Access to Ephemeral Clusters
+
+The `get-kubeconfig` step in `deploy-and-test` writes kubeconfig, username, password, and API server URL to the `/credentials/` volume. To connect interactively while the pipeline is running:
+
+1. **Print credentials in logs** — the [konflux-pipeline-samples](https://github.com/rh-api-management/konflux-pipeline-samples/blob/main/pipelines/integration/deploy-operator.yaml) repo includes a `show-creds-for-debugging` step that dumps kubeconfig/password/API URL to the pipeline logs. Copy-paste locally and `oc login` — the cluster is on AWS and reachable from the internet.
+2. **`oc exec` into the pod** — while `deploy-and-test` is running, exec into the pod and use the mounted kubeconfig. Requires exec permissions in `open-data-hub-tenant`.
+3. **`mapt` SSH** — when using the `mapt` kind provisioner, set `ssh-credentials-secret-name` to get a Secret with `host`, `username`, and `id_rsa` for SSH access to the underlying VM. Mapt generates the keypair; you don't provide your own.
+
+The cluster is destroyed when the PipelineRun is cleaned up, so credentials are short-lived.
+
+> **Note:** `oc exec` into the pod requires `pods/exec` permission in `open-data-hub-tenant`, which regular users don't have. The API server URL is visible in the `get-kubeconfig` step logs, but the admin password is only on the pod's filesystem. To make interactive access work, add a `show-creds-for-debugging` step that prints the kubeconfig and password to the logs — then copy-paste locally.
 
 ## Common Errors and Fixes
 
