@@ -722,17 +722,19 @@ def component_build_pipeline(component_name, dockerfile_path, release, is_pr: bo
                             "memory": "8Gi",
                         },
                     },
-                    # leaving out "prefetch-dependencies" because we don't do hermetic build yet
                     # leaving out "build-images" for now, it already has a limit of 8Gi by default
                 }
                 for task_name in (
                     "ecosystem-cert-preflight-checks",
                     "clair-scan",
+                    # prefetch-dependencies: upstream default is 3Gi, OOMs on pytorch/llmcompressor
+                    # (Hermeto downloads multiple ~900MB torch wheel variants in parallel).
+                    "prefetch-dependencies",
                     # sast-unicode-check: upstream default is 4Gi, OOMs on large source trees.
                     # Other projects also override this, e.g.
                     # https://github.com/RedHatInsights/vmaas/blob/master/.tekton/vmaas-push.yaml
-                    # Related: KONFLUX-12286, KONFLUX-12587
                     "sast-unicode-check",
+                    # Related: KONFLUX-12286, KONFLUX-12587
                 )
             ],
             "taskRunTemplate": {},

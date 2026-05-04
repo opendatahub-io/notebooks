@@ -120,7 +120,7 @@ spec:
   - pipelineTaskName: clair-scan
     computeResources:
       limits:
-        memory: 8Gi
+        memory: 32Gi
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
