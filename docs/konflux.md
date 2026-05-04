@@ -13,11 +13,20 @@ Each notebook image (workbench or pipeline runtime) has:
 - A `Dockerfile.konflux.<variant>` twin that currently differs only in LABEL metadata
 - Build-args conf files in `build-args/` (e.g., `cpu.conf`, `konflux.cpu.conf`) containing `BASE_IMAGE`, `INDEX_URL`, `PYLOCK_FLAVOR`
 
-The Makefile selects which Dockerfile and conf file to use based on the `KONFLUX` environment variable.
+The Makefile selects which Dockerfile and conf file to use based on the `KONFLUX` environment variable. The conf file is parsed by awk into `--build-arg KEY=VALUE` flags (see the `build_image` function in the Makefile). In Tekton pipelines, the same conf file is passed to buildah via `--build-arg-file`.
 
-The two repos have **different Tekton pipelines**:
-- **`opendatahub-io/notebooks`** (this repo) -- `.tekton/` contains ODH-main push/PR pipelines (e.g., `*-odh-main-push.yaml`) and ODH stable push pipelines (e.g., `*-push.yaml`). These reference the standard `Dockerfile.<variant>` and `build-args/<variant>.conf`. The stable push pipelines use a shared pipeline definition from [odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central/tree/main/pipeline).
+### Pipeline generation
+
+The `.tekton/` PipelineRun YAMLs in this repo are **generated** by `ci/cached-builds/konflux_generate_component_build_pipelines.py`. This script reads the Makefile to determine the Dockerfile path for each image target and generates both push and pull-request PipelineRun YAMLs. The generated pipelines already include an `image-labels` parameter (currently set to `release=<version>`) and a `build-args-file` parameter pointing to the appropriate conf file.
+
+### ODH vs RHOAI pipelines
+
+The two repos have **different Tekton pipelines** with different Dockerfile/conf file references:
+
+- **`opendatahub-io/notebooks`** (this repo) -- `.tekton/` contains ODH-main push/PR pipelines (e.g., `*-odh-main-push.yaml`) and ODH stable push pipelines (e.g., `*-push.yaml`). These reference the standard `Dockerfile.<variant>` and `build-args/<variant>.conf`. The stable push pipelines use a shared pipeline definition from [odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central/tree/main/pipeline) via a git `pipelineRef` resolver. The ODH-main pipelines embed the pipeline spec inline.
 - **`red-hat-data-services/notebooks`** (the fork) -- `.tekton/` contains RHOAI push/PR pipelines synced from [red-hat-data-services/konflux-central](https://github.com/red-hat-data-services/konflux-central/tree/main/pipelineruns/notebooks/.tekton). These reference the Konflux-specific `Dockerfile.konflux.<variant>` and `build-args/konflux.<variant>.conf`.
+
+Previously, the ODH notebook PipelineRuns lived in `odh-konflux-central/pipelineruns/notebooks/`. They were migrated back into this repo's `.tekton/` so that pipeline definition changes (e.g., resource limits, CEL trigger expressions) ship alongside the code on the `stable` branch, rather than requiring a separate PR to a central repo.
 
 ## Repository ecosystem
 
