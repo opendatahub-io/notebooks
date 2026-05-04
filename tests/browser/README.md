@@ -98,6 +98,28 @@ podman run --rm -t \
 
 Test results (JUnit XML, screenshots) are written to the `results/` volume mount.
 
+## Test tags and quality gates
+
+Tests are tagged using [Playwright's tag API](https://playwright.dev/docs/test-annotations#tag-tests)
+and filtered at runtime with `--grep @tagname`.
+
+Each test should have exactly one tier tag. The tier definitions follow the
+[RHOAI TestOps quality gate standard](https://docs.google.com/document/d/1LNkQDDN1g--3UYmLzi_c8WZjNSNudzDmhRrqQ7IaDeM/edit?tab=t.0#heading=h.ef6799ef5ld5)
+(agreed in `#wg-openshift-ai-quality`, Feb 2026):
+
+| Tag | Gate | Meaning | Cadence |
+|---|---|---|---|
+| `@smoke` | Smoke | Very high / critical priority tests. Minimal validation that the component works at all. | Every nightly build |
+| `@tier1` | Tier 1 | High-priority tests (excluding Smoke). Core functionality and common user workflows. | Daily on nightly builds |
+| `@tier2` | Tier 2 | Medium/low-priority positive tests. Broader coverage, less critical paths. | Weekly |
+| `@tier3` | Tier 3 | Negative and destructive tests. Error handling, edge cases, recovery scenarios. | Weekly |
+
+A test that belongs to multiple tiers (e.g. a basic check that should run in every gate)
+can carry multiple tags: `{ tag: ['@smoke', '@tier1', '@tier2', '@tier3'] }`.
+
+Additional tags like `@codeserver` or `@openshift` group tests by feature area
+and are orthogonal to the tier tags.
+
 ## Good practices
 
 * https://playwright.dev/docs/best-practices

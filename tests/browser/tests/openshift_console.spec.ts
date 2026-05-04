@@ -35,7 +35,7 @@ test.describe('OpenShift console', { tag: '@openshift' }, () => {
 
   test.use({ ignoreHTTPSErrors: true });
 
-  test('OCP console loads', { tag: ['@smoke', '@stage1', '@stage2', '@stage3'] }, async ({ page }) => {
+  test('OCP console loads', { tag: ['@smoke', '@tier1', '@tier2', '@tier3'] }, async ({ page }) => {
     await page.goto(consoleUrl, { waitUntil: 'load' });
     // Console shows login page or redirects to OAuth — either counts
     await expect(page).toHaveTitle(/Log in|OpenShift|Red Hat/i);
