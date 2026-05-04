@@ -103,7 +103,7 @@ Test results (JUnit XML, screenshots) are written to the `results/` volume mount
 Tests are tagged using [Playwright's tag API](https://playwright.dev/docs/test-annotations#tag-tests)
 and filtered at runtime with `--grep @tagname`.
 
-Each test should have exactly one tier tag. The tier definitions follow the
+Each test should have at least one tier tag. The upstream RHOAI TestOps standard assigns exactly one tier per test; this repository allows multiple tier tags when a test is critical enough to run at several gates. The tier definitions follow the
 [RHOAI TestOps quality gate standard](https://docs.google.com/document/d/1LNkQDDN1g--3UYmLzi_c8WZjNSNudzDmhRrqQ7IaDeM/edit?tab=t.0#heading=h.ef6799ef5ld5)
 (agreed in `#wg-openshift-ai-quality`, Feb 2026):
 
