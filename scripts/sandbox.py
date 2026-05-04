@@ -24,6 +24,7 @@ log = structlog.get_logger()
 class Args(argparse.Namespace):
     dockerfile: pathlib.Path
     platform: Literal["linux/amd64", "linux/arm64", "linux/s390x", "linux/ppc64le"]
+    build_arg_file: pathlib.Path | None
     remaining: list[str]
 
 
@@ -33,6 +34,7 @@ def main() -> int:
     p.add_argument("--platform", type=str,
                    choices=["linux/amd64", "linux/arm64", "linux/s390x", "linux/ppc64le"],
                    required=True)
+    p.add_argument("--build-arg-file", type=pathlib.Path, default=None)
     p.add_argument('remaining', nargs=argparse.REMAINDER)
 
     args = cast(Args, p.parse_args())
@@ -46,12 +48,20 @@ def main() -> int:
         print("must give a `{};` parameter that will be replaced with new build context")
         return 1
 
-    build_args = extract_build_args(args.remaining[1:])
+    file_build_args: dict[str, str] = {}
+    if args.build_arg_file:
+        file_build_args = parse_build_arg_file(args.build_arg_file)
+
+    cmd_build_args = extract_build_args(args.remaining[1:])
+    build_args = {**file_build_args, **cmd_build_args}
     prereqs = buildinputs(dockerfile=args.dockerfile, platform=args.platform, build_args=build_args)
 
     with tempfile.TemporaryDirectory(delete=True) as tmpdir:
         setup_sandbox(prereqs, pathlib.Path(tmpdir))
-        command = [arg if arg != "{};" else tmpdir for arg in args.remaining[1:]]
+        extra_args = [f"--build-arg={k}={v}" for k, v in file_build_args.items()]
+        brace_idx = args.remaining.index("{};")
+        command_parts = args.remaining[1:brace_idx] + extra_args + args.remaining[brace_idx:]
+        command = [tmpdir if arg == "{};" else arg for arg in command_parts]
         print(f"running {command=}")
         try:
             subprocess.check_call(command)
@@ -59,6 +69,20 @@ def main() -> int:
             log.error("Failed to execute process", command=err.cmd, returncode=err.returncode)
             return err.returncode
     return 0
+
+
+def parse_build_arg_file(path: pathlib.Path) -> dict[str, str]:
+    """Parse a build-arg file (buildah-compatible KEY=VALUE format)."""
+    result = {}
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, sep, value = line.partition("=")
+        if not sep:
+            raise ValueError(f"Invalid build-arg line (no '='): {line!r}")
+        result[key] = value
+    return result
 
 
 def extract_build_args(remaining: list[str]) -> dict[str, str]:

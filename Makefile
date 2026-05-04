@@ -85,12 +85,6 @@ define build_image
 	$(eval DOCKERFILE_NAME := $(notdir $(2)))
 	$(eval CONF_FILE := $(3))
 
-	# if the conf file exists, transform it into --build-arg KEY=VALUE flags
-	$(eval BUILD_ARGS := $(shell \
-		if [ -f $(CONF_FILE) ]; then \
-			awk -F= '!/^#/ && NF {gsub(/^[ \t]+|[ \t]+$$/, "", $$1); gsub(/^[ \t]+|[ \t]+$$/, "", $$2); printf "--build-arg %s=%s ", $$1, $$2}' $(CONF_FILE); \
-		fi))
-
 # Hermetic local build: when cachi2/output/ exists AND this target uses a
 # prefetch-input tree, mount pre-downloaded deps into the build.
 # Some images (e.g. jupyter/minimal, datascience, pytorch+llmcompressor)
@@ -107,7 +101,7 @@ $(eval PREFETCH_INPUT_DIR := $(or $(wildcard $(BUILD_DIR)prefetch-input),$(if $(
 $(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(PREFETCH_INPUT_DIR)),\
 	--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z \
 	--volume $(ROOT_DIR)cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
-	$(info # Building $(IMAGE_NAME) using $(DOCKERFILE_NAME) with $(CONF_FILE) and $(BUILD_ARGS)...)
+	$(info # Building $(IMAGE_NAME) using $(DOCKERFILE_NAME) with $(CONF_FILE)...)
 
 	@if [ -n '$(PREFETCH_INPUT_DIR)' ] && [ ! -d cachi2/output ]; then \
 	  echo "Prefetch required for hermetic build. Run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR)) -- see scripts/lockfile-generators/README.md"; \
@@ -117,8 +111,8 @@ $(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(PREFETCH_INPUT_DI
 	  echo "Missing RPM repos for $(RPM_ARCH). Re-run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR))"; \
 	  exit 1; \
 	fi
-	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_SECURITY_ARGS) $(CONTAINER_BUILD_CACHE_ARGS) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
+	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' $(if $(wildcard $(CONF_FILE)),--build-arg-file '$(CONF_FILE)') -- \
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_SECURITY_ARGS) $(CONTAINER_BUILD_CACHE_ARGS) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' {}\;
 endef
 
 # Push function for the notebook image:

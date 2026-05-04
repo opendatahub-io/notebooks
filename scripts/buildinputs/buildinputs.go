@@ -44,10 +44,21 @@ func main() {
 	}
 
 	var buildArgs repeatFlag
+	var buildArgFile string
 	flag.Var(&buildArgs, "build-arg", "Build argument in the form of key=value, can be specified multiple times.")
+	flag.StringVar(&buildArgFile, "build-arg-file", "", "Path to file with KEY=VALUE build arguments (buildah-compatible format).")
 	flag.Parse()
 
 	buildArgsMap := make(map[string]string)
+	if buildArgFile != "" {
+		fileArgs, err := parseBuildArgFile(buildArgFile)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to parse build-arg-file %q: %v", buildArgFile, err))
+		}
+		for k, v := range fileArgs {
+			buildArgsMap[k] = v
+		}
+	}
 	for _, arg := range buildArgs {
 		kv := strings.SplitN(arg, "=", 2)
 		if len(kv) != 2 {
