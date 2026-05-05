@@ -70,21 +70,15 @@ project: `rhoai-tenant`
         * [EnterpriseContractPolicy/registry-rhoai-prod.yaml](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/blob/main/config/stone-prod-p02.hjvn.p1/product/EnterpriseContractPolicy/registry-rhoai-prod.yaml)
         * [EnterpriseContractPolicy/fbc-rhoai-stage.yaml](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/blob/main/config/stone-prod-p02.hjvn.p1/product/EnterpriseContractPolicy/fbc-rhoai-stage.yaml)
 
-## Manually triggering builds
+## Triggering builds
 
-### Retrigger a PR (pre-merge) build
+### PR builds
 
 Comment `/retest` on the pull request to retrigger all **failed** PR pipelines (successful ones are skipped). To retrigger a specific pipeline regardless of its previous outcome, use `/test <pipelinerun-name>` or `/retest <pipelinerun-name>`. See [PaC GitOps Commands](https://pipelinesascode.com/docs/guides/gitops-commands/).
 
-### Re-running Konflux checks from GitHub
+The GitHub Checks tab "Re-run" button restarts **all** Konflux pipelines in the check suite, including those still running or already succeeded. There is no way to re-run a single check from the UI. The GitHub API endpoints `POST /check-runs/{id}/rerequest` and `POST /check-suites/{id}/rerequest` do not work with user tokens — classic OAuth returns 404, fine-grained PATs return 403 ("Resource not accessible by personal access token"). Checks API write access is [limited to GitHub Apps](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#fine-grained-personal-access-tokens); the API reference pages incorrectly list fine-grained PATs as supported ([doc bug](https://github.com/github/rest-api-description/issues/4290)).
 
-The GitHub Checks tab "Re-run" button restarts **all** Konflux pipelines in the check suite, including those still running or already succeeded. There is no way to re-run a single Konflux check from the UI.
-
-The GitHub API `POST /check-runs/{id}/rerequest` and `POST /check-suites/{id}/rerequest` endpoints return 404 for Konflux checks — these can only be called by the GitHub App that owns the check runs (`red-hat-konflux`), not by users with PATs.
-
-To retrigger a **specific** Konflux pipeline, comment `/test <pipelinerun-name>` on the PR (runs it regardless of previous outcome).
-
-### Repo-specific PR comment triggers
+### PR comment triggers (repo-specific)
 
 Beyond `/retest`, PipelineRun YAMLs declare [Pipelines-as-Code trigger annotations](https://pipelinesascode.com/docs/guide/matchingevents/):
 
@@ -97,8 +91,6 @@ Beyond `/retest`, PipelineRun YAMLs declare [Pipelines-as-Code trigger annotatio
 - `pipelinesascode.tekton.dev/on-path-change-ignore` -- don't trigger when only these paths changed
 
 Our push pipelines use `on-cel-expression` combining event + branch + `pathChanged()`. The PR pipelines use `on-comment`, `on-label`, `on-event`, and `on-target-branch`. For `.tekton/` file and component naming conventions (`metadata.name` contract, `-ci` suffix, service account patterns), see [`.tekton/README-odh.md`](../.tekton/README-odh.md).
-
-The triggers defined in this repo:
 
 **ODH (`opendatahub-io/notebooks`):**
 
@@ -121,7 +113,7 @@ PipelineRuns live in `red-hat-data-services/notebooks@main:.tekton/`.
   - `/build-tensorflow-cuda`, `/build-tensorflow-rocm`
 - `kfbuild-*` labels -- PR labels also trigger builds (e.g. `kfbuild-all`, `kfbuild-runtime`, `kfbuild-workbench`, `kfbuild-cpu`, `kfbuild-cuda`, `kfbuild-rocm`, `kfbuild-pytorch`, `kfbuild-tensorflow`, etc.)
 
-### Retrigger a push (post-merge) build
+### Push builds (post-merge)
 
 Annotate the Component resource in the Konflux namespace to trigger a new build:
 
@@ -139,9 +131,39 @@ oc annotate components/<component-name> \
   -n rhoai-tenant
 ```
 
-This requires `oc` access to the respective cluster and namespace. The annotation is consumed immediately, but the PipelineRun takes ~2 minutes to appear. The component must have PaC `state: enabled` in its build status annotation.
+This requires `oc` access to the respective cluster and namespace. The annotation is consumed immediately, but the PipelineRun takes ~2 minutes to appear. The component must have PaC `state: enabled` in its build status annotation. The same action is available as the "Start new build" button in the Konflux UI.
 
 See also: [Running Build Pipelines (Konflux docs)](https://konflux-ci.dev/docs/building/running/)
+
+## Build trigger internals
+
+### How trigger-pac-build works
+
+The [build-service controller](https://github.com/konflux-ci/build-service) (`TriggerPaCBuildOldModel` in `component_build_controller_pac.go`) handles the annotation:
+
+1. Ensures an incoming secret exists for the component
+2. Updates the PaC `Repository` CR with an `incoming` webhook configuration for the component's target branch
+3. POSTs to the PaC controller's `/incoming` endpoint with the pipelinerun name, branch, secret, and repository
+
+PaC then searches `.tekton/` on the component's configured branch for a PipelineRun matching the name `<component-name>-on-push`. Incoming webhooks match PipelineRuns with `on-event: push` or `on-event: incoming` — no need to explicitly define `incoming` in the PipelineRun annotations. See [PaC Incoming Webhook docs](https://pipelinesascode.com/docs/guide/incoming_webhook/).
+
+### Why pushing a branch may not trigger builds
+
+The push pipelines in `.tekton/` use CEL expressions with `pathChanged()` guards, e.g.:
+
+```text
+event == "push" && target_branch == "stable" && ( "runtimes/minimal/ubi9-python-3.12/**".pathChanged() || ... )
+```
+
+A push that moves a branch pointer (e.g. `stable` to match `main`) only triggers pipelines whose `pathChanged()` patterns match the diff between the old and new branch HEAD. If no source files in those paths changed, no builds run.
+
+### Nudge files and the `!pathChanged()` guard
+
+Push pipelines declare a `build.appstudio.openshift.io/build-nudge-files` annotation (e.g. `manifests/base/params-latest.env`). This tells the Konflux [component dependency update controller](https://github.com/konflux-ci/build-service) which files to modify when a base image is rebuilt — the controller runs Renovate to open a PR updating image references in those files. The CEL expression **negates** the nudge file path (`!("manifests/base/params-latest.env".pathChanged())`) so that the nudge commit itself does not trigger every pipeline that lists the file; instead, only the specific downstream component's build is triggered via the nudge mechanism. See [#3518](https://github.com/opendatahub-io/notebooks/issues/3518) for known issues with stale nudge paths.
+
+### `prefetch-input/` path watching
+
+Most pipelines intentionally do not watch `prefetch-input/` in their CEL expressions — changing prefetched inputs will not retrigger those builds. This is deliberate: `prefetch-input/odh/` is shared across all images, and watching it would trigger 30+ simultaneous rebuilds on any change. Changes to shared prefetch inputs should be rebuilt via `/kfbuild all` or `trigger-pac-build`. See [PR #3232](https://github.com/opendatahub-io/notebooks/pull/3232) (RHAIENG-4234) which centralized prefetch inputs and removed them from triggers. A few workbench pipelines (pytorch-cuda, pytorch-rocm, trustyai) still watch image-specific paths like `prefetch-input/mongocli/**`.
 
 ### Tenant RBAC for build operations
 
@@ -160,40 +182,6 @@ See also: [Running Build Pipelines (Konflux docs)](https://konflux-ci.dev/docs/b
 The PaC controller's `/incoming` endpoint (`pipelines-as-code-controller-openshift-pipelines.apps.<cluster>/incoming`) is externally reachable (HTTP 200), but POSTs require the incoming secret from the Repository CR, which tenants can't read. Without the correct secret, POSTs are silently ignored.
 
 **Workaround when `trigger-pac-build` doesn't work:** push a no-op commit touching files that match the pipeline's `pathChanged()` patterns.
-
-#### How trigger-pac-build works internally
-
-The [build-service controller](https://github.com/konflux-ci/build-service) (`TriggerPaCBuildOldModel` in `component_build_controller_pac.go`) handles the annotation:
-
-1. Ensures an incoming secret exists for the component
-2. Updates the PaC `Repository` CR with an `incoming` webhook configuration for the component's target branch
-3. POSTs to the PaC controller's internal `/incoming` endpoint with the pipelinerun name, branch, secret, and repository
-
-PaC then searches `.tekton/` on the component's configured branch for a PipelineRun matching the name `<component-name>-on-push`. Incoming webhooks match PipelineRuns with `on-event: push` or `on-event: incoming` — no need to explicitly define `incoming` in the PipelineRun annotations. See [PaC Incoming Webhook docs](https://pipelinesascode.com/docs/guide/incoming_webhook/).
-
-Users cannot curl the `/incoming` endpoint directly — it's an internal cluster route, and the incoming secret is not readable with tenant-level RBAC. The `trigger-pac-build` annotation is the intended user-facing abstraction.
-
-Previously this mechanism was broken ([KONFLUX-5925](https://issues.redhat.com/browse/KONFLUX-5925), now closed).
-
-### Why pushing a branch may not trigger builds
-
-The push pipelines in `.tekton/` use CEL expressions with `pathChanged()` guards, e.g.:
-
-```text
-event == "push" && target_branch == "stable" && ( "runtimes/minimal/ubi9-python-3.12/**".pathChanged() || ... )
-```
-
-A push that moves a branch pointer (e.g. `stable` to match `main`) only triggers pipelines whose `pathChanged()` patterns match the diff between the old and new branch HEAD. If no source files in those paths changed, no builds run.
-
-#### Nudge files and the `!pathChanged()` guard
-
-Push pipelines declare a `build.appstudio.openshift.io/build-nudge-files` annotation (e.g. `manifests/base/params-latest.env`). This tells the Konflux [component dependency update controller](https://github.com/konflux-ci/build-service) which files to modify when a base image is rebuilt — the controller runs Renovate to open a PR updating image references in those files. The CEL expression **negates** the nudge file path (`!("manifests/base/params-latest.env".pathChanged())`) so that the nudge commit itself does not trigger every pipeline that lists the file; instead, only the specific downstream component's build is triggered via the nudge mechanism. See [#3518](https://github.com/opendatahub-io/notebooks/issues/3518) for known issues with stale nudge paths.
-
-#### `prefetch-input/` path watching
-
-Most pipelines intentionally do not watch `prefetch-input/` in their CEL expressions — changing prefetched inputs will not retrigger those builds. This is deliberate: `prefetch-input/odh/` is shared across all images, and watching it would trigger 30+ simultaneous rebuilds on any change. Changes to shared prefetch inputs should be rebuilt via `/kfbuild all` or `trigger-pac-build`. See [PR #3232](https://github.com/opendatahub-io/notebooks/pull/3232) (RHAIENG-4234) which centralized prefetch inputs and removed them from triggers. A few workbench pipelines (pytorch-cuda, pytorch-rocm, trustyai) still watch image-specific paths like `prefetch-input/mongocli/**`.
-
-See also: [Running Build Pipelines (Konflux docs)](https://konflux-ci.dev/docs/building/running/)
 
 ## Known issues and troubleshooting
 
