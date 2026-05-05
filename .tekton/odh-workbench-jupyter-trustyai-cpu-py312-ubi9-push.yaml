@@ -168,4 +168,8 @@ spec:
   - pipelineTaskName: clair-scan
     computeResources:
       limits:
+  - pipelineTaskName: clamav-scan
+    computeResources:
+      limits:
+        memory: 8Gi
         memory: 8Gi

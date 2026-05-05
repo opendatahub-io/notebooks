@@ -68,6 +68,10 @@ spec:
       computeResources:
         limits:
           memory: 8Gi
+    - pipelineTaskName: clamav-scan
+      computeResources:
+        limits:
+          memory: 8Gi
   pipelineRef:
     resolver: git
     params:
