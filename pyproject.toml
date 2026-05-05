@@ -36,7 +36,7 @@ dev = [
     "kubernetes",
     "openshift-python-wrapper",
     # Transitive via openshift-python-wrapper → fastmcp;
-    "authlib>=1.6.9",
+    "authlib>=1.6.11",
     "typer",
     # certifi provides CA bundle needed on macOS where Python's bundled OpenSSL
     # does not read from the system Keychain, causing CERTIFICATE_VERIFY_FAILED
