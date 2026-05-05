@@ -414,7 +414,7 @@ class TestInlineMicropipenvUvLineReplacement:
             dockerfile,
             contents=(
                 'RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip '
-                '"micropipenv[toml]==1.10.0" "uv==0.10.9"\n'
+                '"micropipenv[toml]==1.10.0" "uv==0.11.8"\n'
             ),
         )
 

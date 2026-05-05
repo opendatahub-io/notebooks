@@ -1,4 +1,3 @@
----
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
@@ -6,35 +5,98 @@ metadata:
     build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
-    pipelinesascode.tekton.dev/max-keep-runs: "3"
-    build.appstudio.openshift.io/build-nudge-files: "manifests/base/params-latest.env"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "stable" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-workbench-jupyter-minimal-cuda-py312-ubi9-push.yaml".pathChanged() || "jupyter/utils/**".pathChanged() || "jupyter/minimal/ubi9-python-3.12/**".pathChanged() || "jupyter/minimal/ubi9-python-3.12/build-args/cuda.conf".pathChanged() )
+    pipelinesascode.tekton.dev/cancel-in-progress: 'false'
+    pipelinesascode.tekton.dev/max-keep-runs: '3'
+    build.appstudio.openshift.io/build-nudge-files: manifests/base/params-latest.env
+    pipelinesascode.tekton.dev/on-cel-expression: |
+      event == "push" && target_branch == "main" &&
+      !("manifests/base/params-latest.env".pathChanged()) &&
+      (
+        ".tekton/odh-workbench-jupyter-minimal-cuda-py312-ubi9-push.yaml".pathChanged() ||
+        "jupyter/utils/**".pathChanged() ||
+        "jupyter/minimal/ubi9-python-3.12/**".pathChanged() ||
+        "jupyter/minimal/ubi9-python-3.12/build-args/cuda.conf".pathChanged()
+      )
   labels:
-    appstudio.openshift.io/application: opendatahub-builds
-    appstudio.openshift.io/component: odh-workbench-jupyter-minimal-cuda-py312-ubi9-ci
+    appstudio.openshift.io/application: opendatahub-release
+    appstudio.openshift.io/component: odh-workbench-jupyter-minimal-cuda-py312-ubi9
     pipelines.appstudio.openshift.io/type: build
   name: odh-workbench-jupyter-minimal-cuda-py312-ubi9-on-push
   namespace: open-data-hub-tenant
 spec:
+  timeouts:
+    pipeline: 6h
   params:
+  - name: event-type
+    value: '{{event_type}}'
   - name: git-url
     value: '{{source_url}}'
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-workbench-jupyter-minimal-cuda-py312-ubi9:odh-stable
+    value: quay.io/opendatahub/odh-workbench-jupyter-minimal-cuda-py312-ubi9:{{revision}}
+  - name: build-platforms
+    value:
+    - linux-d160-m4xlarge/amd64
   - name: dockerfile
     value: jupyter/minimal/ubi9-python-3.12/Dockerfile.cuda
   - name: build-args-file
     value: jupyter/minimal/ubi9-python-3.12/build-args/cuda.conf
   - name: path-context
     value: .
+  # Hermetic build: RPMs + generic artifacts from repo-root prefetch-input/odh; pip from requirements.cuda.txt
+  - name: hermetic
+    value: 'true'
+  - name: prefetch-input
+    value:
+    - path: prefetch-input/odh
+      type: rpm
+    - path: prefetch-input/odh
+      type: generic
+    - path: jupyter/minimal/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: x86_64
+      requirements_files: [requirements.cuda.txt]
   - name: additional-tags
     value:
-    - 3.5_ea1-v1.44
+    - '{{target_branch}}-{{revision}}'
+  pipelineRef:
+    name: multiarch-odh-main-combined-pipeline
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-odh-workbench-jupyter-minimal-cuda-py312-ubi9
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
   taskRunSpecs:
-    - pipelineTaskName: build-images
+  - pipelineTaskName: prefetch-dependencies
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
+  - pipelineTaskName: build-images
+    stepSpecs:
+    - name: prepare-sboms
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
+    - name: sbom-syft-generate
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
+    - name: build
       computeResources:
         requests:
           cpu: '8'
@@ -42,39 +104,7 @@ spec:
         limits:
           cpu: '16'
           memory: 32Gi
-    - pipelineTaskName: clair-scan
-      computeResources:
-        requests:
-          cpu: '8'
-          memory: 32Gi
-        limits:
-          cpu: '8'
-          memory: 32Gi
-    - pipelineTaskName: ecosystem-cert-preflight-checks
-      computeResources:
-        requests:
-          cpu: '8'
-          memory: 32Gi
-        limits:
-          cpu: '8'
-          memory: 32Gi
-    - pipelineTaskName: sast-unicode-check
-      computeResources:
-        limits:
-          memory: 8Gi
-  pipelineRef:
-    resolver: git
-    params:
-    - name: url
-      value: https://github.com/opendatahub-io/odh-konflux-central.git
-    - name: revision
-      value: main
-    - name: pathInRepo
-      value: pipeline/multi-arch-container-build.yaml
-  taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-workbench-jupyter-minimal-cuda-py312-ubi9
-  workspaces:
-  - name: git-auth
-    secret:
-      secretName: '{{ git_auth_secret }}'
-status: {}
+  - pipelineTaskName: sast-unicode-check
+    computeResources:
+      limits:
+        memory: 8Gi

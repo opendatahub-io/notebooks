@@ -19,7 +19,7 @@ metadata:
     appstudio.openshift.io/application: opendatahub-release
     appstudio.openshift.io/component: odh-base-image-rocm-py312-c9s
     pipelines.appstudio.openshift.io/type: build
-  name: odh-base-image-rocm-6-4-py312-c9s-odh-main-pull-request
+  name: odh-base-image-rocm-6-4-py312-c9s-odh-main-on-pull-request
   namespace: open-data-hub-tenant
 spec:
   timeouts:
@@ -92,4 +92,3 @@ spec:
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
-status: {}

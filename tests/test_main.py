@@ -470,6 +470,15 @@ def test_rhds_pipelines_use_rhds_args(subtests: pytest_subtests.plugin.SubTests)
                 continue
             assert pipeline["kind"] == "PipelineRun", f"Expected PipelineRun, got {pipeline['kind']}"
 
+            pipeline_type = (
+                pipeline.get("metadata", {}).get("labels", {}).get("pipelines.appstudio.openshift.io/type", "")
+            )
+            assert pipeline_type in ("build", "test"), (
+                f"Pipeline {file.relative_to(PROJECT_ROOT)} has unexpected type {pipeline_type!r}"
+            )
+            if pipeline_type != "build":
+                continue
+
             dockerfile_param = None
             build_args_file_param = None
 

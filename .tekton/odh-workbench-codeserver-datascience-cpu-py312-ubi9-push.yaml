@@ -1,4 +1,3 @@
----
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
@@ -6,13 +5,19 @@ metadata:
     build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
-    pipelinesascode.tekton.dev/max-keep-runs: "3"
-    build.appstudio.openshift.io/build-nudge-files: "manifests/base/params-latest.env"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "stable" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-push.yaml".pathChanged() || "codeserver/ubi9-python-3.12/**".pathChanged() )
+    pipelinesascode.tekton.dev/cancel-in-progress: 'false'
+    pipelinesascode.tekton.dev/max-keep-runs: '3'
+    build.appstudio.openshift.io/build-nudge-files: manifests/base/params-latest.env
+    pipelinesascode.tekton.dev/on-cel-expression: |
+      event == "push" && target_branch == "main" &&
+      !("manifests/base/params-latest.env".pathChanged()) &&
+      (
+        ".tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-push.yaml".pathChanged() ||
+        "codeserver/ubi9-python-3.12/**".pathChanged()
+      )
   labels:
-    appstudio.openshift.io/application: opendatahub-builds
-    appstudio.openshift.io/component: odh-workbench-codeserver-datascience-cpu-py312-ubi9-ci
+    appstudio.openshift.io/application: opendatahub-release
+    appstudio.openshift.io/component: odh-workbench-codeserver-datascience-cpu-py312-ubi9
     pipelines.appstudio.openshift.io/type: build
   name: odh-workbench-codeserver-datascience-cpu-py312-ubi9-on-push
   namespace: open-data-hub-tenant
@@ -29,7 +34,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9:odh-stable
+    value: quay.io/opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9:{{revision}}
   - name: dockerfile
     value: codeserver/ubi9-python-3.12/Dockerfile.cpu
   - name: build-args-file
@@ -40,7 +45,7 @@ spec:
     value: .
   - name: additional-tags
     value:
-    - 3.5_ea1-v1.44
+    - '{{target_branch}}-{{revision}}'
   - name: build-platforms
     value:
     - linux-d160-m4xlarge/amd64
@@ -202,18 +207,10 @@ spec:
       limits:
         memory: 8Gi
   pipelineRef:
-    resolver: git
-    params:
-    - name: url
-      value: https://github.com/opendatahub-io/odh-konflux-central.git
-    - name: revision
-      value: main
-    - name: pathInRepo
-      value: pipeline/multi-arch-container-build.yaml
+    name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-codeserver-datascience-cpu-py312-ubi9
   workspaces:
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
-status: {}

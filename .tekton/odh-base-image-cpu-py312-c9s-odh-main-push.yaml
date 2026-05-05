@@ -8,12 +8,11 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: 'false'
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && ( "base-images/utils/**".pathChanged() || "base-images/cpu/c9s-python-3.12/**".pathChanged() || "base-images/build-args/cpu.conf".pathChanged() || ".tekton/odh-base-image-cpu-py312-c9s-odh-main-push.yaml".pathChanged() )
-  creationTimestamp:
   labels:
     appstudio.openshift.io/application: opendatahub-release
     appstudio.openshift.io/component: odh-base-image-cpu-py312-c9s
     pipelines.appstudio.openshift.io/type: build
-  name: odh-base-image-cpu-py312-c9s-odh-main-push
+  name: odh-base-image-cpu-py312-c9s-on-push
   namespace: open-data-hub-tenant
 spec:
   params:
@@ -88,4 +87,3 @@ spec:
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
-status: {}

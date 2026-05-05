@@ -1,0 +1,60 @@
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "group-test"
+    pipelinesascode.tekton.dev/on-comment: "^/group-test"
+  name: notebooks-group-test
+  namespace: open-data-hub-tenant
+  labels:
+    appstudio.openshift.io/application: group-testing
+    appstudio.openshift.io/component: notebooks-group
+    pipelines.appstudio.openshift.io/type: test
+spec:
+  params:
+  - name: repo-url
+    value: '{{repo_url}}'
+  - name: revision
+    value: '{{revision}}'
+  - name: group-components
+    value: '{ "odh-pipeline-runtime-datascience-cpu-py312-ubi9-ci": "opendatahub/odh-pipeline-runtime-datascience-cpu-py312-ubi9", "odh-pipeline-runtime-minimal-cpu-py312-ubi9-ci": "opendatahub/odh-pipeline-runtime-minimal-cpu-py312-ubi9", "odh-pipeline-runtime-pytorch-cuda-py312-ubi9-ci": "opendatahub/odh-pipeline-runtime-pytorch-cuda-py312-ubi9", "odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ci": "opendatahub/odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9", "odh-pipeline-runtime-pytorch-rocm-py312-ubi9-ci": "opendatahub/odh-pipeline-runtime-pytorch-rocm-py312-ubi9", "odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-ci": "opendatahub/odh-pipeline-runtime-tensorflow-cuda-py312-ubi9", "odh-pipeline-runtime-tensorflow-rocm-py312-ubi9-ci": "opendatahub/odh-pipeline-runtime-tensorflow-rocm-py312-ubi9", "odh-workbench-codeserver-datascience-cpu-py312-ubi9-ci": "opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9", "odh-workbench-jupyter-datascience-cpu-py312-ubi9-ci": "opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9", "odh-workbench-jupyter-minimal-cpu-py312-ubi9-ci": "opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9", "odh-workbench-jupyter-minimal-cuda-py312-ubi9-ci": "opendatahub/odh-workbench-jupyter-minimal-cuda-py312-ubi9", "odh-workbench-jupyter-minimal-rocm-py312-ubi9-ci": "opendatahub/odh-workbench-jupyter-minimal-rocm-py312-ubi9", "odh-workbench-jupyter-pytorch-cuda-py312-ubi9-ci": "opendatahub/odh-workbench-jupyter-pytorch-cuda-py312-ubi9", "odh-workbench-jupyter-pytorch-llmcompressor-cuda-ci": "opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9", "odh-workbench-jupyter-pytorch-rocm-py312-ubi9-ci": "opendatahub/odh-workbench-jupyter-pytorch-rocm-py312-ubi9", "odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-ci": "opendatahub/odh-workbench-jupyter-tensorflow-cuda-py312-ubi9", "odh-workbench-jupyter-tensorflow-rocm-py312-ci": "opendatahub/odh-workbench-jupyter-tensorflow-rocm-py312-ubi9", "odh-workbench-jupyter-trustyai-cpu-py312-ubi9-ci": "opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9" }'
+  pipelineRef:
+    name: notebooks-e2e-test
+  taskRunTemplate:
+    podTemplate:
+      nodeSelector:
+        konflux-ci.dev/workload: konflux-tenants
+      tolerations:
+      - effect: NoSchedule
+        key: konflux-ci.dev/workload
+        operator: Equal
+        value: konflux-tenants
+    serviceAccountName: konflux-integration-runner
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
+  # volumeClaimTemplate (not emptyDir) because emptyDir is per-task, not shared
+  # across tasks. The snapshot JSON for 18 components exceeds the 4KB Tekton
+  # result limit, so generate-snapshot writes it to this shared volume instead.
+  # Workarounds for sharing data between Konflux integration test tasks:
+  #   1. Combine steps into a single task (steps share emptyDir at /workspace)
+  #   2. Use OCI artifacts (push/pull via registry)
+  #   3. Use Tekton results (under 4KB only)
+  #   4. Clone source code inside the task
+  # See: https://redhat-internal.slack.com/archives/C06Q4M84XDG/p1759327188553769
+  - name: shared-data
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

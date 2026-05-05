@@ -202,6 +202,7 @@ files = ["/usr/bin/launcher-v2"]
 
 # Temporary supprsssions for workbenches
 # https://github.com/openshift/check-payload/blob/main/internal/types/errors.go
+# See docs/fips.md for full context on FIPS compliance status.
 
 # valgrind is waived since it doesn't do anything with crypto in a
 # security context
