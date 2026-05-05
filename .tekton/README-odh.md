@@ -21,6 +21,12 @@ The `-ci` suffix distinguishes stable components. Both sets of files live on `ma
 
 `metadata.name` in each file must be `<component>-on-push` or `<component>-on-pull-request`. This is how `trigger-pac-build` finds the right pipeline via PaC's `/incoming` webhook (see [docs/konflux.md](../docs/konflux.md#how-trigger-pac-build-works-internally)).
 
+## Shared prefetch-input/ not watched in CEL triggers
+
+The `prefetch-input/odh/` directory at the repo root contains shared RPM and generic artifact inputs used by hermetic builds across all images. This directory is **intentionally not watched** in any pipeline's `pathChanged()` CEL expression.
+
+Watching it would trigger rebuilds of every single image whenever any shared prefetch input changes. Instead, changes to shared prefetch inputs should be rebuilt via `/kfbuild all` or `trigger-pac-build`. See [PR #3232 (RHAIENG-4234)](https://github.com/opendatahub-io/notebooks/pull/3232) which centralized prefetch inputs and explicitly removed them from triggers.
+
 ## Base images
 
 Base image pipelines (cuda, rocm) have version-specific filenames but version-agnostic component names. Multiple files share one component, so `trigger-pac-build` can't disambiguate them. These are triggered by `pathChanged()` on real pushes.
