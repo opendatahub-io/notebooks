@@ -40,8 +40,8 @@ name: Build & Publish Notebook Servers (TEMPLATE)
           {
             "linux/amd64": "ubuntu-24.04",
             "linux/arm64": "ubuntu-24.04-arm",
-            "linux/ppc64le": "ubuntu-24.04",
-            "linux/s390x": "ubuntu-24.04"
+            "linux/ppc64le": "ubuntu-24.04-ppc64le",
+            "linux/s390x": "ubuntu-24.04-s390x"
           }
         description: "Available contexts for runs-on are: github, inputs, matrix, needs, strategy, vars. Let's use inputs"
         type: string
