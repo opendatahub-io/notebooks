@@ -4,7 +4,7 @@ This directory contains [Pipelines-as-Code](https://pipelinesascode.com/) Pipeli
 
 ## File naming
 
-Files follow the pattern `<component>-push.yaml` and `<component>-pull-request.yaml`, where `<component>` is the Konflux component name from the `appstudio.openshift.io/component` label inside the file.
+Most files follow the pattern `<component>-push.yaml` and `<component>-pull-request.yaml`, where `<component>` is the Konflux component name from the `appstudio.openshift.io/component` label inside the file. Base-image pipelines use version-specific legacy filenames (see [Base images](#base-images) below).
 
 ## Main vs stable branch pipelines
 
