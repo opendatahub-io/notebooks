@@ -121,11 +121,13 @@ Annotate the Component resource in the Konflux namespace to trigger a new build:
 # ODH (stone-prd-rh01, namespace open-data-hub-tenant)
 oc annotate components/<component-name> \
   build.appstudio.openshift.io/request=trigger-pac-build \
+  --overwrite=true \
   -n open-data-hub-tenant
 
 # RHOAI (stone-prod-p02, namespace rhoai-tenant)
 oc annotate components/<component-name> \
   build.appstudio.openshift.io/request=trigger-pac-build \
+  --overwrite=true \
   -n rhoai-tenant
 ```
 
