@@ -31,6 +31,20 @@ Watching it would trigger rebuilds of every single image whenever any shared pre
 
 Base image pipelines (cuda, rocm) have version-specific filenames but version-agnostic component names. Multiple files share one component, so `trigger-pac-build` can't disambiguate them. These are triggered by `pathChanged()` on real pushes.
 
+## Service account naming
+
+Service accounts (`taskRunTemplate.serviceAccountName`) in the stable push files (`*-ci-push.yaml`) do **not** follow a single convention. There are three patterns:
+
+| Pattern | Count | Example SA | Notes |
+|---|---|---|---|
+| Main-branch SA (no `-ci`) | 15 | `build-pipeline-...-ubi9` | Uses the main component's SA for the stable build |
+| `-poc` suffix | 3 | `build-pipeline-...-poc` | Leftover from initial PoC onboarding |
+| `-ci` suffix | 0 | — | No stable file uses its own component's SA |
+
+The `-poc` SAs exist in the cluster alongside the `-ubi9` SAs — both work. This was [documented as intentional in PR #3463](https://github.com/opendatahub-io/notebooks/pull/3463) when stable pipelines were moved to `.tekton/` on `main`. Andriana requested removing the `-poc` suffix in a [DevTestOps thread](https://redhat-internal.slack.com/archives/C07SBP17R7Z/p1756972225109469), but this requires cross-team coordination with the Konflux onboarding team (Mohammadi) who manages SAs in the tenant. We don't have permissions to create or rename SAs ourselves.
+
+The build-service controller auto-creates SAs named `build-pipeline-<component>` when components are onboarded. Both `-ubi9` and `-ubi9-ci` SAs exist and have equivalent permissions, so the mismatch is cosmetic. Tracked in [#3517](https://github.com/opendatahub-io/notebooks/issues/3517).
+
 ## RHDS
 
 The downstream `red-hat-data-services/notebooks` repo has its own `README.md` in `.tekton/` — those files are synced from [konflux-central](https://github.com/red-hat-data-services/konflux-central) and should not be edited directly.
