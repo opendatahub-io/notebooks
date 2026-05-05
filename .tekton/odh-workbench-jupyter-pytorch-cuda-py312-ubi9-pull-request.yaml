@@ -134,11 +134,11 @@ spec:
     computeResources:
       limits:
         memory: 8Gi
-  - pipelineTaskName: clair-scan
+  - pipelineTaskName: clamav-scan
     computeResources:
       limits:
         memory: 8Gi
-  - pipelineTaskName: clamav-scan
+  - pipelineTaskName: rpms-signature-scan
     computeResources:
       limits:
         memory: 8Gi

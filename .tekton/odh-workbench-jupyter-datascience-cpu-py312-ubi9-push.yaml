@@ -96,10 +96,6 @@ spec:
     computeResources:
       limits:
         memory: 8Gi
-  - pipelineTaskName: prefetch-dependencies
-    computeResources:
-      limits:
-        memory: 8Gi
   - pipelineTaskName: clair-scan
     computeResources:
       limits:
@@ -109,6 +105,14 @@ spec:
       limits:
         memory: 8Gi
   - pipelineTaskName: clamav-scan
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: sast-shell-check
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: rpms-signature-scan
     computeResources:
       limits:
         memory: 8Gi

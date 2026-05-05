@@ -64,6 +64,22 @@ spec:
     computeResources:
       limits:
         memory: 8Gi
+  - pipelineTaskName: sast-shell-check
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: build-images
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: rpms-signature-scan
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: sast-snyk-check
+    computeResources:
+      limits:
+        memory: 8Gi
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-pipeline-runtime-minimal-cpu-py312-ubi9
   workspaces:

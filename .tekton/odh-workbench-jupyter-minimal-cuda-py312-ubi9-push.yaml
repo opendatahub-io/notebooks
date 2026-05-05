@@ -112,6 +112,7 @@ spec:
   - pipelineTaskName: clair-scan
     computeResources:
       limits:
+        memory: 32Gi
   - pipelineTaskName: ecosystem-cert-preflight-checks
     computeResources:
       limits:
@@ -119,5 +120,4 @@ spec:
   - pipelineTaskName: clamav-scan
     computeResources:
       limits:
-        memory: 8Gi
         memory: 8Gi

@@ -128,6 +128,10 @@ spec:
     computeResources:
       limits:
         memory: 8Gi
+  - pipelineTaskName: rpms-signature-scan
+    computeResources:
+      limits:
+        memory: 8Gi
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
