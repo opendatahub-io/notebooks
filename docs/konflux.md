@@ -2,9 +2,9 @@
 
 This file provides an overview and quick access links to the **Konflux** environments used for building and deploying components for the **Open Data Hub (ODH)** and **Red Hat Data Services (RHDS)** projects.
 
-## Codeserver pipeline resources
+## Pipeline resource overrides
 
-The codeserver image is large; the multiarch pipeline runs **prefetch-dependencies** (Cachi2) and then **build-images** (remote VM build + rsync back). Both can OOM with default resource limits. The codeserver PipelineRuns (`.tekton/odh-workbench-codeserver-datascience-cpu-py312-ubi9-pull-request.yaml` and `-push.yaml`) set **taskRunSpecs** for `prefetch-dependencies` and `build-images` with **8 CPU** and **32Gi memory** so Cachi2 and the rsync-back step have enough resources. This follows [Konflux: Overriding compute resources](https://konflux-ci.dev/docs/building/overriding-compute-resources/) (PipelineRun `spec.taskRunSpecs` in `.tekton`). See the `taskRunSpecs` block in those files; other heavy pipelines use the same pattern.
+All PipelineRuns in `.tekton/` override compute resources for several tasks that OOM with Konflux defaults on this repo's large source tree. The standard overrides (4 CPU / 8Gi) cover `prefetch-dependencies`, `build-images`, `clair-scan`, `sast-shell-check`, `sast-unicode-check`, and `sast-snyk-check`. The codeserver pipelines use higher limits (**8 CPU / 32Gi**) for `prefetch-dependencies` and `build-images` because the codeserver image is significantly larger. This follows [Konflux: Overriding compute resources](https://konflux-ci.dev/docs/building/overriding-compute-resources/) (PipelineRun `spec.taskRunSpecs` in `.tekton`).
 
 ## ODH-io (Open Data Hub)
 
@@ -13,7 +13,8 @@ This section covers the Konflux setup for the upstream **Open Data Hub** communi
 project: `open-data-hub-tenant`
 
 * **Konflux UI:** View and monitor applications, components, and pipelines running in the ODH tenant.
-    * [konflux ui](https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/open-data-hub-tenant/applications/opendatahub-release/components)
+    * [opendatahub-release](https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/open-data-hub-tenant/applications/opendatahub-release/components) — main branch components (base images, runtimes, workbenches)
+    * [opendatahub-builds](https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/open-data-hub-tenant/applications/opendatahub-builds/components) — stable branch (`-ci`) components
 * **OpenShift Console:** Access the underlying **OpenShift** cluster for deeper insights, logs, and resource management.
     * [openshift console](https://console-openshift-console.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/k8s/cluster/projects/open-data-hub-tenant)
 * **Configuration Repository (`odh-konflux-central`):** The primary source of truth for the Konflux configuration (GitOps).
@@ -53,7 +54,9 @@ This section covers the Konflux setup for the enterprise downstream **Red Hat Da
 project: `rhoai-tenant`
 
 * **Konflux UI:** View and monitor applications and components specific to the RHDS tenant.
-    * [konflux ui](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications)
+    * [automation](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications/automation/components) — PR pipeline component
+    * Per-release applications, e.g. [rhoai-v3-5-ea-1](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications/rhoai-v3-5-ea-1/components) — push components for each release branch
+    * [all applications](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications)
 * **OpenShift Console:** Access the underlying **OpenShift** cluster for the RHDS tenant.
     * [openshift console](https://console-openshift-console.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/k8s/cluster/projects/rhoai-tenant)
 * **Configuration Repository (`konflux-central`):** GitOps repository for RHDS Konflux definitions.
@@ -85,7 +88,7 @@ Beyond `/retest`, PipelineRun YAMLs declare [Pipelines-as-Code trigger annotatio
 - `pipelinesascode.tekton.dev/on-path-change` -- only trigger when files matching a glob changed
 - `pipelinesascode.tekton.dev/on-path-change-ignore` -- don't trigger when only these paths changed
 
-Our push pipelines use `on-cel-expression` combining event + branch + `pathChanged()`. The PR pipelines use `on-comment`, `on-label`, `on-event`, and `on-target-branch`.
+Our push pipelines use `on-cel-expression` combining event + branch + `pathChanged()`. The PR pipelines use `on-comment`, `on-label`, `on-event`, and `on-target-branch`. For `.tekton/` file and component naming conventions (`metadata.name` contract, `-ci` suffix, service account patterns), see [`.tekton/README-odh.md`](../.tekton/README-odh.md).
 
 The triggers defined in this repo:
 
@@ -94,7 +97,7 @@ The triggers defined in this repo:
 - `/kfbuild all` -- triggers all PR build pipelines
 - `/kfbuild <component-name>` -- triggers a single component, e.g. `/kfbuild odh-base-image-cpu-py312-ubi9`
 - `/kfbuild <source-path>` -- triggers by source directory, e.g. `/kfbuild base-images/cpu/ubi9-python-3.12`
-- `/group-test` -- triggers the integration test pipeline that tests images from the `stable` branch
+- `/group-test` -- triggers the integration test pipeline that tests images from the `stable` branch (see [Integration Testing guide](konflux-integration.md))
 
 **RHDS (`red-hat-data-services/notebooks`):**
 
@@ -148,7 +151,7 @@ Previously this mechanism was broken ([KONFLUX-5925](https://issues.redhat.com/b
 
 The push pipelines in `.tekton/` use CEL expressions with `pathChanged()` guards, e.g.:
 
-```
+```text
 event == "push" && target_branch == "stable" && ( "runtimes/minimal/ubi9-python-3.12/**".pathChanged() || ... )
 ```
 
