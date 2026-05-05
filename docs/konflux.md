@@ -74,7 +74,15 @@ project: `rhoai-tenant`
 
 ### Retrigger a PR (pre-merge) build
 
-Comment `/retest` on the pull request to retrigger all failed PR pipelines. To retrigger a specific pipeline, use `/retest <pipelinerun-name>`.
+Comment `/retest` on the pull request to retrigger all **failed** PR pipelines (successful ones are skipped). To retrigger a specific pipeline regardless of its previous outcome, use `/test <pipelinerun-name>` or `/retest <pipelinerun-name>`. See [PaC GitOps Commands](https://pipelinesascode.com/docs/guides/gitops-commands/).
+
+### Re-running Konflux checks from GitHub
+
+The GitHub Checks tab "Re-run" button restarts **all** Konflux pipelines in the check suite, including those still running or already succeeded. There is no way to re-run a single Konflux check from the UI.
+
+The GitHub API `POST /check-runs/{id}/rerequest` and `POST /check-suites/{id}/rerequest` endpoints return 404 for Konflux checks — these can only be called by the GitHub App that owns the check runs (`red-hat-konflux`), not by users with PATs.
+
+To retrigger a **specific** Konflux pipeline, comment `/test <pipelinerun-name>` on the PR (runs it regardless of previous outcome).
 
 ### Repo-specific PR comment triggers
 
@@ -135,6 +143,24 @@ This requires `oc` access to the respective cluster and namespace. The annotatio
 
 See also: [Running Build Pipelines (Konflux docs)](https://konflux-ci.dev/docs/building/running/)
 
+### Tenant RBAC for build operations
+
+**What tenant users CAN do:**
+- Annotate components (including `trigger-pac-build`)
+- Get/list/watch PipelineRuns (`tkn pipelinerun list` works)
+- Stream live logs (`opc pipelinerun logs -f`) and query historical logs (`opc results`, `kubectl tekton`)
+
+**What tenant users CANNOT do:**
+- Create PipelineRuns directly (`oc create pipelinerun` → Forbidden)
+- Start pipelines via `tkn pipeline start` (can't list Pipelines → Forbidden)
+- Read PaC Repository CRs (`oc get repositories` → Forbidden)
+- Read secrets (including incoming webhook secrets)
+- List routes in `openshift-pipelines` namespace
+
+The PaC controller's `/incoming` endpoint (`pipelines-as-code-controller-openshift-pipelines.apps.<cluster>/incoming`) is externally reachable (HTTP 200), but POSTs require the incoming secret from the Repository CR, which tenants can't read. Without the correct secret, POSTs are silently ignored.
+
+**Workaround when `trigger-pac-build` doesn't work:** push a no-op commit touching files that match the pipeline's `pathChanged()` patterns.
+
 #### How trigger-pac-build works internally
 
 The [build-service controller](https://github.com/konflux-ci/build-service) (`TriggerPaCBuildOldModel` in `component_build_controller_pac.go`) handles the annotation:
@@ -159,9 +185,61 @@ event == "push" && target_branch == "stable" && ( "runtimes/minimal/ubi9-python-
 
 A push that moves a branch pointer (e.g. `stable` to match `main`) only triggers pipelines whose `pathChanged()` patterns match the diff between the old and new branch HEAD. If no source files in those paths changed, no builds run.
 
+#### Nudge files and the `!pathChanged()` guard
+
+Push pipelines declare a `build.appstudio.openshift.io/build-nudge-files` annotation (e.g. `manifests/base/params-latest.env`). This tells the Konflux [component dependency update controller](https://github.com/konflux-ci/build-service) which files to modify when a base image is rebuilt — the controller runs Renovate to open a PR updating image references in those files. The CEL expression **negates** the nudge file path (`!("manifests/base/params-latest.env".pathChanged())`) so that the nudge commit itself does not trigger every pipeline that lists the file; instead, only the specific downstream component's build is triggered via the nudge mechanism. See [#3518](https://github.com/opendatahub-io/notebooks/issues/3518) for known issues with stale nudge paths.
+
+#### `prefetch-input/` path watching
+
+Most pipelines intentionally do not watch `prefetch-input/` in their CEL expressions — changing prefetched inputs will not retrigger those builds. This is deliberate: `prefetch-input/odh/` is shared across all images, and watching it would trigger 30+ simultaneous rebuilds on any change. Changes to shared prefetch inputs should be rebuilt via `/kfbuild all` or `trigger-pac-build`. See [PR #3232](https://github.com/opendatahub-io/notebooks/pull/3232) (RHAIENG-4234) which centralized prefetch inputs and removed them from triggers. A few workbench pipelines (pytorch-cuda, pytorch-rocm, trustyai) still watch image-specific paths like `prefetch-input/mongocli/**`.
+
 See also: [Running Build Pipelines (Konflux docs)](https://konflux-ci.dev/docs/building/running/)
 
-## ⚙️ Automations (Upstream/Downstream Flow)
+## Known issues and troubleshooting
+
+### `trigger-pac-build` name matching
+
+The build-service controller constructs the expected PipelineRun name as `<component-name>-on-push` and searches `.tekton/` on the component's configured branch. If the `metadata.name` in the PipelineRun YAML doesn't match this pattern, the trigger silently does nothing. PR [#3511](https://github.com/opendatahub-io/notebooks/pull/3511) aligned the names; see [`.tekton/README-odh.md`](../.tekton/README-odh.md) for the naming convention.
+
+### `trigger-pac-build` silent failures (historical)
+
+The annotation could silently fail if PaC's `/incoming` webhook processing hit issues. This was a recognized bug ([KONFLUX-5925](https://issues.redhat.com/browse/KONFLUX-5925), now closed). The "Start new build" UI button uses the same mechanism. After PR #3511 aligned PipelineRun names with component names, both the annotation and the UI button work correctly (confirmed 2026-05-05, [Slack](https://redhat-internal.slack.com/archives/C096ZR053RQ/p1777994830781979?thread_ts=1777993828.466429&cid=C096ZR053RQ)).
+
+### Component delete/recreate race condition (Argo)
+
+Deleting and recreating a Konflux component too closely together (as happens during Argo GitOps reconciliation) can leave PaC in a broken state where builds don't trigger from PRs and/or the `trigger-pac-build` annotation / UI button stops working. Workaround: ensure sufficient delay between delete and recreate, or manually re-enable PaC.
+
+## Pipeline improvement tracking
+
+Open issues for `.tekton/` pipeline improvements identified during trigger investigation:
+
+- [#3512](https://github.com/opendatahub-io/notebooks/issues/3512) — `image-expires-after` for main push builds
+- [#3515](https://github.com/opendatahub-io/notebooks/issues/3515) — Hermeto/cachi2 automatic env injection evaluation
+- [#3517](https://github.com/opendatahub-io/notebooks/issues/3517) — stable push pipeline serviceAccountName alignment
+- [#3518](https://github.com/opendatahub-io/notebooks/issues/3518) — stale nudge paths in CEL guards
+- [#3519](https://github.com/opendatahub-io/notebooks/issues/3519) — missing clair-scan/ecosystem-cert taskRunSpecs in main push
+- [#3520](https://github.com/opendatahub-io/notebooks/issues/3520) — hermetic builds for stable-branch push pipelines
+- [#3521](https://github.com/opendatahub-io/notebooks/issues/3521) — drop `-odh-main-` infix from base image pipeline filenames
+
+## CLI tools
+
+**`opc` (OpenShift Pipelines Client)** — bundles Tekton CLI + PaC CLI + Results CLI. Install: `brew tap openshift-pipelines/opc https://github.com/openshift-pipelines/opc && brew install opc`.
+
+Useful local commands (no cluster access needed):
+
+- `opc pac resolve -f .tekton/my-pipeline.yaml -p revision=main -p repo_url=...` — resolve a PipelineRun locally with remote tasks embedded and parameter substitutions applied. Useful for validating pipeline YAML before pushing.
+- `opc pac cel -b payload.json -H headers.json` — evaluate CEL expressions interactively against real webhook payloads. Useful for testing `pathChanged()` and trigger expressions locally.
+
+Useful cluster commands (read-only, works with tenant RBAC):
+
+- `opc pipelinerun logs -f <name> -n <namespace>` — stream live logs from a running PipelineRun
+- `opc results pipelinerun list -n <namespace>` — query historical PipelineRuns after pod garbage collection
+
+**`opc assist pipelinerun diagnose`** — AI-powered failure diagnosis. Requires an OpenShift Lightspeed (OLS) backend (`--lightspeed-url`, defaults to `localhost:8443`). OLS is not deployed on the Konflux production clusters (stone-prd-rh01, stone-prod-p02) as of 2026-05-05. The request format is OLS-specific (`POST /v1/query`), not OpenAI-compatible. The Pipelines team is moving toward OLS as the standard AI integration point ([Slack](https://redhat-internal.slack.com/archives/CG5GV6CJD/p1759933574593019), [demo](https://redhat-internal.slack.com/archives/CG5GV6CJD/p1760349713133729)).
+
+For detailed log fetching procedures (opc results, kubectl-tekton, curl API, kubearchive), see the [internal guide](https://gitlab.cee.redhat.com/data-hub/guide/-/tree/main/docs/notebooks/konflux).
+
+## Automations (Upstream/Downstream Flow)
 
 These GitHub Actions workflows manage the automated synchronization of configurations between the upstream ODH community repositories and the downstream RHDS/RHOAI repositories, ensuring a smooth flow of changes and releases.
 
