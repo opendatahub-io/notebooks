@@ -50,6 +50,14 @@ spec:
     computeResources:
       limits:
         memory: 8Gi
+  - pipelineTaskName: prefetch-dependencies
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: clair-scan
+    computeResources:
+      limits:
+        memory: 8Gi
   pipelineRef:
     resolver: git
     params:
