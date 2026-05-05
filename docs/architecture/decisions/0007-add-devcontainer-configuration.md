@@ -15,7 +15,7 @@ The repository already has:
 - `.python-version` file (specifies Python 3.14)
 - Setup instructions in `README.md`, `CONTRIBUTING.md`, and `AGENTS.md`
 - `uv.lock` for reproducible dependency installation
-- `./uv` wrapper that auto-downloads the pinned uv version (0.10.9)
+- `./uv` wrapper that auto-downloads the pinned uv version (0.11.8)
 
 The missing piece was a **devcontainer configuration** that lets Codespaces, VS Code Remote Containers,
 and AI coding agents start with a fully working environment automatically.
