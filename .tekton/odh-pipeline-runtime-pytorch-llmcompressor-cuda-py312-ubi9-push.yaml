@@ -12,9 +12,9 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "stable" && !("manifests/base/params-latest.env".pathChanged()) && ( ".tekton/odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9-push.yaml".pathChanged() || "runtimes/pytorch+llmcompressor/ubi9-python-3.12/**".pathChanged() || "runtimes/pytorch+llmcompressor/ubi9-python-3.12/build-args/cuda.conf".pathChanged() )
   labels:
     appstudio.openshift.io/application: opendatahub-builds
-    appstudio.openshift.io/component: odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9-ci
+    appstudio.openshift.io/component: odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ci
     pipelines.appstudio.openshift.io/type: build
-  name: odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9-on-push
+  name: odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ci-on-push
   namespace: open-data-hub-tenant
 spec:
   timeouts:
