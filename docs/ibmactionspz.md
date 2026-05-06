@@ -108,6 +108,37 @@ Upstream issues:
 Other `actions/setup-*` actions likely have the same problem. Check any action
 that auto-detects architecture via Node.js `os.arch()`.
 
+## Runner hardware specs (observed May 2026)
+
+### ppc64le (IBM Power)
+
+| Field | Value |
+|---|---|
+| Runner name pattern | `prodWdc06*`, `ghaProdDal10*` (Washington DC, Dallas) |
+| Runner version | 2.334.0 |
+| OS | Ubuntu 24.04.4 LTS |
+| Image | `ubuntu-24.04` version `20260426` |
+| Memory | 14 GiB total |
+| Disk | 137 GB LVM volume (`/dev/vg_lxc/containers_*`), ~113 GB available |
+| Swap | None |
+| Container runtime | LXC (LXD-managed) |
+| Kernel | 6.12.0-222.el10.ppc64le |
+
+### s390x (IBM Z / LinuxONE)
+
+| Field | Value |
+|---|---|
+| Runner name pattern | `ProdUsEastZ*` (US East) |
+| Runner version | 2.333.1 |
+| OS | Ubuntu 24.04.4 LTS |
+| Image | `ubuntu-24.04` version `20260421` |
+| CPUs | 8 (cpu0–cpu7) |
+| Memory | 14 GiB total |
+| Disk | 200 GB (`/dev/vdd1`), ~165 GB available |
+| Swap | None |
+| Container runtime | LXC (LXD-managed) |
+| Kernel | 6.8.0-110-generic |
+
 ## Queue times
 
 The runners are shared infrastructure for all onboarded open-source projects.
@@ -125,6 +156,31 @@ IBM has said they are "working on updating our queuing system and expanding
 hardware capacity." For PR CI where fast feedback matters, keeping qemu
 cross-compilation on GitHub-hosted runners as a fallback may be prudent.
 
+### Observed queue times (May 2026, PR #3525)
+
+| Job | Queue wait |
+|---|---|
+| ppc64le [odh] | ~18s |
+| ppc64le [rhoai] | ~15s |
+| s390x [odh] | ~13s |
+| s390x [rhoai] | ~13s |
+
+### Observed checkout (clone + submodules) times
+
+The full clone with `fetch-depth: 0` and `submodules: recursive` is slower
+on IBM runners due to external network. The `microsoft/vscode` sub-submodule
+(via `codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode`)
+dominates clone time in all cases.
+
+| Runner | Total checkout | vscode submodule |
+|---|---|---|
+| amd64 (GitHub-hosted) | ~117s | ~101s |
+| ppc64le (IBM) | 104s – 225s (variable) | 88s – 159s |
+| s390x (IBM) | 103s – 106s | ~69–74s |
+
+Targets that don't need submodules (e.g. `jupyter-minimal`) could benefit
+from skipping `submodules: recursive` and using a shallow clone.
+
 ## Experiment history
 
 | Date | What | Outcome |
@@ -134,3 +190,4 @@ cross-compilation on GitHub-hosted runners as a fallback may be prudent.
 | Dec 2025 | First experiment (PR #2774) | ppc64le: old podman, s390x: DNS blocked |
 | Jan 2026 | PR #2774 merged | JSON runner mapping infrastructure |
 | May 2026 | Second experiment (PR #3525) | Jobs queued 24h (missing org setting), then setup-go ppc64le bug, then Homebrew failure |
+| May 2026 | Org runner group fixed | Queue times ~13-18s, all jobs reach Install Podman step |
