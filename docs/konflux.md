@@ -2,76 +2,6 @@
 
 This file provides an overview and quick access links to the **Konflux** environments used for building and deploying components for the **Open Data Hub (ODH)** and **Red Hat Data Services (RHDS)** projects.
 
-## Build system overview
-
-[Konflux](https://konflux-ci.dev/) is Red Hat's supply-chain-security-focused CI/CD system built on Tekton. It replaced Brew/OSBS for building RHOAI container images. The build pipeline includes: git clone, dependency prefetch (Cachi2), multi-arch buildah builds, image index creation, source image creation, and security scans (Clair vulnerability, ClamAV malware, Snyk SAST, shell-check, unicode check, RPM signature scan, deprecated-base-image check). It also handles SBOM generation, Tekton Chains attestation, tagging, Slack failure notifications, and triggering downstream operator builds.
-
-### How notebooks images are built
-
-Each notebook image (workbench or pipeline runtime) has:
-- A `Dockerfile.<variant>` (e.g., `Dockerfile.cpu`, `Dockerfile.cuda`, `Dockerfile.rocm`)
-- A `Dockerfile.konflux.<variant>` twin that currently differs only in LABEL metadata
-- Build-args conf files in `build-args/` (e.g., `cpu.conf`, `konflux.cpu.conf`) containing `BASE_IMAGE`, `INDEX_URL`, `PYLOCK_FLAVOR`
-
-The Makefile selects which Dockerfile and conf file to use based on the `KONFLUX` environment variable. The conf file is parsed by awk into `--build-arg KEY=VALUE` flags (see the `build_image` function in the Makefile). In Tekton pipelines, the same conf file is passed to buildah via `--build-arg-file`.
-
-### Pipeline generation
-
-The `.tekton/` PipelineRun YAMLs in this repo are **generated** by `ci/cached-builds/konflux_generate_component_build_pipelines.py`. This script reads the Makefile to determine the Dockerfile path for each image target and generates both push and pull-request PipelineRun YAMLs. The generated pipelines already include an `image-labels` parameter (currently set to `release=<version>`) and a `build-args-file` parameter pointing to the appropriate conf file.
-
-### ODH vs RHOAI pipelines
-
-The two repos have **different Tekton pipelines** with different Dockerfile/conf file references:
-
-- **`opendatahub-io/notebooks`** (this repo) -- `.tekton/` contains ODH-main push/PR pipelines (e.g., `*-odh-main-push.yaml`) and ODH stable push pipelines (e.g., `*-push.yaml`). These reference the standard `Dockerfile.<variant>` and `build-args/<variant>.conf`. The stable push pipelines use a shared pipeline definition from [odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central/tree/main/pipeline) via a git `pipelineRef` resolver. The ODH-main pipelines embed the pipeline spec inline.
-- **`red-hat-data-services/notebooks`** (the fork) -- `.tekton/` contains RHOAI push/PR pipelines synced from [red-hat-data-services/konflux-central](https://github.com/red-hat-data-services/konflux-central/tree/main/pipelineruns/notebooks/.tekton). These reference the Konflux-specific `Dockerfile.konflux.<variant>` and `build-args/konflux.<variant>.conf`.
-
-Previously, the ODH notebook PipelineRuns lived in `odh-konflux-central/pipelineruns/notebooks/`. They were migrated back into this repo's `.tekton/` so that pipeline definition changes (e.g., resource limits, CEL trigger expressions) ship alongside the code on the `stable` branch, rather than requiring a separate PR to a central repo.
-
-## Repository ecosystem
-
-### [opendatahub-io/odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central)
-
-Central configuration store for Konflux CI/CD artifacts across all ODH components (~44 components).
-
-- **`pipeline/`** -- Shared Tekton Pipeline definitions (e.g., `multi-arch-container-build.yaml`) that define the full build-and-scan workflow. The ODH stable push pipelines in this repo's `.tekton/*-push.yaml` reference these via `pipelineRef`.
-- **`pipelineruns/`** -- Per-component PipelineRun definitions. The notebooks PipelineRuns have been **migrated back** into this repo's `.tekton/` directory (see `pipelineruns/notebooks/README.md` deprecation notice), so pipeline updates sync to the `stable` branch alongside code changes.
-- **`gitops/`** -- Kubernetes/Konflux resource manifests that register each component with the Konflux application (`opendatahub-builds`). `Component` CRs point to each repo's source, output image in `quay.io/opendatahub/`, and the build pipeline to use.
-- **`integration-tests/`** -- Integration test configurations, including a `notebooks/` subdirectory.
-- **`workflows/notebooks/`** -- Contains `insta-merge.yaml` for auto-merging notebook changes.
-
-### [red-hat-data-services/konflux-central](https://github.com/red-hat-data-services/konflux-central)
-
-Centralized configuration hub for the RHOAI/RHDS Konflux system (~50 components). Analogous to `odh-konflux-central` but for downstream.
-
-- **Pipeline Sync** -- Tekton PipelineRun YAMLs are authored under `pipelineruns/<component>/.tekton/` and automatically distributed to each component repo's `.tekton/` directory via the `sync-pipelineruns.yml` GitHub Actions workflow.
-- **Renovate Sync** -- Centralizes Renovate dependency-update configs, mapped via `config.yaml`, and pushed to target repos.
-- **Validation and release management** -- Workflows validate PipelineRun correctness, handle release branch patterns (`rhoai-X.Y`, `rhoai-X.Y-ea.N`), apply z-stream changes, and retrigger builds.
-- **Reusable Pipelines** -- `pipelines/` holds container-build, multi-arch-container-build, and fbc-fragment-build definitions.
-
-### [red-hat-data-services/RHOAI-Konflux-Automation](https://github.com/red-hat-data-services/RHOAI-Konflux-Automation)
-
-Release engineering toolbox for RHOAI. It is the glue between Konflux builds and RHOAI releases.
-
-- **`utils/processors/`** -- `operator-processor.py` and `bundle-processor.py` sync operator manifests, update image digests from Quay.io, and manage Tekton push-pipeline toggles.
-- **`utils/fbc-processor/`** -- Handles File-Based Catalog (FBC) operations: patching OLM catalog YAML with new bundles, remapping image registries to Red Hat production, and extracting container images from build snapshots.
-- **`utils/release-helper/`** -- Shell and Python scripts that generate stage and production release artifacts, validate consistency, and automate the release sequence.
-- **`utils/stage-promoter/`** -- Merges catalog patches for staging, polls Quay.io for completed FBC fragment builds, verifies image signatures, and sends Slack notifications.
-- **`utils/sprint-onboarder/`** -- YAML templates defining Konflux Component resources for each RHOAI version, pointing to source repos with their Dockerfiles.
-- **`utils/commons/`** -- Shared Quay.io controller/onboarder utilities and `repos.yaml` listing ~29 ODH component repos.
-
-### [red-hat-data-services/rhods-devops-infra](https://github.com/red-hat-data-services/rhods-devops-infra)
-
-Automated synchronization infrastructure between upstream ODH and downstream RHDS repositories.
-
-- **[Upstream to Downstream Auto-Merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/upstream-auto-merge.yaml)** -- Runs daily at 00:00 UTC. Syncs changes from upstream repos (e.g., `opendatahub-io/notebooks`) to downstream repos (e.g., `red-hat-data-services/notebooks`) based on [upstream-source-map.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/blob/main/src/config/upstream-source-map.yaml). It can also be manually triggered per component.
-- **[Main to Release Auto-Merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/main-release-auto-merge.yaml)** -- Runs daily at 01:00 UTC. Syncs from downstream `main` to `rhoai-x.y` release branches based on [main-release-source-map.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/blob/main/src/config/main-release-source-map.yaml). Automatically creates release branches on sprint start and disables auto-merge after code freeze.
-- **Jira Ticket Automation** -- Generates sprint tickets from YAML templates via [create-jira-tickets.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/create-jira-tickets.yaml).
-
-## Pipeline resource overrides
-
-All PipelineRuns in `.tekton/` override compute resources for several tasks that OOM with Konflux defaults on this repo's large source tree. The standard overrides (4 CPU / 8Gi) cover `prefetch-dependencies`, `build-images`, `clair-scan`, `sast-shell-check`, `sast-unicode-check`, and `sast-snyk-check`. The codeserver pipelines use higher limits (**8 CPU / 32Gi**) for `prefetch-dependencies` and `build-images` because the codeserver image is significantly larger. This follows [Konflux: Overriding compute resources](https://konflux-ci.dev/docs/building/overriding-compute-resources/) (PipelineRun `spec.taskRunSpecs` in `.tekton`).
-
 ## ODH-io (Open Data Hub)
 
 This section covers the Konflux setup for the upstream **Open Data Hub** community project.
@@ -136,13 +66,85 @@ project: `rhoai-tenant`
         * [EnterpriseContractPolicy/registry-rhoai-prod.yaml](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/blob/main/config/stone-prod-p02.hjvn.p1/product/EnterpriseContractPolicy/registry-rhoai-prod.yaml)
         * [EnterpriseContractPolicy/fbc-rhoai-stage.yaml](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/blob/main/config/stone-prod-p02.hjvn.p1/product/EnterpriseContractPolicy/fbc-rhoai-stage.yaml)
 
+## Build system overview
+
+[Konflux](https://konflux-ci.dev/) is Red Hat's supply-chain-security-focused CI/CD system built on Tekton. It replaced Brew/OSBS for building RHOAI container images. The build pipeline includes: git clone, dependency prefetch (Cachi2), multi-arch buildah builds, image index creation, source image creation, and security scans (Clair vulnerability, ClamAV malware, Snyk SAST, shell-check, unicode check, RPM signature scan, deprecated-base-image check). It also handles SBOM generation, Tekton Chains attestation, tagging, Slack failure notifications, and triggering downstream operator builds.
+
+### How notebooks images are built
+
+Each notebook image (workbench or pipeline runtime) has:
+- A `Dockerfile.<variant>` (e.g., `Dockerfile.cpu`, `Dockerfile.cuda`, `Dockerfile.rocm`)
+- A `Dockerfile.konflux.<variant>` twin that currently differs only in LABEL metadata
+- Build-args conf files in `build-args/` (e.g., `cpu.conf`, `konflux.cpu.conf`) containing `BASE_IMAGE`, `INDEX_URL`, `PYLOCK_FLAVOR`
+
+The Makefile selects which Dockerfile and conf file to use based on the `KONFLUX` environment variable. The conf file is parsed by awk into `--build-arg KEY=VALUE` flags (see the `build_image` function in the Makefile). In Tekton pipelines, the same conf file is passed to buildah via `--build-arg-file`. The Makefile's awk parser word-splits values, so conf file values containing spaces (e.g., multi-word LABELs) break in local builds; Tekton's `--build-arg-file` does not have this limitation ([RHOAIENG-61176](https://issues.redhat.com/browse/RHOAIENG-61176)).
+
+For hermetic build internals (cachi2.env injection, RPM prefetch paths, module_hotfixes pattern), see [`docs/hermetic-guide.md`](hermetic-guide.md).
+
+### Pipeline generation
+
+The `.tekton/` PipelineRun YAMLs in this repo are **generated** by `ci/cached-builds/konflux_generate_component_build_pipelines.py`. This script reads the Makefile to determine the Dockerfile path for each image target and generates both push and pull-request PipelineRun YAMLs. The generated pipelines already include an `image-labels` parameter (currently set to `release=<version>`) and a `build-args-file` parameter pointing to the appropriate conf file.
+
+### ODH vs RHOAI pipelines
+
+The two repos have **different Tekton pipelines** with different Dockerfile/conf file references:
+
+- **`opendatahub-io/notebooks`** (this repo) -- `.tekton/` contains ODH-main push/PR pipelines (e.g., `*-odh-main-push.yaml`) and ODH stable push pipelines (e.g., `*-push.yaml`). These reference the standard `Dockerfile.<variant>` and `build-args/<variant>.conf`. The stable push pipelines use a shared pipeline definition from [odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central/tree/main/pipeline) via a git `pipelineRef` resolver. The ODH-main pipelines embed the pipeline spec inline.
+- **`red-hat-data-services/notebooks`** (the fork) -- `.tekton/` contains RHOAI push/PR pipelines synced from [red-hat-data-services/konflux-central](https://github.com/red-hat-data-services/konflux-central/tree/main/pipelineruns/notebooks/.tekton). These reference the Konflux-specific `Dockerfile.konflux.<variant>` and `build-args/konflux.<variant>.conf`.
+
+Previously, the ODH notebook PipelineRuns lived in `odh-konflux-central/pipelineruns/notebooks/`. They were migrated back into this repo's `.tekton/` so that pipeline definition changes (e.g., resource limits, CEL trigger expressions) ship alongside the code on the `stable` branch, rather than requiring a separate PR to a central repo.
+
+## Repository ecosystem
+
+### [opendatahub-io/odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central)
+
+Central configuration store for Konflux CI/CD artifacts across all ODH components (~44 components).
+
+- **`pipeline/`** -- Shared Tekton Pipeline definitions (e.g., `multi-arch-container-build.yaml`) that define the full build-and-scan workflow. The ODH stable push pipelines in this repo's `.tekton/*-push.yaml` reference these via `pipelineRef`.
+- **`pipelineruns/`** -- Per-component PipelineRun definitions. The notebooks PipelineRuns have been **migrated back** into this repo's `.tekton/` directory (see `pipelineruns/notebooks/README.md` deprecation notice), so pipeline updates sync to the `stable` branch alongside code changes.
+- **`gitops/`** -- Kubernetes/Konflux resource manifests that register each component with the Konflux application (`opendatahub-builds`). `Component` CRs point to each repo's source, output image in `quay.io/opendatahub/`, and the build pipeline to use.
+- **`integration-tests/`** -- Integration test configurations, including a `notebooks/` subdirectory.
+- **`workflows/notebooks/`** -- Contains `insta-merge.yaml` for auto-merging notebook changes.
+
+### [red-hat-data-services/konflux-central](https://github.com/red-hat-data-services/konflux-central)
+
+Centralized configuration hub for the RHOAI/RHDS Konflux system (~50 components). Analogous to `odh-konflux-central` but for downstream.
+
+- **Pipeline Sync** -- Tekton PipelineRun YAMLs are authored under `pipelineruns/<component>/.tekton/` and automatically distributed to each component repo's `.tekton/` directory via the `sync-pipelineruns.yml` GitHub Actions workflow.
+- **Renovate Sync** -- Centralizes Renovate dependency-update configs, mapped via `config.yaml`, and pushed to target repos.
+- **Validation and release management** -- Workflows validate PipelineRun correctness, handle release branch patterns (`rhoai-X.Y`, `rhoai-X.Y-ea.N`), apply z-stream changes, and retrigger builds.
+- **Reusable Pipelines** -- `pipelines/` holds container-build, multi-arch-container-build, and fbc-fragment-build definitions.
+
+### [red-hat-data-services/RHOAI-Konflux-Automation](https://github.com/red-hat-data-services/RHOAI-Konflux-Automation)
+
+Release engineering toolbox for RHOAI. It is the glue between Konflux builds and RHOAI releases.
+
+- **`utils/processors/`** -- `operator-processor.py` and `bundle-processor.py` sync operator manifests, update image digests from Quay.io, and manage Tekton push-pipeline toggles.
+- **`utils/fbc-processor/`** -- Handles File-Based Catalog (FBC) operations: patching OLM catalog YAML with new bundles, remapping image registries to Red Hat production, and extracting container images from build snapshots.
+- **`utils/release-helper/`** -- Shell and Python scripts that generate stage and production release artifacts, validate consistency, and automate the release sequence.
+- **`utils/stage-promoter/`** -- Merges catalog patches for staging, polls Quay.io for completed FBC fragment builds, verifies image signatures, and sends Slack notifications.
+- **`utils/sprint-onboarder/`** -- YAML templates defining Konflux Component resources for each RHOAI version, pointing to source repos with their Dockerfiles.
+- **`utils/commons/`** -- Shared Quay.io controller/onboarder utilities and `repos.yaml` listing ~29 ODH component repos.
+
+### [red-hat-data-services/rhods-devops-infra](https://github.com/red-hat-data-services/rhods-devops-infra)
+
+Automated synchronization infrastructure between upstream ODH and downstream RHDS repositories.
+
+- **[Upstream to Downstream Auto-Merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/upstream-auto-merge.yaml)** -- Runs daily at 00:00 UTC. Syncs changes from upstream repos (e.g., `opendatahub-io/notebooks`) to downstream repos (e.g., `red-hat-data-services/notebooks`) based on [upstream-source-map.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/blob/main/src/config/upstream-source-map.yaml). It can also be manually triggered per component.
+- **[Main to Release Auto-Merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/main-release-auto-merge.yaml)** -- Runs daily at 01:00 UTC. Syncs from downstream `main` to `rhoai-x.y` release branches based on [main-release-source-map.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/blob/main/src/config/main-release-source-map.yaml). Automatically creates release branches on sprint start and disables auto-merge after code freeze.
+- **Jira Ticket Automation** -- Generates sprint tickets from YAML templates via [create-jira-tickets.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/create-jira-tickets.yaml).
+
+## Pipeline resource overrides
+
+All PipelineRuns in `.tekton/` override compute resources for several tasks that OOM with Konflux defaults on this repo's large source tree. The standard overrides (4 CPU / 8Gi) cover `prefetch-dependencies`, `build-images`, `clair-scan`, `sast-shell-check`, `sast-unicode-check`, and `sast-snyk-check`. The codeserver pipelines use higher limits (**8 CPU / 32Gi**) for `prefetch-dependencies` and `build-images` because the codeserver image is significantly larger. This follows [Konflux: Overriding compute resources](https://konflux-ci.dev/docs/building/overriding-compute-resources/) (PipelineRun `spec.taskRunSpecs` in `.tekton`).
+
 ## Triggering builds
 
 ### PR builds
 
 Comment `/retest` on the pull request to retrigger all **failed** PR pipelines (successful ones are skipped). To retrigger a specific pipeline regardless of its previous outcome, use `/test <pipelinerun-name>` or `/retest <pipelinerun-name>`. See [PaC GitOps Commands](https://pipelinesascode.com/docs/guides/gitops-commands/).
 
-The GitHub Checks tab "Re-run" button restarts **all** Konflux pipelines in the check suite, including those still running or already succeeded. There is no way to re-run a single check from the UI. The GitHub API endpoints `POST /check-runs/{id}/rerequest` and `POST /check-suites/{id}/rerequest` do not work with user tokens — classic OAuth returns 404, fine-grained PATs return 403 ("Resource not accessible by personal access token"). Checks API write access is [limited to GitHub Apps](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#fine-grained-personal-access-tokens); the API reference pages incorrectly list fine-grained PATs as supported ([doc bug](https://github.com/github/rest-api-description/issues/4290)).
+The GitHub Checks tab "Re-run" button restarts **all** Konflux pipelines in the check suite, including those still running or already succeeded (it can cancel in-progress checks, causing them to fail). There is no way to re-run a single check from the UI. The GitHub API endpoints `POST /check-runs/{id}/rerequest` and `POST /check-suites/{id}/rerequest` do not work with user tokens — classic OAuth returns 404, fine-grained PATs return 403 ("Resource not accessible by personal access token"). Checks API write access is [limited to GitHub Apps](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#fine-grained-personal-access-tokens); the API reference pages incorrectly list fine-grained PATs as supported ([doc bug](https://github.com/github/rest-api-description/issues/4290)).
 
 ### PR comment triggers (repo-specific)
 
@@ -203,6 +205,10 @@ See also: [Running Build Pipelines (Konflux docs)](https://konflux-ci.dev/docs/b
 
 ## Build trigger internals
 
+### PipelineRun types in `.tekton/`
+
+The `.tekton/` directory contains both **build** and **test** PipelineRuns, distinguished by the `pipelines.appstudio.openshift.io/type` label. Build PipelineRuns (`type: build`) have params like `dockerfile`, `build-args-file`, and `output-image`. Test PipelineRuns (`type: test`) have different params — notably `group-components`, a JSON map of component names to Quay image paths. Code iterating `.tekton/*.yaml` files must check this label to avoid asserting build-specific params on test pipelines.
+
 ### How trigger-pac-build works
 
 The [build-service controller](https://github.com/konflux-ci/build-service) (`TriggerPaCBuildOldModel` in `component_build_controller_pac.go`) handles the annotation:
@@ -262,6 +268,24 @@ The annotation could silently fail if PaC's `/incoming` webhook processing hit i
 ### Component delete/recreate race condition (Argo)
 
 Deleting and recreating a Konflux component too closely together (as happens during Argo GitOps reconciliation) can leave PaC in a broken state where builds don't trigger from PRs and/or the `trigger-pac-build` annotation / UI button stops working. Workaround: ensure sufficient delay between delete and recreate, or manually re-enable PaC.
+
+## Integration testing
+
+The `/group-test` PR comment triggers the integration test pipeline (`notebooks-group-test.yaml`), which provisions an ephemeral OpenShift cluster via SpaceRequest/ClusterTemplateInstance (MAPT). Cluster credentials are available only within the TaskRun workspace — there is no SSH access for interactive debugging. When triggered via `/group-test` (not as part of a PR build), images come from **stable branch** builds, not the PR's changes; unchanged components reuse existing builds.
+
+The integration test pipeline uses a `volumeClaimTemplate` (not `emptyDir`) to share data between tasks because the Konflux SNAPSHOT JSON for 18+ components exceeds Tekton's 4KB result size limit. For details on test structure and adding new tests, see [`docs/konflux-integration.md`](konflux-integration.md).
+
+## Renovate and MintMaker
+
+Dependency updates are managed by [Renovate](https://docs.renovatebot.com/) through two mechanisms. Configuration lives in [`.github/renovate.json5`](../.github/renovate.json5).
+
+**MintMaker** (Konflux-managed Renovate) runs automatically and creates branches named `konflux/mintmaker/main/<image-ref>` for base image updates detected via the `customManagers` regex rules in `renovate.json5`. It uses `platformCommit: "enabled"` (GitHub API commits instead of git push).
+
+**Self-hosted Renovate** runs via the `renovate-self-hosted.yaml` workflow with `renovate_run.py` as a wrapper. It creates branches named `konflux/references/main` for Tekton bundle digest updates.
+
+**Known issues:**
+- **"Cannot find replaceString"** — MintMaker fails when a `build-args/*.conf` file was already updated (e.g., by another PR) before MintMaker's branch is rebased. The old value it searches for no longer exists. Workaround: close the stale MintMaker PR and let it re-create.
+- **Tekton bundle digest collision** — Renovate can propose both digest-only and tag bumps for `image:tag@sha256:...` references. The config disables digest-only updates to prefer tag bumps (new tags ship with correct digests).
 
 ## Pipeline improvement tracking
 
