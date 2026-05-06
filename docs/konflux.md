@@ -24,8 +24,9 @@ The default context names are verbose (`open-data-hub-tenant/api-stone-prd-rh01-
 
 ```bash
 # Option A: shell variables (ephemeral)
-ODH_CTX="$(oc config get-contexts -o name | grep 'open-data-hub-tenant.*stone-prd-rh01')"
-RHOAI_CTX="$(oc config get-contexts -o name | grep 'rhoai-tenant.*stone-prod-p02')"
+# Option A: shell variables (ephemeral)
+ODH_CTX="$(oc config get-contexts -o name | grep 'open-data-hub-tenant.*stone-prd-rh01' | head -n1)"
+RHOAI_CTX="$(oc config get-contexts -o name | grep 'rhoai-tenant.*stone-prod-p02' | head -n1)"
 
 oc get components --context "$ODH_CTX" -n open-data-hub-tenant
 oc get components --context "$RHOAI_CTX" -n rhoai-tenant
