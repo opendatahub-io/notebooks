@@ -25,16 +25,16 @@ project: `open-data-hub-tenant`
 
 ### Konflux components (notebooks)
 
-The notebook image components live in `open-data-hub-tenant` as standalone components (no application label). Each notebook image has two components: one building from `main` and one (with `-ci` suffix) building from `stable`.
+The notebook image components live in `open-data-hub-tenant` across two applications. Each notebook image has two components: one in `opendatahub-release` building from `main`, and one (with `-ci` suffix) in `opendatahub-builds` building from `stable`.
 
-| Component pattern | Branch | Example |
-|---|---|---|
-| `odh-pipeline-runtime-*-py312-ubi9` | `main` | `odh-pipeline-runtime-minimal-cpu-py312-ubi9` |
-| `odh-pipeline-runtime-*-py312-ubi9-ci` | `stable` | `odh-pipeline-runtime-minimal-cpu-py312-ubi9-ci` |
-| `odh-workbench-jupyter-*-py312-ubi9` | `main` | `odh-workbench-jupyter-datascience-cpu-py312-ubi9` |
-| `odh-workbench-jupyter-*-py312-ubi9-ci` | `stable` | `odh-workbench-jupyter-datascience-cpu-py312-ubi9-ci` |
-| `odh-workbench-codeserver-*` | `main` | same pattern |
-| `odh-base-image-cpu-py312-{c9s,ubi9}` | `main` | base images (no `-ci` / `stable` counterpart) |
+| Application | Component pattern | Branch | Example |
+|---|---|---|---|
+| `opendatahub-release` | `odh-pipeline-runtime-*-py312-ubi9` | `main` | `odh-pipeline-runtime-minimal-cpu-py312-ubi9` |
+| `opendatahub-builds` | `odh-pipeline-runtime-*-py312-ubi9-ci` | `stable` | `odh-pipeline-runtime-minimal-cpu-py312-ubi9-ci` |
+| `opendatahub-release` | `odh-workbench-jupyter-*-py312-ubi9` | `main` | `odh-workbench-jupyter-datascience-cpu-py312-ubi9` |
+| `opendatahub-builds` | `odh-workbench-jupyter-*-py312-ubi9-ci` | `stable` | `odh-workbench-jupyter-datascience-cpu-py312-ubi9-ci` |
+| `opendatahub-release` | `odh-workbench-codeserver-*` | `main` | same pattern |
+| `opendatahub-release` | `odh-base-image-cpu-py312-{c9s,ubi9}` | `main` | base images (no `-ci` / `stable` counterpart) |
 
 ```bash
 # list all notebook components
