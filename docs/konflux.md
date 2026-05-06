@@ -2,6 +2,44 @@
 
 This file provides an overview and quick access links to the **Konflux** environments used for building and deploying components for the **Open Data Hub (ODH)** and **Red Hat Data Services (RHDS)** projects.
 
+## Cluster access
+
+### Login
+
+```bash
+# ODH (stone-prd-rh01)
+oc login --web https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443
+
+# RHOAI (stone-prod-p02)
+oc login --web https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443
+```
+
+After login, `oc` creates a context named `<namespace>/api-<cluster>:6443/<username>`, e.g. `open-data-hub-tenant/api-stone-prd-rh01-pg1f-p1-openshiftapps-com:6443/jdanek`.
+
+### Always use `--context` and `-n`
+
+Multiple tools (CI agents, IDE extensions, parallel terminal sessions) share the same kubeconfig. A bare `oc get pods` uses whatever context was set last, which may be the wrong cluster or namespace. Always pass `--context` and `-n` explicitly:
+
+```bash
+# ODH
+oc get components --context open-data-hub-tenant/api-stone-prd-rh01-pg1f-p1-openshiftapps-com:6443/jdanek -n open-data-hub-tenant
+
+# RHOAI
+oc get components --context rhoai-tenant/api-stone-prod-p02-hjvn-p1-openshiftapps-com:6443/jdanek -n rhoai-tenant
+```
+
+Or set shell variables once per session:
+
+```bash
+ODH_CTX="$(oc config get-contexts -o name | grep 'open-data-hub-tenant.*stone-prd-rh01')"
+RHOAI_CTX="$(oc config get-contexts -o name | grep 'rhoai-tenant.*stone-prod-p02')"
+
+oc get components --context "$ODH_CTX" -n open-data-hub-tenant
+oc get components --context "$RHOAI_CTX" -n rhoai-tenant
+```
+
+List your contexts with `oc config get-contexts -o name | grep stone`.
+
 ## ODH-io (Open Data Hub)
 
 This section covers the Konflux setup for the upstream **Open Data Hub** community project.
