@@ -54,7 +54,8 @@ runs:
           echo 0 | sudo tee "${wbt}" >/dev/null || true
         done
 
-    - name: Configure Podman
+    - name: Configure Podman (Homebrew)
+      if: "!contains(fromJSON('[\"linux/ppc64le\", \"linux/s390x\"]'), inputs.platform) || runner.arch == 'X64'"
       shell: bash
       run: |
         set -Eeuxo pipefail
