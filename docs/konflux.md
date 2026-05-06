@@ -65,7 +65,7 @@ Release engineering toolbox for RHOAI. It is the glue between Konflux builds and
 Automated synchronization infrastructure between upstream ODH and downstream RHDS repositories.
 
 - **[Upstream to Downstream Auto-Merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/upstream-auto-merge.yaml)** -- Runs daily at 00:00 UTC. Syncs changes from upstream repos (e.g., `opendatahub-io/notebooks`) to downstream repos (e.g., `red-hat-data-services/notebooks`) based on [upstream-source-map.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/blob/main/src/config/upstream-source-map.yaml). It can also be manually triggered per component.
-- **[Main to Release Auto-Merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/main-release-auto-merge.yaml)** -- Runs daily at UTC 1:00. Syncs from downstream `main` to `rhoai-x.y` release branches based on [main-release-source-map.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/blob/main/src/config/main-release-source-map.yaml). Automatically creates release branches on sprint start and disables auto-merge after code freeze.
+- **[Main to Release Auto-Merge](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/main-release-auto-merge.yaml)** -- Runs daily at 01:00 UTC. Syncs from downstream `main` to `rhoai-x.y` release branches based on [main-release-source-map.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/blob/main/src/config/main-release-source-map.yaml). Automatically creates release branches on sprint start and disables auto-merge after code freeze.
 - **Jira Ticket Automation** -- Generates sprint tickets from YAML templates via [create-jira-tickets.yaml](https://github.com/red-hat-data-services/rhods-devops-infra/actions/workflows/create-jira-tickets.yaml).
 
 ## Pipeline resource overrides
@@ -308,7 +308,7 @@ These GitHub Actions workflows manage the automated synchronization of configura
 
 The repo has ~59 Dockerfiles with two axes of duplication:
 1. **ODH vs Konflux** -- every `Dockerfile.<variant>` has a `Dockerfile.konflux.<variant>` twin that differs only in LABEL metadata (~21 Konflux files)
-2. **cpu/cuda/rocm variants** -- within the same directory, these are ~95% identical (only 3 directories have multiple variants that could be merged)
+2. **cpu/cuda/rocm variants** -- within the same directory, these are ~95% identical
 
 Tracking issues:
 - GitHub: [opendatahub-io/notebooks#3355 -- Dockerfile Deduplication Plan](https://github.com/opendatahub-io/notebooks/issues/3355)
