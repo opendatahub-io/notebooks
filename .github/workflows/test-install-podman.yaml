@@ -21,14 +21,26 @@ concurrency:
 
 jobs:
   test-install:
-    runs-on: ubuntu-26.04
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          # IBM self-hosted runners (see docs/ibmactionspz.md)
+          # Uncomment to test on IBM Power and Z
+          # - runner: ubuntu-26.04-ppc64le
+          #   platform: linux/ppc64le
+          # - runner: ubuntu-24.04-s390x
+          #   platform: linux/s390x
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install Podman
         uses: './.github/actions/install-podman-action'
         with:
-          platform: linux/amd64
+          platform: ${{ matrix.platform }}
 
       - name: Verify Podman overlay mountopt and native diff
         run: |
