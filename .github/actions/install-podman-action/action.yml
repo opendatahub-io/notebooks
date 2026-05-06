@@ -22,7 +22,6 @@ runs:
 
         echo "::group::Podman version (distro)"
         podman --version
-        podman info --format '{{.Host.OCIRuntime.Name}} {{.Host.OCIRuntime.Version}}'
         echo "::endgroup::"
 
         mkdir -p $TMPDIR
@@ -58,6 +57,7 @@ runs:
         echo "PODMAN_SOCK=/var/run/podman/podman.sock" >> $GITHUB_ENV
 
         # verify rootful podman works via the socket
+        sudo podman info --format '{{.Host.OCIRuntime.Name}} {{.Host.OCIRuntime.Version}}'
         sudo podman ps
 
     # ── Homebrew path (amd64, arm64): install recent podman via brew ──
