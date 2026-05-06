@@ -84,9 +84,8 @@ define build_image
 	$(eval DOCKERFILE_NAME := $(notdir $(2)))
 	$(eval CONF_FILE := $(3))
 
-	# if the conf file exists, pass it to the container engine
-	# podman/buildah support --build-arg-file natively; docker does not, so fall back to awk
-	$(eval BUILD_ARGS := $(if $(wildcard $(CONF_FILE)),$(if $(filter docker,$(CONTAINER_ENGINE)),$(shell awk -F= '!/^#/ && NF {gsub(/^[ \t]+|[ \t]+$$/, "", $$1); gsub(/^[ \t]+|[ \t]+$$/, "", $$2); printf "--build-arg %s=%s ", $$1, $$2}' '$(CONF_FILE)'),--build-arg-file '$(CONF_FILE)'),))
+	# if the conf file exists, pass it to the container engine via --build-arg-file
+	$(eval BUILD_ARGS := $(if $(wildcard $(CONF_FILE)),--build-arg-file '$(CONF_FILE)',))
 
 # Hermetic local build: when cachi2/output/ exists AND this target uses a
 # prefetch-input tree, mount pre-downloaded deps into the build.
