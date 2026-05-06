@@ -673,8 +673,12 @@ jobs:
 
       # print system logs, useful when hunting for OOM kills
 
+      # dmesg requires access to the kernel ring buffer, unavailable on IBM LXD runners
+      # see docs/ibmactionspz.md
       - run: sudo dmesg
         if: "${{ failure() }}"
+        continue-on-error: true
 
       - run: journalctl --no-pager -k
         if: "${{ failure() }}"
+        continue-on-error: true
