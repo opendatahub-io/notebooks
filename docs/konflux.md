@@ -13,7 +13,7 @@ Each notebook image (workbench or pipeline runtime) has:
 - A `Dockerfile.konflux.<variant>` twin that currently differs only in LABEL metadata
 - Build-args conf files in `build-args/` (e.g., `cpu.conf`, `konflux.cpu.conf`) containing `BASE_IMAGE`, `INDEX_URL`, `PYLOCK_FLAVOR`
 
-The Makefile selects which Dockerfile and conf file to use based on the `KONFLUX` environment variable. The conf file is parsed by awk into `--build-arg KEY=VALUE` flags (see the `build_image` function in the Makefile). In Tekton pipelines, the same conf file is passed to buildah via `--build-arg-file`.
+The Makefile selects which Dockerfile and conf file to use based on the `KONFLUX` environment variable. The conf file is passed directly to the container engine via `--build-arg-file` (see the `build_image` function in the Makefile), matching the Tekton pipeline behavior where buildah also receives the conf file via `--build-arg-file`.
 
 ### Pipeline generation
 

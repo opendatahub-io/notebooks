@@ -62,11 +62,22 @@ def main() -> int:
 
 
 def extract_build_args(remaining: list[str]) -> dict[str, str]:
-    """Extract --build-arg KEY=VALUE pairs from the command line using argparse."""
+    """Extract --build-arg KEY=VALUE pairs and --build-arg-file entries from the command line."""
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("--build-arg", action="append", default=[])
+    parser.add_argument("--build-arg-file", action="append", default=[], dest="build_arg_file")
     known, _ = parser.parse_known_args(remaining)
     build_args = {}
+    for filepath in known.build_arg_file:
+        with open(filepath) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                build_args[key.strip()] = value.strip()
     for arg in known.build_arg:
         if "=" not in arg:
             raise ValueError(f"--build-arg must be in KEY=VALUE format, got: {arg!r}")

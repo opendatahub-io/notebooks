@@ -84,11 +84,8 @@ define build_image
 	$(eval DOCKERFILE_NAME := $(notdir $(2)))
 	$(eval CONF_FILE := $(3))
 
-	# if the conf file exists, transform it into --build-arg KEY=VALUE flags
-	$(eval BUILD_ARGS := $(shell \
-		if [ -f $(CONF_FILE) ]; then \
-			awk -F= '!/^#/ && NF {gsub(/^[ \t]+|[ \t]+$$/, "", $$1); gsub(/^[ \t]+|[ \t]+$$/, "", $$2); printf "--build-arg %s=%s ", $$1, $$2}' $(CONF_FILE); \
-		fi))
+	# if the conf file exists, pass it directly via --build-arg-file
+	$(eval BUILD_ARGS := $(if $(wildcard $(CONF_FILE)),--build-arg-file $(CONF_FILE),))
 
 # Hermetic local build: when cachi2/output/ exists AND this target uses a
 # prefetch-input tree, mount pre-downloaded deps into the build.
