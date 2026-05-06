@@ -68,14 +68,22 @@ def extract_build_args(remaining: list[str]) -> dict[str, str]:
     parser.add_argument("--build-arg-file", action="append", default=[], dest="build_arg_file")
     known, _ = parser.parse_known_args(remaining)
     build_args = {}
+    root = ROOT_DIR.resolve()
     for filepath in known.build_arg_file:
-        with open(filepath) as f:
+        path = pathlib.Path(filepath).resolve()
+        try:
+            path.relative_to(root)
+        except ValueError as exc:
+            raise ValueError(f"--build-arg-file must be under repository root: {filepath!r}") from exc
+        if not path.is_file():
+            raise ValueError(f"--build-arg-file is not a readable file: {filepath!r}")
+        with path.open(encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
                 if "=" not in line:
-                    continue
+                    raise ValueError(f"Invalid build-arg entry in {filepath!r}: {line!r}")
                 key, value = line.split("=", 1)
                 build_args[key.strip()] = value.strip()
     for arg in known.build_arg:

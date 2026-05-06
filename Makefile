@@ -85,7 +85,8 @@ define build_image
 	$(eval CONF_FILE := $(3))
 
 	# if the conf file exists, pass it directly via --build-arg-file
-	$(eval BUILD_ARGS := $(if $(wildcard $(CONF_FILE)),--build-arg-file $(CONF_FILE),))
+	# docker build does not support --build-arg-file; error out early so the user knows
+	$(eval BUILD_ARGS := $(if $(wildcard $(CONF_FILE)),$(if $(filter docker,$(CONTAINER_ENGINE)),$(error docker build does not support --build-arg-file; use podman or buildah),--build-arg-file $(CONF_FILE)),))
 
 # Hermetic local build: when cachi2/output/ exists AND this target uses a
 # prefetch-input tree, mount pre-downloaded deps into the build.
