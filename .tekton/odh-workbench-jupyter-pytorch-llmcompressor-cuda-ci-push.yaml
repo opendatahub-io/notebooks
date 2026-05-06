@@ -30,11 +30,53 @@ spec:
     value: jupyter/pytorch+llmcompressor/ubi9-python-3.12/build-args/cuda.conf
   - name: path-context
     value: .
+  # Hermetic build: no network during build; mongocli source from submodule, Go deps prefetched by Cachi2
+  - name: hermetic
+    value: 'true'
+  - name: prefetch-input
+    value:
+    - path: prefetch-input/mongocli
+      type: gomod
+    - path: prefetch-input/odh
+      type: rpm
+    - path: prefetch-input/odh
+      type: generic
+    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: x86_64
+      requirements_files: [requirements.cuda.txt]
   - name: additional-tags
     value:
     - 3.5_ea1-v1.44
   taskRunSpecs:
-    - pipelineTaskName: build-images
+  - pipelineTaskName: prefetch-dependencies
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
+  - pipelineTaskName: build-images
+    stepSpecs:
+    - name: prepare-sboms
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
+    - name: sbom-syft-generate
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
+    - name: build
       computeResources:
         requests:
           cpu: '8'
@@ -42,42 +84,30 @@ spec:
         limits:
           cpu: '16'
           memory: 32Gi
-    - pipelineTaskName: clair-scan
-      computeResources:
-        requests:
-          cpu: '8'
-          memory: 32Gi
-        limits:
-          cpu: '8'
-          memory: 32Gi
-    - pipelineTaskName: ecosystem-cert-preflight-checks
-      computeResources:
-        requests:
-          cpu: '8'
-          memory: 32Gi
-        limits:
-          cpu: '8'
-          memory: 32Gi
-    - pipelineTaskName: sast-unicode-check
-      computeResources:
-        limits:
-          memory: 8Gi
-    - pipelineTaskName: prefetch-dependencies
-      computeResources:
-        limits:
-          memory: 8Gi
-    - pipelineTaskName: clamav-scan
-      computeResources:
-        limits:
-          memory: 8Gi
-    - pipelineTaskName: sast-shell-check
-      computeResources:
-        limits:
-          memory: 8Gi
-    - pipelineTaskName: rpms-signature-scan
-      computeResources:
-        limits:
-          memory: 8Gi
+  - pipelineTaskName: clair-scan
+    computeResources:
+      limits:
+        memory: 32Gi
+  - pipelineTaskName: ecosystem-cert-preflight-checks
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: sast-unicode-check
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: sast-shell-check
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: clamav-scan
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: rpms-signature-scan
+    computeResources:
+      limits:
+        memory: 8Gi
   pipelineRef:
     resolver: git
     params:

@@ -259,7 +259,7 @@ def test_params_env_record_count(
     variant = "rhoai" if "rhoai" in str(base_dir) else "odh"
     expected_counts = {
         "odh": {"commit": 35, "params": 29},
-        "rhoai": {"commit": 39, "params": 39},
+        "rhoai": {"commit": 50, "params": 50},
     }
 
     for env_name, expected in expected_counts[variant].items():

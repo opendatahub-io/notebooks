@@ -2,6 +2,111 @@
 
 This file provides an overview and quick access links to the **Konflux** environments used for building and deploying components for the **Open Data Hub (ODH)** and **Red Hat Data Services (RHDS)** projects.
 
+## Cluster access
+
+### Login
+
+```bash
+# ODH (stone-prd-rh01)
+oc login --web https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443
+
+# RHOAI (stone-prod-p02)
+oc login --web https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443
+```
+
+After login, `oc` creates a context named `<namespace>/api-<cluster>:6443/<username>`, e.g. `open-data-hub-tenant/api-stone-prd-rh01-pg1f-p1-openshiftapps-com:6443/jdanek`.
+
+### Always use `--context` and `-n`
+
+Multiple tools (CI agents, IDE extensions, parallel terminal sessions) share the same kubeconfig. A bare `oc get pods` uses whatever context was set last, which may be the wrong cluster or namespace. Always pass `--context` and `-n` explicitly:
+
+The default context names are verbose (`open-data-hub-tenant/api-stone-prd-rh01-pg1f-p1-openshiftapps-com:6443/jdanek`). Either set shell variables per session or create persistent short aliases:
+
+```bash
+# Option A: shell variables (ephemeral)
+ODH_CTX="$(oc config get-contexts -o name | grep 'open-data-hub-tenant.*stone-prd-rh01' | head -n1)"
+RHOAI_CTX="$(oc config get-contexts -o name | grep 'rhoai-tenant.*stone-prod-p02' | head -n1)"
+
+test -n "$ODH_CTX" || echo "ODH context not found — run: oc login --web https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443"
+test -n "$RHOAI_CTX" || echo "RHOAI context not found — run: oc login --web https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443"
+
+oc get components --context "$ODH_CTX" -n open-data-hub-tenant
+oc get components --context "$RHOAI_CTX" -n rhoai-tenant
+
+# Option B: rename contexts (persistent)
+oc config rename-context "$ODH_CTX" stone-rh01-odh
+oc config rename-context "$RHOAI_CTX" stone-p02-rhoai
+
+oc get components --context stone-rh01-odh -n open-data-hub-tenant
+oc get components --context stone-p02-rhoai -n rhoai-tenant
+```
+
+List your contexts with `oc config get-contexts -o name | grep stone`.
+
+## ODH-io (Open Data Hub)
+
+This section covers the Konflux setup for the upstream **Open Data Hub** community project.
+
+project: `open-data-hub-tenant`
+
+* **Konflux UI:** View and monitor applications, components, and pipelines running in the ODH tenant.
+    * [opendatahub-release](https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/open-data-hub-tenant/applications/opendatahub-release/components) — main branch components (base images, runtimes, workbenches)
+    * [opendatahub-builds](https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/open-data-hub-tenant/applications/opendatahub-builds/components) — stable branch (`-ci`) components
+* **OpenShift Console:** Access the underlying **OpenShift** cluster for deeper insights, logs, and resource management.
+    * [openshift console](https://console-openshift-console.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/k8s/cluster/projects/open-data-hub-tenant)
+* **Configuration Repository (`odh-konflux-central`):** The primary source of truth for the Konflux configuration (GitOps).
+    * [odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central):
+        * [pipelines](https://github.com/opendatahub-io/odh-konflux-central/tree/main/pipelines/notebooks): Definitions of the **Tekton** pipelines used for building and testing components (e.g., notebook images).
+        * [gitops](https://github.com/opendatahub-io/odh-konflux-central/tree/main/gitops): Configuration for deployed components and End-to-End (e2e) tests.
+* **Build Notifications (Slack):** Push pipeline failures are posted automatically.
+    * [#odh-build-notifications](https://redhat-internal.slack.com/archives/C07ANR0T9KJ)
+* **Release Data (`konflux-release-data`):** Release engineering configuration for the ODH tenant.
+    * [konflux-release-data](https://gitlab.cee.redhat.com/releng/konflux-release-data)
+        * [stone-prd-rh01/tenants/open-data-hub-tenant](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config/cluster/stone-prd-rh01/tenants/open-data-hub-tenant)
+
+### Konflux components (notebooks)
+
+The notebook image components live in `open-data-hub-tenant` across two applications. Each notebook image has two components: one in `opendatahub-release` building from `main`, and one (with `-ci` suffix) in `opendatahub-builds` building from `stable`.
+
+| Application | Component pattern | Branch | Example |
+|---|---|---|---|
+| `opendatahub-release` | `odh-pipeline-runtime-*-py312-ubi9` | `main` | `odh-pipeline-runtime-minimal-cpu-py312-ubi9` |
+| `opendatahub-builds` | `odh-pipeline-runtime-*-py312-ubi9-ci` | `stable` | `odh-pipeline-runtime-minimal-cpu-py312-ubi9-ci` |
+| `opendatahub-release` | `odh-workbench-jupyter-*-py312-ubi9` | `main` | `odh-workbench-jupyter-datascience-cpu-py312-ubi9` |
+| `opendatahub-builds` | `odh-workbench-jupyter-*-py312-ubi9-ci` | `stable` | `odh-workbench-jupyter-datascience-cpu-py312-ubi9-ci` |
+| `opendatahub-release` | `odh-workbench-codeserver-*` | `main` | same pattern |
+| `opendatahub-release` | `odh-base-image-cpu-py312-{c9s,ubi9}` | `main` | base images (no `-ci` / `stable` counterpart) |
+
+```bash
+# list all notebook components
+oc get components -n open-data-hub-tenant \
+  -o custom-columns=NAME:.metadata.name,BRANCH:.spec.source.git.revision \
+  | grep -E 'runtime|workbench|base-image'
+```
+
+## RHDS (Red Hat Data Services / RHOAI)
+
+This section covers the Konflux setup for the enterprise downstream **Red Hat Data Services** offering (often associated with **RHOAI - Red Hat OpenShift AI**).
+
+project: `rhoai-tenant`
+
+* **Konflux UI:** View and monitor applications and components specific to the RHDS tenant.
+    * [automation](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications/automation/components) — PR pipeline component
+    * Per-release applications, e.g. [rhoai-v3-5-ea-1](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications/rhoai-v3-5-ea-1/components) — push components for each release branch
+    * [all applications](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications)
+* **OpenShift Console:** Access the underlying **OpenShift** cluster for the RHDS tenant.
+    * [openshift console](https://console-openshift-console.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/k8s/cluster/projects/rhoai-tenant)
+* **Configuration Repository (`konflux-central`):** GitOps repository for RHDS Konflux definitions.
+    * [konflux-central](https://github.com/red-hat-data-services/konflux-central):
+        * [pipelineruns](https://github.com/red-hat-data-services/konflux-central/tree/main/pipelineruns/notebooks/.tekton): Specific **PipelineRun** definitions used for execution.
+* **Build Notifications (Slack):** Push pipeline failures are posted automatically.
+    * [#rhoai-build-notifications](https://redhat-internal.slack.com/archives/C07ANR2U56C)
+* **Release Data (`konflux-release-data`):** Release engineering configuration for the RHDS tenant.
+    * [konflux-release-data](https://gitlab.cee.redhat.com/releng/konflux-release-data)
+        * [stone-prod-p02/tenants/rhoai-tenant](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config/cluster/stone-prod-p02/tenants/rhoai-tenant)
+        * [EnterpriseContractPolicy/registry-rhoai-prod.yaml](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/blob/main/config/stone-prod-p02.hjvn.p1/product/EnterpriseContractPolicy/registry-rhoai-prod.yaml)
+        * [EnterpriseContractPolicy/fbc-rhoai-stage.yaml](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/blob/main/config/stone-prod-p02.hjvn.p1/product/EnterpriseContractPolicy/fbc-rhoai-stage.yaml)
+
 ## Build system overview
 
 [Konflux](https://konflux-ci.dev/) is Red Hat's supply-chain-security-focused CI/CD system built on Tekton. It replaced Brew/OSBS for building RHOAI container images. The build pipeline includes: git clone, dependency prefetch (Cachi2), multi-arch buildah builds, image index creation, source image creation, and security scans (Clair vulnerability, ClamAV malware, Snyk SAST, shell-check, unicode check, RPM signature scan, deprecated-base-image check). It also handles SBOM generation, Tekton Chains attestation, tagging, Slack failure notifications, and triggering downstream operator builds.
@@ -14,6 +119,8 @@ Each notebook image (workbench or pipeline runtime) has:
 - Build-args conf files in `build-args/` (e.g., `cpu.conf`, `konflux.cpu.conf`) containing `BASE_IMAGE`, `INDEX_URL`, `PYLOCK_FLAVOR`
 
 The Makefile selects which Dockerfile and conf file to use based on the `KONFLUX` environment variable. The conf file is parsed by awk into quoted `--build-arg 'KEY=VALUE'` flags (see the `build_image` function in the Makefile). In Tekton pipelines, the same conf file is passed to buildah via `--build-arg-file`.
+
+For hermetic build internals (cachi2.env injection, RPM prefetch paths, module_hotfixes pattern), see [`docs/hermetic-guide.md`](hermetic-guide.md).
 
 ### Pipeline generation
 
@@ -72,77 +179,13 @@ Automated synchronization infrastructure between upstream ODH and downstream RHD
 
 All PipelineRuns in `.tekton/` override compute resources for several tasks that OOM with Konflux defaults on this repo's large source tree. The standard overrides (4 CPU / 8Gi) cover `prefetch-dependencies`, `build-images`, `clair-scan`, `sast-shell-check`, `sast-unicode-check`, and `sast-snyk-check`. The codeserver pipelines use higher limits (**8 CPU / 32Gi**) for `prefetch-dependencies` and `build-images` because the codeserver image is significantly larger. This follows [Konflux: Overriding compute resources](https://konflux-ci.dev/docs/building/overriding-compute-resources/) (PipelineRun `spec.taskRunSpecs` in `.tekton`).
 
-## ODH-io (Open Data Hub)
-
-This section covers the Konflux setup for the upstream **Open Data Hub** community project.
-
-project: `open-data-hub-tenant`
-
-* **Konflux UI:** View and monitor applications, components, and pipelines running in the ODH tenant.
-    * [opendatahub-release](https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/open-data-hub-tenant/applications/opendatahub-release/components) — main branch components (base images, runtimes, workbenches)
-    * [opendatahub-builds](https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/open-data-hub-tenant/applications/opendatahub-builds/components) — stable branch (`-ci`) components
-* **OpenShift Console:** Access the underlying **OpenShift** cluster for deeper insights, logs, and resource management.
-    * [openshift console](https://console-openshift-console.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/k8s/cluster/projects/open-data-hub-tenant)
-* **Configuration Repository (`odh-konflux-central`):** The primary source of truth for the Konflux configuration (GitOps).
-    * [odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central):
-        * [pipelines](https://github.com/opendatahub-io/odh-konflux-central/tree/main/pipelines/notebooks): Definitions of the **Tekton** pipelines used for building and testing components (e.g., notebook images).
-        * [gitops](https://github.com/opendatahub-io/odh-konflux-central/tree/main/gitops): Configuration for deployed components and End-to-End (e2e) tests.
-* **Build Notifications (Slack):** Push pipeline failures are posted automatically.
-    * [#odh-build-notifications](https://redhat-internal.slack.com/archives/C07ANR0T9KJ)
-* **Release Data (`konflux-release-data`):** Release engineering configuration for the ODH tenant.
-    * [konflux-release-data](https://gitlab.cee.redhat.com/releng/konflux-release-data)
-        * [stone-prd-rh01/tenants/open-data-hub-tenant](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config/cluster/stone-prd-rh01/tenants/open-data-hub-tenant)
-
-### Konflux components (notebooks)
-
-The notebook image components live in `open-data-hub-tenant` as standalone components (no application label). Each notebook image has two components: one building from `main` and one (with `-ci` suffix) building from `stable`.
-
-| Component pattern | Branch | Example |
-|---|---|---|
-| `odh-pipeline-runtime-*-py312-ubi9` | `main` | `odh-pipeline-runtime-minimal-cpu-py312-ubi9` |
-| `odh-pipeline-runtime-*-py312-ubi9-ci` | `stable` | `odh-pipeline-runtime-minimal-cpu-py312-ubi9-ci` |
-| `odh-workbench-jupyter-*-py312-ubi9` | `main` | `odh-workbench-jupyter-datascience-cpu-py312-ubi9` |
-| `odh-workbench-jupyter-*-py312-ubi9-ci` | `stable` | `odh-workbench-jupyter-datascience-cpu-py312-ubi9-ci` |
-| `odh-workbench-codeserver-*` | `main` | same pattern |
-| `odh-base-image-cpu-py312-{c9s,ubi9}` | `main` | base images (no `-ci` / `stable` counterpart) |
-
-```bash
-# list all notebook components
-oc get components -n open-data-hub-tenant \
-  -o custom-columns=NAME:.metadata.name,BRANCH:.spec.source.git.revision \
-  | grep -E 'runtime|workbench|base-image'
-```
-
-## RHDS (Red Hat Data Services / RHOAI)
-
-This section covers the Konflux setup for the enterprise downstream **Red Hat Data Services** offering (often associated with **RHOAI - Red Hat OpenShift AI**).
-
-project: `rhoai-tenant`
-
-* **Konflux UI:** View and monitor applications and components specific to the RHDS tenant.
-    * [automation](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications/automation/components) — PR pipeline component
-    * Per-release applications, e.g. [rhoai-v3-5-ea-1](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications/rhoai-v3-5-ea-1/components) — push components for each release branch
-    * [all applications](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications)
-* **OpenShift Console:** Access the underlying **OpenShift** cluster for the RHDS tenant.
-    * [openshift console](https://console-openshift-console.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/k8s/cluster/projects/rhoai-tenant)
-* **Configuration Repository (`konflux-central`):** GitOps repository for RHDS Konflux definitions.
-    * [konflux-central](https://github.com/red-hat-data-services/konflux-central):
-        * [pipelineruns](https://github.com/red-hat-data-services/konflux-central/tree/main/pipelineruns/notebooks/.tekton): Specific **PipelineRun** definitions used for execution.
-* **Build Notifications (Slack):** Push pipeline failures are posted automatically.
-    * [#rhoai-build-notifications](https://redhat-internal.slack.com/archives/C07ANR2U56C)
-* **Release Data (`konflux-release-data`):** Release engineering configuration for the RHDS tenant.
-    * [konflux-release-data](https://gitlab.cee.redhat.com/releng/konflux-release-data)
-        * [stone-prod-p02/tenants/rhoai-tenant](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config/cluster/stone-prod-p02/tenants/rhoai-tenant)
-        * [EnterpriseContractPolicy/registry-rhoai-prod.yaml](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/blob/main/config/stone-prod-p02.hjvn.p1/product/EnterpriseContractPolicy/registry-rhoai-prod.yaml)
-        * [EnterpriseContractPolicy/fbc-rhoai-stage.yaml](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/blob/main/config/stone-prod-p02.hjvn.p1/product/EnterpriseContractPolicy/fbc-rhoai-stage.yaml)
-
 ## Triggering builds
 
 ### PR builds
 
 Comment `/retest` on the pull request to retrigger all **failed** PR pipelines (successful ones are skipped). To retrigger a specific pipeline regardless of its previous outcome, use `/test <pipelinerun-name>` or `/retest <pipelinerun-name>`. See [PaC GitOps Commands](https://pipelinesascode.com/docs/guides/gitops-commands/).
 
-The GitHub Checks tab "Re-run" button restarts **all** Konflux pipelines in the check suite, including those still running or already succeeded. There is no way to re-run a single check from the UI. The GitHub API endpoints `POST /check-runs/{id}/rerequest` and `POST /check-suites/{id}/rerequest` do not work with user tokens — classic OAuth returns 404, fine-grained PATs return 403 ("Resource not accessible by personal access token"). Checks API write access is [limited to GitHub Apps](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#fine-grained-personal-access-tokens); the API reference pages incorrectly list fine-grained PATs as supported ([doc bug](https://github.com/github/rest-api-description/issues/4290)).
+The GitHub Checks tab "Re-run" button restarts **all** Konflux pipelines in the check suite, including those still running or already succeeded (it can cancel in-progress checks, causing them to fail). There is no way to re-run a single check from the UI. The GitHub API endpoints `POST /check-runs/{id}/rerequest` and `POST /check-suites/{id}/rerequest` do not work with user tokens — classic OAuth returns 404, fine-grained PATs return 403 ("Resource not accessible by personal access token"). Checks API write access is [limited to GitHub Apps](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#fine-grained-personal-access-tokens); the API reference pages incorrectly list fine-grained PATs as supported ([doc bug](https://github.com/github/rest-api-description/issues/4290)).
 
 ### PR comment triggers (repo-specific)
 
@@ -203,6 +246,10 @@ See also: [Running Build Pipelines (Konflux docs)](https://konflux-ci.dev/docs/b
 
 ## Build trigger internals
 
+### PipelineRun types in `.tekton/`
+
+The `.tekton/` directory contains both **build** and **test** PipelineRuns, distinguished by the `pipelines.appstudio.openshift.io/type` label. Build PipelineRuns (`type: build`) have params like `dockerfile`, `build-args-file`, and `output-image`. Test PipelineRuns (`type: test`) have different params — notably `group-components`, a JSON map of component names to Quay image paths. Code iterating `.tekton/*.yaml` files must check this label to avoid asserting build-specific params on test pipelines.
+
 ### How trigger-pac-build works
 
 The [build-service controller](https://github.com/konflux-ci/build-service) (`TriggerPaCBuildOldModel` in `component_build_controller_pac.go`) handles the annotation:
@@ -262,6 +309,24 @@ The annotation could silently fail if PaC's `/incoming` webhook processing hit i
 ### Component delete/recreate race condition (Argo)
 
 Deleting and recreating a Konflux component too closely together (as happens during Argo GitOps reconciliation) can leave PaC in a broken state where builds don't trigger from PRs and/or the `trigger-pac-build` annotation / UI button stops working. Workaround: ensure sufficient delay between delete and recreate, or manually re-enable PaC.
+
+## Integration testing
+
+The `/group-test` PR comment triggers the integration test pipeline (`notebooks-group-test.yaml`), which provisions an ephemeral OpenShift cluster via SpaceRequest/ClusterTemplateInstance (MAPT). Cluster credentials are available only within the TaskRun workspace — there is no SSH access for interactive debugging. When triggered via `/group-test` (not as part of a PR build), images come from **stable branch** builds, not the PR's changes; unchanged components reuse existing builds.
+
+The integration test pipeline uses a `volumeClaimTemplate` (not `emptyDir`) to share data between tasks because the Konflux SNAPSHOT JSON for 18+ components exceeds Tekton's 4KB result size limit. For details on test structure and adding new tests, see [`docs/konflux-integration.md`](konflux-integration.md).
+
+## Renovate and MintMaker
+
+Dependency updates are managed by [Renovate](https://docs.renovatebot.com/) through two mechanisms. Configuration lives in [`.github/renovate.json5`](../.github/renovate.json5).
+
+**MintMaker** (Konflux-managed Renovate) runs automatically and creates branches named `konflux/mintmaker/main/<image-ref>` for base image updates detected via the `customManagers` regex rules in `renovate.json5`. It uses `platformCommit: "enabled"` (GitHub API commits instead of git push).
+
+**Self-hosted Renovate** runs via the `renovate-self-hosted.yaml` workflow with `renovate_run.py` as a wrapper. It creates branches named `konflux/references/main` for Tekton bundle digest updates.
+
+**Known issues:**
+- **"Cannot find replaceString"** — MintMaker fails when a `build-args/*.conf` file was already updated (e.g., by another PR) before MintMaker's branch is rebased. The old value it searches for no longer exists. Workaround: close the stale MintMaker PR and let it re-create.
+- **Tekton bundle digest collision** — Renovate can propose both digest-only and tag bumps for `image:tag@sha256:...` references. The config disables digest-only updates to prefer tag bumps (new tags ship with correct digests).
 
 ## Pipeline improvement tracking
 

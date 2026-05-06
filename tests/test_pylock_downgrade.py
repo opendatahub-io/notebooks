@@ -123,8 +123,13 @@ def _parse_pylock_versions_for_linux(pylock_text: str, python_full: str) -> dict
             continue
         if "marker" in p and not packaging.markers.Marker(p["marker"]).evaluate(marker_env):
             continue
-        if name in out:
-            raise AssertionError(f"Duplicate package {name!r} after marker filter (python {python_full})")
+        # Last wins when the lockfile lists the same name multiple times for overlapping markers.
+        prev = out.get(name)
+        if prev is not None and prev != version:
+            raise AssertionError(
+                f"Ambiguous pylock for {name!r} under linux/{python_full}: "
+                f"matched multiple versions ({prev}, {version})"
+            )
         out[name] = version
     return out
 
@@ -188,10 +193,24 @@ def test_pylock_tracked_packages_not_downgraded_vs_git_base(subtests):
         current_text = lock_path.read_text(encoding="utf-8")
         try:
             cur_map = _parse_pylock_versions_for_linux(current_text, python_full)
-            base_map = _parse_pylock_versions_for_linux(base_text, python_full)
-        except (tomllib.TOMLDecodeError, AssertionError) as e:
+        except tomllib.TOMLDecodeError as e:
             with subtests.test(msg=rel):
-                raise AssertionError(f"Failed to parse pylock for downgrade check: {rel}") from e
+                raise AssertionError(f"Invalid TOML in current pylock (downgrade check): {rel}") from e
+            continue
+        except AssertionError as e:
+            with subtests.test(msg=rel):
+                raise AssertionError(f"Failed to parse current pylock for downgrade check: {rel}") from e
+            continue
+
+        try:
+            base_map = _parse_pylock_versions_for_linux(base_text, python_full)
+        except tomllib.TOMLDecodeError:
+            # Baseline ref may not have valid TOML at this path (e.g. older lockfile format).
+            continue
+        except AssertionError as e:
+            with subtests.test(msg=rel):
+                raise AssertionError(f"Failed to parse baseline pylock for downgrade check: {rel}") from e
+            continue
 
         downgrades = list(_iter_downgrades(cur_map, base_map))
         with subtests.test(msg=rel):

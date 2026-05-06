@@ -32,12 +32,52 @@ spec:
     value: jupyter/datascience/ubi9-python-3.12/build-args/cpu.conf
   - name: path-context
     value: .
+  # Hermetic: Cachi2 prefetches gomod (mongocli), RPMs+generic (shared minimal/odh), pip (requirements.cpu.txt)
+  - name: hermetic
+    value: 'true'
+  - name: prefetch-input
+    value:
+    - path: prefetch-input/mongocli
+      type: gomod
+    - path: prefetch-input/odh
+      type: rpm
+    - path: prefetch-input/odh
+      type: generic
+    - path: jupyter/datascience/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: x86_64
+      requirements_files: [requirements.cpu.txt]
   - name: additional-tags
     value:
     - 3.5_ea1-v1.44
   taskRunSpecs:
+  - pipelineTaskName: prefetch-dependencies
+    computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
+      limits:
+        cpu: '8'
+        memory: 32Gi
   - pipelineTaskName: build-images
     stepSpecs:
+    - name: prepare-sboms
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
+    - name: sbom-syft-generate
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 32Gi
+        limits:
+          cpu: '8'
+          memory: 32Gi
     - name: build
       computeResources:
         requests:
@@ -47,10 +87,6 @@ spec:
           cpu: '16'
           memory: 32Gi
   - pipelineTaskName: sast-unicode-check
-    computeResources:
-      limits:
-        memory: 8Gi
-  - pipelineTaskName: prefetch-dependencies
     computeResources:
       limits:
         memory: 8Gi

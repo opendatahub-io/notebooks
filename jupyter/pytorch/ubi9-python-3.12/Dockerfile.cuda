@@ -10,7 +10,7 @@ ARG BASE_IMAGE
 # Source: git submodule at repo-root prefetch-input/mongocli.         #
 # Go deps prefetched by Konflux/Cachi2 (gomod).                        #
 ######################################################
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25.8-1776370298 AS mongocli-builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.25.9-1777898790 AS mongocli-builder
 
 ARG PYTORCH_SOURCE_CODE=jupyter/pytorch/ubi9-python-3.12
 

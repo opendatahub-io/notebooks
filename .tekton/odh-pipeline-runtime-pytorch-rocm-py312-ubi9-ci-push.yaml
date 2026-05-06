@@ -32,6 +32,20 @@ spec:
     value: runtimes/rocm-pytorch/ubi9-python-3.12/build-args/rocm.conf
   - name: path-context
     value: .
+  # Hermetic: RPMs + generic (prefetch-input/odh); pip from requirements.rocm.txt
+  - name: hermetic
+    value: 'true'
+  - name: prefetch-input
+    value:
+    - path: prefetch-input/odh
+      type: rpm
+    - path: prefetch-input/odh
+      type: generic
+    - path: runtimes/rocm-pytorch/ubi9-python-3.12
+      type: pip
+      binary:
+        arch: x86_64
+      requirements_files: [requirements.rocm.txt]
   - name: additional-tags
     value:
     - 3.5_ea1-v1.44
@@ -45,15 +59,40 @@ spec:
     - name: pathInRepo
       value: pipeline/multi-arch-container-build.yaml
   taskRunSpecs:
-  - pipelineTaskName: sast-unicode-check
-    computeResources:
-      limits:
-        memory: 8Gi
-
   - pipelineTaskName: prefetch-dependencies
     computeResources:
-      limits:
+      requests:
+        cpu: '4'
         memory: 8Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
+  - pipelineTaskName: build-images
+    stepSpecs:
+    - name: prepare-sboms
+      computeResources:
+        requests:
+          cpu: '4'
+          memory: 8Gi
+        limits:
+          cpu: '4'
+          memory: 8Gi
+    - name: sbom-syft-generate
+      computeResources:
+        requests:
+          cpu: '4'
+          memory: 8Gi
+        limits:
+          cpu: '4'
+          memory: 8Gi
+    - name: build
+      computeResources:
+        requests:
+          cpu: '4'
+          memory: 8Gi
+        limits:
+          cpu: '4'
+          memory: 8Gi
   - pipelineTaskName: clair-scan
     computeResources:
       limits:
@@ -62,15 +101,15 @@ spec:
     computeResources:
       limits:
         memory: 8Gi
-  - pipelineTaskName: clamav-scan
-    computeResources:
-      limits:
-        memory: 8Gi
   - pipelineTaskName: sast-shell-check
     computeResources:
       limits:
         memory: 8Gi
-  - pipelineTaskName: build-images
+  - pipelineTaskName: sast-unicode-check
+    computeResources:
+      limits:
+        memory: 8Gi
+  - pipelineTaskName: clamav-scan
     computeResources:
       limits:
         memory: 8Gi
