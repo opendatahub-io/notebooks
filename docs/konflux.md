@@ -27,6 +27,9 @@ The default context names are verbose (`open-data-hub-tenant/api-stone-prd-rh01-
 ODH_CTX="$(oc config get-contexts -o name | grep 'open-data-hub-tenant.*stone-prd-rh01' | head -n1)"
 RHOAI_CTX="$(oc config get-contexts -o name | grep 'rhoai-tenant.*stone-prod-p02' | head -n1)"
 
+test -n "$ODH_CTX" || echo "ODH context not found — run: oc login --web https://api.stone-prd-rh01.pg1f.p1.openshiftapps.com:6443"
+test -n "$RHOAI_CTX" || echo "RHOAI context not found — run: oc login --web https://api.stone-prod-p02.hjvn.p1.openshiftapps.com:6443"
+
 oc get components --context "$ODH_CTX" -n open-data-hub-tenant
 oc get components --context "$RHOAI_CTX" -n rhoai-tenant
 
