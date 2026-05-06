@@ -84,8 +84,14 @@ define build_image
 	$(eval DOCKERFILE_NAME := $(notdir $(2)))
 	$(eval CONF_FILE := $(3))
 
-	# if the conf file exists, pass it to the container engine via --build-arg-file
-	$(eval BUILD_ARGS := $(if $(wildcard $(CONF_FILE)),--build-arg-file '$(CONF_FILE)',))
+	# if the conf file exists, transform it into quoted --build-arg flags
+	$(eval BUILD_ARGS := $(shell \
+		if [ -f '$(CONF_FILE)' ]; then \
+			awk '!/^[[:space:]]*#/ && NF { \
+				gsub(/^[[:space:]]+|[[:space:]]+$$/, ""); \
+				printf "--build-arg \047%s\047 ", $$0; \
+			}' '$(CONF_FILE)'; \
+		fi))
 
 # Hermetic local build: when cachi2/output/ exists AND this target uses a
 # prefetch-input tree, mount pre-downloaded deps into the build.

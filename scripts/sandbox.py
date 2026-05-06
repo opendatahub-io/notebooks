@@ -62,30 +62,11 @@ def main() -> int:
 
 
 def extract_build_args(remaining: list[str]) -> dict[str, str]:
-    """Extract --build-arg KEY=VALUE pairs and --build-arg-file entries from the command line."""
+    """Extract --build-arg KEY=VALUE pairs from the command line using argparse."""
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("--build-arg", action="append", default=[])
-    parser.add_argument("--build-arg-file", action="append", default=[], dest="build_arg_file")
     known, _ = parser.parse_known_args(remaining)
     build_args = {}
-    root = ROOT_DIR.resolve()
-    for filepath in known.build_arg_file:
-        path = pathlib.Path(filepath).resolve()
-        try:
-            path.relative_to(root)
-        except ValueError as exc:
-            raise ValueError(f"--build-arg-file must be under repository root: {filepath!r}") from exc
-        if not path.is_file():
-            raise ValueError(f"--build-arg-file is not a readable file: {filepath!r}")
-        with path.open(encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if "=" not in line:
-                    raise ValueError(f"Invalid build-arg entry in {filepath!r}: {line!r}")
-                key, value = line.split("=", 1)
-                build_args[key.strip()] = value.strip()
     for arg in known.build_arg:
         if "=" not in arg:
             raise ValueError(f"--build-arg must be in KEY=VALUE format, got: {arg!r}")
