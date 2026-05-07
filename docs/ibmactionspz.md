@@ -641,17 +641,24 @@ top-level `cachi2/output` and RPM `repos.d` mounts are passed by the
 Makefile as build command flags, not as Dockerfile directives.
 
 Workarounds:
-1. **Copy `cachi2/output` into the build context** — make it available
+1. **Build with podman inside `docker run --privileged`** (implemented) —
+   run the `make` build step inside a privileged Fedora 44 container
+   that has podman 5.x. Podman supports `--volume` natively, and
+   podman 5.4 supports Dockerfile HEREDOCs. The workspace is mounted
+   so pre-compiled `bin/buildinputs`, the uv `.venv`, and `cachi2/output`
+   are all reused from the host. After build, pipe `podman save | docker load`
+   to transfer the image to Docker for testcontainers. No Makefile or
+   Dockerfile changes needed.
+2. **Use `docker buildx build --build-context`** — BuildKit named contexts
+   can map external directories: `--build-context cachi2=/path/cachi2/output`.
+   Podman also supports this flag (since buildah PR #3978, May 2022).
+   Requires Dockerfile changes to use `RUN --mount=type=bind,from=cachi2,...`
+   but would unify both engines on a single syntax. Future migration path.
+3. **Copy `cachi2/output` into the build context** — make it available
    via `COPY` instead of `--volume`. Increases context size but works
    with both engines.
-2. **Use `DOCKER_BUILDKIT=0`** (legacy builder) — may support `--volume`
-   but is deprecated and lacks features like multi-stage caching.
-3. **Use `docker buildx build --build-context`** — BuildKit named contexts
-   can map external directories: `--build-context cachi2=/path/cachi2/output`.
-   Requires Dockerfile changes to use `FROM cachi2` or `COPY --from=cachi2`.
-4. **Build with podman inside `docker run --privileged`** — use the
-   privileged container escape to run podman (which supports `--volume`)
-   inside a Docker container where namespaces work.
+4. **Use `DOCKER_BUILDKIT=0`** (legacy builder) — deprecated, does not
+   actually support `--volume` either, and lacks multi-stage caching.
 
 ## Experiment history
 
@@ -666,3 +673,4 @@ Workarounds:
 | May 2026 | Podman investigation | ppc64le: works, s390x: blocked by AppArmor in user namespaces |
 | May 2026 | Docker confirmed | Docker builds work on both arches |
 | May 2026 | Kubernetes probed | kubeadm fails on both arches (no net/mount ns, no /lib/modules) |
+| May 2026 | `--volume` blocker | Docker buildx rejects `--volume`; solved via podman-in-docker (`docker run --privileged` + Fedora 44 podman 5.x) |
