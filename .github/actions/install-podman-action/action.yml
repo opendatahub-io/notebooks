@@ -54,11 +54,16 @@ runs:
         sudo systemctl unmask --now podman.service podman.socket
         sudo systemctl start podman.socket
 
+        # the socket dir /run/podman/ may be created with restrictive permissions;
+        # ensure the runner user can reach the socket (SocketMode=0666 only affects the socket file itself)
+        sudo chmod 0755 /run/podman
+        ls -la /run/podman/
+
         echo "PODMAN_SOCK=/var/run/podman/podman.sock" >> $GITHUB_ENV
 
-        # verify rootful podman works via the socket
-        sudo podman info --format '{{.Host.OCIRuntime.Name}} {{.Host.OCIRuntime.Version}}'
-        sudo podman ps
+        # verify rootful podman works via the socket (as runner user, not sudo)
+        podman info --format '{{.Host.OCIRuntime.Name}} {{.Host.OCIRuntime.Version}}'
+        podman ps
 
     # ── Homebrew path (amd64, arm64): install recent podman via brew ──
 
