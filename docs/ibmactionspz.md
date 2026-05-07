@@ -472,6 +472,31 @@ dirs and lets the Makefile fall through to a non-hermetic build. The
 Dockerfiles then pull dependencies directly from PyPI/dnf repos at build
 time.
 
+## Container image arch availability for prefetch
+
+The hermetic prefetch pipeline runs container tools (hermeto, UBI9) to
+download RPMs, npm packages, and Go modules. Not all images are multiarch:
+
+| Image | amd64 | arm64 | ppc64le | s390x |
+|---|---|---|---|---|
+| `ghcr.io/hermetoproject/hermeto:0.46.2` | yes | yes | **no** | **no** |
+| `registry.access.redhat.com/ubi9/ubi` | yes | yes | yes | yes |
+| `quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest` | yes | yes | yes | yes |
+
+**Hermeto** (the RPM/npm/gomod prefetch tool) has no ppc64le or s390x
+builds. This means the hermetic RPM prefetch step (step 4/5 in
+`prefetch-all.sh`) cannot run natively on IBM runners.
+
+Workarounds:
+1. Pre-generate `cachi2/output/` on amd64 and transfer to IBM runners
+2. Run hermeto under qemu emulation (possible on ppc64le where podman works)
+3. Skip RPM prefetch and use network-based `dnf install` in the Dockerfile
+   (non-hermetic for RPMs, but pip/generic artifacts are still hermetic)
+4. Ask the hermeto project to add ppc64le/s390x builds
+
+The pip download step (step 2/5) works fine — it's pure Python, no container.
+Generic artifacts (step 1/5, GPG keys) also work — just `wget`.
+
 ## Pipeline architecture on IBM runners
 
 Since Docker is the only viable container engine (podman blocked on s390x,
