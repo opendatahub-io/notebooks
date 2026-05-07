@@ -528,11 +528,12 @@ jobs:
             registry.fedoraproject.org/fedora:44 \
             bash -c '
               set -Eeuxo pipefail
-              dnf install -y --quiet podman make which
+              dnf install -y --quiet podman make which python3
               export PATH="/workspace/.venv/bin:$PATH"
               export VIRTUAL_ENV="/workspace/.venv"
               make jupyter-minimal-ubi9-python-3.12 \
                 CONTAINER_ENGINE=podman \
+                BUILD_ARCH="'"${{ matrix.platform }}"'" \
                 IMAGE_TAG="'"${IMAGE_TAG}"'" \
                 PUSH_IMAGES=no \
                 CONTAINER_BUILD_CACHE_ARGS="--no-cache"
