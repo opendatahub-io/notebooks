@@ -36,6 +36,7 @@ test = [
 # OpenShift/k8s testing deps — excluded on IBM arches (ppc64le, s390x) because:
 # 1. No k8s available in IBM's LXD containers (net/mount namespaces blocked)
 # 2. cryptography (transitive via authlib) has no s390x wheel on PyPI
+#    (sdist is available; could build from source with Rust + libssl-dev if ever needed)
 test-openshift = [
     "podman; platform_machine != 'ppc64le' and platform_machine != 's390x'",
     "kubernetes; platform_machine != 'ppc64le' and platform_machine != 's390x'",
