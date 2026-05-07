@@ -341,3 +341,100 @@ jobs:
           sudo journalctl -xeu kubelet --no-pager | tail -30 || true
           sudo crictl --runtime-endpoint unix:///run/containerd/containerd.sock ps -a 2>&1 | head -20 || true
         continue-on-error: true
+
+  # ── Docker build + testcontainers (end-to-end proof) ──
+
+  test-docker-build:
+    name: "docker-build · ${{ matrix.platform }}"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04-ppc64le
+            platform: linux/ppc64le
+          - runner: ubuntu-24.04-s390x
+            platform: linux/s390x
+    env:
+      IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
+      CONTAINER_ENGINE: docker
+      BUILD_ARCH: ${{ matrix.platform }}
+      RELEASE_PYTHON_VERSION: "3.12"
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Downcase IMAGE_REGISTRY
+        run: echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> $GITHUB_ENV
+
+      # setup-go with ppc64le arch workaround
+      # https://github.com/actions/setup-go/issues/517
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
+        with:
+          go-version: "stable"
+          architecture: ${{ matrix.platform == 'linux/ppc64le' && 'ppc64le' || '' }}
+          cache-dependency-path: |
+            scripts/buildinputs/go.mod
+            scripts/check-payload/go.mod
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Install from uv.lock
+        run: uv sync --group dev --locked
+
+      - name: Docker info
+        run: |
+          set -x
+          docker version
+          docker info
+          docker buildx version
+
+      - name: "Build: make jupyter-minimal-ubi9-python-3.12"
+        id: make-build
+        run: |
+          set -Eeuxo pipefail
+
+          IMAGE_TAG="ibm-test_$(echo $GITHUB_SHA | head -c7)_odh_$(echo ${{ matrix.platform }} | tr '/' '_')"
+          IMAGE_NAME="${IMAGE_REGISTRY}:jupyter-minimal-ubi9-python-3.12-${IMAGE_TAG}"
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+
+          CONTAINER_ENGINE=docker make jupyter-minimal-ubi9-python-3.12 \
+            IMAGE_TAG="${IMAGE_TAG}"
+        env:
+          PUSH_IMAGES: "no"
+          CONTAINER_BUILD_CACHE_ARGS: "--no-cache"
+
+      - name: List built images
+        if: ${{ !cancelled() && steps.make-build.outcome == 'success' }}
+        run: docker images --digests | head -20
+
+      - name: Run Testcontainers tests
+        if: ${{ !cancelled() && steps.make-build.outcome == 'success' }}
+        run: |
+          set -Eeuxo pipefail
+          uv run pytest --capture=fd tests/containers \
+            -m 'not openshift and not cuda and not rocm and not manifest_validation' \
+            --image="${IMAGE_NAME}" \
+            -v
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/docker.sock"
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+
+      - name: Show build failure logs
+        if: ${{ failure() }}
+        run: |
+          docker logs $(docker ps -aq --latest) 2>&1 | tail -50 || true
+          df -h
+          docker images
