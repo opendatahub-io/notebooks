@@ -448,6 +448,30 @@ env:
   UV_EXTRA_INDEX_URL: "https://wheels.developerfirst.ibm.com/ppc64le/linux/+simple/"
 ```
 
+## Hermetic builds on IBM runners
+
+Both ODH (`Dockerfile.*`) and RHOAI (`Dockerfile.konflux.*`) builds are
+**hermetic** — they require pre-fetched dependencies from `cachi2/output/`.
+The Makefile detects `prefetch-input/` directories (git submodules) and
+requires `cachi2/output/` to exist, failing with:
+
+```
+Prefetch required for hermetic build. Run: scripts/lockfile-generators/prefetch-all.sh
+```
+
+For IBM runners, the full hermetic build pipeline needs:
+1. Checkout with `submodules: recursive` (to get `prefetch-input/` dirs)
+2. Run `scripts/lockfile-generators/prefetch-all.sh --component-dir <dir>`
+   to populate `cachi2/output/` with pip wheels, RPMs, and Go modules
+3. The prefetch step itself downloads packages and needs network access
+   (which works — it runs in the host namespace, not inside podman)
+
+Without prefetch, builds can still work for testing purposes by skipping
+submodule checkout (`submodules: false`), which removes the `prefetch-input/`
+dirs and lets the Makefile fall through to a non-hermetic build. The
+Dockerfiles then pull dependencies directly from PyPI/dnf repos at build
+time.
+
 ## Pipeline architecture on IBM runners
 
 Since Docker is the only viable container engine (podman blocked on s390x,
