@@ -499,12 +499,18 @@ RPMs, tarballs) without executing them. The target-arch build task then
 consumes the prefetched output. Our GHA CI should follow the same pattern.
 
 Workarounds:
-1. **Run prefetch on amd64, build on IBM** — the Konflux approach. Use a
+1. **Run hermeto in UBI9 instead of the hermeto image** — UBI9 is fully
+   multiarch (amd64, arm64, ppc64le, s390x) and ships `python3-createrepo_c`
+   as a system package. Install hermeto from git inside UBI9:
+   `dnf install -y python3-createrepo_c python3-pip && pip install
+   git+https://github.com/hermetoproject/hermeto`. This lets the prefetch
+   step run natively on IBM runners without a separate amd64 job.
+2. **Run prefetch on amd64, build on IBM** — the Konflux approach. Use a
    two-job GHA workflow: amd64 job runs prefetch-all.sh, uploads
    `cachi2/output/` as artifact, IBM job downloads and builds.
-2. Skip RPM prefetch and use network-based `dnf install` in the Dockerfile
+3. Skip RPM prefetch and use network-based `dnf install` in the Dockerfile
    (non-hermetic for RPMs, but pip/generic artifacts are still hermetic)
-3. Ask the hermeto project to add ppc64le/s390x builds
+4. Ask the hermeto project to add ppc64le/s390x builds
 
 Jira: [RHAIENG-4956](https://redhat.atlassian.net/browse/RHAIENG-4956) —
 update hermeto version in GHA CI scripts.
