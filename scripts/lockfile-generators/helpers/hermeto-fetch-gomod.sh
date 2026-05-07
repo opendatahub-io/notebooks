@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+CONTAINER_ENGINE="${CONTAINER_ENGINE:-podman}"
+
 # hermeto-fetch-gomod.sh — Download Go modules using Hermeto.
 #
 # Fetches all Go dependencies for a module (go.mod + go.sum) into
@@ -59,7 +61,7 @@ HERMETO_STAGING=$(mktemp -d)
 trap 'rm -rf "$HERMETO_STAGING"' EXIT
 
 echo "--- Downloading Go modules via hermeto ---"
-podman run --rm \
+$CONTAINER_ENGINE run --rm \
   -v "$(pwd):/source:z" \
   -v "$HERMETO_STAGING:/output:z" \
   "$HERMETO_IMAGE" \

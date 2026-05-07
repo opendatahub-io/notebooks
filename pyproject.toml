@@ -99,6 +99,8 @@ no-binary-package = [
     # exempt our own packages
     "notebooks",
     "copr-rebuild",
+    # C extensions without ppc64le wheels on PyPI (small, fast builds)
+    "pyyaml",
     # sdist-only deps (pure Python, no system library requirements)
     "openshift-python-wrapper", "pyhelper-utils", "python-simple-logger", "timeout-sampler",
 ]
