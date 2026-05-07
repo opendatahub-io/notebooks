@@ -11,22 +11,39 @@ dependencies = []
 
 [dependency-groups]
 dev = [
-    "prek",
+    {include-group = "lint"},
+    {include-group = "test"},
+    {include-group = "build"},
+    {include-group = "tools"},
+]
+lint = [
+    # prek only publishes wheels for x86_64, aarch64, armv7l, i686, s390x — no ppc64le.
+    # Exclude on architectures without wheels (no-build=true blocks source builds).
+    "prek; platform_machine != 'ppc64le'",
     "pyright",
     "ruff",
-    #
+]
+test = [
     "pytest",
     "pytest-cov",
     "pytest-instafail",
     "allure-pytest",
     "hypothesis",
-    #
     "pyfakefs",
+    "testcontainers",
+    "docker",
+    "podman",
+    "kubernetes",
+    "openshift-python-wrapper",
+    # Transitive via openshift-python-wrapper -> fastmcp;
+    "authlib>=1.6.11",
+    "inline-snapshot>=0.34.2",
+]
+build = [
     # Python 3.14 changed the internal typing._eval_type() function signature - it now includes a new prefer_fwd_module parameter
     # and so pydantic 2.10+ is required to work with from __future__ import annotations on Python 3.14
     "pydantic>=2.13.0",
     "requests",
-    #
     "pyyaml",
     # renovate config is in json5
     "pyjson5",
@@ -46,6 +63,8 @@ dev = [
     "openshift-python-wrapper",
     # Transitive via openshift-python-wrapper → fastmcp;
     "authlib>=1.7.2",
+]
+tools = [
     "typer",
     # certifi provides CA bundle needed on macOS where Python's bundled OpenSSL
     # does not read from the system Keychain, causing CERTIFICATE_VERIFY_FAILED
@@ -57,7 +76,6 @@ dev = [
     "pygments",
     # rich powers the local live progress table in ci/check-image-availability.py
     "rich>=15.0.0",
-    "inline-snapshot>=0.34.2",
 ]
 
 # Optional SMT backend for Hypothesis (z3 ~37MB). Not installed by default.
