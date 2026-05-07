@@ -85,10 +85,12 @@ define build_image
 	$(eval CONF_FILE := $(3))
 
 	# if the conf file exists, transform it into quoted --build-arg flags
+	# NOTE: lines must use KEY=VALUE (no spaces around '='); single quotes in values are escaped
 	$(eval BUILD_ARGS := $(shell \
 		if [ -f '$(CONF_FILE)' ]; then \
 			awk '!/^[[:space:]]*#/ && NF { \
 				gsub(/^[[:space:]]+|[[:space:]]+$$/, ""); \
+				gsub(/\047/, "\047\\\\\047\047"); \
 				printf "--build-arg \047%s\047 ", $$0; \
 			}' '$(CONF_FILE)'; \
 		fi))
