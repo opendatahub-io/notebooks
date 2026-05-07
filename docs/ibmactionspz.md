@@ -431,6 +431,13 @@ env:
 This is acceptable because the missing packages are small C extensions
 (PyYAML, MarkupSafe, ruamel.yaml.clib) that build in seconds.
 
+**Future consideration:** uv workspaces could let each workspace member
+(`notebooks-ci`, `notebooks-test`, `notebooks-lint`) have its own `no-build`
+and `required-environments` settings while sharing a single lockfile. This
+would allow strict wheel enforcement for amd64/arm64-only members while
+permitting source builds in IBM-arch-facing members. Not worth the
+restructuring cost today, but useful if the project grows.
+
 Optionally, add IBM's ppc64le index for pre-built wheels:
 
 ```yaml
