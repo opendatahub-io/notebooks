@@ -525,7 +525,7 @@ jobs:
             registry.fedoraproject.org/fedora:44 \
             bash -c '
               set -Eeuxo pipefail
-              dnf install -y --quiet podman make
+              dnf install -y --quiet podman make which
               export PATH="/workspace/.venv/bin:$PATH"
               export VIRTUAL_ENV="/workspace/.venv"
               make jupyter-minimal-ubi9-python-3.12 \
