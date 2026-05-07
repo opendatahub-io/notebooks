@@ -1,0 +1,103 @@
+---
+name: Test IBM Runners (ppc64le, s390x)
+
+"on":
+  push:
+    branches: [jd_ibm_runners]
+    paths:
+      - '.github/workflows/test-ibm-runners.yaml'
+      - '.github/actions/install-podman-action/**'
+      - 'ci/cached-builds/**'
+  workflow_dispatch:
+
+jobs:
+  test-podman:
+    name: "podman · ${{ matrix.platform }}"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04-ppc64le
+            platform: linux/ppc64le
+          - runner: ubuntu-24.04-s390x
+            platform: linux/s390x
+    env:
+      TMPDIR: /home/runner/.local/share/containers/tmpdir
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: System info
+        run: |
+          set -x
+          uname -a
+          cat /etc/os-release
+          df -h
+          free -h
+          nproc
+
+      - name: Explore existing podman
+        run: |
+          set -x
+          which podman
+          podman --version
+          podman info || true
+          systemctl status podman.socket || true
+          systemctl status podman.service || true
+          ls -la /run/podman/ || echo "/run/podman/ does not exist"
+          ls -la /var/run/podman/ || echo "/var/run/podman/ does not exist"
+          ss -xlpn | grep podman || echo "no podman socket listening"
+          cat /usr/lib/systemd/system/podman.socket || true
+          cat /usr/lib/systemd/system/podman.service || true
+
+      - name: Test rootless podman build
+        run: |
+          set -Eeuxo pipefail
+          mkdir -p $TMPDIR
+
+          cat > /tmp/Containerfile.cowsay <<'DOCKERFILE'
+          FROM docker.io/library/alpine:latest
+          RUN apk add --no-cache cowsay
+          CMD ["cowsay", "hello from IBM runner"]
+          DOCKERFILE
+
+          podman build -t cowsay-test -f /tmp/Containerfile.cowsay /tmp/
+          podman run --rm cowsay-test
+
+      - name: Test rootful podman via sudo
+        run: |
+          set -Eeuxo pipefail
+
+          sudo podman build -t cowsay-test-root -f /tmp/Containerfile.cowsay /tmp/
+          sudo podman run --rm cowsay-test-root
+
+      - name: Explore rootful podman socket
+        run: |
+          set -x
+
+          # try to start socket if not running
+          sudo systemctl start podman.socket || true
+          sleep 1
+
+          ls -la /run/podman/ || echo "/run/podman/ does not exist"
+          sudo ls -la /run/podman/ || echo "even with sudo, /run/podman/ does not exist"
+
+          ss -xlpn | grep podman || echo "no podman socket listening"
+
+          # try accessing via curl
+          sudo curl -s --unix-socket /run/podman/podman.sock http://d/v4.0.0/libpod/_ping || echo "ping via socket failed"
+
+          # try with explicit --url
+          podman --url unix:///run/podman/podman.sock ps 2>&1 || echo "runner user cannot access rootful socket"
+          sudo podman --url unix:///run/podman/podman.sock ps 2>&1 || echo "even sudo cannot access rootful socket"
+
+      - name: Test rootful via CONTAINER_HOST
+        env:
+          CONTAINER_HOST: unix:///run/podman/podman.sock
+        run: |
+          set -x
+          podman ps 2>&1 || echo "CONTAINER_HOST access failed for runner user"
+          sudo podman ps 2>&1 || echo "CONTAINER_HOST access failed even with sudo"
