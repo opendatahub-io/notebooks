@@ -181,6 +181,44 @@ dominates clone time in all cases.
 Targets that don't need submodules (e.g. `jupyter-minimal`) could benefit
 from skipping `submodules: recursive` and using a shallow clone.
 
+## Useful `gh` commands for checking CI
+
+```bash
+# List recent runs on the PR branch
+gh run list --repo opendatahub-io/notebooks --branch jd_ibm_runners \
+  --workflow "Build Notebooks (pr)" --limit 3 \
+  --json databaseId,status,conclusion,headSha,createdAt \
+  --jq '.[] | {id: .databaseId, status: .status, conclusion: .conclusion, sha: .headSha[:8]}'
+
+# Check IBM runner jobs from a specific run
+gh run view <RUN_ID> --repo opendatahub-io/notebooks \
+  --json jobs --jq '.jobs[] | select(.name | contains("ppc64le") or contains("s390x")) | {name: .name, status: .status, conclusion: .conclusion}'
+
+# Find which step failed
+gh api repos/opendatahub-io/notebooks/actions/runs/<RUN_ID>/jobs \
+  --jq '.jobs[] | select(.name | contains("ppc64le") and contains("odh")) | .steps[] | select(.conclusion == "failure") | {name: .name, number: .number}'
+
+# Get job ID for log download
+gh api repos/opendatahub-io/notebooks/actions/runs/<RUN_ID>/jobs \
+  --jq '.jobs[] | select(.name | contains("ppc64le") and contains("odh")) | .id'
+
+# Extract error lines from a job log
+gh api repos/opendatahub-io/notebooks/actions/jobs/<JOB_ID>/logs 2>&1 \
+  | grep -E "##\[error" | head -5
+
+# Get full error context around the failure
+gh api repos/opendatahub-io/notebooks/actions/jobs/<JOB_ID>/logs 2>&1 \
+  | grep -B 3 -A 8 "exit code 125"
+
+# Check runner machine details (near top of log)
+gh api repos/opendatahub-io/notebooks/actions/jobs/<JOB_ID>/logs 2>&1 \
+  | grep -E "Runner name|Runner version|Operating System|Runner Image|Included Software" | head -10
+
+# Check checkout/clone timing
+gh api repos/opendatahub-io/notebooks/actions/jobs/<JOB_ID>/logs 2>&1 \
+  | grep -E "Syncing repository|Submodule path.*checked out"
+```
+
 ## Experiment history
 
 | Date | What | Outcome |
