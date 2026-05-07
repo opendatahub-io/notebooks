@@ -15,7 +15,7 @@ dependencies = [
 copr-rebuild = "copr_rebuild.rebuild:main"
 
 [build-system]
-requires = ["uv-build"]
+requires = ["uv-build>=0.11,<0.12"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
