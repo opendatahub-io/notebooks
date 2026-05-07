@@ -31,17 +31,20 @@ test = [
     "pyfakefs",
     "testcontainers",
     "docker",
-    "podman",
-    "kubernetes",
-    "openshift-python-wrapper",
-    # Transitive via openshift-python-wrapper -> fastmcp;
-    "authlib>=1.6.11",
+    # podman python library — not needed on IBM arches (we use Docker there)
+    "podman; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    # kubernetes/openshift — not needed on IBM arches (no k8s in LXD containers)
+    "kubernetes; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    "openshift-python-wrapper; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    # Transitive via openshift-python-wrapper -> fastmcp -> cryptography (no s390x wheel)
+    "authlib>=1.6.11; platform_machine != 'ppc64le' and platform_machine != 's390x'",
 ]
 build = [
     # Python 3.14 changed the internal typing._eval_type() function signature - it now includes a new prefer_fwd_module parameter
     # and so pydantic 2.10+ is required to work with from __future__ import annotations on Python 3.14
     "pydantic>=2.10.0",
     "requests",
+    # PyYAML has no ppc64le wheel on PyPI (s390x is fine)
     "pyyaml",
     "ruamel-yaml",
     "structlog",
@@ -60,6 +63,7 @@ tools = [
     "rich>=14.3.2",
 ]
 
+
 [tool.uv]
 required-version = "==0.11.8"
 # Supply-chain hardening: only resolve package versions published ≥3 days ago.
@@ -75,6 +79,10 @@ environments = [
 required-environments = [
     "sys_platform == 'linux' and platform_machine == 'x86_64'",
     "sys_platform == 'darwin' and platform_machine == 'arm64'",
+    # IBM arches (ppc64le, s390x) are not listed here because many packages
+    # lack PyPI wheels for these platforms, and no-build=true would make
+    # uv lock fail. On IBM runners, UV_NO_BUILD=false is set at CI time.
+    # See docs/ibmactionspz.md for the wheel availability landscape.
 ]
 # Reject source distributions — require pre-built wheels for all deps.
 # Catches packages that need system libraries to build from source
