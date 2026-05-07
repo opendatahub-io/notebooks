@@ -487,12 +487,27 @@ download RPMs, npm packages, and Go modules. Not all images are multiarch:
 builds. This means the hermetic RPM prefetch step (step 4/5 in
 `prefetch-all.sh`) cannot run natively on IBM runners.
 
+**Can hermeto be pip-installed instead?** Hermeto is pure Python (setuptools)
+but is not published to PyPI ("We do not distribute Hermeto as a standalone
+package"). Its dependency `createrepo-c` (C extension for RPM repo metadata)
+also lacks ppc64le/s390x wheels. Building from source would need cmake +
+createrepo_c C headers.
+
+**How Konflux handles this:** The `prefetch-dependencies` task runs on
+**amd64 regardless of target platform**. It downloads artifacts (wheels,
+RPMs, tarballs) without executing them. The target-arch build task then
+consumes the prefetched output. Our GHA CI should follow the same pattern.
+
 Workarounds:
-1. Pre-generate `cachi2/output/` on amd64 and transfer to IBM runners
-2. Run hermeto under qemu emulation (possible on ppc64le where podman works)
-3. Skip RPM prefetch and use network-based `dnf install` in the Dockerfile
+1. **Run prefetch on amd64, build on IBM** — the Konflux approach. Use a
+   two-job GHA workflow: amd64 job runs prefetch-all.sh, uploads
+   `cachi2/output/` as artifact, IBM job downloads and builds.
+2. Skip RPM prefetch and use network-based `dnf install` in the Dockerfile
    (non-hermetic for RPMs, but pip/generic artifacts are still hermetic)
-4. Ask the hermeto project to add ppc64le/s390x builds
+3. Ask the hermeto project to add ppc64le/s390x builds
+
+Jira: [RHAIENG-4956](https://redhat.atlassian.net/browse/RHAIENG-4956) —
+update hermeto version in GHA CI scripts.
 
 The pip download step (step 2/5) works fine — it's pure Python, no container.
 Generic artifacts (step 1/5, GPG keys) also work — just `wget`.
