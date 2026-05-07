@@ -390,7 +390,11 @@ jobs:
         uses: ./.github/actions/setup-uv
 
       - name: Install from uv.lock
-        run: uv sync --group dev --locked
+        run: |
+          # prek has no ppc64le wheel and no-build=true in pyproject.toml blocks source builds.
+          # We don't need prek (pre-commit tool) for building and testing images.
+          # Override no-build for prek specifically to allow source build on IBM arches.
+          uv sync --group dev --locked --no-binary-package prek
 
       - name: Docker info
         run: |
