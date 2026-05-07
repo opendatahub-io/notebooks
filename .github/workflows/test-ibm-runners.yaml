@@ -203,6 +203,51 @@ jobs:
           podman ps 2>&1 || echo "CONTAINER_HOST access failed for runner user"
           sudo podman ps 2>&1 || echo "CONTAINER_HOST access failed even with sudo"
 
+      # ── Docker container step escape experiments ──
+      # Can we run steps inside a Docker container with relaxed security,
+      # potentially re-enabling podman on s390x?
+
+      - name: Test docker run --privileged
+        run: |
+          set -x
+          sudo docker run --rm --privileged alpine echo "privileged: OK" || echo "privileged: BLOCKED"
+          sudo docker run --rm --security-opt apparmor=unconfined alpine echo "apparmor=unconfined: OK" || echo "apparmor=unconfined: BLOCKED"
+          sudo docker run --rm --security-opt seccomp=unconfined alpine echo "seccomp=unconfined: OK" || echo "seccomp=unconfined: BLOCKED"
+        continue-on-error: true
+
+      - name: Test podman inside docker (s390x workaround?)
+        run: |
+          set -x
+          sudo docker run --rm --privileged \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            registry.access.redhat.com/ubi9/ubi \
+            bash -c "
+              dnf install -y podman --quiet &&
+              podman --version &&
+              podman pull docker.io/library/alpine:latest &&
+              echo 'podman inside docker: OK'
+            " || echo "podman inside docker: FAILED"
+        continue-on-error: true
+
+      - name: Test GHA step in container (docker run with workspace mount)
+        run: |
+          set -x
+          sudo docker run --rm \
+            --privileged \
+            -v ${{ github.workspace }}:/workspace:z \
+            -w /workspace \
+            registry.access.redhat.com/ubi9/ubi \
+            bash -c "
+              echo 'running inside docker container on IBM runner'
+              uname -m
+              ls /workspace/Makefile && echo 'workspace mounted: OK'
+              # can we create namespaces here?
+              unshare --user --pid --fork echo 'user+pid ns: OK' || echo 'user+pid ns: BLOCKED'
+              unshare --net echo 'net ns: OK' || echo 'net ns: BLOCKED'
+              unshare --mount echo 'mount ns: OK' || echo 'mount ns: BLOCKED'
+            "
+        continue-on-error: true
+
       # ── Kubernetes feasibility probing ──
 
       - name: Probe LXD container capabilities
