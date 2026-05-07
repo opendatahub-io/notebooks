@@ -522,7 +522,7 @@ jobs:
           # supports --volume and Dockerfile HEREDOCs). The workspace is mounted
           # so pre-compiled bin/buildinputs, uv .venv, and cachi2/output are
           # all reused from the host. After build, pipe the image to Docker.
-          sudo docker run --rm --privileged \
+          sudo docker run --rm --privileged --network=host \
             -v "${{ github.workspace }}:/workspace:z" \
             -w /workspace \
             registry.fedoraproject.org/fedora:44 \
@@ -538,8 +538,10 @@ jobs:
                 IMAGE_TAG="'"${IMAGE_TAG}"'" \
                 PUSH_IMAGES=no \
                 CONTAINER_BUILD_CACHE_ARGS="--no-cache --network=host"
-              podman save --format docker-archive "'"${IMAGE_NAME}"'"
-            ' | docker load
+              podman save --format docker-archive -o /workspace/image.tar "'"${IMAGE_NAME}"'"
+            '
+          docker load < image.tar
+          rm -f image.tar
 
       - name: List built images
         if: ${{ !cancelled() && steps.make-build.outcome == 'success' }}
