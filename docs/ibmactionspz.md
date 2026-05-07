@@ -375,6 +375,69 @@ The Makefile k8s tests (deploy StatefulSet, run papermill) must remain on
 amd64 GitHub-hosted runners. The architecture-specific validation ("does the
 image build and does Jupyter start") is covered by testcontainers.
 
+## Python package availability on IBM arches
+
+Many Python packages with C extensions lack pre-built wheels for ppc64le
+and/or s390x on PyPI. Our `pyproject.toml` sets `no-build = true` to
+reject source distributions on amd64/arm64 (where all wheels should exist),
+but this must be overridden on IBM arches.
+
+### Wheel availability (as of May 2026)
+
+| Package | PyPI ppc64le | PyPI s390x | IBM index ppc64le |
+|---|---|---|---|
+| PyYAML | none | yes | yes (6.0.3) |
+| pydantic-core | yes | yes | yes |
+| cffi | yes | yes | yes |
+| cryptography | yes | none | yes |
+| greenlet | yes | yes | — |
+| MarkupSafe | none | none | yes |
+| ruamel.yaml.clib | none | none | yes |
+| prek | none | yes | — |
+
+### Pre-built wheel sources
+
+**IBM Developer First** — ppc64le only (no s390x index):
+```
+https://wheels.developerfirst.ibm.com/ppc64le/linux/+simple/
+```
+DevPi server with wheels for Power9/10/11. Versions use
+`+ppc64le1` local version suffix. Blog:
+<https://community.ibm.com/community/user/blogs/janani-janakiraman/2025/09/10/developing-apps-using-python-packages-on-ibm-power>
+
+Usage with pip:
+```bash
+pip install --prefer-binary <package> --extra-index-url https://wheels.developerfirst.ibm.com/ppc64le/linux
+```
+
+Usage with uv (env var):
+```bash
+UV_EXTRA_INDEX_URL=https://wheels.developerfirst.ibm.com/ppc64le/linux/+simple/
+```
+
+**conda-forge** — has ppc64le and s390x packages but in conda format (not
+pip-installable wheels).
+
+### CI workaround
+
+On IBM runners, override `no-build = true` to allow source builds for
+packages without wheels:
+
+```yaml
+env:
+  UV_NO_BUILD: "false"
+```
+
+This is acceptable because the missing packages are small C extensions
+(PyYAML, MarkupSafe, ruamel.yaml.clib) that build in seconds.
+
+Optionally, add IBM's ppc64le index for pre-built wheels:
+
+```yaml
+env:
+  UV_EXTRA_INDEX_URL: "https://wheels.developerfirst.ibm.com/ppc64le/linux/+simple/"
+```
+
 ## Pipeline architecture on IBM runners
 
 Since Docker is the only viable container engine (podman blocked on s390x,
