@@ -391,12 +391,11 @@ jobs:
 
       - name: Install from uv.lock
         run: |
-          # Packages without ppc64le/s390x wheels on PyPI need source builds.
-          # pyproject.toml has no-build=true; --no-binary-package overrides it per-package.
+          # PyYAML has no ppc64le wheel on PyPI; allow source build.
+          # markupsafe is excluded transitively (test-openshift group).
+          # ruamel-yaml-clib is optional (pure Python fallback works).
           uv sync --group dev --locked \
-            --no-binary-package pyyaml \
-            --no-binary-package markupsafe \
-            --no-binary-package ruamel-yaml-clib
+            --no-binary-package pyyaml
 
       - name: Docker info
         run: |
@@ -415,7 +414,8 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
 
-          CONTAINER_ENGINE=docker make jupyter-minimal-ubi9-python-3.12 \
+          make jupyter-minimal-ubi9-python-3.12 \
+            CONTAINER_ENGINE=docker \
             IMAGE_TAG="${IMAGE_TAG}"
         env:
           PUSH_IMAGES: "no"

@@ -59,8 +59,9 @@ tools = [
     # does not read from the system Keychain, causing CERTIFICATE_VERIFY_FAILED
     "certifi",
     # keyring provides OS-level secret storage for OAuth tokens (macOS Keychain,
-    # GNOME Keyring, KWallet) used by scripts/cve/jira_auth.py
-    "keyring",
+    # GNOME Keyring, KWallet) used by scripts/cve/jira_auth.py.
+    # On Linux, keyring -> secretstorage -> cryptography (no s390x wheel).
+    "keyring; platform_machine != 'ppc64le' and platform_machine != 's390x'",
     # pygments provides syntax highlighting for pretty-printed JSON in log output
     "pygments",
     # rich powers the local live progress table in ci/check-image-availability.py
