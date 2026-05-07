@@ -484,6 +484,18 @@ jobs:
           docker info
           docker buildx version
 
+      - name: "Build hermeto image for native arch"
+        run: |
+          set -Eeuxo pipefail
+          # The upstream hermeto image (ghcr.io/hermetoproject/hermeto) only
+          # has amd64/arm64 builds. Build from upstream Dockerfile for native arch
+          # and tag it so our prefetch scripts find it without pulling.
+          HERMETO_VERSION=0.46.2
+          git clone --depth 1 --branch ${HERMETO_VERSION} \
+            https://github.com/hermetoproject/hermeto /tmp/hermeto
+          docker build -t ghcr.io/hermetoproject/hermeto:${HERMETO_VERSION} /tmp/hermeto
+          rm -rf /tmp/hermeto
+
       - name: "Prefetch hermetic build dependencies"
         run: |
           set -Eeuxo pipefail
