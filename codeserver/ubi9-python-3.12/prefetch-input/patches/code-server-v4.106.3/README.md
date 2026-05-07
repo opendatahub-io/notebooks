@@ -38,7 +38,16 @@ This directory is **copied over** the read-only `prefetch-input/code-server` sub
    - Adds **ppc64** and **s390x** to `BUILD_TARGETS` so we can run the native gulp task (`vscode-reh-web-linux-ppc64-min` etc.) with system Node only (like che-code). Without this overlay, VS Code only defines tasks for linux x64, armhf, arm64, alpine.  
    - On ppc64le, Node reports `process.arch` as **"ppc64"** (not ppc64le), so the cache dir is `.build/node/.../linux-ppc64/` and the gulp task is `vscode-reh-web-linux-ppc64-min`. On s390x, `process.arch` is **"s390x"**.
 
-8. **ci/build/build-vscode.sh**  
+8. **lib/vscode/package.json** — **es5-ext** avoidance without **Gulp 5**  
+   - **`debug-fabulous` → ^2.x** removes the `memoizee` → `es5-ext` chain from `gulp-sourcemaps`.  
+   - **`semver-greatest-satisfied-range` → ^2.x** (override) replaces the old `sver-compat` → `es6-iterator` → `es5-ext` chain from `gulp-cli` 2.x.  
+   - **`undertaker` → ^2.x** (override) replaces Gulp 4’s default undertaker 1.x, which pulled `es6-weak-map` → `es5-ext`.  
+   - **Gulp stays at ^4.0.0.** Gulp 5 uses **streamx**-based orchestration that breaks VS Code’s gulp tasks (`pipeTo.end is not a function` in `vscode-reh-web-*-min-ci`).
+
+9. **lib/vscode/build/gulpfile.vscode.js** and **gulpfile.vscode.web.js**  
+   - Removes the resource glob for `out-build/vs/workbench/services/extensionManagement/common/media/*.{svg,png}`. Upstream removed that directory when extension icons moved to **Codicons** (`extensionsIcons.ts`), but the gulp lists were left behind. **Gulp 4** can also **ENOENT** when globbing a missing directory. Dropping the stale pattern matches upstream reality and fixes the build.
+
+10. **ci/build/build-vscode.sh**  
    - Builds for current arch (no x64 fallback on ppc64le/s390x). Uses system Node from `setup-offline-binaries.sh` cache.
 
 All of the above are **overlays**: at build time the Dockerfile copies this patches tree on top of the read-only `prefetch-input/code-server` submodule, so every `package.json` / `package-lock.json` that referenced the old git/codeload refs is replaced by these files and thus uses the registry versions we define here.
