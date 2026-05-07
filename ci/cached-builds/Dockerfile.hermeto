@@ -1,6 +1,7 @@
 FROM registry.fedoraproject.org/fedora:44
-RUN dnf install -y --quiet python3 python3-pip python3-createrepo_c git-core && \
+RUN dnf install -y --quiet python3 python3-pip python3-createrepo_c createrepo_c git-core && \
     pip install --quiet --root-user-action=ignore \
       "hermeto @ git+https://github.com/hermetoproject/hermeto@0.46.2" && \
-    dnf clean all
+    dnf clean all && \
+    createrepo_c --version && hermeto --version
 ENTRYPOINT ["hermeto"]
