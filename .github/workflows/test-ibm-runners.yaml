@@ -503,6 +503,9 @@ jobs:
         env:
           CONTAINER_ENGINE: docker
 
+      - name: Pre-compile bin/buildinputs (Go helper for sandbox.py)
+        run: make bin/buildinputs
+
       - name: "Build: make jupyter-minimal-ubi9-python-3.12 (podman-in-docker)"
         id: make-build
         run: |
