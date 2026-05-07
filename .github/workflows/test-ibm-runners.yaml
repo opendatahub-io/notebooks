@@ -513,7 +513,7 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
 
-          make jupyter-minimal-ubi9-python-3.12 \
+          uv run make jupyter-minimal-ubi9-python-3.12 \
             CONTAINER_ENGINE=docker \
             IMAGE_TAG="${IMAGE_TAG}"
         env:
