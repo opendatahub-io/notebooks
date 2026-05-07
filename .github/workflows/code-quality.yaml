@@ -18,6 +18,13 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          # Fetch full history so the lenient check can diff against PR base
+          fetch-depth: 0
+
+      - name: Fetch PR base ref for diff
+        if: github.event_name == 'pull_request'
+        run: git fetch origin ${{ github.event.pull_request.base.ref }}
 
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv
@@ -26,16 +33,10 @@ jobs:
         run: bash ci/generate_code.sh
 
       - name: Check there aren't any modified files present
-        run: |
-          clean=$(git status --porcelain)
-          if [[ -z "$clean" ]]; then
-              echo "Empty git status --porcelain: $clean"
-          else
-              echo "::error::Please run 'bash ci/generate_code.sh' (the command from the previous step), commit the changed files locally, and push again."
-              echo "Uncommitted file changes detected: $clean"
-              git diff
-              exit 1
-          fi
+        run: python3 ci/check_generated_tree_clean.py
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha }}
 
   pytest-tests:
     runs-on: ubuntu-latest
