@@ -1004,16 +1004,18 @@ lint = [
 ]
 test = [
     { name = "allure-pytest", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-    { name = "authlib", marker = "(platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'darwin') or (platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux')" },
     { name = "docker", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-    { name = "kubernetes", marker = "(platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'darwin') or (platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux')" },
-    { name = "openshift-python-wrapper", marker = "(platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'darwin') or (platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux')" },
-    { name = "podman", marker = "(platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'darwin') or (platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux')" },
     { name = "pyfakefs", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pytest", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pytest-cov", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pytest-subtests", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "testcontainers", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
+test-openshift = [
+    { name = "authlib", marker = "(platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'darwin') or (platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux')" },
+    { name = "kubernetes", marker = "(platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'darwin') or (platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux')" },
+    { name = "openshift-python-wrapper", marker = "(platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'darwin') or (platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux')" },
+    { name = "podman", marker = "(platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'darwin') or (platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux')" },
 ]
 tools = [
     { name = "certifi", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -1066,16 +1068,18 @@ lint = [
 ]
 test = [
     { name = "allure-pytest" },
-    { name = "authlib", marker = "platform_machine != 'ppc64le' and platform_machine != 's390x'", specifier = ">=1.6.11" },
     { name = "docker" },
-    { name = "kubernetes", marker = "platform_machine != 'ppc64le' and platform_machine != 's390x'" },
-    { name = "openshift-python-wrapper", marker = "platform_machine != 'ppc64le' and platform_machine != 's390x'" },
-    { name = "podman", marker = "platform_machine != 'ppc64le' and platform_machine != 's390x'" },
     { name = "pyfakefs" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-subtests" },
     { name = "testcontainers" },
+]
+test-openshift = [
+    { name = "authlib", marker = "platform_machine != 'ppc64le' and platform_machine != 's390x'", specifier = ">=1.6.11" },
+    { name = "kubernetes", marker = "platform_machine != 'ppc64le' and platform_machine != 's390x'" },
+    { name = "openshift-python-wrapper", marker = "platform_machine != 'ppc64le' and platform_machine != 's390x'" },
+    { name = "podman", marker = "platform_machine != 'ppc64le' and platform_machine != 's390x'" },
 ]
 tools = [
     { name = "certifi" },
