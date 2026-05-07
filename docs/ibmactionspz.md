@@ -623,6 +623,36 @@ IBM ppc64le/s390x:             Docker CE (pre-installed) -> docker build -> test
 | Testcontainers env | `DOCKER_HOST=unix:///var/run/docker.sock` instead of podman socket |
 | `actions/setup-go` | Add `architecture: ppc64le` workaround |
 
+### Docker limitation: no `--volume` on build
+
+The Makefile mounts `cachi2/output` into the build container via
+`--volume` flags for hermetic builds:
+
+```
+docker build --volume /path/cachi2/output:/cachi2/output:Z ...
+```
+
+**`docker build` (buildx) does not support `--volume`.** This is a
+podman-only feature. Docker buildx uses BuildKit which has a different
+model for build-time mounts (`RUN --mount=type=bind,...` in Dockerfiles).
+
+Our Dockerfiles already use `RUN --mount` for some operations, but the
+top-level `cachi2/output` and RPM `repos.d` mounts are passed by the
+Makefile as build command flags, not as Dockerfile directives.
+
+Workarounds:
+1. **Copy `cachi2/output` into the build context** — make it available
+   via `COPY` instead of `--volume`. Increases context size but works
+   with both engines.
+2. **Use `DOCKER_BUILDKIT=0`** (legacy builder) — may support `--volume`
+   but is deprecated and lacks features like multi-stage caching.
+3. **Use `docker buildx build --build-context`** — BuildKit named contexts
+   can map external directories: `--build-context cachi2=/path/cachi2/output`.
+   Requires Dockerfile changes to use `FROM cachi2` or `COPY --from=cachi2`.
+4. **Build with podman inside `docker run --privileged`** — use the
+   privileged container escape to run podman (which supports `--volume`)
+   inside a Docker container where namespaces work.
+
 ## Experiment history
 
 | Date | What | Outcome |
