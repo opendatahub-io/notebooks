@@ -11,32 +11,42 @@ dependencies = []
 
 [dependency-groups]
 dev = [
-    "prek",
+    {include-group = "lint"},
+    {include-group = "test"},
+    {include-group = "build"},
+    {include-group = "tools"},
+]
+lint = [
+    # prek only publishes wheels for x86_64, aarch64, armv7l, i686, s390x — no ppc64le.
+    # Exclude on architectures without wheels (no-build=true blocks source builds).
+    "prek; platform_machine != 'ppc64le'",
     "pyright",
     "ruff",
-    #
+]
+test = [
     "pytest",
     "pytest-cov",
     "allure-pytest",
     "pytest-subtests",
-    #
     "pyfakefs",
-    # Python 3.14 changed the internal typing._eval_type() function signature - it now includes a new prefer_fwd_module parameter
-    # and so pydantic 2.10+ is required to work with from __future__ import annotations on Python 3.14
-    "pydantic>=2.10.0",
-    "requests",
-    #
-    "pyyaml",
-    "ruamel-yaml",
-    "structlog",
-    #
     "testcontainers",
     "docker",
     "podman",
     "kubernetes",
     "openshift-python-wrapper",
-    # Transitive via openshift-python-wrapper → fastmcp;
+    # Transitive via openshift-python-wrapper -> fastmcp;
     "authlib>=1.6.11",
+]
+build = [
+    # Python 3.14 changed the internal typing._eval_type() function signature - it now includes a new prefer_fwd_module parameter
+    # and so pydantic 2.10+ is required to work with from __future__ import annotations on Python 3.14
+    "pydantic>=2.10.0",
+    "requests",
+    "pyyaml",
+    "ruamel-yaml",
+    "structlog",
+]
+tools = [
     "typer",
     # certifi provides CA bundle needed on macOS where Python's bundled OpenSSL
     # does not read from the system Keychain, causing CERTIFICATE_VERIFY_FAILED

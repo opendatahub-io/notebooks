@@ -964,6 +964,13 @@ version = "3.4"
 source = { editable = "." }
 
 [package.dev-dependencies]
+build = [
+    { name = "pydantic", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "pyyaml", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "requests", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "ruamel-yaml", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "structlog", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
 dev = [
     { name = "allure-pytest", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "authlib", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -973,7 +980,7 @@ dev = [
     { name = "kubernetes", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "openshift-python-wrapper", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "podman", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-    { name = "prek", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "prek", marker = "(platform_machine != 'ppc64le' and sys_platform == 'darwin') or (platform_machine != 'ppc64le' and sys_platform == 'linux')" },
     { name = "pydantic", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pyfakefs", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pygments", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -990,10 +997,42 @@ dev = [
     { name = "testcontainers", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "typer", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
+lint = [
+    { name = "prek", marker = "(platform_machine != 'ppc64le' and sys_platform == 'darwin') or (platform_machine != 'ppc64le' and sys_platform == 'linux')" },
+    { name = "pyright", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "ruff", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
+test = [
+    { name = "allure-pytest", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "authlib", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "docker", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "kubernetes", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "openshift-python-wrapper", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "podman", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "pyfakefs", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "pytest", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "pytest-cov", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "pytest-subtests", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "testcontainers", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
+tools = [
+    { name = "certifi", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "keyring", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "pygments", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "rich", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "typer", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
 
 [package.metadata]
 
 [package.metadata.requires-dev]
+build = [
+    { name = "pydantic", specifier = ">=2.10.0" },
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "ruamel-yaml" },
+    { name = "structlog" },
+]
 dev = [
     { name = "allure-pytest" },
     { name = "authlib", specifier = ">=1.6.11" },
@@ -1003,7 +1042,7 @@ dev = [
     { name = "kubernetes" },
     { name = "openshift-python-wrapper" },
     { name = "podman" },
-    { name = "prek" },
+    { name = "prek", marker = "platform_machine != 'ppc64le'" },
     { name = "pydantic", specifier = ">=2.10.0" },
     { name = "pyfakefs" },
     { name = "pygments" },
@@ -1018,6 +1057,31 @@ dev = [
     { name = "ruff" },
     { name = "structlog" },
     { name = "testcontainers" },
+    { name = "typer" },
+]
+lint = [
+    { name = "prek", marker = "platform_machine != 'ppc64le'" },
+    { name = "pyright" },
+    { name = "ruff" },
+]
+test = [
+    { name = "allure-pytest" },
+    { name = "authlib", specifier = ">=1.6.11" },
+    { name = "docker" },
+    { name = "kubernetes" },
+    { name = "openshift-python-wrapper" },
+    { name = "podman" },
+    { name = "pyfakefs" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-subtests" },
+    { name = "testcontainers" },
+]
+tools = [
+    { name = "certifi" },
+    { name = "keyring" },
+    { name = "pygments" },
+    { name = "rich", specifier = ">=14.3.2" },
     { name = "typer" },
 ]
 
