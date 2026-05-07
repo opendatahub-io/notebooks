@@ -53,26 +53,127 @@ jobs:
           cat /usr/lib/systemd/system/podman.socket || true
           cat /usr/lib/systemd/system/podman.service || true
 
+      - name: Probe network capabilities
+        run: |
+          set -x
+          # check what kind of sockets we can create
+          python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); print('UDP socket: OK')" || echo "UDP socket: BLOCKED"
+          python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); print('TCP socket: OK')" || echo "TCP socket: BLOCKED"
+          # test DNS over TCP
+          dig +tcp docker.io @127.0.0.53 || echo "DNS over TCP: FAILED"
+          # test curl (uses TCP)
+          curl -sI https://registry-1.docker.io/v2/ || echo "curl to registry: FAILED"
+        continue-on-error: true
+
       - name: Test rootless podman build
         run: |
           set -Eeuxo pipefail
           mkdir -p $TMPDIR
 
-          cat > /tmp/Containerfile.cowsay <<'DOCKERFILE'
+          cat > /tmp/Containerfile.test <<'DOCKERFILE'
           FROM docker.io/library/alpine:latest
-          RUN apk add --no-cache cowsay
-          CMD ["cowsay", "hello from IBM runner"]
+          RUN echo "hello from IBM runner on $(uname -m)"
           DOCKERFILE
 
-          podman build -t cowsay-test -f /tmp/Containerfile.cowsay /tmp/
-          podman run --rm cowsay-test
+          podman build -t test-rootless -f /tmp/Containerfile.test /tmp/
+          podman run --rm test-rootless cat /etc/os-release
+        continue-on-error: true
+
+      - name: Test podman with use-vc (force DNS over TCP)
+        run: |
+          set -x
+          echo "options use-vc" | sudo tee -a /etc/resolv.conf
+          cat /etc/resolv.conf
+          podman build -t test-usevc -f /tmp/Containerfile.test /tmp/
+        continue-on-error: true
+
+      - name: Test podman with GODEBUG=netdns=cgo (use glibc resolver)
+        env:
+          GODEBUG: netdns=cgo
+        run: |
+          set -x
+          # undo use-vc to isolate this test
+          sudo sed -i '/options use-vc/d' /etc/resolv.conf
+          podman build -t test-cgo -f /tmp/Containerfile.test /tmp/
+        continue-on-error: true
+
+      - name: Test podman with both use-vc + GODEBUG=netdns=cgo
+        env:
+          GODEBUG: netdns=cgo
+        run: |
+          set -x
+          echo "options use-vc" | sudo tee -a /etc/resolv.conf
+          podman build -t test-both -f /tmp/Containerfile.test /tmp/
+        continue-on-error: true
+
+      - name: Test podman with cgo + public DNS (stub-killer)
+        env:
+          GODEBUG: netdns=cgo
+        run: |
+          set -x
+          sudo rm -f /etc/resolv.conf
+          printf 'nameserver 8.8.8.8\nnameserver 1.1.1.1\n' | sudo tee /etc/resolv.conf
+          cat /etc/resolv.conf
+          podman build -t test-stubkill -f /tmp/Containerfile.test /tmp/
+          podman run --rm test-stubkill cat /etc/os-release
+        continue-on-error: true
+
+      - name: Test podman remote (daemon mode, like docker)
+        run: |
+          set -x
+          sudo podman system service --time=0 unix:///tmp/podman-api.sock &
+          sleep 3
+          podman --url unix:///tmp/podman-api.sock build -t test-remote -f /tmp/Containerfile.test /tmp/
+          podman --url unix:///tmp/podman-api.sock run --rm test-remote cat /etc/os-release
+        continue-on-error: true
+
+      - name: Test podman build --network=host (skip network namespace)
+        run: |
+          set -x
+          # restore resolv.conf for clean test
+          echo -e "nameserver 127.0.0.53\noptions edns0 trust-ad\nsearch ." | sudo tee /etc/resolv.conf
+          podman build --network=host -t test-hostnet -f /tmp/Containerfile.test /tmp/
+          podman run --network=host --rm test-hostnet cat /etc/os-release
+        continue-on-error: true
+
+      - name: Test sudo podman build --network=host
+        run: |
+          set -x
+          sudo podman build --network=host -t test-hostnet-root -f /tmp/Containerfile.test /tmp/
+          sudo podman run --network=host --rm test-hostnet-root cat /etc/os-release
+        continue-on-error: true
+
+      - name: Test podman build with docker-pulled image (skip podman pull)
+        run: |
+          set -x
+          # pull via docker (which works), then import to podman
+          sudo docker pull docker.io/library/alpine:latest
+          sudo docker save docker.io/library/alpine:latest | podman load
+          # now build using locally cached image
+          podman build --pull=never -t test-local -f /tmp/Containerfile.test /tmp/
+          podman images
+        continue-on-error: true
+
+      - name: Test podman build --isolation=chroot
+        run: |
+          set -x
+          podman build --isolation=chroot --pull=never -t test-chroot -f /tmp/Containerfile.test /tmp/
+        continue-on-error: true
 
       - name: Test rootful podman via sudo
         run: |
           set -Eeuxo pipefail
+          sudo podman build -t test-rootful -f /tmp/Containerfile.test /tmp/
+          sudo podman run --rm test-rootful cat /etc/os-release
+        continue-on-error: true
 
-          sudo podman build -t cowsay-test-root -f /tmp/Containerfile.cowsay /tmp/
-          sudo podman run --rm cowsay-test-root
+      - name: Test with docker instead of podman
+        run: |
+          set -x
+          which docker && docker --version || echo "docker not installed"
+          sudo docker build -t test-docker -f /tmp/Containerfile.test /tmp/ || echo "docker build failed"
+          sudo docker run --rm test-docker cat /etc/os-release || echo "docker run failed"
+        continue-on-error: true
 
       - name: Explore rootful podman socket
         run: |
