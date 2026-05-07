@@ -316,6 +316,65 @@ gh api repos/opendatahub-io/notebooks/actions/jobs/<JOB_ID>/logs 2>&1 \
   | grep -E "Syncing repository|Submodule path.*checked out"
 ```
 
+## Kubernetes on IBM runners
+
+### kubeadm is the only option
+
+No lightweight k8s distribution supports ppc64le/s390x:
+
+| Distribution | ppc64le | s390x |
+|---|---|---|
+| k3s | No support | Dropped Nov 2023 |
+| k0s | Never supported | No info |
+| kind | Dropped Mar 2023 | Dropped Mar 2023 |
+| minikube `none` driver | Basically kubeadm | Basically kubeadm |
+| kubeadm | Packages available | Packages available |
+
+### LXD namespace capabilities (probed May 2026)
+
+| Capability | ppc64le | s390x |
+|---|---|---|
+| User + PID namespace (`unshare --user --pid`) | OK | OK |
+| Network namespace (`unshare --net`) | **BLOCKED** | **BLOCKED** |
+| Mount namespace (`unshare --mount`) | **BLOCKED** | **BLOCKED** |
+| `modprobe br_netfilter` | BLOCKED (no `/lib/modules`) | BLOCKED |
+| `modprobe overlay` | BLOCKED | BLOCKED |
+| `iptables -L` | OK | OK |
+| `sysctl ip_forward` | OK | OK |
+
+### kubeadm init result: FAILED on both arches
+
+```
+[ERROR SystemVerification]: failed to parse kernel config: unable to load
+kernel module: "configs", output: "modprobe: FATAL: Module configs not found
+in directory /lib/modules/6.12.0-222.el10.ppc64le"
+```
+
+Even with `--ignore-preflight-errors=SystemVerification`, kubeadm would fail
+because **network namespace creation is blocked on both arches**. Kubelet and
+kube-proxy need network namespaces to isolate pods. This is a fundamental
+LXD container limitation — IBM would need to enable `security.nesting: true`
+and provide `/lib/modules` matching the host kernel.
+
+The kubeadm unprivileged LXD mode (k8s >= 1.32.4, `KubeletInUserNamespace`
+feature gate) requires at minimum `security.nesting: true` on the LXD
+profile, which IBM does not currently provide.
+
+### Consequence for testing
+
+IBM runners can only do **build + testcontainers** testing (no k8s):
+
+| Test type | ppc64le | s390x |
+|---|---|---|
+| Docker build | OK | OK |
+| Testcontainers (pytest) | OK (via Docker) | OK (via Docker) |
+| Makefile k8s tests | **Not possible** | **Not possible** |
+| Trivy image scan | OK | OK |
+
+The Makefile k8s tests (deploy StatefulSet, run papermill) must remain on
+amd64 GitHub-hosted runners. The architecture-specific validation ("does the
+image build and does Jupyter start") is covered by testcontainers.
+
 ## Experiment history
 
 | Date | What | Outcome |
@@ -326,3 +385,6 @@ gh api repos/opendatahub-io/notebooks/actions/jobs/<JOB_ID>/logs 2>&1 \
 | Jan 2026 | PR #2774 merged | JSON runner mapping infrastructure |
 | May 2026 | Second experiment (PR #3525) | Jobs queued 24h (missing org setting), then setup-go ppc64le bug, then Homebrew failure |
 | May 2026 | Org runner group fixed | Queue times ~13-18s, all jobs reach Install Podman step |
+| May 2026 | Podman investigation | ppc64le: works, s390x: blocked by AppArmor in user namespaces |
+| May 2026 | Docker confirmed | Docker builds work on both arches |
+| May 2026 | Kubernetes probed | kubeadm fails on both arches (no net/mount ns, no /lib/modules) |
