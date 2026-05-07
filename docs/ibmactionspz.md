@@ -518,6 +518,37 @@ update hermeto version in GHA CI scripts.
 The pip download step (step 2/5) works fine — it's pure Python, no container.
 Generic artifacts (step 1/5, GPG keys) also work — just `wget`.
 
+## Docker `--privileged` container escape (s390x breakthrough)
+
+Inside the LXD container, network and mount namespaces are blocked.
+But running a step inside a **`docker run --privileged`** Docker container
+lifts some restrictions (tested May 2026 on s390x):
+
+| Capability | Directly on LXD runner | Inside `docker --privileged` | Inside `docker --security-opt apparmor=unconfined` |
+|---|---|---|---|
+| User + PID namespace | OK | OK | TBD |
+| Network namespace | **BLOCKED** | **OK** | TBD |
+| Mount namespace | **BLOCKED** | **BLOCKED** | TBD |
+| `docker run --privileged` | N/A | works | N/A |
+| Podman inside docker | N/A | FAILED (install issue?) | TBD |
+| Workspace mount | N/A | OK | TBD |
+
+**Key finding:** Network namespaces work inside `--privileged` Docker
+containers on s390x. This means the AppArmor socket block that breaks
+podman could potentially be bypassed by wrapping build steps in
+`docker run --privileged`.
+
+The `--security-opt apparmor=unconfined` flag also works (without full
+`--privileged`). Testing whether this alone enables network namespaces
+would be the ideal outcome — less privilege escalation.
+
+Mount namespaces remain blocked even with `--privileged`. This limits
+kubeadm but may not affect container builds.
+
+**Implementation approach:** Use GHA per-step `docker run` to wrap
+problematic steps (hermeto prefetch, podman build) in a privileged or
+apparmor-unconfined container, mounting the workspace and Docker socket.
+
 ## Docker Hub rate limiting on IBM runners
 
 IBM runners share outbound IPs across all onboarded projects. Unauthenticated
