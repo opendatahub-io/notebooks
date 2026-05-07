@@ -493,13 +493,13 @@ jobs:
           # Tag it so our prefetch scripts find it without pulling.
           HERMETO_VERSION=0.46.2
           docker build -t ghcr.io/hermetoproject/hermeto:${HERMETO_VERSION} -f - /dev/null <<'DOCKERFILE'
-          FROM registry.fedoraproject.org/fedora:44
-          RUN dnf install -y --quiet python3 python3-pip python3-createrepo_c git-core && \
-              pip install --quiet --root-user-action=ignore \
-                "hermeto @ git+https://github.com/hermetoproject/hermeto@0.46.2" && \
-              dnf clean all
-          ENTRYPOINT ["hermeto"]
-          DOCKERFILE
+FROM registry.fedoraproject.org/fedora:44
+RUN dnf install -y --quiet python3 python3-pip python3-createrepo_c git-core && \
+    pip install --quiet --root-user-action=ignore \
+      "hermeto @ git+https://github.com/hermetoproject/hermeto@0.46.2" && \
+    dnf clean all
+ENTRYPOINT ["hermeto"]
+DOCKERFILE
 
       - name: "Prefetch hermetic build dependencies"
         run: |
