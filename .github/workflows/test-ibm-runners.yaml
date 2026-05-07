@@ -390,11 +390,13 @@ jobs:
         uses: ./.github/actions/setup-uv
 
       - name: Install from uv.lock
-        run: uv sync --group dev --locked
-        env:
-          # Many Python packages lack ppc64le/s390x wheels (pyyaml, etc.).
-          # Override pyproject.toml's no-build=true to allow building from source.
-          UV_NO_BUILD: "false"
+        run: |
+          # Packages without ppc64le/s390x wheels on PyPI need source builds.
+          # pyproject.toml has no-build=true; --no-binary-package overrides it per-package.
+          uv sync --group dev --locked \
+            --no-binary-package pyyaml \
+            --no-binary-package markupsafe \
+            --no-binary-package ruamel-yaml-clib
 
       - name: Docker info
         run: |
