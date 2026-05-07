@@ -420,16 +420,19 @@ pip-installable wheels).
 
 ### CI workaround
 
-On IBM runners, override `no-build = true` to allow source builds for
-packages without wheels:
+`pyproject.toml` sets `no-build = true` globally, which cannot be negated
+via env var (`UV_NO_BUILD=false` does not work — it's a flag, not a toggle).
+Use `--no-binary-package` per package to allow source builds:
 
 ```yaml
-env:
-  UV_NO_BUILD: "false"
+- run: |
+    uv sync --group dev --locked \
+      --no-binary-package pyyaml \
+      --no-binary-package markupsafe \
+      --no-binary-package ruamel-yaml-clib
 ```
 
-This is acceptable because the missing packages are small C extensions
-(PyYAML, MarkupSafe, ruamel.yaml.clib) that build in seconds.
+These are small C extensions that build in seconds.
 
 **Future consideration:** uv workspaces could let each workspace member
 (`notebooks-ci`, `notebooks-test`, `notebooks-lint`) have its own `no-build`
