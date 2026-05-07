@@ -538,7 +538,7 @@ jobs:
                 IMAGE_TAG="'"${IMAGE_TAG}"'" \
                 PUSH_IMAGES=no \
                 CONTAINER_BUILD_CACHE_ARGS="--no-cache --network=host"
-              podman save "'"${IMAGE_NAME}"'"
+              podman save --format docker-archive "'"${IMAGE_NAME}"'"
             ' | docker load
 
       - name: List built images
