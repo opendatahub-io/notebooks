@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+CONTAINER_ENGINE="${CONTAINER_ENGINE:-podman}"
+
 # hermeto-fetch-npm.sh — Fetch npm packages using the Hermeto tool (container).
 #
 # Alternative to download-npm.sh for fetching npm packages for offline/cachi2
@@ -22,7 +24,7 @@ source "$(dirname "$0")/hermeto-common.sh"
 hermeto() {
   local -a podman_args=(--rm --userns=keep-id -i)
   [ -t 0 ] && podman_args+=(-t)
-  podman run "${podman_args[@]}" \
+  $CONTAINER_ENGINE run "${podman_args[@]}" \
     -v "$PWD:$PWD:z" \
     -w "$PWD" \
     "$HERMETO_IMAGE" \

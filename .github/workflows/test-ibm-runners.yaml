@@ -410,6 +410,8 @@ jobs:
           set -Eeuxo pipefail
           scripts/lockfile-generators/prefetch-all.sh \
             --component-dir jupyter/minimal/ubi9-python-3.12
+        env:
+          CONTAINER_ENGINE: docker
 
       - name: "Build: make jupyter-minimal-ubi9-python-3.12"
         id: make-build
