@@ -4,6 +4,42 @@ This directory is **copied over** the read-only `prefetch-input/code-server` sub
 
 ---
 
+## Quarantined npm: `es5-ext` (RHAIENG-4977)
+
+**Symptom:** Konflux **Hermeto** prefetch fails with **403** when resolving **`es5-ext`** (e.g. `es5-ext-0.10.63.tgz`) — Nexus Firewall / Sonatype treats the package as **quarantined** (e.g. advisory `sonatype-2022-2248`). The failure is in the **vendored VS Code `lib/vscode` dev/build** dependency graph, not in code-server’s runtime/editor behavior.
+
+**Why this fix is appropriate**
+
+- **`es5-ext` is transitive build tooling**, not something the workbench ships as a direct feature dependency. Removing it from the **lockfile Cachi2 prefetches** unblocks hermetic builds without changing product source.
+- **`npm overrides`** (plus a regenerated **`package-lock.json`**) are the right lever: they force newer/alternate dependency versions that **do not pull `es5-ext`**, while keeping **Gulp 4**. **Do not upgrade to Gulp 5** for this tree — Gulp 5’s **streamx**-based orchestration breaks VS Code’s gulp tasks (`pipeTo.end is not a function`, “Did you forget to signal async completion?” on `vscode-reh-web-*-min-ci`).
+- **Gulpfile overlays** (`gulpfile.vscode.js`, `gulpfile.vscode.web.js`): upstream still lists a resource glob for `out-build/.../extensionManagement/common/media/*`, but that directory no longer exists (extension UI icons use **Codicons**). Globbing a missing path can **ENOENT** during the REH-web bundle. Dropping the stale line matches the actual tree.
+
+**Overrides in `lib/vscode/package.json` (summary)**
+
+| Override | Purpose |
+|----------|---------|
+| `debug-fabulous` ^2.x | `gulp-sourcemaps` still declares `debug-fabulous` ^1.x; v2 drops **`memoizee` → `es5-ext`**. |
+| `semver-greatest-satisfied-range` ^2.x | Replaces **gulp-cli**’s 1.x line that used **`sver-compat` → `es6-iterator` → `es5-ext`**. |
+| `undertaker` ^2.x | Replaces undertaker 1.x (**`es6-weak-map` → `es5-ext`**) while staying on **Gulp ^4.0.0**. |
+
+**Maintainership**
+
+- After editing `package.json` overrides, regenerate the lockfile from **`prefetch-input/patches/code-server-v4.106.3/lib/vscode`**:
+
+  ```bash
+  npm install --package-lock-only --ignore-scripts --legacy-peer-deps
+  ```
+
+  Use **`--legacy-peer-deps`** so resolution matches this repo (TypeScript 6 dev + `@typescript-eslint` peer ranges).
+
+- Confirm the prefetched graph has **no** `es5-ext`: `grep -r es5-ext package-lock.json` should return **no** `resolved` entries (or run `npm ls es5-ext` after a full install).
+
+- Tekton lists this path as **npm** `prefetch-input` — commit the **overlay** lockfile, not only the submodule copy under `prefetch-input/code-server/`.
+
+**Not the right fix here:** Allowlisting **`es5-ext`** in Nexus, or relying on a **PSRD exception**, is a last resort when remediation in the dependency graph is infeasible; ProdSec guidance is to **remove** the chain where possible.
+
+---
+
 ## Registry-only npm deps (ProdSec / Cachi2)
 
 **Why:** ProdSec requires that npm dependencies be declared only in `package.json` / `package-lock.json` and fetched as npm packages (registry). Cachi2/Hermeto prefetches **registry** `.tgz` URLs but does **not** prefetch `codeload.github.com` or git-ref URLs. So we use **registry versions only** for everything that must be prefetched in Konflux.
@@ -38,7 +74,17 @@ This directory is **copied over** the read-only `prefetch-input/code-server` sub
    - Adds **ppc64** and **s390x** to `BUILD_TARGETS` so we can run the native gulp task (`vscode-reh-web-linux-ppc64-min` etc.) with system Node only (like che-code). Without this overlay, VS Code only defines tasks for linux x64, armhf, arm64, alpine.  
    - On ppc64le, Node reports `process.arch` as **"ppc64"** (not ppc64le), so the cache dir is `.build/node/.../linux-ppc64/` and the gulp task is `vscode-reh-web-linux-ppc64-min`. On s390x, `process.arch` is **"s390x"**.
 
-8. **ci/build/build-vscode.sh**  
+8. **lib/vscode/package.json** — **es5-ext** avoidance without **Gulp 5**  
+   - This is implemented with **`overrides`** in `package.json` and a **regenerated `package-lock.json`** — not by forking the **`gulp`** package on npm. **`gulp` remains `^4.0.0`** (same major as upstream expectations for this VS Code revision).  
+   - **`debug-fabulous` → ^2.x** removes the `memoizee` → `es5-ext` chain from `gulp-sourcemaps`.  
+   - **`semver-greatest-satisfied-range` → ^2.x** (override) replaces the old `sver-compat` → `es6-iterator` → `es5-ext` chain from `gulp-cli` 2.x.  
+   - **`undertaker` → ^2.x** (override) replaces Gulp 4’s default undertaker 1.x, which pulled `es6-weak-map` → `es5-ext`.  
+   - **Do not move to Gulp 5** for this tree: Gulp 5 uses **streamx**-based orchestration that breaks VS Code’s gulp tasks (`pipeTo.end is not a function` in `vscode-reh-web-*-min-ci`). See the **Quarantined npm: es5-ext** section above for regeneration and verification commands.
+
+9. **lib/vscode/build/gulpfile.vscode.js** and **gulpfile.vscode.web.js**  
+   - Removes the resource glob for `out-build/vs/workbench/services/extensionManagement/common/media/*.{svg,png}`. Upstream removed that directory when extension icons moved to **Codicons** (`extensionsIcons.ts`), but the gulp lists were left behind. **Gulp 4** can also **ENOENT** when globbing a missing directory. Dropping the stale pattern matches upstream reality and fixes the build.
+
+10. **ci/build/build-vscode.sh**  
    - Builds for current arch (no x64 fallback on ppc64le/s390x). Uses system Node from `setup-offline-binaries.sh` cache.
 
 All of the above are **overlays**: at build time the Dockerfile copies this patches tree on top of the read-only `prefetch-input/code-server` submodule, so every `package.json` / `package-lock.json` that referenced the old git/codeload refs is replaced by these files and thus uses the registry versions we define here.
