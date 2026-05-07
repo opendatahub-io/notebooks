@@ -71,7 +71,7 @@ jobs:
           mkdir -p $TMPDIR
 
           cat > /tmp/Containerfile.test <<'DOCKERFILE'
-          FROM docker.io/library/alpine:latest
+          FROM quay.io/centos/centos:stream9-minimal
           RUN echo "hello from IBM runner on $(uname -m)"
           DOCKERFILE
 
@@ -147,8 +147,8 @@ jobs:
         run: |
           set -x
           # pull via docker (which works), then import to podman
-          sudo docker pull docker.io/library/alpine:latest
-          sudo docker save docker.io/library/alpine:latest | podman load
+          sudo docker pull quay.io/centos/centos:stream9-minimal
+          sudo docker save quay.io/centos/centos:stream9-minimal | podman load
           # now build using locally cached image
           podman build --pull=never -t test-local -f /tmp/Containerfile.test /tmp/
           podman images
@@ -210,9 +210,9 @@ jobs:
       - name: Test docker run --privileged
         run: |
           set -x
-          sudo docker run --rm --privileged alpine echo "privileged: OK" || echo "privileged: BLOCKED"
-          sudo docker run --rm --security-opt apparmor=unconfined alpine echo "apparmor=unconfined: OK" || echo "apparmor=unconfined: BLOCKED"
-          sudo docker run --rm --security-opt seccomp=unconfined alpine echo "seccomp=unconfined: OK" || echo "seccomp=unconfined: BLOCKED"
+          sudo docker run --rm --privileged quay.io/centos/centos:stream9-minimal echo "privileged: OK" || echo "privileged: BLOCKED"
+          sudo docker run --rm --security-opt apparmor=unconfined quay.io/centos/centos:stream9-minimal echo "apparmor=unconfined: OK" || echo "apparmor=unconfined: BLOCKED"
+          sudo docker run --rm --security-opt seccomp=unconfined quay.io/centos/centos:stream9-minimal echo "seccomp=unconfined: OK" || echo "seccomp=unconfined: BLOCKED"
         continue-on-error: true
 
       - name: Test podman inside docker (s390x workaround?)
@@ -224,7 +224,7 @@ jobs:
             bash -c "
               dnf install -y podman --quiet &&
               podman --version &&
-              podman pull docker.io/library/alpine:latest &&
+              podman pull quay.io/centos/centos:stream9-minimal &&
               echo 'podman inside docker: OK'
             " || echo "podman inside docker: FAILED"
         continue-on-error: true
@@ -245,6 +245,40 @@ jobs:
               unshare --user --pid --fork echo 'user+pid ns: OK' || echo 'user+pid ns: BLOCKED'
               unshare --net echo 'net ns: OK' || echo 'net ns: BLOCKED'
               unshare --mount echo 'mount ns: OK' || echo 'mount ns: BLOCKED'
+            "
+        continue-on-error: true
+
+      - name: Deep probe mount namespace inside privileged docker
+        run: |
+          set -x
+          sudo docker run --rm --privileged \
+            registry.access.redhat.com/ubi9/ubi \
+            bash -c "
+              echo '=== mount ns tests ==='
+              # basic unshare --mount
+              unshare --mount echo 'unshare --mount: OK' || echo 'unshare --mount: BLOCKED'
+              # mount with user ns
+              unshare --user --mount echo 'unshare --user --mount: OK' || echo 'unshare --user --mount: BLOCKED'
+              # mount with all ns
+              unshare --user --pid --net --mount --fork echo 'unshare all: OK' || echo 'unshare all: BLOCKED'
+              # actual mount operation
+              mkdir -p /tmp/testmnt && mount -t tmpfs none /tmp/testmnt && echo 'mount tmpfs: OK' && umount /tmp/testmnt || echo 'mount tmpfs: BLOCKED'
+              # check capabilities
+              cat /proc/self/status | grep -E 'Cap(Eff|Prm|Bnd)'
+            "
+        continue-on-error: true
+
+      - name: Test apparmor=unconfined (without --privileged)
+        run: |
+          set -x
+          sudo docker run --rm --security-opt apparmor=unconfined \
+            registry.access.redhat.com/ubi9/ubi \
+            bash -c "
+              echo '=== apparmor=unconfined (no --privileged) ==='
+              unshare --user --pid --fork echo 'user+pid ns: OK' || echo 'user+pid ns: BLOCKED'
+              unshare --net echo 'net ns: OK' || echo 'net ns: BLOCKED'
+              unshare --mount echo 'mount ns: OK' || echo 'mount ns: BLOCKED'
+              unshare --user --pid --net --mount --fork echo 'all ns: OK' || echo 'all ns: BLOCKED'
             "
         continue-on-error: true
 
