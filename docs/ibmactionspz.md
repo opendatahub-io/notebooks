@@ -518,36 +518,46 @@ update hermeto version in GHA CI scripts.
 The pip download step (step 2/5) works fine — it's pure Python, no container.
 Generic artifacts (step 1/5, GPG keys) also work — just `wget`.
 
-## Docker `--privileged` container escape (s390x breakthrough)
+## Docker `--privileged` container escape (both arches)
 
-Inside the LXD container, network and mount namespaces are blocked.
-But running a step inside a **`docker run --privileged`** Docker container
-lifts some restrictions (tested May 2026 on s390x):
+Inside the LXD container, network and mount namespaces are blocked on
+both ppc64le and s390x. Running a step inside a **`docker run --privileged`**
+Docker container lifts all restrictions on **both architectures**.
 
-| Capability | Directly on LXD runner | Inside `docker --privileged` | Inside `docker --security-opt apparmor=unconfined` |
+Results from May 2026 testing (ppc64le and s390x are identical):
+
+| Capability | Directly on LXD | `docker --privileged` | `docker apparmor=unconfined` |
 |---|---|---|---|
-| User + PID namespace | OK | OK | TBD |
-| Network namespace | **BLOCKED** | **OK** | TBD |
-| Mount namespace | **BLOCKED** | **BLOCKED** | TBD |
-| `docker run --privileged` | N/A | works | N/A |
-| Podman inside docker | N/A | FAILED (install issue?) | TBD |
-| Workspace mount | N/A | OK | TBD |
+| User + PID namespace | OK | **OK** | OK |
+| Network namespace | **BLOCKED** | **OK** | BLOCKED |
+| Mount namespace | **BLOCKED** | **OK** | BLOCKED |
+| mount tmpfs | BLOCKED | **OK** | BLOCKED |
+| unshare all (user+pid+net+mount) | BLOCKED | **OK** | BLOCKED |
+| Capabilities (CapEff) | limited | `000001ffffffffff` (all) | limited |
+| Workspace mount | N/A | **OK** | N/A |
 
-**Key finding:** Network namespaces work inside `--privileged` Docker
-containers on s390x. This means the AppArmor socket block that breaks
-podman could potentially be bypassed by wrapping build steps in
-`docker run --privileged`.
+**Key finding:** `docker run --privileged` grants **all capabilities and
+all namespace types** on both ppc64le and s390x. This is a complete
+escape from the LXD AppArmor restrictions on both architectures.
 
-The `--security-opt apparmor=unconfined` flag also works (without full
-`--privileged`). Testing whether this alone enables network namespaces
-would be the ideal outcome — less privilege escalation.
+`--security-opt apparmor=unconfined` alone is **insufficient** on both
+arches. On s390x it allows user+pid ns but blocks net/mount. On ppc64le
+it blocks all namespace creation (`Operation not permitted`). Only
+`--privileged` works.
 
-Mount namespaces remain blocked even with `--privileged`. This limits
-kubeadm but may not affect container builds.
+**Implementation approach:** Wrap pipeline steps that need namespace
+access (podman build, hermeto prefetch, potentially kubeadm) in
+`docker run --privileged` with the workspace and Docker socket mounted.
+This enables the full pipeline on both IBM arches:
 
-**Implementation approach:** Use GHA per-step `docker run` to wrap
-problematic steps (hermeto prefetch, podman build) in a privileged or
-apparmor-unconfined container, mounting the workspace and Docker socket.
+```bash
+sudo docker run --rm --privileged \
+  -v $GITHUB_WORKSPACE:/workspace:z \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -w /workspace \
+  registry.access.redhat.com/ubi9/ubi \
+  bash -c "dnf install -y podman && podman build ..."
+```
 
 ## Docker Hub rate limiting on IBM runners
 
