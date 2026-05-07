@@ -125,6 +125,8 @@ no-binary-package = [
     "notebooks",
     "copr-rebuild",
     "odh-ci-agent",
+    # C extensions without ppc64le wheels on PyPI (small, fast builds)
+    "pyyaml",
     # sdist-only deps (pure Python, no system library requirements)
     "openshift-python-wrapper", "pyhelper-utils", "python-simple-logger", "timeout-sampler",
 ]
