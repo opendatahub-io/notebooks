@@ -375,6 +375,44 @@ The Makefile k8s tests (deploy StatefulSet, run papermill) must remain on
 amd64 GitHub-hosted runners. The architecture-specific validation ("does the
 image build and does Jupyter start") is covered by testcontainers.
 
+## Pipeline architecture on IBM runners
+
+Since Docker is the only viable container engine (podman blocked on s390x,
+k8s not possible in LXD), the IBM runner pipeline differs from the amd64 pipeline:
+
+```
+amd64/arm64 (GitHub-hosted):   Homebrew podman -> podman build -> CRI-O k8s -> test
+IBM ppc64le/s390x:             Docker CE (pre-installed) -> docker build -> testcontainers -> test
+```
+
+### What works without changes
+
+- **Makefile**: auto-detects Docker when podman is absent (`CONTAINER_ENGINE=docker`)
+- **`sandbox.py`**: engine-agnostic build wrapper
+- **GHCR push**: `docker push` works same as `podman push`
+- **`docker/login-action`**: already used for GHCR login
+- **Testcontainers (pytest)**: uses docker-py, works natively with Docker socket
+
+### What must be skipped on IBM runners
+
+| Step | Reason |
+|---|---|
+| Install Podman (Homebrew) | Not needed, Docker is pre-installed |
+| LVM overlay (`gha_lvm_overlay.sh`) | No `losetup` in LXD; not needed (CPU images, 100+ GB disk) |
+| QEMU binfmt setup | Not needed (native arch) |
+| Trivy image scan (`--image-src podman`) | Podman-specific; needs adaptation for Docker |
+| FIPS / check-payload (`podman image mount`) | Podman-specific |
+| Playwright browser tests | amd64-only |
+| kubeadm k8s tests | No net/mount namespaces in LXD |
+
+### What must be adapted
+
+| Step | Change |
+|---|---|
+| `CONTAINER_HOST` env var | Unset (Docker uses `DOCKER_HOST`, and dockerd is already running) |
+| Testcontainers env | `DOCKER_HOST=unix:///var/run/docker.sock` instead of podman socket |
+| `actions/setup-go` | Add `architecture: ppc64le` workaround |
+
 ## Experiment history
 
 | Date | What | Outcome |
