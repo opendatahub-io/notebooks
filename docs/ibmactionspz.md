@@ -518,6 +518,32 @@ update hermeto version in GHA CI scripts.
 The pip download step (step 2/5) works fine — it's pure Python, no container.
 Generic artifacts (step 1/5, GPG keys) also work — just `wget`.
 
+## Docker Hub rate limiting on IBM runners
+
+IBM runners share outbound IPs across all onboarded projects. Unauthenticated
+Docker Hub pulls hit rate limits quickly:
+
+```
+toomanyrequests: You have reached your unauthenticated pull rate limit.
+```
+
+This affects both podman and Docker pulls from `docker.io`. Mitigations:
+- **Authenticate to Docker Hub** (`docker login` / `podman login`) — raises
+  the rate limit from 100 pulls/6h (anonymous) to 200 pulls/6h (free account)
+- **Use GHCR or quay.io** for base images instead of `docker.io`
+- **Pull once and reuse** — avoid re-pulling the same image in multiple steps
+- **Cache images** with GHA cache actions
+
+### ppc64le runner job duration
+
+The ppc64le podman test job runs significantly longer than s390x because
+podman actually works there — each test step pulls images and builds
+containers instead of failing fast. The test workflow accumulated many
+experimental steps during investigation and should be trimmed for
+production use. A build + testcontainers job on ppc64le takes ~15-20 min
+(image pull + build + test), compared to ~2 min on s390x where podman
+fails immediately.
+
 ## Pipeline architecture on IBM runners
 
 Since Docker is the only viable container engine (podman blocked on s390x,
