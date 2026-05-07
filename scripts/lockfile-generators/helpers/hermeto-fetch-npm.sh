@@ -22,7 +22,7 @@ hermeto() {
   podman run --rm -i $TTY_FLAG \
     -v "$PWD:$PWD:z" \
     -w "$PWD" \
-    ghcr.io/hermetoproject/hermeto:latest \
+    ghcr.io/hermetoproject/hermeto:0.51.0 \
     "$@"
 }
 
