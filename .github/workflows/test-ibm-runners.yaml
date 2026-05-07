@@ -503,7 +503,7 @@ jobs:
         env:
           CONTAINER_ENGINE: docker
 
-      - name: "Build: make jupyter-minimal-ubi9-python-3.12"
+      - name: "Build: make jupyter-minimal-ubi9-python-3.12 (podman-in-docker)"
         id: make-build
         run: |
           set -Eeuxo pipefail
@@ -513,12 +513,28 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
 
-          uv run make jupyter-minimal-ubi9-python-3.12 \
-            CONTAINER_ENGINE=docker \
-            IMAGE_TAG="${IMAGE_TAG}"
-        env:
-          PUSH_IMAGES: "no"
-          CONTAINER_BUILD_CACHE_ARGS: "--no-cache"
+          # Docker buildx does not support --volume (podman-only), so hermetic
+          # builds fail with "unknown flag: --volume". Workaround: run make
+          # inside a privileged Fedora 44 container that has podman 5.x (which
+          # supports --volume and Dockerfile HEREDOCs). The workspace is mounted
+          # so pre-compiled bin/buildinputs, uv .venv, and cachi2/output are
+          # all reused from the host. After build, pipe the image to Docker.
+          sudo docker run --rm --privileged \
+            -v "${{ github.workspace }}:/workspace:z" \
+            -w /workspace \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              set -Eeuxo pipefail
+              dnf install -y --quiet podman make
+              export PATH="/workspace/.venv/bin:$PATH"
+              export VIRTUAL_ENV="/workspace/.venv"
+              make jupyter-minimal-ubi9-python-3.12 \
+                CONTAINER_ENGINE=podman \
+                IMAGE_TAG="'"${IMAGE_TAG}"'" \
+                PUSH_IMAGES=no \
+                CONTAINER_BUILD_CACHE_ARGS="--no-cache"
+              podman save "'"${IMAGE_NAME}"'"
+            ' | docker load
 
       - name: List built images
         if: ${{ !cancelled() && steps.make-build.outcome == 'success' }}
