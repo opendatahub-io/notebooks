@@ -15,7 +15,13 @@ qemu-user cross-compilation on amd64 GitHub-hosted runners.
 
 Full list: <https://github.com/IBM/actionspz/blob/main/docs/supported-images.txt>
 
+Runner image repo: <https://github.com/IBM/action-runner-image-pz>
+
 Runner image contents: <https://github.com/IBM/action-runner-image-pz/blob/main/images/ubuntu/toolsets/toolset-2404.json>
+
+The runner images include Docker CE 28.x with buildx and compose pre-installed.
+Podman comes from Ubuntu's default packages (4.9.3), not from IBM's customization.
+No Homebrew is included.
 
 ## Onboarding
 
@@ -46,14 +52,59 @@ The IBM runners are **LXD containers**, not VMs. This has significant implicatio
 ### No privileged operations
 
 - **No `losetup`** — our `ci/cached-builds/gha_lvm_overlay.sh` cannot create
-  loop devices. The LVM overlay step must be skipped or replaced.
+  loop devices. Not needed anyway: IBM runners have ~100-165 GB available
+  on a single disk, and we only build CPU images (no CUDA/ROCm) on
+  ppc64le/s390x, so disk pressure is not an issue.
 - **No `docker run --privileged`** — the QEMU binfmt setup step
   (`tonistiigi/binfmt`) won't work. Not needed anyway since the arch is native.
 - **No `dmesg`** — `dmesg: read kernel buffer failed: Operation not permitted`.
-- **AppArmor restrictions on s390x** — podman's DNS resolution fails with
-  `socket: permission denied` because AppArmor blocks creating network sockets
-  in certain contexts
-  ([details](https://github.com/IBM/actionspz/issues/63#issuecomment-3662214924)).
+- **AppArmor restrictions on s390x** — podman (rootless and rootful) fails
+  to resolve DNS when pulling images, because AppArmor blocks creating UDP
+  sockets inside the LXD container:
+  ```
+  dial udp 127.0.0.53:53: socket: permission denied
+  ```
+  IBM confirmed this is a known platform limitation
+  ([ramdrvcs](https://github.com/IBM/actionspz/issues/63#issuecomment-3665704813)):
+  > "this is a restriction related to the security measures we currently
+  > have in place for the containers. We're looking into how to run a
+  > privileged container setup in a future release"
+
+  The suggestion from IBM ([pleia2](https://github.com/IBM/actionspz/issues/63#issuecomment-3662214924))
+  is to use Docker instead of podman, as Docker's daemon-based networking
+  model may bypass the AppArmor socket restrictions.
+
+  There is **no dedicated issue** on `IBM/actionspz` for this — the discussion
+  is only in our onboarding thread
+  [IBM/actionspz#63](https://github.com/IBM/actionspz/issues/63).
+
+  **Other projects affected:**
+  - [IBM/mcp-context-forge#3632](https://github.com/IBM/mcp-context-forge/issues/3632)
+    hit the same issue and solved it by switching to Docker
+    ([PR #3775](https://github.com/IBM/mcp-context-forge/pull/3775))
+  - [containers/podman#22500](https://github.com/containers/podman/issues/22500) —
+    same `socket: permission denied` in LXD
+  - [Ubuntu bug #2118824](https://bugs.launchpad.net/bugs/2118824) —
+    AppArmor denying socket creation in unprivileged LXD containers
+
+  **Root cause:** [CVE-2025-52881](https://github.com/opencontainers/runc/issues/4968) —
+  an fd reopening issue in runc that breaks AppArmor profiles in nested containers.
+  Fixed in Incus 6.19+ and lxc-pve 6.0.5-2, but IBM's LXD version may not
+  have the fix yet.
+
+  **Important:** podman works fine on the ppc64le runners — only s390x is
+  affected. This confirms it's an infrastructure configuration inconsistency
+  on IBM's side, not a podman bug. The s390x hosts likely have stricter
+  AppArmor enforcement (common for IBM Z mainframes targeting high-compliance
+  environments like banking).
+
+  **Workarounds:**
+  1. Use Docker instead of podman on s390x (proven by IBM/mcp-context-forge).
+     Docker's daemon runs as a privileged system service, so client commands
+     talk via Unix socket and the daemon handles the actual network sockets.
+  2. Ask IBM to match the s390x AppArmor config to ppc64le (our best ask)
+  3. `lxc.apparmor.profile: unconfined` (requires IBM to change their LXD config)
+  4. Wait for IBM to update their LXD/runner images with the runc fix
 
 ### No Homebrew
 
@@ -77,12 +128,51 @@ podman 4.x) or switch to Docker.
 See <https://github.com/IBM/actionspz/issues/63#issuecomment-3654738467> for
 the original investigation.
 
-### Docker as alternative
+### CI container engine matrix
 
-IBM's team [suggested](https://github.com/IBM/actionspz/issues/63#issuecomment-3662214924)
-that Docker may work where podman doesn't, since Docker uses a different
-networking model (daemon-based) that may not hit the AppArmor restrictions.
-The runners have containerd pre-installed.
+Due to infrastructure-level security profiles on IBM's LXD runners,
+container engine support varies by architecture:
+
+| Architecture | Engine | Notes |
+|---|---|---|
+| amd64 / arm64 | Podman | Default, via Homebrew |
+| ppc64le (IBM Power) | Podman | Distro podman 4.9.3 works natively for builds |
+| s390x (IBM Z) | **Docker** (required) | Podman is fundamentally broken (see below) |
+
+### Why podman fails on s390x (but works on ppc64le)
+
+The AppArmor profiles on IBM's s390x LXD hosts block **all** network
+socket creation (`socket()` syscall) inside `CLONE_NEWUSER`/`CLONE_NEWNET`
+namespaces. Podman relies on these namespaces for isolation, so both
+rootless and rootful podman fail with:
+
+```
+dial udp 127.0.0.53:53: socket: permission denied   # Go native resolver
+dial tcp 127.0.0.53:53: socket: permission denied   # with options use-vc
+Temporary failure in name resolution                  # with GODEBUG=netdns=cgo
+```
+
+Tested workarounds that **do not work** on s390x:
+- `options use-vc` in resolv.conf (TCP DNS) — TCP sockets also blocked
+- `GODEBUG=netdns=cgo` (glibc resolver) — glibc can't create sockets either
+- `GODEBUG=netdns=cgo` + public DNS (`8.8.8.8`) — same, namespace-level block
+- `podman system service` daemon mode — socket permissions still denied
+- `sudo podman` — rootful podman also creates namespaces
+
+Python and curl work fine because they run in the LXD container's primary
+namespace, not in podman's nested namespaces.
+
+Docker works because `dockerd` runs as a system service in the primary
+namespace and handles all network I/O there. Client commands talk to
+dockerd via a Unix socket.
+
+Docker CE 28.x with buildx is pre-installed on the IBM runners
+([toolset config](https://github.com/IBM/action-runner-image-pz/blob/main/images/ubuntu/toolsets/toolset-2404.json)).
+
+The ppc64le runners do **not** have this restriction — podman builds
+work natively there. This confirms the issue is an infrastructure
+configuration difference between IBM's s390x and ppc64le hosts, not
+a podman bug.
 
 ## GitHub Actions compatibility issues
 
@@ -203,8 +293,15 @@ gh api repos/opendatahub-io/notebooks/actions/runs/<RUN_ID>/jobs \
   --jq '.jobs[] | select(.name | contains("ppc64le") and contains("odh")) | .id'
 
 # Extract error lines from a job log
+# NOTE: the /logs API can return 404 after force-pushes or when the run
+# is superseded. Use `gh run view --log` as fallback (needs --all perms
+# for cache writes):
 gh api repos/opendatahub-io/notebooks/actions/jobs/<JOB_ID>/logs 2>&1 \
   | grep -E "##\[error" | head -5
+
+# Fallback when the API returns 404:
+gh run view <RUN_ID> --repo opendatahub-io/notebooks --log 2>&1 \
+  | grep "search term"
 
 # Get full error context around the failure
 gh api repos/opendatahub-io/notebooks/actions/jobs/<JOB_ID>/logs 2>&1 \
