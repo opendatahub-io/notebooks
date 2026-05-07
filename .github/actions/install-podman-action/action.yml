@@ -15,8 +15,6 @@ runs:
     - name: Configure distro podman (IBM native runners)
       if: contains(fromJSON('["linux/ppc64le", "linux/s390x"]'), inputs.platform) && runner.arch != 'X64'
       shell: bash
-      env:
-        CONTAINER_HOST: ""
       run: |
         set -Eeuxo pipefail
 
@@ -30,40 +28,18 @@ runs:
         sudo cp ci/cached-builds/storage.conf /etc/containers/storage.conf
         sudo cp ci/cached-builds/registries.conf /etc/containers/registries.conf
 
-        sudo podman system reset --force || true
-        sudo rm -rf /var/run/podman
+        # The IBM runner image ships a pre-started podman socket at /run/podman/podman.sock
+        # (started by systemd at boot). Reuse it instead of recreating.
+        sudo systemctl restart podman.socket
 
-        # set up rootful podman socket so CONTAINER_HOST works
-        sudo mkdir -p /usr/local/lib/systemd/system/
-        printf '%s\n' \
-          '[Unit]' \
-          'Description=Podman API Service' \
-          'Requires=podman.socket' \
-          'After=podman.socket' \
-          'StartLimitIntervalSec=0' \
-          '[Service]' \
-          'Delegate=true' \
-          'Type=exec' \
-          'KillMode=process' \
-          'ExecStart=/usr/bin/podman --log-level=info system service' \
-          '[Install]' \
-          'WantedBy=default.target' \
-          | sudo tee /usr/local/lib/systemd/system/podman.service > /dev/null
-        sudo cp ci/cached-builds/podman.socket /usr/local/lib/systemd/system/podman.socket
-        sudo systemctl daemon-reload
-        sudo systemctl unmask --now podman.service podman.socket
-        sudo systemctl start podman.socket
-
-        # the socket dir /run/podman/ may be created with restrictive permissions;
-        # ensure the runner user can reach the socket (SocketMode=0666 only affects the socket file itself)
+        # ensure the runner user can traverse /run/podman/ to reach the socket
         sudo chmod 0755 /run/podman
         ls -la /run/podman/
 
-        echo "PODMAN_SOCK=/var/run/podman/podman.sock" >> $GITHUB_ENV
+        echo "PODMAN_SOCK=/run/podman/podman.sock" >> $GITHUB_ENV
 
-        # verify rootful podman works via the socket (as runner user, not sudo)
-        podman info --format '{{.Host.OCIRuntime.Name}} {{.Host.OCIRuntime.Version}}'
-        podman ps
+        # verify podman works via the rootful socket
+        podman --url unix:///run/podman/podman.sock ps
 
     # ── Homebrew path (amd64, arm64): install recent podman via brew ──
 
