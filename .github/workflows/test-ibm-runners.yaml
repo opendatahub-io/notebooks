@@ -365,10 +365,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           persist-credentials: false
-          # Skip submodules: they contain prefetch-input/ dirs that trigger
-          # the hermetic build path (requiring cachi2/output). For this test
-          # we build without prefetch to validate the Docker pipeline.
-          submodules: false
+          submodules: recursive
 
       - name: Downcase IMAGE_REGISTRY
         run: echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> $GITHUB_ENV
@@ -407,6 +404,12 @@ jobs:
           docker version
           docker info
           docker buildx version
+
+      - name: "Prefetch hermetic build dependencies"
+        run: |
+          set -Eeuxo pipefail
+          scripts/lockfile-generators/prefetch-all.sh \
+            --component-dir jupyter/minimal/ubi9-python-3.12
 
       - name: "Build: make jupyter-minimal-ubi9-python-3.12"
         id: make-build
