@@ -26,7 +26,9 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           persist-credentials: false
-          sparse-checkout: ci/cached-builds/Containerfile.test
+          sparse-checkout: |
+            ci/cached-builds/Containerfile.test
+            ci/cached-builds/Containerfile.test-network
 
       - name: "Diagnose: resolv.conf BEFORE and AFTER podman install"
         if: ${{ !cancelled() }}
@@ -124,6 +126,26 @@ jobs:
               dnf install -y --quiet podman
               podman load < /tmp/base-image.tar && echo "PODMAN LOAD: OK" || echo "PODMAN LOAD: FAILED"
               podman build --pull=never --network=host -t test-loaded -f /tmp/Containerfile.test /tmp/ && echo "BUILD FROM LOADED: OK" || echo "BUILD FROM LOADED: FAILED"
+            '
+
+      - name: "Test: docker pull + podman load + network-exercising build"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          # Pre-pull base image via Docker (works on both arches)
+          sudo docker pull quay.io/centos/centos:stream9-minimal
+          sudo docker save quay.io/centos/centos:stream9-minimal -o /tmp/base-image.tar
+          sudo docker run --rm --privileged --network=host \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test-network:/tmp/Containerfile.test-network:ro \
+            -v /tmp/base-image.tar:/tmp/base-image.tar:ro \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              podman load < /tmp/base-image.tar
+              echo "=== build with RUN steps that need network (dnf, urllib) ==="
+              podman build --pull=never --network=host \
+                -t test-network -f /tmp/Containerfile.test-network /tmp/ \
+                && echo "NETWORK BUILD: OK" || echo "NETWORK BUILD: FAILED"
             '
 
       - name: "Diagnose: namespace and socket deep dive"

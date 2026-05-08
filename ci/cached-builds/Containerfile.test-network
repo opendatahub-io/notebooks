@@ -1,0 +1,4 @@
+FROM quay.io/centos/centos:stream9-minimal
+RUN microdnf install -y --nodocs --setopt=install_weak_deps=0 python3 && microdnf clean all
+RUN python3 -c "import urllib.request; r = urllib.request.urlopen('https://pypi.org/simple/pip/'); print(f'PyPI reachable: {r.status}')"
+RUN echo "network-exercising build complete on $(uname -m)"
