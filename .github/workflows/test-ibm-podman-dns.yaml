@@ -29,6 +29,7 @@ jobs:
           sparse-checkout: |
             ci/cached-builds/Containerfile.test
             ci/cached-builds/Containerfile.test-network
+            ci/cached-builds/dnstest.go
 
       - name: "Diagnose: resolv.conf BEFORE and AFTER podman install"
         if: ${{ !cancelled() }}
@@ -228,6 +229,90 @@ jobs:
               echo "=== test: does unshare --user --mount break DNS? ==="
               unshare --user --mount python3 -c "import socket; print(socket.getaddrinfo(\"quay.io\", 443)[:1])" \
                 && echo "DNS in user+mount ns: OK" || echo "DNS in user+mount ns: BLOCKED"
+            '
+
+      - name: "Diagnose: podman --log-level=trace pull (re-exec detection)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== podman version (skips MaybeReexec in buildah) ==="
+              podman version 2>&1 | head -5
+              echo "=== podman info (does it work at all?) ==="
+              podman info --format "{{.Host.Security.Rootless}} / {{.Store.GraphDriverName}}" 2>&1
+              echo "=== podman --log-level=trace pull (watch for re-exec) ==="
+              podman --log-level=trace pull quay.io/centos/centos:stream9-minimal 2>&1 | head -80
+              echo "=== exit code: $? ==="
+            '
+
+      - name: "Diagnose: strace podman pull (syscall-level namespace creation)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman strace
+              echo "=== strace: look for clone/unshare/setns syscalls ==="
+              strace -f -e trace=clone,clone3,unshare,setns,socket -o /tmp/strace.log \
+                podman pull quay.io/centos/centos:stream9-minimal 2>&1 || true
+              echo "=== clone/unshare/setns calls ==="
+              grep -c "clone\|unshare\|setns" /tmp/strace.log || echo "none found"
+              grep "unshare\|setns\|CLONE_NEWUSER\|CLONE_NEWNET\|CLONE_NEWNS" /tmp/strace.log | head -20
+              echo "=== socket calls that failed ==="
+              grep "socket.*= -1" /tmp/strace.log | head -10
+              echo "=== first DNS-related socket call ==="
+              grep "socket(AF_INET\|AF_INET6" /tmp/strace.log | head -5
+            '
+
+      - name: "Test: skopeo copy (same containers/image library, different binary)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet skopeo
+              echo "=== skopeo inspect (uses containers/image, no storage) ==="
+              skopeo inspect docker://quay.io/centos/centos:stream9-minimal 2>&1 | head -5 \
+                && echo "SKOPEO INSPECT: OK" || echo "SKOPEO INSPECT: FAILED"
+            '
+
+      - name: "Test: buildah directly (not through podman)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test:/tmp/Containerfile.test:ro \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet buildah
+              echo "=== buildah version ==="
+              buildah version
+              echo "=== buildah pull ==="
+              buildah pull quay.io/centos/centos:stream9-minimal 2>&1 \
+                && echo "BUILDAH PULL: OK" || echo "BUILDAH PULL: FAILED"
+              echo "=== buildah bud --isolation=chroot --network=host ==="
+              buildah bud --isolation=chroot --network=host \
+                -t test-buildah -f /tmp/Containerfile.test /tmp/ 2>&1 \
+                && echo "BUILDAH BUD: OK" || echo "BUILDAH BUD: FAILED"
+            '
+
+      - name: "Test: Go binary DNS (is it Go runtime or podman-specific?)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            -v ${{ github.workspace }}/ci/cached-builds/dnstest.go:/tmp/dnstest.go:ro \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet golang
+              echo "=== compile and run a simple Go DNS lookup ==="
+              cd /tmp && go build -o dnstest dnstest.go && ./dnstest \
+                && echo "GO DNS: OK" || echo "GO DNS: FAILED"
             '
 
       - name: "Diagnose: namespace and socket deep dive"
