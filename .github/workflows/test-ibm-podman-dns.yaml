@@ -188,19 +188,46 @@ jobs:
                 && echo "USERNS+NETWORK BUILD: OK" || echo "USERNS+NETWORK BUILD: FAILED"
             '
 
-      - name: "Test: _CONTAINERS_USERNS_CONFIGURED + podman pull"
+      - name: "Test: _CONTAINERS_USERNS_CONFIGURED=done + podman pull"
         if: ${{ !cancelled() }}
         run: |
           set -x
           sudo docker run --rm --privileged --network=host \
-            -e _CONTAINERS_USERNS_CONFIGURED=1 \
+            -e _CONTAINERS_USERNS_CONFIGURED=done \
+            -e _CONTAINERS_ROOTLESS_UID=0 \
             registry.fedoraproject.org/fedora:44 \
             bash -c '
               dnf install -y --quiet podman
               echo "=== _CONTAINERS_USERNS_CONFIGURED=$_CONTAINERS_USERNS_CONFIGURED ==="
-              echo "=== This env var may skip MaybeReexecUsingUserNamespace ==="
+              echo "=== _CONTAINERS_ROOTLESS_UID=$_CONTAINERS_ROOTLESS_UID ==="
+              echo "=== These env vars tell containers/storage we already re-execed ==="
               podman pull quay.io/centos/centos:stream9-minimal \
                 && echo "USERNS_CONFIGURED PULL: OK" || echo "USERNS_CONFIGURED PULL: FAILED"
+            '
+
+      - name: "Diagnose: uid_map and rootless detection"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman python3
+              echo "=== /proc/self/uid_map ==="
+              cat /proc/self/uid_map
+              echo "=== /proc/self/gid_map ==="
+              cat /proc/self/gid_map
+              echo "=== id ==="
+              id
+              echo "=== capsh --print (effective caps) ==="
+              capsh --print 2>/dev/null | grep -E "Current|Bounding" || grep Cap /proc/self/status
+              echo "=== podman info rootless detection ==="
+              podman info --format "{{.Host.Security.Rootless}}"
+              echo "=== podman info store ==="
+              podman info --format "{{.Store.GraphDriverName}}"
+              echo "=== test: does unshare --user --mount break DNS? ==="
+              unshare --user --mount python3 -c "import socket; print(socket.getaddrinfo(\"quay.io\", 443)[:1])" \
+                && echo "DNS in user+mount ns: OK" || echo "DNS in user+mount ns: BLOCKED"
             '
 
       - name: "Diagnose: namespace and socket deep dive"
