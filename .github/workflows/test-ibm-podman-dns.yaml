@@ -1,0 +1,130 @@
+---
+name: Test podman DNS in privileged container
+
+"on":
+  push:
+    branches: [jd_ibm_runners]
+    paths:
+      - '.github/workflows/test-ibm-podman-dns.yaml'
+  workflow_dispatch:
+
+jobs:
+  test-podman-dns:
+    name: "podman-dns · ${{ matrix.platform }}"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04-ppc64le
+            platform: linux/ppc64le
+          - runner: ubuntu-24.04-s390x
+            platform: linux/s390x
+
+    steps:
+      - name: "Test: rootful podman (default)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== podman info ==="
+              podman info --format "{{.Host.Security.Rootless}}"
+              echo "=== default podman pull ==="
+              podman pull quay.io/centos/centos:stream9-minimal && echo "DEFAULT PULL: OK" || echo "DEFAULT PULL: FAILED"
+            '
+
+      - name: "Test: podman --userns=host"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== podman pull --userns=host ==="
+              podman pull quay.io/centos/centos:stream9-minimal && echo "USERNS=HOST PULL: OK" || echo "USERNS=HOST PULL: FAILED"
+              echo "=== podman build --userns=host --network=host ==="
+              cat > /tmp/Containerfile <<DOCKERFILE
+FROM quay.io/centos/centos:stream9-minimal
+RUN echo "hello from \$(uname -m)"
+DOCKERFILE
+              podman build --userns=host --network=host -t test-userns -f /tmp/Containerfile /tmp/ && echo "USERNS BUILD: OK" || echo "USERNS BUILD: FAILED"
+            '
+
+      - name: "Test: podman --isolation=chroot"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== podman build --isolation=chroot ==="
+              cat > /tmp/Containerfile <<DOCKERFILE
+FROM quay.io/centos/centos:stream9-minimal
+RUN echo "hello from \$(uname -m)"
+DOCKERFILE
+              podman build --isolation=chroot --network=host -t test-chroot -f /tmp/Containerfile /tmp/ && echo "CHROOT BUILD: OK" || echo "CHROOT BUILD: FAILED"
+            '
+
+      - name: "Test: podman with storage driver vfs"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              mkdir -p /etc/containers
+              echo -e "[storage]\ndriver = \"vfs\"" > /etc/containers/storage.conf
+              echo "=== podman pull with vfs ==="
+              podman pull quay.io/centos/centos:stream9-minimal && echo "VFS PULL: OK" || echo "VFS PULL: FAILED"
+            '
+
+      - name: "Test: docker pull + podman load (skip podman networking)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== install docker CLI ==="
+              dnf install -y --quiet moby-engine || curl -fsSL https://get.docker.com | bash || echo "docker install failed"
+              which docker && echo "docker CLI available" || echo "no docker CLI"
+              echo "=== docker pull + podman load ==="
+              docker pull quay.io/centos/centos:stream9-minimal && \
+                docker save quay.io/centos/centos:stream9-minimal | podman load && \
+                echo "DOCKER-PULL+PODMAN-LOAD: OK" || echo "DOCKER-PULL+PODMAN-LOAD: FAILED"
+              echo "=== podman build --pull=never --network=host ==="
+              cat > /tmp/Containerfile <<DOCKERFILE
+FROM quay.io/centos/centos:stream9-minimal
+RUN echo "hello from \$(uname -m)"
+DOCKERFILE
+              podman build --pull=never --network=host -t test-loaded -f /tmp/Containerfile /tmp/ && echo "BUILD FROM LOADED: OK" || echo "BUILD FROM LOADED: FAILED"
+            '
+
+      - name: "Test: check namespace and socket diagnostics"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman iproute procps-ng
+              echo "=== /proc/self/status namespace info ==="
+              grep -E "NSpid|NStgid|Uid|Gid|Cap" /proc/self/status
+              echo "=== can we create sockets? ==="
+              python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); print(\"UDP socket: OK\")" || echo "UDP: BLOCKED"
+              python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); print(\"TCP socket: OK\")" || echo "TCP: BLOCKED"
+              echo "=== DNS resolution ==="
+              python3 -c "import socket; print(socket.getaddrinfo(\"quay.io\", 443))" || echo "DNS: FAILED"
+              echo "=== unshare --user and socket ==="
+              unshare --user python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); print(\"UDP in user ns: OK\")" || echo "UDP in user ns: BLOCKED"
+              echo "=== podman unshare + socket ==="
+              podman unshare python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); print(\"UDP in podman ns: OK\")" 2>&1 || echo "UDP in podman ns: BLOCKED"
+            '
