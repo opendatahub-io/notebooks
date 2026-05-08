@@ -136,31 +136,71 @@ container engine support varies by architecture:
 | Architecture | Engine | Notes |
 |---|---|---|
 | amd64 / arm64 | Podman | Default, via Homebrew |
-| ppc64le (IBM Power) | Podman | Distro podman 4.9.3 works natively for builds |
-| s390x (IBM Z) | **Docker** (required) | Podman is fundamentally broken (see below) |
+| ppc64le (IBM Power) | Podman (in Docker) | Podman-in-docker via `docker run --privileged` with Fedora 44 |
+| s390x (IBM Z) | **Docker only** | Podman is completely broken for any network operation |
 
 ### Why podman fails on s390x (but works on ppc64le)
 
-The AppArmor profiles on IBM's s390x LXD hosts block **all** network
-socket creation (`socket()` syscall) inside `CLONE_NEWUSER`/`CLONE_NEWNET`
-namespaces. Podman relies on these namespaces for isolation, so both
-rootless and rootful podman fail with:
+Podman on s390x cannot perform **any** network operation — not image
+pulls, and not `RUN` steps inside `podman build` that need DNS. This
+applies even inside a `docker run --privileged --network=host` container
+with all capabilities.
+
+**Podman pull fails** (Go resolver):
 
 ```
-dial udp 127.0.0.53:53: socket: permission denied   # Go native resolver
-dial tcp 127.0.0.53:53: socket: permission denied   # with options use-vc
-Temporary failure in name resolution                  # with GODEBUG=netdns=cgo
+dial tcp: lookup quay.io: Temporary failure in name resolution
 ```
 
-Tested workarounds that **do not work** on s390x:
-- `options use-vc` in resolv.conf (TCP DNS) — TCP sockets also blocked
-- `GODEBUG=netdns=cgo` (glibc resolver) — glibc can't create sockets either
-- `GODEBUG=netdns=cgo` + public DNS (`8.8.8.8`) — same, namespace-level block
-- `podman system service` daemon mode — socket permissions still denied
-- `sudo podman` — rootful podman also creates namespaces
+**Podman build `RUN` steps also fail** (glibc/curl inside build container):
 
-Python and curl work fine because they run in the LXD container's primary
-namespace, not in podman's nested namespaces.
+```
+(microdnf:2): librepo-WARNING: Curl error (6): Couldn't resolve host name
+for https://mirrors.centos.org/metalink [Could not resolve host: mirrors.centos.org]
+```
+
+This means `--network=host` on `podman build` does **not** propagate
+functional DNS into podman's build containers on this architecture.
+The issue is not specific to Go's DNS resolver — glibc-based tools
+(`microdnf`, `curl`) inside podman build `RUN` steps also fail.
+
+**What does work** in the same environment (inside `docker run --privileged`):
+
+| Operation | Result |
+|---|---|
+| `python3 socket.getaddrinfo("quay.io")` | OK |
+| `nslookup quay.io` | OK (via 127.0.0.53) |
+| `getent hosts quay.io` | OK |
+| `unshare --user` + UDP socket | OK |
+| `dnf install` (in outer Fedora container) | OK |
+| `podman load < tarball` | OK |
+| `podman build --pull=never` with offline `RUN echo` | OK |
+
+So the host network, DNS, and even raw user namespaces all work.
+The issue is specific to podman's container runtime — it creates a
+combination of namespaces (user + mount + net + pid + ipc) and/or
+applies a runtime configuration that breaks DNS inside the resulting
+environment. The `--network=host` flag is insufficient to fix this.
+
+**Exhaustive list of workarounds that do NOT fix s390x:**
+
+| Attempt | Result |
+|---|---|
+| `options use-vc` in resolv.conf (TCP DNS) | FAILED |
+| `GODEBUG=netdns=cgo` (force Go cgo resolver) | FAILED |
+| Public DNS (`8.8.8.8`) written to `/etc/resolv.conf` | FAILED |
+| `podman system service` daemon mode | FAILED |
+| `sudo podman` (rootful) | FAILED |
+| `podman build --userns=host` | FAILED |
+| `podman build --isolation=chroot` | FAILED |
+| `podman` with `storage.driver = "vfs"` | FAILED |
+| `docker run --privileged` (outer container) | FAILED |
+| `docker run --privileged --network=host` (outer) | FAILED |
+| `podman build --network=host` (inner) | FAILED |
+
+**Conclusion:** Podman on s390x is only usable for offline operations
+(`podman load`, `podman build --pull=never` with offline `RUN` steps).
+Any operation requiring network access must use Docker.
 
 Docker works because `dockerd` runs as a system service in the primary
 namespace and handles all network I/O there. Client commands talk to
@@ -169,10 +209,10 @@ dockerd via a Unix socket.
 Docker CE 28.x with buildx is pre-installed on the IBM runners
 ([toolset config](https://github.com/IBM/action-runner-image-pz/blob/main/images/ubuntu/toolsets/toolset-2404.json)).
 
-The ppc64le runners do **not** have this restriction — podman builds
-work natively there. This confirms the issue is an infrastructure
-configuration difference between IBM's s390x and ppc64le hosts, not
-a podman bug.
+The ppc64le runners do **not** have this restriction — podman works
+natively there (including inside `docker run --privileged`). This
+confirms the issue is an infrastructure configuration difference
+between IBM's s390x and ppc64le hosts, not a podman bug.
 
 ## GitHub Actions compatibility issues
 
@@ -600,17 +640,17 @@ fails immediately.
 
 ## Pipeline architecture on IBM runners
 
-The IBM runner pipeline differs from the amd64 pipeline. On ppc64le,
-hermetic builds use podman inside a privileged Docker container. On
-s390x, podman DNS is blocked even inside `--privileged` containers
-(AppArmor blocks `socket()` in user namespaces created by podman),
-so Docker-only builds are the fallback.
+The IBM runner pipeline differs from the amd64 pipeline:
 
 ```
 amd64/arm64 (GitHub-hosted):   Homebrew podman -> podman build -> CRI-O k8s -> test
 IBM ppc64le:                   docker run --privileged -> podman build (--volume works) -> podman save | docker load -> testcontainers
-IBM s390x:                     Docker CE -> docker build (non-hermetic, no --volume) -> testcontainers
+IBM s390x:                     Docker CE -> docker build (non-hermetic*) -> testcontainers
 ```
+
+*s390x hermetic builds require the `--build-context` migration (replacing
+`--volume` with BuildKit named contexts in both the Makefile and Dockerfiles).
+See the `--volume` limitation section below.
 
 ### What works without changes
 
@@ -701,4 +741,5 @@ Workarounds:
 | May 2026 | Podman investigation | ppc64le: works, s390x: blocked by AppArmor in user namespaces |
 | May 2026 | Docker confirmed | Docker builds work on both arches |
 | May 2026 | Kubernetes probed | kubeadm fails on both arches (no net/mount ns, no /lib/modules) |
-| May 2026 | `--volume` blocker | Docker buildx rejects `--volume`; ppc64le solved via podman-in-docker; s390x still blocked (podman DNS fails even in privileged) |
+| May 2026 | `--volume` blocker | Docker buildx rejects `--volume`; ppc64le solved via podman-in-docker |
+| May 2026 | s390x podman deep dive | Exhaustive testing: podman DNS broken for both Go pulls AND glibc RUN steps; `--network=host`, `--userns=host`, `--isolation=chroot`, `GODEBUG=netdns=cgo`, public DNS, VFS storage all fail; only `docker pull` + `podman load` + `--pull=never` works; `unshare --user` + sockets works (not a blanket user-ns block) |
