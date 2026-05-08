@@ -6,6 +6,7 @@ name: Test podman DNS in privileged container
     branches: [jd_ibm_runners]
     paths:
       - '.github/workflows/test-ibm-podman-dns.yaml'
+      - 'ci/cached-builds/Containerfile.test'
   workflow_dispatch:
 
 jobs:
@@ -22,23 +23,66 @@ jobs:
             platform: linux/s390x
 
     steps:
-      - name: Create test Containerfile
-        run: |
-          printf 'FROM quay.io/centos/centos:stream9-minimal\nRUN echo "hello from $(uname -m)"\n' > /tmp/Containerfile.test
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+          sparse-checkout: ci/cached-builds/Containerfile.test
 
-      - name: "Test: rootful podman (default)"
+      - name: "Diagnose: resolv.conf BEFORE and AFTER podman install"
         if: ${{ !cancelled() }}
         run: |
           set -x
           sudo docker run --rm --privileged --network=host \
-            -v /tmp/Containerfile.test:/tmp/Containerfile.test:ro \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              echo "=== resolv.conf BEFORE podman install ==="
+              ls -la /etc/resolv.conf
+              cat /etc/resolv.conf
+              echo "=== /etc/nsswitch.conf ==="
+              cat /etc/nsswitch.conf 2>/dev/null || echo "no nsswitch.conf"
+
+              dnf install -y --quiet podman python3
+
+              echo "=== resolv.conf AFTER podman install ==="
+              ls -la /etc/resolv.conf
+              cat /etc/resolv.conf
+              echo "=== check if systemd-resolved broke resolv.conf ==="
+              ls -la /run/systemd/resolve/ 2>/dev/null || echo "/run/systemd/resolve/ does not exist"
+              echo "=== test DNS with python3 (glibc getaddrinfo) ==="
+              python3 -c "import socket; print(socket.getaddrinfo(\"quay.io\", 443)[:1])" || echo "PYTHON DNS: FAILED"
+              echo "=== test DNS with getent ==="
+              getent hosts quay.io || echo "GETENT DNS: FAILED"
+              echo "=== test podman pull ==="
+              podman pull quay.io/centos/centos:stream9-minimal && echo "DEFAULT PULL: OK" || echo "DEFAULT PULL: FAILED"
+            '
+
+      - name: "Test: GODEBUG=netdns=cgo (force Go cgo resolver)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            -e GODEBUG=netdns=cgo \
             registry.fedoraproject.org/fedora:44 \
             bash -c '
               dnf install -y --quiet podman
-              echo "=== podman info ==="
-              podman info --format "{{.Host.Security.Rootless}}"
-              echo "=== default podman pull ==="
-              podman pull quay.io/centos/centos:stream9-minimal && echo "DEFAULT PULL: OK" || echo "DEFAULT PULL: FAILED"
+              echo "=== GODEBUG=$GODEBUG ==="
+              podman pull quay.io/centos/centos:stream9-minimal && echo "CGO PULL: OK" || echo "CGO PULL: FAILED"
+            '
+
+      - name: "Test: fix resolv.conf before podman pull"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== resolv.conf after install ==="
+              cat /etc/resolv.conf
+              echo "=== overwrite with public DNS ==="
+              printf "nameserver 8.8.8.8\nnameserver 1.1.1.1\n" > /etc/resolv.conf
+              cat /etc/resolv.conf
+              podman pull quay.io/centos/centos:stream9-minimal && echo "PUBLIC DNS PULL: OK" || echo "PUBLIC DNS PULL: FAILED"
             '
 
       - name: "Test: podman --userns=host"
@@ -46,7 +90,7 @@ jobs:
         run: |
           set -x
           sudo docker run --rm --privileged --network=host \
-            -v /tmp/Containerfile.test:/tmp/Containerfile.test:ro \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test:/tmp/Containerfile.test:ro \
             registry.fedoraproject.org/fedora:44 \
             bash -c '
               dnf install -y --quiet podman
@@ -59,24 +103,11 @@ jobs:
         run: |
           set -x
           sudo docker run --rm --privileged --network=host \
-            -v /tmp/Containerfile.test:/tmp/Containerfile.test:ro \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test:/tmp/Containerfile.test:ro \
             registry.fedoraproject.org/fedora:44 \
             bash -c '
               dnf install -y --quiet podman
               podman build --isolation=chroot --network=host -t test-chroot -f /tmp/Containerfile.test /tmp/ && echo "CHROOT BUILD: OK" || echo "CHROOT BUILD: FAILED"
-            '
-
-      - name: "Test: podman with storage driver vfs"
-        if: ${{ !cancelled() }}
-        run: |
-          set -x
-          sudo docker run --rm --privileged --network=host \
-            registry.fedoraproject.org/fedora:44 \
-            bash -c '
-              dnf install -y --quiet podman
-              mkdir -p /etc/containers
-              printf "[storage]\ndriver = \"vfs\"\n" > /etc/containers/storage.conf
-              podman pull quay.io/centos/centos:stream9-minimal && echo "VFS PULL: OK" || echo "VFS PULL: FAILED"
             '
 
       - name: "Test: docker pull + podman load (skip podman networking)"
@@ -86,7 +117,7 @@ jobs:
           sudo docker pull quay.io/centos/centos:stream9-minimal
           sudo docker save quay.io/centos/centos:stream9-minimal -o /tmp/base-image.tar
           sudo docker run --rm --privileged --network=host \
-            -v /tmp/Containerfile.test:/tmp/Containerfile.test:ro \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test:/tmp/Containerfile.test:ro \
             -v /tmp/base-image.tar:/tmp/base-image.tar:ro \
             registry.fedoraproject.org/fedora:44 \
             bash -c '
@@ -95,23 +126,39 @@ jobs:
               podman build --pull=never --network=host -t test-loaded -f /tmp/Containerfile.test /tmp/ && echo "BUILD FROM LOADED: OK" || echo "BUILD FROM LOADED: FAILED"
             '
 
-      - name: "Test: check namespace and socket diagnostics"
+      - name: "Diagnose: namespace and socket deep dive"
         if: ${{ !cancelled() }}
         run: |
           set -x
           sudo docker run --rm --privileged --network=host \
             registry.fedoraproject.org/fedora:44 \
             bash -c '
-              dnf install -y --quiet podman iproute procps-ng
-              echo "=== /proc/self/status namespace info ==="
+              dnf install -y --quiet podman iproute procps-ng python3 bind-utils
+
+              echo "=== /proc/self/status ==="
               grep -E "NSpid|NStgid|Uid|Gid|Cap" /proc/self/status
-              echo "=== can we create sockets? ==="
+
+              echo "=== sockets from root namespace ==="
               python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); print(\"UDP socket: OK\")" || echo "UDP: BLOCKED"
               python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); print(\"TCP socket: OK\")" || echo "TCP: BLOCKED"
-              echo "=== DNS resolution ==="
-              python3 -c "import socket; print(socket.getaddrinfo(\"quay.io\", 443))" || echo "DNS: FAILED"
-              echo "=== unshare --user and socket ==="
+
+              echo "=== DNS with python3 (getaddrinfo / cgo path) ==="
+              python3 -c "import socket; print(socket.getaddrinfo(\"quay.io\", 443)[:1])" || echo "PYTHON DNS: FAILED"
+
+              echo "=== DNS with nslookup ==="
+              nslookup quay.io || echo "NSLOOKUP: FAILED"
+
+              echo "=== DNS with getent ==="
+              getent hosts quay.io || echo "GETENT: FAILED"
+
+              echo "=== sockets inside unshare --user ==="
               unshare --user python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); print(\"UDP in user ns: OK\")" || echo "UDP in user ns: BLOCKED"
+              unshare --user python3 -c "import socket; print(socket.getaddrinfo(\"quay.io\", 443)[:1])" || echo "DNS in user ns: BLOCKED"
+
               echo "=== podman unshare + socket ==="
               podman unshare python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); print(\"UDP in podman ns: OK\")" 2>&1 || echo "UDP in podman ns: BLOCKED"
+
+              echo "=== resolv.conf final state ==="
+              ls -la /etc/resolv.conf
+              cat /etc/resolv.conf
             '
