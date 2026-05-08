@@ -545,19 +545,32 @@ arches. On s390x it allows user+pid ns but blocks net/mount. On ppc64le
 it blocks all namespace creation (`Operation not permitted`). Only
 `--privileged` works.
 
-**Implementation approach:** Wrap pipeline steps that need namespace
-access (podman build, hermeto prefetch, potentially kubeadm) in
-`docker run --privileged` with the workspace and Docker socket mounted.
-This enables the full pipeline on both IBM arches:
+**Implementation approach:** Wrap the `make` build step in
+`docker run --privileged --network=host` with a Fedora 44 container
+(podman 5.x + Python 3.14). The workspace is mounted so host-compiled
+tools (`bin/buildinputs`, `cachi2/output`) are reused. After build,
+`podman save | docker load` transfers the image to Docker.
 
 ```bash
-sudo docker run --rm --privileged \
+sudo docker run --rm --privileged --network=host \
   -v $GITHUB_WORKSPACE:/workspace:z \
-  -v /var/run/docker.sock:/var/run/docker.sock \
   -w /workspace \
-  registry.access.redhat.com/ubi9/ubi \
-  bash -c "dnf install -y podman && podman build ..."
+  registry.fedoraproject.org/fedora:44 \
+  bash -c "
+    dnf install -y podman make which python3 python3-pip
+    pip install structlog
+    export PYTHONPATH=/workspace
+    make jupyter-minimal-ubi9-python-3.12 CONTAINER_ENGINE=podman ...
+    podman save --format docker-archive -o /workspace/image.tar IMAGE
+  "
+docker load < image.tar
 ```
+
+**Caveat:** This works on **ppc64le only**. On s390x, podman inside the
+privileged container still fails DNS (`socket: permission denied`)
+because podman creates user namespaces for the build process, and
+AppArmor blocks `socket()` inside those user namespaces regardless of
+`--privileged` or `--network=host` on the outer container.
 
 ## Docker Hub rate limiting on IBM runners
 
@@ -587,12 +600,16 @@ fails immediately.
 
 ## Pipeline architecture on IBM runners
 
-Since Docker is the only viable container engine (podman blocked on s390x,
-k8s not possible in LXD), the IBM runner pipeline differs from the amd64 pipeline:
+The IBM runner pipeline differs from the amd64 pipeline. On ppc64le,
+hermetic builds use podman inside a privileged Docker container. On
+s390x, podman DNS is blocked even inside `--privileged` containers
+(AppArmor blocks `socket()` in user namespaces created by podman),
+so Docker-only builds are the fallback.
 
 ```
 amd64/arm64 (GitHub-hosted):   Homebrew podman -> podman build -> CRI-O k8s -> test
-IBM ppc64le/s390x:             Docker CE (pre-installed) -> docker build -> testcontainers -> test
+IBM ppc64le:                   docker run --privileged -> podman build (--volume works) -> podman save | docker load -> testcontainers
+IBM s390x:                     Docker CE -> docker build (non-hermetic, no --volume) -> testcontainers
 ```
 
 ### What works without changes
@@ -641,19 +658,30 @@ top-level `cachi2/output` and RPM `repos.d` mounts are passed by the
 Makefile as build command flags, not as Dockerfile directives.
 
 Workarounds:
-1. **Build with podman inside `docker run --privileged`** (implemented) —
-   run the `make` build step inside a privileged Fedora 44 container
-   that has podman 5.x. Podman supports `--volume` natively, and
-   podman 5.4 supports Dockerfile HEREDOCs. The workspace is mounted
-   so pre-compiled `bin/buildinputs`, the uv `.venv`, and `cachi2/output`
-   are all reused from the host. After build, pipe `podman save | docker load`
-   to transfer the image to Docker for testcontainers. No Makefile or
-   Dockerfile changes needed.
+1. **Build with podman inside `docker run --privileged`** (implemented,
+   **ppc64le only**) — run the `make` build step inside a privileged
+   Fedora 44 container with podman 5.x (supports `--volume` and
+   Dockerfile HEREDOCs). The workspace is mounted so pre-compiled
+   `bin/buildinputs` and `cachi2/output` are reused from the host.
+   After build, `podman save --format docker-archive -o image.tar`
+   followed by `docker load < image.tar` transfers the image to
+   Docker for testcontainers. No Makefile or Dockerfile changes needed.
+   Requirements inside the container: `dnf install podman make which
+   python3 python3-pip && pip install structlog` + `PYTHONPATH=/workspace`.
+
+   **Does NOT work on s390x**: even inside `docker run --privileged
+   --network=host`, podman creates user namespaces for the build
+   and the AppArmor-blocked `socket()` syscall prevents DNS resolution.
+   The `--network=host` flag on both the outer docker and inner podman
+   build is insufficient — the user namespace is the problem, not the
+   network namespace.
+
 2. **Use `docker buildx build --build-context`** — BuildKit named contexts
    can map external directories: `--build-context cachi2=/path/cachi2/output`.
    Podman also supports this flag (since buildah PR #3978, May 2022).
    Requires Dockerfile changes to use `RUN --mount=type=bind,from=cachi2,...`
-   but would unify both engines on a single syntax. Future migration path.
+   but would unify both engines on a single syntax. Works with Docker
+   on both arches. Future migration path.
 3. **Copy `cachi2/output` into the build context** — make it available
    via `COPY` instead of `--volume`. Increases context size but works
    with both engines.
@@ -673,4 +701,4 @@ Workarounds:
 | May 2026 | Podman investigation | ppc64le: works, s390x: blocked by AppArmor in user namespaces |
 | May 2026 | Docker confirmed | Docker builds work on both arches |
 | May 2026 | Kubernetes probed | kubeadm fails on both arches (no net/mount ns, no /lib/modules) |
-| May 2026 | `--volume` blocker | Docker buildx rejects `--volume`; solved via podman-in-docker (`docker run --privileged` + Fedora 44 podman 5.x) |
+| May 2026 | `--volume` blocker | Docker buildx rejects `--volume`; ppc64le solved via podman-in-docker; s390x still blocked (podman DNS fails even in privileged) |
