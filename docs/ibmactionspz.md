@@ -120,13 +120,54 @@ podman 4.x) or switch to Docker.
 
 ### Podman limitations
 
-- **ppc64le**: Ubuntu 24.04's podman 4.x does not support Dockerfile HEREDOCs
-  (`RUN <<EOF ... EOF`). Our Dockerfiles use this syntax extensively.
-- **s390x**: podman fails to pull images from quay.io due to AppArmor blocking
-  DNS socket creation. Docker may work as an alternative.
+- **ppc64le**: Ubuntu 24.04's podman 4.9.3 does not support Dockerfile
+  HEREDOCs (`RUN /bin/bash <<'EOF' ... EOF`). Our Dockerfiles use this
+  syntax extensively. HEREDOC support requires buildah >= 1.35 / podman
+  >= 5.0. Ubuntu 24.04 patched it out of their buildah 1.33 package
+  ([buildah#5474](https://github.com/containers/buildah/issues/5474)).
+- **s390x**: podman is completely broken for any network operation
+  (both Go-level pulls and glibc tools inside `RUN` steps). See the
+  detailed analysis below.
 
 See <https://github.com/IBM/actionspz/issues/63#issuecomment-3654738467> for
 the original investigation.
+
+### Getting podman 5.x on IBM runners (for HEREDOC support)
+
+Ubuntu 24.04 ships podman 4.9.3 which lacks Dockerfile HEREDOC support.
+No pre-built podman 5.x packages exist for ppc64le/s390x on Ubuntu 24.04:
+
+| Source | Status |
+|---|---|
+| Kubic/OBS repo | Deprecated (Kubic retired June 2022) |
+| teward PPA (`ppa:teward/podman`) | Broken (0/6 builds succeeded), amd64-only |
+| Fedora COPR (`rhcontainerbot/podman-next`) | RPM-only, not usable on Ubuntu |
+| Homebrew | Does not support ppc64le/s390x |
+| Static binaries (GitHub releases) | amd64/arm64 only |
+| pipx/cargo/nix | Not applicable (Go + C project) |
+
+**Viable alternatives:**
+
+1. **Podman-in-docker** (implemented) — run `make` inside
+   `docker run --privileged` with a Fedora 44 container (podman 5.x +
+   Python 3.14). Controls the exact podman version and brings in the
+   latest Fedora packages. See the pipeline architecture section below.
+
+2. **Build buildah from source** — buildah is simpler than podman and
+   is what actually needs HEREDOC support. Build natively on the runner:
+   ```bash
+   sudo apt-get install -y make golang git go-md2man \
+     libgpgme-dev libseccomp-dev libdevmapper-dev libglib2.0-dev \
+     libbtrfs-dev libassuan-dev pkg-config
+   git clone --branch v1.39.3 https://github.com/containers/buildah.git
+   cd buildah && make && sudo make install
+   ```
+   Upstream buildah includes HEREDOC support (Ubuntu strips it out).
+   Adds ~2-3 min to CI but avoids the docker wrapper entirely.
+
+3. **Wait for Ubuntu 25.04+** — ships podman 5.4.1 and buildah 1.39.3
+   with ppc64le/s390x packages. IBM controls the runner image OS; this
+   would need them to upgrade from 24.04 to 25.04+.
 
 ### CI container engine matrix
 
