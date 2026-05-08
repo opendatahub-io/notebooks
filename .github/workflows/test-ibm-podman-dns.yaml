@@ -22,11 +22,16 @@ jobs:
             platform: linux/s390x
 
     steps:
+      - name: Create test Containerfile
+        run: |
+          printf 'FROM quay.io/centos/centos:stream9-minimal\nRUN echo "hello from $(uname -m)"\n' > /tmp/Containerfile.test
+
       - name: "Test: rootful podman (default)"
         if: ${{ !cancelled() }}
         run: |
           set -x
           sudo docker run --rm --privileged --network=host \
+            -v /tmp/Containerfile.test:/tmp/Containerfile.test:ro \
             registry.fedoraproject.org/fedora:44 \
             bash -c '
               dnf install -y --quiet podman
@@ -41,17 +46,12 @@ jobs:
         run: |
           set -x
           sudo docker run --rm --privileged --network=host \
+            -v /tmp/Containerfile.test:/tmp/Containerfile.test:ro \
             registry.fedoraproject.org/fedora:44 \
             bash -c '
               dnf install -y --quiet podman
-              echo "=== podman pull --userns=host ==="
               podman pull quay.io/centos/centos:stream9-minimal && echo "USERNS=HOST PULL: OK" || echo "USERNS=HOST PULL: FAILED"
-              echo "=== podman build --userns=host --network=host ==="
-              cat > /tmp/Containerfile <<DOCKERFILE
-FROM quay.io/centos/centos:stream9-minimal
-RUN echo "hello from \$(uname -m)"
-DOCKERFILE
-              podman build --userns=host --network=host -t test-userns -f /tmp/Containerfile /tmp/ && echo "USERNS BUILD: OK" || echo "USERNS BUILD: FAILED"
+              podman build --userns=host --network=host -t test-userns -f /tmp/Containerfile.test /tmp/ && echo "USERNS BUILD: OK" || echo "USERNS BUILD: FAILED"
             '
 
       - name: "Test: podman --isolation=chroot"
@@ -59,15 +59,11 @@ DOCKERFILE
         run: |
           set -x
           sudo docker run --rm --privileged --network=host \
+            -v /tmp/Containerfile.test:/tmp/Containerfile.test:ro \
             registry.fedoraproject.org/fedora:44 \
             bash -c '
               dnf install -y --quiet podman
-              echo "=== podman build --isolation=chroot ==="
-              cat > /tmp/Containerfile <<DOCKERFILE
-FROM quay.io/centos/centos:stream9-minimal
-RUN echo "hello from \$(uname -m)"
-DOCKERFILE
-              podman build --isolation=chroot --network=host -t test-chroot -f /tmp/Containerfile /tmp/ && echo "CHROOT BUILD: OK" || echo "CHROOT BUILD: FAILED"
+              podman build --isolation=chroot --network=host -t test-chroot -f /tmp/Containerfile.test /tmp/ && echo "CHROOT BUILD: OK" || echo "CHROOT BUILD: FAILED"
             '
 
       - name: "Test: podman with storage driver vfs"
@@ -79,8 +75,7 @@ DOCKERFILE
             bash -c '
               dnf install -y --quiet podman
               mkdir -p /etc/containers
-              echo -e "[storage]\ndriver = \"vfs\"" > /etc/containers/storage.conf
-              echo "=== podman pull with vfs ==="
+              printf "[storage]\ndriver = \"vfs\"\n" > /etc/containers/storage.conf
               podman pull quay.io/centos/centos:stream9-minimal && echo "VFS PULL: OK" || echo "VFS PULL: FAILED"
             '
 
@@ -88,24 +83,16 @@ DOCKERFILE
         if: ${{ !cancelled() }}
         run: |
           set -x
+          sudo docker pull quay.io/centos/centos:stream9-minimal
+          sudo docker save quay.io/centos/centos:stream9-minimal -o /tmp/base-image.tar
           sudo docker run --rm --privileged --network=host \
-            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v /tmp/Containerfile.test:/tmp/Containerfile.test:ro \
+            -v /tmp/base-image.tar:/tmp/base-image.tar:ro \
             registry.fedoraproject.org/fedora:44 \
             bash -c '
               dnf install -y --quiet podman
-              echo "=== install docker CLI ==="
-              dnf install -y --quiet moby-engine || curl -fsSL https://get.docker.com | bash || echo "docker install failed"
-              which docker && echo "docker CLI available" || echo "no docker CLI"
-              echo "=== docker pull + podman load ==="
-              docker pull quay.io/centos/centos:stream9-minimal && \
-                docker save quay.io/centos/centos:stream9-minimal | podman load && \
-                echo "DOCKER-PULL+PODMAN-LOAD: OK" || echo "DOCKER-PULL+PODMAN-LOAD: FAILED"
-              echo "=== podman build --pull=never --network=host ==="
-              cat > /tmp/Containerfile <<DOCKERFILE
-FROM quay.io/centos/centos:stream9-minimal
-RUN echo "hello from \$(uname -m)"
-DOCKERFILE
-              podman build --pull=never --network=host -t test-loaded -f /tmp/Containerfile /tmp/ && echo "BUILD FROM LOADED: OK" || echo "BUILD FROM LOADED: FAILED"
+              podman load < /tmp/base-image.tar && echo "PODMAN LOAD: OK" || echo "PODMAN LOAD: FAILED"
+              podman build --pull=never --network=host -t test-loaded -f /tmp/Containerfile.test /tmp/ && echo "BUILD FROM LOADED: OK" || echo "BUILD FROM LOADED: FAILED"
             '
 
       - name: "Test: check namespace and socket diagnostics"
