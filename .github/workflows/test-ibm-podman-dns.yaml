@@ -148,6 +148,61 @@ jobs:
                 && echo "NETWORK BUILD: OK" || echo "NETWORK BUILD: FAILED"
             '
 
+      - name: "Test: docker pull + podman load + BUILDAH_ISOLATION=chroot + network build"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker pull quay.io/centos/centos:stream9-minimal
+          sudo docker save quay.io/centos/centos:stream9-minimal -o /tmp/base-image.tar
+          sudo docker run --rm --privileged --network=host \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test-network:/tmp/Containerfile.test-network:ro \
+            -v /tmp/base-image.tar:/tmp/base-image.tar:ro \
+            -e BUILDAH_ISOLATION=chroot \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              podman load < /tmp/base-image.tar
+              echo "=== BUILDAH_ISOLATION=$BUILDAH_ISOLATION ==="
+              echo "=== chroot isolation skips user/net ns for RUN steps ==="
+              podman build --pull=never --network=host \
+                -t test-chroot-net -f /tmp/Containerfile.test-network /tmp/ \
+                && echo "CHROOT+NETWORK BUILD: OK" || echo "CHROOT+NETWORK BUILD: FAILED"
+            '
+
+      - name: "Test: docker pull + podman load + --userns=host --network=host + network build"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker pull quay.io/centos/centos:stream9-minimal
+          sudo docker save quay.io/centos/centos:stream9-minimal -o /tmp/base-image.tar
+          sudo docker run --rm --privileged --network=host \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test-network:/tmp/Containerfile.test-network:ro \
+            -v /tmp/base-image.tar:/tmp/base-image.tar:ro \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              podman load < /tmp/base-image.tar
+              echo "=== --userns=host --network=host with pre-loaded image ==="
+              podman build --pull=never --userns=host --network=host \
+                -t test-userns-net -f /tmp/Containerfile.test-network /tmp/ \
+                && echo "USERNS+NETWORK BUILD: OK" || echo "USERNS+NETWORK BUILD: FAILED"
+            '
+
+      - name: "Test: _CONTAINERS_USERNS_CONFIGURED + podman pull"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            -e _CONTAINERS_USERNS_CONFIGURED=1 \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== _CONTAINERS_USERNS_CONFIGURED=$_CONTAINERS_USERNS_CONFIGURED ==="
+              echo "=== This env var may skip MaybeReexecUsingUserNamespace ==="
+              podman pull quay.io/centos/centos:stream9-minimal \
+                && echo "USERNS_CONFIGURED PULL: OK" || echo "USERNS_CONFIGURED PULL: FAILED"
+            '
+
       - name: "Diagnose: namespace and socket deep dive"
         if: ${{ !cancelled() }}
         run: |
