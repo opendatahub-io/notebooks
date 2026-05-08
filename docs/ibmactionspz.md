@@ -243,6 +243,40 @@ environment. The `--network=host` flag is insufficient to fix this.
 (`podman load`, `podman build --pull=never` with offline `RUN` steps).
 Any operation requiring network access must use Docker.
 
+### Source code analysis: why does rootful podman break DNS?
+
+Investigated the `containers/storage` and `buildah` source code to
+understand the namespace creation path:
+
+**`MaybeReexecUsingUserNamespace(false)`** (containers/storage):
+Called from `buildah/cmd/buildah/main.go` `before()`. With `evenForRoot=false`
+and `CAP_SYS_ADMIN` present (which we have in `docker --privileged`),
+it **returns immediately without re-execing**. So `containers/storage`
+is NOT creating user namespaces in our scenario.
+
+**`setupNamespaces()`** (buildah `run_linux.go`):
+For `RUN` steps, this function decides whether to create user+network
+namespaces. With `--network=host`, `specifiedNetwork=true` and the
+automatic network namespace creation is skipped. With `--isolation=chroot`,
+the OCI runtime is bypassed entirely.
+
+**The mystery:** Despite `MaybeReexecUsingUserNamespace` skipping,
+`--network=host` being set, and `--isolation=chroot` being used,
+podman still fails DNS on s390x. The failure occurs both during
+`podman pull` (which shouldn't use namespaces at all when rootful with
+`CAP_SYS_ADMIN`) and during `podman build` `RUN` steps (even with chroot
+isolation). Since `unshare --user` + socket works in the same environment,
+the issue is specific to podman's process setup, not a general namespace
+restriction.
+
+**Open question:** What does podman do between process start and the DNS
+query that triggers the AppArmor/LXD restriction? Candidates:
+- Podman's C constructor in `rootless_linux.c` (`reexec_in_user_namespace`)
+- The `containers/storage` overlay mount setup creating mount namespaces
+- The Go runtime's thread creation interacting with LXD's cgroup/namespace
+  restrictions
+- A Fedora 44 / podman 5.8.2 regression on s390x
+
 Docker works because `dockerd` runs as a system service in the primary
 namespace and handles all network I/O there. Client commands talk to
 dockerd via a Unix socket.
