@@ -228,8 +228,10 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
 "jupyter/**/*.ipynb" = ["E", "F", "W", "Q", "I", "PLR0402", "PLC0414", "RUF100", "PLW0108", "S101", "S603"]
 # Tests use assert, subprocess, and shell=True legitimately
 "tests/**/*.py" = ["S101", "S603"]
-# CI scripts have embedded test classes (assert) and legitimately use subprocess/shell
-"ci/**/*.py" = ["S101", "S602", "S603", "S604"]
+# CI scripts have embedded test classes (assert) and legitimately use subprocess with controlled arguments
+"ci/**/*.py" = ["S101", "S603"]
+# Scripts use subprocess with controlled arguments
+"scripts/**/*.py" = ["S603"]
 # Test assertion helpers use assert by design
 "ntb/**/*.py" = ["S101"]
 # Copr client wraps CLI commands via subprocess with controlled arguments

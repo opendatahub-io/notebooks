@@ -73,7 +73,7 @@ def process_image(image, commit_id_path, release_version_n, hash_n):
     src_tag_cmd = (
         f'skopeo inspect docker://{img} | jq \'.Env[] | select(startswith("OPENSHIFT_BUILD_NAME=")) | split("=")[1]\''
     )
-    src_tag = subprocess.check_output(src_tag_cmd, shell=True, text=True).strip().strip('"').replace("-amd64", "")
+    src_tag = subprocess.check_output(src_tag_cmd, shell=True, text=True).strip().strip('"').replace("-amd64", "")  # noqa: S602 - CI automation
 
     regex = ""
 
@@ -83,10 +83,10 @@ def process_image(image, commit_id_path, release_version_n, hash_n):
         regex = f"^{src_tag}-{release_version_n}-\\d+-{hash_n}$"
 
     latest_tag_cmd = f"skopeo inspect docker://{img} | jq -r --arg regex \"{regex}\" '.RepoTags | map(select(. | test($regex))) | .[0]'"
-    latest_tag = subprocess.check_output(latest_tag_cmd, shell=True, text=True).strip()
+    latest_tag = subprocess.check_output(latest_tag_cmd, shell=True, text=True).strip()  # noqa: S602 - CI automation
 
     digest_cmd = f"skopeo inspect docker://{registry}:{latest_tag} | jq .Digest | tr -d '\"'"
-    digest = subprocess.check_output(digest_cmd, shell=True, text=True).strip()
+    digest = subprocess.check_output(digest_cmd, shell=True, text=True).strip()  # noqa: S602 - CI automation
 
     if digest is None or digest == "":
         return

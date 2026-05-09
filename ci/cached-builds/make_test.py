@@ -56,56 +56,57 @@ def run_tests(target: str) -> None:
         deploy = "deploy9"
         deploy_target = target
 
-    check_call(f"kubectl create namespace {namespace}", shell=True)
-    check_call(f"kubectl config set-context --current --namespace={namespace}", shell=True)
-    check_call(f"kubectl label namespace {namespace} fake-scc=fake-restricted-v2", shell=True)
+    check_call(f"kubectl create namespace {namespace}", shell=True)  # noqa: S604 - CI automation
+    check_call(f"kubectl config set-context --current --namespace={namespace}", shell=True)  # noqa: S604 - CI automation
+    check_call(f"kubectl label namespace {namespace} fake-scc=fake-restricted-v2", shell=True)  # noqa: S604 - CI automation
 
     # wait for service account to be created, otherwise pod is refused to be created
     # $ bin/kubectl apply -k runtimes/minimal/ubi9-python-3.9/kustomize/base
     # configmap/runtime-req-config-9hhb2bhhmd created
     # Error from server (Forbidden): error when creating "runtimes/minimal/ubi9-python-3.9/kustomize/base": pods "runtime-pod" is forbidden: error looking up service account ns-runtime-minimal-ubi9-python-3-9/default: serviceaccount "default" not found
     # See https://github.com/kubernetes/kubernetes/issues/66689
-    check_call("timeout 10s bash -c 'until kubectl get serviceaccount/default; do sleep 1; done'", shell=True)
+    check_call("timeout 10s bash -c 'until kubectl get serviceaccount/default; do sleep 1; done'", shell=True)  # noqa: S604 - CI automation
 
-    check_call(f"make {deploy}-{deploy_target}", shell=True)
+    check_call(f"make {deploy}-{deploy_target}", shell=True)  # noqa: S604 - CI automation
     wait_for_stability(pod, target)
 
     try:
         if target.startswith("runtime-"):
-            check_call(f"make validate-runtime-image image={target}", shell=True)
+            check_call(f"make validate-runtime-image image={target}", shell=True)  # noqa: S604 - CI automation
         elif target.startswith("rocm-runtime-"):
-            check_call(
-                f"make validate-runtime-image image={target.replace('rocm-runtime-', 'runtime-rocm-')}", shell=True
+            check_call(  # noqa: S604 - CI automation
+                f"make validate-runtime-image image={target.replace('rocm-runtime-', 'runtime-rocm-')}",
+                shell=True,
             )
         elif target.startswith("codeserver-"):
-            check_call(f"make validate-codeserver-image image={target}", shell=True)
+            check_call(f"make validate-codeserver-image image={target}", shell=True)  # noqa: S604 - CI automation
         elif target.startswith("rocm-jupyter"):
-            check_call(f"make test-{target.replace('rocm-jupyter-', 'jupyter-rocm-')}", shell=True)
+            check_call(f"make test-{target.replace('rocm-jupyter-', 'jupyter-rocm-')}", shell=True)  # noqa: S604 - CI automation
         else:
-            check_call(f"make test-{target}", shell=True)
+            check_call(f"make test-{target}", shell=True)  # noqa: S604 - CI automation
     finally:
         # dump a lot of info to the GHA logs
         with gha_log_group("pod and statefulset info"):
-            call("kubectl get statefulsets", shell=True)
-            call("kubectl describe statefulsets", shell=True)
-            call("kubectl get pods", shell=True)
-            call("kubectl describe pods", shell=True)
+            call("kubectl get statefulsets", shell=True)  # noqa: S604 - CI automation
+            call("kubectl describe statefulsets", shell=True)  # noqa: S604 - CI automation
+            call("kubectl get pods", shell=True)  # noqa: S604 - CI automation
+            call("kubectl describe pods", shell=True)  # noqa: S604 - CI automation
             # describe does not show everything about the pod
-            call("kubectl get pods -o yaml", shell=True)
+            call("kubectl get pods -o yaml", shell=True)  # noqa: S604 - CI automation
 
         with gha_log_group("kubernetes namespace events"):
             # events aren't all that useful, but it can tell what was happening in the current namespace
-            call("kubectl get events", shell=True)
+            call("kubectl get events", shell=True)  # noqa: S604 - CI automation
 
         with gha_log_group("previous pod logs"):
             # relevant if the pod is crashlooping, this shows the final lines
             # use the negative label selector as a trick to match all pods (as we don't have any pods with nosuchlabel)
-            call("kubectl logs --selector=nosuchlabel!=nosuchvalue --all-pods --timestamps --previous", shell=True)
+            call("kubectl logs --selector=nosuchlabel!=nosuchvalue --all-pods --timestamps --previous", shell=True)  # noqa: S604 - CI automation
         with gha_log_group("current pod logs"):
             # regular logs from a running (or finished) pod
-            call("kubectl logs --selector=nosuchlabel!=nosuchvalue --all-pods --timestamps", shell=True)
+            call("kubectl logs --selector=nosuchlabel!=nosuchvalue --all-pods --timestamps", shell=True)  # noqa: S604 - CI automation
 
-    check_call(f"make un{deploy}-{deploy_target}", shell=True)
+    check_call(f"make un{deploy}-{deploy_target}", shell=True)  # noqa: S604 - CI automation
 
     print(f"[INFO] Finished testing {target}")
 
@@ -141,7 +142,7 @@ def wait_for_stability(pod: str, target: str = "") -> None:
     """
     timeout = 200 if any(h in target for h in _HEAVY_TARGETS) else 100
     for _ in range(3):
-        call(
+        call(  # noqa: S604 - CI automation
             f"timeout {timeout}s bash -c 'until kubectl wait --for=condition=Ready pods --all --timeout 5s; do sleep 1; done'",
             shell=True,
         )
