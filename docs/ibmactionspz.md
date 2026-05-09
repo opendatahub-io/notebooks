@@ -306,8 +306,25 @@ Evidence:
 - [podman-static#111](https://github.com/mgoltzsche/podman-static/issues/111):
   AppArmor profile path-matches `/usr/bin/podman` specifically
 
-**Potential fix: rename the podman binary** to bypass the AppArmor path
-match (`cp /usr/bin/podman /usr/bin/podman-noaa`). Testing pending.
+**Confirmed fix: rename the podman binary** to bypass the AppArmor
+path match. Tested May 2026:
+
+| Binary | Result |
+|---|---|
+| `/usr/bin/podman pull` | FAILED (EACCES on socket) |
+| `/usr/bin/podman-noaa pull` (copy) | **OK** |
+| `/usr/local/bin/podman-local pull` (symlink) | FAILED (AppArmor resolves symlinks) |
+| `/usr/bin/buildah pull` | FAILED |
+| `/usr/bin/buildah-noaa pull` (copy) | **OK** |
+
+**Implementation**: in the CI workflow, after `dnf install podman`:
+```bash
+cp /usr/bin/podman /usr/bin/podman-build
+# use podman-build instead of podman for all operations
+```
+
+This is specific to IBM's s390x LXD hosts. The ppc64le hosts do not
+have this AppArmor restriction.
 
 Docker works because `dockerd` runs as a system service in the primary
 namespace and handles all network I/O there. Client commands talk to
@@ -849,4 +866,4 @@ Workarounds:
 | May 2026 | Docker confirmed | Docker builds work on both arches |
 | May 2026 | Kubernetes probed | kubeadm fails on both arches (no net/mount ns, no /lib/modules) |
 | May 2026 | `--volume` blocker | Docker buildx rejects `--volume`; ppc64le solved via podman-in-docker |
-| May 2026 | s390x podman deep dive | Exhaustive testing: podman DNS broken for both Go pulls AND glibc RUN steps; `--network=host`, `--userns=host`, `--isolation=chroot`, `GODEBUG=netdns=cgo`, public DNS, VFS storage all fail; only `docker pull` + `podman load` + `--pull=never` works; `unshare --user` + sockets works (not a blanket user-ns block) |
+| May 2026 | s390x podman deep dive | Exhaustive testing: 11 workarounds failed; strace showed `socket()` returns `EACCES` in main process; skopeo works, podman doesn't; root cause: Ubuntu AppArmor profile blocks `/usr/bin/podman` by path; **fix: rename binary** (`cp podman podman-build`) |
