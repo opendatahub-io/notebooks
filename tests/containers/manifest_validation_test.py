@@ -789,3 +789,78 @@ def test_old_tag_annotations_match_quay(
         # Clair cannot resolve code-server (npm package with 0.0.0 dev version).
         quay_software = [sw for sw in t.software if sw["name"] != "code-server"]
         _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, quay_software, actual_packages, is_software=True)
+
+
+# ---------------------------------------------------------------------------
+# Multi-arch RPM NVR consistency
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.manifest_validation
+def test_rpm_nvr_consistency_across_arches(
+    subtests: pytest_subtests.SubTests,
+    request: pytest.FixtureRequest,
+):
+    """Validate that installed RPM name-version-release is consistent across multi-arch images.
+
+    When the same notebook is built for multiple architectures, RPM packages
+    common to all arches should carry identical version-release.  Mismatches
+    indicate that the build resolved packages differently due to repo state
+    or timing, as happened in RHOAIENG-45152 (mismatched kernel-headers
+    across arches).
+
+    Requires multiple ``--image`` values pointing to the same notebook built
+    for different architectures::
+
+        pytest tests/containers/manifest_validation_test.py::test_rpm_nvr_consistency_across_arches \\
+            --image=quay.io/org/notebook@sha256:amd64... \\
+            --image=quay.io/org/notebook@sha256:arm64...
+    """
+    from tests.containers import docker_utils  # noqa: PLC0415
+
+    images = request.config.getoption("--image")
+    if len(images) < 2:
+        pytest.skip("Need at least 2 --image values to compare RPM consistency across architectures")
+
+    rpm_by_image: dict[str, dict[str, str]] = {}
+    arch_by_image: dict[str, str] = {}
+
+    for image_ref in images:
+        _LOG.info(f"Collecting RPMs from {image_ref}")
+        with docker_utils.running_container(image_ref) as container:
+            ecode, output = container.exec(["uname", "-m"])
+            assert ecode == 0, f"uname -m failed in {image_ref}: {output.decode()}"
+            arch_by_image[image_ref] = output.decode().strip()
+
+            ecode, output = container.exec([
+                "rpm", "-qa", "--qf", "%{NAME}\t%{VERSION}-%{RELEASE}\n",
+            ])
+            assert ecode == 0, f"rpm -qa failed in {image_ref}: {output.decode()}"
+
+            packages: dict[str, str] = {}
+            for line in output.decode().strip().splitlines():
+                name, _, vr = line.partition("\t")
+                if name and vr and name != "gpg-pubkey":
+                    packages[name] = vr
+            rpm_by_image[image_ref] = packages
+
+    all_names: set[str] = set()
+    for pkgs in rpm_by_image.values():
+        all_names.update(pkgs)
+
+    for name in sorted(all_names):
+        vrs: dict[str, str] = {}
+        for image_ref, pkgs in rpm_by_image.items():
+            if name in pkgs:
+                vrs[image_ref] = pkgs[name]
+
+        if len(vrs) < 2:
+            continue
+
+        unique_vrs = set(vrs.values())
+        if len(unique_vrs) > 1:
+            detail = ", ".join(
+                f"{arch_by_image[img]}={vr}" for img, vr in sorted(vrs.items(), key=lambda x: arch_by_image[x[0]])
+            )
+            with subtests.test(msg=f"RPM {name}"):
+                pytest.fail(f"{name} has mismatched NVR across architectures: {detail}")
