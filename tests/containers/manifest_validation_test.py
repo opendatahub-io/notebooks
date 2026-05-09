@@ -645,7 +645,7 @@ def _get_quay_auth() -> str | None:
             auth = config.get("auths", {}).get("quay.io", {}).get("auth")
             if auth:
                 return auth
-        except json.JSONDecodeError, OSError:
+        except (json.JSONDecodeError, OSError):
             continue
     return None
 
@@ -705,7 +705,8 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     with urllib.request.urlopen(req, timeout=30) as resp:
         data = json.loads(resp.read())
 
-    features = data.get("data", {}).get("Layer", {}).get("Features", [])
+    features = (data.get("data") or {}).get("Layer") or {}
+    features = features.get("Features", [])
     if not features:
         status = data.get("status")
         if status in {"queued", "scanning"}:
