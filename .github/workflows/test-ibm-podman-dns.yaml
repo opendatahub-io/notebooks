@@ -257,11 +257,16 @@ jobs:
             bash -c '
               dnf install -y --quiet podman strace
               echo "=== strace: look for clone/unshare/setns syscalls ==="
-              strace -f -e trace=clone,clone3,unshare,setns,socket -o /tmp/strace.log \
+              strace -f -e trace=clone,clone3,unshare,setns,socket,execve -o /tmp/strace.log \
                 podman pull quay.io/centos/centos:stream9-minimal 2>&1 || true
-              echo "=== clone/unshare/setns calls ==="
+              echo "=== clone/unshare/setns calls (count) ==="
               grep -c "clone\|unshare\|setns" /tmp/strace.log || echo "none found"
-              grep "unshare\|setns\|CLONE_NEWUSER\|CLONE_NEWNET\|CLONE_NEWNS" /tmp/strace.log | head -20
+              echo "=== raw clone/unshare/setns lines (all flags visible) ==="
+              grep -E "clone3?\(|unshare\(|setns\(" /tmp/strace.log | head -20
+              echo "=== lines with namespace flags ==="
+              grep "CLONE_NEWUSER\|CLONE_NEWNET\|CLONE_NEWNS" /tmp/strace.log | head -10 || echo "no namespace flags found"
+              echo "=== fexecve/execve calls (re-exec detection) ==="
+              grep -E "execve\(|fexecve\(" /tmp/strace.log | head -10 || echo "no execve found"
               echo "=== socket calls that failed ==="
               grep "socket.*= -1" /tmp/strace.log | head -10
               echo "=== first DNS-related socket call ==="
