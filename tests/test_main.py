@@ -784,6 +784,35 @@ class Manifest:
     dep: list[dict[str, Any]]
 
 
+def _collect_rpms_lock_files() -> list[pathlib.Path]:
+    return sorted(PROJECT_ROOT.glob("**/rpms.lock.yaml"))
+
+
+@pytest.mark.parametrize("lockfile", _collect_rpms_lock_files(), ids=lambda p: str(p.relative_to(PROJECT_ROOT)))
+def test_rpms_lock_nvr_consistency_across_arches(subtests: pytest_subtests.plugin.SubTests, lockfile: pathlib.Path):
+    """Assert that every RPM name pinned in rpms.lock.yaml has the same EVR across all architectures."""
+    data = yaml.safe_load(lockfile.read_text())
+    arches = data.get("arches", [])
+    if len(arches) <= 1:
+        pytest.skip("only one architecture present; nothing to cross-check")
+
+    packages_by_name: dict[str, dict[str, str]] = defaultdict(dict)
+    for arch_entry in arches:
+        arch = arch_entry["arch"]
+        for pkg in arch_entry["packages"]:
+            packages_by_name[pkg["name"]][arch] = pkg["evr"]
+
+    for pkg_name, evr_by_arch in packages_by_name.items():
+        if len(evr_by_arch) <= 1:
+            continue
+        with subtests.test(msg=f"{pkg_name} EVR consistency", package=pkg_name):
+            evrs = set(evr_by_arch.values())
+            assert len(evrs) == 1, (
+                f"RPM {pkg_name!r} has mismatched EVR across architectures in "
+                f"{lockfile.relative_to(PROJECT_ROOT)}: {evr_by_arch}"
+            )
+
+
 def load_manifests_file_for(directory: pathlib.Path, manifests_directory: pathlib.Path) -> Manifest:
     metadata = manifests.extract_metadata_from_path(directory)
     manifest_file = manifests.get_source_of_truth_filepath(
