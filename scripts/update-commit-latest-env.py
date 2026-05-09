@@ -22,10 +22,18 @@ PROJECT_ROOT = pathlib.Path(__file__).parent.parent
 log = structlog.get_logger()
 
 
-def parse_env_file(path: pathlib.Path) -> list[list[str]]:
-    with open(path, "rt") as file:
-        return [line.strip().split('=', 1) for line in file.readlines()
-                if line.strip() and not line.strip().startswith("#")]
+def parse_env_file(path: pathlib.Path) -> list[tuple[str, str]]:
+    parsed: list[tuple[str, str]] = []
+    with open(path, "rt", encoding="utf-8") as file:
+        for lineno, raw_line in enumerate(file, start=1):
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" not in line:
+                raise ValueError(f"{path}: invalid env entry at line {lineno}: {raw_line.rstrip()!r}")
+            key, value = line.split("=", 1)
+            parsed.append((key, value))
+    return parsed
 
 
 async def get_image_vcs_ref(image_url: str, semaphore: asyncio.Semaphore) -> tuple[str, str | None]:

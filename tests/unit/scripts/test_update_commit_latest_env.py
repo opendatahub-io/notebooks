@@ -54,21 +54,27 @@ class TestEnvFileParsing:
         env.write_text("foo-n=quay.io/org/foo@sha256:aaa\nbar-n=quay.io/org/bar@sha256:bbb\n")
         parsed = ucle.parse_env_file(env)
         assert parsed == [
-            ["foo-n", "quay.io/org/foo@sha256:aaa"],
-            ["bar-n", "quay.io/org/bar@sha256:bbb"],
+            ("foo-n", "quay.io/org/foo@sha256:aaa"),
+            ("bar-n", "quay.io/org/bar@sha256:bbb"),
         ]
 
     def test_skip_comments_and_blanks(self, tmp_path: Path) -> None:
         env = tmp_path / "params-latest.env"
         env.write_text("# this is a comment\n\nfoo-n=quay.io/org/foo@sha256:aaa\n  # indented comment\n\n")
         parsed = ucle.parse_env_file(env)
-        assert parsed == [["foo-n", "quay.io/org/foo@sha256:aaa"]]
+        assert parsed == [("foo-n", "quay.io/org/foo@sha256:aaa")]
 
     def test_value_with_equals_sign(self, tmp_path: Path) -> None:
         env = tmp_path / "params-latest.env"
         env.write_text("foo-n=quay.io/org/foo@sha256:abc=def\n")
         parsed = ucle.parse_env_file(env)
-        assert parsed == [["foo-n", "quay.io/org/foo@sha256:abc=def"]]
+        assert parsed == [("foo-n", "quay.io/org/foo@sha256:abc=def")]
+
+    def test_rejects_malformed_line_without_equals(self, tmp_path: Path) -> None:
+        env = tmp_path / "params-latest.env"
+        env.write_text("good-n=value\nmalformed line\n")
+        with pytest.raises(ValueError, match="invalid env entry at line 2"):
+            ucle.parse_env_file(env)
 
 
 # ---------------------------------------------------------------------------
