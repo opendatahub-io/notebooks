@@ -1,0 +1,40 @@
+---
+name: Semgrep
+
+"on":
+  push:
+    branches:
+      - main
+      - stable
+      - 'rhoai-*'
+  pull_request:
+  schedule:
+    - cron: '0 3 * * 2'
+  workflow_dispatch:
+
+concurrency:
+  group: semgrep-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  scan:
+    name: Semgrep scan
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d  # v1
+        with:
+          config: semgrep.yaml
+          generateSarif: "1"
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e  # v4.35.4
+        with:
+          sarif_file: semgrep.sarif
