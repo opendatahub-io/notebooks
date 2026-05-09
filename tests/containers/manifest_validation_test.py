@@ -832,17 +832,32 @@ def test_rpm_nvr_consistency_across_arches(
             assert ecode == 0, f"uname -m failed in {image_ref}: {output.decode()}"
             arch_by_image[image_ref] = output.decode().strip()
 
-            ecode, output = container.exec([
-                "rpm", "-qa", "--qf", "%{NAME}\t%{VERSION}-%{RELEASE}\n",
-            ])
+            ecode, output = container.exec(
+                [
+                    "rpm",
+                    "-qa",
+                    "--qf",
+                    "%{NAME}\t%{VERSION}-%{RELEASE}\n",
+                ]
+            )
             assert ecode == 0, f"rpm -qa failed in {image_ref}: {output.decode()}"
 
-            packages: dict[str, str] = {}
+            packages_by_name: dict[str, set[str]] = collections.defaultdict(set)
             for line in output.decode().strip().splitlines():
                 name, _, vr = line.partition("\t")
                 if name and vr and name != "gpg-pubkey":
-                    packages[name] = vr
-            rpm_by_image[image_ref] = packages
+                    packages_by_name[name].add(vr)
+
+            conflicting = {n: sorted(vrs) for n, vrs in packages_by_name.items() if len(vrs) > 1}
+            if conflicting:
+                with subtests.test(msg=f"RPM duplicates in {image_ref}"):
+                    pytest.fail(f"Same RPM name has multiple VERSION-RELEASE values: {conflicting}")
+
+            rpm_by_image[image_ref] = {n: next(iter(vrs)) for n, vrs in packages_by_name.items()}
+
+    unique_arches = set(arch_by_image.values())
+    if len(unique_arches) < 2:
+        pytest.fail(f"Expected images from at least 2 distinct architectures, got: {sorted(unique_arches)}")
 
     all_names: set[str] = set()
     for pkgs in rpm_by_image.values():
