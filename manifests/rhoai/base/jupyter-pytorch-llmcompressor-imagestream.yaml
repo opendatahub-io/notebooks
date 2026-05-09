@@ -62,35 +62,33 @@ spec:
     - annotations:
         opendatahub.io/notebook-software: |
           [
-            {"name": "CUDA", "version": "13.0"},
+            {"name": "CUDA", "version": "12.9"},
             {"name": "Python", "version": "v3.12"},
-            {"name": "PyTorch", "version": "2.10"},
-            {"name": "LLM-Compressor", "version": "0.10"}
+            {"name": "PyTorch", "version": "2.9"},
+            {"name": "LLM-Compressor", "version": "0.9"}
           ]
         opendatahub.io/notebook-python-dependencies: |
           [
             {"name": "JupyterLab", "version": "4.5"},
-            {"name": "PyTorch", "version": "2.10"},
-            {"name": "LLM-Compressor", "version": "0.10"},
+            {"name": "PyTorch", "version": "2.9"},
+            {"name": "LLM-Compressor", "version": "0.9"},
             {"name": "Tensorboard", "version": "2.20"},
             {"name": "Boto3", "version": "1.42"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
-            {"name": "Kfp", "version": "2.16"},
+            {"name": "Kfp", "version": "2.15"},
             {"name": "Matplotlib", "version": "3.10"},
             {"name": "Numpy", "version": "2.3"},
             {"name": "Pandas", "version": "2.3"},
             {"name": "Scikit-learn", "version": "1.8"},
-            {"name": "Scipy", "version": "1.17"},
-            {"name": "Odh-Elyra", "version": "5.0"},
+            {"name": "Scipy", "version": "1.16"},
+            {"name": "Odh-Elyra", "version": "4.3"},
             {"name": "PyMongo", "version": "4.16"},
             {"name": "Pyodbc", "version": "5.3"},
-            {"name": "Codeflare-SDK", "version": "0.36"},
-            {"name": "Feast", "version": "0.62"},
+            {"name": "Feast", "version": "0.60"},
             {"name": "Sklearn-onnx", "version": "1.20"},
             {"name": "Psycopg", "version": "3.3"},
             {"name": "MySQL Connector/Python", "version": "9.6"},
-            {"name": "Kubeflow-Training", "version": "1.9"},
-            {"name": "MLflow", "version": "3.10"}
+            {"name": "Kubeflow-Training", "version": "1.9"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
