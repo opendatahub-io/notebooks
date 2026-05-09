@@ -277,7 +277,7 @@ def _exec_or_none(container: object, cmd: list[str]) -> str | None:
         ecode, output = container.exec(cmd)
         if ecode == 0:
             return output.decode().strip()
-    except Exception:
+    except Exception:  # noqa: S110
         pass
     return None
 
@@ -747,7 +747,7 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     url = f"https://quay.io/api/v1/repository/{repo}/manifest/{digest}/security?vulnerabilities=false"
 
     req = urllib.request.Request(url, headers={"Authorization": f"Basic {quay_auth}"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
         data = json.loads(resp.read())
 
     features = ((data.get("data") or {}).get("Layer") or {}).get("Features", [])

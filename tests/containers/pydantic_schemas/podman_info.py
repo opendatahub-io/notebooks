@@ -305,7 +305,7 @@ def test_podman_info():
                     "Supports volatile": "true",
                     "Using metacopy": "true",
                 },
-                "imageCopyTmpDir": "/var/tmp",
+                "imageCopyTmpDir": "/var/tmp",  # noqa: S108
                 "imageStore": {"number": 15},
                 "runRoot": "/run/containers/storage",
                 "transientStore": False,
@@ -449,7 +449,7 @@ def test_podman_info():
                     "Supports volatile": "true",
                     "Using metacopy": "false",
                 },
-                "imageCopyTmpDir": "/var/tmp",
+                "imageCopyTmpDir": "/var/tmp",  # noqa: S108
                 "imageStore": {"number": 2},
                 "runRoot": "/run/user/501/containers",
                 "transientStore": False,

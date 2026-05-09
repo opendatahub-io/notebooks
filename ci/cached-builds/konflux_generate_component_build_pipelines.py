@@ -37,7 +37,7 @@ def bundle_task_ref(name) -> dict:
 
     Uses the `image-registry.yaml` file as an up-to-date source for the digests."""
     with open(ROOT_DIR / ".tekton/image-registry.yaml") as f:
-        data = yaml.load(f, Loader=yaml.FullLoader)
+        data = yaml.safe_load(f)
         images: list[str] = [image["spec"]["taskRef"]["bundle"] for image in data["items"]]
         for image in images:
             if re.search(f"^quay.io/konflux-ci/tekton-catalog/task-{name}:", image):
