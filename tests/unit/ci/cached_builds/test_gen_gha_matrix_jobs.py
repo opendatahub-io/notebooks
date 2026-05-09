@@ -126,7 +126,7 @@ class TestAssignPlatforms:
         assert "linux/amd64" in platforms
         assert "linux/arm64" not in platforms
 
-    def test_arm64_only_suppresses_s390x_but_keeps_amd64(self) -> None:
+    def test_arm64_only_suppresses_amd64_and_s390x(self) -> None:
         targets = ["codeserver-ubi9-python-3.12"]
         result = gm.assign_platforms(
             targets,
@@ -135,7 +135,7 @@ class TestAssignPlatforms:
             s390x_images=gm.S390xImages.INCLUDE,
         )
         platforms = [p for _, p in result]
-        assert "linux/amd64" in platforms
+        assert "linux/amd64" not in platforms
         assert "linux/arm64" in platforms
         assert "linux/s390x" not in platforms
 
@@ -185,7 +185,7 @@ class TestAssignPlatforms:
         platforms = [p for _, p in result]
         assert "linux/s390x" not in platforms
 
-    def test_s390x_only_suppresses_arm64_but_keeps_amd64(self) -> None:
+    def test_s390x_only_suppresses_amd64_and_arm64(self) -> None:
         targets = ["runtime-minimal-ubi9-python-3.12"]
         result = gm.assign_platforms(
             targets,
@@ -194,7 +194,7 @@ class TestAssignPlatforms:
             s390x_images=gm.S390xImages.ONLY,
         )
         platforms = [p for _, p in result]
-        assert "linux/amd64" in platforms
+        assert "linux/amd64" not in platforms
         assert "linux/arm64" not in platforms
         assert "linux/s390x" in platforms
 
@@ -220,7 +220,7 @@ class TestAssignPlatforms:
         platforms = [p for _, p in result]
         assert platforms == ["linux/amd64", "linux/ppc64le", "linux/s390x"]
 
-    def test_s390x_only_suppresses_arm64_on_arm64_target(self) -> None:
+    def test_s390x_only_suppresses_amd64_and_arm64_on_arm64_target(self) -> None:
         targets = ["codeserver-ubi9-python-3.12"]
         assert targets[0] in gm.ARM64_COMPATIBLE
         result = gm.assign_platforms(
@@ -231,9 +231,9 @@ class TestAssignPlatforms:
         )
         platforms = [p for _, p in result]
         assert "linux/arm64" not in platforms
-        assert "linux/amd64" in platforms
+        assert "linux/amd64" not in platforms
 
-    def test_arm64_only_suppresses_s390x_on_s390x_target(self) -> None:
+    def test_arm64_only_suppresses_amd64_and_s390x_on_s390x_target(self) -> None:
         targets = ["runtime-minimal-ubi9-python-3.12"]
         assert targets[0] in gm.S390X_COMPATIBLE
         result = gm.assign_platforms(
@@ -244,7 +244,7 @@ class TestAssignPlatforms:
         )
         platforms = [p for _, p in result]
         assert "linux/s390x" not in platforms
-        assert "linux/amd64" in platforms
+        assert "linux/amd64" not in platforms
 
     def test_arm64_only_suppresses_ppc64le(self) -> None:
         targets = ["jupyter-minimal-ubi9-python-3.12"]
