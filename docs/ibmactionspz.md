@@ -774,17 +774,36 @@ fails immediately.
 
 ## Pipeline architecture on IBM runners
 
-The IBM runner pipeline differs from the amd64 pipeline:
+The GHA pipeline mirrors the Konflux Tekton pipeline architecture:
+
+| Konflux Tekton task | GHA equivalent | Notes |
+|---|---|---|
+| `clone-repository` | `actions/checkout` + `submodules: recursive` | Submodules provide `prefetch-input/` |
+| `prefetch-dependencies-oci-ta` | `prefetch-all.sh` on host (Docker) | Produces `cachi2/output/` on disk |
+| `build-images` (buildah-remote-oci-ta) | podman-in-docker (`Dockerfile.podman-builder`) | Fedora 44, podman 5.x, `--volume` for cachi2 |
+| SSH remote builder (multi-platform-controller) | `docker run --privileged` wrapper | Both run podman in a container on native arch |
+| `--volume /tmp/cachi2:/cachi2` | Makefile's `CACHI2_VOLUME` `--volume` | Identical mechanism |
+| `unshare --net` (hermetic) | `--network=none` (not yet enforced) | Would match Konflux |
+| `--pull=never` + pre-pulled images | s390x: `docker pull` + `podman load` | ppc64le: podman pulls natively |
+| `hermetic` param (true/false) | `hermetic` workflow input | Controls submodules, prefetch, network |
+
+The `hermetic` toggle in `build-notebooks-TEMPLATE.yaml` mirrors Konflux's
+`hermetic` pipeline param. When `true`: submodules are checked out,
+`prefetch-all.sh` runs, `cachi2/output/` is mounted into the build.
+When `false`: submodules are skipped, build pulls deps from network.
 
 ```
 amd64/arm64 (GitHub-hosted):   Homebrew podman -> podman build -> CRI-O k8s -> test
-IBM ppc64le:                   docker run --privileged -> podman build (--volume works) -> podman save | docker load -> testcontainers
-IBM s390x:                     Docker CE -> docker build (non-hermetic*) -> testcontainers
+IBM ppc64le:                   docker run --privileged -> podman-build (renamed) -> podman save | docker load -> testcontainers
+IBM s390x:                     docker run --privileged -> podman-build (renamed, AppArmor bypass) -> podman save | docker load -> testcontainers
 ```
 
-*s390x hermetic builds require the `--build-context` migration (replacing
-`--volume` with BuildKit named contexts in both the Makefile and Dockerfiles).
-See the `--volume` limitation section below.
+The `podman-builder` image (`ci/cached-builds/Dockerfile.podman-builder`)
+pre-installs podman, buildah, make, python3, and structlog. On s390x,
+the binary is pre-renamed to `podman-build` / `buildah-build` to bypass
+the AppArmor path-based socket() block. Podman storage is mounted from
+the host (`/tmp/podman-storage:/var/lib/containers`) to persist base
+images and layers across build steps.
 
 ### What works without changes
 
