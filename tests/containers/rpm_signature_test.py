@@ -48,7 +48,7 @@ _RED_HAT_KEY_IDS: frozenset[str] = frozenset(
 )
 
 # Non-Red Hat signing key IDs allowed for specific image types.
-# Keys are substrings matched against the image ``name`` label.
+# Keys are substrings matched against the image reference.
 _EXTRA_ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "-cuda-": frozenset({"d42d0685"}),
     "-pytorch-": frozenset({"d42d0685"}),
@@ -57,11 +57,12 @@ _EXTRA_ALLOWED_KEYS: dict[str, frozenset[str]] = {
 }
 
 
-def _allowed_keys_for_image(image_name: str) -> frozenset[str]:
+def _allowed_keys_for_image(image_ref: str) -> frozenset[str]:
     """Return the full set of allowed signing keys for an image type."""
     extra: set[str] = set()
+    image_ref = image_ref.lower()
     for pattern, keys in _EXTRA_ALLOWED_KEYS.items():
-        if pattern in image_name:
+        if pattern in image_ref:
             extra |= keys
     return _RED_HAT_KEY_IDS | frozenset(extra)
 
@@ -88,12 +89,14 @@ class TestRpmSignatures:
         """Every RPM in the image must be signed by a known Red Hat key (or an allowed vendor key)."""
         image_metadata = conftest.get_image_metadata(image)
         image_name = image_metadata.labels.get("name", "")
-        allowed_keys = _allowed_keys_for_image(image_name)
+        allowed_keys = _allowed_keys_for_image(image)
 
         _LOG.info(f"Checking RPM signatures for {image} (name label: {image_name!r})")
 
         with docker_utils.running_container(image) as container:
-            ecode, output = container.exec(["rpm", "-qa", "--qf", "%{NAME} %{SIGPGP:pgpsig}\n"])
+            ecode, output = container.exec(
+                ["rpm", "-qa", "--qf", "%{NAME}\t%{VERSION}\t%{SIGPGP:pgpsig}\n"]
+            )
             assert ecode == 0, f"rpm -qa failed: {output.decode()}"
 
             unsigned: list[str] = []
@@ -102,12 +105,15 @@ class TestRpmSignatures:
             for line in output.decode().strip().splitlines():
                 if not line.strip():
                     continue
-                parts = line.split(None, 1)
-                if len(parts) < 2:
+                parts = line.split("\t", 2)
+                if len(parts) < 3:
                     continue
-                rpm_name, sig_info = parts[0], parts[1]
+                rpm_name, rpm_version, sig_info = parts[0], parts[1], parts[2]
 
                 if rpm_name == "gpg-pubkey":
+                    imported_key_id = rpm_version.lower()
+                    if imported_key_id not in allowed_keys:
+                        disallowed.append((f"{rpm_name}-{rpm_version}", imported_key_id))
                     continue
 
                 key_id = _parse_key_id(sig_info)
