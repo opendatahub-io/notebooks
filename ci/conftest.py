@@ -1,0 +1,33 @@
+from __future__ import annotations
+
+import pathlib
+import sys
+
+import pytest
+
+_ci_dir = pathlib.Path(__file__).parent
+
+# ci/ and ci/cached-builds/ scripts use bare imports
+# (e.g. `import gha_pr_changed_files`, `import package_versions_selftestdata`)
+sys.path.insert(0, str(_ci_dir))
+sys.path.insert(0, str(_ci_dir / "cached-builds"))
+
+# Paths that cannot be imported as Python modules (hyphens in names)
+collect_ignore_glob = ["check-image-availability.py"]
+collect_ignore = ["security-scan", "cached_builds"]
+
+
+def pytest_collect_file(parent: pytest.Collector, file_path: pathlib.Path):
+    """Collect .py files in ci/ that contain unittest.TestCase but don't match python_files."""
+    if not file_path.is_relative_to(_ci_dir):
+        return None
+    if file_path.suffix != ".py" or file_path.name.startswith("_"):
+        return None
+
+    ini_patterns = parent.config.getini("python_files")
+    if any(file_path.match(p) for p in ini_patterns):
+        return None
+
+    if "unittest.TestCase" in file_path.read_text(errors="ignore"):
+        return pytest.Module.from_parent(parent, path=file_path)
+    return None

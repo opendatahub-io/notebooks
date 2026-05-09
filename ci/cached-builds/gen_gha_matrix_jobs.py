@@ -211,7 +211,7 @@ if __name__ == "__main__":
     main()
 
 
-class SelfTests(unittest.TestCase):
+class TestSelf(unittest.TestCase):
     def test_select_changed_targets_dockerfile(self):
         targets = extract_image_targets(makefile_dir=project_dir)
 

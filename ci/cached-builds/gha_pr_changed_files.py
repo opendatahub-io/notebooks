@@ -154,7 +154,7 @@ def get_go_arch() -> Literal["amd64", "arm64", "ppc64le", "s390x"]:
     return arch
 
 
-class SelfTests(unittest.TestCase):
+class TestSelf(unittest.TestCase):
     def test_list_changed_files(self):
         """This is PR #556 in opendatahub-io/notebooks"""
         changed_files = list_changed_files(from_ref="4d4841f", to_ref="2c36c11")
