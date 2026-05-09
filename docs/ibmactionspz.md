@@ -269,13 +269,45 @@ isolation). Since `unshare --user` + socket works in the same environment,
 the issue is specific to podman's process setup, not a general namespace
 restriction.
 
-**Open question:** What does podman do between process start and the DNS
-query that triggers the AppArmor/LXD restriction? Candidates:
-- Podman's C constructor in `rootless_linux.c` (`reexec_in_user_namespace`)
-- The `containers/storage` overlay mount setup creating mount namespaces
-- The Go runtime's thread creation interacting with LXD's cgroup/namespace
-  restrictions
-- A Fedora 44 / podman 5.8.2 regression on s390x
+**Strace results (May 2026):** Definitive syscall-level analysis shows:
+- All 7 `clone3()` calls are plain Go thread creation (`CLONE_VM|CLONE_FS|
+  CLONE_FILES|CLONE_THREAD`). **No `CLONE_NEWUSER`, `CLONE_NEWNET`, or
+  `CLONE_NEWNS` anywhere.**
+- No `unshare()` or `setns()` calls at all.
+- Only one `execve("/usr/bin/podman", ...)` — no re-exec via memfd.
+- `socket(AF_INET, SOCK_DGRAM) = -1 EACCES (Permission denied)` in the
+  main podman process (PID 140).
+
+**Cross-binary comparison:**
+
+| Binary | DNS | Implication |
+|---|---|---|
+| `/usr/bin/podman` | EACCES on socket() | Blocked |
+| `/usr/bin/buildah` | EACCES on socket() | Blocked |
+| `/usr/bin/skopeo` | OK | Same containers/image library, works |
+| `/tmp/dnstest` (Go) | OK | Go runtime DNS works fine |
+| `/usr/bin/python3` | OK | glibc getaddrinfo works |
+| `nslookup` | OK | bind-utils works |
+
+**Likely root cause: Ubuntu host AppArmor profile for `/usr/bin/podman`.**
+
+Ubuntu ships an AppArmor profile at `/etc/apparmor.d/podman` that
+restricts what the podman binary can do. The LXD host kernel enforces
+AppArmor based on the **binary path**, regardless of Docker `--privileged`.
+When the Fedora container runs `/usr/bin/podman`, the host kernel matches
+it against the podman profile and blocks `socket()` creation.
+
+Evidence:
+- [Ubuntu bug #2118824](https://bugs.launchpad.net/bugs/2118824):
+  AppArmor denies socket operations in nested containers
+- [Proxmox forum](https://forum.proxmox.com/threads/156426/): rootless
+  podman + AppArmor in unprivileged containers shows
+  `apparmor="DENIED" operation="create" class="net"`
+- [podman-static#111](https://github.com/mgoltzsche/podman-static/issues/111):
+  AppArmor profile path-matches `/usr/bin/podman` specifically
+
+**Potential fix: rename the podman binary** to bypass the AppArmor path
+match (`cp /usr/bin/podman /usr/bin/podman-noaa`). Testing pending.
 
 Docker works because `dockerd` runs as a system service in the primary
 namespace and handles all network I/O there. Client commands talk to
