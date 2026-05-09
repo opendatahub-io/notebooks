@@ -13,10 +13,10 @@ from scripts.cve.cve_due_dates import (
     parse_date,
 )
 
-
 # ---------------------------------------------------------------------------
 # extract_cve_id
 # ---------------------------------------------------------------------------
+
 
 class TestExtractCveId:
     def test_standard_id(self) -> None:
@@ -35,6 +35,7 @@ class TestExtractCveId:
 # ---------------------------------------------------------------------------
 # parse_date
 # ---------------------------------------------------------------------------
+
 
 class TestParseDate:
     def test_valid(self) -> None:
@@ -56,6 +57,7 @@ class TestParseDate:
 # ---------------------------------------------------------------------------
 # get_linked_issue_keys
 # ---------------------------------------------------------------------------
+
 
 class TestGetLinkedIssueKeys:
     def test_outward_blocks(self) -> None:
@@ -116,6 +118,7 @@ class TestGetLinkedIssueKeys:
 # TrackerInfo properties
 # ---------------------------------------------------------------------------
 
+
 class TestTrackerInfo:
     def test_not_overdue_when_no_due_date(self) -> None:
         t = TrackerInfo(key="X-1", summary="test")
@@ -153,6 +156,7 @@ class TestTrackerInfo:
 # list_overdue_trackers
 # ---------------------------------------------------------------------------
 
+
 class TestListOverdueTrackers:
     def test_filters_and_sorts(self) -> None:
         trackers = [
@@ -171,6 +175,7 @@ class TestListOverdueTrackers:
 # ---------------------------------------------------------------------------
 # list_missing_due_dates
 # ---------------------------------------------------------------------------
+
 
 class TestListMissingDueDates:
     def test_filters_syncable(self) -> None:

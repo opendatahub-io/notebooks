@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from scripts.cve.syft_scan import Artifact, Location, SyftOutput, filter_artifacts
 
-
 # ---------------------------------------------------------------------------
 # Pydantic model construction
 # ---------------------------------------------------------------------------
+
 
 class TestModels:
     def test_location_defaults(self) -> None:
@@ -56,6 +56,7 @@ class TestModels:
 # ---------------------------------------------------------------------------
 # filter_artifacts
 # ---------------------------------------------------------------------------
+
 
 def _make_artifacts() -> list[Artifact]:
     return [

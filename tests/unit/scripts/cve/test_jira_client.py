@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from scripts.cve.jira_client import JiraClient, _CREATE_ISSUE_PROTECTED_FIELD_KEYS
+from scripts.cve.jira_client import _CREATE_ISSUE_PROTECTED_FIELD_KEYS, JiraClient
 
 
 class TestJiraClientConstruction:

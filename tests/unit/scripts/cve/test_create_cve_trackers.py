@@ -12,10 +12,10 @@ from scripts.cve.create_cve_trackers import (
     get_blocking_issues,
 )
 
-
 # ---------------------------------------------------------------------------
 # extract_cve_id
 # ---------------------------------------------------------------------------
+
 
 class TestExtractCveId:
     def test_standard(self) -> None:
@@ -28,6 +28,7 @@ class TestExtractCveId:
 # ---------------------------------------------------------------------------
 # extract_version
 # ---------------------------------------------------------------------------
+
 
 class TestExtractVersion:
     def test_extracts_rhoai_version(self) -> None:
@@ -43,6 +44,7 @@ class TestExtractVersion:
 # ---------------------------------------------------------------------------
 # extract_description
 # ---------------------------------------------------------------------------
+
 
 class TestExtractDescription:
     def test_strips_cve_prefix(self) -> None:
@@ -70,6 +72,7 @@ class TestExtractDescription:
 # ---------------------------------------------------------------------------
 # get_blocking_issues
 # ---------------------------------------------------------------------------
+
 
 class TestGetBlockingIssues:
     def test_inward_blocks(self) -> None:
@@ -106,6 +109,7 @@ class TestGetBlockingIssues:
 # CVEInfo properties
 # ---------------------------------------------------------------------------
 
+
 class TestCVEInfo:
     def test_version_suffix(self) -> None:
         info = CVEInfo(cve_id="CVE-2025-1", version="rhoai-2.25")
@@ -124,6 +128,7 @@ class TestCVEInfo:
 # build_tracker_labels
 # ---------------------------------------------------------------------------
 
+
 class TestBuildTrackerLabels:
     def test_labels(self) -> None:
         labels = build_tracker_labels("CVE-2025-9999")
@@ -136,6 +141,7 @@ class TestBuildTrackerLabels:
 # ---------------------------------------------------------------------------
 # build_description (ADF output)
 # ---------------------------------------------------------------------------
+
 
 class TestBuildDescription:
     def test_returns_adf_document(self) -> None:

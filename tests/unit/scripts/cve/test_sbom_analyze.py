@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import scripts.cve.sbom_analyze as sa
 
-
 # ---------------------------------------------------------------------------
 # Fixtures: minimal SBOM documents in each supported format
 # ---------------------------------------------------------------------------
+
 
 def _syft_sbom(artifacts: list[dict] | None = None) -> dict:
     return {
@@ -40,8 +40,9 @@ def _manifest_box_sbom(components: list[dict] | None = None) -> dict:
     }
 
 
-def _syft_artifact(name: str, version: str = "1.0.0", pkg_type: str = "npm",
-                   paths: list[str] | None = None, purl: str | None = None) -> dict:
+def _syft_artifact(
+    name: str, version: str = "1.0.0", pkg_type: str = "npm", paths: list[str] | None = None, purl: str | None = None
+) -> dict:
     locations = [{"path": p} for p in (paths or [])]
     return {
         "name": name,
@@ -53,8 +54,7 @@ def _syft_artifact(name: str, version: str = "1.0.0", pkg_type: str = "npm",
     }
 
 
-def _spdx_package(name: str, version: str = "1.0.0", purl: str | None = None,
-                  source_info: str = "") -> dict:
+def _spdx_package(name: str, version: str = "1.0.0", purl: str | None = None, source_info: str = "") -> dict:
     refs = []
     if purl:
         refs.append({"referenceType": "purl", "referenceLocator": purl})
@@ -69,6 +69,7 @@ def _spdx_package(name: str, version: str = "1.0.0", purl: str | None = None,
 # ---------------------------------------------------------------------------
 # detect_sbom_format
 # ---------------------------------------------------------------------------
+
 
 class TestDetectSbomFormat:
     def test_syft(self) -> None:
@@ -91,6 +92,7 @@ class TestDetectSbomFormat:
 # extract_purl_type
 # ---------------------------------------------------------------------------
 
+
 class TestExtractPurlType:
     def test_npm(self) -> None:
         assert sa.extract_purl_type("pkg:npm/lodash@4.17.21") == "npm"
@@ -111,6 +113,7 @@ class TestExtractPurlType:
 # ---------------------------------------------------------------------------
 # get_components_from_sbom
 # ---------------------------------------------------------------------------
+
 
 class TestGetComponentsFromSbom:
     def test_syft_returns_artifacts(self) -> None:
@@ -133,6 +136,7 @@ class TestGetComponentsFromSbom:
 # normalize_component
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizeComponent:
     def test_syft_component(self) -> None:
         art = _syft_artifact("lodash", "4.17.21", "npm", paths=["/node_modules/lodash/package.json"])
@@ -153,7 +157,8 @@ class TestNormalizeComponent:
 
     def test_spdx_source_info_extracts_path(self) -> None:
         pkg = _spdx_package(
-            "undici", "5.0.0",
+            "undici",
+            "5.0.0",
             source_info="acquired package info from installed node module manifest file: /jupyter/utils/pnpm-lock.yaml",
         )
         norm = sa.normalize_component(pkg, "spdx")
@@ -174,6 +179,7 @@ class TestNormalizeComponent:
 # ---------------------------------------------------------------------------
 # find_package
 # ---------------------------------------------------------------------------
+
 
 class TestFindPackage:
     def test_case_insensitive_match(self) -> None:
@@ -208,12 +214,15 @@ class TestFindPackage:
 # find_packages_at_path
 # ---------------------------------------------------------------------------
 
+
 class TestFindPackagesAtPath:
     def test_matches_location(self) -> None:
-        sbom = _syft_sbom([
-            _syft_artifact("a", paths=["/jupyter/lib/a"]),
-            _syft_artifact("b", paths=["/opt/lib/b"]),
-        ])
+        sbom = _syft_sbom(
+            [
+                _syft_artifact("a", paths=["/jupyter/lib/a"]),
+                _syft_artifact("b", paths=["/opt/lib/b"]),
+            ]
+        )
         results = sa.find_packages_at_path(sbom, "/jupyter/")
         assert len(results) == 1
         assert results[0]["name"] == "a"
@@ -232,6 +241,7 @@ class TestFindPackagesAtPath:
 # ---------------------------------------------------------------------------
 # get_sbom_info
 # ---------------------------------------------------------------------------
+
 
 class TestGetSbomInfo:
     def test_syft_metadata(self) -> None:
@@ -260,13 +270,16 @@ class TestGetSbomInfo:
 # summarize_by_type
 # ---------------------------------------------------------------------------
 
+
 class TestSummarizeByType:
     def test_counts_by_type(self) -> None:
-        sbom = _syft_sbom([
-            _syft_artifact("a", pkg_type="npm"),
-            _syft_artifact("b", pkg_type="npm"),
-            _syft_artifact("c", pkg_type="python"),
-        ])
+        sbom = _syft_sbom(
+            [
+                _syft_artifact("a", pkg_type="npm"),
+                _syft_artifact("b", pkg_type="npm"),
+                _syft_artifact("c", pkg_type="python"),
+            ]
+        )
         summary = sa.summarize_by_type(sbom)
         assert summary == {"npm": 2, "python": 1}
 
@@ -274,12 +287,14 @@ class TestSummarizeByType:
         assert sa.summarize_by_type(_syft_sbom()) == {}
 
     def test_sorted_descending(self) -> None:
-        sbom = _syft_sbom([
-            _syft_artifact("a", pkg_type="go-module"),
-            _syft_artifact("b", pkg_type="npm"),
-            _syft_artifact("c", pkg_type="npm"),
-            _syft_artifact("d", pkg_type="npm"),
-        ])
+        sbom = _syft_sbom(
+            [
+                _syft_artifact("a", pkg_type="go-module"),
+                _syft_artifact("b", pkg_type="npm"),
+                _syft_artifact("c", pkg_type="npm"),
+                _syft_artifact("d", pkg_type="npm"),
+            ]
+        )
         summary = sa.summarize_by_type(sbom)
         keys = list(summary.keys())
         assert keys[0] == "npm"
