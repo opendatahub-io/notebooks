@@ -206,6 +206,73 @@ jobs:
                 && echo "USERNS_CONFIGURED PULL: OK" || echo "USERNS_CONFIGURED PULL: FAILED"
             '
 
+      - name: "Test: rename podman binary (bypass AppArmor path match)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== rename /usr/bin/podman to bypass AppArmor profile ==="
+              cp /usr/bin/podman /usr/bin/podman-noaa
+              echo "=== pull with renamed binary ==="
+              /usr/bin/podman-noaa pull quay.io/centos/centos:stream9-minimal \
+                && echo "RENAMED PODMAN PULL: OK" || echo "RENAMED PODMAN PULL: FAILED"
+            '
+
+      - name: "Test: symlink podman from /usr/local/bin (alternate AppArmor path)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== symlink podman to /usr/local/bin ==="
+              ln -s /usr/bin/podman /usr/local/bin/podman-local
+              echo "=== pull with /usr/local/bin binary ==="
+              /usr/local/bin/podman-local pull quay.io/centos/centos:stream9-minimal \
+                && echo "LOCAL PODMAN PULL: OK" || echo "LOCAL PODMAN PULL: FAILED"
+            '
+
+      - name: "Test: renamed buildah pull (bypass AppArmor for buildah too)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet buildah
+              echo "=== rename /usr/bin/buildah ==="
+              cp /usr/bin/buildah /usr/bin/buildah-noaa
+              echo "=== pull with renamed buildah ==="
+              /usr/bin/buildah-noaa pull quay.io/centos/centos:stream9-minimal \
+                && echo "RENAMED BUILDAH PULL: OK" || echo "RENAMED BUILDAH PULL: FAILED"
+            '
+
+      - name: "Diagnose: check AppArmor status and profiles"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          echo "=== AppArmor status on HOST (LXD container) ==="
+          cat /sys/kernel/security/apparmor/profiles 2>/dev/null | grep -i "podman\|buildah\|container" | head -10 || echo "no apparmor profiles found or not readable"
+          cat /proc/self/attr/current 2>/dev/null || echo "no apparmor context"
+          echo "=== AppArmor inside Docker privileged ==="
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              echo "=== /proc/self/attr/current ==="
+              cat /proc/self/attr/current 2>/dev/null || echo "no context"
+              echo "=== /sys/kernel/security/apparmor/profiles (filtered) ==="
+              cat /sys/kernel/security/apparmor/profiles 2>/dev/null | grep -i "podman\|buildah\|container\|docker" | head -20 || echo "not readable"
+              echo "=== after installing podman ==="
+              dnf install -y --quiet podman
+              cat /sys/kernel/security/apparmor/profiles 2>/dev/null | grep -i "podman\|buildah" | head -10 || echo "no podman profiles"
+              echo "=== dmesg AppArmor denials ==="
+              dmesg 2>/dev/null | grep -i "apparmor.*DENIED" | tail -10 || echo "dmesg not available"
+            '
+
       - name: "Diagnose: uid_map and rootless detection"
         if: ${{ !cancelled() }}
         run: |
