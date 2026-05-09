@@ -33,6 +33,13 @@ name: Build & Publish Notebook Servers (TEMPLATE)
         default: false
         description: "build from Dockerfile.konflux.* instead of Dockerfile.*"
         type: boolean
+      hermetic:
+        required: false
+        default: true
+        description: >-
+          Enable hermetic build (prefetch deps, mount cachi2/output via --volume,
+          mirrors Konflux hermetic param). When false, builds pull deps from network.
+        type: boolean
       PLATFORM_RUNNERS:
         required: false
         # language=json
@@ -87,7 +94,9 @@ jobs:
           # `git fetch` tags on the superproject fail (submodule path via symlink).
           fetch-depth: 0
           lfs: ${{ contains(inputs.target, 'codeserver') }}
-          submodules: recursive
+          # Submodules provide prefetch-input/ dirs for hermetic builds.
+          # When hermetic=false, skip submodules to save clone time.
+          submodules: ${{ inputs.hermetic && 'recursive' || 'false' }}
           persist-credentials: false  # https://github.com/actions/checkout/issues/2312
       # we need to checkout the pr branch, not pr target (the default for pull_request_target)
       # user access check is done in calling workflow
@@ -97,7 +106,7 @@ jobs:
           ref: "refs/pull/${{ fromJson(inputs.github).event.number }}/merge"
           fetch-depth: 0
           lfs: ${{ contains(inputs.target, 'codeserver') }}
-          submodules: recursive
+          submodules: ${{ inputs.hermetic && 'recursive' || 'false' }}
           persist-credentials: false  # https://github.com/actions/checkout/issues/2312
 
       # https://github.com/docker/setup-qemu-action?tab=readme-ov-file#about

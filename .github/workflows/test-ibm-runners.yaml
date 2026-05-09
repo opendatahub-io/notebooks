@@ -421,7 +421,17 @@ jobs:
           sudo crictl --runtime-endpoint unix:///run/containerd/containerd.sock ps -a 2>&1 | head -20 || true
         continue-on-error: true
 
-  # ── Docker build + testcontainers (end-to-end proof) ──
+  # ── Hermetic build + testcontainers (mirrors Konflux pipeline) ──
+  #
+  # Architecture mirrors Konflux Tekton pipeline:
+  #   clone → prefetch-dependencies → build-images → test
+  #
+  # The build step uses podman-in-docker (Fedora 44 with podman 5.x)
+  # because Docker buildx does not support --volume (podman-only feature
+  # needed for hermetic cachi2/output mounts). On s390x, the podman binary
+  # is renamed to bypass an AppArmor path-based socket() block.
+  #
+  # See docs/ibmactionspz.md for the full investigation.
 
   test-docker-build:
     name: "docker-build · ${{ matrix.platform }}"
@@ -439,8 +449,10 @@ jobs:
       CONTAINER_ENGINE: docker
       BUILD_ARCH: ${{ matrix.platform }}
       RELEASE_PYTHON_VERSION: "3.12"
+      PODMAN_BUILDER_IMAGE: "podman-builder"
 
     steps:
+      # ── 1. Clone (mirrors Konflux clone-repository task) ──
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           persist-credentials: false
@@ -471,26 +483,14 @@ jobs:
 
       - name: Install from uv.lock
         run: |
-          # PyYAML has no ppc64le wheel on PyPI; allow source build.
-          # markupsafe is excluded transitively (test-openshift group).
-          # ruamel-yaml-clib is optional (pure Python fallback works).
           uv sync --group dev --locked \
             --no-binary-package pyyaml
 
-      - name: Docker info
-        run: |
-          set -x
-          docker version
-          docker info
-          docker buildx version
+      # ── 2. Prefetch (mirrors Konflux prefetch-dependencies task) ──
 
       - name: "Build hermeto image for native arch"
         run: |
           set -Eeuxo pipefail
-          # The upstream hermeto image (ghcr.io/hermetoproject/hermeto) only
-          # has amd64/arm64 builds. Build a Fedora-based image for native arch
-          # using system python3-createrepo_c (pre-built for all arches).
-          # Tag it so our prefetch scripts find it without pulling.
           docker build \
             -t ghcr.io/hermetoproject/hermeto:0.46.2 \
             -f ci/cached-builds/Dockerfile.hermeto .
@@ -503,8 +503,58 @@ jobs:
         env:
           CONTAINER_ENGINE: docker
 
+      # ── 3. Build (mirrors Konflux build-images task / buildah-remote-oci-ta) ──
+
       - name: Pre-compile bin/buildinputs (Go helper for sandbox.py)
         run: make bin/buildinputs
+
+      - name: Build podman-builder container image
+        run: |
+          docker build \
+            -t "${PODMAN_BUILDER_IMAGE}" \
+            -f ci/cached-builds/Dockerfile.podman-builder .
+
+      - name: "Pre-pull base images via Docker (s390x: podman can't pull)"
+        if: ${{ matrix.platform == 'linux/s390x' }}
+        run: |
+          set -Eeuxo pipefail
+          DOCKERFILE=jupyter/minimal/ubi9-python-3.12/Dockerfile.cpu
+          CONF_FILE=jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf
+
+          # Mirrors Konflux buildah-oci-ta hermetic pre-pull (lines 628-650):
+          # https://github.com/konflux-ci/build-definitions/blob/main/task/buildah-oci-ta/0.9/buildah-oci-ta.yaml
+          # Konflux uses dockerfile-json + jq to extract BASE_IMAGES, then
+          # buildah pull each before building with --pull=never. We use
+          # grep + source since dockerfile-json is not available.
+
+          # Load build-arg values so FROM $VAR references resolve
+          source "${CONF_FILE}"
+
+          # Extract stage aliases (FROM ... AS <name>) to filter internal refs
+          STAGES=$(grep -iE '^FROM .+ AS ' "${DOCKERFILE}" | sed -E 's/.*AS +(\S+).*/\1/i' || true)
+
+          # Resolve and collect unique external FROM images
+          IMAGES=()
+          while IFS= read -r line; do
+            # Expand shell variables (e.g. ${BASE_IMAGE}) using the sourced conf
+            image=$(eval echo "${line}")
+            # Skip internal stage references
+            is_stage=false
+            for stage in ${STAGES}; do
+              if [ "${image}" = "${stage}" ]; then is_stage=true; break; fi
+            done
+            if [ "${is_stage}" = false ]; then
+              IMAGES+=("${image}")
+            fi
+          done < <(grep -E '^FROM ' "${DOCKERFILE}" | awk '{print $2}')
+
+          # Deduplicate and pull each external image, save all to one tarball
+          UNIQUE_IMAGES=($(printf '%s\n' "${IMAGES[@]}" | sort -u))
+          echo "Pre-pulling ${#UNIQUE_IMAGES[@]} base image(s) via Docker for s390x: ${UNIQUE_IMAGES[*]}"
+          for img in "${UNIQUE_IMAGES[@]}"; do
+            docker pull "${img}"
+          done
+          docker save "${UNIQUE_IMAGES[@]}" -o /tmp/base-images.tar
 
       - name: "Build: make jupyter-minimal-ubi9-python-3.12 (podman-in-docker)"
         id: make-build
@@ -516,29 +566,28 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
 
-          # Docker buildx does not support --volume (podman-only), so hermetic
-          # builds fail with "unknown flag: --volume". Workaround: run make
-          # inside a privileged Fedora 44 container that has podman 5.x (which
-          # supports --volume and Dockerfile HEREDOCs). The workspace is mounted
-          # so pre-compiled bin/buildinputs, uv .venv, and cachi2/output are
-          # all reused from the host. After build, pipe the image to Docker.
+          mkdir -p /tmp/podman-storage
           sudo docker run --rm --privileged --network=host \
             -v "${{ github.workspace }}:/workspace:z" \
+            -v /tmp/podman-storage:/var/lib/containers:z \
+            -v /tmp:/host-tmp:ro \
             -w /workspace \
-            registry.fedoraproject.org/fedora:44 \
+            "${PODMAN_BUILDER_IMAGE}" \
             bash -c '
               set -Eeuxo pipefail
-              dnf install -y --quiet podman make which python3 python3-pip
-              pip install --quiet structlog
               export PYTHONPATH=/workspace
+              if [ -f /host-tmp/base-images.tar ]; then
+                podman-build load < /host-tmp/base-images.tar
+              fi
               make jupyter-minimal-ubi9-python-3.12 \
-                CONTAINER_ENGINE=podman \
+                CONTAINER_ENGINE=podman-build \
                 BUILD_ARCH="'"${{ matrix.platform }}"'" \
                 IMAGE_REGISTRY="'"${IMAGE_REGISTRY}"'" \
                 IMAGE_TAG="'"${IMAGE_TAG}"'" \
                 PUSH_IMAGES=no \
                 CONTAINER_BUILD_CACHE_ARGS="--no-cache --network=host"
-              podman save --format docker-archive -o /workspace/image.tar "'"${IMAGE_NAME}"'"
+              podman-build save --format docker-archive \
+                -o /workspace/image.tar "'"${IMAGE_NAME}"'"
             '
           docker load < image.tar
           rm -f image.tar
@@ -546,6 +595,8 @@ jobs:
       - name: List built images
         if: ${{ !cancelled() && steps.make-build.outcome == 'success' }}
         run: docker images --digests | head -20
+
+      # ── 4. Test (mirrors Konflux integration tests) ──
 
       - name: Run Testcontainers tests
         if: ${{ !cancelled() && steps.make-build.outcome == 'success' }}
