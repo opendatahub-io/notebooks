@@ -30,7 +30,7 @@ class TestAccelerator:
 
         if "-pytorch-" in image_name and "-tensorflow-" in image_name:
             raise ValueError(f"Ambiguous library in image name: {image_name}")
-        elif "-pytorch-" in image_name:
+        if "-pytorch-" in image_name:
             library = "torch"
         elif "-tensorflow-" in image_name:
             library = "tensorflow"
@@ -75,7 +75,7 @@ class TestAccelerator:
 
         if "-pytorch-" in image_name and "-tensorflow-" in image_name:
             raise ValueError(f"Ambiguous library in image name: {image_name}")
-        elif "-pytorch-" in image_name:
+        if "-pytorch-" in image_name:
             library = "torch"
         elif "-tensorflow-" in image_name:
             library = "tensorflow"

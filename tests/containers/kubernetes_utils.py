@@ -476,6 +476,11 @@ def exposing_contextmanager(
     pf: kubernetes.stream.ws_client.PortForward | None = None
     s = None
     while not pf or not pf.connected or not s:
+        if s is not None:
+            s.close()
+            s = None
+        if pf is not None:
+            pf.close()
         pf = kubernetes.stream.portforward(
             api_method=core_v1_api.connect_get_namespaced_pod_portforward,
             name=pod.metadata.name,
