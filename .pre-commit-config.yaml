@@ -35,10 +35,10 @@ repos:
       - id: ruff-check
         types_or: [python, pyi, jupyter]
         args: [--fix]
-        files: 'ci/.*|tests/.*|ntb/.*|base-images/.*|jupyter/.*\.ipynb'
+        files: '^((ci|tests|ntb|base-images)/.*\.(py|pyi)|jupyter/.*\.ipynb)$'
       - id: ruff-format
         types_or: [python, pyi, jupyter]
-        files: 'ci/.*|tests/.*|ntb/.*|base-images/.*|jupyter/.*\.ipynb'
+        files: '^((ci|tests|ntb|base-images)/.*\.(py|pyi)|jupyter/.*\.ipynb)$'
   # https://pre-commit.com/#new-hooks
   - repo: local
     hooks:
