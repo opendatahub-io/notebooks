@@ -122,7 +122,11 @@ def assign_platforms(
         if arm64_images != Arm64Images.EXCLUDE and s390x_images != S390xImages.ONLY:
             if target in ARM64_COMPATIBLE:
                 targets_with_platform.append((target, "linux/arm64"))
-        if ppc64le_images != Ppc64leImages.EXCLUDE:
+        if (
+            ppc64le_images != Ppc64leImages.EXCLUDE
+            and arm64_images != Arm64Images.ONLY
+            and s390x_images != S390xImages.ONLY
+        ):
             if target in PPC64LE_COMPATIBLE:
                 targets_with_platform.append((target, "linux/ppc64le"))
         if s390x_images != S390xImages.EXCLUDE and arm64_images != Arm64Images.ONLY:
