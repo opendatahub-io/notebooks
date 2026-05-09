@@ -23,10 +23,11 @@ class TestAccelerator:
         print(client)
 
         image_metadata = conftest.get_image_metadata(cuda_image)
+        image_name = image_metadata.labels["name"]
         library = None
-        if "-pytorch-" in image_metadata.labels.get("name"):
+        if "-pytorch-" in image_name:
             library = "torch"
-        if "-tensorflow-" in image_metadata.labels.get("name"):
+        if "-tensorflow-" in image_name:
             library = "tensorflow"
 
         # language=python
@@ -40,7 +41,7 @@ class TestAccelerator:
             image.deploy(
                 container_name="notebook-tests-pod",
                 accelerator="nvidia.com/gpu",
-                is_runtime_image="-runtime-" in image_metadata.labels.get("name"),
+                is_runtime_image="-runtime-" in image_name,
                 timeout=TestFrameConstants.TIMEOUT_20MIN,
             )
             if library == "torch":
@@ -60,10 +61,11 @@ class TestAccelerator:
         print(client)
 
         image_metadata = conftest.get_image_metadata(rocm_image)
+        image_name = image_metadata.labels["name"]
         library = None
-        if "-pytorch-" in image_metadata.labels.get("name"):
+        if "-pytorch-" in image_name:
             library = "torch"
-        if "-tensorflow-" in image_metadata.labels.get("name"):
+        if "-tensorflow-" in image_name:
             library = "tensorflow"
 
         # NOTE: the basic check is exactly the same as for cuda; in torch, even though it says "cuda", it is actually ROCm
@@ -79,7 +81,7 @@ class TestAccelerator:
             image.deploy(
                 container_name="notebook-tests-pod",
                 accelerator="amd.com/gpu",
-                is_runtime_image="-runtime-" in image_metadata.labels.get("name"),
+                is_runtime_image="-runtime-" in image_name,
                 timeout=TestFrameConstants.TIMEOUT_20MIN,
             )
             if library == "torch":

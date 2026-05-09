@@ -274,7 +274,7 @@ def _resolve_pypi_duplicates(
 def _exec_or_none(container: object, cmd: list[str]) -> str | None:
     """Run a command in a container, return stdout or None on failure."""
     try:
-        ecode, output = container.exec(cmd)
+        ecode, output = container.exec(cmd)  # pyright: ignore[reportAttributeAccessIssue]
         if ecode == 0:
             return output.decode().strip()
     except UnicodeDecodeError:

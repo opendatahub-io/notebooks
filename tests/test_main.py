@@ -18,6 +18,7 @@ import allure
 import packaging.markers
 import packaging.requirements
 import packaging.specifiers
+import packaging.utils
 import packaging.version
 import pytest
 import yaml
@@ -32,7 +33,7 @@ if TYPE_CHECKING:
 
     import pytest_subtests
 
-MAKE = shutil.which("gmake") or shutil.which("make")
+MAKE = shutil.which("gmake") or shutil.which("make") or "make"
 
 _LOG = logging.getLogger(__name__)
 
@@ -309,6 +310,8 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 
                         manifest_version = d.get("version")
                         locked_version = resolved.get("version")
+                        assert manifest_version is not None, f"{name}: missing version in manifest"
+                        assert locked_version is not None, f"{name}: missing version in pylock.toml"
 
                         split_manifest_version = re.fullmatch(r"^v?(\d+)\.(\d+)", manifest_version)
                         assert split_manifest_version is not None, f"{name}: malformed {manifest_version=}"
