@@ -51,16 +51,8 @@ def _skopeo_config_json(vcs_ref: str | None) -> bytes:
 class TestEnvFileParsing:
     def test_parse_basic_entries(self, tmp_path: Path) -> None:
         env = tmp_path / "params-latest.env"
-        env.write_text(
-            "foo-n=quay.io/org/foo@sha256:aaa\n"
-            "bar-n=quay.io/org/bar@sha256:bbb\n",
-        )
-        with open(env) as f:
-            parsed = [
-                line.strip().split("=", 1)
-                for line in f.readlines()
-                if line.strip() and not line.strip().startswith("#")
-            ]
+        env.write_text("foo-n=quay.io/org/foo@sha256:aaa\nbar-n=quay.io/org/bar@sha256:bbb\n")
+        parsed = ucle.parse_env_file(env)
         assert parsed == [
             ["foo-n", "quay.io/org/foo@sha256:aaa"],
             ["bar-n", "quay.io/org/bar@sha256:bbb"],
@@ -68,30 +60,14 @@ class TestEnvFileParsing:
 
     def test_skip_comments_and_blanks(self, tmp_path: Path) -> None:
         env = tmp_path / "params-latest.env"
-        env.write_text(
-            "# this is a comment\n"
-            "\n"
-            "foo-n=quay.io/org/foo@sha256:aaa\n"
-            "  # indented comment\n"
-            "\n",
-        )
-        with open(env) as f:
-            parsed = [
-                line.strip().split("=", 1)
-                for line in f.readlines()
-                if line.strip() and not line.strip().startswith("#")
-            ]
+        env.write_text("# this is a comment\n\nfoo-n=quay.io/org/foo@sha256:aaa\n  # indented comment\n\n")
+        parsed = ucle.parse_env_file(env)
         assert parsed == [["foo-n", "quay.io/org/foo@sha256:aaa"]]
 
     def test_value_with_equals_sign(self, tmp_path: Path) -> None:
         env = tmp_path / "params-latest.env"
         env.write_text("foo-n=quay.io/org/foo@sha256:abc=def\n")
-        with open(env) as f:
-            parsed = [
-                line.strip().split("=", 1)
-                for line in f.readlines()
-                if line.strip() and not line.strip().startswith("#")
-            ]
+        parsed = ucle.parse_env_file(env)
         assert parsed == [["foo-n", "quay.io/org/foo@sha256:abc=def"]]
 
 
@@ -112,9 +88,7 @@ class TestVariableNameTransformation:
 
     def test_real_variable_names(self) -> None:
         name = "odh-workbench-jupyter-minimal-cpu-py312-ubi9-n"
-        assert re.sub(r"-n$", "-commit-n", name) == (
-            "odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-n"
-        )
+        assert re.sub(r"-n$", "-commit-n", name) == ("odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-n")
 
 
 # ---------------------------------------------------------------------------
@@ -138,7 +112,7 @@ class TestGetImageVcsRef:
         sem = asyncio.Semaphore(1)
 
         with patch.object(asyncio, "create_subprocess_exec", return_value=fake_proc):
-            url, ref = asyncio.run(ucle.get_image_vcs_ref("quay.io/org/img@sha256:aaa", sem))
+            _url, ref = asyncio.run(ucle.get_image_vcs_ref("quay.io/org/img@sha256:aaa", sem))
 
         assert ref is None
 
@@ -147,7 +121,7 @@ class TestGetImageVcsRef:
         sem = asyncio.Semaphore(1)
 
         with patch.object(asyncio, "create_subprocess_exec", return_value=fake_proc):
-            url, ref = asyncio.run(ucle.get_image_vcs_ref("quay.io/org/img@sha256:aaa", sem))
+            _url, ref = asyncio.run(ucle.get_image_vcs_ref("quay.io/org/img@sha256:aaa", sem))
 
         assert ref is None
 
@@ -156,7 +130,7 @@ class TestGetImageVcsRef:
         sem = asyncio.Semaphore(1)
 
         with patch.object(asyncio, "create_subprocess_exec", return_value=fake_proc):
-            url, ref = asyncio.run(ucle.get_image_vcs_ref("quay.io/org/img@sha256:aaa", sem))
+            _url, ref = asyncio.run(ucle.get_image_vcs_ref("quay.io/org/img@sha256:aaa", sem))
 
         assert ref is None
 
@@ -165,18 +139,18 @@ class TestGetImageVcsRef:
         sem = asyncio.Semaphore(1)
 
         with patch.object(asyncio, "create_subprocess_exec", return_value=fake_proc):
-            url, ref = asyncio.run(ucle.get_image_vcs_ref("quay.io/org/img@sha256:aaa", sem))
+            _url, ref = asyncio.run(ucle.get_image_vcs_ref("quay.io/org/img@sha256:aaa", sem))
 
         assert ref is None
 
     def test_returns_none_when_skopeo_not_found(self) -> None:
         sem = asyncio.Semaphore(1)
 
-        async def raise_fnf(*args, **kwargs):
+        def raise_fnf(*args, **kwargs):
             raise FileNotFoundError
 
         with patch.object(asyncio, "create_subprocess_exec", side_effect=raise_fnf):
-            url, ref = asyncio.run(ucle.get_image_vcs_ref("quay.io/org/img@sha256:aaa", sem))
+            _url, ref = asyncio.run(ucle.get_image_vcs_ref("quay.io/org/img@sha256:aaa", sem))
 
         assert ref is None
 
@@ -199,8 +173,9 @@ class TestInspect:
             results = asyncio.run(ucle.inspect(["quay.io/org/a@sha256:aaa", "quay.io/org/b@sha256:bbb"]))
 
         assert len(results) == 2
-        assert results[0][1] == "aaaaaaa"
-        assert results[1][1] == "bbbbbbb"
+        by_url = dict(results)
+        assert by_url["quay.io/org/a@sha256:aaa"] == "aaaaaaa"
+        assert by_url["quay.io/org/b@sha256:bbb"] == "bbbbbbb"
 
     def test_handles_empty_input(self) -> None:
         results = asyncio.run(ucle.inspect([]))
@@ -215,11 +190,7 @@ class TestInspect:
 class TestMain:
     def test_end_to_end(self, tmp_path: Path) -> None:
         params = tmp_path / "params-latest.env"
-        commit = tmp_path / "commit-latest.env"
-        params.write_text(
-            "img-alpha-n=quay.io/org/alpha@sha256:aaa\n"
-            "img-beta-n=quay.io/org/beta@sha256:bbb\n",
-        )
+        params.write_text("img-alpha-n=quay.io/org/alpha@sha256:aaa\nimg-beta-n=quay.io/org/beta@sha256:bbb\n")
 
         calls = iter(
             [
@@ -235,10 +206,7 @@ class TestMain:
             (tmp_path / "manifests" / "odh" / "base").mkdir(parents=True)
             params_real = tmp_path / "manifests" / "odh" / "base" / "params-latest.env"
             commit_real = tmp_path / "manifests" / "odh" / "base" / "commit-latest.env"
-            params_real.write_text(
-                "img-alpha-n=quay.io/org/alpha@sha256:aaa\n"
-                "img-beta-n=quay.io/org/beta@sha256:bbb\n",
-            )
+            params_real.write_text("img-alpha-n=quay.io/org/alpha@sha256:aaa\nimg-beta-n=quay.io/org/beta@sha256:bbb\n")
 
             asyncio.run(ucle.main())
 
@@ -270,9 +238,7 @@ class TestMain:
         (tmp_path / "manifests" / "odh" / "base").mkdir(parents=True)
         params = tmp_path / "manifests" / "odh" / "base" / "params-latest.env"
         params.write_text(
-            "zzz-n=quay.io/org/z@sha256:aaa\n"
-            "aaa-n=quay.io/org/a@sha256:bbb\n"
-            "mmm-n=quay.io/org/m@sha256:ccc\n",
+            "zzz-n=quay.io/org/z@sha256:aaa\naaa-n=quay.io/org/a@sha256:bbb\nmmm-n=quay.io/org/m@sha256:ccc\n"
         )
 
         calls = iter(
@@ -316,11 +282,7 @@ class TestMain:
     def test_skips_comments_in_params_file(self, tmp_path: Path) -> None:
         (tmp_path / "manifests" / "odh" / "base").mkdir(parents=True)
         params = tmp_path / "manifests" / "odh" / "base" / "params-latest.env"
-        params.write_text(
-            "# a comment\n"
-            "\n"
-            "img-n=quay.io/org/img@sha256:aaa\n",
-        )
+        params.write_text("# a comment\n\nimg-n=quay.io/org/img@sha256:aaa\n")
 
         fake_proc = _make_fake_process(_skopeo_config_json("abcdef1234567890"))
 

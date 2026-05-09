@@ -22,6 +22,12 @@ PROJECT_ROOT = pathlib.Path(__file__).parent.parent
 log = structlog.get_logger()
 
 
+def parse_env_file(path: pathlib.Path) -> list[list[str]]:
+    with open(path, "rt") as file:
+        return [line.strip().split('=', 1) for line in file.readlines()
+                if line.strip() and not line.strip().startswith("#")]
+
+
 async def get_image_vcs_ref(image_url: str, semaphore: asyncio.Semaphore) -> tuple[str, str | None]:
     """
     Asynchronously inspects a container image's configuration using skopeo
@@ -106,9 +112,7 @@ async def inspect(images_to_inspect: typing.Iterable[str]) -> list[tuple[str, st
 
 
 async def main():
-    with open(PROJECT_ROOT / "manifests/odh/base/params-latest.env", "rt") as file:
-        images_to_inspect: list[list[str]] = [line.strip().split('=', 1) for line in file.readlines()
-                                              if line.strip() and not line.strip().startswith("#")]
+    images_to_inspect = parse_env_file(PROJECT_ROOT / "manifests/odh/base/params-latest.env")
 
     results = await inspect(value for _, value in images_to_inspect)
     if any(commit_hash is None for variable, commit_hash in results):
