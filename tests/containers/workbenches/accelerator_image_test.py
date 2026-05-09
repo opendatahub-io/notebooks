@@ -23,12 +23,19 @@ class TestAccelerator:
         print(client)
 
         image_metadata = conftest.get_image_metadata(cuda_image)
-        image_name = image_metadata.labels["name"]
-        library = None
-        if "-pytorch-" in image_name:
+        labels = image_metadata.labels or {}
+        image_name = labels.get("name")
+        if not image_name:
+            pytest.fail(f"Image metadata missing required 'name' label for {cuda_image}")
+
+        if "-pytorch-" in image_name and "-tensorflow-" in image_name:
+            raise ValueError(f"Ambiguous library in image name: {image_name}")
+        elif "-pytorch-" in image_name:
             library = "torch"
-        if "-tensorflow-" in image_name:
+        elif "-tensorflow-" in image_name:
             library = "tensorflow"
+        else:
+            raise ValueError(f"Unknown library in image name: {image_name}")
 
         # language=python
         torch_check = (
@@ -61,12 +68,19 @@ class TestAccelerator:
         print(client)
 
         image_metadata = conftest.get_image_metadata(rocm_image)
-        image_name = image_metadata.labels["name"]
-        library = None
-        if "-pytorch-" in image_name:
+        labels = image_metadata.labels or {}
+        image_name = labels.get("name")
+        if not image_name:
+            pytest.fail(f"Image metadata missing required 'name' label for {rocm_image}")
+
+        if "-pytorch-" in image_name and "-tensorflow-" in image_name:
+            raise ValueError(f"Ambiguous library in image name: {image_name}")
+        elif "-pytorch-" in image_name:
             library = "torch"
-        if "-tensorflow-" in image_name:
+        elif "-tensorflow-" in image_name:
             library = "tensorflow"
+        else:
+            raise ValueError(f"Unknown library in image name: {image_name}")
 
         # NOTE: the basic check is exactly the same as for cuda; in torch, even though it says "cuda", it is actually ROCm
 

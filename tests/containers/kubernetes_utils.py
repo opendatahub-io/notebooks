@@ -281,8 +281,10 @@ class ImageDeployment:
         returncode = resp.returncode
         resp.close()
 
+        if returncode is None:
+            raise RuntimeError(f"Pod exec terminated without exit code for command: {command}")
         return subprocess.CompletedProcess(
-            args=command, returncode=returncode or 0, stdout="\n".join(stdout), stderr="\n".join(stderr)
+            args=command, returncode=returncode, stdout="\n".join(stdout), stderr="\n".join(stderr)
         )
 
 
@@ -465,7 +467,8 @@ class Utils:
 
 @contextlib.contextmanager
 def exposing_contextmanager(
-    core_v1_api: kubernetes.client.CoreV1Api, pod: kubernetes.client.models.V1Pod  # pyright: ignore[reportAttributeAccessIssue]
+    core_v1_api: kubernetes.client.CoreV1Api,
+    pod: kubernetes.client.models.V1Pod,  # pyright: ignore[reportAttributeAccessIssue]
 ) -> Generator[socket]:
     # If we e.g., specify the wrong port, the pf = portforward() call succeeds,
     # but pf.connected will later flip to False

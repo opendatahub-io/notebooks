@@ -137,8 +137,12 @@ def filter_out_unchanged(targets: list[str], changed_files: list[str]) -> list[s
 
 
 def get_go_arch() -> Literal["amd64", "arm64", "ppc64le", "s390x"]:
-    if arch := os.environ.get("GOARCH"):
-        return arch  # type: ignore[return-value]  # trusting GOARCH env var
+    if goarch := os.environ.get("GOARCH"):
+        match goarch.lower():
+            case "amd64" | "arm64" | "ppc64le" | "s390x" as arch:
+                return arch
+            case _:
+                raise ValueError(f"Unsupported GOARCH value: {goarch!r}")
     match platform.machine().lower():
         case "x86_64" | "amd64":
             arch = "amd64"

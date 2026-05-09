@@ -133,15 +133,19 @@ def container_cp(
     tar = tarfile.open(fileobj=fh, mode="w:gz")
 
     def tar_filter(f: tarfile.TarInfo) -> tarfile.TarInfo:
-        if user:
+        if user is not None:
             f.uid = user
-        if group:
+        if group is not None:
             f.gid = group
         return f
 
     logging.debug(f"Adding {src=} to archive {dst=}")
     try:
-        tar.add(src, arcname=os.path.basename(src), filter=tar_filter if (user or group) else None)
+        tar.add(
+            src,
+            arcname=os.path.basename(src),
+            filter=tar_filter if (user is not None or group is not None) else None,
+        )
     finally:
         tar.close()
 
