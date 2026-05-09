@@ -47,7 +47,17 @@ until this was fixed.
 
 ## Architecture: containers, not VMs
 
-The IBM runners are **LXD containers**, not VMs. This has significant implications:
+The IBM runners are **LXD containers**, not VMs. This has significant implications.
+
+IBM has confirmed they are working on **VM-based runners** that would
+allow privileged workflows
+([dale-fu, May 2026](https://github.com/IBM/actionspz/issues/63#issuecomment-4397336518)):
+> "the team is working on implementing VM-based runners where it would
+> allow for more privileged workflows to be ran. We hope to have this
+> feature available sometime in the following months."
+
+VM-based runners would eliminate all LXD/AppArmor limitations documented
+below.
 
 ### No privileged operations
 
