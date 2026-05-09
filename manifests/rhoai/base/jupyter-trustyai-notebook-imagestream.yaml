@@ -66,29 +66,28 @@ spec:
           ]
         opendatahub.io/notebook-python-dependencies: |
           [
-            {"name": "JupyterLab", "version": "4.2"},
+            {"name": "JupyterLab", "version": "4.5"},
             {"name": "TrustyAI", "version": "0.6"},
-            {"name": "Transformers", "version": "4.50"},
-            {"name": "Datasets", "version": "3.4"},
-            {"name": "Accelerate", "version": "1.5"},
-            {"name": "Torch", "version": "2.6"},
-            {"name": "Boto3", "version": "1.37"},
+            {"name": "Transformers", "version": "5.3"},
+            {"name": "Datasets", "version": "4.5"},
+            {"name": "Accelerate", "version": "1.12"},
+            {"name": "Torch", "version": "2.10"},
+            {"name": "Boto3", "version": "1.42"},
             {"name": "Kafka-Python-ng", "version": "2.2"},
-            {"name": "Kfp", "version": "2.12"},
+            {"name": "Kfp", "version": "2.15"},
             {"name": "Matplotlib", "version": "3.10"},
-            {"name": "Numpy", "version": "1.26"},
-            {"name": "Pandas", "version": "1.5"},
-            {"name": "Scikit-learn", "version": "1.7"},
-            {"name": "Scipy", "version": "1.15"},
-            {"name": "Odh-Elyra", "version": "4.2"},
-            {"name": "PyMongo", "version": "4.11"},
-            {"name": "Pyodbc", "version": "5.2"},
-            {"name": "Codeflare-SDK", "version": "0.29"},
-            {"name": "Sklearn-onnx", "version": "1.18"},
-            {"name": "Psycopg", "version": "3.2"},
-            {"name": "MySQL Connector/Python", "version": "9.3"},
-            {"name": "Kubeflow-Training", "version": "1.9"},
-            {"name": "MLflow", "version": "3.10"}
+            {"name": "Numpy", "version": "2.4"},
+            {"name": "Pandas", "version": "2.3"},
+            {"name": "Scikit-learn", "version": "1.8"},
+            {"name": "Scipy", "version": "1.16"},
+            {"name": "Odh-Elyra", "version": "4.3"},
+            {"name": "PyMongo", "version": "4.16"},
+            {"name": "Pyodbc", "version": "5.3"},
+            {"name": "Codeflare-SDK", "version": "0.35"},
+            {"name": "Sklearn-onnx", "version": "1.20"},
+            {"name": "Psycopg", "version": "3.3"},
+            {"name": "MySQL Connector/Python", "version": "9.6"},
+            {"name": "Kubeflow-Training", "version": "1.9"}
           ]
         openshift.io/imported-from: quay.io/opendatahub/workbench-images
         opendatahub.io/workbench-image-recommended: 'false'
