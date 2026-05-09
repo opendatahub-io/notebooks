@@ -94,9 +94,7 @@ class TestRpmSignatures:
         _LOG.info(f"Checking RPM signatures for {image} (name label: {image_name!r})")
 
         with docker_utils.running_container(image) as container:
-            ecode, output = container.exec(
-                ["rpm", "-qa", "--qf", "%{NAME}\t%{VERSION}\t%{SIGPGP:pgpsig}\n"]
-            )
+            ecode, output = container.exec(["rpm", "-qa", "--qf", "%{NAME}\t%{VERSION}\t%{SIGPGP:pgpsig}\n"])
             assert ecode == 0, f"rpm -qa failed: {output.decode()}"
 
             unsigned: list[str] = []
