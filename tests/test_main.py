@@ -790,10 +790,12 @@ def _collect_rpms_lock_files() -> list[pathlib.Path]:
     return files
 
 
-_KNOWN_EVR_MISMATCHES: frozenset[str] = frozenset({
-    "iptables-libs",
-    "openshift-clients",
-})
+_KNOWN_EVR_MISMATCHES: frozenset[str] = frozenset(
+    {
+        "iptables-libs",
+        "openshift-clients",
+    }
+)
 
 
 @pytest.mark.parametrize("lockfile", _collect_rpms_lock_files(), ids=lambda p: str(p.relative_to(PROJECT_ROOT)))
@@ -821,9 +823,7 @@ def test_rpms_lock_nvr_consistency_across_arches(subtests: pytest_subtests.plugi
         with subtests.test(msg=f"{pkg_name} EVR consistency", package=pkg_name):
             evrs = set(evr_by_arch.values())
             if pkg_name in _KNOWN_EVR_MISMATCHES and len(evrs) != 1:
-                pytest.xfail(
-                    f"Pre-existing EVR mismatch for {pkg_name!r}: {evr_by_arch}"
-                )
+                pytest.xfail(f"Pre-existing EVR mismatch for {pkg_name!r}: {evr_by_arch}")
             assert len(evrs) == 1, (
                 f"RPM {pkg_name!r} has mismatched EVR across architectures in "
                 f"{lockfile.relative_to(PROJECT_ROOT)}: {evr_by_arch}"
