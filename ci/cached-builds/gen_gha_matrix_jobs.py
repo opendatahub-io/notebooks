@@ -117,7 +117,7 @@ def assign_platforms(
 ) -> list[tuple[str, str]]:
     targets_with_platform: list[tuple[str, str]] = []
     for target in targets:
-        if s390x_images != S390xImages.ONLY or arm64_images != Arm64Images.ONLY:
+        if s390x_images != S390xImages.ONLY and arm64_images != Arm64Images.ONLY:
             targets_with_platform.append((target, "linux/amd64"))
         if arm64_images != Arm64Images.EXCLUDE and s390x_images != S390xImages.ONLY:
             if target in ARM64_COMPATIBLE:
