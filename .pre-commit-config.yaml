@@ -33,12 +33,12 @@ repos:
     rev: v0.15.4
     hooks:
       - id: ruff-check
-        types_or: [python, pyi]
+        types_or: [python, pyi, jupyter]
         args: [--fix]
-        files: 'ci/.*|tests/.*'
+        files: 'ci/.*|tests/.*|ntb/.*|base-images/.*|jupyter/.*\.ipynb'
       - id: ruff-format
-        types_or: [python, pyi]
-        files: 'ci/.*|tests/.*'
+        types_or: [python, pyi, jupyter]
+        files: 'ci/.*|tests/.*|ntb/.*|base-images/.*|jupyter/.*\.ipynb'
   # https://pre-commit.com/#new-hooks
   - repo: local
     hooks:
