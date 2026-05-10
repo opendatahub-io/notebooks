@@ -686,7 +686,7 @@ def _get_quay_auth() -> str | None:
             auth = config.get("auths", {}).get("quay.io", {}).get("auth")
             if auth:
                 return auth
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError):  # fmt: skip
             continue
     return None
 
