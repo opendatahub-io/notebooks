@@ -45,7 +45,7 @@ List your contexts with `oc config get-contexts -o name | grep stone`.
 
 ## ODH-io (Open Data Hub)
 
-This section covers the Konflux setup for the upstream **Open Data Hub** community project.
+This section covers the Konflux setup for the midstream **Open Data Hub** community project.
 
 project: `open-data-hub-tenant`
 
@@ -242,7 +242,42 @@ oc annotate components/<component-name> \
 
 This requires `oc` access to the respective cluster and namespace. The annotation is consumed immediately, but the PipelineRun takes ~2 minutes to appear. The component must have PaC `state: enabled` in its build status annotation. The same action is available as the "Start new build" button in the Konflux UI.
 
-See also: [Running Build Pipelines (Konflux docs)](https://konflux-ci.dev/docs/building/running/)
+#### Retrying a push build via GitHub commit comment
+
+You can trigger push pipelines by commenting on a **commit** page (not on a PR).
+The most reliable command is `/test <pipelinerun-name>`, which uses the PipelineRun's
+`metadata.name` from `.tekton/` (e.g., `odh-base-image-cpu-py312-ubi9-on-push` -- note
+this is the PipelineRun name, not the component name or filename).
+
+1. Navigate to the **latest commit on the branch** on GitHub
+2. Scroll to the Comments section at the bottom of the commit page
+3. To trigger a specific push pipeline:
+   `/test <pipelinerun-name>` (always works, even if the pipeline never ran)
+4. To retrigger all failed push pipelines:
+   `/retest` (only retriggers previously failed runs -- does nothing if no prior failures)
+5. For non-default branches:
+   `/test <pipelinerun-name> branch:<branch-name>` (pipeline name first, then `branch:`)
+
+**Constraints** ([source: PaC `handleCommitCommentEvent`](https://github.com/tektoncd/pipelines-as-code/blob/main/pkg/provider/github/parse_payload.go)):
+- Only works on the **latest commit (HEAD)** of the branch -- PaC calls `isHeadCommitOfBranch`
+  and rejects comments on older commits ([source](https://github.com/tektoncd/pipelines-as-code/blob/main/pkg/provider/github/github.go))
+- Without `branch:`, defaults to the **default branch** (`main`). For `stable` or `rhoai-*`
+  branches, you must specify `branch:<name>`
+- Does **not** trigger nudging PRs (use `trigger-pac-build` annotation when you need nudge propagation)
+
+**Verified** on `opendatahub-io/notebooks` (May 10, 2026):
+`/test odh-base-image-cpu-py312-ubi9-on-push` on commit `22d8b92` (HEAD of `main`)
+successfully triggered a push pipeline. Also confirmed working in
+[ACS](https://redhat-internal.slack.com/archives/C05TS9N0S7L/p1771841918073429) and
+[AAP Hub](https://redhat-internal.slack.com/archives/C07BMJL2X42/p1771333521169669).
+
+**Warning:** Custom `on-comment` triggers (like `/kfbuild`) also work on commit comments,
+but they match **all** pipelines with a matching regex -- including PR pipelines. Commenting
+`/kfbuild all` on a commit triggers all PR build pipelines, not push pipelines. Use the
+built-in `/test <name>` for commit comments instead.
+
+See also: [Running Build Pipelines (Konflux docs)](https://konflux-ci.dev/docs/building/running/),
+[RHAIENG-5020](https://redhat.atlassian.net/browse/RHAIENG-5020)
 
 ## Build trigger internals
 

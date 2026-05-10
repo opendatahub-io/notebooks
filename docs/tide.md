@@ -20,10 +20,15 @@ There are **separate configs** for the midstream and downstream repos:
 Key points from the current config (click the links above to see the full up-to-date YAML):
 
 - **Branch protection on `main` is disabled** (`protect: false`).
-  Initially enabled, then removed in [openshift/release#56929](https://github.com/openshift/release/pull/56929)
-  (Sep 2024) and explicitly disabled in [openshift/release#59991](https://github.com/openshift/release/pull/59991)
-  (Dec 2024, [RHOAIENG-15393](https://issues.redhat.com/browse/RHOAIENG-15393)) because the
-  `piplock-renewal` GitHub Action needs to push directly to `main` without status checks blocking it.
+  Initially set up in [openshift/release#32113](https://github.com/openshift/release/pull/32113)
+  (Sep 2022). Removed in [openshift/release#56929](https://github.com/openshift/release/pull/56929)
+  (Sep 2024) and explicitly set to `protect: false` in [openshift/release#59991](https://github.com/openshift/release/pull/59991)
+  (Dec 2024, [RHOAIENG-15393](https://issues.redhat.com/browse/RHOAIENG-15393)).
+  The `unmanaged: true` alternative was considered but rejected -- it appears only in OpenShift CI
+  docs (not upstream Prow) and its behavior was uncertain; `protect: false` was already proven
+  to work on `red-hat-data-services/notebooks`.
+  Root cause: GitHub Actions workflows (`piplock-renewal`, `insta-merge.yaml`) need to push
+  directly to `main` without status checks, which is incompatible with active branch protection.
 - **Merge method is `merge`** (not squash), changed in [openshift/release#43851](https://github.com/openshift/release/pull/43851)
   (Sep 2023, related to [notebooks#231](https://github.com/opendatahub-io/notebooks/issues/231)).
 - **Tide requires** `approved` + `lgtm` labels.
@@ -72,7 +77,7 @@ Key commands used in this repo:
   to OWNERS reviewers). Automatically removed when new commits are pushed.
 - **`/approve`** -- adds the `approved` label. Only OWNERS `approvers` can use it.
   **Not** removed on new commits (unlike `/lgtm`).
-- **`/hold`** -- adds `do-not-merge/hold` to block merge. Any contributor can use it.
+- **`/hold`** -- adds `do-not-merge/hold` to block merge. Any org member can use it.
   Remove with `/hold cancel`.
 - **`/override <context-name>`** -- forces a failing check to pass. Requires approver
   or admin access. Applies to the current HEAD commit only.

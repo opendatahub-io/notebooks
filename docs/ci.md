@@ -77,7 +77,7 @@ GHA workflow, use the GitHub UI "Re-run" button on the Actions or Checks tab.
 
 ## How the systems interact
 
-```
+```text
 PR opened/updated
   ├── GitHub Actions: runs automatically (code-quality, security, etc.)
   ├── Konflux/PaC: runs if pathChanged() matches .tekton/ CEL expressions
