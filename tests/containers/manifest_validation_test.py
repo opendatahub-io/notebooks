@@ -110,12 +110,23 @@ def _normalize_pip_name(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _strip_tag_if_digest(image_ref: str) -> str:
+    """Strip :tag from repo:tag@sha256:digest — skopeo doesn't accept that format."""
+    if "@" in image_ref:
+        base, digest = image_ref.rsplit("@", 1)
+        if ":" in base.rsplit("/", 1)[-1]:
+            base = base.rsplit(":", 1)[0]
+        return f"{base}@{digest}"
+    return image_ref
+
+
 def _resolve_amd64(image_ref: str) -> str:
     """Resolve a multi-arch manifest list to the amd64 image digest.
 
     If *image_ref* already points to a single-arch image, returns it unchanged.
     Requires ``skopeo`` on PATH.
     """
+    image_ref = _strip_tag_if_digest(image_ref)
     raw = subprocess.run(
         ["skopeo", "inspect", "--raw", f"docker://{image_ref}"],
         capture_output=True,
