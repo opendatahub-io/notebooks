@@ -21,15 +21,15 @@ For authoritative installation state, see [Checking installed apps](#checking-in
 | App | Notes |
 |-----|-------|
 | [GitHub Actions](https://github.com/features/actions) | Primary CI for most repos |
-| [Red Hat Konflux](https://github.com/konflux-ci) | Container image builds (Tekton pipelines); 26 repos |
-| [GitHub Advanced Security](https://github.com/features/security) | Code scanning (CodeQL); 5 repos |
-| [Tide](https://docs.prow.k8s.io/docs/components/core/tide/) (Prow) | Merge automation; see [docs/tide.md](tide.md). Scan undercounts -- Tide only posts status on PR commits. |
-| [Codecov](https://github.com/apps/codecov) | Coverage reporting; 3 repos |
-| [Mergify](https://github.com/apps/mergify) | Auto-merge and auto-backport; 2 repos |
+| [Red Hat Konflux](https://github.com/konflux-ci) | Container image builds (Tekton pipelines) |
+| [GitHub Advanced Security](https://github.com/features/security) | Code scanning (CodeQL) |
+| [Tide](https://docs.prow.k8s.io/docs/components/core/tide/) (Prow) | Merge automation; see [docs/tide.md](tide.md) |
+| [Codecov](https://github.com/apps/codecov) | Coverage reporting |
+| [Mergify](https://github.com/apps/mergify) | Auto-merge and auto-backport |
 | [CodeRabbit](https://github.com/apps/coderabbitai) | AI code review (free plan); org-wide |
-| [pre-commit.ci](https://github.com/apps/pre-commit-ci) | Auto-fix linting; 1 repo |
-| [Dependabot](https://github.com/dependabot) | Dependency updates; 1 repo |
-| [DCO](https://github.com/apps/dco) | Developer Certificate of Origin check; 1 repo |
+| [pre-commit.ci](https://github.com/apps/pre-commit-ci) | Auto-fix linting |
+| [Dependabot](https://github.com/dependabot) | Dependency updates |
+| [DCO](https://github.com/apps/dco) | Developer Certificate of Origin check |
 
 ### Apps on notebooks specifically
 
