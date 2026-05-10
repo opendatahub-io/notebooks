@@ -672,6 +672,10 @@ def _image_ref_to_quay(image_ref: str) -> tuple[str, str]:
     return repo, digest
 
 
+class _ClairScanNotReadyError(RuntimeError):
+    pass
+
+
 def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     """Extract {normalized_name: version} from Quay.io Clair security scan.
 
@@ -709,7 +713,7 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     if not features:
         status = data.get("status")
         if status in {"queued", "scanning"}:
-            raise RuntimeError(f"Clair scan not ready for {image_ref} (status={status})")
+            raise _ClairScanNotReadyError(f"Clair scan not ready for {image_ref} (status={status})")
         raise RuntimeError(f"No features in Clair response for {image_ref}")
 
     # Collect all entries keyed by both rpm: and normalized-pip forms,
@@ -773,6 +777,9 @@ def test_old_tag_annotations_match_quay(
         _LOG.info(f"Fetching Quay packages for {t.is_name} tag {t.tag_name}: {t.image_ref}")
         try:
             actual_packages = _packages_from_quay(t.image_ref, quay_auth)
+        except _ClairScanNotReadyError as exc:
+            _LOG.warning(f"Skipping {t.is_name} tag {t.tag_name}: {exc}")
+            continue
         except (
             RuntimeError,
             ValueError,
