@@ -222,7 +222,7 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
 # Inner functions are serialized and executed inside containers, so imports must be local.
 "tests/containers/workbenches/gpu_library_loading_test.py" = ["PLC0415"]
 # Ignore many stylistic and formatting rules for notebooks, but keep Pylint rules like PLW0128
-"jupyter/**/*.ipynb" = ["E", "F", "W", "Q", "I", "PLR0402", "PLC0414", "RUF100", "PLW0108"]
+"jupyter/**/*.ipynb" = ["B004", "E", "F", "W", "Q", "I", "PLC0414", "PLC0415", "PLR0402", "PLW0108", "PLW1510", "RUF100"]
 
 # https://docs.astral.sh/ruff/formatter
 [tool.ruff.format]
