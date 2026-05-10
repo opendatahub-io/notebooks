@@ -58,10 +58,14 @@ class FakeProcess:
 
 def make_create_subprocess_exec(
     process: FakeProcess,
+    *,
+    expected_argv_prefix: tuple[str, ...] | None = None,
 ) -> Any:
-    """Return an async callable that ignores its arguments and yields *process*."""
+    """Return an async callable that yields *process*, optionally asserting argv shape."""
 
     async def _create(*args: Any, **kwargs: Any) -> FakeProcess:  # noqa: RUF029
+        if expected_argv_prefix is not None:
+            assert tuple(args[: len(expected_argv_prefix)]) == expected_argv_prefix
         return process
 
     return _create
@@ -317,7 +321,10 @@ class TestCheckImage:
         async def _test() -> None:
             semaphore = asyncio.Semaphore(1)
             fake = FakeProcess(stdout=_skopeo_ok_json("2025-04-01T12:00:00Z"), returncode=0)
-            with patch("asyncio.create_subprocess_exec", make_create_subprocess_exec(fake)):
+            with patch(
+                "asyncio.create_subprocess_exec",
+                make_create_subprocess_exec(fake, expected_argv_prefix=("skopeo", "inspect")),
+            ):
                 result = await mod.check_image("VAR", "quay.io/org/img:v1", semaphore, emit_immediate_errors=False)
 
             assert result.available is True
@@ -334,7 +341,10 @@ class TestCheckImage:
                 stderr=b'msg="manifest unknown"',
                 returncode=1,
             )
-            with patch("asyncio.create_subprocess_exec", make_create_subprocess_exec(fake)):
+            with patch(
+                "asyncio.create_subprocess_exec",
+                make_create_subprocess_exec(fake, expected_argv_prefix=("skopeo", "inspect")),
+            ):
                 result = await mod.check_image("VAR", "quay.io/org/img:v1", semaphore, emit_immediate_errors=False)
 
             assert result.available is False
@@ -346,7 +356,10 @@ class TestCheckImage:
         async def _test() -> None:
             semaphore = asyncio.Semaphore(1)
             fake = FakeProcess(returncode=1)
-            with patch("asyncio.create_subprocess_exec", make_create_subprocess_exec(fake)):
+            with patch(
+                "asyncio.create_subprocess_exec",
+                make_create_subprocess_exec(fake, expected_argv_prefix=("skopeo", "inspect")),
+            ):
                 result = await mod.check_image("VAR", "quay.io/org/img:v1", semaphore, emit_immediate_errors=False)
 
             assert result.available is False
@@ -359,7 +372,10 @@ class TestCheckImage:
             semaphore = asyncio.Semaphore(1)
             fake = FakeProcess(hang=True)
             with (
-                patch("asyncio.create_subprocess_exec", make_create_subprocess_exec(fake)),
+                patch(
+                    "asyncio.create_subprocess_exec",
+                    make_create_subprocess_exec(fake, expected_argv_prefix=("skopeo", "inspect")),
+                ),
                 patch.object(mod, "COMMAND_TIMEOUT_SECONDS", 0.01),
             ):
                 result = await mod.check_image("VAR", "quay.io/org/img:v1", semaphore, emit_immediate_errors=False)
@@ -375,7 +391,10 @@ class TestCheckImage:
         async def _test() -> None:
             semaphore = asyncio.Semaphore(1)
             fake = FakeProcess(stdout=b"not json", returncode=0)
-            with patch("asyncio.create_subprocess_exec", make_create_subprocess_exec(fake)):
+            with patch(
+                "asyncio.create_subprocess_exec",
+                make_create_subprocess_exec(fake, expected_argv_prefix=("skopeo", "inspect")),
+            ):
                 result = await mod.check_image("VAR", "quay.io/org/img:v1", semaphore, emit_immediate_errors=False)
 
             assert result.available is False
@@ -397,7 +416,10 @@ class TestRunChecks:
                 ("B", "quay.io/org/img:v2"),
             ]
             fake = FakeProcess(stdout=_skopeo_ok_json(), returncode=0)
-            with patch("asyncio.create_subprocess_exec", make_create_subprocess_exec(fake)):
+            with patch(
+                "asyncio.create_subprocess_exec",
+                make_create_subprocess_exec(fake, expected_argv_prefix=("skopeo", "inspect")),
+            ):
                 results = await mod.run_checks(entries, rich_table=None)
 
             assert len(results) == 2
