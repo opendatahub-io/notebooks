@@ -778,7 +778,8 @@ def test_old_tag_annotations_match_quay(
         try:
             actual_packages = _packages_from_quay(t.image_ref, quay_auth)
         except _ClairScanNotReadyError as exc:
-            _LOG.warning(f"Skipping {t.is_name} tag {t.tag_name}: {exc}")
+            with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Clair scan not ready"):
+                pytest.xfail(str(exc))
             continue
         except (
             RuntimeError,
