@@ -16,16 +16,16 @@ As of May 2026, these apps are active across the org (detected via check-runs an
 
 | App | Repos | Notes |
 |-----|-------|-------|
-| **GitHub Actions** | 96 | Primary CI for most repos |
-| **Red Hat Konflux** | 26 | Container image builds (Tekton pipelines) |
-| **GitHub Advanced Security** | 5 | Code scanning (CodeQL) |
-| **Tide** (Prow) | 4 | Merge automation via commit status; see [docs/tide.md](tide.md) |
-| **Codecov** | 3 | Coverage reporting (odh-dashboard, opendatahub-operator, spark-operator) |
-| **Mergify** | 2 | Auto-merge and auto-backport (trainer, trustyai-service-operator) |
-| **CodeRabbit** | org-wide | AI code review, installed on free plan across all repos |
-| **pre-commit.ci** | 1 | Auto-fix linting (opendatahub-tests) |
-| **Dependabot** | 1 | Dependency updates (autofix-skills) |
-| **DCO** | 1 | Developer Certificate of Origin check (modelmesh-serving) |
+| **GitHub Actions** | most repos | Primary CI |
+| **Red Hat Konflux** | [notebooks](https://github.com/opendatahub-io/notebooks), [kubeflow](https://github.com/opendatahub-io/kubeflow), [opendatahub-operator](https://github.com/opendatahub-io/opendatahub-operator), +23 more | Container image builds (Tekton pipelines) |
+| **GitHub Advanced Security** | [kserve](https://github.com/opendatahub-io/kserve), [guardrails-detectors](https://github.com/opendatahub-io/guardrails-detectors), [eval-hub](https://github.com/opendatahub-io/eval-hub), +2 more | Code scanning (CodeQL) |
+| **Tide** (Prow) | [kserve](https://github.com/opendatahub-io/kserve), [model-registry](https://github.com/opendatahub-io/model-registry), [model-registry-operator](https://github.com/opendatahub-io/model-registry-operator), [models-as-a-service](https://github.com/opendatahub-io/models-as-a-service) | Merge automation; see [docs/tide.md](tide.md) |
+| **Codecov** | [odh-dashboard](https://github.com/opendatahub-io/odh-dashboard), [opendatahub-operator](https://github.com/opendatahub-io/opendatahub-operator), [spark-operator](https://github.com/opendatahub-io/spark-operator) | Coverage reporting |
+| **Mergify** | [trainer](https://github.com/opendatahub-io/trainer), [trustyai-service-operator](https://github.com/opendatahub-io/trustyai-service-operator) | Auto-merge and auto-backport |
+| **CodeRabbit** | org-wide | AI code review (free plan) |
+| **pre-commit.ci** | [opendatahub-tests](https://github.com/opendatahub-io/opendatahub-tests) | Auto-fix linting |
+| **Dependabot** | [autofix-skills](https://github.com/opendatahub-io/autofix-skills) | Dependency updates |
+| **DCO** | [modelmesh-serving](https://github.com/opendatahub-io/modelmesh-serving) | Developer Certificate of Origin check |
 
 ### Apps on notebooks specifically
 
