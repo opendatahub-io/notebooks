@@ -87,6 +87,30 @@ Mergify is already installed on the org but only enabled for select repos.
 To enable it on an additional repo, request in `#rhoai-devtestops-requests` — an org admin
 needs to add the repo to the Mergify app's repository access list.
 
+## Org-level push rulesets
+
+The opendatahub-io org has a **push ruleset** that protects security configuration files
+from being modified directly in repos. These files are managed centrally via
+[opendatahub-io/security-config](https://github.com/opendatahub-io/security-config) and
+synced to repos listed in `sync-config.yml`:
+
+- `semgrep.yaml` -- custom security rules for CodeRabbit PR reviews
+- `.coderabbit.yaml` -- org-wide CodeRabbit configuration (inheritance baseline)
+- `.gitleaks.toml` -- gitleaks secret scanning configuration
+- `.gitleaksignore` -- gitleaks false positive suppressions
+
+Changes to these files must go through the security-config repo. PRs that modify them
+directly in a repo will be rejected by the push ruleset. See the
+[security-config sync config](https://github.com/opendatahub-io/security-config/blob/main/sync-config.yml)
+for the full list of synced repos.
+
+**Known issue with Renovate:** The file path restriction ruleset can block Renovate's
+`pushFiles` API call even when Renovate isn't modifying protected files. Renovate's
+`POST /git/trees` sends the full tree without `base_tree`, causing GitHub to validate
+all file paths including unchanged protected ones. Workaround: add the Renovate bot/PAT
+as a bypass actor on the ruleset. Upstream bug:
+[renovatebot/renovate#42555](https://github.com/renovatebot/renovate/discussions/42555).
+
 ## Branch protection
 
 Branch protection for repos using OpenShift CI is managed by Prow's **branchprotector**
