@@ -41,7 +41,7 @@ These commands are handled exclusively by Prow. See [docs/tide.md](tide.md) for 
 | `/lgtm` | Adds `lgtm` label (required for merge) |
 | `/approve` | Adds `approved` label (required for merge) |
 | `/hold` | Adds `do-not-merge/hold` to block merge |
-| `/override <context>` | Forces a failing check to pass |
+| `/override <context>` | Marks a failing context as overridden (OWNERS approvers or admins only) |
 
 Clicking the GitHub "Approve" review button triggers `/lgtm` and `/approve` automatically
 for OWNERS approvers. See the [review mapping table](tide.md#github-review-approval-vs-prow-lgtm-and-approve).
