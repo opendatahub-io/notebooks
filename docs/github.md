@@ -55,7 +55,7 @@ gh api /repos/opendatahub-io/notebooks/commits/<sha>/statuses --paginate \
 
 To check if a specific app is installed on the org via the browser, visit:
 
-```
+```text
 https://github.com/apps/<app-slug>/installations/new/permissions?target_id=57720972
 ```
 
@@ -63,7 +63,7 @@ Repos showing "installed" already have the app enabled. This requires org member
 
 The org admin install page (requires admin role):
 
-```
+```text
 https://github.com/organizations/opendatahub-io/settings/installations
 ```
 
