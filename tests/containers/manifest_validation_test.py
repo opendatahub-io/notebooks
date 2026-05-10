@@ -773,13 +773,17 @@ def test_old_tag_annotations_match_quay(
     if not shutil.which("skopeo"):
         pytest.skip("skopeo not found on PATH")
 
-    for t in _iter_old_tags(base_dir):
+    all_tags = _iter_old_tags(base_dir)
+    skipped_scans: list[str] = []
+
+    for t in all_tags:
         _LOG.info(f"Fetching Quay packages for {t.is_name} tag {t.tag_name}: {t.image_ref}")
         try:
             actual_packages = _packages_from_quay(t.image_ref, quay_auth)
         except _ClairScanNotReadyError as exc:
             with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Clair scan not ready"):
                 pytest.xfail(str(exc))
+            skipped_scans.append(f"{t.is_name} tag {t.tag_name}")
             continue
         except (
             RuntimeError,
@@ -797,3 +801,15 @@ def test_old_tag_annotations_match_quay(
         # Clair cannot resolve code-server (npm package with 0.0.0 dev version).
         quay_software = [sw for sw in t.software if sw["name"] != "code-server"]
         _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, quay_software, actual_packages, is_software=True)
+
+    if skipped_scans:
+        summary = ", ".join(skipped_scans)
+        if len(skipped_scans) == len(all_tags):
+            with subtests.test(msg="Clair scan skip summary"):
+                pytest.fail(
+                    f"All {len(all_tags)} tags were skipped because Clair scans were not ready: {summary}"
+                )
+        else:
+            _LOG.warning(
+                f"{len(skipped_scans)}/{len(all_tags)} tags skipped (Clair scans not ready): {summary}"
+            )
