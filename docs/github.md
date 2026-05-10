@@ -7,25 +7,27 @@ Reference for GitHub apps, org settings, and tooling across the opendatahub-io o
 - **Org**: [opendatahub-io](https://github.com/opendatahub-io) (ID: `57720972`)
 - **Total repos**: ~184 (many archived)
 - **Org-level `.github` repo**: [opendatahub-io/.github](https://github.com/opendatahub-io/.github) — contains only `ISSUE_TEMPLATE/`, `PULL_REQUEST_TEMPLATE.md`, `LICENSE`, and `profile/`
-- **No GitOps repo config tool** (no `settings.yml`, no safe-settings, no Probot Settings)
-- Repo settings (merge buttons, labels, team permissions, Actions permissions) are configured manually via the GitHub UI by org admins
+- **No GitOps repo settings tool** (no `settings.yml`, no safe-settings, no Probot Settings).
+  Repo settings (merge buttons, labels, team permissions, Actions permissions) are configured
+  manually via the GitHub UI by org admins. However, security config files are managed as code
+  via [security-config](#org-level-push-rulesets).
 
 ## Installed GitHub Apps
 
 As of May 2026, these apps are active across the org (detected via check-runs and commit statuses on default branches):
 
-| App | Repos | Notes |
-|-----|-------|-------|
-| **GitHub Actions** | most repos | Primary CI |
-| **Red Hat Konflux** | [notebooks](https://github.com/opendatahub-io/notebooks), [kubeflow](https://github.com/opendatahub-io/kubeflow), [opendatahub-operator](https://github.com/opendatahub-io/opendatahub-operator), +23 more | Container image builds (Tekton pipelines) |
-| **GitHub Advanced Security** | [kserve](https://github.com/opendatahub-io/kserve), [guardrails-detectors](https://github.com/opendatahub-io/guardrails-detectors), [eval-hub](https://github.com/opendatahub-io/eval-hub), +2 more | Code scanning (CodeQL) |
-| **Tide** (Prow) | [kserve](https://github.com/opendatahub-io/kserve), [model-registry](https://github.com/opendatahub-io/model-registry), [model-registry-operator](https://github.com/opendatahub-io/model-registry-operator), [models-as-a-service](https://github.com/opendatahub-io/models-as-a-service) | Merge automation; see [docs/tide.md](tide.md) |
-| **Codecov** | [odh-dashboard](https://github.com/opendatahub-io/odh-dashboard), [opendatahub-operator](https://github.com/opendatahub-io/opendatahub-operator), [spark-operator](https://github.com/opendatahub-io/spark-operator) | Coverage reporting |
-| **Mergify** | [trainer](https://github.com/opendatahub-io/trainer), [trustyai-service-operator](https://github.com/opendatahub-io/trustyai-service-operator) | Auto-merge and auto-backport |
-| **CodeRabbit** | org-wide | AI code review (free plan) |
-| **pre-commit.ci** | [opendatahub-tests](https://github.com/opendatahub-io/opendatahub-tests) | Auto-fix linting |
-| **Dependabot** | [autofix-skills](https://github.com/opendatahub-io/autofix-skills) | Dependency updates |
-| **DCO** | [modelmesh-serving](https://github.com/opendatahub-io/modelmesh-serving) | Developer Certificate of Origin check |
+| App | Notes |
+|-----|-------|
+| [GitHub Actions](https://github.com/features/actions) | Primary CI for most repos |
+| [Red Hat Konflux](https://github.com/konflux-ci) | Container image builds (Tekton pipelines); 26 repos |
+| [GitHub Advanced Security](https://github.com/features/security) | Code scanning (CodeQL); 5 repos |
+| [Tide](https://docs.prow.k8s.io/docs/components/core/tide/) (Prow) | Merge automation; see [docs/tide.md](tide.md). Scan undercounts -- Tide only posts status on PR commits. |
+| [Codecov](https://github.com/apps/codecov) | Coverage reporting; 3 repos |
+| [Mergify](https://github.com/apps/mergify) | Auto-merge and auto-backport; 2 repos |
+| [CodeRabbit](https://github.com/apps/coderabbitai) | AI code review (free plan); org-wide |
+| [pre-commit.ci](https://github.com/apps/pre-commit-ci) | Auto-fix linting; 1 repo |
+| [Dependabot](https://github.com/dependabot) | Dependency updates; 1 repo |
+| [DCO](https://github.com/apps/dco) | Developer Certificate of Origin check; 1 repo |
 
 ### Apps on notebooks specifically
 
@@ -132,9 +134,10 @@ and the workflow at `.github/workflows/renovate-self-hosted.yaml`.
 
 ## CodeRabbit
 
-Configured org-wide via [opendatahub-io/coderabbit](https://github.com/opendatahub-io/coderabbit).
-Per-repo overrides in `.coderabbit.yaml` (this repo has one with custom branch filters and
-PR title conventions).
+Org-wide fallback config lives in [opendatahub-io/coderabbit](https://github.com/opendatahub-io/coderabbit).
+Per-repo `.coderabbit.yaml` overrides are synced from [security-config](#org-level-push-rulesets)
+for repos in the sync list. This repo has its own `.coderabbit.yaml` with custom branch filters
+and PR title conventions (set `inheritance: true` to inherit the org baseline).
 
 Also used for [spam PR detection](https://github.com/opendatahub-io/security-config/pull/12)
 across the org — flags reputation-farming PRs from automated accounts.
@@ -148,7 +151,9 @@ User licenses requested separately via
 
 ## Related docs
 
+- [docs/ci.md](ci.md) — CI systems overview, slash command comparison
 - [docs/tide.md](tide.md) — Tide merge automation, Prow commands, OWNERS file
+- [docs/konflux.md](konflux.md) — Konflux build system, pipeline triggers
 - [CONTRIBUTING.md](/CONTRIBUTING.md) — Review and merge process
 - [OWNERS](/OWNERS) — Approvers and reviewers list
 
