@@ -222,7 +222,20 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
 # Inner functions are serialized and executed inside containers, so imports must be local.
 "tests/containers/workbenches/gpu_library_loading_test.py" = ["PLC0415"]
 # Ignore many stylistic and formatting rules for notebooks, but keep Pylint rules like PLW0128
-"jupyter/**/*.ipynb" = ["B004", "E", "F", "W", "Q", "I", "PLC0414", "PLC0415", "PLR0402", "PLW0108", "PLW1510", "RUF100"]
+"jupyter/**/*.ipynb" = [
+    "B004",    # flake8-bugbear: unreliable-callable-check
+    "E",       # pycodestyle errors (formatting handled by ruff format)
+    "F",       # Pyflakes (undefined names common in notebook cell-split execution)
+    "W",       # pycodestyle warnings
+    "Q",       # flake8-quotes (notebooks use mixed quoting styles)
+    "I",       # isort (import ordering not enforced in notebooks)
+    "PLC0414", # pylint: useless-import-alias
+    "PLC0415", # pylint: import-outside-toplevel (notebooks import inside cells)
+    "PLR0402", # pylint: manual-from-import
+    "PLW0108", # pylint: unnecessary-lambda
+    "PLW1510", # pylint: subprocess-run-without-check
+    "RUF100",  # ruff: unused-noqa directive
+]
 
 # https://docs.astral.sh/ruff/formatter
 [tool.ruff.format]
