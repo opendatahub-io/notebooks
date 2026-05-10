@@ -12,9 +12,11 @@ Reference for GitHub apps, org settings, and tooling across the opendatahub-io o
   manually via the GitHub UI by org admins. However, security config files are managed as code
   via [security-config](#org-level-push-rulesets).
 
-## Installed GitHub Apps
+## Active GitHub Apps
 
-As of May 2026, these apps are active across the org (detected via check-runs and commit statuses on default branches):
+As of May 2026, these apps were observed active across the org (detected via check-runs
+and commit statuses on default branches -- may undercount apps that only act on PRs).
+For authoritative installation state, see [Checking installed apps](#checking-installed-apps).
 
 | App | Notes |
 |-----|-------|
@@ -106,12 +108,12 @@ directly in a repo will be rejected by the push ruleset. See the
 [security-config sync config](https://github.com/opendatahub-io/security-config/blob/main/sync-config.yml)
 for the full list of synced repos.
 
-**Known issue with Renovate:** The file path restriction ruleset can block Renovate's
-`pushFiles` API call even when Renovate isn't modifying protected files. Renovate's
-`POST /git/trees` sends the full tree without `base_tree`, causing GitHub to validate
-all file paths including unchanged protected ones. Workaround: add the Renovate bot/PAT
-as a bypass actor on the ruleset. Upstream bug:
-[renovatebot/renovate#42555](https://github.com/renovatebot/renovate/discussions/42555).
+**Known issue with Renovate:** Renovate's `pushFiles` sends the full tree via
+`POST /git/trees` without `base_tree`, so GitHub validates all file paths -- including
+unchanged protected ones -- and rejects the push with 422 "File path is restricted".
+This broke MintMaker (Konflux's Renovate instance); Ugo added the MintMaker GitHub App
+as a bypass actor on the ruleset to fix it.
+Upstream bug: [renovatebot/renovate#42555](https://github.com/renovatebot/renovate/discussions/42555).
 
 ## Branch protection
 
