@@ -76,6 +76,7 @@ Individual team members cannot install apps — even repo maintainers.
 
 1. Post a request in one of these Slack channels:
    - `#rhoai-devtestops-requests` — for RHOAI / notebooks team requests
+   - `#ai-core-platform-requests` — for OpenShift AI platform-level requests
    - `#forum-pge-cloud-ops` — for broader OpenShift org-level requests (handled by PGE Cloud Ops team)
 2. A **DPP-\*** Jira ticket is created (or create one yourself via the [DevServices portal](https://devservices.dpp.openshift.com/support/))
 3. PGE Cloud Ops team reviews and installs the app
