@@ -313,9 +313,7 @@ class TestAssignPlatforms:
     ) -> None:
         targets = ["jupyter-minimal-ubi9-python-3.12"]
         assert targets[0] in gm.PPC64LE_COMPATIBLE
-        result = gm.assign_platforms(
-            targets, arm64_images=arm64, ppc64le_images=ppc64le, s390x_images=s390x
-        )
+        result = gm.assign_platforms(targets, arm64_images=arm64, ppc64le_images=ppc64le, s390x_images=s390x)
         platforms = [p for _, p in result]
         if expect_ppc64le:
             assert "linux/ppc64le" in platforms
