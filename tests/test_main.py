@@ -257,8 +257,12 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                             # TODO(jdanek): check not implemented yet
                             continue
                         elif s.get("name") in ("CUDA", "ROCm"):
-                            # TODO(jdanek): check not implemented yet
-                            continue
+                            expected_version = get_accelerator_version_for_directory(directory, s["name"])
+                            manifest_version = s.get("version", "").lstrip("v")
+                            assert manifest_version == expected_version, (
+                                f"{s['name']} version in imagestream ({s.get('version')}) does not match "
+                                f"build-args version ({expected_version})"
+                            )
                         else:
                             e = next((dep for dep in manifest.dep if dep.get("name") == s.get("name")), None)
                             if e:
@@ -799,6 +803,20 @@ def is_image_directory(directory: pathlib.Path) -> bool:
 
 def is_dependencies_directory(file: pathlib.Path) -> bool:
     return "dependencies" in file.relative_to(PROJECT_ROOT).parts
+
+
+def get_accelerator_version_for_directory(directory: pathlib.Path, accelerator_name: str) -> str:
+    """Parse the CUDA/ROCm version from the build-args/konflux.{cuda,rocm}.conf BASE_IMAGE value."""
+    flavor = accelerator_name.lower()
+    conf_file = directory / "build-args" / f"konflux.{flavor}.conf"
+    env = parse_env_file(conf_file)
+    base_image = env.get("BASE_IMAGE", "")
+    match = re.search(rf"{flavor}-(\d+\.\d+)", base_image)
+    if not match:
+        raise ValueError(
+            f"Cannot extract {accelerator_name} version from {conf_file}: BASE_IMAGE={base_image}"
+        )
+    return match.group(1)
 
 
 @dataclasses.dataclass
