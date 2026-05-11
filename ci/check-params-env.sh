@@ -879,7 +879,7 @@ process_file() {
         }
 
         if [[ "${IMAGE_URL}" == "dummy" ]]; then
-            if [[ "${_MANIFESTS_VARIANT}" == "rhoai" && "${1}" == "${PARAMS_LATEST_ENV_PATH}" ]]; then
+            if [[ "${1}" == "${PARAMS_LATEST_ENV_PATH}" ]]; then
                 echo "Skipping image validation for '${IMAGE_VARIABLE}' (dummy placeholder)"
                 echo "------------------------"
                 continue
@@ -901,10 +901,10 @@ process_file() {
 }
 
 for file_ in  "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}"; do
-    # RHOAI params-latest.env contains only dummy placeholder values
-    # (replaced by Kustomize at deployment time). Skip image validation for it.
-    if [ "${_MANIFESTS_VARIANT}" = "rhoai" ] && [ "${file_}" = "${PARAMS_LATEST_ENV_PATH}" ]; then
-        echo "Skipping image validation for '${file_}' (RHOAI uses dummy placeholders in params-latest.env)"
+    # params-latest.env contains only dummy placeholder values for N (latest) images
+    # (replaced at deployment time). Skip image validation for it.
+    if [ "${file_}" = "${PARAMS_LATEST_ENV_PATH}" ]; then
+        echo "Skipping image validation for '${file_}' (uses dummy placeholders in params-latest.env)"
         echo "------------------------"
         continue
     fi
