@@ -23,7 +23,7 @@ import pytest
 import yaml
 
 from manifests.tools.commit_env_refs import parse_env_file
-from manifests.tools.package_names import manifest_name_to_pip
+from manifests.tools.package_names import all_workbench_pip_names, manifest_name_to_pip
 from tests import PROJECT_ROOT, manifests
 
 if TYPE_CHECKING:
@@ -311,6 +311,30 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                         ), (
                             f"{name}: manifest {manifest.filename} declares {manifest_version}, but pylock.toml pins {locked_version}"
                         )
+
+                with subtests.test(msg="checking pylock workbench packages are listed in manifest", pyproject=file):
+                    known_pip_names = all_workbench_pip_names()
+                    manifest_pip_names = {manifest_name_to_pip(d["name"]).lower() for d in manifest.dep}
+                    workbench_only_pip = {manifest_name_to_pip(n).lower() for n in workbench_only_packages}
+                    direct_deps = set()
+                    for d in pyproject["project"]["dependencies"]:
+                        req = packaging.requirements.Requirement(d)
+                        if not is_subproject_metapackage(req.name):
+                            direct_deps.add(req.name.lower())
+                    for pip_name in pylock_packages:
+                        if pip_name.lower() not in known_pip_names:
+                            continue
+                        if pip_name.lower() not in direct_deps:
+                            continue
+                        if (
+                            manifest.metadata.type == manifests.NotebookType.RUNTIME
+                            and pip_name.lower() in workbench_only_pip
+                        ):
+                            continue
+                        if pip_name.lower() not in manifest_pip_names:
+                            pytest.fail(
+                                f"{pip_name} is in pylock.toml (direct dep) but missing from manifest {manifest.filename}"
+                            )
 
 
 @pytest.mark.parametrize("manifests_directory", [manifests.MANIFESTS_ODH_DIR, manifests.MANIFESTS_RHOAI_DIR])
