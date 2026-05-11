@@ -324,17 +324,20 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                     for pip_name in pylock_packages:
                         if pip_name.lower() not in known_pip_names:
                             continue
-                        if pip_name.lower() not in direct_deps:
-                            continue
                         if (
                             manifest.metadata.type == manifests.NotebookType.RUNTIME
                             and pip_name.lower() in workbench_only_pip
                         ):
                             continue
                         if pip_name.lower() not in manifest_pip_names:
-                            pytest.fail(
-                                f"{pip_name} is in pylock.toml (direct dep) but missing from manifest {manifest.filename}"
-                            )
+                            if pip_name.lower() in direct_deps:
+                                pytest.fail(
+                                    f"{pip_name} is in pylock.toml (direct dep) but missing from manifest {manifest.filename}"
+                                )
+                            else:
+                                pytest.xfail(
+                                    f"{pip_name} is in pylock.toml (transitive) but missing from manifest {manifest.filename}"
+                                )
 
 
 @pytest.mark.parametrize("manifests_directory", [manifests.MANIFESTS_ODH_DIR, manifests.MANIFESTS_RHOAI_DIR])
