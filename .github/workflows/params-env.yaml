@@ -64,7 +64,7 @@ jobs:
       - name: Configure Quay.io pull auth for RHOAI namespace
         if: matrix.variant == 'rhoai' && env.RHOAI_QUAY_BOT_USERNAME != ''
         run: |
-          skopeo login -u "${RHOAI_QUAY_BOT_USERNAME}" -p "${RHOAI_QUAY_BOT_PASSWORD}" quay.io
+          printf '%s' "${RHOAI_QUAY_BOT_PASSWORD}" | skopeo login --username "${RHOAI_QUAY_BOT_USERNAME}" --password-stdin quay.io
         env:
           RHOAI_QUAY_BOT_USERNAME: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
           RHOAI_QUAY_BOT_PASSWORD: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
