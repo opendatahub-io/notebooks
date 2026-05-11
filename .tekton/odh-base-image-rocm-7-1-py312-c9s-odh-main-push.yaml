@@ -82,8 +82,12 @@ spec:
         memory: 8Gi
   - pipelineTaskName: clamav-scan
     computeResources:
+      requests:
+        cpu: '8'
+        memory: 32Gi
       limits:
-        memory: 8Gi
+        cpu: '8'
+        memory: 32Gi
   - pipelineTaskName: sast-shell-check
     computeResources:
       limits:
