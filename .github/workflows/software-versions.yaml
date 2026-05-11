@@ -62,7 +62,6 @@ jobs:
           QUAY_AUTH=$(echo -n "${RHOAI_QUAY_BOT_USERNAME}:${RHOAI_QUAY_BOT_PASSWORD}" | base64 -w 0)
           echo "::add-mask::$QUAY_AUTH"
           echo "QUAY_AUTH=$QUAY_AUTH" >> "$GITHUB_ENV"
-          printf '%s' "${RHOAI_QUAY_BOT_PASSWORD}" | skopeo login --username "${RHOAI_QUAY_BOT_USERNAME}" --password-stdin quay.io
         env:
           RHOAI_QUAY_BOT_USERNAME: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
           RHOAI_QUAY_BOT_PASSWORD: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
