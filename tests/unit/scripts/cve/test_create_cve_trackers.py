@@ -181,11 +181,21 @@ class TestBuildDescription:
         assert "linkedIssues" in text_content
 
 
+class TestFlattenAdfText:
+    def test_handles_non_dict_content_nodes(self) -> None:
+        doc = {"type": "doc", "content": [42, None, "stray-string", {"type": "text", "text": "ok"}]}
+        assert "ok" in _flatten_adf_text(doc)
+
+    def test_handles_missing_content(self) -> None:
+        doc = {"type": "doc"}
+        assert _flatten_adf_text(doc) == ""
+
+
 def _flatten_adf_text(doc: dict) -> str:
     """Recursively extract all text from an ADF document."""
     parts: list[str] = []
 
-    def _walk(node: dict | list) -> None:
+    def _walk(node: object) -> None:
         if isinstance(node, dict):
             if node.get("type") == "text":
                 parts.append(node.get("text", ""))

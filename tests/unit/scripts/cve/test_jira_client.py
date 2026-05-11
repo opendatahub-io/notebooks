@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from scripts.cve.jira_client import _CREATE_ISSUE_PROTECTED_FIELD_KEYS, JiraClient
 
 
@@ -22,9 +24,22 @@ class TestJiraClientConstruction:
 
 
 class TestProtectedFieldKeys:
-    def test_contains_expected_keys(self) -> None:
-        expected = {"project", "summary", "issuetype", "description", "labels", "components", "security"}
-        assert expected == _CREATE_ISSUE_PROTECTED_FIELD_KEYS
+    _REQUIRED_KEYS: ClassVar[set[str]] = {
+        "project",
+        "summary",
+        "issuetype",
+        "description",
+        "labels",
+        "components",
+        "security",
+    }
+
+    def test_contains_required_keys(self) -> None:
+        assert self._REQUIRED_KEYS.issubset(_CREATE_ISSUE_PROTECTED_FIELD_KEYS)
+
+    def test_no_unexpected_additions(self) -> None:
+        extra = _CREATE_ISSUE_PROTECTED_FIELD_KEYS - self._REQUIRED_KEYS
+        assert extra == set(), f"unexpected protected keys added: {extra}"
 
     def test_custom_field_not_protected(self) -> None:
         assert "customfield_10001" not in _CREATE_ISSUE_PROTECTED_FIELD_KEYS

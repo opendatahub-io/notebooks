@@ -104,3 +104,12 @@ class TestFilterArtifacts:
 
     def test_type_no_match(self) -> None:
         assert filter_artifacts(_make_artifacts(), pkg_type="golang") == []
+
+    def test_regex_metacharacters_treated_literally(self) -> None:
+        arts = [Artifact(name="foo.bar", type="npm"), Artifact(name="fooXbar", type="npm")]
+        result = filter_artifacts(arts, package="foo.bar")
+        assert len(result) == 1
+        assert result[0].name == "foo.bar"
+
+    def test_empty_artifact_list(self) -> None:
+        assert filter_artifacts([], package="anything") == []

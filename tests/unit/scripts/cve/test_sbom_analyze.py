@@ -109,6 +109,15 @@ class TestExtractPurlType:
     def test_no_match(self) -> None:
         assert sa.extract_purl_type("not-a-purl") == "unknown"
 
+    def test_malformed_pkg_no_slash(self) -> None:
+        assert sa.extract_purl_type("pkg:") == "unknown"
+
+    def test_malformed_missing_type(self) -> None:
+        assert sa.extract_purl_type("pkg:/lodash@1.0") == "unknown"
+
+    def test_purl_with_namespace(self) -> None:
+        assert sa.extract_purl_type("pkg:golang/github.com/foo/bar@1.0") == "golang"
+
 
 # ---------------------------------------------------------------------------
 # get_components_from_sbom

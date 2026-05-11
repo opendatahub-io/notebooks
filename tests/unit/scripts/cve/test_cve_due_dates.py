@@ -53,6 +53,15 @@ class TestParseDate:
     def test_wrong_format(self) -> None:
         assert parse_date("03/15/2025") is None
 
+    def test_invalid_month(self) -> None:
+        assert parse_date("2025-13-01") is None
+
+    def test_overflow_day(self) -> None:
+        assert parse_date("2025-02-30") is None
+
+    def test_iso_datetime_rejected(self) -> None:
+        assert parse_date("2025-03-15T00:00:00Z") is None
+
 
 # ---------------------------------------------------------------------------
 # get_linked_issue_keys
