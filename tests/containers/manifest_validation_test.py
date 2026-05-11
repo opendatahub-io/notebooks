@@ -817,10 +817,6 @@ def test_old_tag_annotations_match_quay(
         summary = ", ".join(skipped_scans)
         if len(skipped_scans) == len(all_tags):
             with subtests.test(msg="Clair scan skip summary"):
-                pytest.fail(
-                    f"All {len(all_tags)} tags were skipped because Clair scans were not ready: {summary}"
-                )
+                pytest.fail(f"All {len(all_tags)} tags were skipped because Clair scans were not ready: {summary}")
         else:
-            _LOG.warning(
-                f"{len(skipped_scans)}/{len(all_tags)} tags skipped (Clair scans not ready): {summary}"
-            )
+            _LOG.warning(f"{len(skipped_scans)}/{len(all_tags)} tags skipped (Clair scans not ready): {summary}")
