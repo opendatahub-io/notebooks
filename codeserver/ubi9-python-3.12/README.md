@@ -210,6 +210,8 @@ pipeline handles everything. The lockfiles (`rpms.lock.yaml`,
 `artifacts.lock.yaml`, `requirements.cpu.txt`, `package-lock.json`) must be
 committed and up-to-date.
 
+**Nexus-quarantined npm tarballs:** If Hermeto fails prefetch with **403 / quarantined** (for example **`es5-ext`** in the vendored VS Code build graph), fixes belong in the **patches overlay** under `prefetch-input/patches/code-server-<version>/`, not in the read-only `prefetch-input/code-server` submodule. Konflux lists those overlay paths as **npm** inputs. See [prefetch-input/patches/code-server-v4.106.3/README.md](prefetch-input/patches/code-server-v4.106.3/README.md) (background: **RHAIENG-4977**, ProdSec / supply-chain).
+
 ### Tekton prefetch-input structure
 
 ```yaml
