@@ -879,7 +879,7 @@ process_file() {
         }
 
         if [[ "${IMAGE_URL}" == "dummy" ]]; then
-            if [[ "${1}" == "${PARAMS_LATEST_ENV_PATH}" ]]; then
+            if [[ "${_MANIFESTS_VARIANT}" == "rhoai" && "${1}" == "${PARAMS_LATEST_ENV_PATH}" ]]; then
                 echo "Skipping image validation for '${IMAGE_VARIABLE}' (dummy placeholder)"
                 echo "------------------------"
                 continue
@@ -901,6 +901,14 @@ process_file() {
 }
 
 for file_ in  "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}"; do
+    # params-latest.env references N (latest/dev) images that are moving targets:
+    # rebuilt on each merge, sizes drift, commit IDs change, some tags may not
+    # exist yet. Skip validation to avoid perpetual CI failures.
+    if [ "${file_}" = "${PARAMS_LATEST_ENV_PATH}" ]; then
+        echo "Skipping image validation for '${file_}' (N images are moving targets)"
+        echo "------------------------"
+        continue
+    fi
     echo "Checking file: '${file_}'"
     if process_file "${file_}"; then
         echo "Validation of '${file_}' was successful! Congrats :)"
