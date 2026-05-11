@@ -78,6 +78,7 @@ import typer
 ROOT_DIR = Path(__file__).resolve().parent.parent
 UV = ROOT_DIR / "uv"
 CVE_CONSTRAINTS_FILE = ROOT_DIR / "dependencies" / "cve-constraints.txt"
+PRODUCT_CONSTRAINTS_FILE = ROOT_DIR / "dependencies" / "product-constraints.txt"
 PYLOCK_TO_REQUIREMENTS = ROOT_DIR / "scripts" / "lockfile-generators" / "helpers" / "pylock-to-requirements.py"
 PUBLIC_INDEX = "--default-index=https://pypi.org/simple"
 MAIN_DIRS = ("jupyter", "runtimes", "codeserver")
@@ -401,10 +402,11 @@ def run_lock(
     if upgrade:
         cmd.append("--upgrade")
 
-    # Use relative path to avoid absolute paths in pylock.toml headers
-    if CVE_CONSTRAINTS_FILE.is_file():
-        relative_constraints = os.path.relpath(CVE_CONSTRAINTS_FILE, project_dir)
-        cmd.extend(["--constraints", relative_constraints])
+    # Use relative paths to avoid absolute paths in pylock.toml headers
+    for constraints_file in [CVE_CONSTRAINTS_FILE, PRODUCT_CONSTRAINTS_FILE]:
+        if constraints_file.is_file():
+            relative_constraints = os.path.relpath(constraints_file, project_dir)
+            cmd.extend(["--constraints", relative_constraints])
 
     lock_path = project_dir / output
     exclude_newer = resolve_exclude_newer(
