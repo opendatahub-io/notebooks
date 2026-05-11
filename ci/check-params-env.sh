@@ -151,7 +151,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         odh-workbench-jupyter-minimal-cpu-py312-ubi9-3-4)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                 expected_name="rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9"
-                expected_img_size=1010
+                expected_img_size=991
             else
                 expected_name="odh-notebook-jupyter-minimal-ubi9-python-3.12"
                 expected_img_size=1017
@@ -192,7 +192,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         odh-workbench-jupyter-minimal-cuda-py312-ubi9-3-4)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                 expected_name="rhoai/odh-workbench-jupyter-minimal-cuda-py312-rhel9"
-                expected_img_size=3479
+                expected_img_size=3423
             else
                 expected_name="odh-notebook-jupyter-cuda-minimal-ubi9-python-3.12"
                 expected_img_size=6018
@@ -233,7 +233,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         odh-workbench-jupyter-pytorch-cuda-py312-ubi9-3-4)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                 expected_name="rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9"
-                expected_img_size=9372
+                expected_img_size=7450
             else
                 expected_name="odh-notebook-jupyter-cuda-pytorch-ubi9-python-3.12"
                 expected_img_size=11722
@@ -258,7 +258,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         odh-workbench-jupyter-minimal-rocm-py312-ubi9-3-4)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                 expected_name="rhoai/odh-workbench-jupyter-minimal-rocm-py312-rhel9"
-                expected_img_size=5068
+                expected_img_size=5001
             else
                 expected_name="odh-notebook-jupyter-rocm-minimal-ubi9-python-3.12"
                 expected_img_size=5102
@@ -295,7 +295,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         odh-workbench-jupyter-datascience-cpu-py312-ubi9-3-4)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                 expected_name="rhoai/odh-workbench-jupyter-datascience-cpu-py312-rhel9"
-                expected_img_size=1625
+                expected_img_size=1838
             else
                 expected_name="odh-notebook-jupyter-datascience-ubi9-python-3.12"
                 expected_img_size=1592
@@ -336,7 +336,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-3-4)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                 expected_name="rhoai/odh-workbench-jupyter-tensorflow-cuda-py312-rhel9"
-                expected_img_size=8814
+                expected_img_size=6267
             else
                 expected_name="odh-notebook-cuda-jupyter-tensorflow-ubi9-python-3.12"
                 expected_img_size=10623
@@ -377,7 +377,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         odh-workbench-jupyter-trustyai-cpu-py312-ubi9-3-4)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                 expected_name="rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9"
-                expected_img_size=5746
+                expected_img_size=2467
             else
                 expected_name="odh-notebook-jupyter-trustyai-ubi9-python-3.12"
                 expected_img_size=2530
@@ -418,7 +418,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         odh-workbench-codeserver-datascience-cpu-py312-ubi9-3-4)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                 expected_name="rhoai/odh-workbench-codeserver-datascience-cpu-py312-rhel9"
-                expected_img_size=1228
+                expected_img_size=1330
             else
                 expected_name="odh-notebook-code-server-ubi9-python-3.12"
                 expected_img_size=1098
@@ -453,7 +453,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-3-4)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                 expected_name="rhoai/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-rhel9"
-                expected_img_size=9347
+                expected_img_size=6165
             else
                 expected_name="odh-notebook-jupyter-cuda-pytorch-llmcompressor-ubi9-python-3.12"
                 expected_img_size=11447
@@ -506,7 +506,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         odh-workbench-jupyter-pytorch-rocm-py312-ubi9-3-4)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                 expected_name="rhoai/odh-workbench-jupyter-pytorch-rocm-py312-rhel9"
-                expected_img_size=8805
+                expected_img_size=6689
             else
                 expected_name="odh-notebook-jupyter-rocm-pytorch-ubi9-python-3.12"
                 expected_img_size=6519
@@ -547,7 +547,7 @@ function check_image_variable_matches_name_and_commitref_and_size() {
         odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-3-4)
             if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
                 expected_name="rhoai/odh-workbench-jupyter-tensorflow-rocm-py312-rhel9"
-                expected_img_size=6264
+                expected_img_size=6235
             else
                 expected_name="odh-notebook-jupyter-rocm-tensorflow-ubi9-python-3.12"
                 expected_img_size=6269
