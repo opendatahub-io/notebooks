@@ -901,13 +901,6 @@ process_file() {
 }
 
 for file_ in  "${PARAMS_ENV_PATH}" "${PARAMS_LATEST_ENV_PATH}"; do
-    # params-latest.env contains only dummy placeholder values for N (latest) images
-    # (replaced at deployment time). Skip image validation for it.
-    if [ "${file_}" = "${PARAMS_LATEST_ENV_PATH}" ]; then
-        echo "Skipping image validation for '${file_}' (uses dummy placeholders in params-latest.env)"
-        echo "------------------------"
-        continue
-    fi
     echo "Checking file: '${file_}'"
     if process_file "${file_}"; then
         echo "Validation of '${file_}' was successful! Congrats :)"
