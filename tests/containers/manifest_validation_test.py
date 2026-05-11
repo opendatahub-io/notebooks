@@ -46,7 +46,7 @@ import pytest
 import yaml
 
 from manifests.tools.commit_env_refs import parse_env_file
-from manifests.tools.package_names import manifest_name_to_pip
+from manifests.tools.package_names import all_workbench_pip_names, manifest_name_to_pip
 from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
@@ -511,6 +511,36 @@ def _compare_manifest_vs_actual(
                 msg=f"{is_name} tag {tag_name}: {manifest_name} {manifest_version} != {actual_version_str}"
             ):
                 pytest.fail(f"Manifest says {manifest_name}=={manifest_version}, but image has {actual_version_str}")
+
+    # Pre-existing gaps in older tag manifests — packages installed in images
+    # but historically never listed in annotations. xfail to surface them
+    # without blocking CI. New omissions will hard-fail.
+    REVERSE_CHECK_XFAIL: frozenset[str] = frozenset(
+        {
+            "nvidia-cuda-runtime-cu12",  # never listed in older manifests
+            "boto3",  # ROCm images historically didn't list it
+            "kfp",  # ROCm and code-server historically didn't list it
+            "kubeflow-training",  # rocm-tensorflow omission
+            "accelerate",  # transitive dep of llmcompressor
+            "datasets",  # transitive dep of llmcompressor
+            "transformers",  # transitive dep of llmcompressor
+            "feast",  # pre-existing gap in code-server and rocm-tensorflow old tags
+        }
+    )
+
+    if not is_software:
+        known_pip_names = all_workbench_pip_names()
+        manifest_pip_names = {_normalize_pip_name(manifest_name_to_pip(d["name"])) for d in expected_deps}
+        for pip_name in actual_packages:
+            normalized = _normalize_pip_name(pip_name)
+            if normalized not in known_pip_names:
+                continue
+            if normalized not in manifest_pip_names:
+                with subtests.test(msg=f"{is_name} tag {tag_name}: {pip_name} installed but not in manifest"):
+                    if normalized in REVERSE_CHECK_XFAIL:
+                        pytest.xfail(f"{pip_name} found in image but not listed in manifest annotations (known gap)")
+                    else:
+                        pytest.fail(f"{pip_name} found in image but not listed in manifest annotations")
 
 
 @dataclasses.dataclass
