@@ -1,8 +1,8 @@
-/usr/bin/env bash
+#!/usr/bin/env bash
 set -Eeuo pipefail
 
 # GitHub Actions runners have two disks, /dev/root and /dev/sda1.
-# We would like to be able to combine available disk space on both and use it for podman container builds.
+
 #
 # This script creates file-backed volumes on /dev/root and /dev/sda1, then creates ext4 over both, and mounts it for our use
 # https://github.com/easimon/maximize-build-space/blob/master/action.yml
