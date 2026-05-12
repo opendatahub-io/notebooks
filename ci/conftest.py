@@ -31,7 +31,7 @@ def pytest_collect_file(parent: pytest.Collector, file_path: pathlib.Path):
 
     try:
         tree = ast.parse(file_path.read_text(encoding="utf-8", errors="ignore"))
-    except (OSError, SyntaxError):
+    except OSError, SyntaxError:
         return None
 
     def _is_testcase_base(base: ast.expr) -> bool:
