@@ -67,19 +67,31 @@ def _allowed_keys_for_image(image_ref: str) -> frozenset[str]:
     return _RED_HAT_KEY_IDS | frozenset(extra)
 
 
-def _parse_key_id(sig_field: str) -> str | None:
-    """Extract the 8-char short key ID from an RPM ``%{SIGPGP:pgpsig}`` value.
+def _key_matches_allowlist(key_id: str, allowed: frozenset[str]) -> bool:
+    """Check whether *key_id* (8- or 16-char hex) matches any entry in *allowed*."""
+    short = key_id[-8:].lower()
+    return short in allowed
 
+
+_HEX8_RE = re.compile(r"^[0-9a-fA-F]{8}$")
+
+
+def _parse_key_id(sig_field: str) -> str | None:
+    """Extract the key ID from an RPM ``%{SIGPGP:pgpsig}`` value.
+
+    Returns the full 16-char (64-bit) key ID when available, falling back
+    to an 8-char (32-bit) short key ID.
     Returns ``None`` when the RPM is unsigned (``(none)``).
     """
     if not sig_field or "(none)" in sig_field:
         return None
     m = re.search(r"Key ID\s+([0-9a-fA-F]{16})", sig_field)
     if m:
-        return m.group(1)[-8:].lower()
+        return m.group(1).lower()
     m = re.search(r"Key ID\s+([0-9a-fA-F]{8})", sig_field)
     if m:
         return m.group(1).lower()
+    _LOG.warning("Could not parse key ID from signature field: %r", sig_field)
     return None
 
 
@@ -98,32 +110,36 @@ class TestRpmSignatures:
             assert ecode == 0, f"rpm -qa failed: {output.decode()}"
 
             unsigned: list[str] = []
-            disallowed: list[tuple[str, str]] = []
+            disallowed: list[tuple[str, str, str]] = []
 
             for line in output.decode().strip().splitlines():
                 if not line.strip():
                     continue
                 parts = line.split("\t", 2)
                 if len(parts) < 3:
+                    _LOG.warning("Skipping malformed RPM output line: %r", line)
                     continue
                 rpm_name, rpm_version, sig_info = parts[0], parts[1], parts[2]
 
                 if rpm_name == "gpg-pubkey":
                     imported_key_id = rpm_version.lower()
-                    if imported_key_id not in allowed_keys:
-                        disallowed.append((f"{rpm_name}-{rpm_version}", imported_key_id))
+                    if not _HEX8_RE.match(imported_key_id):
+                        _LOG.warning("gpg-pubkey VERSION %r is not a valid 8-char hex key ID", rpm_version)
+                        continue
+                    if not _key_matches_allowlist(imported_key_id, allowed_keys):
+                        disallowed.append((f"gpg-pubkey-{rpm_version}", imported_key_id, sig_info))
                     continue
 
                 key_id = _parse_key_id(sig_info)
                 if key_id is None:
                     unsigned.append(rpm_name)
-                elif key_id not in allowed_keys:
-                    disallowed.append((rpm_name, key_id))
+                elif not _key_matches_allowlist(key_id, allowed_keys):
+                    disallowed.append((rpm_name, key_id, sig_info))
 
             for rpm_name in unsigned:
                 with subtests.test(msg=f"{rpm_name}: unsigned"):
-                    pytest.fail(f"RPM {rpm_name} is unsigned")
+                    pytest.fail(f"RPM {rpm_name} in {image} is unsigned")
 
-            for rpm_name, key_id in disallowed:
+            for rpm_name, key_id, raw_sig in disallowed:
                 with subtests.test(msg=f"{rpm_name}: key {key_id}"):
-                    pytest.fail(f"RPM {rpm_name} is signed by non-allowed key {key_id}")
+                    pytest.fail(f"RPM {rpm_name} in {image} is signed by non-allowed key {key_id} (raw: {raw_sig!r})")
