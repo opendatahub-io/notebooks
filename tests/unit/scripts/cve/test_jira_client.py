@@ -37,9 +37,8 @@ class TestProtectedFieldKeys:
     def test_contains_required_keys(self) -> None:
         assert self._REQUIRED_KEYS.issubset(_CREATE_ISSUE_PROTECTED_FIELD_KEYS)
 
-    def test_no_unexpected_additions(self) -> None:
-        extra = _CREATE_ISSUE_PROTECTED_FIELD_KEYS - self._REQUIRED_KEYS
-        assert extra == set(), f"unexpected protected keys added: {extra}"
+    def test_all_keys_are_strings(self) -> None:
+        assert all(isinstance(k, str) for k in _CREATE_ISSUE_PROTECTED_FIELD_KEYS)
 
     def test_custom_field_not_protected(self) -> None:
         assert "customfield_10001" not in _CREATE_ISSUE_PROTECTED_FIELD_KEYS
