@@ -40,6 +40,8 @@ def run_tests(target: str) -> None:
     # this is a pod name in statefulset, some tests deploy individual unmanaged pods, though
     pod = prefix + "-notebook-0"  # `$(kubectl get statefulset -o name | head -n 1)` would work too
     namespace = "ns-" + prefix
+    if len(namespace) > 63 or not re.fullmatch(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?", namespace):
+        raise ValueError(f"Invalid Kubernetes namespace derived from target: {namespace!r}")
 
     if target == "runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12":
         deploy = "deploy9"

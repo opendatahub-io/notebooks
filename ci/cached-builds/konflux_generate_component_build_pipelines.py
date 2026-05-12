@@ -42,8 +42,7 @@ def bundle_task_ref(name) -> dict:
             data = yaml.safe_load(f)
     except FileNotFoundError:
         raise FileNotFoundError(  # noqa: B904
-            f"Required file {registry_path} not found. "
-            "Bundle task references cannot be resolved without it."
+            f"Required file {registry_path} not found. Bundle task references cannot be resolved without it."
         )
 
     images: list[str] = [image["spec"]["taskRef"]["bundle"] for image in data["items"]]
