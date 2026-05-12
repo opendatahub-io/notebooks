@@ -233,8 +233,10 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
     "PLC0415", # pylint: import-outside-toplevel (notebooks import inside cells)
     "PLR0402", # pylint: manual-from-import
     "PLW0108", # pylint: unnecessary-lambda
-    "PLW1510", # pylint: subprocess-run-without-check
     "RUF100",  # ruff: unused-noqa directive
+]
+"jupyter/**/test/test_notebook.ipynb" = [
+    "PLW1510", # pylint: subprocess-run-without-check (subprocess usage in tests only)
 ]
 
 # https://docs.astral.sh/ruff/formatter
