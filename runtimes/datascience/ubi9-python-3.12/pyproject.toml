@@ -5,8 +5,6 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # Datascience and useful extensions
-    "codeflare-sdk; platform_machine != 's390x' and platform_machine != 'ppc64le'",
-    "feast",
     "odh-notebooks-meta-runtime-datascience-deps",
 
     "odh-notebooks-meta-db-connectors-deps",

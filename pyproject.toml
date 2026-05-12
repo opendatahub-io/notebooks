@@ -236,6 +236,7 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
     "RUF100",  # ruff: unused-noqa directive
 ]
 "jupyter/**/test/test_notebook.ipynb" = [
+    "PLC2701", # pylint: private-name-import (%%writefile creates _-prefixed modules)
     "PLW1510", # pylint: subprocess-run-without-check (subprocess usage in tests only)
 ]
 

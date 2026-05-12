@@ -41,6 +41,12 @@ This directory is **copied over** the read-only `prefetch-input/code-server` sub
 8. **ci/build/build-vscode.sh**  
    - Builds for current arch (no x64 fallback on ppc64le/s390x). Uses system Node from `setup-offline-binaries.sh` cache.
 
+9. **es5-ext → @unes/es5-ext (quarantined package replacement)**  
+   - **es5-ext** (both 0.10.63 and 0.10.64) is quarantined by Nexus Firewall (sonatype-2022-2248) because its `_postinstall.js` makes network calls to geolocate the host and executes undisclosed code (protestware). Both versions are flagged; there is no clean upstream version. See [es5-ext issue #186](https://github.com/medikoo/es5-ext/issues/186).  
+   - The `overrides` field in `lib/vscode/package.json` aliases `es5-ext` to **`npm:@unes/es5-ext@0.10.64-1`**, a [community fork](https://www.npmjs.com/package/@unes/es5-ext) that strips the postinstall script and rebases daily against upstream.  
+   - `es5-ext` is a transitive devDependency pulled in through `gulp-sourcemaps` → `debug-fabulous` → `memoizee` → `es5-ext`, and through the `d` / `es6-*` / `esniff` / `timers-ext` family. The override covers all transitive consumers.  
+   - When regenerating `lib/vscode/package-lock.json`, the override takes effect automatically during `npm install`.
+
 All of the above are **overlays**: at build time the Dockerfile copies this patches tree on top of the read-only `prefetch-input/code-server` submodule, so every `package.json` / `package-lock.json` that referenced the old git/codeload refs is replaced by these files and thus uses the registry versions we define here.
 
 **Argon2 (no prefetch):**  

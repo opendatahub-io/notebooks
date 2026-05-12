@@ -24,6 +24,10 @@ dependencies = [
     # Cloud/Infrastructure
     "boto3",
     "kafka-python-ng",
+
+    # Workbench extensions
+    "codeflare-sdk; platform_machine != 'ppc64le' and platform_machine != 's390x'",
+    "feast",
 ]
 
 [tool.uv]
