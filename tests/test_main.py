@@ -270,6 +270,9 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                             else:
                                 pytest.fail(f"unexpected {s=}")
 
+                with subtests.test(msg="checking accelerator versions for all variants", pyproject=file):
+                    _check_all_accelerator_variants(directory, manifests_directory, subtests)
+
                 with subtests.test(msg="checking the `notebook-python-dependencies` array", pyproject=file):
                     for d in manifest.dep:
                         workbench_only_packages = [
@@ -817,6 +820,39 @@ def get_accelerator_version_for_directory(directory: pathlib.Path, accelerator_n
     return match.group(1)
 
 
+def _check_all_accelerator_variants(
+    directory: pathlib.Path,
+    manifests_directory: pathlib.Path,
+    subtests: pytest_subtests.plugin.SubTests,
+) -> None:
+    """Check accelerator versions for all build-args variants (cuda, rocm) in a directory.
+
+    Some directories (e.g. jupyter/minimal) have both konflux.cuda.conf and
+    konflux.rocm.conf but extract_metadata_from_path only returns one accelerator
+    flavor, so the other manifest never gets validated by the main test loop.
+    """
+    for conf_file in sorted(directory.glob("build-args/konflux.*.conf")):
+        flavor = conf_file.stem.replace("konflux.", "")
+        if flavor not in ("cuda", "rocm"):
+            continue
+        accel_name = "CUDA" if flavor == "cuda" else "ROCm"
+        with subtests.test(msg=f"accelerator variant {flavor}", directory=str(directory)):
+            expected_version = get_accelerator_version_for_directory(directory, accel_name)
+
+            try:
+                manifest = load_manifests_file_for(directory, manifests_directory, accelerator_flavor=flavor)
+            except FileNotFoundError:
+                pytest.skip(f"No manifest file for {directory} with {flavor}")
+
+            accel_entry = next((s for s in manifest.sw if s.get("name") == accel_name), None)
+            assert accel_entry is not None, f"{manifest.filename.name}: missing {accel_name} entry in notebook-software"
+            manifest_version = accel_entry.get("version", "").lstrip("v")
+            assert manifest_version == expected_version, (
+                f"{manifest.filename.name}: {accel_name} version in imagestream "
+                f"({accel_entry.get('version')}) does not match build-args version ({expected_version})"
+            )
+
+
 @dataclasses.dataclass
 class Manifest:
     filename: pathlib.Path
@@ -826,8 +862,14 @@ class Manifest:
     dep: list[dict[str, Any]]
 
 
-def load_manifests_file_for(directory: pathlib.Path, manifests_directory: pathlib.Path) -> Manifest:
+def load_manifests_file_for(
+    directory: pathlib.Path,
+    manifests_directory: pathlib.Path,
+    accelerator_flavor: str | None = None,
+) -> Manifest:
     metadata = manifests.extract_metadata_from_path(directory)
+    if accelerator_flavor is not None:
+        metadata = dataclasses.replace(metadata, accelerator_flavor=accelerator_flavor)
     manifest_file = manifests.get_source_of_truth_filepath(
         manifests_directory=manifests_directory,
         metadata=metadata,
