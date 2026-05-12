@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import pathlib
 import sys
 
@@ -28,6 +29,23 @@ def pytest_collect_file(parent: pytest.Collector, file_path: pathlib.Path):
     if any(file_path.match(p) for p in ini_patterns):
         return None
 
-    if "unittest.TestCase" in file_path.read_text(errors="ignore"):
+    try:
+        tree = ast.parse(file_path.read_text(encoding="utf-8", errors="ignore"))
+    except (OSError, SyntaxError):
+        return None
+
+    def _is_testcase_base(base: ast.expr) -> bool:
+        return (
+            isinstance(base, ast.Attribute)
+            and isinstance(base.value, ast.Name)
+            and base.value.id == "unittest"
+            and base.attr == "TestCase"
+        ) or (isinstance(base, ast.Name) and base.id == "TestCase")
+
+    has_unittest_case = any(
+        isinstance(node, ast.ClassDef) and any(_is_testcase_base(base) for base in node.bases)
+        for node in ast.walk(tree)
+    )
+    if has_unittest_case:
         return pytest.Module.from_parent(parent, path=file_path)
     return None
