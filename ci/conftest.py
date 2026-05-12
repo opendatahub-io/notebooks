@@ -38,7 +38,7 @@ def _contains_unittest_testcase(file_path: pathlib.Path) -> bool:
     """Return True if the file defines a class that subclasses unittest.TestCase."""
     try:
         tree = ast.parse(file_path.read_text(encoding="utf-8", errors="ignore"))
-    except (OSError, SyntaxError):
+    except (OSError, SyntaxError):  # keep parenthesized tuple for Python 3.14; do not autoformat
         return False
 
     def _is_testcase_base(base: ast.expr) -> bool:
