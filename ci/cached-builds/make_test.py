@@ -2,6 +2,8 @@
 import argparse
 import contextlib
 import functools
+import re
+import shlex
 import subprocess
 import sys
 import time
@@ -31,6 +33,9 @@ def main() -> None:
 
 
 def run_tests(target: str) -> None:
+    if not re.fullmatch(r"[a-z0-9][a-z0-9._+-]*", target):
+        raise ValueError(f"Invalid target: {target!r}")
+
     prefix = target.translate(str.maketrans(".", "-"))
     # this is a pod name in statefulset, some tests deploy individual unmanaged pods, though
     pod = prefix + "-notebook-0"  # `$(kubectl get statefulset -o name | head -n 1)` would work too
@@ -56,9 +61,9 @@ def run_tests(target: str) -> None:
         deploy = "deploy9"
         deploy_target = target
 
-    check_call(f"kubectl create namespace {namespace}", shell=True)  # noqa: S604 - CI automation
-    check_call(f"kubectl config set-context --current --namespace={namespace}", shell=True)  # noqa: S604 - CI automation
-    check_call(f"kubectl label namespace {namespace} fake-scc=fake-restricted-v2", shell=True)  # noqa: S604 - CI automation
+    check_call(f"kubectl create namespace {shlex.quote(namespace)}", shell=True)  # noqa: S604 - CI automation
+    check_call(f"kubectl config set-context --current --namespace={shlex.quote(namespace)}", shell=True)  # noqa: S604 - CI automation
+    check_call(f"kubectl label namespace {shlex.quote(namespace)} fake-scc=fake-restricted-v2", shell=True)  # noqa: S604 - CI automation
 
     # wait for service account to be created, otherwise pod is refused to be created
     # $ bin/kubectl apply -k runtimes/minimal/ubi9-python-3.9/kustomize/base
@@ -67,23 +72,23 @@ def run_tests(target: str) -> None:
     # See https://github.com/kubernetes/kubernetes/issues/66689
     check_call("timeout 10s bash -c 'until kubectl get serviceaccount/default; do sleep 1; done'", shell=True)  # noqa: S604 - CI automation
 
-    check_call(f"make {deploy}-{deploy_target}", shell=True)  # noqa: S604 - CI automation
+    check_call(f"make {shlex.quote(f'{deploy}-{deploy_target}')}", shell=True)  # noqa: S604 - CI automation
     wait_for_stability(pod, target)
 
     try:
         if target.startswith("runtime-"):
-            check_call(f"make validate-runtime-image image={target}", shell=True)  # noqa: S604 - CI automation
+            check_call(f"make validate-runtime-image image={shlex.quote(target)}", shell=True)  # noqa: S604 - CI automation
         elif target.startswith("rocm-runtime-"):
             check_call(  # noqa: S604 - CI automation
-                f"make validate-runtime-image image={target.replace('rocm-runtime-', 'runtime-rocm-')}",
+                f"make validate-runtime-image image={shlex.quote(target.replace('rocm-runtime-', 'runtime-rocm-'))}",
                 shell=True,
             )
         elif target.startswith("codeserver-"):
-            check_call(f"make validate-codeserver-image image={target}", shell=True)  # noqa: S604 - CI automation
+            check_call(f"make validate-codeserver-image image={shlex.quote(target)}", shell=True)  # noqa: S604 - CI automation
         elif target.startswith("rocm-jupyter"):
-            check_call(f"make test-{target.replace('rocm-jupyter-', 'jupyter-rocm-')}", shell=True)  # noqa: S604 - CI automation
+            check_call(f"make test-{shlex.quote(target.replace('rocm-jupyter-', 'jupyter-rocm-'))}", shell=True)  # noqa: S604 - CI automation
         else:
-            check_call(f"make test-{target}", shell=True)  # noqa: S604 - CI automation
+            check_call(f"make test-{shlex.quote(target)}", shell=True)  # noqa: S604 - CI automation
     finally:
         # dump a lot of info to the GHA logs
         with gha_log_group("pod and statefulset info"):
@@ -106,7 +111,7 @@ def run_tests(target: str) -> None:
             # regular logs from a running (or finished) pod
             call("kubectl logs --selector=nosuchlabel!=nosuchvalue --all-pods --timestamps", shell=True)  # noqa: S604 - CI automation
 
-    check_call(f"make un{deploy}-{deploy_target}", shell=True)  # noqa: S604 - CI automation
+    check_call(f"make {shlex.quote(f'un{deploy}-{deploy_target}')}", shell=True)  # noqa: S604 - CI automation
 
     print(f"[INFO] Finished testing {target}")
 
