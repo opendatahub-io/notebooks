@@ -111,5 +111,11 @@ class TestFilterArtifacts:
         assert len(result) == 1
         assert result[0].name == "foo.bar"
 
+    def test_very_long_package_name(self) -> None:
+        long_name = "a" * 10_000
+        arts = [Artifact(name=long_name, type="npm")]
+        result = filter_artifacts(arts, package=long_name)
+        assert len(result) == 1
+
     def test_empty_artifact_list(self) -> None:
         assert filter_artifacts([], package="anything") == []

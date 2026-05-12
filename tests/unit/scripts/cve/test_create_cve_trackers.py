@@ -190,6 +190,13 @@ class TestFlattenAdfText:
         doc = {"type": "doc"}
         assert _flatten_adf_text(doc) == ""
 
+    def test_deeply_nested_adf(self) -> None:
+        doc: dict = {"type": "text", "text": "leaf"}
+        for _ in range(50):
+            doc = {"type": "paragraph", "content": [doc]}
+        doc = {"type": "doc", "content": [doc]}
+        assert "leaf" in _flatten_adf_text(doc)
+
 
 def _flatten_adf_text(doc: dict) -> str:
     """Recursively extract all text from an ADF document."""

@@ -118,6 +118,16 @@ class TestExtractPurlType:
     def test_purl_with_namespace(self) -> None:
         assert sa.extract_purl_type("pkg:golang/github.com/foo/bar@1.0") == "golang"
 
+    def test_very_long_purl(self) -> None:
+        long_name = "a" * 10_000
+        assert sa.extract_purl_type(f"pkg:npm/{long_name}@1.0") == "npm"
+
+    def test_non_pkg_scheme(self) -> None:
+        assert sa.extract_purl_type("urn:npm/lodash@4.17.21") == "unknown"
+
+    def test_purl_with_special_characters(self) -> None:
+        assert sa.extract_purl_type("pkg:npm/@scope/package@1.0") == "npm"
+
 
 # ---------------------------------------------------------------------------
 # get_components_from_sbom
@@ -177,6 +187,16 @@ class TestNormalizeComponent:
         pkg = _spdx_package("mystery", "0.0.1")
         norm = sa.normalize_component(pkg, "spdx")
         assert norm["type"] == "unknown"
+
+    def test_spdx_source_info_no_colon_separator(self) -> None:
+        pkg = _spdx_package("pkg", "1.0", source_info="no path separator here")
+        norm = sa.normalize_component(pkg, "spdx")
+        assert norm["locations"] == []
+
+    def test_spdx_empty_source_info(self) -> None:
+        pkg = _spdx_package("pkg", "1.0", source_info="")
+        norm = sa.normalize_component(pkg, "spdx")
+        assert norm["locations"] == []
 
     def test_unknown_format(self) -> None:
         norm = sa.normalize_component({"name": "x"}, "other")
