@@ -27,11 +27,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      - name: Run Semgrep
-        uses: returntocorp/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d  # v1
+      - name: Cache Semgrep
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
-          config: semgrep.yaml
-          generateSarif: "1"
+          path: ~/.local/pipx/venvs/semgrep
+          key: ${{ runner.os }}-pipx-semgrep
+
+      - name: Install Semgrep
+        run: pipx install semgrep || true
+
+      - name: Run Semgrep
+        run: semgrep scan --config semgrep.yaml --sarif-output=semgrep.sarif
 
       - name: Upload SARIF
         if: always()
