@@ -277,7 +277,7 @@ def _exec_or_none(container: object, cmd: list[str]) -> str | None:
         ecode, output = container.exec(cmd)
         if ecode == 0:
             return output.decode().strip()
-    except Exception:  # noqa: S110 - intentional fallback-to-None; caller handles the None case
+    except UnicodeDecodeError:
         pass
     return None
 
@@ -822,9 +822,9 @@ def test_old_tag_annotations_match_quay(
         try:
             actual_packages = _packages_from_quay(t.image_ref, quay_auth)
         except _ClairScanNotReadyError as exc:
-            with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Clair scan not ready"):
-                pytest.xfail(str(exc))
             skipped_scans.append(f"{t.is_name} tag {t.tag_name}")
+            with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Clair scan not ready"):
+                pytest.skip(str(exc))
             continue
         except (
             RuntimeError,
