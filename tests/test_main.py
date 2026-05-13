@@ -329,8 +329,6 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                     direct_deps = set()
                     for d in pyproject["project"]["dependencies"]:
                         req = packaging.requirements.Requirement(d)
-                        if req.marker and not req.marker.evaluate(marker_env):
-                            continue
                         if not is_subproject_metapackage(req.name):
                             direct_deps.add(req.name.lower())
                     for pip_name in pylock_packages:
