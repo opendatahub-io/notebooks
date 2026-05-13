@@ -34,7 +34,7 @@ jobs:
           key: ${{ runner.os }}-pipx-semgrep
 
       - name: Install Semgrep
-        run: pipx install semgrep || true
+        run: pipx install --force semgrep
 
       - name: Run Semgrep
         run: semgrep scan --config semgrep.yaml --sarif-output=semgrep.sarif
