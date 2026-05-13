@@ -51,6 +51,7 @@ from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
     import pytest_subtests
+    import testcontainers.core.container
 
 _LOG = logging.getLogger(__name__)
 
@@ -271,10 +272,10 @@ def _resolve_pypi_duplicates(
     return result
 
 
-def _exec_or_none(container: object, cmd: list[str]) -> str | None:
+def _exec_or_none(container: testcontainers.core.container.DockerContainer, cmd: list[str]) -> str | None:
     """Run a command in a container, return stdout or None on failure."""
     try:
-        ecode, output = container.exec(cmd)  # pyright: ignore[reportAttributeAccessIssue]
+        ecode, output = container.exec(cmd)
         if ecode == 0:
             return output.decode().strip()
     except UnicodeDecodeError:
@@ -282,7 +283,7 @@ def _exec_or_none(container: object, cmd: list[str]) -> str | None:
     return None
 
 
-def _collect_software_versions(container: object, packages: dict[str, str]) -> None:
+def _collect_software_versions(container: testcontainers.core.container.DockerContainer, packages: dict[str, str]) -> None:
     """Populate *packages* with software versions obtained by running commands in *container*.
 
     This makes ``_resolve_software_version`` work for the pip-list backend by providing
