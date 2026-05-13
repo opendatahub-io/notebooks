@@ -1,5 +1,6 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
+# test
 metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/notebooks?rev={{revision}}
@@ -7,12 +8,12 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: 'false'
     pipelinesascode.tekton.dev/max-keep-runs: '3'
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && ( "base-images/utils/**".pathChanged() || "base-images/cpu/ubi9-python-3.12/**".pathChanged() || "base-images/build-args/cpu.conf".pathChanged() || ".tekton/odh-base-image-cpu-py312-ubi9-odh-main-push.yaml".pathChanged() )
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main"  && ( "base-images/utils/**".pathChanged() || "base-images/rocm/6.4/ubi9-python-3.12/**".pathChanged() || "base-images/build-args/rocm6.4.conf".pathChanged() || ".tekton/odh-base-image-rocm-6-4-py312-ubi9-push.yaml".pathChanged() )
   labels:
     appstudio.openshift.io/application: opendatahub-release
-    appstudio.openshift.io/component: odh-base-image-cpu-py312-ubi9
+    appstudio.openshift.io/component: odh-base-image-rocm-py312-ubi9
     pipelines.appstudio.openshift.io/type: build
-  name: odh-base-image-cpu-py312-ubi9-on-push
+  name: odh-base-image-rocm-6-4-py312-ubi9-odh-main-push
   namespace: open-data-hub-tenant
 spec:
   params:
@@ -23,17 +24,20 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-base-image-cpu-py312-ubi9:{{revision}}
-  - name: dockerfile
-    value: base-images/cpu/ubi9-python-3.12/Dockerfile.cpu
-  - name: build-args-file
-    value: base-images/build-args/cpu.conf
-  - name: path-context
-    value: .
+    value: quay.io/opendatahub/odh-base-image-rocm-py312-ubi9:{{revision}}
   - name: build-platforms
     value:
-    - linux-mxlarge/amd64
-    - linux/arm64
+    - linux-d160-m2xlarge/amd64
+  - name: dockerfile
+    value: base-images/rocm/6.4/ubi9-python-3.12/Dockerfile.rocm
+  - name: build-args-file
+    value: base-images/build-args/rocm6.4.conf
+  - name: path-context
+    value: .
+  - name: additional-tags
+    value:
+    - '{{target_branch}}-{{revision}}'
+    - v6.4
   taskRunSpecs:
   - pipelineTaskName: build-images
     stepSpecs:
@@ -92,7 +96,7 @@ spec:
   pipelineRef:
     name: multiarch-odh-main-combined-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-base-image-cpu-py312-ubi9
+    serviceAccountName: build-pipeline-odh-base-image-rocm-py312-ubi9-poc
   workspaces:
   - name: git-auth
     secret:

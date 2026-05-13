@@ -46,7 +46,7 @@ class TestJupyterLabImage:
 
             host_ip = container.get_container_host_ip()
             host_port = container.get_exposed_port(container.port)
-            response = requests.get(f"http://{host_ip}:{host_port}/notebook/opendatahub/jovyan")
+            response = requests.get(f"http://{host_ip}:{host_port}/notebook/opendatahub/jovyan", timeout=30)
             assert response.status_code == 200
             assert "text/html" in response.headers["content-type"]
             # Spinner is injected by addon; accept either spinner in initial HTML or valid JupyterLab shell

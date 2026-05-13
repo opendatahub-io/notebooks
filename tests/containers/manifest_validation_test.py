@@ -277,7 +277,7 @@ def _exec_or_none(container: object, cmd: list[str]) -> str | None:
         ecode, output = container.exec(cmd)
         if ecode == 0:
             return output.decode().strip()
-    except Exception:
+    except UnicodeDecodeError:
         pass
     return None
 
@@ -747,7 +747,7 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     url = f"https://quay.io/api/v1/repository/{repo}/manifest/{digest}/security?vulnerabilities=false"
 
     req = urllib.request.Request(url, headers={"Authorization": f"Basic {quay_auth}"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 - HTTPS URL only; token in header, not URL
         data = json.loads(resp.read())
 
     features = ((data.get("data") or {}).get("Layer") or {}).get("Features", [])
@@ -822,9 +822,9 @@ def test_old_tag_annotations_match_quay(
         try:
             actual_packages = _packages_from_quay(t.image_ref, quay_auth)
         except _ClairScanNotReadyError as exc:
-            with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Clair scan not ready"):
-                pytest.xfail(str(exc))
             skipped_scans.append(f"{t.is_name} tag {t.tag_name}")
+            with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Clair scan not ready"):
+                pytest.skip(str(exc))
             continue
         except (
             RuntimeError,
