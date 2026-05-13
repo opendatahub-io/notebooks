@@ -248,6 +248,14 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 
                 manifest = load_manifests_file_for(directory, manifests_directory)
 
+                workbench_only_packages = [
+                    "Kfp",
+                    "JupyterLab",
+                    "Odh-Elyra",
+                    "Kubeflow-Training",
+                    "Codeflare-SDK",
+                ]
+
                 with subtests.test(msg="checking the `notebook-software` array", pyproject=file):
                     for s in manifest.sw:
                         if s.get("name") == "Python":
@@ -276,14 +284,6 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 
                 with subtests.test(msg="checking the `notebook-python-dependencies` array", pyproject=file):
                     for d in manifest.dep:
-                        workbench_only_packages = [
-                            "Kfp",
-                            "JupyterLab",
-                            "Odh-Elyra",
-                            "Kubeflow-Training",
-                            "Codeflare-SDK",
-                        ]
-
                         name = d["name"]
                         if name in workbench_only_packages and manifest.metadata.type == manifests.NotebookType.RUNTIME:
                             continue

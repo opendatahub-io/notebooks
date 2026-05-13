@@ -286,7 +286,7 @@ def container_exec_with_stdin(
         # Try to unwrap a file-like object (e.g., BufferedReader -> SocketIO -> socket)
         raw_io = getattr(stream, "raw", stream)
         if hasattr(raw_io, "_sock"):
-            raw_sock = raw_io._sock
+            raw_sock = raw_io._sock  # pyright: ignore[reportAttributeAccessIssue]
 
     if raw_sock:
         raw_sock.sendall(stdin_data)
@@ -308,7 +308,7 @@ def container_exec_with_stdin(
             if hasattr(raw_io, "_sock"):
                 raw_io._sock.shutdown(pysocket.SHUT_WR)  # pyright: ignore[reportAttributeAccessIssue]
             else:
-                stream.shutdown(pysocket.SHUT_WR)
+                stream.shutdown(pysocket.SHUT_WR)  # pyright: ignore[reportAttributeAccessIssue]
     except OSError, AttributeError:
         # This is expected if the remote process closes the connection first.
         pass
