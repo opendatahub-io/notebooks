@@ -862,6 +862,54 @@ class Manifest:
     dep: list[dict[str, Any]]
 
 
+def _collect_rpms_lock_files() -> list[pathlib.Path]:
+    files = sorted(PROJECT_ROOT.glob("**/rpms.lock.yaml"))
+    assert files, "No rpms.lock.yaml files found under PROJECT_ROOT"
+    return files
+
+
+# RHOAIENG-45152: these packages have arch-specific builds upstream
+_KNOWN_EVR_MISMATCHES: frozenset[str] = frozenset(
+    {
+        "iptables-libs",
+        "openshift-clients",
+    }
+)
+
+
+@pytest.mark.parametrize("lockfile", _collect_rpms_lock_files(), ids=lambda p: str(p.relative_to(PROJECT_ROOT)))
+def test_rpms_lock_nvr_consistency_across_arches(subtests: pytest_subtests.plugin.SubTests, lockfile: pathlib.Path):
+    """Assert that every RPM name pinned in rpms.lock.yaml has the same EVR across all architectures."""
+    data = yaml.safe_load(lockfile.read_text())
+    arches = data.get("arches", [])
+    if len(arches) <= 1:
+        pytest.skip("only one architecture present; nothing to cross-check")
+
+    packages_by_name: dict[str, dict[str, str]] = defaultdict(dict)
+    for arch_entry in arches:
+        arch = arch_entry["arch"]
+        for pkg in arch_entry["packages"]:
+            with subtests.test(msg=f"{pkg['name']} duplicate entry check", package=pkg["name"], arch=arch):
+                by_arch = packages_by_name[pkg["name"]]
+                assert arch not in by_arch, (
+                    f"Duplicate RPM entry for package {pkg['name']!r} in arch {arch!r} "
+                    f"within {lockfile.relative_to(PROJECT_ROOT)}"
+                )
+                by_arch[arch] = pkg["evr"]
+
+    for pkg_name, evr_by_arch in packages_by_name.items():
+        if len(evr_by_arch) <= 1:
+            continue
+        with subtests.test(msg=f"{pkg_name} EVR consistency", package=pkg_name):
+            evrs = set(evr_by_arch.values())
+            if pkg_name in _KNOWN_EVR_MISMATCHES and len(evrs) != 1:
+                pytest.xfail(f"Pre-existing EVR mismatch for {pkg_name!r}: {evr_by_arch}")
+            assert len(evrs) == 1, (
+                f"RPM {pkg_name!r} has mismatched EVR across architectures in "
+                f"{lockfile.relative_to(PROJECT_ROOT)}: {evr_by_arch}"
+            )
+
+
 def load_manifests_file_for(
     directory: pathlib.Path,
     manifests_directory: pathlib.Path,
