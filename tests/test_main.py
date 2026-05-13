@@ -340,14 +340,15 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                         ):
                             continue
                         if pip_name.lower() not in manifest_pip_names:
-                            if pip_name.lower() in direct_deps:
-                                pytest.fail(
-                                    f"{pip_name} is in pylock.toml (direct dep) but missing from manifest {manifest.filename}"
-                                )
-                            else:
-                                pytest.xfail(
-                                    f"{pip_name} is in pylock.toml (transitive) but missing from manifest {manifest.filename}"
-                                )
+                            with subtests.test(msg="missing manifest package", package=pip_name, pyproject=file):
+                                if pip_name.lower() in direct_deps:
+                                    pytest.fail(
+                                        f"{pip_name} is in pylock.toml (direct dep) but missing from manifest {manifest.filename}"
+                                    )
+                                else:
+                                    pytest.xfail(
+                                        f"{pip_name} is in pylock.toml (transitive) but missing from manifest {manifest.filename}"
+                                    )
 
 
 @pytest.mark.parametrize("manifests_directory", [manifests.MANIFESTS_ODH_DIR, manifests.MANIFESTS_RHOAI_DIR])
