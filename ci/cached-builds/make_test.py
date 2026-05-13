@@ -238,6 +238,19 @@ class TestMakeTest(unittest.TestCase):
         assert "make validate-runtime-image image=runtime-cuda-pytorch-llmcompressor-ubi9-python-3.12" in commands
         assert "make undeploy9-runtimes-cuda-pytorch+llmcompressor-ubi9-python-3.12" in commands
 
+    def test_rejects_invalid_target_characters(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Invalid target"):
+            run_tests("bad;target")
+
+    def test_rejects_invalid_derived_namespace(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Invalid Kubernetes namespace"):
+            run_tests("bad_target")
+
+    def test_rejects_overlong_derived_namespace(self) -> None:
+        """Namespace is 'ns-' + target (dots→dashes), so 'a'*61 gives 64 chars — one over the 63-char DNS-1123 limit."""
+        with self.assertRaisesRegex(ValueError, "Invalid Kubernetes namespace"):
+            run_tests("a" * 61)
+
 
 if __name__ == "__main__":
     main()
