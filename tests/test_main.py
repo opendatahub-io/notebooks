@@ -889,12 +889,13 @@ def test_rpms_lock_nvr_consistency_across_arches(subtests: pytest_subtests.plugi
     for arch_entry in arches:
         arch = arch_entry["arch"]
         for pkg in arch_entry["packages"]:
-            by_arch = packages_by_name[pkg["name"]]
-            assert arch not in by_arch, (
-                f"Duplicate RPM entry for package {pkg['name']!r} in arch {arch!r} "
-                f"within {lockfile.relative_to(PROJECT_ROOT)}"
-            )
-            by_arch[arch] = pkg["evr"]
+            with subtests.test(msg=f"{pkg['name']} duplicate entry check", package=pkg["name"], arch=arch):
+                by_arch = packages_by_name[pkg["name"]]
+                assert arch not in by_arch, (
+                    f"Duplicate RPM entry for package {pkg['name']!r} in arch {arch!r} "
+                    f"within {lockfile.relative_to(PROJECT_ROOT)}"
+                )
+                by_arch[arch] = pkg["evr"]
 
     for pkg_name, evr_by_arch in packages_by_name.items():
         if len(evr_by_arch) <= 1:
