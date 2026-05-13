@@ -871,7 +871,7 @@ else:
 
     class Tests:
         def test_compute_cel_expression(self, fs: pyfakefs.fake_filesystem.FakeFilesystem):
-            fs.cwd = ROOT_DIR
+            fs.cwd = ROOT_DIR  # pyright: ignore[reportAttributeAccessIssue]
             ROOT_DIR.mkdir(parents=True)
             pathlib.Path("a/").mkdir()
             pathlib.Path("b/").mkdir()

@@ -18,6 +18,7 @@ import allure
 import packaging.markers
 import packaging.requirements
 import packaging.specifiers
+import packaging.utils
 import packaging.version
 import pytest
 import yaml
@@ -32,7 +33,7 @@ if TYPE_CHECKING:
 
     import pytest_subtests
 
-MAKE = shutil.which("gmake") or shutil.which("make")
+MAKE = shutil.which("gmake") or shutil.which("make") or "make"
 
 _LOG = logging.getLogger(__name__)
 
@@ -247,6 +248,14 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 
                 manifest = load_manifests_file_for(directory, manifests_directory)
 
+                workbench_only_packages = [
+                    "Kfp",
+                    "JupyterLab",
+                    "Odh-Elyra",
+                    "Kubeflow-Training",
+                    "Codeflare-SDK",
+                ]
+
                 with subtests.test(msg="checking the `notebook-software` array", pyproject=file):
                     for s in manifest.sw:
                         if s.get("name") == "Python":
@@ -275,14 +284,6 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 
                 with subtests.test(msg="checking the `notebook-python-dependencies` array", pyproject=file):
                     for d in manifest.dep:
-                        workbench_only_packages = [
-                            "Kfp",
-                            "JupyterLab",
-                            "Odh-Elyra",
-                            "Kubeflow-Training",
-                            "Codeflare-SDK",
-                        ]
-
                         name = d["name"]
                         if name in workbench_only_packages and manifest.metadata.type == manifests.NotebookType.RUNTIME:
                             continue
@@ -309,6 +310,8 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 
                         manifest_version = d.get("version")
                         locked_version = resolved.get("version")
+                        assert manifest_version is not None, f"{name}: missing version in manifest"
+                        assert locked_version is not None, f"{name}: missing version in pylock.toml"
 
                         split_manifest_version = re.fullmatch(r"^v?(\d+)\.(\d+)", manifest_version)
                         assert split_manifest_version is not None, f"{name}: malformed {manifest_version=}"

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import contextlib
-import functools
 import logging
 import socket
 import subprocess
@@ -50,7 +49,7 @@ LOGGER = logging.getLogger(__name__)
 def get_client() -> kubernetes.dynamic.DynamicClient:
     try:
         client = ocp_resources.resource.get_client()
-        return client
+        return client  # pyright: ignore[reportReturnType]
     except Exception as e:
         logging.error(e)
         raise RuntimeError("Failed to instantiate client") from e
@@ -91,7 +90,7 @@ class TestFrame[S]:
         return result
 
     def defer[T](self, obj: T, destructor: Callable[[T], None] | None = None) -> T:
-        self.stack.append((obj, destructor))
+        self.stack.append((obj, destructor))  # pyright: ignore[reportArgumentType]
         return obj
 
     def destroy(self, wait=False):
@@ -129,7 +128,7 @@ class ImageDeployment:
         accelerator: Literal["amd.com/gpu", "nvidia.com/gpu"] | None = None,
         is_runtime_image: bool = False,
         timeout: float = TestFrameConstants.READINESS_TIMEOUT,
-    ) -> kubernetes.client.models.v1_pod.V1Pod:
+    ) -> kubernetes.client.models.v1_pod.V1Pod:  # pyright: ignore[reportAttributeAccessIssue]
         LOGGER.debug(f"Deploying {self.image}")
         # custom namespace is necessary, because we cannot assign a SCC to pods created in one of the default namespaces:
         #  default, kube-system, kube-public, openshift-node, openshift-infra, openshift.
@@ -211,21 +210,21 @@ class ImageDeployment:
         LOGGER.debug("Waiting for pods to become ready...")
         PodUtils.wait_for_pods_ready(
             self.client,
-            namespace_name=ns.name,
+            namespace_name=ns.name,  # pyright: ignore[reportArgumentType]
             label_selector=f"app={container_name}",
             expect_pods_count=1,
             timeout=timeout,
         )
 
         core_v1_api = kubernetes.client.api.core_v1_api.CoreV1Api(api_client=self.client.client)
-        pod_name: kubernetes.client.models.v1_pod_list.V1PodList = core_v1_api.list_namespaced_pod(
+        pod_name: kubernetes.client.models.v1_pod_list.V1PodList = core_v1_api.list_namespaced_pod(  # pyright: ignore[reportAttributeAccessIssue]
             namespace=ns.name, label_selector=f"app={container_name}"
         )
         assert len(pod_name.items) == 1
-        self.pod: kubernetes.client.models.v1_pod.V1Pod = pod_name.items[0]
+        self.pod: kubernetes.client.models.v1_pod.V1Pod = pod_name.items[0]  # pyright: ignore[reportAttributeAccessIssue]
 
         if not is_runtime_image:
-            p = socket_proxy.SocketProxy(lambda: exposing_contextmanager(core_v1_api, self.pod), "localhost", 0)
+            p = socket_proxy.SocketProxy(lambda: exposing_contextmanager(core_v1_api, self.pod), "localhost", 0)  # pyright: ignore[reportArgumentType]
             t = threading.Thread(target=p.listen_and_serve_until_canceled)
             t.start()
             self.tf.defer(t, lambda thread: thread.join())
@@ -282,6 +281,8 @@ class ImageDeployment:
         returncode = resp.returncode
         resp.close()
 
+        if returncode is None:
+            raise RuntimeError(f"Pod exec terminated without exit code for command: {command}")
         return subprocess.CompletedProcess(
             args=command, returncode=returncode, stdout="\n".join(stdout), stderr="\n".join(stderr)
         )
@@ -309,7 +310,7 @@ class PodUtils:
         )
 
         def ready() -> bool:
-            pods = resource.get(namespace=namespace_name, label_selector=label_selector).items
+            pods = resource.get(namespace=namespace_name, label_selector=label_selector).items  # pyright: ignore[reportCallIssue]
             if not pods and expect_pods_count == 0:
                 logging.debug("All expected Pods %s in Namespace %s are ready", label_selector, namespace_name)
                 return True
@@ -446,7 +447,7 @@ class Readiness:
 
         condition = ocp_resources.pod.Pod.Condition.READY
         status = ocp_resources.pod.Pod.Condition.Status.TRUE
-        for cond in pod.get("status", {}).get("conditions", []):
+        for cond in (pod.get("status") or {}).get("conditions", []):  # pyright: ignore[reportOptionalCall]
             if cond["type"] == condition and cond["status"].casefold() == status.casefold():
                 return True
         return False
@@ -466,21 +467,27 @@ class Utils:
 
 @contextlib.contextmanager
 def exposing_contextmanager(
-    core_v1_api: kubernetes.client.CoreV1Api, pod: kubernetes.client.models.V1Pod
+    core_v1_api: kubernetes.client.CoreV1Api,
+    pod: kubernetes.client.models.V1Pod,  # pyright: ignore[reportAttributeAccessIssue]
 ) -> Generator[socket]:
     # If we e.g., specify the wrong port, the pf = portforward() call succeeds,
     # but pf.connected will later flip to False
     # we need to check that _everything_ works before moving on
-    pf = None
+    pf: kubernetes.stream.ws_client.PortForward | None = None
     s = None
     while not pf or not pf.connected or not s:
-        pf: kubernetes.stream.ws_client.PortForward = kubernetes.stream.portforward(
+        if s is not None:
+            s.close()
+            s = None
+        if pf is not None:
+            pf.close()
+        pf = kubernetes.stream.portforward(
             api_method=core_v1_api.connect_get_namespaced_pod_portforward,
             name=pod.metadata.name,
             namespace=pod.metadata.namespace,
             ports=",".join(str(p) for p in [8888]),
         )
-        s: kubernetes.stream.ws_client.PortForward._Port._Socket | socket.socket | None = pf.socket(8888)
+        s = pf.socket(8888)
     assert s, "Failed to establish connection"
 
     try:
@@ -490,7 +497,6 @@ def exposing_contextmanager(
         pf.close()
 
 
-@functools.wraps(ocp_resources.namespace.Namespace.__init__)
 def create_namespace(
     privileged_client: bool = False, *args, **kwargs
 ) -> ocp_resources.project_project_openshift_io.Project:
