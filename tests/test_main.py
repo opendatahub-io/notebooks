@@ -868,6 +868,7 @@ def _collect_rpms_lock_files() -> list[pathlib.Path]:
     return files
 
 
+# RHOAIENG-45152: these packages have arch-specific builds upstream
 _KNOWN_EVR_MISMATCHES: frozenset[str] = frozenset(
     {
         "iptables-libs",
