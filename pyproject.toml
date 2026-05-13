@@ -259,6 +259,7 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
 
 # https://docs.astral.sh/ruff/formatter
 [tool.ruff.format]
+exclude = ["*.ipynb"]
 line-ending = "lf"
 quote-style = "double"
 indent-style = "space"

@@ -37,8 +37,8 @@ repos:
         args: [--fix]
         files: '^((ci|tests|ntb|base-images)/.*\.(py|pyi)|jupyter/.*\.ipynb)$'
       - id: ruff-format
-        types_or: [python, pyi, jupyter]
-        files: '^((ci|tests|ntb|base-images)/.*\.(py|pyi)|jupyter/.*\.ipynb)$'
+        types_or: [python, pyi]
+        files: '^(ci|tests|ntb|base-images)/.*\.(py|pyi)$'
   # https://pre-commit.com/#new-hooks
   - repo: local
     hooks:
