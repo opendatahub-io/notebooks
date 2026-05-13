@@ -18,6 +18,7 @@ import allure
 import packaging.markers
 import packaging.requirements
 import packaging.specifiers
+import packaging.utils
 import packaging.version
 import pytest
 import yaml
@@ -32,7 +33,7 @@ if TYPE_CHECKING:
 
     import pytest_subtests
 
-MAKE = shutil.which("gmake") or shutil.which("make")
+MAKE = shutil.which("gmake") or shutil.which("make") or "make"
 
 _LOG = logging.getLogger(__name__)
 
@@ -247,6 +248,14 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 
                 manifest = load_manifests_file_for(directory, manifests_directory)
 
+                workbench_only_packages = [
+                    "Kfp",
+                    "JupyterLab",
+                    "Odh-Elyra",
+                    "Kubeflow-Training",
+                    "Codeflare-SDK",
+                ]
+
                 with subtests.test(msg="checking the `notebook-software` array", pyproject=file):
                     for s in manifest.sw:
                         if s.get("name") == "Python":
@@ -275,14 +284,6 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 
                 with subtests.test(msg="checking the `notebook-python-dependencies` array", pyproject=file):
                     for d in manifest.dep:
-                        workbench_only_packages = [
-                            "Kfp",
-                            "JupyterLab",
-                            "Odh-Elyra",
-                            "Kubeflow-Training",
-                            "Codeflare-SDK",
-                        ]
-
                         name = d["name"]
                         if name in workbench_only_packages and manifest.metadata.type == manifests.NotebookType.RUNTIME:
                             continue
@@ -309,6 +310,8 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 
                         manifest_version = d.get("version")
                         locked_version = resolved.get("version")
+                        assert manifest_version is not None, f"{name}: missing version in manifest"
+                        assert locked_version is not None, f"{name}: missing version in pylock.toml"
 
                         split_manifest_version = re.fullmatch(r"^v?(\d+)\.(\d+)", manifest_version)
                         assert split_manifest_version is not None, f"{name}: malformed {manifest_version=}"
@@ -337,14 +340,15 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                         ):
                             continue
                         if pip_name.lower() not in manifest_pip_names:
-                            if pip_name.lower() in direct_deps:
-                                pytest.fail(
-                                    f"{pip_name} is in pylock.toml (direct dep) but missing from manifest {manifest.filename}"
-                                )
-                            else:
-                                pytest.xfail(
-                                    f"{pip_name} is in pylock.toml (transitive) but missing from manifest {manifest.filename}"
-                                )
+                            with subtests.test(msg="missing manifest package", package=pip_name, pyproject=file):
+                                if pip_name.lower() in direct_deps:
+                                    pytest.fail(
+                                        f"{pip_name} is in pylock.toml (direct dep) but missing from manifest {manifest.filename}"
+                                    )
+                                else:
+                                    pytest.xfail(
+                                        f"{pip_name} is in pylock.toml (transitive) but missing from manifest {manifest.filename}"
+                                    )
 
 
 @pytest.mark.parametrize("manifests_directory", [manifests.MANIFESTS_ODH_DIR, manifests.MANIFESTS_RHOAI_DIR])
@@ -860,6 +864,54 @@ class Manifest:
     metadata: manifests.NotebookMetadata
     sw: list[dict[str, Any]]
     dep: list[dict[str, Any]]
+
+
+def _collect_rpms_lock_files() -> list[pathlib.Path]:
+    files = sorted(PROJECT_ROOT.glob("**/rpms.lock.yaml"))
+    assert files, "No rpms.lock.yaml files found under PROJECT_ROOT"
+    return files
+
+
+# RHOAIENG-45152: these packages have arch-specific builds upstream
+_KNOWN_EVR_MISMATCHES: frozenset[str] = frozenset(
+    {
+        "iptables-libs",
+        "openshift-clients",
+    }
+)
+
+
+@pytest.mark.parametrize("lockfile", _collect_rpms_lock_files(), ids=lambda p: str(p.relative_to(PROJECT_ROOT)))
+def test_rpms_lock_nvr_consistency_across_arches(subtests: pytest_subtests.plugin.SubTests, lockfile: pathlib.Path):
+    """Assert that every RPM name pinned in rpms.lock.yaml has the same EVR across all architectures."""
+    data = yaml.safe_load(lockfile.read_text())
+    arches = data.get("arches", [])
+    if len(arches) <= 1:
+        pytest.skip("only one architecture present; nothing to cross-check")
+
+    packages_by_name: dict[str, dict[str, str]] = defaultdict(dict)
+    for arch_entry in arches:
+        arch = arch_entry["arch"]
+        for pkg in arch_entry["packages"]:
+            with subtests.test(msg=f"{pkg['name']} duplicate entry check", package=pkg["name"], arch=arch):
+                by_arch = packages_by_name[pkg["name"]]
+                assert arch not in by_arch, (
+                    f"Duplicate RPM entry for package {pkg['name']!r} in arch {arch!r} "
+                    f"within {lockfile.relative_to(PROJECT_ROOT)}"
+                )
+                by_arch[arch] = pkg["evr"]
+
+    for pkg_name, evr_by_arch in packages_by_name.items():
+        if len(evr_by_arch) <= 1:
+            continue
+        with subtests.test(msg=f"{pkg_name} EVR consistency", package=pkg_name):
+            evrs = set(evr_by_arch.values())
+            if pkg_name in _KNOWN_EVR_MISMATCHES and len(evrs) != 1:
+                pytest.xfail(f"Pre-existing EVR mismatch for {pkg_name!r}: {evr_by_arch}")
+            assert len(evrs) == 1, (
+                f"RPM {pkg_name!r} has mismatched EVR across architectures in "
+                f"{lockfile.relative_to(PROJECT_ROOT)}: {evr_by_arch}"
+            )
 
 
 def load_manifests_file_for(

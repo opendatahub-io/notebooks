@@ -111,7 +111,7 @@ skip_empty = true
 
 # https://microsoft.github.io/pyright/#/configuration
 [tool.pyright]
-typeCheckingMode = "off"
+typeCheckingMode = "basic"
 reportMissingImports = "error"
 reportUnboundVariable = "error"
 reportGeneralTypeIssues = "error"
@@ -157,7 +157,7 @@ select = [
     "Q", # flake8-quotes
     "RET", # flake8-return
     "RUF", # Ruff-specific
-    "S102", # flake8-bandit: exec-builtin
+    "S", # flake8-bandit: security checks
     "T10", # flake8-debugger
     "TCH", # type-checking imports
     "TID", # flake8-tidy-imports
@@ -184,6 +184,9 @@ ignore = [
     # "W503", # not yet implemented; line break before binary operator
     # "W504", # not yet implemented; line break after binary operator
     "PLR1702", # Too many nested blocks (7 > 5)
+    # flake8-bandit: noisy, low-value rules
+    "S404", # subprocess-module-import: flagging `import subprocess` is too noisy
+    "S607", # start-process-with-partial-path: flags well-known executables (git, make, kubectl)
     # TODO
     "B006", # Do not use mutable data structures for argument defaults
     "COM812", # Trailing comma missing
@@ -234,11 +237,25 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
     "PLR0402", # pylint: manual-from-import
     "PLW0108", # pylint: unnecessary-lambda
     "RUF100",  # ruff: unused-noqa directive
+    "S101",    # flake8-bandit: assert (notebooks use assert for inline checks)
+    "S602",    # flake8-bandit: subprocess-popen-with-shell-equals-true
+    "S603",    # flake8-bandit: subprocess-without-shell-equals-true
+    "S604",    # flake8-bandit: call-with-shell-equals-true
 ]
 "jupyter/**/test/test_notebook.ipynb" = [
     "PLC2701", # pylint: private-name-import (%%writefile creates _-prefixed modules)
     "PLW1510", # pylint: subprocess-run-without-check (subprocess usage in tests only)
 ]
+# Tests, CI scripts, and build helpers legitimately use assert and subprocess with shell=True
+# S602: subprocess-popen-with-shell-equals-true
+# S604: call-with-shell-equals-true
+"tests/**/*.py" = ["S101", "S602", "S603", "S604"]
+"ci/**/*.py" = ["S101", "S602", "S603", "S604"]
+"scripts/**/*.py" = ["S602", "S603", "S604"]
+# Test assertion helpers use assert by design
+"ntb/**/*.py" = ["S101"]
+# Copr client wraps CLI commands via subprocess with controlled arguments
+"base-images/**/*.py" = ["S602", "S603", "S604"]
 
 # https://docs.astral.sh/ruff/formatter
 [tool.ruff.format]

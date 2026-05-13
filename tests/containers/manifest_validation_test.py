@@ -51,6 +51,7 @@ from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
     import pytest_subtests
+    import testcontainers.core.container
 
 _LOG = logging.getLogger(__name__)
 
@@ -271,18 +272,21 @@ def _resolve_pypi_duplicates(
     return result
 
 
-def _exec_or_none(container: object, cmd: list[str]) -> str | None:
+def _exec_or_none(container: testcontainers.core.container.DockerContainer, cmd: list[str]) -> str | None:
     """Run a command in a container, return stdout or None on failure."""
     try:
         ecode, output = container.exec(cmd)
         if ecode == 0:
             return output.decode().strip()
-    except Exception:
+    except UnicodeDecodeError:
         pass
     return None
 
 
-def _collect_software_versions(container: object, packages: dict[str, str]) -> None:
+def _collect_software_versions(
+    container: testcontainers.core.container.DockerContainer,
+    packages: dict[str, str],
+) -> None:
     """Populate *packages* with software versions obtained by running commands in *container*.
 
     This makes ``_resolve_software_version`` work for the pip-list backend by providing
@@ -747,7 +751,7 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     url = f"https://quay.io/api/v1/repository/{repo}/manifest/{digest}/security?vulnerabilities=false"
 
     req = urllib.request.Request(url, headers={"Authorization": f"Basic {quay_auth}"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 - HTTPS URL only; token in header, not URL
         data = json.loads(resp.read())
 
     features = ((data.get("data") or {}).get("Layer") or {}).get("Features", [])
@@ -822,9 +826,9 @@ def test_old_tag_annotations_match_quay(
         try:
             actual_packages = _packages_from_quay(t.image_ref, quay_auth)
         except _ClairScanNotReadyError as exc:
-            with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Clair scan not ready"):
-                pytest.xfail(str(exc))
             skipped_scans.append(f"{t.is_name} tag {t.tag_name}")
+            with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Clair scan not ready"):
+                pytest.skip(str(exc))
             continue
         except (
             RuntimeError,

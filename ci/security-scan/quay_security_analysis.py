@@ -74,7 +74,6 @@ def process_image(image, commit_id_path, release_version_n, hash_n):
         f'skopeo inspect docker://{img} | jq \'.Env[] | select(startswith("OPENSHIFT_BUILD_NAME=")) | split("=")[1]\''
     )
     src_tag = subprocess.check_output(src_tag_cmd, shell=True, text=True).strip().strip('"').replace("-amd64", "")
-
     regex = ""
 
     if release_version_n == "":
@@ -84,10 +83,8 @@ def process_image(image, commit_id_path, release_version_n, hash_n):
 
     latest_tag_cmd = f"skopeo inspect docker://{img} | jq -r --arg regex \"{regex}\" '.RepoTags | map(select(. | test($regex))) | .[0]'"
     latest_tag = subprocess.check_output(latest_tag_cmd, shell=True, text=True).strip()
-
     digest_cmd = f"skopeo inspect docker://{registry}:{latest_tag} | jq .Digest | tr -d '\"'"
     digest = subprocess.check_output(digest_cmd, shell=True, text=True).strip()
-
     if digest is None or digest == "":
         return
 
@@ -97,7 +94,7 @@ def process_image(image, commit_id_path, release_version_n, hash_n):
 
     url = f"https://quay.io/api/v1/repository/opendatahub/workbench-images/manifest/sha256:{sha_}/security"
 
-    response = requests.get(url)
+    response = requests.get(url, timeout=30)
     data = response.json()
 
     vulnerabilities = []

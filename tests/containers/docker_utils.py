@@ -132,19 +132,20 @@ def container_cp(
     fh = io.BytesIO()
     tar = tarfile.open(fileobj=fh, mode="w:gz")
 
-    tar_filter = None
-    if user or group:
-
-        def tar_filter(f: tarfile.TarInfo) -> tarfile.TarInfo:
-            if user:
-                f.uid = user
-            if group:
-                f.gid = group
-            return f
+    def tar_filter(f: tarfile.TarInfo) -> tarfile.TarInfo:
+        if user is not None:
+            f.uid = user
+        if group is not None:
+            f.gid = group
+        return f
 
     logging.debug(f"Adding {src=} to archive {dst=}")
     try:
-        tar.add(src, arcname=os.path.basename(src), filter=tar_filter)
+        tar.add(
+            src,
+            arcname=os.path.basename(src),
+            filter=tar_filter if (user is not None or group is not None) else None,
+        )
     finally:
         tar.close()
 
@@ -160,7 +161,7 @@ def from_container_cp(container: Container, src: str, dst: str) -> None:
     fh.seek(0)
     tar = tarfile.open(fileobj=fh, mode="r")
     try:
-        tar.extractall(path=dst, filter=tarfile.data_filter)
+        tar.extractall(path=dst, filter=tarfile.data_filter)  # noqa: S202 - data_filter rejects unsafe paths/symlinks (Python 3.12+ mitigation)
     finally:
         tar.close()
         fh.close()
@@ -211,7 +212,7 @@ def container_exec(
 
 
 class ContainerExec:
-    def __init__(self, client, id, output: list[int] | list[str]):
+    def __init__(self, client, id, output):
         self.client = client
         self.id = id
         self.output = output
@@ -268,7 +269,7 @@ def container_exec_with_stdin(
         stdout=True,
         stderr=True,
         tty=True,
-    )
+    )["Id"]
 
     # When using a podman client, exec_start(socket=True) returns a file-like
     # object (a wrapper around SocketIO), not a raw socket. We must use
@@ -285,15 +286,15 @@ def container_exec_with_stdin(
         # Try to unwrap a file-like object (e.g., BufferedReader -> SocketIO -> socket)
         raw_io = getattr(stream, "raw", stream)
         if hasattr(raw_io, "_sock"):
-            raw_sock = raw_io._sock
+            raw_sock = raw_io._sock  # pyright: ignore[reportAttributeAccessIssue]
 
     if raw_sock:
         raw_sock.sendall(stdin_data)
     else:
         # Fallback to stream.write() if no raw socket found. This may fail.
         try:
-            stream.write(stdin_data)
-            stream.flush()
+            stream.write(stdin_data)  # pyright: ignore[reportAttributeAccessIssue]
+            stream.flush()  # pyright: ignore[reportAttributeAccessIssue]
         except (OSError, io.UnsupportedOperation) as e:
             raise OSError(f"Could not write to container exec stdin using stream of type {type(stream)}") from e
 
@@ -305,9 +306,9 @@ def container_exec_with_stdin(
             # Fallback for stream objects that have a shutdown method.
             raw_io = getattr(stream, "raw", stream)
             if hasattr(raw_io, "_sock"):
-                raw_io._sock.shutdown(pysocket.SHUT_WR)
+                raw_io._sock.shutdown(pysocket.SHUT_WR)  # pyright: ignore[reportAttributeAccessIssue]
             else:
-                stream.shutdown(pysocket.SHUT_WR)
+                stream.shutdown(pysocket.SHUT_WR)  # pyright: ignore[reportAttributeAccessIssue]
     except OSError, AttributeError:
         # This is expected if the remote process closes the connection first.
         pass
@@ -333,7 +334,7 @@ def container_exec_with_stdin(
     else:
         # Fallback to stream.read() if we couldn't get a raw socket.
         # This may hang if the shutdown logic above also failed.
-        output = stream.read()
+        output = stream.read()  # pyright: ignore[reportAttributeAccessIssue]
         stream.close()
 
     # Get the exit code of the process.
@@ -346,7 +347,7 @@ def get_socket_path(client: docker.client.DockerClient) -> str:
     """Determine the local socket path.
     This works even when `podman machine` with its own host-mounts is involved
     NOTE: this will not work for remote docker, but we will cross the bridge when we come to it"""
-    socket_path = _the_one(adapter.socket_path for adapter in client.api.adapters.values())
+    socket_path = _the_one(adapter.socket_path for adapter in client.api.adapters.values())  # pyright: ignore[reportAttributeAccessIssue]
     return socket_path
 
 
