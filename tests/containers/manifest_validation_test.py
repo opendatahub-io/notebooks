@@ -283,7 +283,10 @@ def _exec_or_none(container: testcontainers.core.container.DockerContainer, cmd:
     return None
 
 
-def _collect_software_versions(container: testcontainers.core.container.DockerContainer, packages: dict[str, str]) -> None:
+def _collect_software_versions(
+    container: testcontainers.core.container.DockerContainer,
+    packages: dict[str, str],
+) -> None:
     """Populate *packages* with software versions obtained by running commands in *container*.
 
     This makes ``_resolve_software_version`` work for the pip-list backend by providing
