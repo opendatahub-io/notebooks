@@ -125,7 +125,7 @@ def skip_if_not_workbench_image(image: str) -> Image:
     """Skip unless the image is JupyterLab or code-server (RStudio is no longer in this repo)."""
     image_metadata = get_image_metadata(image)
 
-    ide_server_label_fragments = ("-code-server-", "-jupyter-")
+    ide_server_label_fragments = ("-code-server-", "-codeserver-", "-jupyter-")
     if not any(ide in image_metadata.labels["name"] for ide in ide_server_label_fragments):
         pytest.skip(
             f"Image {image} does not have any of '{ide_server_label_fragments=} in {image_metadata.labels['name']=}'"
