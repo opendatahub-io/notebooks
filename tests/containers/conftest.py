@@ -125,7 +125,7 @@ def skip_if_not_workbench_image(image: str) -> Image:
     """Skip unless the image is JupyterLab or code-server (RStudio is no longer in this repo)."""
     image_metadata = get_image_metadata(image)
 
-    ide_server_label_fragments = ("-code-server-", "-jupyter-")
+    ide_server_label_fragments = ("-code-server-", "-codeserver-", "-jupyter-")
     if not any(ide in image_metadata.labels["name"] for ide in ide_server_label_fragments):
         pytest.skip(
             f"Image {image} does not have any of '{ide_server_label_fragments=} in {image_metadata.labels['name']=}'"
@@ -257,9 +257,15 @@ def datascience_image(image: str) -> Image:
 
 @pytest.fixture(scope="session")
 def codeserver_image(image: str) -> Image:
+    """Skip unless the image is a code-server workbench.
+
+    ODH labels use "code-server" (e.g. "odh-notebook-code-server-ubi9-python-3.12"),
+    RHOAI/RHDS labels use "codeserver" (e.g. "rhoai/odh-workbench-codeserver-datascience-cpu-py312-rhel9").
+    """
     image_metadata = skip_if_not_workbench_image(image)
-    if "-code-server-" not in image_metadata.labels["name"]:
-        pytest.skip(f"Image {image} does not have '-code-server-' in {image_metadata.labels['name']=}'")
+    name = image_metadata.labels["name"]
+    if "-code-server-" not in name and "-codeserver-" not in name:
+        pytest.skip(f"Image {image} does not have '-code-server-' or '-codeserver-' in {name!r}")
 
     return image_metadata
 

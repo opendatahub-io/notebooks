@@ -225,7 +225,27 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
 # Inner functions are serialized and executed inside containers, so imports must be local.
 "tests/containers/workbenches/gpu_library_loading_test.py" = ["PLC0415"]
 # Ignore many stylistic and formatting rules for notebooks, but keep Pylint rules like PLW0128
-"jupyter/**/*.ipynb" = ["E", "F", "W", "Q", "I", "PLR0402", "PLC0414", "RUF100", "PLW0108", "S101", "S602", "S603", "S604"]
+"jupyter/**/*.ipynb" = [
+    "B004",    # flake8-bugbear: unreliable-callable-check
+    "E",       # pycodestyle errors (formatting handled by ruff format)
+    "F",       # Pyflakes (undefined names common in notebook cell-split execution)
+    "W",       # pycodestyle warnings
+    "Q",       # flake8-quotes (notebooks use mixed quoting styles)
+    "I",       # isort (import ordering not enforced in notebooks)
+    "PLC0414", # pylint: useless-import-alias
+    "PLC0415", # pylint: import-outside-toplevel (notebooks import inside cells)
+    "PLR0402", # pylint: manual-from-import
+    "PLW0108", # pylint: unnecessary-lambda
+    "RUF100",  # ruff: unused-noqa directive
+    "S101",    # flake8-bandit: assert (notebooks use assert for inline checks)
+    "S602",    # flake8-bandit: subprocess-popen-with-shell-equals-true
+    "S603",    # flake8-bandit: subprocess-without-shell-equals-true
+    "S604",    # flake8-bandit: call-with-shell-equals-true
+]
+"jupyter/**/test/test_notebook.ipynb" = [
+    "PLC2701", # pylint: private-name-import (%%writefile creates _-prefixed modules)
+    "PLW1510", # pylint: subprocess-run-without-check (subprocess usage in tests only)
+]
 # Tests, CI scripts, and build helpers legitimately use assert and subprocess with shell=True
 # S602: subprocess-popen-with-shell-equals-true
 # S604: call-with-shell-equals-true
@@ -239,6 +259,7 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
 
 # https://docs.astral.sh/ruff/formatter
 [tool.ruff.format]
+exclude = ["*.ipynb"]
 line-ending = "lf"
 quote-style = "double"
 indent-style = "space"
