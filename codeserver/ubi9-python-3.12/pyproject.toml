@@ -25,9 +25,6 @@ dependencies = [
     "ipykernel",
     "debugpy",
 
-    # Datascience packages
-    "feast",
-
     # RHAIENG-1475: skl2onnx excluded on s390x for codeserver
     "skl2onnx; platform_machine != 's390x'",
     "odh-notebooks-meta-workbench-datascience-deps",
