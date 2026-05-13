@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import functools
 import logging
 import os
 import pathlib
@@ -127,7 +126,6 @@ class TestWorkbenchImage:
 class WorkbenchContainer(testcontainers.core.container.DockerContainer):
     """Testcontainer for JupyterLab and code-server only (see ``skip_if_not_workbench_image``)."""
 
-    @functools.wraps(testcontainers.core.container.DockerContainer.__init__)
     def __init__(
         self,
         port: int = 8888,
@@ -181,6 +179,7 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
     def start(self, wait_for_readiness: bool = True) -> WorkbenchContainer:
         super().start()
         container_id = self.get_wrapped_container().id
+        assert container_id is not None
         docker_client = testcontainers.core.container.DockerClient().client
         logging.debug(docker_client.api.inspect_container(container_id)["HostConfig"])
         if wait_for_readiness:

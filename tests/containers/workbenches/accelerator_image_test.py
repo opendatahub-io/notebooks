@@ -23,11 +23,19 @@ class TestAccelerator:
         print(client)
 
         image_metadata = conftest.get_image_metadata(cuda_image)
-        library = None
-        if "-pytorch-" in image_metadata.labels.get("name"):
+        labels = image_metadata.labels or {}
+        image_name = labels.get("name")
+        if not image_name:
+            pytest.fail(f"Image metadata missing required 'name' label for {cuda_image}")
+
+        if "-pytorch-" in image_name and "-tensorflow-" in image_name:
+            raise ValueError(f"Ambiguous library in image name: {image_name}")
+        if "-pytorch-" in image_name:
             library = "torch"
-        if "-tensorflow-" in image_metadata.labels.get("name"):
+        elif "-tensorflow-" in image_name:
             library = "tensorflow"
+        else:
+            raise ValueError(f"Unknown library in image name: {image_name}")
 
         # language=python
         torch_check = (
@@ -40,7 +48,7 @@ class TestAccelerator:
             image.deploy(
                 container_name="notebook-tests-pod",
                 accelerator="nvidia.com/gpu",
-                is_runtime_image="-runtime-" in image_metadata.labels.get("name"),
+                is_runtime_image="-runtime-" in image_name,
                 timeout=TestFrameConstants.TIMEOUT_20MIN,
             )
             if library == "torch":
@@ -60,11 +68,19 @@ class TestAccelerator:
         print(client)
 
         image_metadata = conftest.get_image_metadata(rocm_image)
-        library = None
-        if "-pytorch-" in image_metadata.labels.get("name"):
+        labels = image_metadata.labels or {}
+        image_name = labels.get("name")
+        if not image_name:
+            pytest.fail(f"Image metadata missing required 'name' label for {rocm_image}")
+
+        if "-pytorch-" in image_name and "-tensorflow-" in image_name:
+            raise ValueError(f"Ambiguous library in image name: {image_name}")
+        if "-pytorch-" in image_name:
             library = "torch"
-        if "-tensorflow-" in image_metadata.labels.get("name"):
+        elif "-tensorflow-" in image_name:
             library = "tensorflow"
+        else:
+            raise ValueError(f"Unknown library in image name: {image_name}")
 
         # NOTE: the basic check is exactly the same as for cuda; in torch, even though it says "cuda", it is actually ROCm
 
@@ -79,7 +95,7 @@ class TestAccelerator:
             image.deploy(
                 container_name="notebook-tests-pod",
                 accelerator="amd.com/gpu",
-                is_runtime_image="-runtime-" in image_metadata.labels.get("name"),
+                is_runtime_image="-runtime-" in image_name,
                 timeout=TestFrameConstants.TIMEOUT_20MIN,
             )
             if library == "torch":
