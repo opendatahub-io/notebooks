@@ -257,9 +257,15 @@ def datascience_image(image: str) -> Image:
 
 @pytest.fixture(scope="session")
 def codeserver_image(image: str) -> Image:
+    """Skip unless the image is a code-server workbench.
+
+    ODH labels use "code-server" (e.g. "odh-notebook-code-server-ubi9-python-3.12"),
+    RHOAI/RHDS labels use "codeserver" (e.g. "rhoai/odh-workbench-codeserver-datascience-cpu-py312-rhel9").
+    """
     image_metadata = skip_if_not_workbench_image(image)
-    if "-code-server-" not in image_metadata.labels["name"]:
-        pytest.skip(f"Image {image} does not have '-code-server-' in {image_metadata.labels['name']=}'")
+    name = image_metadata.labels["name"]
+    if "-code-server-" not in name and "-codeserver-" not in name:
+        pytest.skip(f"Image {image} does not have '-code-server-' or '-codeserver-' in {name!r}")
 
     return image_metadata
 
