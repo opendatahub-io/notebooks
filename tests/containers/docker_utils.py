@@ -160,7 +160,7 @@ def from_container_cp(container: Container, src: str, dst: str) -> None:
     fh.seek(0)
     tar = tarfile.open(fileobj=fh, mode="r")
     try:
-        tar.extractall(path=dst, filter=tarfile.data_filter)
+        tar.extractall(path=dst, filter=tarfile.data_filter)  # noqa: S202 - data_filter rejects unsafe paths/symlinks (Python 3.12+ mitigation)
     finally:
         tar.close()
         fh.close()

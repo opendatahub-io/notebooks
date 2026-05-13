@@ -239,7 +239,7 @@ class ImageDeployment:
                 "Connecting to pod succeeds",
                 1,
                 60,
-                lambda: requests.get(f"http://localhost:{self.port}").status_code == 200,
+                lambda: requests.get(f"http://localhost:{self.port}", timeout=10).status_code == 200,
             )
             LOGGER.debug("Done setting up portforward")
 
