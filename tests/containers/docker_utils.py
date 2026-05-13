@@ -269,12 +269,12 @@ def container_exec_with_stdin(
         stdout=True,
         stderr=True,
         tty=True,
-    )
+    )["Id"]
 
     # When using a podman client, exec_start(socket=True) returns a file-like
     # object (a wrapper around SocketIO), not a raw socket. We must use
     # file-like methods (write, read) instead of raw socket methods.
-    stream = container.client.api.exec_start(exec_id, socket=True, tty=True)  # pyright: ignore[reportCallIssue, reportArgumentType]
+    stream = container.client.api.exec_start(exec_id, socket=True, tty=True)
 
     # The stream object can be a raw socket or a file-like wrapper which might
     # be incorrectly marked as read-only. We need to find the underlying raw
@@ -338,7 +338,7 @@ def container_exec_with_stdin(
         stream.close()
 
     # Get the exit code of the process.
-    exit_code = container.client.api.exec_inspect(exec_id)["ExitCode"]  # pyright: ignore[reportArgumentType]
+    exit_code = container.client.api.exec_inspect(exec_id)["ExitCode"]
 
     return exit_code, output
 
