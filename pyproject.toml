@@ -225,17 +225,17 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
 # Inner functions are serialized and executed inside containers, so imports must be local.
 "tests/containers/workbenches/gpu_library_loading_test.py" = ["PLC0415"]
 # Ignore many stylistic and formatting rules for notebooks, but keep Pylint rules like PLW0128
-"jupyter/**/*.ipynb" = ["E", "F", "W", "Q", "I", "PLR0402", "PLC0414", "RUF100", "PLW0108", "S101", "S603"]
-# Tests use assert, subprocess, and shell=True legitimately
-"tests/**/*.py" = ["S101", "S603"]
-# CI scripts have embedded test classes (assert) and legitimately use subprocess with controlled arguments
-"ci/**/*.py" = ["S101", "S603"]
-# Scripts use subprocess with controlled arguments
-"scripts/**/*.py" = ["S603"]
+"jupyter/**/*.ipynb" = ["E", "F", "W", "Q", "I", "PLR0402", "PLC0414", "RUF100", "PLW0108", "S101", "S602", "S603", "S604"]
+# Tests, CI scripts, and build helpers legitimately use assert and subprocess with shell=True
+# S602: subprocess-popen-with-shell-equals-true
+# S604: call-with-shell-equals-true
+"tests/**/*.py" = ["S101", "S602", "S603", "S604"]
+"ci/**/*.py" = ["S101", "S602", "S603", "S604"]
+"scripts/**/*.py" = ["S602", "S603", "S604"]
 # Test assertion helpers use assert by design
 "ntb/**/*.py" = ["S101"]
 # Copr client wraps CLI commands via subprocess with controlled arguments
-"base-images/**/*.py" = ["S603"]
+"base-images/**/*.py" = ["S602", "S603", "S604"]
 
 # https://docs.astral.sh/ruff/formatter
 [tool.ruff.format]

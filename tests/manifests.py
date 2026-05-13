@@ -259,7 +259,7 @@ class TestManifests:
         env = env or {}
         script_args_str = " ".join(shlex.quote(arg) for arg in script_args)
         function_args_str = " ".join(shlex.quote(arg) for arg in function_args)
-        shell_notebook_id = subprocess.run(  # noqa: S602 - shell=True intentional for running shell functions in CI test helper
+        shell_notebook_id = subprocess.run(
             # set temporary positional parameters for the `source`ing
             f"""set -- {script_args_str} && source {shell_script_path} && set -- && {shell_function_name} {function_args_str}""",
             shell=True,
