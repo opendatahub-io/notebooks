@@ -50,6 +50,7 @@ jobs:
           registry = os.environ["IMAGE_REGISTRY"]
           suffix = "_odh_linux_amd64"
           required = [
+              "codeserver-ubi9-python-3.12",
               "jupyter-minimal-ubi9-python-3.12",
               "jupyter-datascience-ubi9-python-3.12",
               "runtime-datascience-ubi9-python-3.12",
@@ -79,7 +80,7 @@ jobs:
 
           sha = common.pop()
           matrix = {"include": [
-              {"image": f"{registry}:{img}-main_{sha}{suffix}"} for img in required
+              {"name": img, "image": f"{registry}:{img}-main_{sha}{suffix}"} for img in required
           ]}
           print(f"Using SHA {sha} ({len(common)+1} candidates)")
           print(json.dumps(matrix, indent=2))
@@ -88,7 +89,7 @@ jobs:
               f.write(f"matrix={json.dumps(matrix)}\n")
 
   container-tests:
-    name: "${{ matrix.image }}"
+    name: "${{ matrix.name }}"
     needs: find-images
     runs-on: ubuntu-24.04
     strategy:

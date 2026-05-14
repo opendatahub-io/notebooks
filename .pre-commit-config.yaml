@@ -16,7 +16,7 @@ repos:
       #   args: ['--allow-multiple-documents']
       - id: check-symlinks
       - id: check-merge-conflict
-      # - id: check-executables-have-shebangs
+      - id: check-executables-have-shebangs
   # https://docs.astral.sh/uv/guides/integration/pre-commit/
   # Using a local hook instead of uv-pre-commit so it goes through ./uv,
   # which handles version mismatches without requiring the exact system uv.
@@ -33,12 +33,12 @@ repos:
     rev: v0.15.4
     hooks:
       - id: ruff-check
-        types_or: [python, pyi]
+        types_or: [python, pyi, jupyter]
         args: [--fix]
-        files: 'ci/.*|tests/.*'
+        files: '^((ci|tests|ntb|base-images)/.*\.(py|pyi)|jupyter/.*\.ipynb)$'
       - id: ruff-format
         types_or: [python, pyi]
-        files: 'ci/.*|tests/.*'
+        files: '^(ci|tests|ntb|base-images)/.*\.(py|pyi)$'
   # https://pre-commit.com/#new-hooks
   - repo: local
     hooks:

@@ -1,0 +1,27 @@
+---
+# https://golangci-lint.run/docs/configuration/file
+version: "2"
+linters:
+  default: none
+  enable:
+    - gosec
+    - staticcheck
+    - errcheck
+    - govet
+    - ineffassign
+  exclusions:
+    # https://golangci-lint.run/docs/configuration/linters-exclusions/
+    #
+    # Inline suppression: place on its own line ABOVE the statement:
+    #   //nolint:gosec // G304: reason why this is safe
+    # Must include explanation (v2 enforces this). Place above, not at
+    # end of multi-line expressions — linter reports on the opening line.
+    rules:
+      # Test files write temp Dockerfiles with 0644; permissions are irrelevant.
+      - path: '(.+)_test\.go'
+        linters: [gosec]
+        text: "G306"
+      # dockerfile.go reads paths from trusted build system input (Makefile targets).
+      - path: dockerfile\.go
+        linters: [gosec]
+        text: "G304"

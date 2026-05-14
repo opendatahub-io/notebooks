@@ -77,8 +77,8 @@ click-option-group==0.5.7 ; implementation_name == 'cpython' and sys_platform ==
     --hash=sha256:d6a3f4aacbf550153b112ce5dae7d99ea3fc83cc4fda268e9c5f174c26bb1550
 cloudpickle==3.1.2 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:36372b6dcb95d0d7edb7ef882c77d054a713a4aea810e179756a076419afddc8
-codeflare-sdk==0.36.0 ; implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
-    --hash=sha256:02619d923a26028c9116736a3dba9deccce26a874df71435d8c36d7efa156a6e
+codeflare-sdk==0.37.0 ; implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
+    --hash=sha256:b84ffe81b7c89080b8ce7022541d831d69fed4c60435bfc89ff54d0b267f3b7a
 colorama==0.4.6 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:3534183dd7052099186a79011120370db0b507088cd7f63efcf5442541f28939
 colorful==0.5.8 ; implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
@@ -90,11 +90,11 @@ contourpy==1.3.3 ; implementation_name == 'cpython' and sys_platform == 'linux' 
     --hash=sha256:f76890a69d4d27c8107cc94aba6160672e2d3790c04a5cd877c6463c6eddf747 \
     --hash=sha256:4f721b5435875e1a87101cb91a56f6f3101b5361093d9e90de6a86fd5bd0df4c \
     --hash=sha256:282d24135ba742e56d396d0c665ee04e1b3abde59fc831963079ca7a877d1352
-cryptography==46.0.6 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:2f0b788e9281d4eb811a726c1a4aefca466a03166c728d5cb5028c91fb22297b \
-    --hash=sha256:768587141b1c86f8f7c129e866e9e8d7f3dcf170e43883fde87312bf2d5712f8 \
-    --hash=sha256:7ce4f2ff0153bb8c93e47b3d452855bb74c551fc95908e92762cc8769e85dd24 \
-    --hash=sha256:773693f6672736442f2b036f51c450e3ace7dbeffd50ea99f11664cba90baf83
+cryptography==46.0.7 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:876da9c3a3479d766c4e47d86d274cf7d1caae90784e1be54dca8bae80847948 \
+    --hash=sha256:6efa0e3724a7cd7f2ea5f3bc197fff02c3db7be15e3f219dc28376364a8c59a9 \
+    --hash=sha256:a34baa60ae4f96b6710a4bcfd89bb2ebfe43a4219e47d4e42fc249c99df88435 \
+    --hash=sha256:3b900c1b09ae2a71c7a1ab5e8f41a030078e82bf4d81e5ade4cfe8ca6784acf2
 cycler==0.12.1 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:84979e5992653f28df02c64dbc030dba0e8de063d95af2246757aba3c7999ffa
 dask==2026.3.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -189,7 +189,7 @@ greenlet==3.5.0 ; (implementation_name == 'cpython' and platform_machine == 'AMD
     --hash=sha256:c37ec7dfe0ff90c98256d60bbc1b01e2e0cdf856c5591407da006d7c21a219bf \
     --hash=sha256:8c9c6b0499ec54cc514487f9d9371a88ee8bb7c9ad1e25cf573161c606bc3df6 \
     --hash=sha256:7cf20a1e1ef8a2d5f3f2b82e436460217055766580e50ed171a707804cf224b5
-grpcio==1.80.0 ; python_full_version >= '3.10' and implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
+grpcio==1.80.0 ; implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
     --hash=sha256:52c678447eb080faf6e8c7cba69badae94edf8314942d53082560c65d2423192 \
     --hash=sha256:9344525580dd86c53ddf1d103a3efa7f7ed137e6dfb4b995e639c8eeb60fc0de
 gunicorn==25.3.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -587,9 +587,9 @@ pyzmq==27.1.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:f031a9dda39235244e61b44d2d28be66e22bd1f37934c87fa69a9cd49c09f85d \
     --hash=sha256:b0d9fed301c7703cef350211d4bc7bbe349f9b7d73827d772067f5ac3fc98547 \
     --hash=sha256:79912a523e83ca03fea9724555c734db8c97dc14c27e42355fe88d637fc325da
-ray==2.53.0 ; implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
-    --hash=sha256:65e2ce58d3dc6baa3cf45824d889c1968ebde565ee54dfd80a98af8f31af8e4a \
-    --hash=sha256:14f46363e9b4cf0c1c8b4d8623ec337c5bd408377831b5e5b50067930137bbca
+ray==2.54.1 ; implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
+    --hash=sha256:cd452b61ae2e0daf9271f5a554614397429cc2731681bae10fe72316dadc2749 \
+    --hash=sha256:4c6f7e23dda62a32f94083141c3f97e9c4246e3ae4ae2bc488bcd8fd0311f54a
 referencing==0.37.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:2848a91042246ed5cb2da615736b66252fb95d7b5385e9d1f889ea2b8ba01e3d
 requests==2.33.1 ; implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -702,8 +702,8 @@ ujson==5.12.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:3ab39a65b97e1054c499f26fda984851ea6f9e6d4900512a67a8fd671286c0b9
 uri-template==1.3.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:0e40f1b3adfb5facdff4d85320ba95bcae7ecd6ffb8adc7224adbb5514a7cb69
-urllib3==2.6.3 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:e0260bcb8dc9a00766b1263632d4cea3d51ce498787c24062ef187f6ce351fdc
+urllib3==2.7.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:b23ad6b7799dd5a9f50e2f8d459c92d1180c262dea49db0c17e714d52f0d7af6
 uv==0.11.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:f902f3d954de9e0e39c7eeb058c2da250c7d809b173130ff087bfe99a137edb2 \
     --hash=sha256:fc7cd01207623ec6432035db7442332c17ec96f0af34f95316f76d1896218e7d \

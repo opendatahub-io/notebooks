@@ -11,7 +11,7 @@ import unittest
 from typing import Literal
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent.parent.resolve()
-MAKE = shutil.which("gmake") or shutil.which("make")
+MAKE = shutil.which("gmake") or shutil.which("make") or "make"
 
 
 def get_github_token() -> str:
@@ -137,9 +137,12 @@ def filter_out_unchanged(targets: list[str], changed_files: list[str]) -> list[s
 
 
 def get_go_arch() -> Literal["amd64", "arm64", "ppc64le", "s390x"]:
-    arch = os.environ.get("GOARCH")
-    if arch is not None:
-        return arch
+    if goarch := os.environ.get("GOARCH"):
+        match goarch.lower():
+            case "amd64" | "arm64" | "ppc64le" | "s390x" as arch:
+                return arch
+            case _:
+                raise ValueError(f"Unsupported GOARCH value: {goarch!r}")
     match platform.machine().lower():
         case "x86_64" | "amd64":
             arch = "amd64"
@@ -154,7 +157,7 @@ def get_go_arch() -> Literal["amd64", "arm64", "ppc64le", "s390x"]:
     return arch
 
 
-class SelfTests(unittest.TestCase):
+class TestSelf(unittest.TestCase):
     def test_list_changed_files(self):
         """This is PR #556 in opendatahub-io/notebooks"""
         changed_files = list_changed_files(from_ref="4d4841f", to_ref="2c36c11")

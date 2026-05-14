@@ -63,9 +63,9 @@ class PrettyConsoleRenderer(ConsoleRenderer):
         super().__init__(**kwargs)
         original = self._default_column_formatter
         self._default_column_formatter = KeyValueColumnFormatter(
-            key_style=original.key_style,
-            value_style=original.value_style,
-            reset_style=original.reset_style,
+            key_style=original.key_style,  # pyright: ignore[reportAttributeAccessIssue]
+            value_style=original.value_style,  # pyright: ignore[reportAttributeAccessIssue]
+            reset_style=original.reset_style,  # pyright: ignore[reportAttributeAccessIssue]
             value_repr=_pretty_value_repr,
             prefix="\n  ",
         )
@@ -131,7 +131,7 @@ def configure_logging(level: str = "INFO", json_output: bool | None = None) -> N
     if json_output is None:
         json_output = bool(os.environ.get("CI"))
 
-    shared_processors: list[structlog.types.Processor] = [
+    shared_processors = [
         structlog.contextvars.merge_contextvars,
         t_string_processor,
         structlog.stdlib.add_log_level,
