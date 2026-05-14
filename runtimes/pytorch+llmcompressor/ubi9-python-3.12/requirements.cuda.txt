@@ -227,8 +227,9 @@ kube-authkit==0.4.0 ; implementation_name == 'cpython' and platform_machine != '
     --hash=sha256:8e9af0abd2519aa84e88526927d15792e7e43f219e4e87031c0ca94ce787aec4
 kubernetes==35.0.0 ; implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
     --hash=sha256:4c3fd86902a88a7ac973f523555d342371c846a6b103bb94bf453990cd50645e
-librt==0.11.0 ; implementation_name == 'cpython' and platform_python_implementation != 'PyPy' and sys_platform == 'linux' \
-    --hash=sha256:38f7c3984243a04b7d2092d945200520613d3e52ee681100fbdaf86d2a565d67
+librt==0.10.0 ; implementation_name == 'cpython' and platform_python_implementation != 'PyPy' and sys_platform == 'linux' \
+    --hash=sha256:97a9246ef7f07d37d21db9abd069993fa48776cd8e5dd7a499eeea3cfd50fb6f \
+    --hash=sha256:7a6bd14482c831a2b3feb5bac46b8154d82df589ad7d8ff195e772de572d7e61
 llmcompressor==0.10.0.2 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:a9c860e3046434b753633fab94f3dc8526322cd76303a49df1fb6fbed2aac2b1
 lm-eval==0.4.11 ; implementation_name == 'cpython' and sys_platform == 'linux' \
