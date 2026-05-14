@@ -118,7 +118,7 @@ Each notebook image (workbench or pipeline runtime) has:
 - A `Dockerfile.konflux.<variant>` twin that currently differs only in LABEL metadata
 - Build-args conf files in `build-args/` (e.g., `cpu.conf`, `konflux.cpu.conf`) containing `BASE_IMAGE`, `INDEX_URL`, `PYLOCK_FLAVOR`
 
-The Makefile selects which Dockerfile and conf file to use based on the `KONFLUX` environment variable. The conf file is parsed by awk into `--build-arg KEY=VALUE` flags (see the `build_image` function in the Makefile). In Tekton pipelines, the same conf file is passed to buildah via `--build-arg-file`. The Makefile's awk parser word-splits values, so conf file values containing spaces (e.g., multi-word LABELs) break in local builds; Tekton's `--build-arg-file` does not have this limitation ([RHOAIENG-61176](https://issues.redhat.com/browse/RHOAIENG-61176)).
+The Makefile selects which Dockerfile and conf file to use based on the `KONFLUX` environment variable. The conf file is parsed by awk into quoted `--build-arg 'KEY=VALUE'` flags (see the `build_image` function in the Makefile). In Tekton pipelines, the same conf file is passed to buildah via `--build-arg-file`.
 
 For hermetic build internals (cachi2.env injection, RPM prefetch paths, module_hotfixes pattern), see [`docs/hermetic-guide.md`](hermetic-guide.md).
 
