@@ -86,7 +86,7 @@ define build_image
 
 	# if the conf file exists, transform it into quoted --build-arg flags
 	# NOTE: lines must match KEY=VALUE; single quotes in values are escaped
-	$(eval BUILD_ARGS := $(shell \
+	$(eval _BUILD_ARGS_OUT := $(shell \
 		if [ -f '$(CONF_FILE)' ]; then \
 			awk '!/^[[:space:]]*#/ && NF { \
 				gsub(/^[[:space:]]+|[[:space:]]+$$/, ""); \
@@ -96,8 +96,10 @@ define build_image
 				} \
 				gsub(/\047/, "\047\\\047\047"); \
 				out = out sprintf("--build-arg \047%s\047 ", $$0); \
-			} END { if (err) exit 1; printf "%s", out }' '$(CONF_FILE)'; \
+			} END { if (err) { printf "PARSE_FAILED"; exit 1 } else { printf "%s", out } }' '$(CONF_FILE)'; \
 		fi))
+	$(if $(findstring PARSE_FAILED,$(_BUILD_ARGS_OUT)),$(error Failed to parse $(CONF_FILE) — see stderr for details))
+	$(eval BUILD_ARGS := $(_BUILD_ARGS_OUT))
 
 # Hermetic local build: when cachi2/output/ exists AND this target uses a
 # prefetch-input tree, mount pre-downloaded deps into the build.
