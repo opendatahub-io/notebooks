@@ -53,7 +53,7 @@ class TestCheckTests(unittest.TestCase):
         assert check_tests("rocm-jupyter-minimal-dummy") is False
 
         # TODO: figure out a way to dynamically seed this target so we don't need to change if/when python version updates
-        assert check_tests("jupyter-minimal-ubi9-python-3.11") is True
+        assert check_tests("jupyter-minimal-ubi9-python-3.12") is True
 
 
 if __name__ == "__main__":
