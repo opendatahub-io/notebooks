@@ -15,6 +15,9 @@ set -euo pipefail
 # Edit the `sources` array below to choose which directories to fetch.
 # Requires podman and network access.
 
+# shellcheck source-path=SCRIPTDIR
+source "$(dirname "$0")/hermeto-common.sh"
+
 # Run hermeto in a container; requires podman and network access.
 hermeto() {
   TTY_FLAG=""
@@ -22,7 +25,7 @@ hermeto() {
   podman run --rm -i $TTY_FLAG \
     -v "$PWD:$PWD:z" \
     -w "$PWD" \
-    ghcr.io/hermetoproject/hermeto:latest \
+    "$HERMETO_IMAGE" \
     "$@"
 }
 
