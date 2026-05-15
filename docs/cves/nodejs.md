@@ -3,8 +3,8 @@
 ## Overview
 
 Node.js vulnerabilities may come from
-* tests and developer utilities in `tests/containers` (false positive, Component Not Present)
-* css minifier in `jupyter/utils/addon` (false positive, Component Not Present)
+* tests and developer utilities in `tests/browser` (false positive, Component Not Present)
+* css minifier in `jupyter/utils/addons` (false positive, Component Not Present)
 * the code-server IDE itself (needs investigation, probably true finding)
 
 ## Determine where the vulnerability came from
@@ -85,3 +85,23 @@ In the directory with `package.json`, run:
 ### True findings
 
 Update the component bringing in the vulnerable package.
+
+### Using pnpm overrides for transitive CVEs
+
+If `pnpm update` alone doesn't pull in a patched version (e.g., because the lockfile is stuck on an old
+resolution), you can force a version floor with a [pnpm override](https://pnpm.io/package_json#pnpmoverrides):
+
+```json5
+"pnpm": {
+  "overrides": {
+    "vulnerable-pkg": ">=1.2.3 <2"
+  }
+}
+```
+
+> **WARNING: overrides REPLACE the version range declared by transitive deps, they do not intersect.**
+> You must examine every transitive consumer's declared range and manually reconstruct the upper bound
+> (e.g., `<2`) in the override. Without the ceiling, the resolver may jump to a new major version that
+> consumers never tested against, causing runtime breakage. Review overrides periodically — the floor
+> goes stale as new CVEs are disclosed, and the override becomes redundant once `pnpm update` naturally
+> resolves past the vulnerable version. Prefer removing the override once it is no longer needed.
