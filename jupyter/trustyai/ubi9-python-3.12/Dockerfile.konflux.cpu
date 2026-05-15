@@ -136,9 +136,12 @@ FROM jupyter-datascience AS jupyter-trustyai
 ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-LABEL name="rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9" \
-      com.redhat.component="odh-workbench-jupyter-trustyai-cpu-py312-rhel9" \
-      io.k8s.display-name="odh-workbench-jupyter-trustyai-cpu-py312-rhel9" \
+ARG PRODUCT
+ARG LABEL_COMPONENT
+
+LABEL name="${PRODUCT}/${LABEL_COMPONENT}" \
+      com.redhat.component="${LABEL_COMPONENT}" \
+      io.k8s.display-name="${LABEL_COMPONENT}" \
       summary="Jupyter trustyai notebook image for ODH notebooks" \
       description="Jupyter trustyai notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
       io.k8s.description="Jupyter trustyai notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \

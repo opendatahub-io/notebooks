@@ -3,7 +3,7 @@
 # Script: dockerfile_diff_checker.sh
 # Purpose: Scan a directory tree for Dockerfile.konflux.*
 #          and compare each with its original Dockerfile,
-#          ignoring comments and multi-line LABEL instructions.
+#          ignoring comments.
 #=========================================================
 
 set -euo pipefail
@@ -16,7 +16,7 @@ main() {
     # Define multiple starting directories
     local start_dirs=("./jupyter" "./codeserver" "./runtimes")
     echo "Scanning ${start_dirs[*]} for directories containing Dockerfile.konflux.*"
-    echo "Comparing Dockerfiles, ignoring comments and LABEL blocks..."
+    echo "Comparing Dockerfiles, ignoring comments..."
 
     # Populate array of directories (while-read is portable; mapfile requires Bash 4+)
     local docker_dirs=()
@@ -56,8 +56,9 @@ find_docker_dirs() {
 #---------------------------------------------------------
 # Function: strip
 # Description:
-#   Remove comments and ignore LABEL blocks from a Dockerfile.
-#   Useful for comparing Dockerfiles while ignoring cosmetic differences.
+#   Remove comments from a Dockerfile.
+#   LABEL blocks are now compared directly (they should be byte-identical
+#   since RHAIENG-5137 unified them via PRODUCT/LABEL_COMPONENT ARGs).
 # Arguments:
 #   Reads from standard input
 # Returns:
@@ -65,26 +66,10 @@ find_docker_dirs() {
 #---------------------------------------------------------
 strip() {
     awk '
-        BEGIN { in_label = 0 }
-
         # Skip full-line comments
         /^[[:space:]]*#/ { next }
 
-        # Skip lines inside multi-line LABEL blocks
-        in_label {
-            # End LABEL block if line does not end with backslash
-            if ($0 !~ /\\$/) in_label = 0
-            next
-        }
-
-        # Detect start of LABEL instruction
-        /^[[:space:]]*LABEL([ \t]|$)/ {
-            # Multi-line LABEL block
-            if ($0 ~ /\\$/) in_label = 1
-            next
-        }
-
-        # Print all other lines (trimmed)
+        # Print all non-comment lines (trimmed)
         {
             # Trim leading and trailing whitespace
             gsub(/^[ \t]+|[ \t]+$/, "", $0)

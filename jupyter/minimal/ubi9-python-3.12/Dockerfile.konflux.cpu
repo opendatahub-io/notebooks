@@ -41,9 +41,12 @@ ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-LABEL name="rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
-    com.redhat.component="odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
-    io.k8s.display-name="odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
+ARG PRODUCT
+ARG LABEL_COMPONENT
+
+LABEL name="${PRODUCT}/${LABEL_COMPONENT}" \
+    com.redhat.component="${LABEL_COMPONENT}" \
+    io.k8s.display-name="${LABEL_COMPONENT}" \
     summary="Minimal Jupyter CPU notebook image for ODH notebooks" \
     description="Minimal Jupyter CPU notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
     io.k8s.description="Minimal Jupyter CPU notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
