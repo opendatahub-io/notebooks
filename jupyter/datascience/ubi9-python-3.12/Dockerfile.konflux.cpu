@@ -110,10 +110,10 @@ FROM jupyter-minimal AS jupyter-datascience
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-ARG PRODUCT
+ARG LABEL_REGISTRY_PREFIX
 ARG LABEL_COMPONENT
 
-LABEL name="${PRODUCT}/${LABEL_COMPONENT}" \
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
       com.redhat.component="${LABEL_COMPONENT}" \
       io.k8s.display-name="${LABEL_COMPONENT}" \
       summary="Jupyter data science notebook image for ODH notebooks" \

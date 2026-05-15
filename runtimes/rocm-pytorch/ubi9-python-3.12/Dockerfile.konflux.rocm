@@ -75,10 +75,10 @@ USER 1001
 
 WORKDIR /opt/app-root/src
 
-ARG PRODUCT
+ARG LABEL_REGISTRY_PREFIX
 ARG LABEL_COMPONENT
 
-LABEL name="${PRODUCT}/${LABEL_COMPONENT}" \
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
       com.redhat.component="${LABEL_COMPONENT}" \
       io.k8s.display-name="${LABEL_COMPONENT}" \
       summary="Runtime ROCm pytorch notebook image for ODH notebooks" \
