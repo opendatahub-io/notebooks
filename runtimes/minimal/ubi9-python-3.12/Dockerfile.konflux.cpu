@@ -10,12 +10,15 @@ FROM ${BASE_IMAGE} AS cpu-base
 
 WORKDIR /opt/app-root/bin
 
+# OS Packages needs to be installed as root (intermediate stage; final stage ends with USER 1001).
 # hadolint ignore=DL3002
 USER 0
 
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
+# Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 

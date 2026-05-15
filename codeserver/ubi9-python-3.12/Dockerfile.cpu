@@ -1,6 +1,6 @@
 ############################################################################################
 # Hermetic Dockerfile for codeserver/ubi9-python-3.12
-# Test #1
+#
 # RHAIENG-2846: All build steps run without network access. Every dependency
 # (RPMs, npm packages, Python wheels, generic tarballs) is prefetched by cachi2
 # and mounted at /cachi2/output/deps/{rpm,pip,generic}/ during the build.
@@ -17,7 +17,6 @@
 # configuration args    #
 #########################
 ARG BASE_IMAGE
-
 
 ############################################################################################
 # rpm-base: Build code-server from source (release-standalone tree, all architectures)

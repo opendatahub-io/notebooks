@@ -15,6 +15,7 @@ WORKDIR /opt/app-root/bin
 # hadolint ignore=DL3002
 USER 0
 
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 

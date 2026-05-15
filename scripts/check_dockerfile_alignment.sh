@@ -3,7 +3,7 @@
 # Script: dockerfile_diff_checker.sh
 # Purpose: Scan a directory tree for Dockerfile.konflux.*
 #          and compare each with its original Dockerfile,
-#          ignoring comments.
+#          requiring byte-identical content.
 #=========================================================
 
 set -euo pipefail
@@ -16,7 +16,7 @@ main() {
     # Define multiple starting directories
     local start_dirs=("./jupyter" "./codeserver" "./runtimes")
     echo "Scanning ${start_dirs[*]} for directories containing Dockerfile.konflux.*"
-    echo "Comparing Dockerfiles, ignoring comments..."
+    echo "Comparing Dockerfiles (byte-identical check)..."
 
     # Populate array of directories (while-read is portable; mapfile requires Bash 4+)
     local docker_dirs=()
@@ -54,35 +54,10 @@ find_docker_dirs() {
 }
 
 #---------------------------------------------------------
-# Function: strip
-# Description:
-#   Remove comments from a Dockerfile.
-#   LABEL blocks are now compared directly (they should be byte-identical
-#   since RHAIENG-5137 unified them via PRODUCT/LABEL_COMPONENT ARGs).
-# Arguments:
-#   Reads from standard input
-# Returns:
-#   Prints stripped Dockerfile to standard output
-#---------------------------------------------------------
-strip() {
-    awk '
-        # Skip full-line comments
-        /^[[:space:]]*#/ { next }
-
-        # Print all non-comment lines (trimmed)
-        {
-            # Trim leading and trailing whitespace
-            gsub(/^[ \t]+|[ \t]+$/, "", $0)
-            if (length($0) > 0) print $0
-        }
-    '
-}
-
-#---------------------------------------------------------
 # Function: find_diff
 # Description:
-#   Compare a Dockerfile with its corresponding konflux version,
-#   ignoring comments and LABEL blocks. Returns 1 if differences exist.
+#   Compare a Dockerfile with its corresponding konflux version.
+#   Files must be byte-identical. Returns 1 if differences exist.
 # Arguments:
 #   $1 - Directory containing the Dockerfiles
 #   $2 - Original Dockerfile name (basename)
@@ -97,9 +72,8 @@ find_diff() {
 
     echo "---- diff $file_orig $file_konflux ----"
 
-    # Use process substitution to feed stripped files to diff (plain diff for Mac/BSD and Linux/GNU portability)
     local diff_output
-    diff_output=$(diff <(strip <"$dir/$file_orig") <(strip <"$dir/$file_konflux") || true)
+    diff_output=$(diff "$dir/$file_orig" "$dir/$file_konflux" || true)
 
     if [ -n "$diff_output" ]; then
         echo "❌ Differences found between $file_orig and $file_konflux"
