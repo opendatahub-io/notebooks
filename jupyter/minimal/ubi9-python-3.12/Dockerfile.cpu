@@ -15,7 +15,7 @@ WORKDIR /opt/app-root/bin
 USER 0
 
 # [HERMETIC] Import GPG keys for prefetched RPM verification.
-# CentOS key imported only if prefetched (present in Dockerfile.cpu; may be absent in Konflux).
+# CentOS key imported only if prefetched (may fail gracefully if not present).
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
