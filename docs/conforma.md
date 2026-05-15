@@ -62,7 +62,8 @@ adds these via the `LABELS` parameter on the buildah task:
 
 The `rhoai-init` task in
 [`red-hat-data-services/rhoai-konflux-tasks`](https://github.com/red-hat-data-services/rhoai-konflux-tasks/blob/main/konflux-tekton-tasks/rhoai-init/0.3/rhoai-init.yaml)
-computes the CPE label from the `rhoai-version` pipeline parameter:
+computes the CPE label from the `rhoai-version` pipeline parameter (parsed as
+`x.y`) and the base image RHEL version:
 
 ```bash
 cpe_id="cpe:/a:redhat:openshift_ai:${x}.${y}::el${rhel_version}"
@@ -111,8 +112,8 @@ skopeo inspect --no-tags docker://quay.io/rhoai/<image>:<tag> | jq '.Labels'
 Install the `ec` CLI ([releases](https://github.com/enterprise-contract/ec-cli/releases)):
 
 ```bash
-# macOS / Linux — download snapshot binary
-curl -sLO https://github.com/enterprise-contract/ec-cli/releases/download/snapshot/ec_$(uname -s | tr '[:upper:]' '[:lower:]')_amd64
+# macOS / Linux — download a specific version (check releases page for latest)
+curl -sLO https://github.com/enterprise-contract/ec-cli/releases/download/v0.9.31/ec_$(uname -s | tr '[:upper:]' '[:lower:]')_amd64
 chmod +x ec_* && sudo mv ec_* /usr/local/bin/ec
 ```
 
@@ -121,7 +122,7 @@ Run Conforma locally against a Konflux-built image (requires SLSA attestations):
 ```bash
 ec validate image \
   --image quay.io/rhoai/<image>:<tag> \
-  --policy '{"sources":[{"policy":["oci::quay.io/conforma/release-policy:konflux"],"data":["github.com/release-engineering/rhtap-ec-policy//data"]}]}' \
+  --policy '{"sources":[{"policy":["oci::quay.io/conforma/release-policy:konflux"],"data":["git::https://github.com/release-engineering/rhtap-ec-policy//data"]}]}' \
   --ignore-rekor \
   --certificate-oidc-issuer "https://konflux-ci.dev/oidc" \
   --certificate-identity-regexp ".*" \
@@ -135,7 +136,7 @@ will fail outside Konflux (no access to signing keys), but policy checks
 ## Key policy checks beyond labels
 
 The full set of Conforma release checks is in
-[`enterprise-contract/ec-policies/policy/release/`](https://github.com/enterprise-contract/ec-policies/tree/main/policy/release).
+[`conforma/policy/release/`](https://github.com/conforma/policy/tree/main/policy/release).
 The ones most relevant to notebook images:
 
 | Check | What it enforces |
@@ -162,7 +163,7 @@ Exception config lives in per-product YAML files under
 - `registry-rhoai-stage.yaml` — staging
 - `registry-rhoai-prod.yaml` — production
 
-Each exception entry has:
+Each exception entry follows the format `<check_name>.<action>:<identifier>`:
 
 ```yaml
 - value: "rpm_signature.allowed:9386b48a1a693c5c"
