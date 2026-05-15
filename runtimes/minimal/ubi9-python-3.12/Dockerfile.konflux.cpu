@@ -10,12 +10,15 @@ FROM ${BASE_IMAGE} AS cpu-base
 
 WORKDIR /opt/app-root/bin
 
+# OS Packages needs to be installed as root (intermediate stage; final stage ends with USER 1001).
 # hadolint ignore=DL3002
 USER 0
 
+# [HERMETIC] Import GPG keys for prefetched RPM verification.
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
+# Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
@@ -74,9 +77,12 @@ USER 1001
 
 WORKDIR /opt/app-root/src
 
-LABEL name="rhoai/odh-pipeline-runtime-minimal-cpu-py312-rhel9" \
-      com.redhat.component="odh-pipeline-runtime-minimal-cpu-py312-rhel9" \
-      io.k8s.display-name="odh-pipeline-runtime-minimal-cpu-py312-rhel9" \
+ARG LABEL_REGISTRY_PREFIX
+ARG LABEL_COMPONENT
+
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
+      com.redhat.component="${LABEL_COMPONENT}" \
+      io.k8s.display-name="${LABEL_COMPONENT}" \
       summary="Runtime minimal image for ODH notebooks" \
       description="Runtime minimal image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
       io.k8s.description="Runtime minimal image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \

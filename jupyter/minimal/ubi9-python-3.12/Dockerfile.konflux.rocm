@@ -42,9 +42,12 @@ ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-LABEL name="rhoai/odh-workbench-jupyter-minimal-rocm-py312-rhel9" \
-      com.redhat.component="odh-workbench-jupyter-minimal-rocm-py312-rhel9" \
-      io.k8s.display-name="odh-workbench-jupyter-minimal-rocm-py312-rhel9" \
+ARG LABEL_REGISTRY_PREFIX
+ARG LABEL_COMPONENT
+
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
+      com.redhat.component="${LABEL_COMPONENT}" \
+      io.k8s.display-name="${LABEL_COMPONENT}" \
       summary="Minimal Jupyter ROCm notebook image for ODH notebooks" \
       description="Minimal Jupyter ROCm notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
       io.k8s.description="Minimal Jupyter ROCm notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
