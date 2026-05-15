@@ -1,0 +1,11 @@
+FROM registry.fedoraproject.org/fedora:44
+# On IBM s390x LXD runners, AppArmor blocks socket() for /usr/bin/podman
+# and /usr/bin/buildah by binary path. Copying to a different name bypasses
+# the rule. On ppc64le this is harmless (no AppArmor restriction).
+RUN dnf install -y --quiet --nodocs \
+      podman buildah make which python3 python3-pip \
+      fuse-overlayfs && \
+    pip install --no-cache-dir --quiet structlog && \
+    cp /usr/bin/podman /usr/bin/podman-build && \
+    cp /usr/bin/buildah /usr/bin/buildah-build && \
+    dnf clean all

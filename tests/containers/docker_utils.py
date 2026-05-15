@@ -11,10 +11,14 @@ import time
 from os import PathLike
 from typing import TYPE_CHECKING
 
-import podman
 import testcontainers.core.container
 
 import tests.containers.pydantic_schemas
+
+try:
+    import podman
+except ImportError:
+    podman = None  # type: ignore[assignment]  # optional: excluded on ppc64le/s390x
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
@@ -356,6 +360,9 @@ def get_podman_machine_socket_path(docker_client: docker.client.DockerClient) ->
     * rootful podman: both the host (`ls`) and podman machine (`podman machine ssh ls`) have it at `/var/run/docker.sock`.
     * rootless podman: the location on host is still the same while podman machine has it in `/var/run/user/${PID}/podman/podman.sock`.
     """
+    if podman is None:
+        raise RuntimeError("podman Python package not available on this platform (ppc64le/s390x)")
+
     socket_path = get_socket_path(docker_client)
     podman_client = podman.PodmanClient(base_url="http+unix://" + socket_path)
     info = tests.containers.pydantic_schemas.PodmanInfo.model_validate(podman_client.info())

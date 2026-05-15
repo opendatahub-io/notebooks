@@ -79,6 +79,32 @@ whether HTTP/TLS support is compiled in. Building with `-f -http` removes all
 TLS dependencies (`tls`, `crypton`, `http-client-tls`) from the binary entirely.
 This flag does not exist in 3.7.0.2.
 
+## check-payload bug: Go 1.26 PIE binaries on s390x
+
+The RHEL 9 Go toolchain updated to Go 1.26.1 (`golang-1.26.1-1.el9`), which
+changed the ELF layout for PIE builds: `.gopclntab` is now a **separate section**
+instead of being embedded in `.data.rel.ro` (the Go 1.25 behavior).
+
+check-payload's `ReadTable` (`internal/golang/goscan.go`) unconditionally
+redirects to `.data.rel.ro` when it sees `-buildmode=pie`, so it misses the
+pclntab entirely and fails with "could not find magic number."
+
+This was first observed on s390x because the regular `appstream` repo ships
+skopeo 1.22.2 (built with Go 1.26.1), while the EUS repo still has skopeo
+1.18.1 (built with Go 1.25.8). Binary analysis confirmed:
+
+| Binary | Go version | `.gopclntab` section | Magic in `.data.rel.ro` | Result |
+|--------|-----------|---------------------|------------------------|--------|
+| skopeo 1.22.2 (ODH) | go1.26.1 | Present | Not present | FAIL |
+| skopeo 1.18.1 (RHOAI) | go1.25.8 | Absent | Present | PASS |
+
+This will affect all architectures once more RPMs are rebuilt with Go 1.26.
+
+Tracked under [RHAIENG-4982](https://redhat.atlassian.net/browse/RHAIENG-4982).
+Filed upstream as [check-payload #329](https://github.com/openshift/check-payload/issues/329).
+Workaround in CI: PR #3562 added `/usr/bin/skopeo` to `filter_files` in
+`scripts/check-payload/config.toml`.
+
 ## Exception mechanisms
 
 ### Konflux release pipeline
@@ -112,6 +138,7 @@ exception:
 |------|--------|--------|
 | Build pandoc from source with `-f -http` | In progress ([AIPCC-7795](https://redhat.atlassian.net/browse/AIPCC-7795)) | 3.5 EA1+ |
 | Add pandoc/py-spy/rg to check-payload global exceptions | PR open ([check-payload #327](https://github.com/openshift/check-payload/pull/327)) | Pending review |
+| Fix check-payload for Go 1.26 PIE `.gopclntab` layout | Bug filed ([check-payload #329](https://github.com/openshift/check-payload/issues/329)) | Pending upstream |
 | Granular FBC FIPS exceptions in Konflux | RFE filed ([EC-1796](https://redhat.atlassian.net/browse/EC-1796)) | TBD |
 
 ## References
@@ -125,3 +152,5 @@ exception:
 - [Slack: forum-ocp-fips discussion](https://redhat-internal.slack.com/archives/C05U13J3LLS/p1777326908529319) — ProdSec guidance on exceptions
 - [Slack: pandoc removal discussion](https://redhat-internal.slack.com/archives/C0961HQ858Q/p1776946326109889) — Why removing pandoc is not preferred
 - [Slack: Len DiMaggio FIPS status summary](https://redhat-internal.slack.com/archives/C05NXTEHLGY/p1776873935325119?thread_ts=1776859899.201459) — Konflux FIPS scan limitations
+- [RHAIENG-4982](https://redhat.atlassian.net/browse/RHAIENG-4982) — s390x check-payload fails on skopeo (Go 1.26 PIE layout)
+- [check-payload #329](https://github.com/openshift/check-payload/issues/329) — Upstream bug: `ReadTable` fails on Go 1.26 PIE binaries

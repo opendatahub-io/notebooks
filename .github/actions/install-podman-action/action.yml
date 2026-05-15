@@ -1,6 +1,6 @@
 ---
 name: 'Install Podman'
-description: 'Installs Podman from Homebrew'
+description: 'Installs Podman via Homebrew (amd64/arm64) or uses distro podman (ppc64le/s390x IBM runners)'
 inputs:
   platform:
     description: 'Target platform for Podman installation (linux/amd64, linux/s390x, linux/ppc64le, linux/arm64)'
@@ -8,19 +8,57 @@ inputs:
 runs:
   using: "composite"
   steps:
+
+    # ── IBM native runners (ppc64le, s390x): use distro podman ──
+    # Homebrew doesn't support these architectures; see docs/ibmactionspz.md
+
+    - name: Configure distro podman (IBM native runners)
+      if: contains(fromJSON('["linux/ppc64le", "linux/s390x"]'), inputs.platform) && runner.arch != 'X64'
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
+
+        echo "::group::Podman version (distro)"
+        podman --version
+        echo "::endgroup::"
+
+        mkdir -p $TMPDIR
+
+        sudo cp ci/cached-builds/containers.conf /etc/containers/containers.conf
+        sudo cp ci/cached-builds/storage.conf /etc/containers/storage.conf
+        sudo cp ci/cached-builds/registries.conf /etc/containers/registries.conf
+
+        # The IBM runner image ships a pre-started podman socket at /run/podman/podman.sock
+        # (started by systemd at boot). Reuse it instead of recreating.
+        sudo systemctl restart podman.socket
+
+        # ensure the runner user can traverse /run/podman/ to reach the socket
+        sudo chmod 0755 /run/podman
+        ls -la /run/podman/
+
+        echo "PODMAN_SOCK=/run/podman/podman.sock" >> $GITHUB_ENV
+
+        # verify podman works via the rootful socket
+        podman --url unix:///run/podman/podman.sock ps
+
+    # ── Homebrew path (amd64, arm64): install recent podman via brew ──
+
     # https://github.com/containers/buildah/issues/2521#issuecomment-884779112
     - name: Workaround https://github.com/containers/podman/issues/22152#issuecomment-2027705598
+      if: "!contains(fromJSON('[\"linux/ppc64le\", \"linux/s390x\"]'), inputs.platform) || runner.arch == 'X64'"
       shell: bash
       run: sudo apt-get -qq remove podman crun
 
     # Ensure parent dir exists and is runner-owned so cache restore can set file modes (avoids "Cannot change mode: Operation not permitted").
     - name: Prepare .linuxbrew parent for cache
+      if: "!contains(fromJSON('[\"linux/ppc64le\", \"linux/s390x\"]'), inputs.platform) || runner.arch == 'X64'"
       shell: bash
       run: |
         sudo mkdir -p /home/linuxbrew
         sudo chown -R "$(whoami):$(whoami)" /home/linuxbrew
 
     - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+      if: "!contains(fromJSON('[\"linux/ppc64le\", \"linux/s390x\"]'), inputs.platform) || runner.arch == 'X64'"
       # https://docs.github.com/en/actions/reference/variables-reference#default-environment-variables
       # https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables
       id: cached-linuxbrew
@@ -40,7 +78,7 @@ runs:
         fi
 
     - name: Install podman (linux/amd64, or qemu-user emulation)
-      if: contains(fromJSON('["linux/amd64", "linux/s390x", "linux/ppc64le"]'), inputs.platform) && steps.cached-linuxbrew.outputs.cache-hit != 'true'
+      if: contains(fromJSON('["linux/amd64"]'), inputs.platform) && steps.cached-linuxbrew.outputs.cache-hit != 'true'
       shell: bash
       run: |
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -63,10 +101,12 @@ runs:
         /home/linuxbrew/.linuxbrew/bin/brew install --build-from-source podman
 
     - name: Add linuxbrew to PATH
+      if: "!contains(fromJSON('[\"linux/ppc64le\", \"linux/s390x\"]'), inputs.platform) || runner.arch == 'X64'"
       shell: bash
       run: echo "/home/linuxbrew/.linuxbrew/bin/" >> $GITHUB_PATH
 
-    - name: Configure Podman
+    - name: Configure Podman (Homebrew)
+      if: "!contains(fromJSON('[\"linux/ppc64le\", \"linux/s390x\"]'), inputs.platform) || runner.arch == 'X64'"
       shell: bash
       run: |
         set -Eeuxo pipefail
