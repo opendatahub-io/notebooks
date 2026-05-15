@@ -34,18 +34,13 @@
     "eslint-plugin-playwright": "^2.10.2",
     "jiti": "^2.7.0"
   },
-  "packageManager": "pnpm@10.33.4",
-  "pnpm": {
-    // WARNING: Overrides REPLACE the version range declared by transitive deps (not additive).
-    // The upper bound (<8) must be manually derived from consumers' ranges. See docs/cves/nodejs.md.
-    // https://pnpm.io/package_json#pnpmoverrides
-    // Review periodically: the floor may go stale as new CVEs are disclosed.
-    "overrides": {
-      // CVE-2026-41242: arbitrary code execution via injected protobuf definition type fields.
-      // Also covers CVE-2026-44288 through -44294 (fixed in 7.5.6). Floor should be >=7.5.6
-      // but all consumers already declare ^7.x which resolves to 7.5.8, so this override is
-      // effectively redundant — kept as defense-in-depth in case a consumer pins an older version.
-      "protobufjs": ">=7.5.6 <8"
+  // DO NOT add "pnpm": { "overrides": ... } here — pnpm 11 ignores it silently (pnpm#11536).
+  // All pnpm settings (overrides, allowBuilds, etc.) go in pnpm-workspace.yaml.
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": ">=11.0.0 <12",
+      "onFail": "download"
     }
   }
 }
