@@ -36,8 +36,6 @@
   },
   "packageManager": "pnpm@10.33.4",
   "pnpm": {
-    // Refuse packages published less than 3 days ago (Shai-Hulud supply-chain worm mitigation)
-    "minimumReleaseAge": "3d",
     // WARNING: Overrides REPLACE the version range declared by transitive deps (not additive).
     // The upper bound (<8) must be manually derived from consumers' ranges. See docs/cves/nodejs.md.
     // https://pnpm.io/package_json#pnpmoverrides

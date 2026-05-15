@@ -33,9 +33,5 @@
     'webpack-cli': '^7.0.2',
     'webpack-dev-server': '^5.2.4',
   },
-  pnpm: {
-    // Refuse packages published less than 3 days ago (Shai-Hulud supply-chain worm mitigation)
-    minimumReleaseAge: '3d',
-  },
   // "packageManager": "pnpm@10.8.1" // forces install of a precise version, so annoying
 }
