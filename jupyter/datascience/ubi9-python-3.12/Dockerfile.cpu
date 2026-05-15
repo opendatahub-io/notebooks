@@ -110,15 +110,16 @@ FROM jupyter-minimal AS jupyter-datascience
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.12" \
-    summary="Jupyter data science notebook image for ODH notebooks" \
-    description="Jupyter data science notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    io.k8s.display-name="Jupyter data science notebook image for ODH notebooks" \
-    io.k8s.description="Jupyter data science notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
-    io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/datascience/ubi9-python-3.12" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.12"
+ARG LABEL_REGISTRY_PREFIX
+ARG LABEL_COMPONENT
+
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
+      com.redhat.component="${LABEL_COMPONENT}" \
+      io.k8s.display-name="${LABEL_COMPONENT}" \
+      summary="Jupyter data science notebook image for ODH notebooks" \
+      description="Jupyter data science notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+      io.k8s.description="Jupyter data science notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
 
 WORKDIR /opt/app-root/bin
 
