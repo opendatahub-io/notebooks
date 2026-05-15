@@ -125,6 +125,9 @@ ec validate image \
   --output yaml
 ```
 
+Note: local `ec` results may differ from Konflux Conforma results. You may
+need `--ignore-rekor` if Rekor transparency log verification fails locally.
+
 ## Key policy checks beyond labels
 
 The full set of Conforma release checks is in
@@ -134,7 +137,7 @@ The ones most relevant to notebook images:
 | Check | What it enforces |
 |---|---|
 | `rpm_signature` | All RPMs installed in the image must be signed with [Red Hat release keys](https://access.redhat.com/security/team/key). Third-party RPMs (e.g., ROCM/AMD) need a policy exception. |
-| `sbom` / `sbom_cyclonedx` | SBOM must exist. Disallowed package attributes are checked — notably `hermeto:pip:package:binary` and `cachi2:pip:package:binary` must not be `"true"`. This means **Python packages must be sdist (source distributions), not binary wheels**. |
+| `sbom` / `sbom_spdx` / `sbom_cyclonedx` | SBOM must exist. Disallowed package attributes are checked — notably `hermeto:pip:package:binary` and `cachi2:pip:package:binary` must not be `"true"`. This means **Python packages must be sdist (source distributions), not binary wheels**. Violation code: `sbom_spdx.disallowed_package_attributes`. |
 | `cve` | Known CVEs must be addressed within Red Hat SLA windows (critical: 6 days, high: 29 days). |
 | `slsa_provenance_available` | SLSA provenance attestation must exist. |
 | `hermetic_task` / `trusted_task` | Build must run in a hermetic, trusted Tekton task. |
@@ -149,7 +152,8 @@ When an image cannot satisfy a Conforma check (e.g., unsigned third-party RPMs),
 request an exception via MR to
 [`releng/konflux-release-data`](https://gitlab.cee.redhat.com/releng/konflux-release-data).
 
-Exception config lives in per-product YAML files:
+Exception config lives in per-product YAML files under
+`config/stone-prod-p02.hjvn.p1/product/EnterpriseContractPolicy/`:
 
 - `registry-rhoai-stage.yaml` — staging
 - `registry-rhoai-prod.yaml` — production
@@ -161,6 +165,9 @@ Each exception entry has:
   effectiveUntil: "2025-10-04T00:00:00Z"
   reference: https://issues.redhat.com/browse/RHOAIENG-33270
 ```
+
+Exceptions for `sbom_spdx.disallowed_package_attributes` (binary wheels) may
+require a ProdSec SSE Exception (PSX) approval before the MR can be merged.
 
 Example:
 [MR !9851](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/merge_requests/9851)
