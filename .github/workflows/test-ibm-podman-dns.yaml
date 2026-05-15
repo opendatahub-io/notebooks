@@ -1,0 +1,425 @@
+---
+name: Test podman DNS in privileged container
+
+"on":
+  push:
+    branches: [jd_ibm_runners]
+    paths:
+      - '.github/workflows/test-ibm-podman-dns.yaml'
+      - 'ci/cached-builds/Containerfile.test'
+  workflow_dispatch:
+
+jobs:
+  test-podman-dns:
+    name: "podman-dns · ${{ matrix.platform }}"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04-ppc64le
+            platform: linux/ppc64le
+          - runner: ubuntu-24.04-s390x
+            platform: linux/s390x
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            ci/cached-builds/Containerfile.test
+            ci/cached-builds/Containerfile.test-network
+            ci/cached-builds/dnstest.go
+
+      - name: "Diagnose: resolv.conf BEFORE and AFTER podman install"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              echo "=== resolv.conf BEFORE podman install ==="
+              ls -la /etc/resolv.conf
+              cat /etc/resolv.conf
+              echo "=== /etc/nsswitch.conf ==="
+              cat /etc/nsswitch.conf 2>/dev/null || echo "no nsswitch.conf"
+
+              dnf install -y --quiet podman python3
+
+              echo "=== resolv.conf AFTER podman install ==="
+              ls -la /etc/resolv.conf
+              cat /etc/resolv.conf
+              echo "=== check if systemd-resolved broke resolv.conf ==="
+              ls -la /run/systemd/resolve/ 2>/dev/null || echo "/run/systemd/resolve/ does not exist"
+              echo "=== test DNS with python3 (glibc getaddrinfo) ==="
+              python3 -c "import socket; print(socket.getaddrinfo(\"quay.io\", 443)[:1])" || echo "PYTHON DNS: FAILED"
+              echo "=== test DNS with getent ==="
+              getent hosts quay.io || echo "GETENT DNS: FAILED"
+              echo "=== test podman pull ==="
+              podman pull quay.io/centos/centos:stream9-minimal && echo "DEFAULT PULL: OK" || echo "DEFAULT PULL: FAILED"
+            '
+
+      - name: "Test: GODEBUG=netdns=cgo (force Go cgo resolver)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            -e GODEBUG=netdns=cgo \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== GODEBUG=$GODEBUG ==="
+              podman pull quay.io/centos/centos:stream9-minimal && echo "CGO PULL: OK" || echo "CGO PULL: FAILED"
+            '
+
+      - name: "Test: fix resolv.conf before podman pull"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== resolv.conf after install ==="
+              cat /etc/resolv.conf
+              echo "=== overwrite with public DNS ==="
+              printf "nameserver 8.8.8.8\nnameserver 1.1.1.1\n" > /etc/resolv.conf
+              cat /etc/resolv.conf
+              podman pull quay.io/centos/centos:stream9-minimal && echo "PUBLIC DNS PULL: OK" || echo "PUBLIC DNS PULL: FAILED"
+            '
+
+      - name: "Test: podman --userns=host"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test:/tmp/Containerfile.test:ro \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              podman pull quay.io/centos/centos:stream9-minimal && echo "USERNS=HOST PULL: OK" || echo "USERNS=HOST PULL: FAILED"
+              podman build --userns=host --network=host -t test-userns -f /tmp/Containerfile.test /tmp/ && echo "USERNS BUILD: OK" || echo "USERNS BUILD: FAILED"
+            '
+
+      - name: "Test: podman --isolation=chroot"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test:/tmp/Containerfile.test:ro \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              podman build --isolation=chroot --network=host -t test-chroot -f /tmp/Containerfile.test /tmp/ && echo "CHROOT BUILD: OK" || echo "CHROOT BUILD: FAILED"
+            '
+
+      - name: "Test: docker pull + podman load (skip podman networking)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker pull quay.io/centos/centos:stream9-minimal
+          sudo docker save quay.io/centos/centos:stream9-minimal -o /tmp/base-image.tar
+          sudo docker run --rm --privileged --network=host \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test:/tmp/Containerfile.test:ro \
+            -v /tmp/base-image.tar:/tmp/base-image.tar:ro \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              podman load < /tmp/base-image.tar && echo "PODMAN LOAD: OK" || echo "PODMAN LOAD: FAILED"
+              podman build --pull=never --network=host -t test-loaded -f /tmp/Containerfile.test /tmp/ && echo "BUILD FROM LOADED: OK" || echo "BUILD FROM LOADED: FAILED"
+            '
+
+      - name: "Test: docker pull + podman load + network-exercising build"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          # Pre-pull base image via Docker (works on both arches)
+          sudo docker pull quay.io/centos/centos:stream9-minimal
+          sudo docker save quay.io/centos/centos:stream9-minimal -o /tmp/base-image.tar
+          sudo docker run --rm --privileged --network=host \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test-network:/tmp/Containerfile.test-network:ro \
+            -v /tmp/base-image.tar:/tmp/base-image.tar:ro \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              podman load < /tmp/base-image.tar
+              echo "=== build with RUN steps that need network (dnf, urllib) ==="
+              podman build --pull=never --network=host \
+                -t test-network -f /tmp/Containerfile.test-network /tmp/ \
+                && echo "NETWORK BUILD: OK" || echo "NETWORK BUILD: FAILED"
+            '
+
+      - name: "Test: docker pull + podman load + BUILDAH_ISOLATION=chroot + network build"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker pull quay.io/centos/centos:stream9-minimal
+          sudo docker save quay.io/centos/centos:stream9-minimal -o /tmp/base-image.tar
+          sudo docker run --rm --privileged --network=host \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test-network:/tmp/Containerfile.test-network:ro \
+            -v /tmp/base-image.tar:/tmp/base-image.tar:ro \
+            -e BUILDAH_ISOLATION=chroot \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              podman load < /tmp/base-image.tar
+              echo "=== BUILDAH_ISOLATION=$BUILDAH_ISOLATION ==="
+              echo "=== chroot isolation skips user/net ns for RUN steps ==="
+              podman build --pull=never --network=host \
+                -t test-chroot-net -f /tmp/Containerfile.test-network /tmp/ \
+                && echo "CHROOT+NETWORK BUILD: OK" || echo "CHROOT+NETWORK BUILD: FAILED"
+            '
+
+      - name: "Test: docker pull + podman load + --userns=host --network=host + network build"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker pull quay.io/centos/centos:stream9-minimal
+          sudo docker save quay.io/centos/centos:stream9-minimal -o /tmp/base-image.tar
+          sudo docker run --rm --privileged --network=host \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test-network:/tmp/Containerfile.test-network:ro \
+            -v /tmp/base-image.tar:/tmp/base-image.tar:ro \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              podman load < /tmp/base-image.tar
+              echo "=== --userns=host --network=host with pre-loaded image ==="
+              podman build --pull=never --userns=host --network=host \
+                -t test-userns-net -f /tmp/Containerfile.test-network /tmp/ \
+                && echo "USERNS+NETWORK BUILD: OK" || echo "USERNS+NETWORK BUILD: FAILED"
+            '
+
+      - name: "Test: _CONTAINERS_USERNS_CONFIGURED=done + podman pull"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            -e _CONTAINERS_USERNS_CONFIGURED=done \
+            -e _CONTAINERS_ROOTLESS_UID=0 \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== _CONTAINERS_USERNS_CONFIGURED=$_CONTAINERS_USERNS_CONFIGURED ==="
+              echo "=== _CONTAINERS_ROOTLESS_UID=$_CONTAINERS_ROOTLESS_UID ==="
+              echo "=== These env vars tell containers/storage we already re-execed ==="
+              podman pull quay.io/centos/centos:stream9-minimal \
+                && echo "USERNS_CONFIGURED PULL: OK" || echo "USERNS_CONFIGURED PULL: FAILED"
+            '
+
+      - name: "Test: rename podman binary (bypass AppArmor path match)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== rename /usr/bin/podman to bypass AppArmor profile ==="
+              cp /usr/bin/podman /usr/bin/podman-noaa
+              echo "=== pull with renamed binary ==="
+              /usr/bin/podman-noaa pull quay.io/centos/centos:stream9-minimal \
+                && echo "RENAMED PODMAN PULL: OK" || echo "RENAMED PODMAN PULL: FAILED"
+            '
+
+      - name: "Test: symlink podman from /usr/local/bin (alternate AppArmor path)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== symlink podman to /usr/local/bin ==="
+              ln -s /usr/bin/podman /usr/local/bin/podman-local
+              echo "=== pull with /usr/local/bin binary ==="
+              /usr/local/bin/podman-local pull quay.io/centos/centos:stream9-minimal \
+                && echo "LOCAL PODMAN PULL: OK" || echo "LOCAL PODMAN PULL: FAILED"
+            '
+
+      - name: "Test: renamed buildah pull (bypass AppArmor for buildah too)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet buildah
+              echo "=== rename /usr/bin/buildah ==="
+              cp /usr/bin/buildah /usr/bin/buildah-noaa
+              echo "=== pull with renamed buildah ==="
+              /usr/bin/buildah-noaa pull quay.io/centos/centos:stream9-minimal \
+                && echo "RENAMED BUILDAH PULL: OK" || echo "RENAMED BUILDAH PULL: FAILED"
+            '
+
+      - name: "Diagnose: check AppArmor status and profiles"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          echo "=== AppArmor status on HOST (LXD container) ==="
+          cat /sys/kernel/security/apparmor/profiles 2>/dev/null | grep -i "podman\|buildah\|container" | head -10 || echo "no apparmor profiles found or not readable"
+          cat /proc/self/attr/current 2>/dev/null || echo "no apparmor context"
+          echo "=== AppArmor inside Docker privileged ==="
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              echo "=== /proc/self/attr/current ==="
+              cat /proc/self/attr/current 2>/dev/null || echo "no context"
+              echo "=== /sys/kernel/security/apparmor/profiles (filtered) ==="
+              cat /sys/kernel/security/apparmor/profiles 2>/dev/null | grep -i "podman\|buildah\|container\|docker" | head -20 || echo "not readable"
+              echo "=== after installing podman ==="
+              dnf install -y --quiet podman
+              cat /sys/kernel/security/apparmor/profiles 2>/dev/null | grep -i "podman\|buildah" | head -10 || echo "no podman profiles"
+              echo "=== dmesg AppArmor denials ==="
+              dmesg 2>/dev/null | grep -i "apparmor.*DENIED" | tail -10 || echo "dmesg not available"
+            '
+
+      - name: "Diagnose: uid_map and rootless detection"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman python3
+              echo "=== /proc/self/uid_map ==="
+              cat /proc/self/uid_map
+              echo "=== /proc/self/gid_map ==="
+              cat /proc/self/gid_map
+              echo "=== id ==="
+              id
+              echo "=== capsh --print (effective caps) ==="
+              capsh --print 2>/dev/null | grep -E "Current|Bounding" || grep Cap /proc/self/status
+              echo "=== podman info rootless detection ==="
+              podman info --format "{{.Host.Security.Rootless}}"
+              echo "=== podman info store ==="
+              podman info --format "{{.Store.GraphDriverName}}"
+              echo "=== test: does unshare --user --mount break DNS? ==="
+              unshare --user --mount python3 -c "import socket; print(socket.getaddrinfo(\"quay.io\", 443)[:1])" \
+                && echo "DNS in user+mount ns: OK" || echo "DNS in user+mount ns: BLOCKED"
+            '
+
+      - name: "Diagnose: podman --log-level=trace pull (re-exec detection)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman
+              echo "=== podman version (skips MaybeReexec in buildah) ==="
+              podman version 2>&1 | head -5
+              echo "=== podman info (does it work at all?) ==="
+              podman info --format "{{.Host.Security.Rootless}} / {{.Store.GraphDriverName}}" 2>&1
+              echo "=== podman --log-level=trace pull (watch for re-exec) ==="
+              podman --log-level=trace pull quay.io/centos/centos:stream9-minimal 2>&1 | head -80
+              echo "=== exit code: $? ==="
+            '
+
+      - name: "Diagnose: strace podman pull (syscall-level namespace creation)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman strace
+              echo "=== strace: look for clone/unshare/setns syscalls ==="
+              strace -f -e trace=clone,clone3,unshare,setns,socket,execve -o /tmp/strace.log \
+                podman pull quay.io/centos/centos:stream9-minimal 2>&1 || true
+              echo "=== clone/unshare/setns calls (count) ==="
+              grep -c "clone\|unshare\|setns" /tmp/strace.log || echo "none found"
+              echo "=== raw clone/unshare/setns lines (all flags visible) ==="
+              grep -E "clone3?\(|unshare\(|setns\(" /tmp/strace.log | head -20
+              echo "=== lines with namespace flags ==="
+              grep "CLONE_NEWUSER\|CLONE_NEWNET\|CLONE_NEWNS" /tmp/strace.log | head -10 || echo "no namespace flags found"
+              echo "=== fexecve/execve calls (re-exec detection) ==="
+              grep -E "execve\(|fexecve\(" /tmp/strace.log | head -10 || echo "no execve found"
+              echo "=== socket calls that failed ==="
+              grep "socket.*= -1" /tmp/strace.log | head -10
+              echo "=== first DNS-related socket call ==="
+              grep "socket(AF_INET\|AF_INET6" /tmp/strace.log | head -5
+            '
+
+      - name: "Test: skopeo copy (same containers/image library, different binary)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet skopeo
+              echo "=== skopeo inspect (uses containers/image, no storage) ==="
+              skopeo inspect docker://quay.io/centos/centos:stream9-minimal 2>&1 | head -5 \
+                && echo "SKOPEO INSPECT: OK" || echo "SKOPEO INSPECT: FAILED"
+            '
+
+      - name: "Test: buildah directly (not through podman)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            -v ${{ github.workspace }}/ci/cached-builds/Containerfile.test:/tmp/Containerfile.test:ro \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet buildah
+              echo "=== buildah version ==="
+              buildah version
+              echo "=== buildah pull ==="
+              buildah pull quay.io/centos/centos:stream9-minimal 2>&1 \
+                && echo "BUILDAH PULL: OK" || echo "BUILDAH PULL: FAILED"
+              echo "=== buildah bud --isolation=chroot --network=host ==="
+              buildah bud --isolation=chroot --network=host \
+                -t test-buildah -f /tmp/Containerfile.test /tmp/ 2>&1 \
+                && echo "BUILDAH BUD: OK" || echo "BUILDAH BUD: FAILED"
+            '
+
+      - name: "Test: Go binary DNS (is it Go runtime or podman-specific?)"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            -v ${{ github.workspace }}/ci/cached-builds/dnstest.go:/tmp/dnstest.go:ro \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet golang
+              echo "=== compile and run a simple Go DNS lookup ==="
+              cd /tmp && go build -o dnstest dnstest.go && ./dnstest \
+                && echo "GO DNS: OK" || echo "GO DNS: FAILED"
+            '
+
+      - name: "Diagnose: namespace and socket deep dive"
+        if: ${{ !cancelled() }}
+        run: |
+          set -x
+          sudo docker run --rm --privileged --network=host \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              dnf install -y --quiet podman iproute procps-ng python3 bind-utils
+
+              echo "=== /proc/self/status ==="
+              grep -E "NSpid|NStgid|Uid|Gid|Cap" /proc/self/status
+
+              echo "=== sockets from root namespace ==="
+              python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); print(\"UDP socket: OK\")" || echo "UDP: BLOCKED"
+              python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); print(\"TCP socket: OK\")" || echo "TCP: BLOCKED"
+
+              echo "=== DNS with python3 (getaddrinfo / cgo path) ==="
+              python3 -c "import socket; print(socket.getaddrinfo(\"quay.io\", 443)[:1])" || echo "PYTHON DNS: FAILED"
+
+              echo "=== DNS with nslookup ==="
+              nslookup quay.io || echo "NSLOOKUP: FAILED"
+
+              echo "=== DNS with getent ==="
+              getent hosts quay.io || echo "GETENT: FAILED"
+
+              echo "=== sockets inside unshare --user ==="
+              unshare --user python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); print(\"UDP in user ns: OK\")" || echo "UDP in user ns: BLOCKED"
+              unshare --user python3 -c "import socket; print(socket.getaddrinfo(\"quay.io\", 443)[:1])" || echo "DNS in user ns: BLOCKED"
+
+              echo "=== podman unshare + socket ==="
+              podman unshare python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); print(\"UDP in podman ns: OK\")" 2>&1 || echo "UDP in podman ns: BLOCKED"
+
+              echo "=== resolv.conf final state ==="
+              ls -la /etc/resolv.conf
+              cat /etc/resolv.conf
+            '

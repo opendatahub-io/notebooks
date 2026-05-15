@@ -25,14 +25,26 @@ env:
 
 jobs:
   test-install:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          # IBM self-hosted runners (see docs/ibmactionspz.md)
+          # Uncomment to test on IBM Power and Z
+          # - runner: ubuntu-24.04-ppc64le
+          #   platform: linux/ppc64le
+          # - runner: ubuntu-24.04-s390x
+          #   platform: linux/s390x
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Install Podman
         uses: './.github/actions/install-podman-action'
         with:
-          platform: linux/amd64
+          platform: ${{ matrix.platform }}
 
       - name: Test Podman installation
         run: |

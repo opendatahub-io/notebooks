@@ -1,0 +1,568 @@
+---
+name: Test IBM Runners (ppc64le, s390x)
+
+"on":
+  push:
+    branches: [jd_ibm_runners]
+    paths:
+      - '.github/workflows/test-ibm-runners.yaml'
+      - '.github/actions/install-podman-action/**'
+      - 'ci/cached-builds/**'
+  workflow_dispatch:
+
+jobs:
+  test-podman:
+    name: "podman · ${{ matrix.platform }}"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04-ppc64le
+            platform: linux/ppc64le
+          - runner: ubuntu-24.04-s390x
+            platform: linux/s390x
+    env:
+      TMPDIR: /home/runner/.local/share/containers/tmpdir
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: System info
+        run: |
+          set -x
+          uname -a
+          cat /etc/os-release
+          df -h
+          free -h
+          nproc
+
+      - name: Explore existing podman
+        run: |
+          set -x
+          which podman
+          podman --version
+          podman info || true
+          systemctl status podman.socket || true
+          systemctl status podman.service || true
+          ls -la /run/podman/ || echo "/run/podman/ does not exist"
+          ls -la /var/run/podman/ || echo "/var/run/podman/ does not exist"
+          ss -xlpn | grep podman || echo "no podman socket listening"
+          cat /usr/lib/systemd/system/podman.socket || true
+          cat /usr/lib/systemd/system/podman.service || true
+
+      - name: Probe network capabilities
+        run: |
+          set -x
+          # check what kind of sockets we can create
+          python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); print('UDP socket: OK')" || echo "UDP socket: BLOCKED"
+          python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); print('TCP socket: OK')" || echo "TCP socket: BLOCKED"
+          # test DNS over TCP
+          dig +tcp docker.io @127.0.0.53 || echo "DNS over TCP: FAILED"
+          # test curl (uses TCP)
+          curl -sI https://registry-1.docker.io/v2/ || echo "curl to registry: FAILED"
+        continue-on-error: true
+
+      - name: Test rootless podman build
+        run: |
+          set -Eeuxo pipefail
+          mkdir -p $TMPDIR
+
+          cat > /tmp/Containerfile.test <<'DOCKERFILE'
+          FROM quay.io/centos/centos:stream9-minimal
+          RUN echo "hello from IBM runner on $(uname -m)"
+          DOCKERFILE
+
+          podman build -t test-rootless -f /tmp/Containerfile.test /tmp/
+          podman run --rm test-rootless cat /etc/os-release
+        continue-on-error: true
+
+      - name: Test podman with use-vc (force DNS over TCP)
+        run: |
+          set -x
+          echo "options use-vc" | sudo tee -a /etc/resolv.conf
+          cat /etc/resolv.conf
+          podman build -t test-usevc -f /tmp/Containerfile.test /tmp/
+        continue-on-error: true
+
+      - name: Test podman with GODEBUG=netdns=cgo (use glibc resolver)
+        env:
+          GODEBUG: netdns=cgo
+        run: |
+          set -x
+          # undo use-vc to isolate this test
+          sudo sed -i '/options use-vc/d' /etc/resolv.conf
+          podman build -t test-cgo -f /tmp/Containerfile.test /tmp/
+        continue-on-error: true
+
+      - name: Test podman with both use-vc + GODEBUG=netdns=cgo
+        env:
+          GODEBUG: netdns=cgo
+        run: |
+          set -x
+          echo "options use-vc" | sudo tee -a /etc/resolv.conf
+          podman build -t test-both -f /tmp/Containerfile.test /tmp/
+        continue-on-error: true
+
+      - name: Test podman with cgo + public DNS (stub-killer)
+        env:
+          GODEBUG: netdns=cgo
+        run: |
+          set -x
+          sudo rm -f /etc/resolv.conf
+          printf 'nameserver 8.8.8.8\nnameserver 1.1.1.1\n' | sudo tee /etc/resolv.conf
+          cat /etc/resolv.conf
+          podman build -t test-stubkill -f /tmp/Containerfile.test /tmp/
+          podman run --rm test-stubkill cat /etc/os-release
+        continue-on-error: true
+
+      - name: Test podman remote (daemon mode, like docker)
+        run: |
+          set -x
+          sudo podman system service --time=0 unix:///tmp/podman-api.sock &
+          sleep 3
+          podman --url unix:///tmp/podman-api.sock build -t test-remote -f /tmp/Containerfile.test /tmp/
+          podman --url unix:///tmp/podman-api.sock run --rm test-remote cat /etc/os-release
+        continue-on-error: true
+
+      - name: Test podman build --network=host (skip network namespace)
+        run: |
+          set -x
+          # restore resolv.conf for clean test
+          echo -e "nameserver 127.0.0.53\noptions edns0 trust-ad\nsearch ." | sudo tee /etc/resolv.conf
+          podman build --network=host -t test-hostnet -f /tmp/Containerfile.test /tmp/
+          podman run --network=host --rm test-hostnet cat /etc/os-release
+        continue-on-error: true
+
+      - name: Test sudo podman build --network=host
+        run: |
+          set -x
+          sudo podman build --network=host -t test-hostnet-root -f /tmp/Containerfile.test /tmp/
+          sudo podman run --network=host --rm test-hostnet-root cat /etc/os-release
+        continue-on-error: true
+
+      - name: Test podman build with docker-pulled image (skip podman pull)
+        run: |
+          set -x
+          # pull via docker (which works), then import to podman
+          sudo docker pull quay.io/centos/centos:stream9-minimal
+          sudo docker save quay.io/centos/centos:stream9-minimal | podman load
+          # now build using locally cached image
+          podman build --pull=never -t test-local -f /tmp/Containerfile.test /tmp/
+          podman images
+        continue-on-error: true
+
+      - name: Test podman build --isolation=chroot
+        run: |
+          set -x
+          podman build --isolation=chroot --pull=never -t test-chroot -f /tmp/Containerfile.test /tmp/
+        continue-on-error: true
+
+      - name: Test rootful podman via sudo
+        run: |
+          set -Eeuxo pipefail
+          sudo podman build -t test-rootful -f /tmp/Containerfile.test /tmp/
+          sudo podman run --rm test-rootful cat /etc/os-release
+        continue-on-error: true
+
+      - name: Test with docker instead of podman
+        run: |
+          set -x
+          which docker && docker --version || echo "docker not installed"
+          sudo docker build -t test-docker -f /tmp/Containerfile.test /tmp/ || echo "docker build failed"
+          sudo docker run --rm test-docker cat /etc/os-release || echo "docker run failed"
+        continue-on-error: true
+
+      - name: Explore rootful podman socket
+        run: |
+          set -x
+
+          # try to start socket if not running
+          sudo systemctl start podman.socket || true
+          sleep 1
+
+          ls -la /run/podman/ || echo "/run/podman/ does not exist"
+          sudo ls -la /run/podman/ || echo "even with sudo, /run/podman/ does not exist"
+
+          ss -xlpn | grep podman || echo "no podman socket listening"
+
+          # try accessing via curl
+          sudo curl -s --unix-socket /run/podman/podman.sock http://d/v4.0.0/libpod/_ping || echo "ping via socket failed"
+
+          # try with explicit --url
+          podman --url unix:///run/podman/podman.sock ps 2>&1 || echo "runner user cannot access rootful socket"
+          sudo podman --url unix:///run/podman/podman.sock ps 2>&1 || echo "even sudo cannot access rootful socket"
+
+      - name: Test rootful via CONTAINER_HOST
+        env:
+          CONTAINER_HOST: unix:///run/podman/podman.sock
+        run: |
+          set -x
+          podman ps 2>&1 || echo "CONTAINER_HOST access failed for runner user"
+          sudo podman ps 2>&1 || echo "CONTAINER_HOST access failed even with sudo"
+
+      # ── Docker container step escape experiments ──
+      # Can we run steps inside a Docker container with relaxed security,
+      # potentially re-enabling podman on s390x?
+
+      - name: Test docker run --privileged
+        run: |
+          set -x
+          sudo docker run --rm --privileged quay.io/centos/centos:stream9-minimal echo "privileged: OK" || echo "privileged: BLOCKED"
+          sudo docker run --rm --security-opt apparmor=unconfined quay.io/centos/centos:stream9-minimal echo "apparmor=unconfined: OK" || echo "apparmor=unconfined: BLOCKED"
+          sudo docker run --rm --security-opt seccomp=unconfined quay.io/centos/centos:stream9-minimal echo "seccomp=unconfined: OK" || echo "seccomp=unconfined: BLOCKED"
+        continue-on-error: true
+
+      - name: Test podman inside docker (s390x workaround?)
+        run: |
+          set -x
+          sudo docker run --rm --privileged \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            registry.access.redhat.com/ubi9/ubi \
+            bash -c "
+              dnf install -y podman --quiet &&
+              podman --version &&
+              podman pull quay.io/centos/centos:stream9-minimal &&
+              echo 'podman inside docker: OK'
+            " || echo "podman inside docker: FAILED"
+        continue-on-error: true
+
+      - name: Test GHA step in container (docker run with workspace mount)
+        run: |
+          set -x
+          sudo docker run --rm \
+            --privileged \
+            -v ${{ github.workspace }}:/workspace:z \
+            -w /workspace \
+            registry.access.redhat.com/ubi9/ubi \
+            bash -c "
+              echo 'running inside docker container on IBM runner'
+              uname -m
+              ls /workspace/Makefile && echo 'workspace mounted: OK'
+              # can we create namespaces here?
+              unshare --user --pid --fork echo 'user+pid ns: OK' || echo 'user+pid ns: BLOCKED'
+              unshare --net echo 'net ns: OK' || echo 'net ns: BLOCKED'
+              unshare --mount echo 'mount ns: OK' || echo 'mount ns: BLOCKED'
+            "
+        continue-on-error: true
+
+      - name: Deep probe mount namespace inside privileged docker
+        run: |
+          set -x
+          sudo docker run --rm --privileged \
+            registry.access.redhat.com/ubi9/ubi \
+            bash -c "
+              echo '=== mount ns tests ==='
+              # basic unshare --mount
+              unshare --mount echo 'unshare --mount: OK' || echo 'unshare --mount: BLOCKED'
+              # mount with user ns
+              unshare --user --mount echo 'unshare --user --mount: OK' || echo 'unshare --user --mount: BLOCKED'
+              # mount with all ns
+              unshare --user --pid --net --mount --fork echo 'unshare all: OK' || echo 'unshare all: BLOCKED'
+              # actual mount operation
+              mkdir -p /tmp/testmnt && mount -t tmpfs none /tmp/testmnt && echo 'mount tmpfs: OK' && umount /tmp/testmnt || echo 'mount tmpfs: BLOCKED'
+              # check capabilities
+              cat /proc/self/status | grep -E 'Cap(Eff|Prm|Bnd)'
+            "
+        continue-on-error: true
+
+      - name: Test apparmor=unconfined (without --privileged)
+        run: |
+          set -x
+          sudo docker run --rm --security-opt apparmor=unconfined \
+            registry.access.redhat.com/ubi9/ubi \
+            bash -c "
+              echo '=== apparmor=unconfined (no --privileged) ==='
+              unshare --user --pid --fork echo 'user+pid ns: OK' || echo 'user+pid ns: BLOCKED'
+              unshare --net echo 'net ns: OK' || echo 'net ns: BLOCKED'
+              unshare --mount echo 'mount ns: OK' || echo 'mount ns: BLOCKED'
+              unshare --user --pid --net --mount --fork echo 'all ns: OK' || echo 'all ns: BLOCKED'
+            "
+        continue-on-error: true
+
+      # ── Kubernetes feasibility probing ──
+
+      - name: Probe LXD container capabilities
+        run: |
+          set -x
+          echo "::group::Process capabilities"
+          cat /proc/1/status | grep -E "CapEff|CapPrm|CapBnd|NSpid|Uid|Gid" || true
+          cat /proc/1/uid_map || true
+          cat /proc/1/gid_map || true
+          echo "::endgroup::"
+
+          echo "::group::Namespace support"
+          unshare --user --pid --fork echo "user+pid ns: OK" || echo "user+pid ns: BLOCKED"
+          unshare --net echo "net ns: OK" || echo "net ns: BLOCKED"
+          unshare --mount echo "mount ns: OK" || echo "mount ns: BLOCKED"
+          echo "::endgroup::"
+
+          echo "::group::Kernel modules"
+          lsmod | grep -E "br_netfilter|overlay|ip_vs|ip_tables" || echo "no relevant modules loaded"
+          sudo modprobe br_netfilter && echo "modprobe br_netfilter: OK" || echo "modprobe br_netfilter: BLOCKED"
+          sudo modprobe overlay && echo "modprobe overlay: OK" || echo "modprobe overlay: BLOCKED"
+          echo "::endgroup::"
+
+          echo "::group::iptables"
+          sudo iptables -L -n 2>&1 | head -20 || echo "iptables: BLOCKED"
+          echo "::endgroup::"
+
+          echo "::group::sysctl"
+          cat /proc/sys/net/ipv4/ip_forward
+          sudo sysctl -w net.ipv4.ip_forward=1 || echo "sysctl ip_forward: BLOCKED"
+          echo "::endgroup::"
+        continue-on-error: true
+
+      - name: Probe containerd
+        run: |
+          set -x
+          which containerd && containerd --version || echo "containerd not found"
+          sudo ctr version || echo "ctr not available"
+          sudo ctr namespaces ls || echo "ctr namespaces: FAILED"
+          sudo ctr -n moby images ls 2>&1 | head -10 || echo "no moby namespace"
+          sudo crictl --runtime-endpoint unix:///run/containerd/containerd.sock version 2>&1 || echo "crictl with containerd: FAILED"
+          ls -la /run/containerd/containerd.sock || echo "containerd socket not found"
+        continue-on-error: true
+
+      - name: Try kubeadm install
+        run: |
+          set -Eeuxo pipefail
+
+          KUBERNETES_VERSION=1.34
+
+          curl -fsSL https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/Release.key | \
+            sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+          echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/ /" | \
+            sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+          sudo apt-get update -qq
+          sudo apt-get install -y --allow-downgrades \
+            "kubelet=${KUBERNETES_VERSION}.*" "kubeadm=${KUBERNETES_VERSION}.*" "kubectl=${KUBERNETES_VERSION}.*" \
+            conntrack
+
+          kubeadm version
+          kubelet --version
+        continue-on-error: true
+
+      - name: Configure containerd for unprivileged mode
+        run: |
+          set -x
+          sudo mkdir -p /etc/containerd
+          containerd config default | sudo tee /etc/containerd/config.toml > /dev/null
+
+          # unprivileged LXD adjustments per
+          # https://capn.linuxcontainers.org/explanation/unprivileged-containers.html
+          sudo sed -i 's/disable_apparmor = false/disable_apparmor = true/' /etc/containerd/config.toml
+          sudo sed -i 's/restrict_oom_score_adj = false/restrict_oom_score_adj = true/' /etc/containerd/config.toml
+
+          sudo systemctl restart containerd || sudo systemctl start containerd
+          sleep 2
+          sudo ctr version
+        continue-on-error: true
+
+      - name: Try kubeadm init
+        run: |
+          set -x
+
+          sudo swapoff -a || true
+          sudo modprobe br_netfilter || true
+          sudo sysctl -w net.ipv4.ip_forward=1 || true
+          sudo iptables -P FORWARD ACCEPT || true
+
+          # Write a minimal kubeadm config for containerd
+          cat <<'EOF' | sudo tee /tmp/kubeadm-ibm.yaml
+          apiVersion: kubeadm.k8s.io/v1beta4
+          kind: InitConfiguration
+          nodeRegistration:
+            criSocket: unix:///run/containerd/containerd.sock
+            taints: []
+          ---
+          apiVersion: kubeadm.k8s.io/v1beta4
+          kind: ClusterConfiguration
+          kubernetesVersion: 1.34.0
+          networking:
+            podSubnet: 10.244.0.0/16
+            serviceSubnet: 10.96.0.0/12
+          ---
+          apiVersion: kubelet.config.k8s.io/v1beta1
+          kind: KubeletConfiguration
+          featureGates:
+            KubeletInUserNamespace: true
+          cgroupDriver: systemd
+          imageGCHighThresholdPercent: 100
+          imageGCLowThresholdPercent: 99
+          evictionHard:
+            nodefs.available: "1Mi"
+            imagefs.available: "1Mi"
+          EOF
+
+          sudo kubeadm init --config=/tmp/kubeadm-ibm.yaml --v=5 2>&1 | tail -80
+        continue-on-error: true
+
+      - name: Check kubeadm result
+        run: |
+          set -x
+          if [ -f /etc/kubernetes/admin.conf ]; then
+            mkdir -p $HOME/.kube
+            sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config
+            sudo chown $(id -u):$(id -g) $HOME/.kube/config
+            kubectl get nodes || true
+            kubectl get pods -A || true
+          else
+            echo "kubeadm init did not produce admin.conf — init likely failed"
+          fi
+
+          # Debug info regardless
+          sudo systemctl status kubelet || true
+          sudo journalctl -xeu kubelet --no-pager | tail -30 || true
+          sudo crictl --runtime-endpoint unix:///run/containerd/containerd.sock ps -a 2>&1 | head -20 || true
+        continue-on-error: true
+
+  # ── Docker build + testcontainers (end-to-end proof) ──
+
+  test-docker-build:
+    name: "docker-build · ${{ matrix.platform }}"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04-ppc64le
+            platform: linux/ppc64le
+          - runner: ubuntu-24.04-s390x
+            platform: linux/s390x
+    env:
+      IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
+      CONTAINER_ENGINE: docker
+      BUILD_ARCH: ${{ matrix.platform }}
+      RELEASE_PYTHON_VERSION: "3.12"
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Downcase IMAGE_REGISTRY
+        run: echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> $GITHUB_ENV
+
+      # setup-go with ppc64le arch workaround
+      # https://github.com/actions/setup-go/issues/517
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
+        with:
+          go-version: "stable"
+          architecture: ${{ matrix.platform == 'linux/ppc64le' && 'ppc64le' || '' }}
+          cache-dependency-path: |
+            scripts/buildinputs/go.mod
+            scripts/check-payload/go.mod
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Install from uv.lock
+        run: |
+          # PyYAML has no ppc64le wheel on PyPI; allow source build.
+          # markupsafe is excluded transitively (test-openshift group).
+          # ruamel-yaml-clib is optional (pure Python fallback works).
+          uv sync --group dev --locked \
+            --no-binary-package pyyaml
+
+      - name: Docker info
+        run: |
+          set -x
+          docker version
+          docker info
+          docker buildx version
+
+      - name: "Build hermeto image for native arch"
+        run: |
+          set -Eeuxo pipefail
+          # The upstream hermeto image (ghcr.io/hermetoproject/hermeto) only
+          # has amd64/arm64 builds. Build a Fedora-based image for native arch
+          # using system python3-createrepo_c (pre-built for all arches).
+          # Tag it so our prefetch scripts find it without pulling.
+          docker build \
+            -t ghcr.io/hermetoproject/hermeto:0.46.2 \
+            -f ci/cached-builds/Dockerfile.hermeto .
+
+      - name: "Prefetch hermetic build dependencies"
+        run: |
+          set -Eeuxo pipefail
+          scripts/lockfile-generators/prefetch-all.sh \
+            --component-dir jupyter/minimal/ubi9-python-3.12
+        env:
+          CONTAINER_ENGINE: docker
+
+      - name: Pre-compile bin/buildinputs (Go helper for sandbox.py)
+        run: make bin/buildinputs
+
+      - name: "Build: make jupyter-minimal-ubi9-python-3.12 (podman-in-docker)"
+        id: make-build
+        run: |
+          set -Eeuxo pipefail
+
+          IMAGE_TAG="ibm-test_$(echo $GITHUB_SHA | head -c7)_odh_$(echo ${{ matrix.platform }} | tr '/' '_')"
+          IMAGE_NAME="${IMAGE_REGISTRY}:jupyter-minimal-ubi9-python-3.12-${IMAGE_TAG}"
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+
+          # Docker buildx does not support --volume (podman-only), so hermetic
+          # builds fail with "unknown flag: --volume". Workaround: run make
+          # inside a privileged Fedora 44 container that has podman 5.x (which
+          # supports --volume and Dockerfile HEREDOCs). The workspace is mounted
+          # so pre-compiled bin/buildinputs, uv .venv, and cachi2/output are
+          # all reused from the host. After build, pipe the image to Docker.
+          sudo docker run --rm --privileged --network=host \
+            -v "${{ github.workspace }}:/workspace:z" \
+            -w /workspace \
+            registry.fedoraproject.org/fedora:44 \
+            bash -c '
+              set -Eeuxo pipefail
+              dnf install -y --quiet podman make which python3 python3-pip
+              pip install --quiet structlog
+              export PYTHONPATH=/workspace
+              make jupyter-minimal-ubi9-python-3.12 \
+                CONTAINER_ENGINE=podman \
+                BUILD_ARCH="'"${{ matrix.platform }}"'" \
+                IMAGE_REGISTRY="'"${IMAGE_REGISTRY}"'" \
+                IMAGE_TAG="'"${IMAGE_TAG}"'" \
+                PUSH_IMAGES=no \
+                CONTAINER_BUILD_CACHE_ARGS="--no-cache --network=host"
+              podman save --format docker-archive -o /workspace/image.tar "'"${IMAGE_NAME}"'"
+            '
+          docker load < image.tar
+          rm -f image.tar
+
+      - name: List built images
+        if: ${{ !cancelled() && steps.make-build.outcome == 'success' }}
+        run: docker images --digests | head -20
+
+      - name: Run Testcontainers tests
+        if: ${{ !cancelled() && steps.make-build.outcome == 'success' }}
+        run: |
+          set -Eeuxo pipefail
+          uv run pytest --capture=fd tests/containers \
+            -m 'not openshift and not cuda and not rocm and not manifest_validation' \
+            --image="${IMAGE_NAME}" \
+            -v
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/docker.sock"
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+
+      - name: Show build failure logs
+        if: ${{ failure() }}
+        run: |
+          docker logs $(docker ps -aq --latest) 2>&1 | tail -50 || true
+          df -h
+          docker images
