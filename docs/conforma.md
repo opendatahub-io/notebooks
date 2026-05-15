@@ -122,11 +122,15 @@ Run Conforma locally against a Konflux-built image (requires SLSA attestations):
 ec validate image \
   --image quay.io/rhoai/<image>:<tag> \
   --policy '{"sources":[{"policy":["oci::quay.io/conforma/release-policy:konflux"],"data":["github.com/release-engineering/rhtap-ec-policy//data"]}]}' \
+  --ignore-rekor \
+  --certificate-oidc-issuer "https://konflux-ci.dev/oidc" \
+  --certificate-identity-regexp ".*" \
   --output yaml
 ```
 
-Note: local `ec` results may differ from Konflux Conforma results. You may
-need `--ignore-rekor` if Rekor transparency log verification fails locally.
+Note: local `ec` results differ from in-cluster Conforma. Signature checks
+will fail outside Konflux (no access to signing keys), but policy checks
+(labels, SBOM, CVEs) still run and produce useful output.
 
 ## Key policy checks beyond labels
 
