@@ -158,7 +158,8 @@ define image
 	$(info #*# Image build directory: <$(BUILD_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
 
 	# realpath dereferences symlinks — podman API rejects symlinks with "must be a regular file"
-	$(eval DOCKERFILE_BUILD := $(if $(filter podman,$(CONTAINER_ENGINE)),$(realpath $(DOCKERFILE)),$(DOCKERFILE)))
+	$(eval DOCKERFILE_BUILD := $(realpath $(DOCKERFILE)))
+	$(if $(strip $(DOCKERFILE_BUILD)),,$(error Resolved Dockerfile path is empty for '$(DOCKERFILE)' — file missing or broken symlink))
 	$(call build_image,$(1),$(DOCKERFILE_BUILD),$(CONF_FILE))
 
 	$(if $(PUSH_IMAGES:no=),
