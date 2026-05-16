@@ -8,6 +8,7 @@ import platform
 import re
 import shutil
 import subprocess
+import tempfile
 import unittest
 from typing import Literal
 
@@ -35,7 +36,7 @@ def _symlink_reverse_map() -> dict[str, list[str]]:
         try:
             logical = str(symlink.relative_to(PROJECT_ROOT))
             resolved = str(symlink.resolve().relative_to(PROJECT_ROOT))
-        except ValueError, OSError, RuntimeError:
+        except (ValueError, OSError, RuntimeError):  # fmt: skip  # parens needed for Python <3.14 (GHA runners)
             # RuntimeError: symlink loops (a→b→a) cause infinite resolution
             continue
         # symlink resolving to itself is not useful
@@ -67,7 +68,7 @@ def _resolve_symlinks(paths: list[str]) -> list[str]:
             if path == resolved:
                 expanded.update(symlinks)
             elif path.startswith(resolved + "/"):
-                suffix = path[len(resolved):]
+                suffix = path[len(resolved) :]
                 expanded.update(f"{symlink}{suffix}" for symlink in symlinks)
             elif resolved.startswith(path + "/"):
                 expanded.update(symlinks)
@@ -264,8 +265,6 @@ class TestSelf(unittest.TestCase):
     def test_resolve_symlinks_preserves_suffix_for_directory_symlink(self):
         """When real_dir/sub/file changes and link_dir → real_dir, we should
         get link_dir/sub/file in the expanded list, not just link_dir."""
-        import tempfile
-
         _symlink_reverse_map.cache_clear()
         with tempfile.TemporaryDirectory(dir=PROJECT_ROOT) as tmpdir:
             tmpdir = pathlib.Path(tmpdir)
@@ -280,15 +279,11 @@ class TestSelf(unittest.TestCase):
             rel_link_expected = str((link_dir / "sub" / "file.txt").relative_to(PROJECT_ROOT))
 
             result = _resolve_symlinks([rel_real])
-            assert rel_link_expected in result, (
-                f"Expected {rel_link_expected} in result, got {result}"
-            )
+            assert rel_link_expected in result, f"Expected {rel_link_expected} in result, got {result}"
         _symlink_reverse_map.cache_clear()
 
     def test_symlink_loop_does_not_crash(self):
         """A symlink loop should be skipped, not crash the scan."""
-        import tempfile
-
         _symlink_reverse_map.cache_clear()
         with tempfile.TemporaryDirectory(dir=PROJECT_ROOT) as tmpdir:
             tmpdir = pathlib.Path(tmpdir)
