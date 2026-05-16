@@ -64,8 +64,11 @@ def _resolve_symlinks(paths: list[str]) -> list[str]:
     expanded = set(original)
     for path in paths:
         for resolved, symlinks in reverse.items():
-            if path == resolved or path.startswith(resolved + "/"):
+            if path == resolved:
                 expanded.update(symlinks)
+            elif path.startswith(resolved + "/"):
+                suffix = path[len(resolved):]
+                expanded.update(f"{symlink}{suffix}" for symlink in symlinks)
             elif resolved.startswith(path + "/"):
                 expanded.update(symlinks)
 
@@ -257,6 +260,30 @@ class TestSelf(unittest.TestCase):
         changed = _resolve_symlinks(["jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu"])
         result = should_build_target(changed, "jupyter/minimal/ubi9-python-3.12")
         assert result
+
+    def test_resolve_symlinks_preserves_suffix_for_directory_symlink(self):
+        """When real_dir/sub/file changes and link_dir → real_dir, we should
+        get link_dir/sub/file in the expanded list, not just link_dir."""
+        import tempfile
+
+        _symlink_reverse_map.cache_clear()
+        with tempfile.TemporaryDirectory(dir=PROJECT_ROOT) as tmpdir:
+            tmpdir = pathlib.Path(tmpdir)
+            real_dir = tmpdir / "real_dir"
+            real_dir.mkdir()
+            (real_dir / "sub").mkdir()
+            (real_dir / "sub" / "file.txt").write_text("content")
+            link_dir = tmpdir / "link_dir"
+            link_dir.symlink_to("real_dir")
+
+            rel_real = str((real_dir / "sub" / "file.txt").relative_to(PROJECT_ROOT))
+            rel_link_expected = str((link_dir / "sub" / "file.txt").relative_to(PROJECT_ROOT))
+
+            result = _resolve_symlinks([rel_real])
+            assert rel_link_expected in result, (
+                f"Expected {rel_link_expected} in result, got {result}"
+            )
+        _symlink_reverse_map.cache_clear()
 
     def test_symlink_loop_does_not_crash(self):
         """A symlink loop should be skipped, not crash the scan."""
