@@ -1,9 +1,10 @@
 # Conforma (Enterprise Contract) Container Image Labels
 
 Conforma enforces container image label policies for Red Hat product releases.
-Only RHOAI images (built via Konflux at `red-hat-data-services/notebooks`) are
-checked by Conforma. ODH images at `quay.io/opendatahub/` are not subject to
-Conforma policy.
+Only RHOAI images (`quay.io/rhoai/`, built via Konflux at
+`red-hat-data-services/notebooks`) are checked by Conforma. ODH images
+(`quay.io/opendatahub/`), despite being built by Konflux as well, are not
+subject to Conforma policy.
 
 ## Policy source of truth
 
@@ -129,9 +130,10 @@ ec validate image \
   --output yaml
 ```
 
-Note: local `ec` results differ from in-cluster Conforma. Signature checks
-will fail outside Konflux (no access to signing keys), but policy checks
-(labels, SBOM, CVEs) still run and produce useful output.
+Note: `--ignore-rekor` and `--certificate-identity-regexp ".*"` disable
+signature and identity verification — **use only for local testing**. Policy
+checks (labels, SBOM, CVEs) still run and produce useful output, but signature
+results will differ from in-cluster Conforma.
 
 ## Key policy checks beyond labels
 
