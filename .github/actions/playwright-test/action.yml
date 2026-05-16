@@ -77,6 +77,16 @@ runs:
         INPUT_PLAYWRIGHT_VERSION: ${{ inputs.playwright-version }}
         WORKING_DIRECTORY: ${{ inputs.working-directory }}
 
+    - name: Determine pnpm version
+      id: pnpm-version
+      shell: bash
+      run: |
+        ver=$(scripts/get-pnpm-version.sh "${WORKING_DIRECTORY}/pnpm-lock.yaml")
+        echo "version=${ver}" >> "$GITHUB_OUTPUT"
+        echo "Resolved pnpm version: ${ver}"
+      env:
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+
     - name: Run Playwright tests
       id: playwright
       shell: bash
@@ -94,18 +104,20 @@ runs:
           --ipc=host \
           --net=host \
           --env "CI=true" \
-          --env "NPM_CONFIG_fund=false" \
+          --env "PNPM_CONFIG_fund=false" \
           --env "DEBUG=testcontainers:*" \
           --env "PODMAN_SOCK=/var/run/docker.sock" \
           --env "TEST_TARGET" \
+          --env "GREP_PATTERN" \
+          --env "PNPM_VERSION" \
           --volume "${PODMAN_SOCKET}":/var/run/docker.sock \
           --volume "${PWD}":/mnt \
           --volume /mnt/node_modules \
           "mcr.microsoft.com/playwright:${PLAYWRIGHT_VERSION}" \
-          /bin/bash <<EOF
+          /bin/bash <<'EOF'
             set -Eeuxo pipefail
             cd /mnt
-            npm install -g pnpm@10.33.4 && pnpm install --frozen-lockfile
+            npm install -g "pnpm@${PNPM_VERSION}" && pnpm ci
             pnpm exec playwright test ${GREP_PATTERN:+--grep "$GREP_PATTERN"}
             exit 0
         EOF
@@ -115,6 +127,7 @@ runs:
         TEST_TARGET: ${{ inputs.test-target || '' }}
         PODMAN_SOCKET: ${{ inputs.podman-socket }}
         PLAYWRIGHT_VERSION: ${{ steps.playwright-version.outputs.version }}
+        PNPM_VERSION: ${{ steps.pnpm-version.outputs.version }}
         GREP_PATTERN: ${{ inputs.grep-pattern }}
 
     - name: Upload Playwright report

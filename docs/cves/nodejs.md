@@ -89,14 +89,14 @@ Update the component bringing in the vulnerable package.
 ### Using pnpm overrides for transitive CVEs
 
 If `pnpm update` alone doesn't pull in a patched version (e.g., because the lockfile is stuck on an old
-resolution), you can force a version floor with a [pnpm override](https://pnpm.io/package_json#pnpmoverrides):
+resolution), you can force a version floor with a [pnpm override](https://pnpm.io/settings#overrides).
 
-```json5
-"pnpm": {
-  "overrides": {
-    "vulnerable-pkg": ">=1.2.3 <2"
-  }
-}
+In pnpm 11+, overrides go in `pnpm-workspace.yaml` (not `package.json`):
+
+```yaml
+# pnpm-workspace.yaml
+overrides:
+  vulnerable-pkg: ">=1.2.3 <2"
 ```
 
 > **WARNING: overrides REPLACE the version range declared by transitive deps, they do not intersect.**
