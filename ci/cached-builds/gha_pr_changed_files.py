@@ -35,7 +35,8 @@ def _symlink_reverse_map() -> dict[str, list[str]]:
         try:
             logical = str(symlink.relative_to(PROJECT_ROOT))
             resolved = str(symlink.resolve().relative_to(PROJECT_ROOT))
-        except ValueError, OSError:
+        except ValueError, OSError, RuntimeError:
+            # RuntimeError: symlink loops (a→b→a) cause infinite resolution
             continue
         # symlink resolving to itself is not useful
         if logical != resolved:
@@ -256,3 +257,19 @@ class TestSelf(unittest.TestCase):
         changed = _resolve_symlinks(["jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu"])
         result = should_build_target(changed, "jupyter/minimal/ubi9-python-3.12")
         assert result
+
+    def test_symlink_loop_does_not_crash(self):
+        """A symlink loop should be skipped, not crash the scan."""
+        import tempfile
+
+        _symlink_reverse_map.cache_clear()
+        with tempfile.TemporaryDirectory(dir=PROJECT_ROOT) as tmpdir:
+            tmpdir = pathlib.Path(tmpdir)
+            link_a = tmpdir / "a"
+            link_b = tmpdir / "b"
+            link_a.symlink_to("b")
+            link_b.symlink_to("a")
+
+            result = _resolve_symlinks(["README.md"])
+            assert "README.md" in result
+        _symlink_reverse_map.cache_clear()
