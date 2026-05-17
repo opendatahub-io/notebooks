@@ -246,7 +246,17 @@ fi
 
 # Pip wheels (from requirements.<flavor>.txt)
 if [[ -f "$REQUIREMENTS_FILE" ]]; then
-  ARCH=$(uname -m)
+  # Use BUILD_ARCH (e.g. linux/s390x) when set (GHA cross-builds via QEMU),
+  # otherwise fall back to the host architecture.
+  if [[ -n "${BUILD_ARCH:-}" ]]; then
+    case "${BUILD_ARCH##*/}" in
+      amd64) ARCH="x86_64" ;;
+      arm64) ARCH="aarch64" ;;
+      *) ARCH="${BUILD_ARCH##*/}" ;;
+    esac
+  else
+    ARCH=$(uname -m)
+  fi
   HERMETO_INPUT=$(echo "$HERMETO_INPUT" | jq \
     --arg path "$COMPONENT_DIR" \
     --arg req "requirements.${FLAVOR}.txt" \
@@ -259,9 +269,11 @@ fi
 # NPM and GoMod (auto-detect from Tekton prefetch-input)
 tekton_file=""
 if [[ -d ".tekton" ]] && command -v yq &>/dev/null; then
-  tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "rhds" 2>/dev/null | head -1) || true
+  # Prefer the active variant's Tekton file; fall back to the other variant.
+  tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "$VARIANT" 2>/dev/null | head -1) || true
   if [[ -z "$tekton_file" ]]; then
-    tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "odh" 2>/dev/null | head -1) || true
+    fallback_variant=$([[ "$VARIANT" == "rhds" ]] && echo "odh" || echo "rhds")
+    tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "$fallback_variant" 2>/dev/null | head -1) || true
   fi
 fi
 
@@ -350,7 +362,8 @@ mkdir -p "$_LVM_TMP" 2>/dev/null || true
 HERMETO_STAGING=$(mktemp -d --tmpdir="$_LVM_TMP" 2>/dev/null || mktemp -d)
 # Hermeto's RPM handler creates root-owned directories even with --userns=keep-id.
 # podman unshare maps root back to the current user for cleanup.
-trap 'podman unshare rm -rf "$HERMETO_STAGING" 2>/dev/null || rm -rf "$HERMETO_STAGING"' EXIT
+CDN_CERT_DIR=""
+trap 'podman unshare rm -rf "$HERMETO_STAGING" 2>/dev/null || rm -rf "$HERMETO_STAGING"; rm -rf "${CDN_CERT_DIR:-}"' EXIT
 
 # Build podman volume mounts.
 # Note: we do NOT use --userns=keep-id here because hermeto's RPM handler
@@ -363,15 +376,21 @@ PODMAN_MOUNTS=(
 )
 
 # Mount RHSM entitlement certs if present (created by GHA "Add subscriptions"
-# step in build-notebooks-TEMPLATE.yaml). hermeto-fetch-rpm.sh used to handle
-# this; now we mount directly. Konflux has its own registerRHSM() in Go:
+# step in build-notebooks-TEMPLATE.yaml). Hermeto needs both the entitlement
+# PEMs and the RHSM CA cert (redhat-uep.pem) to authenticate to cdn.redhat.com.
+# See hermeto-fetch-rpm.sh for the original cert handling logic.
+# Konflux has its own registerRHSM() in Go:
 #   https://github.com/konflux-ci/konflux-build-cli/blob/main/pkg/commands/prefetch_dependencies/main.go
-if [[ -d "entitlement" ]]; then
-  PODMAN_MOUNTS+=(-v "$(pwd)/entitlement:/etc/pki/entitlement:z")
-  echo "  Mounting RHSM entitlement certs"
-fi
-if [[ -d "consumer" ]]; then
-  PODMAN_MOUNTS+=(-v "$(pwd)/consumer:/etc/pki/consumer:z")
+if ls entitlement/*.pem &>/dev/null; then
+  CDN_CERT_DIR=$(mktemp -d)
+  mkdir -p "$CDN_CERT_DIR/etc/pki/entitlement" "$CDN_CERT_DIR/etc/rhsm/ca"
+  cp entitlement/*.pem "$CDN_CERT_DIR/etc/pki/entitlement/" 2>/dev/null || true
+  # UBI9 ships the RHSM CA cert even without registration.
+  podman run --rm registry.access.redhat.com/ubi9/ubi \
+    cat /etc/rhsm/ca/redhat-uep.pem \
+    > "$CDN_CERT_DIR/etc/rhsm/ca/redhat-uep.pem" 2>/dev/null || true
+  PODMAN_MOUNTS+=(-v "$CDN_CERT_DIR:/certs:ro,z")
+  echo "  Mounting RHSM entitlement certs (with CA)"
 fi
 
 # Concurrency: hermeto default is 5 (conservative).
