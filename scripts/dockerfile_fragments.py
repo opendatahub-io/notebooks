@@ -178,6 +178,8 @@ def main():
     replacements = {
         "AIPCC pip and uv config files": textwrap.dedent(r'''
             ARG INDEX_URL
+            ENV PIP_INDEX_URL=${INDEX_URL}
+            ENV UV_INDEX_URL=${INDEX_URL}
             COPY --chmod=664 --chown=1001:0 base-images/utils/pip.conf.in /opt/app-root/pip.conf
             COPY --chmod=664 --chown=1001:0 base-images/utils/uv.toml.in /opt/app-root/uv.toml
             RUN /bin/bash <<'EOF'

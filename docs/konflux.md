@@ -183,7 +183,26 @@ All PipelineRuns in `.tekton/` override compute resources for several tasks that
 
 ### PR builds
 
-Comment `/retest` on the pull request to retrigger all **failed** PR pipelines (successful and in-progress ones are skipped). To trigger a specific pipeline regardless of its previous outcome -- including pipelines that never ran on the PR -- use `/test <pipelinerun-name>` or `/retest <pipelinerun-name>`. See [PaC GitOps Commands](https://pipelinesascode.com/docs/guides/gitops-commands/).
+Comment `/retest` on the pull request to retrigger **failed** PR pipelines.
+Successfully completed pipelines are not re-run. However, if the PipelineRun
+has `cancel-in-progress: "true"` (our pipelines do), `/retest` also **cancels
+all in-progress runs** before starting new ones -- PaC treats the `/retest`
+comment as a new event and applies the cancel-in-progress logic
+([PaC cancel_pipelineruns.go](https://github.com/openshift-pipelines/pipelines-as-code/blob/main/pkg/pipelineascode/cancel_pipelineruns.go),
+[PR #1833](https://github.com/openshift-pipelines/pipelines-as-code/pull/1833)).
+This means a `/retest` posted while builds are still running will cancel them
+and restart everything that hasn't succeeded yet.
+
+To retrigger a **single** pipeline (without cancelling others), use
+`/retest <pipelinerun-name>`. To trigger a pipeline regardless of its previous
+outcome -- including pipelines that never ran -- use `/test <pipelinerun-name>`.
+See [PaC GitOps Commands](https://pipelinesascode.com/docs/guides/gitops-commands/).
+
+**Note:** When PaC retriggers a pipeline, it **replaces** the GitHub check run
+(same external ID) rather than creating a new one. The GitHub Checks API only
+shows the latest attempt -- cancelled/aborted runs are no longer visible via
+`gh api .../check-runs`. To find evidence of previous runs, query
+[kubearchive](kubearchive.md) for the PR's PipelineRuns.
 
 The GitHub Checks tab "Re-run" button restarts **all** Konflux pipelines in the check suite, including those still running or already succeeded (it can cancel in-progress checks, causing them to fail). There is no way to re-run a single check from the UI. The GitHub API endpoints `POST /check-runs/{id}/rerequest` and `POST /check-suites/{id}/rerequest` do not work with user tokens — classic OAuth returns 404, fine-grained PATs return 403 ("Resource not accessible by personal access token"). Checks API write access is [limited to GitHub Apps](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#fine-grained-personal-access-tokens); the API reference pages incorrectly list fine-grained PATs as supported ([doc bug](https://github.com/github/rest-api-description/issues/4290)).
 
@@ -242,6 +261,11 @@ oc annotate components/<component-name> \
 
 This requires `oc` access to the respective cluster and namespace. The annotation is consumed immediately, but the PipelineRun takes ~2 minutes to appear. The component must have PaC `state: enabled` in its build status annotation. The same action is available as the "Start new build" button in the Konflux UI.
 
+**Caveat:** The annotation targets a **Component**, which may be shared across
+multiple PipelineRuns (e.g., `odh-base-image-cuda-py312-c9s` is shared by CUDA 12.9
+and CUDA 13.0 push pipelines). You cannot target a specific version this way.
+Use `/test <pipelinerun-name>` via commit comment (below) for precise control.
+
 #### Retrying a push build via GitHub commit comment
 
 You can trigger push pipelines by commenting on a **commit** page (not on a PR).
@@ -253,8 +277,8 @@ this is the PipelineRun name, not the component name or filename).
 2. Scroll to the Comments section at the bottom of the commit page
 3. To trigger a specific push pipeline:
    `/test <pipelinerun-name>` (always works, even if the pipeline never ran)
-4. To retrigger all failed push pipelines:
-   `/retest` (only retriggers previously failed runs -- does nothing if no prior failures)
+4. To retrigger failed push pipelines:
+   `/retest` (retriggers failed runs; also cancels in-progress runs if `cancel-in-progress` is enabled)
 5. For non-default branches:
    `/test <pipelinerun-name> branch:<branch-name>` (pipeline name first, then `branch:`)
 
