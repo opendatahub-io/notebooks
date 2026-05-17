@@ -348,9 +348,15 @@ mkdir -p "$HERMETO_OUTPUT"
 _LVM_TMP="${HOME}/.local/share/containers/tmp"
 mkdir -p "$_LVM_TMP" 2>/dev/null || true
 HERMETO_STAGING=$(mktemp -d --tmpdir="$_LVM_TMP" 2>/dev/null || mktemp -d)
-trap 'rm -rf "$HERMETO_STAGING"' EXIT
+# Hermeto's RPM handler creates root-owned directories even with --userns=keep-id.
+# podman unshare maps root back to the current user for cleanup.
+trap 'podman unshare rm -rf "$HERMETO_STAGING" 2>/dev/null || rm -rf "$HERMETO_STAGING"' EXIT
 
-# Build podman volume mounts
+# Build podman volume mounts.
+# Note: we do NOT use --userns=keep-id here because hermeto's RPM handler
+# needs real root to read RHSM entitlement certs mounted from the host.
+# Root-owned output files are cleaned up via `podman unshare rm -rf` in the
+# EXIT trap.
 PODMAN_MOUNTS=(
   -v "$(pwd):/source:z"
   -v "$HERMETO_STAGING:/output:z"
@@ -399,10 +405,9 @@ echo "Hermeto fetch-deps completed."
 # =========================================================================
 echo "--- Phase 4: Merge and inject ---"
 
-# Fix ownership (hermeto may run as root inside container)
-if ! test -w "$HERMETO_STAGING/deps" 2>/dev/null; then
+# Fix ownership — hermeto runs as root inside the container.
+podman unshare chown -R "$(id -u):$(id -g)" "$HERMETO_STAGING" 2>/dev/null || \
   sudo chown -R "$(id -u):$(id -g)" "$HERMETO_STAGING" 2>/dev/null || true
-fi
 
 # Move entire staging output to shared cachi2/output/.
 # With a single hermeto invocation, staging has the complete output —
