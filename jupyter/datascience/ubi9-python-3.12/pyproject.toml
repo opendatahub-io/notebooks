@@ -5,8 +5,8 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # Hermetic cpu-base: prefetched with the rest of the stack (see repo-root prefetch-input/ and jupyter/minimal pyproject)
-    "uv==0.11.0",
-    "micropipenv[toml]==1.10.0",
+    "uv",
+    "micropipenv[toml]",
 
     # Datascience and useful extensions
     "skl2onnx",
