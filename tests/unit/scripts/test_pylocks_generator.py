@@ -213,3 +213,30 @@ def test_run_lock_logs_index_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 
     assert success is True
     assert any("Lock INDEX_URL: https://example.invalid/simple/?format=json" in line for line in log._lines)
+
+
+def test_generate_requirements_txt_falls_back_to_pylock_header_when_index_resolution_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    log = pg.LogBuffer()
+    captured_cmd: list[str] = []
+
+    def fake_run(cmd, **kwargs):
+        captured_cmd[:] = cmd
+        return pg.subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(pg, "resolve_rh_index_config", lambda *args, **kwargs: None)
+    monkeypatch.setattr(pg.subprocess, "run", fake_run)
+
+    success = pg.generate_requirements_txt(project_dir, "cpu", log)
+
+    assert success is True
+    assert captured_cmd == [
+        pg.sys.executable,
+        str(pg.PYLOCK_TO_REQUIREMENTS),
+        str(project_dir / "uv.lock.d" / "pylock.cpu.toml"),
+        str(project_dir / "requirements.cpu.txt"),
+    ]

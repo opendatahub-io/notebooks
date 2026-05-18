@@ -480,11 +480,14 @@ def generate_requirements_txt(
     pylock_path = project_dir / "uv.lock.d" / f"pylock.{flavor}.toml"
     requirements_path = project_dir / f"requirements.{flavor}.txt"
     resolved = resolve_rh_index_config(project_dir, flavor, log)
-    if resolved is None:
-        return False
 
     cmd = [sys.executable, str(PYLOCK_TO_REQUIREMENTS), str(pylock_path), str(requirements_path)]
-    cmd.append(resolved.index_url)
+    if resolved is None:
+        log.warning(
+            f"Falling back to --default-index recorded in {pylock_path} for requirements generation."
+        )
+    else:
+        cmd.append(resolved.index_url)
 
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.stdout:
