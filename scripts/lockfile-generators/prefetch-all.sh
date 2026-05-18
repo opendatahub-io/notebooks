@@ -5,26 +5,30 @@ set -euo pipefail
 #
 # Hermetic builds (Konflux/Tekton and local) require every dependency to be
 # prefetched so the Dockerfile can build fully offline (no network access).
-# This script orchestrates downloading all five dependency types:
+# This script orchestrates downloading all dependency types via a single
+# Hermeto invocation, matching the Konflux pipeline pattern.
 #
-#   1. Generic artifacts — GPG keys, nfpm-built RPMs, Node.js headers,
-#      Electron binaries, VS Code .vsix (into cachi2/output/deps/generic/).
-#      Component-specific: codeserver gets ripgrep from pip, oc from RPM.
-#   2. Pip wheels — Python packages resolved from pyproject.toml
-#      (into cachi2/output/deps/pip/).
-#   3. NPM packages — tarballs resolved from package-lock.json files
-#      (into cachi2/output/deps/npm/).
-#   4. RPMs — system packages resolved from rpms.lock.yaml via Hermeto
-#      (into cachi2/output/deps/rpm/).
-#   5. Go modules — Go deps from go.mod/go.sum via Hermeto (gomod)
-#      (into cachi2/output/deps/gomod/).
+# Dependency types (all fetched by Hermeto in one call):
+#   - generic: GPG keys, tarballs, VS Code .vsix (from artifacts.lock.yaml)
+#   - pip:     Python wheels (from requirements.<flavor>.txt)
+#   - npm:     Node packages (from package-lock.json via Tekton prefetch-input)
+#   - rpm:     System packages (from rpms.lock.yaml)
+#   - gomod:   Go modules (from go.mod/go.sum via Tekton prefetch-input)
 #
-# Each step is skipped if its input file is not present in the component's
-# prefetch-input/<variant>/ directory. Step 3 (NPM) discovers the Tekton
-# file via find_tekton_yaml (RHDS = Dockerfile.konflux.*, ODH = Dockerfile.*). No Tekton file → skip npm.
+# Design: Inspired by the Konflux prefetch-dependencies task, which passes
+# all ecosystem specs as a single JSON array to one `hermeto fetch-deps` call:
+#   https://github.com/konflux-ci/build-definitions/blob/main/task/prefetch-dependencies-oci-ta/0.3/prefetch-dependencies-oci-ta.yaml
+# The Go wrapper is `konflux-build-cli`:
+#   https://github.com/konflux-ci/konflux-build-cli/blob/main/pkg/commands/prefetch_dependencies/main.go
 #
-# After running this script, `make <target>` auto-detects cachi2/output/
-# and passes --volume to podman build.
+# Previously, this script called separate downloaders per ecosystem (wget for
+# pip, download-npm.sh for npm, hermeto-fetch-rpm.sh for rpm, create-go-lockfile.sh
+# for gomod). Each hermeto call mounted the repo root and internally copied the
+# entire source tree — including accumulated cachi2/output/ from prior steps.
+# This caused disk duplication that grew with each call (#3641).
+#
+# The single-invocation approach eliminates this: one source copy, one output
+# dir, one unified bom.json, parallel downloads across all ecosystems.
 #
 # Usage:
 #   # Upstream ODH (CentOS Stream base, no subscription):
@@ -40,7 +44,10 @@ set -euo pipefail
 #   ./scripts/lockfile-generators/prefetch-all.sh \
 #       --component-dir codeserver/ubi9-python-3.12 --flavor cuda
 #
-# Prerequisites: wget, python3 (with pyyaml), jq, podman, uv
+# Prerequisites: jq, podman, yq (optional, for npm/gomod auto-detection)
+
+# shellcheck source-path=SCRIPTDIR
+source "$(dirname "$0")/helpers/hermeto-common.sh"
 
 SCRIPTS_PATH="scripts/lockfile-generators"
 
@@ -138,21 +145,14 @@ done
 [[ -d "$COMPONENT_DIR" ]] || error_exit "Component directory not found: $COMPONENT_DIR"
 
 # CLI args take priority; fall back to env vars so GHA can pass secrets
-# without exposing them on the command line.  GitHub Actions masks env var
-# values in logs, but command-line args appear in process listings.
+# without exposing them on the command line.
 ACTIVATION_KEY="${ACTIVATION_KEY:-${SUBSCRIPTION_ACTIVATION_KEY:-}}"
 ORG="${ORG:-${SUBSCRIPTION_ORG:-}}"
 
-# Activation key and org must be provided together — one without the other
-# is always a mistake (subscription-manager needs both to register).
 if [[ -n "$ACTIVATION_KEY" && -z "$ORG" ]] || [[ -z "$ACTIVATION_KEY" && -n "$ORG" ]]; then
   error_exit "--activation-key/--org (or SUBSCRIPTION_ACTIVATION_KEY/SUBSCRIPTION_ORG env vars) must be provided together."
 fi
 
-# Export secrets as env vars so child scripts (hermeto-fetch-rpm.sh,
-# create-rpm-lockfile.sh) inherit them automatically.  This avoids passing
-# secrets as command-line arguments, which would be visible in `ps` output
-# and shell traces (`set -x`).
 if [[ -n "$ACTIVATION_KEY" ]]; then
   export SUBSCRIPTION_ACTIVATION_KEY="$ACTIVATION_KEY"
   export SUBSCRIPTION_ORG="$ORG"
@@ -161,21 +161,9 @@ fi
 # --- Variant selection ---
 # Each component uses COMPONENT_DIR/prefetch-input when present; Jupyter
 # notebook dirs that share upstream RPM/generic locks use repo-root
-# prefetch-input/ (no symlink — Konflux Hermeto rejects symlink path segments
-# for git submodule resolution). Under that: odh/ (upstream, CentOS Stream
-# packages) and optionally rhds/ (downstream, RHEL). The variant determines
-# which lockfiles are used for all four steps.
-#
-# In GHA CI, the template passes --rhds explicitly for subscription builds;
-# secrets are globally available so auto-detection would wrongly switch ODH
-# builds to RHDS, contaminating the layer cache (see #3256).
-# For standalone/local use, auto-detect from credentials when not in CI.
+# prefetch-input/.
 PREFETCH_DIR="$COMPONENT_DIR/prefetch-input"
 if [[ ! -d "$PREFETCH_DIR" ]] && [[ -d prefetch-input ]]; then
-  # Check if any Dockerfile in the component dir references repo-root prefetch-input/.
-  # This catches components whose symlinks were removed (Konflux Hermeto rejects
-  # symlink segments in git submodule paths) but whose Dockerfiles still use
-  # COPY prefetch-input/... relative to the repo-root build context.
   if grep -rq 'prefetch-input/' "$COMPONENT_DIR"/Dockerfile* 2>/dev/null; then
     PREFETCH_DIR="prefetch-input"
   fi
@@ -187,7 +175,7 @@ fi
 
 VARIANT_DIR="$PREFETCH_DIR/$VARIANT"
 if [[ ! -d "$VARIANT_DIR" ]]; then
-  echo "Note: Variant directory not found ($VARIANT_DIR). Steps 1 and 4 (generic, RPM) will be skipped if their inputs are missing."
+  echo "Note: Variant directory not found ($VARIANT_DIR). Generic and RPM will be skipped."
 fi
 
 echo "=============================================="
@@ -200,175 +188,295 @@ echo "  lockfiles : $VARIANT_DIR"
 echo "=============================================="
 echo ""
 
-STEPS_RUN=0
-STEPS_SKIPPED=0
-
 # =========================================================================
-# Step 1: Generic artifacts (create-artifact-lockfile.py)
+# Phase 1: Ensure lockfiles exist (generation only, no downloads)
 #
-# Downloads non-package artifacts listed in artifacts.in.yaml: GPG keys
-# for RPM signature verification, nfpm-packaged RPMs (e.g. code-server),
-# Node.js headers for native addons, Electron binaries, etc.
-# Output: cachi2/output/deps/generic/
+# Hermeto downloads from existing lockfiles. If any are missing, generate
+# them first. In normal CI, all lockfiles are committed to the repo.
 # =========================================================================
+echo "--- Phase 1: Lockfile generation (if needed) ---"
+
+# Pip: generate requirements.<flavor>.txt if not present
+REQUIREMENTS_FILE="$COMPONENT_DIR/requirements.${FLAVOR}.txt"
+if [[ -f "$COMPONENT_DIR/pyproject.toml" ]] && [[ ! -f "$REQUIREMENTS_FILE" ]]; then
+  echo "Generating $REQUIREMENTS_FILE from pyproject.toml..."
+  "$SCRIPTS_PATH/create-requirements-lockfile.sh" \
+      --pyproject-toml "$COMPONENT_DIR/pyproject.toml" --flavor "$FLAVOR"
+fi
+
+# RPM: generate rpms.lock.yaml if rpms.in.yaml exists but lockfile doesn't
+RPM_INPUT="$VARIANT_DIR/rpms.in.yaml"
+RPM_LOCKFILE="$VARIANT_DIR/rpms.lock.yaml"
+if [[ -f "$RPM_INPUT" ]] && [[ ! -f "$RPM_LOCKFILE" ]]; then
+  echo "Generating $RPM_LOCKFILE from $RPM_INPUT..."
+  "$SCRIPTS_PATH/create-rpm-lockfile.sh" --rpm-input "$RPM_INPUT"
+fi
+
+# Generic: artifacts.lock.yaml should already be committed.
+# If missing, generate from artifacts.in.yaml (downloads files to compute checksums).
 ARTIFACTS_INPUT="$VARIANT_DIR/artifacts.in.yaml"
-if [[ -f "$ARTIFACTS_INPUT" ]]; then
-  echo "=== [1/5] Generic artifacts ==="
+ARTIFACTS_LOCKFILE="$VARIANT_DIR/artifacts.lock.yaml"
+if [[ -f "$ARTIFACTS_INPUT" ]] && [[ ! -f "$ARTIFACTS_LOCKFILE" ]]; then
+  echo "Generating $ARTIFACTS_LOCKFILE from $ARTIFACTS_INPUT..."
   python3 "$SCRIPTS_PATH/create-artifact-lockfile.py" \
       --artifact-input "$ARTIFACTS_INPUT"
-  STEPS_RUN=$((STEPS_RUN + 1))
-  echo ""
-else
-  echo "=== [1/5] Generic artifacts — SKIPPED (no $ARTIFACTS_INPUT) ==="
-  STEPS_SKIPPED=$((STEPS_SKIPPED + 1))
 fi
 
-# =========================================================================
-# Step 2: Pip wheels (create-requirements-lockfile.sh --download)
-#
-# Resolves Python dependencies from pyproject.toml using uv, generates
-# pylock.<flavor>.toml + requirements.<flavor>.txt, then downloads all
-# wheels.  The --flavor flag selects which optional dependency groups
-# to include (e.g. cpu vs cuda have different torch/triton packages).
-# Output: cachi2/output/deps/pip/
-# =========================================================================
-PYPROJECT="$COMPONENT_DIR/pyproject.toml"
-if [[ -f "$PYPROJECT" ]]; then
-  echo "=== [2/5] Pip wheels ==="
-  "$SCRIPTS_PATH/create-requirements-lockfile.sh" \
-      --pyproject-toml "$PYPROJECT" --flavor "$FLAVOR" --download
-  STEPS_RUN=$((STEPS_RUN + 1))
-  echo ""
-else
-  echo "=== [2/5] Pip wheels — SKIPPED (no $PYPROJECT) ==="
-  STEPS_SKIPPED=$((STEPS_SKIPPED + 1))
-fi
-
-# =========================================================================
-# Step 3: NPM packages (download-npm.sh)
-#
-# Auto-detect Tekton file via find_tekton_yaml (RHDS first, then ODH). If found,
-# download npm tarballs from the prefetch-input paths listed there. If no
-# Tekton file is found for this component, skip npm. Requires yq.
-#
-# Output: cachi2/output/deps/npm/
-# =========================================================================
-echo "=== [3/5] NPM packages ==="
-
-npm_done=false
-tekton_file=""
-
-# Find the Tekton PipelineRun YAML: RHDS first (dockerfile COMPONENT_DIR/Dockerfile.konflux.*),
-# then ODH (dockerfile COMPONENT_DIR/Dockerfile.*). The file lists npm prefetch-input
-# paths for download-npm.sh to process in one go.
-if [[ -d ".tekton" ]] && command -v yq &>/dev/null; then
-  tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "rhds" 2>/dev/null | head -1) || true
-  if [[ -z "$tekton_file" ]]; then
-    tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "odh" 2>/dev/null | head -1) || true
-  fi
-  if [[ -n "$tekton_file" ]]; then
-    echo "  Auto-detected tekton file: $tekton_file"
-    "$SCRIPTS_PATH/download-npm.sh" --tekton-file "$tekton_file"
-    npm_done=true
-  fi
-fi
-
-if [[ "$npm_done" == true ]]; then
-  STEPS_RUN=$((STEPS_RUN + 1))
-else
-  echo "  No Tekton file found for this component — skipping npm download"
-  STEPS_SKIPPED=$((STEPS_SKIPPED + 1))
-fi
 echo ""
 
 # =========================================================================
-# Step 4: RPMs (hermeto-fetch-rpm.sh or create-rpm-lockfile.sh --download)
+# Phase 2: Build Hermeto input JSON
 #
-# Downloads OS-level RPM packages into cachi2/output/deps/rpm/ and creates
-# DNF repo metadata so the Dockerfile can `dnf install` offline.
-#
-# Two modes depending on whether rpms.lock.yaml already exists:
-#
-#   Committed lockfile (rpms.lock.yaml present): call hermeto-fetch-rpm.sh
-#   directly to download only.  This is the normal CI path — lockfiles are
-#   committed to the repo and regenerated separately.
-#
-#   No lockfile: call create-rpm-lockfile.sh --download, which first
-#   generates rpms.lock.yaml (requires building a container with
-#   rpm-lockfile-prototype), then downloads.  This path is x86_64-only
-#   because the lockfile generator container is built for that arch.
-#
-# Subscription credentials (if provided) are passed to child scripts via
-# exported env vars (SUBSCRIPTION_ACTIVATION_KEY / SUBSCRIPTION_ORG),
-# not command-line args.  hermeto-fetch-rpm.sh handles cert extraction.
-#
-# Output: cachi2/output/deps/rpm/
+# Construct a JSON array matching the prefetch-input format used by the
+# Konflux .tekton/*.yaml files. Each entry specifies the ecosystem type
+# and path to its lockfile/source.
 # =========================================================================
-RPM_INPUT="$VARIANT_DIR/rpms.in.yaml"
-RPM_LOCKFILE="$VARIANT_DIR/rpms.lock.yaml"
-if [[ -f "$RPM_INPUT" ]]; then
-  echo "=== [4/5] RPMs ==="
-  if [[ -f "$RPM_LOCKFILE" ]]; then
-    echo "  rpms.lock.yaml exists — downloading RPMs only (skipping lockfile regeneration)"
-    "$SCRIPTS_PATH/helpers/hermeto-fetch-rpm.sh" --prefetch-dir "$VARIANT_DIR"
-  else
-    echo "  rpms.lock.yaml not found — generating lockfile and downloading"
-    "$SCRIPTS_PATH/create-rpm-lockfile.sh" --rpm-input "$RPM_INPUT" --download
-  fi
-  STEPS_RUN=$((STEPS_RUN + 1))
-  echo ""
-else
-  echo "=== [4/5] RPMs — SKIPPED (no $RPM_INPUT) ==="
-  STEPS_SKIPPED=$((STEPS_SKIPPED + 1))
+echo "--- Phase 2: Building Hermeto input ---"
+
+HERMETO_INPUT='[]'
+ECOSYSTEMS_INCLUDED=""
+
+# Generic artifacts (from artifacts.lock.yaml)
+if [[ -f "$ARTIFACTS_LOCKFILE" ]]; then
+  HERMETO_INPUT=$(echo "$HERMETO_INPUT" | jq --arg path "$VARIANT_DIR" \
+    '. + [{"type":"generic","path":$path}]')
+  ECOSYSTEMS_INCLUDED+="generic "
+  echo "  + generic: $ARTIFACTS_LOCKFILE"
 fi
 
-# =========================================================================
-# Step 5: Go modules (create-go-lockfile.sh)
-#
-# Prefetches Go dependencies from go.mod/go.sum via Hermeto (gomod). Uses
-# the same Tekton file as NPM to discover gomod-type prefetch-input paths.
-# Output: cachi2/output/deps/gomod/
-# =========================================================================
-echo "=== [5/5] Go modules ==="
-if [[ -n "$tekton_file" ]] && command -v yq &>/dev/null; then
-  gomod_paths=$(yq eval '
+# Pip wheels (from requirements.<flavor>.txt)
+if [[ -f "$REQUIREMENTS_FILE" ]]; then
+  # Use BUILD_ARCH (e.g. linux/s390x) when set (GHA cross-builds via QEMU),
+  # otherwise fall back to the host architecture.
+  if [[ -n "${BUILD_ARCH:-}" ]]; then
+    case "${BUILD_ARCH##*/}" in
+      amd64) ARCH="x86_64" ;;
+      arm64) ARCH="aarch64" ;;
+      *) ARCH="${BUILD_ARCH##*/}" ;;
+    esac
+  else
+    ARCH=$(uname -m)
+  fi
+  # Only use binary arch filter for x86_64/aarch64. For ppc64le/s390x, many
+  # packages have environment markers like `platform_machine != 'ppc64le'` that
+  # exclude them from those arches. Hermeto doesn't respect these markers during
+  # binary filtering — it tries to find arch-specific wheels that don't exist,
+  # causing PackageRejected errors (e.g. bcrypt on ppc64le).
+  # Without binary filter, hermeto downloads sdists + any-arch wheels only.
+  PIP_ENTRY=$(jq -n --arg path "$COMPONENT_DIR" --arg req "requirements.${FLAVOR}.txt" \
+    '{"type":"pip","path":$path,"requirements_files":[$req]}')
+  if [[ "$ARCH" == "x86_64" || "$ARCH" == "aarch64" ]]; then
+    PIP_ENTRY=$(echo "$PIP_ENTRY" | jq --arg arch "$ARCH" '. + {"binary":{"arch":$arch,"os":"linux"}}')
+  fi
+  HERMETO_INPUT=$(echo "$HERMETO_INPUT" | jq --argjson entry "$PIP_ENTRY" '. + [$entry]')
+  ECOSYSTEMS_INCLUDED+="pip "
+  echo "  + pip: $REQUIREMENTS_FILE (arch=$ARCH, binary_filter=$([[ "$ARCH" == "x86_64" || "$ARCH" == "aarch64" ]] && echo yes || echo no))"
+fi
+
+# NPM and GoMod (auto-detect from Tekton prefetch-input)
+tekton_file=""
+if [[ -d ".tekton" ]] && command -v yq &>/dev/null; then
+  # Prefer the active variant's Tekton file; fall back to the other variant.
+  tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "$VARIANT" 2>/dev/null | head -1) || true
+  if [[ -z "$tekton_file" ]]; then
+    fallback_variant=$([[ "$VARIANT" == "rhds" ]] && echo "odh" || echo "rhds")
+    tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "$fallback_variant" 2>/dev/null | head -1) || true
+  fi
+fi
+
+if [[ -n "$tekton_file" ]]; then
+  echo "  Tekton file: $tekton_file"
+
+  # Extract npm entries from Tekton prefetch-input
+  npm_entries=$(yq eval -o=json '
+    .spec.params[]
+    | select(.name == "prefetch-input")
+    | .value[]
+    | select(.type == "npm")
+  ' "$tekton_file" 2>/dev/null) || true
+  if [[ -n "$npm_entries" ]]; then
+    # Add each npm entry to the combined input
+    while IFS= read -r entry; do
+      [[ -z "$entry" ]] && continue
+      HERMETO_INPUT=$(echo "$HERMETO_INPUT" | jq --argjson entry "$entry" '. + [$entry]')
+    done < <(echo "$npm_entries" | jq -c '.')
+    ECOSYSTEMS_INCLUDED+="npm "
+    echo "  + npm: from Tekton prefetch-input"
+  fi
+
+  # Extract gomod entries from Tekton prefetch-input
+  gomod_entries=$(yq eval -o=json '
     .spec.params[]
     | select(.name == "prefetch-input")
     | .value[]
     | select(.type == "gomod")
-    | .path
   ' "$tekton_file" 2>/dev/null) || true
-  if [[ -n "$gomod_paths" ]] && [[ "$(echo "$gomod_paths" | grep -c .)" -gt 0 ]]; then
-    "$SCRIPTS_PATH/create-go-lockfile.sh" --tekton-file "$tekton_file"
-    STEPS_RUN=$((STEPS_RUN + 1))
-  else
-    echo "  No gomod-type prefetch-input in Tekton file — skipping"
-    STEPS_SKIPPED=$((STEPS_SKIPPED + 1))
+  if [[ -n "$gomod_entries" ]]; then
+    while IFS= read -r entry; do
+      [[ -z "$entry" ]] && continue
+      HERMETO_INPUT=$(echo "$HERMETO_INPUT" | jq --argjson entry "$entry" '. + [$entry]')
+    done < <(echo "$gomod_entries" | jq -c '.')
+    ECOSYSTEMS_INCLUDED+="gomod "
+    echo "  + gomod: from Tekton prefetch-input"
   fi
 else
-  echo "  No Tekton file or yq — skipping Go modules"
-  STEPS_SKIPPED=$((STEPS_SKIPPED + 1))
+  echo "  No Tekton file found — npm and gomod will be skipped"
 fi
+
+# RPM (from rpms.lock.yaml)
+if [[ -f "$RPM_LOCKFILE" ]]; then
+  HERMETO_INPUT=$(echo "$HERMETO_INPUT" | jq --arg path "$VARIANT_DIR" \
+    '. + [{"type":"rpm","path":$path}]')
+  ECOSYSTEMS_INCLUDED+="rpm "
+  echo "  + rpm: $RPM_LOCKFILE"
+fi
+
+INPUT_COUNT=$(echo "$HERMETO_INPUT" | jq 'length')
+if [[ "$INPUT_COUNT" -eq 0 ]]; then
+  echo ""
+  echo "No lockfiles found — nothing to prefetch."
+  exit 0
+fi
+
+echo ""
+echo "  Hermeto input ($INPUT_COUNT entries): $ECOSYSTEMS_INCLUDED"
+echo "$HERMETO_INPUT" | jq -c '.[]' | while read -r entry; do
+  echo "    $(echo "$entry" | jq -c '{type,path}')"
+done
 echo ""
 
 # =========================================================================
-# Summary — show what ran, what was skipped, and disk usage per dep type.
+# Phase 3: Run Hermeto (single invocation)
+#
+# One podman run call with all ecosystem specs. Hermeto handles parallel
+# downloads internally via asyncio.
+# =========================================================================
+echo "--- Phase 3: Hermeto fetch-deps ---"
+
+# Clear any prior output to avoid hermeto copying it during source backup.
+# Hermeto copies the entire /source/ tree internally (resolver.py:58); with an
+# empty cachi2/output/ the copy is just the repo source (~1 GB).
+if [[ -d "$HERMETO_OUTPUT" ]]; then
+  echo "Clearing prior $HERMETO_OUTPUT..."
+  rm -rf "$HERMETO_OUTPUT"
+fi
+mkdir -p "$HERMETO_OUTPUT"
+
+# Staging directory: prefer LVM path on GHA runners (root fs has limited space).
+# Falls back to /tmp on non-GHA systems.
+_LVM_TMP="${HOME}/.local/share/containers/tmp"
+mkdir -p "$_LVM_TMP" 2>/dev/null || true
+HERMETO_STAGING=$(mktemp -d --tmpdir="$_LVM_TMP" 2>/dev/null || mktemp -d)
+# Hermeto's RPM handler creates root-owned directories even with --userns=keep-id.
+# podman unshare maps root back to the current user for cleanup.
+CDN_CERT_DIR=""
+# Hermeto runs as root in the container; output files are root-owned.
+# podman unshare maps root to the current user for cleanup.
+trap 'podman unshare rm -rf "$HERMETO_STAGING" || rm -rf "$HERMETO_STAGING"; rm -rf "${CDN_CERT_DIR:-}"' EXIT
+
+# Build podman volume mounts.
+# Note: we do NOT use --userns=keep-id here because hermeto's RPM handler
+# needs real root to read RHSM entitlement certs mounted from the host.
+# Root-owned output files are cleaned up via `podman unshare rm -rf` in the
+# EXIT trap.
+PODMAN_MOUNTS=(
+  -v "$(pwd):/source:z"
+  -v "$HERMETO_STAGING:/output:z"
+)
+
+# Mount RHSM entitlement certs if present (created by GHA "Add subscriptions"
+# step in build-notebooks-TEMPLATE.yaml). Hermeto needs both the entitlement
+# PEMs and the RHSM CA cert (redhat-uep.pem) to authenticate to cdn.redhat.com.
+# See hermeto-fetch-rpm.sh for the original cert handling logic.
+# Konflux has its own registerRHSM() in Go:
+#   https://github.com/konflux-ci/konflux-build-cli/blob/main/pkg/commands/prefetch_dependencies/main.go
+if ls entitlement/*.pem &>/dev/null; then
+  CDN_CERT_DIR=$(mktemp -d)
+  mkdir -p "$CDN_CERT_DIR/etc/pki/entitlement" "$CDN_CERT_DIR/etc/rhsm/ca"
+  cp entitlement/*.pem "$CDN_CERT_DIR/etc/pki/entitlement/" 2>/dev/null || true
+  # UBI9 ships the RHSM CA cert even without registration.
+  podman run --rm registry.access.redhat.com/ubi9/ubi \
+    cat /etc/rhsm/ca/redhat-uep.pem \
+    > "$CDN_CERT_DIR/etc/rhsm/ca/redhat-uep.pem" 2>/dev/null || true
+  PODMAN_MOUNTS+=(-v "$CDN_CERT_DIR:/certs:ro,z")
+  echo "  Mounting RHSM entitlement certs (with CA)"
+fi
+
+# Concurrency: hermeto default is 5 (conservative).
+# DNF uses max_parallel_downloads=10 in aipcc.sh.
+# uv saturates network by default on GHA runners.
+# 20 is a pragmatic middle ground for parallel wheel/RPM/npm downloads.
+CONCURRENCY="${HERMETO_RUNTIME__CONCURRENCY_LIMIT:-20}"
+
+echo "  Image: $HERMETO_IMAGE"
+echo "  Concurrency: $CONCURRENCY"
+echo "  Staging: $HERMETO_STAGING"
+echo ""
+
+podman run --rm \
+  "${PODMAN_MOUNTS[@]}" \
+  -e "HERMETO_RUNTIME__CONCURRENCY_LIMIT=$CONCURRENCY" \
+  "$HERMETO_IMAGE" \
+  fetch-deps \
+    --source /source \
+    --output /output \
+    "$HERMETO_INPUT"
+
+echo ""
+echo "Hermeto fetch-deps completed."
+
+# =========================================================================
+# Phase 4: Merge output and generate env files
+#
+# Hermeto writes to the staging dir. Copy results to the shared cachi2/output/
+# tree, then run inject-files to generate DNF repo metadata.
+# =========================================================================
+echo "--- Phase 4: Merge and inject ---"
+
+# Fix ownership — hermeto runs as root inside the container.
+podman unshare chown -R "$(id -u):$(id -g)" "$HERMETO_STAGING" 2>/dev/null || \
+  sudo chown -R "$(id -u):$(id -g)" "$HERMETO_STAGING" 2>/dev/null || true
+
+# Move entire staging output to shared cachi2/output/.
+# With a single hermeto invocation, staging has the complete output —
+# no need to merge ecosystem-by-ecosystem.
+rm -rf "$HERMETO_OUTPUT"
+mv "$HERMETO_STAGING" "$HERMETO_OUTPUT"
+# Clear the trap since staging no longer exists
+trap - EXIT
+
+# Generate DNF repo metadata and env files via hermeto inject-files
+# (creates repos.d/ with .repo files pointing to downloaded RPMs)
+if [[ -d "$HERMETO_OUTPUT/deps/rpm" ]]; then
+  echo "  Running hermeto inject-files for RPM repo metadata..."
+  podman run --rm \
+    -v "$HERMETO_OUTPUT:/output:z" \
+    "$HERMETO_IMAGE" \
+    inject-files /output --for-output-dir /cachi2/output
+fi
+
+echo ""
+
+# =========================================================================
+# Summary
 # =========================================================================
 echo "=============================================="
 echo " prefetch-all.sh complete"
-echo "  component : $COMPONENT_DIR"
-echo "  variant   : $VARIANT"
-echo "  flavor    : $FLAVOR"
-echo "  prefetch  : $PREFETCH_DIR"
-echo "  lockfiles : $VARIANT_DIR"
-echo "  tekton file: $tekton_file"
-echo "  steps run    : $STEPS_RUN"
-echo "  steps skipped: $STEPS_SKIPPED"
+echo "  component  : $COMPONENT_DIR"
+echo "  variant    : $VARIANT"
+echo "  flavor     : $FLAVOR"
+echo "  ecosystems : $ECOSYSTEMS_INCLUDED"
+echo "  tekton file: ${tekton_file:-none}"
 echo ""
-echo " Dependencies are in: cachi2/output/deps/"
-if [[ -d "cachi2/output/deps" ]]; then
+echo " Dependencies are in: $HERMETO_OUTPUT/deps/"
+if [[ -d "$HERMETO_OUTPUT/deps" ]]; then
   echo ""
-  du -sh cachi2/output/deps/*/ 2>/dev/null || true
+  du -sh "$HERMETO_OUTPUT/deps/"*/ 2>/dev/null || true
+fi
+if [[ -f "$HERMETO_OUTPUT/bom.json" ]]; then
+  echo ""
+  echo " SBOM: $HERMETO_OUTPUT/bom.json"
+  echo "   Components: $(jq '.components | length' "$HERMETO_OUTPUT/bom.json" 2>/dev/null || echo '?')"
 fi
 echo ""
 echo " Next: run 'make <target>' — it will auto-detect cachi2/output/"

@@ -426,6 +426,27 @@ jobs:
           SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
           SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
 
+      - name: Rename hermeto SBOM for unique artifact name
+        if: always()
+        run: |
+          if [ -f cachi2/output/bom.json ]; then
+            # archive:false uses the filename as artifact name; must be unique per job
+            SAFE_TARGET=$(echo "${INPUT_TARGET}" | tr '/' '-')
+            SAFE_PLATFORM=$(echo "${INPUT_PLATFORM}" | tr '/' '-')
+            mv cachi2/output/bom.json "cachi2/output/hermeto-sbom-${SAFE_TARGET}-${SAFE_PLATFORM}.json"
+          fi
+        env:
+          INPUT_TARGET: ${{ inputs.target }}
+          INPUT_PLATFORM: ${{ inputs.platform }}
+
+      - name: Upload hermeto SBOM
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          path: cachi2/output/hermeto-sbom-*.json
+          if-no-files-found: ignore
+          archive: false
+
       # Single place we install from uv.lock (dev deps include structlog for scripts/sandbox.py).
       # Make and later pytest steps all use this venv.
       - name: Setup uv and Python
