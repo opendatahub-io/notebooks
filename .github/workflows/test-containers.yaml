@@ -37,6 +37,11 @@ jobs:
     outputs:
       matrix: ${{ steps.find.outputs.matrix }}
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
       - name: Find images for test matrix
         id: find
         env:
@@ -46,8 +51,9 @@ jobs:
         # language=python
         run: |
           import json, os, subprocess, sys
+          sys.path.insert(0, "ci")
 
-          from ci.find_images_for_test_matrix import find_suitable_sha
+          from find_images_for_test_matrix import find_suitable_sha
 
           registry = os.environ["IMAGE_REGISTRY"]
           suffix = "_odh_linux_amd64"
