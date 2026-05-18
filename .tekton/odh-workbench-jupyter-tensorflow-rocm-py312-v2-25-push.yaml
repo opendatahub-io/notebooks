@@ -51,6 +51,8 @@ spec:
   - name: build-platforms
     value:
     - linux/x86_64
+  - name: fips-check-blocking
+    value: "false"
   pipelineRef:
     resolver: git
     params:

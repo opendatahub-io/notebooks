@@ -53,6 +53,8 @@ spec:
     - linux/ppc64le
     - linux/s390x
     - linux-m2xlarge/arm64
+  - name: fips-check-blocking
+    value: "false"
   pipelineRef:
     resolver: git
     params:

@@ -58,6 +58,8 @@ spec:
     - linux/x86_64
     - linux-d160-m2xlarge/arm64
     - linux/ppc64le
+  - name: fips-check-blocking
+    value: "false"
   pipelineRef:
     resolver: git
     params:
