@@ -257,13 +257,20 @@ if [[ -f "$REQUIREMENTS_FILE" ]]; then
   else
     ARCH=$(uname -m)
   fi
-  HERMETO_INPUT=$(echo "$HERMETO_INPUT" | jq \
-    --arg path "$COMPONENT_DIR" \
-    --arg req "requirements.${FLAVOR}.txt" \
-    --arg arch "$ARCH" \
-    '. + [{"type":"pip","path":$path,"requirements_files":[$req],"binary":{"arch":$arch,"os":"linux"}}]')
+  # Only use binary arch filter for x86_64/aarch64. For ppc64le/s390x, many
+  # packages have environment markers like `platform_machine != 'ppc64le'` that
+  # exclude them from those arches. Hermeto doesn't respect these markers during
+  # binary filtering — it tries to find arch-specific wheels that don't exist,
+  # causing PackageRejected errors (e.g. bcrypt on ppc64le).
+  # Without binary filter, hermeto downloads sdists + any-arch wheels only.
+  PIP_ENTRY=$(jq -n --arg path "$COMPONENT_DIR" --arg req "requirements.${FLAVOR}.txt" \
+    '{"type":"pip","path":$path,"requirements_files":[$req]}')
+  if [[ "$ARCH" == "x86_64" || "$ARCH" == "aarch64" ]]; then
+    PIP_ENTRY=$(echo "$PIP_ENTRY" | jq --arg arch "$ARCH" '. + {"binary":{"arch":$arch,"os":"linux"}}')
+  fi
+  HERMETO_INPUT=$(echo "$HERMETO_INPUT" | jq --argjson entry "$PIP_ENTRY" '. + [$entry]')
   ECOSYSTEMS_INCLUDED+="pip "
-  echo "  + pip: $REQUIREMENTS_FILE (arch=$ARCH)"
+  echo "  + pip: $REQUIREMENTS_FILE (arch=$ARCH, binary_filter=$([[ "$ARCH" == "x86_64" || "$ARCH" == "aarch64" ]] && echo yes || echo no))"
 fi
 
 # NPM and GoMod (auto-detect from Tekton prefetch-input)
@@ -363,7 +370,9 @@ HERMETO_STAGING=$(mktemp -d --tmpdir="$_LVM_TMP" 2>/dev/null || mktemp -d)
 # Hermeto's RPM handler creates root-owned directories even with --userns=keep-id.
 # podman unshare maps root back to the current user for cleanup.
 CDN_CERT_DIR=""
-trap 'podman unshare rm -rf "$HERMETO_STAGING" 2>/dev/null || rm -rf "$HERMETO_STAGING"; rm -rf "${CDN_CERT_DIR:-}"' EXIT
+# Hermeto runs as root in the container; output files are root-owned.
+# podman unshare maps root to the current user for cleanup.
+trap 'podman unshare rm -rf "$HERMETO_STAGING" || rm -rf "$HERMETO_STAGING"; rm -rf "${CDN_CERT_DIR:-}"' EXIT
 
 # Build podman volume mounts.
 # Note: we do NOT use --userns=keep-id here because hermeto's RPM handler
