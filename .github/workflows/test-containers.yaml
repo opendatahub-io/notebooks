@@ -70,7 +70,7 @@ jobs:
           matrix = {"include": [
               {"name": img, "image": f"{registry}:{img}-main_{sha}{suffix}"} for img in required
           ]}
-          print(f"Using SHA {sha} ({len(common)+1} candidates)")
+          print(f"Using SHA {sha}")
           print(json.dumps(matrix, indent=2))
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
