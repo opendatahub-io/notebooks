@@ -47,6 +47,8 @@ jobs:
         run: |
           import json, os, subprocess, sys
 
+          from ci.find_images_for_test_matrix import find_suitable_sha
+
           registry = os.environ["IMAGE_REGISTRY"]
           suffix = "_odh_linux_amd64"
           required = [
@@ -64,21 +66,7 @@ jobs:
               print(f"::error::skopeo list-tags failed: {result.stderr}", file=sys.stderr)
               sys.exit(1)
 
-          tags = set(json.loads(result.stdout)["Tags"])
-
-          sha_sets = []
-          for img in required:
-              prefix = f"{img}-main_"
-              shas = {t.removeprefix(prefix).removesuffix(suffix) for t in tags if t.startswith(prefix) and t.endswith(suffix)}
-              print(f"  {img}: {len(shas)} builds")
-              sha_sets.append(shas)
-
-          common = set.intersection(*sha_sets)
-          if not common:
-              print(f"::error::No SHA has all required images: {required}", file=sys.stderr)
-              sys.exit(1)
-
-          sha = common.pop()
+          sha = find_suitable_sha(suffix, required, result.stdout)
           matrix = {"include": [
               {"name": img, "image": f"{registry}:{img}-main_{sha}{suffix}"} for img in required
           ]}
