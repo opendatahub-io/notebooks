@@ -92,7 +92,8 @@ This will fail with a 403 error if the entitlement is missing or does not includ
 ## Step 3: Build
 
 Build with the Konflux Dockerfile and the AIPCC base image. The build-args config files in
-`build-args/konflux.*.conf` specify the correct base image and index URLs.
+`build-args/konflux.*.conf` specify the correct base image, and the build derives the matching
+Python index URL from that `BASE_IMAGE`.
 
 ```bash
 # Example: runtime-minimal CPU
