@@ -16,6 +16,7 @@ import pytest
 import testcontainers.core.container
 
 import ntb
+from tests import index_config_utils
 from tests.containers import docker_utils
 
 logging.basicConfig(level=logging.DEBUG)
@@ -275,13 +276,17 @@ class TestBaseImage:
 
     @allure.issue("RHAIENG-2189")
     def test_python_package_index(self, image: str, subtests: pytest_subtests.SubTests):
-        """Verify all images have AIPCC index config and env vars.
+        """Verify all images have AIPCC index config.
 
         All images (both ODH and RHOAI) use AIPCC wheels and must point pip/uv
         to the AIPCC index. Mixing AIPCC wheels with PyPI wheels causes ABI
         incompatibility — especially for CUDA/torch-dependent packages (flash-attn,
         vllm, xformers, etc.) which link against the exact torch C++ ABI that
         AIPCC builds. Crashes range from core dumps to random garbage results.
+
+        ODH-derived images usually also export PIP_INDEX_URL / UV_INDEX_URL.
+        RHOAI/AIPCC base images configure the index via pip.conf and uv.toml,
+        without exporting those env vars in the final image.
 
         References:
         - Christian Heimes (AIPCC): "you cannot mix our wheels with upstream PyPI"
@@ -291,6 +296,20 @@ class TestBaseImage:
         - Customer docs: https://access.redhat.com/articles/7137881
         """
         with docker_utils.running_container(image=image) as container:
+
+            def read_container_file(path: str) -> str:
+                ecode, output = container.exec(
+                    [
+                        "python3",
+                        "-c",
+                        "from pathlib import Path; import sys; print(Path(sys.argv[1]).read_text())",
+                        path,
+                    ]
+                )
+                output_str = output.decode()
+                assert ecode == 0, f"Failed to read {path}: {output_str}"
+                return output_str
+
             _, output = container.exec(["env"])
             actual = dict(line.split("=", maxsplit=1) for line in output.decode().strip().splitlines())
 
@@ -302,16 +321,35 @@ class TestBaseImage:
             with subtests.test("Images have AIPCC config file env vars"):
                 ntb.assert_subdict(aipcc_config_vars, actual)
 
-            # PIP_INDEX_URL and UV_INDEX_URL are set by base-images (aipcc.sh)
-            # to the AIPCC index. They must NOT point to pypi.org.
-            with subtests.test("Index URL env vars do not point to PyPI"):
-                for key in ("PIP_INDEX_URL", "UV_INDEX_URL"):
-                    assert key in actual, f"{key} must be set in image environment"
-                    normalized = actual[key].rstrip("/")
-                    assert normalized != "https://pypi.org/simple", (
-                        f"{key} must not point to PyPI — AIPCC wheels have ABI "
-                        f"incompatibility with PyPI wheels (torch, CUDA extensions). "
-                        f"Got: {actual[key]}"
+            pip_index_url = index_config_utils.pip_index_url_from_config(read_container_file(actual["PIP_CONFIG_FILE"]))
+            uv_index_url = index_config_utils.uv_index_url_from_config(read_container_file(actual["UV_CONFIG_FILE"]))
+
+            with subtests.test("pip.conf points to a non-PyPI index"):
+                assert pip_index_url is not None, "pip.conf must define global.index-url"
+                assert not index_config_utils.is_pypi_index_url(pip_index_url), (
+                    "pip.conf must not point to PyPI — AIPCC wheels have ABI "
+                    f"incompatibility with PyPI wheels. Got: {pip_index_url}"
+                )
+
+            with subtests.test("uv.toml points to a non-PyPI index"):
+                assert uv_index_url is not None, 'uv.toml must define "index-url"'
+                assert not index_config_utils.is_pypi_index_url(uv_index_url), (
+                    "uv.toml must not point to PyPI — AIPCC wheels have ABI "
+                    f"incompatibility with PyPI wheels. Got: {uv_index_url}"
+                )
+
+            with subtests.test("PIP_INDEX_URL env var, if present, does not point to PyPI"):
+                if "PIP_INDEX_URL" in actual:
+                    assert not index_config_utils.is_pypi_index_url(actual["PIP_INDEX_URL"]), (
+                        "PIP_INDEX_URL must not point to PyPI — AIPCC wheels have ABI "
+                        f"incompatibility with PyPI wheels. Got: {actual['PIP_INDEX_URL']}"
+                    )
+
+            with subtests.test("UV_INDEX_URL env var, if present, does not point to PyPI"):
+                if "UV_INDEX_URL" in actual:
+                    assert not index_config_utils.is_pypi_index_url(actual["UV_INDEX_URL"]), (
+                        "UV_INDEX_URL must not point to PyPI — AIPCC wheels have ABI "
+                        f"incompatibility with PyPI wheels. Got: {actual['UV_INDEX_URL']}"
                     )
 
 
