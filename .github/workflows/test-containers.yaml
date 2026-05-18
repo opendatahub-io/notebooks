@@ -37,6 +37,12 @@ jobs:
     outputs:
       matrix: ${{ steps.find.outputs.matrix }}
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 1
+          submodules: false
+          persist-credentials: false
+
       - name: Find images for test matrix
         id: find
         env:
@@ -46,6 +52,9 @@ jobs:
         # language=python
         run: |
           import json, os, subprocess, sys
+          sys.path.insert(0, "ci")
+
+          from find_images_for_test_matrix import find_suitable_sha
 
           registry = os.environ["IMAGE_REGISTRY"]
           suffix = "_odh_linux_amd64"
@@ -63,25 +72,11 @@ jobs:
               print(f"::error::skopeo list-tags failed: {result.stderr}", file=sys.stderr)
               sys.exit(1)
 
-          tags = set(json.loads(result.stdout)["Tags"])
-
-          sha_sets = []
-          for img in required:
-              prefix = f"{img}-main_"
-              shas = {t.removeprefix(prefix).removesuffix(suffix) for t in tags if t.startswith(prefix) and t.endswith(suffix)}
-              print(f"  {img}: {len(shas)} builds")
-              sha_sets.append(shas)
-
-          common = set.intersection(*sha_sets)
-          if not common:
-              print(f"::error::No SHA has all required images: {required}", file=sys.stderr)
-              sys.exit(1)
-
-          sha = common.pop()
+          sha = find_suitable_sha(suffix, required, result.stdout)
           matrix = {"include": [
               {"image": f"{registry}:{img}-main_{sha}{suffix}"} for img in required
           ]}
-          print(f"Using SHA {sha} ({len(common)+1} candidates)")
+          print(f"Using SHA {sha}")
           print(json.dumps(matrix, indent=2))
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
