@@ -39,6 +39,11 @@ repos:
       - id: ruff-format
         types_or: [python, pyi]
         files: 'ci/.*|tests/.*'
+  # https://github.com/gitleaks/gitleaks
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
   # https://pre-commit.com/#new-hooks
   - repo: local
     hooks:
