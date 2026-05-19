@@ -397,7 +397,7 @@ jobs:
               PREFETCH_ROOT="prefetch-input"
             fi
             echo "Hermetic build detected — prefetching dependencies for $COMPONENT_DIR (prefetch root $PREFETCH_ROOT, flavor=$FLAVOR)"
-            pip3 install --quiet --break-system-packages pyyaml
+            pip3 install --quiet --break-system-packages pyyaml packaging
             command -v uv &>/dev/null || pip3 install --quiet --break-system-packages uv
 
             PREFETCH_ARGS="--component-dir $COMPONENT_DIR --flavor $FLAVOR"
@@ -423,6 +423,7 @@ jobs:
           fi
         env:
           MAKE_TARGET: ${{ inputs.target }}
+          BUILD_ARCH: ${{ inputs.platform }}
           SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
           SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
 
