@@ -117,11 +117,11 @@
       "autoReplaceStringTemplate": "BASE_IMAGE={{{depName}}}:{{{newValue}}}",
       "datasourceTemplate": "docker",
       // Stable tags become [major, minor, patch, timestamp].
-      // EA tags become [major, minor, patch, ea_version, timestamp] while still
-      // keeping prerelease=ea_version so ignoreUnstable can gate EA proposals.
-      // That makes Renovate compare EA sequence before timestamp and stops
-      // invalid downgrades like 3.5.0-ea.2-* -> 3.5.0-ea.1-*.
-      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)(?:\\.(?<patch>\\d+))?(?:-ea\\.(?<prerelease>(?<build>\\d+))-(?<revision>\\d+)|-(?<build>\\d+))$",
+      // EA tags keep [major, minor, patch] and encode ea_version + timestamp in
+      // prerelease so Renovate compares EA sequence before timestamp, while
+      // still treating EA tags as unstable for ignoreUnstable gating.
+      // This RE2-safe form avoids duplicate named capture groups.
+      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)(?:\\.(?<patch>\\d+))?(?:-ea\\.(?<prerelease>\\d+-\\d+)|-(?<build>\\d+))$",
     },
   ],
 
