@@ -8,6 +8,10 @@ if [ -f "${SCRIPT_DIR}/utils/setup-elyra.sh" ]; then
   source ${SCRIPT_DIR}/utils/setup-elyra.sh
 fi
 
+if [ -f "${SCRIPT_DIR}/utils/setup-kale.sh" ]; then
+  source ${SCRIPT_DIR}/utils/setup-kale.sh
+fi
+
 # Initialize notebooks arguments variable
 NOTEBOOK_PROGRAM_ARGS=""
 
