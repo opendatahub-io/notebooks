@@ -139,7 +139,7 @@ COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 # hadolint ignore=DL3002
 # Run as root (same as jupyter-minimal): uv from cpu-base is root-owned; chmod g+w must be root.
 COPY ${DATASCIENCE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
-COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
+COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/setup-kale.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
