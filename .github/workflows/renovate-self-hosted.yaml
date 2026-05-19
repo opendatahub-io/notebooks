@@ -36,7 +36,7 @@ on:  # yamllint disable-line rule:truthy
           - lookup
           - full
           - extract
-        default: lookup
+        default: full
       # https://docs.renovatebot.com/troubleshooting/#log-debug-levels
       log_level:
         description: Renovate log level
@@ -47,7 +47,7 @@ on:  # yamllint disable-line rule:truthy
           - warn
           - error
           - fatal
-        default: info
+        default: debug
   schedule:
     - cron: "0 5 * * *"  # daily 05:00 UTC
 
