@@ -29,7 +29,7 @@ Tag bumps for `quay.io/centos/centos` are blocked by `allowedVersions` in
 |---|---|
 | `cpu/` | CPU-only base image |
 | `cuda/` | NVIDIA CUDA (12.9, 13.0) |
-| `rocm/` | AMD ROCm (6.4, 7.1) |
+| `rocm/` | AMD ROCm (6.4, 7.14) |
 | `build-args/` | `.conf` files with `INDEX_URL` per variant |
 | `utils/` | Shared scripts: `aipcc.sh`, `dnf-helper.sh`, `fix-permissions`, `pip.conf.in`, `uv.toml.in` |
 | `copr/` | Tool to rebuild Fedora SRPMs for EL9 ([README](copr/README.md)) |
