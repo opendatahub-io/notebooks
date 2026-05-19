@@ -440,7 +440,7 @@ Tracking issues:
 
 **Phase 1** (Konflux dedup): Parameterize LABEL blocks via build-args so `Dockerfile.cpu` and `Dockerfile.konflux.cpu` become byte-identical. The CI alignment check (`scripts/check_dockerfile_alignment.sh`) already verifies semantic identity; the goal is to achieve byte-identity.
 
-**Phase 2** (variant merge): Merge cpu/cuda/rocm variants into a single Dockerfile per component using build-args for the accelerator-specific differences. Only 3 directories have multiple variants to merge (`jupyter/minimal`, `rstudio/c9s-python-3.12`, `rstudio/rhel9-python-3.12`).
+**Phase 2** (variant merge): Merge cpu/cuda/rocm variants into a single Dockerfile per component using build-args for the accelerator-specific differences. The primary candidate is `jupyter/minimal`.
 
 ## Future direction: E2E TestOps ecosystem
 
