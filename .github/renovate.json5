@@ -116,9 +116,12 @@
       // reconstruct the BASE_IMAGE=… line correctly.
       "autoReplaceStringTemplate": "BASE_IMAGE={{{depName}}}:{{{newValue}}}",
       "datasourceTemplate": "docker",
-      // Parses 3.4.0-ea.1-1773428606 as major=3, minor=4, patch=0, prerelease=ea.x, build=1773428606
-      // so Renovate can correctly classify update types and block cross-version upgrades.
-      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)(?:\\.(?<patch>\\d+))?(?:-ea\\.(?<prerelease>\\d+))?-(?<build>\\d+)$",
+      // Stable tags become [major, minor, patch, timestamp].
+      // EA tags keep [major, minor, patch] and encode ea_version + timestamp in
+      // prerelease so Renovate compares EA sequence before timestamp, while
+      // still treating EA tags as unstable for ignoreUnstable gating.
+      // This RE2-safe form avoids duplicate named capture groups.
+      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)(?:\\.(?<patch>\\d+))?(?:-ea\\.(?<prerelease>\\d+-\\d+)|-(?<build>\\d+))$",
     },
   ],
 
@@ -156,7 +159,8 @@
     },
     {
       // Block major/minor upgrades by default on all branches.
-      // Only patch/build updates (e.g. 3.4.0-1773428606 -> 3.4.0-1774635932) are allowed.
+      // Patch-like updates within the same base version stay allowed, including
+      // timestamp bumps, EA sequence bumps, and EA -> stable promotions.
       "description": "Block major/minor base image version upgrades (default)",
       "matchManagers": ["custom.regex"],
       "matchUpdateTypes": ["major", "minor"],
