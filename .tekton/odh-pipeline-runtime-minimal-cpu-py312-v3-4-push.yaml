@@ -34,7 +34,7 @@ spec:
   - name: output-image
     value: quay.io/rhoai/odh-pipeline-runtime-minimal-cpu-py312-rhel9:{{target_branch}}
   - name: rhoai-version
-    value: "3.4.0"
+    value: "3.4.1"
   - name: dockerfile
     value: runtimes/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu
   - name: path-context
