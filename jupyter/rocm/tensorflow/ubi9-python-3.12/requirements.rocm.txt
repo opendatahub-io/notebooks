@@ -562,7 +562,7 @@ tensorboard==2.19.0 ; python_full_version < '3.13' and implementation_name == 'c
     --hash=sha256:5e71b98663a641a7ce8a6e70b0be8e1a4c0c45d48760b076383ac4755c35b9a0
 tensorboard-data-server==0.7.2 ; python_full_version < '3.13' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:7e0610d205889588983836ec05dc098e80f97b7e7bbff7e994ebb78f578d0ddb
-tensorflow-rocm @ https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/tensorflow_rocm-2.19.1-cp312-cp312-manylinux_2_28_x86_64.whl ; python_full_version < '3.13' and implementation_name == 'cpython' and sys_platform == 'linux' \
+tensorflow-rocm==2.19.1 ; python_full_version < '3.13' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:a48d2cfd5f8d175fb18333ae57d8c41518cfdd7e262c0873f8821de9d4486008
 termcolor==3.3.0 ; python_full_version < '3.13' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:787a95ef5b452402cc8681a0168ce98e11c37133eb339b3533c6662bcdd37cfc
@@ -598,8 +598,8 @@ uri-template==1.3.0 ; python_full_version < '3.13' and implementation_name == 'c
     --hash=sha256:953bf20ac2650190a1594402dc0bea7f08bdd344067b3bd551df64de46779225
 urllib3==2.7.0 ; python_full_version < '3.13' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:904d8041c985fce5dee71c3126fbd34ca67c8ce9c0efb8e2ec2bc3c64df32d20
-uv @ https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/rocm6.4-ubi9/uv-0.11.6-12-py3-none-linux_x86_64.whl ; python_full_version < '3.13' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:0e37a16f7f84017d3f6717faf041ee597afaf8af19b839c2a3353ee130697e6b
+uv==0.11.14 ; python_full_version < '3.13' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:325a6b3597ccdf1f511d9d1e2ea4e7dc70fef8cd64c8aa66dfa89d1b36133e76
 uvicorn==0.34.0 ; python_full_version < '3.13' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:5b27ff72668503c879ab37e98aa13595c2a1689aea530d313defd675b75de6c7
 uvicorn-worker==0.3.0 ; python_full_version < '3.13' and implementation_name == 'cpython' and sys_platform == 'linux' \

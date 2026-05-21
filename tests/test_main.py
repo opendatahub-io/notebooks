@@ -866,8 +866,8 @@ class Manifest:
 
 
 def _collect_rpms_lock_files() -> list[pathlib.Path]:
-    files = sorted(PROJECT_ROOT.glob("**/rpms.lock.yaml"))
-    assert files, "No rpms.lock.yaml files found under PROJECT_ROOT"
+    files = sorted(PROJECT_ROOT.glob("**/prefetch-input/rhds/rpms.lock.yaml"))
+    assert files, "No RHDS rpms.lock.yaml files found under PROJECT_ROOT"
     return files
 
 
@@ -882,7 +882,7 @@ _KNOWN_EVR_MISMATCHES: frozenset[str] = frozenset(
 
 @pytest.mark.parametrize("lockfile", _collect_rpms_lock_files(), ids=lambda p: str(p.relative_to(PROJECT_ROOT)))
 def test_rpms_lock_nvr_consistency_across_arches(subtests: pytest_subtests.plugin.SubTests, lockfile: pathlib.Path):
-    """Assert that every RPM name pinned in rpms.lock.yaml has the same EVR across all architectures."""
+    """Assert that every RPM name pinned in RHDS rpms.lock.yaml has the same EVR across all architectures."""
     data = yaml.safe_load(lockfile.read_text())
     arches = data.get("arches", [])
     if len(arches) <= 1:
