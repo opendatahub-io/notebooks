@@ -224,6 +224,8 @@ pep8-naming.classmethod-decorators = ["pydantic.validator"]
 [tool.ruff.lint.per-file-ignores]
 # Inner functions are serialized and executed inside containers, so imports must be local.
 "tests/containers/workbenches/gpu_library_loading_test.py" = ["PLC0415"]
+# Tests legitimately import private names to verify internal invariants.
+"tests/**" = ["PLC2701"]
 # Ignore many stylistic and formatting rules for notebooks, but keep Pylint rules like PLW0128
 "jupyter/**/*.ipynb" = [
     "B004",    # flake8-bugbear: unreliable-callable-check
