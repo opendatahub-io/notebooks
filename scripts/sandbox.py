@@ -51,7 +51,42 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(delete=True) as tmpdir:
         setup_sandbox(prereqs, pathlib.Path(tmpdir))
-        command = [arg if arg != "{};" else tmpdir for arg in args.remaining[1:]]
+        additional_arguments = [
+            # Mount the zigcc utility
+            f"--volume={os.getcwd()}/bin/zig-0.15.2:/mnt",
+            f"--env=ZIGCC_ARCH={args.platform.split('/')[1]}",
+            "--unsetenv=ZIGCC_ARCH",
+            # CMake heeds these
+            "--env=CC=/mnt/clang",
+            "--env=CXX=/mnt/clang++",
+            "--unsetenv=CC",
+            "--unsetenv=CXX",
+            # CMake ignores these
+            "--env=AR=/mnt/llvm-ar",
+            "--env=RANLIB=/mnt/llvm-ranlib",
+            "--env=STRIP=/mnt/llvm-strip",
+            "--unsetenv=AR",
+            "--unsetenv=RANLIB",
+            "--unsetenv=STRIP",
+            # Workaround for a s390x compilation issue
+
+            # Codeserver: SPDLOG_CONSTEXPR_FUNC is to work around a consteval issue with zig c++
+            #  ../deps/spdlog/include/spdlog/details/fmt_helper.h:105:54: error: call to consteval function 'fmt::basic_format_string<...>' is not a constant expression
+            #  Clang (via Zig) is stricter about consteval requirements than GCC
+            #  The format string "{:02}" cannot be evaluated as a constant expression in this context
+
+            "--env=CXXFLAGS=-Dundefined=64 -DFMT_CONSTEVAL= -DSPDLOG_CONSTEXPR_FUNC=",
+            # "--unsetenv=CFLAGS",
+            "--unsetenv=CXXFLAGS",
+
+            tmpdir,
+        ]
+        command = []
+        for arg in args.remaining[1:]:
+            if arg == "{};":
+                command.extend(additional_arguments)
+            else:
+                command.append(arg)
         print(f"running {command=}")
         try:
             subprocess.check_call(command)
@@ -60,6 +95,64 @@ def main() -> int:
             return err.returncode
     return 0
 
+"""
+Downloading jedi
+  × Failed to build `pyzmq==27.1.0`
+  ├─▶ The build backend returned an error
+  ╰─▶ Call to `scikit_build_core.build.build_wheel` failed (exit status: 1)
+      [stdout]
+      *** scikit-build-core 0.11.6 using CMake 3.26.5 (wheel)
+      *** Configuring CMake...
+      loading initial cache file /tmp/tmpf9bnfh5o/build/CMakeInit.txt
+      -- Configuring incomplete, errors occurred!
+      [stderr]
+      CMake Error at /usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:49
+      (message):
+        Could not find compiler set in environment variable CC:
+        /mnt/zig-0.15.1/zig cc -target s390x-linux-gnu.
+      Call Stack (most recent call first):
+        CMakeLists.txt:2 (project)
+"""
+
+"""
+creating build/temp.linux-s390x-cpython-312/psutil/arch/linux
+      /mnt/zig cc -target s390x-linux-gnu -fno-strict-overflow
+      -Wsign-compare -DDYNAMIC_ANNOTATIONS_ENABLED=1 -DNDEBUG
+      -O2 -fexceptions -g -grecord-gcc-switches -pipe
+      -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2
+      -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong
+      -m64 -march=z14 -mtune=z15 -fasynchronous-unwind-tables
+      -fstack-clash-protection -O2 -fexceptions -g -grecord-gcc-switches
+      -pipe -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2
+      -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong
+      -m64 -march=z14 -mtune=z15 -fasynchronous-unwind-tables
+      -fstack-clash-protection -O2 -fexceptions -g -grecord-gcc-switches
+      -pipe -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2
+      -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong
+      -m64 -march=z14 -mtune=z15 -fasynchronous-unwind-tables
+      -fstack-clash-protection -fPIC -DPSUTIL_POSIX=1 -DPSUTIL_SIZEOF_PID_T=4
+      -DPSUTIL_VERSION=700 -DPy_LIMITED_API=0x03060000
+      -DPSUTIL_LINUX=1 -I/tmp/.tmpWlL4ZP/builds-v0/.tmpOwAhw2/include
+      -I/usr/include/python3.12 -c psutil/_psutil_common.c -o
+      build/temp.linux-s390x-cpython-312/psutil/_psutil_common.o
+      [stderr]
+      /tmp/.tmpWlL4ZP/builds-v0/.tmpOwAhw2/lib64/python3.12/site-packages/setuptools/dist.py:759:
+      SetuptoolsDeprecationWarning: License classifiers are deprecated.
+      !!
+
+      ********************************************************************************
+              Please consider removing the following classifiers in favor of a
+      SPDX license expression:
+              License :: OSI Approved :: BSD License
+              See
+      https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license
+      for details.
+
+      ********************************************************************************
+      !!
+        self._finalize_license_expression()
+      error: unsupported preprocessor arg: -D_FORTIFY_SOURCE
+"""
 
 def extract_build_args(remaining: list[str]) -> dict[str, str]:
     """Extract --build-arg KEY=VALUE pairs from the command line using argparse."""
@@ -74,7 +167,6 @@ def extract_build_args(remaining: list[str]) -> dict[str, str]:
         build_args[key] = value
     return build_args
 
-
 def buildinputs(
         dockerfile: pathlib.Path | str,
         platform: Literal["linux/amd64", "linux/arm64", "linux/s390x", "linux/ppc64le"] = "linux/amd64",
@@ -84,6 +176,19 @@ def buildinputs(
         subprocess.check_call([MAKE, "bin/buildinputs"], cwd=ROOT_DIR)
     if not build_args:
         build_args = {}
+    if not (ROOT_DIR / "bin/zig-0.15.2").exists():
+        subprocess.check_call([MAKE, "bin/zig-0.15.2"], cwd=ROOT_DIR)
+    if not (ROOT_DIR / "bin/zig-0.15.2/zigcc").exists():
+        subprocess.check_call([MAKE, "build"], cwd=ROOT_DIR / "scripts/zigcc")
+    # Openblas failed to compile
+    # https://github.com/OpenMathLib/OpenBLAS/discussions/5169#discussioncomment-12489095
+    # During shared library creation: The exports/Makefile checks the compiler name to decide whether to add -lomp (clang) or -lgomp (gcc)
+    # When compiler is named "cc": Detection fails → no OpenMP library appended → linking fails
+    # ld.lld: error: undefined reference: omp_get_max_threads
+    # >>> referenced by ../libopenblasp-r0.3.30.so (disallowed by --no-allow-shlib-undefined)
+    # to fix this, name the compiler binary alias "clang" and "clang++"
+    for alias in ["clang", "clang++", "ar", "llvm-ar", "ranlib", "llvm-ranlib", "strip", "llvm-strip"]:
+        shutil.copy(ROOT_DIR / "scripts/zigcc/bin/zigcc", ROOT_DIR / "bin/zig-0.15.2" / alias)
     stdout = subprocess.check_output([ROOT_DIR / "bin/buildinputs",
                                       *[f"-build-arg={k}={v}" for k, v in build_args.items()],
                                       str(dockerfile)],
