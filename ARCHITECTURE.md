@@ -12,24 +12,34 @@ These images run on OpenShift as part of OpenDataHub (ODH) and Red Hat OpenShift
 
 ## Image hierarchy
 
-Images form a conceptual hierarchy. Each image is built by a standalone multi-stage
-Dockerfile that pulls its parent as a `FROM` base image (not as a build-time dependency
-in this repo):
+Images follow a conceptual layer hierarchy, but there are **no inter-image dependencies**.
+Each image has a self-contained multi-stage Dockerfile that starts `FROM ${BASE_IMAGE}`
+(an external base) and rebuilds every ancestor stage internally. No notebook image
+references another notebook image as a `FROM` source.
+
+The conceptual layer structure (not a build-time dependency graph):
 
 ```text
-Base image (external or base-images/)
-  └── jupyter/minimal                    ← Python, JupyterLab, basic packages
-        └── jupyter/datascience          ← NumPy, Pandas, SciPy, scikit-learn
-              ├── jupyter/pytorch                ← PyTorch + CUDA/ROCm
-              ├── jupyter/pytorch+llmcompressor  ← PyTorch + LLM Compressor
-              ├── jupyter/tensorflow             ← TensorFlow + CUDA
-              ├── jupyter/trustyai               ← TrustyAI explainability
-              ├── jupyter/rocm/pytorch           ← PyTorch + ROCm
-              └── jupyter/rocm/tensorflow        ← TensorFlow + ROCm
+${BASE_IMAGE} (external)
+  └── minimal stage                     ← Python, JupyterLab, basic packages
+        └── datascience stage           ← NumPy, Pandas, SciPy, scikit-learn
+              ├── pytorch stage                ← PyTorch + CUDA/ROCm
+              ├── pytorch+llmcompressor stage  ← PyTorch + LLM Compressor
+              ├── tensorflow stage             ← TensorFlow + CUDA
+              ├── trustyai stage               ← TrustyAI explainability
+              ├── rocm/pytorch stage           ← PyTorch + ROCm
+              └── rocm/tensorflow stage        ← TensorFlow + ROCm
 ```
 
-In ODH (OpenDataHub), base images are built from `base-images/` in this repo.
-In RHOAI (Red Hat OpenShift AI), base images come from the AIPCC pipeline instead.
+Each leaf Dockerfile (e.g. `jupyter/pytorch/.../Dockerfile.cuda`) contains all stages
+from `${BASE_IMAGE}` down to its final stage. For example, the PyTorch CUDA Dockerfile
+chains: `FROM ${BASE_IMAGE} AS cuda-base` → `cuda-jupyter-minimal` → `cuda-jupyter-datascience`
+→ `cuda-jupyter-pytorch`, all in one file.
+
+Different images can use different `${BASE_IMAGE}` values (and therefore different
+CUDA/ROCm versions). In ODH (OpenDataHub), base images are built from `base-images/`
+in this repo. In RHOAI (Red Hat OpenShift AI), base images come from the AIPCC pipeline
+instead.
 
 Each image directory (e.g. `jupyter/minimal/ubi9-python-3.12/`) contains:
 - `Dockerfile.*` — one per variant (cpu, cuda, rocm, konflux.cpu, etc.)

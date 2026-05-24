@@ -81,10 +81,13 @@ make jupyter-pytorch-cuda-ubi9-python-3.12
 
 #### ODH vs Konflux (RHOAI) builds
 
-The `KONFLUX` Makefile variable (default: `no`) switches between two build variants:
+The `KONFLUX` Makefile variable (default: `no`) switches between two product variants.
+Since RHAIENG-4516, `Dockerfile.*` files are symlinks to `Dockerfile.konflux.*` (byte-identical),
+so `KONFLUX` no longer selects a different Dockerfile. It controls which `build-args/*.conf`
+file is used (setting `BASE_IMAGE`, labels, etc.) and which manifest path is read:
 
-- `KONFLUX=no` — builds from `Dockerfile.*`, uses `manifests/odh/base/` imagestream manifests
-- `KONFLUX=yes` — builds from `Dockerfile.konflux.*`, uses `manifests/rhoai/base/` imagestream manifests
+- `KONFLUX=no` (ODH) — uses `build-args/cpu.conf` etc., `manifests/odh/base/` imagestream manifests
+- `KONFLUX=yes` (RHOAI) — uses `build-args/konflux.cpu.conf` etc., `manifests/rhoai/base/` imagestream manifests
 
 This variable must be set consistently across the build step **and** the test step (`make test-*`), as the test script (`scripts/test_jupyter_with_papermill.sh`) reads the imagestream manifest to derive expected package versions.
 The Python equivalent (`tests/manifests.py::get_source_of_truth_filepath`) accepts a `konflux: bool` keyword argument for the same purpose.
@@ -119,9 +122,15 @@ make test-${NOTEBOOK_NAME} # Specific notebook tests
 
 ### When Working with This Repository
 
-1. **Understand the Inheritance Model**: Notebook images inherit from parent images in a hierarchical structure:
-   - Minimal → DataScience → Specialized (PyTorch, TensorFlow, TrustyAI)
-   - Always check parent dependencies before adding new packages
+1. **Understand the Multi-Stage Build Model**: Each notebook image has a self-contained
+   multi-stage Dockerfile that starts from `${BASE_IMAGE}` (an external base image) and
+   rebuilds every ancestor stage internally. For example, the PyTorch CUDA Dockerfile chains
+   `cuda-base → cuda-jupyter-minimal → cuda-jupyter-datascience → cuda-jupyter-pytorch`
+   all within a single file. No image `FROM`s another notebook image.
+   - When adding packages to an earlier stage (e.g. minimal), locate that stage in every
+     leaf Dockerfile that embeds it, since there are no separate parent images.
+   - Different images can reference different `${BASE_IMAGE}` values and therefore
+     different CUDA/ROCm versions.
 
 2. **Package Management**:
    - Use `pyproject.toml` and `pylock.toml` for Python dependencies
@@ -133,9 +142,8 @@ make test-${NOTEBOOK_NAME} # Specific notebook tests
 #### Modifying Existing Images
 
 1. **Check Dependencies**:
-   - Review parent image changes
-   - Test downstream images
-   - Update version compatibility files
+   - Review changes to earlier multi-stage build stages (which are inlined in each leaf Dockerfile)
+   - Test all images that embed the changed stage
 
 2. **Security Updates**:
    - Scan for vulnerabilities using `ci/security-scan/`
@@ -244,7 +252,7 @@ make undeploy9-${NOTEBOOK_NAME} # Cleanup
 ## Best Practices Summary
 
 1. **Always test changes** in isolated environments before committing
-2. **Follow the inheritance model** when adding dependencies
+2. **Propagate dependency changes** to all Dockerfiles that embed the affected stage
 3. **Update documentation** alongside code changes
 4. **Use semantic versioning** for releases
 5. **Maintain backward compatibility** when possible
