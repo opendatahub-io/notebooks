@@ -23,22 +23,25 @@ Pull requests are the best way to propose changes to the notebooks repository:
 
 ### Some basic instructions to create a new notebook
 
-- Decide from which notebook you want to derive the new notebook
-- Create a proper filepath and naming to the corresponding folder
-- Add the minimum files you have to add:
-    - Pipfile with the additional packages
-    - Dockefile with proper instructions
-    - Kustomization objects to deploy the new notebook into an openshift cluster (Kustomization.yaml, service.yaml, statefulset.yaml)
-- Create instructions into Makefile, for example if you derive the new notebooks from minimal then the recipe should be like the following:
+Each notebook image is a self-contained multi-stage Dockerfile — there are no inter-image
+dependencies. To add a new notebook:
+
+- Copy an existing leaf Dockerfile that is closest to your new image (e.g. copy
+  `jupyter/trustyai/ubi9-python-3.12/Dockerfile.cpu` and add your new stage at the end)
+- Create a proper filepath: `jupyter/${NOTEBOOK_NAME}/ubi9-python-3.12/`
+- Add the minimum files:
+    - `pyproject.toml` with the additional Python packages
+    - `Dockerfile.cpu` (and/or `.cuda`, `.rocm`) with multi-stage build instructions
+    - `build-args/` directory with `cpu.conf`, `konflux.cpu.conf`, etc.
+- Add a Makefile target (no dependency on another notebook target):
     ```
-    # Your comment here
-    .PHONY: jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8
-    jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8: jupyter-minimal-ubi8-python-3.8
-	$(call image,$@,jupyter/${NOTEBOOK_NAME}/ubi8-python-3.8,$<)
+    .PHONY: jupyter-${NOTEBOOK_NAME}-ubi9-python-$(RELEASE_PYTHON_VERSION)
+    jupyter-${NOTEBOOK_NAME}-ubi9-python-$(RELEASE_PYTHON_VERSION):
+    	$(call image,$@,jupyter/${NOTEBOOK_NAME}/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
     ```
-- Add the paths of the new pipfiles under `refresh-lock-files`
-- Run the [piplock-renewal.yaml](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/piplock-renewal.yaml) against your fork branch, check [here](https://github.com/opendatahub-io/notebooks/blob/main/README.md) for more info.
-- Test the changes locally, by manually running the `$ make jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8` from the terminal.
+- Add the new image path under `refresh-lock-files`
+- Run `make refresh-lock-files` to generate lock files
+- Test locally: `make jupyter-${NOTEBOOK_NAME}-ubi9-python-3.12`
 
 ### Go toolchain
 
@@ -91,24 +94,16 @@ A bot will comment with instructions for re-creating the PR from a same-repo bra
     ```
 - If you like, you can install prek to run automatically using `uvx prek install -f`, as per its [install instructions](https://prek.j178.dev/quickstart)
 
-### Some basic instructions how to apply the new tests into [openshift-ci](https://github.com/openshift/release)
+### CI configuration for a new notebook
 
-- Fork the [openshift-ci](https://github.com/openshift/release) repo and create your branch from master.
-  - Definition and configuration of jobs used by this repository is on these places:
-    - [jobs](https://github.com/openshift/release/tree/master/ci-operator/jobs/opendatahub-io/notebooks)
-    - [config](https://github.com/openshift/release/tree/master/ci-operator/config/opendatahub-io/notebooks)
-- Issue a pull request there by adding the following.
-- Get navigated into [opendatahub-io-notebooks-main.yaml](https://github.com/openshift/release/blob/master/ci-operator/config/opendatahub-io/notebooks/opendatahub-io-notebooks-main.yaml) file.
-  - Under `images` option, add build instructions (directory path, from(parent image) and to(new notebook name))
-  - Under `tests` option, add the tests (*notebook-jupyter-${NOTEBOOK_NAME}-ubi8-python-3-8-image-mirror* and *notebook-jupyter-${NOTEBOOK_NAME}-ubi8-python-3-8-pr-image-mirror*)
-  - Under `notebooks-e2e-tests` add the *jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8-test-e2e*
-  - Finally, run on terminal `$make jobs` and ensure that there are not errors.
-- Commit your PR
-
+Each notebook image is built as an independent Konflux component with its own Tekton
+PipelineRun in `.tekton/`. To add CI for a new notebook, create a PipelineRun YAML
+following the pattern of existing ones in `.tekton/`. See the `.tekton/README-odh.md`
+for details.
 
 ### Testing your PR locally
 
-- Test the changes locally, by manually running the `$make jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8` from the terminal. This definitely helps in that initial phase.
+- Test the changes locally by running `make jupyter-${NOTEBOOK_NAME}-ubi9-python-3.12` from the terminal.
 
 ### Working with RHDS and ODH Repositories
 
