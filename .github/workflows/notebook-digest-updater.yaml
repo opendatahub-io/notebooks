@@ -29,7 +29,7 @@ jobs:
 
       # Checkout the branch
       - name: Checkout branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           ref: ${{ env.BRANCH_NAME }}
 
@@ -61,7 +61,7 @@ jobs:
 
       # Checkout the release branch to apply the updates
       - name: Checkout release branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           ref: ${{ env.DIGEST_UPDATER_BRANCH }}
 
@@ -156,7 +156,7 @@ jobs:
 
       # Checkout the release branch to apply the updates
       - name: Checkout release branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           ref: ${{ env.DIGEST_UPDATER_BRANCH }}
 
@@ -233,10 +233,10 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
       - name: pull-request
-        uses: repo-sync/pull-request@v2
+        uses: repo-sync/pull-request@7e79a9f5dc3ad0ce53138f01df2fad14a04831c5  # v2.12.1
         with:
           source_branch: ${{ env.DIGEST_UPDATER_BRANCH }}
           destination_branch: ${{ env.BRANCH_NAME }}
