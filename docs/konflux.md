@@ -379,11 +379,13 @@ The integration test pipeline uses a `volumeClaimTemplate` (not `emptyDir`) to s
 
 Dependency updates are managed by [Renovate](https://docs.renovatebot.com/) through two mechanisms. Configuration lives in [`.github/renovate.json5`](../.github/renovate.json5).
 
-**Where MintMaker runs:** `opendatahub-io/notebooks#main` (development) and supported RHDS release branches `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4` on `red-hat-data-services/notebooks`. It does **not** run on RHDS `main` (autosync mirror of ODH) or end-of-life RHDS branches. RHDS support branches must use `renovate.json5` only — a legacy `.github/renovate.json` disables `github-actions` and other managers.
+**Where MintMaker runs:** `opendatahub-io/notebooks#main` (development) and supported RHDS release branches `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4` on `red-hat-data-services/notebooks`. It does **not** run on RHDS `main` (autosync mirror of ODH), `rhoai-2.24`, or end-of-life RHDS branches (`rhoai-2.21`–`2.23`). Konflux **release-data** may still register `rhoai-2.24` streams until an ops MR freezes them — repo `renovate.json5` and release-data must align (ADR 0013). RHDS support branches must use `renovate.json5` only — a legacy `.github/renovate.json` disables `github-actions` and other managers.
 
 **MintMaker** (Konflux-managed Renovate) runs automatically and creates branches named `konflux/mintmaker/<base-branch>/<image-ref>` for base image updates detected via the `customManagers` regex rules in `renovate.json5` (for example `main`, `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4`). GitHub Actions pins use `konflux/mintmaker/<base-branch>/github-actions`. It uses `platformCommit: "enabled"` (GitHub API commits instead of git push).
 
 **Self-hosted Renovate** runs via the `renovate-self-hosted.yaml` workflow with `renovate_run.py` as a wrapper. It creates branches named `konflux/references/main` for Tekton bundle digest updates.
+
+**Local dry-run:** With RHDS `matchRepositories` in `renovate.json5`, use `scripts/ci/renovate_run.py lookup` (remote/GitHub), not `local-lookup` — the latter fails with `repositories list not supported when platform=local`. Set `RENOVATE_TOKEN=$(gh auth token)` and optionally `RENOVATE_REPOSITORIES` / `RENOVATE_BASE_BRANCHES`.
 
 **Known issues:**
 - **"Cannot find replaceString"** — MintMaker fails when a `build-args/*.conf` file was already updated (e.g., by another PR) before MintMaker's branch is rebased. The old value it searches for no longer exists. Workaround: close the stale MintMaker PR and let it re-create.

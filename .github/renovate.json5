@@ -136,7 +136,7 @@
 
   "packageRules": [
     {
-      description: "RHDS fork: disable MintMaker by default (autosync main, EA, EOL branches)",
+      description: "RHDS fork: disable MintMaker by default (autosync main, EA, EOL, rhoai-2.24 — release-data may still list 2.24 until ops MR)",
       matchRepositories: ["red-hat-data-services/notebooks"],
       enabled: false,
     },
