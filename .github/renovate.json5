@@ -1,5 +1,14 @@
-// Renovate bot configuration for opendatahub-io/notebooks
-// This file is ignored if `.github/renovate.json` is also present,
+// Renovate / MintMaker configuration (RHAIENG-5297). Shared renovate.json5 on
+// opendatahub-io/notebooks and red-hat-data-services/notebooks support branches.
+// Do not add .github/renovate.json — it shadows this file.
+//
+// MintMaker ON (remote @ base branch):
+//   - opendatahub-io/notebooks @ main
+//   - red-hat-data-services/notebooks @ rhoai-2.25, rhoai-3.3, rhoai-3.4
+// MintMaker OFF:
+//   - red-hat-data-services/notebooks @ main (autosync from ODH main), EA, EOL branches
+//
+// This file is ignored if `.github/renovate.json` is also present —
 // see https://docs.renovatebot.com/configuration-options/ and https://json5.org.
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
@@ -124,10 +133,21 @@
 
   "packageRules": [
     {
-      "description": "Group GitHub Actions digest updates into a single PR",
-      "matchManagers": ["github-actions"],
-      "groupName": "GitHub Actions",
-      "pinDigests": true,
+      description: "RHDS fork: disable MintMaker by default (autosync main, EA, EOL, rhoai-2.24 — release-data may still list 2.24 until ops MR)",
+      matchRepositories: ["red-hat-data-services/notebooks"],
+      enabled: false,
+    },
+    {
+      description: "RHDS supported release branches only (rhoai-2.25, rhoai-3.3, rhoai-3.4)",
+      matchRepositories: ["red-hat-data-services/notebooks"],
+      matchBaseBranches: ["rhoai-2.25", "rhoai-3.3", "rhoai-3.4"],
+      enabled: true,
+    },
+    {
+      description: "Group GitHub Actions digest updates into a single PR",
+      matchManagers: ["github-actions"],
+      groupName: "github-actions",
+      pinDigests: true,
     },
     {
       // astral-sh/setup-uv uses exact version tags (v8.0.0), not major tags (v8).
@@ -162,29 +182,39 @@
       "matchUpdateTypes": ["major", "minor"],
       "enabled": false,
     },
+    // Exception: allow major/minor on main branch of upstream repo only.
+    // main is the development branch where version bumps are expected.
+    // Forks (e.g. red-hat-data-services/notebooks) and release branches stay blocked.
+    //
+    // NOTE: Renovate warns "You must configure baseBranchPatterns in order to
+    // use them inside matchBaseBranches."  This warning is cosmetic:
+    //   - MintMaker sets baseBranchPatterns per-branch at the self-hosted level
+    //     (konflux-ci/mintmaker internal/component/github/github.go), so
+    //     matchBaseBranches works correctly at runtime.
+    //   - Do NOT add a top-level baseBranches/baseBranchPatterns here — repo-level
+    //     baseBranchPatterns overrides MintMaker's per-branch config, breaking
+    //     release branch processing on the downstream fork
+    //     (red-hat-data-services/notebooks: rhoai-2.25, rhoai-3.3, etc.).
+    //     Ref: https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1774946461904449
+    //   - Local dry-runs (--platform=local) cannot evaluate matchBaseBranches;
+    //     this is a known limitation of local mode.
     {
-      // Exception: allow major/minor on main branch of upstream repo only.
-      // main is the development branch where version bumps are expected.
-      // Forks (e.g. red-hat-data-services/notebooks) and release branches stay blocked.
-      //
-      // NOTE: Renovate warns "You must configure baseBranchPatterns in order to
-      // use them inside matchBaseBranches."  This warning is cosmetic:
-      //   - MintMaker sets baseBranchPatterns per-branch at the self-hosted level
-      //     (konflux-ci/mintmaker internal/component/github/github.go), so
-      //     matchBaseBranches works correctly at runtime.
-      //   - Do NOT add a top-level baseBranches/baseBranchPatterns here — repo-level
-      //     baseBranchPatterns overrides MintMaker's per-branch config, breaking
-      //     release branch processing on the downstream fork
-      //     (red-hat-data-services/notebooks: rhoai-2.25, rhoai-3.3, etc.).
-      //     Ref: https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1774946461904449
-      //   - Local dry-runs (--platform=local) cannot evaluate matchBaseBranches;
-      //     this is a known limitation of local mode.
+      // Re-enables the major/minor updates that packageRules[4] blocks by default.
       "description": "Allow major/minor base image upgrades on upstream main",
       "matchManagers": ["custom.regex"],
       "matchUpdateTypes": ["major", "minor"],
       "matchBaseBranches": ["main"],
       "matchRepositories": ["opendatahub-io/notebooks"],
       "enabled": true,
+    },
+    {
+      // Renovate forbids combining matchUpdateTypes + ignoreUnstable in one rule,
+      // so unstable (EA prerelease) opt-in lives in its own rule.
+      "description": "Allow unstable (EA) base image tags on upstream main",
+      "matchManagers": ["custom.regex"],
+      "matchBaseBranches": ["main"],
+      "matchRepositories": ["opendatahub-io/notebooks"],
+      "ignoreUnstable": false,
     },
     {
       // ubi9/go-toolset tags use Go version (1.24, 1.25) but Red Hat also
