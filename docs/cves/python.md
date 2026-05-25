@@ -211,7 +211,7 @@ make jupyter-datascience-ubi9-python-3.12
 
 **Solution**:
 1. Add to `dependencies/cve-constraints.txt` for general protection:
-   ```
+   ```text
    # RHAIENG-2458: CVE-2025-66418, RHOAIENG-63894: CVE-2026-44432 urllib3 decompression vulnerability
    urllib3>=2.7.0
    ```
