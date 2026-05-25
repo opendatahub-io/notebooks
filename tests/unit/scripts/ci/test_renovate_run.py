@@ -78,26 +78,22 @@ def test_main_lookup_requires_token(
     assert "set RENOVATE_TOKEN (required for lookup)" in captured.err
 
 
-def test_main_local_lookup_runs_without_token(
+def test_main_local_lookup_exits_before_container(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     clear_renovate_env(monkeypatch)
     monkeypatch.setenv("DOCKER_CONFIG", str(tmp_path))
-    monkeypatch.setattr(renovate_run, "detect_engine", lambda: "docker")
-    monkeypatch.setattr(renovate_run, "maybe_load_host_rules", lambda _: None)
 
-    observed: dict[str, list[str]] = {}
+    def fail_if_run(cmd: list[str], check: bool) -> SimpleNamespace:
+        raise AssertionError("subprocess.run should not be called for local-lookup")
 
-    def fake_run(cmd: list[str], check: bool) -> SimpleNamespace:
-        observed["cmd"] = cmd
-        assert check is False
-        return SimpleNamespace(returncode=0)
-
-    monkeypatch.setattr(renovate_run.subprocess, "run", fake_run)
+    monkeypatch.setattr(renovate_run.subprocess, "run", fail_if_run)
 
     exit_code = renovate_run.main(["local-lookup"])
 
-    assert exit_code == 0
-    assert "--platform=local" in observed["cmd"]
-    assert "--dry-run=lookup" in observed["cmd"]
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "matchRepositories" in captured.err
+    assert "renovate_run.py lookup" in captured.err

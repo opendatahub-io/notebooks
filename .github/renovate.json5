@@ -1,5 +1,14 @@
-// Renovate bot configuration for opendatahub-io/notebooks
-// This file is ignored if `.github/renovate.json` is also present,
+// Renovate / MintMaker configuration (RHAIENG-5297). Shared renovate.json5 on
+// opendatahub-io/notebooks and red-hat-data-services/notebooks support branches.
+// Do not add .github/renovate.json — it shadows this file.
+//
+// MintMaker ON (remote @ base branch):
+//   - opendatahub-io/notebooks @ main
+//   - red-hat-data-services/notebooks @ rhoai-2.25, rhoai-3.3, rhoai-3.4
+// MintMaker OFF:
+//   - red-hat-data-services/notebooks @ main (autosync from ODH main), EA, EOL branches
+//
+// This file is ignored if `.github/renovate.json` is also present —
 // see https://docs.renovatebot.com/configuration-options/ and https://json5.org.
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
@@ -127,10 +136,21 @@
 
   "packageRules": [
     {
-      "description": "Group GitHub Actions digest updates into a single PR",
-      "matchManagers": ["github-actions"],
-      "groupName": "GitHub Actions",
-      "pinDigests": true,
+      description: "RHDS fork: disable MintMaker by default (autosync main, EA, EOL, rhoai-2.24 — release-data may still list 2.24 until ops MR)",
+      matchRepositories: ["red-hat-data-services/notebooks"],
+      enabled: false,
+    },
+    {
+      description: "RHDS supported release branches only (rhoai-2.25, rhoai-3.3, rhoai-3.4)",
+      matchRepositories: ["red-hat-data-services/notebooks"],
+      matchBaseBranches: ["rhoai-2.25", "rhoai-3.3", "rhoai-3.4"],
+      enabled: true,
+    },
+    {
+      description: "Group GitHub Actions digest updates into a single PR",
+      matchManagers: ["github-actions"],
+      groupName: "github-actions",
+      pinDigests: true,
     },
     {
       // astral-sh/setup-uv uses exact version tags (v8.0.0), not major tags (v8).
