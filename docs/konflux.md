@@ -381,7 +381,7 @@ Dependency updates are managed by [Renovate](https://docs.renovatebot.com/) thro
 
 **Where MintMaker runs:** `opendatahub-io/notebooks#main` (development) and supported RHDS release branches `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4` on `red-hat-data-services/notebooks`. It does **not** run on RHDS `main` (autosync mirror of ODH) or end-of-life RHDS branches. RHDS support branches must use `renovate.json5` only — a legacy `.github/renovate.json` disables `github-actions` and other managers.
 
-**MintMaker** (Konflux-managed Renovate) runs automatically and creates branches named `konflux/mintmaker/main/<image-ref>` for base image updates detected via the `customManagers` regex rules in `renovate.json5`. GitHub Actions pins use `konflux/mintmaker/<branch>/github-actions`. It uses `platformCommit: "enabled"` (GitHub API commits instead of git push).
+**MintMaker** (Konflux-managed Renovate) runs automatically and creates branches named `konflux/mintmaker/<base-branch>/<image-ref>` for base image updates detected via the `customManagers` regex rules in `renovate.json5` (for example `main`, `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4`). GitHub Actions pins use `konflux/mintmaker/<base-branch>/github-actions`. It uses `platformCommit: "enabled"` (GitHub API commits instead of git push).
 
 **Self-hosted Renovate** runs via the `renovate-self-hosted.yaml` workflow with `renovate_run.py` as a wrapper. It creates branches named `konflux/references/main` for Tekton bundle digest updates.
 

@@ -1,10 +1,12 @@
-// Renovate / MintMaker configuration for opendatahub-io/notebooks (RHAIENG-5297).
+// Renovate / MintMaker configuration (RHAIENG-5297). Shared renovate.json5 on
+// opendatahub-io/notebooks and red-hat-data-services/notebooks support branches.
+// Do not add .github/renovate.json — it shadows this file.
 //
-// Repo layout:
-//   - Development: opendatahub-io/notebooks#main (MintMaker ON — this repo).
-//   - Downstream: red-hat-data-services/notebooks#main autosyncs from ODH main (MintMaker OFF).
-//   - RHDS support branches rhoai-2.25, rhoai-3.3, rhoai-3.4 are maintained separately;
-//     use this same renovate.json5 there and do NOT keep a legacy renovate.json (it shadows json5).
+// MintMaker ON (remote @ base branch):
+//   - opendatahub-io/notebooks @ main
+//   - red-hat-data-services/notebooks @ rhoai-2.25, rhoai-3.3, rhoai-3.4
+// MintMaker OFF:
+//   - red-hat-data-services/notebooks @ main (autosync from ODH main), EA, EOL branches
 //
 // This file is ignored if `.github/renovate.json` is also present —
 // see https://docs.renovatebot.com/configuration-options/ and https://json5.org.
