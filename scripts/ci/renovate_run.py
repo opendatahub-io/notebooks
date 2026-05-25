@@ -9,8 +9,14 @@ found on PATH, else docker. Override with CONTAINER_ENGINE=podman|docker.
   export GITHUB_MCP_PAT=ghp_...  # or RENOVATE_TOKEN (required for local/remote/lookup)
   python3 scripts/ci/renovate_run.py            # platform=local, current tree
   python3 scripts/ci/renovate_run.py remote    # clone from GitHub
-  python3 scripts/ci/renovate_run.py lookup    # remote + --dry-run=lookup, branch-aware JSON logs
-  python3 scripts/ci/renovate_run.py local-lookup  # local + --dry-run=lookup, JSON logs on stdout
+  export RENOVATE_TOKEN=$(gh auth token)
+  export CONTAINER_ENGINE=docker   # if podman machine is not running
+
+  python3 scripts/ci/renovate_run.py lookup    # remote + --dry-run=lookup (preferred for RHDS allowlist)
+  python3 scripts/ci/renovate_run.py local-lookup  # unsupported when renovate.json5 uses matchRepositories
+
+  RENOVATE_REPOSITORIES=opendatahub-io/notebooks RENOVATE_BASE_BRANCHES=main \\
+    python3 scripts/ci/renovate_run.py lookup
 
 Registry auth: DOCKER_CONFIG (default ~/.docker); sets RENOVATE_HOST_RULES from
 config.json unless RENOVATE_HOST_RULES is already set (e.g. from GITHUB_ENV in CI).
@@ -171,12 +177,27 @@ def main(argv: list[str] | None = None) -> int:
         choices=("local", "remote", "lookup", "local-lookup"),
         help=(
             "local: current tree; remote: clone repo; "
-            "lookup: remote dry-run lookup + JSON logs; "
-            "local-lookup: local dry-run lookup + JSON logs"
+            "lookup: remote dry-run lookup (use with RENOVATE_REPOSITORIES / RENOVATE_BASE_BRANCHES); "
+            "local-lookup: unsupported with matchRepositories in renovate.json5 — use lookup"
         ),
     )
     args = parser.parse_args(argv)
     mode = args.mode
+
+    if mode == "local-lookup":
+        print(
+            "error: local-lookup is not supported when .github/renovate.json5 uses "
+            "matchRepositories (Renovate: repositories list not supported when platform=local)",
+            file=sys.stderr,
+        )
+        print(
+            "Use remote lookup instead:\n"
+            "  export RENOVATE_TOKEN=$(gh auth token)\n"
+            "  RENOVATE_REPOSITORIES=opendatahub-io/notebooks RENOVATE_BASE_BRANCHES=main \\\n"
+            "    ./uv run python scripts/ci/renovate_run.py lookup",
+            file=sys.stderr,
+        )
+        return 1
 
     engine = detect_engine()
 
