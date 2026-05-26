@@ -10,6 +10,10 @@ on:  # yamllint disable-line rule:truthy
   pull_request:
     paths:
       - .github/renovate.json5
+      - .github/workflows/validate-renovate-config.yaml
+      - scripts/ci/validate_renovate_config.py
+      - scripts/ci/validate_renovate_dry_run.py
+      - scripts/ci/renovate_run.py
   workflow_dispatch:
   schedule:
     - cron: "0 6 * * 1"  # Mon 06:00 UTC
