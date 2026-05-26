@@ -30,6 +30,12 @@ KNOWN_CONFIG_WARNINGS = (
 RunSubprocess = Callable[..., subprocess.CompletedProcess[str]]
 
 
+def _subprocess_stream_text(data: str | bytes | None) -> str:
+    if not data:
+        return ""
+    return data if isinstance(data, str) else data.decode()
+
+
 @dataclass(frozen=True)
 class DryRunScenario:
     name: str
@@ -156,7 +162,7 @@ def run_dry_run(
             timeout=timeout_seconds,
         )
     except subprocess.TimeoutExpired as exc:
-        combined = (exc.stdout or "") + (exc.stderr or "")
+        combined = _subprocess_stream_text(exc.stdout) + _subprocess_stream_text(exc.stderr)
         tail = combined[-4000:] if combined else ""
         raise RuntimeError(f"{scenario.name}: renovate dry-run timed out after {timeout_seconds}s\n{tail}") from exc
     combined = proc.stdout + proc.stderr
