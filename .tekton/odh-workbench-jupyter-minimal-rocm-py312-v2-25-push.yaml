@@ -84,10 +84,10 @@ spec:
           computeResources:
             requests:
               cpu: '8'
-              memory: 16Gi
+              memory: 32Gi
             limits:
               cpu: '16'
-              memory: 32Gi
+              memory: 64Gi
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-workbench-jupyter-minimal-rocm-py312-v2-25
   workspaces:
