@@ -420,17 +420,13 @@ DIR ?=
 refresh-lock-files:
 	@echo "==================================================================="
 	@echo "🔁 Refreshing lock files using INDEX_MODE=$(INDEX_MODE)"
-	@echo "    (uses ./uv → dependencies/uv-image-lock-version for reproducible pylocks)"
+	@echo "    (orchestrator: uv run; pip compile inside pylocks_generator: ./uv → dependencies/uv-image-lock-version)"
 	@echo "==================================================================="
 	@cd $(ROOT_DIR) && \
-		UV_LOCK_EXTRA_INDEX_URL="$(UV_EXTRA_INDEX_URL)" \
-		PIP_LOCK_EXTRA_INDEX_URL="$(PIP_EXTRA_INDEX_URL)" \
-		env -u UV_EXTRA_INDEX_URL -u PIP_EXTRA_INDEX_URL \
-		if [ -n "$(DIR)" ]; then \
-			uv run scripts/pylocks_generator.py "$(INDEX_MODE)" "$(DIR)"; \
-		else \
-			uv run scripts/pylocks_generator.py "$(INDEX_MODE)"; \
-		fi
+		export UV_LOCK_EXTRA_INDEX_URL="$(UV_EXTRA_INDEX_URL)" && \
+		export PIP_LOCK_EXTRA_INDEX_URL="$(PIP_EXTRA_INDEX_URL)" && \
+		unset UV_EXTRA_INDEX_URL PIP_EXTRA_INDEX_URL && \
+		uv run scripts/pylocks_generator.py "$(INDEX_MODE)" $(DIR)
 
 # ======================================================================================
 #   gmake update-imagestream-annotations
