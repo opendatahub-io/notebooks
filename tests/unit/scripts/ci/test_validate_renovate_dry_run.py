@@ -17,6 +17,8 @@ RHOAI_FIXTURE = """
 {"prTitle":"[rhoai-3.4] Update Konflux references"}
 """
 
+TEST_ENV = {"RENOVATE_TOKEN": "test-token"}
+
 
 def test_extract_pr_titles_from_fixture_logs() -> None:
     main_records = dry_run.parse_json_log_lines(MAIN_FIXTURE)
@@ -68,15 +70,39 @@ def test_fatal_config_warnings_ignores_package_rules_prefix() -> None:
     assert warnings == [], f"Expected packageRules-prefixed warning to be ignored, got: {warnings}"
 
 
-def test_run_dry_run_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_run(*_args, **_kwargs):
+def test_build_dry_run_env_sets_scenario_fields() -> None:
+    scenario = dry_run.SCENARIOS[0]
+    env = dry_run.build_dry_run_env(scenario, TEST_ENV)
+    assert env["RENOVATE_REPOSITORIES"] == "opendatahub-io/notebooks", (
+        f"Expected repository from scenario, got {env['RENOVATE_REPOSITORIES']!r}"
+    )
+    assert env["RENOVATE_BASE_BRANCHES"] == "main", (
+        f"Expected base branch from scenario, got {env['RENOVATE_BASE_BRANCHES']!r}"
+    )
+    assert env["LOG_FORMAT"] == "json", f"Expected JSON log format, got {env['LOG_FORMAT']!r}"
+    assert env["LOG_LEVEL"] == "debug", f"Expected debug log level for prTitle extraction, got {env['LOG_LEVEL']!r}"
+
+
+def test_validate_dry_runs_requires_renovate_token() -> None:
+    errors = dry_run.validate_dry_runs(renovate_token="", base_env=TEST_ENV)
+    assert errors == ["RENOVATE_TOKEN is not set"], f"Expected missing token error, got: {errors}"
+
+
+def test_run_dry_run_timeout() -> None:
+    scenario = dry_run.SCENARIOS[0]
+    timeout_seconds = 123
+    env = dry_run.build_dry_run_env(scenario, TEST_ENV)
+
+    def fake_run(*_args, **kwargs):
+        assert kwargs["timeout"] == timeout_seconds, (
+            f"Expected timeout {timeout_seconds}, got {kwargs.get('timeout')!r}"
+        )
         raise subprocess.TimeoutExpired(
             cmd=["renovate"],
-            timeout=dry_run.DEFAULT_DRY_RUN_TIMEOUT_SECONDS,
+            timeout=timeout_seconds,
             output='{"msg":"partial"}',
             stderr="",
         )
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
-    with pytest.raises(RuntimeError, match="timed out after 900s"):
-        dry_run.run_dry_run(dry_run.SCENARIOS[0])
+    with pytest.raises(RuntimeError, match="timed out after 123s"):
+        dry_run.run_dry_run(scenario, env=env, timeout_seconds=timeout_seconds, runner=fake_run)

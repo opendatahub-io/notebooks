@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,6 +26,8 @@ KNOWN_CONFIG_WARNINGS = (
     'The "onboarding" option is a global option',
     'The "requireConfig" option is a global option',
 )
+
+RunSubprocess = Callable[..., subprocess.CompletedProcess[str]]
 
 
 @dataclass(frozen=True)
@@ -122,30 +125,40 @@ def validate_scenario_titles(scenario: DryRunScenario, titles: list[str]) -> lis
     return errors
 
 
-def run_dry_run(scenario: DryRunScenario) -> tuple[list[dict], str]:
-    env = os.environ.copy()
+def build_dry_run_env(scenario: DryRunScenario, base_env: Mapping[str, str]) -> dict[str, str]:
+    env = dict(base_env)
     env.setdefault("LOG_FORMAT", "json")
     env.setdefault("LOG_LEVEL", "debug")
     env.setdefault("RENOVATE_DRY_RUN", "full")
     env.setdefault("RENOVATE_ENABLED_MANAGERS", "github-actions")
     env["RENOVATE_REPOSITORIES"] = scenario.repository
     env["RENOVATE_BASE_BRANCHES"] = scenario.base_branch
-    timeout = int(os.environ.get("RENOVATE_DRY_RUN_TIMEOUT_SECONDS", DEFAULT_DRY_RUN_TIMEOUT_SECONDS))
+    return env
 
+
+def run_dry_run(
+    scenario: DryRunScenario,
+    *,
+    env: Mapping[str, str],
+    timeout_seconds: int = DEFAULT_DRY_RUN_TIMEOUT_SECONDS,
+    renovate_run: Path = RENOVATE_RUN,
+    root: Path = ROOT,
+    runner: RunSubprocess = subprocess.run,
+) -> tuple[list[dict], str]:
     try:
-        proc = subprocess.run(
-            [sys.executable, str(RENOVATE_RUN), "remote"],
-            cwd=ROOT,
-            env=env,
+        proc = runner(
+            [sys.executable, str(renovate_run), "remote"],
+            cwd=root,
+            env=dict(env),
             capture_output=True,
             text=True,
             check=False,
-            timeout=timeout,
+            timeout=timeout_seconds,
         )
     except subprocess.TimeoutExpired as exc:
         combined = (exc.stdout or "") + (exc.stderr or "")
         tail = combined[-4000:] if combined else ""
-        raise RuntimeError(f"{scenario.name}: renovate dry-run timed out after {timeout}s\n{tail}") from exc
+        raise RuntimeError(f"{scenario.name}: renovate dry-run timed out after {timeout_seconds}s\n{tail}") from exc
     combined = proc.stdout + proc.stderr
     if proc.returncode != 0:
         msg = f"{scenario.name}: renovate dry-run exited {proc.returncode}"
@@ -153,14 +166,30 @@ def run_dry_run(scenario: DryRunScenario) -> tuple[list[dict], str]:
     return parse_json_log_lines(combined), combined
 
 
-def validate_dry_runs() -> list[str]:
-    if not os.environ.get("RENOVATE_TOKEN"):
+def validate_dry_runs(
+    *,
+    scenarios: Sequence[DryRunScenario] = SCENARIOS,
+    renovate_token: str | None = None,
+    base_env: Mapping[str, str] | None = None,
+    timeout_seconds: int = DEFAULT_DRY_RUN_TIMEOUT_SECONDS,
+    runner: RunSubprocess = subprocess.run,
+) -> list[str]:
+    token = renovate_token if renovate_token is not None else os.environ.get("RENOVATE_TOKEN")
+    if not token:
         return ["RENOVATE_TOKEN is not set"]
 
+    env_base = dict(os.environ if base_env is None else base_env)
+    env_base["RENOVATE_TOKEN"] = token
+
     errors: list[str] = []
-    for scenario in SCENARIOS:
+    for scenario in scenarios:
         try:
-            records, _ = run_dry_run(scenario)
+            records, _ = run_dry_run(
+                scenario,
+                env=build_dry_run_env(scenario, env_base),
+                timeout_seconds=timeout_seconds,
+                runner=runner,
+            )
         except RuntimeError as exc:
             errors.append(str(exc))
             continue
@@ -174,7 +203,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args(argv)
 
-    errors = validate_dry_runs()
+    timeout_raw = os.environ.get("RENOVATE_DRY_RUN_TIMEOUT_SECONDS")
+    timeout_seconds = int(timeout_raw) if timeout_raw else DEFAULT_DRY_RUN_TIMEOUT_SECONDS
+
+    errors = validate_dry_runs(timeout_seconds=timeout_seconds)
     if errors:
         print("Renovate dry-run validation failed:", file=sys.stderr)
         for message in errors:
