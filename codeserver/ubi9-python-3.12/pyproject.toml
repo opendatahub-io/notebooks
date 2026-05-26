@@ -45,6 +45,8 @@ environments = [
 ]
 
 override-dependencies = [
+    # RHAIENG-2458: CVE-2025-66418, RHAIENG-5304: CVE-2026-44432
+    "urllib3>=2.7.0",
     # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
     "protobuf==6.31.1",
 ]
