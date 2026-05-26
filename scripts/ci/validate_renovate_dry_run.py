@@ -78,6 +78,10 @@ def extract_pr_titles(records: list[dict]) -> list[str]:
     return titles
 
 
+def is_known_config_warning(message: str) -> bool:
+    return any(known in message for known in KNOWN_CONFIG_WARNINGS)
+
+
 def fatal_config_warnings(records: list[dict]) -> list[str]:
     warnings: list[str] = []
     for record in records:
@@ -87,7 +91,7 @@ def fatal_config_warnings(records: list[dict]) -> list[str]:
             message = warning.get("message")
             if not isinstance(message, str):
                 continue
-            if any(message.startswith(prefix) for prefix in KNOWN_CONFIG_WARNINGS):
+            if is_known_config_warning(message):
                 continue
             warnings.append(message)
     return warnings
@@ -120,7 +124,7 @@ def validate_scenario_titles(scenario: DryRunScenario, titles: list[str]) -> lis
 def run_dry_run(scenario: DryRunScenario) -> tuple[list[dict], str]:
     env = os.environ.copy()
     env.setdefault("LOG_FORMAT", "json")
-    env.setdefault("LOG_LEVEL", "warn")
+    env.setdefault("LOG_LEVEL", "info")
     env.setdefault("RENOVATE_DRY_RUN", "full")
     env.setdefault("RENOVATE_ENABLED_MANAGERS", "github-actions")
     env["RENOVATE_REPOSITORIES"] = scenario.repository

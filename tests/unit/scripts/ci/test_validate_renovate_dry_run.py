@@ -49,3 +49,10 @@ def test_validate_scenario_titles_detects_missing_prefix() -> None:
 def test_fatal_config_warnings_ignores_known_cosmetic() -> None:
     records = dry_run.parse_json_log_lines(MAIN_FIXTURE)
     assert dry_run.fatal_config_warnings(records) == []
+
+
+def test_fatal_config_warnings_ignores_package_rules_prefix() -> None:
+    records = dry_run.parse_json_log_lines(
+        '{"warnings":[{"message":"packageRules[0]: You must configure baseBranchPatterns in order to use them inside matchBaseBranches."}]}'
+    )
+    assert dry_run.fatal_config_warnings(records) == []
