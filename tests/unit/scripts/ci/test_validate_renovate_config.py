@@ -1,17 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from scripts.ci import validate_renovate_config as validator
-
-if TYPE_CHECKING:
-    import pytest
 
 
 def test_pattern_matches_branch_exact_and_negation() -> None:
-    assert validator._pattern_matches_branch("main", "main") is True, (
-        "Expected exact branch match for 'main'"
-    )
+    assert validator._pattern_matches_branch("main", "main") is True, "Expected exact branch match for 'main'"
     assert validator._pattern_matches_branch("!/^main$/", "main") is False, (
         "Expected negated main pattern to reject 'main'"
     )

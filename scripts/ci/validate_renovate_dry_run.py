@@ -125,7 +125,7 @@ def validate_scenario_titles(scenario: DryRunScenario, titles: list[str]) -> lis
 def run_dry_run(scenario: DryRunScenario) -> tuple[list[dict], str]:
     env = os.environ.copy()
     env.setdefault("LOG_FORMAT", "json")
-    env.setdefault("LOG_LEVEL", "info")
+    env.setdefault("LOG_LEVEL", "debug")
     env.setdefault("RENOVATE_DRY_RUN", "full")
     env.setdefault("RENOVATE_ENABLED_MANAGERS", "github-actions")
     env["RENOVATE_REPOSITORIES"] = scenario.repository

@@ -51,9 +51,7 @@ def test_validate_scenario_titles_detects_missing_prefix() -> None:
     scenario = dry_run.SCENARIOS[1]
     errors = dry_run.validate_scenario_titles(scenario, ["Update github-actions"])
     assert len(errors) == 1, f"Expected exactly one validation error, got: {errors}"
-    assert "expected at least one PR title" in errors[0], (
-        f"Unexpected validation error message: {errors[0]}"
-    )
+    assert "expected at least one PR title" in errors[0], f"Unexpected validation error message: {errors[0]}"
 
 
 def test_fatal_config_warnings_ignores_known_cosmetic() -> None:
