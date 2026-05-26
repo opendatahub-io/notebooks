@@ -59,8 +59,9 @@ jobs:
         run: make test
         if: ${{ steps.install-deps.conclusion == 'success' && !cancelled() }}
         env:
-          # Prefer the PR base commit so fork PRs compare pylocks to upstream main, not the fork's main.
-          NOTEBOOKS_DOWNGRADE_BASE_REF: ${{ github.event.pull_request.base.sha }}
+          # PR: compare to the PR base (fork PRs vs upstream main, not the fork default branch).
+          # Push: compare to the previous tip of this branch (not origin/main on stable/rhoai-*).
+          NOTEBOOKS_DOWNGRADE_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
 
       - name: Upload Python coverage to Codecov
         if: ${{ !cancelled() && steps.install-deps.conclusion == 'success' }}
