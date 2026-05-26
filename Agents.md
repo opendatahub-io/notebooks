@@ -62,6 +62,7 @@ When working with this project, ensure these tools are available:
 - **Package Manager**: uv (preferred) or pipenv
 - **Build System**: make (gmake on macOS)
 - **Version Control**: git with proper signing
+- **pinact**: for GitHub Actions SHA pinning (`brew install pinact`)
 
 ### Build Process
 
