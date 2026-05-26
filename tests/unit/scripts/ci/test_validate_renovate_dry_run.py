@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import subprocess
+
+import pytest
+
 from scripts.ci import validate_renovate_dry_run as dry_run
 
 MAIN_FIXTURE = """
@@ -56,3 +60,17 @@ def test_fatal_config_warnings_ignores_package_rules_prefix() -> None:
         '{"warnings":[{"message":"packageRules[0]: You must configure baseBranchPatterns in order to use them inside matchBaseBranches."}]}'
     )
     assert dry_run.fatal_config_warnings(records) == []
+
+
+def test_run_dry_run_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_run(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired(
+            cmd=["renovate"],
+            timeout=dry_run.DEFAULT_DRY_RUN_TIMEOUT_SECONDS,
+            output='{"msg":"partial"}',
+            stderr="",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(RuntimeError, match="timed out after 900s"):
+        dry_run.run_dry_run(dry_run.SCENARIOS[0])

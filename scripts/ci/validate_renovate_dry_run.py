@@ -14,6 +14,7 @@ from pathlib import Path
 SCRIPTS_CI = Path(__file__).resolve().parent
 ROOT = SCRIPTS_CI.parent.parent
 RENOVATE_RUN = SCRIPTS_CI / "renovate_run.py"
+DEFAULT_DRY_RUN_TIMEOUT_SECONDS = 900
 
 KNOWN_CONFIG_WARNINGS = (
     "You must configure baseBranchPatterns in order to use them inside matchBaseBranches.",
@@ -129,15 +130,22 @@ def run_dry_run(scenario: DryRunScenario) -> tuple[list[dict], str]:
     env.setdefault("RENOVATE_ENABLED_MANAGERS", "github-actions")
     env["RENOVATE_REPOSITORIES"] = scenario.repository
     env["RENOVATE_BASE_BRANCHES"] = scenario.base_branch
+    timeout = int(os.environ.get("RENOVATE_DRY_RUN_TIMEOUT_SECONDS", DEFAULT_DRY_RUN_TIMEOUT_SECONDS))
 
-    proc = subprocess.run(
-        [sys.executable, str(RENOVATE_RUN), "remote"],
-        cwd=ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(RENOVATE_RUN), "remote"],
+            cwd=ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        combined = (exc.stdout or "") + (exc.stderr or "")
+        tail = combined[-4000:] if combined else ""
+        raise RuntimeError(f"{scenario.name}: renovate dry-run timed out after {timeout}s\n{tail}") from exc
     combined = proc.stdout + proc.stderr
     if proc.returncode != 0:
         msg = f"{scenario.name}: renovate dry-run exited {proc.returncode}"
