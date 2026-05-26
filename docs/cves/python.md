@@ -205,7 +205,7 @@ make jupyter-datascience-ubi9-python-3.12
 ### Scenario: CVE-2025-66418 in urllib3
 
 1. **Identify**: urllib3 decompression vulnerability, affects all images
-2. **Fixed version**: urllib3 >= 2.6.0
+2. **Fixed version**: urllib3 >= 2.7.0
 3. **Type**: Transitive dependency (pulled in by many packages)
 4. **Conflict**: odh-elyra depends on appengine-python-standard which requires urllib3<2
 
