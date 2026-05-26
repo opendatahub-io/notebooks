@@ -1,0 +1,30 @@
+{
+  "ticket": "RHOAIENG-64521",
+  "cve": "CVE-2026-44431",
+  "status": "fixed",
+  "confidence": "high",
+  "summary": "Bumped urllib3>=2.7.0 in override-dependencies across all 9 pyproject.toml image variants and added CVE-2026-44431 reference comment. The centralized cve-constraints.txt was already updated in iteration 1.",
+  "files_changed": [
+    "dependencies/cve-constraints.txt",
+    "jupyter/rocm/pytorch/ubi9-python-3.12/pyproject.toml",
+    "jupyter/pytorch+llmcompressor/ubi9-python-3.12/pyproject.toml",
+    "jupyter/rocm/tensorflow/ubi9-python-3.12/pyproject.toml",
+    "jupyter/tensorflow/ubi9-python-3.12/pyproject.toml",
+    "jupyter/pytorch/ubi9-python-3.12/pyproject.toml",
+    "jupyter/datascience/ubi9-python-3.12/pyproject.toml",
+    "jupyter/trustyai/ubi9-python-3.12/pyproject.toml",
+    "runtimes/rocm-pytorch/ubi9-python-3.12/pyproject.toml",
+    "runtimes/pytorch+llmcompressor/ubi9-python-3.12/pyproject.toml"
+  ],
+  "validation": {
+    "tests": null,
+    "lint": null,
+    "reason": "Makefile requires container runtime (podman/docker) which is unavailable in this environment"
+  },
+  "observations": [
+    "The centralized cve-constraints.txt already had urllib3>=2.7.0 from a prior CVE fix (CVE-2025-66418), so the lock file was already resolving to urllib3==2.7.0",
+    "Iteration 1 only fixed jupyter/rocm/pytorch; iteration 2 fixed the remaining 8 pyproject.toml files with stale urllib3>=2.6.0 floors",
+    "Lock file regeneration requires network access and a container runtime; the existing lock files are already correct",
+    "codeserver/ubi9-python-3.12/pyproject.toml has a historical comment mentioning urllib3>=2.6.0 but no actual urllib3 override in override-dependencies, so no change needed there"
+  ]
+}
