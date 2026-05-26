@@ -1,4 +1,4 @@
-/usr/bin/env bash
+#!/usr/bin/env bash
 set -Eeuo pipefail
 
 # GitHub Actions runners have two disks, /dev/root and /dev/sda1.

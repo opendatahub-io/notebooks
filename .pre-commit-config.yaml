@@ -1,6 +1,14 @@
 ---
 # https://github.com/pre-commit/pre-commit-hooks?tab=readme-ov-file#hooks-available
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-toml
+      - id: check-symlinks
+      - id: check-merge-conflict
+      - id: check-executables-have-shebangs
   # https://docs.astral.sh/uv/guides/integration/pre-commit/
   # Using a local hook instead of uv-pre-commit so it goes through ./uv,
   # which handles version mismatches without requiring the exact system uv.
