@@ -14,7 +14,6 @@ import pyjson5
 SCRIPTS_CI = Path(__file__).resolve().parent
 ROOT = SCRIPTS_CI.parent.parent
 DEFAULT_CONFIG = ROOT / ".github" / "renovate.json5"
-SHADOW_CONFIG = ROOT / ".github" / "renovate.json"
 
 REQUIRED_ENABLED_MANAGERS = frozenset({"tekton", "dockerfile", "custom.regex", "github-actions"})
 RHDS_REPO = "red-hat-data-services/notebooks"
@@ -75,8 +74,10 @@ def commit_message_prefix_for_branch(config: dict[str, Any], base_branch: str) -
 def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".github") -> list[str]:
     errors: list[str] = []
 
-    if SHADOW_CONFIG.is_file():
-        errors.append(f"{SHADOW_CONFIG.relative_to(ROOT)} must not exist (shadows renovate.json5)")
+    shadow_config = config_dir / "renovate.json"
+    if shadow_config.is_file():
+        rel = shadow_config.relative_to(ROOT) if shadow_config.is_relative_to(ROOT) else shadow_config
+        errors.append(f"{rel} must not exist (shadows renovate.json5)")
 
     for forbidden in ("baseBranchPatterns", "baseBranches"):
         if forbidden in config:

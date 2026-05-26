@@ -38,11 +38,9 @@ def test_validate_config_reports_missing_prefix_rule() -> None:
     assert any("Prefix PR titles" in message for message in errors)
 
 
-def test_validate_config_rejects_shadow_renovate_json(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_config_rejects_shadow_renovate_json(tmp_path) -> None:
     shadow = tmp_path / "renovate.json"
     shadow.write_text("{}", encoding="utf-8")
-    monkeypatch.setattr(validator, "SHADOW_CONFIG", shadow)
-    monkeypatch.setattr(validator, "ROOT", tmp_path)
 
     config = {
         "enabledManagers": list(validator.REQUIRED_ENABLED_MANAGERS),
@@ -65,5 +63,5 @@ def test_validate_config_rejects_shadow_renovate_json(tmp_path, monkeypatch: pyt
             },
         ],
     }
-    errors = validator.validate_config(config)
+    errors = validator.validate_config(config, config_dir=tmp_path)
     assert any("must not exist" in message for message in errors)
