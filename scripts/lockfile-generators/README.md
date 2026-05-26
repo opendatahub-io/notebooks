@@ -126,9 +126,9 @@ image metadata is read from both Docker `Config` and `ContainerConfig` so
 labels work when the daemon is Podman (see
 [tests/containers/docs/github-vs-local-image-metadata.md](../../tests/containers/docs/github-vs-local-image-metadata.md)).
 
-**uv version:** The repo root `uv.toml` specifies the `uv` version (e.g.
-`required-version = ">=0.11.8,<0.12"`). Use that version when running
-`create-requirements-lockfile.sh` or other scripts that call `uv`.
+**uv version:** Image locks use the exact version in `dependencies/uv-image-lock-version`
+via the repo root `./uv` wrapper (e.g. `0.10.9`). `make refresh-lock-files` and
+`create-requirements-lockfile.sh` invoke `./uv` automatically.
 
 ---
 

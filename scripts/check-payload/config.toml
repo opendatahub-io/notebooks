@@ -24,13 +24,6 @@ filter_dirs = [
     "/sysroot",
 ]
 
-# Skip FIPS scan of skopeo: on s390x the Go pclntab walk fails ("could not find magic number") so
-# [[rpm.skopeo.ignore]] KnownErrors never match (RHAIENG-4982). /usr/bin/skopeo is already waived for
-# several Go tag/symbol checks below; excluding the path matches that posture for scan local.
-filter_files = [
-    "/usr/bin/skopeo",
-]
-
 java_fips_disabled_algorithms = [
     "DH keySize < 2048",
     "TLSv1.1",

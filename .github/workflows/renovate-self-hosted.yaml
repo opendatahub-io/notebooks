@@ -111,7 +111,7 @@ jobs:
             -u "${AIPCC_USER}" --password-stdin
 
       - name: Export RENOVATE_HOST_RULES from Docker config
-        run: ./uv run scripts/ci/docker_config_to_renovate_host_rules.py >> "$GITHUB_ENV"
+        run: uv run scripts/ci/docker_config_to_renovate_host_rules.py >> "$GITHUB_ENV"
 
       - name: Set base branches per repository
         env:
@@ -137,4 +137,4 @@ jobs:
           # server-side migration scripts (allowedCommands) we don't have.
           RENOVATE_ENABLED_MANAGERS: '["dockerfile","custom.regex","github-actions"]'
           RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
-        run: ./uv run scripts/ci/renovate_run.py remote
+        run: uv run scripts/ci/renovate_run.py remote
