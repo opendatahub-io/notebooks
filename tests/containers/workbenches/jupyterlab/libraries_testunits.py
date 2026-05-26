@@ -121,6 +121,8 @@ class TestDataScienceLibs(unittest.TestCase):
 
     def test_feast(self):
         """Tests that the feast module imports and the CLI entry point works."""
+        if "-trustyai-" in self.image:
+            self.skipTest("Feast is not installed in trustyai images")
         import subprocess
 
         import feast  # pyright: ignore[reportMissingImports]
