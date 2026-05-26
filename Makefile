@@ -420,18 +420,23 @@ DIR ?=
 refresh-lock-files:
 	@echo "==================================================================="
 	@echo "🔁 Refreshing lock files using INDEX_MODE=$(INDEX_MODE)"
+	@echo "    (uses ./uv → dependencies/uv-image-lock-version for reproducible pylocks)"
 	@echo "==================================================================="
 	@cd $(ROOT_DIR) && \
 		UV_LOCK_EXTRA_INDEX_URL="$(UV_EXTRA_INDEX_URL)" \
 		PIP_LOCK_EXTRA_INDEX_URL="$(PIP_EXTRA_INDEX_URL)" \
 		env -u UV_EXTRA_INDEX_URL -u PIP_EXTRA_INDEX_URL \
-		./uv run scripts/pylocks_generator.py $(INDEX_MODE) $(DIR)
+		if [ -n "$(DIR)" ]; then \
+			uv run scripts/pylocks_generator.py "$(INDEX_MODE)" "$(DIR)"; \
+		else \
+			uv run scripts/pylocks_generator.py "$(INDEX_MODE)"; \
+		fi
 
 # ======================================================================================
 #   gmake update-imagestream-annotations
 #   gmake update-imagestream-annotations IMAGESTREAM_VARIANT=rhoai DRY_RUN=1
 # Prerequisites:
-#   - ./uv sync --locked (or make setup) so scripts run in the project venv
+#   - uv sync --locked (or make setup) so scripts run in the project venv
 #   - skopeo on PATH (sync-commit-env-files inspects images from params*.env)
 #   - For private registry pulls: mkdir -p ~/.config/containers &&
 #       cp ci/secrets/pull-secret.json ~/.config/containers/auth.json
@@ -447,12 +452,12 @@ update-imagestream-annotations:
 	@echo "==================================================================="
 	@cd $(ROOT_DIR) && \
 	if [[ -n "$(IMAGESTREAM_VARIANT)" ]]; then \
-		./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py \
+		uv run python manifests/tools/update_imagestream_annotations_from_pylock.py \
 			--variant "$(IMAGESTREAM_VARIANT)" $(if $(filter 1 true yes,$(DRY_RUN)),--dry-run,); \
 	else \
-		./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant odh \
+		uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant odh \
 			$(if $(filter 1 true yes,$(DRY_RUN)),--dry-run,) && \
-		./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant rhoai \
+		uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant rhoai \
 			$(if $(filter 1 true yes,$(DRY_RUN)),--dry-run,); \
 	fi
 
@@ -495,7 +500,7 @@ print-release:
 
 .PHONY: setup
 setup:
-	./uv sync --locked
+	uv sync --locked
 
 .PHONY: validate-renovate-config
 validate-renovate-config:
@@ -505,7 +510,7 @@ validate-renovate-config:
 .PHONY: test
 test:
 	@echo "Running quick static tests"
-	./uv run pytest -m 'not buildonlytest'
+	uv run pytest -m 'not buildonlytest'
 	@./scripts/check_dockerfile_alignment.sh
 
 .PHONY: check-actions
@@ -516,7 +521,7 @@ check-actions:
 .PHONY: test-unit
 test-unit:
 	@echo "Running Python unit tests"
-	./uv run pytest -m 'not buildonlytest' --ignore=tests/containers tests/ ntb/
+	uv run pytest -m 'not buildonlytest' --ignore=tests/containers tests/ ntb/
 	@echo "Running Go unit tests"
 	GOTOOLCHAIN=auto GONOSUMDB=golang.org/toolchain \
 	  go test -C scripts/buildinputs -cover ./...
@@ -529,7 +534,7 @@ ifeq ($(PYTEST_ARGS),)
 	$(error Usage: make test-integration PYTEST_ARGS="--image=<image>")
 endif
 	@echo "Running container integration tests"
-	./uv run pytest tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' $(PYTEST_ARGS)
+	uv run pytest tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' $(PYTEST_ARGS)
 
 .PHONY: unit-test integration-test
 unit-test: test-unit

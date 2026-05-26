@@ -15,7 +15,7 @@ The repository already has:
 - `.python-version` file (specifies Python 3.14)
 - Setup instructions in `README.md`, `CONTRIBUTING.md`, and `AGENTS.md`
 - `uv.lock` for reproducible dependency installation
-- `./uv` wrapper that auto-downloads the pinned uv version (0.11.8)
+- `./uv` wrapper for image-lock uv (`dependencies/uv-image-lock-version`); root dev uses `uv` + `required-version` range
 
 The missing piece was a **devcontainer configuration** that lets Codespaces, VS Code Remote Containers,
 and AI coding agents start with a fully working environment automatically.
@@ -56,7 +56,7 @@ dependencies via `dnf` directly, which is simpler and more transparent.
 - `podman` (container builds and tests)
 - `yamllint` (YAML validation)
 - `git`
-- `uv` — handled by the repo's `./uv` wrapper script, not installed in the image
+- `uv` — install a release matching `[tool.uv] required-version`; `./uv` is only for image lock refresh
 
 ### What's NOT included (opt-in)
 
@@ -85,7 +85,7 @@ can add `"runArgs": ["--privileged"]` to their local devcontainer.json.
 ### Other considerations
 
 - Fedora `latest` tag floats (currently F43) — acceptable for dev environments, not for CI
-- `postCreateCommand` runs `./uv sync --locked` which auto-downloads the pinned uv version
+- `postCreateCommand` runs `uv sync --locked` (requires uv on PATH in the `required-version` range)
 - VS Code extensions declared: ruff (linting) and Python (language support)
 
 ## Consequences

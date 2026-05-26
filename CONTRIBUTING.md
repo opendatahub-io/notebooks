@@ -151,13 +151,13 @@ This workflow ensures that the OpenDataHub community remains the primary develop
 To debug tests, run pytest with verbose logging:
 
 ```console
-./uv run pytest -s --log-cli-level=DEBUG tests/
+uv run pytest -s --log-cli-level=DEBUG tests/
 ```
 
 For container tests, add `--capture=fd` to see container output:
 
 ```console
-./uv run pytest --capture=fd tests/containers --image=<image> --log-cli-level=DEBUG
+uv run pytest --capture=fd tests/containers --image=<image> --log-cli-level=DEBUG
 ```
 
 ### Review and Merge Process
