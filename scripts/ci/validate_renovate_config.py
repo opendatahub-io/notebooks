@@ -170,15 +170,18 @@ def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".githu
     elif gh_actions_pin.get("pinDigests") is not True:
         errors.append("github-actions group rule must set pinDigests: true")
 
-    if commit_message_prefix_for_branch(config, "main") is not None:
-        errors.append("commitMessagePrefix must not apply to base branch 'main'")
-    for branch in ("rhoai-3.4", "rhoai-2.25"):
-        expected = f"[{branch}]"
-        actual = commit_message_prefix_for_branch(config, branch)
-        if actual != expected:
-            errors.append(
-                f"commitMessagePrefix for {branch!r} must be {expected!r}, got {actual!r}"
-            )
+    try:
+        if commit_message_prefix_for_branch(config, "main") is not None:
+            errors.append("commitMessagePrefix must not apply to base branch 'main'")
+        for branch in ("rhoai-3.4", "rhoai-2.25"):
+            expected = f"[{branch}]"
+            actual = commit_message_prefix_for_branch(config, branch)
+            if actual != expected:
+                errors.append(
+                    f"commitMessagePrefix for {branch!r} must be {expected!r}, got {actual!r}"
+                )
+    except ValueError as exc:
+        errors.append(f"commitMessagePrefix evaluation failed: {exc}")
 
     return errors
 
