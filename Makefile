@@ -527,3 +527,8 @@ print-release:
 test:
 	@echo "Running quick static tests"
 	./uv run pytest -m 'not buildonlytest'
+
+.PHONY: check-actions
+check-actions:
+	@echo "Checking GitHub Actions SHA pinning"
+	@set +x; GITHUB_TOKEN=$$(gh auth token) pinact run --check --verify
