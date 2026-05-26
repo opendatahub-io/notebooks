@@ -9,10 +9,18 @@ if TYPE_CHECKING:
 
 
 def test_pattern_matches_branch_exact_and_negation() -> None:
-    assert validator._pattern_matches_branch("main", "main") is True
-    assert validator._pattern_matches_branch("!/^main$/", "main") is False
-    assert validator._pattern_matches_branch("!/^main$/", "rhoai-3.4") is True
-    assert validator._pattern_matches_branch("/^rhoai-3\\.4$/", "rhoai-3.4") is True
+    assert validator._pattern_matches_branch("main", "main") is True, (
+        "Expected exact branch match for 'main'"
+    )
+    assert validator._pattern_matches_branch("!/^main$/", "main") is False, (
+        "Expected negated main pattern to reject 'main'"
+    )
+    assert validator._pattern_matches_branch("!/^main$/", "rhoai-3.4") is True, (
+        "Expected negated main pattern to accept 'rhoai-3.4'"
+    )
+    assert validator._pattern_matches_branch("/^rhoai-3\\.4$/", "rhoai-3.4") is True, (
+        "Expected anchored rhoai-3.4 pattern to match 'rhoai-3.4'"
+    )
 
 
 def test_commit_message_prefix_for_branch_merged_rules() -> None:
@@ -28,14 +36,20 @@ def test_commit_message_prefix_for_branch_merged_rules() -> None:
             },
         ]
     }
-    assert validator.commit_message_prefix_for_branch(config, "main") is None
-    assert validator.commit_message_prefix_for_branch(config, "rhoai-3.4") == "[rhoai-3.4]"
+    assert validator.commit_message_prefix_for_branch(config, "main") is None, (
+        "Expected disabled main rule to remove prefix"
+    )
+    assert validator.commit_message_prefix_for_branch(config, "rhoai-3.4") == "[rhoai-3.4]", (
+        "Expected release branch prefix from merged packageRules"
+    )
 
 
 def test_validate_config_reports_missing_prefix_rule() -> None:
     config = {"enabledManagers": list(validator.REQUIRED_ENABLED_MANAGERS), "packageRules": []}
     errors = validator.validate_config(config)
-    assert any("Prefix PR titles" in message for message in errors)
+    assert any("Prefix PR titles" in message for message in errors), (
+        f"Expected missing prefix rule error, got: {errors}"
+    )
 
 
 def test_validate_config_rejects_shadow_renovate_json(tmp_path) -> None:
@@ -64,4 +78,6 @@ def test_validate_config_rejects_shadow_renovate_json(tmp_path) -> None:
         ],
     }
     errors = validator.validate_config(config, config_dir=tmp_path)
-    assert any("must not exist" in message for message in errors)
+    assert any("must not exist" in message for message in errors), (
+        f"Expected shadow renovate.json validation error, got: {errors}"
+    )
