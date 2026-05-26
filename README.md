@@ -66,13 +66,13 @@ Note: To ensure the GitHub Action runs successfully, users must add a `GH_ACCESS
 
 #### Prepare Python + uv + pytest env
 
-Root dev tooling uses `[tool.uv] required-version` in `pyproject.toml` (currently `>=0.11,<0.12`).
+Root dev tooling uses `[tool.uv] required-version` in `pyproject.toml` (currently `>=0.10,<0.12`).
 Install any uv in that range and use it directly for sync, tests, and pre-commit:
 
 ```shell
 # Linux
 sudo dnf install python3.14
-pip install --user 'uv>=0.11,<0.12'
+pip install --user 'uv>=0.10,<0.12'
 # macOS
 brew install python@3.14 uv
 
