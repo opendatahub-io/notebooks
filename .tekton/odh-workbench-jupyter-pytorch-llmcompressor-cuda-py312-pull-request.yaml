@@ -9,33 +9,19 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-comment: "^/(build-konflux|kfbuild-llmcompressor-cuda)"
+    pipelinesascode.tekton.dev/on-label: "[kfbuild-all, kfbuild-workbench, kfbuild-pytorch, kfbuild-cuda, kfbuild-jupyter, kfbuild-llmcompressor, kfbuild-workbench-jupyter-pytorch-llmcompressor-cuda]"
+    pipelinesascode.tekton.dev/on-target-branch: "[{{target_branch}}]"
     pipelinesascode.tekton.dev/on-event: "[pull_request]"
-    pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && target_branch == "main" &&
-      !("manifests/base/params-latest.env".pathChanged()) &&
-      (
-        ".tekton/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-pull-request.yaml".pathChanged() ||
-        "jupyter/pytorch+llmcompressor/ubi9-python-3.12/**".pathChanged() ||
-        "jupyter/pytorch+llmcompressor/ubi9-python-3.12/build-args/konflux.cuda.conf".pathChanged() ||
-        "jupyter/utils/**".pathChanged()
-      ) && body.repository.full_name == "red-hat-data-services/notebooks"
   labels:
     appstudio.openshift.io/application: automation
     appstudio.openshift.io/component: pull-request-pipelines-notebooks
     pipelines.appstudio.openshift.io/type: build
-  name: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-on-pull-request
+  name: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-on-pull-request-66001
   namespace: rhoai-tenant
 spec:
-  timeouts:
-    pipeline: 8h0m0s
-    tasks: "4h0m0s"
   params:
   - name: git-url
     value: '{{source_url}}'
-  - name: enable-cache-proxy
-    value: "true"
-  - name: hermetic
-    value: "false"
   - name: revision
     value: '{{revision}}'
   - name: output-image
@@ -53,6 +39,10 @@ spec:
     value: jupyter/pytorch+llmcompressor/ubi9-python-3.12/build-args/konflux.cuda.conf
   - name: path-context
     value: .
+  - name: enable-cache-proxy
+    value: true
+  - name: hermetic
+    value: false
   - name: build-image-index
     value: true
   - name: build-platforms
@@ -63,18 +53,18 @@ spec:
   - name: enable-slack-failure-notification
     value: "false"
   - name: rhel-subscription-activation-key
-    value: "rhel-subscription-activation-key-rhoai-devops-for-notebooks-rhel9-6"
+    value: rhel-subscription-activation-key-rhoai-devops-for-notebooks-rhel9-6
   - name: prefetch-input
     value:
-    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/mongocli
+    - path: prefetch-input/mongocli
       type: gomod
-    - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12/prefetch-input/rhds
+    - path: prefetch-input/rhds
       type: rpm
     - path: jupyter/pytorch+llmcompressor/ubi9-python-3.12
       type: pip
       binary:
         arch: "x86_64,aarch64"
-      requirements_files: ["requirements.cuda.txt"]
+      requirements_files: [requirements.cuda.txt]
   pipelineRef:
     resolver: git
     params:
@@ -84,6 +74,34 @@ spec:
       value: '{{ target_branch }}'
     - name: pathInRepo
       value: pipelines/multi-arch-container-build.yaml
+  timeouts:
+    pipeline: 8h
+    tasks: 4h
+  taskRunSpecs:
+    - pipelineTaskName: prefetch-dependencies
+      computeResources:
+        requests:
+          cpu: '3'
+          memory: 8Gi
+        limits:
+          cpu: '3'
+          memory: 8Gi
+    - pipelineTaskName: ecosystem-cert-preflight-checks
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 16Gi
+        limits:
+          cpu: '16'
+          memory: 32Gi
+    - pipelineTaskName: clair-scan
+      computeResources:
+        requests:
+          cpu: '8'
+          memory: 16Gi
+        limits:
+          cpu: '16'
+          memory: 32Gi
   taskRunTemplate:
     serviceAccountName: build-pipeline-pull-request-pipelines
   workspaces:
