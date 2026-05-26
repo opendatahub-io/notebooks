@@ -32,12 +32,16 @@ def load_config(path: Path) -> dict[str, Any]:
 
 
 def _pattern_matches_branch(pattern: str, base_branch: str) -> bool:
-    if pattern.startswith("!/") and pattern.endswith("/"):
-        inner = pattern[2:-1]
-        return re.fullmatch(inner, base_branch) is None
-    if pattern.startswith("/") and pattern.endswith("/"):
-        inner = pattern[1:-1]
-        return re.fullmatch(inner, base_branch) is not None
+    try:
+        if pattern.startswith("!/") and pattern.endswith("/"):
+            inner = pattern[2:-1]
+            return re.fullmatch(inner, base_branch) is None
+        if pattern.startswith("/") and pattern.endswith("/"):
+            inner = pattern[1:-1]
+            return re.fullmatch(inner, base_branch) is not None
+    except re.error as exc:
+        msg = f"invalid regex in matchBaseBranches: {pattern!r}: {exc}"
+        raise ValueError(msg) from exc
     return pattern == base_branch
 
 
