@@ -45,6 +45,9 @@ environments = [
 ]
 
 override-dependencies = [
+    # RHOAIENG-64524: CVE-2026-44431 urllib3 - override needed to prevent transitive
+    # dependencies from pulling in vulnerable urllib3<2.7.0
+    "urllib3>=2.7.0",
     # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
     "protobuf==6.31.1",
 ]
