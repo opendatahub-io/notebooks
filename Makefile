@@ -497,6 +497,11 @@ print-release:
 setup:
 	./uv sync --locked
 
+.PHONY: validate-renovate-config
+validate-renovate-config:
+	@echo "Validating .github/renovate.json5 semantics"
+	./uv run python scripts/ci/validate_renovate_config.py
+
 .PHONY: test
 test:
 	@echo "Running quick static tests"

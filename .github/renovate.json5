@@ -1,6 +1,8 @@
 // Renovate / MintMaker configuration (RHAIENG-5297). Shared renovate.json5 on
 // opendatahub-io/notebooks and red-hat-data-services/notebooks support branches.
 // Do not add .github/renovate.json — it shadows this file.
+// Validated in CI by scripts/ci/validate_renovate_config.py (pytest) and
+// .github/workflows/validate-renovate-config.yaml (remote dry-run).
 //
 // MintMaker ON (remote @ base branch):
 //   - opendatahub-io/notebooks @ main
