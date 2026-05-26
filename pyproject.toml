@@ -25,6 +25,7 @@ dev = [
     "pydantic>=2.10.0",
     "requests",
     "pyyaml",
+    "onnx>=1.21.0; platform_machine != 's390x'",  # CVE-2026-28500
 
     "testcontainers",
     "docker",
