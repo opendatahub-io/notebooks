@@ -91,13 +91,13 @@ jobs:
       # See: commit 41aed2702 (lockfile-derived versions), PR #3239 (broke main).
       - name: Regenerate Dockerfiles from updated lockfiles
         run: |
-          ./uv run scripts/dockerfile_fragments.py
-          ./uv run manifests/tools/generate_kustomization.py
+          uv run scripts/dockerfile_fragments.py
+          uv run manifests/tools/generate_kustomization.py
 
       - name: Refresh ImageStream notebook dependency annotations from pylocks
         run: |
-          ./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant odh
-          ./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant rhoai
+          uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant odh
+          uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant rhoai
 
       - name: Validate manifests (make test)
         run: make test

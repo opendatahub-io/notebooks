@@ -66,46 +66,35 @@ Note: To ensure the GitHub Action runs successfully, users must add a `GH_ACCESS
 
 #### Prepare Python + uv + pytest env
 
-This project pins its uv version in `pyproject.toml` (`[tool.uv] required-version`).
-Use the `./uv` wrapper script at the repo root — it reads the pinned
-version and runs it via `uvx`, so your system uv version doesn't matter:
+Root dev tooling uses `[tool.uv] required-version` in `pyproject.toml` (currently `>=0.11,<0.12`).
+Install any uv in that range and use it directly for sync, tests, and pre-commit:
 
 ```shell
 # Linux
 sudo dnf install python3.14
-pip install --user uv
+pip install --user 'uv>=0.11,<0.12'
 # macOS
 brew install python@3.14 uv
 
-./uv venv --python $(which python3.14)
-./uv sync --locked
+uv venv --python $(which python3.14)
+uv sync --locked
 ```
 
+Per-image lock files (`pylock.toml` / `uv.lock.d/`) are generated with a **stricter** uv pin
+(`dependencies/uv-image-lock-version`, currently `0.10.9`) via the `./uv` wrapper and
+`make refresh-lock-files`. Do not use `./uv` for everyday dev commands unless you are
+refreshing image locks.
+
 <details>
-<summary>Alternatives to <code>./uv</code></summary>
+<summary>Image lock generation with <code>./uv</code></summary>
 
-The `./uv` wrapper is the recommended way, but you can also
-(replace `0.11.8` below with the version from `pyproject.toml`):
+```shell
+make refresh-lock-files
+# or: ./uv run scripts/pylocks_generator.py public-index <dir>
+```
 
-- **Use `uvx` directly** with an explicit version:
-  ```shell
-  uvx uv@0.11.8 sync --locked
-  ```
-- **Use `uv tool run`** (equivalent, longer form):
-  ```shell
-  uv tool run uv@0.11.8 sync --locked
-  ```
-- **Install the exact version** so `uv` works directly:
-  ```shell
-  # Standalone installer (any OS)
-  curl -LsSf https://astral.sh/uv/0.11.8/install.sh | sh
-  # Or with pip
-  pip install uv==0.11.8
-  ```
-
-If your system uv matches the pinned version, you can use `uv` directly —
-`required-version` in `pyproject.toml` will let it through. If it doesn't match,
-uv exits with a clear error telling you which version is required.
+The `./uv` script runs `uv tool run "uv@$(cat dependencies/uv-image-lock-version)"` when your
+system uv does not already match that exact version.
 
 </details>
 
@@ -143,7 +132,7 @@ sudo dnf install podman
 systemctl --user start podman.service
 systemctl --user status podman.service
 systemctl --user status podman.socket
-DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock ./uv run pytest tests/containers -m 'not openshift and not cuda and not rocm' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
+DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock uv run pytest tests/containers -m 'not openshift and not cuda and not rocm' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
 
 # Mac OS
 brew install podman
@@ -151,7 +140,7 @@ podman machine init
 podman machine set --rootful=false
 sudo podman-mac-helper install
 podman machine start
-./uv run pytest tests/containers -m 'not openshift' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
+uv run pytest tests/containers -m 'not openshift' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
 ```
 
 When using lima on macOS, it might be useful to give yourself access to rootful podman socket
