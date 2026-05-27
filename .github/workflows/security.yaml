@@ -23,7 +23,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          version-file: uv.toml
+          version-file: pyproject.toml
           activate-environment: false
           ignore-empty-workdir: true
           enable-cache: false

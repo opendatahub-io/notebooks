@@ -15,6 +15,7 @@ error() {
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+CVE_CONSTRAINTS_FILE="$ROOT_DIR/dependencies/cve-constraints.txt"
 # Default to the repo-root ./uv wrapper; override with UV=/path/to/your/wrapper
 UV="${UV:-$ROOT_DIR/uv}"
 export UV
@@ -56,18 +57,34 @@ if ! version_ge "$UV_VERSION" "$UV_MIN_VERSION"; then
   exit 1
 fi
 
+if [[ ! -f "$CVE_CONSTRAINTS_FILE" ]]; then
+  error "CVE constraints file not found: $CVE_CONSTRAINTS_FILE"
+  exit 1
+fi
+
 # The following will create a pylock.toml file for every pyproject.toml we have.
 ${UV} --version
-find . -name pylock.toml -execdir bash -c '
-  pwd
-  # derives python-version from directory suffix (e.g., "ubi9-python-3.12")
-  ${UV} pip compile pyproject.toml \
-   --output-file pylock.toml \
-   --format pylock.toml \
-   --generate-hashes \
-   --emit-index-url \
-   --python-version="${PWD##*-}" \
-   --python-platform linux \
-   --no-annotate \
-   ${ADDITIONAL_UV_FLAGS:-} \
-   --quiet' \;
+while IFS= read -r -d '' lockfile; do
+  lock_dir=$(dirname "$lockfile")
+  (
+    cd "$lock_dir"
+    # Relative path avoids absolute paths in pylock.toml headers (CI vs local).
+    constraints_path=$(
+      CVE_CONSTRAINTS_FILE="$CVE_CONSTRAINTS_FILE" python3 -c \
+        'import os; print(os.path.relpath(os.environ["CVE_CONSTRAINTS_FILE"], os.getcwd()))'
+    )
+    # derives python-version from directory suffix (e.g., "ubi9-python-3.12")
+    # shellcheck disable=SC2086
+    ${UV} pip compile pyproject.toml \
+      --output-file pylock.toml \
+      --format pylock.toml \
+      --generate-hashes \
+      --emit-index-url \
+      --python-version="${PWD##*-}" \
+      --python-platform linux \
+      --no-annotate \
+      --constraints "${constraints_path}" \
+      ${ADDITIONAL_UV_FLAGS:-} \
+      --quiet
+  )
+done < <(find . -name pylock.toml -print0)

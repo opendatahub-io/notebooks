@@ -22,7 +22,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          version-file: uv.toml
+          version-file: pyproject.toml
           enable-cache: true
           cache-dependency-glob: "uv.lock"
         
