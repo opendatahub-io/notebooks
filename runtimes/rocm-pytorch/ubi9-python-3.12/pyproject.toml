@@ -40,4 +40,6 @@ override-dependencies = [
     "urllib3>=2.7.0",
     # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
     "protobuf==6.31.1",
+    # RHOAIENG-64854: CVE-2026-48710 starlette Host header security bypass
+    "starlette>=1.0.1",
 ]

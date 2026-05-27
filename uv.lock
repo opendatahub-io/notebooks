@@ -23,6 +23,7 @@ members = [
     "copr-rebuild",
     "notebooks",
 ]
+overrides = [{ name = "starlette", specifier = ">=1.0.1" }]
 excludes = ["requests-gssapi"]
 
 [[package]]
