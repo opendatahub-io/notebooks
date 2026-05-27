@@ -33,9 +33,10 @@ Verify GPU:
 
 ```python
 import torch
-print(torch.__version__)          # should be 2.6+
-print(torch.cuda.is_available())  # True if GPU allocated
-print(torch.cuda.get_device_name(0))
+print("torch version:", torch.__version__)
+print("CUDA available:", torch.cuda.is_available())
+if torch.cuda.is_available():
+    print("Device:", torch.cuda.get_device_name(0))
 ```
 
 **Note:** If using PyTorch < 2.6, the `torch.accelerator` API doesn't exist yet.
@@ -53,11 +54,21 @@ either upgrade torch (`pip install --upgrade torch`) or use the legacy pattern a
 ROCm wheels are hosted on PyTorch's custom index (not on default PyPI):
 
 ```bash
-pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6.2
+pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm7.1/
 ```
 
 Unlike CUDA, there are no granular `nvidia-*` style ROCm PyPI packages.
-The ROCm runtime is bundled inside the torch wheel itself.
+The ROCm runtime is bundled inside the torch wheel itself (~3GB download).
+
+Verify GPU (same commands as CUDA -- ROCm uses the CUDA API):
+
+```python
+import torch
+print("torch version:", torch.__version__)
+print("CUDA available:", torch.cuda.is_available())
+if torch.cuda.is_available():
+    print("Device:", torch.cuda.get_device_name(0))
+```
 
 ## Installing TensorFlow (CUDA)
 
@@ -71,8 +82,12 @@ Verify GPU:
 
 ```python
 import tensorflow as tf
+print("TF version:", tf.__version__)
+print("Built with CUDA:", tf.test.is_built_with_cuda())
 gpus = tf.config.list_physical_devices('GPU')
 print("GPUs:", gpus)
+if gpus:
+    print("GPU name:", gpus[0].name)
 ```
 
 ## Installing TensorFlow (ROCm)
