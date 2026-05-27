@@ -16,8 +16,9 @@ RUN curl -fOL https://github.com/coder/code-server/releases/download/v${CODESERV
  && rpm -U code-server-${CODESERVER_VERSION}-${TARGETARCH}.rpm \
  && rm -f code-server-${CODESERVER_VERSION}-${TARGETARCH}.rpm
 
-# Install nginx for reverse proxy (handles NB_PREFIX path rewriting for OpenShift)
-RUN dnf install -y nginx \
+# libatomic: required by ROCm PyTorch (user pip installs torch with rocm index)
+# nginx: reverse proxy for NB_PREFIX path rewriting on OpenShift
+RUN dnf install -y libatomic nginx \
  && dnf clean all
 
 # Install Python kernel support for VS Code

@@ -33,4 +33,6 @@ RUN mkdir -p /opt/app-root/etc/jupyter \
 USER 1001
 WORKDIR /opt/app-root/src
 
+EXPOSE 8888
+
 ENTRYPOINT ["start-notebook.sh"]

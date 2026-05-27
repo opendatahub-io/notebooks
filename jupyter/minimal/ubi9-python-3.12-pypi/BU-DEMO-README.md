@@ -44,7 +44,8 @@ print("torch version:", torch.__version__)
 print("CUDA available:", torch.cuda.is_available())
 if torch.cuda.is_available():
     props = torch.cuda.get_device_properties(0)
-    print(f"Device: {props.name} ({props.gcnArchName if hasattr(props, 'gcnArchName') else 'CUDA'})")
+    arch = getattr(props, 'gcnArchName', f"SM {props.major}.{props.minor}")
+    print(f"Device: {props.name} ({arch})")
     print(f"Memory: {props.total_memory // 1024**2} MB, CUs/SMs: {props.multi_processor_count}")
 ```
 
