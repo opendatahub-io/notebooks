@@ -1,23 +1,34 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from scripts.cve import create_cve_trackers as cct
 
 if TYPE_CHECKING:
-    from pytest import MonkeyPatch
+    from pytest import MonkeyPatch, Subtests
+
+    from scripts.cve.jira_client import JiraClient
 
 
-def test_extract_cve_id_from_label_and_summary() -> None:
-    assert cct.extract_cve_id("CVE-2026-8643") == "CVE-2026-8643"
-    assert cct.extract_cve_id("EMBARGOED CVE-2026-8643 foo") == "CVE-2026-8643"
-    assert cct.extract_cve_id("no cve here") is None
+def test_extract_cve_id_from_label_and_summary(subtests: Subtests) -> None:
+    cases = [
+        ("CVE-2026-8643", "CVE-2026-8643"),
+        ("EMBARGOED CVE-2026-8643 foo", "CVE-2026-8643"),
+        ("no cve here", None),
+    ]
+    for raw, expected in cases:
+        with subtests.test(msg=f"extract_cve_id({raw!r})"):
+            assert cct.extract_cve_id(raw) == expected
 
 
-def test_extract_version() -> None:
-    summary = "EMBARGOED CVE-2026-8643 rhoai/odh-workbench: flaw [rhoai-2.25]"
-    assert cct.extract_version(summary) == "rhoai-2.25"
-    assert cct.extract_version("no version suffix") is None
+def test_extract_version(subtests: Subtests) -> None:
+    cases = [
+        ("EMBARGOED CVE-2026-8643 rhoai/odh-workbench: flaw [rhoai-2.25]", "rhoai-2.25"),
+        ("no version suffix", None),
+    ]
+    for summary, expected in cases:
+        with subtests.test(msg=f"extract_version({summary!r})"):
+            assert cct.extract_version(summary) == expected
 
 
 def test_extract_description_strips_embargo_and_component() -> None:
@@ -127,7 +138,7 @@ def test_find_orphan_cves_groups_embargo_and_contributors() -> None:
                 },
             ]
 
-    result = cct.find_orphan_cves(FakeClient(), max_results=10)
+    result = cct.find_orphan_cves(cast("JiraClient", FakeClient()), max_results=10)
     assert len(result.orphans) == 1
     info = next(iter(result.orphans.values()))
     assert info.is_embargoed is True
