@@ -39,6 +39,8 @@ dev = [
     "openshift-python-wrapper",
     # Transitive via openshift-python-wrapper → fastmcp;
     "authlib>=1.6.12",
+    # Transitive via fastmcp → mcp → starlette; CVE-2026-48710
+    "starlette>=1.0.1",
     "typer",
     # certifi provides CA bundle needed on macOS where Python's bundled OpenSSL
     # does not read from the system Keychain, causing CERTIFICATE_VERIFY_FAILED
