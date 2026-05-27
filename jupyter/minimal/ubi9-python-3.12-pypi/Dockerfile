@@ -9,6 +9,9 @@ RUN printf '[global]\nindex-url = https://pypi.org/simple/\n' > /opt/app-root/pi
 
 ENV PIP_CONFIG_FILE=/opt/app-root/pip.conf
 
+# libatomic: required by ROCm PyTorch (user pip installs torch with rocm index)
+RUN dnf install -y libatomic && dnf clean all
+
 # Install JupyterLab and friends from PyPI (nonhermetic -- downloads at build time)
 RUN pip install --no-cache-dir \
     jupyterlab \
