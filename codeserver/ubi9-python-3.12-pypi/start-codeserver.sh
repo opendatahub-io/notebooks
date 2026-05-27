@@ -1,6 +1,11 @@
 #!/bin/bash
 set -eu
 
+# OpenShift assigns a random UID with /sbin/nologin as shell.
+# /etc/passwd is read-only, so we can't sed it. Set SHELL env var instead;
+# code-server respects SHELL for its integrated terminal.
+export SHELL=/bin/bash
+
 NB_PREFIX="${NB_PREFIX:-}"
 CODE_SERVER_DATA_DIR="/opt/app-root/src/.local/share/code-server"
 mkdir -p "${CODE_SERVER_DATA_DIR}/User"

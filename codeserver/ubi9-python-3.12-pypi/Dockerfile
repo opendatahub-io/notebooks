@@ -33,6 +33,10 @@ RUN mkdir -p /opt/app-root/src/.local/share/code-server \
  && chmod +x /opt/app-root/bin/start-codeserver.sh \
  && fix-permissions /opt/app-root -P
 
+# OpenShift runs containers with a random UID whose /etc/passwd entry has
+# /sbin/nologin as the shell. code-server's integrated terminal uses $SHELL.
+ENV SHELL=/bin/bash
+
 USER 1001
 WORKDIR /opt/app-root/src
 
