@@ -36,7 +36,9 @@ import torch
 print("torch version:", torch.__version__)
 print("CUDA available:", torch.cuda.is_available())
 if torch.cuda.is_available():
-    print("Device:", torch.cuda.get_device_name(0))
+    props = torch.cuda.get_device_properties(0)
+    print(f"Device: {props.name} ({props.gcnArchName if hasattr(props, 'gcnArchName') else 'CUDA'})")
+    print(f"Memory: {props.total_memory // 1024**2} MB, CUs/SMs: {props.multi_processor_count}")
 ```
 
 **Note:** If using PyTorch < 2.6, the `torch.accelerator` API doesn't exist yet.
@@ -67,7 +69,10 @@ import torch
 print("torch version:", torch.__version__)
 print("CUDA available:", torch.cuda.is_available())
 if torch.cuda.is_available():
-    print("Device:", torch.cuda.get_device_name(0))
+    props = torch.cuda.get_device_properties(0)
+    # ROCm reports "AMD Radeon Graphics" as name; gcnArchName shows the real arch (e.g. gfx942 = MI300X)
+    print(f"Device: {props.name} ({props.gcnArchName})")
+    print(f"Memory: {props.total_memory // 1024**2} MB, CUs: {props.multi_processor_count}")
 ```
 
 ## Installing TensorFlow (CUDA)
