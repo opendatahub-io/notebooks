@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-import pytest
+from typing import TYPE_CHECKING
 
 from scripts.cve import create_cve_trackers as cct
+
+if TYPE_CHECKING:
+    from pytest import MonkeyPatch
 
 
 def test_extract_cve_id_from_label_and_summary() -> None:
@@ -12,18 +15,13 @@ def test_extract_cve_id_from_label_and_summary() -> None:
 
 
 def test_extract_version() -> None:
-    summary = (
-        "EMBARGOED CVE-2026-8643 rhoai/odh-workbench: flaw [rhoai-2.25]"
-    )
+    summary = "EMBARGOED CVE-2026-8643 rhoai/odh-workbench: flaw [rhoai-2.25]"
     assert cct.extract_version(summary) == "rhoai-2.25"
     assert cct.extract_version("no version suffix") is None
 
 
 def test_extract_description_strips_embargo_and_component() -> None:
-    summary = (
-        "EMBARGOED CVE-2026-8643 rhoai/odh-workbench-jupyter-trustyai: "
-        "Path traversal flaw [rhoai-2.25]"
-    )
+    summary = "EMBARGOED CVE-2026-8643 rhoai/odh-workbench-jupyter-trustyai: Path traversal flaw [rhoai-2.25]"
     desc = cct.extract_description(summary, "CVE-2026-8643")
     assert desc == "Path traversal flaw"
     assert "EMBARGOED" not in desc
@@ -104,7 +102,7 @@ def test_get_blocking_issues() -> None:
     assert cct.get_blocking_issues(issue) == ["RHAIENG-5306"]
 
 
-def test_parse_extra_contributor_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_parse_extra_contributor_ids(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", " id-one , id-two ")
     assert cct.parse_extra_contributor_ids() == {"id-one", "id-two"}
     monkeypatch.delenv("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", raising=False)
@@ -118,9 +116,7 @@ def test_find_orphan_cves_groups_embargo_and_contributors() -> None:
                 {
                     "key": "RHOAIENG-64025",
                     "fields": {
-                        "summary": (
-                            "EMBARGOED CVE-2026-8643 rhoai/odh-trustyai: flaw [rhoai-2.25]"
-                        ),
+                        "summary": ("EMBARGOED CVE-2026-8643 rhoai/odh-trustyai: flaw [rhoai-2.25]"),
                         "labels": ["SecurityTracking", "CVE-2026-8643"],
                         "security": {"name": cct.EMBARGOED_SECURITY_LEVEL},
                         cct.RHAIENG_CONTRIBUTORS_FIELD: [
