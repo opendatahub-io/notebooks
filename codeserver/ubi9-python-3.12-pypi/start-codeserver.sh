@@ -40,7 +40,7 @@ http {
         listen 8888;
         server_name _;
 
-        location ${NB_PREFIX:-/} {
+        location ${NB_PREFIX:-/}/ {
             proxy_pass http://127.0.0.1:8787/;
             proxy_set_header Host \$host;
             proxy_set_header Upgrade \$http_upgrade;
@@ -53,8 +53,13 @@ http {
             proxy_send_timeout 3600s;
         }
 
+        # Redirect /notebook/ns/name to /notebook/ns/name/ (trailing slash)
+        location = ${NB_PREFIX:-} {
+            return 302 \$scheme://\$host${NB_PREFIX:-/}/;
+        }
+
         # Health check endpoint for readiness probe
-        location ${NB_PREFIX:-/}api {
+        location ${NB_PREFIX:-/}/api {
             proxy_pass http://127.0.0.1:8787/healthz;
             proxy_set_header Host \$host;
         }
