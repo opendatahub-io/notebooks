@@ -16,22 +16,27 @@ RUN curl -fOL https://github.com/coder/code-server/releases/download/v${CODESERV
  && rpm -U code-server-${CODESERVER_VERSION}-${TARGETARCH}.rpm \
  && rm -f code-server-${CODESERVER_VERSION}-${TARGETARCH}.rpm
 
+# Install nginx for reverse proxy (handles NB_PREFIX path rewriting for OpenShift)
+RUN dnf install -y nginx \
+ && dnf clean all
+
 # Install Python kernel support for VS Code
 RUN pip install --no-cache-dir jupyter ipykernel
 
-# Ensure writable dirs for code-server data
+# Create nginx config template that rewrites NB_PREFIX to code-server on 8787
+RUN mkdir -p /opt/app-root/etc/nginx.default.d
+COPY codeserver/ubi9-python-3.12-pypi/start-codeserver.sh ${APP_ROOT}/bin/
+
+# Ensure writable dirs
 RUN mkdir -p ${APP_ROOT}/src/.local/share/code-server \
+    /var/log/nginx /var/lib/nginx /run \
+ && chown -R 1001:0 /var/log/nginx /var/lib/nginx /run /etc/nginx \
+ && chmod -R ug+rwX /var/log/nginx /var/lib/nginx /run /etc/nginx \
  && fix-permissions ${APP_ROOT} -P
 
 USER 1001
 WORKDIR ${APP_ROOT}/src
 
-EXPOSE 8080
+EXPOSE 8888
 
-CMD ["code-server", \
-     "--bind-addr", "0.0.0.0:8080", \
-     "--auth", "none", \
-     "--disable-telemetry", \
-     "--disable-update-check", \
-     "--disable-getting-started-override", \
-     "/opt/app-root/src"]
+CMD ["/opt/app-root/bin/start-codeserver.sh"]
