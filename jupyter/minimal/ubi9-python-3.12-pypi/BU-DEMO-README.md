@@ -127,6 +127,14 @@ pip install "setuptools<70.0.0"
 Versions 70.0+ removed `pkg_resources`. Upgrading TensorBoard alone doesn't
 fix it because TensorFlow pins the TensorBoard version.
 
+### No `rocm-smi` / `rocminfo` on ROCm clusters
+
+The PyTorch ROCm wheel bundles only runtime libs, not the AMD diagnostic CLI tools
+(`rocm-smi`, `rocminfo`). These come from AMD's ROCm RPM repos, not UBI9 or PyPI.
+Use `torch.cuda.get_device_properties(0)` to get GPU arch, memory, and CU count.
+For full GPU monitoring, the tools need to be pre-installed in the image or
+available on the host node.
+
 ### pip installs don't survive pod restarts
 
 Packages installed at runtime are lost when the OpenShift pod restarts (node
