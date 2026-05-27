@@ -19,8 +19,15 @@ own CUDA/ROCm runtime and work without CUDA RPMs in the image.
 
 ## Quick start on OpenShift
 
-1. Import as custom workbench image in RHOAI dashboard (Settings → Workbench Images)
-2. Create a workbench, optionally request a GPU
+Deploy imagestreams into your namespace (one command):
+
+```bash
+oc apply -n <your-namespace> -f jupyter/minimal/ubi9-python-3.12-pypi/imagestreams.yaml
+```
+
+Then in the RHOAI dashboard:
+1. Create a workbench using "Jupyter Minimal PyPI (CPU)" or "CodeServer PyPI (CPU)"
+2. Optionally request a GPU
 3. Open terminal, install what you need
 
 ## Installing PyTorch (CUDA)
