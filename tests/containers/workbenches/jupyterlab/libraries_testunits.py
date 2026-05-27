@@ -30,7 +30,7 @@ class TestDataScienceLibs(unittest.TestCase):
 
     def test_numpy(self):
         """Tests numpy array creation and basic operations."""
-        import numpy as np  # pyright: ignore[reportMissingImports]
+        import numpy as np
 
         arr = np.array([[1, 2], [3, 4]])
         self.assertEqual(arr.shape, (2, 2), "Numpy array shape is incorrect.")

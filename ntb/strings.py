@@ -92,11 +92,11 @@ class TestProcessTemplateWithIndents:
 
 
 def blockinfile(
-        filename: str | PathLike,
-        contents: str,
-        prefix: str | None = None,
-        *,
-        comment: str = "#",
+    filename: str | PathLike,
+    contents: str,
+    prefix: str | None = None,
+    *,
+    comment: str = "#",
 ) -> None:
     """This is similar to the functions in
     * https://homely.readthedocs.io/en/latest/ref/files.html#homely-files-blockinfile-1
@@ -134,7 +134,7 @@ def blockinfile(
         # no markers found
         return
     else:
-        lines[begin: end + 1] = [f"{begin_marker}\n", *new_contents, f"\n{end_marker}\n"]
+        lines[begin : end + 1] = [f"{begin_marker}\n", *new_contents, f"\n{end_marker}\n"]
 
     if lines == original_lines:
         return
