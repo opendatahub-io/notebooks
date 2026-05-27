@@ -85,6 +85,8 @@ no-binary-package = [
 # XML-RPC calls (koji.ClientSession) — no GSSAPI auth needed.
 # gssapi has no Linux wheels and needs libkrb5-dev to build from source.
 exclude-dependencies = ["requests-gssapi"]
+# CVE-2026-48710: Starlette Host header bypass — require patched version
+constraint-dependencies = ["starlette>=1.0.1"]
 
 [tool.uv.workspace]
 members = ["base-images/copr"]
