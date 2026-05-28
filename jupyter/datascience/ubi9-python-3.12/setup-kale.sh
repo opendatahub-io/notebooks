@@ -7,8 +7,20 @@ set -Eeuxo pipefail
 # Read Elyra config and copy the relevant information to Kale config
 # Extract KFP configuration from Elyra runtime configs if available
 if [ "$(ls -A /opt/app-root/runtimes/ 2>/dev/null)" ]; then
-  # Get the first Elyra runtime config file
-  ELYRA_RUNTIME_CONFIG=$(ls /opt/app-root/runtimes/..data/*.json 2>/dev/null | head -1)
+  # Use the default "Pipeline" runtime configuration created by the operator
+  ELYRA_RUNTIME_CONFIG="/opt/app-root/runtimes/..data/Pipeline.json"
+
+  # Fallback to first available runtime config if default doesn't exist
+  if [ ! -f "$ELYRA_RUNTIME_CONFIG" ]; then
+    shopt -s nullglob
+    RUNTIME_CONFIGS=(/opt/app-root/runtimes/..data/*.json)
+    if [ ${#RUNTIME_CONFIGS[@]} -gt 0 ]; then
+      ELYRA_RUNTIME_CONFIG="${RUNTIME_CONFIGS[0]}"
+    else
+      ELYRA_RUNTIME_CONFIG=""
+    fi
+    shopt -u nullglob
+  fi
 
   if [ -n "$ELYRA_RUNTIME_CONFIG" ] && [ -f "$ELYRA_RUNTIME_CONFIG" ]; then
     # Configure Kale KFP server connection by mapping Elyra config to Kale config
