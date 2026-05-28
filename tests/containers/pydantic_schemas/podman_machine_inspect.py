@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from datetime import datetime
 
 from pydantic import BaseModel
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 class ConfigDir(BaseModel):

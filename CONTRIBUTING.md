@@ -40,6 +40,24 @@ Pull requests are the best way to propose changes to the notebooks repository:
 - Run the [piplock-renewal.yaml](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/piplock-renewal.yaml) against your fork branch, check [here](https://github.com/opendatahub-io/notebooks/blob/main/README.md) for more info.
 - Test the changes locally, by manually running the `$ make jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8` from the terminal.
 
+### GitHub Actions
+
+All third-party actions must be pinned by full commit SHA with a version comment:
+
+```yaml
+uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+```
+
+After adding or modifying any `uses:` line in `.github/`, run:
+
+```bash
+# Install: brew install pinact (or: go install github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@v3.9.0)
+GITHUB_TOKEN=$(gh auth token) pinact run
+```
+
+CI enforces this via `pinact run --check --verify` in the code-quality workflow.
+See [ADR 0008](docs/architecture/decisions/0008-harden-github-actions-pin-sha-digests.md) for background.
+
 ### Working with linters
 
 - Run pre-commit before you commit, to lint the Python sources that have been put under its management

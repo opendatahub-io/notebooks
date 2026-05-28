@@ -231,6 +231,7 @@ def process_tag(tag):
     ntb_sw_annotation = "opendatahub.io/notebook-software"
     python_dep_annotation = "opendatahub.io/notebook-python-dependencies"
 
+    cleanup_failed = False
     try:
         software = tag_annotations.get(ntb_sw_annotation)
         if not software:
@@ -254,10 +255,11 @@ def process_tag(tag):
     finally:
         if stop_and_remove_container(container_id) != 0:
             log.error(f"Failed to stop/remove the container '{container_id}' for the '{image_ref}' tag!")
-            print_delimiter()
-            return 1  # noqa: B012 `return` inside `finally` blocks cause exceptions to be silenced
+            cleanup_failed = True
         print_delimiter()
 
+    if cleanup_failed:
+        return 1
     return ret_code
 
 

@@ -11,15 +11,15 @@ jobs:
     steps:
       - name: Generate github-app token
         id: app-token
-        uses: getsentry/action-github-app-token@v3
+        uses: getsentry/action-github-app-token@d4b5da6c5e37703f8c3b3e43abb5705b46e159cc  # v3.0.0
         with:
           app_id: ${{ secrets.DEVOPS_APP_ID }}
           private_key: ${{ secrets.DEVOPS_APP_PRIVATE_KEY }}
-      - uses: actions/add-to-project@v1
+      - uses: actions/add-to-project@244f685bbc3b7adfa8466e08b698b5577571133e  # v1.0.2
         with:
           project-url: https://github.com/orgs/opendatahub-io/projects/40
           github-token: ${{ steps.app-token.outputs.token }}
-      - uses: actions/add-to-project@v1
+      - uses: actions/add-to-project@244f685bbc3b7adfa8466e08b698b5577571133e  # v1.0.2
         with:
           project-url: https://github.com/orgs/opendatahub-io/projects/45
           github-token: ${{ steps.app-token.outputs.token }}

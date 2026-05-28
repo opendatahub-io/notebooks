@@ -70,7 +70,7 @@ pythonPlatform = "Linux"
 
 # https://docs.astral.sh/ruff/configuration
 [tool.ruff]
-include = ["pyproject.toml", "ci/**/*.py", "tests/**/*.py"]
+include = ["pyproject.toml", "ci/**/*.py", "ntb/**/*.py", "tests/**/*.py", "base-images/**/*.py", "jupyter/**/*.ipynb"]
 exclude = [ ]
 target-version = "py314"
 line-length = 120
@@ -101,7 +101,7 @@ select = [
     "Q", # flake8-quotes
     "RET", # flake8-return
     "RUF", # Ruff-specific
-    "S102", # flake8-bandit: exec-builtin
+    "S102", # flake8-bandit: exec-builtin (full `S` on main; 2.25 CI has pre-existing S113/S506 noise)
     "T10", # flake8-debugger
     "TCH", # type-checking imports
     "TID", # flake8-tidy-imports
@@ -128,6 +128,9 @@ ignore = [
     # "W503", # not yet implemented; line break before binary operator
     # "W504", # not yet implemented; line break after binary operator
     "PLR1702", # Too many nested blocks (7 > 5)
+    # flake8-bandit: noisy, low-value rules
+    "S404", # subprocess-module-import: flagging `import subprocess` is too noisy
+    "S607", # start-process-with-partial-path: flags well-known executables (git, make, kubectl)
     # TODO
     "B006", # Do not use mutable data structures for argument defaults
     "COM812", # Trailing comma missing
@@ -155,8 +158,53 @@ ignore = [
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
+# Don't suggest moving types used in Pydantic models into `if TYPE_CHECKING` import blocks
+# https://docs.astral.sh/ruff/settings/#lint_flake8-type-checking_runtime-evaluated-base-classes
+flake8-type-checking.runtime-evaluated-base-classes = ["pydantic.BaseModel"]
+
+# https://docs.astral.sh/ruff/settings/#lint_pep8-naming_classmethod-decorators
+pep8-naming.classmethod-decorators = ["pydantic.validator"]
+
+[tool.ruff.lint.per-file-ignores]
+# Inner functions are serialized and executed inside containers, so imports must be local.
+"tests/containers/workbenches/gpu_library_loading_test.py" = ["PLC0415"]
+# Ignore many stylistic and formatting rules for notebooks, but keep Pylint rules like PLW0128
+"jupyter/**/*.ipynb" = [
+    "B004",    # flake8-bugbear: unreliable-callable-check
+    "E",       # pycodestyle errors (formatting handled by ruff format)
+    "F",       # Pyflakes (undefined names common in notebook cell-split execution)
+    "W",       # pycodestyle warnings
+    "Q",       # flake8-quotes (notebooks use mixed quoting styles)
+    "I",       # isort (import ordering not enforced in notebooks)
+    "PLC0414", # pylint: useless-import-alias
+    "PLC0415", # pylint: import-outside-toplevel (notebooks import inside cells)
+    "PLR0402", # pylint: manual-from-import
+    "PLW0108", # pylint: unnecessary-lambda
+    "RUF100",  # ruff: unused-noqa directive
+    "S101",    # flake8-bandit: assert (notebooks use assert for inline checks)
+    "S602",    # flake8-bandit: subprocess-popen-with-shell-equals-true
+    "S603",    # flake8-bandit: subprocess-without-shell-equals-true
+    "S604",    # flake8-bandit: call-with-shell-equals-true
+]
+"jupyter/**/test/test_notebook.ipynb" = [
+    "PLC2701", # pylint: private-name-import (%%writefile creates _-prefixed modules)
+    "PLW1510", # pylint: subprocess-run-without-check (subprocess usage in tests only)
+]
+# Tests, CI scripts, and build helpers legitimately use assert and subprocess with shell=True
+# S602: subprocess-popen-with-shell-equals-true
+# S604: call-with-shell-equals-true
+"tests/**/*.py" = ["S101", "S602", "S603", "S604"]
+"ci/**/*.py" = ["S101", "S602", "S603", "S604"]
+"scripts/**/*.py" = ["S602", "S603", "S604"]
+# Test assertion helpers use assert by design
+"ntb/**/*.py" = ["S101"]
+# Copr client wraps CLI commands via subprocess with controlled arguments
+"base-images/**/*.py" = ["S602", "S603", "S604"]
+"tests/__init__.py" = ["RUF067"]
+
 # https://docs.astral.sh/ruff/formatter
 [tool.ruff.format]
+exclude = ["*.ipynb"]
 line-ending = "lf"
 quote-style = "double"
 indent-style = "space"
