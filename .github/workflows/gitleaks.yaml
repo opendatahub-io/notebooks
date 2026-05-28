@@ -47,6 +47,11 @@ jobs:
         # handles baseline comparison and only alerts on net-new leaks.
         run: gitleaks git --config .gitleaks.toml --report-format sarif --report-path gitleaks.sarif --no-banner --exit-code 0
 
+      - name: Sanitize Gitleaks SARIF for upload
+        # Gitleaks can emit endColumn=0; upload-sarif rejects that (needs endColumn >= 1).
+        # See scripts/ci/sanitize_gitleaks_sarif.py and docs/sarif.md.
+        run: python3 scripts/ci/sanitize_gitleaks_sarif.py gitleaks.sarif
+
       - name: Upload SARIF
         if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e  # v4.35.4
