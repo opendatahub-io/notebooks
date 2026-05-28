@@ -27,6 +27,8 @@ dependencies = [
 override-dependencies = [
     # tensorflow-rocm depends on protobuf>=3.20.3, <6.0.0 and kfp depends on protobuf>=6.31.1
     "protobuf==6.31.1",
+    # RHOAIENG-64917: starlette>=1.0.1 — CVE-2026-48710
+    "starlette>=1.0.1",
 ]
 
 constraint-dependencies = [

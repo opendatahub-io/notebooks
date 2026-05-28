@@ -39,6 +39,8 @@ override-dependencies = [
     # AIPCC-13675: https://redhat.atlassian.net/browse/AIPCC-13675
     # https://github.com/tensorflow/tensorflow/blob/r2.21/requirements_lock_3_12.txt#L552
     "protobuf==6.31.1",
+    # RHOAIENG-64917: starlette>=1.0.1 — CVE-2026-48710
+    "starlette>=1.0.1",
 ]
 
 environments = [
