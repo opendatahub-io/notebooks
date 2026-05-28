@@ -149,6 +149,7 @@ USER root
 
 ARG LABEL_REGISTRY_PREFIX
 ARG LABEL_COMPONENT
+ARG RELEASE
 
 LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
       com.redhat.component="${LABEL_COMPONENT}" \
@@ -156,7 +157,8 @@ LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
       summary="Jupyter CUDA tensorflow notebook image for ODH notebooks" \
       description="Jupyter CUDA tensorflow notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
       io.k8s.description="Jupyter CUDA tensorflow notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
+      version="${RELEASE}"
 
 # Install Python packages and Jupyterlab extensions from lockfile (requirements.cuda.txt used only for Cachi2 prefetch)
 COPY ${TENSORFLOW_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
