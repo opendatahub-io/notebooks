@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Git checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: '0'
       - name: Install skopeo
@@ -23,7 +23,7 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install skopeo
       - name: Get Pull Request Number
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd  # v8.0.0
         id: get_pr_number
         with:
           script: |
@@ -57,7 +57,7 @@ jobs:
           PR: ${{steps.get_pr_number.outputs.result}}
         run: |
 
-          set +e # Don't abort if a delete operation fails as all images might not be available for the PR
+          set +e  # Don't abort if a delete operation fails as all images might not be available for the PR
 
           # Python 3.11
           skopeo delete docker://${QUAY_IMAGE_REPO}:rstudio-c9s-python-3.11-pr-${{ env.PR }}

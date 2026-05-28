@@ -59,14 +59,14 @@ jobs:
           echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >>${GITHUB_ENV}
           echo "CACHE=${CACHE,,}" >>${GITHUB_ENV}
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         if: ${{ fromJson(inputs.github).event_name != 'pull_request_target' }}
         with:
           lfs: ${{ contains(inputs.target, 'codeserver') }}
           persist-credentials: false  # https://github.com/actions/checkout/issues/2312
       # we need to checkout the pr branch, not pr target (the default for pull_request_target)
       # user access check is done in calling workflow
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         if: ${{ fromJson(inputs.github).event_name == 'pull_request_target' }}
         with:
           ref: "refs/pull/${{ fromJson(inputs.github).event.number }}/merge"
@@ -119,14 +119,14 @@ jobs:
           SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
 
       # for bin/buildinputs in scripts/sandbox.py
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
         with:
           cache-dependency-path: "scripts/buildinputs/go.sum"
 
       - run: sudo apt-get update
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -245,14 +245,14 @@ jobs:
 
       # https://github.com/astral-sh/setup-uv
       - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
         with:
           version-file: uv.toml
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
       - name: Install Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: "3.14"
 
@@ -395,7 +395,7 @@ jobs:
         working-directory: scripts/check-payload
 
       # for https://github.com/openshift/check-payload to cache the built binary
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
         with:
           cache-dependency-path: "scripts/check-payload/go.sum"
         env:
@@ -477,7 +477,7 @@ jobs:
         working-directory: tests/browser
         env:
           TEST_TARGET: "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         if: ${{ !cancelled() && fromJson(inputs.github).event_name == 'pull_request' && contains(inputs.target, 'codeserver') }}
         with:
           name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
