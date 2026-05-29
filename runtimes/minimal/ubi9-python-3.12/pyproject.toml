@@ -5,6 +5,7 @@ requires-python = "==3.12.*"
 
 dependencies = [
     "odh-notebooks-meta-runtime-elyra-deps",
+    "odh-notebooks-meta-runtime-kale-deps",
 
     # Base packages
     "setuptools",
@@ -22,3 +23,4 @@ environments = [
 
 [tool.uv.sources]
 odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }
+odh-notebooks-meta-runtime-kale-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-kale-deps" }

@@ -92,6 +92,7 @@ NO_EMIT_PACKAGES = (
     "odh-notebooks-meta-llmcompressor-deps",
     "odh-notebooks-meta-runtime-elyra-deps",
     "odh-notebooks-meta-runtime-datascience-deps",
+    "odh-notebooks-meta-runtime-kale-deps",
     "odh-notebooks-meta-workbench-datascience-deps",
 )
 
