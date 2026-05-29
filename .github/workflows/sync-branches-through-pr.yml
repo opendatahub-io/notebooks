@@ -23,6 +23,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.target }}
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Prepare sync branch
         id: prepare

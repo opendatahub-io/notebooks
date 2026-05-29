@@ -56,6 +56,7 @@ jobs:
         with:
           repository: opendatahub-io/notebooks.git
           ref: ${{ env.RELEASE_VERSION_N }}
+          persist-credentials: false
 
       - name: Retrieve latest weekly commit hash from the "N" branch
         id: hash-n
@@ -68,6 +69,7 @@ jobs:
         with:
           repository: opendatahub-io/notebooks.git
           ref: ${{ env.RELEASE_VERSION_N_1 }}
+          persist-credentials: false
 
       - name: Retrieve latest weekly commit hash from the "N - 1" branch
         id: hash-n-1
@@ -80,6 +82,7 @@ jobs:
         with:
           repository: opendatahub-io/notebooks.git
           ref: main
+          persist-credentials: false
 
       - name: Retrieve latest weekly commit hash from the "main" branch
         id: hash-main
@@ -128,6 +131,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: pull-request
         uses: repo-sync/pull-request@7e79a9f5dc3ad0ce53138f01df2fad14a04831c5  # v2.12.1
