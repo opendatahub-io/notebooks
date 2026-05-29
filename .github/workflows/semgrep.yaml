@@ -39,10 +39,12 @@ jobs:
         run: pipx install --force semgrep
 
       - name: Run Semgrep
+        id: run-semgrep
         run: semgrep scan --config semgrep.yaml --sarif-output=semgrep.sarif
 
       - name: Upload SARIF
-        if: always()
+        # Fork PRs cannot write security-events; skip upload (same guard as gitleaks.yaml).
+        if: ${{ !cancelled() && (steps.run-semgrep.outcome == 'success' || steps.run-semgrep.outcome == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e  # v4.35.4
         with:
           sarif_file: semgrep.sarif
