@@ -1,8 +1,9 @@
 #!/bin/bash
 set -Eeuxo pipefail
 
-# RHOAIENG-57465: Setup script for Kubeflow Kale JupyterLab extension
+# Runtime configuration for Kubeflow Kale JupyterLab extension
 # This script configures Kale to connect to KFP by reading Elyra runtime config
+# Note: The extension is disabled by default at build time (see Dockerfile)
 
 # Read Elyra config and copy the relevant information to Kale config
 # Extract KFP configuration from Elyra runtime configs if available
@@ -32,9 +33,3 @@ fi
 # Set environment variables for KFP authentication
 export KF_PIPELINES_SA_TOKEN_PATH="/var/run/secrets/kubernetes.io/serviceaccount/token"
 export KF_PIPELINES_SSL_SA_CERTS="${KF_PIPELINES_SSL_SA_CERTS:-/var/run/secrets/kubernetes.io/serviceaccount/ca.crt}"
-
-# Disable Kale extension by default - users can enable it via JupyterLab UI
-# Extension name: jupyterlab-kubeflow-kale
-if command -v jupyter > /dev/null 2>&1; then
-  jupyter labextension disable jupyterlab-kubeflow-kale 2>/dev/null || true
-fi
