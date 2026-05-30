@@ -82,8 +82,8 @@ class TestJupyterLabImage:
             exit_code, output = container.exec(["jupyter", "labextension", "list"])
             result_output = output.decode(errors="replace")
             assert exit_code == 0, f"`jupyter labextension list` failed:\n{result_output}"
-            extension_disabled_pattern = rf"{re.escape(extension_name)}[^\n]*disabled"
-            assert re.search(extension_disabled_pattern, result_output, re.MULTILINE) is not None, (
+            disabled_section_pattern = rf"Disabled extensions:.*{re.escape(extension_name)}"
+            assert re.search(disabled_section_pattern, result_output, re.DOTALL) is not None, (
                 f"Announcements extension '{extension_name}' not reported as disabled:\n" + result_output
             )
 
