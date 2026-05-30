@@ -19,6 +19,7 @@ and follow linked documents for topic-specific detail.
 | [docs/subscribed-builds.md](docs/subscribed-builds.md) | You need local AIPCC / subscribed builds |
 | [docs/uv-guide.md](docs/uv-guide.md) | You are changing Python dependencies beyond the quick path in `CONTRIBUTING.md` |
 | [docs/cves/python.md](docs/cves/python.md) / [docs/cves/nodejs.md](docs/cves/nodejs.md) | You are fixing CVEs or lockfile-driven security updates |
+| [docs/cves/agents-cve-autofix.md](docs/cves/agents-cve-autofix.md) | You are an automated CVE fix agent (jira-autofix) |
 | [`.github/AGENTS.md`](.github/AGENTS.md) | You are editing GitHub Actions or action metadata |
 | [`tests/browser/AGENTS.md`](tests/browser/AGENTS.md) | You are editing Playwright tests or browser tooling |
 | [docs/agents/testing.md](docs/agents/testing.md) | You need the test catalog: types, markers, commands, CI parity |
@@ -109,6 +110,15 @@ Use formatting: bold, italics and code blocks.
 - Python 3.14: `except ExcA, ExcB:` (no parentheses) is valid when there is no
   `as` clause (PEP 758). Ruff format enforces this style. Parentheses are still
   required when binding: `except (ExcA, ExcB) as e:`.
+
+## Commit and PR title style
+
+Preferred format: `TICKET: scope: description in imperative mood`
+
+Scope follows [Conventional Commits](https://www.conventionalcommits.org/)
+(`chore`, `feat`, `fix`, `docs`, `refactor`, `test`, `ci`, etc.), optionally
+with a directory hint like `chore(.tekton/)` or `fix(jupyter/trustyai)`.
+Most dependency/CVE work is `chore`. See `.coderabbit.yaml` for validation rules.
 
 ## Repo-specific reminders
 
