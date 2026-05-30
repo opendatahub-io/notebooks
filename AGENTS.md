@@ -22,6 +22,7 @@ and follow linked documents for topic-specific detail.
 | [`.github/AGENTS.md`](.github/AGENTS.md) | You are editing GitHub Actions or action metadata |
 | [`tests/browser/AGENTS.md`](tests/browser/AGENTS.md) | You are editing Playwright tests or browser tooling |
 | [docs/agents/testing.md](docs/agents/testing.md) | You need the test catalog: types, markers, commands, CI parity |
+| `ci/security-scan/` | You need Quay vulnerability scan results or the weekly security workflow |
 | [docs/ai-coding-assistant-project-config.md](docs/ai-coding-assistant-project-config.md) | You need the cross-tool `AGENTS.md` / `CLAUDE.md` / skills layout |
 | [`.agents/skills/`](.agents/skills/) | You are authoring or discovering Agent Skills |
 
@@ -100,6 +101,8 @@ Use formatting: bold, italics and code blocks.
 - To inspect an image without starting Jupyter, override the entrypoint:
   `podman run --rm -it --entrypoint="" <image> bash`.
   Without this, arguments are ignored and Jupyter starts.
+- One-off commands (no interactive shell):
+  `podman run --rm --entrypoint="" <image> rpm -qa | sort`
 - `KONFLUX` must match between `make <target>` and `make test-<target>`.
   Mismatches cause version assertion failures because the test reads the
   imagestream manifest selected by `KONFLUX`.
