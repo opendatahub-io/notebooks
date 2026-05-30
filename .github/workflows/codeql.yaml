@@ -41,13 +41,13 @@ jobs:
           cache-dependency-path: scripts/buildinputs/go.mod
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@68bde559dea0fdcac2102bfdf6230c5f70eb485e  # v4.35.4
+        uses: github/codeql-action/init@7211b7c8077ea37d8641b6271f6a365a22a5fbfa  # v4.36.0
         with:
           languages: ${{ matrix.language }}
 
       - name: Autobuild
         if: matrix.language != 'go'
-        uses: github/codeql-action/autobuild@68bde559dea0fdcac2102bfdf6230c5f70eb485e  # v4.35.4
+        uses: github/codeql-action/autobuild@7211b7c8077ea37d8641b6271f6a365a22a5fbfa  # v4.36.0
 
       - name: Build Go
         if: matrix.language == 'go'
@@ -56,6 +56,6 @@ jobs:
           go build ./...
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@68bde559dea0fdcac2102bfdf6230c5f70eb485e  # v4.35.4
+        uses: github/codeql-action/analyze@7211b7c8077ea37d8641b6271f6a365a22a5fbfa  # v4.36.0
         with:
           category: "/language:${{ matrix.language }}"
