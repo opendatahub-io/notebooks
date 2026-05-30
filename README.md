@@ -14,9 +14,9 @@ For a deeper understanding of the architecture underlying this repository, pleas
 ### Prerequisites
 Make sure the following tools are installed in your environment:
  - podman/docker
- - python
- - pipenv
- - make (on macOS install/use: gmake)
+ - python 3.14
+ - [uv](https://docs.astral.sh/uv/)
+ - make (on macOS: `brew install make` and add `/opt/homebrew/opt/make/libexec/gnubin` to `PATH`)
  - curl
  - git, git-lfs (for `*.vsix` files)
 
@@ -56,11 +56,11 @@ Use podman/docker to execute the workbench images as container.
 podman  run -it -p  8888:8888  quay.io/opendatahub/workbench-images:jupyter-minimal-ubi9-python-3.9-2024a-20240317-6f4c36b
 ```
 
-### Pipfile.lock Generation
+### Lock file generation
 
-Users can update Pipfile.lock files using the [piplock-renewal.yaml](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/piplock-renewal.yaml) GitHub Action. This workflow enables users to specify a target branch for updating and automerging Pipfile.lock files, select the desired Python version for the update as well as to choose whether to include optional directories in the update process. After the action completes, the updated files can be retrieved with a simple git pull.
-
-Note: To ensure the GitHub Action runs successfully, users must add a `GH_ACCESS_TOKEN` secret in their fork.
+Image lock files (`pylock.toml` / `uv.lock.d/`) are regenerated with `make refresh-lock-files`.
+For details on the dual `uv` version policy (dev vs image locks), see the
+[Deploy & Test](#deploy--test) section below.
 
 ### Deploy & Test
 
@@ -100,7 +100,9 @@ system uv does not already match that exact version.
 
 #### Running tests
 
-By completing configuration in the previous section, you can run tests using the following targets (use `gmake` instead of `make` on macOS):
+For the full test catalog (types, markers, CI parity), see [docs/agents/testing.md](docs/agents/testing.md).
+
+By completing configuration in the previous section, you can run tests using the following targets:
 
 ```bash
 make test              # Quick static tests (pytest + Dockerfile alignment check)
@@ -246,7 +248,7 @@ Whether you're fixing bugs, adding new notebooks, or improving documentation, yo
 
 ### For AI Agents
 
-If you're an AI agent working with this repository, please refer to our [Agents Guide](Agents.md) for comprehensive instructions on project structure, development workflows, and best practices.
+If you're an AI agent working with this repository, please refer to our [Agents Guide](AGENTS.md) for comprehensive instructions on project structure, development workflows, and best practices.
 
 ## Acknowledgments
 

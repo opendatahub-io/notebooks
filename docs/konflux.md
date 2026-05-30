@@ -115,10 +115,22 @@ project: `rhoai-tenant`
 
 Each notebook image (workbench or pipeline runtime) has:
 - A `Dockerfile.<variant>` (e.g., `Dockerfile.cpu`, `Dockerfile.cuda`, `Dockerfile.rocm`)
-- A `Dockerfile.konflux.<variant>` twin that currently differs only in LABEL metadata
+- A `Dockerfile.konflux.<variant>` path for the downstream RHOAI naming convention
 - Build-args conf files in `build-args/` (e.g., `cpu.conf`, `konflux.cpu.conf`) containing `BASE_IMAGE`, `PYLOCK_FLAVOR`, and related metadata. For `konflux.*.conf`, the effective `INDEX_URL` is derived dynamically from `BASE_IMAGE`.
 
-The Makefile selects which Dockerfile and conf file to use based on the `KONFLUX` environment variable. The conf file is parsed by awk into quoted `--build-arg 'KEY=VALUE'` flags (see the `build_image` function in the Makefile), and Konflux builds inject a computed `INDEX_URL` alongside the checked-in args. Downstream Tekton/buildah flows that use `konflux.*.conf` via `--build-arg-file` must mirror that `INDEX_URL` injection instead of assuming the file alone is sufficient.
+`KONFLUX` selects the **product variant**, not whether the build runs on Konflux itself:
+
+- `KONFLUX=no` or unset selects the ODH midstream variant (`build-args/<variant>.conf`, `manifests/odh/`)
+- `KONFLUX=yes` selects the RHOAI downstream variant (`build-args/konflux.<variant>.conf`, `manifests/rhoai/`)
+
+Since RHAIENG-4516, `Dockerfile.<variant>` and `Dockerfile.konflux.<variant>` resolve to the same
+content, so the important switch is the selected build-args file and manifest tree. The conf file
+is parsed by awk into quoted `--build-arg 'KEY=VALUE'` flags (see the `build_image` function in the
+Makefile), and Konflux builds inject a computed `INDEX_URL` alongside the checked-in args.
+Downstream Tekton/buildah flows that use `konflux.*.conf` via `--build-arg-file` must mirror that
+`INDEX_URL` injection instead of assuming the file alone is sufficient.
+
+For local-build gotchas and when to use each variant, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 For hermetic build internals (cachi2.env injection, RPM prefetch paths, module_hotfixes pattern), see [`docs/hermetic-guide.md`](hermetic-guide.md).
 
@@ -130,8 +142,8 @@ The `.tekton/` PipelineRun YAMLs in this repo are **generated** by `ci/cached-bu
 
 The two repos have **different Tekton pipelines** with different Dockerfile/conf file references:
 
-- **`opendatahub-io/notebooks`** (this repo) -- `.tekton/` contains ODH-main push/PR pipelines (e.g., `*-odh-main-push.yaml`) and ODH stable push pipelines (e.g., `*-push.yaml`). These reference the standard `Dockerfile.<variant>` and `build-args/<variant>.conf`. The stable push pipelines use a shared pipeline definition from [odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central/tree/main/pipeline) via a git `pipelineRef` resolver. The ODH-main pipelines embed the pipeline spec inline.
-- **`red-hat-data-services/notebooks`** (the fork) -- `.tekton/` contains RHOAI push/PR pipelines synced from [red-hat-data-services/konflux-central](https://github.com/red-hat-data-services/konflux-central/tree/main/pipelineruns/notebooks/.tekton). These reference the Konflux-specific `Dockerfile.konflux.<variant>` and `build-args/konflux.<variant>.conf`.
+- **`opendatahub-io/notebooks`** (this repo) -- `.tekton/` contains ODH-main push/PR pipelines (e.g., `*-odh-main-push.yaml`) and ODH stable push pipelines (e.g., `*-push.yaml`). These reference the ODH build-args files (`build-args/<variant>.conf`). The stable push pipelines use a shared pipeline definition from [odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central/tree/main/pipeline) via a git `pipelineRef` resolver. The ODH-main pipelines embed the pipeline spec inline.
+- **`red-hat-data-services/notebooks`** (the fork) -- `.tekton/` contains RHOAI push/PR pipelines synced from [red-hat-data-services/konflux-central](https://github.com/red-hat-data-services/konflux-central/tree/main/pipelineruns/notebooks/.tekton). These reference the downstream build-args files (`build-args/konflux.<variant>.conf`) and keep the `Dockerfile.konflux.<variant>` naming convention.
 
 Previously, the ODH notebook PipelineRuns lived in `odh-konflux-central/pipelineruns/notebooks/`. They were migrated back into this repo's `.tekton/` so that pipeline definition changes (e.g., resource limits, CEL trigger expressions) ship alongside the code on the `stable` branch, rather than requiring a separate PR to a central repo.
 

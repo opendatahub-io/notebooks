@@ -64,7 +64,7 @@ The `runtimes/` directory mirrors the same flavor structure (minimal, datascienc
 | `base-images/` | CUDA and ROCm GPU-accelerated base image definitions |
 | `dependencies/` | Shared dependency constraints (CVE pinning) and meta packages for common dependency groups |
 | `examples/` | Example JupyterLab notebooks for validating workbench functionality |
-| `docs/adr/` | Architecture Decision Records |
+| `docs/architecture/decisions/` | Architecture Decision Records |
 
 ## Build system
 
@@ -76,9 +76,18 @@ make all-images                              # build everything
 make test                                    # run quick static tests (pytest + lint)
 ```
 
-The build system supports two modes:
-- **ODH mode** (default): `KONFLUX=no`, uses standard Dockerfiles
-- **RHOAI/Konflux mode**: `KONFLUX=yes`, uses `Dockerfile.konflux.*` variants with prefetched dependencies
+The `KONFLUX` Makefile variable selects the **product variant**, not whether the build
+runs on Konflux/Tekton:
+
+- **ODH mode** (default: `KONFLUX=no` or unset): uses `build-args/<variant>.conf`
+  and `manifests/odh/`
+- **RHOAI mode** (`KONFLUX=yes`): uses `build-args/konflux.<variant>.conf`
+  and `manifests/rhoai/`
+
+Since RHAIENG-4516, `Dockerfile.<variant>` paths and `Dockerfile.konflux.<variant>`
+paths resolve to the same content, so the meaningful difference is the selected
+build-args file and manifest set rather than a separate Dockerfile implementation.
+Both variants can be built locally or on Konflux/Tekton.
 
 ## Testing layers
 
