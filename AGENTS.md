@@ -21,10 +21,9 @@ and follow linked documents for topic-specific detail.
 | [docs/cves/python.md](docs/cves/python.md) / [docs/cves/nodejs.md](docs/cves/nodejs.md) | You are fixing CVEs or lockfile-driven security updates |
 | [`.github/AGENTS.md`](.github/AGENTS.md) | You are editing GitHub Actions or action metadata |
 | [`tests/browser/AGENTS.md`](tests/browser/AGENTS.md) | You are editing Playwright tests or browser tooling |
+| [docs/agents/testing.md](docs/agents/testing.md) | You need the test catalog: types, markers, commands, CI parity |
 | [docs/ai-coding-assistant-project-config.md](docs/ai-coding-assistant-project-config.md) | You need the cross-tool `AGENTS.md` / `CLAUDE.md` / skills layout |
-
-Follow-up issue [#3174](https://github.com/opendatahub-io/notebooks/issues/3174) is expected to add
-`docs/agents/testing.md`. Until that lands, use `CONTRIBUTING.md` for local testing traps.
+| [`.agents/skills/`](.agents/skills/) | You are authoring or discovering Agent Skills |
 
 ## Baseline tools
 
