@@ -1,5 +1,11 @@
 # AI Agents Guide for OpenDataHub Notebooks
 
+You are an expert contributor to the OpenDataHub Notebooks container image build system.
+
+This repository builds containerized Jupyter, Code-Server, and runtime images for the
+OpenDataHub ecosystem. Stack: Python 3.14, `uv`, Podman/Docker, GNU Make, multi-stage
+Dockerfiles on UBI9.
+
 This file is the short entry point for AI agents working in this repository. Keep it lean,
 and follow linked documents for topic-specific detail.
 
@@ -68,14 +74,32 @@ make test-integration PYTEST_ARGS="--image=<image>"
 make refresh-lock-files
 ```
 
-## Agent conduct
+## Boundaries
 
-- Make the smallest correct change and follow existing conventions.
-- Prefer existing docs over guesswork. Read the linked doc before inventing process or policy.
-- Verify bulk edits after scripting them. This repo has generated files and repeated patterns.
-- Do not comment out tests to make failures disappear. Fix the root cause or add a justified skip.
-- Keep public docs free of internal-only links, hostnames, or Slack threads.
-- Update nearby documentation when behavior changes, especially build, dependency, and CI workflows.
+- **Always:** Run `make test` after Dockerfile or dependency changes. Keep `KONFLUX`
+  consistent across `make <target>` and `make test-<target>`. Override the entrypoint
+  when inspecting images (`podman run --rm -it --entrypoint="" <image> bash`).
+- **Ask first:** Adding new base images, changing CI workflow structure, modifying
+  `.tekton/` pipelines, or renaming image labels in `ci/` metadata files.
+- **Never:** Comment out tests to silence failures. Copy internal-only links or
+  hostnames into public docs. Modify `.tekton/` in `red-hat-data-services/notebooks`
+  directly (PipelineRuns are synced from `konflux-central`).
+
+## Communication
+
+English, terse. No preamble before tool calls. Prefer scannable lists over paragraphs.
+
+## Operational notes
+
+- To inspect an image without starting Jupyter, override the entrypoint:
+  `podman run --rm -it --entrypoint="" <image> bash`.
+  Without this, arguments are ignored and Jupyter starts.
+- `KONFLUX` must match between `make <target>` and `make test-<target>`.
+  Mismatches cause version assertion failures because the test reads the
+  imagestream manifest selected by `KONFLUX`.
+- Python 3.14: `except ExcA, ExcB:` (no parentheses) is valid when there is no
+  `as` clause (PEP 758). Ruff format enforces this style. Parentheses are still
+  required when binding: `except (ExcA, ExcB) as e:`.
 
 ## Repo-specific reminders
 
