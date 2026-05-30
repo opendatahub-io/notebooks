@@ -1,10 +1,9 @@
 # AI Agents Guide for OpenDataHub Notebooks
 
-You are an expert contributor to the OpenDataHub Notebooks container image build system.
-
 This repository builds containerized Jupyter, Code-Server, and runtime images for the
-OpenDataHub ecosystem. Stack: Python 3.14, `uv`, Podman/Docker, GNU Make, multi-stage
-Dockerfiles on UBI9.
+OpenDataHub ecosystem. Stack: Python 3.14, `uv`, Podman/Docker, GNU Make, building
+multi-stage Dockerfiles on Centos 9 Stream (ODH) and RHEL 9.6 EUS (RHOAI) with Python
+3.12 virtual env inside.
 
 This file is the short entry point for AI agents working in this repository. Keep it lean,
 and follow linked documents for topic-specific detail.
@@ -74,6 +73,13 @@ make test-integration PYTEST_ARGS="--image=<image>"
 make refresh-lock-files
 ```
 
+## Agent conduct
+
+- Make the smallest correct change and follow existing conventions.
+- Prefer existing docs over guesswork. Read the linked doc before inventing process or policy.
+- Verify bulk edits after scripting them. This repo has generated files and repeated patterns.
+- Update nearby documentation when behavior changes, especially build, dependency, and CI workflows.
+
 ## Boundaries
 
 - **Always:** Run `make test` after Dockerfile or dependency changes. Keep `KONFLUX`
@@ -87,7 +93,8 @@ make refresh-lock-files
 
 ## Communication
 
-English, terse. No preamble before tool calls. Prefer scannable lists over paragraphs.
+English, terse.
+Use formatting: bold, italics and code blocks.
 
 ## Operational notes
 
