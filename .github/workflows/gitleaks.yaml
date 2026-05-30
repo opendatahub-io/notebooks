@@ -1,0 +1,66 @@
+---
+name: Gitleaks
+
+"on":
+  push:
+    branches:
+      - main
+      - stable
+      - 'rhoai-*'
+  pull_request:
+  schedule:
+    - cron: '0 4 * * 3'
+  workflow_dispatch:
+
+concurrency:
+  group: gitleaks-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  scan:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Gitleaks
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151  # v4.0.1
+        with:
+          # mise_toml (not install_args) so the tool is both installed and
+          # activated; install_args only runs `mise install` which leaves the
+          # shim unresolved ("No version is set for shim: gitleaks").
+
+          # language=TOML
+          mise_toml: |
+            [tools]
+            "github:gitleaks/gitleaks" = "8.30.1"
+
+      - name: Run Gitleaks
+        id: run-gitleaks
+        # Exit code 0: no leaks, 1: leaks found. Don't fail the job on
+        # findings -- the SARIF upload feeds GitHub code scanning which
+        # handles baseline comparison and only alerts on net-new leaks.
+        run: gitleaks git --config .gitleaks.toml --report-format sarif --report-path gitleaks.sarif --no-banner --exit-code 0
+
+      - name: Sanitize Gitleaks SARIF for upload
+        id: sanitize-gitleaks-sarif
+        # Run when Gitleaks produced a report (success or failure), not on cancel or if scan was skipped.
+        # Outcome check keeps this working if we later drop --exit-code 0 and fail the step on findings.
+        if: ${{ !cancelled() && (steps.run-gitleaks.outcome == 'success' || steps.run-gitleaks.outcome == 'failure') }}
+        # Gitleaks can emit endColumn=0; upload-sarif rejects that (needs endColumn >= 1).
+        # See scripts/ci/sanitize_gitleaks_sarif.py and docs/sarif.md.
+        run: python3 scripts/ci/sanitize_gitleaks_sarif.py gitleaks.sarif
+
+      - name: Upload SARIF
+        # Do not upload on cancel or when scan/sanitize did not produce a valid SARIF.
+        if: ${{ !cancelled() && steps.sanitize-gitleaks-sarif.outcome == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e  # v4.35.4
+        with:
+          sarif_file: gitleaks.sarif

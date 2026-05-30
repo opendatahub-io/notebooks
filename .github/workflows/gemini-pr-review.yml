@@ -79,13 +79,15 @@ jobs:
     runs-on: 'ubuntu-latest'
     steps:
       - name: 'Checkout PR code'
-        uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683'  # ratchet:actions/checkout@v4
+        uses: 'actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5'  # v4.3.1
+        with:
+          persist-credentials: false
 
       - name: 'Generate GitHub App Token'
         id: 'generate_token'
         if: |-
           ${{ vars.APP_ID }}
-        uses: 'actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e'  # ratchet:actions/create-github-app-token@v2
+        uses: 'actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349'  # v2.2.2
         with:
           app-id: '${{ vars.APP_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
