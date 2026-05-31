@@ -103,8 +103,8 @@ for details.
 
 ### Testing your PR locally
 
-A fuller test-catalog document is planned in [issue #3174](https://github.com/opendatahub-io/notebooks/issues/3174)
-as `docs/agents/testing.md`.
+The fuller test catalog is documented in [docs/agents/testing.md](docs/agents/testing.md)
+(tracked by [issue #3174](https://github.com/opendatahub-io/notebooks/issues/3174)).
 
 #### Environment setup
 
