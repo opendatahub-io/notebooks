@@ -8,6 +8,11 @@ This guide explains how to set up the subscription for local builds. The CI work
 (`.github/workflows/build-notebooks-TEMPLATE.yaml`, lines 127-148) does the same thing
 automatically using GitHub secrets.
 
+In this guide, `KONFLUX=yes` means "use the downstream RHOAI/AIPCC product variant."
+It does not mean "run only on Konflux." Both ODH and RHOAI variants are built on Konflux
+in CI. For the ODH vs RHOAI variant split and local testing gotchas, see
+[CONTRIBUTING.md](../CONTRIBUTING.md).
+
 ## Prerequisites
 
 - **podman** installed and running
@@ -91,7 +96,7 @@ This will fail with a 403 error if the entitlement is missing or does not includ
 
 ## Step 3: Build
 
-Build with the Konflux Dockerfile and the AIPCC base image. The build-args config files in
+Build with the downstream RHOAI/AIPCC variant. The build-args config files in
 `build-args/konflux.*.conf` specify the correct base image, and the build derives the matching
 Python index URL from that `BASE_IMAGE`.
 
@@ -183,5 +188,5 @@ The CI workflow (`.github/workflows/build-notebooks-TEMPLATE.yaml`) follows the 
 3. Copies pull-secret for quay.io/aipcc access (same step)
 4. Builds with `KONFLUX=yes` ("Build: make" step)
 
-The `build-notebooks-pr-aipcc.yaml` workflow triggers these builds for PRs with
-`subscription: true` and `konflux: true`.
+The `build-notebooks-pr-aipcc.yaml` workflow triggers these downstream-variant builds for PRs
+with `subscription: true` and `konflux: true`.
