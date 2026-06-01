@@ -261,6 +261,7 @@ ARG PYLOCK_FLAVOR
 
 ARG LABEL_REGISTRY_PREFIX
 ARG LABEL_COMPONENT
+ARG RELEASE
 
 LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
       com.redhat.component="${LABEL_COMPONENT}" \
@@ -268,7 +269,8 @@ LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
       summary="code-server image with python 3.12 based on UBI 9" \
       description="code-server image with python 3.12 based on UBI9" \
       io.k8s.description="code-server image with python 3.12 based on UBI9" \
-      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
+      version="${RELEASE}"
 
 USER 0
 
