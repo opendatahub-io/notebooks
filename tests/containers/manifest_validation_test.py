@@ -821,7 +821,7 @@ def _validate_code_server_via_sbom(
     """
     if not has_cosign:
         with subtests.test(msg=f"{tag.is_name} tag {tag.tag_name}: code-server SBOM fallback"):
-            pytest.skip("cosign not available for code-server SBOM fallback")
+            pytest.fail("cosign is required for code-server validation but not found on PATH")
         return
 
     # Pre-Konflux images have no SBOM attached.
@@ -833,17 +833,13 @@ def _validate_code_server_via_sbom(
     source_hint = _imagestream_to_source_hint(tag.is_name)
     python_version = _extract_python_version(tag.image_ref)
     try:
-        sbom_packages = _packages_from_sbom(
-            tag.image_ref, source_hint=source_hint, python_version=python_version
-        )
+        sbom_packages = _packages_from_sbom(tag.image_ref, source_hint=source_hint, python_version=python_version)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
         with subtests.test(msg=f"{tag.is_name} tag {tag.tag_name}: code-server SBOM fetch"):
             pytest.fail(f"Failed to fetch SBOM for code-server validation of {tag.image_ref}: {exc}")
         return
 
-    _compare_manifest_vs_actual(
-        subtests, tag.is_name, tag.tag_name, code_server_deps, sbom_packages, is_software=True
-    )
+    _compare_manifest_vs_actual(subtests, tag.is_name, tag.tag_name, code_server_deps, sbom_packages, is_software=True)
 
 
 @pytest.mark.manifest_validation
@@ -888,9 +884,7 @@ def test_old_tag_annotations_match_quay(
         # so validate it separately via SBOM fallback instead of silently dropping it.
         clair_software = [sw for sw in t.software if sw["name"] != "code-server"]
         code_server_software = [sw for sw in t.software if sw["name"] == "code-server"]
-        _compare_manifest_vs_actual(
-            subtests, t.is_name, t.tag_name, clair_software, actual_packages, is_software=True
-        )
+        _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, clair_software, actual_packages, is_software=True)
         if code_server_software:
             _validate_code_server_via_sbom(
                 subtests, t, code_server_software, has_cosign=shutil.which("cosign") is not None
