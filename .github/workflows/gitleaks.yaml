@@ -42,13 +42,24 @@ jobs:
             "github:gitleaks/gitleaks" = "8.30.1"
 
       - name: Run Gitleaks
+        id: run-gitleaks
         # Exit code 0: no leaks, 1: leaks found. Don't fail the job on
         # findings -- the SARIF upload feeds GitHub code scanning which
         # handles baseline comparison and only alerts on net-new leaks.
         run: gitleaks git --config .gitleaks.toml --report-format sarif --report-path gitleaks.sarif --no-banner --exit-code 0
 
+      - name: Sanitize Gitleaks SARIF for upload
+        id: sanitize-gitleaks-sarif
+        # Run when Gitleaks produced a report (success or failure), not on cancel or if scan was skipped.
+        # Outcome check keeps this working if we later drop --exit-code 0 and fail the step on findings.
+        if: ${{ !cancelled() && (steps.run-gitleaks.outcome == 'success' || steps.run-gitleaks.outcome == 'failure') }}
+        # Gitleaks can emit endColumn=0; upload-sarif rejects that (needs endColumn >= 1).
+        # See scripts/ci/sanitize_gitleaks_sarif.py and docs/sarif.md.
+        run: python3 scripts/ci/sanitize_gitleaks_sarif.py gitleaks.sarif
+
       - name: Upload SARIF
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        # Do not upload on cancel or when scan/sanitize did not produce a valid SARIF.
+        if: ${{ !cancelled() && steps.sanitize-gitleaks-sarif.outcome == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e  # v4.35.4
         with:
           sarif_file: gitleaks.sarif

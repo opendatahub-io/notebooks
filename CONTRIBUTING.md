@@ -103,11 +103,72 @@ for details.
 
 ### Testing your PR locally
 
-- Test the changes locally by running `make jupyter-${NOTEBOOK_NAME}-ubi9-python-3.12` from the terminal.
+A fuller test-catalog document is planned in [issue #3174](https://github.com/opendatahub-io/notebooks/issues/3174)
+as `docs/agents/testing.md`.
+
+#### Environment setup
+
+- Use `uv` for local development:
+  ```bash
+  uv venv --python "$(which python3.14)"
+  uv sync --locked
+  ```
+- On macOS, install Homebrew GNU Make 4.x and put `gnubin` on `PATH` so `make`
+  resolves to the same binary used on Linux:
+  ```bash
+  brew install make
+  PATH="/opt/homebrew/opt/make/libexec/gnubin:$PATH"
+  ```
+- After dependency changes, regenerate locks with `make refresh-lock-files`.
+
+#### Common local commands
+
+```bash
+make test
+make test-unit
+make test-integration PYTEST_ARGS="--image=<image>"
+make jupyter-${NOTEBOOK_NAME}-ubi9-python-3.12
+make test-${NOTEBOOK_NAME}
+```
+
+#### Local gotchas
+
+- Run tests from a checkout whose directory name is exactly `notebooks`.
+  Hyphenated worktree paths such as `/tmp/pr-2293-ci` break
+  `test_image_pyprojects_version_alignment`.
+- If static tests fail in a surprising way, retry from a clean clone first. Extra
+  top-level files and directories such as `.cursor-tmp-*` can interfere with repo-wide
+  assertions.
+- For filesystem-heavy unit tests, prefer the `pyfakefs` `fs` fixture over `tmp_path`.
+- When renaming image labels or similar CI metadata, update only the current `-n`
+  entries in `ci/check-params-env.sh` and `ci/expected-image-metadata.yaml`. Historical
+  entries intentionally keep old names.
+
+#### ODH vs RHOAI local builds
+
+`KONFLUX` selects the product variant, not whether the build runs on Konflux/Tekton.
+Both variants are built on Konflux in CI; the variable changes which `build-args/*.conf`
+and manifest tree the Makefile uses locally.
+
+| `KONFLUX` value | Product variant | Build args | Manifests |
+|-----------------|-----------------|------------|-----------|
+| unset or `no` | ODH (midstream default) | `build-args/<variant>.conf` | `manifests/odh/` |
+| `yes` | RHOAI downstream | `build-args/konflux.<variant>.conf` | `manifests/rhoai/` |
+
+Keep the same `KONFLUX` value for both the build step and the matching `make test-*`
+step so the imagestream manifests and expected package versions line up.
+
+For deeper references:
+
+- Konflux and Tekton details: [`docs/konflux.md`](docs/konflux.md)
+- Subscribed/AIPCC local builds: [`docs/subscribed-builds.md`](docs/subscribed-builds.md)
+- Hermetic build internals: [`docs/hermetic-guide.md`](docs/hermetic-guide.md)
+- CI failure ownership and systems: [`docs/ci.md`](docs/ci.md)
+- CVE-driven lockfile work: [`docs/cves/python.md`](docs/cves/python.md) and [`docs/cves/nodejs.md`](docs/cves/nodejs.md)
 
 ### Working with RHDS and ODH Repositories
 
-When contributing to notebook-related changes in the Red Hat Data Science (RHDS) ecosystem, it's important to understand the repository structure and contribution workflow:
+When contributing to notebook-related changes in the Red Hat Data Services (RHDS) ecosystem, it's important to understand the repository structure and contribution workflow:
 
 #### Repository Responsibilities
 
@@ -120,6 +181,10 @@ When contributing to notebook-related changes in the Red Hat Data Science (RHDS)
 - **Limited Changes**: Only `Dockerfile.konflux` files should be modified directly in this repository. Changes to these files flow to RHOAI upcoming release
 - **Konflux Integration**: This repository contains Konflux-specific build configurations and pipeline definitions
 - **Automated Sync**: Receives updates from the ODH notebooks repository automatically
+
+In this terminology, ODH is the **midstream** repo and RHOAI/RHDS is the **downstream**
+product repo. When shared files need one convention, follow the Konflux/RHOAI naming and
+behavior that the downstream automation expects.
 
 #### Contribution Workflow
 
@@ -134,8 +199,9 @@ When contributing to notebook-related changes in the Red Hat Data Science (RHDS)
    - Changes to these files flow to RHOAI upcoming release and need careful coordination
 
 3. **For Tekton Pipeline Changes**:
-   - Modify Tekton pipelines in the central repository as specified in the specific README documentation
-   - Follow the centralized pipeline management guidelines
+   - ODH `.tekton/` changes are made in this repository
+   - RHDS PR PipelineRun changes are authored in `konflux-central`, then synced into the downstream notebooks repo
+   - Follow the repository-specific Konflux documentation before editing pipeline definitions
 
 #### Best Practices
 
