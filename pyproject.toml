@@ -27,6 +27,8 @@ dev = [
     "requests",
     #
     "pyyaml",
+    # renovate config is in json5
+    "pyjson5",
     "ruamel-yaml",
     "structlog",
     #
@@ -51,7 +53,7 @@ dev = [
 ]
 
 [tool.uv]
-required-version = "==0.11.8"
+required-version = ">=0.10,<0.12"
 # Supply-chain hardening: only resolve package versions published ≥3 days ago.
 # See https://docs.astral.sh/uv/concepts/resolution/#time-restricted-reproducible-resolutions
 exclude-newer = "3 days"

@@ -4,16 +4,11 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
-    # RHAIENG-4600 - Work around to avoid uv 0.11.7 issue when using public index.
-    # Once we move to RH-ROCM index, can safely remove this url.
-    "uv @ https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/rocm6.4-ubi9/uv-0.11.6-12-py3-none-linux_x86_64.whl",
+    "uv",
     "micropipenv[toml]",
 
     # ROCm TensorFlow packages
-    # https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/tensorflow-install.html#using-a-wheels-package
-    # TODO(jdanek): consider adding #sha256=814a5e4842b0c92d63c7a0bb4df0baf51ff2db8615535d83fe8958204b840598
-    "tensorflow-rocm @ https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/tensorflow_rocm-2.19.1-cp312-cp312-manylinux_2_28_x86_64.whl",
-    # tensorflow-rocm==2.x needs tensorboard>=2.x,<2.x+1
+    "tensorflow-rocm",
     "tensorboard",
     
     # Datascience and useful extensions
@@ -34,9 +29,9 @@ dependencies = [
 override-dependencies = [
     # tensorflow-rocm depends on protobuf>=3.20.3, <6.0.0 and kfp depends on protobuf>=6.31.1.
     "protobuf==6.31.1",
-    # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
-    # appengine-python-standard which has an obnoxious urllib3<2 constraint
-    "urllib3>=2.6.0",
+    # RHAIENG-2458: urllib3>=2.7.0 — CVE-2026-44431, CVE-2026-44432 (2.7.0); CVE-2025-66418 (2.6.0)
+    # Override needed because odh-elyra pulls in appengine-python-standard with urllib3<2
+    "urllib3>=2.7.0",
 ]
 
 environments = [

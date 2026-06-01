@@ -115,10 +115,22 @@ project: `rhoai-tenant`
 
 Each notebook image (workbench or pipeline runtime) has:
 - A `Dockerfile.<variant>` (e.g., `Dockerfile.cpu`, `Dockerfile.cuda`, `Dockerfile.rocm`)
-- A `Dockerfile.konflux.<variant>` twin that currently differs only in LABEL metadata
-- Build-args conf files in `build-args/` (e.g., `cpu.conf`, `konflux.cpu.conf`) containing `BASE_IMAGE`, `INDEX_URL`, `PYLOCK_FLAVOR`
+- A `Dockerfile.konflux.<variant>` path for the downstream RHOAI naming convention
+- Build-args conf files in `build-args/` (e.g., `cpu.conf`, `konflux.cpu.conf`) containing `BASE_IMAGE`, `PYLOCK_FLAVOR`, and related metadata. For `konflux.*.conf`, the effective `INDEX_URL` is derived dynamically from `BASE_IMAGE`.
 
-The Makefile selects which Dockerfile and conf file to use based on the `KONFLUX` environment variable. The conf file is parsed by awk into quoted `--build-arg 'KEY=VALUE'` flags (see the `build_image` function in the Makefile). In Tekton pipelines, the same conf file is passed to buildah via `--build-arg-file`.
+`KONFLUX` selects the **product variant**, not whether the build runs on Konflux itself:
+
+- `KONFLUX=no` or unset selects the ODH midstream variant (`build-args/<variant>.conf`, `manifests/odh/`)
+- `KONFLUX=yes` selects the RHOAI downstream variant (`build-args/konflux.<variant>.conf`, `manifests/rhoai/`)
+
+Since RHAIENG-4516, `Dockerfile.<variant>` and `Dockerfile.konflux.<variant>` resolve to the same
+content, so the important switch is the selected build-args file and manifest tree. The conf file
+is parsed by awk into quoted `--build-arg 'KEY=VALUE'` flags (see the `build_image` function in the
+Makefile), and Konflux builds inject a computed `INDEX_URL` alongside the checked-in args.
+Downstream Tekton/buildah flows that use `konflux.*.conf` via `--build-arg-file` must mirror that
+`INDEX_URL` injection instead of assuming the file alone is sufficient.
+
+For local-build gotchas and when to use each variant, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 For hermetic build internals (cachi2.env injection, RPM prefetch paths, module_hotfixes pattern), see [`docs/hermetic-guide.md`](hermetic-guide.md).
 
@@ -130,8 +142,8 @@ The `.tekton/` PipelineRun YAMLs in this repo are **generated** by `ci/cached-bu
 
 The two repos have **different Tekton pipelines** with different Dockerfile/conf file references:
 
-- **`opendatahub-io/notebooks`** (this repo) -- `.tekton/` contains ODH-main push/PR pipelines (e.g., `*-odh-main-push.yaml`) and ODH stable push pipelines (e.g., `*-push.yaml`). These reference the standard `Dockerfile.<variant>` and `build-args/<variant>.conf`. The stable push pipelines use a shared pipeline definition from [odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central/tree/main/pipeline) via a git `pipelineRef` resolver. The ODH-main pipelines embed the pipeline spec inline.
-- **`red-hat-data-services/notebooks`** (the fork) -- `.tekton/` contains RHOAI push/PR pipelines synced from [red-hat-data-services/konflux-central](https://github.com/red-hat-data-services/konflux-central/tree/main/pipelineruns/notebooks/.tekton). These reference the Konflux-specific `Dockerfile.konflux.<variant>` and `build-args/konflux.<variant>.conf`.
+- **`opendatahub-io/notebooks`** (this repo) -- `.tekton/` contains ODH-main push/PR pipelines (e.g., `*-odh-main-push.yaml`) and ODH stable push pipelines (e.g., `*-push.yaml`). These reference the ODH build-args files (`build-args/<variant>.conf`). The stable push pipelines use a shared pipeline definition from [odh-konflux-central](https://github.com/opendatahub-io/odh-konflux-central/tree/main/pipeline) via a git `pipelineRef` resolver. The ODH-main pipelines embed the pipeline spec inline.
+- **`red-hat-data-services/notebooks`** (the fork) -- `.tekton/` contains RHOAI push/PR pipelines synced from [red-hat-data-services/konflux-central](https://github.com/red-hat-data-services/konflux-central/tree/main/pipelineruns/notebooks/.tekton). These reference the downstream build-args files (`build-args/konflux.<variant>.conf`) and keep the `Dockerfile.konflux.<variant>` naming convention.
 
 Previously, the ODH notebook PipelineRuns lived in `odh-konflux-central/pipelineruns/notebooks/`. They were migrated back into this repo's `.tekton/` so that pipeline definition changes (e.g., resource limits, CEL trigger expressions) ship alongside the code on the `stable` branch, rather than requiring a separate PR to a central repo.
 
@@ -183,7 +195,26 @@ All PipelineRuns in `.tekton/` override compute resources for several tasks that
 
 ### PR builds
 
-Comment `/retest` on the pull request to retrigger all **failed** PR pipelines (successful and in-progress ones are skipped). To trigger a specific pipeline regardless of its previous outcome -- including pipelines that never ran on the PR -- use `/test <pipelinerun-name>` or `/retest <pipelinerun-name>`. See [PaC GitOps Commands](https://pipelinesascode.com/docs/guides/gitops-commands/).
+Comment `/retest` on the pull request to retrigger **failed** PR pipelines.
+Successfully completed pipelines are not re-run. However, if the PipelineRun
+has `cancel-in-progress: "true"` (our pipelines do), `/retest` also **cancels
+all in-progress runs** before starting new ones -- PaC treats the `/retest`
+comment as a new event and applies the cancel-in-progress logic
+([PaC cancel_pipelineruns.go](https://github.com/openshift-pipelines/pipelines-as-code/blob/main/pkg/pipelineascode/cancel_pipelineruns.go),
+[PR #1833](https://github.com/openshift-pipelines/pipelines-as-code/pull/1833)).
+This means a `/retest` posted while builds are still running will cancel them
+and restart everything that hasn't succeeded yet.
+
+To retrigger a **single** pipeline (without cancelling others), use
+`/retest <pipelinerun-name>`. To trigger a pipeline regardless of its previous
+outcome -- including pipelines that never ran -- use `/test <pipelinerun-name>`.
+See [PaC GitOps Commands](https://pipelinesascode.com/docs/guides/gitops-commands/).
+
+**Note:** When PaC retriggers a pipeline, it **replaces** the GitHub check run
+(same external ID) rather than creating a new one. The GitHub Checks API only
+shows the latest attempt -- cancelled/aborted runs are no longer visible via
+`gh api .../check-runs`. To find evidence of previous runs, query
+[kubearchive](kubearchive.md) for the PR's PipelineRuns.
 
 The GitHub Checks tab "Re-run" button restarts **all** Konflux pipelines in the check suite, including those still running or already succeeded (it can cancel in-progress checks, causing them to fail). There is no way to re-run a single check from the UI. The GitHub API endpoints `POST /check-runs/{id}/rerequest` and `POST /check-suites/{id}/rerequest` do not work with user tokens — classic OAuth returns 404, fine-grained PATs return 403 ("Resource not accessible by personal access token"). Checks API write access is [limited to GitHub Apps](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#fine-grained-personal-access-tokens); the API reference pages incorrectly list fine-grained PATs as supported ([doc bug](https://github.com/github/rest-api-description/issues/4290)).
 
@@ -242,6 +273,11 @@ oc annotate components/<component-name> \
 
 This requires `oc` access to the respective cluster and namespace. The annotation is consumed immediately, but the PipelineRun takes ~2 minutes to appear. The component must have PaC `state: enabled` in its build status annotation. The same action is available as the "Start new build" button in the Konflux UI.
 
+**Caveat:** The annotation targets a **Component**, which may be shared across
+multiple PipelineRuns (e.g., `odh-base-image-cuda-py312-c9s` is shared by CUDA 12.9
+and CUDA 13.0 push pipelines). You cannot target a specific version this way.
+Use `/test <pipelinerun-name>` via commit comment (below) for precise control.
+
 #### Retrying a push build via GitHub commit comment
 
 You can trigger push pipelines by commenting on a **commit** page (not on a PR).
@@ -253,8 +289,8 @@ this is the PipelineRun name, not the component name or filename).
 2. Scroll to the Comments section at the bottom of the commit page
 3. To trigger a specific push pipeline:
    `/test <pipelinerun-name>` (always works, even if the pipeline never ran)
-4. To retrigger all failed push pipelines:
-   `/retest` (only retriggers previously failed runs -- does nothing if no prior failures)
+4. To retrigger failed push pipelines:
+   `/retest` (retriggers failed runs; also cancels in-progress runs if `cancel-in-progress` is enabled)
 5. For non-default branches:
    `/test <pipelinerun-name> branch:<branch-name>` (pipeline name first, then `branch:`)
 
@@ -355,9 +391,13 @@ The integration test pipeline uses a `volumeClaimTemplate` (not `emptyDir`) to s
 
 Dependency updates are managed by [Renovate](https://docs.renovatebot.com/) through two mechanisms. Configuration lives in [`.github/renovate.json5`](../.github/renovate.json5).
 
-**MintMaker** (Konflux-managed Renovate) runs automatically and creates branches named `konflux/mintmaker/main/<image-ref>` for base image updates detected via the `customManagers` regex rules in `renovate.json5`. It uses `platformCommit: "enabled"` (GitHub API commits instead of git push).
+**Where MintMaker runs:** `opendatahub-io/notebooks#main` (development) and supported RHDS release branches `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4` on `red-hat-data-services/notebooks`. It does **not** run on RHDS `main` (autosync mirror of ODH), `rhoai-2.24`, or end-of-life RHDS branches (`rhoai-2.21`–`2.23`). Konflux **release-data** may still register `rhoai-2.24` streams until an ops MR freezes them — repo `renovate.json5` and release-data must align (ADR 0013). RHDS support branches must use `renovate.json5` only — a legacy `.github/renovate.json` disables `github-actions` and other managers.
+
+**MintMaker** (Konflux-managed Renovate) runs automatically and creates branches named `konflux/mintmaker/<base-branch>/<image-ref>` for base image updates detected via the `customManagers` regex rules in `renovate.json5` (for example `main`, `rhoai-2.25`, `rhoai-3.3`, `rhoai-3.4`). GitHub Actions pins use `konflux/mintmaker/<base-branch>/github-actions`. It uses `platformCommit: "enabled"` (GitHub API commits instead of git push).
 
 **Self-hosted Renovate** runs via the `renovate-self-hosted.yaml` workflow with `renovate_run.py` as a wrapper. It creates branches named `konflux/references/main` for Tekton bundle digest updates.
+
+**Local dry-run:** With RHDS `matchRepositories` in `renovate.json5`, use `scripts/ci/renovate_run.py lookup` (remote/GitHub), not `local-lookup` — the latter fails with `repositories list not supported when platform=local`. Set `RENOVATE_TOKEN=$(gh auth token)` and optionally `RENOVATE_REPOSITORIES` / `RENOVATE_BASE_BRANCHES`.
 
 **Known issues:**
 - **"Cannot find replaceString"** — MintMaker fails when a `build-args/*.conf` file was already updated (e.g., by another PR) before MintMaker's branch is rebased. The old value it searches for no longer exists. Workaround: close the stale MintMaker PR and let it re-create.
@@ -416,7 +456,7 @@ Tracking issues:
 
 **Phase 1** (Konflux dedup): Parameterize LABEL blocks via build-args so `Dockerfile.cpu` and `Dockerfile.konflux.cpu` become byte-identical. The CI alignment check (`scripts/check_dockerfile_alignment.sh`) already verifies semantic identity; the goal is to achieve byte-identity.
 
-**Phase 2** (variant merge): Merge cpu/cuda/rocm variants into a single Dockerfile per component using build-args for the accelerator-specific differences. Only 3 directories have multiple variants to merge (`jupyter/minimal`, `rstudio/c9s-python-3.12`, `rstudio/rhel9-python-3.12`).
+**Phase 2** (variant merge): Merge cpu/cuda/rocm variants into a single Dockerfile per component using build-args for the accelerator-specific differences. The primary candidate is `jupyter/minimal`.
 
 ## Future direction: E2E TestOps ecosystem
 

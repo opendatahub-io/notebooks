@@ -1,267 +1,134 @@
 # AI Agents Guide for OpenDataHub Notebooks
 
-This document provides comprehensive instructions for AI agents working with the OpenDataHub Notebooks repository. It outlines the project structure, development workflows, and best practices for contributing to this containerized notebook environment project.
+This repository builds containerized Jupyter, Code-Server, and runtime images for the
+OpenDataHub ecosystem. Stack: Python 3.14, `uv`, Podman/Docker, GNU Make, building
+multi-stage Dockerfiles on Centos 9 Stream (ODH) and RHEL 9.6 EUS (RHOAI) with Python
+3.12 virtual env inside.
 
-## Project Overview
+This file is the short entry point for AI agents working in this repository. Keep it lean,
+and follow linked documents for topic-specific detail.
 
-The OpenDataHub Notebooks repository provides a collection of containerized notebook environments tailored for data analysis, machine learning, research, and coding within the OpenDataHub ecosystem. The project includes:
+## Start here
 
-- **Jupyter Notebooks**: Various flavors (minimal, datascience, pytorch, tensorflow, trustyai)
-- **Code Server**: VS Code-based development environments
-- **Runtime Images**: For pipeline execution with Elyra
-- **Base Images**: CUDA and ROCm GPU-accelerated base images
+| Read this | When |
+|-----------|------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | You need the system map: image layout, key directories, build modes, platform integration |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | You are changing code or docs and need local workflow, review expectations, or local testing gotchas |
+| [docs/ci.md](docs/ci.md) | You need to understand which CI system owns a failure |
+| [docs/konflux.md](docs/konflux.md) | You are touching `.tekton/`, Konflux builds, or upstream/downstream pipeline behavior |
+| [docs/subscribed-builds.md](docs/subscribed-builds.md) | You need local AIPCC / subscribed builds |
+| [docs/uv-guide.md](docs/uv-guide.md) | You are changing Python dependencies beyond the quick path in `CONTRIBUTING.md` |
+| [docs/cves/python.md](docs/cves/python.md) / [docs/cves/nodejs.md](docs/cves/nodejs.md) | You are fixing CVEs or lockfile-driven security updates |
+| [docs/cves/agents-cve-autofix.md](docs/cves/agents-cve-autofix.md) | You are an automated CVE fix agent (jira-autofix) |
+| [`.github/AGENTS.md`](.github/AGENTS.md) | You are editing GitHub Actions or action metadata |
+| [`tests/browser/AGENTS.md`](tests/browser/AGENTS.md) | You are editing Playwright tests or browser tooling |
+| [docs/agents/testing.md](docs/agents/testing.md) | You need the test catalog: types, markers, commands, CI parity |
+| `ci/security-scan/` | You need Quay vulnerability scan results or the weekly security workflow |
+| [docs/ai-coding-assistant-project-config.md](docs/ai-coding-assistant-project-config.md) | You need the cross-tool `AGENTS.md` / `CLAUDE.md` / skills layout |
+| [`.agents/skills/`](.agents/skills/) | You are authoring or discovering Agent Skills |
 
-## Repository Structure
+## Baseline tools
 
-### Key Directories
+- Python 3.14
+- `uv`
+- Podman or Docker
+- `make`
+- `pinact` when editing `.github/`
 
-```
-.
-├── .github/ # GitHub-specific configuration (workflows, issue templates, etc.)
-├── jupyter/ # Jupyter Notebook image definitions, organized by flavor and accelerator
-│ ├── datascience/
-│ ├── minimal/
-│ ├── pytorch/
-│ ├── pytorch+llmcompressor/
-│ ├── rocm/
-│ │ ├── pytorch/
-│ │ └── tensorflow/
-│ ├── tensorflow/
-│ ├── trustyai/
-├── runtimes/ # container images that Elyra plugin uses to execute pipeline nodes
-│ ├── datascience/
-│ ├── minimal/
-│ ├── pytorch/
-│ ├── pytorch+llmcompressor/
-│ ├── rocm-pytorch/
-│ ├── rocm-tensorflow/
-│ └── tensorflow/
-├── codeserver/ # Code-Server (VS Code in the browser) image definitions and configs
-│ ├── ubi9-python-3.11/
-├── ci/ # Continuous Integration scripts, checks, and configuration
-├── cuda/ # CUDA-specific files (NVIDIA GPU support), e.g., repo files, licenses
-├── manifests/ # Kubernetes manifests for deploying the images
-│ ├── odh/base/ # ODH (OpenDataHub) imagestream manifests — used when KONFLUX=no
-│ └── rhoai/base/ # RHOAI (Red Hat AI) imagestream manifests — used when KONFLUX=yes
-├── scripts/
-├── tests/
-├── README.md
-├── Makefile # Build orchestration tool for local development
-└── …
-```
+On macOS, install Homebrew GNU Make so `make` resolves to GNU Make 4.x
+(see [CONTRIBUTING.md](CONTRIBUTING.md) for the exact setup).
 
-## Development Workflow
+## Repo model
 
-### Prerequisites
+This repository builds container images for:
 
-When working with this project, ensure these tools are available:
-- **Container Runtime**: podman/docker
-- **Python**: 3.14 (required)
-- **Package Manager**: uv (preferred) or pipenv
-- **Build System**: make (gmake on macOS)
-- **Version Control**: git with proper signing
-- **pinact**: for GitHub Actions SHA pinning (`brew install pinact`)
+- Jupyter workbenches under `jupyter/`
+- Elyra runtime images under `runtimes/`
+- Code-Server workbenches under `codeserver/`
+- Base images under `base-images/`
 
-> **GitHub Actions changes:** See [`.github/AGENTS.md`](.github/AGENTS.md) for SHA pinning
-> requirements, tooling, and workflow.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the authoritative directory map.
 
-### Build Process
+### Multi-stage Dockerfiles, not image inheritance
 
-The project uses a Makefile-based build system:
+Each notebook image is a self-contained multi-stage Dockerfile that starts from `${BASE_IMAGE}`
+and rebuilds every ancestor stage internally. No notebook image `FROM`s another notebook image.
+
+When you change an earlier logical stage such as minimal or datascience, check every leaf Dockerfile
+that embeds that stage. Do not assume there is one shared parent image definition to update.
+
+### ODH vs RHOAI builds
+
+`KONFLUX` selects the product variant (ODH midstream vs RHOAI downstream), not whether
+the build runs on Konflux/Tekton. See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
+[CONTRIBUTING.md](CONTRIBUTING.md) for local-build gotchas.
+
+## Common commands
 
 ```bash
-# Build a specific workbench
-make ${WORKBENCH_NAME} -e IMAGE_REGISTRY=quay.io/${YOUR_USER}/workbench-images -e RELEASE=2023x
-
-# Example builds
-make jupyter-minimal-ubi9-python-3.12
-make jupyter-datascience-ubi9-python-3.12
-make jupyter-pytorch-cuda-ubi9-python-3.12
+uv venv --python "$(which python3.14)"
+uv sync --locked
+make test
+make test-unit
+make test-integration PYTEST_ARGS="--image=<image>"
+make refresh-lock-files
 ```
 
-#### ODH vs Konflux (RHOAI) builds
+## Agent conduct
 
-The `KONFLUX` Makefile variable (default: `no`) switches between two build variants:
+- Make the smallest correct change and follow existing conventions.
+- Prefer existing docs over guesswork. Read the linked doc before inventing process or policy.
+- Verify bulk edits after scripting them. This repo has generated files and repeated patterns.
+- Update nearby documentation when behavior changes, especially build, dependency, and CI workflows.
 
-- `KONFLUX=no` — builds from `Dockerfile.*`, uses `manifests/odh/base/` imagestream manifests
-- `KONFLUX=yes` — builds from `Dockerfile.konflux.*`, uses `manifests/rhoai/base/` imagestream manifests
+## Boundaries
 
-This variable must be set consistently across the build step **and** the test step (`make test-*`), as the test script (`scripts/test_jupyter_with_papermill.sh`) reads the imagestream manifest to derive expected package versions.
-The Python equivalent (`tests/manifests.py::get_source_of_truth_filepath`) accepts a `konflux: bool` keyword argument for the same purpose.
+- **Always:** Run `make test` after Dockerfile or dependency changes. Keep `KONFLUX`
+  consistent across `make <target>` and `make test-<target>`. Override the entrypoint
+  when inspecting images (`podman run --rm -it --entrypoint="" <image> bash`).
+- **Ask first:** Adding new base images, changing CI workflow structure, modifying
+  `.tekton/` pipelines, or renaming image labels in `ci/` metadata files.
+- **Never:** Comment out tests to silence failures. Copy internal-only links or
+  hostnames into public docs. Modify `.tekton/` in `red-hat-data-services/notebooks`
+  directly (PipelineRuns are synced from `konflux-central`).
 
-### Testing Framework
+## Communication
 
-The project uses pytest with testcontainers for container testing:
+English, terse.
+Use formatting: bold, italics and code blocks.
 
-```bash
-# Setup environment
-./uv venv --python $(which python3.14)
-./uv sync --locked
+## Operational notes
 
-# Run tests
-make test              # Quick static tests (pytest + Dockerfile alignment)
-make test-unit         # Python unit tests + doctests + Go tests (no container runtime)
-make test-integration PYTEST_ARGS="--image=<image>"  # Container integration tests
-make test-${NOTEBOOK_NAME} # Specific notebook tests
-```
+- To inspect an image without starting Jupyter, override the entrypoint:
+  `podman run --rm -it --entrypoint="" <image> bash`.
+  Without this, arguments are ignored and Jupyter starts.
+- One-off commands (no interactive shell):
+  `podman run --rm --entrypoint="" <image> rpm -qa | sort`
+- `KONFLUX` must match between `make <target>` and `make test-<target>`.
+  Mismatches cause version assertion failures because the test reads the
+  imagestream manifest selected by `KONFLUX`.
+- Python 3.14: `except ExcA, ExcB:` (no parentheses) is valid when there is no
+  `as` clause (PEP 758). Ruff format enforces this style. Parentheses are still
+  required when binding: `except (ExcA, ExcB) as e:`.
 
-## Agent Instructions
+## Commit and PR title style
 
-### General Guidelines
+Preferred format: `TICKET: scope: description in imperative mood`
 
-- Avoid unnecessary complexity: Aim for the simplest solution that works, while keeping the code clean.
-- Avoid obvious comments: Only add comments to explain especially complex code blocks.
-- Maintain code consistency: Follow existing code patterns and architecture.
-- Maintain locality of behavior: Keep code close to where it's used.
-- Make small, focused changes, unless explicitly asked otherwise.
-- Keep security in mind: Avoid filtering sensitive information and running destructive commands.
-- When in doubt about something, ask the user.
+Scope follows [Conventional Commits](https://www.conventionalcommits.org/)
+(`chore`, `feat`, `fix`, `docs`, `refactor`, `test`, `ci`, etc.), optionally
+with a directory hint like `chore(.tekton/)` or `fix(jupyter/trustyai)`.
+Most dependency/CVE work is `chore`. See `.coderabbit.yaml` for validation rules.
 
-### When Working with This Repository
+## Repo-specific reminders
 
-1. **Understand the Inheritance Model**: Notebook images inherit from parent images in a hierarchical structure:
-   - Minimal → DataScience → Specialized (PyTorch, TensorFlow, TrustyAI)
-   - Always check parent dependencies before adding new packages
+- Use `uv` and `make refresh-lock-files`. Keep dependency guidance aligned with current repo tooling.
+- For local testing gotchas such as worktree naming, `pyfakefs`, `KONFLUX` matching, and CI `-n` metadata,
+  see [CONTRIBUTING.md](CONTRIBUTING.md).
+- For GitHub Actions changes, run the SHA pinning flow in [`.github/AGENTS.md`](.github/AGENTS.md).
+- For browser tests, follow [`tests/browser/AGENTS.md`](tests/browser/AGENTS.md) instead of inventing local conventions.
 
-2. **Package Management**:
-   - Use `pyproject.toml` and `pylock.toml` for Python dependencies
-   - Always regenerate lock files after dependency changes by running `make refresh-lock-files`
+## Local-only notes
 
-3. **Testing**:
-   - Run `make test` and analyze logs
-
-#### Modifying Existing Images
-
-1. **Check Dependencies**:
-   - Review parent image changes
-   - Test downstream images
-   - Update version compatibility files
-
-2. **Security Updates**:
-   - Scan for vulnerabilities using `ci/security-scan/`
-   - Test with security scanning tools
-
-### Code Quality Standards
-
-1. **Python Code**:
-   - Follow PEP 8 style guidelines
-   - Use type hints where appropriate
-   - Run `ruff` for linting
-   - Use `pyright` for type checking
-   - This project requires Python 3.14. PEP 758 allows `except ExcA, ExcB:` without
-     parentheses to catch multiple exception types. This is NOT the old Python 2 syntax
-     for `except ExcA as ExcB`. Parentheses are still required when binding with `as`:
-     use `except (ExcA, ExcB) as e:`, not `except ExcA, ExcB as e:`. Ruff format
-     enforces the parenthesis-free style when there is no `as` clause.
-
-2. **Dockerfiles**:
-   - Minimize layers
-   - Follow security best practices
-
-3. **Documentation**:
-   - Update README files for new features
-   - Add inline comments for complex logic
-   - Update this Agents.md file for new patterns
-
-### Testing Guidelines
-
-1. **Unit Tests** (`tests/unit/`): Self-tests for scripts, CI utilities, and shared code.
-   Mirror the source layout (e.g., `scripts/cve/` → `tests/unit/scripts/cve/`).
-   Run with: `./uv run pytest tests/unit/`
-2. **Static Tests** (`tests/*.py`): Use pytest to test config and manifests for consistency
-3. **Container Tests** (`tests/containers/`): Use testcontainers for integration testing
-4. **Browser Tests** (`tests/browser/`): Use Playwright for UI testing
-5. **Manual Tests** (`tests/manual/`): Document manual testing procedures
-
-### CI/CD Integration
-
-The project uses GitHub Actions for:
-- Automated testing
-- Security scanning
-- Dependency updates
-- Image building and publishing
-
-Key CI files:
-- `.github/workflows/` - GitHub Actions workflows
-- `ci/` - Custom CI scripts and configurations
-- `scripts/ci/renovate_run.py` - Self-hosted Renovate (Podman or Docker via `CONTAINER_ENGINE`, same detection order as the Makefile); see `.github/workflows/renovate-self-hosted.yaml` and ADR 0013
-
-### Running Container Images
-
-Notebook images have an entrypoint (`start-notebook.sh`) that launches
-Jupyter Lab.  When you need to inspect the image (check installed RPMs,
-list files, run a shell), **override the entrypoint**:
-
-```bash
-# Interactive shell — won't start Jupyter
-podman run --rm -it --entrypoint="" quay.io/opendatahub/workbench-images:jupyter-minimal-ubi9-python-3.12-latest bash
-
-# One-off command
-podman run --rm --entrypoint="" <image> rpm -qa | sort
-```
-
-Without `--entrypoint=""`, `podman run <image> rpm -qa` is passed as
-arguments to `start-notebook.sh`, which ignores them and starts Jupyter.
-
-### Deployment
-
-1. **Local Development**:
-```bash
-podman run -it -p 8888:8888 quay.io/opendatahub/workbench-images:jupyter-minimal-ubi9-python-3.12-latest
-```
-
-2. **Kubernetes/OpenShift**:
-```bash
-make deploy9-${NOTEBOOK_NAME} # Deploy
-make test-${NOTEBOOK_NAME} # Test
-make undeploy9-${NOTEBOOK_NAME} # Cleanup
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Build Failures**:
-   - Verify dependency versions
-   - Review Dockerfile syntax
-
-2. **Test Failures**:
-   - Ensure container runtime is running
-   - Check test environment setup
-   - Review test logs for specific errors
-
-3. **Dependency Conflicts**:
-   - Use `uv` for dependency resolution
-   - Check version compatibility files
-   - Test with minimal dependencies first
-
-### Getting Help
-
-1. **Documentation**: Check `docs/` directory for detailed guides
-2. **Issues**: Report issues on GitHub with detailed reproduction steps
-3. **Community**: Engage with OpenDataHub community for support
-
-## Best Practices Summary
-
-1. **Always test changes** in isolated environments before committing
-2. **Follow the inheritance model** when adding dependencies
-3. **Update documentation** alongside code changes
-4. **Use semantic versioning** for releases
-5. **Maintain backward compatibility** when possible
-6. **Security first** - scan images and update dependencies regularly
-7. **Performance optimization** - use multi-stage builds and minimal base images
-
-## Contributing
-
-When contributing to this project:
-
-1. **Fork and branch** from main
-2. **Write clear commit messages**
-3. **Add tests** for new functionality
-4. **Update documentation**
-
-For detailed contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
-
----
-
-*This document should be updated as the project evolves. AI agents working with this repository should refer to this guide for consistent and effective contributions.*
+If present, `CLAUDE.local.md` is gitignored and may contain personal preferences or internal-only
+RHDS/Konflux operating notes. Do not copy its internal details into committed files.

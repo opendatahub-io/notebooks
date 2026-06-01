@@ -5,8 +5,8 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # Hermetic cpu-base: prefetched with the rest of the stack (see repo-root prefetch-input/ and jupyter/minimal pyproject)
-    "uv==0.11.0",
-    "micropipenv[toml]==1.10.0",
+    "uv",
+    "micropipenv[toml]",
 
     # Datascience and useful extensions
     "skl2onnx",
@@ -26,9 +26,9 @@ environments = [
 ]
 
 override-dependencies = [
-    # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
-    # appengine-python-standard which has an obnoxious urllib3<2 constraint
-    "urllib3>=2.6.0",
+    # RHAIENG-2458: urllib3>=2.7.0 — CVE-2026-44431, CVE-2026-44432 (2.7.0); CVE-2025-66418 (2.6.0)
+    # Override needed because odh-elyra pulls in appengine-python-standard with urllib3<2
+    "urllib3>=2.7.0",
     # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
     "protobuf==6.31.1",
 ]
