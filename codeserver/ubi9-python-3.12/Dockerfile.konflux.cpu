@@ -8,7 +8,7 @@
 # Multi-stage layout:
 #   rpm-base  -> builds code-server from prefetched source (release-standalone, all arches)
 #   whl-cache -> installs Python wheels + exports compiled C-extension wheels (ppc64le/s390x)
-#   cpu-base  -> installs OS packages + tools (oc client, micropipenv, uv)
+#   cpu-base  -> installs OS packages + tools (oc client)
 #   codeserver -> final image (code-server + nginx + Python packages)
 #   tests     -> smoke test stage
 ############################################################################################
@@ -174,9 +174,6 @@ COPY .git /root/.git
 COPY ${CODESERVER_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY ${CODESERVER_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
-# Install uv from cachi2 pip cache
-RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip uv
-
 ENV WHEEL_DIR=/wheelsdir
 RUN mkdir -p ${WHEEL_DIR}
 
@@ -204,7 +201,7 @@ EOF
 RUN touch /tmp/control
 
 ############################################################################################
-# cpu-base: Runtime base image with OS packages, tools (oc, micropipenv, uv)
+# cpu-base: Runtime base image with OS packages, tools (oc)
 #
 # [HERMETIC] Previously this stage ran `subscription-manager refresh`, `dnf upgrade --refresh`,
 # and `curl` to download the oc client. Now all packages come from prefetched RPMs;
@@ -246,8 +243,6 @@ if [[ $(uname -m) == "ppc64le" ]] || [[ $(uname -m) == "s390x" ]]; then
 fi
 EOF
 
-# Install micropipenv and uv from cachi2 pip cache
-RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.16"
 
 # Other apps and tools installed as default user
 USER 1001
