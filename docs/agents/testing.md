@@ -115,6 +115,120 @@ The images built by this repo are also tested by other projects:
 | [ods-ci](https://github.com/red-hat-data-services/ods-ci/tree/master/ods_ci/tests/Tests/0500__ide) | Robot Framework | GPU/CUDA validation, Elyra pipelines, plugin consistency |
 | [opendatahub-tests](https://github.com/opendatahub-io/opendatahub-tests/tree/main/tests/workbenches) | Pytest | ImageStream health, Notebook CR spawning, package availability |
 
+## Package upgrade checklist
+
+When upgrading a Python package (PyTorch, TensorFlow, numpy, etc.) or adding a new
+dependency, follow these steps in order. Each layer catches a different class of
+problem — skipping a layer means that class of bug ships silently.
+
+### 1. Update the dependency and regenerate locks
+
+Edit the relevant `pyproject.toml` file(s), then regenerate lock files:
+
+```bash
+make refresh-lock-files
+```
+
+If the resolver fails with "unsatisfiable" errors, see
+[docs/cves/python.md](../cves/python.md) for constraint resolution.
+
+### 2. Run static tests
+
+```bash
+make test
+```
+
+**What this catches:** version mismatches between `pyproject.toml` files (e.g., you
+bumped numpy in one image but not another), broken lock files, Dockerfile alignment
+issues, manifest drift.
+
+Key tests in this layer:
+- `test_image_pyprojects_version_alignment` — ensures the same package uses
+  consistent version specifiers across all images
+- Dockerfile structure checks — validates multi-stage build consistency
+- Manifest validation — checks ImageStream definitions match expected metadata
+
+### 3. Run unit tests
+
+```bash
+make test-unit
+```
+
+**What this catches:** regressions in helper scripts (index URL resolution, lock file
+generation, CI tooling). These tests are fast and don't require containers.
+
+### 4. Build the affected image(s)
+
+```bash
+make jupyter-<notebook>-ubi9-python-3.12
+```
+
+Replace `<notebook>` with the image you changed (e.g., `pytorch`, `tensorflow`,
+`datascience`, `minimal`). Set `PUSH_IMAGES=no` for local-only builds.
+
+**What this catches:** dependency conflicts at install time, missing system
+libraries, broken pip constraints. If the build fails, the package combination is
+not viable.
+
+Keep `KONFLUX` consistent between build and test steps (see
+[CONTRIBUTING.md § ODH vs RHOAI local builds](../../CONTRIBUTING.md#odh-vs-rhoai-local-builds)).
+
+### 5. Run container integration tests
+
+```bash
+make test-integration PYTEST_ARGS="--image=<image>"
+```
+
+where `<image>` is the full image reference from the build step (e.g.,
+`quay.io/opendatahub/workbench-images:jupyter-pytorch-ubi9-python-3.12-latest`).
+
+**What this catches:**
+- Entrypoint fails to start (JupyterLab/Code-Server doesn't come up)
+- Library import failures at runtime (numpy, pandas, sklearn, matplotlib, torch,
+  torchvision, feast, mlflow — see `tests/containers/workbenches/jupyterlab/libraries_testunits.py`)
+- GPU library loading issues for CUDA/ROCm images
+- Missing runtime dependencies that pip installed but the OS layer doesn't support
+
+### 6. Run manual test notebooks (GPU images)
+
+For GPU-accelerated images (PyTorch, TensorFlow), run the manual test notebooks
+inside a deployed workbench or locally with GPU passthrough:
+
+| Notebook | What it validates |
+|----------|-------------------|
+| `tests/manual/pytorch-test-notebook.ipynb` | PyTorch quickstart (data loading, model training, save/load), tensor operations on GPU |
+| `tests/manual/tensorflow-test.ipynb` | TensorFlow quickstart (MNIST training), GPU detection, nvidia-smi/hipcc, TensorBoard |
+| `tests/manual/gpu-test-notebook.ipynb` | General GPU availability and basic operations |
+
+These notebooks exercise real ML workflows end-to-end and catch problems that
+unit-level import checks miss (e.g., CUDA version incompatibilities, broken
+model serialization, silent CPU fallback).
+
+### 7. Run browser tests (if UI-affecting)
+
+If the upgrade could affect JupyterLab or Code-Server UI (e.g., upgrading
+`jupyterlab`, a JupyterLab extension, or `code-server`):
+
+```bash
+cd tests/browser && pnpm install && pnpm test
+```
+
+See [tests/browser/AGENTS.md](../../tests/browser/AGENTS.md) for setup details.
+
+**What this catches:** extension breakage, UI rendering regressions, IDE
+feature failures.
+
+### Quick reference
+
+| Change type | Minimum test layers |
+|-------------|-------------------|
+| Python library version bump | Steps 1–5 |
+| New Python dependency | Steps 1–5 |
+| GPU library upgrade (PyTorch, TF, CUDA) | Steps 1–6 |
+| JupyterLab / Code-Server / extension upgrade | Steps 1–5, 7 |
+| Dockerfile structural change | Steps 1–5 |
+| `pyproject.toml` constraint change only | Steps 1–3 |
+
 ## Running images locally
 
 Build with a predictable tag and push disabled, then run:
