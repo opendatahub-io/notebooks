@@ -34,8 +34,8 @@ def configure_kale_from_elyra(elyra_config_path):
         # Build Kale configuration from Elyra metadata
         kale_config = {}
 
-        # 1. host: Use public_api_endpoint if available, otherwise api_endpoint
-        kale_config['host'] = metadata.get('public_api_endpoint') or metadata.get('api_endpoint', '')
+        # 1. host: Use api_endpoint (required field)
+        kale_config['host'] = metadata.get('api_endpoint', '')
 
         # 2. namespace: Map user_namespace
         if metadata.get('user_namespace'):
