@@ -882,7 +882,13 @@ _KNOWN_EVR_MISMATCHES: frozenset[str] = frozenset(
 
 @pytest.mark.parametrize("lockfile", _collect_rpms_lock_files(), ids=lambda p: str(p.relative_to(PROJECT_ROOT)))
 def test_rpms_lock_nvr_consistency_across_arches(subtests: pytest_subtests.plugin.SubTests, lockfile: pathlib.Path):
-    """Assert that every RPM name pinned in RHDS rpms.lock.yaml has the same EVR across all architectures."""
+    """Assert that every RPM name pinned in RHDS rpms.lock.yaml has the same EVR across all architectures.
+
+    This only validates lockfile-installed RPMs. Packages inherited from the base
+    image (e.g. openssl, python3) are not covered here; cross-arch consistency for
+    those is enforced by Conforma's rpm_packages.unique_version policy post-build.
+    See RHAIENG-5321.
+    """
     data = yaml.safe_load(lockfile.read_text())
     arches = data.get("arches", [])
     if len(arches) <= 1:
