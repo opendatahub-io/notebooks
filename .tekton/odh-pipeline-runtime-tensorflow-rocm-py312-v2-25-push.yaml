@@ -78,6 +78,16 @@ spec:
         limits:
           cpu: '16'
           memory: 32Gi
+    - pipelineTaskName: build-images
+      stepSpecs:
+        - name: sbom-syft-generate
+          computeResources:
+            requests:
+              cpu: '8'
+              memory: 32Gi
+            limits:
+              cpu: '16'
+              memory: 64Gi
   taskRunTemplate:
     serviceAccountName: build-pipeline-odh-pipeline-runtime-tensorflow-rocm-py312-v2-25
   workspaces:
