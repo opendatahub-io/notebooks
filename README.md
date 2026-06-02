@@ -81,7 +81,7 @@ uv sync --locked
 ```
 
 Per-image lock files (`pylock.toml` / `uv.lock.d/`) are generated with a **stricter** uv pin
-(`dependencies/uv-image-lock-version`, currently `0.10.9`) via the `./uv` wrapper and
+(`dependencies/uv-image-lock-version`, currently `0.11.18`) via the `./uv` wrapper and
 `make refresh-lock-files`. Do not use `./uv` for everyday dev commands unless you are
 refreshing image locks.
 
