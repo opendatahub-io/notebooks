@@ -99,7 +99,8 @@ distlib==0.4.0 ; implementation_name == 'cpython' and platform_machine != 'ppc64
 dnspython==2.8.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:a46d9ba7ba633e183d4edc6b06d097e88500c0615d37afa0f2525dbf4d5e0468
 docker==7.1.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:7ffee7e1c0d9d0693ab29f7d4f91b8f8f6f1d59a76d3d61c903281774ffa6035
+    --hash=sha256:7ffee7e1c0d9d0693ab29f7d4f91b8f8f6f1d59a76d3d61c903281774ffa6035 \
+    --hash=sha256:162c1d472ba023ce16ddfc44d9c51c870a9802d5631b2629b5a2df00f542da65
 durationpy==0.10 ; implementation_name == 'cpython' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
     --hash=sha256:ce86a86c56333ed4a1c71ad2f1a0138e6a91ad4144ee31223ac0a08eed8486f3
 entrypoints==0.4 ; implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -318,7 +319,11 @@ pandas==2.3.3 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:c320e517aef078d4acf54ba1550ed2c5bdf6c408fd6e1e1e9f47bba0e0450119 \
     --hash=sha256:720e815713aa8508242b51d62e5c003181c096f19c1137355ae8d933c120faa7 \
     --hash=sha256:f977261a9447706c10299f159446f1c5ec75d3a166a43452e6401b183f49b542 \
-    --hash=sha256:60fe73c5610dcc73d2a4694d201ec8dccf70d408afe69f987c61e7f57569b1bb
+    --hash=sha256:60fe73c5610dcc73d2a4694d201ec8dccf70d408afe69f987c61e7f57569b1bb \
+    --hash=sha256:fe0a87d52babe4a95c84948e303a56edef5e6d6aa84bfd269e3a45674f8bdd53 \
+    --hash=sha256:42a2816775db605c26c228748c13c7df65323f49570a9d5b90a7f7dadec5d2e5 \
+    --hash=sha256:e4214e846115332db48099a32ec1f35cf25282a875b66fa358596cbf6b93e6f6 \
+    --hash=sha256:c21a8ade5db3865bfa78e734c41a949e43a817dc44bf94865559b25d3b4e7c3f
 pandocfilters==1.5.1 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:37d33c8c75eb39b881537db96acb40fe1ba9dd2184aa1db6551252d634991e22
 papermill==2.7.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -495,8 +500,8 @@ sqlparse==0.5.5 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:e14e47d6edcac7eaf3e6a1cf85c236e9c71f06e269b16928da76ad47683d4a8f
 stack-data==0.6.3 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:074f4a60339970ce76773f3eb9eb2c88591f83d335f5764551610cb07597a3c9
-starlette==1.0.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:29638d32f7853f033ce56378a0761108e0b73c0ccdc8969f4988b4ab5fabd9c5
+starlette==1.2.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:f883e3b1dad66859b3cd5cc398fd234ff14286a0bd98ac6fdaf696f4fe449b7b
 tabulate==0.10.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:fc9b49298a10c6cca931828963e093e59a17b96e53099ac930a2bcc5aa832273
 tenacity==8.5.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
