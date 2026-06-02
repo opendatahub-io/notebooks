@@ -60,7 +60,7 @@ spec:
       value: pipelines/multi-arch-container-build.yaml
   timeouts:
     pipeline: 8h
-    tasks: 4h
+    tasks: 6h
   taskRunSpecs:
     - pipelineTaskName: ecosystem-cert-preflight-checks
       computeResources:
