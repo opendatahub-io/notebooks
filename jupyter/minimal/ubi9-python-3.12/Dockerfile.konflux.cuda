@@ -28,8 +28,6 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
     /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
-# Install micropipenv/uv from Cachi2 as root.
-RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.16"
 
 #########################
 # cuda-jupyter-minimal  #
@@ -42,6 +40,7 @@ ARG PYLOCK_FLAVOR
 
 ARG LABEL_REGISTRY_PREFIX
 ARG LABEL_COMPONENT
+ARG RELEASE
 
 LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
     com.redhat.component="${LABEL_COMPONENT}" \
@@ -49,7 +48,8 @@ LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
     summary="Minimal Jupyter CUDA notebook image for ODH notebooks" \
     description="Minimal Jupyter CUDA notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
     io.k8s.description="Minimal Jupyter CUDA notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
+    com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
+    version="${RELEASE}"
 
 WORKDIR /opt/app-root/bin
 

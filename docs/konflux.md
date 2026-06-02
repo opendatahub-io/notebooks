@@ -43,11 +43,64 @@ oc get components --context stone-p02-rhoai -n rhoai-tenant
 
 List your contexts with `oc config get-contexts -o name | grep stone`.
 
+## Konflux clusters at a glance
+
+Red Hat operates multiple Konflux OpenShift clusters. Public clusters have no VPN access to internal Red Hat services (Pulp, internal GitLab, unreleased RPMs). Private clusters do; GitHub orgs must be on an allowlist (Red Hat SSO, no external contributors). See the official [Konflux cluster-info](https://konflux.pages.redhat.com/docs/users/cluster-info/cluster-info.html) page.
+
+| Cluster | Network | GitHub App | Typical PR check name | Notebooks tenant |
+|---------|---------|------------|----------------------|------------------|
+| [stone-prd-rh01](https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com) | Public | [red-hat-konflux](https://github.com/apps/red-hat-konflux) | **Red Hat Konflux** | `open-data-hub-tenant` (ODH) |
+| [stone-prod-p02](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com) | Private (VPN) | [konflux-internal-p02](https://github.com/apps/konflux-internal-p02) ¹ | **Konflux Production Internal** | `rhoai-tenant` (RHDS/RHOAI) |
+
+¹ The Konflux UI on stone-prod-p02 may suggest an incorrect GitHub App name ([HAC-5718](https://issues.redhat.com/browse/HAC-5718)). Use the GitHub Apps link above, not the UI suggestion.
+
+New public onboarding defaults to **kflux-prd-rh02** per cluster-info. ODH notebooks remain on **stone-prd-rh01** in release-data unless release engineering directs a migration.
+
+Some ODH `.tekton` PipelineRuns reference [production-downstream host-config on stone-prod-p02](https://github.com/redhat-appstudio/infra-deployments/blob/main/components/multi-platform-controller/production-downstream/stone-prod-p02/host-config.yaml) for multi-arch VM sizing. That affects build platform labels only; ODH builds and UI still live on **stone-prd-rh01**.
+
+## GitHub PR checks (two integrations)
+
+The same repository can report **two** Konflux check contexts on a pull request when it is onboarded on more than one cluster:
+
+- **Red Hat Konflux** — runs on **stone-prd-rh01** (public integration).
+- **Konflux Production Internal** — runs on **stone-prod-p02** (private production-downstream).
+
+Pipelines-as-Code evaluates every `.tekton` PipelineRun in the repo that matches its trigger (`on-cel-expression`, comments, labels, etc.) and can submit runs to **each** cluster where a `Repository` CR exists for that GitHub repo. Components should be onboarded on **one** cluster only. Runs on the “wrong” cluster often fail in under a minute because repository credentials or secrets (AIPCC pull, RHSM subscription, etc.) are missing there, while the matching check on the correct cluster succeeds.
+
+Konflux support documented this as expected behavior ([`#konflux-users` thread, Feb 2025](https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1739988410.131659), Jira [KFLUXSPRT-1908](https://issues.redhat.com/browse/KFLUXSPRT-1908)). You cannot select the target cluster in `on-cel-expression`.
+
+Example pattern (different components, different home clusters):
+
+```text
+Konflux Production Internal / odh-trustyai-service-operator-v2-19-on-push  Success
+Red Hat Konflux / ta-lmes-driver-v2-19-on-push                           Success
+Konflux Production Internal / ta-lmes-driver-v2-19-on-push               Failed   # wrong cluster
+Red Hat Konflux / odh-trustyai-service-operator-v2-19-on-push            Failed   # wrong cluster
+```
+
+## Which cluster should I use?
+
+**ODH (`opendatahub-io/notebooks`):**
+
+- Authoritative cluster: **stone-prd-rh01**, namespace `open-data-hub-tenant`.
+- Trust **Red Hat Konflux** checks and the prd-rh01 Konflux UI for upstream PR triage.
+- Open PR build logs from check-run details (links point at `konflux-ui.apps.stone-prd-rh01...`).
+
+**RHDS (`red-hat-data-services/notebooks`):**
+
+- Authoritative cluster: **stone-prod-p02**, namespace `rhoai-tenant` ([release-data](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config/cluster/stone-prod-p02/tenants/rhoai-tenant)).
+- Trust **Konflux Production Internal** checks for release builds (AIPCC base images, RHSM/Pulp prefetch, internal registries).
+- **Red Hat Konflux** checks on the same PR are often duplicate or stray runs on prd-rh01 unless you are debugging that cluster intentionally.
+
+Team shorthand (from [wg-3.4 release discussion](https://redhat-internal.slack.com/archives/C0AAZFTBD8X/p1771330072.802019), Feb 2026): **“orange” / “konflux internal”** = Konflux Production Internal (prod-p02); **“red” / “red konflux”** = Red Hat Konflux (prd-rh01). The public cluster lacks AIPCC pull secrets and RH subscription setup needed for downstream notebook builds.
+
+`rhoai-tenant` historically also had workloads on stone-prd-rh01; current RHDS notebook release builds use **stone-prod-p02**.
+
 ## ODH-io (Open Data Hub)
 
 This section covers the Konflux setup for the midstream **Open Data Hub** community project.
 
-project: `open-data-hub-tenant`
+project: `open-data-hub-tenant` on cluster **stone-prd-rh01** (GitHub checks: **Red Hat Konflux**).
 
 * **Konflux UI:** View and monitor applications, components, and pipelines running in the ODH tenant.
     * [opendatahub-release](https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/open-data-hub-tenant/applications/opendatahub-release/components) — main branch components (base images, runtimes, workbenches)
@@ -88,9 +141,9 @@ oc get components -n open-data-hub-tenant \
 
 This section covers the Konflux setup for the enterprise downstream **Red Hat Data Services** offering (often associated with **RHOAI - Red Hat OpenShift AI**).
 
-project: `rhoai-tenant`
+project: `rhoai-tenant` on cluster **stone-prod-p02** (GitHub checks: **Konflux Production Internal**).
 
-* **Konflux UI:** View and monitor applications and components specific to the RHDS tenant.
+* **Konflux UI (primary):** View and monitor applications and components specific to the RHDS tenant.
     * [automation](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications/automation/components) — PR pipeline component
     * Per-release applications, e.g. [rhoai-v3-5-ea-1](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications/rhoai-v3-5-ea-1/components) — push components for each release branch
     * [all applications](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications)
@@ -106,6 +159,7 @@ project: `rhoai-tenant`
         * [stone-prod-p02/tenants/rhoai-tenant](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/tree/main/tenants-config/cluster/stone-prod-p02/tenants/rhoai-tenant)
         * [EnterpriseContractPolicy/registry-rhoai-prod.yaml](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/blob/main/config/stone-prod-p02.hjvn.p1/product/EnterpriseContractPolicy/registry-rhoai-prod.yaml)
         * [EnterpriseContractPolicy/fbc-rhoai-stage.yaml](https://gitlab.cee.redhat.com/releng/konflux-release-data/-/blob/main/config/stone-prod-p02.hjvn.p1/product/EnterpriseContractPolicy/fbc-rhoai-stage.yaml)
+* **stone-prd-rh01 (debug only):** RHDS PRs may still show **Red Hat Konflux** checks from the public cluster. For failed downstream builds, use prod-p02 UI first: [rhoai-tenant applications](https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com/ns/rhoai-tenant/applications). The [prd-rh01 rhoai-tenant console](https://console-openshift-console.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/k8s/cluster/projects/rhoai-tenant) is for historical or cross-cluster debugging only.
 
 ## Build system overview
 
@@ -368,6 +422,29 @@ The PaC controller's `/incoming` endpoint (`pipelines-as-code-controller-openshi
 **Workaround when `trigger-pac-build` doesn't work:** push a no-op commit touching files that match the pipeline's `pathChanged()` patterns.
 
 ## Known issues and troubleshooting
+
+### Duplicate Konflux checks on `red-hat-data-services/notebooks` PRs
+
+If `red-hat-data-services/notebooks` shows both **Konflux Production Internal** and **Red Hat Konflux** for the same pipeline name, compare outcomes on **stone-prod-p02** first. Fast failures on **Red Hat Konflux** alone often mean the run executed on prd-rh01 without downstream secrets. See [GitHub PR checks (two integrations)](#github-pr-checks-two-integrations) and the [`#konflux-users` thread](https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1739988410.131659) ([KFLUXSPRT-1908](https://issues.redhat.com/browse/KFLUXSPRT-1908)).
+
+### Prefetch and internal dependencies
+
+- **`prefetch-dependencies` / Hermeto** failures (exit status 1, exit 15, `git fetch --tags` + symlinks under `prefetch-input/`) are often tooling or cluster config, not a version bump in `pylock.*.toml` alone. ODH symlink/submodule issue: [hermetoproject/hermeto#1503](https://github.com/hermetoproject/hermeto/issues/1503); discussion in `#konflux-users` (Apr 2026).
+- Builds that need **rhsm-pulp**, internal GitLab, or unreleased RPMs belong on **stone-prod-p02**, not the public cluster ([forum-aipcc](https://redhat-internal.slack.com/archives/C07JX0EMKCZ/p1779276278.293929)).
+- On **rhoai-tenant**, prefetch may fail if the `trusted-ca` ConfigMap lacks RHCSv2 certs for RHSM/Pulp TLS chains (`#konflux-users`, Apr 2026).
+
+### Getting help
+
+- [#konflux-users](https://redhat-internal.slack.com/archives/C04PZ7H0VA8) — Konflux platform and PaC behavior
+- [#forum-aipcc](https://redhat-internal.slack.com/archives/C07JX0EMKCZ) — AIPCC images, Pulp, private-cluster onboarding
+- [#rhoai-build-notifications](https://redhat-internal.slack.com/archives/C07ANR2U56C) / [#odh-build-notifications](https://redhat-internal.slack.com/archives/C07ANR0T9KJ) — push failure bots
+- [Konflux NotebookLM](https://notebooklm.google.com/notebook/6916b269-d239-48af-870e-01c90da5345d) — second opinion on support-bot answers
+
+### References (clusters and checks)
+
+- [Konflux cluster-info](https://konflux.pages.redhat.com/docs/users/cluster-info/cluster-info.html) — public vs private, GitHub apps, onboarding rules
+- [`#konflux-users` thread](https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1739988410.131659) / [KFLUXSPRT-1908](https://issues.redhat.com/browse/KFLUXSPRT-1908) — duplicate PipelineRuns across public and internal clusters
+- [RHDS “orange vs red” Konflux checks](https://redhat-internal.slack.com/archives/C0AAZFTBD8X/p1771330072.802019) — team thread on prod-p02 vs prd-rh01 (Feb 2026)
 
 ### `trigger-pac-build` name matching
 
