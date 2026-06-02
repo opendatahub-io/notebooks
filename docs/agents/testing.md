@@ -210,7 +210,7 @@ If the upgrade could affect JupyterLab or Code-Server UI (e.g., upgrading
 `jupyterlab`, a JupyterLab extension, or `code-server`):
 
 ```bash
-cd tests/browser && pnpm install --frozen-lockfile && pnpm test
+cd tests/browser && pnpm install --frozen-lockfile && pnpm exec playwright test
 ```
 
 See [tests/browser/AGENTS.md](../../tests/browser/AGENTS.md) for setup details.
