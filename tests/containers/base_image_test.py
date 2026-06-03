@@ -17,6 +17,7 @@ import pytest
 import testcontainers.core.container
 
 import ntb
+from tests import index_config_utils
 from tests.containers import conftest, docker_utils, skopeo_utils, utils
 
 logging.basicConfig(level=logging.DEBUG)
@@ -45,7 +46,12 @@ class TestBaseImage:
             if not env:
                 # No env from skopeo or local inspect; assume non-AIPCC so PyPI checks run.
                 return False
-            return "PIP_INDEX_URL" not in env
+            if "PIP_CONFIG_FILE" in env or "UV_CONFIG_FILE" in env:
+                return True
+            pip_index = env.get("PIP_INDEX_URL")
+            if pip_index is not None:
+                return not index_config_utils.is_pypi_index_url(pip_index)
+            return False
 
         # Extract relative path from URL (after /tree/main/)
         source_dir = None
@@ -206,9 +212,12 @@ class TestBaseImage:
         """Checks that the Python virtualenv in the image is writable.
 
         The cowsay package is available both on public PyPI and on the AIPCC
-        restricted index (AIPCC-12698), so it should install successfully
-        on all images.
+        restricted index (AIPCC-12698), so it should install successfully on
+        most images. The ROCm AIPCC index does not host cowsay yet.
         """
+
+        if utils.is_rocm_image(image):
+            pytest.skip("cowsay is not published on the ROCm AIPCC index (AIPCC-12698).")
 
         def test_fn(container: testcontainers.core.container.DockerContainer):
             ecode, output = container.exec(["python3", "-m", "pip", "install", "cowsay"])
@@ -323,20 +332,62 @@ class TestBaseImage:
         self._run_test(image=image, test_fn=test_fn)
 
     @staticmethod
-    @allure.step("Verify AIPCC image has config file env vars and no index URL env vars")
-    def _check_aipcc_env_vars(actual: dict[str, str], subtests: pytest_subtests.SubTests) -> None:
-        """AIPCC images use pip.conf and uv.toml config files instead of index URL env vars."""
+    def _read_container_file(container: testcontainers.core.container.DockerContainer, path: str) -> str:
+        ecode, output = container.exec(
+            [
+                "python3",
+                "-c",
+                "from pathlib import Path; import sys; print(Path(sys.argv[1]).read_text())",
+                path,
+            ]
+        )
+        output_str = output.decode()
+        assert ecode == 0, f"Failed to read {path}: {output_str}"
+        return output_str
+
+    @staticmethod
+    @allure.step("Verify AIPCC image index configuration")
+    def _check_aipcc_env_vars(
+        actual: dict[str, str],
+        subtests: pytest_subtests.SubTests,
+        *,
+        pip_conf_text: str,
+        uv_toml_text: str,
+    ) -> None:
+        """AIPCC images configure pip/uv via pip.conf and uv.toml; index env vars must not point to PyPI."""
         aipcc_config_vars = {
             "PIP_CONFIG_FILE": "/opt/app-root/pip.conf",
             "UV_CONFIG_FILE": "/opt/app-root/uv.toml",
         }
-        pypi_index_vars = ("PIP_INDEX_URL", "UV_INDEX_URL", "UV_DEFAULT_INDEX")
+        optional_index_env_vars = ("PIP_INDEX_URL", "UV_INDEX_URL", "UV_DEFAULT_INDEX")
 
         with subtests.test("AIPCC images have config file env vars"):
             ntb.assert_subdict(aipcc_config_vars, actual)
-        with subtests.test("AIPCC images do not have index URL env vars"):
-            for key in pypi_index_vars:
-                assert key not in actual, f"Expected {key} to NOT be present (image uses uv.lock.d)"
+
+        pip_index_url = index_config_utils.pip_index_url_from_config(pip_conf_text)
+        with subtests.test("pip.conf points to a non-PyPI index"):
+            assert pip_index_url is not None, "pip.conf must define global.index-url"
+            assert not index_config_utils.is_pypi_index_url(pip_index_url), (
+                "pip.conf must not point to PyPI — AIPCC wheels have ABI "
+                f"incompatibility with PyPI wheels. Got: {pip_index_url}"
+            )
+
+        uv_index_url = index_config_utils.uv_index_url_from_config(uv_toml_text)
+        with subtests.test("uv.toml points to a non-PyPI index"):
+            assert uv_index_url is not None, 'uv.toml must define "index-url"'
+            assert not index_config_utils.is_pypi_index_url(uv_index_url), (
+                "uv.toml must not point to PyPI — AIPCC wheels have ABI "
+                f"incompatibility with PyPI wheels. Got: {uv_index_url}"
+            )
+
+        for key in optional_index_env_vars:
+            with subtests.test(f"{key} env var, if present, does not point to PyPI"):
+                if key not in actual:
+                    continue
+                assert not index_config_utils.is_pypi_index_url(actual[key]), (
+                    f"{key} must not point to PyPI — AIPCC wheels have ABI "
+                    f"incompatibility with PyPI wheels. Got: {actual[key]}"
+                )
 
     @staticmethod
     @allure.step("Verify non-AIPCC image has PyPI index URL env vars")
@@ -354,11 +405,19 @@ class TestBaseImage:
     @allure.issue("RHAIENG-2189")
     def test_python_package_index(self, image: str, subtests: pytest_subtests.SubTests):
         """Checks that we use the Python Package Index we mean to use.
-        https://redhat-internal.slack.com/archives/C05TTTYG599/p1764240587118899?thread_ts=1764234802.564119&cid=C05TTTYG599
 
-        Images with uv.lock.d directory do not need these env vars since dependencies
-        are pinned with exact sources in the lockfile (RHAIENG-3056).
+        AIPCC images (uv.lock.d) must use the AIPCC index via pip.conf and uv.toml.
+        ODH-derived AIPCC images may also export PIP_INDEX_URL / UV_INDEX_URL pointing
+        at the same AIPCC index; what matters is that nothing points at PyPI, since
+        mixing AIPCC and PyPI wheels causes ABI incompatibility.
+
+        Non-AIPCC images still use PyPI index URL env vars (RHAIENG-2189 migration).
+        
+        RStudio images do not export PIP_CONFIG_FILE / UV_CONFIG_FILE.
         """
+
+        if utils.is_rstudio_image(image):
+            pytest.skip("RStudio images do not configure pip/uv index via pip.conf and uv.toml.")
 
         has_uv_lock_d = self._has_uv_lock_d(image)
 
@@ -367,7 +426,14 @@ class TestBaseImage:
             actual = dict(line.split("=", maxsplit=1) for line in output.decode().strip().splitlines())
 
             if has_uv_lock_d:
-                self._check_aipcc_env_vars(actual, subtests)
+                pip_conf_text = self._read_container_file(container, actual["PIP_CONFIG_FILE"])
+                uv_toml_text = self._read_container_file(container, actual["UV_CONFIG_FILE"])
+                self._check_aipcc_env_vars(
+                    actual,
+                    subtests,
+                    pip_conf_text=pip_conf_text,
+                    uv_toml_text=uv_toml_text,
+                )
             else:
                 self._check_pypi_env_vars(actual, subtests)
 
