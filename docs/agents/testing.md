@@ -160,11 +160,15 @@ generation, CI tooling). These tests are fast and don't require containers.
 ### 4. Build the affected image(s)
 
 ```bash
-make jupyter-<notebook>-ubi9-python-3.12
+# Non-GPU images (minimal, datascience, trustyai):
+make jupyter-datascience-ubi9-python-3.12
+
+# CUDA GPU images (pytorch, tensorflow):
+make cuda-jupyter-pytorch-ubi9-python-3.12
 ```
 
-Replace `<notebook>` with the image you changed (e.g., `pytorch`, `tensorflow`,
-`datascience`, `minimal`). Set `PUSH_IMAGES=no` for local-only builds.
+GPU images require a `cuda-` or `rocm-` prefix on the target name.
+Set `PUSH_IMAGES=no` for local-only builds.
 
 **What this catches:** dependency conflicts at install time, missing system
 libraries, broken pip constraints. If the build fails, the package combination is
