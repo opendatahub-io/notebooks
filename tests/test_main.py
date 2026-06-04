@@ -872,13 +872,7 @@ def _collect_rpms_lock_files() -> list[pathlib.Path]:
     return files
 
 
-# RHOAIENG-45152: these packages have arch-specific builds upstream
-_KNOWN_EVR_MISMATCHES: frozenset[str] = frozenset(
-    {
-        "iptables-libs",
-        "openshift-clients",
-    }
-)
+_KNOWN_EVR_MISMATCHES: frozenset[str] = frozenset()
 
 
 @pytest.mark.parametrize("lockfile", _collect_rpms_lock_files(), ids=lambda p: str(p.relative_to(PROJECT_ROOT)))
