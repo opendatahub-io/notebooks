@@ -36,7 +36,7 @@ from packaging.markers import Marker
 
 OUT_DIR = Path("cachi2/output/deps/pip")
 PYPI_JSON = "https://pypi.org/pypi/{name}/{version}/json"
-# 20 workers balances throughput vs Akamai burst rate-limiting on console.redhat.com.
+# 20 workers balances throughput vs Akamai burst rate-limiting on packages.redhat.com.
 # uv uses 50 by default (astral-sh/uv#10570 discusses reducing to 20 for stability).
 # At 10: stable 22s, at 20: 13s, at 50: 12s but high variance (Akamai throttling).
 MAX_WORKERS = 20
@@ -293,7 +293,7 @@ def main():
 
     index_url = detect_index_url(req_path)
     use_simple = index_url is not None and "pypi.org" not in index_url
-    is_aipcc = index_url is not None and "console.redhat.com/api/pypi/" in index_url
+    is_aipcc = index_url is not None and "packages.redhat.com/api/pypi/" in index_url
     skip_sdists = is_aipcc
 
     print(f"=== download-pip-packages.py ===")
