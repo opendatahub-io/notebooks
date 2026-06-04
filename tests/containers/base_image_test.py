@@ -412,7 +412,7 @@ class TestBaseImage:
         mixing AIPCC and PyPI wheels causes ABI incompatibility.
 
         Non-AIPCC images still use PyPI index URL env vars (RHAIENG-2189 migration).
-        
+
         RStudio images do not export PIP_CONFIG_FILE / UV_CONFIG_FILE.
         """
 
