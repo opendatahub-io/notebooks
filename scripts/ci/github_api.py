@@ -141,6 +141,22 @@ def gh_run_job_log(run_id: int, job_id: int, *, timeout: int = DEFAULT_TIMEOUT_S
     return result.stdout
 
 
+def gh_job_log(repository: str, job_id: int, *, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> str:
+    result = run_command(
+        [
+            "gh",
+            "api",
+            f"repos/{repository}/actions/jobs/{job_id}/logs",
+            "--method",
+            "GET",
+            "-H",
+            "Accept: application/vnd.github+json",
+        ],
+        timeout=timeout,
+    )
+    return result.stdout
+
+
 def gh_pr_diff(pr_number: int, *, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> str:
     result = run_command(["gh", "pr", "diff", str(pr_number)], timeout=timeout)
     return result.stdout

@@ -60,12 +60,29 @@ def cluster_failed_job(failed_step: str, log_tail: str) -> str:
     return "other"
 
 
+def string_list(value: object) -> list[str]:
+    """Normalize a JSON-like field back into a list of strings."""
+
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]
+
+
 def build_clusters(failed_jobs: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
     grouped: dict[str, list[str]] = defaultdict(list)
     for failed_job in failed_jobs:
+        error_contexts = string_list(failed_job.get("error_contexts"))
+        joined_error_contexts = "\n\n".join(error_contexts)
         pattern = cluster_failed_job(
             str(failed_job.get("failed_step", "")),
-            str(failed_job.get("log_excerpt") or failed_job.get("log_tail", "")),
+            "\n\n".join(
+                part
+                for part in (
+                    str(failed_job.get("log_excerpt") or failed_job.get("log_tail", "")),
+                    joined_error_contexts,
+                )
+                if part
+            ),
         )
         grouped[pattern].append(str(failed_job.get("name", "")))
 

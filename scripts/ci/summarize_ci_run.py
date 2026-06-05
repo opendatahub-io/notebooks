@@ -14,6 +14,7 @@ from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig
 from google.antigravity.types import UsageMetadata
 from scripts.ci import mcp_github
 from scripts.ci.ci_summary import (
+    string_list,
     int_value,
     marker_for_run,
     render_failure_comment,
@@ -53,8 +54,16 @@ def should_enable_actions_fallback(context: Mapping[str, object]) -> bool:
     failed_jobs = context.get("failed_jobs", [])
     if not isinstance(failed_jobs, list):
         return False
+
+    def has_grounding(failed_job: Mapping[str, object]) -> bool:
+        # Keep this explicit rather than relying on generic truthiness so it is clear
+        # which local evidence sources suppress the MCP fallback.
+        has_excerpt = bool(failed_job.get("log_excerpt") or failed_job.get("log_tail"))
+        has_error_contexts = len(string_list(failed_job.get("error_contexts"))) > 0
+        return has_excerpt or has_error_contexts
+
     return any(
-        not (failed_job.get("log_excerpt") or failed_job.get("log_tail"))
+        not has_grounding(failed_job)
         for failed_job in failed_jobs
         if isinstance(failed_job, dict)
     )
@@ -108,6 +117,7 @@ Comment style:
 - Do not describe jobs as cancelled unless the context explicitly says their `conclusion` is `cancelled`.
 - Do not mention workflow settings such as `fail-fast`, retries, permissions, or runner behavior unless those words appear in the provided context or fetched logs.
 - If the evidence is insufficient for a root cause, say that the evidence is insufficient instead of guessing.
+- Use `failed_jobs[*].log_excerpt` as the primary failed-step evidence and `failed_jobs[*].error_contexts` as corroborating whole-job anchor windows.
 - Say "likely" for inferred root causes.
 
 Context JSON:
