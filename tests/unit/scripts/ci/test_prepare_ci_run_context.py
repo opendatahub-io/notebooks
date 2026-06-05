@@ -122,3 +122,26 @@ def test_failed_step_excerpt_uses_failed_step_window_not_post_failure_dmesg() ->
     assert "Run df -h" not in excerpt
     assert "kernel: docker0" not in excerpt
     assert "UNKNOWN STEP" not in excerpt
+
+
+def test_whole_log_error_contexts_filter_kernel_noise_and_keep_anchor_context() -> None:
+    log_text = (
+        "2026-06-05T17:29:14.4672415Z Current runner version: '2.334.0'\n"
+        "2026-06-05T17:33:52.4125864Z ERROR Unsuccessful download\n"
+        "2026-06-05T17:33:52.4163444Z Error: FetchError: exception_name: ClientResponseError\n"
+        "2026-06-05T17:33:52.7335858Z rm: cannot remove '/tmp/foo': Permission denied\n"
+        "2026-06-05T17:33:52.8002162Z ##[error]Process completed with exit code 1.\n"
+        "2026-06-05T17:33:52.8163978Z ##[group]Run df -h\n"
+        "2026-06-05T17:33:52.8165000Z df -h\n"
+        "2026-06-05T17:33:55.9332372Z Jun 05 17:30:44 kernel: docker0 entered disabled state\n"
+    )
+
+    contexts = prepare.whole_log_error_contexts(log_text)
+
+    assert contexts
+    joined = "\n".join(contexts)
+    assert "ERROR Unsuccessful download" in joined
+    assert "Permission denied" in joined
+    assert "Process completed with exit code 1." in joined
+    assert "Run df -h" not in joined
+    assert "kernel: docker0" not in joined

@@ -11,7 +11,7 @@ import sys
 from collections.abc import Mapping, Sequence
 
 from scripts.ci.ci_summary import build_clusters, int_value, marker_for_run, render_progress_comment, utc_now_iso
-from scripts.ci.github_api import gh_api_json, gh_api_pages, gh_run_job_log
+from scripts.ci.github_api import gh_api_json, gh_api_pages, gh_job_log
 
 MAX_LOG_LINES = 150
 MAX_LOG_CHARS = 12_000
@@ -20,6 +20,9 @@ FAILED_STEP_CONTEXT_BEFORE = 10
 FAILED_STEP_CONTEXT_AFTER = 40
 FAILED_STEP_ERROR_TAIL_BEFORE = 10
 FAILED_STEP_ERROR_TAIL_AFTER = 5
+WHOLE_LOG_CONTEXT_BEFORE = 2
+WHOLE_LOG_CONTEXT_AFTER = 5
+MAX_WHOLE_LOG_CONTEXTS = 4
 
 GITHUB_ERROR_RE = re.compile(r"##\[error\]")
 LOG_TIMESTAMP_RE = re.compile(r"^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s?(?P<message>.*)$")
@@ -151,6 +154,42 @@ def is_error_anchor(line: str) -> bool:
     )
 
 
+def error_anchor_kind(line: str) -> str | None:
+    if GITHUB_ERROR_RE.search(line) is not None:
+        return "github_error"
+
+    stripped = line.strip()
+    lowered = stripped.lower()
+    if "permission denied" in lowered:
+        return "permission_denied"
+    if "fetcherror" in lowered or stripped.startswith("Error:") or stripped.startswith("ERROR "):
+        return "error"
+    if stripped.startswith("Exception:") or stripped.startswith("Traceback (most recent call last):"):
+        return "exception"
+    if stripped.startswith("FAILED ") or stripped.startswith("SUBFAILED"):
+        return "failed_test"
+    if "=> not found" in lowered or "unsatisfied dependencies" in lowered:
+        return "linker"
+    if "no module named" in lowered:
+        return "missing_module"
+    if "make: ***" in lowered:
+        return "make"
+    if "assert " in lowered:
+        return "assertion"
+    return None
+
+
+def is_noise_line(line: str) -> bool:
+    stripped = line.strip()
+    lowered = stripped.lower()
+    return (
+        "kernel:" in lowered
+        or "journalctl --no-pager -k" in lowered
+        or "run sudo dmesg" in lowered
+        or stripped.startswith("Post job cleanup.")
+    )
+
+
 def clip_excerpt(lines: Sequence[str]) -> str:
     excerpt = "\n".join(lines)
     if len(excerpt) <= MAX_LOG_CHARS:
@@ -163,6 +202,69 @@ def clip_excerpt(lines: Sequence[str]) -> str:
     if len(excerpt) <= MAX_LOG_CHARS:
         return excerpt
     return excerpt[-MAX_LOG_CHARS:]
+
+
+def merge_context_windows(anchors: Sequence[int], *, before: int, after: int, line_count: int) -> list[tuple[int, int]]:
+    if not anchors:
+        return []
+
+    windows: list[tuple[int, int]] = []
+    for anchor in anchors:
+        start = max(0, anchor - before)
+        end = min(line_count, anchor + after + 1)
+        if windows and start <= windows[-1][1]:
+            windows[-1] = (windows[-1][0], max(windows[-1][1], end))
+        else:
+            windows.append((start, end))
+    return windows
+
+
+def whole_log_error_contexts(log_text: str) -> list[str]:
+    normalized_lines = [
+        line
+        for line in (strip_gh_log_prefix(raw_line) for raw_line in log_text.splitlines())
+        if line and not is_noise_line(line)
+    ]
+    if not normalized_lines:
+        return []
+
+    anchor_indices: list[int] = []
+    previous_anchor_kind: str | None = None
+    for index, line in enumerate(normalized_lines):
+        kind = error_anchor_kind(line)
+        if kind is None:
+            previous_anchor_kind = None
+            continue
+
+        if kind == "github_error":
+            anchor_indices.append(index)
+            previous_anchor_kind = kind
+            continue
+
+        if kind == previous_anchor_kind:
+            continue
+
+        anchor_indices.append(index)
+        previous_anchor_kind = kind
+
+    windows = merge_context_windows(
+        anchor_indices,
+        before=WHOLE_LOG_CONTEXT_BEFORE,
+        after=WHOLE_LOG_CONTEXT_AFTER,
+        line_count=len(normalized_lines),
+    )
+    rendered: list[str] = []
+    for start, end in windows[:MAX_WHOLE_LOG_CONTEXTS]:
+        window_lines = list(normalized_lines[start:end])
+        next_step_indices = [
+            index
+            for index, line in enumerate(window_lines[1:], start=1)
+            if line.startswith("##[group]Run ")
+        ]
+        if next_step_indices:
+            window_lines = window_lines[: next_step_indices[0]]
+        rendered.append(clip_excerpt(window_lines))
+    return rendered
 
 
 def failed_step_excerpt(log_text: str, job: Mapping[str, object]) -> str:
@@ -221,16 +323,22 @@ def failed_step_excerpt(log_text: str, job: Mapping[str, object]) -> str:
     return clip_excerpt(excerpt_lines)
 
 
-def fetch_job_log(run_id: int, job_id: int) -> tuple[str, str]:
+def fetch_job_log(repository: str, job_id: int) -> tuple[str, str]:
     try:
-        log_text = gh_run_job_log(run_id, job_id, timeout=180)
+        log_text = gh_job_log(repository, job_id, timeout=180)
     except Exception as exc:  # noqa: BLE001
         return "", f"{type(exc).__name__}: {exc}"
 
     return log_text, ""
 
 
-def build_failed_jobs(run_id: int, jobs: Sequence[Mapping[str, object]], *, include_logs: bool) -> list[dict[str, object]]:
+def build_failed_jobs(
+    repository: str,
+    run_id: int,
+    jobs: Sequence[Mapping[str, object]],
+    *,
+    include_logs: bool,
+) -> list[dict[str, object]]:
     failed_jobs: list[dict[str, object]] = []
     for index, job in enumerate(jobs):
         if job.get("conclusion") not in {"failure", "cancelled"}:
@@ -238,12 +346,14 @@ def build_failed_jobs(run_id: int, jobs: Sequence[Mapping[str, object]], *, incl
 
         log_tail = ""
         log_excerpt = ""
+        error_contexts: list[str] = []
         log_error = ""
         if include_logs and len(failed_jobs) < MAX_FAILED_JOBS_WITH_LOGS:
-            job_log, log_error = fetch_job_log(run_id, int_value(job["id"]))
+            job_log, log_error = fetch_job_log(repository, int_value(job["id"]))
             if not log_error:
                 log_excerpt = failed_step_excerpt(job_log, job)
                 log_tail = log_excerpt
+                error_contexts = whole_log_error_contexts(job_log)
 
         failed_jobs.append(
             {
@@ -251,6 +361,7 @@ def build_failed_jobs(run_id: int, jobs: Sequence[Mapping[str, object]], *, incl
                 "name": str(job.get("name", "")),
                 "failed_step": failed_step_name(job),
                 "conclusion": str(job.get("conclusion", "")),
+                "error_contexts": error_contexts,
                 "index": index,
                 "log_error": log_error or None,
                 "log_excerpt": log_excerpt,
@@ -290,7 +401,7 @@ def build_context(
     run_conclusion = str(raw_conclusion) if raw_conclusion else None
     mode = run_mode(run_status, run_conclusion, progress["failed"])
     run_id = int_value(run["id"])
-    failed_jobs = build_failed_jobs(run_id, jobs, include_logs=include_logs)
+    failed_jobs = build_failed_jobs(repository, run_id, jobs, include_logs=include_logs)
     in_progress_jobs = [
         str(job.get("name", ""))
         for job in jobs

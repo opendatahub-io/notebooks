@@ -21,6 +21,12 @@ def test_should_enable_actions_fallback_accepts_log_excerpt() -> None:
     assert summarize_ci_run.should_enable_actions_fallback(context) is False
 
 
+def test_should_enable_actions_fallback_accepts_error_contexts() -> None:
+    context = {"failed_jobs": [{"error_contexts": ["Error: grounded whole-log context"], "log_excerpt": "", "log_tail": ""}]}
+
+    assert summarize_ci_run.should_enable_actions_fallback(context) is False
+
+
 def test_build_prompt_includes_mode_and_context() -> None:
     context = {
         "failed_jobs": [],

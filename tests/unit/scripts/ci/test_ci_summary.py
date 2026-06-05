@@ -14,6 +14,31 @@ def test_cluster_failed_job_detects_known_buckets() -> None:
     assert ci_summary.cluster_failed_job("Build: make foo", "Killed process 123") == "oom_or_killed"
 
 
+def test_build_clusters_uses_error_contexts_when_excerpt_is_empty() -> None:
+    failed_jobs = [
+        {
+            "error_contexts": ["ModuleNotFoundError: No module named 'onnxscript'"],
+            "failed_step": "Run image tests",
+            "log_excerpt": "",
+            "log_tail": "",
+            "name": "rocm-jupyter-pytorch-ubi9-python-3.12 · linux/amd64 [odh]",
+        }
+    ]
+
+    clusters = ci_summary.build_clusters(failed_jobs)
+
+    assert clusters == [
+        {
+            "jobs": ["rocm-jupyter-pytorch-ubi9-python-3.12 · linux/amd64 [odh]"],
+            "pattern": "other",
+        }
+    ]
+
+
+def test_string_list_filters_non_strings() -> None:
+    assert ci_summary.string_list(["one", 2, None, "three"]) == ["one", "three"]
+
+
 def test_render_progress_comment_includes_failures_running_jobs_and_marker() -> None:
     context = {
         "failed_jobs": [
