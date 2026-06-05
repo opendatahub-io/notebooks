@@ -65,7 +65,7 @@ def build_clusters(failed_jobs: Sequence[Mapping[str, object]]) -> list[dict[str
     for failed_job in failed_jobs:
         pattern = cluster_failed_job(
             str(failed_job.get("failed_step", "")),
-            str(failed_job.get("log_tail", "")),
+            str(failed_job.get("log_excerpt") or failed_job.get("log_tail", "")),
         )
         grouped[pattern].append(str(failed_job.get("name", "")))
 
