@@ -866,13 +866,18 @@ class Manifest:
 
 
 def _collect_rpms_lock_files() -> list[pathlib.Path]:
-    # RHDS only: ODH images are not subject to Conforma rpm_packages.unique_version policy (47517e5ca).
     files = sorted(PROJECT_ROOT.glob("**/prefetch-input/rhds/rpms.lock.yaml"))
     assert files, "No RHDS rpms.lock.yaml files found under PROJECT_ROOT"
     return files
 
 
-_KNOWN_EVR_MISMATCHES: frozenset[str] = frozenset()
+# RHOAIENG-45152: these packages have arch-specific builds upstream
+_KNOWN_EVR_MISMATCHES: frozenset[str] = frozenset(
+    {
+        "iptables-libs",
+        "openshift-clients",
+    }
+)
 
 
 @pytest.mark.parametrize("lockfile", _collect_rpms_lock_files(), ids=lambda p: str(p.relative_to(PROJECT_ROOT)))

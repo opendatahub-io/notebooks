@@ -40,12 +40,6 @@ PYPI_JSON = "https://pypi.org/pypi/{name}/{version}/json"
 # uv uses 50 by default (astral-sh/uv#10570 discusses reducing to 20 for stability).
 # At 10: stable 22s, at 20: 13s, at 50: 12s but high variance (Akamai throttling).
 MAX_WORKERS = 20
-# wget --timeout sets dns/connect/read idle timeouts (not total transfer time).
-# Large wheels (e.g. torch >1GB) need a generous read idle window on slow links.
-WGET_NETWORK_TIMEOUT_SECONDS = 300
-# Per-file wall-clock cap for subprocess.run(); must cover multi-GB wheels when
-# MAX_WORKERS parallel downloads share CI bandwidth (~1GB at ~1 MB/s ≈ 17 min).
-DOWNLOAD_PROCESS_TIMEOUT_SECONDS = 3600
 
 ARCH_ALIASES: dict[str, list[str]] = {
     "amd64": ["x86_64", "amd64"],
@@ -258,13 +252,8 @@ def download_one(args: tuple) -> tuple[bool, str]:
     url, dest_path, expected_hash = args
     try:
         subprocess.run(
-            [
-                "wget", "-q", "-O", str(dest_path),
-                "--tries=3", "--waitretry=2",
-                f"--timeout={WGET_NETWORK_TIMEOUT_SECONDS}",
-                url,
-            ],
-            check=True, timeout=DOWNLOAD_PROCESS_TIMEOUT_SECONDS,
+            ["wget", "-q", "-O", str(dest_path), "--tries=3", "--waitretry=2", "--timeout=30", url],
+            check=True, timeout=120,
         )
     except subprocess.TimeoutExpired:
         Path(dest_path).unlink(missing_ok=True)

@@ -231,7 +231,6 @@ spec:
       workspace: git-auth
 
   - name: prefetch-dependencies
-    timeout: 3h
     params:
     - name: input
       value: $(params.prefetch-input)
@@ -241,16 +240,6 @@ spec:
       value: $(params.output-image).prefetch
     - name: ociArtifactExpiresAfter
       value: $(params.image-expires-after)
-    # Hermeto timeouts for large pip wheels (e.g. torch >1GB). See:
-    # https://github.com/konflux-ci/build-definitions/tree/main/task/prefetch-dependencies-oci-ta/0.3
-    # https://github.com/hermetoproject/hermeto#configuration
-    - name: config-file-content
-      value: |
-        http:
-          read_timeout: 900
-        runtime:
-          concurrency_limit: 8
-          subprocess_timeout: 3600
     runAfter:
     - clone-repository
     taskRef:
