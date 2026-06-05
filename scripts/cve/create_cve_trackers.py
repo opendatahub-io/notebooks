@@ -10,6 +10,10 @@ New trackers always get the literal label ``CVE`` (plus the CVE id and ``securit
 so they are distinguishable from other Bugs, and the Jira **Team** field set to
 **AAIET Notebooks** (``customfield_10001``), matching RHAIENG process.
 
+When any child issue is embargoed, the tracker uses security level
+``Embargoed Security Issue``, keeps an ``EMBARGOED`` summary prefix, and copies
+**Contributors** (``customfield_10466``) from children so the team can view it.
+
 Usage:
     # Dry run - show what would be created
     python scripts/cve/create_cve_trackers.py --dry-run
@@ -44,6 +48,17 @@ RHAIENG_TEAM_CUSTOM_FIELD = "customfield_10001"
 # Option id for team name "AAIET Notebooks" (override if Jira admin changes teams).
 RHAIENG_TEAM_OPTION_ID_DEFAULT = "ec74d716-af36-4b3c-950f-f79213d08f71-62"
 
+# Contributors multi-user picker (changelog text may say "involved users").
+RHAIENG_CONTRIBUTORS_FIELD = "customfield_10466"
+
+EMBARGOED_SECURITY_LEVEL = "Embargoed Security Issue"
+DEFAULT_SECURITY_LEVEL = "Red Hat Employee"
+
+SEARCH_FIELDS = (
+    f"key,summary,status,labels,security,issuelinks,"
+    f"{RHAIENG_TEAM_CUSTOM_FIELD},{RHAIENG_CONTRIBUTORS_FIELD}"
+)
+
 
 def build_tracker_labels(cve_id: str) -> list[str]:
     """Labels for new CVE trackers: keep literal ``CVE`` first (team Jira hygiene)."""
@@ -69,6 +84,8 @@ class CVEInfo:
     issues: list = field(default_factory=list)
     has_tracker: bool = False
     tracker_key: str | None = None
+    is_embargoed: bool = False
+    contributor_account_ids: set[str] = field(default_factory=set)
 
     @property
     def version_suffix(self) -> str:
@@ -97,8 +114,7 @@ def extract_version(summary: str) -> str | None:
 
 
 def extract_description(summary: str, cve_id: str) -> str:
-    """Extract the CVE description from the summary."""
-    # Remove CVE ID prefix
+    """Extract the CVE description from the summary (without EMBARGOED prefix)."""
     desc = summary
     if cve_id in desc:
         desc = desc.split(cve_id, 1)[1].strip()
@@ -113,6 +129,65 @@ def extract_description(summary: str, cve_id: str) -> str:
     desc = re.sub(r"\s*\[rhoai-[\d.]+]\s*$", "", desc)
 
     return desc.strip()
+
+
+def child_is_embargoed(fields: dict) -> bool:
+    """True if a RHOAIENG child issue is under embargo."""
+    security = (fields.get("security") or {}).get("name", "")
+    if security == EMBARGOED_SECURITY_LEVEL:
+        return True
+    return fields.get("summary", "").startswith("EMBARGOED ")
+
+
+def extract_contributor_account_ids(fields: dict) -> set[str]:
+    """Collect accountIds from the Contributors field on an issue."""
+    contributors = fields.get(RHAIENG_CONTRIBUTORS_FIELD) or []
+    ids: set[str] = set()
+    for user in contributors:
+        if isinstance(user, dict):
+            account_id = user.get("accountId")
+            if account_id:
+                ids.add(account_id)
+    return ids
+
+
+def contributors_field_value(account_ids: set[str]) -> list[dict[str, str]]:
+    """Format account ids for Jira multi-user picker REST create/update."""
+    return [{"accountId": aid} for aid in sorted(account_ids)]
+
+
+def parse_extra_contributor_ids() -> set[str]:
+    """Optional extra Contributors from ``JIRA_RHAIENG_EXTRA_CONTRIBUTORS`` (comma-separated accountIds)."""
+    raw = os.environ.get("JIRA_RHAIENG_EXTRA_CONTRIBUTORS", "").strip()
+    if not raw:
+        return set()
+    return {part.strip() for part in raw.split(",") if part.strip()}
+
+
+def get_runner_account_id(client: JiraClient) -> str | None:
+    """Account id for the authenticated user (or ``JIRA_RUNNER_ACCOUNT_ID`` override)."""
+    explicit = os.environ.get("JIRA_RUNNER_ACCOUNT_ID", "").strip()
+    if explicit:
+        return explicit
+    try:
+        return client.get_current_user().get("accountId")
+    except Exception:
+        return None
+
+
+def build_tracker_summary(cve_info: CVEInfo) -> str:
+    """Build tracker summary, preserving EMBARGOED prefix when children are embargoed."""
+    prefix = "EMBARGOED " if cve_info.is_embargoed else ""
+    summary = f"{prefix}{cve_info.cve_id} {cve_info.description} {cve_info.version_suffix}".strip()
+
+    if len(summary) > 250:
+        max_desc_len = 250 - len(prefix) - len(cve_info.cve_id) - len(cve_info.version_suffix) - 5
+        summary = (
+            f"{prefix}{cve_info.cve_id} {cve_info.description[:max_desc_len]}... "
+            f"{cve_info.version_suffix}"
+        ).strip()
+
+    return summary
 
 
 def get_blocking_issues(issue: dict) -> list[str]:
@@ -222,8 +297,12 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> OrphanCVEsR
     # This ensures we only create parent trackers for Notebooks-related CVEs.
 
     # Get all RHOAIENG CVE issues
-    jql = 'project = RHOAIENG AND issuetype in (Bug, Vulnerability, Weakness) AND resolution = Unresolved AND labels = SecurityTracking AND component = "Notebooks Images" ORDER BY created DESC'
-    issues = client.search_issues(jql, fields=f"key,summary,status,labels,issuelinks,{RHAIENG_TEAM_CUSTOM_FIELD}", max_results=max_results)
+    jql = (
+        'project = RHOAIENG AND issuetype in (Bug, Vulnerability, Weakness) '
+        'AND resolution = Unresolved AND labels = SecurityTracking '
+        'AND component = "Notebooks Images" ORDER BY created DESC'
+    )
+    issues = client.search_issues(jql, fields=SEARCH_FIELDS, max_results=max_results)
     print(f"Found {len(issues)} RHOAIENG CVE issues")
 
     # Group by (CVE ID, version)
@@ -269,10 +348,15 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> OrphanCVEsR
             if desc:
                 info.description = desc
 
+        if child_is_embargoed(fields):
+            info.is_embargoed = True
+
+        info.contributor_account_ids |= extract_contributor_account_ids(fields)
+
         info.issues.append({
             "key": key,
             "summary": summary,
-            "has_parent": has_rhaieng_blocker
+            "has_parent": has_rhaieng_blocker,
         })
 
         if has_rhaieng_blocker:
@@ -288,26 +372,51 @@ def find_orphan_cves(client: JiraClient, max_results: int = 1000) -> OrphanCVEsR
     return OrphanCVEsResult(orphans=orphans, issues=issues)
 
 
-def create_tracker_issue(client: JiraClient, cve_info: CVEInfo, jira_url: str = JIRA_DEFAULT_URL, dry_run: bool = False) -> str | None:
+def resolve_tracker_contributors(client: JiraClient, cve_info: CVEInfo) -> set[str]:
+    """Union of child Contributors, extras, and the script runner."""
+    contributor_ids = set(cve_info.contributor_account_ids)
+    contributor_ids |= parse_extra_contributor_ids()
+    runner_id = get_runner_account_id(client)
+    if runner_id:
+        contributor_ids.add(runner_id)
+    return contributor_ids
+
+
+def format_contributor_labels(contributor_ids: set[str]) -> str:
+    """Short display for dry-run output."""
+    if not contributor_ids:
+        return "(none)"
+    return ", ".join(sorted(contributor_ids))
+
+
+def create_tracker_issue(
+    client: JiraClient,
+    cve_info: CVEInfo,
+    jira_url: str = JIRA_DEFAULT_URL,
+    dry_run: bool = False,
+) -> str | None:
     """Create a tracker issue for a CVE."""
-    summary = f"{cve_info.cve_id} {cve_info.description} {cve_info.version_suffix}"
-
-    # Truncate summary if too long (Jira limit is 255 chars)
-    if len(summary) > 250:
-        max_desc_len = 250 - len(cve_info.cve_id) - len(cve_info.version_suffix) - 5
-        summary = f"{cve_info.cve_id} {cve_info.description[:max_desc_len]}... {cve_info.version_suffix}"
-
+    summary = build_tracker_summary(cve_info)
     description = build_description(cve_info, base_url=jira_url)
 
     labels = build_tracker_labels(cve_info.cve_id)
     team_extra = build_tracker_team_extra_fields()
+    security_level = EMBARGOED_SECURITY_LEVEL if cve_info.is_embargoed else DEFAULT_SECURITY_LEVEL
+
+    contributor_ids = resolve_tracker_contributors(client, cve_info)
+    extra_fields: dict[str, Any] = dict(team_extra)
+    if contributor_ids:
+        extra_fields[RHAIENG_CONTRIBUTORS_FIELD] = contributors_field_value(contributor_ids)
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Creating tracker for {cve_info.cve_id}:")
     print(f"  Summary: {summary}")
     print(f"  Version: {cve_info.version}")
+    print(f"  Embargoed: {cve_info.is_embargoed}")
+    print(f"  Security level: {security_level}")
     print(f"  Child issues: {cve_info.issue_count}")
     print(f"  Labels: {' '.join(labels)}")
     print(f"  Team field ({RHAIENG_TEAM_CUSTOM_FIELD}): {team_extra[RHAIENG_TEAM_CUSTOM_FIELD]!r}")
+    print(f"  Contributors ({len(contributor_ids)}): {format_contributor_labels(contributor_ids)}")
 
     if dry_run:
         return None
@@ -320,8 +429,8 @@ def create_tracker_issue(client: JiraClient, cve_info: CVEInfo, jira_url: str = 
             description=description,
             labels=labels,
             components=["Notebooks"],
-            security_level="Red Hat Employee",
-            extra_fields=team_extra,
+            security_level=security_level,
+            extra_fields=extra_fields,
         )
         tracker_key = result.get("key")
         print(f"  Created: {tracker_key}")
@@ -399,16 +508,16 @@ def parse_args():
         epilog="""
 Examples:
   # Dry run - show what would be created
-  python scripts/create_cve_trackers.py --dry-run
+  python scripts/cve/create_cve_trackers.py --dry-run
 
   # Create trackers for all orphan CVEs
-  python scripts/create_cve_trackers.py
+  python scripts/cve/create_cve_trackers.py
 
   # Create tracker for specific CVE
-  python scripts/create_cve_trackers.py --cve CVE-2025-12345
+  python scripts/cve/create_cve_trackers.py --cve CVE-2025-12345
 
   # List orphans without creating
-  python scripts/create_cve_trackers.py --list-only
+  python scripts/cve/create_cve_trackers.py --list-only
 
 Environment variables:
   JIRA_URL                  Jira server URL (default: https://redhat.atlassian.net)
@@ -418,6 +527,10 @@ Environment variables:
   JIRA_TOKEN                Legacy Bearer token (issues.redhat.com PAT)
   JIRA_RHAIENG_TEAM_OPTION_ID  Optional. Jira Team option id for AAIET Notebooks
                             (default: RHAIENG value verified on RHAIENG-3752)
+  JIRA_RHAIENG_EXTRA_CONTRIBUTORS  Optional. Comma-separated Atlassian accountIds
+                            added to tracker Contributors (union with children)
+  JIRA_RUNNER_ACCOUNT_ID    Optional. Override accountId for authenticated user
+                            (default: resolved via /rest/api/3/myself)
 """
     )
     parser.add_argument("--dry-run", action="store_true",
@@ -472,10 +585,13 @@ def main():
 
     for (cve_id, version), info in sorted(orphans.items()):
         version_label = version or "(no version)"
-        print(f"  {cve_id} {version_label}: {info.issue_count} issues")
+        embargo_label = " [EMBARGOED]" if info.is_embargoed else ""
+        print(f"  {cve_id} {version_label}{embargo_label}: {info.issue_count} issues")
         if info.description:
             desc = info.description[:60] + "..." if len(info.description) > 60 else info.description
             print(f"    Description: {desc}")
+        if info.contributor_account_ids:
+            print(f"    Contributors from children: {len(info.contributor_account_ids)}")
 
     if args.list_only:
         return
