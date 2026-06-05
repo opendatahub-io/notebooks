@@ -69,4 +69,7 @@ override-dependencies = [
     "protobuf==6.31.1",
     # RHAIENG-5267: requests==2.32 dep conflict with chardet 
     "requests>=2.33.1",
+    # Required to avoid the psutil conflict: jupyter-resource-usage < 1.2 -> psutil < 6
+    # ipython 9.x -> psutil >= 7
+    "jupyter-resource-usage>=1.2",
 ]

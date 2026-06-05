@@ -32,6 +32,9 @@ override-dependencies = [
     # RHAIENG-2458: urllib3>=2.7.0 — CVE-2026-44431, CVE-2026-44432 (2.7.0); CVE-2025-66418 (2.6.0)
     # Override needed because odh-elyra pulls in appengine-python-standard with urllib3<2
     "urllib3>=2.7.0",
+    # Required to avoid the psutil conflict: jupyter-resource-usage < 1.2 -> psutil < 6
+    # ipython 9.x -> psutil >= 7
+    "jupyter-resource-usage>=1.2",
 ]
 
 environments = [
