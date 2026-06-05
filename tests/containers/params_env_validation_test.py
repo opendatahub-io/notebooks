@@ -288,8 +288,8 @@ def test_params_env_image_metadata(
     commit_entries = {**_parse_env(base_dir / "commit.env"), **_parse_env(base_dir / "commit-latest.env")}
 
     for env_file in [base_dir / "params.env", base_dir / "params-latest.env"]:
-        # Skip params-latest.env (dummy placeholders, not real image refs)
-        if env_file.name == "params-latest.env":
+        # Skip RHOAI params-latest.env (dummy placeholders)
+        if variant == "rhoai" and env_file.name == "params-latest.env":
             continue
 
         params = _parse_env(env_file)
