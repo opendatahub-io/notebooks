@@ -3,8 +3,10 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 import json
 import os
+import re
 import sys
 from collections.abc import Mapping, Sequence
 
@@ -14,6 +16,14 @@ from scripts.ci.github_api import gh_api_json, gh_api_pages, gh_run_job_log
 MAX_LOG_LINES = 150
 MAX_LOG_CHARS = 12_000
 MAX_FAILED_JOBS_WITH_LOGS = 15
+FAILED_STEP_CONTEXT_BEFORE = 10
+FAILED_STEP_CONTEXT_AFTER = 40
+FAILED_STEP_ERROR_TAIL_BEFORE = 10
+FAILED_STEP_ERROR_TAIL_AFTER = 5
+
+GITHUB_ERROR_RE = re.compile(r"##\[error\]")
+LOG_TIMESTAMP_RE = re.compile(r"^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s?(?P<message>.*)$")
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def required_env(name: str) -> str:
@@ -28,12 +38,19 @@ def output_path(env_name: str, default_name: str) -> str:
 
 
 def failed_step_name(job: Mapping[str, object]) -> str:
+    step = selected_step(job)
+    if step is None:
+        return "Unknown step"
+    return str(step.get("name", "Unknown step"))
+
+
+def selected_step(job: Mapping[str, object]) -> Mapping[str, object] | None:
     steps = job.get("steps", [])
     if not isinstance(steps, list):
-        return "Unknown step"
+        return None
 
     failed_steps = [
-        str(step.get("name", "Unknown step"))
+        step
         for step in steps
         if isinstance(step, Mapping) and step.get("conclusion") in {"failure", "cancelled"}
     ]
@@ -41,14 +58,14 @@ def failed_step_name(job: Mapping[str, object]) -> str:
         return failed_steps[-1]
 
     in_progress_steps = [
-        str(step.get("name", "Unknown step"))
+        step
         for step in steps
         if isinstance(step, Mapping) and step.get("status") == "in_progress"
     ]
     if in_progress_steps:
         return in_progress_steps[-1]
 
-    return "Unknown step"
+    return None
 
 
 def run_mode(run_status: str, run_conclusion: str | None, failed_count: int) -> str:
@@ -84,17 +101,133 @@ def progress_counts(jobs: Sequence[Mapping[str, object]]) -> dict[str, int]:
     return counts
 
 
-def bounded_log_tail(run_id: int, job_id: int) -> tuple[str, str]:
+def parse_iso8601_timestamp(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def strip_gh_log_prefix(line: str) -> str:
+    parts = line.split("\t", maxsplit=2)
+    candidate = parts[2] if len(parts) == 3 else line
+    match = LOG_TIMESTAMP_RE.match(candidate)
+    if match:
+        candidate = match.group("message")
+    return ANSI_ESCAPE_RE.sub("", candidate)
+
+
+def log_line_timestamp(line: str) -> datetime | None:
+    parts = line.split("\t", maxsplit=2)
+    candidate = parts[2] if len(parts) == 3 else line
+    match = LOG_TIMESTAMP_RE.match(candidate)
+    if not match:
+        return None
+    return parse_iso8601_timestamp(match.group("timestamp"))
+
+
+def is_error_anchor(line: str) -> bool:
+    if GITHUB_ERROR_RE.search(line) is not None:
+        return True
+
+    stripped = line.strip()
+    lowered = stripped.lower()
+    return (
+        stripped.startswith("Error:")
+        or stripped.startswith("ERROR ")
+        or stripped.startswith("Exception:")
+        or stripped.startswith("Traceback (most recent call last):")
+        or stripped.startswith("FAILED ")
+        or stripped.startswith("SUBFAILED")
+        or "permission denied" in lowered
+        or "fetcherror" in lowered
+        or "no module named" in lowered
+        or "=> not found" in lowered
+        or "unsatisfied dependencies" in lowered
+        or "make: ***" in lowered
+        or "assert " in lowered
+    )
+
+
+def clip_excerpt(lines: Sequence[str]) -> str:
+    excerpt = "\n".join(lines)
+    if len(excerpt) <= MAX_LOG_CHARS:
+        return excerpt
+
+    head_keep = max(1, len(lines) // 3)
+    tail_keep = max(1, len(lines) // 3)
+    clipped = list(lines[:head_keep]) + ["..."] + list(lines[-tail_keep:])
+    excerpt = "\n".join(clipped)
+    if len(excerpt) <= MAX_LOG_CHARS:
+        return excerpt
+    return excerpt[-MAX_LOG_CHARS:]
+
+
+def failed_step_excerpt(log_text: str, job: Mapping[str, object]) -> str:
+    step = selected_step(job)
+    if step is None:
+        return ""
+
+    raw_lines = log_text.splitlines()
+    if not raw_lines:
+        return ""
+
+    step_start = parse_iso8601_timestamp(step.get("started_at"))
+    step_end = parse_iso8601_timestamp(step.get("completed_at"))
+    if step_start is None:
+        return ""
+    if step_end is None:
+        step_end = step_start + timedelta(minutes=10)
+    else:
+        # Include the GitHub "process completed with exit code" footer line emitted
+        # immediately after the step's last timestamped output.
+        step_end = step_end + timedelta(seconds=2)
+
+    matching_indices = [
+        index
+        for index, raw_line in enumerate(raw_lines)
+        if (timestamp := log_line_timestamp(raw_line)) is not None and step_start <= timestamp <= step_end
+    ]
+    if not matching_indices:
+        return ""
+
+    normalized = [strip_gh_log_prefix(raw_line) for raw_line in raw_lines]
+    step_lines = normalized[matching_indices[0] : matching_indices[-1] + 1]
+    if not step_lines:
+        return ""
+
+    github_error_indices = [index for index, line in enumerate(step_lines) if GITHUB_ERROR_RE.search(line)]
+    if github_error_indices:
+        step_lines = step_lines[: github_error_indices[0] + 1]
+
+    anchor_indices = [index for index, line in enumerate(step_lines) if is_error_anchor(line)]
+    if not anchor_indices:
+        return clip_excerpt(step_lines[-MAX_LOG_LINES:])
+
+    first_anchor = anchor_indices[0]
+    last_anchor = anchor_indices[-1]
+    excerpt_lines = step_lines[max(0, first_anchor - FAILED_STEP_CONTEXT_BEFORE) : min(
+        len(step_lines),
+        first_anchor + FAILED_STEP_CONTEXT_AFTER,
+    )]
+
+    if last_anchor > first_anchor + FAILED_STEP_CONTEXT_AFTER:
+        tail_start = max(0, last_anchor - FAILED_STEP_ERROR_TAIL_BEFORE)
+        tail_end = min(len(step_lines), last_anchor + FAILED_STEP_ERROR_TAIL_AFTER)
+        excerpt_lines = [*excerpt_lines, "...", *step_lines[tail_start:tail_end]]
+
+    return clip_excerpt(excerpt_lines)
+
+
+def fetch_job_log(run_id: int, job_id: int) -> tuple[str, str]:
     try:
         log_text = gh_run_job_log(run_id, job_id, timeout=180)
     except Exception as exc:  # noqa: BLE001
         return "", f"{type(exc).__name__}: {exc}"
 
-    lines = log_text.splitlines()
-    tail = "\n".join(lines[-MAX_LOG_LINES:])
-    if len(tail) > MAX_LOG_CHARS:
-        tail = tail[-MAX_LOG_CHARS:]
-    return tail, ""
+    return log_text, ""
 
 
 def build_failed_jobs(run_id: int, jobs: Sequence[Mapping[str, object]], *, include_logs: bool) -> list[dict[str, object]]:
@@ -104,9 +237,13 @@ def build_failed_jobs(run_id: int, jobs: Sequence[Mapping[str, object]], *, incl
             continue
 
         log_tail = ""
+        log_excerpt = ""
         log_error = ""
         if include_logs and len(failed_jobs) < MAX_FAILED_JOBS_WITH_LOGS:
-            log_tail, log_error = bounded_log_tail(run_id, int_value(job["id"]))
+            job_log, log_error = fetch_job_log(run_id, int_value(job["id"]))
+            if not log_error:
+                log_excerpt = failed_step_excerpt(job_log, job)
+                log_tail = log_excerpt
 
         failed_jobs.append(
             {
@@ -116,6 +253,7 @@ def build_failed_jobs(run_id: int, jobs: Sequence[Mapping[str, object]], *, incl
                 "conclusion": str(job.get("conclusion", "")),
                 "index": index,
                 "log_error": log_error or None,
+                "log_excerpt": log_excerpt,
                 "log_tail": log_tail,
                 "status": str(job.get("status", "")),
                 "url": str(job.get("html_url", "")),

@@ -53,7 +53,11 @@ def should_enable_actions_fallback(context: Mapping[str, object]) -> bool:
     failed_jobs = context.get("failed_jobs", [])
     if not isinstance(failed_jobs, list):
         return False
-    return any(not failed_job.get("log_tail") for failed_job in failed_jobs if isinstance(failed_job, dict))
+    return any(
+        not (failed_job.get("log_excerpt") or failed_job.get("log_tail"))
+        for failed_job in failed_jobs
+        if isinstance(failed_job, dict)
+    )
 
 
 def build_config(context: Mapping[str, object]) -> LocalAgentConfig:
