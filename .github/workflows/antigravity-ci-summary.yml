@@ -46,6 +46,14 @@ jobs:
       - name: 'Install from uv.lock (project + dev deps)'
         run: 'uv sync --locked'
 
+      - name: 'Fetch untrusted PR source snapshot'
+        env:
+          GITHUB_REPOSITORY: '${{ github.repository }}'
+          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          PR_HEAD_SHA: '${{ github.event.workflow_run.head_sha }}'
+          SOURCE_WORKSPACE: 'unsafe-pr-source'
+        run: 'uv run python scripts/ci/fetch_pr_source_snapshot.py'
+
       - name: 'Prepare CI run context'
         id: 'prep'
         env:
@@ -53,6 +61,7 @@ jobs:
           CI_RUN_CONTEXT_PATH: 'ci-run-context.json'
           GITHUB_REPOSITORY: '${{ github.repository }}'
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          SOURCE_WORKSPACE: 'unsafe-pr-source'
           TRIGGER_JOB_ID: '${{ github.event.workflow_job.id }}'
           WORKFLOW_RUN_ID: '${{ github.event.workflow_run.id }}'
         run: 'uv run python scripts/ci/prepare_ci_run_context.py'
@@ -67,6 +76,7 @@ jobs:
           GEMINI_MODEL: '${{ vars.GEMINI_MODEL }}'
           GITHUB_REPOSITORY: '${{ github.repository }}'
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          SOURCE_WORKSPACE: 'unsafe-pr-source'
           SUMMARIZE_MODE: '${{ steps.prep.outputs.mode }}'
         run: 'uv run python scripts/ci/summarize_ci_run.py'
 

@@ -11,7 +11,7 @@ import sys
 from collections.abc import Mapping, Sequence
 
 from scripts.ci.ci_summary import build_clusters, int_value, marker_for_run, render_progress_comment, utc_now_iso
-from scripts.ci.github_api import gh_api_json, gh_api_pages, gh_job_log
+from scripts.ci.github_api import gh_api_json, gh_api_list_pages, gh_api_pages, gh_job_log
 
 MAX_LOG_LINES = 150
 MAX_LOG_CHARS = 12_000
@@ -23,6 +23,8 @@ FAILED_STEP_ERROR_TAIL_AFTER = 5
 WHOLE_LOG_CONTEXT_BEFORE = 2
 WHOLE_LOG_CONTEXT_AFTER = 5
 MAX_WHOLE_LOG_CONTEXTS = 4
+MAX_CHANGED_FILES_WITH_PATCH = 20
+MAX_PATCH_LINES = 40
 
 GITHUB_ERROR_RE = re.compile(r"##\[error\]")
 LOG_TIMESTAMP_RE = re.compile(r"^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s?(?P<message>.*)$")
@@ -38,6 +40,19 @@ def required_env(name: str) -> str:
 
 def output_path(env_name: str, default_name: str) -> str:
     return os.environ.get(env_name, default_name)
+
+
+def capped_patch_excerpt(patch: str | None, *, max_lines: int = MAX_PATCH_LINES) -> str | None:
+    if not patch:
+        return None
+    lines = patch.splitlines()
+    if len(lines) <= max_lines:
+        return patch
+
+    head_count = max_lines // 2
+    tail_count = max_lines - head_count
+    excerpt = lines[:head_count] + ["..."] + lines[-tail_count:]
+    return "\n".join(excerpt)
 
 
 def failed_step_name(job: Mapping[str, object]) -> str:
@@ -387,10 +402,42 @@ def write_github_output(key: str, value: str) -> None:
         print(f"{key}={value}", file=file_handle)
 
 
+def pull_request_context(repository: str, pr_number: int) -> dict[str, object]:
+    pr = gh_api_json(f"repos/{repository}/pulls/{pr_number}")
+    if not isinstance(pr, dict):
+        raise SystemExit("Expected pull request response to be a JSON object")
+
+    files = gh_api_list_pages(f"repos/{repository}/pulls/{pr_number}/files", timeout=180)
+    typed_files = [file_info for file_info in files if isinstance(file_info, dict)]
+
+    changed_files = [
+        {
+            "additions": file_info.get("additions"),
+            "deletions": file_info.get("deletions"),
+            "filename": file_info.get("filename"),
+            "patch_excerpt": capped_patch_excerpt(file_info.get("patch") if isinstance(file_info.get("patch"), str) else None),
+            "status": file_info.get("status"),
+        }
+        for file_info in typed_files[:MAX_CHANGED_FILES_WITH_PATCH]
+    ]
+
+    return {
+        "base_ref": pr["base"]["ref"],
+        "body": pr.get("body") or "",
+        "changed_files": changed_files,
+        "changed_files_omitted": max(0, len(typed_files) - len(changed_files)),
+        "head_ref": pr["head"]["ref"],
+        "head_sha": pr["head"]["sha"],
+        "number": pr_number,
+        "title": pr["title"],
+    }
+
+
 def build_context(
     repository: str,
     run: Mapping[str, object],
     jobs: Sequence[Mapping[str, object]],
+    pr_context: Mapping[str, object],
     *,
     trigger_job_id: int | None,
     include_logs: bool,
@@ -430,8 +477,10 @@ def build_context(
         "mode": mode,
         "pr_number": pull_request_number,
         "progress": progress,
+        "pull_request": dict(pr_context),
         "run_conclusion": run_conclusion,
         "run_status": run_status,
+        "source_workspace": os.environ.get("SOURCE_WORKSPACE", os.environ.get("GITHUB_WORKSPACE", os.getcwd())),
         "trigger_job_id": trigger_job_id,
         "trigger_job_name": trigger_job_name,
         "updated_at": updated_at,
@@ -456,12 +505,19 @@ def main() -> None:
     if not all(isinstance(job, dict) for job in jobs):
         raise SystemExit("Expected workflow jobs response to contain JSON objects")
 
+    pull_requests = run.get("pull_requests", [])
+    if not isinstance(pull_requests, list) or not pull_requests:
+        raise SystemExit("Workflow run has no associated pull request; summary workflow only supports PR runs")
+    pr_number = int(pull_requests[0]["number"])
+    pr_context = pull_request_context(repository, pr_number)
+
     progress = progress_counts(jobs)  # type: ignore[arg-type]
     include_logs = run_mode(str(run.get("status", "")), run.get("conclusion"), progress["failed"]) != "progress"
     context = build_context(
         repository,
         run,
         jobs,  # type: ignore[arg-type]
+        pr_context,
         trigger_job_id=trigger_job_id,
         include_logs=include_logs,
     )

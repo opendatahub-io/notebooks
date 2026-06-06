@@ -7,9 +7,9 @@ def test_cluster_failed_job_detects_known_buckets() -> None:
     assert ci_summary.cluster_failed_job("Prefetch hermetic build dependencies", "cachi2 failed") == "hermeto_prefetch"
     assert ci_summary.cluster_failed_job("Build: make foo", "make target failed") == "make_build"
     assert ci_summary.cluster_failed_job("Run Trivy vulnerability scanner", "Trivy found issues") == "trivy_scan"
-    assert ci_summary.cluster_failed_job("Check image with check-payload for FIPS compliance", "check-payload failure") == (
-        "fips_check"
-    )
+    assert ci_summary.cluster_failed_job(
+        "Check image with check-payload for FIPS compliance", "check-payload failure"
+    ) == ("fips_check")
     assert ci_summary.cluster_failed_job("Run Playwright tests", "playwright timed out") == "playwright"
     assert ci_summary.cluster_failed_job("Build: make foo", "Killed process 123") == "oom_or_killed"
 

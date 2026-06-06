@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
+from google.antigravity.types import BuiltinTools
+
 from scripts.ci import summarize_ci_run
 
 if TYPE_CHECKING:
@@ -22,7 +24,9 @@ def test_should_enable_actions_fallback_accepts_log_excerpt() -> None:
 
 
 def test_should_enable_actions_fallback_accepts_error_contexts() -> None:
-    context = {"failed_jobs": [{"error_contexts": ["Error: grounded whole-log context"], "log_excerpt": "", "log_tail": ""}]}
+    context = {
+        "failed_jobs": [{"error_contexts": ["Error: grounded whole-log context"], "log_excerpt": "", "log_tail": ""}]
+    }
 
     assert summarize_ci_run.should_enable_actions_fallback(context) is False
 
@@ -31,6 +35,7 @@ def test_build_prompt_includes_mode_and_context() -> None:
     context = {
         "failed_jobs": [],
         "mode": "final",
+        "pull_request": {"changed_files": [{"filename": "foo.py", "patch_excerpt": "@@ diff"}]},
         "progress": {"failed": 0},
         "workflow_run_id": 123,
     }
@@ -39,6 +44,24 @@ def test_build_prompt_includes_mode_and_context() -> None:
 
     assert "Mode: final" in prompt
     assert '"workflow_run_id": 123' in prompt
+    assert "untrusted snapshot of PR code/data" in prompt
+
+
+def test_build_config_enables_read_only_source_tools(monkeypatch) -> None:
+    monkeypatch.setenv("GITHUB_WORKSPACE", "/workspace/notebooks")
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    context = {"failed_jobs": [{"log_excerpt": "grounded excerpt", "log_tail": ""}]}
+
+    config = summarize_ci_run.build_config(context)
+
+    assert config.workspaces == ["/workspace/notebooks"]
+    assert config.capabilities is not None
+    assert config.capabilities.enabled_tools == [
+        BuiltinTools.LIST_DIR,
+        BuiltinTools.SEARCH_DIR,
+        BuiltinTools.FIND_FILE,
+        BuiltinTools.VIEW_FILE,
+    ]
 
 
 def test_summarize_progress_mode_writes_deterministic_body(tmp_path: Path) -> None:
