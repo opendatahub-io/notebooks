@@ -70,9 +70,21 @@ jobs:
           GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
           GEMINI_MODEL: '${{ vars.GEMINI_MODEL }}'
           GITHUB_REPOSITORY: '${{ github.repository }}'
+          GITHUB_RUN_ID: '${{ github.run_id }}'
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           PULL_REQUEST_NUMBER: '${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
+          REVIEW_BODY_PATH: 'review-summary-body.md'
         run: 'uv run python scripts/ci/review_pr.py'
+
+      - name: 'Upsert review summary comment'
+        env:
+          GITHUB_REPOSITORY: '${{ github.repository }}'
+          GITHUB_RUN_ID: '${{ github.run_id }}'
+          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          PULL_REQUEST_NUMBER: '${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
+          REVIEW_BODY_PATH: 'review-summary-body.md'
+          WORKFLOW_RUN_URL: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+        run: 'uv run python scripts/ci/upsert_review_comment.py'
 
       - name: 'Post review failure comment'
         if: |-

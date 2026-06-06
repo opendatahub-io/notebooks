@@ -47,6 +47,8 @@ def test_build_prompt_includes_repository_pr_and_context() -> None:
     assert "owner/repo" in prompt
     assert "99" in prompt
     assert "focus on tests" in prompt
+    assert "empty body (inline comments only)" in prompt
+    assert "not in the GitHub review body" in prompt
     assert "## 📋 Review Summary" in prompt
 
 
@@ -90,6 +92,20 @@ def test_bool_env_falsey_values(monkeypatch: pytest.MonkeyPatch) -> None:
         else:
             monkeypatch.delenv("FLAG", raising=False)
         assert review_pr.bool_env("FLAG") is False
+
+
+def test_persist_review_summary_writes_marked_body(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    body_path = tmp_path / "review-summary-body.md"
+    monkeypatch.setenv("REVIEW_BODY_PATH", str(body_path))
+    monkeypatch.setenv("GITHUB_RUN_ID", "123")
+
+    review_pr.persist_review_summary("## 📋 Review Summary\n\nAll good.\n\nPosted a review with inline comments.")
+
+    body = body_path.read_text(encoding="utf-8")
+    assert "## 📋 Review Summary" in body
+    assert "All good." in body
+    assert "Posted a review" not in body
+    assert "<!-- antigravity-pr-review run_id=123" in body
 
 
 def test_format_usage_metadata_none() -> None:

@@ -16,7 +16,8 @@ Use GitHub MCP tools for pull request data and review submission.
 2. Read the pull request metadata, file list, and diff with GitHub MCP.
 3. Prioritize correctness and security issues before style or refactoring notes.
 4. Leave inline comments only on changed lines when there is a real problem or a concrete improvement.
-5. Submit the final review as a `COMMENT` review. Never approve and never request changes.
+5. Submit the pending review as a `COMMENT` review with an empty body (inline comments only). Never approve and never request changes.
+6. Output the overall summary in your final response only. CI upserts it as a single updating issue comment.
 
 ## Comment rules
 
@@ -29,7 +30,7 @@ Use GitHub MCP tools for pull request data and review submission.
 
 ## Summary format
 
-When you submit the overall review summary, use this exact structure:
+When you finish the review, use this exact structure in your final response (not in the GitHub review body):
 
 ```markdown
 ## 📋 Review Summary

@@ -13,6 +13,7 @@ from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig
 
 from google.antigravity.types import UsageMetadata
 from scripts.ci import mcp_github
+from scripts.ci.pr_review_summary import ensure_marker, extract_review_summary_body, marker_for_run
 
 
 @dataclass(slots=True)
@@ -93,11 +94,11 @@ Workflow:
    - If the prepared review context is present, use it first to prioritize the review and then fetch only the MCP data you still need.
 2. Review the diff carefully for correctness, security, maintainability, and missing tests.
 3. Leave feedback directly on GitHub:
-   - Prefer inline comments for concrete issues on changed lines.
-   - If there are no actionable issues, submit a COMMENT review with a concise summary only.
+   - Prefer inline comments for concrete issues on changed lines using `add_comment_to_pending_review`.
+   - Submit the pending review as a COMMENT review with an empty body (inline comments only).
    - Never approve the PR.
    - Never request changes.
-4. Submit the final review as a COMMENT review.
+4. Do not put the review summary in the GitHub review body. Output it only in your final response using the format below.
 
 Rules:
 - Only comment when you found a real issue or concrete improvement.
@@ -116,7 +117,7 @@ Severity calibration:
 - Hardcoded string to constant refactoring: low.
 - Typos: low.
 
-- If you add a summary, use this exact format:
+- If you add a summary, use this exact format in your final response (not in the GitHub review body):
 
 ## 📋 Review Summary
 
@@ -126,7 +127,7 @@ Severity calibration:
 
 - <concise bullet(s) that do not duplicate inline comments>
 
-When you are done, reply with one line saying whether you posted a review.
+When you are done, reply with one line saying whether you posted inline review comments.
 """.strip()
 
 
@@ -148,6 +149,24 @@ def format_usage_metadata(usage_metadata: UsageMetadata | None) -> str:
     if usage_metadata is None:
         return "null"
     return json.dumps(usage_metadata.model_dump(), sort_keys=True)
+
+
+def write_review_body(path: str, body: str) -> None:
+    with open(path, "w", encoding="utf-8") as file_handle:
+        file_handle.write(body.rstrip() + "\n")
+
+
+def persist_review_summary(text: str) -> None:
+    body_path = os.environ.get("REVIEW_BODY_PATH", "").strip()
+    if not body_path:
+        return
+
+    summary_body = extract_review_summary_body(text)
+    run_id_raw = os.environ.get("GITHUB_RUN_ID", "").strip()
+    if run_id_raw.isdigit() and int(run_id_raw) > 0:
+        run_id = int(run_id_raw)
+        summary_body = ensure_marker(summary_body, marker_for_run(run_id), run_id=run_id)
+    write_review_body(body_path, summary_body)
 
 
 async def run_review(inputs: ReviewInputs) -> int:
@@ -177,6 +196,7 @@ async def run_review(inputs: ReviewInputs) -> int:
             print(f"\nFAIL: disallowed tools invoked: {disallowed}", file=sys.stderr)
             return 1
 
+    persist_review_summary(text)
     return 0
 
 
