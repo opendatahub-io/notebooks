@@ -31,17 +31,37 @@ def test_progress_counts() -> None:
         {"status": "completed", "conclusion": "success"},
         {"status": "completed", "conclusion": "failure"},
         {"status": "completed", "conclusion": "cancelled"},
+        {"status": "completed", "conclusion": "skipped"},
         {"status": "in_progress", "conclusion": None},
         {"status": "queued", "conclusion": None},
     ]
 
     assert prepare.progress_counts(jobs) == {
         "cancelled": 1,
-        "completed": 3,
+        "completed": 4,
         "failed": 1,
         "in_progress": 1,
+        "passed": 1,
         "queued": 1,
-        "total": 5,
+        "skipped": 1,
+        "total": 6,
+    }
+
+
+def test_matrix_job_counts() -> None:
+    jobs = [
+        {"name": "Generate job matrix", "conclusion": "success"},
+        {"name": "foo · linux/amd64 [odh]", "conclusion": "success"},
+        {"name": "bar · linux/amd64 [rhoai]", "conclusion": "skipped"},
+        {"name": "${{ matrix.target }} · ${{ matrix.platform }} [odh]", "conclusion": "skipped"},
+    ]
+
+    assert prepare.matrix_job_counts(jobs) == {
+        "cancelled": 0,
+        "failed": 0,
+        "passed": 1,
+        "skipped": 2,
+        "total": 3,
     }
 
 
@@ -98,6 +118,13 @@ def test_build_context_uses_pull_request_and_trigger_job_name(monkeypatch) -> No
     assert context["github_repository"] == "owner/repo"
     assert context["pr_number"] == 123
     assert context["mode"] == "failure"
+    assert context["matrix_progress"] == {
+        "cancelled": 0,
+        "failed": 0,
+        "passed": 0,
+        "skipped": 0,
+        "total": 0,
+    }
     assert context["pull_request"] == pr_context
     assert context["source_head_sha"] == "abc123"
     assert context["source_workspace"] == "/workspace/notebooks"

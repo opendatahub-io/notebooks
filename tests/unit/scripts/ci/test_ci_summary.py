@@ -49,7 +49,15 @@ def test_render_progress_comment_includes_failures_running_jobs_and_marker() -> 
             }
         ],
         "in_progress_jobs": ["codeserver-ubi9-python-3.12 · linux/amd64 [odh]"],
-        "progress": {"cancelled": 0, "completed": 14, "failed": 1, "in_progress": 12, "total": 28},
+        "progress": {
+            "cancelled": 0,
+            "completed": 14,
+            "failed": 1,
+            "in_progress": 12,
+            "passed": 13,
+            "skipped": 0,
+            "total": 28,
+        },
         "trigger_job_name": "jupyter-datascience · linux/amd64 [odh]",
         "updated_at": "2026-06-05T22:00:00Z",
         "workflow_name": "Build Notebooks (pr)",
@@ -60,7 +68,7 @@ def test_render_progress_comment_includes_failures_running_jobs_and_marker() -> 
     comment = ci_summary.render_progress_comment(context)
 
     assert "## CI status [antigravity]" in comment
-    assert "**14/28 complete** · 1 failed · 12 running" in comment
+    assert "**14/28 complete** · 13 passed · 1 failed · 12 running" in comment
     assert "### Failures so far" in comment
     assert "### Still running" in comment
     assert ci_summary.marker_token(12345) in comment
@@ -77,7 +85,16 @@ def test_render_superseded_comment_is_idempotent() -> None:
 
 def test_render_final_success_comment_is_brief_and_marked() -> None:
     context = {
-        "progress": {"cancelled": 0, "completed": 28, "failed": 0, "in_progress": 0, "total": 28},
+        "matrix_progress": {"cancelled": 0, "failed": 0, "passed": 28, "skipped": 0, "total": 28},
+        "progress": {
+            "cancelled": 0,
+            "completed": 28,
+            "failed": 0,
+            "in_progress": 0,
+            "passed": 28,
+            "skipped": 0,
+            "total": 28,
+        },
         "updated_at": "2026-06-05T22:00:00Z",
         "workflow_name": "Build Notebooks (pr)",
         "workflow_run_id": 12345,
@@ -91,6 +108,30 @@ def test_render_final_success_comment_is_brief_and_marked() -> None:
     assert ci_summary.marker_token(12345) in comment
 
 
+def test_render_final_success_comment_reports_skipped_matrix_jobs() -> None:
+    context = {
+        "matrix_progress": {"cancelled": 0, "failed": 0, "passed": 0, "skipped": 2, "total": 2},
+        "progress": {
+            "cancelled": 0,
+            "completed": 3,
+            "failed": 0,
+            "in_progress": 0,
+            "passed": 1,
+            "skipped": 2,
+            "total": 3,
+        },
+        "updated_at": "2026-06-05T22:00:00Z",
+        "workflow_name": "Build Notebooks (pr)",
+        "workflow_run_id": 12345,
+        "workflow_run_url": "https://example.invalid/run/12345",
+    }
+
+    comment = ci_summary.render_final_success_comment(context)
+
+    assert "**3/3 complete** · 1 passed · 2 skipped" in comment
+    assert "_No workbench image jobs ran; all matrix jobs were skipped._" in comment
+
+
 def test_render_failure_comment_combines_deterministic_sections_with_analysis() -> None:
     context = {
         "failed_jobs": [
@@ -101,7 +142,15 @@ def test_render_failure_comment_combines_deterministic_sections_with_analysis() 
             }
         ],
         "in_progress_jobs": ["codeserver-ubi9-python-3.12 · linux/amd64 [odh]"],
-        "progress": {"cancelled": 0, "completed": 14, "failed": 1, "in_progress": 12, "total": 28},
+        "progress": {
+            "cancelled": 0,
+            "completed": 14,
+            "failed": 1,
+            "in_progress": 12,
+            "passed": 13,
+            "skipped": 0,
+            "total": 28,
+        },
         "trigger_job_name": "jupyter-datascience · linux/amd64 [odh]",
         "updated_at": "2026-06-05T22:00:00Z",
         "workflow_name": "Build Notebooks (pr)",

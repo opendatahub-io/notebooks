@@ -98,8 +98,10 @@ def progress_counts(jobs: Sequence[Mapping[str, object]]) -> dict[str, int]:
     counts = {
         "total": len(jobs),
         "completed": 0,
+        "passed": 0,
         "failed": 0,
         "cancelled": 0,
+        "skipped": 0,
         "in_progress": 0,
         "queued": 0,
     }
@@ -108,14 +110,47 @@ def progress_counts(jobs: Sequence[Mapping[str, object]]) -> dict[str, int]:
         conclusion = job.get("conclusion")
         if status == "completed":
             counts["completed"] += 1
-            if conclusion == "failure":
+            if conclusion == "success":
+                counts["passed"] += 1
+            elif conclusion == "failure":
                 counts["failed"] += 1
             elif conclusion == "cancelled":
                 counts["cancelled"] += 1
+            elif conclusion == "skipped":
+                counts["skipped"] += 1
         elif status == "in_progress":
             counts["in_progress"] += 1
         else:
             counts["queued"] += 1
+    return counts
+
+
+def is_matrix_job_name(job_name: str) -> bool:
+    return "·" in job_name or "${{ matrix.target }}" in job_name
+
+
+def matrix_job_counts(jobs: Sequence[Mapping[str, object]]) -> dict[str, int]:
+    counts = {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "cancelled": 0,
+        "skipped": 0,
+    }
+    for job in jobs:
+        job_name = str(job.get("name", ""))
+        if not is_matrix_job_name(job_name):
+            continue
+        counts["total"] += 1
+        conclusion = job.get("conclusion")
+        if conclusion == "success":
+            counts["passed"] += 1
+        elif conclusion == "failure":
+            counts["failed"] += 1
+        elif conclusion == "cancelled":
+            counts["cancelled"] += 1
+        elif conclusion == "skipped":
+            counts["skipped"] += 1
     return counts
 
 
@@ -445,6 +480,7 @@ def build_context(
     include_logs: bool,
 ) -> dict[str, object]:
     progress = progress_counts(jobs)
+    matrix_progress = matrix_job_counts(jobs)
     run_status = str(run.get("status", ""))
     raw_conclusion = run.get("conclusion")
     run_conclusion = str(raw_conclusion) if raw_conclusion else None
@@ -472,6 +508,7 @@ def build_context(
         "github_repository": repository,
         "in_progress_jobs": in_progress_jobs,
         "mode": mode,
+        "matrix_progress": matrix_progress,
         "pr_number": pull_request_number,
         "progress": progress,
         "pull_request": dict(pr_context),
