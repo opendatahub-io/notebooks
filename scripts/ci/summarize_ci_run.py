@@ -180,11 +180,15 @@ async def summarize(context: Mapping[str, object], body_path: str) -> int:
             for tool_name in mcp_github.tool_call_names(tool_calls):
                 print(tool_name)
 
-        allowed_tools = mcp_github.GITHUB_ACTIONS_READ_TOOLS
+        allowed_tools = list(SOURCE_READ_TOOL_NAMES)
+        actions_server_name = None
+        if config.mcp_servers:
+            allowed_tools.extend(mcp_github.GITHUB_ACTIONS_READ_TOOLS)
+            actions_server_name = mcp_github.GITHUB_ACTIONS_SERVER_NAME
         disallowed = mcp_github.unexpected_tool_calls(
             tool_calls,
             allowed_tools,
-            server_name=mcp_github.GITHUB_ACTIONS_SERVER_NAME,
+            server_name=actions_server_name,
         )
         if disallowed:
             print(f"FAIL: disallowed tools invoked: {disallowed}", file=sys.stderr)

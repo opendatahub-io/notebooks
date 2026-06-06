@@ -85,6 +85,11 @@ def gh_api_json(
     return json.loads(result.stdout)
 
 
+def _validate_per_page(per_page: int) -> None:
+    if per_page <= 0:
+        raise ValueError(f"per_page must be a positive integer, got {per_page}")
+
+
 def gh_api_pages(
     path: str,
     *,
@@ -93,6 +98,7 @@ def gh_api_pages(
     per_page: int = 100,
     timeout: int = DEFAULT_TIMEOUT_SECONDS,
 ) -> list[object]:
+    _validate_per_page(per_page)
     results: list[object] = []
     page = 1
     while True:
@@ -118,6 +124,7 @@ def gh_api_list_pages(
     per_page: int = 100,
     timeout: int = DEFAULT_TIMEOUT_SECONDS,
 ) -> list[object]:
+    _validate_per_page(per_page)
     results: list[object] = []
     page = 1
     while True:

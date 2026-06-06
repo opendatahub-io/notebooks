@@ -112,4 +112,6 @@ jobs:
     with:
       additional_context: '${{ needs.dispatch.outputs.additional_context }}'
       pull_request_number: '${{ needs.dispatch.outputs.pull_request_number }}'
-    secrets: 'inherit'
+    secrets:
+      APP_PRIVATE_KEY: '${{ secrets.APP_PRIVATE_KEY }}'
+      GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'

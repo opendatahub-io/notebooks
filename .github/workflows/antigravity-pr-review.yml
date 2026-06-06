@@ -12,6 +12,11 @@ name: '🔎 Antigravity Pull Request Review'
         type: 'string'
         description: 'Any additional context from the request'
         required: false
+    secrets:
+      GEMINI_API_KEY:
+        required: true
+      APP_PRIVATE_KEY:
+        required: false
   workflow_dispatch:
     inputs:
       pull_request_number:

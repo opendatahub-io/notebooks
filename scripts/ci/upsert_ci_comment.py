@@ -71,6 +71,27 @@ def write_step_summary(comment_url: str, mode: str) -> None:
         )
 
 
+def latest_matching_run_comment(
+    comments: list[dict[str, object]],
+    *,
+    run_id: int,
+) -> dict[str, object] | None:
+    matching_comments = [
+        comment
+        for comment in comments
+        if comment_contains_run_marker(str(comment.get("body", "")), run_id)
+    ]
+    if not matching_comments:
+        return None
+    return max(
+        matching_comments,
+        key=lambda comment: (
+            str(comment.get("updated_at") or comment.get("created_at") or ""),
+            int_value(comment["id"]),
+        ),
+    )
+
+
 def main() -> None:
     context_path = required_env("CI_RUN_CONTEXT_PATH")
     comment_body_path = required_env("COMMENT_BODY_PATH")
@@ -89,14 +110,7 @@ def main() -> None:
     comments = gh_api_list_pages(f"repos/{repository}/issues/{issue_number}/comments")
     comment_objects = [comment for comment in comments if isinstance(comment, dict)]
 
-    existing_comment = next(
-        (
-            comment
-            for comment in comment_objects
-            if comment_contains_run_marker(str(comment.get("body", "")), run_id)
-        ),
-        None,
-    )
+    existing_comment = latest_matching_run_comment(comment_objects, run_id=run_id)
 
     if existing_comment is None:
         created = gh_api_json(

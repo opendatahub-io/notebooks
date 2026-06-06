@@ -21,6 +21,8 @@ import gen_gha_matrix_jobs  # pyright: ignore[reportMissingImports]  # noqa: E40
 import gha_pr_changed_files  # pyright: ignore[reportMissingImports]  # noqa: E402
 
 MAX_PATCH_LINES = 50
+MAX_CHANGED_FILES = 200
+MAX_CHECK_RUNS = 100
 
 
 def required_env(name: str) -> str:
@@ -60,21 +62,23 @@ def main() -> None:
     if not isinstance(pr, dict):
         raise SystemExit("Expected pull request response to be a JSON object")
 
-    files = gh_api_list_pages(f"repos/{repository}/pulls/{pr_number}/files", timeout=180)
-    if not all(isinstance(file_info, dict) for file_info in files):
+    all_files = gh_api_list_pages(f"repos/{repository}/pulls/{pr_number}/files", timeout=180)
+    if not all(isinstance(file_info, dict) for file_info in all_files):
         raise SystemExit("Expected pull request files response to contain JSON objects")
+    files = [file_info for file_info in all_files if isinstance(file_info, dict)][:MAX_CHANGED_FILES]
 
     head_sha = str(pr["head"]["sha"])
-    check_runs = gh_api_pages(
+    all_check_runs = gh_api_pages(
         f"repos/{repository}/commits/{head_sha}/check-runs",
         item_key="check_runs",
         timeout=180,
     )
-    if not all(isinstance(check_run, dict) for check_run in check_runs):
+    if not all(isinstance(check_run, dict) for check_run in all_check_runs):
         raise SystemExit("Expected check runs response to contain JSON objects")
+    check_runs = [check_run for check_run in all_check_runs if isinstance(check_run, dict)][:MAX_CHECK_RUNS]
 
-    changed_files = [str(file_info["filename"]) for file_info in files if isinstance(file_info, dict)]
-    typed_check_runs: list[dict[str, object]] = [check_run for check_run in check_runs if isinstance(check_run, dict)]
+    changed_files = [str(file_info["filename"]) for file_info in files]
+    typed_check_runs: list[dict[str, object]] = check_runs
 
     context = {
         "additional_context": os.environ.get("ADDITIONAL_CONTEXT", "").strip(),
@@ -93,9 +97,10 @@ def main() -> None:
                 "status": file_info.get("status"),
             }
             for file_info in files
-            if isinstance(file_info, dict)
         ],
+        "changed_files_omitted": max(0, len(all_files) - len(files)),
         "check_runs": summarized_check_runs(typed_check_runs),
+        "check_runs_omitted": max(0, len(all_check_runs) - len(check_runs)),
         "head_ref": pr["head"]["ref"],
         "head_sha": head_sha,
         "pr_number": pr_number,

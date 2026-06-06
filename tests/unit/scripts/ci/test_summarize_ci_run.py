@@ -88,8 +88,17 @@ def test_summarize_final_success_mode_writes_deterministic_body(tmp_path: Path) 
     body_path = tmp_path / "comment.md"
     context = {
         "failed_jobs": [],
+        "matrix_progress": {"cancelled": 0, "failed": 0, "passed": 28, "skipped": 0, "total": 28},
         "mode": "final",
-        "progress": {"cancelled": 0, "completed": 28, "failed": 0, "in_progress": 0, "total": 28},
+        "progress": {
+            "cancelled": 0,
+            "completed": 28,
+            "failed": 0,
+            "in_progress": 0,
+            "passed": 28,
+            "skipped": 0,
+            "total": 28,
+        },
         "updated_at": "2026-06-05T22:00:00Z",
         "workflow_name": "Build Notebooks (pr)",
         "workflow_run_id": 123,

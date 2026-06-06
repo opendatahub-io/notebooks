@@ -145,7 +145,10 @@ def matrix_job_counts(jobs: Sequence[Mapping[str, object]]) -> dict[str, int]:
 def parse_iso8601_timestamp(value: object) -> datetime | None:
     if not isinstance(value, str) or not value:
         return None
-    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=UTC)
     return parsed.astimezone(UTC)

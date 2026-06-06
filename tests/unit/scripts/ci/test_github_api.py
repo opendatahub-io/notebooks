@@ -21,3 +21,8 @@ def test_query_path_encodes_query_string() -> None:
     assert "page=2" in path
     assert "per_page=50" in path
     assert "hello+world" in path
+
+
+def test_gh_api_pages_rejects_non_positive_per_page() -> None:
+    with pytest.raises(ValueError, match="per_page must be a positive integer"):
+        github_api.gh_api_pages("repos/foo/bar/issues", item_key="items", per_page=0)

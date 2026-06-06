@@ -163,7 +163,7 @@ def test_render_failure_comment_combines_deterministic_sections_with_analysis() 
         "### Likely root causes\n1. Likely shared prefetch cleanup problem.\n\n### Suggested next steps\n- Inspect the failing step logs.",
     )
 
-    assert "**14/28 complete** · 1 failed · 12 running" in comment
+    assert "**14/28 complete** · 13 passed · 1 failed · 12 running" in comment
     assert "| Job | Failed step | Link |" in comment
     assert "### Still running" in comment
     assert "Likely shared prefetch cleanup problem." in comment

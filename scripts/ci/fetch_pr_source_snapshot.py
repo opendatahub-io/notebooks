@@ -71,10 +71,23 @@ def extract_snapshot_archive(archive_path: Path, destination: Path) -> tuple[int
     return extracted_files, skipped_entries
 
 
+def resolve_destination_workspace() -> Path:
+    workspace_root = Path(os.environ.get("GITHUB_WORKSPACE", os.getcwd())).resolve()
+    raw_destination = os.environ.get("SOURCE_WORKSPACE", "unsafe-pr-source").strip()
+    if not raw_destination or raw_destination in {".", "/"}:
+        raise SystemExit(f"Invalid SOURCE_WORKSPACE: {raw_destination!r}")
+
+    destination = (workspace_root / raw_destination).resolve()
+    if destination == workspace_root:
+        raise SystemExit("SOURCE_WORKSPACE must not be the workspace root")
+    destination.relative_to(workspace_root)
+    return destination
+
+
 def main() -> None:
     repository = required_env("GITHUB_REPOSITORY")
     head_sha = required_env("PR_HEAD_SHA")
-    destination = Path(os.environ.get("SOURCE_WORKSPACE", "unsafe-pr-source"))
+    destination = resolve_destination_workspace()
     token = os.environ.get("GITHUB_TOKEN", "").strip() or None
 
     shutil.rmtree(destination, ignore_errors=True)
