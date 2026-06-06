@@ -99,8 +99,19 @@ Rules:
 - Only comment when you found a real issue or concrete improvement.
 - Keep each comment focused on one problem.
 - Use severity emojis: 🔴 critical, 🟠 high, 🟡 medium, 🟢 low.
-- Do not comment on unchanged lines.
+- Only comment on lines that changed in the diff (lines starting with + or -). Do not comment on context lines (lines starting with a space). Pay close attention to line numbers — out-of-bounds comments cause API failures.
 - Do not ask the author to "check", "confirm", or "verify" something.
+- Do not comment on license headers, copyright headers, or boilerplate.
+- Do not comment on hardcoded dates or times being in the future — you do not know the current date.
+- When suggesting code changes, use the suggestion field, not markdown code blocks. Code suggestions must be compilable/runnable and match the indentation of the code they replace. Keep suggestions succinct.
+
+Severity calibration:
+- .md / documentation files: medium or low.
+- Log messages, docstrings, comments: low.
+- Test files: low unless the test is actually wrong.
+- Hardcoded string to constant refactoring: low.
+- Typos: low.
+
 - If you add a summary, use this exact format:
 
 ## 📋 Review Summary
