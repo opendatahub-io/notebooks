@@ -8,7 +8,8 @@ import os
 import sys
 from pathlib import Path
 
-from scripts.ci.github_api import gh_api_list_pages, gh_api_pages, gh_api_json
+from scripts.ci.github_api import gh_api_json, gh_api_list_pages, gh_api_pages
+from scripts.ci.patch_excerpt import capped_patch_excerpt
 
 SCRIPTS_CI = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS_CI.parent.parent
@@ -27,19 +28,6 @@ def required_env(name: str) -> str:
     if value:
         return value
     raise SystemExit(f"Missing required environment variable: {name}")
-
-
-def capped_patch_excerpt(patch: str | None, *, max_lines: int = MAX_PATCH_LINES) -> str | None:
-    if not patch:
-        return None
-    lines = patch.splitlines()
-    if len(lines) <= max_lines:
-        return patch
-
-    head_count = max_lines // 2
-    tail_count = max_lines - head_count
-    excerpt = lines[:head_count] + ["..."] + lines[-tail_count:]
-    return "\n".join(excerpt)
 
 
 def affected_image_targets(changed_files: list[str]) -> list[str]:
@@ -97,7 +85,10 @@ def main() -> None:
             {
                 "additions": file_info.get("additions"),
                 "deletions": file_info.get("deletions"),
-                "excerpt": capped_patch_excerpt(file_info.get("patch")),
+                "excerpt": capped_patch_excerpt(
+                    file_info.get("patch") if isinstance(file_info.get("patch"), str) else None,
+                    max_lines=MAX_PATCH_LINES,
+                ),
                 "filename": file_info["filename"],
                 "status": file_info.get("status"),
             }

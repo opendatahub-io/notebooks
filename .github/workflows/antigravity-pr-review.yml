@@ -50,6 +50,8 @@ jobs:
 
       - name: 'Checkout repository'
         uses: 'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd'  # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: 'Setup uv and Python'
         uses: './.github/actions/setup-uv'
@@ -70,13 +72,23 @@ jobs:
       - name: 'Post review failure comment'
         if: |-
           ${{ failure() }}
+        env:
+          PR_NUMBER: '${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
+          REPOSITORY: '${{ github.repository }}'
+          RUN_ID: '${{ github.run_id }}'
+          SERVER_URL: '${{ github.server_url }}'
         uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'  # v7.0.1
         with:
           github-token: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           script: |-
-            github.rest.issues.createComment({
-              owner: '${{ github.repository }}'.split('/')[0],
-              repo: '${{ github.repository }}'.split('/')[1],
-              issue_number: Number('${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'),
-              body: 'There was a problem with the Antigravity PR review. Please check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.',
+            const prNumber = Number(process.env.PR_NUMBER);
+            if (!Number.isInteger(prNumber) || prNumber <= 0) {
+              throw new Error(`Invalid pull request number: ${process.env.PR_NUMBER}`);
+            }
+            const [owner, repo] = process.env.REPOSITORY.split('/');
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: prNumber,
+              body: `There was a problem with the Antigravity PR review. Please check the [workflow logs](${process.env.SERVER_URL}/${process.env.REPOSITORY}/actions/runs/${process.env.RUN_ID}) for details.`,
             })

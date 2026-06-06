@@ -12,6 +12,7 @@ from collections.abc import Mapping, Sequence
 
 from scripts.ci.ci_summary import build_clusters, int_value, marker_for_run, render_progress_comment, utc_now_iso
 from scripts.ci.github_api import gh_api_json, gh_api_list_pages, gh_api_pages, gh_job_log
+from scripts.ci.patch_excerpt import capped_patch_excerpt
 
 MAX_LOG_LINES = 150
 MAX_LOG_CHARS = 12_000
@@ -40,19 +41,6 @@ def required_env(name: str) -> str:
 
 def output_path(env_name: str, default_name: str) -> str:
     return os.environ.get(env_name, default_name)
-
-
-def capped_patch_excerpt(patch: str | None, *, max_lines: int = MAX_PATCH_LINES) -> str | None:
-    if not patch:
-        return None
-    lines = patch.splitlines()
-    if len(lines) <= max_lines:
-        return patch
-
-    head_count = max_lines // 2
-    tail_count = max_lines - head_count
-    excerpt = lines[:head_count] + ["..."] + lines[-tail_count:]
-    return "\n".join(excerpt)
 
 
 def failed_step_name(job: Mapping[str, object]) -> str:
@@ -450,7 +438,10 @@ def pull_request_context(repository: str, pr_number: int) -> dict[str, object]:
             "additions": file_info.get("additions"),
             "deletions": file_info.get("deletions"),
             "filename": file_info.get("filename"),
-            "patch_excerpt": capped_patch_excerpt(file_info.get("patch") if isinstance(file_info.get("patch"), str) else None),
+            "patch_excerpt": capped_patch_excerpt(
+                file_info.get("patch") if isinstance(file_info.get("patch"), str) else None,
+                max_lines=MAX_PATCH_LINES,
+            ),
             "status": file_info.get("status"),
         }
         for file_info in typed_files[:MAX_CHANGED_FILES_WITH_PATCH]
