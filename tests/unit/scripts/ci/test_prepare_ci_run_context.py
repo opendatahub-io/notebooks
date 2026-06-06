@@ -120,10 +120,10 @@ def test_build_context_uses_pull_request_and_trigger_job_name(monkeypatch) -> No
     assert context["mode"] == "failure"
     assert context["matrix_progress"] == {
         "cancelled": 0,
-        "failed": 0,
+        "failed": 1,
         "passed": 0,
         "skipped": 0,
-        "total": 0,
+        "total": 1,
     }
     assert context["pull_request"] == pr_context
     assert context["source_head_sha"] == "abc123"
