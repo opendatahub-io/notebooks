@@ -530,6 +530,8 @@ def main() -> None:
     write_github_output("comment_body_path", comment_body_path)
     write_github_output("context_path", context_path)
     write_github_output("mode", str(context["mode"]))
+    write_github_output("pr_head_sha", str(pr_context["head_sha"]))
+    write_github_output("pr_number", str(pr_context["number"]))
 
     print(json.dumps({"context_path": context_path, "mode": context["mode"]}, sort_keys=True))
 

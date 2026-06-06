@@ -5,17 +5,29 @@ name: '🧠 Antigravity CI Summary'
   workflow_job:
     types:
       - 'completed'
+  workflow_dispatch:
+    inputs:
+      workflow_run_id:
+        description: 'Existing Build Notebooks (pr) workflow run ID to summarize'
+        required: true
+        type: 'string'
+      trigger_job_id:
+        description: 'Optional GitHub Actions job ID to use for last-updated messaging'
+        required: false
+        type: 'string'
 
 concurrency:
-  group: 'ci-summary-${{ github.event.workflow_run.id }}'
+  group: 'ci-summary-${{ github.event.workflow_run.id || github.event.inputs.workflow_run_id || github.run_id }}'
   cancel-in-progress: true
 
 jobs:
   update:
     if: |-
-      github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.name == 'Build Notebooks (pr)' &&
-      github.event.workflow_job.conclusion != 'skipped'
+      github.event_name == 'workflow_dispatch' || (
+        github.event.workflow_run.event == 'pull_request' &&
+        github.event.workflow_run.name == 'Build Notebooks (pr)' &&
+        github.event.workflow_job.conclusion != 'skipped'
+      )
     runs-on: 'ubuntu-latest'
     timeout-minutes: 12
     permissions:
@@ -46,13 +58,29 @@ jobs:
       - name: 'Install from uv.lock (project + dev deps)'
         run: 'uv sync --locked'
 
-      - name: 'Fetch untrusted PR source snapshot'
+      - name: 'Resolve target workflow run'
+        id: 'resolve_target'
         env:
-          GITHUB_REPOSITORY: '${{ github.repository }}'
-          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-          PR_HEAD_SHA: '${{ github.event.workflow_run.head_sha }}'
-          SOURCE_WORKSPACE: 'unsafe-pr-source'
-        run: 'uv run python scripts/ci/fetch_pr_source_snapshot.py'
+          EVENT_NAME: '${{ github.event_name }}'
+          EVENT_TRIGGER_JOB_ID: '${{ github.event.workflow_job.id }}'
+          EVENT_WORKFLOW_RUN_ID: '${{ github.event.workflow_run.id }}'
+          INPUT_TRIGGER_JOB_ID: '${{ github.event.inputs.trigger_job_id }}'
+          INPUT_WORKFLOW_RUN_ID: '${{ github.event.inputs.workflow_run_id }}'
+        run: |-
+          set -euo pipefail
+
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            WORKFLOW_RUN_ID="${INPUT_WORKFLOW_RUN_ID}"
+            TRIGGER_JOB_ID="${INPUT_TRIGGER_JOB_ID}"
+          else
+            WORKFLOW_RUN_ID="${EVENT_WORKFLOW_RUN_ID}"
+            TRIGGER_JOB_ID="${EVENT_TRIGGER_JOB_ID}"
+          fi
+
+          echo "workflow_run_id=${WORKFLOW_RUN_ID}" >> "${GITHUB_OUTPUT}"
+          if [[ -n "${TRIGGER_JOB_ID}" ]]; then
+            echo "trigger_job_id=${TRIGGER_JOB_ID}" >> "${GITHUB_OUTPUT}"
+          fi
 
       - name: 'Prepare CI run context'
         id: 'prep'
@@ -62,9 +90,19 @@ jobs:
           GITHUB_REPOSITORY: '${{ github.repository }}'
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           SOURCE_WORKSPACE: 'unsafe-pr-source'
-          TRIGGER_JOB_ID: '${{ github.event.workflow_job.id }}'
-          WORKFLOW_RUN_ID: '${{ github.event.workflow_run.id }}'
+          TRIGGER_JOB_ID: '${{ steps.resolve_target.outputs.trigger_job_id }}'
+          WORKFLOW_RUN_ID: '${{ steps.resolve_target.outputs.workflow_run_id }}'
         run: 'uv run python scripts/ci/prepare_ci_run_context.py'
+
+      - name: 'Fetch untrusted PR source snapshot'
+        if: |-
+          ${{ steps.prep.outputs.pr_head_sha != '' }}
+        env:
+          GITHUB_REPOSITORY: '${{ github.repository }}'
+          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          PR_HEAD_SHA: '${{ steps.prep.outputs.pr_head_sha }}'
+          SOURCE_WORKSPACE: 'unsafe-pr-source'
+        run: 'uv run python scripts/ci/fetch_pr_source_snapshot.py'
 
       - name: 'Summarize CI run'
         if: |-
