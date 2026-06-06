@@ -170,7 +170,7 @@ endef
 #######################################        Build helpers                 #######################################
 
 # https://stackoverflow.com/questions/78899903/how-to-create-a-make-target-which-is-an-implicit-dependency-for-all-other-target
-skip-init-for := all-images deploy% undeploy% test% validate% refresh-lock-files sync-commit-env-files update-imagestream-annotations refresh-imagestream-metadata scan-image-vulnerabilities print-release
+skip-init-for := all-images deploy% undeploy% test% validate% refresh-lock-files sync-build-args-from-versions sync-commit-env-files update-imagestream-annotations refresh-imagestream-metadata scan-image-vulnerabilities print-release
 ifneq (,$(filter-out $(skip-init-for),$(MAKECMDGOALS) $(.DEFAULT_GOAL)))
 $(SELF): bin/buildinputs
 endif
@@ -427,6 +427,24 @@ refresh-lock-files:
 		export PIP_LOCK_EXTRA_INDEX_URL="$(PIP_EXTRA_INDEX_URL)" && \
 		unset UV_EXTRA_INDEX_URL PIP_EXTRA_INDEX_URL && \
 		uv run scripts/pylocks_generator.py "$(INDEX_MODE)" $(DIR)
+
+# ======================================================================================
+# Sync build-args BASE_IMAGE values from versions_config.yml
+# Usage examples:
+#   gmake sync-build-args-from-versions
+#   gmake sync-build-args-from-versions SYNC_BUILD_ARGS_ARGS=--check
+#   gmake sync-build-args-from-versions SYNC_BUILD_ARGS_ARGS=--dry-run
+# Prerequisites:
+#   - skopeo on PATH (RHDS tag resolution uses skopeo list-tags)
+#   - Registry access for quay.io/aipcc/base-images when syncing RHDS build args
+# ======================================================================================
+SYNC_BUILD_ARGS_ARGS ?=
+.PHONY: sync-build-args-from-versions
+sync-build-args-from-versions:
+	@echo "==================================================================="
+	@echo "🔁 Syncing build-args BASE_IMAGE values from versions_config.yml"
+	@echo "==================================================================="
+	@cd $(ROOT_DIR) && ./uv run scripts/update_build_args_from_versions.py $(SYNC_BUILD_ARGS_ARGS)
 
 # ======================================================================================
 #   gmake update-imagestream-annotations
