@@ -51,6 +51,4 @@ def test_unexpected_tool_calls_returns_only_disallowed_names() -> None:
         tool_calls,
         mcp_github.GITHUB_REVIEW_TOOLS,
         server_name=mcp_github.GITHUB_REVIEW_SERVER_NAME,
-    ) == [
-        "merge_pull_request"
-    ]
+    ) == ["merge_pull_request"]

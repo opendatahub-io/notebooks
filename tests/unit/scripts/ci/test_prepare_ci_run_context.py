@@ -4,10 +4,7 @@ from scripts.ci import prepare_ci_run_context as prepare
 
 
 def test_strip_gh_log_prefix_removes_job_columns_and_timestamp() -> None:
-    line = (
-        "job name\tUNKNOWN STEP\t2026-06-05T17:33:52.4163444Z "
-        "Error: FetchError: exception_name: ClientResponseError"
-    )
+    line = "job name\tUNKNOWN STEP\t2026-06-05T17:33:52.4163444Z Error: FetchError: exception_name: ClientResponseError"
 
     assert prepare.strip_gh_log_prefix(line) == "Error: FetchError: exception_name: ClientResponseError"
 
@@ -48,7 +45,8 @@ def test_progress_counts() -> None:
     }
 
 
-def test_build_context_uses_pull_request_and_trigger_job_name() -> None:
+def test_build_context_uses_pull_request_and_trigger_job_name(monkeypatch) -> None:
+    monkeypatch.setenv("GITHUB_WORKSPACE", "/workspace/notebooks")
     run = {
         "conclusion": None,
         "html_url": "https://example.invalid/run/55",
@@ -75,11 +73,22 @@ def test_build_context_uses_pull_request_and_trigger_job_name() -> None:
             "steps": [{"name": "Build: make jupyter-datascience", "conclusion": "failure", "status": "completed"}],
         },
     ]
+    pr_context = {
+        "base_ref": "main",
+        "body": "description",
+        "changed_files": [{"filename": "foo.py", "patch_excerpt": "@@ diff"}],
+        "changed_files_omitted": 0,
+        "head_ref": "feature",
+        "head_sha": "abc123",
+        "number": 123,
+        "title": "Example PR",
+    }
 
     context = prepare.build_context(
         "owner/repo",
         run,
         jobs,
+        pr_context,
         trigger_job_id=2,
         include_logs=False,
     )
@@ -87,8 +96,40 @@ def test_build_context_uses_pull_request_and_trigger_job_name() -> None:
     assert context["github_repository"] == "owner/repo"
     assert context["pr_number"] == 123
     assert context["mode"] == "failure"
+    assert context["pull_request"] == pr_context
+    assert context["source_workspace"] == "/workspace/notebooks"
     assert context["trigger_job_name"] == "jupyter-datascience · linux/arm64 [odh]"
     assert context["progress"]["failed"] == 1  # type: ignore[index]
+
+
+def test_pull_request_context_caps_patch_and_counts_omitted(monkeypatch) -> None:
+    monkeypatch.setattr(
+        prepare,
+        "gh_api_json",
+        lambda path: {
+            "base": {"ref": "main"},
+            "body": "body",
+            "head": {"ref": "feature", "sha": "abc123"},
+            "title": "Example PR",
+        },
+    )
+    long_patch = "\n".join(f"line {index}" for index in range(100))
+    monkeypatch.setattr(
+        prepare,
+        "gh_api_list_pages",
+        lambda path, timeout=180: [
+            {"filename": "a.py", "status": "modified", "additions": 10, "deletions": 2, "patch": long_patch},
+            {"filename": "b.py", "status": "modified", "additions": 1, "deletions": 0, "patch": "@@ tiny"},
+        ],
+    )
+
+    context = prepare.pull_request_context("owner/repo", 123)
+
+    assert context["number"] == 123
+    assert context["title"] == "Example PR"
+    assert context["changed_files_omitted"] == 0
+    assert context["changed_files"][0]["filename"] == "a.py"  # type: ignore[index]
+    assert context["changed_files"][0]["patch_excerpt"] is not None  # type: ignore[index]
 
 
 def test_failed_step_excerpt_uses_failed_step_window_not_post_failure_dmesg() -> None:
