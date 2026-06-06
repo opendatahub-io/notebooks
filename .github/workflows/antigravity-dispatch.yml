@@ -35,24 +35,24 @@ jobs:
         github.event.issue.pull_request &&
         github.event.sender.type == 'User' &&
         (
-          startsWith(github.event.comment.body || '', '@agy') ||
-          startsWith(github.event.comment.body || '', '@gemini-cli')
+          startsWith(github.event.comment.body || '', '/agy review') ||
+          startsWith(github.event.comment.body || '', '/gemini-cli review')
         ) &&
         contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
       ) || (
         github.event_name == 'pull_request_review_comment' &&
         github.event.sender.type == 'User' &&
         (
-          startsWith(github.event.comment.body || '', '@agy') ||
-          startsWith(github.event.comment.body || '', '@gemini-cli')
+          startsWith(github.event.comment.body || '', '/agy review') ||
+          startsWith(github.event.comment.body || '', '/gemini-cli review')
         ) &&
         contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
       ) || (
         github.event_name == 'pull_request_review' &&
         github.event.sender.type == 'User' &&
         (
-          startsWith(github.event.review.body || '', '@agy') ||
-          startsWith(github.event.review.body || '', '@gemini-cli')
+          startsWith(github.event.review.body || '', '/agy review') ||
+          startsWith(github.event.review.body || '', '/gemini-cli review')
         ) &&
         contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.review.author_association)
       )
@@ -76,8 +76,8 @@ jobs:
           script: |
             const commentBody = process.env.COMMENT_BODY || '';
             const eventType = process.env.EVENT_TYPE;
-            const botPrefixes = ['@agy', '@gemini-cli'];
-            const botPrefix = botPrefixes.find((prefix) => commentBody.startsWith(prefix));
+            const reviewCommands = ['/agy review', '/gemini-cli review'];
+            const matchedCommand = reviewCommands.find((command) => commentBody.startsWith(command));
             const pullRequestNumber = process.env.PULL_REQUEST_NUMBER || process.env.ISSUE_NUMBER || '';
 
             core.setOutput('pull_request_number', pullRequestNumber);
@@ -88,11 +88,11 @@ jobs:
               return;
             }
 
-            if (botPrefix && commentBody.startsWith(`${botPrefix} /review`)) {
+            if (matchedCommand) {
               core.setOutput('command', 'review');
               core.setOutput(
                 'additional_context',
-                commentBody.replace(new RegExp(`^${botPrefix} /review`), '').trim(),
+                commentBody.slice(matchedCommand.length).trim(),
               );
               return;
             }
