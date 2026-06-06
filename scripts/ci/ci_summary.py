@@ -95,19 +95,25 @@ def build_clusters(failed_jobs: Sequence[Mapping[str, object]]) -> list[dict[str
 def summarize_progress(progress: Mapping[str, int]) -> str:
     total = progress.get("total", 0)
     completed = progress.get("completed", 0)
+    passed = progress.get("passed", 0)
     failed = progress.get("failed", 0)
     running = progress.get("in_progress", 0)
     cancelled = progress.get("cancelled", 0)
+    skipped = progress.get("skipped", 0)
 
     summary = f"**{completed}/{total} complete**"
+    if passed:
+        summary += f" · {passed} passed"
     if failed:
         summary += f" · {failed} failed"
+    if skipped:
+        summary += f" · {skipped} skipped"
     if running:
         summary += f" · {running} running"
     if cancelled:
         summary += f" · {cancelled} cancelled"
-    if not failed and not running and not cancelled and completed == total:
-        summary = f"**{completed}/{total} passed**"
+    if not failed and not running and not cancelled and completed == total and not skipped:
+        summary = f"**{passed}/{total} passed**"
     return summary
 
 
@@ -206,15 +212,33 @@ def render_final_success_comment(context: Mapping[str, object]) -> str:
     progress = context["progress"]
     if not isinstance(progress, Mapping):
         raise TypeError("context['progress'] must be a mapping")
+    matrix_progress = context.get("matrix_progress", {})
+    if not isinstance(matrix_progress, Mapping):
+        raise TypeError("context['matrix_progress'] must be a mapping")
 
     updated_at = str(context.get("updated_at", utc_now_iso()))
+    skipped = int(progress.get("skipped", 0))
+    passed = int(progress.get("passed", 0))
+    matrix_total = int(matrix_progress.get("total", 0))
+    matrix_skipped = int(matrix_progress.get("skipped", 0))
+    matrix_passed = int(matrix_progress.get("passed", 0))
+
+    if matrix_total > 0 and matrix_skipped == matrix_total and matrix_passed == 0:
+        final_line = "_No workbench image jobs ran; all matrix jobs were skipped._"
+    elif skipped:
+        final_line = "_Workflow completed with skipped jobs._"
+    elif passed == 0:
+        final_line = "_Workflow completed without any passing jobs._"
+    else:
+        final_line = "_All matrix jobs completed successfully._"
+
     lines = [
         "## CI status [antigravity]",
         "",
         f"**Run:** [{workflow_name} #{run_id}]({run_url}) — {summarize_progress(progress)}",
         f"_Last updated: {updated_at}_",
         "",
-        "_All matrix jobs completed successfully._",
+        final_line,
         "",
         marker_for_run(run_id, failed_jobs=int(progress.get("failed", 0)), updated_at=updated_at),
     ]
