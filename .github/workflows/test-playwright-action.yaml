@@ -127,4 +127,5 @@ jobs:
           podman-socket: /var/run/podman/podman.sock
           upload-report: 'true'
           artifact-name: playwright-action-test-report
+          junit-artifact-file: playwright-action-test-junit.xml
           grep-pattern: '@codeserver'
