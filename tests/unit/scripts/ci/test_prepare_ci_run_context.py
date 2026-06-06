@@ -89,6 +89,8 @@ def test_build_context_uses_pull_request_and_trigger_job_name(monkeypatch) -> No
         run,
         jobs,
         pr_context,
+        123,
+        "abc123",
         trigger_job_id=2,
         include_logs=False,
     )
@@ -97,9 +99,49 @@ def test_build_context_uses_pull_request_and_trigger_job_name(monkeypatch) -> No
     assert context["pr_number"] == 123
     assert context["mode"] == "failure"
     assert context["pull_request"] == pr_context
+    assert context["source_head_sha"] == "abc123"
     assert context["source_workspace"] == "/workspace/notebooks"
     assert context["trigger_job_name"] == "jupyter-datascience · linux/arm64 [odh]"
     assert context["progress"]["failed"] == 1  # type: ignore[index]
+
+
+def test_build_context_allows_push_runs_without_pull_request(monkeypatch) -> None:
+    monkeypatch.setenv("GITHUB_WORKSPACE", "/workspace/notebooks")
+    run = {
+        "conclusion": "failure",
+        "event": "push",
+        "head_sha": "deadbeef",
+        "html_url": "https://example.invalid/run/56",
+        "id": 56,
+        "name": "Build Notebooks (push)",
+        "pull_requests": [],
+        "status": "completed",
+    }
+    jobs = [
+        {
+            "conclusion": "failure",
+            "html_url": "https://example.invalid/job/1",
+            "id": 1,
+            "name": "build job",
+            "status": "completed",
+            "steps": [{"name": "Build: make image", "conclusion": "failure", "status": "completed"}],
+        }
+    ]
+
+    context = prepare.build_context(
+        "owner/repo",
+        run,
+        jobs,
+        {},
+        None,
+        "deadbeef",
+        trigger_job_id=None,
+        include_logs=False,
+    )
+
+    assert context["pr_number"] is None
+    assert context["pull_request"] == {}
+    assert context["source_head_sha"] == "deadbeef"
 
 
 def test_pull_request_context_caps_patch_and_counts_omitted(monkeypatch) -> None:

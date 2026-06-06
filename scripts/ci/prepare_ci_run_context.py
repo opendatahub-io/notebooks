@@ -438,6 +438,8 @@ def build_context(
     run: Mapping[str, object],
     jobs: Sequence[Mapping[str, object]],
     pr_context: Mapping[str, object],
+    pull_request_number: int | None,
+    source_head_sha: str,
     *,
     trigger_job_id: int | None,
     include_logs: bool,
@@ -462,11 +464,6 @@ def build_context(
                 trigger_job_name = str(job.get("name", trigger_job_name))
                 break
 
-    pull_requests = run.get("pull_requests", [])
-    if not isinstance(pull_requests, list) or not pull_requests:
-        raise SystemExit("Workflow run has no associated pull request; summary workflow only supports PR runs")
-
-    pull_request_number = int(pull_requests[0]["number"])
     updated_at = utc_now_iso()
     context: dict[str, object] = {
         "comment_marker": marker_for_run(run_id, failed_jobs=progress["failed"], updated_at=updated_at),
@@ -480,6 +477,7 @@ def build_context(
         "pull_request": dict(pr_context),
         "run_conclusion": run_conclusion,
         "run_status": run_status,
+        "source_head_sha": source_head_sha,
         "source_workspace": os.environ.get("SOURCE_WORKSPACE", os.environ.get("GITHUB_WORKSPACE", os.getcwd())),
         "trigger_job_id": trigger_job_id,
         "trigger_job_name": trigger_job_name,
@@ -506,10 +504,13 @@ def main() -> None:
         raise SystemExit("Expected workflow jobs response to contain JSON objects")
 
     pull_requests = run.get("pull_requests", [])
-    if not isinstance(pull_requests, list) or not pull_requests:
-        raise SystemExit("Workflow run has no associated pull request; summary workflow only supports PR runs")
-    pr_number = int(pull_requests[0]["number"])
-    pr_context = pull_request_context(repository, pr_number)
+    if isinstance(pull_requests, list) and pull_requests:
+        pull_request_number = int(pull_requests[0]["number"])
+        pr_context = pull_request_context(repository, pull_request_number)
+    else:
+        pull_request_number = None
+        pr_context = {}
+    source_head_sha = str(pr_context.get("head_sha") or run.get("head_sha") or "")
 
     progress = progress_counts(jobs)  # type: ignore[arg-type]
     include_logs = run_mode(str(run.get("status", "")), run.get("conclusion"), progress["failed"]) != "progress"
@@ -518,6 +519,8 @@ def main() -> None:
         run,
         jobs,  # type: ignore[arg-type]
         pr_context,
+        pull_request_number,
+        source_head_sha,
         trigger_job_id=trigger_job_id,
         include_logs=include_logs,
     )
@@ -529,9 +532,11 @@ def main() -> None:
 
     write_github_output("comment_body_path", comment_body_path)
     write_github_output("context_path", context_path)
+    write_github_output("has_pr", "true" if pull_request_number is not None else "false")
     write_github_output("mode", str(context["mode"]))
-    write_github_output("pr_head_sha", str(pr_context["head_sha"]))
-    write_github_output("pr_number", str(pr_context["number"]))
+    write_github_output("source_head_sha", source_head_sha)
+    if pull_request_number is not None:
+        write_github_output("pr_number", str(pull_request_number))
 
     print(json.dumps({"context_path": context_path, "mode": context["mode"]}, sort_keys=True))
 

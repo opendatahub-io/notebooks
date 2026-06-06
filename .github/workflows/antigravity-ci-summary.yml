@@ -2,7 +2,10 @@
 name: '🧠 Antigravity CI Summary'
 
 "on":
-  workflow_job:
+  workflow_run:
+    workflows:
+      - 'Build Notebooks (pr)'
+      - 'Build Notebooks (push)'
     types:
       - 'completed'
   workflow_dispatch:
@@ -24,9 +27,10 @@ jobs:
   update:
     if: |-
       github.event_name == 'workflow_dispatch' || (
-        github.event.workflow_run.event == 'pull_request' &&
-        github.event.workflow_run.name == 'Build Notebooks (pr)' &&
-        github.event.workflow_job.conclusion != 'skipped'
+        github.event.workflow_run.event == 'push' || (
+          github.event.workflow_run.event == 'pull_request' &&
+          github.event.workflow_run.head_repository.full_name == github.repository
+        )
       )
     runs-on: 'ubuntu-latest'
     timeout-minutes: 12
@@ -62,7 +66,6 @@ jobs:
         id: 'resolve_target'
         env:
           EVENT_NAME: '${{ github.event_name }}'
-          EVENT_TRIGGER_JOB_ID: '${{ github.event.workflow_job.id }}'
           EVENT_WORKFLOW_RUN_ID: '${{ github.event.workflow_run.id }}'
           INPUT_TRIGGER_JOB_ID: '${{ github.event.inputs.trigger_job_id }}'
           INPUT_WORKFLOW_RUN_ID: '${{ github.event.inputs.workflow_run_id }}'
@@ -74,7 +77,7 @@ jobs:
             TRIGGER_JOB_ID="${INPUT_TRIGGER_JOB_ID}"
           else
             WORKFLOW_RUN_ID="${EVENT_WORKFLOW_RUN_ID}"
-            TRIGGER_JOB_ID="${EVENT_TRIGGER_JOB_ID}"
+            TRIGGER_JOB_ID=""
           fi
 
           echo "workflow_run_id=${WORKFLOW_RUN_ID}" >> "${GITHUB_OUTPUT}"
@@ -96,11 +99,11 @@ jobs:
 
       - name: 'Fetch untrusted PR source snapshot'
         if: |-
-          ${{ steps.prep.outputs.pr_head_sha != '' }}
+          ${{ steps.prep.outputs.source_head_sha != '' }}
         env:
           GITHUB_REPOSITORY: '${{ github.repository }}'
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-          PR_HEAD_SHA: '${{ steps.prep.outputs.pr_head_sha }}'
+          PR_HEAD_SHA: '${{ steps.prep.outputs.source_head_sha }}'
           SOURCE_WORKSPACE: 'unsafe-pr-source'
         run: 'uv run python scripts/ci/fetch_pr_source_snapshot.py'
 
@@ -119,8 +122,15 @@ jobs:
         run: 'uv run python scripts/ci/summarize_ci_run.py'
 
       - name: 'Upsert CI summary comment'
+        if: |-
+          ${{ steps.prep.outputs.has_pr == 'true' }}
         env:
           COMMENT_BODY_PATH: 'ci-comment-body.md'
           CI_RUN_CONTEXT_PATH: 'ci-run-context.json'
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
         run: 'uv run python scripts/ci/upsert_ci_comment.py'
+
+      - name: 'Publish CI summary to workflow summary'
+        if: |-
+          ${{ steps.prep.outputs.has_pr != 'true' }}
+        run: 'cat ci-comment-body.md >> "$GITHUB_STEP_SUMMARY"'
