@@ -35,7 +35,7 @@ odh-notebooks-meta-jupyterlab-datascience-deps = { path = "../../../../dependenc
 
 [tool.uv]
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]
 override-dependencies = [
     # RHAIENG-2458: urllib3>=2.7.0 — CVE-2026-44431, CVE-2026-44432 (2.7.0); CVE-2025-66418 (2.6.0)
