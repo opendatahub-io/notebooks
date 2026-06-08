@@ -439,12 +439,15 @@ refresh-lock-files:
 #   - Registry access for quay.io/aipcc/base-images when syncing RHDS build args
 # ======================================================================================
 SYNC_BUILD_ARGS_ARGS ?=
+SYNC_BUILD_ARGS_ALLOWED := --dry-run --check
+SYNC_BUILD_ARGS_INVALID := $(strip $(filter-out $(SYNC_BUILD_ARGS_ALLOWED),$(value SYNC_BUILD_ARGS_ARGS)))
 .PHONY: sync-build-args-from-versions
 sync-build-args-from-versions:
+	$(if $(SYNC_BUILD_ARGS_INVALID),$(error Invalid SYNC_BUILD_ARGS_ARGS token(s): $(SYNC_BUILD_ARGS_INVALID) (allowed: $(SYNC_BUILD_ARGS_ALLOWED))))
 	@echo "==================================================================="
 	@echo "🔁 Syncing build-args BASE_IMAGE values from versions_config.yml"
 	@echo "==================================================================="
-	@cd $(ROOT_DIR) && ./uv run scripts/update_build_args_from_versions.py $(SYNC_BUILD_ARGS_ARGS)
+	@cd "$(ROOT_DIR)" && ./uv run scripts/update_build_args_from_versions.py $(value SYNC_BUILD_ARGS_ARGS)
 
 # ======================================================================================
 #   gmake update-imagestream-annotations

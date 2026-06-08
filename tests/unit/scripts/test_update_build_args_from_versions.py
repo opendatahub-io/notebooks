@@ -321,7 +321,7 @@ def test_load_versions_config_rejects_invalid_rhds_channel(tmp_path: Path) -> No
         ],
     )
 
-    with pytest.raises(ValueError, match="rhds.*channel"):
+    with pytest.raises(ValueError, match=r"rhds.*channel"):
         updater.load_versions_config(config)
 
 
@@ -389,7 +389,7 @@ def test_load_versions_config_rejects_invalid_odh_origin(tmp_path: Path) -> None
         ],
     )
 
-    with pytest.raises(ValueError, match="odh.*origin"):
+    with pytest.raises(ValueError, match=r"odh.*origin"):
         updater.load_versions_config(config)
 
 
@@ -406,7 +406,7 @@ def test_load_versions_config_rejects_non_latest_cpu_odh_version(tmp_path: Path)
         ],
     )
 
-    with pytest.raises(ValueError, match="cpu.*version.*latest"):
+    with pytest.raises(ValueError, match=r"cpu.*version.*latest"):
         updater.load_versions_config(config)
 
 
@@ -540,7 +540,7 @@ def test_resolve_latest_published_rhds_image_rollback_raises_when_release_is_unp
 
     monkeypatch.setattr(updater.subprocess, "run", lambda *args, **kwargs: Completed())
 
-    with pytest.raises(ValueError, match="release '3.4.0'"):
+    with pytest.raises(ValueError, match=r"release '3.4.0'"):
         updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cpu:3.4.0-0")
 
 
@@ -557,9 +557,7 @@ def test_resolve_latest_published_rhds_image_raises_on_skopeo_failure(
     monkeypatch.setattr(updater.subprocess, "run", lambda *args, **kwargs: Completed())
 
     with pytest.raises(ValueError, match="skopeo list-tags failed"):
-        updater.resolve_latest_published_rhds_image(
-            "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777000000"
-        )
+        updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777000000")
 
 
 def test_resolve_latest_published_rhds_image_raises_when_skopeo_missing(
@@ -573,9 +571,7 @@ def test_resolve_latest_published_rhds_image_raises_when_skopeo_missing(
     monkeypatch.setattr(updater.subprocess, "run", raise_missing)
 
     with pytest.raises(ValueError, match="skopeo is required"):
-        updater.resolve_latest_published_rhds_image(
-            "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777000000"
-        )
+        updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777000000")
 
 
 def test_plan_updates_caches_rhds_tag_listing_per_repository(
@@ -905,7 +901,9 @@ def test_plan_updates_uses_highest_published_phase_for_new_release_when_ga_missi
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == "BASE_IMAGE=quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1777919999"
+    assert (
+        updates[0].updated_text.strip() == "BASE_IMAGE=quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1777919999"
+    )
 
 
 def test_plan_updates_stable_to_fast_forward_uses_highest_published_phase_for_new_release(
@@ -922,8 +920,7 @@ def test_plan_updates_stable_to_fast_forward_uses_highest_published_phase_for_ne
     class Completed:
         returncode = 0
         stdout = (
-            '{"Repository":"quay.io/aipcc/base-images/cpu","Tags":'
-            '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999"]}'
+            '{"Repository":"quay.io/aipcc/base-images/cpu","Tags":["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999"]}'
         )
         stderr = ""
 
@@ -950,10 +947,7 @@ def test_plan_updates_new_release_without_published_tags_keeps_strict_failure(
 
     class Completed:
         returncode = 0
-        stdout = (
-            '{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":'
-            '["3.4.0-ea.2-1777919771"]}'
-        )
+        stdout = '{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":["3.4.0-ea.2-1777919771"]}'
         stderr = ""
 
     monkeypatch.setattr(updater.subprocess, "run", lambda *args, **kwargs: Completed())
@@ -988,7 +982,9 @@ def test_plan_updates_builds_fast_rhds_candidate_before_latest_resolution(
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
     assert seen == ["quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777919771"]
-    assert updates[0].updated_text.strip() == "BASE_IMAGE=quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777929999"
+    assert (
+        updates[0].updated_text.strip() == "BASE_IMAGE=quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777929999"
+    )
 
 
 def test_plan_updates_rollback_targets_ga_family_for_older_release(
