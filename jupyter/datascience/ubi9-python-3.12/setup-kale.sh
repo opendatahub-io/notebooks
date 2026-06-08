@@ -33,3 +33,7 @@ fi
 # Set environment variables for KFP authentication
 export KF_PIPELINES_SA_TOKEN_PATH="/var/run/secrets/kubernetes.io/serviceaccount/token"
 export KF_PIPELINES_SSL_SA_CERTS="${KF_PIPELINES_SSL_SA_CERTS:-/var/run/secrets/kubernetes.io/serviceaccount/ca.crt}"
+
+# Configure Kale security context settings
+# Disable security context enforcement (leave RUN_AS_USER and RUN_AS_GROUP undefined)
+export KALE_SECURITY_CONTEXT_ENABLED=false
