@@ -36,10 +36,10 @@ from packaging.markers import Marker
 
 OUT_DIR = Path("cachi2/output/deps/pip")
 PYPI_JSON = "https://pypi.org/pypi/{name}/{version}/json"
-# 20 workers balances throughput vs Akamai burst rate-limiting on packages.redhat.com.
-# uv uses 50 by default (astral-sh/uv#10570 discusses reducing to 20 for stability).
+# 8 workers balances throughput vs Akamai burst rate-limiting on packages.redhat.com.
+# uv uses 50 by default (astral-sh/uv#10570 discusses reducing to 8 for stability).
 # At 10: stable 22s, at 20: 13s, at 50: 12s but high variance (Akamai throttling).
-MAX_WORKERS = 20
+MAX_WORKERS = 8
 # wget --timeout sets dns/connect/read idle timeouts (not total transfer time).
 # Large wheels (e.g. torch >1GB) need a generous read idle window on slow links.
 WGET_NETWORK_TIMEOUT_SECONDS = 300
