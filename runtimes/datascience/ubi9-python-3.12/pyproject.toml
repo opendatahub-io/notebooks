@@ -21,7 +21,7 @@ dependencies = [
 
 [tool.uv]
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]
 override-dependencies = [
     # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x

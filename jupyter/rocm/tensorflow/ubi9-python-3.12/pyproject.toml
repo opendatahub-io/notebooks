@@ -35,9 +35,7 @@ override-dependencies = [
 ]
 
 environments = [
-    # Keep this explicit upper bound: with `uv pip compile --universal`, transitive
-    # markers can still create a >=3.13 split, and tensorflow-rocm is cp312-only.
-    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version < '3.13'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]
 
 [tool.uv.sources]

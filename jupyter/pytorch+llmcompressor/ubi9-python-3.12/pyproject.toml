@@ -57,7 +57,7 @@ odh-notebooks-meta-jupyterlab-datascience-deps = { path = "../../../dependencies
 [tool.uv]
 
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]
 
 # May at some point these or some of these dependencies need to be remove as they will autoheal
