@@ -26,7 +26,8 @@ if [ "$(ls -A /opt/app-root/runtimes/ 2>/dev/null)" ]; then
   if [ -n "$ELYRA_RUNTIME_CONFIG" ] && [ -f "$ELYRA_RUNTIME_CONFIG" ]; then
     # Configure Kale KFP server connection by mapping Elyra config to Kale config
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    python3 "${SCRIPT_DIR}/utils/configure_kale_from_elyra.py"
+    export ELYRA_RUNTIME_CONFIG
+    python3 "${SCRIPT_DIR}/configure_kale_from_elyra.py"
   fi
 fi
 
@@ -37,3 +38,6 @@ export KF_PIPELINES_SSL_SA_CERTS="${KF_PIPELINES_SSL_SA_CERTS:-/var/run/secrets/
 # Configure Kale security context settings
 # Disable security context enforcement (leave RUN_AS_USER and RUN_AS_GROUP undefined)
 export KALE_SECURITY_CONTEXT_ENABLED=false
+
+# Set default image
+export KALE_DFAULT_BASE_IMAGE=ubi9/python-312
