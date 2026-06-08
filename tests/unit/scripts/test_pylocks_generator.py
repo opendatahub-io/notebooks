@@ -132,7 +132,7 @@ class TestEnsureJsonFormatParam:
         )
 
     def test_real_aipcc_url(self) -> None:
-        url = "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/"
+        url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/"
         result = pg.ensure_json_format_param(url)
         assert result == url + "?format=json"
         assert pg.ensure_json_format_param(result) == result
@@ -152,13 +152,13 @@ def test_get_index_flags_uses_konflux_conf(
     monkeypatch.setattr(
         resolver,
         "index_url_exists",
-        lambda url: url == "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/",
+        lambda url: url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/",
     )
 
     flags = pg.get_index_flags(project_dir, "cpu", pg.LogBuffer())
 
     assert flags == [
-        "--default-index=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/?format=json",
+        "--default-index=https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/?format=json",
     ]
 
 
@@ -183,7 +183,7 @@ def test_get_index_flags_falls_back_to_test_index(
     flags = pg.get_index_flags(project_dir, "cpu", pg.LogBuffer())
 
     assert flags == [
-        "--default-index=https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/?format=json",
+        "--default-index=https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/?format=json",
     ]
 
 

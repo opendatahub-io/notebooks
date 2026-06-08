@@ -31,6 +31,9 @@ override-dependencies = [
     "urllib3>=2.7.0",
     # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
     "protobuf==6.31.1",
+    # Required to avoid the psutil conflict: jupyter-resource-usage < 1.2 -> psutil < 6
+    # ipython 9.x -> psutil >= 7
+    "jupyter-resource-usage>=1.2",
 ]
 
 [tool.uv.sources]

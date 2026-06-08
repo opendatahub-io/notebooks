@@ -39,6 +39,9 @@ override-dependencies = [
     # AIPCC-13675: https://redhat.atlassian.net/browse/AIPCC-13675
     # https://github.com/tensorflow/tensorflow/blob/r2.21/requirements_lock_3_12.txt#L552
     "protobuf==6.31.1",
+    # Required to avoid the psutil conflict: jupyter-resource-usage < 1.2 -> psutil < 6
+    # ipython 9.x -> psutil >= 7
+    "jupyter-resource-usage>=1.2",
 ]
 
 environments = [

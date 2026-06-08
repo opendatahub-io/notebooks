@@ -13,7 +13,7 @@ from urllib.request import Request, urlopen
 
 import typer
 
-RHOAI_INDEX_ROOT = "https://console.redhat.com/api/pypi/public-rhai/rhoai"
+RHOAI_INDEX_ROOT = "https://packages.redhat.com/api/pypi/public-rhai/rhoai"
 INDEX_CHECK_TIMEOUT_SECONDS = 5.0
 
 

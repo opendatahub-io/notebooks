@@ -56,6 +56,12 @@ override-dependencies = [
     # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
     "protobuf==6.31.1",
     "pandas>=3.0.1",
+    # Required to avoid the psutil conflict: jupyter-resource-usage < 1.2 -> psutil < 6
+    # ipython 9.x -> psutil >= 7
+    "jupyter-resource-usage>=1.2",
+    # Loosen odh-elyra's click==8.1.8 pin so huggingface-hub 1.x can resolve
+    "click>=8.4,<9",
+
 ]
 
 [tool.uv.sources]
