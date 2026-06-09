@@ -332,7 +332,9 @@ def normalize_gpu_flavor_config(
     release: ReleaseConfig,
 ) -> tuple[dict[str, Any], str]:
     context = f"root.artifacts.base_image.{accelerator}.{flavor}"
-    mapping = validate_expected_mapping_keys(flavor_policy, {"acc_version", "rhds", "odh"}, context, required_keys={"rhds", "odh"})
+    mapping = validate_expected_mapping_keys(
+        flavor_policy, {"acc_version", "rhds", "odh"}, context, required_keys={"rhds", "odh"}
+    )
 
     rhds_policy = mapping["rhds"]
     odh_policy = mapping["odh"]
@@ -367,7 +369,9 @@ def normalize_gpu_flavor_config(
         ]
         if "acc_version" in normalized_rhds:
             shared_versions.append(
-                validate_version_value(normalized_rhds["acc_version"], release, f"{context}.rhds.acc_version", "acc_version")
+                validate_version_value(
+                    normalized_rhds["acc_version"], release, f"{context}.rhds.acc_version", "acc_version"
+                )
             )
 
         normalized_versions = {normalize_stream_version(version) for version in shared_versions}
@@ -390,7 +394,9 @@ def normalize_gpu_flavor_config(
             "acc_version",
         )
         if normalize_stream_version(distribution_version) != shared_version_normalized:
-            raise ValueError(f"Nested {distribution} acc_version at {context}.{distribution} must match shared acc_version")
+            raise ValueError(
+                f"Nested {distribution} acc_version at {context}.{distribution} must match shared acc_version"
+            )
 
     if scalar_to_string(normalized_rhds.get("channel", "")) == "fast":
         normalized_rhds["acc_version"] = shared_version
@@ -594,11 +600,15 @@ def extract_image_labels(config_payload: dict[str, Any]) -> dict[str, str]:
     if isinstance(config, dict):
         config_labels = config.get("Labels")
         if isinstance(config_labels, dict):
-            labels.update({key: value for key, value in config_labels.items() if isinstance(key, str) and isinstance(value, str)})
+            labels.update(
+                {key: value for key, value in config_labels.items() if isinstance(key, str) and isinstance(value, str)}
+            )
 
     root_labels = config_payload.get("Labels")
     if isinstance(root_labels, dict):
-        labels.update({key: value for key, value in root_labels.items() if isinstance(key, str) and isinstance(value, str)})
+        labels.update(
+            {key: value for key, value in root_labels.items() if isinstance(key, str) and isinstance(value, str)}
+        )
     return labels
 
 
@@ -790,13 +800,14 @@ def determine_highest_published_rhds_phase_for_release(
 def select_rhds_forward_phase(
     accelerator: str,
     version: str,
+    release_version: str,
     release: ReleaseConfig,
     tag_cache: dict[str, tuple[str, ...]],
 ) -> str | None:
     repository = build_rhds_pinned_repository(accelerator, version, release)
     return determine_highest_published_rhds_phase_for_release(
         repository,
-        release.full_version,
+        release_version,
         tag_cache,
     )
 
@@ -885,10 +896,10 @@ def rank_rhds_phase(phase: str | None) -> int:
     return int(phase.removeprefix("ea."))
 
 
-def build_rhds_seed_tag(release: ReleaseConfig, phase: str | None) -> str:
+def build_rhds_seed_tag(release_version: str, phase: str | None) -> str:
     if phase is None:
-        return f"{release.full_version}-0"
-    return f"{release.full_version}-{phase}-0"
+        return f"{release_version}-0"
+    return f"{release_version}-{phase}-0"
 
 
 def determine_rhds_fast_bundle_phase(
@@ -923,7 +934,7 @@ def determine_rhds_fast_bundle_phase(
 
 def build_rhds_pinned_tag(
     current_tag: str,
-    release: ReleaseConfig,
+    target_release_version: str,
     *,
     use_bundle_phase: bool = False,
     bundle_phase: str | None = None,
@@ -934,7 +945,7 @@ def build_rhds_pinned_tag(
         raise ValueError(f"Unsupported RHDS BASE_IMAGE tag: {current_tag}")
 
     current_version = parse_release_version(match.group("version"))
-    target_version = parse_release_version(release.full_version)
+    target_version = parse_release_version(target_release_version)
     build = match.group("build")
 
     # Phase precedence: rollback -> same-release bundle -> forward-discovered
@@ -949,14 +960,15 @@ def build_rhds_pinned_tag(
         phase = match.group("phase")
 
     if phase is None:
-        return f"{release.full_version}-{build}"
-    return f"{release.full_version}-{phase}-{build}"
+        return f"{target_release_version}-{build}"
+    return f"{target_release_version}-{phase}-{build}"
 
 
 def build_rhds_pinned_image(
     accelerator: str,
     version: str,
     current_base_image: str,
+    target_release_version: str,
     release: ReleaseConfig,
     *,
     use_bundle_phase: bool = False,
@@ -965,9 +977,7 @@ def build_rhds_pinned_image(
 ) -> str:
     _current_name, current_tag = split_image_ref(current_base_image)
     repository = build_rhds_pinned_repository(accelerator, version, release)
-    return (
-        f"{repository}:{build_rhds_pinned_tag(current_tag, release, use_bundle_phase=use_bundle_phase, bundle_phase=bundle_phase, forward_phase=forward_phase)}"
-    )
+    return f"{repository}:{build_rhds_pinned_tag(current_tag, target_release_version, use_bundle_phase=use_bundle_phase, bundle_phase=bundle_phase, forward_phase=forward_phase)}"
 
 
 def build_rhds_stable_image(accelerator: str, release: ReleaseConfig) -> str:
@@ -997,6 +1007,14 @@ def build_odh_midstream_image(accelerator: str, version: str, release: ReleaseCo
     return f"quay.io/opendatahub/odh-midstream-{accelerator}-base-{normalized_version}:latest"
 
 
+def target_rhds_release_version(target: ConfTarget, policy: BaseImagePolicy, release: ReleaseConfig) -> str:
+    if target.distribution != "rhds":
+        raise ValueError(f"Unsupported distribution in {target.path}: {target.distribution}")
+    if target.accelerator == "cpu" and policy.version is not None:
+        return policy.version
+    return release.full_version
+
+
 def build_target_base_image(
     state: TargetState,
     release: ReleaseConfig,
@@ -1022,35 +1040,39 @@ def build_target_base_image(
         if policy.version is None:
             raise ValueError(f"Missing {policy_version_key(target.accelerator)} for rhds fast channel in {target.path}")
 
+        target_release_version = target_rhds_release_version(target, policy, release)
+        use_release_bundle_phase = target_release_version == release.full_version
         _current_repository, current_tag = split_image_ref(current_base_image)
         if RHDS_TAG_RE.fullmatch(current_tag) is None:
             repository = build_rhds_pinned_repository(target.accelerator, policy.version, release)
             if MIDSTREAM_VERSION_RE.fullmatch(current_tag):
                 current_minor = parse_minor_version(current_tag)
-                target_minor = parse_minor_version(release_minor_version(release.full_version))
+                target_minor = parse_minor_version(release_minor_version(target_release_version))
                 if current_minor > target_minor:
                     seed_phase = None
                 elif current_minor < target_minor:
                     seed_phase = select_rhds_forward_phase(
                         target.accelerator,
                         policy.version,
+                        target_release_version,
                         release,
                         tag_cache,
                     )
                 else:
-                    seed_phase = rhds_bundle_phase if rhds_bundle_phase_known else "ea.1"
+                    seed_phase = rhds_bundle_phase if rhds_bundle_phase_known and use_release_bundle_phase else "ea.1"
             else:
-                seed_phase = rhds_bundle_phase if rhds_bundle_phase_known else "ea.1"
-            candidate = f"{repository}:{build_rhds_seed_tag(release, seed_phase)}"
+                seed_phase = rhds_bundle_phase if rhds_bundle_phase_known and use_release_bundle_phase else "ea.1"
+            candidate = f"{repository}:{build_rhds_seed_tag(target_release_version, seed_phase)}"
         else:
             current_match = RHDS_TAG_RE.fullmatch(current_tag)
             forward_phase: str | None | object = _FORWARD_PHASE_UNSET
             current_version = parse_release_version(current_match.group("version"))
-            target_version = parse_release_version(release.full_version)
+            target_version = parse_release_version(target_release_version)
             if target_version > current_version:
                 forward_phase = select_rhds_forward_phase(
                     target.accelerator,
                     policy.version,
+                    target_release_version,
                     release,
                     tag_cache,
                 )
@@ -1058,8 +1080,11 @@ def build_target_base_image(
                 target.accelerator,
                 policy.version,
                 current_base_image,
+                target_release_version,
                 release,
-                use_bundle_phase=rhds_bundle_phase_known and target_version == current_version,
+                use_bundle_phase=rhds_bundle_phase_known
+                and use_release_bundle_phase
+                and target_version == current_version,
                 bundle_phase=rhds_bundle_phase,
                 forward_phase=forward_phase,
             )
@@ -1119,7 +1144,9 @@ def rewrite_makefile_text(text: str, replacements: dict[str, str]) -> str:
     lines = text.splitlines(keepends=True)
     found_keys: set[str] = set()
     rewritten_lines: list[str] = []
-    assignment_re = re.compile(r"^(?P<leading>\s*)(?P<key>[A-Za-z_][A-Za-z0-9_]*)(?P<separator>\s*\?=\s*)(?P<value>.*)$")
+    assignment_re = re.compile(
+        r"^(?P<leading>\s*)(?P<key>[A-Za-z_][A-Za-z0-9_]*)(?P<separator>\s*\?=\s*)(?P<value>.*)$"
+    )
 
     for line in lines:
         line_ending = "\n" if line.endswith("\n") else ""
@@ -1141,7 +1168,9 @@ def rewrite_makefile_text(text: str, replacements: dict[str, str]) -> str:
     return "".join(rewritten_lines)
 
 
-def build_conf_replacements(assignments: dict[str, str], resolved_base_image: str, release: ReleaseConfig) -> dict[str, str]:
+def build_conf_replacements(
+    assignments: dict[str, str], resolved_base_image: str, release: ReleaseConfig
+) -> dict[str, str]:
     replacements = {"BASE_IMAGE": resolved_base_image}
     if "RELEASE" in assignments:
         replacements["RELEASE"] = release_minor_version(release.full_version)
@@ -1199,7 +1228,9 @@ def plan_updates(root_dir: Path, config: VersionsConfig) -> list[PlannedUpdate]:
                 original_text=state.original_text,
                 updated_text=rewrite_conf_text(
                     state.original_text,
-                    build_conf_replacements(read_conf_assignments(state.original_text), resolved_base_image, config.release),
+                    build_conf_replacements(
+                        read_conf_assignments(state.original_text), resolved_base_image, config.release
+                    ),
                 ),
                 target=state.target,
             )

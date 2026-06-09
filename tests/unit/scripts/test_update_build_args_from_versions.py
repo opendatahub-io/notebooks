@@ -530,7 +530,7 @@ def test_build_rhds_pinned_tag_targets_ga_family_on_rollback() -> None:
     updater = load_updater()
     release = updater.ReleaseConfig(full_version="3.4.0", rhds_os_base="el9.6", python_version="3.12")
 
-    tag = updater.build_rhds_pinned_tag("3.5.0-ea.2-1777919771", release)
+    tag = updater.build_rhds_pinned_tag("3.5.0-ea.2-1777919771", release.full_version)
 
     assert tag == "3.4.0-1777919771"
 
@@ -1040,6 +1040,40 @@ def test_plan_updates_rollback_targets_ga_family_for_older_release(
 ) -> None:
     updater = load_updater()
     write_versions_config(tmp_path / "versions_config.yml", full_version="3.4.0")
+
+    conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
+    conf.parent.mkdir(parents=True)
+    conf.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771\n", encoding="utf-8")
+
+    seen: list[str] = []
+
+    def fake_resolve(image: str, tag_cache=None) -> str:
+        seen.append(image)
+        return "quay.io/aipcc/base-images/cpu:3.4.0-1780000000"
+
+    monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
+
+    updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
+
+    assert seen == ["quay.io/aipcc/base-images/cpu:3.4.0-1777919771"]
+    assert updates[0].updated_text.strip() == "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.4.0-1780000000"
+
+
+def test_plan_updates_uses_hard_coded_rhds_cpu_version_for_fast_channel(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    updater = load_updater()
+    write_versions_config(
+        tmp_path / "versions_config.yml",
+        full_version="3.5.0",
+        replacements=[
+            (
+                '      rhds:\n        channel: fast\n        version: "<full_version>"',
+                '      rhds:\n        channel: fast\n        version: "3.4.0"',
+            )
+        ],
+    )
 
     conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     conf.parent.mkdir(parents=True)
