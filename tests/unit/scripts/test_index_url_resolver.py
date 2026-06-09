@@ -19,13 +19,13 @@ def write_conf(
 
 
 def prod_index_url(*, release: str, accelerator: str) -> str:
-    return f"https://console.redhat.com/api/pypi/public-rhai/rhoai/{release}/{accelerator}-ubi9/simple/"
+    return f"https://packages.redhat.com/api/pypi/public-rhai/rhoai/{release}/{accelerator}-ubi9/simple/"
 
 
 def test_index_url_candidates_use_prod_then_test_suffix() -> None:
     assert resolver.index_url_candidates(release="3.5-EA2", accelerator="cpu") == (
-        "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/",
-        "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/",
+        "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/",
+        "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/",
     )
 
 
@@ -55,7 +55,7 @@ def test_resolve_rhoai_cpu_index_from_konflux_conf(
     assert resolved.flavor == "cpu"
     assert resolved.accelerator == "cpu"
     assert resolved.release == "3.5-EA2"
-    assert resolved.index_url == "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/"
+    assert resolved.index_url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/"
 
 
 def test_resolve_rhoai_cuda_index_from_konflux_conf(
@@ -82,7 +82,7 @@ def test_resolve_rhoai_cuda_index_from_konflux_conf(
     assert resolved.flavor == "cuda"
     assert resolved.accelerator == "cuda13.0"
     assert resolved.release == "3.5-EA2"
-    assert resolved.index_url == "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cuda13.0-ubi9/simple/"
+    assert resolved.index_url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cuda13.0-ubi9/simple/"
 
 
 def test_resolve_rhoai_rocm_index_from_konflux_conf(
@@ -109,7 +109,7 @@ def test_resolve_rhoai_rocm_index_from_konflux_conf(
     assert resolved.flavor == "rocm"
     assert resolved.accelerator == "rocm7.1"
     assert resolved.release == "3.5-EA2"
-    assert resolved.index_url == "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/rocm7.1-ubi9/simple/"
+    assert resolved.index_url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/rocm7.1-ubi9/simple/"
 
 
 def test_reject_non_konflux_conf_when_required(tmp_path: Path) -> None:
@@ -151,10 +151,10 @@ def test_resolve_rhoai_falls_back_to_test_index_when_prod_unavailable(
 
     resolved = resolver.resolve_index_config(conf_file)
 
-    assert resolved.index_url == "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/"
+    assert resolved.index_url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/"
     assert checked_urls == [
-        "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/",
-        "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/",
+        "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/",
+        "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/",
     ]
 
 
@@ -182,9 +182,9 @@ def test_resolve_rhoai_does_not_check_test_when_prod_is_available(
 
     resolved = resolver.resolve_index_config(conf_file)
 
-    assert resolved.index_url == "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/"
+    assert resolved.index_url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/"
     assert checked_urls == [
-        "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/",
+        "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/",
     ]
 
 
@@ -211,4 +211,6 @@ def test_cli_prints_plain_index_url(
     result = runner.invoke(resolver.app, ["index-url", str(conf_file)])
 
     assert result.exit_code == 0
-    assert result.stdout.strip() == "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/rocm7.1-ubi9/simple/"
+    assert (
+        result.stdout.strip() == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/rocm7.1-ubi9/simple/"
+    )

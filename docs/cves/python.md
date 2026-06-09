@@ -105,7 +105,7 @@ common blocker for downstream (RHOAI) images.
 
 ```bash
 # Check which versions are on the production RH index
-curl -sL "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/<package>/?format=json" \
+curl -sL "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/<package>/?format=json" \
   | python3 -c "
 import json,sys
 data = json.load(sys.stdin)
