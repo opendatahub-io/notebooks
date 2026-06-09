@@ -621,6 +621,20 @@ def test_resolve_latest_published_rhds_image_raises_when_skopeo_missing(
         updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777000000")
 
 
+def test_resolve_latest_published_rhds_image_raises_when_skopeo_list_tags_times_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    updater = load_updater()
+
+    def raise_timeout(*args, **kwargs):
+        raise subprocess.TimeoutExpired(["skopeo", "list-tags"], timeout=60)
+
+    monkeypatch.setattr(updater.subprocess, "run", raise_timeout)
+
+    with pytest.raises(ValueError, match="skopeo list-tags timed out"):
+        updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777000000")
+
+
 def test_plan_updates_caches_rhds_tag_listing_per_repository(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1427,6 +1441,51 @@ def test_inspect_image_config_warns_in_red_on_skopeo_failure(
         "skopeo inspect --config failed for quay.io/aipcc/base-image-cuda-stable-ubi9:3.5: fatal auth error"
         in caplog.text
     )
+
+
+def test_plan_updates_warns_only_in_red_when_rhds_stable_inspect_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    updater = load_updater()
+    write_versions_config(
+        tmp_path / "versions_config.yml",
+        full_version="3.5.0",
+        replacements=[
+            (
+                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
+                '      minimal:\n        acc_version: "25.0"\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house',
+            )
+        ],
+    )
+
+    conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
+    conf.parent.mkdir(parents=True)
+    conf.write_text(
+        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(
+            args=["skopeo"],
+            returncode=1,
+            stdout="",
+            stderr="fatal auth error",
+        ),
+    )
+
+    with caplog.at_level("WARNING"):
+        updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
+
+    assert updates[0].updated_text.strip() == "BASE_IMAGE=quay.io/aipcc/base-image-cuda-stable-ubi9:3.5"
+    assert len(caplog.records) == 1
+    assert caplog.records[-1].msg.startswith("\x1b[31mWARNING:")
+    assert "fatal auth error" in caplog.text
+    assert "Could not determine RHDS stable cuda acc_version" not in caplog.text
 
 
 def test_plan_updates_warns_in_yellow_when_rhds_stable_acc_version_cannot_be_determined(

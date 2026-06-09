@@ -67,6 +67,7 @@ MIDSTREAM_VERSION_RE = re.compile(r"^\d+\.\d+$")
 PYTHON_VERSION_RE = re.compile(r"^\d+\.\d+$")
 # Sentinel so callers can omit a forward phase; None means GA, not "unset".
 _FORWARD_PHASE_UNSET = object()
+_STABLE_ACC_VERSION_INSPECT_FAILED = object()
 
 
 @dataclass(frozen=True)
@@ -668,10 +669,10 @@ def inspect_image_config(image: str, *, warning_color: str | None = None) -> dic
     return payload
 
 
-def inspect_rhds_stable_acc_version(image: str, accelerator: str) -> str | None:
+def inspect_rhds_stable_acc_version(image: str, accelerator: str) -> str | None | object:
     config_payload = inspect_image_config(image, warning_color="red")
     if config_payload is None:
-        return None
+        return _STABLE_ACC_VERSION_INSPECT_FAILED
 
     env = extract_image_env(config_payload)
     labels = extract_image_labels(config_payload)
@@ -716,7 +717,7 @@ def warn_on_rhds_stable_acc_version_mismatch(
     target: ConfTarget,
     stable_image: str,
     configured_acc_version: str | None,
-    stable_acc_version_cache: dict[tuple[str, str], str | None],
+    stable_acc_version_cache: dict[tuple[str, str], str | None | object],
 ) -> None:
     if target.accelerator == "cpu" or configured_acc_version is None:
         return
@@ -726,6 +727,8 @@ def warn_on_rhds_stable_acc_version_mismatch(
         stable_acc_version_cache[cache_key] = inspect_rhds_stable_acc_version(stable_image, target.accelerator)
 
     detected_acc_version = stable_acc_version_cache[cache_key]
+    if detected_acc_version is _STABLE_ACC_VERSION_INSPECT_FAILED:
+        return
     if detected_acc_version is None:
         log_warning(
             "Could not determine RHDS stable %s acc_version from %s; continuing with configured shared acc_version %s",
@@ -735,6 +738,8 @@ def warn_on_rhds_stable_acc_version_mismatch(
             color="yellow",
         )
         return
+    if not isinstance(detected_acc_version, str):
+        raise TypeError(f"Unexpected cached stable acc_version state for {stable_image}: {detected_acc_version!r}")
 
     configured_normalized = normalize_stream_version(configured_acc_version)
     detected_normalized = normalize_stream_version(detected_acc_version)
@@ -840,9 +845,12 @@ def list_rhds_repository_tags(
             capture_output=True,
             text=True,
             check=False,
+            timeout=60,
         )
     except FileNotFoundError as exc:
         raise ValueError("skopeo is required to resolve latest RHDS tags") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError(f"skopeo list-tags timed out for {repository}") from exc
 
     if result.returncode != 0:
         detail = (result.stderr or result.stdout).strip() or f"exit code {result.returncode}"
@@ -1019,7 +1027,7 @@ def build_target_base_image(
     state: TargetState,
     release: ReleaseConfig,
     tag_cache: dict[str, tuple[str, ...]],
-    stable_acc_version_cache: dict[tuple[str, str], str | None],
+    stable_acc_version_cache: dict[tuple[str, str], str | None | object],
     rhds_bundle_phase_known: bool,
     rhds_bundle_phase: str | None,
 ) -> str:
@@ -1187,7 +1195,7 @@ def build_makefile_replacements(release: ReleaseConfig) -> dict[str, str]:
 def plan_updates(root_dir: Path, config: VersionsConfig) -> list[PlannedUpdate]:
     states: list[TargetState] = []
     tag_cache: dict[str, tuple[str, ...]] = {}
-    stable_acc_version_cache: dict[tuple[str, str], str | None] = {}
+    stable_acc_version_cache: dict[tuple[str, str], str | None | object] = {}
 
     for target in collect_conf_targets(root_dir):
         original_text = target.path.read_text(encoding="utf-8")
