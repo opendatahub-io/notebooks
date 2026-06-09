@@ -255,9 +255,9 @@ ENV NGINX_CONFIGURATION_PATH=${APP_ROOT}/etc/nginx.d \
     NGINX_PERL_MODULE_PATH=${APP_ROOT}/etc/perl
 
 # [HERMETIC] Install nginx/httpd from prefetched RPMs.
-# NOTE: httpd is prefetched from UBI repos (not CentOS Stream) via the
-# exclude=httpd* rule in centos.repo, ensuring the prefetched version matches
-# the httpd already in the UBI9 base image and avoids httpd-devel conflicts.
+# NOTE: httpd is prefetched from CentOS Stream repos (not UBI) via the
+# exclude=httpd* rule in ubi.repo, aligning with the ODH c9s base image.
+# RHOAI builds use prefetch-input/rhds (RHEL httpd) instead of this ODH lockfile.
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 PACKAGES=(bind-utils nginx nginx-mod-stream nginx-mod-http-perl httpd)
