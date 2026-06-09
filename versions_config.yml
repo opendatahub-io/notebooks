@@ -18,53 +18,46 @@ artifacts:
 
     cuda:
       minimal:
+        acc_version: "13.0"
         rhds:
           channel: fast
-          acc_version: "13.0"
         odh:
           origin: in-house
-          acc_version: "13.0"
       pytorch:
+        acc_version: "13.0"
         rhds:
           channel: fast
-          acc_version: "13.0"
         odh:
           origin: in-house
-          acc_version: "13.0"
       pytorch-llmcompressor:
+        acc_version: "13.0"
         rhds:
           channel: fast
-          acc_version: "13.0"
         odh:
           origin: in-house
-          acc_version: "13.0"
       tensorflow:
+        acc_version: "12.9"
         rhds:
           channel: fast
-          acc_version: "12.9"
         odh:
           origin: in-house
-          acc_version: "12.9"
 
     rocm:
       minimal:
+        acc_version: "7.1"
         rhds:
           channel: fast
-          acc_version: "7.1"
         odh:
           origin: in-house
-          acc_version: "7.1"
       pytorch:
+        acc_version: "7.1"
         rhds:
           channel: fast
-          acc_version: "7.1"
         odh:
           origin: in-house
-          acc_version: "7.1"
       tensorflow:
+        acc_version: "7.1"
         rhds:
           channel: fast
-          acc_version: "7.1"
         odh:
           origin: in-house
-          acc_version: "7.1"

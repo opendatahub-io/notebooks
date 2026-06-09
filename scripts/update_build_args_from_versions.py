@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+import logging
 import re
 import subprocess
 from dataclasses import dataclass
@@ -27,44 +28,24 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG_PATH = ROOT_DIR / "versions_config.yml"
 MANAGED_ROOTS = ("jupyter", "runtimes", "codeserver")
 POLICY_SCHEMA = object()
+GPU_FLAVORS = {
+    "cuda": ("minimal", "pytorch", "pytorch-llmcompressor", "tensorflow"),
+    "rocm": ("minimal", "pytorch", "tensorflow"),
+}
+CPU_BASE_IMAGE_SCHEMA = {
+    "rhds": POLICY_SCHEMA,
+    "odh": POLICY_SCHEMA,
+}
+logger = logging.getLogger(__name__)
+ANSI_GREEN = "\033[32m"
+ANSI_YELLOW = "\033[33m"
+ANSI_RED = "\033[31m"
+ANSI_RESET = "\033[0m"
 
 BASE_IMAGE_SCHEMA = {
-    "cpu": {
-        "rhds": POLICY_SCHEMA,
-        "odh": POLICY_SCHEMA,
-    },
-    "cuda": {
-        "minimal": {
-            "rhds": POLICY_SCHEMA,
-            "odh": POLICY_SCHEMA,
-        },
-        "pytorch": {
-            "rhds": POLICY_SCHEMA,
-            "odh": POLICY_SCHEMA,
-        },
-        "pytorch-llmcompressor": {
-            "rhds": POLICY_SCHEMA,
-            "odh": POLICY_SCHEMA,
-        },
-        "tensorflow": {
-            "rhds": POLICY_SCHEMA,
-            "odh": POLICY_SCHEMA,
-        },
-    },
-    "rocm": {
-        "minimal": {
-            "rhds": POLICY_SCHEMA,
-            "odh": POLICY_SCHEMA,
-        },
-        "pytorch": {
-            "rhds": POLICY_SCHEMA,
-            "odh": POLICY_SCHEMA,
-        },
-        "tensorflow": {
-            "rhds": POLICY_SCHEMA,
-            "odh": POLICY_SCHEMA,
-        },
-    },
+    "cpu": CPU_BASE_IMAGE_SCHEMA,
+    "cuda": {flavor: None for flavor in GPU_FLAVORS["cuda"]},
+    "rocm": {flavor: None for flavor in GPU_FLAVORS["rocm"]},
 }
 
 ROOT_SCHEMA = {
@@ -105,6 +86,7 @@ class BaseImagePolicy:
 class VersionsConfig:
     release: ReleaseConfig
     base_image: dict[str, Any]
+    gpu_acc_versions: dict[tuple[str, str], str]
 
     def policy(self, accelerator: str, distribution: str, flavor: str | None = None) -> BaseImagePolicy:
         if accelerator == "cpu":
@@ -120,6 +102,13 @@ class VersionsConfig:
         raw_version = raw_policy.get(version_key)
         version = None if raw_version is None else resolve_version(raw_version, self.release)
         return BaseImagePolicy(mode=mode, version=version)
+
+    def shared_acc_version(self, accelerator: str, flavor: str | None = None) -> str:
+        if accelerator == "cpu":
+            raise ValueError("CPU does not use acc_version")
+        if flavor is None:
+            raise ValueError(f"Flavor is required for accelerator '{accelerator}'")
+        return self.gpu_acc_versions[(accelerator, flavor)]
 
 
 @dataclass(frozen=True)
@@ -144,6 +133,7 @@ class TargetState:
     original_text: str
     current_base_image: str
     policy: BaseImagePolicy
+    shared_acc_version: str | None = None
 
 
 def scalar_to_string(value: object) -> str:
@@ -152,6 +142,22 @@ def scalar_to_string(value: object) -> str:
     if isinstance(value, int | float):
         return str(value)
     raise TypeError(f"Unsupported scalar value: {value!r}")
+
+
+def log_warning(message: str, *args: object, color: str | None = None) -> None:
+    if color is None:
+        logger.warning(message, *args)
+        return
+
+    rendered_message = message % args if args else message
+    ansi_color = {
+        "green": ANSI_GREEN,
+        "yellow": ANSI_YELLOW,
+        "red": ANSI_RED,
+    }.get(color)
+    if ansi_color is None:
+        raise ValueError(f"Unsupported warning color '{color}'")
+    logger.warning(f"{ansi_color}WARNING: {rendered_message}{ANSI_RESET}")
 
 
 def policy_version_key(accelerator: str) -> str:
@@ -223,6 +229,27 @@ def validate_mapping_schema(data: object, expected: dict[str, Any], context: str
             continue
         if isinstance(child_schema, dict):
             validate_mapping_schema(data[key], child_schema, f"{context}.{key}")
+
+
+def validate_expected_mapping_keys(
+    data: object,
+    expected_keys: set[str],
+    context: str,
+    *,
+    required_keys: set[str] | None = None,
+) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        raise ValueError(f"Expected mapping at {context}")
+
+    actual_keys = set(data)
+    unexpected_keys = sorted(actual_keys - expected_keys)
+    missing_keys = sorted((required_keys or expected_keys) - actual_keys)
+
+    if unexpected_keys:
+        raise ValueError(f"Unexpected keys under {context}: {', '.join(unexpected_keys)}")
+    if missing_keys:
+        raise ValueError(f"Missing keys under {context}: {', '.join(missing_keys)}")
+    return data
 
 
 def validate_version_value(value: object, release: ReleaseConfig, context: str, field_name: str) -> str:
@@ -297,29 +324,133 @@ def validate_distribution_policy(
         raise ValueError(f"odh in-house origin at {context} requires a numeric acc_version")
 
 
-def validate_base_image_config(base_image: dict[str, Any], release: ReleaseConfig) -> None:
+def normalize_gpu_flavor_config(
+    flavor_policy: object,
+    *,
+    accelerator: str,
+    flavor: str,
+    release: ReleaseConfig,
+) -> tuple[dict[str, Any], str]:
+    context = f"root.artifacts.base_image.{accelerator}.{flavor}"
+    mapping = validate_expected_mapping_keys(flavor_policy, {"acc_version", "rhds", "odh"}, context, required_keys={"rhds", "odh"})
+
+    rhds_policy = mapping["rhds"]
+    odh_policy = mapping["odh"]
+
+    if not isinstance(rhds_policy, dict):
+        raise ValueError(f"Expected mapping at {context}.rhds")
+    if not isinstance(odh_policy, dict):
+        raise ValueError(f"Expected mapping at {context}.odh")
+
+    normalized_rhds = dict(rhds_policy)
+    normalized_odh = dict(odh_policy)
+    shared_raw = mapping.get("acc_version")
+
+    if shared_raw is None:
+        validate_distribution_policy(
+            normalized_rhds,
+            distribution="rhds",
+            accelerator=accelerator,
+            context=f"{context}.rhds",
+            release=release,
+        )
+        validate_distribution_policy(
+            normalized_odh,
+            distribution="odh",
+            accelerator=accelerator,
+            context=f"{context}.odh",
+            release=release,
+        )
+
+        shared_versions = [
+            validate_version_value(normalized_odh["acc_version"], release, f"{context}.odh.acc_version", "acc_version")
+        ]
+        if "acc_version" in normalized_rhds:
+            shared_versions.append(
+                validate_version_value(normalized_rhds["acc_version"], release, f"{context}.rhds.acc_version", "acc_version")
+            )
+
+        normalized_versions = {normalize_stream_version(version) for version in shared_versions}
+        if len(normalized_versions) != 1:
+            raise ValueError(f"Legacy rhds and odh acc_version values must match at {context}")
+        return {"rhds": normalized_rhds, "odh": normalized_odh}, shared_versions[0]
+
+    shared_version = validate_version_value(shared_raw, release, f"{context}.acc_version", "acc_version")
+    shared_version_normalized = normalize_stream_version(shared_version)
+
+    for distribution, policy in (("rhds", normalized_rhds), ("odh", normalized_odh)):
+        raw_distribution_version = policy.pop("acc_version", None)
+        if raw_distribution_version is None:
+            continue
+
+        distribution_version = validate_version_value(
+            raw_distribution_version,
+            release,
+            f"{context}.{distribution}.acc_version",
+            "acc_version",
+        )
+        if normalize_stream_version(distribution_version) != shared_version_normalized:
+            raise ValueError(f"Nested {distribution} acc_version at {context}.{distribution} must match shared acc_version")
+
+    if scalar_to_string(normalized_rhds.get("channel", "")) == "fast":
+        normalized_rhds["acc_version"] = shared_version
+    normalized_odh["acc_version"] = shared_version
+
+    validate_distribution_policy(
+        normalized_rhds,
+        distribution="rhds",
+        accelerator=accelerator,
+        context=f"{context}.rhds",
+        release=release,
+    )
+    validate_distribution_policy(
+        normalized_odh,
+        distribution="odh",
+        accelerator=accelerator,
+        context=f"{context}.odh",
+        release=release,
+    )
+    return {"rhds": normalized_rhds, "odh": normalized_odh}, shared_version
+
+
+def normalize_base_image_config(
+    base_image: object,
+    release: ReleaseConfig,
+) -> tuple[dict[str, Any], dict[tuple[str, str], str]]:
+    root_context = "root.artifacts.base_image"
+    mapping = validate_expected_mapping_keys(base_image, set(BASE_IMAGE_SCHEMA), root_context)
+
+    validate_mapping_schema(mapping["cpu"], CPU_BASE_IMAGE_SCHEMA, f"{root_context}.cpu")
+
+    normalized_base_image = {"cpu": mapping["cpu"], "cuda": {}, "rocm": {}}
+    gpu_acc_versions: dict[tuple[str, str], str] = {}
+
     for distribution in ("rhds", "odh"):
         validate_distribution_policy(
-            base_image["cpu"][distribution],
+            mapping["cpu"][distribution],
             distribution=distribution,
             accelerator="cpu",
             context=f"cpu.{distribution}",
             release=release,
         )
 
-    for accelerator, flavors in (
-        ("cuda", ("minimal", "pytorch", "pytorch-llmcompressor", "tensorflow")),
-        ("rocm", ("minimal", "pytorch", "tensorflow")),
-    ):
+    for accelerator, flavors in GPU_FLAVORS.items():
+        accelerator_mapping = validate_expected_mapping_keys(
+            mapping[accelerator],
+            set(flavors),
+            f"{root_context}.{accelerator}",
+        )
         for flavor in flavors:
-            for distribution in ("rhds", "odh"):
-                validate_distribution_policy(
-                    base_image[accelerator][flavor][distribution],
-                    distribution=distribution,
-                    accelerator=accelerator,
-                    context=f"{accelerator}.{flavor}.{distribution}",
-                    release=release,
-                )
+            normalized_flavor, shared_version = normalize_gpu_flavor_config(
+                accelerator_mapping[flavor],
+                accelerator=accelerator,
+                flavor=flavor,
+                release=release,
+            )
+            normalized_base_image[accelerator][flavor] = normalized_flavor
+            gpu_acc_versions[(accelerator, flavor)] = shared_version
+
+    return normalized_base_image, gpu_acc_versions
 
 
 def load_versions_config(path: Path) -> VersionsConfig:
@@ -343,9 +474,8 @@ def load_versions_config(path: Path) -> VersionsConfig:
         raise ValueError("release.rhds_os_base must not be empty")
     normalize_python_version(release.python_version)
 
-    base_image = data["artifacts"]["base_image"]
-    validate_base_image_config(base_image, release)
-    return VersionsConfig(release=release, base_image=base_image)
+    base_image, gpu_acc_versions = normalize_base_image_config(data["artifacts"]["base_image"], release)
+    return VersionsConfig(release=release, base_image=base_image, gpu_acc_versions=gpu_acc_versions)
 
 
 def classify_conf_name(name: str) -> tuple[str, str] | None:
@@ -430,6 +560,186 @@ def split_image_ref(image: str) -> tuple[str, str]:
 
 def normalize_stream_version(version: str) -> str:
     return version.removeprefix("v")
+
+
+def major_minor_stream_version(value: str) -> str | None:
+    match = re.search(r"(?P<major>\d+)\.(?P<minor>\d+)(?:\.\d+)?", value)
+    if match is None:
+        return None
+    return f"{match.group('major')}.{match.group('minor')}"
+
+
+def extract_image_env(config_payload: dict[str, Any]) -> dict[str, str]:
+    config = config_payload.get("config")
+    if not isinstance(config, dict):
+        return {}
+
+    raw_env = config.get("Env")
+    if not isinstance(raw_env, list):
+        return {}
+
+    env: dict[str, str] = {}
+    for entry in raw_env:
+        if not isinstance(entry, str) or "=" not in entry:
+            continue
+        key, value = entry.split("=", 1)
+        env[key] = value
+    return env
+
+
+def extract_image_labels(config_payload: dict[str, Any]) -> dict[str, str]:
+    labels: dict[str, str] = {}
+
+    config = config_payload.get("config")
+    if isinstance(config, dict):
+        config_labels = config.get("Labels")
+        if isinstance(config_labels, dict):
+            labels.update({key: value for key, value in config_labels.items() if isinstance(key, str) and isinstance(value, str)})
+
+    root_labels = config_payload.get("Labels")
+    if isinstance(root_labels, dict):
+        labels.update({key: value for key, value in root_labels.items() if isinstance(key, str) and isinstance(value, str)})
+    return labels
+
+
+def extract_image_history(config_payload: dict[str, Any]) -> list[str]:
+    history = config_payload.get("history")
+    if not isinstance(history, list):
+        return []
+
+    created_by: list[str] = []
+    for layer in history:
+        if not isinstance(layer, dict):
+            continue
+        value = layer.get("created_by")
+        if isinstance(value, str):
+            created_by.append(value)
+    return created_by
+
+
+def inspect_image_config(image: str, *, warning_color: str | None = None) -> dict[str, Any] | None:
+    try:
+        result = subprocess.run(
+            [
+                "skopeo",
+                "inspect",
+                "--retry-times",
+                "3",
+                "--override-arch",
+                "amd64",
+                "--override-os",
+                "linux",
+                "--config",
+                f"docker://{image}",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        log_warning("Could not inspect image config for %s: %s", image, exc, color=warning_color)
+        return None
+
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip() or f"exit code {result.returncode}"
+        log_warning("skopeo inspect --config failed for %s: %s", image, detail, color=warning_color)
+        return None
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        log_warning("skopeo inspect --config returned invalid JSON for %s: %s", image, exc, color=warning_color)
+        return None
+
+    if not isinstance(payload, dict):
+        log_warning("skopeo inspect --config returned unexpected payload for %s", image, color=warning_color)
+        return None
+    return payload
+
+
+def inspect_rhds_stable_acc_version(image: str, accelerator: str) -> str | None:
+    config_payload = inspect_image_config(image, warning_color="red")
+    if config_payload is None:
+        return None
+
+    env = extract_image_env(config_payload)
+    labels = extract_image_labels(config_payload)
+    history = extract_image_history(config_payload)
+
+    if accelerator == "cuda":
+        for value in (env.get("CUDA_VERSION"), labels.get("CUDA_VERSION")):
+            if value is None:
+                continue
+            if version := major_minor_stream_version(value):
+                return version
+
+        requirement = env.get("NVIDIA_REQUIRE_CUDA")
+        if requirement is not None:
+            match = re.search(r"cuda>=(?P<version>\d+\.\d+(?:\.\d+)?)", requirement)
+            if match and (version := major_minor_stream_version(match.group("version"))):
+                return version
+
+        for line in history:
+            match = re.search(r"\bCUDA_VERSION=(?P<version>\d+\.\d+(?:\.\d+)?)\b", line)
+            if match and (version := major_minor_stream_version(match.group("version"))):
+                return version
+        return None
+
+    if accelerator == "rocm":
+        for value in (env.get("ROCM_VERSION"), labels.get("ROCM_VERSION")):
+            if value is None:
+                continue
+            if version := major_minor_stream_version(value):
+                return version
+
+        for line in history:
+            match = re.search(r"\bROCM_VERSION=(?P<version>\d+\.\d+(?:\.\d+)?)\b", line)
+            if match and (version := major_minor_stream_version(match.group("version"))):
+                return version
+        return None
+
+    raise ValueError(f"Unsupported accelerator '{accelerator}'")
+
+
+def warn_on_rhds_stable_acc_version_mismatch(
+    target: ConfTarget,
+    stable_image: str,
+    configured_acc_version: str | None,
+    stable_acc_version_cache: dict[tuple[str, str], str | None],
+) -> None:
+    if target.accelerator == "cpu" or configured_acc_version is None:
+        return
+
+    cache_key = (stable_image, target.accelerator)
+    if cache_key not in stable_acc_version_cache:
+        stable_acc_version_cache[cache_key] = inspect_rhds_stable_acc_version(stable_image, target.accelerator)
+
+    detected_acc_version = stable_acc_version_cache[cache_key]
+    if detected_acc_version is None:
+        log_warning(
+            "Could not determine RHDS stable %s acc_version from %s; continuing with configured shared acc_version %s",
+            target.accelerator,
+            stable_image,
+            normalize_stream_version(configured_acc_version),
+            color="yellow",
+        )
+        return
+
+    configured_normalized = normalize_stream_version(configured_acc_version)
+    detected_normalized = normalize_stream_version(detected_acc_version)
+    if configured_normalized == detected_normalized:
+        return
+
+    log_warning(
+        "Configured shared %s acc_version %s does not match RHDS stable image %s, which appears to use acc_version %s. Consider updating versions_config.yml to use acc_version %s for alignment.",
+        target.accelerator,
+        configured_normalized,
+        stable_image,
+        detected_normalized,
+        detected_normalized,
+        color="green",
+    )
 
 
 def build_rhds_family_pattern(candidate_tag: str) -> re.Pattern[str]:
@@ -691,6 +1001,7 @@ def build_target_base_image(
     state: TargetState,
     release: ReleaseConfig,
     tag_cache: dict[str, tuple[str, ...]],
+    stable_acc_version_cache: dict[tuple[str, str], str | None],
     rhds_bundle_phase_known: bool,
     rhds_bundle_phase: str | None,
 ) -> str:
@@ -700,7 +1011,14 @@ def build_target_base_image(
 
     if target.distribution == "rhds":
         if policy.mode == "stable":
-            return build_rhds_stable_image(target.accelerator, release)
+            stable_image = build_rhds_stable_image(target.accelerator, release)
+            warn_on_rhds_stable_acc_version_mismatch(
+                target,
+                stable_image,
+                state.shared_acc_version,
+                stable_acc_version_cache,
+            )
+            return stable_image
         if policy.version is None:
             raise ValueError(f"Missing {policy_version_key(target.accelerator)} for rhds fast channel in {target.path}")
 
@@ -840,6 +1158,7 @@ def build_makefile_replacements(release: ReleaseConfig) -> dict[str, str]:
 def plan_updates(root_dir: Path, config: VersionsConfig) -> list[PlannedUpdate]:
     states: list[TargetState] = []
     tag_cache: dict[str, tuple[str, ...]] = {}
+    stable_acc_version_cache: dict[tuple[str, str], str | None] = {}
 
     for target in collect_conf_targets(root_dir):
         original_text = target.path.read_text(encoding="utf-8")
@@ -854,6 +1173,11 @@ def plan_updates(root_dir: Path, config: VersionsConfig) -> list[PlannedUpdate]:
                 original_text=original_text,
                 current_base_image=current_base_image,
                 policy=config.policy(target.accelerator, target.distribution, target.flavor),
+                shared_acc_version=(
+                    None
+                    if target.accelerator == "cpu"
+                    else config.shared_acc_version(target.accelerator, target.flavor)
+                ),
             )
         )
 
@@ -865,6 +1189,7 @@ def plan_updates(root_dir: Path, config: VersionsConfig) -> list[PlannedUpdate]:
             state,
             config.release,
             tag_cache,
+            stable_acc_version_cache,
             rhds_bundle_phase_known,
             rhds_bundle_phase,
         )

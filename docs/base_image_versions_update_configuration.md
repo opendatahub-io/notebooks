@@ -103,12 +103,11 @@ artifacts:
 
     cuda:
       minimal:
+        acc_version: "13.0"
         rhds:
           channel: fast
-          acc_version: "13.0"
         odh:
           origin: in-house
-          acc_version: "13.0"
 ```
 
 ### Release Fields
@@ -123,7 +122,7 @@ artifacts:
 ### Policy Keys
 
 - CPU policies use `version`
-- CUDA and ROCm policies use `acc_version`
+- CUDA and ROCm flavors use shared `acc_version`
 - RHDS policies use `channel`
 - ODH policies use `origin`
 
@@ -135,7 +134,7 @@ fail before any file is rewritten.
 
 ### `channel: stable`
 
-RHDS stable targets do not take `version` or `acc_version`. The script derives a
+RHDS stable targets do not take `version` or nested `acc_version`. The script derives a
 stable image from `release.full_version`:
 
 - CPU: `quay.io/aipcc/base-image-cpu-stable-ubi9:<major.minor>`
@@ -145,8 +144,11 @@ stable image from `release.full_version`:
 For example, `release.full_version: "3.5.0"` resolves stable targets to `:3.5`.
 
 When using `channel: stable`, do not set `version` for CPU and do not set
-`acc_version` for CUDA or ROCm. Stable mode derives the repository tag from the
-release only.
+`acc_version` under `rhds` for CUDA or ROCm. GPU flavors can still define a
+shared flavor-level `acc_version` so ODH stays aligned. For stable CUDA and
+ROCm targets, the script also inspects the resolved RHDS stable image and logs a
+warning if the detected accelerator stream does not match the shared
+`acc_version`.
 
 Example:
 
@@ -158,6 +160,7 @@ artifacts:
   base_image:
     cuda:
       minimal:
+        acc_version: "13.0"
         rhds:
           channel: stable
 ```
@@ -166,10 +169,10 @@ That resolves to `quay.io/aipcc/base-image-cuda-stable-ubi9:3.5`.
 
 ### `channel: fast`
 
-RHDS fast targets require `version` for CPU or `acc_version` for CUDA and ROCm.
-The script first builds the correct repository name, then uses `skopeo list-tags`
-to resolve the latest published build within the selected release-and-phase
-family.
+RHDS fast targets require `version` for CPU. CUDA and ROCm use the shared
+flavor-level `acc_version`. The script first builds the correct repository
+name, then uses `skopeo list-tags` to resolve the latest published build within
+the selected release-and-phase family.
 
 Representative repository shapes:
 
@@ -276,9 +279,9 @@ The script rejects any non-`latest` CPU ODH version.
 ```yaml
 rocm:
   minimal:
+    acc_version: "7.1"
     odh:
       origin: midstream
-      acc_version: "7.1"
 ```
 
 That resolves to `quay.io/opendatahub/odh-midstream-rocm-base-7-1:latest`.
@@ -287,7 +290,7 @@ That resolves to `quay.io/opendatahub/odh-midstream-rocm-base-7-1:latest`.
 
 1. Edit `versions_config.yml`.
 2. Review the policy block you changed and confirm the right key is used:
-   `version` for CPU, `acc_version` for CUDA or ROCm.
+   `version` for CPU, shared flavor-level `acc_version` for CUDA or ROCm.
 3. Keep RHDS and ODH rules aligned with the target distribution:
    `channel` is RHDS-only and `origin` is ODH-only.
 4. Run the sync command.
@@ -298,9 +301,9 @@ That resolves to `quay.io/opendatahub/odh-midstream-rocm-base-7-1:latest`.
 ```yaml
 rocm:
   minimal:
+    acc_version: "7.1"
     odh:
       origin: midstream
-      acc_version: "7.1"
 ```
 
 ### Example: change the CPU Python to origin in-house
@@ -320,6 +323,7 @@ cpu:
 ...
     cuda:
       minimal:
+        acc_version: "13.0"
         rhds:
           channel: stable
 ...
@@ -330,9 +334,9 @@ cpu:
 ...
     cuda:
       minimal:
+        acc_version: "13.0"
         rhds:
           channel: fast
-          acc_version: "13.0"
 ...
 ```
 
