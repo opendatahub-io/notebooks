@@ -65,7 +65,7 @@ jobs:
     env:
       CONTAINER_ENGINE: docker
       # Pin with scripts/ci/renovate_run.py default; bump both when upgrading Renovate.
-      RENOVATE_IMAGE: quay.io/jdanek/renovate:43-fix42554
+      RENOVATE_IMAGE: ghcr.io/renovatebot/renovate:43@sha256:575256ce227ca81cd2a316d33f35108fe5c978d479c29232ec74cf9c0904a351  # 43.216.4
       DOCKER_CONFIG: /tmp/renovate-docker-config
     permissions:
       contents: read

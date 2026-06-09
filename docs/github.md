@@ -108,12 +108,13 @@ directly in a repo will be rejected by the push ruleset. See the
 [security-config sync config](https://github.com/opendatahub-io/security-config/blob/main/sync-config.yml)
 for the full list of synced repos.
 
-**Known issue with Renovate:** Renovate's `pushFiles` sends the full tree via
-`POST /git/trees` without `base_tree`, so GitHub validates all file paths -- including
-unchanged protected ones -- and rejects the push with 422 "File path is restricted".
-This broke MintMaker (Konflux's Renovate instance); Ugo added the MintMaker GitHub App
-as a bypass actor on the ruleset to fix it.
-Upstream bug: [renovatebot/renovate#42555](https://github.com/renovatebot/renovate/discussions/42555).
+**Renovate and org rulesets:** Renovate's `pushFiles` used to send the full tree via
+`POST /git/trees` without `base_tree`, so GitHub validated all file paths -- including
+unchanged protected ones -- and rejected the push with 422 "File path is restricted".
+MintMaker was unblocked by adding the MintMaker GitHub App as a bypass actor on the
+ruleset. Upstream fixed this in [renovatebot/renovate#42556](https://github.com/renovatebot/renovate/pull/42556)
+(released in 43.216.3); self-hosted Renovate now uses upstream `ghcr.io/renovatebot/renovate`.
+Original report: [renovatebot/renovate#42554](https://github.com/renovatebot/renovate/issues/42554).
 
 ## Branch protection
 
