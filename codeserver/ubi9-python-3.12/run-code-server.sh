@@ -52,6 +52,10 @@ universal_json_settings='// vscode settings are written in json-with-comments
   "extensions.autoCheckUpdates": false,
   "extensions.autoUpdate": false,
 
+  // Disable GitHub Copilot in code-server
+  // official doc https://code.visualstudio.com/docs/copilot/faq#_how-can-i-remove-copilot-from-vs-code
+  "chat.disableAIFeatures": true,
+
   // RHOAIENG-14518: Disable the "Do you trust the authors [...]" startup prompt
   "security.workspace.trust.enabled": false,
   "security.workspace.trust.startupPrompt": "never"
