@@ -57,7 +57,7 @@ processing this remote.
    digest/grouping rules).
 
 2. **Add `.github/workflows/renovate-self-hosted.yaml`** (optional) to run
-   [`scripts/ci/renovate_run.py`](../../../scripts/ci/renovate_run.py) (Renovate container via Docker on CI, `CONTAINER_ENGINE=docker`) on a schedule and `workflow_dispatch`, using the same config file and a **`RENOVATE_TOKEN`** PAT so PRs can trigger normal CI. The workflow no longer uses `renovatebot/github-action`; the Renovate **image tag** is pinned with **`RENOVATE_IMAGE`** (default `ghcr.io/renovatebot/renovate:43`), so bump that env var in the workflow or script when upgrading.
+   [`scripts/ci/renovate_run.py`](../../../scripts/ci/renovate_run.py) (Renovate container via Docker on CI, `CONTAINER_ENGINE=docker`) on a schedule and `workflow_dispatch`, using the same config file and a **`RENOVATE_TOKEN`** PAT so PRs can trigger normal CI. The workflow no longer uses `renovatebot/github-action`; the Renovate **image** is pinned with **`RENOVATE_IMAGE`** (default upstream `ghcr.io/renovatebot/renovate:43@sha256:…`), so bump that env var in the workflow and `DEFAULT_RENOVATE_IMAGE` in the script when upgrading.
 
 3. **The self-hosted workflow** uses a split gate:
    `github.event_name != 'schedule' || github.repository_owner == 'opendatahub-io'`
@@ -164,13 +164,13 @@ Renovate only changed unrestricted paths like `build-args/konflux.*.conf`.
 
 - **Upstream bug**: [renovatebot/renovate#42554](https://github.com/renovatebot/renovate/issues/42554)
 - **`platformCommit: "disabled"`** does NOT help — `commitFiles()` always calls `pushFiles()`
-- **Workaround**: ask the org admin (Ugo Giordano / `@U02AADEDP7B` in Slack
-  `#wg-openshift-ai-odh-github`) to add the Renovate PAT user (`ide-developer`)
-  as a **bypass actor** on the file path restriction ruleset. This was already done
-  for [`opendatahub-io/opendatahub-tests`](https://redhat-internal.slack.com/archives/C09BV0L6ULQ/p1773076687051249?thread_ts=1772554653.543679&cid=C09BV0L6ULQ).
-- **Proposed fix**: use `base_tree` + only changed files in `POST /git/trees` instead of
-  the full tree. A patched image is available at `quay.io/jdanek/renovate:43-fix42554`
-  (amd64 + arm64); to test, set `RENOVATE_IMAGE` in the workflow env.
+- **MintMaker workaround**: add the MintMaker GitHub App as a **bypass actor** on the
+  file path restriction ruleset (done for this org).
+- **Self-hosted workaround (historical)**: a patched image at `quay.io/jdanek/renovate:43-fix42554`
+  used `base_tree` + only changed files. **Superseded** by upstream fix
+  [renovatebot/renovate#42556](https://github.com/renovatebot/renovate/pull/42556)
+  (released in 43.216.3). Self-hosted workflows now pin upstream
+  `ghcr.io/renovatebot/renovate:43@sha256:…` (amd64 digest for GHA `ubuntu-latest`).
 
 ### Self-hosted run log quirks (forks)
 
