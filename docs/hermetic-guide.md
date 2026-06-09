@@ -159,11 +159,6 @@ one. Key changes in each stage:
 - `nfpm` (RPM packager) is installed from a prefetched RPM instead of
   downloading from GitHub.
 
-**`whl-cache` stage**  new stage for Python wheel compilation:
-- On `ppc64le` / `s390x`, some Python packages lack pre-built wheels.
-  This stage installs them from prefetched wheels and exports the compiled
-  `.whl` files for reuse by the final stage.
-
 **`cpu-base` stage**  OS packages and tools:
 - All `dnf install` commands use the local cachi2 RPM repo (hermeto repos
   are injected unconditionally).

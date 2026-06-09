@@ -34,7 +34,7 @@ from pathlib import Path
 SCRIPTS_CI = Path(__file__).resolve().parent
 ROOT = SCRIPTS_CI.parent.parent
 REMOTE_DEFAULT_REPO = "opendatahub-io/notebooks"
-DEFAULT_RENOVATE_IMAGE = "quay.io/jdanek/renovate:43-fix42554"
+DEFAULT_RENOVATE_IMAGE = "ghcr.io/renovatebot/renovate:43@sha256:575256ce227ca81cd2a316d33f35108fe5c978d479c29232ec74cf9c0904a351"
 DEFAULT_GIT_AUTHOR = "ide-developer <rhoai-ide-konflux@redhat.com>"
 LOCAL_MODES = ("local", "local-lookup")
 REMOTE_MODES = ("remote", "lookup")

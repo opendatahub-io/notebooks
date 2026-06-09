@@ -33,7 +33,7 @@ jobs:
       contents: read
     env:
       CONTAINER_ENGINE: docker
-      RENOVATE_IMAGE: quay.io/jdanek/renovate:43-fix42554
+      RENOVATE_IMAGE: ghcr.io/renovatebot/renovate:43@sha256:575256ce227ca81cd2a316d33f35108fe5c978d479c29232ec74cf9c0904a351  # 43.216.4
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
