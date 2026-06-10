@@ -494,34 +494,6 @@ arches:
     name: harfbuzz-icu
     evr: 2.7.4-10.el9
     sourcerpm: harfbuzz-2.7.4-10.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/h/httpd-2.4.62-13.el9_8.1.aarch64.rpm
-    repoid: ubi-9-for-aarch64-appstream-rpms
-    size: 54832
-    checksum: sha256:46f526f59fe1125a1caefc641ace339af49d60c342e35d4661bd8be0cb839b36
-    name: httpd
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/h/httpd-core-2.4.62-13.el9_8.1.aarch64.rpm
-    repoid: ubi-9-for-aarch64-appstream-rpms
-    size: 1573733
-    checksum: sha256:4b8337fd7a45a37a9a3c2e3df8f078159f6e3ca38b64e050a774932f2b9a83e5
-    name: httpd-core
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/h/httpd-filesystem-2.4.62-13.el9_8.1.noarch.rpm
-    repoid: ubi-9-for-aarch64-appstream-rpms
-    size: 19040
-    checksum: sha256:9dbb32d1d652d36b107df49642aaa16b362358ae17baa9705b161fb7335a9230
-    name: httpd-filesystem
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/h/httpd-tools-2.4.62-13.el9_8.1.aarch64.rpm
-    repoid: ubi-9-for-aarch64-appstream-rpms
-    size: 89095
-    checksum: sha256:b10b25cc74112ef2b87f5837771a99a97e662a64fac8801f7299fea295f13a65
-    name: httpd-tools
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/j/jbigkit-libs-2.1-23.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-appstream-rpms
     size: 57006
@@ -963,13 +935,6 @@ arches:
     name: mod_http2
     evr: 2.0.26-6.el9_8
     sourcerpm: mod_http2-2.0.26-6.el9_8.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/m/mod_lua-2.4.62-13.el9_8.1.aarch64.rpm
-    repoid: ubi-9-for-aarch64-appstream-rpms
-    size: 64577
-    checksum: sha256:5a89cc7a0671c62909a49a0351c7aea2b7309aa5d149e7a3588c26e025ab52cc
-    name: mod_lua
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/m/mpdecimal-2.5.1-3.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-appstream-rpms
     size: 92062
@@ -3735,6 +3700,34 @@ arches:
     name: glib2-devel
     evr: 2.68.4-20.el9
     sourcerpm: glib2-2.68.4-20.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/httpd-2.4.62-13.el9.aarch64.rpm
+    repoid: appstream
+    size: 47398
+    checksum: sha256:99aa08faa7cb8f263fc442cc3d4785bb0d5b72ea3a1063f0664ccd1b39187cdf
+    name: httpd
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/httpd-core-2.4.62-13.el9.aarch64.rpm
+    repoid: appstream
+    size: 1567639
+    checksum: sha256:bdf9bb39b2d5c0759c475f4f4a66a725ca77796514ce496511ad1c37498bb0b0
+    name: httpd-core
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/httpd-filesystem-2.4.62-13.el9.noarch.rpm
+    repoid: appstream
+    size: 12371
+    checksum: sha256:f0c77844b786163a6d0ab01792e6eb7f7ac4a969a521866505970368ba3f9995
+    name: httpd-filesystem
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/httpd-tools-2.4.62-13.el9.aarch64.rpm
+    repoid: appstream
+    size: 81452
+    checksum: sha256:d8c6c4389487ac09efd1ee42e3167244576a5853c09e067a4c337dc770f0563a
+    name: httpd-tools
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/kernel-headers-5.14.0-710.el9.aarch64.rpm
     repoid: appstream
     size: 2102257
@@ -3784,6 +3777,13 @@ arches:
     name: llvm-libs
     evr: 22.1.3-1.el9
     sourcerpm: llvm-22.1.3-1.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/mod_lua-2.4.62-13.el9.aarch64.rpm
+    repoid: appstream
+    size: 57892
+    checksum: sha256:fc7c1bacb025edbdbaceaaffc26bfa351b4f16765e5e88762f5681a21c37e8fc
+    name: mod_lua
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/nginx-1.20.1-30.el9.aarch64.rpm
     repoid: appstream
     size: 38160
@@ -5437,34 +5437,6 @@ arches:
     name: harfbuzz-icu
     evr: 2.7.4-10.el9
     sourcerpm: harfbuzz-2.7.4-10.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/h/httpd-2.4.62-13.el9_8.1.ppc64le.rpm
-    repoid: ubi-9-for-ppc64le-appstream-rpms
-    size: 55894
-    checksum: sha256:583b148283f82cb22f5d33d38b0c3c9a127be18cae8117bee27a44d5a35e7e6d
-    name: httpd
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/h/httpd-core-2.4.62-13.el9_8.1.ppc64le.rpm
-    repoid: ubi-9-for-ppc64le-appstream-rpms
-    size: 1679172
-    checksum: sha256:76af3ca5487a9be90f03e68d50cb4fbf7af342ea81abcd4ceeb08c62b2ae458e
-    name: httpd-core
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/h/httpd-filesystem-2.4.62-13.el9_8.1.noarch.rpm
-    repoid: ubi-9-for-ppc64le-appstream-rpms
-    size: 19040
-    checksum: sha256:9dbb32d1d652d36b107df49642aaa16b362358ae17baa9705b161fb7335a9230
-    name: httpd-filesystem
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/h/httpd-tools-2.4.62-13.el9_8.1.ppc64le.rpm
-    repoid: ubi-9-for-ppc64le-appstream-rpms
-    size: 91936
-    checksum: sha256:90508ca5c973c765e9caa8b41475aa3a30ac9117b984c7bb71529108ed4e25f0
-    name: httpd-tools
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/j/jbigkit-libs-2.1-23.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-appstream-rpms
     size: 61560
@@ -5913,13 +5885,6 @@ arches:
     name: mod_http2
     evr: 2.0.26-6.el9_8
     sourcerpm: mod_http2-2.0.26-6.el9_8.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/m/mod_lua-2.4.62-13.el9_8.1.ppc64le.rpm
-    repoid: ubi-9-for-ppc64le-appstream-rpms
-    size: 70366
-    checksum: sha256:8b91a0eac15bf374657968f6e9548bdbf8cd65ad510e532a960cb81d41736612
-    name: mod_lua
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/m/mpdecimal-2.5.1-3.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-appstream-rpms
     size: 106314
@@ -8685,6 +8650,34 @@ arches:
     name: glib2-devel
     evr: 2.68.4-20.el9
     sourcerpm: glib2-2.68.4-20.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/httpd-2.4.62-13.el9.ppc64le.rpm
+    repoid: appstream
+    size: 48470
+    checksum: sha256:84408e32445a50864275de3d117f17204331079500cb5ea1e12c40cda0edfe74
+    name: httpd
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/httpd-core-2.4.62-13.el9.ppc64le.rpm
+    repoid: appstream
+    size: 1672296
+    checksum: sha256:da95bf791d374136fe40ccef0bf1b5876d1682ca49f2e26a080e8edf8c8e882b
+    name: httpd-core
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/httpd-filesystem-2.4.62-13.el9.noarch.rpm
+    repoid: appstream
+    size: 12371
+    checksum: sha256:f0c77844b786163a6d0ab01792e6eb7f7ac4a969a521866505970368ba3f9995
+    name: httpd-filesystem
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/httpd-tools-2.4.62-13.el9.ppc64le.rpm
+    repoid: appstream
+    size: 84130
+    checksum: sha256:5e1ee6230362c3f915d3fbe3975f6081197cd83e94fe6073e27ece4e6c660369
+    name: httpd-tools
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/kernel-headers-5.14.0-710.el9.ppc64le.rpm
     repoid: appstream
     size: 2126105
@@ -8734,6 +8727,13 @@ arches:
     name: llvm-libs
     evr: 22.1.3-1.el9
     sourcerpm: llvm-22.1.3-1.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/mod_lua-2.4.62-13.el9.ppc64le.rpm
+    repoid: appstream
+    size: 63696
+    checksum: sha256:d2d163307d4aa39ebfe31170af8047f658203bca110baf6284044026e0591495
+    name: mod_lua
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/ppc64le/os/Packages/nginx-1.20.1-30.el9.ppc64le.rpm
     repoid: appstream
     size: 38184
@@ -10394,34 +10394,6 @@ arches:
     name: harfbuzz-icu
     evr: 2.7.4-10.el9
     sourcerpm: harfbuzz-2.7.4-10.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/h/httpd-2.4.62-13.el9_8.1.x86_64.rpm
-    repoid: ubi-9-for-x86_64-appstream-rpms
-    size: 55304
-    checksum: sha256:740fda2e2deb4470fd60ada224e599277d8c69b96755cc2c92f7cbd31d4e9349
-    name: httpd
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/h/httpd-core-2.4.62-13.el9_8.1.x86_64.rpm
-    repoid: ubi-9-for-x86_64-appstream-rpms
-    size: 1594240
-    checksum: sha256:ac566b5bebd5c5beeb3f40f69abd0d07b65c595074b7fd258c08ec76b660814e
-    name: httpd-core
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/h/httpd-filesystem-2.4.62-13.el9_8.1.noarch.rpm
-    repoid: ubi-9-for-x86_64-appstream-rpms
-    size: 19040
-    checksum: sha256:9dbb32d1d652d36b107df49642aaa16b362358ae17baa9705b161fb7335a9230
-    name: httpd-filesystem
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/h/httpd-tools-2.4.62-13.el9_8.1.x86_64.rpm
-    repoid: ubi-9-for-x86_64-appstream-rpms
-    size: 90240
-    checksum: sha256:a54bb9dd5503c35b1d3a33c4d1e242e1edd733ab2a3167be1a95ccf8c213549f
-    name: httpd-tools
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/j/jbigkit-libs-2.1-23.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-appstream-rpms
     size: 57187
@@ -10863,13 +10835,6 @@ arches:
     name: mod_http2
     evr: 2.0.26-6.el9_8
     sourcerpm: mod_http2-2.0.26-6.el9_8.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/m/mod_lua-2.4.62-13.el9_8.1.x86_64.rpm
-    repoid: ubi-9-for-x86_64-appstream-rpms
-    size: 66857
-    checksum: sha256:9f66ab60adb74949d9fa37f943f309253a3ebb69a9f1ef8856bf9e2afa044f62
-    name: mod_lua
-    evr: 2.4.62-13.el9_8.1
-    sourcerpm: httpd-2.4.62-13.el9_8.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/m/mpdecimal-2.5.1-3.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-appstream-rpms
     size: 89670
@@ -13656,6 +13621,34 @@ arches:
     name: glib2-devel
     evr: 2.68.4-20.el9
     sourcerpm: glib2-2.68.4-20.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/httpd-2.4.62-13.el9.x86_64.rpm
+    repoid: appstream
+    size: 47869
+    checksum: sha256:0abcb011489cc4b0acd41bb1c6c2419918aaca3c399b7e54558776afe9d089c4
+    name: httpd
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/httpd-core-2.4.62-13.el9.x86_64.rpm
+    repoid: appstream
+    size: 1586619
+    checksum: sha256:c91eb42024cd7fafaf649de4668d514ed90cdad47a65f91a79ddb77fd20b8e98
+    name: httpd-core
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/httpd-filesystem-2.4.62-13.el9.noarch.rpm
+    repoid: appstream
+    size: 12371
+    checksum: sha256:f0c77844b786163a6d0ab01792e6eb7f7ac4a969a521866505970368ba3f9995
+    name: httpd-filesystem
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/httpd-tools-2.4.62-13.el9.x86_64.rpm
+    repoid: appstream
+    size: 83183
+    checksum: sha256:55f8420da38c025eddbe6c231dc520491843a0eee284666e96aa98181eabb1ce
+    name: httpd-tools
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/kernel-headers-5.14.0-710.el9.x86_64.rpm
     repoid: appstream
     size: 2141557
@@ -13705,6 +13698,13 @@ arches:
     name: llvm-libs
     evr: 22.1.3-1.el9
     sourcerpm: llvm-22.1.3-1.el9.src.rpm
+  - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/mod_lua-2.4.62-13.el9.x86_64.rpm
+    repoid: appstream
+    size: 60204
+    checksum: sha256:49c4aa30cbccb3774f007e6cc76289bc74ffa4076d224a95670d841cee16d568
+    name: mod_lua
+    evr: 2.4.62-13.el9
+    sourcerpm: httpd-2.4.62-13.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/nginx-1.20.1-30.el9.x86_64.rpm
     repoid: appstream
     size: 38196
