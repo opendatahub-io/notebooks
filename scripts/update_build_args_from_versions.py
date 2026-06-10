@@ -771,6 +771,8 @@ def resolve_matching_published_rhds_stable_image(
         if detected_acc_version in (_STABLE_ACC_VERSION_INSPECT_FAILED, None):
             unresolved_images.append(image)
             continue
+        if not isinstance(detected_acc_version, str):
+            raise TypeError(f"Unexpected stable acc_version state for {image}: {detected_acc_version!r}")
         if detected_acc_version == configured_normalized:
             return image
         detected_versions.add(detected_acc_version)
@@ -1039,7 +1041,18 @@ def target_rhds_release_version(target: ConfTarget, policy: BaseImagePolicy, rel
     return release.full_version
 
 
-def build_target_base_image(
+def default_rhds_seed_phase(
+    *,
+    rhds_bundle_phase_known: bool,
+    use_release_bundle_phase: bool,
+    rhds_bundle_phase: str | None,
+) -> str | None:
+    if rhds_bundle_phase_known and use_release_bundle_phase:
+        return rhds_bundle_phase
+    return "ea.1"
+
+
+def resolve_rhds_base_image(
     state: TargetState,
     release: ReleaseConfig,
     tag_cache: dict[str, tuple[str, ...]],
@@ -1049,93 +1062,100 @@ def build_target_base_image(
     stable_repo_overrides: dict[str, str] | None = None,
 ) -> str:
     target = state.target
-    current_base_image = state.current_base_image
     policy = state.policy
+    current_base_image = state.current_base_image
 
-    if target.distribution == "rhds":
-        if policy.mode == "stable":
-            if target.accelerator == "cpu":
-                return f"quay.io/aipcc/base-image-cpu-stable-ubi9:{release_minor_version(release.full_version)}"
-            if state.shared_acc_version is None:
-                raise ValueError(f"Missing configured shared acc_version for RHDS stable {target.accelerator}")
-            repository = build_rhds_gpu_stable_repository(
-                target.accelerator,
-                release,
-                stable_repo_overrides,
-            )
-            return resolve_matching_published_rhds_stable_image(
-                repository,
-                release.full_version,
-                target.accelerator,
-                state.shared_acc_version,
-                tag_cache,
-                stable_acc_version_cache,
-            )
-        if policy.version is None:
-            raise ValueError(f"Missing {policy_version_key(target.accelerator)} for rhds fast channel in {target.path}")
+    if policy.mode == "stable":
+        if target.accelerator == "cpu":
+            return f"quay.io/aipcc/base-image-cpu-stable-ubi9:{release_minor_version(release.full_version)}"
+        if state.shared_acc_version is None:
+            raise ValueError(f"Missing configured shared acc_version for RHDS stable {target.accelerator}")
+        repository = build_rhds_gpu_stable_repository(
+            target.accelerator,
+            release,
+            stable_repo_overrides,
+        )
+        return resolve_matching_published_rhds_stable_image(
+            repository,
+            release.full_version,
+            target.accelerator,
+            state.shared_acc_version,
+            tag_cache,
+            stable_acc_version_cache,
+        )
 
-        target_release_version = target_rhds_release_version(target, policy, release)
-        use_release_bundle_phase = target_release_version == release.full_version
-        _current_repository, current_tag = split_image_ref(current_base_image)
-        if RHDS_TAG_RE.fullmatch(current_tag) is None:
-            repository = build_rhds_pinned_repository(target.accelerator, policy.version, release)
-            stable_match = RHDS_STABLE_TAG_RE.fullmatch(current_tag)
-            if MIDSTREAM_VERSION_RE.fullmatch(current_tag):
-                current_minor = parse_minor_version(current_tag)
-                target_minor = parse_minor_version(release_minor_version(target_release_version))
-                if current_minor > target_minor:
-                    seed_phase = None
-                elif current_minor < target_minor:
-                    seed_phase = determine_highest_published_rhds_phase_for_release(
-                        repository,
-                        target_release_version,
-                        tag_cache,
-                    )
-                else:
-                    seed_phase = rhds_bundle_phase if rhds_bundle_phase_known and use_release_bundle_phase else "ea.1"
-            elif stable_match is not None:
-                current_version = parse_release_version(stable_match.group("version"))
-                target_version = parse_release_version(target_release_version)
-                if current_version > target_version:
-                    seed_phase = None
-                elif current_version < target_version:
-                    seed_phase = determine_highest_published_rhds_phase_for_release(
-                        repository,
-                        target_release_version,
-                        tag_cache,
-                    )
-                else:
-                    seed_phase = rhds_bundle_phase if rhds_bundle_phase_known and use_release_bundle_phase else "ea.1"
-            else:
-                seed_phase = rhds_bundle_phase if rhds_bundle_phase_known and use_release_bundle_phase else "ea.1"
-            candidate = f"{repository}:{build_rhds_seed_tag(target_release_version, seed_phase)}"
-        else:
-            current_match = RHDS_TAG_RE.fullmatch(current_tag)
-            forward_phase = "ea.1"
-            current_version = parse_release_version(current_match.group("version"))
-            target_version = parse_release_version(target_release_version)
-            if target_version > current_version:
-                forward_phase = determine_highest_published_rhds_phase_for_release(
-                    build_rhds_pinned_repository(target.accelerator, policy.version, release),
+    if policy.version is None:
+        raise ValueError(f"Missing {policy_version_key(target.accelerator)} for rhds fast channel in {target.path}")
+
+    target_release_version = target_rhds_release_version(target, policy, release)
+    use_release_bundle_phase = target_release_version == release.full_version
+    bundle_seed_phase = default_rhds_seed_phase(
+        rhds_bundle_phase_known=rhds_bundle_phase_known,
+        use_release_bundle_phase=use_release_bundle_phase,
+        rhds_bundle_phase=rhds_bundle_phase,
+    )
+    repository, current_tag = build_rhds_pinned_repository(target.accelerator, policy.version, release), split_image_ref(
+        current_base_image
+    )[1]
+
+    if RHDS_TAG_RE.fullmatch(current_tag) is None:
+        stable_match = RHDS_STABLE_TAG_RE.fullmatch(current_tag)
+        if MIDSTREAM_VERSION_RE.fullmatch(current_tag):
+            current_minor = parse_minor_version(current_tag)
+            target_minor = parse_minor_version(release_minor_version(target_release_version))
+            if current_minor > target_minor:
+                seed_phase = None
+            elif current_minor < target_minor:
+                seed_phase = determine_highest_published_rhds_phase_for_release(
+                    repository,
                     target_release_version,
                     tag_cache,
                 )
-            candidate = build_rhds_pinned_image(
-                target.accelerator,
-                policy.version,
-                current_base_image,
+            else:
+                seed_phase = bundle_seed_phase
+        elif stable_match is not None:
+            current_version = parse_release_version(stable_match.group("version"))
+            target_version = parse_release_version(target_release_version)
+            if current_version > target_version:
+                seed_phase = None
+            elif current_version < target_version:
+                seed_phase = determine_highest_published_rhds_phase_for_release(
+                    repository,
+                    target_release_version,
+                    tag_cache,
+                )
+            else:
+                seed_phase = bundle_seed_phase
+        else:
+            seed_phase = bundle_seed_phase
+        candidate = f"{repository}:{build_rhds_seed_tag(target_release_version, seed_phase)}"
+    else:
+        current_match = RHDS_TAG_RE.fullmatch(current_tag)
+        forward_phase = "ea.1"
+        current_version = parse_release_version(current_match.group("version"))
+        target_version = parse_release_version(target_release_version)
+        if target_version > current_version:
+            forward_phase = determine_highest_published_rhds_phase_for_release(
+                repository,
                 target_release_version,
-                release,
-                use_bundle_phase=rhds_bundle_phase_known
-                and use_release_bundle_phase
-                and target_version == current_version,
-                bundle_phase=rhds_bundle_phase,
-                forward_phase=forward_phase,
+                tag_cache,
             )
-        return resolve_latest_published_rhds_image(candidate, tag_cache)
+        candidate = build_rhds_pinned_image(
+            target.accelerator,
+            policy.version,
+            current_base_image,
+            target_release_version,
+            release,
+            use_bundle_phase=rhds_bundle_phase_known and use_release_bundle_phase and target_version == current_version,
+            bundle_phase=rhds_bundle_phase,
+            forward_phase=forward_phase,
+        )
+    return resolve_latest_published_rhds_image(candidate, tag_cache)
 
-    if target.distribution != "odh":
-        raise ValueError(f"Unsupported distribution in {target.path}: {target.distribution}")
+
+def resolve_odh_base_image(state: TargetState, release: ReleaseConfig) -> str:
+    target = state.target
+    policy = state.policy
 
     if policy.version is None:
         raise ValueError(f"Missing {policy_version_key(target.accelerator)} for odh origin in {target.path}")
@@ -1144,6 +1164,32 @@ def build_target_base_image(
     if policy.mode == "midstream":
         return build_odh_midstream_image(target.accelerator, policy.version, release)
     raise ValueError(f"Unsupported odh origin in {target.path}: {policy.mode}")
+
+
+def build_target_base_image(
+    state: TargetState,
+    release: ReleaseConfig,
+    tag_cache: dict[str, tuple[str, ...]],
+    stable_acc_version_cache: dict[tuple[str, str], str | None | object],
+    rhds_bundle_phase_known: bool,
+    rhds_bundle_phase: str | None,
+    stable_repo_overrides: dict[str, str] | None = None,
+) -> str:
+    match state.target.distribution:
+        case "rhds":
+            return resolve_rhds_base_image(
+                state,
+                release,
+                tag_cache,
+                stable_acc_version_cache,
+                rhds_bundle_phase_known,
+                rhds_bundle_phase,
+                stable_repo_overrides,
+            )
+        case "odh":
+            return resolve_odh_base_image(state, release)
+        case _:
+            raise ValueError(f"Unsupported distribution in {state.target.path}: {state.target.distribution}")
 
 
 def read_conf_assignments(text: str) -> dict[str, str]:

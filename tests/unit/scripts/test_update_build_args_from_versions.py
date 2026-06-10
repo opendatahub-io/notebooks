@@ -32,6 +32,12 @@ def completed_process(
     )
 
 
+DEFAULT_GPU_MINIMAL_ACC_VERSION = {"cuda": "25.0", "rocm": "8.0"}
+RHDS_CPU_EA2_IMAGE = "quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771"
+RHDS_CUDA_EA2_IMAGE = "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771"
+RHDS_ROCM_EA2_IMAGE = "quay.io/aipcc/base-images/rocm-7.1-el9.6:3.5.0-ea.2-1777919771"
+
+
 def rhds_gpu_stable_image(
     accelerator: str,
     *,
@@ -87,6 +93,69 @@ def stub_matching_rhds_stable_acc_version(monkeypatch: pytest.MonkeyPatch, updat
         updater,
         "inspect_rhds_stable_acc_version",
         lambda image, accelerator: {"cuda": "25.0", "rocm": "8.0"}.get(accelerator),
+    )
+
+
+def write_conf(path: Path, *lines: str) -> None:
+    path.parent.mkdir(parents=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def gpu_minimal_policy_block(
+    accelerator: str,
+    *,
+    acc_version: str | None = None,
+    rhds_channel: str = "fast",
+    odh_origin: str = "in-house",
+    shared_acc_version: bool = False,
+) -> str:
+    resolved_acc_version = acc_version or DEFAULT_GPU_MINIMAL_ACC_VERSION[accelerator]
+    if shared_acc_version:
+        return (
+            "      minimal:\n"
+            f'        acc_version: "{resolved_acc_version}"\n'
+            "        rhds:\n"
+            f"          channel: {rhds_channel}\n"
+            "        odh:\n"
+            f"          origin: {odh_origin}"
+        )
+    rhds_acc_version = "" if rhds_channel == "stable" else f'          acc_version: "{resolved_acc_version}"\n'
+    return (
+        "      minimal:\n"
+        "        rhds:\n"
+        f"          channel: {rhds_channel}\n"
+        f"{rhds_acc_version}"
+        "        odh:\n"
+        f"          origin: {odh_origin}\n"
+        f'          acc_version: "{resolved_acc_version}"'
+    )
+
+
+def write_gpu_minimal_versions_config(
+    path: Path,
+    *,
+    accelerator: str,
+    full_version: str = "3.5.0",
+    acc_version: str | None = None,
+    rhds_channel: str = "fast",
+    odh_origin: str = "in-house",
+    shared_acc_version: bool = False,
+) -> None:
+    write_versions_config(
+        path,
+        full_version=full_version,
+        replacements=[
+            (
+                gpu_minimal_policy_block(accelerator),
+                gpu_minimal_policy_block(
+                    accelerator,
+                    acc_version=acc_version,
+                    rhds_channel=rhds_channel,
+                    odh_origin=odh_origin,
+                    shared_acc_version=shared_acc_version,
+                ),
+            )
+        ],
     )
 
 
@@ -559,8 +628,7 @@ def test_collect_conf_targets_ignores_base_images_build_args(tmp_path: Path) -> 
 def test_collect_conf_targets_rejects_unknown_build_args_filename(tmp_path: Path) -> None:
     updater = load_updater()
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "gpu.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text("BASE_IMAGE=example\n", encoding="utf-8")
+    write_conf(conf, "BASE_IMAGE=example")
 
     with pytest.raises(ValueError, match="Unsupported build-args filename"):
         updater.collect_conf_targets(tmp_path)
@@ -702,11 +770,9 @@ def test_plan_updates_caches_rhds_tag_listing_per_repository(
 
     first = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     second = tmp_path / "runtimes" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
-    first.parent.mkdir(parents=True)
-    second.parent.mkdir(parents=True)
-    base_image = "quay.io/aipcc/base-images/cpu:3.5.0-ea.1-1777919771\n"
-    first.write_text(f"BASE_IMAGE={base_image}", encoding="utf-8")
-    second.write_text(f"BASE_IMAGE={base_image}", encoding="utf-8")
+    base_image = "quay.io/aipcc/base-images/cpu:3.5.0-ea.1-1777919771"
+    write_conf(first, f"BASE_IMAGE={base_image}")
+    write_conf(second, f"BASE_IMAGE={base_image}")
 
     calls: list[str] = []
 
@@ -730,13 +796,8 @@ def test_plan_updates_infers_bundle_phase_for_stable_to_fast_target(
 
     target_conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     peer_conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    target_conf.parent.mkdir(parents=True)
-    peer_conf.parent.mkdir(parents=True)
-    target_conf.write_text("BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.5\n", encoding="utf-8")
-    peer_conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(target_conf, "BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.5")
+    write_conf(peer_conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
     seen: list[str] = []
 
@@ -768,13 +829,8 @@ def test_plan_updates_infers_ga_phase_for_stable_to_fast_target(
 
     target_conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
     peer_conf = tmp_path / "jupyter" / "pytorch" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    target_conf.parent.mkdir(parents=True)
-    peer_conf.parent.mkdir(parents=True)
-    target_conf.write_text(f"BASE_IMAGE={rhds_gpu_stable_image('cuda')}\n", encoding="utf-8")
-    peer_conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(target_conf, f"BASE_IMAGE={rhds_gpu_stable_image('cuda')}")
+    write_conf(peer_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-1777919771")
 
     seen: list[str] = []
 
@@ -806,10 +862,8 @@ def test_plan_updates_falls_back_to_ea1_without_any_bundle_fast_style_peers(
 
     first_conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     second_conf = tmp_path / "runtimes" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
-    first_conf.parent.mkdir(parents=True)
-    second_conf.parent.mkdir(parents=True)
-    first_conf.write_text("BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.5\n", encoding="utf-8")
-    second_conf.write_text("BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.5\n", encoding="utf-8")
+    write_conf(first_conf, "BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.5")
+    write_conf(second_conf, "BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.5")
 
     seen: list[str] = []
 
@@ -839,19 +893,10 @@ def test_plan_updates_uses_highest_observed_bundle_phase_for_existing_fast_targe
 
     cpu_conf = tmp_path / "runtimes" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     cuda_conf = tmp_path / "jupyter" / "pytorch" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    cpu_conf.parent.mkdir(parents=True)
-    cuda_conf.parent.mkdir(parents=True)
-    cpu_conf.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.1-1780600064\n", encoding="utf-8")
-    cuda_conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(cpu_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.1-1780600064")
+    write_conf(cuda_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771")
     rocm_conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.rocm.conf"
-    rocm_conf.parent.mkdir(parents=True)
-    rocm_conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/rocm-8.0-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(rocm_conf, "BASE_IMAGE=quay.io/aipcc/base-images/rocm-8.0-el9.6:3.5.0-ea.2-1777919771")
 
     seen: list[str] = []
 
@@ -887,13 +932,8 @@ def test_plan_updates_uses_forward_discovery_not_bundle_phase_for_lagging_target
 
     cpu_conf = tmp_path / "runtimes" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     cuda_conf = tmp_path / "jupyter" / "pytorch" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    cpu_conf.parent.mkdir(parents=True)
-    cuda_conf.parent.mkdir(parents=True)
-    cpu_conf.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.4.0-ea.2-1780600064\n", encoding="utf-8")
-    cuda_conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(cpu_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.4.0-ea.2-1780600064")
+    write_conf(cuda_conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
     def fake_list_tags(repository: str, tag_cache=None) -> tuple[str, ...]:
         if repository == "quay.io/aipcc/base-images/cpu":
@@ -930,13 +970,8 @@ def test_plan_updates_starts_new_release_at_ea1_when_peers_are_older_release(
 
     target_conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     peer_conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    target_conf.parent.mkdir(parents=True)
-    peer_conf.parent.mkdir(parents=True)
-    target_conf.write_text("BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.5\n", encoding="utf-8")
-    peer_conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(target_conf, "BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.5")
+    write_conf(peer_conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
     seen: list[str] = []
 
@@ -968,11 +1003,7 @@ def test_plan_updates_uses_published_ga_for_new_release_when_available(
     write_versions_config(tmp_path / "versions_config.yml", full_version="3.5.0")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.4.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.4.0-ea.2-1777919771")
 
     monkeypatch.setattr(
         updater.subprocess,
@@ -998,11 +1029,7 @@ def test_plan_updates_uses_highest_published_phase_for_new_release_when_ga_missi
     write_versions_config(tmp_path / "versions_config.yml", full_version="3.5.0")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.4.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.4.0-ea.2-1777919771")
 
     monkeypatch.setattr(
         updater.subprocess,
@@ -1030,8 +1057,7 @@ def test_plan_updates_stable_to_fast_forward_uses_highest_published_phase_for_ne
     write_versions_config(tmp_path / "versions_config.yml", full_version="3.5.0")
 
     conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text("BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.4\n", encoding="utf-8")
+    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.4")
 
     monkeypatch.setattr(
         updater.subprocess,
@@ -1057,11 +1083,7 @@ def test_plan_updates_new_release_without_published_tags_keeps_strict_failure(
     write_versions_config(tmp_path / "versions_config.yml", full_version="3.5.0")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.4.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.4.0-ea.2-1777919771")
 
     monkeypatch.setattr(
         updater.subprocess,
@@ -1083,11 +1105,7 @@ def test_plan_updates_builds_fast_rhds_candidate_before_latest_resolution(
     write_versions_config(tmp_path / "versions_config.yml")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771")
 
     seen: list[str] = []
 
@@ -1114,8 +1132,7 @@ def test_plan_updates_rollback_targets_ga_family_for_older_release(
     write_versions_config(tmp_path / "versions_config.yml", full_version="3.4.0")
 
     conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771\n", encoding="utf-8")
+    write_conf(conf, f"BASE_IMAGE={RHDS_CPU_EA2_IMAGE}")
 
     seen: list[str] = []
 
@@ -1148,8 +1165,7 @@ def test_plan_updates_uses_hard_coded_rhds_cpu_version_for_fast_channel(
     )
 
     conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771\n", encoding="utf-8")
+    write_conf(conf, f"BASE_IMAGE={RHDS_CPU_EA2_IMAGE}")
 
     seen: list[str] = []
 
@@ -1174,13 +1190,8 @@ def test_plan_updates_rollback_ignores_newer_fast_peers(
 
     cpu_conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     cuda_conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    cpu_conf.parent.mkdir(parents=True)
-    cuda_conf.parent.mkdir(parents=True)
-    cpu_conf.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1780600064\n", encoding="utf-8")
-    cuda_conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(cpu_conf, "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1780600064")
+    write_conf(cuda_conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
     seen: list[str] = []
 
@@ -1211,8 +1222,7 @@ def test_plan_updates_rollback_falls_back_to_highest_published_phase_when_ga_mis
     write_versions_config(tmp_path / "versions_config.yml", full_version="3.4.0")
 
     conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771\n", encoding="utf-8")
+    write_conf(conf, f"BASE_IMAGE={RHDS_CPU_EA2_IMAGE}")
 
     monkeypatch.setattr(
         updater.subprocess,
@@ -1238,8 +1248,7 @@ def test_plan_updates_rollback_from_stable_target_uses_ga_seed(
     write_versions_config(tmp_path / "versions_config.yml", full_version="3.4.0")
 
     conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text("BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.5\n", encoding="utf-8")
+    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.5")
 
     seen: list[str] = []
 
@@ -1265,21 +1274,16 @@ def test_plan_updates_allows_independent_mixed_rhds_channels(
         full_version="3.5.0",
         replacements=[
             (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-                '      minimal:\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
+                gpu_minimal_policy_block("cuda"),
+                gpu_minimal_policy_block("cuda", rhds_channel="stable"),
             )
         ],
     )
 
     cpu_conf = tmp_path / "jupyter" / "datascience" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
     cuda_conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    cpu_conf.parent.mkdir(parents=True)
-    cuda_conf.parent.mkdir(parents=True)
-    cpu_conf.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771\n", encoding="utf-8")
-    cuda_conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(cpu_conf, f"BASE_IMAGE={RHDS_CPU_EA2_IMAGE}")
+    write_conf(cuda_conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
     seen: list[str] = []
 
@@ -1304,29 +1308,17 @@ def test_plan_updates_allows_cuda_minimal_stable_and_pytorch_fast(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     updater = load_updater()
-    write_versions_config(
+    write_gpu_minimal_versions_config(
         tmp_path / "versions_config.yml",
+        accelerator="cuda",
         full_version="3.5.0",
-        replacements=[
-            (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-                '      minimal:\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-            )
-        ],
+        rhds_channel="stable",
     )
 
     minimal_conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
     pytorch_conf = tmp_path / "jupyter" / "pytorch" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    minimal_conf.parent.mkdir(parents=True)
-    pytorch_conf.parent.mkdir(parents=True)
-    minimal_conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
-    pytorch_conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(minimal_conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
+    write_conf(pytorch_conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
     seen: list[str] = []
 
@@ -1346,31 +1338,37 @@ def test_plan_updates_allows_cuda_minimal_stable_and_pytorch_fast(
     assert rendered[pytorch_conf] == "BASE_IMAGE=quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000000"
 
 
-def test_plan_updates_uses_rhds_cuda_stable_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("accelerator", "current_image", "acc_version"),
+    [
+        ("cuda", RHDS_CUDA_EA2_IMAGE, "25.0"),
+        ("rocm", RHDS_ROCM_EA2_IMAGE, "8.0"),
+    ],
+)
+def test_plan_updates_uses_rhds_gpu_stable_repo(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    accelerator: str,
+    current_image: str,
+    acc_version: str,
+) -> None:
     updater = load_updater()
-    write_versions_config(
+    write_gpu_minimal_versions_config(
         tmp_path / "versions_config.yml",
+        accelerator=accelerator,
         full_version="3.5.0",
-        replacements=[
-            (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-                '      minimal:\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-            )
-        ],
+        acc_version=acc_version,
+        rhds_channel="stable",
     )
 
-    conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / f"konflux.{accelerator}.conf"
+    write_conf(conf, f"BASE_IMAGE={current_image}")
 
     stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
     stub_matching_rhds_stable_acc_version(monkeypatch, updater)
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == f"BASE_IMAGE={rhds_gpu_stable_image('cuda')}"
+    assert updates[0].updated_text.strip() == f"BASE_IMAGE={rhds_gpu_stable_image(accelerator)}"
 
 
 def test_plan_updates_uses_rhds_cpu_stable_repo(tmp_path: Path) -> None:
@@ -1387,56 +1385,25 @@ def test_plan_updates_uses_rhds_cpu_stable_repo(tmp_path: Path) -> None:
     )
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cpu.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771\n", encoding="utf-8")
+    write_conf(conf, f"BASE_IMAGE={RHDS_CPU_EA2_IMAGE}")
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
     assert updates[0].updated_text.strip() == "BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.5"
 
 
-def test_plan_updates_uses_rhds_rocm_stable_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    updater = load_updater()
-    write_versions_config(
-        tmp_path / "versions_config.yml",
-        full_version="3.5.0",
-        replacements=[
-            (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "8.0"\n        odh:\n          origin: in-house\n          acc_version: "8.0"',
-                '      minimal:\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house\n          acc_version: "8.0"',
-            )
-        ],
-    )
-
-    conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.rocm.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/rocm-7.1-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
-
-    stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
-    stub_matching_rhds_stable_acc_version(monkeypatch, updater)
-    updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
-
-    assert updates[0].updated_text.strip() == f"BASE_IMAGE={rhds_gpu_stable_image('rocm')}"
-
-
 def test_plan_updates_uses_odh_midstream_rocm_repo(tmp_path: Path) -> None:
     updater = load_updater()
-    write_versions_config(
+    write_gpu_minimal_versions_config(
         tmp_path / "versions_config.yml",
-        replacements=[
-            (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "8.0"\n        odh:\n          origin: in-house\n          acc_version: "8.0"',
-                '      minimal:\n        acc_version: "8.0"\n        rhds:\n          channel: fast\n        odh:\n          origin: midstream',
-            )
-        ],
+        accelerator="rocm",
+        acc_version="8.0",
+        odh_origin="midstream",
+        shared_acc_version=True,
     )
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "rocm.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text("BASE_IMAGE=quay.io/opendatahub/odh-base-image-rocm-py312-c9s:v8.0\n", encoding="utf-8")
+    write_conf(conf, "BASE_IMAGE=quay.io/opendatahub/odh-base-image-rocm-py312-c9s:v8.0")
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
@@ -1448,23 +1415,17 @@ def test_plan_updates_picks_rhds_stable_tag_matching_shared_acc_version_over_new
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     updater = load_updater()
-    write_versions_config(
+    write_gpu_minimal_versions_config(
         tmp_path / "versions_config.yml",
+        accelerator="cuda",
         full_version="3.5.0",
-        replacements=[
-            (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-                '      minimal:\n        acc_version: "24.9"\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house',
-            )
-        ],
+        acc_version="24.9",
+        rhds_channel="stable",
+        shared_acc_version=True,
     )
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
     stub_rhds_repository_tags(
         monkeypatch,
@@ -1516,23 +1477,17 @@ def test_plan_updates_raises_in_red_when_rhds_stable_candidates_cannot_be_inspec
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     updater = load_updater()
-    write_versions_config(
+    write_gpu_minimal_versions_config(
         tmp_path / "versions_config.yml",
+        accelerator="cuda",
         full_version="3.5.0",
-        replacements=[
-            (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-                '      minimal:\n        acc_version: "25.0"\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house',
-            )
-        ],
+        acc_version="25.0",
+        rhds_channel="stable",
+        shared_acc_version=True,
     )
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
     stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
     monkeypatch.setattr(
@@ -1554,23 +1509,17 @@ def test_plan_updates_raises_when_rhds_stable_acc_version_cannot_be_determined(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     updater = load_updater()
-    write_versions_config(
+    write_gpu_minimal_versions_config(
         tmp_path / "versions_config.yml",
+        accelerator="cuda",
         full_version="3.5.0",
-        replacements=[
-            (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-                '      minimal:\n        acc_version: "25.0"\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house',
-            )
-        ],
+        acc_version="25.0",
+        rhds_channel="stable",
+        shared_acc_version=True,
     )
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
     stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
     monkeypatch.setattr(updater, "inspect_rhds_stable_acc_version", lambda image, accelerator: None)
@@ -1584,23 +1533,17 @@ def test_plan_updates_raises_when_no_rhds_stable_image_matches_shared_acc_versio
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     updater = load_updater()
-    write_versions_config(
+    write_gpu_minimal_versions_config(
         tmp_path / "versions_config.yml",
+        accelerator="cuda",
         full_version="3.5.0",
-        replacements=[
-            (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-                '      minimal:\n        acc_version: "25.0"\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house',
-            )
-        ],
+        acc_version="25.0",
+        rhds_channel="stable",
+        shared_acc_version=True,
     )
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(conf, f"BASE_IMAGE={RHDS_CUDA_EA2_IMAGE}")
 
     stub_rhds_repository_tags(
         monkeypatch,
@@ -1629,8 +1572,7 @@ def test_plan_updates_uses_odh_midstream_cpu_repo(tmp_path: Path) -> None:
     )
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "cpu.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text("BASE_IMAGE=quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest\n", encoding="utf-8")
+    write_conf(conf, "BASE_IMAGE=quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest")
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
@@ -1642,8 +1584,7 @@ def test_plan_updates_uses_odh_in_house_cpu_repo_from_release_python_version(tmp
     write_versions_config(tmp_path / "versions_config.yml", python_version="3.11")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "cpu.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text("BASE_IMAGE=quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest\n", encoding="utf-8")
+    write_conf(conf, "BASE_IMAGE=quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest")
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
@@ -1655,8 +1596,7 @@ def test_plan_updates_can_switch_odh_rocm_back_to_in_house_repo(tmp_path: Path) 
     write_versions_config(tmp_path / "versions_config.yml")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "rocm.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text("BASE_IMAGE=quay.io/opendatahub/odh-midstream-rocm-base-7-1:latest\n", encoding="utf-8")
+    write_conf(conf, "BASE_IMAGE=quay.io/opendatahub/odh-midstream-rocm-base-7-1:latest")
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
@@ -1671,16 +1611,15 @@ def test_plan_updates_rewrites_release_to_minor_version(
     write_versions_config(tmp_path / "versions_config.yml", full_version="3.6.0")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
+    write_conf(
+        conf,
         textwrap.dedent(
             """\
             BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771
             PYLOCK_FLAVOR=cuda
             RELEASE=3.5
             """
-        ),
-        encoding="utf-8",
+        ).rstrip(),
     )
 
     monkeypatch.setattr(
@@ -1704,8 +1643,8 @@ def test_main_updates_base_image_and_release_lines(tmp_path: Path, monkeypatch: 
     write_versions_config(tmp_path / "versions_config.yml")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
+    write_conf(
+        conf,
         textwrap.dedent(
             """\
             INDEX_URL=unchanged
@@ -1713,8 +1652,7 @@ def test_main_updates_base_image_and_release_lines(tmp_path: Path, monkeypatch: 
             PYLOCK_FLAVOR=cuda
             RELEASE=3.5
             """
-        ),
-        encoding="utf-8",
+        ).rstrip(),
     )
 
     monkeypatch.setattr(
@@ -1792,9 +1730,8 @@ def test_main_dry_run_does_not_write_files(tmp_path: Path, monkeypatch: pytest.M
     write_versions_config(tmp_path / "versions_config.yml")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
     original = "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771\n"
-    conf.write_text(original, encoding="utf-8")
+    write_conf(conf, original.rstrip())
 
     monkeypatch.setattr(
         updater,
@@ -1815,11 +1752,7 @@ def test_main_check_returns_nonzero_when_files_need_updates(
     write_versions_config(tmp_path / "versions_config.yml")
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771\n",
-        encoding="utf-8",
-    )
+    write_conf(conf, "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771")
 
     monkeypatch.setattr(
         updater,
@@ -1839,20 +1772,18 @@ def test_main_updates_cuda_stable_with_rhds_stable_repo_override(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     updater = load_updater()
-    write_versions_config(
+    write_gpu_minimal_versions_config(
         tmp_path / "versions_config.yml",
+        accelerator="cuda",
         full_version="3.5.0",
-        replacements=[
-            (
-                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-                '      minimal:\n        acc_version: "12.9"\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house',
-            )
-        ],
+        acc_version="12.9",
+        rhds_channel="stable",
+        shared_acc_version=True,
     )
 
     conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
-    conf.parent.mkdir(parents=True)
-    conf.write_text(
+    write_conf(
+        conf,
         textwrap.dedent(
             """\
             INDEX_URL=unchanged
@@ -1860,8 +1791,7 @@ def test_main_updates_cuda_stable_with_rhds_stable_repo_override(
             PYLOCK_FLAVOR=cuda
             RELEASE=3.5
             """
-        ),
-        encoding="utf-8",
+        ).rstrip(),
     )
 
     seen: list[str] = []
