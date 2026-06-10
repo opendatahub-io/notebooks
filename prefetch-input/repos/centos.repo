@@ -46,9 +46,6 @@ gpgcheck=1
 repo_gpgcheck=0
 metadata_expire=86400
 enabled=1
-# Exclude httpd and its sub-packages so the resolver uses the UBI version,
-# which matches the httpd already pre-installed in the UBI9 base image.
-exclude=httpd*
 
 [appstream-debuginfo]
 name=CentOS Stream 9 - AppStream - Debug
