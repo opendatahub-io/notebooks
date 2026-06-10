@@ -69,7 +69,7 @@ func getOpSourceFollowPaths(definition *llb.Definition) []string {
 	var result []string
 	for _, opDef := range opsByDigest {
 		switch top := opDef.Op.Op.(type) {
-		// https://github.com/moby/buildkit/blob/v0.24/solver/pb/ops.proto#L308-L325
+		// https://github.com/moby/buildkit/blob/v0.28.1/solver/pb/ops.proto#L308-L325
 		case *pb.Op_File:
 			for _, a := range top.File.Actions {
 				// NOTE CAREFULLY: FileActionCopy copies files from secondaryInput on top of input
@@ -135,8 +135,8 @@ func (r *testResolver) ResolveImageConfig(ctx context.Context, ref string, opt s
 
 	img.Config.WorkingDir = r.dir
 
-	if opt.Platform != nil {
-		r.platform = platforms.Format(*opt.Platform)
+	if opt.ImageOpt != nil && opt.ImageOpt.Platform != nil {
+		r.platform = platforms.Format(*opt.ImageOpt.Platform)
 	}
 
 	dt, err := json.Marshal(img)
