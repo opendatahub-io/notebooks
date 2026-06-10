@@ -138,17 +138,23 @@ RHDS stable targets do not take `version` or nested `acc_version`. The script de
 stable image from `release.full_version`:
 
 - CPU: `quay.io/aipcc/base-image-cpu-stable-ubi9:<major.minor>`
-- CUDA: `quay.io/aipcc/base-image-cuda-stable-ubi9:<major.minor>`
-- ROCm: `quay.io/aipcc/base-image-rocm-stable-ubi9:<major.minor>`
+- CUDA: published `quay.io/aipcc/base-images/cuda-<rhds_os_base>:<full_version>-stable-<build>`
+- ROCm: published `quay.io/aipcc/base-images/rocm-<rhds_os_base>:<full_version>-stable-<build>`
 
-For example, `release.full_version: "3.5.0"` resolves stable targets to `:3.5`.
+CPU remains a direct `major.minor` derivation. For CUDA and ROCm, the script uses
+`skopeo list-tags` to list published stable tags for the configured
+`release.full_version` and `release.rhds_os_base`, then inspects candidate images
+in descending build order until it finds one whose embedded accelerator stream
+matches the shared flavor-level `acc_version`.
 
 When using `channel: stable`, do not set `version` for CPU and do not set
 `acc_version` under `rhds` for CUDA or ROCm. GPU flavors can still define a
-shared flavor-level `acc_version` so ODH stays aligned. For stable CUDA and
-ROCm targets, the script also inspects the resolved RHDS stable image and logs a
-warning if the detected accelerator stream does not match the shared
-`acc_version`.
+shared flavor-level `acc_version` so RHDS and ODH resolve to the same stream
+from their corresponding origins.
+
+If no published stable CUDA or ROCm tag can be proven to match the configured
+shared `acc_version`, the sync fails with an explicit error instead of silently
+falling back to the highest stable build in the repository.
 
 Example:
 
@@ -165,7 +171,10 @@ artifacts:
           channel: stable
 ```
 
-That resolves to `quay.io/aipcc/base-image-cuda-stable-ubi9:3.5`.
+With `release.rhds_os_base: "el9.6"`, that resolves to the latest published
+`3.5.0-stable-*` tag in `quay.io/aipcc/base-images/cuda-el9.6` whose embedded
+CUDA version is `13.0`, for example
+`quay.io/aipcc/base-images/cuda-el9.6:3.5.0-stable-1780598175`.
 
 ### `channel: fast`
 

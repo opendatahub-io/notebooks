@@ -32,6 +32,28 @@ GPU_FLAVORS = {
     "cuda": ("minimal", "pytorch", "pytorch-llmcompressor", "tensorflow"),
     "rocm": ("minimal", "pytorch", "tensorflow"),
 }
+ACCELERATOR_DISPLAY_NAMES = {
+    "cuda": "CUDA",
+    "rocm": "ROCm",
+}
+GPU_FLAVOR_PATHS = {
+    "cuda": {
+        ("jupyter", "minimal"): "minimal",
+        ("jupyter", "pytorch"): "pytorch",
+        ("runtimes", "pytorch"): "pytorch",
+        ("jupyter", "pytorch+llmcompressor"): "pytorch-llmcompressor",
+        ("runtimes", "pytorch+llmcompressor"): "pytorch-llmcompressor",
+        ("jupyter", "tensorflow"): "tensorflow",
+        ("runtimes", "tensorflow"): "tensorflow",
+    },
+    "rocm": {
+        ("jupyter", "minimal"): "minimal",
+        ("jupyter", "rocm", "pytorch"): "pytorch",
+        ("runtimes", "rocm-pytorch"): "pytorch",
+        ("jupyter", "rocm", "tensorflow"): "tensorflow",
+        ("runtimes", "rocm-tensorflow"): "tensorflow",
+    },
+}
 CPU_BASE_IMAGE_SCHEMA = {
     "rhds": POLICY_SCHEMA,
     "odh": POLICY_SCHEMA,
@@ -41,6 +63,13 @@ ANSI_GREEN = "\033[32m"
 ANSI_YELLOW = "\033[33m"
 ANSI_RED = "\033[31m"
 ANSI_RESET = "\033[0m"
+WARNING_COLORS = {
+    "green": ANSI_GREEN,
+    "yellow": ANSI_YELLOW,
+    "red": ANSI_RED,
+}
+CONF_ASSIGNMENT_RE = re.compile(r"^(?P<prefix>\s*(?P<key>[A-Za-z_][A-Za-z0-9_]*)=).*$")
+MAKEFILE_ASSIGNMENT_RE = re.compile(r"^(?P<prefix>\s*(?P<key>[A-Za-z_][A-Za-z0-9_]*)(?:\s*\?=\s*)).*$")
 
 BASE_IMAGE_SCHEMA = {
     "cpu": CPU_BASE_IMAGE_SCHEMA,
@@ -62,11 +91,11 @@ ROOT_SCHEMA = {
 
 RHDS_CHANNELS = frozenset({"fast", "stable"})
 ODH_ORIGINS = frozenset({"in-house", "midstream"})
+RHDS_STABLE_OVERRIDE_ACCELERATORS = frozenset({"cuda", "rocm"})
 RHDS_TAG_RE = re.compile(r"^(?P<version>\d+\.\d+\.\d+)(?:-(?P<phase>ea\.\d+))?-(?P<build>\d+)$")
+RHDS_STABLE_TAG_RE = re.compile(r"^(?P<version>\d+\.\d+\.\d+)-stable-(?P<build>\d+)$")
 MIDSTREAM_VERSION_RE = re.compile(r"^\d+\.\d+$")
 PYTHON_VERSION_RE = re.compile(r"^\d+\.\d+$")
-# Sentinel so callers can omit a forward phase; None means GA, not "unset".
-_FORWARD_PHASE_UNSET = object()
 _STABLE_ACC_VERSION_INSPECT_FAILED = object()
 
 
@@ -137,6 +166,49 @@ class TargetState:
     shared_acc_version: str | None = None
 
 
+@dataclass(frozen=True)
+class InspectedImageConfig:
+    env: dict[str, str]
+    labels: dict[str, str]
+    history: tuple[str, ...]
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, Any]) -> InspectedImageConfig:
+        config = payload.get("config")
+        raw_env = config.get("Env") if isinstance(config, dict) else None
+        raw_history = payload.get("history")
+
+        env: dict[str, str] = {}
+        if isinstance(raw_env, list):
+            for entry in raw_env:
+                if not isinstance(entry, str) or "=" not in entry:
+                    continue
+                key, value = entry.split("=", 1)
+                env[key] = value
+
+        labels: dict[str, str] = {}
+        for raw_labels in (
+            config.get("Labels") if isinstance(config, dict) else None,
+            payload.get("Labels"),
+        ):
+            if not isinstance(raw_labels, dict):
+                continue
+            labels.update(
+                {key: value for key, value in raw_labels.items() if isinstance(key, str) and isinstance(value, str)}
+            )
+
+        history: list[str] = []
+        if isinstance(raw_history, list):
+            for layer in raw_history:
+                if not isinstance(layer, dict):
+                    continue
+                created_by = layer.get("created_by")
+                if isinstance(created_by, str):
+                    history.append(created_by)
+
+        return cls(env=env, labels=labels, history=tuple(history))
+
+
 def scalar_to_string(value: object) -> str:
     if isinstance(value, str):
         return value.strip()
@@ -151,11 +223,7 @@ def log_warning(message: str, *args: object, color: str | None = None) -> None:
         return
 
     rendered_message = message % args if args else message
-    ansi_color = {
-        "green": ANSI_GREEN,
-        "yellow": ANSI_YELLOW,
-        "red": ANSI_RED,
-    }.get(color)
+    ansi_color = WARNING_COLORS.get(color)
     if ansi_color is None:
         raise ValueError(f"Unsupported warning color '{color}'")
     logger.warning(f"{ansi_color}WARNING: {rendered_message}{ANSI_RESET}")
@@ -505,30 +573,17 @@ def classify_flavor(relative_path: Path, accelerator: str) -> str | None:
             return None
         raise ValueError(f"Unsupported CPU build-args path: {relative_path}")
 
-    if accelerator == "cuda":
-        if parts[:2] == ("jupyter", "minimal"):
-            return "minimal"
-        if parts[:2] in {("jupyter", "pytorch"), ("runtimes", "pytorch")}:
-            return "pytorch"
-        if parts[:2] in {
-            ("jupyter", "pytorch+llmcompressor"),
-            ("runtimes", "pytorch+llmcompressor"),
-        }:
-            return "pytorch-llmcompressor"
-        if parts[:2] in {("jupyter", "tensorflow"), ("runtimes", "tensorflow")}:
-            return "tensorflow"
-        raise ValueError(f"Unsupported CUDA build-args path: {relative_path}")
+    mapping = GPU_FLAVOR_PATHS.get(accelerator)
+    if mapping is None:
+        raise ValueError(f"Unsupported accelerator '{accelerator}'")
 
-    if accelerator == "rocm":
-        if parts[:2] == ("jupyter", "minimal"):
-            return "minimal"
-        if parts[:3] == ("jupyter", "rocm", "pytorch") or parts[:2] == ("runtimes", "rocm-pytorch"):
-            return "pytorch"
-        if parts[:3] == ("jupyter", "rocm", "tensorflow") or parts[:2] == ("runtimes", "rocm-tensorflow"):
-            return "tensorflow"
-        raise ValueError(f"Unsupported ROCm build-args path: {relative_path}")
+    for prefix in (parts[:3], parts[:2]):
+        if flavor := mapping.get(prefix):
+            return flavor
 
-    raise ValueError(f"Unsupported accelerator '{accelerator}'")
+    raise ValueError(
+        f"Unsupported {ACCELERATOR_DISPLAY_NAMES.get(accelerator, accelerator)} build-args path: {relative_path}"
+    )
 
 
 def collect_conf_targets(root_dir: Path) -> list[ConfTarget]:
@@ -574,58 +629,6 @@ def major_minor_stream_version(value: str) -> str | None:
     if match is None:
         return None
     return f"{match.group('major')}.{match.group('minor')}"
-
-
-def extract_image_env(config_payload: dict[str, Any]) -> dict[str, str]:
-    config = config_payload.get("config")
-    if not isinstance(config, dict):
-        return {}
-
-    raw_env = config.get("Env")
-    if not isinstance(raw_env, list):
-        return {}
-
-    env: dict[str, str] = {}
-    for entry in raw_env:
-        if not isinstance(entry, str) or "=" not in entry:
-            continue
-        key, value = entry.split("=", 1)
-        env[key] = value
-    return env
-
-
-def extract_image_labels(config_payload: dict[str, Any]) -> dict[str, str]:
-    labels: dict[str, str] = {}
-
-    config = config_payload.get("config")
-    if isinstance(config, dict):
-        config_labels = config.get("Labels")
-        if isinstance(config_labels, dict):
-            labels.update(
-                {key: value for key, value in config_labels.items() if isinstance(key, str) and isinstance(value, str)}
-            )
-
-    root_labels = config_payload.get("Labels")
-    if isinstance(root_labels, dict):
-        labels.update(
-            {key: value for key, value in root_labels.items() if isinstance(key, str) and isinstance(value, str)}
-        )
-    return labels
-
-
-def extract_image_history(config_payload: dict[str, Any]) -> list[str]:
-    history = config_payload.get("history")
-    if not isinstance(history, list):
-        return []
-
-    created_by: list[str] = []
-    for layer in history:
-        if not isinstance(layer, dict):
-            continue
-        value = layer.get("created_by")
-        if isinstance(value, str):
-            created_by.append(value)
-    return created_by
 
 
 def inspect_image_config(image: str, *, warning_color: str | None = None) -> dict[str, Any] | None:
@@ -674,109 +677,133 @@ def inspect_rhds_stable_acc_version(image: str, accelerator: str) -> str | None 
     if config_payload is None:
         return _STABLE_ACC_VERSION_INSPECT_FAILED
 
-    env = extract_image_env(config_payload)
-    labels = extract_image_labels(config_payload)
-    history = extract_image_history(config_payload)
+    inspected = InspectedImageConfig.from_payload(config_payload)
 
-    if accelerator == "cuda":
-        for value in (env.get("CUDA_VERSION"), labels.get("CUDA_VERSION")):
-            if value is None:
-                continue
-            if version := major_minor_stream_version(value):
+    def first_major_minor(values: tuple[str | None, ...]) -> str | None:
+        for value in values:
+            if value and (version := major_minor_stream_version(value)):
                 return version
+        return None
 
-        requirement = env.get("NVIDIA_REQUIRE_CUDA")
-        if requirement is not None:
-            match = re.search(r"cuda>=(?P<version>\d+\.\d+(?:\.\d+)?)", requirement)
-            if match and (version := major_minor_stream_version(match.group("version"))):
-                return version
-
-        for line in history:
-            match = re.search(r"\bCUDA_VERSION=(?P<version>\d+\.\d+(?:\.\d+)?)\b", line)
+    def version_from_history(pattern: str) -> str | None:
+        for line in inspected.history:
+            match = re.search(pattern, line)
             if match and (version := major_minor_stream_version(match.group("version"))):
                 return version
         return None
 
-    if accelerator == "rocm":
-        for value in (env.get("ROCM_VERSION"), labels.get("ROCM_VERSION")):
-            if value is None:
-                continue
-            if version := major_minor_stream_version(value):
+    match accelerator:
+        case "cuda":
+            if version := first_major_minor((inspected.env.get("CUDA_VERSION"), inspected.labels.get("CUDA_VERSION"))):
                 return version
-
-        for line in history:
-            match = re.search(r"\bROCM_VERSION=(?P<version>\d+\.\d+(?:\.\d+)?)\b", line)
-            if match and (version := major_minor_stream_version(match.group("version"))):
+            requirement = inspected.env.get("NVIDIA_REQUIRE_CUDA")
+            if requirement is not None:
+                match = re.search(r"cuda>=(?P<version>\d+\.\d+(?:\.\d+)?)", requirement)
+                if match and (version := major_minor_stream_version(match.group("version"))):
+                    return version
+            return version_from_history(r"\bCUDA_VERSION=(?P<version>\d+\.\d+(?:\.\d+)?)\b")
+        case "rocm":
+            if version := first_major_minor((inspected.env.get("ROCM_VERSION"), inspected.labels.get("ROCM_VERSION"))):
                 return version
-        return None
+            return version_from_history(r"\bROCM_VERSION=(?P<version>\d+\.\d+(?:\.\d+)?)\b")
+        case _:
+            raise ValueError(f"Unsupported accelerator '{accelerator}'")
 
-    raise ValueError(f"Unsupported accelerator '{accelerator}'")
 
-
-def warn_on_rhds_stable_acc_version_mismatch(
-    target: ConfTarget,
-    stable_image: str,
-    configured_acc_version: str | None,
+def cached_rhds_stable_acc_version(
+    image: str,
+    accelerator: str,
     stable_acc_version_cache: dict[tuple[str, str], str | None | object],
-) -> None:
-    if target.accelerator == "cpu" or configured_acc_version is None:
-        return
-
-    cache_key = (stable_image, target.accelerator)
+) -> str | None | object:
+    cache_key = (image, accelerator)
     if cache_key not in stable_acc_version_cache:
-        stable_acc_version_cache[cache_key] = inspect_rhds_stable_acc_version(stable_image, target.accelerator)
+        stable_acc_version_cache[cache_key] = inspect_rhds_stable_acc_version(image, accelerator)
 
     detected_acc_version = stable_acc_version_cache[cache_key]
-    if detected_acc_version is _STABLE_ACC_VERSION_INSPECT_FAILED:
-        return
-    if detected_acc_version is None:
-        log_warning(
-            "Could not determine RHDS stable %s acc_version from %s; continuing with configured shared acc_version %s",
-            target.accelerator,
-            stable_image,
-            normalize_stream_version(configured_acc_version),
-            color="yellow",
-        )
-        return
+    if detected_acc_version in (_STABLE_ACC_VERSION_INSPECT_FAILED, None):
+        return detected_acc_version
     if not isinstance(detected_acc_version, str):
-        raise TypeError(f"Unexpected cached stable acc_version state for {stable_image}: {detected_acc_version!r}")
+        raise TypeError(f"Unexpected cached stable acc_version state for {image}: {detected_acc_version!r}")
+    return normalize_stream_version(detected_acc_version)
 
+
+def describe_available_rhds_stable_acc_versions(configured_acc_version: str, detected_versions: set[str]) -> str:
+    configured_minor = parse_minor_version(configured_acc_version)
+    sorted_versions = sorted(detected_versions, key=parse_minor_version)
+    older = [version for version in sorted_versions if parse_minor_version(version) < configured_minor]
+    newer = [version for version in sorted_versions if parse_minor_version(version) > configured_minor]
+
+    if older and not newer:
+        label = "older acc_version" if len(older) == 1 else "older acc_versions"
+        return f"{label} {', '.join(older)}"
+    if newer and not older:
+        label = "newer acc_version" if len(newer) == 1 else "newer acc_versions"
+        return f"{label} {', '.join(newer)}"
+    return f"older and newer acc_versions {', '.join(sorted_versions)}"
+
+
+def resolve_matching_published_rhds_stable_image(
+    repository: str,
+    release_version: str,
+    accelerator: str,
+    configured_acc_version: str,
+    tag_cache: dict[str, tuple[str, ...]] | None,
+    stable_acc_version_cache: dict[tuple[str, str], str | None | object],
+) -> str:
     configured_normalized = normalize_stream_version(configured_acc_version)
-    detected_normalized = normalize_stream_version(detected_acc_version)
-    if configured_normalized == detected_normalized:
-        return
+    candidates = sorted(
+        (
+            (int(match.group("build")), tag)
+            for tag in list_rhds_repository_tags(repository, tag_cache)
+            if (match := RHDS_STABLE_TAG_RE.fullmatch(tag)) is not None and match.group("version") == release_version
+        ),
+        reverse=True,
+    )
 
-    log_warning(
-        "Configured shared %s acc_version %s does not match RHDS stable image %s, which appears to use acc_version %s. Consider updating versions_config.yml to use acc_version %s for alignment.",
-        target.accelerator,
-        configured_normalized,
-        stable_image,
-        detected_normalized,
-        detected_normalized,
-        color="green",
+    if not candidates:
+        raise ValueError(f"No published RHDS stable tags found for release '{release_version}'")
+
+    unresolved_images: list[str] = []
+    detected_versions: set[str] = set()
+    for _build, tag in candidates:
+        image = f"{repository}:{tag}"
+        detected_acc_version = cached_rhds_stable_acc_version(image, accelerator, stable_acc_version_cache)
+        if detected_acc_version in (_STABLE_ACC_VERSION_INSPECT_FAILED, None):
+            unresolved_images.append(image)
+            continue
+        if detected_acc_version == configured_normalized:
+            return image
+        detected_versions.add(detected_acc_version)
+
+    if unresolved_images:
+        detail = ""
+        if detected_versions:
+            detail = (
+                " Candidate stable images inspected successfully appear to use "
+                f"{describe_available_rhds_stable_acc_versions(configured_normalized, detected_versions)}."
+            )
+        raise ValueError(
+            f"Could not determine whether any published RHDS stable {accelerator} image in {repository} for "
+            f"release '{release_version}' matches configured shared acc_version {configured_normalized}; one or "
+            f"more candidate stable images could not be inspected or did not expose an acc_version.{detail}"
+        )
+
+    raise ValueError(
+        f"No published RHDS stable {accelerator} image in {repository} for release '{release_version}' matches "
+        f"configured shared acc_version {configured_normalized}; available stable images appear to use "
+        f"{describe_available_rhds_stable_acc_versions(configured_normalized, detected_versions)}."
     )
 
 
-def build_rhds_family_pattern(candidate_tag: str) -> re.Pattern[str]:
+def select_latest_matching_rhds_tag(tags: list[str], candidate_tag: str) -> str:
     match = RHDS_TAG_RE.fullmatch(candidate_tag)
     if match is None:
         raise ValueError(f"Unsupported RHDS candidate tag: {candidate_tag}")
-
     prefix = match.group("version")
     if phase := match.group("phase"):
         prefix = f"{prefix}-{phase}"
-    return re.compile(rf"^{re.escape(prefix)}-(?P<build>\d+)$")
-
-
-def select_latest_matching_rhds_tag(tags: list[str], candidate_tag: str) -> str:
-    family_pattern = build_rhds_family_pattern(candidate_tag)
-    matches: list[tuple[int, str]] = []
-
-    for tag in tags:
-        match = family_pattern.fullmatch(tag)
-        if match is None:
-            continue
-        matches.append((int(match.group("build")), tag))
+    family_pattern = re.compile(rf"^{re.escape(prefix)}-(?P<build>\d+)$")
+    matches = [(int(match.group("build")), tag) for tag in tags if (match := family_pattern.fullmatch(tag)) is not None]
 
     if not matches:
         raise ValueError(f"No matching published RHDS tag found for family '{candidate_tag}'")
@@ -789,42 +816,23 @@ def determine_highest_published_rhds_phase_for_release(
     release_version: str,
     tag_cache: dict[str, tuple[str, ...]] | None = None,
 ) -> str | None:
-    phases: set[str | None] = set()
-
-    for tag in list_rhds_repository_tags(repository, tag_cache):
-        match = RHDS_TAG_RE.fullmatch(tag)
-        if match is None or match.group("version") != release_version:
-            continue
-        phases.add(match.group("phase"))
+    phases = {
+        match.group("phase")
+        for tag in list_rhds_repository_tags(repository, tag_cache)
+        if (match := RHDS_TAG_RE.fullmatch(tag)) is not None and match.group("version") == release_version
+    }
 
     if not phases:
         return "ea.1"
     return max(phases, key=rank_rhds_phase)
 
 
-def select_rhds_forward_phase(
-    accelerator: str,
-    version: str,
-    release_version: str,
-    release: ReleaseConfig,
-    tag_cache: dict[str, tuple[str, ...]],
-) -> str | None:
-    repository = build_rhds_pinned_repository(accelerator, version, release)
-    return determine_highest_published_rhds_phase_for_release(
-        repository,
-        release_version,
-        tag_cache,
-    )
-
-
 def select_highest_published_rhds_tag_for_release(tags: list[str], release_version: str) -> str:
-    matches: list[tuple[int, int, str]] = []
-
-    for tag in tags:
-        match = RHDS_TAG_RE.fullmatch(tag)
-        if match is None or match.group("version") != release_version:
-            continue
-        matches.append((rank_rhds_phase(match.group("phase")), int(match.group("build")), tag))
+    matches = [
+        (rank_rhds_phase(match.group("phase")), int(match.group("build")), tag)
+        for tag in tags
+        if (match := RHDS_TAG_RE.fullmatch(tag)) is not None and match.group("version") == release_version
+    ]
 
     if not matches:
         raise ValueError(f"No published RHDS tags found for release '{release_version}'")
@@ -894,6 +902,18 @@ def build_rhds_pinned_repository(accelerator: str, version: str, release: Releas
     return f"quay.io/aipcc/base-images/{accelerator}-{normalized_version}-{release.rhds_os_base}"
 
 
+def build_rhds_gpu_stable_repository(
+    accelerator: str,
+    release: ReleaseConfig,
+    stable_repo_overrides: dict[str, str] | None = None,
+) -> str:
+    if accelerator not in RHDS_STABLE_OVERRIDE_ACCELERATORS:
+        raise ValueError(f"Unsupported RHDS stable accelerator: {accelerator}")
+    if stable_repo_overrides and accelerator in stable_repo_overrides:
+        return stable_repo_overrides[accelerator]
+    return f"quay.io/aipcc/base-images/{accelerator}-{release.rhds_os_base}"
+
+
 def describe_rhds_phase(phase: str | None) -> str:
     return "GA" if phase is None else phase
 
@@ -946,7 +966,7 @@ def build_rhds_pinned_tag(
     *,
     use_bundle_phase: bool = False,
     bundle_phase: str | None = None,
-    forward_phase: str | None | object = _FORWARD_PHASE_UNSET,
+    forward_phase: str | None = "ea.1",
 ) -> str:
     match = RHDS_TAG_RE.fullmatch(current_tag)
     if match is None:
@@ -963,7 +983,7 @@ def build_rhds_pinned_tag(
     elif use_bundle_phase:
         phase = bundle_phase
     elif target_version > current_version:
-        phase = "ea.1" if forward_phase is _FORWARD_PHASE_UNSET else forward_phase
+        phase = forward_phase
     else:
         phase = match.group("phase")
 
@@ -981,15 +1001,11 @@ def build_rhds_pinned_image(
     *,
     use_bundle_phase: bool = False,
     bundle_phase: str | None = None,
-    forward_phase: str | None | object = _FORWARD_PHASE_UNSET,
+    forward_phase: str | None = "ea.1",
 ) -> str:
     _current_name, current_tag = split_image_ref(current_base_image)
     repository = build_rhds_pinned_repository(accelerator, version, release)
     return f"{repository}:{build_rhds_pinned_tag(current_tag, target_release_version, use_bundle_phase=use_bundle_phase, bundle_phase=bundle_phase, forward_phase=forward_phase)}"
-
-
-def build_rhds_stable_image(accelerator: str, release: ReleaseConfig) -> str:
-    return f"quay.io/aipcc/base-image-{accelerator}-stable-ubi9:{release_minor_version(release.full_version)}"
 
 
 def build_odh_in_house_image(accelerator: str, version: str, release: ReleaseConfig) -> str:
@@ -1030,6 +1046,7 @@ def build_target_base_image(
     stable_acc_version_cache: dict[tuple[str, str], str | None | object],
     rhds_bundle_phase_known: bool,
     rhds_bundle_phase: str | None,
+    stable_repo_overrides: dict[str, str] | None = None,
 ) -> str:
     target = state.target
     current_base_image = state.current_base_image
@@ -1037,14 +1054,23 @@ def build_target_base_image(
 
     if target.distribution == "rhds":
         if policy.mode == "stable":
-            stable_image = build_rhds_stable_image(target.accelerator, release)
-            warn_on_rhds_stable_acc_version_mismatch(
-                target,
-                stable_image,
+            if target.accelerator == "cpu":
+                return f"quay.io/aipcc/base-image-cpu-stable-ubi9:{release_minor_version(release.full_version)}"
+            if state.shared_acc_version is None:
+                raise ValueError(f"Missing configured shared acc_version for RHDS stable {target.accelerator}")
+            repository = build_rhds_gpu_stable_repository(
+                target.accelerator,
+                release,
+                stable_repo_overrides,
+            )
+            return resolve_matching_published_rhds_stable_image(
+                repository,
+                release.full_version,
+                target.accelerator,
                 state.shared_acc_version,
+                tag_cache,
                 stable_acc_version_cache,
             )
-            return stable_image
         if policy.version is None:
             raise ValueError(f"Missing {policy_version_key(target.accelerator)} for rhds fast channel in {target.path}")
 
@@ -1053,17 +1079,29 @@ def build_target_base_image(
         _current_repository, current_tag = split_image_ref(current_base_image)
         if RHDS_TAG_RE.fullmatch(current_tag) is None:
             repository = build_rhds_pinned_repository(target.accelerator, policy.version, release)
+            stable_match = RHDS_STABLE_TAG_RE.fullmatch(current_tag)
             if MIDSTREAM_VERSION_RE.fullmatch(current_tag):
                 current_minor = parse_minor_version(current_tag)
                 target_minor = parse_minor_version(release_minor_version(target_release_version))
                 if current_minor > target_minor:
                     seed_phase = None
                 elif current_minor < target_minor:
-                    seed_phase = select_rhds_forward_phase(
-                        target.accelerator,
-                        policy.version,
+                    seed_phase = determine_highest_published_rhds_phase_for_release(
+                        repository,
                         target_release_version,
-                        release,
+                        tag_cache,
+                    )
+                else:
+                    seed_phase = rhds_bundle_phase if rhds_bundle_phase_known and use_release_bundle_phase else "ea.1"
+            elif stable_match is not None:
+                current_version = parse_release_version(stable_match.group("version"))
+                target_version = parse_release_version(target_release_version)
+                if current_version > target_version:
+                    seed_phase = None
+                elif current_version < target_version:
+                    seed_phase = determine_highest_published_rhds_phase_for_release(
+                        repository,
+                        target_release_version,
                         tag_cache,
                     )
                 else:
@@ -1073,15 +1111,13 @@ def build_target_base_image(
             candidate = f"{repository}:{build_rhds_seed_tag(target_release_version, seed_phase)}"
         else:
             current_match = RHDS_TAG_RE.fullmatch(current_tag)
-            forward_phase: str | None | object = _FORWARD_PHASE_UNSET
+            forward_phase = "ea.1"
             current_version = parse_release_version(current_match.group("version"))
             target_version = parse_release_version(target_release_version)
             if target_version > current_version:
-                forward_phase = select_rhds_forward_phase(
-                    target.accelerator,
-                    policy.version,
+                forward_phase = determine_highest_published_rhds_phase_for_release(
+                    build_rhds_pinned_repository(target.accelerator, policy.version, release),
                     target_release_version,
-                    release,
                     tag_cache,
                 )
             candidate = build_rhds_pinned_image(
@@ -1122,39 +1158,24 @@ def read_conf_assignments(text: str) -> dict[str, str]:
 
 
 def rewrite_conf_text(text: str, replacements: dict[str, str]) -> str:
-    lines = text.splitlines(keepends=True)
-    found_keys: set[str] = set()
-    rewritten_lines: list[str] = []
-
-    for line in lines:
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
-            rewritten_lines.append(line)
-            continue
-
-        key, _, _value = stripped.partition("=")
-        normalized_key = key.strip()
-        if normalized_key not in replacements:
-            rewritten_lines.append(line)
-            continue
-
-        found_keys.add(normalized_key)
-        line_ending = "\n" if line.endswith("\n") else ""
-        rewritten_lines.append(f"{normalized_key}={replacements[normalized_key]}{line_ending}")
-
-    missing_keys = [key for key in replacements if key not in found_keys]
-    if missing_keys:
-        raise ValueError(f"Missing {', '.join(missing_keys)} in build-args content")
-    return "".join(rewritten_lines)
-
-
-def rewrite_makefile_text(text: str, replacements: dict[str, str]) -> str:
-    lines = text.splitlines(keepends=True)
-    found_keys: set[str] = set()
-    rewritten_lines: list[str] = []
-    assignment_re = re.compile(
-        r"^(?P<leading>\s*)(?P<key>[A-Za-z_][A-Za-z0-9_]*)(?P<separator>\s*\?=\s*)(?P<value>.*)$"
+    return rewrite_assignment_text(
+        text,
+        replacements,
+        assignment_re=CONF_ASSIGNMENT_RE,
+        missing_context="build-args content",
     )
+
+
+def rewrite_assignment_text(
+    text: str,
+    replacements: dict[str, str],
+    *,
+    assignment_re: re.Pattern[str],
+    missing_context: str,
+) -> str:
+    lines = text.splitlines(keepends=True)
+    found_keys: set[str] = set()
+    rewritten_lines: list[str] = []
 
     for line in lines:
         line_ending = "\n" if line.endswith("\n") else ""
@@ -1166,14 +1187,21 @@ def rewrite_makefile_text(text: str, replacements: dict[str, str]) -> str:
 
         key = match.group("key")
         found_keys.add(key)
-        rewritten_lines.append(
-            f"{match.group('leading')}{key}{match.group('separator')}{replacements[key]}{line_ending}"
-        )
+        rewritten_lines.append(f"{match.group('prefix')}{replacements[key]}{line_ending}")
 
     missing_keys = [key for key in replacements if key not in found_keys]
     if missing_keys:
-        raise ValueError(f"Missing {', '.join(missing_keys)} in Makefile")
+        raise ValueError(f"Missing {', '.join(missing_keys)} in {missing_context}")
     return "".join(rewritten_lines)
+
+
+def rewrite_makefile_text(text: str, replacements: dict[str, str]) -> str:
+    return rewrite_assignment_text(
+        text,
+        replacements,
+        assignment_re=MAKEFILE_ASSIGNMENT_RE,
+        missing_context="Makefile",
+    )
 
 
 def build_conf_replacements(
@@ -1192,7 +1220,11 @@ def build_makefile_replacements(release: ReleaseConfig) -> dict[str, str]:
     }
 
 
-def plan_updates(root_dir: Path, config: VersionsConfig) -> list[PlannedUpdate]:
+def plan_updates(
+    root_dir: Path,
+    config: VersionsConfig,
+    stable_repo_overrides: dict[str, str] | None = None,
+) -> list[PlannedUpdate]:
     states: list[TargetState] = []
     tag_cache: dict[str, tuple[str, ...]] = {}
     stable_acc_version_cache: dict[tuple[str, str], str | None | object] = {}
@@ -1229,6 +1261,7 @@ def plan_updates(root_dir: Path, config: VersionsConfig) -> list[PlannedUpdate]:
             stable_acc_version_cache,
             rhds_bundle_phase_known,
             rhds_bundle_phase,
+            stable_repo_overrides,
         )
         updates.append(
             PlannedUpdate(
@@ -1274,19 +1307,46 @@ def print_diff(root_dir: Path, update: PlannedUpdate) -> None:
     print("\n".join(diff))
 
 
+def parse_rhds_stable_repo_override(value: str) -> tuple[str, str]:
+    accelerator, separator, repository = value.partition("=")
+    normalized_accelerator = accelerator.strip().lower()
+    normalized_repository = repository.strip()
+    if separator == "" or not normalized_accelerator or not normalized_repository:
+        raise argparse.ArgumentTypeError("RHDS stable repo override must use ACCELERATOR=REPOSITORY")
+    if normalized_accelerator not in RHDS_STABLE_OVERRIDE_ACCELERATORS:
+        allowed = ", ".join(sorted(RHDS_STABLE_OVERRIDE_ACCELERATORS))
+        raise argparse.ArgumentTypeError(f"RHDS stable repo override accelerator must be one of: {allowed}")
+    return normalized_accelerator, normalized_repository
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=ROOT_DIR, help="Repository root to scan")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH, help="Path to versions_config.yml")
     parser.add_argument("--dry-run", action="store_true", help="Show changes without writing files")
     parser.add_argument("--check", action="store_true", help="Exit non-zero if files need updates")
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--rhds-stable-repo-override",
+        action="append",
+        default=[],
+        type=parse_rhds_stable_repo_override,
+        metavar="ACCELERATOR=REPOSITORY",
+        help="Override RHDS GPU stable repository for local testing; repeat for cuda/rocm",
+    )
+    args = parser.parse_args(argv)
+    stable_repo_overrides: dict[str, str] = {}
+    for accelerator, repository in args.rhds_stable_repo_override:
+        if accelerator in stable_repo_overrides:
+            parser.error(f"duplicate --rhds-stable-repo-override for accelerator '{accelerator}'")
+        stable_repo_overrides[accelerator] = repository
+    args.rhds_stable_repo_overrides = stable_repo_overrides
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     config = load_versions_config(args.config)
-    updates = plan_updates(args.root, config)
+    updates = plan_updates(args.root, config, args.rhds_stable_repo_overrides)
     changed_updates = [update for update in updates if update.original_text != update.updated_text]
 
     if args.dry_run or args.check:

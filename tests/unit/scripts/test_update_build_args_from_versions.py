@@ -18,6 +18,62 @@ def load_updater():
         pytest.fail(f"Missing sync implementation module: {exc}")
 
 
+def completed_process(
+    *,
+    returncode: int = 0,
+    stdout: str = "",
+    stderr: str = "",
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess(
+        args=["skopeo"],
+        returncode=returncode,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+
+def rhds_gpu_stable_image(
+    accelerator: str,
+    *,
+    full_version: str = "3.5.0",
+    rhds_os_base: str = "el9.6",
+    build: str = "1780598175",
+) -> str:
+    return f"quay.io/aipcc/base-images/{accelerator}-{rhds_os_base}:{full_version}-stable-{build}"
+
+
+def stub_published_rhds_gpu_stable_tags(
+    monkeypatch: pytest.MonkeyPatch,
+    updater,
+    *,
+    full_version: str = "3.5.0",
+    rhds_os_base: str = "el9.6",
+    cuda_build: str = "1780598175",
+    rocm_build: str = "1780598175",
+) -> None:
+    tags_by_repository = {
+        f"quay.io/aipcc/base-images/cuda-{rhds_os_base}": (f"{full_version}-stable-{cuda_build}",),
+        f"quay.io/aipcc/base-images/rocm-{rhds_os_base}": (f"{full_version}-stable-{rocm_build}",),
+    }
+    monkeypatch.setattr(
+        updater,
+        "list_rhds_repository_tags",
+        lambda repository, tag_cache=None: tags_by_repository.get(repository, ()),
+    )
+
+
+def stub_rhds_repository_tags(
+    monkeypatch: pytest.MonkeyPatch,
+    updater,
+    tags_by_repository: dict[str, tuple[str, ...]],
+) -> None:
+    monkeypatch.setattr(
+        updater,
+        "list_rhds_repository_tags",
+        lambda repository, tag_cache=None: tags_by_repository.get(repository, ()),
+    )
+
+
 def stub_empty_rhds_tag_listing(monkeypatch: pytest.MonkeyPatch, updater) -> None:
     monkeypatch.setattr(
         updater,
@@ -538,15 +594,16 @@ def test_build_rhds_pinned_tag_targets_ga_family_on_rollback() -> None:
 def test_resolve_latest_published_rhds_image_uses_skopeo_tags(monkeypatch: pytest.MonkeyPatch) -> None:
     updater = load_updater()
 
-    class Completed:
-        returncode = 0
-        stdout = (
-            '{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":'
-            '["3.6.0-ea.1-1777919000","3.6.0-ea.1-1777919999","3.6.0-ea.2-1777920000"]}'
-        )
-        stderr = ""
-
-    monkeypatch.setattr(updater.subprocess, "run", lambda *args, **kwargs: Completed())
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout=(
+                '{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":'
+                '["3.6.0-ea.1-1777919000","3.6.0-ea.1-1777919999","3.6.0-ea.2-1777920000"]}'
+            )
+        ),
+    )
 
     latest = updater.resolve_latest_published_rhds_image(
         "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777000000"
@@ -560,15 +617,16 @@ def test_resolve_latest_published_rhds_image_rollback_falls_back_to_highest_phas
 ) -> None:
     updater = load_updater()
 
-    class Completed:
-        returncode = 0
-        stdout = (
-            '{"Repository":"quay.io/aipcc/base-images/cpu","Tags":'
-            '["3.4.0-ea.1-1777919000","3.4.0-ea.2-1777919999","3.5.0-1777921111"]}'
-        )
-        stderr = ""
-
-    monkeypatch.setattr(updater.subprocess, "run", lambda *args, **kwargs: Completed())
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout=(
+                '{"Repository":"quay.io/aipcc/base-images/cpu","Tags":'
+                '["3.4.0-ea.1-1777919000","3.4.0-ea.2-1777919999","3.5.0-1777921111"]}'
+            )
+        ),
+    )
 
     latest = updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cpu:3.4.0-0")
 
@@ -580,12 +638,13 @@ def test_resolve_latest_published_rhds_image_rollback_raises_when_release_is_unp
 ) -> None:
     updater = load_updater()
 
-    class Completed:
-        returncode = 0
-        stdout = '{"Repository":"quay.io/aipcc/base-images/cpu","Tags":["3.5.0-ea.2-1777919999"]}'
-        stderr = ""
-
-    monkeypatch.setattr(updater.subprocess, "run", lambda *args, **kwargs: Completed())
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout='{"Repository":"quay.io/aipcc/base-images/cpu","Tags":["3.5.0-ea.2-1777919999"]}'
+        ),
+    )
 
     with pytest.raises(ValueError, match=r"release '3.4.0'"):
         updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cpu:3.4.0-0")
@@ -596,12 +655,11 @@ def test_resolve_latest_published_rhds_image_raises_on_skopeo_failure(
 ) -> None:
     updater = load_updater()
 
-    class Completed:
-        returncode = 1
-        stdout = ""
-        stderr = "manifest unknown"
-
-    monkeypatch.setattr(updater.subprocess, "run", lambda *args, **kwargs: Completed())
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(returncode=1, stderr="manifest unknown"),
+    )
 
     with pytest.raises(ValueError, match="skopeo list-tags failed"):
         updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777000000")
@@ -652,14 +710,9 @@ def test_plan_updates_caches_rhds_tag_listing_per_repository(
 
     calls: list[str] = []
 
-    class Completed:
-        returncode = 0
-        stdout = '{"Tags":["3.6.0-ea.1-1777919999"]}'
-        stderr = ""
-
     def fake_run(cmd, **kwargs):
         calls.append(cmd[-1])
-        return Completed()
+        return completed_process(stdout='{"Tags":["3.6.0-ea.1-1777919999"]}')
 
     monkeypatch.setattr(updater.subprocess, "run", fake_run)
 
@@ -717,7 +770,7 @@ def test_plan_updates_infers_ga_phase_for_stable_to_fast_target(
     peer_conf = tmp_path / "jupyter" / "pytorch" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
     target_conf.parent.mkdir(parents=True)
     peer_conf.parent.mkdir(parents=True)
-    target_conf.write_text("BASE_IMAGE=quay.io/aipcc/base-image-cuda-stable-ubi9:3.5\n", encoding="utf-8")
+    target_conf.write_text(f"BASE_IMAGE={rhds_gpu_stable_image('cuda')}\n", encoding="utf-8")
     peer_conf.write_text(
         "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-1777919771\n",
         encoding="utf-8",
@@ -921,15 +974,16 @@ def test_plan_updates_uses_published_ga_for_new_release_when_available(
         encoding="utf-8",
     )
 
-    class Completed:
-        returncode = 0
-        stdout = (
-            '{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":'
-            '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999","3.5.0-1777921111"]}'
-        )
-        stderr = ""
-
-    monkeypatch.setattr(updater.subprocess, "run", lambda *args, **kwargs: Completed())
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout=(
+                '{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":'
+                '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999","3.5.0-1777921111"]}'
+            )
+        ),
+    )
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
@@ -950,15 +1004,16 @@ def test_plan_updates_uses_highest_published_phase_for_new_release_when_ga_missi
         encoding="utf-8",
     )
 
-    class Completed:
-        returncode = 0
-        stdout = (
-            '{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":'
-            '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999"]}'
-        )
-        stderr = ""
-
-    monkeypatch.setattr(updater.subprocess, "run", lambda *args, **kwargs: Completed())
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout=(
+                '{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":'
+                '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999"]}'
+            )
+        ),
+    )
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
@@ -978,14 +1033,16 @@ def test_plan_updates_stable_to_fast_forward_uses_highest_published_phase_for_ne
     conf.parent.mkdir(parents=True)
     conf.write_text("BASE_IMAGE=quay.io/aipcc/base-image-cpu-stable-ubi9:3.4\n", encoding="utf-8")
 
-    class Completed:
-        returncode = 0
-        stdout = (
-            '{"Repository":"quay.io/aipcc/base-images/cpu","Tags":["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999"]}'
-        )
-        stderr = ""
-
-    monkeypatch.setattr(updater.subprocess, "run", lambda *args, **kwargs: Completed())
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout=(
+                '{"Repository":"quay.io/aipcc/base-images/cpu","Tags":'
+                '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999"]}'
+            )
+        ),
+    )
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
@@ -1006,12 +1063,13 @@ def test_plan_updates_new_release_without_published_tags_keeps_strict_failure(
         encoding="utf-8",
     )
 
-    class Completed:
-        returncode = 0
-        stdout = '{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":["3.4.0-ea.2-1777919771"]}'
-        stderr = ""
-
-    monkeypatch.setattr(updater.subprocess, "run", lambda *args, **kwargs: Completed())
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout='{"Repository":"quay.io/aipcc/base-images/cuda-25.0-el9.6","Tags":["3.4.0-ea.2-1777919771"]}'
+        ),
+    )
 
     with pytest.raises(ValueError, match="No matching published RHDS tag found"):
         updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
@@ -1156,15 +1214,16 @@ def test_plan_updates_rollback_falls_back_to_highest_published_phase_when_ga_mis
     conf.parent.mkdir(parents=True)
     conf.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771\n", encoding="utf-8")
 
-    class Completed:
-        returncode = 0
-        stdout = (
-            '{"Repository":"quay.io/aipcc/base-images/cpu","Tags":'
-            '["3.4.0-ea.1-1777919000","3.4.0-ea.2-1777919999","3.5.0-ea.2-1777921111"]}'
-        )
-        stderr = ""
-
-    monkeypatch.setattr(updater.subprocess, "run", lambda *args, **kwargs: Completed())
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout=(
+                '{"Repository":"quay.io/aipcc/base-images/cpu","Tags":'
+                '["3.4.0-ea.1-1777919000","3.4.0-ea.2-1777919999","3.5.0-ea.2-1777921111"]}'
+            )
+        ),
+    )
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
@@ -1229,6 +1288,7 @@ def test_plan_updates_allows_independent_mixed_rhds_channels(
         return "quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1780000000"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
+    stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
     stub_matching_rhds_stable_acc_version(monkeypatch, updater)
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
@@ -1236,7 +1296,7 @@ def test_plan_updates_allows_independent_mixed_rhds_channels(
 
     assert seen == ["quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771"]
     assert rendered["konflux.cpu.conf"] == "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1780000000"
-    assert rendered["konflux.cuda.conf"] == "BASE_IMAGE=quay.io/aipcc/base-image-cuda-stable-ubi9:3.5"
+    assert rendered["konflux.cuda.conf"] == f"BASE_IMAGE={rhds_gpu_stable_image('cuda')}"
 
 
 def test_plan_updates_allows_cuda_minimal_stable_and_pytorch_fast(
@@ -1275,13 +1335,14 @@ def test_plan_updates_allows_cuda_minimal_stable_and_pytorch_fast(
         return "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000000"
 
     monkeypatch.setattr(updater, "resolve_latest_published_rhds_image", fake_resolve)
+    stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
     stub_matching_rhds_stable_acc_version(monkeypatch, updater)
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
     rendered = {update.target.path: update.updated_text.strip() for update in updates}
 
     assert seen == ["quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1777919771"]
-    assert rendered[minimal_conf] == "BASE_IMAGE=quay.io/aipcc/base-image-cuda-stable-ubi9:3.5"
+    assert rendered[minimal_conf] == f"BASE_IMAGE={rhds_gpu_stable_image('cuda')}"
     assert rendered[pytorch_conf] == "BASE_IMAGE=quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000000"
 
 
@@ -1305,10 +1366,11 @@ def test_plan_updates_uses_rhds_cuda_stable_repo(tmp_path: Path, monkeypatch: py
         encoding="utf-8",
     )
 
+    stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
     stub_matching_rhds_stable_acc_version(monkeypatch, updater)
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == "BASE_IMAGE=quay.io/aipcc/base-image-cuda-stable-ubi9:3.5"
+    assert updates[0].updated_text.strip() == f"BASE_IMAGE={rhds_gpu_stable_image('cuda')}"
 
 
 def test_plan_updates_uses_rhds_cpu_stable_repo(tmp_path: Path) -> None:
@@ -1353,10 +1415,11 @@ def test_plan_updates_uses_rhds_rocm_stable_repo(tmp_path: Path, monkeypatch: py
         encoding="utf-8",
     )
 
+    stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
     stub_matching_rhds_stable_acc_version(monkeypatch, updater)
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == "BASE_IMAGE=quay.io/aipcc/base-image-rocm-stable-ubi9:3.5"
+    assert updates[0].updated_text.strip() == f"BASE_IMAGE={rhds_gpu_stable_image('rocm')}"
 
 
 def test_plan_updates_uses_odh_midstream_rocm_repo(tmp_path: Path) -> None:
@@ -1380,10 +1443,9 @@ def test_plan_updates_uses_odh_midstream_rocm_repo(tmp_path: Path) -> None:
     assert updates[0].updated_text.strip() == "BASE_IMAGE=quay.io/opendatahub/odh-midstream-rocm-base-8-0:latest"
 
 
-def test_plan_updates_warns_when_rhds_stable_image_acc_version_differs_from_shared_config(
+def test_plan_updates_picks_rhds_stable_tag_matching_shared_acc_version_over_newer_build(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
     updater = load_updater()
     write_versions_config(
@@ -1392,7 +1454,7 @@ def test_plan_updates_warns_when_rhds_stable_image_acc_version_differs_from_shar
         replacements=[
             (
                 '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
-                '      minimal:\n        acc_version: "25.0"\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house',
+                '      minimal:\n        acc_version: "24.9"\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house',
             )
         ],
     )
@@ -1404,15 +1466,28 @@ def test_plan_updates_warns_when_rhds_stable_image_acc_version_differs_from_shar
         encoding="utf-8",
     )
 
-    monkeypatch.setattr(updater, "inspect_rhds_stable_acc_version", lambda image, accelerator: "24.9")
+    stub_rhds_repository_tags(
+        monkeypatch,
+        updater,
+        {
+            "quay.io/aipcc/base-images/cuda-el9.6": (
+                "3.5.0-stable-1780598175",
+                "3.5.0-stable-1780598176",
+            )
+        },
+    )
+    monkeypatch.setattr(
+        updater,
+        "inspect_rhds_stable_acc_version",
+        lambda image, accelerator: {
+            rhds_gpu_stable_image("cuda", build="1780598175"): "24.9",
+            rhds_gpu_stable_image("cuda", build="1780598176"): "25.0",
+        }[image],
+    )
 
-    with caplog.at_level("WARNING"):
-        updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
+    updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == "BASE_IMAGE=quay.io/aipcc/base-image-cuda-stable-ubi9:3.5"
-    assert caplog.records[-1].msg.startswith("\x1b[32mWARNING:")
-    assert "Configured shared cuda acc_version 25.0" in caplog.text
-    assert "use acc_version 24.9" in caplog.text
+    assert updates[0].updated_text.strip() == f"BASE_IMAGE={rhds_gpu_stable_image('cuda', build='1780598175')}"
 
 
 def test_inspect_image_config_warns_in_red_on_skopeo_failure(
@@ -1424,26 +1499,18 @@ def test_inspect_image_config_warns_in_red_on_skopeo_failure(
     monkeypatch.setattr(
         updater.subprocess,
         "run",
-        lambda *args, **kwargs: subprocess.CompletedProcess(
-            args=["skopeo"],
-            returncode=1,
-            stdout="",
-            stderr="fatal auth error",
-        ),
+        lambda *args, **kwargs: completed_process(returncode=1, stderr="fatal auth error"),
     )
 
     with caplog.at_level("WARNING"):
-        payload = updater.inspect_image_config("quay.io/aipcc/base-image-cuda-stable-ubi9:3.5", warning_color="red")
+        payload = updater.inspect_image_config(rhds_gpu_stable_image("cuda"), warning_color="red")
 
     assert payload is None
-    assert caplog.records[-1].msg.startswith("\x1b[31mWARNING:")
-    assert (
-        "skopeo inspect --config failed for quay.io/aipcc/base-image-cuda-stable-ubi9:3.5: fatal auth error"
-        in caplog.text
-    )
+    assert caplog.records[-1].msg.startswith(f"{updater.ANSI_RED}WARNING:")
+    assert f"skopeo inspect --config failed for {rhds_gpu_stable_image('cuda')}: fatal auth error" in caplog.text
 
 
-def test_plan_updates_warns_only_in_red_when_rhds_stable_inspect_fails(
+def test_plan_updates_raises_in_red_when_rhds_stable_candidates_cannot_be_inspected(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
@@ -1467,31 +1534,24 @@ def test_plan_updates_warns_only_in_red_when_rhds_stable_inspect_fails(
         encoding="utf-8",
     )
 
+    stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
     monkeypatch.setattr(
         updater.subprocess,
         "run",
-        lambda *args, **kwargs: subprocess.CompletedProcess(
-            args=["skopeo"],
-            returncode=1,
-            stdout="",
-            stderr="fatal auth error",
-        ),
+        lambda *args, **kwargs: completed_process(returncode=1, stderr="fatal auth error"),
     )
 
-    with caplog.at_level("WARNING"):
-        updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
+    with caplog.at_level("WARNING"), pytest.raises(ValueError, match=r"matches configured shared acc_version 25\.0"):
+        updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == "BASE_IMAGE=quay.io/aipcc/base-image-cuda-stable-ubi9:3.5"
     assert len(caplog.records) == 1
-    assert caplog.records[-1].msg.startswith("\x1b[31mWARNING:")
+    assert caplog.records[-1].msg.startswith(f"{updater.ANSI_RED}WARNING:")
     assert "fatal auth error" in caplog.text
-    assert "Could not determine RHDS stable cuda acc_version" not in caplog.text
 
 
-def test_plan_updates_warns_in_yellow_when_rhds_stable_acc_version_cannot_be_determined(
+def test_plan_updates_raises_when_rhds_stable_acc_version_cannot_be_determined(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
     updater = load_updater()
     write_versions_config(
@@ -1512,14 +1572,47 @@ def test_plan_updates_warns_in_yellow_when_rhds_stable_acc_version_cannot_be_det
         encoding="utf-8",
     )
 
+    stub_published_rhds_gpu_stable_tags(monkeypatch, updater)
     monkeypatch.setattr(updater, "inspect_rhds_stable_acc_version", lambda image, accelerator: None)
 
-    with caplog.at_level("WARNING"):
-        updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
+    with pytest.raises(ValueError, match=r"matches configured shared acc_version 25\.0"):
+        updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == "BASE_IMAGE=quay.io/aipcc/base-image-cuda-stable-ubi9:3.5"
-    assert caplog.records[-1].msg.startswith("\x1b[33mWARNING:")
-    assert "Could not determine RHDS stable cuda acc_version" in caplog.text
+
+def test_plan_updates_raises_when_no_rhds_stable_image_matches_shared_acc_version(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    updater = load_updater()
+    write_versions_config(
+        tmp_path / "versions_config.yml",
+        full_version="3.5.0",
+        replacements=[
+            (
+                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
+                '      minimal:\n        acc_version: "25.0"\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house',
+            )
+        ],
+    )
+
+    conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
+    conf.parent.mkdir(parents=True)
+    conf.write_text(
+        "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771\n",
+        encoding="utf-8",
+    )
+
+    stub_rhds_repository_tags(
+        monkeypatch,
+        updater,
+        {"quay.io/aipcc/base-images/cuda-el9.6": ("3.5.0-stable-1780598175",)},
+    )
+    monkeypatch.setattr(updater, "inspect_rhds_stable_acc_version", lambda image, accelerator: "24.9")
+
+    with pytest.raises(ValueError, match=r"matches configured shared acc_version 25\.0") as exc_info:
+        updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
+
+    assert "older acc_version 24.9" in str(exc_info.value)
 
 
 def test_plan_updates_uses_odh_midstream_cpu_repo(tmp_path: Path) -> None:
@@ -1739,3 +1832,65 @@ def test_main_check_returns_nonzero_when_files_need_updates(
     assert conf.read_text(encoding="utf-8").strip() == (
         "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771"
     )
+
+
+def test_main_updates_cuda_stable_with_rhds_stable_repo_override(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    updater = load_updater()
+    write_versions_config(
+        tmp_path / "versions_config.yml",
+        full_version="3.5.0",
+        replacements=[
+            (
+                '      minimal:\n        rhds:\n          channel: fast\n          acc_version: "25.0"\n        odh:\n          origin: in-house\n          acc_version: "25.0"',
+                '      minimal:\n        acc_version: "12.9"\n        rhds:\n          channel: stable\n        odh:\n          origin: in-house',
+            )
+        ],
+    )
+
+    conf = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12" / "build-args" / "konflux.cuda.conf"
+    conf.parent.mkdir(parents=True)
+    conf.write_text(
+        textwrap.dedent(
+            """\
+            INDEX_URL=unchanged
+            BASE_IMAGE=quay.io/aipcc/base-images/cuda-12.9-el9.6:3.5.0-ea.2-1777919771
+            PYLOCK_FLAVOR=cuda
+            RELEASE=3.5
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    seen: list[str] = []
+
+    def fake_list(repository: str, tag_cache=None) -> tuple[str, ...]:
+        seen.append(repository)
+        if repository == "quay.io/example/testing/cuda-el9.6":
+            return ("3.5.0-stable-9999999999",)
+        return ()
+
+    monkeypatch.setattr(updater, "list_rhds_repository_tags", fake_list)
+    monkeypatch.setattr(updater, "inspect_rhds_stable_acc_version", lambda image, accelerator: "12.9")
+
+    assert (
+        updater.main(
+            [
+                "--root",
+                str(tmp_path),
+                "--config",
+                str(tmp_path / "versions_config.yml"),
+                "--rhds-stable-repo-override=cuda=quay.io/example/testing/cuda-el9.6",
+            ]
+        )
+        == 0
+    )
+    assert seen == ["quay.io/example/testing/cuda-el9.6"]
+    assert conf.read_text(encoding="utf-8").splitlines() == [
+        "INDEX_URL=unchanged",
+        "BASE_IMAGE=quay.io/example/testing/cuda-el9.6:3.5.0-stable-9999999999",
+        "PYLOCK_FLAVOR=cuda",
+        "RELEASE=3.5",
+    ]

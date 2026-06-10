@@ -267,6 +267,8 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
                             continue
                         elif s.get("name") in ("CUDA", "ROCm"):
                             expected_version = get_accelerator_version_for_directory(directory, s["name"])
+                            if expected_version is None:
+                                continue
                             manifest_version = s.get("version", "").lstrip("v")
                             assert manifest_version == expected_version, (
                                 f"{s['name']} version in imagestream ({s.get('version')}) does not match "
@@ -811,16 +813,27 @@ def is_dependencies_directory(file: pathlib.Path) -> bool:
     return "dependencies" in file.relative_to(PROJECT_ROOT).parts
 
 
-def get_accelerator_version_for_directory(directory: pathlib.Path, accelerator_name: str) -> str:
-    """Parse the CUDA/ROCm version from the build-args/konflux.{cuda,rocm}.conf BASE_IMAGE value."""
+def get_accelerator_version_for_directory(directory: pathlib.Path, accelerator_name: str) -> str | None:
+    """Parse the CUDA/ROCm version from BASE_IMAGE, if the tag encodes it."""
     flavor = accelerator_name.lower()
     conf_file = directory / "build-args" / f"konflux.{flavor}.conf"
     env = parse_env_file(conf_file)
     base_image = env.get("BASE_IMAGE", "")
+    if re.search(rf"{re.escape(flavor)}-[^:]+:\d+\.\d+\.\d+-stable-\d+$", base_image, flags=re.IGNORECASE):
+        return None
     match = re.search(rf"{re.escape(flavor)}-v?(\d+\.\d+)", base_image, flags=re.IGNORECASE)
     if not match:
         raise ValueError(f"Cannot extract {accelerator_name} version from {conf_file}: BASE_IMAGE={base_image}")
     return match.group(1)
+
+
+def test_get_accelerator_version_for_directory_returns_none_for_gpu_stable_tag(tmp_path: pathlib.Path):
+    directory = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12"
+    conf_file = directory / "build-args" / "konflux.cuda.conf"
+    conf_file.parent.mkdir(parents=True)
+    conf_file.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cuda-el9.6:3.5.0-stable-1780598175\n")
+
+    assert get_accelerator_version_for_directory(directory, "CUDA") is None
 
 
 def _check_all_accelerator_variants(
@@ -841,6 +854,8 @@ def _check_all_accelerator_variants(
         accel_name = "CUDA" if flavor == "cuda" else "ROCm"
         with subtests.test(msg=f"accelerator variant {flavor}", directory=str(directory)):
             expected_version = get_accelerator_version_for_directory(directory, accel_name)
+            if expected_version is None:
+                pytest.skip(f"{accel_name} version is not encoded in stable BASE_IMAGE for {directory}")
 
             try:
                 manifest = load_manifests_file_for(directory, manifests_directory, accelerator_flavor=flavor)
