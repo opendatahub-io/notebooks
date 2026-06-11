@@ -111,29 +111,17 @@ jobs:
             unset SUBSCRIPTION_ACTIVATION_KEY SUBSCRIPTION_ORG
           fi
 
-          MANIFEST="${RUNNER_TEMP}/rpm-lockfile-manifest.txt"
-          : > "$MANIFEST"
-
-          while IFS= read -r in_file; do
-            dir=$(dirname "$in_file")
-            lockfile="${dir}/rpms.lock.yaml"
-            if [[ -f "$lockfile" ]]; then
-              echo "${in_file#./}" >> "$MANIFEST"
-            fi
-          done < <(find . -path "*/prefetch-input/${VARIANT}/rpms.in.yaml" | sort)
-
-          mapfile -t RPM_INPUTS < "$MANIFEST"
-
-          if [[ ${#RPM_INPUTS[@]} -eq 0 ]]; then
-            echo "No prefetch-input/${VARIANT}/ directories with both rpms.in.yaml and rpms.lock.yaml found." >&2
-            exit 1
-          fi
+          RPM_INPUTS=(
+            "prefetch-input/${VARIANT}/rpms.in.yaml"
+            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
+          )
 
           echo "Regenerating RPM lockfiles for variant: ${VARIANT}"
-          echo "Discovered ${#RPM_INPUTS[@]} lockfile location(s):"
-          printf '  - %s\n' "${RPM_INPUTS[@]}"
-
           for rpm_input in "${RPM_INPUTS[@]}"; do
+            if [[ ! -f "$rpm_input" ]]; then
+              echo "Skipping missing input: $rpm_input"
+              continue
+            fi
             echo "=== Generating lockfile from $rpm_input ==="
             ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
           done
@@ -144,20 +132,13 @@ jobs:
         run: |
           set -euo pipefail
 
-          MANIFEST="${RUNNER_TEMP}/rpm-lockfile-manifest.txt"
-          if [[ ! -s "$MANIFEST" ]]; then
-            echo "RPM lockfile manifest not found; nothing to commit." >&2
-            exit 1
-          fi
-
-          UPDATED_PATHS=()
-          while IFS= read -r rpm_input; do
-            lockfile="$(dirname "$rpm_input")/rpms.lock.yaml"
+          for lockfile in \
+            "prefetch-input/${VARIANT}/rpms.lock.yaml" \
+            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml"; do
             if [[ -f "$lockfile" ]]; then
               git add "$lockfile"
-              UPDATED_PATHS+=("$lockfile")
             fi
-          done < "$MANIFEST"
+          done
 
           if git diff --cached --quiet; then
             echo "No changes to commit."
@@ -166,13 +147,6 @@ jobs:
 
           VARIANT_UPPER=$(echo "$VARIANT" | tr '[:lower:]' '[:upper:]')
           BRANCH_NAME="rpms-lockfile-${VARIANT}-update-$(date +%Y%m%d-%H%M)"
-          PR_BODY="Automated regeneration of \`rpms.lock.yaml\` from \`rpms.in.yaml\` for the **${VARIANT_UPPER}** variant.
-
-          Updated paths:"
-          for path in "${UPDATED_PATHS[@]}"; do
-            PR_BODY+=$'\n'"- \`${path}\`"
-          done
-
           git checkout -b "$BRANCH_NAME"
           git commit -m "Update ${VARIANT_UPPER} rpms.lock.yaml lock files"
           git push -u "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH_NAME"
@@ -180,6 +154,13 @@ jobs:
           gh pr create \
             --title "Update ${VARIANT_UPPER} rpms.lock.yaml lock files" \
             --head "$BRANCH_NAME" \
-            --body "$PR_BODY" \
+            --body "$(cat <<EOF
+          Automated regeneration of \`rpms.lock.yaml\` from \`rpms.in.yaml\` for the **${VARIANT_UPPER}** variant.
+
+          Updated paths:
+          - \`prefetch-input/${VARIANT}/rpms.lock.yaml\`
+          - \`codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml\`
+          EOF
+          )" \
             --label "automated-rpms-lockfile-update" \
             --base "$BRANCH"
