@@ -25,8 +25,8 @@ baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/ap
 enabled = 1
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
-# Exclude httpd and its sub-packages so the resolver uses the CentOS Stream
-# version, which matches the httpd already in the ODH c9s base image.
+# Exclude httpd* from UBI repos. httpd is provided by the ODH c9s base image
+# and is not listed in codeserver prefetch-input/odh/rpms.in.yaml packages.
 exclude=httpd*
 
 [ubi-9-for-$basearch-appstream-debug-rpms]
