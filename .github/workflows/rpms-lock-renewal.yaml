@@ -55,11 +55,9 @@ jobs:
       - name: Prepare Podman temp directory
         run: mkdir -p "$TMPDIR"
 
-      - name: Install Podman
-        uses: ./.github/actions/install-podman-action
-        with:
-          platform: linux/amd64
-
+      # RHDS secrets and registry auth must be configured before Install Podman.
+      # install-podman-action runs `sudo podman system reset`, which can leave
+      # root-owned files under $HOME/.config/containers and break a later cp.
       - name: Install git-crypt
         if: env.VARIANT == 'rhds'
         uses: ./.github/actions/apt-install
@@ -79,6 +77,9 @@ jobs:
         if: env.VARIANT == 'rhds'
         run: |
           mkdir -p "$HOME/.config/containers"
+          # Don't use sudo here. With CONTAINER_HOST set, podman is a remote client
+          # that forwards auth to the rootful server during builds; credentials
+          # must be readable by the runner user (see build-notebooks-TEMPLATE.yaml).
           cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
 
       - name: Mask subscription credentials
@@ -95,6 +96,11 @@ jobs:
           fi
           echo "::add-mask::${SUBSCRIPTION_ACTIVATION_KEY}"
           echo "::add-mask::${SUBSCRIPTION_ORG}"
+
+      - name: Install Podman
+        uses: ./.github/actions/install-podman-action
+        with:
+          platform: linux/amd64
 
       - name: Free up disk space
         uses: ./.github/actions/free-up-disk-space
