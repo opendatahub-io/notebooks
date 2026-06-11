@@ -2,9 +2,9 @@
 #
 # Used by create-rpm-lockfile.sh to resolve RPM packages listed in
 # rpms.in.yaml into a fully pinned rpms.lock.yaml (exact URLs + checksums
-# per architecture).  The image includes rpm-lockfile-prototype, createrepo_c
-# (for repo metadata), and optionally registers with subscription-manager
-# to access RHEL-only repos.
+# per architecture).  The image includes rpm-lockfile-prototype and
+# optionally registers with subscription-manager to access RHEL-only repos.
+# RPM download + repodata for local builds use hermeto-fetch-rpm.sh, not this image.
 #
 # Not used during the actual notebook image build — only for lockfile generation.
 
@@ -31,13 +31,10 @@ RUN if [ -n "$ACTIVATION_KEY" ] && [ -n "$ORG" ]; then \
         # export INJECT_RHEL_VERSION="--releasever=\"${RHEL_VERSION}\" "; \
     fi
 
-# To install modulemd-tools (createrepo_c) for Development only, not for Production
-COPY helpers/rhsm-pulp.repo /etc/yum.repos.d/rhsm-pulp.repo
-
 # Don't run upgrade, it upgrades from 9.6 to 9.7 which is not desired here
 # Add --releasever when RHEL_VERSION is set (e.g. for RHEL/UBI) to pin repo release
 RUN releasever_opt=; [ -n "$RHEL_VERSION" ] && releasever_opt="--releasever=${RHEL_VERSION}"; \
-    dnf $releasever_opt install -y python3 python3-pip python3-dnf skopeo rpm git modulemd-tools patch && \
+    dnf $releasever_opt install -y python3 python3-pip python3-dnf skopeo rpm git patch && \
     dnf clean all
 
 # --index-url: override the base image's pip.conf which may point to a restricted
