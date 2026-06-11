@@ -228,14 +228,12 @@ internally. Option 6 (Git submodule) is a manual setup.
 | ----------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `helpers/pylock-to-requirements.py`             | pip              | Convert `pylock.<flavor>.toml` (PEP 751) to pip-compatible `requirements.<flavor>.txt` with `--hash` lines.                                                                                                                              |
 | `helpers/download-pip-packages.py`              | pip              | Standalone pip downloader: downloads wheels/sdists from a `requirements.txt` (with `--hash` lines) into `cachi2/output/deps/pip/`. Not called by `create-requirements-lockfile.sh` (which has its own inline download from pylock.toml). |
-| `helpers/download-rpms.sh`                      | RPM              | Download RPMs from `rpms.lock.yaml` via `wget` into `cachi2/output/deps/rpm/` and create DNF repo metadata. Standalone alternative to `hermeto-fetch-rpm.sh`.                                                                            |
 | `helpers/hermeto-fetch-rpm.sh`                  | RPM              | Download RPMs from `rpms.lock.yaml` using [Hermeto](https://github.com/hermetoproject/hermeto) in a container. Handles RHEL entitlement cert extraction for `cdn.redhat.com` auth. Called by `create-rpm-lockfile.sh --download`.        |
 | `helpers/hermeto-fetch-npm.sh`                  | npm              | Alternative npm fetcher using [Hermeto](https://github.com/hermetoproject/hermeto) in a container.                                                                                                                                       |
 | `helpers/hermeto-fetch-gomod.sh`                | Go modules       | Fetches Go dependencies from a directory with `go.mod`/`go.sum` using [Hermeto](https://github.com/hermetoproject/hermeto) in a container. Output: `cachi2/output/deps/gomod/`. Called by `create-go-lockfile.sh`.                       |
 | `rewrite-npm-urls.sh`                           | npm (Dockerfile) | Rewrites `resolved` URLs in `package-lock.json` / `package.json` to `file:///cachi2/output/deps/npm/`.                                                                                                                                   |
 | `helpers/rpm-lockfile-generate.sh`              | RPM              | Runs `rpm-lockfile-prototype` inside the lockfile container. Not for direct host use.                                                                                                                                                    |
-| `Dockerfile.rpm-lockfile`                       | RPM              | Builds the container image for `create-rpm-lockfile.sh` (includes `rpm-lockfile-prototype` v0.20.0, `createrepo_c`, `modulemd-tools`). Applies patches from `patches/` at build time.                                                    |
-| `helpers/rhsm-pulp.repo`                        | RPM              | DNF repo file for RHEL 9 E4S appstream (used inside the lockfile container to install `modulemd-tools`).                                                                                                                                 |
+| `Dockerfile.rpm-lockfile`                       | RPM              | Builds the container image for `create-rpm-lockfile.sh` (includes `rpm-lockfile-prototype` v0.20.0). Applies patches from `patches/` at build time. Does not install internal-only corp repos. |
 | `patches/apply-patches.sh`                      | RPM (build)      | Applies local patches to pip-installed packages inside the `notebook-rpm-lockfile` container during `docker build`.                                                                                                                      |
 | `patches/rpm-lockfile-prototype-dnf-conf.patch` | RPM (build)      | Adds `RPM_LOCKFILE_MODULE_PLATFORM_ID` and `RPM_LOCKFILE_SKIP_UNAVAILABLE` env var support to `rpm-lockfile-prototype`'s DNF config.                                                                                                     |
 
@@ -589,25 +587,6 @@ and `--org` to register a temporary UBI container and extract fresh certs.
 ```
 
 **Requirements:** `podman`, network access.
-
-### Helper: `helpers/download-rpms.sh`
-
-Standalone alternative to `hermeto-fetch-rpm.sh` that downloads RPMs directly
-via `wget`.  Downloads RPMs from a lockfile into `cachi2/output/deps/rpm/`,
-verifies checksums (when `yq` is available), and creates DNF repo metadata using
-the first available method: `createrepo_c` → `createrepo` → container fallback
-(runs `createrepo_c` + `repo2module` + `modifyrepo_c` inside the
-`notebook-rpm-lockfile` image via podman).
-
-Does not handle RHEL entitlement — use `hermeto-fetch-rpm.sh` when downloading
-from `cdn.redhat.com` repos that require subscription certs.
-
-```bash
-./scripts/lockfile-generators/helpers/download-rpms.sh \
-    --lock-file codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.lock.yaml
-```
-
-**Requirements:** `wget`.  `yq` recommended for checksum verification.
 
 ### Helper: `helpers/rpm-lockfile-generate.sh`
 
