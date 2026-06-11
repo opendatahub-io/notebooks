@@ -239,6 +239,16 @@ def build_description(cve_info: CVEInfo, base_url: str = JIRA_DEFAULT_URL, track
         )
     )]
 
+    branch_suffix = f" (branch: {cve_info.version})" if cve_info.version else " (on the respective release branch)"
+    content.append(_adf_paragraph(
+        _adf_text("Fix should be applied to: "),
+        _adf_link(
+            "https://github.com/red-hat-data-services/notebooks",
+            "https://github.com/red-hat-data-services/notebooks",
+        ),
+        _adf_text(branch_suffix),
+    ))
+
     if child_keys:
         content.append(_adf_paragraph(
             _adf_text(f"Blocked Issues ({count}): ", marks=[{"type": "strong"}]),
