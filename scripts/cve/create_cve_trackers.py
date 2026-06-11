@@ -51,6 +51,9 @@ RHAIENG_TEAM_OPTION_ID_DEFAULT = "ec74d716-af36-4b3c-950f-f79213d08f71-62"
 # Contributors multi-user picker (changelog text may say "involved users").
 RHAIENG_CONTRIBUTORS_FIELD = "customfield_10466"
 
+# Target Version (multi-version picker).
+RHAIENG_TARGET_VERSION_FIELD = "customfield_10855"
+
 EMBARGOED_SECURITY_LEVEL = "Embargoed Security Issue"
 DEFAULT_SECURITY_LEVEL = "Red Hat Employee"
 
@@ -415,12 +418,15 @@ def create_tracker_issue(
 
     contributor_ids = resolve_tracker_contributors(client, cve_info)
     extra_fields: dict[str, Any] = dict(team_extra)
+    if cve_info.version:
+        extra_fields[RHAIENG_TARGET_VERSION_FIELD] = [{"name": cve_info.version}]
     if contributor_ids:
         extra_fields[RHAIENG_CONTRIBUTORS_FIELD] = contributors_field_value(contributor_ids)
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Creating tracker for {cve_info.cve_id}:")
     print(f"  Summary: {summary}")
     print(f"  Version: {cve_info.version}")
+    print(f"  Target Version field: {extra_fields.get(RHAIENG_TARGET_VERSION_FIELD, '(not set)')}")
     print(f"  Embargoed: {cve_info.is_embargoed}")
     print(f"  Security level: {security_level}")
     print(f"  Child issues: {cve_info.issue_count}")
