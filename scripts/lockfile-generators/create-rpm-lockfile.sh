@@ -109,15 +109,26 @@ else
 fi
 
 # First build the image, so we can run rpm-lockfile-prototype inside it
-echo "--- Building Lockfile Generator Image ---"
-podman build \
-    -f "$SCRIPTS_PATH/Dockerfile.rpm-lockfile" \
-    --platform linux/x86_64 \
-    --build-arg RHEL_VERSION="$RHEL_VERSION" \
-    --build-arg BASE_IMAGE="$BASE_IMAGE" \
-    --build-arg ACTIVATION_KEY="$ACTIVATION_KEY" \
-    --build-arg ORG="$ORG" \
-    -t notebook-rpm-lockfile "$SCRIPTS_PATH"
+CACHE_ARGS=()
+if [[ -n "${CONTAINER_BUILD_CACHE_ARGS:-}" ]]; then
+  # shellcheck disable=SC2206
+  CACHE_ARGS=($CONTAINER_BUILD_CACHE_ARGS)
+fi
+
+if podman image exists localhost/notebook-rpm-lockfile:latest 2>/dev/null; then
+  echo "--- Reusing existing Lockfile Generator Image ---"
+else
+  echo "--- Building Lockfile Generator Image ---"
+  podman build \
+      -f "$SCRIPTS_PATH/Dockerfile.rpm-lockfile" \
+      --platform linux/x86_64 \
+      --build-arg RHEL_VERSION="$RHEL_VERSION" \
+      --build-arg BASE_IMAGE="$BASE_IMAGE" \
+      --build-arg ACTIVATION_KEY="$ACTIVATION_KEY" \
+      --build-arg ORG="$ORG" \
+      "${CACHE_ARGS[@]}" \
+      -t notebook-rpm-lockfile "$SCRIPTS_PATH"
+fi
 
 # Second run rpm-lockfile-prototype to generate the lockfile
 echo "--- Generating Lockfile using rpm-lockfile-prototype --"
