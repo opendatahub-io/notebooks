@@ -7,7 +7,7 @@ ARG BASE_IMAGE
 # mongocli-builder (build stage only, not published) #
 # Source: shared git submodule; Go modules from Cachi2 #
 ######################################################
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25.9-1777898790 AS mongocli-builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.25.9-1778504036 AS mongocli-builder
 
 USER 0
 
@@ -61,7 +61,6 @@ dnf clean all
 rm -rf /var/cache/yum
 EOF
 
-RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.0"
 
 USER 1001
 
@@ -110,13 +109,18 @@ FROM jupyter-minimal AS jupyter-datascience
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-LABEL name="rhoai/odh-workbench-jupyter-datascience-cpu-py312-rhel9" \
-      com.redhat.component="odh-workbench-jupyter-datascience-cpu-py312-rhel9" \
-      io.k8s.display-name="odh-workbench-jupyter-datascience-cpu-py312-rhel9" \
+ARG LABEL_REGISTRY_PREFIX
+ARG LABEL_COMPONENT
+ARG RELEASE
+
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
+      com.redhat.component="${LABEL_COMPONENT}" \
+      io.k8s.display-name="${LABEL_COMPONENT}" \
       summary="Jupyter data science notebook image for ODH notebooks" \
       description="Jupyter data science notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
       io.k8s.description="Jupyter data science notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
+      version="${RELEASE}"
 
 WORKDIR /opt/app-root/bin
 
@@ -133,7 +137,7 @@ RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-h
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 
 # hadolint ignore=DL3002
-# Run as root (same as jupyter-minimal): uv/micropipenv from cpu-base are root-owned; chmod g+w must be root.
+# Run as root (same as jupyter-minimal): uv from cpu-base is root-owned; chmod g+w must be root.
 COPY ${DATASCIENCE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 

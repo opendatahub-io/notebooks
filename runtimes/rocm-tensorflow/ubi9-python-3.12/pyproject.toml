@@ -4,22 +4,14 @@ version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
-
-    # RHAIENG-4600 - Work around to avoid uv 0.11.7 issue when using public index.
-    # Once we move to RH-ROCM index, can safely remove this url.
-    "uv @ https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.4/rocm6.4-ubi9/uv-0.11.6-12-py3-none-linux_x86_64.whl",
+    "uv",
     "micropipenv[toml]",
 
     # ROCm TensorFlow packages
-    # https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/tensorflow-install.html#using-a-wheels-package
-    # TODO(jdanek): consider adding #sha256=814a5e4842b0c92d63c7a0bb4df0baf51ff2db8615535d83fe8958204b840598
-    "tensorflow-rocm @ https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/tensorflow_rocm-2.19.1-cp312-cp312-manylinux_2_28_x86_64.whl",
-    # tensorflow-rocm==2.x needs tensorboard>=2.x,<2.x+1
+    "tensorflow-rocm",
     "tensorboard",
 
     # Datascience and useful extensions
-    "codeflare-sdk",
-    "feast",
     "odh-notebooks-meta-runtime-datascience-deps",
 
     "odh-notebooks-meta-db-connectors-deps",
@@ -28,10 +20,6 @@ dependencies = [
     # Base packages
     "setuptools",
     "wheel",
-
-    # Hermetic bootstrap: locked in requirements.*.txt; Dockerfile installs unpinned from find-links.
-    "micropipenv[toml]",
-    "uv",
 ]
 
 [tool.uv]
@@ -46,7 +34,7 @@ constraint-dependencies = [
 ]
 
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]
 
 [tool.uv.sources]

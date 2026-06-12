@@ -1,40 +1,36 @@
 #!/usr/bin/env -S bash --norc --noprofile
-# ./uv — run the project-pinned version of uv.
+# ./uv — run the uv version pinned for per-image lock generation (pylock / uv.lock.d).
 #
-# Reads required-version from pyproject.toml and delegates via `uv tool run`.
-# This avoids version mismatch errors when your system uv (e.g. Homebrew)
-# differs from the version pinned for this project.
+# Root pyproject.toml [tool.uv] required-version is a wider range for dev tooling and
+# Dependabot; image locks stay on the exact version in dependencies/uv-image-lock-version.
 #
-# Usage:
-#   ./uv sync
-#   ./uv run pytest
-#   ./uv pip compile ...
+# Usage (image locks — use this wrapper):
+#   make refresh-lock-files
+#   ./uv run scripts/pylocks_generator.py ...
 #
-# The pinned version is cached by uvx after the first run.
-# Parsing uses bash =~ instead of forking sed to avoid a subprocess.
+# For root dev work (sync, pytest, pre-commit), use bare `uv` on PATH.
 #
-# Bash with built-in regex is ~3x faster than Python for this task (hyperfine,
-# 50 runs): bash+builtin 18.7ms, bash+sed 25.0ms, python 55.4ms.
+# The pinned version is cached by uv tool run after the first invocation.
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERSION_FILE="${SCRIPT_DIR}/dependencies/uv-image-lock-version"
 
-while IFS= read -r line; do
-    if [[ "$line" =~ ^required-version\ *=\ *\"==([^\"]*)\" ]]; then
-        version="${BASH_REMATCH[1]}"
-        break
-    fi
-done < "${SCRIPT_DIR}/pyproject.toml"
+if [[ ! -f "${VERSION_FILE}" ]]; then
+    echo "error: missing ${VERSION_FILE}" >&2
+    exit 1
+fi
 
-if [[ -z "${version:-}" ]]; then
-    echo "error: could not read required-version from ${SCRIPT_DIR}/pyproject.toml [tool.uv]" >&2
+version="$(tr -d '[:space:]' < "${VERSION_FILE}")"
+if [[ -z "${version}" ]]; then
+    echo "error: empty uv version in ${VERSION_FILE}" >&2
     exit 1
 fi
 
 # Fast path: use the system uv directly if it already matches the pinned version
-if current=$(uv --version 2>/dev/null) && [[ "$current" == "uv $version" || "$current" == "uv $version "* ]]; then
+if current=$(uv --version 2>/dev/null) && [[ "$current" == "uv ${version}" || "$current" == "uv ${version} "* ]]; then
     exec uv "$@"
 fi
 
-# Slow path: run the pinned version via uvx (downloaded and cached on first use)
+# Slow path: run the pinned version via uv tool run (downloaded and cached on first use)
 exec uv tool run "uv@${version}" "$@"

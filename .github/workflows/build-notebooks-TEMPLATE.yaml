@@ -397,7 +397,7 @@ jobs:
               PREFETCH_ROOT="prefetch-input"
             fi
             echo "Hermetic build detected — prefetching dependencies for $COMPONENT_DIR (prefetch root $PREFETCH_ROOT, flavor=$FLAVOR)"
-            pip3 install --quiet --break-system-packages pyyaml
+            pip3 install --quiet --break-system-packages pyyaml packaging
             command -v uv &>/dev/null || pip3 install --quiet --break-system-packages uv
 
             PREFETCH_ARGS="--component-dir $COMPONENT_DIR --flavor $FLAVOR"
@@ -423,6 +423,7 @@ jobs:
           fi
         env:
           MAKE_TARGET: ${{ inputs.target }}
+          BUILD_ARCH: ${{ inputs.platform }}
           SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
           SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
 
@@ -464,14 +465,26 @@ jobs:
       - name: Run Testcontainers container tests (in PyTest)
         id: pytest-testcontainers
         if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
-        run: |
-          set -Eeuxo pipefail
-          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
           # pulling the Ryuk container from docker.io introduces CI flakiness
           TESTCONTAINERS_RYUK_DISABLED: "true"
+          OUTPUT_IMAGE: "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          JUNIT_XML: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_testcontainers-junit.xml"
+        run: |
+          set -Eeuxo pipefail
+          mkdir -p "$(dirname "${JUNIT_XML}")"
+          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}"
+
+      - name: Upload Testcontainers pytest JUnit XML
+        if: ${{ always() && steps.pytest-testcontainers.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          path: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_testcontainers-junit.xml"
+          archive: false
+          retention-days: 14
+          if-no-files-found: warn
 
       # endregion Pytest image tests
 
@@ -525,15 +538,27 @@ jobs:
       - name: Run OpenShift container tests (in PyTest)
         id: pytest-openshift
         if: ${{ !cancelled() && steps.make-target.outcome == 'success' && steps.provision-k8s.outcome == 'success' && steps.have-tests.outputs.tests == 'true' }}
-        run: |
-          set -Eeuxo pipefail
-          uv run pytest --capture=fd tests/containers -m 'openshift and not cuda and not rocm' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           # TODO(jdanek): this Testcontainers stuff should not be necessary but currently it has to be there
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
           # pulling the Ryuk container from docker.io introduces CI flakiness
           TESTCONTAINERS_RYUK_DISABLED: "true"
+          OUTPUT_IMAGE: "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          JUNIT_XML: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_openshift-junit.xml"
+        run: |
+          set -Eeuxo pipefail
+          mkdir -p "$(dirname "${JUNIT_XML}")"
+          uv run pytest --capture=fd tests/containers -m 'openshift and not cuda and not rocm' --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}"
+
+      - name: Upload OpenShift pytest JUnit XML
+        if: ${{ always() && steps.pytest-openshift.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          path: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_openshift-junit.xml"
+          archive: false
+          retention-days: 14
+          if-no-files-found: warn
 
       # region Trivy vulnerability scan
 
@@ -650,6 +675,7 @@ jobs:
           podman-socket: /var/run/podman/podman.sock
           upload-report: ${{ fromJson(inputs.github).event_name == 'pull_request' }}
           artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
+          junit-artifact-file: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-junit.xml"
           grep-pattern: '@codeserver'
 
       # endregion
@@ -665,10 +691,33 @@ jobs:
           fi
         if: "${{ !cancelled() && steps.install-compsize.outcome == 'success' }}"
 
-      # print system logs, useful when hunting for OOM kills
-
-      - run: sudo dmesg
+      # Capture kernel logs on failure (OOM debugging); upload as uncompressed artifacts instead of flooding job logs
+      - name: Capture kernel logs
         if: "${{ failure() }}"
+        env:
+          LOG_PREFIX: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}"
+        run: |
+          set -euo pipefail
+          log_dir="${RUNNER_TEMP}/kernel-logs"
+          mkdir -p "${log_dir}"
+          sudo dmesg > "${log_dir}/${LOG_PREFIX}_dmesg.log"
+          sudo journalctl --no-pager -k > "${log_dir}/${LOG_PREFIX}_journalctl-k.log"
+          echo "Kernel logs captured in ${log_dir}/"
 
-      - run: journalctl --no-pager -k
+      - name: Upload dmesg log
         if: "${{ failure() }}"
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          path: "${{ runner.temp }}/kernel-logs/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_dmesg.log"
+          archive: false
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Upload journalctl kernel log
+        if: "${{ failure() }}"
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          path: "${{ runner.temp }}/kernel-logs/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_journalctl-k.log"
+          archive: false
+          retention-days: 14
+          if-no-files-found: error

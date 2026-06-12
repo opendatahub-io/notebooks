@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import functools
 import logging
 import os
 import pathlib
@@ -24,6 +23,8 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     import pytest_subtests
+
+    from tests.containers.conftest import Image
 
 
 class TestWorkbenchImage:
@@ -112,6 +113,26 @@ class TestWorkbenchImage:
                 # try to grab logs regardless of whether container started or not
                 grab_and_check_logs(subtests, container)
 
+    @pytest.mark.codeserver
+    def test_codeserver_starts_airgapped(self, subtests: pytest_subtests.SubTests, codeserver_image: Image) -> None:
+        """Smoke test: code-server must start and serve its UI without network access."""
+        with WorkbenchContainer(image=codeserver_image.name, user=1000, group_add=[0]) as container:
+            container.with_kwargs(network_mode="none")
+            try:
+                container.start(wait_for_readiness=False)
+                with subtests.test("Code-server serves UI without network"):
+                    _wait_for_http_inside_container(container)
+            finally:
+                # network_mode="none" means no network interface with a valid MAC address;
+                # code-server logs this harmlessly — https://github.com/microsoft/vscode/issues/175878
+                grab_and_check_logs(
+                    subtests,
+                    container,
+                    extra_allowed=[
+                        "Unable to retrieve mac address (unexpected format)",
+                    ],
+                )
+
     @pytest.mark.openshift
     def test_image_run_on_openshift(self, workbench_image: str):
         client = kubernetes_utils.get_client()
@@ -127,7 +148,6 @@ class TestWorkbenchImage:
 class WorkbenchContainer(testcontainers.core.container.DockerContainer):
     """Testcontainer for JupyterLab and code-server only (see ``skip_if_not_workbench_image``)."""
 
-    @functools.wraps(testcontainers.core.container.DockerContainer.__init__)
     def __init__(
         self,
         port: int = 8888,
@@ -181,6 +201,7 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
     def start(self, wait_for_readiness: bool = True) -> WorkbenchContainer:
         super().start()
         container_id = self.get_wrapped_container().id
+        assert container_id is not None
         docker_client = testcontainers.core.container.DockerClient().client
         logging.debug(docker_client.api.inspect_container(container_id)["HostConfig"])
         if wait_for_readiness:
@@ -207,7 +228,28 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
         return exit_code, output.decode()
 
 
-def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: WorkbenchContainer) -> None:
+def _wait_for_http_inside_container(container: WorkbenchContainer, port: int = 8888, timeout: float = 120) -> None:
+    """Poll HTTP readiness from inside the container (for network-isolated containers where port publishing is unavailable)."""
+    check_script = f"import urllib.request; urllib.request.urlopen('http://localhost:{port}', timeout=2)"
+    deadline = time.monotonic() + timeout
+    while True:
+        container.get_wrapped_container().reload()
+        status = container.get_wrapped_container().status
+        assert status != "exited", f"Container exited unexpectedly (status={status})"
+
+        exit_code, _ = container.exec(["python", "-c", check_script])
+        if exit_code == 0:
+            return
+        if time.monotonic() > deadline:
+            raise TimeoutError(f"HTTP server on port {port} did not become ready within {timeout}s")
+        time.sleep(2)
+
+
+def grab_and_check_logs(
+    subtests: pytest_subtests.SubTests,
+    container: WorkbenchContainer,
+    extra_allowed: list[str] | None = None,
+) -> None:
     # Here is a list of blocked keywords we don't want to see in the log messages during the container/workbench
     # startup (e.g., log messages from Jupyter IDE or code-server IDE).
     blocked_keywords = [
@@ -238,6 +280,8 @@ def grab_and_check_logs(subtests: pytest_subtests.SubTests, container: Workbench
         # We use oauth-proxy to give us authentication, and we use OpenShift route to get HTTPS
         "WARNING: The Jupyter server is listening on all IP addresses and not using encryption. This is not recommended.",
     ]
+    if extra_allowed:
+        allowed_messages.extend(extra_allowed)
 
     if container.get_wrapped_container() is None:
         logging.warning("Skipping log check: container was never started")

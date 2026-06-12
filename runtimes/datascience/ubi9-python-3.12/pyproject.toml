@@ -5,8 +5,6 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # Datascience and useful extensions
-    "codeflare-sdk; platform_machine != 's390x' and platform_machine != 'ppc64le'",
-    "feast",
     "odh-notebooks-meta-runtime-datascience-deps",
 
     "odh-notebooks-meta-db-connectors-deps",
@@ -23,17 +21,11 @@ dependencies = [
 
 [tool.uv]
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]
 override-dependencies = [
     # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
     "protobuf==6.31.1",
-]
-
-constraint-dependencies = [
-    # Temporary workaround because of https://redhat-internal.slack.com/archives/C079FE5H94J/p1777560192825709
-    # latest 1.21.0: Wheels are available for `onnx` (v1.21.0) on the following platform: `linux_s390x` so pin to 1.20
-    "onnx<=1.20.0",
 ]
 
 [tool.uv.sources]

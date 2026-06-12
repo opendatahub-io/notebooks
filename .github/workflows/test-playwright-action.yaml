@@ -27,17 +27,13 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      - name: Read pnpm version
+      - name: Read pnpm version from lockfile
         id: pnpm-ver
         run: |
-          ver=$(grep -oP '"packageManager":\s*"pnpm@\K[0-9.]+' tests/browser/package.json5)
-          if [[ -z "${ver}" ]]; then
-            echo "::error::Failed to extract pnpm version from package.json5"
-            exit 1
-          fi
-          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          ver=$(scripts/get-pnpm-version.sh tests/browser/pnpm-lock.yaml)
+          echo "version=${ver}" >> "$GITHUB_OUTPUT"
 
-      - uses: pnpm/action-setup@8912a9102ac27614460f54aedde9e1e7f9aec20d  # v6.0.5
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093  # v6.0.8
         with:
           version: ${{ steps.pnpm-ver.outputs.version }}
           cache: true
@@ -131,4 +127,5 @@ jobs:
           podman-socket: /var/run/podman/podman.sock
           upload-report: 'true'
           artifact-name: playwright-action-test-report
+          junit-artifact-file: playwright-action-test-junit.xml
           grep-pattern: '@codeserver'

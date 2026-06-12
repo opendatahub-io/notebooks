@@ -1,4 +1,22 @@
 ---
-# Supply-chain hardening: only install package versions published ≥3 days ago.
-# See https://pnpm.io/settings#minimumreleaseage
-minimumReleaseAge: 4320
+# Supply-chain defense-in-depth (pnpm 11 defaults + project hardening)
+# See https://pnpm.io/settings
+minimumReleaseAge: 4320         # 3 days — stricter than pnpm 11 default (1 day)
+strictDepBuilds: true           # set explicitly so it survives if pnpm changes its default
+blockExoticSubdeps: true        # set explicitly so it survives if pnpm changes its default
+
+# Post-install build scripts: reviewed and denied — these packages work via JS fallbacks.
+# strictDepBuilds (default true) blocks unreviewed builds; allowBuilds records the review decision.
+# New deps with build scripts will fail install until explicitly reviewed here.
+allowBuilds:
+  cpu-features: false
+  protobufjs: false
+  ssh2: false
+
+# WARNING: Overrides REPLACE the version range declared by transitive deps (not additive).
+# The upper bound (<8) must be manually derived from consumers' ranges. See docs/cves/nodejs.md.
+# https://pnpm.io/settings#overrides
+# Review periodically: the floor may go stale as new CVEs are disclosed.
+overrides:
+  # CVE-2026-41242 + CVE-2026-44288 through -44294 (fixed in 7.5.6)
+  protobufjs: ">=7.5.6 <8"

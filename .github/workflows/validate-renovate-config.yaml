@@ -1,0 +1,53 @@
+# yamllint disable rule:line-length
+---
+# Validate .github/renovate.json5 semantics and remote Renovate dry-run PR title prefixes.
+# Fast static checks also run via make test / pytest-tests.
+name: Validate Renovate config
+
+permissions: {}
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+    paths:
+      - .github/renovate.json5
+      - .github/workflows/validate-renovate-config.yaml
+      - scripts/ci/validate_renovate_config.py
+      - scripts/ci/validate_renovate_dry_run.py
+      - scripts/ci/renovate_run.py
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"  # Mon 06:00 UTC
+
+concurrency:
+  group: validate-renovate-config-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-renovate-dry-run:
+    if: >-
+      (github.event_name != 'schedule' || github.repository_owner == 'opendatahub-io')
+      && (github.event_name != 'pull_request'
+          || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CONTAINER_ENGINE: docker
+      RENOVATE_IMAGE: ghcr.io/renovatebot/renovate:43@sha256:575256ce227ca81cd2a316d33f35108fe5c978d479c29232ec74cf9c0904a351  # 43.216.4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Validate renovate.json5 semantics
+        run: ./uv run python scripts/ci/validate_renovate_config.py
+
+      - name: Remote Renovate dry-run prefix checks
+        env:
+          RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+        run: ./uv run python scripts/ci/validate_renovate_dry_run.py

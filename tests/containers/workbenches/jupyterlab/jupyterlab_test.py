@@ -46,7 +46,7 @@ class TestJupyterLabImage:
 
             host_ip = container.get_container_host_ip()
             host_port = container.get_exposed_port(container.port)
-            response = requests.get(f"http://{host_ip}:{host_port}/notebook/opendatahub/jovyan")
+            response = requests.get(f"http://{host_ip}:{host_port}/notebook/opendatahub/jovyan", timeout=30)
             assert response.status_code == 200
             assert "text/html" in response.headers["content-type"]
             # Spinner is injected by addon; accept either spinner in initial HTML or valid JupyterLab shell
@@ -65,6 +65,26 @@ class TestJupyterLabImage:
             assert exit_code == 0, f"`jupyter labextension list` failed:\n{result_output}"
             assert re.search(extension_check_pattern, result_output, re.MULTILINE) is not None, (
                 "Trash Cleanup extension not reported as enabled/OK:\n" + result_output
+            )
+
+    @allure.issue("RHAIENG-1503")
+    @allure.description("Check that JupyterLab announcements extension is disabled")
+    def test_announcements_extension_disabled(self, jupyterlab_image: conftest.Image) -> None:
+        """Verify that the @jupyterlab/apputils-extension:announcements plugin is disabled.
+
+        When enabled, this extension shows a popup asking users if they want to receive
+        Jupyter news notifications, which is undesirable in enterprise environments.
+        See: https://github.com/opendatahub-io/notebooks/issues/331
+        """
+        extension_name = "@jupyterlab/apputils-extension:announcements"
+        with WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0]) as container:
+            container.start(wait_for_readiness=False)
+            exit_code, output = container.exec(["jupyter", "labextension", "list"])
+            result_output = output.decode(errors="replace")
+            assert exit_code == 0, f"`jupyter labextension list` failed:\n{result_output}"
+            disabled_section_pattern = rf"Disabled extensions:.*{re.escape(extension_name)}"
+            assert re.search(disabled_section_pattern, result_output, re.DOTALL) is not None, (
+                f"Announcements extension '{extension_name}' not reported as disabled:\n" + result_output
             )
 
     @allure.issue("RHOAIENG-16568")

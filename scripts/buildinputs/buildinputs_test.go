@@ -13,7 +13,17 @@ import (
 func globDockerfiles(dir string) ([]string, error) {
 	files := make([]string, 0)
 	err := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
-		if strings.HasPrefix(filepath.Base(path), "Dockerfile.") {
+		if err != nil {
+			return err
+		}
+		if f.IsDir() {
+			return nil
+		}
+		base := filepath.Base(path)
+		if base == "Dockerfile.json" {
+			return nil
+		}
+		if base == "Dockerfile" || strings.HasPrefix(base, "Dockerfile.") {
 			files = append(files, path)
 		}
 		return nil

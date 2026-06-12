@@ -31,17 +31,29 @@ inputs:
     required: false
     default: 'tests/browser'
   upload-report:
-    description: 'Whether to upload the Playwright report as an artifact'
+    description: 'Whether to upload the Playwright HTML report as an artifact'
     required: false
     default: 'false'
+  upload-junit:
+    description: 'Whether to upload the Playwright JUnit XML report as an uncompressed artifact'
+    required: false
+    default: 'true'
   artifact-name:
-    description: 'Name for the uploaded artifact (required if upload-report is true)'
+    description: 'Name for the uploaded HTML report artifact (required if upload-report is true)'
     required: false
     default: 'playwright-report'
+  junit-artifact-file:
+    description: 'Filename for the uploaded JUnit XML (upload-artifact v7 archive:false uses the filename as the artifact name)'
+    required: false
+    default: ''
   artifact-retention-days:
-    description: 'Number of days to retain the artifact'
+    description: 'Number of days to retain the HTML report artifact'
     required: false
     default: '30'
+  junit-retention-days:
+    description: 'Number of days to retain the JUnit XML artifact'
+    required: false
+    default: '14'
   grep-pattern:
     description: 'Grep pattern passed to --grep to filter tests (e.g. "@codeserver", "@smoke"). Empty string runs all tests.'
     required: false
@@ -77,6 +89,16 @@ runs:
         INPUT_PLAYWRIGHT_VERSION: ${{ inputs.playwright-version }}
         WORKING_DIRECTORY: ${{ inputs.working-directory }}
 
+    - name: Determine pnpm version
+      id: pnpm-version
+      shell: bash
+      run: |
+        ver=$(scripts/get-pnpm-version.sh "${WORKING_DIRECTORY}/pnpm-lock.yaml")
+        echo "version=${ver}" >> "$GITHUB_OUTPUT"
+        echo "Resolved pnpm version: ${ver}"
+      env:
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+
     - name: Run Playwright tests
       id: playwright
       shell: bash
@@ -94,18 +116,20 @@ runs:
           --ipc=host \
           --net=host \
           --env "CI=true" \
-          --env "NPM_CONFIG_fund=false" \
+          --env "PNPM_CONFIG_fund=false" \
           --env "DEBUG=testcontainers:*" \
           --env "PODMAN_SOCK=/var/run/docker.sock" \
           --env "TEST_TARGET" \
+          --env "GREP_PATTERN" \
+          --env "PNPM_VERSION" \
           --volume "${PODMAN_SOCKET}":/var/run/docker.sock \
           --volume "${PWD}":/mnt \
           --volume /mnt/node_modules \
           "mcr.microsoft.com/playwright:${PLAYWRIGHT_VERSION}" \
-          /bin/bash <<EOF
+          /bin/bash <<'EOF'
             set -Eeuxo pipefail
             cd /mnt
-            npm install -g pnpm@10.33.0 && pnpm install --frozen-lockfile
+            npm install -g "pnpm@${PNPM_VERSION}" && pnpm ci
             pnpm exec playwright test ${GREP_PATTERN:+--grep "$GREP_PATTERN"}
             exit 0
         EOF
@@ -115,7 +139,46 @@ runs:
         TEST_TARGET: ${{ inputs.test-target || '' }}
         PODMAN_SOCKET: ${{ inputs.podman-socket }}
         PLAYWRIGHT_VERSION: ${{ steps.playwright-version.outputs.version }}
+        PNPM_VERSION: ${{ steps.pnpm-version.outputs.version }}
         GREP_PATTERN: ${{ inputs.grep-pattern }}
+
+    - name: Stage Playwright JUnit XML
+      id: stage-junit
+      if: ${{ !cancelled() && inputs.upload-junit == 'true' }}
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
+        src="${WORKING_DIRECTORY}/results/junit.xml"
+        if [[ -n "${JUNIT_ARTIFACT_FILE}" ]]; then
+          artifact_file="${JUNIT_ARTIFACT_FILE}"
+        else
+          artifact_file="${ARTIFACT_NAME/_playwright-report/_playwright-junit.xml}"
+          if [[ "${artifact_file}" == "${ARTIFACT_NAME}" ]]; then
+            artifact_file="${ARTIFACT_NAME}-junit.xml"
+          fi
+        fi
+        dest="${RUNNER_TEMP}/playwright-reports/${artifact_file}"
+        mkdir -p "$(dirname "${dest}")"
+        if [[ -f "${src}" ]]; then
+          cp "${src}" "${dest}"
+          echo "path=${dest}" >> "${GITHUB_OUTPUT}"
+          echo "Staged Playwright JUnit XML at ${dest}"
+        else
+          echo "::warning::Playwright JUnit XML not found at ${src}"
+        fi
+      env:
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        JUNIT_ARTIFACT_FILE: ${{ inputs.junit-artifact-file }}
+
+    - name: Upload Playwright JUnit XML
+      if: ${{ always() && !cancelled() && inputs.upload-junit == 'true' && steps.stage-junit.outputs.path != '' }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      with:
+        path: ${{ steps.stage-junit.outputs.path }}
+        archive: false
+        retention-days: ${{ inputs.junit-retention-days }}
+        if-no-files-found: warn
 
     - name: Upload Playwright report
       if: ${{ !cancelled() && inputs.upload-report == 'true' }}

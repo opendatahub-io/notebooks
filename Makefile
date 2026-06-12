@@ -84,11 +84,22 @@ define build_image
 	$(eval DOCKERFILE_NAME := $(notdir $(2)))
 	$(eval CONF_FILE := $(3))
 
-	# if the conf file exists, transform it into --build-arg KEY=VALUE flags
-	$(eval BUILD_ARGS := $(shell \
-		if [ -f $(CONF_FILE) ]; then \
-			awk -F= '!/^#/ && NF {gsub(/^[ \t]+|[ \t]+$$/, "", $$1); gsub(/^[ \t]+|[ \t]+$$/, "", $$2); printf "--build-arg %s=%s ", $$1, $$2}' $(CONF_FILE); \
+	# if the conf file exists, transform it into quoted --build-arg flags
+	# NOTE: lines must match KEY=VALUE; single quotes in values are escaped
+	$(eval _BUILD_ARGS_OUT := $(shell \
+		if [ -f '$(CONF_FILE)' ]; then \
+			awk '!/^[[:space:]]*#/ && NF { \
+				gsub(/^[[:space:]]+|[[:space:]]+$$/, ""); \
+				if (!/^[A-Za-z_][A-Za-z0-9_]*=/) { \
+					printf "ERROR: malformed conf line (expected KEY=VALUE): %s\n", $$0 > "/dev/stderr"; \
+					err=1; next; \
+				} \
+				gsub(/\047/, "\047\\\047\047"); \
+				out = out sprintf("--build-arg \047%s\047 ", $$0); \
+			} END { if (err) { printf "PARSE_FAILED"; exit 1 } else { printf "%s", out } }' '$(CONF_FILE)'; \
 		fi))
+	$(if $(findstring PARSE_FAILED,$(_BUILD_ARGS_OUT)),$(error Failed to parse $(CONF_FILE) — see stderr for details))
+	$(eval BUILD_ARGS := $(_BUILD_ARGS_OUT))
 
 # Hermetic local build: when cachi2/output/ exists AND this target uses a
 # prefetch-input tree, mount pre-downloaded deps into the build.
@@ -140,11 +151,16 @@ define image
 	$(eval BUILD_DIRECTORY := $(shell echo $(2) | sed 's/\/Dockerfile.*//'))
 	$(eval VARIANT := $(shell echo $(notdir $(2)) | cut -d. -f2))
 	$(eval DOCKERFILE := $(BUILD_DIRECTORY)/Dockerfile$(if $(KONFLUX:no=),.konflux,$(empty)).$(VARIANT))
+	$(if $(strip $(DOCKERFILE)),,$(error Dockerfile not found for variant '$(VARIANT)' in '$(BUILD_DIRECTORY)'))
+
 	$(eval CONF_FILE := $(BUILD_DIRECTORY)/build-args/$(if $(KONFLUX:no=),konflux.,$(empty))$(shell echo $(VARIANT)).conf)
 	$(info #*# Image build Dockerfile: <$(DOCKERFILE)> #(MACHINE-PARSED LINE)#*#...)
 	$(info #*# Image build directory: <$(BUILD_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
 
-	$(call build_image,$(1),$(DOCKERFILE),$(CONF_FILE))
+	# realpath dereferences symlinks — podman API rejects symlinks with "must be a regular file"
+	$(eval DOCKERFILE_BUILD := $(realpath $(DOCKERFILE)))
+	$(if $(strip $(DOCKERFILE_BUILD)),,$(error Resolved Dockerfile path is empty for '$(DOCKERFILE)' — file missing or broken symlink))
+	$(call build_image,$(1),$(DOCKERFILE_BUILD),$(CONF_FILE))
 
 	$(if $(PUSH_IMAGES:no=),
 		$(call push_image,$(1))
@@ -404,18 +420,19 @@ DIR ?=
 refresh-lock-files:
 	@echo "==================================================================="
 	@echo "🔁 Refreshing lock files using INDEX_MODE=$(INDEX_MODE)"
+	@echo "    (orchestrator: uv run; pip compile inside pylocks_generator: ./uv → dependencies/uv-image-lock-version)"
 	@echo "==================================================================="
 	@cd $(ROOT_DIR) && \
-		UV_LOCK_EXTRA_INDEX_URL="$(UV_EXTRA_INDEX_URL)" \
-		PIP_LOCK_EXTRA_INDEX_URL="$(PIP_EXTRA_INDEX_URL)" \
-		env -u UV_EXTRA_INDEX_URL -u PIP_EXTRA_INDEX_URL \
-		./uv run scripts/pylocks_generator.py $(INDEX_MODE) $(DIR)
+		export UV_LOCK_EXTRA_INDEX_URL="$(UV_EXTRA_INDEX_URL)" && \
+		export PIP_LOCK_EXTRA_INDEX_URL="$(PIP_EXTRA_INDEX_URL)" && \
+		unset UV_EXTRA_INDEX_URL PIP_EXTRA_INDEX_URL && \
+		uv run scripts/pylocks_generator.py "$(INDEX_MODE)" $(DIR)
 
 # ======================================================================================
 #   gmake update-imagestream-annotations
 #   gmake update-imagestream-annotations IMAGESTREAM_VARIANT=rhoai DRY_RUN=1
 # Prerequisites:
-#   - ./uv sync --locked (or make setup) so scripts run in the project venv
+#   - uv sync --locked (or make setup) so scripts run in the project venv
 #   - skopeo on PATH (sync-commit-env-files inspects images from params*.env)
 #   - For private registry pulls: mkdir -p ~/.config/containers &&
 #       cp ci/secrets/pull-secret.json ~/.config/containers/auth.json
@@ -431,12 +448,12 @@ update-imagestream-annotations:
 	@echo "==================================================================="
 	@cd $(ROOT_DIR) && \
 	if [[ -n "$(IMAGESTREAM_VARIANT)" ]]; then \
-		./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py \
+		uv run python manifests/tools/update_imagestream_annotations_from_pylock.py \
 			--variant "$(IMAGESTREAM_VARIANT)" $(if $(filter 1 true yes,$(DRY_RUN)),--dry-run,); \
 	else \
-		./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant odh \
+		uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant odh \
 			$(if $(filter 1 true yes,$(DRY_RUN)),--dry-run,) && \
-		./uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant rhoai \
+		uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant rhoai \
 			$(if $(filter 1 true yes,$(DRY_RUN)),--dry-run,); \
 	fi
 
@@ -479,12 +496,17 @@ print-release:
 
 .PHONY: setup
 setup:
-	./uv sync --locked
+	uv sync --locked
+
+.PHONY: validate-renovate-config
+validate-renovate-config:
+	@echo "Validating .github/renovate.json5 semantics"
+	./uv run python scripts/ci/validate_renovate_config.py
 
 .PHONY: test
 test:
 	@echo "Running quick static tests"
-	./uv run pytest -m 'not buildonlytest'
+	uv run pytest -m 'not buildonlytest'
 	@./scripts/check_dockerfile_alignment.sh
 
 .PHONY: check-actions
@@ -495,7 +517,7 @@ check-actions:
 .PHONY: test-unit
 test-unit:
 	@echo "Running Python unit tests"
-	./uv run pytest -m 'not buildonlytest' --ignore=tests/containers tests/ ntb/
+	uv run pytest -m 'not buildonlytest' --ignore=tests/containers tests/ ntb/
 	@echo "Running Go unit tests"
 	GOTOOLCHAIN=auto GONOSUMDB=golang.org/toolchain \
 	  go test -C scripts/buildinputs -cover ./...
@@ -508,7 +530,7 @@ ifeq ($(PYTEST_ARGS),)
 	$(error Usage: make test-integration PYTEST_ARGS="--image=<image>")
 endif
 	@echo "Running container integration tests"
-	./uv run pytest tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' $(PYTEST_ARGS)
+	uv run pytest tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' $(PYTEST_ARGS)
 
 .PHONY: unit-test integration-test
 unit-test: test-unit

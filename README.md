@@ -14,9 +14,9 @@ For a deeper understanding of the architecture underlying this repository, pleas
 ### Prerequisites
 Make sure the following tools are installed in your environment:
  - podman/docker
- - python
- - pipenv
- - make (on macOS install/use: gmake)
+ - python 3.14
+ - [uv](https://docs.astral.sh/uv/)
+ - make (on macOS: `brew install make` and add `/opt/homebrew/opt/make/libexec/gnubin` to `PATH`)
  - curl
  - git, git-lfs (for `*.vsix` files)
 
@@ -56,62 +56,53 @@ Use podman/docker to execute the workbench images as container.
 podman  run -it -p  8888:8888  quay.io/opendatahub/workbench-images:jupyter-minimal-ubi9-python-3.9-2024a-20240317-6f4c36b
 ```
 
-### Pipfile.lock Generation
+### Lock file generation
 
-Users can update Pipfile.lock files using the [piplock-renewal.yaml](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/piplock-renewal.yaml) GitHub Action. This workflow enables users to specify a target branch for updating and automerging Pipfile.lock files, select the desired Python version for the update as well as to choose whether to include optional directories in the update process. After the action completes, the updated files can be retrieved with a simple git pull.
-
-Note: To ensure the GitHub Action runs successfully, users must add a `GH_ACCESS_TOKEN` secret in their fork.
+Image lock files (`pylock.toml` / `uv.lock.d/`) are regenerated with `make refresh-lock-files`.
+For details on the dual `uv` version policy (dev vs image locks), see the
+[Deploy & Test](#deploy--test) section below.
 
 ### Deploy & Test
 
 #### Prepare Python + uv + pytest env
 
-This project pins its uv version in `pyproject.toml` (`[tool.uv] required-version`).
-Use the `./uv` wrapper script at the repo root — it reads the pinned
-version and runs it via `uvx`, so your system uv version doesn't matter:
+Root dev tooling uses `[tool.uv] required-version` in `pyproject.toml` (currently `>=0.10,<0.12`).
+Install any uv in that range and use it directly for sync, tests, and pre-commit:
 
 ```shell
 # Linux
 sudo dnf install python3.14
-pip install --user uv
+pip install --user 'uv>=0.10,<0.12'
 # macOS
 brew install python@3.14 uv
 
-./uv venv --python $(which python3.14)
-./uv sync --locked
+uv venv --python $(which python3.14)
+uv sync --locked
 ```
 
+Per-image lock files (`pylock.toml` / `uv.lock.d/`) are generated with a **stricter** uv pin
+(`dependencies/uv-image-lock-version`, currently `0.11.18`) via the `./uv` wrapper and
+`make refresh-lock-files`. Do not use `./uv` for everyday dev commands unless you are
+refreshing image locks.
+
 <details>
-<summary>Alternatives to <code>./uv</code></summary>
+<summary>Image lock generation with <code>./uv</code></summary>
 
-The `./uv` wrapper is the recommended way, but you can also
-(replace `0.11.8` below with the version from `pyproject.toml`):
+```shell
+make refresh-lock-files
+# or: ./uv run scripts/pylocks_generator.py public-index <dir>
+```
 
-- **Use `uvx` directly** with an explicit version:
-  ```shell
-  uvx uv@0.11.8 sync --locked
-  ```
-- **Use `uv tool run`** (equivalent, longer form):
-  ```shell
-  uv tool run uv@0.11.8 sync --locked
-  ```
-- **Install the exact version** so `uv` works directly:
-  ```shell
-  # Standalone installer (any OS)
-  curl -LsSf https://astral.sh/uv/0.11.8/install.sh | sh
-  # Or with pip
-  pip install uv==0.11.8
-  ```
-
-If your system uv matches the pinned version, you can use `uv` directly —
-`required-version` in `pyproject.toml` will let it through. If it doesn't match,
-uv exits with a clear error telling you which version is required.
+The `./uv` script runs `uv tool run "uv@$(cat dependencies/uv-image-lock-version)"` when your
+system uv does not already match that exact version.
 
 </details>
 
 #### Running tests
 
-By completing configuration in the previous section, you can run tests using the following targets (use `gmake` instead of `make` on macOS):
+For the full test catalog (types, markers, CI parity), see [docs/agents/testing.md](docs/agents/testing.md).
+
+By completing configuration in the previous section, you can run tests using the following targets:
 
 ```bash
 make test              # Quick static tests (pytest + Dockerfile alignment check)
@@ -143,7 +134,7 @@ sudo dnf install podman
 systemctl --user start podman.service
 systemctl --user status podman.service
 systemctl --user status podman.socket
-DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock ./uv run pytest tests/containers -m 'not openshift and not cuda and not rocm' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
+DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock uv run pytest tests/containers -m 'not openshift and not cuda and not rocm' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
 
 # Mac OS
 brew install podman
@@ -151,7 +142,7 @@ podman machine init
 podman machine set --rootful=false
 sudo podman-mac-helper install
 podman machine start
-./uv run pytest tests/containers -m 'not openshift' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
+uv run pytest tests/containers -m 'not openshift' --image quay.io/opendatahub/workbench-images@sha256:e98d19df346e7abb1fa3053f6d41f0d1fa9bab39e49b4cb90b510ca33452c2e4
 ```
 
 When using lima on macOS, it might be useful to give yourself access to rootful podman socket
@@ -257,7 +248,7 @@ Whether you're fixing bugs, adding new notebooks, or improving documentation, yo
 
 ### For AI Agents
 
-If you're an AI agent working with this repository, please refer to our [Agents Guide](Agents.md) for comprehensive instructions on project structure, development workflows, and best practices.
+If you're an AI agent working with this repository, please refer to our [Agents Guide](AGENTS.md) for comprehensive instructions on project structure, development workflows, and best practices.
 
 ## Acknowledgments
 

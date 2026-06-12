@@ -20,8 +20,8 @@ set -euo pipefail
 #      (ODH/CentOS Stream) will work.
 
 UBI9_IMAGE="registry.access.redhat.com/ubi9/ubi"
-HERMETO_IMAGE="ghcr.io/hermetoproject/hermeto:0.46.2"
-HERMETO_OUTPUT="./cachi2/output"
+# shellcheck source-path=SCRIPTDIR
+source "$(dirname "$0")/hermeto-common.sh"
 
 PREFETCH_DIR=""
 CERT_DIR=""

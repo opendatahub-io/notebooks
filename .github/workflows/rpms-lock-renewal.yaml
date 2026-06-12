@@ -1,0 +1,166 @@
+---
+# Regenerate rpms.lock.yaml from rpms.in.yaml for ODH (upstream) or RHDS (downstream).
+name: RPM Lock Files Renewal Action
+
+permissions: {}  # least-privilege: grant per-job below
+
+on:  # yamllint disable-line rule:truthy
+  # Weekly ODH lockfile refresh (no Red Hat subscription required).
+  schedule:
+    - cron: "0 2 * * 3"  # Wednesday 2am UTC
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: 'Which RPM lockfile variant to regenerate'
+        required: true
+        default: 'odh'
+        type: choice
+        options:
+          - 'odh'
+          - 'rhds'
+      branch:
+        description: 'Branch to update'
+        required: false
+        default: 'main'
+
+jobs:
+  refresh-rpm-lock-files:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 2 * * 3')
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: refresh-rpm-lock-files-${{ github.ref }}
+      cancel-in-progress: false
+    permissions:
+      contents: read  # checkout only; push and PR creation use the PAT
+    env:
+      BRANCH: ${{ github.event.inputs.branch || 'main' }}
+      # Scheduled runs refresh ODH only; RHDS requires manual dispatch with subscription secrets.
+      VARIANT: ${{ github.event.inputs.variant || 'odh' }}
+      TMPDIR: /home/runner/.local/share/containers/tmpdir
+      CONTAINER_HOST: unix:///var/run/podman/podman.sock
+      CI: "true"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          ref: ${{ env.BRANCH }}
+          persist-credentials: false
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Prepare Podman temp directory
+        run: mkdir -p "$TMPDIR"
+
+      - name: Install Podman
+        uses: ./.github/actions/install-podman-action
+        with:
+          platform: linux/amd64
+
+      - name: Install git-crypt
+        if: env.VARIANT == 'rhds'
+        uses: ./.github/actions/apt-install
+        with:
+          packages: git-crypt
+
+      - name: Unlock encrypted secrets with git-crypt
+        if: env.VARIANT == 'rhds'
+        run: |
+          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
+          trap 'rm -f ./git-crypt-key' EXIT
+          git-crypt unlock ./git-crypt-key
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+
+      - name: Configure registry auth from pull-secret
+        if: env.VARIANT == 'rhds'
+        run: |
+          mkdir -p "$HOME/.config/containers"
+          cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
+
+      - name: Mask subscription credentials
+        if: env.VARIANT == 'rhds'
+        env:
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
+          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+        run: |
+          # Mask before any podman build/run so activation key never appears in logs.
+          # Secrets are passed only via env vars (never CLI args); see prefetch-all.sh.
+          if [[ -z "$SUBSCRIPTION_ACTIVATION_KEY" || -z "$SUBSCRIPTION_ORG" ]]; then
+            echo "RHDS variant requires SUBSCRIPTION_ACTIVATION_KEY and SUBSCRIPTION_ORG repository secrets." >&2
+            exit 1
+          fi
+          echo "::add-mask::${SUBSCRIPTION_ACTIVATION_KEY}"
+          echo "::add-mask::${SUBSCRIPTION_ORG}"
+
+      - name: Free up disk space
+        uses: ./.github/actions/free-up-disk-space
+
+      - name: Regenerate rpms.lock.yaml
+        env:
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
+          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+        run: |
+          set -euo pipefail
+
+          # ODH must not see subscription credentials (create-rpm-lockfile.sh would switch to UBI9).
+          if [[ "$VARIANT" != "rhds" ]]; then
+            unset SUBSCRIPTION_ACTIVATION_KEY SUBSCRIPTION_ORG
+          fi
+
+          RPM_INPUTS=(
+            "prefetch-input/${VARIANT}/rpms.in.yaml"
+            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
+          )
+
+          echo "Regenerating RPM lockfiles for variant: ${VARIANT}"
+          for rpm_input in "${RPM_INPUTS[@]}"; do
+            if [[ ! -f "$rpm_input" ]]; then
+              echo "Skipping missing input: $rpm_input"
+              continue
+            fi
+            echo "=== Generating lockfile from $rpm_input ==="
+            ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
+          done
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          for lockfile in \
+            "prefetch-input/${VARIANT}/rpms.lock.yaml" \
+            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml"; do
+            if [[ -f "$lockfile" ]]; then
+              git add "$lockfile"
+            fi
+          done
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          VARIANT_UPPER=$(echo "$VARIANT" | tr '[:lower:]' '[:upper:]')
+          BRANCH_NAME="rpms-lockfile-${VARIANT}-update-$(date +%Y%m%d-%H%M)"
+          git checkout -b "$BRANCH_NAME"
+          git commit -m "Update ${VARIANT_UPPER} rpms.lock.yaml lock files"
+          git push -u "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH_NAME"
+
+          gh pr create \
+            --title "Update ${VARIANT_UPPER} rpms.lock.yaml lock files" \
+            --head "$BRANCH_NAME" \
+            --body "$(cat <<EOF
+          Automated regeneration of \`rpms.lock.yaml\` from \`rpms.in.yaml\` for the **${VARIANT_UPPER}** variant.
+
+          Updated paths:
+          - \`prefetch-input/${VARIANT}/rpms.lock.yaml\`
+          - \`codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml\`
+          EOF
+          )" \
+            --label "automated-rpms-lockfile-update" \
+            --base "$BRANCH"

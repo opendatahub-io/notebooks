@@ -7,7 +7,7 @@ ARG BASE_IMAGE
 # mongocli-builder (build stage only, not published) #
 # Source: shared git submodule; Go modules from Cachi2 #
 ######################################################
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25.9-1777898790 AS mongocli-builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.25.9-1778504036 AS mongocli-builder
 
 USER 0
 
@@ -57,7 +57,6 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
     /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
-RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]" "uv"
 
 USER 1001
 
@@ -119,7 +118,7 @@ RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-h
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 
 # hadolint ignore=DL3002
-# Run as root (same as jupyter-minimal): uv/micropipenv from cpu-base are root-owned; chmod g+w must be root.
+# Run as root (same as jupyter-minimal): uv from cpu-base is root-owned; chmod g+w must be root.
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
@@ -136,13 +135,18 @@ FROM jupyter-datascience AS jupyter-trustyai
 ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-LABEL name="rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9" \
-      com.redhat.component="odh-workbench-jupyter-trustyai-cpu-py312-rhel9" \
-      io.k8s.display-name="odh-workbench-jupyter-trustyai-cpu-py312-rhel9" \
+ARG LABEL_REGISTRY_PREFIX
+ARG LABEL_COMPONENT
+ARG RELEASE
+
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
+      com.redhat.component="${LABEL_COMPONENT}" \
+      io.k8s.display-name="${LABEL_COMPONENT}" \
       summary="Jupyter trustyai notebook image for ODH notebooks" \
       description="Jupyter trustyai notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
       io.k8s.description="Jupyter trustyai notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
+      version="${RELEASE}"
 
 WORKDIR /opt/app-root/bin
 
@@ -184,22 +188,21 @@ USER 1001
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-# TODO: https://issues.redhat.com/browse/RHAIENG-1503 uncomment this
-## setup path for runtime configuration
-#mkdir /opt/app-root/runtimes
-## Remove default Elyra runtime-images
-#rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json
-## Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
-#sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
-## copy jupyter configuration
-#cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter
-## Disable announcement plugin of jupyterlab
-#jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
-## Apply JupyterLab addons
-#/opt/app-root/bin/utils/addons/apply.sh
-## Fix permissions to support pip in Openshift environments
-#chmod -R g+w /opt/app-root/lib/python3.12/site-packages
-#fix-permissions /opt/app-root -P
+# setup path for runtime configuration
+mkdir /opt/app-root/runtimes
+# Remove default Elyra runtime-images
+rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json
+# Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
+sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
+# copy jupyter configuration
+cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter
+# Disable announcement plugin of jupyterlab
+jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+# Apply JupyterLab addons
+/opt/app-root/bin/utils/addons/apply.sh
+# Fix permissions to support pip in Openshift environments
+chmod -R g+w /opt/app-root/lib/python3.12/site-packages
+fix-permissions /opt/app-root -P
 EOF
 
 WORKDIR /opt/app-root/src

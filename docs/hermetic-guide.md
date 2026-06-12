@@ -65,31 +65,48 @@ how dependencies are prefetched and how resource limits are applied.
 
 | Environment | Prefetch method | Resource limits | Docs |
 |---|---|---|---|
-| **Local** (laptop) | `prefetch-all.sh` | None (full machine resources) | [codeserver README](../codeserver/ubi9-python-3.12/README.md) |
+| **Local** (laptop) | `prefetch-all.sh` | None (full machine resources) | [lockfile generators README](../scripts/lockfile-generators/README.md#local-development), [codeserver README](../codeserver/ubi9-python-3.12/README.md) |
 | **GitHub Actions** | Automatic workflow step | `NODE_OPTIONS` + `JOBS` capped via `--env` | [GHA workflow](#github-actions) |
 | **Konflux** | Tekton `prefetch-dependencies` task | None (large VMs) | [Konflux pipelines](#konflux) |
 
 ### Local
 
+GitHub Actions sets `RELEASE_PYTHON_VERSION` and `BUILD_ARCH` on the job before
+`prefetch-all.sh` runs. Set the same variables locally — the repo `.venv` is
+Python 3.14 (dev scripts), while `*-python-3.12` images need pip markers
+evaluated as **3.12** during prefetch.
+
 ```bash
-# 1. Init submodules
+# 1. Init submodules (component-specific; e.g. code-server or mongocli)
 git submodule update --init --recursive
 
-# 2. Prefetch
-scripts/lockfile-generators/prefetch-all.sh \
+# 2. Dev venv (pyyaml, packaging, uv — runs prefetch scripts)
+uv sync
+source .venv/bin/activate
+
+# 3. Prefetch — BUILD_ARCH must match the platform you will build
+RELEASE_PYTHON_VERSION=3.12 BUILD_ARCH=linux/arm64 \
+  ./scripts/lockfile-generators/prefetch-all.sh \
     --component-dir codeserver/ubi9-python-3.12
 
-# 3. Build (Makefile auto-detects cachi2/output/)
+# 4. Build (Makefile auto-detects cachi2/output/)
 gmake codeserver-ubi9-python-3.12 BUILD_ARCH=linux/arm64 PUSH_IMAGES=no
 ```
+
+For other hermetic images (e.g. jupyter datascience), change `--component-dir`
+and the `gmake` target; keep `RELEASE_PYTHON_VERSION=3.12` and matching
+`BUILD_ARCH`.
 
 The Makefile detects `cachi2/output/` and the target's `prefetch-input/`
 directory, then injects two volume mounts: `cachi2/output` at `/cachi2/output`
 (prefetched deps) and `repos.d/` at `/etc/yum.repos.d/` (hermeto-generated RPM
 repos). Non-hermetic targets are unaffected.
 
-See the full [codeserver README](../codeserver/ubi9-python-3.12/README.md) for
-prerequisites, build arguments, and manual `podman build` instructions.
+Full walkthrough, verification steps, and troubleshooting:
+[lockfile generators README — Local development](../scripts/lockfile-generators/README.md#local-development).
+
+See also the [codeserver README](../codeserver/ubi9-python-3.12/README.md) for
+codeserver-specific prerequisites and manual `podman build` instructions.
 
 ### GitHub Actions
 
@@ -98,7 +115,9 @@ handles hermetic builds transparently for any target that ships a
 `prefetch-input/` directory:
 
 1. **Prefetch step** -- gated by `[ -d "$COMPONENT_DIR/prefetch-input" ]`.
-   Installs `pyyaml` and `uv`, then runs `prefetch-all.sh`.
+   Installs `pyyaml` and `uv`, then runs `prefetch-all.sh` with job-level
+   `RELEASE_PYTHON_VERSION` and `BUILD_ARCH` (see
+   `.github/workflows/build-notebooks-TEMPLATE.yaml`).
    For subscription builds (AIPCC base images), the step automatically
    passes `--rhds --activation-key ... --org ...` so that the RHDS variant
    lockfiles are used instead of the ODH (CentOS Stream) ones. This avoids
@@ -158,11 +177,6 @@ one. Key changes in each stage:
   wheel (deps/pip) and the patched @vscode/ripgrep postinstall copies it.
 - `nfpm` (RPM packager) is installed from a prefetched RPM instead of
   downloading from GitHub.
-
-**`whl-cache` stage**  new stage for Python wheel compilation:
-- On `ppc64le` / `s390x`, some Python packages lack pre-built wheels.
-  This stage installs them from prefetched wheels and exports the compiled
-  `.whl` files for reuse by the final stage.
 
 **`cpu-base` stage**  OS packages and tools:
 - All `dnf install` commands use the local cachi2 RPM repo (hermeto repos
@@ -284,10 +298,14 @@ The `--rhds` flag on `prefetch-all.sh` switches to the downstream variant:
 
 ```bash
 # Upstream (default)
-scripts/lockfile-generators/prefetch-all.sh --component-dir codeserver/ubi9-python-3.12
+RELEASE_PYTHON_VERSION=3.12 BUILD_ARCH=linux/arm64 \
+  scripts/lockfile-generators/prefetch-all.sh \
+    --component-dir codeserver/ubi9-python-3.12
 
 # Downstream
-scripts/lockfile-generators/prefetch-all.sh --component-dir codeserver/ubi9-python-3.12 \
+RELEASE_PYTHON_VERSION=3.12 BUILD_ARCH=linux/arm64 \
+  scripts/lockfile-generators/prefetch-all.sh \
+    --component-dir codeserver/ubi9-python-3.12 \
     --rhds --activation-key my-key --org my-org
 ```
 
