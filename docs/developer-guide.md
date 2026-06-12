@@ -144,15 +144,6 @@ This GitHub action is configured to be triggered on a weekly basis, specifically
 
 This GitHub action is configured to be triggered on a daily basis and synchronizes the selected projects from their upstream repositories to their downstream counterparts.
 
-### **Digest Updater workflow on the manifests** [[Link]](https://github.com/opendatahub-io/odh-manifests/blob/master/.github/workflows/notebooks-digest-updater-upstream.yaml)
-
-This GitHub action is designed to be triggered on a weekly basis, specifically every Friday at 12:00 AM UTC. Its primary purpose is to automate the process of updating the SHA digest of the notebooks. It achieves this by fetching the new SHA values from the quay.io registry and updating the [param.env](https://github.com/opendatahub-io/odh-manifests/blob/master/notebook-images/base/params.env) file, which is hosted on the odh-manifest repository. By automatically updating the SHA digest, this action ensures that the notebooks remain synchronized with the latest changes.
-
-### **Digest Updater workflow on the live-builder** [[Link]](https://gitlab.cee.redhat.com/data-hub/rhods-live-builder/-/blob/main/.gitlab/notebook-sha-digest-updater.yml)
-
-This GitHub action works with the same logic as the above and is designed to be triggered on a weekly basis, specifically every Friday. It is also update the SHA digest of the images into the [CSV](https://gitlab.cee.redhat.com/data-hub/rhods-live-builder/-/blob/main/rhods-operator-live/bundle/template/manifests/clusterserviceversion.yml.j2#L725) file on the live-builder repo.
-
-
 ### **Quay security scan** [[Link]](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/sec-scan.yml)
 
 This GitHub action is designed to be triggered on a weekly basis. It generates a summary of security vulnerabilities reported by [Quay](https://quay.io/) for the latest images built for different versions of notebooks.
