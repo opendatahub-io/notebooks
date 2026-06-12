@@ -37,9 +37,19 @@ When the printer is well-designed, reading the snapshot is easier than reading a
 wall of `assert` statements.
 
 Dave Farley [characterizes][farley] approval tests as maintenance tools for
-freezing existing behavior. The modern community's response: when combined with
-a good printer, they become an abstraction tool that lets developers write
-clear, executable specifications without hundreds of individual assertions.
+freezing existing behavior — characterization tests in Michael Feathers'
+terminology ([*Working Effectively with Legacy Code*][feathers]). That framing
+is fair: snapshot tests do not drive software design the way TDD does. Our
+adoption is explicitly for the characterization-test use case — protecting
+existing complex outputs — not replacing test-driven development.
+
+Martin Fowler's [change-detector test][fowler-cdt] critique is the strongest
+objection: snapshot tests can couple tests to implementation details rather than
+behavior, and any change — intentional or not — shows up as a diff. The
+standard mitigation is the **test printer**: by projecting wire formats into
+domain-meaningful text, the snapshot captures *what the output means*, not *how
+it is serialized*. A change in JSON key ordering doesn't break the snapshot; a
+change in the Jira description text does — which is the signal we want.
 
 ## Decision
 
@@ -131,10 +141,16 @@ Compare this to the previous 60-line nested dict assertion it replaced.
 
 ### Negative / risks
 
-- A careless `--inline-snapshot=update` can silently approve a regression.
-  The diff must be reviewed like any other code change.
+- **Rubber-stamp risk.** A careless `--inline-snapshot=update` can silently
+  approve a regression. Mitigations: snapshot diffs must be reviewed in PRs
+  like any code change; CI runs pytest *without* `--inline-snapshot` flags, so
+  a stale or wrong snapshot fails the build rather than auto-updating.
+- **Change-detector coupling** ([Fowler][fowler-cdt]). Raw-structure snapshots
+  can break on serialization changes that don't affect behavior. Mitigated by
+  test printers that project domain-meaningful text rather than wire format.
 - Snapshot tests do not drive software design the way TDD does. They are
-  characterization tests that document and protect existing behavior.
+  characterization tests ([Feathers][feathers]) that document and protect
+  existing behavior.
 - The `inline-snapshot` library modifies source files in place, which requires
   trust in the tooling. Misconfigured formatters can corrupt test files.
 
@@ -144,17 +160,32 @@ Compare this to the previous 60-line nested dict assertion it replaced.
   outputs benefit; simple assertions should stay as they are.
 - Using file-based snapshot libraries (syrupy, pytest-snapshot). Inline
   snapshots were chosen specifically for co-location with test code.
+  [Syrupy's rationale][syrupy] for file-based storage — avoiding bloated test
+  files with large expected values — is valid for big outputs. If a future
+  snapshot exceeds what a test printer can make scannable inline, syrupy can be
+  added alongside inline-snapshot without conflict: they use different CLI flags
+  (`--snapshot-update` vs `--inline-snapshot`), different storage, and different
+  mechanisms (fixture vs function import). The one caveat: both use the name
+  `snapshot`, so a test file using both must alias one, e.g.
+  `from inline_snapshot import snapshot as isnap`.
 
 ## References
 
 - [The Joy of Expect Tests — Jane Street][janestreet]
 - [Testing with inline-snapshot — Pydantic][pydantic]
 - [inline-snapshot alternatives][alternatives]
-- [Approval Testing — Emily Bache](https://medium.com/97-things/approval-testing-33946cde4aa8)
+- [Approval Testing — Emily Bache][approvaltests]
 - [Add APPROVAL TESTING To Your Bag Of Tricks — Dave Farley][farley]
+- [ChangeDetectorTest — Martin Fowler][fowler-cdt]
+- [*Working Effectively with Legacy Code* — Michael Feathers][feathers]
+- [syrupy — file-based pytest snapshot plugin][syrupy]
 - [inline-snapshot documentation](https://15r10nk.github.io/inline-snapshot/)
 
 [janestreet]: https://blog.janestreet.com/the-joy-of-expect-tests/
+[approvaltests]: https://medium.com/97-things/approval-testing-33946cde4aa8
 [pydantic]: https://pydantic.dev/articles/inline-snapshot
 [alternatives]: https://15r10nk.github.io/inline-snapshot/latest/alternatives/
 [farley]: https://www.youtube.com/watch?v=UzICYJkaGsY
+[fowler-cdt]: https://martinfowler.com/bliki/ChangeDetectorTest.html
+[feathers]: https://www.oreilly.com/library/view/working-effectively-with/0131177052/
+[syrupy]: https://github.com/syrupy-project/syrupy
