@@ -235,27 +235,8 @@ fi
 PYPROJECT="$COMPONENT_DIR/pyproject.toml"
 if [[ -f "$PYPROJECT" ]]; then
   echo "=== [2/5] Pip wheels ==="
-  # Generate lockfile + requirements.txt (no download)
   "$SCRIPTS_PATH/create-requirements-lockfile.sh" \
-      --pyproject-toml "$PYPROJECT" --flavor "$FLAVOR"
-
-  REQUIREMENTS_FILE="$COMPONENT_DIR/requirements.${FLAVOR}.txt"
-  if [[ -f "$REQUIREMENTS_FILE" ]]; then
-    # Derive target arch from BUILD_ARCH (GHA cross-build via QEMU) or host
-    if [[ -n "${BUILD_ARCH:-}" ]]; then
-      case "${BUILD_ARCH##*/}" in
-        amd64) ARCH="x86_64" ;;
-        arm64) ARCH="aarch64" ;;
-        *) ARCH="${BUILD_ARCH##*/}" ;;
-      esac
-    else
-      ARCH=$(uname -m)
-    fi
-
-    # Download wheels (parallel, arch-filtered)
-    python3 "$SCRIPTS_PATH/helpers/download-pip-packages.py" \
-        --arch "$ARCH" "$REQUIREMENTS_FILE"
-  fi
+      --pyproject-toml "$PYPROJECT" --flavor "$FLAVOR" --download
   STEPS_RUN=$((STEPS_RUN + 1))
   echo ""
 else
@@ -277,13 +258,13 @@ echo "=== [3/5] NPM packages ==="
 npm_done=false
 tekton_file=""
 
-# Find the Tekton PipelineRun YAML for this component. Prefer the active
-# variant (matches --rhds flag), fall back to the other variant.
+# Find the Tekton PipelineRun YAML: RHDS first (dockerfile COMPONENT_DIR/Dockerfile.konflux.*),
+# then ODH (dockerfile COMPONENT_DIR/Dockerfile.*). The file lists npm prefetch-input
+# paths for download-npm.sh to process in one go.
 if [[ -d ".tekton" ]] && command -v yq &>/dev/null; then
-  tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "$VARIANT" 2>/dev/null | head -1) || true
+  tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "rhds" 2>/dev/null | head -1) || true
   if [[ -z "$tekton_file" ]]; then
-    fallback_variant=$([[ "$VARIANT" == "rhds" ]] && echo "odh" || echo "rhds")
-    tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "$fallback_variant" 2>/dev/null | head -1) || true
+    tekton_file=$(find_tekton_yaml "$COMPONENT_DIR" "odh" 2>/dev/null | head -1) || true
   fi
   if [[ -n "$tekton_file" ]]; then
     echo "  Auto-detected tekton file: $tekton_file"

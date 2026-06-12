@@ -297,24 +297,9 @@ function _create_test_versions_source_of_truth()
     nbgitpuller_version="$(_get_package_version_from_requirements 'nbgitpuller' "${requirements_file}")"
     nbgitpuller_version="${nbgitpuller_version:-1.3}"
 
-    # llmcompressor-only packages are not listed in ImageStream annotations; read pins from lock output.
-    local compressed_tensors_version=''
-    local lm_eval_version=''
-    local speculators_version=''
-    if [[ "${notebook_id}" == *llmcompressor* ]]; then
-        compressed_tensors_version="$(_get_package_version_from_requirements 'compressed-tensors' "${requirements_file}")"
-        lm_eval_version="$(_get_package_version_from_requirements 'lm-eval' "${requirements_file}")"
-        speculators_version="$(_get_package_version_from_requirements 'speculators' "${requirements_file}")"
-    fi
-
     expected_versions=$("${yqbin}" '.spec.tags[0].annotations | .["opendatahub.io/notebook-software"] + .["opendatahub.io/notebook-python-dependencies"]' "${test_version_truth_filepath}" |
         "${yqbin}" -N -p json -o yaml |
-        nbdime_version=${nbdime_version} nbgitpuller_version=${nbgitpuller_version} \
-        compressed_tensors_version=${compressed_tensors_version} lm_eval_version=${lm_eval_version} speculators_version=${speculators_version} \
-        "${yqbin}" '. + [{"name": "nbdime", "version": strenv(nbdime_version)}, {"name": "nbgitpuller", "version": strenv(nbgitpuller_version)}]
-          + (strenv(compressed_tensors_version) | select(. != "") | [{"name": "compressed-tensors", "version": .}] // [])
-          + (strenv(lm_eval_version) | select(. != "") | [{"name": "lm-eval", "version": .}] // [])
-          + (strenv(speculators_version) | select(. != "") | [{"name": "speculators", "version": .}] // [])' |
+        nbdime_version=${nbdime_version} nbgitpuller_version=${nbgitpuller_version} "${yqbin}" '. + [{"name": "nbdime", "version": strenv(nbdime_version)},{"name": "nbgitpuller", "version": strenv(nbgitpuller_version)}]' |
         "${yqbin}" -N -o json '[ .[] | (.name | key) = "key" | (.version | key) = "value" ] | from_entries')
 
     # Following disabled shellcheck intentional as the intended behavior is for those ${1}, ${2} variables to only be expanded when running within kubernetes

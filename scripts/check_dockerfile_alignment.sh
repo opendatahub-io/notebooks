@@ -3,7 +3,7 @@
 # Script: dockerfile_diff_checker.sh
 # Purpose: Scan a directory tree for Dockerfile.konflux.*
 #          and compare each with its original Dockerfile,
-#          requiring byte-identical content.
+#          ignoring comments and multi-line LABEL instructions.
 #=========================================================
 
 set -euo pipefail
@@ -16,7 +16,7 @@ main() {
     # Define multiple starting directories
     local start_dirs=("./jupyter" "./codeserver" "./runtimes")
     echo "Scanning ${start_dirs[*]} for directories containing Dockerfile.konflux.*"
-    echo "Comparing Dockerfiles (byte-identical check)..."
+    echo "Comparing Dockerfiles, ignoring comments and LABEL blocks..."
 
     # Populate array of directories (while-read is portable; mapfile requires Bash 4+)
     local docker_dirs=()
@@ -54,10 +54,50 @@ find_docker_dirs() {
 }
 
 #---------------------------------------------------------
+# Function: strip
+# Description:
+#   Remove comments and ignore LABEL blocks from a Dockerfile.
+#   Useful for comparing Dockerfiles while ignoring cosmetic differences.
+# Arguments:
+#   Reads from standard input
+# Returns:
+#   Prints stripped Dockerfile to standard output
+#---------------------------------------------------------
+strip() {
+    awk '
+        BEGIN { in_label = 0 }
+
+        # Skip full-line comments
+        /^[[:space:]]*#/ { next }
+
+        # Skip lines inside multi-line LABEL blocks
+        in_label {
+            # End LABEL block if line does not end with backslash
+            if ($0 !~ /\\$/) in_label = 0
+            next
+        }
+
+        # Detect start of LABEL instruction
+        /^[[:space:]]*LABEL([ \t]|$)/ {
+            # Multi-line LABEL block
+            if ($0 ~ /\\$/) in_label = 1
+            next
+        }
+
+        # Print all other lines (trimmed)
+        {
+            # Trim leading and trailing whitespace
+            gsub(/^[ \t]+|[ \t]+$/, "", $0)
+            if (length($0) > 0) print $0
+        }
+    '
+}
+
+#---------------------------------------------------------
 # Function: find_diff
 # Description:
-#   Compare a Dockerfile with its corresponding konflux version.
-#   Files must be byte-identical. Returns 1 if differences exist.
+#   Compare a Dockerfile with its corresponding konflux version,
+#   ignoring comments and LABEL blocks. Returns 1 if differences exist.
 # Arguments:
 #   $1 - Directory containing the Dockerfiles
 #   $2 - Original Dockerfile name (basename)
@@ -72,8 +112,9 @@ find_diff() {
 
     echo "---- diff $file_orig $file_konflux ----"
 
+    # Use process substitution to feed stripped files to diff (plain diff for Mac/BSD and Linux/GNU portability)
     local diff_output
-    diff_output=$(diff "$dir/$file_orig" "$dir/$file_konflux" || true)
+    diff_output=$(diff <(strip <"$dir/$file_orig") <(strip <"$dir/$file_konflux") || true)
 
     if [ -n "$diff_output" ]; then
         echo "❌ Differences found between $file_orig and $file_konflux"

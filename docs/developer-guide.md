@@ -7,33 +7,14 @@ This project utilizes three branches for the development: the **main** branch, w
 These release branches follow a specific naming format: YYYYx, where "YYYY" represents the year, and "x" is an increasing letter. Thus, they help to keep working on minor updates and bug fixes on the supported versions (N & N-1) of each workbench.
 
 ## Architecture
+The structure of the notebook's build chain is derived from the parent image. To better comprehend this concept, refer to the following graph.
 
-Each notebook image has a self-contained multi-stage Dockerfile that starts from
-`${BASE_IMAGE}` (an external base image) and rebuilds every ancestor stage internally.
-No notebook image references another notebook image. The diagram below shows two
-representative Dockerfiles side by side — each independently rebuilds the full stage
-chain from its own base image:
+<p align="center">
+<img src="https://github.com/opendatahub-io/notebooks/assets/42587738/9e5df03f-01f4-4bba-9792-3b56e9b5b912" data-canonical-src="https://github.com/opendatahub-io/notebooks/assets/42587738/9e5df03f-01f4-4bba-9792-3b56e9b5b912" width="820" height="450" />
+</p>
 
-```mermaid
-flowchart TD
-    subgraph pytorchCuda ["jupyter/pytorch — Dockerfile.cuda"]
-        pBase["${BASE_IMAGE}\n(e.g. AIPCC cuda-13.0)"] --> pCudaBase[cuda-base]
-        pCudaBase --> pMinimal[cuda-jupyter-minimal]
-        pMinimal --> pDS[cuda-jupyter-datascience]
-        pDS --> pPT[cuda-jupyter-pytorch]
-    end
 
-    subgraph trustyaiCpu ["jupyter/trustyai — Dockerfile.cpu"]
-        tBase["${BASE_IMAGE}\n(e.g. AIPCC cpu)"] --> tCpuBase[cpu-base]
-        tCpuBase --> tMinimal[jupyter-minimal]
-        tMinimal --> tDS[jupyter-datascience]
-        tDS --> tTA[jupyter-trustyai]
-    end
-```
-
-Different images can reference different `${BASE_IMAGE}` values and therefore use
-different CUDA/ROCm versions. For detailed architecture documentation, see
-[ARCHITECTURE.md](../ARCHITECTURE.md).
+Each notebook inherits the properties of its parent. For instance, the TrustyAI notebook inherits all the installed packages from the Standard Data Science notebook, which in turn inherits the characteristics from its parent, the Minimal notebook.
 
 Detailed instructions on how developers can contribute to this project can be found in the [contribution.md](https://github.com/opendatahub-io/notebooks/blob/main/CONTRIBUTING.md#some-basic-instructions-to-create-a-new-notebook) file.
 
@@ -122,16 +103,43 @@ spec:
 ```
 
 ## Continuous Integration
+This repository has been added to the[ Openshift CI](https://github.com/openshift/release/blob/master/ci-operator/config/opendatahub-io/notebooks/opendatahub-io-notebooks-main.yaml) to build the different notebooks using the flow described in the Container Image Layering section. Every notebook will use a previous notebook as the base image:
 
-Each notebook image is built as an independent Konflux component with its own Tekton
-PipelineRun (defined in `.tekton/`). Each pipeline:
-- Points to its own Dockerfile and `build-args/*.conf` file
-- Has its own CEL trigger watching relevant file paths
-- Produces its own independently-versioned container image
-- Uses hermetic dependency prefetch (Cachi2/Hermeto)
+```
+images:
+  - context_dir: ${NOTEBOOK_DIR}
+    dockerfile_path: Dockerfile
+    from: ${NOTEBOOK_BASE_IMAGE_NAME}
+    to: ${NOTEBOOK_IMAGE_NAME}
+```
+The opendatahub-io-ci-image-mirror job will be used to mirror the images from the Openshift CI internal registry to the ODH Quay repository.
 
-GitHub Actions handle static tests, security scanning, dependency updates, and digest
-updates. See [AGENTS.md](../AGENTS.md) for the full list of CI files.
+```
+tests:
+  - as: ${NOTEBOOK_IMAGE_NAME}-image-mirror
+    steps:
+  	dependencies:
+    	  SOURCE_IMAGE_REF: ${NOTEBOOK_IMAGE_NAME}
+  	env:
+    	  IMAGE_REPO: notebooks
+  	workflow: opendatahub-io-ci-image-mirror
+```
+The images mirrored under 2 different scenarios:
+1. A new PR is opened.
+1. A PR is merged.
+
+The Openshift CI is also configured to run the unit and integration tests:
+
+```
+tests:
+  - as: notebooks-e2e-tests
+    steps:
+      test:
+        - as: ${NOTEBOOK_IMAGE_NAME}-e2e-tests
+          commands: |
+            make test
+          from: src
+```
 
 ## GitHub Actions
 This section provides an overview of the automation functionalities.
@@ -143,6 +151,15 @@ This GitHub action is configured to be triggered on a weekly basis, specifically
 ### **Sync the downstream release branch with the upstream** [[Link]](https://github.com/red-hat-data-services/rhods-devops-infra/blob/main/.github/workflows/upstream-auto-merge.yaml)
 
 This GitHub action is configured to be triggered on a daily basis and synchronizes the selected projects from their upstream repositories to their downstream counterparts.
+
+### **Digest Updater workflow on the manifests** [[Link]](https://github.com/opendatahub-io/odh-manifests/blob/master/.github/workflows/notebooks-digest-updater-upstream.yaml)
+
+This GitHub action is designed to be triggered on a weekly basis, specifically every Friday at 12:00 AM UTC. Its primary purpose is to automate the process of updating the SHA digest of the notebooks. It achieves this by fetching the new SHA values from the quay.io registry and updating the [param.env](https://github.com/opendatahub-io/odh-manifests/blob/master/notebook-images/base/params.env) file, which is hosted on the odh-manifest repository. By automatically updating the SHA digest, this action ensures that the notebooks remain synchronized with the latest changes.
+
+### **Digest Updater workflow on the live-builder** [[Link]](https://gitlab.cee.redhat.com/data-hub/rhods-live-builder/-/blob/main/.gitlab/notebook-sha-digest-updater.yml)
+
+This GitHub action works with the same logic as the above and is designed to be triggered on a weekly basis, specifically every Friday. It is also update the SHA digest of the images into the [CSV](https://gitlab.cee.redhat.com/data-hub/rhods-live-builder/-/blob/main/rhods-operator-live/bundle/template/manifests/clusterserviceversion.yml.j2#L725) file on the live-builder repo.
+
 
 ### **Quay security scan** [[Link]](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/sec-scan.yml)
 

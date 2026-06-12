@@ -49,7 +49,7 @@ Options:
                          (e.g. codeserver/ubi9-python-3.12/pyproject.toml)
   --flavor NAME          Lock file flavor (default: cpu).
                          Must match a Dockerfile.<flavor> and
-                         build-args/konflux.<flavor>.conf for the RH-index flow.
+                         build-args/<flavor>.conf in the project directory.
   --download             After generating, download all wheels into
                          cachi2/output/deps/pip/ for offline builds.
   -h, --help             Show this help message and exit
@@ -93,28 +93,34 @@ done
 PROJECT_DIR="$(dirname "$PYPROJECT")"
 REQUIREMENTS_FILE="${PROJECT_DIR}/requirements.${FLAVOR}.txt"
 
-# Use public-index when PROJECT_DIR equals a listed path or is a subdirectory (e.g. .../ubi9-python-3.12).
-# Produces root pylock.toml (not uv.lock.d/pylock.<flavor>.toml) — same layout as jupyter/rocm/tensorflow.
-PUBLIC_INDEX_PROJECTS=()
-
-PYLOCKS_MODE="rh-index"
-if ((${#PUBLIC_INDEX_PROJECTS[@]} > 0)); then
-  for _d in "${PUBLIC_INDEX_PROJECTS[@]}"; do
-    if [[ "$PROJECT_DIR" == "$_d" || "$PROJECT_DIR" == "$_d/"* ]]; then
-      PYLOCKS_MODE="public-index"
-      break
-    fi
-  done
+# Read build args from build-args/<flavor>.conf (same source as pylocks_generator.py)
+CONF_FILE="${PROJECT_DIR}/build-args/${FLAVOR}.conf"
+INDEX_URL=""
+if [[ -f "$CONF_FILE" ]]; then
+  # shellcheck source=/dev/null
+  source "$CONF_FILE"
 fi
 
+# Use public-index when PROJECT_DIR equals a listed path or is a subdirectory (e.g. .../ubi9-python-3.12).
+# Produces root pylock.toml (not uv.lock.d/pylock.<flavor>.toml) — same layout as jupyter/rocm/tensorflow.
+PUBLIC_INDEX_PROJECTS=(
+  jupyter/rocm/tensorflow
+  runtimes/rocm-tensorflow
+)
+
+PYLOCKS_MODE="rh-index"
+for _d in "${PUBLIC_INDEX_PROJECTS[@]}"; do
+  if [[ "$PROJECT_DIR" == "$_d" || "$PROJECT_DIR" == "$_d/"* ]]; then
+    PYLOCKS_MODE="public-index"
+    break
+  fi
+done
+
 PYLOCK_FILE="${PROJECT_DIR}/uv.lock.d/pylock.${FLAVOR}.toml"
-REQUIREMENTS_INDEX_URL=""
+REQUIREMENTS_INDEX_URL="$INDEX_URL"
 if [[ "$PYLOCKS_MODE" == "public-index" ]]; then
   PYLOCK_FILE="${PROJECT_DIR}/pylock.toml"
-else
-  KONFLUX_CONF_FILE="${PROJECT_DIR}/build-args/konflux.${FLAVOR}.conf"
-  [[ -f "$KONFLUX_CONF_FILE" ]] || error_exit "Konflux config not found: $KONFLUX_CONF_FILE"
-  REQUIREMENTS_INDEX_URL="$(./uv run python scripts/index_url_resolver.py index-url "$KONFLUX_CONF_FILE")"
+  REQUIREMENTS_INDEX_URL=""
 fi
 
 # =========================================================================

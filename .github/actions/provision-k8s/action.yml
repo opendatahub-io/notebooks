@@ -15,48 +15,21 @@ runs:
       run: |
         set -Eeuxo pipefail
 
-        # Retry helper: retries a command with exponential backoff
-        # Usage: retry_cmd <max_retries> <command...>
-        retry_cmd() {
-          local max_retries=$1; shift
-          local attempt=1
-          local delay=5
-          while true; do
-            echo "Attempt ${attempt}/${max_retries}: $*"
-            if "$@"; then
-              return 0
-            fi
-            if (( attempt >= max_retries )); then
-              echo "All ${max_retries} attempts failed for: $*"
-              return 1
-            fi
-            echo "Attempt ${attempt} failed, retrying in ${delay}s..."
-            sleep "${delay}"
-            delay=$(( delay * 2 ))
-            attempt=$(( attempt + 1 ))
-          done
-        }
-
         # https://github.com/cri-o/packaging?tab=readme-ov-file#distributions-using-deb-packages
 
-        # Fetch the Kubernetes apt signing key with retry and fallback to CDN
-        K8S_KEY_PRIMARY="https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/Release.key"
-        K8S_KEY_FALLBACK="https://prod-cdn.packages.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/Release.key"
-        if ! retry_cmd 3 bash -c "set -o pipefail; curl -fsSL '${K8S_KEY_PRIMARY}' | sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"; then
-          echo "Primary URL failed, falling back to CDN: ${K8S_KEY_FALLBACK}"
-          retry_cmd 3 bash -c "set -o pipefail; curl -fsSL '${K8S_KEY_FALLBACK}' | sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"
-        fi
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/Release.key | \
+          sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
         echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/ /" | \
           sudo tee /etc/apt/sources.list.d/kubernetes.list
 
-        # Fetch the CRI-O apt signing key with retry
-        retry_cmd 3 bash -c "set -o pipefail; curl -fsSL 'https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v${CRIO_VERSION}/deb/Release.key' | sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/cri-o-apt-keyring.gpg"
+        curl -fsSL https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v${CRIO_VERSION}/deb/Release.key | \
+          sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
 
         echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v${CRIO_VERSION}/deb/ /" | \
           sudo tee /etc/apt/sources.list.d/cri-o.list
 
-        retry_cmd 3 sudo apt-get update
+        sudo apt-get update
 
         # [ERROR FileExisting-conntrack]: conntrack not found in system path
         # see man apt-patterns for the ~name=version* syntax

@@ -37,7 +37,19 @@ gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
 # Archived repo definitions below were considered during development but are
 # not currently used. Kept for reference in case they are needed for future
-# workbench images (e.g. EPEL metalink).
+# workbench images (e.g. R packages, EPEL metalink).
+
+# mcurlej copr, provides R-*
+# [copr:copr.devel.redhat.com:mcurlej:rstudio-server-dependencies]
+# name=Copr repo for rstudio-server-dependencies owned by mcurlej
+# baseurl=https://coprbe.devel.redhat.com/results/mcurlej/rstudio-server-dependencies/rhel-9-x86_64/
+# type=rpm-md
+# skip_if_unavailable=True
+# gpgcheck=0
+# gpgkey=https://coprbe.devel.redhat.com/results/mcurlej/rstudio-server-dependencies/pubkey.gpg
+# repo_gpgcheck=0
+# enabled=1
+# enabled_metadata=1
 
 # [epel]
 # name=Extra Packages for Enterprise Linux 9 - $basearch
@@ -46,3 +58,15 @@ gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 # gpgcheck=1
 # countme=1
 # gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9
+
+# Provide quarto and rstudio-server
+# [copr:copr.fedorainfracloud.org:iucar:rstudio]
+# name=Copr repo for rstudio owned by iucar
+# baseurl=https://download.copr.fedorainfracloud.org/results/iucar/rstudio/fedora-43-x86_64/
+# type=rpm-md
+# skip_if_unavailable=True
+# gpgcheck=1
+# gpgkey=https://download.copr.fedorainfracloud.org/results/iucar/rstudio/pubkey.gpg
+# repo_gpgcheck=0
+# enabled=1
+# enabled_metadata=1

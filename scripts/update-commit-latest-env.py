@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Refresh ODH workbench ``commit-latest.env`` entries from ``vcs-ref`` labels.
+"""Refresh ``manifests/odh/base/commit-latest.env`` from ``vcs-ref`` image labels.
 
-Reads workbench entries from ``params-latest.env``, inspects each image with ``skopeo``,
-writes 7-char git prefixes, and intentionally skips pipeline runtimes.
+Reads ``params-latest.env``, inspects each image with ``skopeo``, writes 7-char git prefixes.
 Run after changing ``params-latest.env`` (e.g. pinning workbench images to digests from ``params.env``).
 """
 from __future__ import annotations
@@ -106,20 +105,10 @@ async def inspect(images_to_inspect: typing.Iterable[str]) -> list[tuple[str, st
     return await asyncio.gather(*tasks)
 
 
-def load_workbench_latest_images(params_latest_path: pathlib.Path) -> list[tuple[str, str]]:
-    images_to_inspect: list[tuple[str, str]] = []
-    for line in params_latest_path.read_text(encoding="utf-8").splitlines():
-        if not line or line.startswith("#"):
-            continue
-        variable, _, image = line.partition("=")
-        if not variable.startswith("odh-workbench-"):
-            continue
-        images_to_inspect.append((variable, image))
-    return images_to_inspect
-
-
 async def main():
-    images_to_inspect = load_workbench_latest_images(PROJECT_ROOT / "manifests/odh/base/params-latest.env")
+    with open(PROJECT_ROOT / "manifests/odh/base/params-latest.env", "rt") as file:
+        images_to_inspect: list[list[str]] = [line.strip().split('=', 1) for line in file.readlines()
+                                              if line.strip() and not line.strip().startswith("#")]
 
     results = await inspect(value for _, value in images_to_inspect)
     if any(commit_hash is None for variable, commit_hash in results):

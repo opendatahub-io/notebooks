@@ -10,7 +10,7 @@ ARG BASE_IMAGE
 # Source: git submodule at prefetch-input/mongocli;                   #
 # Go deps prefetched by Konflux/Cachi2 (gomod).     #
 ######################################################
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25.9-1778504036 AS mongocli-builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.25.9-1777898790 AS mongocli-builder
 
 # OS Packages needs to be installed as root
 USER 0
@@ -58,6 +58,7 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 # hadolint ignore=DL3041
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
     /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
+RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]" "uv"
 
 # Other apps and tools installed as default user
 USER 1001
@@ -147,18 +148,13 @@ WORKDIR /opt/app-root/bin
 # hadolint ignore=DL3002
 USER root
 
-ARG LABEL_REGISTRY_PREFIX
-ARG LABEL_COMPONENT
-ARG RELEASE
-
-LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
-      com.redhat.component="${LABEL_COMPONENT}" \
-      io.k8s.display-name="${LABEL_COMPONENT}" \
+LABEL name="rhoai/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-rhel9" \
+      com.redhat.component="odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-rhel9" \
+      io.k8s.display-name="odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-rhel9" \
       summary="Jupyter CUDA pytorch-llmcompressor notebook image for ODH notebooks" \
       description="Jupyter CUDA pytorch-llmcompressor notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
       io.k8s.description="Jupyter CUDA pytorch-llmcompressor notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
-      version="${RELEASE}"
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
 
 # Install Python packages and Jupyterlab extensions from lockfile (requirements.cuda.txt used only for Cachi2 prefetch)
 COPY ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml

@@ -17,30 +17,28 @@
     // NOTE: This is the single source of truth for Playwright version.
     // The container image tag (v{version}-noble) is derived from @playwright/test version
     // by .github/actions/playwright-test/action.yml
-    "playwright": "=1.60.0",
-    "@playwright/test": "=1.60.0",
+    "playwright": "=1.59.1",
+    "@playwright/test": "=1.59.1",
 
     "testcontainers": "^11.14.0",
 
     "tslog": "^4",
-    "typescript": "^6.0.3",
-    "@types/node": "^25.7.0",
+    "typescript": "^6.0.2",
+    "@types/node": "^25.6.0",
     "@kubernetes/client-node": "^1.4.0",
 
     // ESLint with type-aware rules + Playwright plugin (see ADR 0012)
-    "eslint": "^10.3.0",
+    "eslint": "^10.2.0",
     "@eslint/js": "^10.0.1",
-    "typescript-eslint": "^8.59.3",
-    "eslint-plugin-playwright": "^2.10.2",
-    "jiti": "^2.7.0"
+    "typescript-eslint": "^8.58.1",
+    "eslint-plugin-playwright": "^2.10.1",
+    "jiti": "^2.6.1"
   },
-  // DO NOT add "pnpm": { "overrides": ... } here — pnpm 11 ignores it silently (pnpm#11536).
-  // All pnpm settings (overrides, allowBuilds, etc.) go in pnpm-workspace.yaml.
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": ">=11.0.0 <12",
-      "onFail": "download"
+  "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "overrides": {
+      // CVE-2026-41242: arbitrary code execution via injected protobuf definition type fields
+      "protobufjs": ">=7.5.5 <8"
     }
   }
 }

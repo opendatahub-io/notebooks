@@ -9,11 +9,6 @@
 # The lock file (rpms.lock.yaml) is auto-generated with exact versions and hashes.
 #
 # Previously, the Dockerfile ran `dnf install` with network access.
-#
-# The shared Dockerfile always runs `dnf install ... httpd`. RHDS prefetches
-# httpd (prefetch-input/rhds). ODH must NOT list httpd here — it is already
-# on odh-base-image-cpu-py312-c9s; prefetching a newer CentOS Stream httpd
-# causes a version conflict with base httpd-devel during the build.
 
 contentOrigin:
   repofiles:
@@ -71,10 +66,11 @@ packages:
   - nodejs-packaging
   - npm
 
-  # Web servers (httpd is already on odh-base-image-cpu-py312-c9s — do not list here)
+  # Web servers
   - nginx
   - nginx-mod-stream
   - nginx-mod-http-perl
+  - httpd
   - nss_wrapper
 
   # SELinux

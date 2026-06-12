@@ -23,25 +23,22 @@ Pull requests are the best way to propose changes to the notebooks repository:
 
 ### Some basic instructions to create a new notebook
 
-Each notebook image is a self-contained multi-stage Dockerfile — there are no inter-image
-dependencies. To add a new notebook:
-
-- Copy an existing leaf Dockerfile that is closest to your new image (e.g. copy
-  `jupyter/trustyai/ubi9-python-3.12/Dockerfile.cpu` and add your new stage at the end)
-- Create a proper filepath: `jupyter/${NOTEBOOK_NAME}/ubi9-python-3.12/`
-- Add the minimum files:
-    - `pyproject.toml` with the additional Python packages
-    - `Dockerfile.cpu` (and/or `.cuda`, `.rocm`) with multi-stage build instructions
-    - `build-args/` directory with `cpu.conf`, `konflux.cpu.conf`, etc.
-- Add a Makefile target (no dependency on another notebook target):
+- Decide from which notebook you want to derive the new notebook
+- Create a proper filepath and naming to the corresponding folder
+- Add the minimum files you have to add:
+    - Pipfile with the additional packages
+    - Dockefile with proper instructions
+    - Kustomization objects to deploy the new notebook into an openshift cluster (Kustomization.yaml, service.yaml, statefulset.yaml)
+- Create instructions into Makefile, for example if you derive the new notebooks from minimal then the recipe should be like the following:
     ```
-    .PHONY: jupyter-${NOTEBOOK_NAME}-ubi9-python-$(RELEASE_PYTHON_VERSION)
-    jupyter-${NOTEBOOK_NAME}-ubi9-python-$(RELEASE_PYTHON_VERSION):
-    	$(call image,$@,jupyter/${NOTEBOOK_NAME}/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+    # Your comment here
+    .PHONY: jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8
+    jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8: jupyter-minimal-ubi8-python-3.8
+	$(call image,$@,jupyter/${NOTEBOOK_NAME}/ubi8-python-3.8,$<)
     ```
-- Add the new image path under `refresh-lock-files`
-- Run `make refresh-lock-files` to generate lock files
-- Test locally: `make jupyter-${NOTEBOOK_NAME}-ubi9-python-3.12`
+- Add the paths of the new pipfiles under `refresh-lock-files`
+- Run the [piplock-renewal.yaml](https://github.com/opendatahub-io/notebooks/blob/main/.github/workflows/piplock-renewal.yaml) against your fork branch, check [here](https://github.com/opendatahub-io/notebooks/blob/main/README.md) for more info.
+- Test the changes locally, by manually running the `$ make jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8` from the terminal.
 
 ### Go toolchain
 
@@ -94,81 +91,28 @@ A bot will comment with instructions for re-creating the PR from a same-repo bra
     ```
 - If you like, you can install prek to run automatically using `uvx prek install -f`, as per its [install instructions](https://prek.j178.dev/quickstart)
 
-### CI configuration for a new notebook
+### Some basic instructions how to apply the new tests into [openshift-ci](https://github.com/openshift/release)
 
-Each notebook image is built as an independent Konflux component with its own Tekton
-PipelineRun in `.tekton/`. To add CI for a new notebook, create a PipelineRun YAML
-following the pattern of existing ones in `.tekton/`. See the `.tekton/README-odh.md`
-for details.
+- Fork the [openshift-ci](https://github.com/openshift/release) repo and create your branch from master.
+  - Definition and configuration of jobs used by this repository is on these places:
+    - [jobs](https://github.com/openshift/release/tree/master/ci-operator/jobs/opendatahub-io/notebooks)
+    - [config](https://github.com/openshift/release/tree/master/ci-operator/config/opendatahub-io/notebooks)
+- Issue a pull request there by adding the following.
+- Get navigated into [opendatahub-io-notebooks-main.yaml](https://github.com/openshift/release/blob/master/ci-operator/config/opendatahub-io/notebooks/opendatahub-io-notebooks-main.yaml) file.
+  - Under `images` option, add build instructions (directory path, from(parent image) and to(new notebook name))
+  - Under `tests` option, add the tests (*notebook-jupyter-${NOTEBOOK_NAME}-ubi8-python-3-8-image-mirror* and *notebook-jupyter-${NOTEBOOK_NAME}-ubi8-python-3-8-pr-image-mirror*)
+  - Under `notebooks-e2e-tests` add the *jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8-test-e2e*
+  - Finally, run on terminal `$make jobs` and ensure that there are not errors.
+- Commit your PR
+
 
 ### Testing your PR locally
 
-A fuller test-catalog document is planned in [issue #3174](https://github.com/opendatahub-io/notebooks/issues/3174)
-as `docs/agents/testing.md`.
-
-#### Environment setup
-
-- Use `uv` for local development:
-  ```bash
-  uv venv --python "$(which python3.14)"
-  uv sync --locked
-  ```
-- On macOS, install Homebrew GNU Make 4.x and put `gnubin` on `PATH` so `make`
-  resolves to the same binary used on Linux:
-  ```bash
-  brew install make
-  PATH="/opt/homebrew/opt/make/libexec/gnubin:$PATH"
-  ```
-- After dependency changes, regenerate locks with `make refresh-lock-files`.
-
-#### Common local commands
-
-```bash
-make test
-make test-unit
-make test-integration PYTEST_ARGS="--image=<image>"
-make jupyter-${NOTEBOOK_NAME}-ubi9-python-3.12
-make test-${NOTEBOOK_NAME}
-```
-
-#### Local gotchas
-
-- Run tests from a checkout whose directory name is exactly `notebooks`.
-  Hyphenated worktree paths such as `/tmp/pr-2293-ci` break
-  `test_image_pyprojects_version_alignment`.
-- If static tests fail in a surprising way, retry from a clean clone first. Extra
-  top-level files and directories such as `.cursor-tmp-*` can interfere with repo-wide
-  assertions.
-- For filesystem-heavy unit tests, prefer the `pyfakefs` `fs` fixture over `tmp_path`.
-- When renaming image labels or similar CI metadata, update only the current `-n`
-  entries in `ci/check-params-env.sh` and `ci/expected-image-metadata.yaml`. Historical
-  entries intentionally keep old names.
-
-#### ODH vs RHOAI local builds
-
-`KONFLUX` selects the product variant, not whether the build runs on Konflux/Tekton.
-Both variants are built on Konflux in CI; the variable changes which `build-args/*.conf`
-and manifest tree the Makefile uses locally.
-
-| `KONFLUX` value | Product variant | Build args | Manifests |
-|-----------------|-----------------|------------|-----------|
-| unset or `no` | ODH (midstream default) | `build-args/<variant>.conf` | `manifests/odh/` |
-| `yes` | RHOAI downstream | `build-args/konflux.<variant>.conf` | `manifests/rhoai/` |
-
-Keep the same `KONFLUX` value for both the build step and the matching `make test-*`
-step so the imagestream manifests and expected package versions line up.
-
-For deeper references:
-
-- Konflux and Tekton details: [`docs/konflux.md`](docs/konflux.md)
-- Subscribed/AIPCC local builds: [`docs/subscribed-builds.md`](docs/subscribed-builds.md)
-- Hermetic build internals: [`docs/hermetic-guide.md`](docs/hermetic-guide.md)
-- CI failure ownership and systems: [`docs/ci.md`](docs/ci.md)
-- CVE-driven lockfile work: [`docs/cves/python.md`](docs/cves/python.md) and [`docs/cves/nodejs.md`](docs/cves/nodejs.md)
+- Test the changes locally, by manually running the `$make jupyter-${NOTEBOOK_NAME}-ubi8-python-3.8` from the terminal. This definitely helps in that initial phase.
 
 ### Working with RHDS and ODH Repositories
 
-When contributing to notebook-related changes in the Red Hat Data Services (RHDS) ecosystem, it's important to understand the repository structure and contribution workflow:
+When contributing to notebook-related changes in the Red Hat Data Science (RHDS) ecosystem, it's important to understand the repository structure and contribution workflow:
 
 #### Repository Responsibilities
 
@@ -181,10 +125,6 @@ When contributing to notebook-related changes in the Red Hat Data Services (RHDS
 - **Limited Changes**: Only `Dockerfile.konflux` files should be modified directly in this repository. Changes to these files flow to RHOAI upcoming release
 - **Konflux Integration**: This repository contains Konflux-specific build configurations and pipeline definitions
 - **Automated Sync**: Receives updates from the ODH notebooks repository automatically
-
-In this terminology, ODH is the **midstream** repo and RHOAI/RHDS is the **downstream**
-product repo. When shared files need one convention, follow the Konflux/RHOAI naming and
-behavior that the downstream automation expects.
 
 #### Contribution Workflow
 
@@ -199,9 +139,8 @@ behavior that the downstream automation expects.
    - Changes to these files flow to RHOAI upcoming release and need careful coordination
 
 3. **For Tekton Pipeline Changes**:
-   - ODH `.tekton/` changes are made in this repository
-   - RHDS PR PipelineRun changes are authored in `konflux-central`, then synced into the downstream notebooks repo
-   - Follow the repository-specific Konflux documentation before editing pipeline definitions
+   - Modify Tekton pipelines in the central repository as specified in the specific README documentation
+   - Follow the centralized pipeline management guidelines
 
 #### Best Practices
 
@@ -217,13 +156,13 @@ This workflow ensures that the OpenDataHub community remains the primary develop
 To debug tests, run pytest with verbose logging:
 
 ```console
-uv run pytest -s --log-cli-level=DEBUG tests/
+./uv run pytest -s --log-cli-level=DEBUG tests/
 ```
 
 For container tests, add `--capture=fd` to see container output:
 
 ```console
-uv run pytest --capture=fd tests/containers --image=<image> --log-cli-level=DEBUG
+./uv run pytest --capture=fd tests/containers --image=<image> --log-cli-level=DEBUG
 ```
 
 ### Review and Merge Process

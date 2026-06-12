@@ -120,9 +120,6 @@ Each new tracker is created with:
 - **Labels:** `CVE`, the CVE id (e.g. `CVE-2026-28498`), and `security`, so CVE work is distinguishable from other Bugs.
 - **Team:** Jira field `customfield_10001` set to the **AAIET Notebooks** team id as a **plain string** (required by the [REST create API](https://developer.atlassian.com/platform/teams/components/team-field-in-jira-rest-api/); default id from RHAIENG-3752). Override with **`JIRA_RHAIENG_TEAM_OPTION_ID`** if your site differs.
 - **Component:** `Notebooks` (unchanged).
-- **Security level:** `Red Hat Employee` by default; **`Embargoed Security Issue`** when any child is embargoed (security level or `EMBARGOED` summary prefix).
-- **Summary:** includes an `EMBARGOED` prefix when children are embargoed (so automation such as jira-autofix can detect embargoed work).
-- **Contributors** (`customfield_10466`): union of Contributors from all blocked RHOAIENG children, plus the authenticated user and optional **`JIRA_RHAIENG_EXTRA_CONTRIBUTORS`** (comma-separated Atlassian accountIds). Required for visibility under embargo ACL (changelog comments may say “involved users” but the field is Contributors).
 
 Requires Jira auth (e.g. `JIRA_EMAIL` + `JIRA_API_TOKEN`, or `JIRA_TOKEN` / OAuth per [`scripts/cve/jira_auth.py`](cve/jira_auth.py)). `JIRA_URL` defaults to `https://redhat.atlassian.net` in code; some docs still mention `issues.redhat.com` for legacy flows.
 

@@ -12,34 +12,24 @@ These images run on OpenShift as part of OpenDataHub (ODH) and Red Hat OpenShift
 
 ## Image hierarchy
 
-Images follow a conceptual layer hierarchy, but there are **no inter-image dependencies**.
-Each image has a self-contained multi-stage Dockerfile that starts `FROM ${BASE_IMAGE}`
-(an external base) and rebuilds every ancestor stage internally. No notebook image
-references another notebook image as a `FROM` source.
-
-The conceptual layer structure (not a build-time dependency graph):
+Images form a conceptual hierarchy. Each image is built by a standalone multi-stage
+Dockerfile that pulls its parent as a `FROM` base image (not as a build-time dependency
+in this repo):
 
 ```text
-${BASE_IMAGE} (external)
-  └── minimal stage                     ← Python, JupyterLab, basic packages
-        └── datascience stage           ← NumPy, Pandas, SciPy, scikit-learn
-              ├── pytorch stage                ← PyTorch + CUDA/ROCm
-              ├── pytorch+llmcompressor stage  ← PyTorch + LLM Compressor
-              ├── tensorflow stage             ← TensorFlow + CUDA
-              ├── trustyai stage               ← TrustyAI explainability
-              ├── rocm/pytorch stage           ← PyTorch + ROCm
-              └── rocm/tensorflow stage        ← TensorFlow + ROCm
+Base image (external or base-images/)
+  └── jupyter/minimal                    ← Python, JupyterLab, basic packages
+        └── jupyter/datascience          ← NumPy, Pandas, SciPy, scikit-learn
+              ├── jupyter/pytorch                ← PyTorch + CUDA/ROCm
+              ├── jupyter/pytorch+llmcompressor  ← PyTorch + LLM Compressor
+              ├── jupyter/tensorflow             ← TensorFlow + CUDA
+              ├── jupyter/trustyai               ← TrustyAI explainability
+              ├── jupyter/rocm/pytorch           ← PyTorch + ROCm
+              └── jupyter/rocm/tensorflow        ← TensorFlow + ROCm
 ```
 
-Each leaf Dockerfile (e.g. `jupyter/pytorch/.../Dockerfile.cuda`) contains all stages
-from `${BASE_IMAGE}` down to its final stage. For example, the PyTorch CUDA Dockerfile
-chains: `FROM ${BASE_IMAGE} AS cuda-base` → `cuda-jupyter-minimal` → `cuda-jupyter-datascience`
-→ `cuda-jupyter-pytorch`, all in one file.
-
-Different images can use different `${BASE_IMAGE}` values (and therefore different
-CUDA/ROCm versions). In ODH (OpenDataHub), base images are built from `base-images/`
-in this repo. In RHOAI (Red Hat OpenShift AI), base images come from the AIPCC pipeline
-instead.
+In ODH (OpenDataHub), base images are built from `base-images/` in this repo.
+In RHOAI (Red Hat OpenShift AI), base images come from the AIPCC pipeline instead.
 
 Each image directory (e.g. `jupyter/minimal/ubi9-python-3.12/`) contains:
 - `Dockerfile.*` — one per variant (cpu, cuda, rocm, konflux.cpu, etc.)
@@ -64,7 +54,7 @@ The `runtimes/` directory mirrors the same flavor structure (minimal, datascienc
 | `base-images/` | CUDA and ROCm GPU-accelerated base image definitions |
 | `dependencies/` | Shared dependency constraints (CVE pinning) and meta packages for common dependency groups |
 | `examples/` | Example JupyterLab notebooks for validating workbench functionality |
-| `docs/architecture/decisions/` | Architecture Decision Records |
+| `docs/adr/` | Architecture Decision Records |
 
 ## Build system
 
@@ -76,18 +66,9 @@ make all-images                              # build everything
 make test                                    # run quick static tests (pytest + lint)
 ```
 
-The `KONFLUX` Makefile variable selects the **product variant**, not whether the build
-runs on Konflux/Tekton:
-
-- **ODH mode** (default: `KONFLUX=no` or unset): uses `build-args/<variant>.conf`
-  and `manifests/odh/`
-- **RHOAI mode** (`KONFLUX=yes`): uses `build-args/konflux.<variant>.conf`
-  and `manifests/rhoai/`
-
-Since RHAIENG-4516, `Dockerfile.<variant>` paths and `Dockerfile.konflux.<variant>`
-paths resolve to the same content, so the meaningful difference is the selected
-build-args file and manifest set rather than a separate Dockerfile implementation.
-Both variants can be built locally or on Konflux/Tekton.
+The build system supports two modes:
+- **ODH mode** (default): `KONFLUX=no`, uses standard Dockerfiles
+- **RHOAI/Konflux mode**: `KONFLUX=yes`, uses `Dockerfile.konflux.*` variants with prefetched dependencies
 
 ## Testing layers
 

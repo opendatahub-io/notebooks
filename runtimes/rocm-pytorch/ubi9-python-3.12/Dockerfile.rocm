@@ -1,1 +1,86 @@
-Dockerfile.konflux.rocm
+#########################
+# configuration args    #
+#########################
+ARG BASE_IMAGE
+
+####################
+# rocm-base        #
+####################
+FROM ${BASE_IMAGE} AS rocm-base
+
+WORKDIR /opt/app-root/bin
+
+# hadolint ignore=DL3002
+USER 0
+
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
+RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+    /utils/dnf-helper.sh install perl mesa-libGL skopeo libxcrypt-compat compat-openssl11 openshift-clients
+
+RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]" "uv"
+
+USER 1001
+
+########################
+# rocm-runtime-pytorch #
+########################
+FROM rocm-base AS rocm-runtime-pytorch
+
+ARG PYTORCH_SOURCE_CODE=runtimes/rocm-pytorch/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
+
+LABEL name="odh-notebook-runtime-rocm-pytorch-ubi9-python-3.12" \
+    summary="Runtime ROCm pytorch notebook image for ODH notebooks" \
+    description="Runtime ROCm pytorch notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+    io.k8s.display-name="Runtime ROCm pytorch notebook image for ODH notebooks" \
+    io.k8s.description="Runtime ROCm pytorch notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
+    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+    io.openshift.build.commit.ref="main" \
+    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/rocm-pytorch/ubi9-python-3.12" \
+    io.openshift.build.image="quay.io/opendatahub/workbench-images:rocm-runtime-pytorch-ubi9-python-3.12"
+
+WORKDIR /opt/app-root/bin
+
+COPY --chown=1001:0 ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
+COPY --chown=1001:0 ${PYTORCH_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
+COPY --chown=1001:0 ${PYTORCH_SOURCE_CODE}/utils ./utils/
+COPY --chown=1001:0 ${PYTORCH_SOURCE_CODE}/de-vendor-torch.py ./
+
+USER 0
+
+COPY --chown=1001:0 prefetch-input/elyra-v4.3.1/elyra/kfp/bootstrapper.py /opt/app-root/bin/utils/bootstrapper.py
+
+ENV ELYRA_INSTALL_PACKAGES="false"
+
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+
+echo "Installing software and packages"
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
+    --strict --no-deps --no-config --no-progress \
+    --compile-bytecode --index-strategy=unsafe-best-match \
+    --no-verify-hashes \
+    --find-links /cachi2/output/deps/pip \
+    --requirements=./requirements.txt
+
+python3 ./de-vendor-torch.py
+rm ./de-vendor-torch.py
+
+chmod -R g+w /opt/app-root/lib/python3.12/site-packages
+fix-permissions /opt/app-root -P
+EOF
+
+USER 0
+COPY jupyter/rocm/tensorflow/ubi9-python-3.12/utils/link-solibs.py /tmp/link-solibs.py
+RUN python3 /tmp/link-solibs.py && rm /tmp/link-solibs.py
+
+ENV ROCM_PATH=/opt/rocm
+
+USER 1001
+
+WORKDIR /opt/app-root/src

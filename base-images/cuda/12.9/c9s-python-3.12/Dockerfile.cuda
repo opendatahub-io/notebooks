@@ -15,12 +15,6 @@ ENV TARGETARCH=${TARGETARCH}
 ENV PYTHON=python3.12
 ENV VIRTUAL_ENV=/opt/app-root/
 
-# Duplicated in the AIPCC config block below; needed here so aipcc.sh
-# (which runs in this stage) can pip-install from the AIPCC index.
-ARG INDEX_URL
-ENV PIP_INDEX_URL=${INDEX_URL}
-ENV UV_INDEX_URL=${INDEX_URL}
-
 # OpenShift s2i / Cloud Native Buildpack user
 ENV CNB_USER_ID=1001 \
     CNB_GROUP_ID=0
@@ -169,8 +163,6 @@ RUN dnf -y install dnf-plugins-core && \
 
 ### BEGIN AIPCC pip and uv config files
 ARG INDEX_URL
-ENV PIP_INDEX_URL=${INDEX_URL}
-ENV UV_INDEX_URL=${INDEX_URL}
 COPY --chmod=664 --chown=1001:0 base-images/utils/pip.conf.in /opt/app-root/pip.conf
 COPY --chmod=664 --chown=1001:0 base-images/utils/uv.toml.in /opt/app-root/uv.toml
 RUN /bin/bash <<'EOF'

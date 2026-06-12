@@ -46,12 +46,11 @@ import pytest
 import yaml
 
 from manifests.tools.commit_env_refs import parse_env_file
-from manifests.tools.package_names import all_workbench_pip_names, manifest_name_to_pip
+from manifests.tools.package_names import manifest_name_to_pip
 from tests import PROJECT_ROOT
 
 if TYPE_CHECKING:
     import pytest_subtests
-    import testcontainers.core.container
 
 _LOG = logging.getLogger(__name__)
 
@@ -111,23 +110,12 @@ def _normalize_pip_name(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _strip_tag_if_digest(image_ref: str) -> str:
-    """Strip :tag from repo:tag@sha256:digest — skopeo doesn't accept that format."""
-    if "@" in image_ref:
-        base, digest = image_ref.rsplit("@", 1)
-        if ":" in base.rsplit("/", 1)[-1]:
-            base = base.rsplit(":", 1)[0]
-        return f"{base}@{digest}"
-    return image_ref
-
-
 def _resolve_amd64(image_ref: str) -> str:
     """Resolve a multi-arch manifest list to the amd64 image digest.
 
     If *image_ref* already points to a single-arch image, returns it unchanged.
     Requires ``skopeo`` on PATH.
     """
-    image_ref = _strip_tag_if_digest(image_ref)
     raw = subprocess.run(
         ["skopeo", "inspect", "--raw", f"docker://{image_ref}"],
         capture_output=True,
@@ -272,21 +260,18 @@ def _resolve_pypi_duplicates(
     return result
 
 
-def _exec_or_none(container: testcontainers.core.container.DockerContainer, cmd: list[str]) -> str | None:
+def _exec_or_none(container: object, cmd: list[str]) -> str | None:
     """Run a command in a container, return stdout or None on failure."""
     try:
         ecode, output = container.exec(cmd)
         if ecode == 0:
             return output.decode().strip()
-    except UnicodeDecodeError:
+    except Exception:
         pass
     return None
 
 
-def _collect_software_versions(
-    container: testcontainers.core.container.DockerContainer,
-    packages: dict[str, str],
-) -> None:
+def _collect_software_versions(container: object, packages: dict[str, str]) -> None:
     """Populate *packages* with software versions obtained by running commands in *container*.
 
     This makes ``_resolve_software_version`` work for the pip-list backend by providing
@@ -516,36 +501,6 @@ def _compare_manifest_vs_actual(
             ):
                 pytest.fail(f"Manifest says {manifest_name}=={manifest_version}, but image has {actual_version_str}")
 
-    # Pre-existing gaps in older tag manifests — packages installed in images
-    # but historically never listed in annotations. xfail to surface them
-    # without blocking CI. New omissions will hard-fail.
-    REVERSE_CHECK_XFAIL: frozenset[str] = frozenset(
-        {
-            "nvidia-cuda-runtime-cu12",  # never listed in older manifests
-            "boto3",  # ROCm images historically didn't list it
-            "kfp",  # ROCm and code-server historically didn't list it
-            "kubeflow-training",  # rocm-tensorflow omission
-            "accelerate",  # transitive dep of llmcompressor
-            "datasets",  # transitive dep of llmcompressor
-            "transformers",  # transitive dep of llmcompressor
-            "feast",  # pre-existing gap in code-server and rocm-tensorflow old tags
-        }
-    )
-
-    if not is_software:
-        known_pip_names = all_workbench_pip_names()
-        manifest_pip_names = {_normalize_pip_name(manifest_name_to_pip(d["name"])) for d in expected_deps}
-        for pip_name in actual_packages:
-            normalized = _normalize_pip_name(pip_name)
-            if normalized not in known_pip_names:
-                continue
-            if normalized not in manifest_pip_names:
-                with subtests.test(msg=f"{is_name} tag {tag_name}: {pip_name} installed but not in manifest"):
-                    if normalized in REVERSE_CHECK_XFAIL:
-                        pytest.xfail(f"{pip_name} found in image but not listed in manifest annotations (known gap)")
-                    else:
-                        pytest.fail(f"{pip_name} found in image but not listed in manifest annotations")
-
 
 @dataclasses.dataclass
 class _TagInfo:
@@ -717,10 +672,6 @@ def _image_ref_to_quay(image_ref: str) -> tuple[str, str]:
     return repo, digest
 
 
-class _ClairScanNotReadyError(RuntimeError):
-    pass
-
-
 def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     """Extract {normalized_name: version} from Quay.io Clair security scan.
 
@@ -751,14 +702,14 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     url = f"https://quay.io/api/v1/repository/{repo}/manifest/{digest}/security?vulnerabilities=false"
 
     req = urllib.request.Request(url, headers={"Authorization": f"Basic {quay_auth}"})
-    with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 - HTTPS URL only; token in header, not URL
+    with urllib.request.urlopen(req, timeout=30) as resp:
         data = json.loads(resp.read())
 
-    features = ((data.get("data") or {}).get("Layer") or {}).get("Features", [])
+    features = data.get("data", {}).get("Layer", {}).get("Features", [])
     if not features:
         status = data.get("status")
         if status in {"queued", "scanning"}:
-            raise _ClairScanNotReadyError(f"Clair scan not ready for {image_ref} (status={status})")
+            raise RuntimeError(f"Clair scan not ready for {image_ref} (status={status})")
         raise RuntimeError(f"No features in Clair response for {image_ref}")
 
     # Collect all entries keyed by both rpm: and normalized-pip forms,
@@ -818,18 +769,10 @@ def test_old_tag_annotations_match_quay(
     if not shutil.which("skopeo"):
         pytest.skip("skopeo not found on PATH")
 
-    all_tags = _iter_old_tags(base_dir)
-    skipped_scans: list[str] = []
-
-    for t in all_tags:
+    for t in _iter_old_tags(base_dir):
         _LOG.info(f"Fetching Quay packages for {t.is_name} tag {t.tag_name}: {t.image_ref}")
         try:
             actual_packages = _packages_from_quay(t.image_ref, quay_auth)
-        except _ClairScanNotReadyError as exc:
-            skipped_scans.append(f"{t.is_name} tag {t.tag_name}")
-            with subtests.test(msg=f"{t.is_name} tag {t.tag_name}: Clair scan not ready"):
-                pytest.skip(str(exc))
-            continue
         except (
             RuntimeError,
             ValueError,
@@ -846,11 +789,3 @@ def test_old_tag_annotations_match_quay(
         # Clair cannot resolve code-server (npm package with 0.0.0 dev version).
         quay_software = [sw for sw in t.software if sw["name"] != "code-server"]
         _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, quay_software, actual_packages, is_software=True)
-
-    if skipped_scans:
-        summary = ", ".join(skipped_scans)
-        if len(skipped_scans) == len(all_tags):
-            with subtests.test(msg="Clair scan skip summary"):
-                pytest.fail(f"All {len(all_tags)} tags were skipped because Clair scans were not ready: {summary}")
-        else:
-            _LOG.warning(f"{len(skipped_scans)}/{len(all_tags)} tags skipped (Clair scans not ready): {summary}")

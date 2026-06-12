@@ -4,7 +4,6 @@ set -Eeuxo pipefail
 ARCH=${TARGETARCH}
 _=${PYTHON}
 _=${VIRTUAL_ENV}
-_=${PIP_INDEX_URL:?PIP_INDEX_URL must be set}
 
 DNF_OPTS=(-y --nodocs --setopt=install_weak_deps=False --setopt=keepcache=True --setopt=max_parallel_downloads=10)
 
@@ -444,19 +443,14 @@ function install_csb() {
     fi
 }
 
-# create Python virtual env, install pip + uv
-# Downstream (AIPCC/RHOAI) python-venv.sh does the same:
-#   https://gitlab.com/redhat/rhel-ai/core/base-images/app/-/blob/main/context/app/python-venv.sh
+# create Python virtual env and update pip inside the venv
 function install_python_venv() {
     # install venv with bundled pip (no --upgrade-deps)
     "${PYTHON}" -m venv "${VIRTUAL_ENV}"
 
-    # All current AIPCC indices (cpu, cuda12.9, cuda13.0, rocm7.1) carry
-    # pip, setuptools, wheel, and uv. Install from PIP_INDEX_URL directly.
     "${PYTHON}" -m pip install --force-reinstall --upgrade \
+            --index-url https://pypi.org/simple/ \
             pip setuptools wheel
-
-    "${PYTHON}" -m pip install uv
 }
 
 function main() {

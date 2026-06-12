@@ -20,17 +20,14 @@ dependencies = [
     "onnxconverter-common",
 
     # Cloud/Infrastructure
+
     "boto3",
     "kafka-python-ng",
-
-    # Runtime extensions
-    "codeflare-sdk; platform_machine != 'ppc64le' and platform_machine != 's390x'",
-    "feast",
 ]
 
 [tool.uv]
 package = false
 
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]

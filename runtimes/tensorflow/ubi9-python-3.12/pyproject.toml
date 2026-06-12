@@ -10,6 +10,8 @@ dependencies = [
     "tensorboard",
 
     # Datascience and useful extensions
+    "codeflare-sdk",
+    "feast",
     "odh-notebooks-meta-runtime-datascience-deps",
 
     "odh-notebooks-meta-db-connectors-deps",
@@ -33,7 +35,7 @@ override-dependencies = [
 ]
 
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
 
 [tool.uv.sources]

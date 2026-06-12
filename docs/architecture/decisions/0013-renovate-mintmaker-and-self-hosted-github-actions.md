@@ -57,7 +57,7 @@ processing this remote.
    digest/grouping rules).
 
 2. **Add `.github/workflows/renovate-self-hosted.yaml`** (optional) to run
-   [`scripts/ci/renovate_run.py`](../../../scripts/ci/renovate_run.py) (Renovate container via Docker on CI, `CONTAINER_ENGINE=docker`) on a schedule and `workflow_dispatch`, using the same config file and a **`RENOVATE_TOKEN`** PAT so PRs can trigger normal CI. The workflow no longer uses `renovatebot/github-action`; the Renovate **image** is pinned with **`RENOVATE_IMAGE`** (default upstream `ghcr.io/renovatebot/renovate:43@sha256:…`), so bump that env var in the workflow and `DEFAULT_RENOVATE_IMAGE` in the script when upgrading.
+   [`scripts/ci/renovate_run.py`](../../../scripts/ci/renovate_run.py) (Renovate container via Docker on CI, `CONTAINER_ENGINE=docker`) on a schedule and `workflow_dispatch`, using the same config file and a **`RENOVATE_TOKEN`** PAT so PRs can trigger normal CI. The workflow no longer uses `renovatebot/github-action`; the Renovate **image tag** is pinned with **`RENOVATE_IMAGE`** (default `ghcr.io/renovatebot/renovate:43`), so bump that env var in the workflow or script when upgrading.
 
 3. **The self-hosted workflow** uses a split gate:
    `github.event_name != 'schedule' || github.repository_owner == 'opendatahub-io'`
@@ -164,13 +164,13 @@ Renovate only changed unrestricted paths like `build-args/konflux.*.conf`.
 
 - **Upstream bug**: [renovatebot/renovate#42554](https://github.com/renovatebot/renovate/issues/42554)
 - **`platformCommit: "disabled"`** does NOT help — `commitFiles()` always calls `pushFiles()`
-- **MintMaker workaround**: add the MintMaker GitHub App as a **bypass actor** on the
-  file path restriction ruleset (done for this org).
-- **Self-hosted workaround (historical)**: a patched image at `quay.io/jdanek/renovate:43-fix42554`
-  used `base_tree` + only changed files. **Superseded** by upstream fix
-  [renovatebot/renovate#42556](https://github.com/renovatebot/renovate/pull/42556)
-  (released in 43.216.3). Self-hosted workflows now pin upstream
-  `ghcr.io/renovatebot/renovate:43@sha256:…` (amd64 digest for GHA `ubuntu-latest`).
+- **Workaround**: ask the org admin (Ugo Giordano / `@U02AADEDP7B` in Slack
+  `#wg-openshift-ai-odh-github`) to add the Renovate PAT user (`ide-developer`)
+  as a **bypass actor** on the file path restriction ruleset. This was already done
+  for [`opendatahub-io/opendatahub-tests`](https://redhat-internal.slack.com/archives/C09BV0L6ULQ/p1773076687051249?thread_ts=1772554653.543679&cid=C09BV0L6ULQ).
+- **Proposed fix**: use `base_tree` + only changed files in `POST /git/trees` instead of
+  the full tree. A patched image is available at `quay.io/jdanek/renovate:43-fix42554`
+  (amd64 + arm64); to test, set `RENOVATE_IMAGE` in the workflow env.
 
 ### Self-hosted run log quirks (forks)
 
@@ -178,7 +178,7 @@ Renovate only changed unrestricted paths like `build-args/konflux.*.conf`.
 - **`[remote rejected]` pushing workflow files** — The classic PAT lacks the `workflow` scope. Renovate runs exit successfully but branches that modify `.github/workflows/**` are rejected with `refusing to allow a Personal Access Token to create or update workflow … without workflow scope`. Add `workflow` to the classic PAT scopes. See [#3399](https://github.com/opendatahub-io/notebooks/issues/3399).
 - **Private image lookups (`no-result`)** — The workflow merges pull-secret (and optional `quay.io/aipcc` login) into **`config.json` under `DOCKER_CONFIG`**, mounts that directory read-only into the container, runs **`scripts/ci/docker_config_to_renovate_host_rules.py`** to set **`RENOVATE_HOST_RULES`**, and **`renovate_run.py`** forwards both to the Renovate process (Renovate often still reports `no-result` for private tags when only `DOCKER_CONFIG` is present).
 - **`allowedCommands`, `inheritConfig`, `onboarding`, … “global only”** — Those keys exist for **MintMaker’s** merged global config. Self-hosted runs **warn** when they appear in repo `renovate.json5`; MintMaker continues to use them upstream. Harmless noise unless something actually fails.
-- **`matchBaseBranches` / `baseBranchPatterns`** — Same as upstream comment in `renovate.json5`: top-level `baseBranchPatterns` is avoided so MintMaker’s per-branch behavior is not overridden. Use `scripts/ci/renovate_run.py lookup` for a branch-aware remote dry-run and `scripts/ci/renovate_run.py local-lookup` only when you explicitly want a local-platform approximation that may warn.
+- **`matchBaseBranches` / `baseBranchPatterns`** — Same as upstream comment in `renovate.json5`: top-level `baseBranchPatterns` is avoided so MintMaker’s per-branch behavior is not overridden; local dry-runs may warn.
 - **`gitAuthor` / unverified commits** — Set **`RENOVATE_GIT_AUTHOR`** in the workflow env (or `gitAuthor` in config) to your own **`Name <email>`** if you dislike the default Mend address.
 - **Dependency dashboard issue** — Requires **GitHub Issues enabled** on the repository; enable on the fork or ignore the log line.
 

@@ -60,10 +60,3 @@ def manifest_name_to_pip(name: str) -> str:
     if name in MANIFEST_LOWER_NAMES:
         return name.lower()
     return name
-
-
-def all_workbench_pip_names() -> frozenset[str]:
-    """Return the set of pip package names that should appear in imagestream annotations."""
-    names = {v.lower() for v in MANIFEST_TO_PIP.values()}
-    names |= {n.lower() for n in MANIFEST_LOWER_NAMES}
-    return frozenset(names)

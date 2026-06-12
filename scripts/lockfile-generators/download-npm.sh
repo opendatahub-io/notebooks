@@ -241,40 +241,38 @@ if [[ -z "$refs" ]]; then
     exit 0
 fi
 
-# --- Download (parallel) ---
+# --- Download ---
 mkdir -p "$DEST_DIR"
 
 total=$(echo "$refs" | wc -l | tr -d ' ')
+count=0
+downloaded=0
+skipped=0
+failed=0
 
 echo ""
-# 20 parallel workers (npm registry doesn't have the Akamai rate-limiting
-# that the AIPCC pip index has; could go higher, but 20 is a safe default).
-echo "Found $total unique packages to download (20 parallel workers)."
+echo "Found $total unique packages to download."
 echo ""
 
-export DEST_DIR
-download_file() {
-    local filename="$1"
-    local download_url="$2"
+while IFS=$'\t' read -r filename download_url; do
+    count=$((count + 1))
+
     if [[ -f "$DEST_DIR/$filename" ]]; then
-        echo "SKIP  Already exists: $filename"
+        echo "[$count/$total] SKIP  Already exists: $filename"
+        skipped=$((skipped + 1))
     else
-        if wget -q -O "$DEST_DIR/$filename" --tries=3 --waitretry=2 --timeout=30 "$download_url"; then
-            echo "OK    Downloaded: $filename"
+        if wget -q -O "$DEST_DIR/$filename" "$download_url"; then
+            echo "[$count/$total] OK    Downloaded: $filename"
+            downloaded=$((downloaded + 1))
         else
-            echo "FAIL  Failed: $download_url" >&2
+            echo "[$count/$total] FAIL  Failed: $download_url" >&2
+            failed=$((failed + 1))
+            # Clean up partial download
             rm -f "$DEST_DIR/$filename"
-            return 1
         fi
     fi
-}
-export -f download_file
-
-if ! echo "$refs" | xargs -n 2 -P 20 bash -c 'download_file "$1" "$2"' _; then
-    echo "" >&2
-    echo "ERROR: Some npm downloads failed." >&2
-    exit 1
-fi
+done <<< "$refs"
 
 echo ""
-echo "Finished! Location: $DEST_DIR"
+echo "Finished! Total: $total  Downloaded: $downloaded  Skipped: $skipped  Failed: $failed"
+echo "Location: $DEST_DIR"

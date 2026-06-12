@@ -21,6 +21,8 @@ dependencies = [
     "lm-eval",
 
     # Datascience and useful extensions
+    "codeflare-sdk",
+    "feast",
     "skl2onnx",
     "onnxscript",
     "odh-notebooks-meta-workbench-datascience-deps",
@@ -57,19 +59,14 @@ odh-notebooks-meta-jupyterlab-datascience-deps = { path = "../../../dependencies
 [tool.uv]
 
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
-
-# May at some point these or some of these dependencies need to be remove as they will autoheal
 override-dependencies = [
-    # odh-elyra pins jupyter-resource-usage<1.2.dev0, but 1.1.1 needs psutil<6 while
-    # ipython 9.14+ on the RH index needs psutil>=7. Index ships 1.2.1.
-    "jupyter-resource-usage>=1.2.1,<1.3",
-    # RHAIENG-2458: urllib3>=2.7.0 — CVE-2026-44431, CVE-2026-44432 (2.7.0); CVE-2025-66418 (2.6.0)
-    # Override needed because odh-elyra pulls in appengine-python-standard with urllib3<2
-    "urllib3>=2.7.0",
+    # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
+    # appengine-python-standard which has an obnoxious urllib3<2 constraint
+    "urllib3>=2.6.0",
     # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
     "protobuf==6.31.1",
-    # RHAIENG-5267: requests==2.32 dep conflict with chardet 
-    "requests>=2.33.1",
+    # RHOAIENG-58615: CVE-2026-40192 Pillow FITS GZIP decompression bomb
+    "pillow>=12.2.0",
 ]

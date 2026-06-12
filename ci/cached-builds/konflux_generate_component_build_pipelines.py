@@ -36,22 +36,15 @@ def bundle_task_ref(name) -> dict:
     """Returns a reference to a Konflux task bundle.
 
     Uses the `image-registry.yaml` file as an up-to-date source for the digests."""
-    registry_path = ROOT_DIR / ".tekton/image-registry.yaml"
-    try:
-        with open(registry_path) as f:
-            data = yaml.safe_load(f)
-    except FileNotFoundError:
-        raise FileNotFoundError(
-            f"Required file {registry_path} not found. Bundle task references cannot be resolved without it."
-        ) from None
-
-    images: list[str] = [image["spec"]["taskRef"]["bundle"] for image in data["items"]]
-    for image in images:
-        if re.search(f"^quay.io/konflux-ci/tekton-catalog/task-{name}:", image):
-            bundle = image
-            break
-    else:
-        raise Exception(f"Could not find bundle {name}")
+    with open(ROOT_DIR / ".tekton/image-registry.yaml") as f:
+        data = yaml.load(f, Loader=yaml.FullLoader)
+        images: list[str] = [image["spec"]["taskRef"]["bundle"] for image in data["items"]]
+        for image in images:
+            if re.search(f"^quay.io/konflux-ci/tekton-catalog/task-{name}:", image):
+                bundle = image
+                break
+        else:
+            raise Exception(f"Could not find bundle {name}")
 
     return {
         "params": [
@@ -871,7 +864,7 @@ else:
 
     class Tests:
         def test_compute_cel_expression(self, fs: pyfakefs.fake_filesystem.FakeFilesystem):
-            fs.cwd = ROOT_DIR  # pyright: ignore[reportAttributeAccessIssue]
+            fs.cwd = ROOT_DIR
             ROOT_DIR.mkdir(parents=True)
             pathlib.Path("a/").mkdir()
             pathlib.Path("b/").mkdir()

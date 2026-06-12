@@ -12,7 +12,7 @@
 
 ```bash
 curl -H 'Accept: application/vnd.pypi.simple.v1+json' \
-  'https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9-test/simple/debugpy/'
+  'https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9-test/simple/debugpy/'
 # → content-type: application/vnd.pypi.simple.v1+json ✓
 # → upload-time present on every file entry
 ```
@@ -22,7 +22,7 @@ curl -H 'Accept: application/vnd.pypi.simple.v1+json' \
 ```bash
 curl -D - -o /dev/null \
   -H 'Accept: application/vnd.pypi.simple.v1+json;q=1, text/html;q=0.01' \
-  'https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9-test/simple/debugpy/'
+  'https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9-test/simple/debugpy/'
 # → content-type: text/html ✗ (should be JSON per RFC 9110)
 ```
 
@@ -30,7 +30,7 @@ curl -D - -o /dev/null \
 
 ```bash
 curl -D - -o /dev/null \
-  'https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9-test/simple/debugpy/?format=json'
+  'https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9-test/simple/debugpy/?format=json'
 # → content-type: application/vnd.pypi.simple.v1+json ✓
 ```
 
@@ -110,8 +110,8 @@ DRF's `URL_FORMAT_OVERRIDE` setting (enabled by default) allows `?format=<render
 uv preserves query parameters from the index URL when constructing per-package URLs:
 
 ```
-Index URL: https://packages.redhat.com/.../simple/?format=json
-Per-package: https://packages.redhat.com/.../simple/debugpy/?format=json  ← preserved ✓
+Index URL: https://console.redhat.com/.../simple/?format=json
+Per-package: https://console.redhat.com/.../simple/debugpy/?format=json  ← preserved ✓
 ```
 
 This workaround can be applied in `build-args/*.conf` or in the lock generator script without any changes to uv or Pulp.

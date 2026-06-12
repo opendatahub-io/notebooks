@@ -36,7 +36,7 @@ CUDA provides a browser-based integrated development environment where you can w
 Standard Data Science provides a browser-based integrated development environment where you can write, edit, and debug code using the familiar interface and features of JupyterLab. Use the Standard Data Science notebook image for models that do not require TensorFlow or PyTorch.  
 This image contains commonly used libraries to assist you in developing your machine-learning models. Furthermore, we have integrated several useful libraries and applications. Notably, we've included **Mesa-libgl**, an additional library designed for OpenCV tasks. We've also introduced **Git-lfs**, which provides an efficient solution for handling large files, such as audio samples, videos, datasets, and graphics. The integration of **unixODBC** offers a standardized API for accessing data sources, including SQL Servers and other data sources with ODBC drivers. Lastly, the addition of **Libsndfile** makes it easier to read and write files containing sampled audio data. Additionally, this notebook comes equipped with standard **database clients** for MySQL, PostgreSQL, MSSQL, and MongoDB.
 
-**NOTE:** All notebook images that include the datascience stage in their multi-stage Dockerfile contain these libraries and applications, with the exception of the minimal-only images.
+**NOTE:** All notebooks derived from the Jupyter Data Science Notebook inherit these libraries and applications, with the exception of the minimal and CUDA variants.
 
 [2023b Packages](https://github.com/opendatahub-io/notebooks/blob/2023b/jupyter/datascience/ubi9-python-3.9/Pipfile) || [2023a Packages](https://github.com/opendatahub-io/notebooks/blob/2023a/jupyter/datascience/ubi9-python-3.9/Pipfile)
 

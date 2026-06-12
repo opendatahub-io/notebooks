@@ -105,7 +105,7 @@ common blocker for downstream (RHOAI) images.
 
 ```bash
 # Check which versions are on the production RH index
-curl -sL "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/<package>/?format=json" \
+curl -sL "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/<package>/?format=json" \
   | python3 -c "
 import json,sys
 data = json.load(sys.stdin)
@@ -213,15 +213,15 @@ make jupyter-datascience-ubi9-python-3.12
 1. Add to `dependencies/cve-constraints.txt` for general protection:
    ```
    # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
-   urllib3>=2.7.0
+   urllib3>=2.6.0
    ```
 
 2. Add override to jupyter images with odh-elyra (due to conflict):
    ```toml
    override-dependencies = [
-       # RHAIENG-2458: CVE-2026-44431 urllib3 - override (also CVE-2025-66418) needed because odh-elyra pulls in
+       # RHAIENG-2458: CVE-2025-66418 urllib3 - override needed because odh-elyra pulls in
        # appengine-python-standard which has an obnoxious urllib3<2 constraint
-       "urllib3>=2.7.0",
+       "urllib3>=2.6.0",
    ]
    ```
 

@@ -6,17 +6,10 @@ Same entrypoint as .github/workflows/renovate-self-hosted.yaml and local dev.
 CONTAINER_ENGINE matches the Makefile (lines 65-74): if unset, use podman when
 found on PATH, else docker. Override with CONTAINER_ENGINE=podman|docker.
 
-  export GITHUB_MCP_PAT=ghp_...  # or RENOVATE_TOKEN (required for local/remote/lookup)
+  export GITHUB_MCP_PAT=ghp_...  # or RENOVATE_TOKEN (required for local/remote; optional for lookup)
   python3 scripts/ci/renovate_run.py            # platform=local, current tree
   python3 scripts/ci/renovate_run.py remote    # clone from GitHub
-  export RENOVATE_TOKEN=$(gh auth token)
-  export CONTAINER_ENGINE=docker   # if podman machine is not running
-
-  python3 scripts/ci/renovate_run.py lookup    # remote + --dry-run=lookup (preferred for RHDS allowlist)
-  python3 scripts/ci/renovate_run.py local-lookup  # unsupported when renovate.json5 uses matchRepositories
-
-  RENOVATE_REPOSITORIES=opendatahub-io/notebooks RENOVATE_BASE_BRANCHES=main \\
-    python3 scripts/ci/renovate_run.py lookup
+  python3 scripts/ci/renovate_run.py lookup    # local + --dry-run=lookup, JSON logs on stdout
 
 Registry auth: DOCKER_CONFIG (default ~/.docker); sets RENOVATE_HOST_RULES from
 config.json unless RENOVATE_HOST_RULES is already set (e.g. from GITHUB_ENV in CI).
@@ -34,11 +27,8 @@ from pathlib import Path
 SCRIPTS_CI = Path(__file__).resolve().parent
 ROOT = SCRIPTS_CI.parent.parent
 REMOTE_DEFAULT_REPO = "opendatahub-io/notebooks"
-DEFAULT_RENOVATE_IMAGE = "ghcr.io/renovatebot/renovate:43@sha256:575256ce227ca81cd2a316d33f35108fe5c978d479c29232ec74cf9c0904a351"
+DEFAULT_RENOVATE_IMAGE = "quay.io/jdanek/renovate:43-fix42554"
 DEFAULT_GIT_AUTHOR = "ide-developer <rhoai-ide-konflux@redhat.com>"
-LOCAL_MODES = ("local", "local-lookup")
-REMOTE_MODES = ("remote", "lookup")
-LOOKUP_MODES = ("lookup", "local-lookup")
 
 OPTIONAL_ENV_PASSTHROUGH = (
     "LOG_FORMAT",
@@ -114,9 +104,9 @@ def build_command(mode: str, engine: str, renovate_image: str, docker_config: st
 
     cmd.extend(["-e", "LOG_LEVEL", "-e", "RENOVATE_INHERIT_CONFIG", "-e", "RENOVATE_GIT_AUTHOR"])
 
-    if mode in REMOTE_MODES:
+    if mode == "remote":
         os.environ.setdefault("RENOVATE_REPOSITORIES", REMOTE_DEFAULT_REPO)
-    if mode in LOOKUP_MODES:
+    if mode == "lookup":
         os.environ.setdefault("LOG_FORMAT", "json")
 
     dry_run_keys: tuple[str, ...] = ()
@@ -129,7 +119,7 @@ def build_command(mode: str, engine: str, renovate_image: str, docker_config: st
     if Path(docker_config).is_dir():
         cmd.extend(["-e", "DOCKER_CONFIG", "-v", f"{docker_config}:{docker_config}:ro"])
 
-    if mode in LOCAL_MODES:
+    if mode in ("local", "lookup"):
         os.environ["RENOVATE_CONFIG_FILE"] = str(ROOT / ".github/renovate.json5")
         cmd.extend(
             [
@@ -144,9 +134,9 @@ def build_command(mode: str, engine: str, renovate_image: str, docker_config: st
                 "--platform=local",
             ]
         )
-        if mode == "local-lookup":
+        if mode == "lookup":
             cmd.append("--dry-run=lookup")
-    elif mode in REMOTE_MODES:
+    elif mode == "remote":
         os.environ["RENOVATE_CONFIG_FILE"] = "/github-action/renovate.json5"
         cmd.extend(
             [
@@ -157,8 +147,6 @@ def build_command(mode: str, engine: str, renovate_image: str, docker_config: st
                 renovate_image,
             ]
         )
-        if mode == "lookup":
-            cmd.append("--dry-run=lookup")
     else:
         raise ValueError(mode)
 
@@ -174,37 +162,18 @@ def main(argv: list[str] | None = None) -> int:
         "mode",
         nargs="?",
         default="local",
-        choices=("local", "remote", "lookup", "local-lookup"),
-        help=(
-            "local: current tree; remote: clone repo; "
-            "lookup: remote dry-run lookup (use with RENOVATE_REPOSITORIES / RENOVATE_BASE_BRANCHES); "
-            "local-lookup: unsupported with matchRepositories in renovate.json5 — use lookup"
-        ),
+        choices=("local", "remote", "lookup"),
+        help="local: current tree; remote: clone repo; lookup: dry-run lookup + JSON logs",
     )
     args = parser.parse_args(argv)
     mode = args.mode
-
-    if mode == "local-lookup":
-        print(
-            "error: local-lookup is not supported when .github/renovate.json5 uses "
-            "matchRepositories (Renovate: repositories list not supported when platform=local)",
-            file=sys.stderr,
-        )
-        print(
-            "Use remote lookup instead:\n"
-            "  export RENOVATE_TOKEN=$(gh auth token)\n"
-            "  RENOVATE_REPOSITORIES=opendatahub-io/notebooks RENOVATE_BASE_BRANCHES=main \\\n"
-            "    ./uv run python scripts/ci/renovate_run.py lookup",
-            file=sys.stderr,
-        )
-        return 1
 
     engine = detect_engine()
 
     docker_config = os.environ.get("DOCKER_CONFIG", str(Path.home() / ".docker"))
     os.environ["DOCKER_CONFIG"] = docker_config
 
-    if mode in ("local", "remote", "lookup") and not os.environ.get("RENOVATE_TOKEN"):
+    if mode != "lookup" and not os.environ.get("RENOVATE_TOKEN"):
         print(f"error: set RENOVATE_TOKEN (required for {mode})", file=sys.stderr)
         return 1
 

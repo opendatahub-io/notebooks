@@ -189,7 +189,3 @@ class JiraClient:
     def update_issue(self, issue_key: str, fields: dict) -> None:
         """Update fields on an existing issue."""
         self._request("PUT", f"/rest/api/3/issue/{issue_key}", data={"fields": fields})
-
-    def get_current_user(self) -> dict:
-        """Return the authenticated user (``accountId``, ``displayName``, etc.)."""
-        return self._request("GET", "/rest/api/3/myself")

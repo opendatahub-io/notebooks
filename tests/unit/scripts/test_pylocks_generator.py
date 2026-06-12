@@ -11,7 +11,6 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 # if str(_SCRIPTS) not in sys.path:
 #     sys.path.insert(0, str(_SCRIPTS))
 
-import scripts.index_url_resolver as resolver  # noqa: E402
 import scripts.pylocks_generator as pg  # noqa: E402
 
 
@@ -132,111 +131,7 @@ class TestEnsureJsonFormatParam:
         )
 
     def test_real_aipcc_url(self) -> None:
-        url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/"
+        url = "https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/"
         result = pg.ensure_json_format_param(url)
         assert result == url + "?format=json"
         assert pg.ensure_json_format_param(result) == result
-
-
-def test_get_index_flags_uses_konflux_conf(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    project_dir = tmp_path / "project"
-    build_args = project_dir / "build-args"
-    build_args.mkdir(parents=True)
-    (build_args / "konflux.cpu.conf").write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488\nPYLOCK_FLAVOR=cpu\nPRODUCT=rhoai\n",
-        encoding="utf-8",
-    )
-    monkeypatch.setattr(
-        resolver,
-        "index_url_exists",
-        lambda url: url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/",
-    )
-
-    flags = pg.get_index_flags(project_dir, "cpu", pg.LogBuffer())
-
-    assert flags == [
-        "--default-index=https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/?format=json",
-    ]
-
-
-def test_get_index_flags_falls_back_to_test_index(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    project_dir = tmp_path / "project"
-    build_args = project_dir / "build-args"
-    build_args.mkdir(parents=True)
-    (build_args / "konflux.cpu.conf").write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488\nPYLOCK_FLAVOR=cpu\nPRODUCT=rhoai\n",
-        encoding="utf-8",
-    )
-
-    monkeypatch.setattr(
-        resolver,
-        "index_url_exists",
-        lambda url: url.endswith("/cpu-ubi9-test/simple/"),
-    )
-
-    flags = pg.get_index_flags(project_dir, "cpu", pg.LogBuffer())
-
-    assert flags == [
-        "--default-index=https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/?format=json",
-    ]
-
-
-def test_run_lock_logs_index_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    project_dir = tmp_path / "project"
-    project_dir.mkdir()
-
-    log = pg.LogBuffer()
-    completed = pg.subprocess.CompletedProcess(args=["uv"], returncode=0, stdout="", stderr="")
-
-    def fake_run(*args, **kwargs):
-        return completed
-
-    monkeypatch.setattr(pg.subprocess, "run", fake_run)
-
-    success = pg.run_lock(
-        project_dir,
-        "cpu",
-        ["--default-index=https://example.invalid/simple/?format=json"],
-        pg.IndexMode.rh_index,
-        "3.12",
-        False,
-        False,
-        "2026-05-18T00:00:00Z",
-        log,
-    )
-
-    assert success is True
-    assert any("Lock INDEX_URL: https://example.invalid/simple/?format=json" in line for line in log._lines)
-
-
-def test_generate_requirements_txt_falls_back_to_pylock_header_when_index_resolution_fails(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    project_dir = tmp_path / "project"
-    project_dir.mkdir()
-    log = pg.LogBuffer()
-    captured_cmd: list[str] = []
-
-    def fake_run(cmd, **kwargs):
-        captured_cmd[:] = cmd
-        return pg.subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
-
-    monkeypatch.setattr(pg, "resolve_rh_index_config", lambda *args, **kwargs: None)
-    monkeypatch.setattr(pg.subprocess, "run", fake_run)
-
-    success = pg.generate_requirements_txt(project_dir, "cpu", log)
-
-    assert success is True
-    assert captured_cmd == [
-        pg.sys.executable,
-        str(pg.PYLOCK_TO_REQUIREMENTS),
-        str(project_dir / "uv.lock.d" / "pylock.cpu.toml"),
-        str(project_dir / "requirements.cpu.txt"),
-    ]

@@ -15,7 +15,7 @@ WORKDIR /opt/app-root/bin
 USER 0
 
 # [HERMETIC] Import GPG keys for prefetched RPM verification.
-# CentOS key imported only if prefetched (may fail gracefully if not present).
+# CentOS key imported only if prefetched (present in Dockerfile.konflux.cpu; may be absent in Konflux).
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
@@ -29,6 +29,8 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
     /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
+# Install micropipenv/uv from Cachi2 as root.
+RUN pip install --no-cache-dir --no-index --find-links /cachi2/output/deps/pip "micropipenv[toml]==1.10.0" "uv==0.11.7"
 
 ####################
 # jupyter-minimal  #
@@ -39,18 +41,13 @@ ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
 
-ARG LABEL_REGISTRY_PREFIX
-ARG LABEL_COMPONENT
-ARG RELEASE
-
-LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
-    com.redhat.component="${LABEL_COMPONENT}" \
-    io.k8s.display-name="${LABEL_COMPONENT}" \
+LABEL name="rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
+    com.redhat.component="odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
+    io.k8s.display-name="odh-workbench-jupyter-minimal-cpu-py312-rhel9" \
     summary="Minimal Jupyter CPU notebook image for ODH notebooks" \
     description="Minimal Jupyter CPU notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
     io.k8s.description="Minimal Jupyter CPU notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
-    version="${RELEASE}"
+    com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
 
 WORKDIR /opt/app-root/bin
 

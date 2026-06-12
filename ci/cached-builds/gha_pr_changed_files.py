@@ -1,5 +1,4 @@
 import fnmatch
-import functools
 import json
 import logging
 import os
@@ -8,74 +7,16 @@ import platform
 import re
 import shutil
 import subprocess
-import tempfile
 import unittest
 from typing import Literal
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent.parent.resolve()
-MAKE = shutil.which("gmake") or shutil.which("make") or "make"
+MAKE = shutil.which("gmake") or shutil.which("make")
 
 
 def get_github_token() -> str:
     github_token = os.environ["GITHUB_TOKEN"]
     return github_token
-
-
-@functools.cache
-def _symlink_reverse_map() -> dict[str, list[str]]:
-    """Build a map from resolved real path to symlink logical paths.
-
-    Git reports changes to real files only, not to symlinks pointing at them.
-    This map lets us expand a list of changed real paths to include the logical
-    symlink paths that are affected. Built once per process and cached.
-    """
-    result: dict[str, list[str]] = {}
-    for symlink in PROJECT_ROOT.rglob("*"):
-        if not symlink.is_symlink():
-            continue
-        try:
-            logical = str(symlink.relative_to(PROJECT_ROOT))
-            resolved = str(symlink.resolve().relative_to(PROJECT_ROOT))
-        except (ValueError, OSError, RuntimeError):  # fmt: skip  # parens needed for Python <3.14 (GHA runners)
-            # RuntimeError: symlink loops (a→b→a) cause infinite resolution
-            continue
-        # symlink resolving to itself is not useful
-        if logical != resolved:
-            result.setdefault(resolved, []).append(logical)
-    if result:
-        logging.debug(f"Symlink reverse map: {len(result)} targets with symlinks")
-    return result
-
-
-def _resolve_symlinks(paths: list[str]) -> list[str]:
-    """Expand paths to include symlinks whose resolved targets match.
-
-    Git reports changes to real files only, not to symlinks pointing at them.
-    This adds logical symlink paths when their resolved targets appear in the
-    input list.
-    """
-    if not paths:
-        return paths
-
-    reverse = _symlink_reverse_map()
-    if not reverse:
-        return paths
-
-    original = set(paths)
-    expanded = set(original)
-    for path in paths:
-        for resolved, symlinks in reverse.items():
-            if path == resolved:
-                expanded.update(symlinks)
-            elif path.startswith(resolved + "/"):
-                suffix = path[len(resolved) :]
-                expanded.update(f"{symlink}{suffix}" for symlink in symlinks)
-            elif resolved.startswith(path + "/"):
-                expanded.update(symlinks)
-
-    if added := expanded - original:
-        logging.info(f"Symlink resolution added {len(added)} paths: {sorted(added)}")
-    return sorted(expanded)
 
 
 def list_changed_files(from_ref: str, to_ref: str) -> list[str]:
@@ -88,7 +29,6 @@ def list_changed_files(from_ref: str, to_ref: str) -> list[str]:
     files = subprocess.check_output(
         ["git", "diff", "--name-only", f"{from_ref}...{to_ref}", "--"], encoding="utf-8"
     ).splitlines()
-    files = _resolve_symlinks(files)
 
     logging.debug(f"Determined {len(files)} changed files: {files[:100]} (..., printing up to 100 files)")
     return files
@@ -174,7 +114,6 @@ def should_build_target(changed_files: list[str], target_directory: str) -> str:
             # no dependencies
             continue
         dependencies: list[str] = json.loads(stdout)
-        dependencies = _resolve_symlinks(dependencies)
         for dependency in dependencies:
             for changed_file in changed_files:
                 if _is_file_in_directory(changed_file, dependency):
@@ -198,12 +137,9 @@ def filter_out_unchanged(targets: list[str], changed_files: list[str]) -> list[s
 
 
 def get_go_arch() -> Literal["amd64", "arm64", "ppc64le", "s390x"]:
-    if goarch := os.environ.get("GOARCH"):
-        match goarch.lower():
-            case "amd64" | "arm64" | "ppc64le" | "s390x" as arch:
-                return arch
-            case _:
-                raise ValueError(f"Unsupported GOARCH value: {goarch!r}")
+    arch = os.environ.get("GOARCH")
+    if arch is not None:
+        return arch
     match platform.machine().lower():
         case "x86_64" | "amd64":
             arch = "amd64"
@@ -218,7 +154,7 @@ def get_go_arch() -> Literal["amd64", "arm64", "ppc64le", "s390x"]:
     return arch
 
 
-class TestSelf(unittest.TestCase):
+class SelfTests(unittest.TestCase):
     def test_list_changed_files(self):
         """This is PR #556 in opendatahub-io/notebooks"""
         changed_files = list_changed_files(from_ref="4d4841f", to_ref="2c36c11")
@@ -237,61 +173,3 @@ class TestSelf(unittest.TestCase):
 
     def test_should_build_target(self):
         assert "" == should_build_target(["README.md"], "jupyter/datascience/ubi9-python-3.12")
-
-    def test_resolve_symlinks_no_symlinks(self):
-        """No symlinks in input paths -> returned unchanged."""
-        assert _resolve_symlinks(["README.md"]) == ["README.md"]
-
-    def test_resolve_symlinks_empty(self):
-        assert _resolve_symlinks([]) == []
-
-    def test_resolve_symlinks_expands_target(self):
-        """Editing a symlink target adds the symlink path."""
-        result = _resolve_symlinks(["jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu"])
-        assert "jupyter/minimal/ubi9-python-3.12/Dockerfile.cpu" in result
-        assert "jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu" in result
-
-    def test_resolve_symlinks_pointer_change(self):
-        """Editing the symlink itself needs no expansion — already in list."""
-        result = _resolve_symlinks(["jupyter/minimal/ubi9-python-3.12/Dockerfile.cpu"])
-        assert result == ["jupyter/minimal/ubi9-python-3.12/Dockerfile.cpu"]
-
-    def test_should_build_with_symlinked_dockerfile_target_change(self):
-        """Changing Dockerfile.konflux.cpu triggers build for target using Dockerfile.cpu."""
-        changed = _resolve_symlinks(["jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu"])
-        result = should_build_target(changed, "jupyter/minimal/ubi9-python-3.12")
-        assert result
-
-    def test_resolve_symlinks_preserves_suffix_for_directory_symlink(self):
-        """When real_dir/sub/file changes and link_dir → real_dir, we should
-        get link_dir/sub/file in the expanded list, not just link_dir."""
-        _symlink_reverse_map.cache_clear()
-        with tempfile.TemporaryDirectory(dir=PROJECT_ROOT) as tmpdir:
-            tmpdir = pathlib.Path(tmpdir)
-            real_dir = tmpdir / "real_dir"
-            real_dir.mkdir()
-            (real_dir / "sub").mkdir()
-            (real_dir / "sub" / "file.txt").write_text("content")
-            link_dir = tmpdir / "link_dir"
-            link_dir.symlink_to("real_dir")
-
-            rel_real = str((real_dir / "sub" / "file.txt").relative_to(PROJECT_ROOT))
-            rel_link_expected = str((link_dir / "sub" / "file.txt").relative_to(PROJECT_ROOT))
-
-            result = _resolve_symlinks([rel_real])
-            assert rel_link_expected in result, f"Expected {rel_link_expected} in result, got {result}"
-        _symlink_reverse_map.cache_clear()
-
-    def test_symlink_loop_does_not_crash(self):
-        """A symlink loop should be skipped, not crash the scan."""
-        _symlink_reverse_map.cache_clear()
-        with tempfile.TemporaryDirectory(dir=PROJECT_ROOT) as tmpdir:
-            tmpdir = pathlib.Path(tmpdir)
-            link_a = tmpdir / "a"
-            link_b = tmpdir / "b"
-            link_a.symlink_to("b")
-            link_b.symlink_to("a")
-
-            result = _resolve_symlinks(["README.md"])
-            assert "README.md" in result
-        _symlink_reverse_map.cache_clear()

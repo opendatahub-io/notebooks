@@ -41,22 +41,10 @@ import re
 import sys
 import tomllib
 from pathlib import Path
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 # uv pip compile records its index in the first-line comment, e.g.
 #   --default-index=https://pypi.org/simple
 _DEFAULT_INDEX_RE = re.compile(r"--default-index=(https?://\S+)")
-
-
-def strip_format_json_param(index_url: str) -> str:
-    parsed = urlparse(index_url)
-    query_items = [
-        (key, value)
-        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
-        if not (key == "format" and value == "json")
-    ]
-    normalized_query = urlencode(query_items, doseq=True)
-    return urlunparse(parsed._replace(query=normalized_query))
 
 
 def extract_default_index_from_pylock(pylock_path: Path) -> str:
@@ -66,7 +54,7 @@ def extract_default_index_from_pylock(pylock_path: Path) -> str:
     except OSError:
         return ""
     m = _DEFAULT_INDEX_RE.search(head)
-    return strip_format_json_param(m.group(1).rstrip("'\"")) if m else ""
+    return m.group(1).rstrip("'\"") if m else ""
 
 
 def main():

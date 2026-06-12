@@ -64,17 +64,15 @@ import os
 import re
 import subprocess
 import sys
+from datetime import datetime, timezone
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import typer
-
-from scripts.index_url_resolver import IndexResolutionError, ResolvedIndexConfig, resolve_index_config
 
 # region Configuration
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -266,7 +264,7 @@ _EXCLUDE_NEWER_HEADER_RE = re.compile(r"--exclude-newer(?:=|\s+)(\S+)")
 
 def utc_now_iso() -> str:
     """Return current UTC time as ISO-8601 with Z suffix (uv --exclude-newer)."""
-    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def parse_exclude_newer_from_lockfile(path: Path) -> str | None:
@@ -304,33 +302,25 @@ def resolve_exclude_newer(
 
 
 # region Lock generation
-def get_rh_index_conf_file(project_dir: Path, flavor: str) -> Path:
-    return project_dir / "build-args" / f"konflux.{flavor}.conf"
-
-
-def resolve_rh_index_config(
-    project_dir: Path,
-    flavor: str,
-    log: LogBuffer,
-) -> ResolvedIndexConfig | None:
-    conf_file = get_rh_index_conf_file(project_dir, flavor)
-    try:
-        return resolve_index_config(conf_file, require_konflux=True)
-    except IndexResolutionError as exc:
-        log.warning(str(exc))
-        return None
-
-
 def get_index_flags(project_dir: Path, flavor: str, log: LogBuffer) -> list[str] | None:
-    """Build uv index flags from build-args/konflux.<flavor>.conf.
+    """Build uv index flags from build-args/<flavor>.conf.
 
-    Returns None on failure.
+    Returns None on failure (missing conf or INDEX_URL).
     """
-    resolved = resolve_rh_index_config(project_dir, flavor, log)
-    if resolved is None:
+    conf_file = project_dir / "build-args" / f"{flavor}.conf"
+    if not conf_file.is_file():
+        log.warning(f"Missing build-args config for {flavor}: {conf_file}")
         return None
 
-    return [f"--default-index={ensure_json_format_param(resolved.index_url)}"]
+    index_url = read_conf_value(conf_file, "INDEX_URL")
+    if not index_url:
+        log.warning(f"INDEX_URL not found in {conf_file}")
+        return None
+
+    index_url = ensure_json_format_param(index_url)
+    flags = [f"--default-index={index_url}"]
+
+    return flags
 
 
 def lock_extra_index_flags_from_env() -> list[str]:
@@ -423,12 +413,6 @@ def run_lock(
     cmd.append(f"--exclude-newer={exclude_newer}")
 
     cmd.extend(index_flags)
-    default_index = next(
-        (flag.removeprefix("--default-index=") for flag in index_flags if flag.startswith("--default-index=")),
-        None,
-    )
-    if default_index is not None:
-        log.print(f"  🌐 Lock INDEX_URL: {default_index}")
     extra_idx = lock_extra_index_flags_from_env()
     if extra_idx:
         cmd.extend(extra_idx)
@@ -479,15 +463,12 @@ def generate_requirements_txt(
     """Convert pylock.<flavor>.toml → requirements.<flavor>.txt via helper script."""
     pylock_path = project_dir / "uv.lock.d" / f"pylock.{flavor}.toml"
     requirements_path = project_dir / f"requirements.{flavor}.txt"
-    resolved = resolve_rh_index_config(project_dir, flavor, log)
+
+    index_url = read_conf_value(project_dir / "build-args" / f"{flavor}.conf", "INDEX_URL") or ""
 
     cmd = [sys.executable, str(PYLOCK_TO_REQUIREMENTS), str(pylock_path), str(requirements_path)]
-    if resolved is None:
-        log.warning(
-            f"Falling back to --default-index recorded in {pylock_path} for requirements generation."
-        )
-    else:
-        cmd.append(resolved.index_url)
+    if index_url:
+        cmd.append(index_url)
 
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.stdout:
