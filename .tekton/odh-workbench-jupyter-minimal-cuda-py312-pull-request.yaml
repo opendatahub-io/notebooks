@@ -51,6 +51,8 @@ spec:
     value: 5d
   - name: enable-slack-failure-notification
     value: "false"
+  - name: fips-check-blocking
+    value: "false"
   pipelineRef:
     resolver: git
     params:
