@@ -71,9 +71,13 @@ runs:
       run: |
         set -Eeuxo pipefail
 
-        # podman running as service ignores the TMPDIR env var here, let's give it a bind-mount to /var/tmp
-        mkdir -p $TMPDIR
-        sudo mount --bind -o rw,noexec,nosuid,nodev,bind $TMPDIR /var/tmp
+        # ubuntu-latest runners may not export TMPDIR; podman service bind-mounts it over /var/tmp.
+        PODMAN_TMPDIR="${TMPDIR:-${HOME}/.local/share/containers/tmpdir}"
+        mkdir -p "$PODMAN_TMPDIR" "$HOME/.local/share/containers/storage/tmp"
+        sudo chown -R "$(id -u):$(id -g)" "$HOME/.local/share/containers"
+        echo "TMPDIR=${PODMAN_TMPDIR}" >> "$GITHUB_ENV"
+        echo "CONTAINER_HOST=unix:///var/run/podman/podman.sock" >> "$GITHUB_ENV"
+        sudo mount --bind -o rw,noexec,nosuid,nodev,bind "$PODMAN_TMPDIR" /var/tmp
 
         # podman from brew has its own /etc (was giving me Failed to obtain podman configuration: runroot must be set)
         # the (default) config location is also where cri-o gets its storage defaults (that can be overriden in crio.conf)
@@ -85,9 +89,10 @@ runs:
         sudo cp ci/cached-builds/registries.conf /home/linuxbrew/.linuxbrew/opt/podman/etc/containers/registries.conf
 
         # should reset storage when changing storage.conf
-        mkdir -p $HOME/.local/share/containers/storage/tmp
         # remote (CONTAINER_HOST) podman does not do reset (and refuses --force option)
         sudo /home/linuxbrew/.linuxbrew/opt/podman/bin/podman system reset --force
+        # reset runs as root against graphroot under $HOME; fix ownership for the runner client
+        sudo chown -R "$(id -u):$(id -g)" "$HOME/.local/share/containers"
 
         # https://github.com/containers/podman/pull/25504
         # podman 5.5.0: The podman system reset command no longer removes the user's podman.sock API socket
@@ -106,8 +111,8 @@ runs:
         # needed (much) later for trivy
         echo "PODMAN_SOCK=/var/run/podman/podman.sock" >> $GITHUB_ENV
 
-        # quick check podman works
-        podman ps
+        # quick check podman works (remote rootful service via socket, not local storage)
+        CONTAINER_HOST=unix:///var/run/podman/podman.sock podman ps
 
     - name: Show error logs (on failure)
       if: ${{ failure() }}

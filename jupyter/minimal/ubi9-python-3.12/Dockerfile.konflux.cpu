@@ -1,12 +1,13 @@
 #########################
 # configuration args    #
 #########################
-ARG BASE_IMAGE
+ARG PYLOCK_FLAVOR=cpu
+ARG BASE_IMAGE_CPU
 
 ####################
 # cpu-base         #
 ####################
-FROM ${BASE_IMAGE} AS cpu-base
+FROM ${BASE_IMAGE_CPU} AS cpu-base
 
 WORKDIR /opt/app-root/bin
 
@@ -37,7 +38,7 @@ FROM cpu-base AS jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
-ARG PYLOCK_FLAVOR
+ARG PYLOCK_FLAVOR=cpu
 
 ARG LABEL_REGISTRY_PREFIX
 ARG LABEL_COMPONENT

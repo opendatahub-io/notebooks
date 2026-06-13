@@ -45,18 +45,19 @@ spec:
   - name: build-platforms
     value:
     - linux-d160-m4xlarge/amd64
+    - linux-d160-m2xlarge/arm64
   - name: dockerfile
     value: jupyter/minimal/ubi9-python-3.12/Dockerfile.cuda
   - name: path-context
     value: .
   - name: build-args-file
     value: build-args/global.conf
-  # We don't actually need these two params. 
-  # - Dockerfile.cuda should have PYLOCK_FLAVOR=cuda
-  # - LABEL_COMPONENT should be derived from component name
+  # Most of other products, they hardcoded their LABEL in Dockerfile 
+  # But if we really need LABEL_COMPONENT
+  # - it can be defined here under build-args
+  # - Or it can be derived from component name
   - name: build-args
     value:
-    - PYLOCK_FLAVOR=cuda
     - LABEL_COMPONENT=odh-workbench-jupyter-minimal-cuda-py312-ubi9
   # Hermetic build: RPMs + generic artifacts from repo-root prefetch-input/odh; pip from requirements.cuda.txt
   - name: hermetic
@@ -70,7 +71,7 @@ spec:
     - path: jupyter/minimal/ubi9-python-3.12
       type: pip
       binary:
-        arch: x86_64
+        arch: x86_64, aarch64
       requirements_files: [requirements.cuda.txt]
   # Added taskRunSpecs to increase compute resources
   taskRunSpecs:

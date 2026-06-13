@@ -1,0 +1,52 @@
+# Minimal builds driven by .tekton/*-pull-request.yaml (not the legacy Makefile).
+#
+# Examples:
+#   make -f Makefile.tekton list
+#   make -f Makefile.tekton show PIPELINE=.tekton/odh-workbench-jupyter-minimal-cuda-py312-ubi9-pull-request.yaml
+#   make -f Makefile.tekton changed BASE=origin/main HEAD=HEAD
+#   make -f Makefile.tekton prefetch PIPELINE=.tekton/odh-workbench-jupyter-minimal-cuda-py312-ubi9-pull-request.yaml PLATFORM=linux/amd64
+#   make -f Makefile.tekton build PIPELINE=.tekton/odh-workbench-jupyter-minimal-cuda-py312-ubi9-pull-request.yaml PLATFORM=linux/amd64
+#   make -f Makefile.tekton build-changed BASE=origin/main HEAD=HEAD PREFETCH=1
+
+PYTHON ?= python3
+TEKTON_BUILD := scripts/tekton-build/tekton_build.py
+
+BASE ?= origin/main
+HEAD ?= HEAD
+PIPELINE ?=
+PLATFORM ?=
+TAG ?=
+PREFETCH ?=
+
+.PHONY: list show changed matrix prefetch build build-changed
+
+list:
+	$(PYTHON) $(TEKTON_BUILD) list
+
+show:
+	@test -n "$(PIPELINE)" || (echo "PIPELINE is required" >&2; exit 1)
+	$(PYTHON) $(TEKTON_BUILD) show $(PIPELINE)
+
+changed:
+	$(PYTHON) $(TEKTON_BUILD) changed --base "$(BASE)" --head "$(HEAD)"
+
+matrix:
+	$(PYTHON) $(TEKTON_BUILD) matrix --base "$(BASE)" --head "$(HEAD)" \
+		$(if $(PLATFORM),--platform "$(PLATFORM)",)
+
+prefetch:
+	@test -n "$(PIPELINE)" || (echo "PIPELINE is required" >&2; exit 1)
+	$(PYTHON) $(TEKTON_BUILD) prefetch $(PIPELINE) \
+		$(if $(PLATFORM),--platform "$(PLATFORM)",)
+
+build:
+	@test -n "$(PIPELINE)" || (echo "PIPELINE is required" >&2; exit 1)
+	$(PYTHON) $(TEKTON_BUILD) build $(PIPELINE) \
+		$(if $(PLATFORM),--platform "$(PLATFORM)",) \
+		$(if $(TAG),--tag "$(TAG)",)
+
+build-changed:
+	$(PYTHON) $(TEKTON_BUILD) build-changed --base "$(BASE)" --head "$(HEAD)" \
+		$(if $(PLATFORM),--platform "$(PLATFORM)",) \
+		$(if $(TAG),--tag "$(TAG)",) \
+		$(if $(PREFETCH),--prefetch,)

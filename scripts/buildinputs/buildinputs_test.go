@@ -49,7 +49,7 @@ func TestParseAllDockerfiles(t *testing.T) {
 
 	for _, dockerfile := range dockerfiles {
 		t.Run(dockerfile, func(t *testing.T) {
-			buildArgs := map[string]string{"BASE_IMAGE": "fake-image"}
+			buildArgs := baseImageBuildArgs(dockerfile)
 
 			// Set PYLOCK_FLAVOR from uv.lock.d/ contents if the directory exists
 			dockerfileDir := filepath.Dir(dockerfile)
@@ -83,6 +83,20 @@ func TestParseAllDockerfiles(t *testing.T) {
 			}
 		})
 	}
+}
+
+func baseImageBuildArgs(dockerfile string) map[string]string {
+	content, err := os.ReadFile(dockerfile)
+	if err != nil {
+		return map[string]string{"BASE_IMAGE": "fake-image"}
+	}
+	text := string(content)
+	for _, key := range []string{"BASE_IMAGE_CUDA", "BASE_IMAGE_ROCM", "BASE_IMAGE_CPU", "BASE_IMAGE"} {
+		if strings.Contains(text, "ARG "+key) {
+			return map[string]string{key: "fake-image"}
+		}
+	}
+	return map[string]string{"BASE_IMAGE": "fake-image"}
 }
 
 // TestParseDockerfileWithBindMount checks for a bug where a Dockerfile with RUN --mount=type=bind,src=foo,dst=bar would report it has no inputs
