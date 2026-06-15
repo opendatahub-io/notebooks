@@ -14,8 +14,9 @@ set -euo pipefail
 #      (ubi.repo, centos.repo, epel.repo).
 #   4. Run rpm-lockfile-prototype rpms.in.yaml to generate rpms.lock.yaml.
 
-# Parse arguments: accept positional, named 'prefetch-input=...', or '--prefetch-input=...'
-PREFETCH_INPUT_DIR=""
+# Parse arguments: accept env var (from create-rpm-lockfile.sh), positional,
+# named 'prefetch-input=...', or '--prefetch-input=...'
+PREFETCH_INPUT_DIR="${PREFETCH_INPUT_DIR:-}"
 for arg in "$@"; do
     case "$arg" in
         prefetch-input=*|PREFETCH_INPUT_DIR=*)
