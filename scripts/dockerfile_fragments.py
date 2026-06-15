@@ -115,7 +115,7 @@ def main():
         """),
         "Dependencies for PDF export": textwrap.dedent(r"""
             RUN ./utils/install_pdf_deps.sh
-            ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+            ENV PATH="/usr/local/pandoc/bin:$PATH"
         """),
         "mongocli-builder stage": textwrap.dedent(r"""
             ######################################################

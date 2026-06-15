@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Install dependencies required for Notebooks PDF exports
+# Install dependencies required for Notebooks PDF exports.
+# Texlive components are installed from RPMs (see RHAIENG-2186).
 
 set -Eeuxo pipefail
 
@@ -42,8 +43,7 @@ texlive-parskip
 texlive-plain
 texlive-pxfonts
 texlive-rsfs
-# available in epel but not in rhel9
-#texlive-tcolorbox
+texlive-tcolorbox
 texlive-times
 texlive-titling
 texlive-txfonts
@@ -63,20 +63,6 @@ dnf install -y "${PACKAGES[@]}"
 dnf clean all
 
 pdflatex --version
-
-# install texlive-tcolorbox by other means
-# This is a temporary solution because not all jupyter images are hermetic yet;
-# once we update each image to hermetic build we can just dnf install texlive-tcolorbox
-if [ -n "$(find /cachi2/output/deps/rpm/ -name 'texlive-tcolorbox*' 2>/dev/null)" ]; then
-    dnf install -y texlive-tcolorbox
-else
-    dnf install -y cpio
-    pushd /
-    texlive_toolbox_rpm=https://download.fedoraproject.org/pub/epel/9/Everything/x86_64/Packages/t/texlive-tcolorbox-20200406-38.el9.noarch.rpm
-    curl -sSfL ${texlive_toolbox_rpm} | rpm2cpio /dev/stdin | cpio -idmv
-    popd
-fi
-dnf clean all
 texhash
 kpsewhich tcolorbox.sty
 
