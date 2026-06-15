@@ -677,7 +677,161 @@ def test_resolve_latest_published_rhds_image_uses_skopeo_tags(monkeypatch: pytes
         "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777000000"
     )
 
-    assert latest == "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777919999"
+    assert latest == "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.2-1777920000"
+
+
+def test_resolve_latest_published_rhds_image_progresses_ea1_to_ea2_without_ga(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    updater = load_updater()
+
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout=(
+                '{"Repository":"quay.io/aipcc/base-images/cuda-13.0-el9.6","Tags":'
+                '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999"]}'
+            )
+        ),
+    )
+
+    latest = updater.resolve_latest_published_rhds_image(
+        "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771"
+    )
+
+    assert latest == "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919999"
+
+
+def test_resolve_latest_published_rhds_image_keeps_ea1_when_only_ea1_patches_exist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    updater = load_updater()
+
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout=(
+                '{"Repository":"quay.io/aipcc/base-images/cuda-13.0-el9.6","Tags":'
+                '["3.5.0-ea.1-1777919000","3.5.0-ea.1-1777919999"]}'
+            )
+        ),
+    )
+
+    latest = updater.resolve_latest_published_rhds_image(
+        "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919771"
+    )
+
+    assert latest == "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.1-1777919999"
+
+
+def test_resolve_latest_published_rhds_image_never_regresses_ea2_to_ea1(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    updater = load_updater()
+
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout=(
+                '{"Repository":"quay.io/aipcc/base-images/cuda-13.0-el9.6","Tags":'
+                '["3.5.0-ea.1-1777919999","3.5.0-ea.2-1777919000"]}'
+            )
+        ),
+    )
+
+    latest = updater.resolve_latest_published_rhds_image(
+        "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771"
+    )
+
+    assert latest == "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919000"
+
+
+def test_resolve_latest_published_rhds_image_prefers_ga_over_ea_for_same_release(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    updater = load_updater()
+
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout=(
+                '{"Repository":"quay.io/aipcc/base-images/cuda-13.0-el9.6","Tags":'
+                '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1780972037","3.5.0-1781269637"]}'
+            )
+        ),
+    )
+
+    latest = updater.resolve_latest_published_rhds_image(
+        "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1780972037"
+    )
+
+    assert latest == "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-1781269637"
+
+
+def test_resolve_latest_published_rhds_image_keeps_ea_family_when_ga_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    updater = load_updater()
+
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout=(
+                '{"Repository":"quay.io/aipcc/base-images/cuda-13.0-el9.6","Tags":'
+                '["3.5.0-ea.1-1777919000","3.5.0-ea.2-1777919999"]}'
+            )
+        ),
+    )
+
+    latest = updater.resolve_latest_published_rhds_image(
+        "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919771"
+    )
+
+    assert latest == "quay.io/aipcc/base-images/cuda-13.0-el9.6:3.5.0-ea.2-1777919999"
+
+
+def test_resolve_latest_published_rhds_image_rollback_from_ea2_targets_ga(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    updater = load_updater()
+
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout=(
+                '{"Repository":"quay.io/aipcc/base-images/cpu","Tags":'
+                '["3.4.0-ea.1-1777919000","3.4.0-ea.2-1777919999","3.4.0-1777921111"]}'
+            )
+        ),
+    )
+
+    latest = updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cpu:3.4.0-1777919771")
+
+    assert latest == "quay.io/aipcc/base-images/cpu:3.4.0-1777921111"
+
+
+def test_resolve_latest_published_rhds_image_rollback_from_ga_targets_latest_ga(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    updater = load_updater()
+
+    monkeypatch.setattr(
+        updater.subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process(
+            stdout=('{"Repository":"quay.io/aipcc/base-images/cpu","Tags":["3.4.0-1777919000","3.4.0-1777921111"]}')
+        ),
+    )
+
+    latest = updater.resolve_latest_published_rhds_image("quay.io/aipcc/base-images/cpu:3.4.0-1777919771")
+
+    assert latest == "quay.io/aipcc/base-images/cpu:3.4.0-1777921111"
 
 
 def test_resolve_latest_published_rhds_image_rollback_falls_back_to_highest_phase(

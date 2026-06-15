@@ -813,6 +813,26 @@ def select_latest_matching_rhds_tag(tags: list[str], candidate_tag: str) -> str:
     return max(matches, key=lambda item: item[0])[1]
 
 
+def select_latest_progressing_rhds_tag(tags: list[str], candidate_tag: str) -> str | None:
+    """Return the latest published tag at or above the candidate phase for the same release."""
+    candidate_match = RHDS_TAG_RE.fullmatch(candidate_tag)
+    if candidate_match is None:
+        raise ValueError(f"Unsupported RHDS candidate tag: {candidate_tag}")
+
+    release_version = candidate_match.group("version")
+    minimum_phase_rank = rank_rhds_phase(candidate_match.group("phase"))
+    matches = [
+        (rank_rhds_phase(match.group("phase")), int(match.group("build")), tag)
+        for tag in tags
+        if (match := RHDS_TAG_RE.fullmatch(tag)) is not None
+        and match.group("version") == release_version
+        and rank_rhds_phase(match.group("phase")) >= minimum_phase_rank
+    ]
+    if not matches:
+        return None
+    return max(matches)[2]
+
+
 def determine_highest_published_rhds_phase_for_release(
     repository: str,
     release_version: str,
@@ -887,13 +907,18 @@ def resolve_latest_published_rhds_image(
 ) -> str:
     repository, candidate_tag = split_image_ref(candidate_image)
     tags = list(list_rhds_repository_tags(repository, tag_cache))
-    try:
-        latest_tag = select_latest_matching_rhds_tag(tags, candidate_tag)
-    except ValueError:
-        match = RHDS_TAG_RE.fullmatch(candidate_tag)
-        if match is None or match.group("phase") is not None:
-            raise
-        latest_tag = select_highest_published_rhds_tag_for_release(tags, match.group("version"))
+    candidate_match = RHDS_TAG_RE.fullmatch(candidate_tag)
+    if candidate_match is None:
+        raise ValueError(f"Unsupported RHDS candidate tag: {candidate_tag}")
+
+    latest_tag = select_latest_progressing_rhds_tag(tags, candidate_tag)
+    if latest_tag is not None:
+        return f"{repository}:{latest_tag}"
+
+    if candidate_match.group("phase") is not None:
+        raise ValueError(f"No matching published RHDS tag found for family '{candidate_tag}'")
+
+    latest_tag = select_highest_published_rhds_tag_for_release(tags, candidate_match.group("version"))
     return f"{repository}:{latest_tag}"
 
 
