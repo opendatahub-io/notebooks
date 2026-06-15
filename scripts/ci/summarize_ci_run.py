@@ -173,6 +173,9 @@ async def summarize(context: Mapping[str, object], body_path: str) -> int:
                 sys.stdout.write(chunk.text)
                 sys.stdout.flush()
                 text_chunks.append(chunk.text)
+            elif isinstance(chunk, types.Thought):
+                sys.stdout.write(chunk.text)
+                sys.stdout.flush()
             elif isinstance(chunk, types.ToolCall):
                 print(f"\n[Tool Call] {chunk.name}")
         print()
