@@ -1,0 +1,144 @@
+---
+name: Tekton-driven build (PR)
+
+on:
+  pull_request:
+    paths-ignore:
+      - manifests/**
+
+concurrency:
+  group: tekton-build-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: Plan builds from .tekton
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      has_jobs: ${{ steps.plan.outputs.has_jobs }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Python deps
+        run: |
+          /usr/bin/python3 -m pip install --quiet --break-system-packages pyyaml
+          /usr/bin/python3 -c "import yaml"
+
+      - name: Resolve changed Tekton pipelines
+        id: plan
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "${BASE_REF}"
+
+          MATRIX_JSON=$(python3 scripts/tekton-build/tekton_build.py matrix \
+            --base "origin/${BASE_REF}" \
+            --head "${HEAD_SHA}")
+
+          if [[ "$(echo "$MATRIX_JSON" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["include"]))')" == "0" ]]; then
+            echo "has_jobs=false" >> "$GITHUB_OUTPUT"
+            echo "matrix={\"include\":[]}" >> "$GITHUB_OUTPUT"
+            echo "No Tekton pipelines triggered."
+            exit 0
+          fi
+
+          echo "has_jobs=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "matrix<<EOF"
+            echo "$MATRIX_JSON"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "Build matrix:"
+          echo "$MATRIX_JSON" | python3 -m json.tool
+
+  build:
+    name: ${{ matrix.component }} · ${{ matrix.platform }}
+    needs: plan
+    if: needs.plan.outputs.has_jobs == 'true'
+    runs-on: ${{ matrix.runner }}
+    env:
+      # Match build-notebooks-TEMPLATE: podman pulls consult TMPDIR; builds use rootful socket.
+      TMPDIR: /home/runner/.local/share/containers/tmpdir
+      CONTAINER_HOST: unix:///var/run/podman/podman.sock
+      # install-podman-action adds linuxbrew to PATH; keep Makefile on system Python.
+      PYTHON: /usr/bin/python3
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          # Full history + submodules mirror build-notebooks (Hermeto/codeserver).
+          fetch-depth: 0
+          submodules: recursive
+          lfs: ${{ contains(matrix.component, 'codeserver') }}
+          persist-credentials: false
+
+      - name: Free up disk space
+        uses: ./.github/actions/free-up-disk-space
+
+      - name: Mount LVM overlay for large image builds
+        if: >-
+          contains(matrix.component, 'cuda') ||
+          contains(matrix.component, 'pytorch') ||
+          contains(matrix.component, 'tensorflow') ||
+          contains(matrix.component, 'codeserver') ||
+          contains(matrix.component, 'llmcompressor') ||
+          matrix.platform == 'linux/arm64'
+        run: bash ./ci/cached-builds/gha_lvm_overlay.sh
+
+      - name: Install Python deps
+        run: |
+          /usr/bin/python3 -m pip install --quiet --break-system-packages pyyaml packaging structlog
+          /usr/bin/python3 -c "import yaml, structlog"
+
+      - name: Prepare podman temp directory
+        run: mkdir -p "$TMPDIR"
+
+      - name: Install Podman
+        uses: ./.github/actions/install-podman-action
+        with:
+          platform: ${{ matrix.platform }}
+
+      - name: Verify Python deps after Podman install
+        run: |
+          # linuxbrew is on PATH after install-podman-action; ensure make still sees PyYAML.
+          "$PYTHON" -c "import yaml, structlog"
+
+      - name: Set up QEMU for non-native architecture
+        if: matrix.qemu
+        run: |
+          set -euo pipefail
+          arch="${platform#*/}"
+          # Register binfmt after rootful podman is running (remote build needs QEMU for RUN steps).
+          # https://www.itix.fr/blog/qemu-user-static-with-podman/
+          podman run --rm --privileged docker.io/tonistiigi/binfmt --install "$arch"
+          podman run --rm --platform "${platform}" registry.access.redhat.com/ubi9/ubi:latest uname -m
+        env:
+          platform: ${{ matrix.platform }}
+
+      - name: Prefetch hermetic dependencies
+        env:
+          LOG_LEVEL: debug
+        run: |
+          make -f Makefile.tekton prefetch \
+            PIPELINE=${{ matrix.pipeline }} \
+            PLATFORM=${{ matrix.platform }}
+
+      - name: Build image from Tekton pipeline
+        env:
+          CONTAINER_ENGINE: podman
+          IMAGE_SOURCE: https://github.com/${{ github.repository }}
+          IMAGE_REVISION: ${{ github.sha }}
+          RELEASE_PYTHON_VERSION: "3.12"
+        run: |
+          make -f Makefile.tekton build \
+            PIPELINE=${{ matrix.pipeline }} \
+            PLATFORM=${{ matrix.platform }} \
+            TAG=ghcr.io/${{ github.repository_owner }}/notebooks/${{ matrix.component }}:pr-${{ github.event.pull_request.number }}-${{ matrix.platform_slug }}

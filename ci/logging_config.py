@@ -17,10 +17,17 @@ from __future__ import annotations
 import json
 import logging
 import os
-from string import templatelib
-from string.templatelib import Interpolation, Template
+import sys
 
 import structlog
+
+# t-strings (PEP 750) are Python 3.14+; GHA tekton jobs on ppc64le/s390x use 3.12.
+if sys.version_info >= (3, 14):
+    from string import templatelib
+    from string.templatelib import Interpolation, Template
+else:
+    templatelib = None  # type: ignore[assignment,misc]
+    Interpolation = Template = None  # type: ignore[assignment,misc]
 from structlog.dev import ConsoleRenderer, KeyValueColumnFormatter
 
 # Syntax highlighting for pretty-printed JSON values.
@@ -88,10 +95,11 @@ def make_pretty_log() -> structlog.stdlib.BoundLogger:
     return structlog.wrap_logger(logger, wrapper_class=structlog.stdlib.BoundLogger)
 
 
-def _render_template(template: Template) -> str:
+def _render_template(template: object) -> str:
     """Render a Template to a plain string, applying format specs."""
+    assert templatelib is not None and Interpolation is not None
     parts: list[str] = []
-    for part in template:
+    for part in template:  # pyright: ignore[reportOptionalIterable]
         if isinstance(part, Interpolation):
             value = templatelib.convert(part.value, part.conversion)
             parts.append(format(value, part.format_spec))
@@ -109,7 +117,10 @@ def t_string_processor(logger: object, method_name: str, event_dict: dict) -> di
     renders the template to a plain string for the ``event`` field.
 
     Explicitly passed kwargs take precedence over auto-extracted values.
+    No-op on Python < 3.14 where t-strings are unavailable.
     """
+    if Template is None:
+        return event_dict
     event = event_dict.get("event")
     if isinstance(event, Template):
         for part in event:

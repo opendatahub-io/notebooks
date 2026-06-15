@@ -55,8 +55,8 @@ func main() {
 		}
 		buildArgsMap[kv[0]] = kv[1]
 	}
-	if _, ok := buildArgsMap["BASE_IMAGE"]; !ok {
-		panic("BASE_IMAGE build argument is required")
+	if !hasBaseImageArg(buildArgsMap) {
+		panic("BASE_IMAGE (or BASE_IMAGE_<flavor>) build argument is required")
 	}
 
 	for _, dockerfile := range flag.Args() {
@@ -68,4 +68,13 @@ func main() {
 		encoder := json.NewEncoder(os.Stdout)
 		noErr(encoder.Encode(deps))
 	}
+}
+
+func hasBaseImageArg(buildArgs map[string]string) bool {
+	for key := range buildArgs {
+		if key == "BASE_IMAGE" || strings.HasPrefix(key, "BASE_IMAGE_") {
+			return true
+		}
+	}
+	return false
 }

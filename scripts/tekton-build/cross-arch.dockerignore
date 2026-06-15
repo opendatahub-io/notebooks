@@ -1,0 +1,39 @@
+# Alternate .dockerignore for GHA cross-arch podman builds (QEMU).
+# Repo .dockerignore excludes **/Dockerfile*; Konflux-build-cli reads Dockerfiles
+# from the mounted source tree instead. podman build needs them in context.
+bin/
+ci/
+tests/
+
+# IDE
+.idea/
+
+.gitignore
+.gitkeep
+
+# Python cache
+**/.mypy_cache/
+**/.pytest_cache/
+**/__pycache__/
+**/*.pyc
+
+# Virtual environment
+env/
+venv/
+.venv/
+*.egg-info/
+
+# Logs
+*.log
+
+# OS-specific files
+**/.DS_Store
+Thumbs.db
+
+# Node
+**/node_modules/
+
+# Documentation
+*.md
+docs/
+examples/
