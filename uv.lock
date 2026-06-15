@@ -15,7 +15,7 @@ required-markers = [
 ]
 
 [options]
-exclude-newer = "2026-06-02T21:43:17.527775Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [manifest]
@@ -573,7 +573,7 @@ wheels = [
 
 [[package]]
 name = "google-antigravity"
-version = "0.1.1"
+version = "0.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "absl-py", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -585,9 +585,9 @@ dependencies = [
     { name = "websockets", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/5a/3f7b45a2f322df1e96c4c6ce038704376cfedbdcc9d08ce269e514627362/google_antigravity-0.1.1-py3-none-macosx_11_0_arm64.whl", hash = "sha256:2ee0fd1c28a17972fd7427242ac9bd23c3ec17fcc82c19d9639507daed3ac1f8", size = 34462825, upload-time = "2026-05-28T23:58:02.642Z" },
-    { url = "https://files.pythonhosted.org/packages/26/69/2404c95381a3f9ea6e81243874b1067cb1ea3e0585630db2465992572aeb/google_antigravity-0.1.1-py3-none-manylinux_2_17_aarch64.whl", hash = "sha256:18976ed3ee9e3a73581185efd802989b33c4447e02c915da895f5308d9a5d482", size = 38917297, upload-time = "2026-05-28T23:58:05.834Z" },
-    { url = "https://files.pythonhosted.org/packages/f3/21/9c3b3b59943b2f0c89c35282c8838b691a1e6b39f3801f40a23882ea45f6/google_antigravity-0.1.1-py3-none-manylinux_2_17_x86_64.whl", hash = "sha256:64ccd71d9b9a50827c68e4dfdb460557547d1baaabece843d4eae56c1bbb55ee", size = 42666897, upload-time = "2026-05-28T23:58:08.752Z" },
+    { url = "https://files.pythonhosted.org/packages/1e/65/79a2e49d3356c411854e6211f7e9b9b0b35c8970dc8d095aedfe30e5de91/google_antigravity-0.1.3-py3-none-macosx_11_0_arm64.whl", hash = "sha256:51d170bef7995fe6fd21f1794a96ee545f714a8e7be6c1022f84881b5512fe05", size = 30274137, upload-time = "2026-06-11T20:09:54.392Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/8a/e592d320c0560dde3a346ac6faad414d38670c5a1285890c25fa949ff447/google_antigravity-0.1.3-py3-none-manylinux_2_17_aarch64.whl", hash = "sha256:9bef739888bccfa0747fcbc85696c2ee91ee29481405efd5d982c11fe9e211ff", size = 32714515, upload-time = "2026-06-11T20:09:57.575Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/75/decfdc6519d3c5e9e0a2c4b021431ccb5ffb035fa9ccb96098213eee534b/google_antigravity-0.1.3-py3-none-manylinux_2_17_x86_64.whl", hash = "sha256:44c3314e544ac4a9ea62779f25e2ae392983ac59b3d4f4f7fc2a68708f98f25c", size = 35787216, upload-time = "2026-06-11T20:10:00.464Z" },
 ]
 
 [[package]]
@@ -1077,7 +1077,7 @@ dev = [
     { name = "authlib", specifier = ">=1.6.12" },
     { name = "certifi" },
     { name = "docker" },
-    { name = "google-antigravity", specifier = ">=0.1.1" },
+    { name = "google-antigravity", specifier = ">=0.1.3" },
     { name = "keyring" },
     { name = "kubernetes" },
     { name = "openshift-python-wrapper" },

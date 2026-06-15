@@ -9,17 +9,17 @@ import os
 import sys
 from collections.abc import Mapping
 
-from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig
-
+from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig, types
 from google.antigravity.types import BuiltinTools, UsageMetadata
+
 from scripts.ci import mcp_github
 from scripts.ci.ci_summary import (
-    string_list,
     int_value,
     marker_for_run,
     render_failure_comment,
     render_final_success_comment,
     render_progress_comment,
+    string_list,
 )
 
 SOURCE_READ_BUILTINS = [
@@ -166,7 +166,18 @@ async def summarize(context: Mapping[str, object], body_path: str) -> int:
 
     async with Agent(config) as agent:
         response = await agent.chat(build_prompt(context))
-        text = await response.text()
+
+        text_chunks = []
+        async for chunk in response.chunks:
+            if isinstance(chunk, types.Text):
+                sys.stdout.write(chunk.text)
+                sys.stdout.flush()
+                text_chunks.append(chunk.text)
+            elif isinstance(chunk, types.ToolCall):
+                print(f"\n[Tool Call] {chunk.name}")
+        print()
+        text = "".join(text_chunks)
+
         tool_calls = [tool_call async for tool_call in response.tool_calls]
 
         write_body(body_path, render_failure_comment(context, text))

@@ -8,12 +8,15 @@ import json
 import os
 import sys
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig
+from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig, types
 
-from google.antigravity.types import UsageMetadata
 from scripts.ci import mcp_github
 from scripts.ci.pr_review_summary import ensure_marker, extract_review_summary_body, marker_for_run
+
+if TYPE_CHECKING:
+    from google.antigravity.types import UsageMetadata
 
 
 @dataclass(slots=True)
@@ -174,10 +177,20 @@ async def run_review(inputs: ReviewInputs) -> int:
 
     async with Agent(config) as agent:
         response = await agent.chat(build_prompt(inputs))
-        text = await response.text()
+
+        text_chunks = []
+        async for chunk in response.chunks:
+            if isinstance(chunk, types.Text):
+                sys.stdout.write(chunk.text)
+                sys.stdout.flush()
+                text_chunks.append(chunk.text)
+            elif isinstance(chunk, types.ToolCall):
+                print(f"\n[Tool Call] {chunk.name}")
+        print()
+        text = "".join(text_chunks)
+
         tool_calls = [tool_call async for tool_call in response.tool_calls]
 
-        print(text.strip())
         print("\n--- usage_metadata ---")
         print(format_usage_metadata(response.usage_metadata))
         print("\n--- total_usage ---")
