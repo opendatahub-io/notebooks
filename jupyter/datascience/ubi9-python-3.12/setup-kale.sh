@@ -40,4 +40,4 @@ export KF_PIPELINES_SSL_SA_CERTS="${KF_PIPELINES_SSL_SA_CERTS:-/var/run/secrets/
 export KALE_SECURITY_CONTEXT_ENABLED=false
 
 # Set default image
-export KALE_DFAULT_BASE_IMAGE=ubi9/python-312
+export KALE_DEFAULT_BASE_IMAGE=ubi9/python-312
