@@ -17,6 +17,7 @@ metadata:
       !("manifests/base/params-latest.env".pathChanged()) &&
       (
         ".tekton/odh-workbench-jupyter-minimal-cuda-py312-ubi9-pull-request.yaml".pathChanged() ||
+        "build-args/global.conf".pathChanged() ||
         "jupyter/utils/**".pathChanged() ||
         "jupyter/minimal/ubi9-python-3.12/**".pathChanged() ||
         "jupyter/minimal/ubi9-python-3.12/build-args/cuda.conf".pathChanged()
@@ -49,7 +50,14 @@ spec:
   - name: path-context
     value: .
   - name: build-args-file
-    value: jupyter/minimal/ubi9-python-3.12/build-args/cuda.conf
+    value: build-args/global.conf
+  # We don't actually need these two params. 
+  # - Dockerfile.cuda should have PYLOCK_FLAVOR=cuda
+  # - LABEL_COMPONENT should be derived from component name
+  - name: build-args
+    value:
+    - PYLOCK_FLAVOR=cuda
+    - LABEL_COMPONENT=odh-workbench-jupyter-minimal-cuda-py312-ubi9
   # Hermetic build: RPMs + generic artifacts from repo-root prefetch-input/odh; pip from requirements.cuda.txt
   - name: hermetic
     value: 'true'

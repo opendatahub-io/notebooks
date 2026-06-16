@@ -3,12 +3,13 @@ ARG TARGETARCH
 #########################
 # configuration args    #
 #########################
-ARG BASE_IMAGE
+ARG PYLOCK_FLAVOR=cuda
+ARG BASE_IMAGE_CUDA
 
 ####################
 # cuda-base        #
 ####################
-FROM ${BASE_IMAGE} AS cuda-base
+FROM ${BASE_IMAGE_CUDA} AS cuda-base
 
 WORKDIR /opt/app-root/bin
 
