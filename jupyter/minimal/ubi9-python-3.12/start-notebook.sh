@@ -29,10 +29,14 @@ else
 fi
 
 # Add additional arguments if NOTEBOOK_ARGS variable is defined
-# Word-splitting is intentional here: NOTEBOOK_ARGS is a space-separated string from the controller
+# Word-splitting is intentional: NOTEBOOK_ARGS is newline- or space-separated (see kustomize statefulset.yaml)
 if [ -n "${NOTEBOOK_ARGS}" ]; then
-    read -ra _nb_args <<< "${NOTEBOOK_ARGS}"
-    NOTEBOOK_PROGRAM_ARGS+=("${_nb_args[@]}")
+    while IFS= read -r line || [ -n "${line}" ]; do
+        if [ -n "${line}" ]; then
+            read -ra _line_args <<< "${line}"
+            NOTEBOOK_PROGRAM_ARGS+=("${_line_args[@]}")
+        fi
+    done <<< "${NOTEBOOK_ARGS}"
 fi
 
 # Start the JupyterLab notebook
