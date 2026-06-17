@@ -1,9 +1,11 @@
 # Downloaded from https://raw.githubusercontent.com/opendatahub-io/elyra/main/etc/generic/requirements-elyra.txt
 # Local change: ipykernel==7.2.0 (7.1.0 is not installable from PyPI for current pip index).
+# Local change: ipython==9.12.0 (aligned with runtime image requirements.*.txt pins).
+# Local change: requests==2.33.1 (2.32.5 is not on RHOAI pulp indices used by runtime pip.conf).
 
 # This is a comprehensive list of python dependencies that Elyra requires to execute Jupyter notebooks.
 ipykernel==7.2.0
-ipython==9.11.0
+ipython==9.12.0
 ipython-genutils==0.2.0
 jinja2==3.1.6
 jupyter-client==8.8.0
@@ -16,7 +18,7 @@ nbformat==5.10.4
 papermill==2.7.0
 pyzmq==27.1.0
 prompt-toolkit==3.0.52
-requests==2.32.5
+requests==2.33.1
 tornado==6.5.5
 traitlets==5.14.3
 urllib3==2.6.3
