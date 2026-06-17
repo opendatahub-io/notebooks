@@ -28,6 +28,14 @@ if [ "$(ls -A /opt/app-root/runtimes/ 2>/dev/null)" ]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     export ELYRA_RUNTIME_CONFIG
     python3 "${SCRIPT_DIR}/configure_kale_from_elyra.py"
+
+    # Source environment variable exports from Python script
+    KALE_ENV_EXPORTS="${KALE_ENV_EXPORTS:-/tmp/kale-env-exports.sh}"
+    if [[ -f "${KALE_ENV_EXPORTS}" ]]; then
+      # shellcheck source=/dev/null
+      source "${KALE_ENV_EXPORTS}"
+      rm -f "${KALE_ENV_EXPORTS}"
+    fi
   fi
 fi
 

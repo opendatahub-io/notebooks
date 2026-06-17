@@ -131,6 +131,9 @@ def test_existing_bearer_token_with_password(
     mock_kale_module,
 ) -> None:
     """Test EXISTING_BEARER_TOKEN auth type with api_password."""
+    env_exports_file = tmp_path / "kale-env-exports.sh"
+    monkeypatch.setenv("KALE_ENV_EXPORTS", str(env_exports_file))
+
     elyra_config = write_elyra_config(
         tmp_path,
         {
@@ -152,6 +155,12 @@ def test_existing_bearer_token_with_password(
     # Verify the actual token value is NOT stored in the config
     config_str = json.dumps(mock_kale_module["config"])
     assert "secret-token" not in config_str, "Sensitive token should not be stored in config"
+
+    # Verify token was written to export file
+    assert env_exports_file.exists(), "Export file should be created"
+    export_content = env_exports_file.read_text()
+    assert "export KF_PIPELINES_TOKEN=" in export_content, "Token export should be in file"
+    assert "secret-token" in export_content, "Token value should be in export (shell-quoted)"
 
 
 def test_existing_bearer_token_without_password(
@@ -184,7 +193,7 @@ def test_dex_static_passwords_with_credentials(
     monkeypatch: pytest.MonkeyPatch,
     mock_kale_module,
 ) -> None:
-    """Test DEX_STATIC_PASSWORDS auth type with credentials."""
+    """Test DEX_STATIC_PASSWORDS auth type is not supported (returns False)."""
     elyra_config = write_elyra_config(
         tmp_path,
         {
@@ -200,15 +209,10 @@ def test_dex_static_passwords_with_credentials(
 
     result = kale_config.configure_kale_from_elyra(str(elyra_config))
 
-    assert result is True
-    assert mock_kale_module["config"] is not None
-    assert mock_kale_module["config"]["auth_type"] == "dex"
-    assert mock_kale_module["config"]["auth_config"]["env_var_username"] == "KF_PIPELINES_USERNAME"
-    assert mock_kale_module["config"]["auth_config"]["env_var_password"] == "KF_PIPELINES_PASSWORD"
-    # Verify the actual credentials are NOT stored in the config
-    config_str = json.dumps(mock_kale_module["config"])
-    assert "admin" not in config_str, "Sensitive username should not be stored in config"
-    assert "password123" not in config_str, "Sensitive password should not be stored in config"
+    # DEX auth is not supported - should return False
+    assert result is False
+    # No config should be saved for DEX auth
+    assert mock_kale_module["config"] is None
 
 
 def test_dex_ldap_and_legacy_auth_types(
@@ -216,7 +220,7 @@ def test_dex_ldap_and_legacy_auth_types(
     monkeypatch: pytest.MonkeyPatch,
     mock_kale_module,
 ) -> None:
-    """Test DEX_LDAP and DEX_LEGACY map to same Kale auth_type."""
+    """Test DEX_LDAP and DEX_LEGACY auth types are not supported (return False)."""
     for dex_type in ["DEX_LDAP", "DEX_LEGACY"]:
         # Create separate directory for each iteration to ensure isolation
         test_dir = tmp_path / dex_type.lower()
@@ -237,11 +241,10 @@ def test_dex_ldap_and_legacy_auth_types(
 
         result = kale_config.configure_kale_from_elyra(str(elyra_config))
 
-        assert result is True
-        assert mock_kale_module["config"] is not None
-        assert mock_kale_module["config"]["auth_type"] == "dex"
-        assert "env_var_username" in mock_kale_module["config"]["auth_config"]
-        assert "env_var_password" in mock_kale_module["config"]["auth_config"]
+        # DEX auth types are not supported - should return False
+        assert result is False, f"{dex_type} should not be supported"
+        # No config should be saved for DEX auth
+        assert mock_kale_module["config"] is None
 
 
 def test_dex_without_credentials(
@@ -249,7 +252,7 @@ def test_dex_without_credentials(
     monkeypatch: pytest.MonkeyPatch,
     mock_kale_module,
 ) -> None:
-    """Test DEX auth type without credentials."""
+    """Test DEX auth type without credentials is not supported (returns False)."""
     elyra_config = write_elyra_config(
         tmp_path,
         {
@@ -263,10 +266,10 @@ def test_dex_without_credentials(
 
     result = kale_config.configure_kale_from_elyra(str(elyra_config))
 
-    assert result is True
-    assert mock_kale_module["config"] is not None
-    assert mock_kale_module["config"]["auth_type"] == "dex"
-    assert mock_kale_module["config"]["auth_config"] == {}
+    # DEX auth is not supported - should return False
+    assert result is False
+    # No config should be saved for DEX auth
+    assert mock_kale_module["config"] is None
 
 
 def test_missing_auth_type_defaults_to_kubernetes_sa_token(

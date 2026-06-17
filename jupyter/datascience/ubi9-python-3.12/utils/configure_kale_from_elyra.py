@@ -8,6 +8,7 @@ handling authentication type conversion and environment variable references.
 
 import json
 import os
+import shlex
 import sys
 
 
@@ -56,25 +57,28 @@ def configure_kale_from_elyra(elyra_config_path):
 
         elif elyra_auth_type == 'EXISTING_BEARER_TOKEN':
             kale_config['auth_type'] = 'existing_bearer_token'
-            # Use environment variable reference instead of storing the actual token
-            if metadata.get('api_password'):
-                # If api_password exists, reference it via env var
+            # Export token to environment via shell-sourceable file
+            api_password = metadata.get('api_password')
+            if api_password:
                 kale_config['auth_config'] = {'env_var': 'KF_PIPELINES_TOKEN'}
+                # Write shell export file so parent script can source it
+                env_export_path = os.environ.get('KALE_ENV_EXPORTS', '/tmp/kale-env-exports.sh')
+                with open(env_export_path, 'a') as fh:
+                    # Use shlex.quote to safely escape token value
+                    fh.write(f"export KF_PIPELINES_TOKEN={shlex.quote(api_password)}\n")
             else:
                 kale_config['auth_config'] = {}
 
         elif elyra_auth_type in ['DEX_STATIC_PASSWORDS', 'DEX_LDAP', 'DEX_LEGACY']:
-            kale_config['auth_type'] = 'dex'
-            # DEX uses username/password from api_username and api_password
-            # Kale expects these to be resolved at runtime, not stored in config
-            if metadata.get('api_username') and metadata.get('api_password'):
-                # Store reference to environment variables instead of actual credentials
-                kale_config['auth_config'] = {
-                    'env_var_username': 'KF_PIPELINES_USERNAME',
-                    'env_var_password': 'KF_PIPELINES_PASSWORD'
-                }
-            else:
-                kale_config['auth_config'] = {}
+            # DEX authentication cannot be automatically mapped to Kale
+            # Elyra: Stores username/password, exchanges for session cookie at runtime
+            # Kale: Expects pre-obtained session cookie in env var or file
+            # No lossless mapping exists without implementing DEX login flow
+            print(f"Warning: Elyra auth type '{elyra_auth_type}' is not compatible with Kale.")
+            print("Kale requires a pre-obtained DEX session cookie, but Elyra provides "
+                  "username/password credentials.")
+            print("Skipping Kale KFP configuration for DEX authentication.")
+            return False
 
         # 4. ssl_ca_cert: Check if KF_PIPELINES_SSL_SA_CERTS env var is set
         ssl_cert_path = os.environ.get('KF_PIPELINES_SSL_SA_CERTS',
