@@ -15,7 +15,7 @@ _UTILS_PATH = _REPO_ROOT / "jupyter/datascience/ubi9-python-3.12/utils"
 if str(_UTILS_PATH) not in sys.path:
     sys.path.insert(0, str(_UTILS_PATH))
 
-import configure_kale_from_elyra as kale_config
+import configure_kale_from_elyra as kale_config  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 
 def write_elyra_config(tmp_path: Path, metadata: dict) -> Path:
