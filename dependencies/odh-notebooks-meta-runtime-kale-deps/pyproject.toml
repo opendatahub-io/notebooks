@@ -1,0 +1,30 @@
+[project]
+name = "odh-notebooks-meta-runtime-kale-deps"
+version = "0.1.0"
+requires-python = "==3.12.*"
+
+# This is a comprehensive list of python dependencies that Kale requires to execute Jupyter notebooks.
+dependencies = [
+    "ipykernel",
+    "ipython",
+    "jupyter-client",
+    "jupyter-core",
+    "nbclient",
+    "nbconvert",
+    "nbformat",
+    "jinja2",
+    "dill",
+    "networkx",
+    "autopep8",
+    "pyflakes",
+    "astor",
+    "packaging",
+    "progress",
+]
+
+[tool.uv]
+package = false
+
+environments = [
+    "sys_platform == 'linux' and implementation_name == 'cpython'",
+]

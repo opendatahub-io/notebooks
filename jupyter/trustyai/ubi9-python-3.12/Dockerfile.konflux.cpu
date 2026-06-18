@@ -119,7 +119,7 @@ COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 
 # hadolint ignore=DL3002
 # Run as root (same as jupyter-minimal): uv from cpu-base is root-owned; chmod g+w must be root.
-COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
+COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/setup-kale.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
 
@@ -198,6 +198,8 @@ sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/s
 cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter
 # Disable announcement plugin of jupyterlab
 jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+# Disable kale extension
+jupyter labextension disable jupyterlab-kubeflow-kale
 # Apply JupyterLab addons
 /opt/app-root/bin/utils/addons/apply.sh
 # Fix permissions to support pip in Openshift environments

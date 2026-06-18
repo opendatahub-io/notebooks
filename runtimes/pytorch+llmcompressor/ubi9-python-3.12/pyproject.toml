@@ -19,6 +19,7 @@ dependencies = [
 
     "odh-notebooks-meta-db-connectors-deps",
     "odh-notebooks-meta-runtime-elyra-deps",
+    "odh-notebooks-meta-runtime-kale-deps",
 
     # Base packages
     "setuptools",
@@ -35,6 +36,7 @@ dependencies = [
 odh-notebooks-meta-llmcompressor-deps = { path = "../../../dependencies/odh-notebooks-meta-llmcompressor-deps" }
 odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }
 odh-notebooks-meta-runtime-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-datascience-deps" }
+odh-notebooks-meta-runtime-kale-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-kale-deps" }
 odh-notebooks-meta-db-connectors-deps = { path = "../../../dependencies/odh-notebooks-meta-db-connectors-deps" }
 
 [tool.uv]
