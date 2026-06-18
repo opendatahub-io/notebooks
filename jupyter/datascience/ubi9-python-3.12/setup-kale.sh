@@ -25,17 +25,10 @@ if [ "$(ls -A /opt/app-root/runtimes/ 2>/dev/null)" ]; then
 
   if [ -n "$ELYRA_RUNTIME_CONFIG" ] && [ -f "$ELYRA_RUNTIME_CONFIG" ]; then
     # Configure Kale KFP server connection by mapping Elyra config to Kale config
+    # Note: The Python script sets KF_PIPELINES_TOKEN directly in the environment
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     export ELYRA_RUNTIME_CONFIG
     python3 "${SCRIPT_DIR}/configure_kale_from_elyra.py"
-
-    # Source environment variable exports from Python script
-    KALE_ENV_EXPORTS="${KALE_ENV_EXPORTS:-/tmp/kale-env-exports.sh}"
-    if [[ -f "${KALE_ENV_EXPORTS}" ]]; then
-      # shellcheck source=/dev/null
-      source "${KALE_ENV_EXPORTS}"
-      rm -f "${KALE_ENV_EXPORTS}"
-    fi
   fi
 fi
 

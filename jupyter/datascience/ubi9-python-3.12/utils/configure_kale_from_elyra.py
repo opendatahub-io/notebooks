@@ -8,7 +8,6 @@ handling authentication type conversion and environment variable references.
 
 import json
 import os
-import shlex
 import sys
 
 
@@ -57,15 +56,12 @@ def configure_kale_from_elyra(elyra_config_path):
 
         elif elyra_auth_type == 'EXISTING_BEARER_TOKEN':
             kale_config['auth_type'] = 'existing_bearer_token'
-            # Export token to environment via shell-sourceable file
+            # Set token directly in environment (never write to disk)
             api_password = metadata.get('api_password')
             if api_password:
+                # Set environment variable directly - token stays in memory only
+                os.environ['KF_PIPELINES_TOKEN'] = api_password
                 kale_config['auth_config'] = {'env_var': 'KF_PIPELINES_TOKEN'}
-                # Write shell export file so parent script can source it
-                env_export_path = os.environ.get('KALE_ENV_EXPORTS', '/tmp/kale-env-exports.sh')
-                with open(env_export_path, 'a') as fh:
-                    # Use shlex.quote to safely escape token value
-                    fh.write(f"export KF_PIPELINES_TOKEN={shlex.quote(api_password)}\n")
             else:
                 kale_config['auth_config'] = {}
 
