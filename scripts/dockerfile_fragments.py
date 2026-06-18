@@ -115,13 +115,13 @@ def main():
         """),
         "Dependencies for PDF export": textwrap.dedent(r"""
             RUN ./utils/install_pdf_deps.sh
-            ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+            ENV PATH="/usr/local/pandoc/bin:$PATH"
         """),
         "mongocli-builder stage": textwrap.dedent(r"""
             ######################################################
             # mongocli-builder (build stage only, not published) #
             ######################################################
-            FROM registry.access.redhat.com/ubi9/go-toolset:1.25.9-1778504036 AS mongocli-builder
+            FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3-1781595303 AS mongocli-builder
 
             ARG MONGOCLI_VERSION=2.0.4
 
@@ -138,7 +138,7 @@ def main():
             ######################################################
             # mongocli-builder (build stage only, not published) #
             ######################################################
-            FROM registry.access.redhat.com/ubi9/go-toolset:1.25.9-1778504036 AS mongocli-builder
+            FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3-1781595303 AS mongocli-builder
 
             ARG MONGOCLI_VERSION=2.0.4
 

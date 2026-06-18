@@ -27,9 +27,14 @@ There are three ways to build this image:
 |------|---------|
 | GNU Make 4.0+ (`gmake` on macOS) | Runs the build pipeline |
 | `podman` (or `docker`) | Container build engine |
-| `python3` + `pyyaml` | Runs the artifact lockfile generator |
-| `uv` | Resolves Python dependencies (`pip install uv`) |
-| `wget`, `jq` | Downloads artifacts and npm tarballs |
+| Repo `.venv` (`uv sync`) | Runs prefetch scripts (`pyyaml`, `packaging`, `uv`) |
+| `wget`, `jq`, `hermeto` | Downloads artifacts, npm tarballs, RPMs |
+| `yq` | Optional; npm prefetch step |
+
+Set **`RELEASE_PYTHON_VERSION=3.12`** and **`BUILD_ARCH`** when running
+`prefetch-all.sh` locally. GHA sets these automatically; without them, pip
+prefetch can skip wheels the image still needs at build time. See
+[lockfile generators — Local development](../../scripts/lockfile-generators/README.md#local-development).
 
 ### Step 1 — Initialize git submodules
 
@@ -44,12 +49,20 @@ git submodule update --init --recursive
 Run from the **repository root**:
 
 ```bash
-# Upstream ODH (default):
-scripts/lockfile-generators/prefetch-all.sh \
+uv sync
+source .venv/bin/activate
+
+# Optional: clear pip cache when switching arch or fixing a bad prefetch
+# rm -rf cachi2/output/deps/pip
+
+# Upstream ODH (default) — BUILD_ARCH must match the platform you will build
+RELEASE_PYTHON_VERSION=3.12 BUILD_ARCH=linux/arm64 \
+  ./scripts/lockfile-generators/prefetch-all.sh \
     --component-dir codeserver/ubi9-python-3.12
 
 # Downstream RHDS:
-scripts/lockfile-generators/prefetch-all.sh \
+RELEASE_PYTHON_VERSION=3.12 BUILD_ARCH=linux/arm64 \
+  ./scripts/lockfile-generators/prefetch-all.sh \
     --component-dir codeserver/ubi9-python-3.12 --rhds \
     --activation-key my-key --org my-org
 ```
@@ -96,8 +109,16 @@ Options:
 
 ```bash
 # Custom flavor (e.g. cuda):
-scripts/lockfile-generators/prefetch-all.sh \
+RELEASE_PYTHON_VERSION=3.12 BUILD_ARCH=linux/arm64 \
+  ./scripts/lockfile-generators/prefetch-all.sh \
     --component-dir codeserver/ubi9-python-3.12 --flavor cuda
+```
+
+Verify prefetch before building (example checks):
+
+```bash
+ls cachi2/output/deps/pip/aiohttp_cors*   # skipped when RELEASE_PYTHON_VERSION is wrong
+ls cachi2/output/deps/rpm/aarch64/repos.d/
 ```
 
 ### Step 3 — Build the image
@@ -114,7 +135,8 @@ gmake codeserver-ubi9-python-3.12 \
 
 | Variable | Default | Description |
 |---|---|---|
-| `BUILD_ARCH` | `linux/amd64` | Target platform (`linux/amd64`, `linux/arm64`, etc.) |
+| `BUILD_ARCH` | `linux/amd64` | Target platform (`linux/amd64`, `linux/arm64`, etc.) — must match prefetch |
+| `RELEASE_PYTHON_VERSION` | `3.12` | Image Python (Makefile target name); set when **prefetching** for pip markers |
 | `PUSH_IMAGES` | `yes` | Set to `no` to skip pushing to registry |
 | `CONTAINER_BUILD_CACHE_ARGS` | `--no-cache` | Pass `""` to enable layer caching |
 

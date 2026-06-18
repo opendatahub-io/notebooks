@@ -62,6 +62,30 @@ Image lock files (`pylock.toml` / `uv.lock.d/`) are regenerated with `make refre
 For details on the dual `uv` version policy (dev vs image locks), see the
 [Deploy & Test](#deploy--test) section below.
 
+### Update base image versions
+
+Use the root [`versions_config.yml`](versions_config.yml) file as the operator
+entry point for base image updates.
+
+The sync flow validates that config, rewrites managed `build-args/*.conf`
+`BASE_IMAGE` and `RELEASE` values, updates root `Makefile` `RELEASE` defaults,
+and resolves RHDS `channel: fast` tags from published Quay tags with `skopeo`.
+
+For the full configuration contract, RHDS and ODH resolution rules, Mermaid flow
+diagram, and worked examples, see
+[`docs/base_image_versions_update_configuration.md`](docs/base_image_versions_update_configuration.md).
+
+Quick commands:
+
+```shell
+make sync-build-args-from-versions
+make sync-build-args-from-versions SYNC_BUILD_ARGS_ARGS=--dry-run
+make sync-build-args-from-versions SYNC_BUILD_ARGS_ARGS=--check
+```
+
+If the version update also requires lockfile refreshes, run
+`make refresh-lock-files` after the sync.
+
 ### Deploy & Test
 
 #### Prepare Python + uv + pytest env

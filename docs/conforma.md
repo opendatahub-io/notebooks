@@ -149,9 +149,34 @@ The ones most relevant to notebook images:
 | `slsa_provenance_available` | SLSA provenance attestation must exist. |
 | `hermetic_task` / `trusted_task` | Build must run in a hermetic, trusted Tekton task. |
 | `labels` | Required container labels (see above). |
+| `rpm_packages.unique_version` | Every RPM in a multi-arch image index must have the same version across all architectures. |
 
 Policy data (allowed RPM keys, disallowed attributes, CVE windows) is configured in
 [`rhtap-ec-policy/data/rule_data.yml`](https://github.com/release-engineering/rhtap-ec-policy/blob/main/data/rule_data.yml).
+
+## Base-image RPM drift across architectures
+
+The repo's `test_rpms_lock_nvr_consistency_across_arches` test validates that
+RPMs pinned in `rpms.lock.yaml` have the same EVR across all architectures. It
+**does not** cover RPMs inherited from the base image (`FROM ${BASE_IMAGE}`).
+
+System packages like `openssl`, `python3`, etc. are baked into the UBI9 base
+image. If one architecture's base image has not been rebuilt with the latest
+RPMs (e.g. s390x repos lagging behind), the final multi-arch image index will
+have different versions per arch — even though the lockfile is consistent.
+
+Conforma's `rpm_packages.unique_version` policy catches this class of issue
+post-build. There is no pre-build defense in this repo.
+
+**Fix:** rebuild once the base image is updated for the affected architecture.
+Regenerating `rpms.lock.yaml` will not help because the mismatch comes from the
+base image, not from lockfile-installed RPMs.
+
+Historical example:
+[RHAIENG-5321](https://redhat.atlassian.net/browse/RHAIENG-5321) — s390x UBI9
+had older `openssl` (3.2.2-6.el9\_5.1 vs 3.2.2-7.el9\_6.2) and `python3`
+(3.9.21-2.el9\_6.2 vs 3.9.21-2.el9\_6.5) while the lockfile had matching
+versions across all arches.
 
 ## Policy exceptions
 

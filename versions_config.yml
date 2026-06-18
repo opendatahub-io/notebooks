@@ -1,0 +1,63 @@
+---
+schema_version: 1
+
+release:
+  full_version: "3.5.0"
+  rhds_os_base: "el9.6"
+  python_version: "3.12"
+
+artifacts:
+  base_image:
+    cpu:
+      rhds:
+        channel: fast
+        version: "<full_version>"
+      odh:
+        origin: in-house
+        version: "latest"
+
+    cuda:
+      minimal:
+        acc_version: "13.0"
+        rhds:
+          channel: fast
+        odh:
+          origin: in-house
+      pytorch:
+        acc_version: "13.0"
+        rhds:
+          channel: fast
+        odh:
+          origin: in-house
+      pytorch-llmcompressor:
+        acc_version: "13.0"
+        rhds:
+          channel: fast
+        odh:
+          origin: in-house
+      tensorflow:
+        acc_version: "12.9"
+        rhds:
+          channel: fast
+        odh:
+          origin: in-house
+
+    rocm:
+      minimal:
+        acc_version: "7.1"
+        rhds:
+          channel: fast
+        odh:
+          origin: in-house
+      pytorch:
+        acc_version: "7.1"
+        rhds:
+          channel: fast
+        odh:
+          origin: in-house
+      tensorflow:
+        acc_version: "7.1"
+        rhds:
+          channel: fast
+        odh:
+          origin: in-house
