@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeuxo pipefail
+set -x
 
 # Runtime configuration for Kubeflow Kale JupyterLab extension
 # This script configures Kale to connect to KFP by reading Elyra runtime config
