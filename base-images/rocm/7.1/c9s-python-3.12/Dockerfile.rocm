@@ -7,7 +7,9 @@ COPY base-images/utils/fix-permissions /mnt/usr/bin/
 ####################
 # base             #
 ####################
-FROM quay.io/sclorg/python-312-c9s:c9s AS base
+# ROCm packages, repos, env vars, and SDK are provided by the midstream image.
+# Source: https://github.com/opendatahub-io/base-containers (rocm/7.1/)
+FROM quay.io/opendatahub/odh-midstream-rocm-base-7-1:1.20260518.2 AS base
 
 USER 0
 ARG TARGETARCH
@@ -39,70 +41,6 @@ EOF
 
 USER 1001
 WORKDIR /opt/app-root/bin
-
-########################
-# rocm-base #
-########################
-FROM base AS rocm-base
-
-USER 0
-WORKDIR /opt/app-root/bin
-
-# Please keep in sync with ROCm/python3.12 dependent images
-ARG ROCM_VERSION=7.1.1
-ARG RELEASEVER=9.6
-
-# Install the ROCm rpms
-# ref: https://github.com/ROCm/ROCm-docker/blob/master/dev/Dockerfile-centos-7-complete
-# ROCm 7.x uses graphics repo instead of amdgpu for EL9.
-RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
-    echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
-    echo "baseurl=https://repo.radeon.com/rocm/el9/$ROCM_VERSION/main" >> /etc/yum.repos.d/rocm.repo && \
-    echo "enabled=1" >> /etc/yum.repos.d/rocm.repo && \
-    echo "gpgcheck=0" >> /etc/yum.repos.d/rocm.repo && \
-    echo "[amd-graphics]" > /etc/yum.repos.d/graphics.repo && \
-    echo "name=amd-graphics" >> /etc/yum.repos.d/graphics.repo && \
-    echo "baseurl=https://repo.radeon.com/graphics/$ROCM_VERSION/el/$RELEASEVER/main/x86_64" >> /etc/yum.repos.d/graphics.repo && \
-    echo "enabled=1" >> /etc/yum.repos.d/graphics.repo && \
-    echo "gpgcheck=0" >> /etc/yum.repos.d/graphics.repo && \
-    dnf install -y \
-      rocm-core \
-      hip-runtime-amd \
-      rocblas \
-      rocfft \
-      rocsolver \
-      rocsparse \
-      rccl \
-      miopen-hip \
-    # system utilities
-      rocminfo amd-smi-lib \
-    # ROCm developer and profiling tooling
-      rocm-hip-sdk rocprofiler \
-    # Build helpers used by downstream notebook images
-      make findutils \
-    # OpenMP runtime support
-      openmp-extras-runtime \
-    # suitesparse's /lib64/libspqr.so.2.0.9 needs libtbb.so.2
-      tbb && \
-    dnf clean all && rm -rf /var/cache/dnf
-
-# https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/post-install.html#configure-rocm-shared-objects
-RUN tee --append /etc/ld.so.conf.d/rocm.conf <<EOF
-  /opt/rocm/lib
-  /opt/rocm/lib64
-EOF
-
-RUN ldconfig
-
-# Runtime dependencies for PyTorch packages (libmpi_cxx.so, libqhull_r.so, libsnappy.so)
-# libqhull_r is in CRB (Code Ready Builder) repo
-RUN dnf -y install dnf-plugins-core && \
-    dnf config-manager --set-enabled crb && \
-    dnf -y install \
-    openmpi \
-    libqhull_r \
-    snappy \
-    && dnf -y clean all --enablerepo="*"
 
 ### BEGIN AIPCC pip and uv config files
 ARG INDEX_URL
