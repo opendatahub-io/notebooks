@@ -127,6 +127,7 @@ AUTH_TEST_CASES = [
             "namespace": "test-namespace",
             "auth_type": None,
             "auth_config": {},
+            "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
         },
         "expected_success": True,
         "mock_paths_exist": True,
@@ -145,6 +146,7 @@ AUTH_TEST_CASES = [
             "namespace": "test-namespace",
             "auth_type": "existing_bearer_token",
             "auth_config": {"env_var": "KF_PIPELINES_TOKEN"},
+            "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
         },
         "expected_success": True,
         "mock_paths_exist": True,
@@ -164,6 +166,7 @@ AUTH_TEST_CASES = [
             "namespace": "test-namespace",
             "auth_type": "existing_bearer_token",
             "auth_config": {},
+            "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
         },
         "expected_success": True,
         "mock_paths_exist": True,
@@ -182,6 +185,7 @@ AUTH_TEST_CASES = [
             "auth_config": {
                 "token_path": "/var/run/secrets/kubernetes.io/serviceaccount/token"
             },
+            "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
         },
         "expected_success": True,
         "mock_paths_exist": True,
@@ -197,6 +201,7 @@ AUTH_TEST_CASES = [
         "expected_output": {
             "host": "http://ml-pipeline:8080",
             "namespace": "test-namespace",
+            "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
         },
         "expected_success": True,
         "mock_paths_exist": True,
@@ -581,6 +586,7 @@ def test_successful_return_value(
         "auth_config": {
             "token_path": "/var/run/secrets/kubernetes.io/serviceaccount/token"
         },
+        "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
     }
 
     elyra_config = write_elyra_config(tmp_path, elyra_input)
