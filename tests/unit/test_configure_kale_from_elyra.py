@@ -106,9 +106,7 @@ AUTH_TEST_CASES = [
             "host": "http://ml-pipeline:8080",
             "namespace": "test-namespace",
             "auth_type": "kubernetes_service_account_token",
-            "auth_config": {
-                "token_path": "/var/run/secrets/kubernetes.io/serviceaccount/token"
-            },
+            "auth_config": {"token_path": "/var/run/secrets/kubernetes.io/serviceaccount/token"},
             "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
         },
         "expected_success": True,
@@ -182,9 +180,7 @@ AUTH_TEST_CASES = [
             "host": "http://ml-pipeline:8080",
             "namespace": "test-namespace",
             "auth_type": "kubernetes_service_account_token",
-            "auth_config": {
-                "token_path": "/var/run/secrets/kubernetes.io/serviceaccount/token"
-            },
+            "auth_config": {"token_path": "/var/run/secrets/kubernetes.io/serviceaccount/token"},
             "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
         },
         "expected_success": True,
@@ -221,10 +217,10 @@ def test_auth_transformation(
     print(f"\n{'=' * 80}")
     print(f"Test: {test_case['test_name']}")
     print(f"Description: {test_case['description']}")
-    print(f"\nInput Elyra Config:")
-    print(json.dumps(test_case['elyra_input'], indent=2))
-    print(f"\nExpected Kale Config:")
-    print(json.dumps(test_case['expected_output'], indent=2))
+    print("\nInput Elyra Config:")
+    print(json.dumps(test_case["elyra_input"], indent=2))
+    print("\nExpected Kale Config:")
+    print(json.dumps(test_case["expected_output"], indent=2))
     print(f"{'=' * 80}\n")
 
     # Write Elyra config file
@@ -238,9 +234,7 @@ def test_auth_transformation(
     result = kale_config.configure_kale_from_elyra(str(elyra_config))
 
     # Verify return value
-    assert result == test_case["expected_success"], (
-        f"Expected success={test_case['expected_success']}, got {result}"
-    )
+    assert result == test_case["expected_success"], f"Expected success={test_case['expected_success']}, got {result}"
 
     # Verify config output
     assert_config_matches(
@@ -259,9 +253,7 @@ def test_auth_transformation(
     if "verify_token_not_in_config" in test_case:
         token = test_case["verify_token_not_in_config"]
         config_str = json.dumps(mock_kale_module["config"])
-        assert token not in config_str, (
-            f"Sensitive token '{token}' should not be stored in config"
-        )
+        assert token not in config_str, f"Sensitive token '{token}' should not be stored in config"
 
 
 # =============================================================================
@@ -334,9 +326,9 @@ def test_dex_auth_not_supported(
     print(f"\n{'=' * 80}")
     print(f"Test: {test_case['test_name']}")
     print(f"Description: {test_case['description']}")
-    print(f"\nInput Elyra Config:")
-    print(json.dumps(test_case['elyra_input'], indent=2))
-    print(f"\nExpected: Returns False, no config saved")
+    print("\nInput Elyra Config:")
+    print(json.dumps(test_case["elyra_input"], indent=2))
+    print("\nExpected: Returns False, no config saved")
     print(f"{'=' * 80}\n")
 
     # Write Elyra config file
@@ -583,9 +575,7 @@ def test_successful_return_value(
         "host": "http://ml-pipeline:8080",
         "namespace": "test-namespace",
         "auth_type": "kubernetes_service_account_token",
-        "auth_config": {
-            "token_path": "/var/run/secrets/kubernetes.io/serviceaccount/token"
-        },
+        "auth_config": {"token_path": "/var/run/secrets/kubernetes.io/serviceaccount/token"},
         "ssl_ca_cert": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
     }
 
