@@ -99,20 +99,18 @@ jobs:
       - name: Install deps
         run: uv sync --locked
 
-      # Workaround: ubuntu-26.04 AppArmor stub profile for podman blocks SIGTERM to pasta
-      # causing "rootless netns: kill network process: permission denied" on container stop.
-      # The base AppArmor abstraction only allows "signal (receive) peer=unconfined", but
-      # the podman stub profile gives podman a named label instead of "unconfined".
-      # Must be removed before any podman command runs (podman re-exec fails if profile
-      # is removed after the process already started under it).
-      # Fixed upstream: apparmor 4.1.0~beta5-4 removes the stub entirely.
+      # Workaround: ubuntu-26.04 AppArmor stub profile for podman gives it a named label
+      # ("podman") instead of "unconfined". The pasta profile only allows signals from
+      # "unconfined" (via abstractions/base), so podman can't SIGTERM pasta on container
+      # stop → "rootless netns: kill network process: permission denied".
+      # Fix: allow pasta to receive signals from the podman profile.
       # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1100135
-      - name: Remove AppArmor podman stub profile
+      - name: Fix AppArmor pasta/podman signal conflict
         run: |
           set -Eeuxo pipefail
-          if [[ -f /etc/apparmor.d/podman ]]; then
-            sudo apparmor_parser -R /etc/apparmor.d/podman
-            sudo rm -f /etc/apparmor.d/podman
+          if [[ -f /etc/apparmor.d/abstractions/pasta ]] && ! grep -q 'peer=podman' /etc/apparmor.d/abstractions/pasta; then
+            echo '  signal (receive) peer=podman,' | sudo tee -a /etc/apparmor.d/abstractions/pasta
+            sudo apparmor_parser -r /etc/apparmor.d/usr.bin.pasta
           fi
 
       - name: Start Podman socket
