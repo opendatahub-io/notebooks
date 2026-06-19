@@ -99,8 +99,25 @@ jobs:
       - name: Install deps
         run: uv sync --locked
 
+      # Workaround: ubuntu-26.04 AppArmor stub profile for podman blocks SIGTERM to pasta
+      # causing "rootless netns: kill network process: permission denied" on container stop.
+      # The base AppArmor abstraction only allows "signal (receive) peer=unconfined", but
+      # the podman stub profile gives podman a named label instead of "unconfined".
+      # Must be removed before any podman command runs (podman re-exec fails if profile
+      # is removed after the process already started under it).
+      # Fixed upstream: apparmor 4.1.0~beta5-4 removes the stub entirely.
+      # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1100135
+      - name: Remove AppArmor podman stub profile
+        run: |
+          set -Eeuxo pipefail
+          if [[ -f /etc/apparmor.d/podman ]]; then
+            sudo apparmor_parser -R /etc/apparmor.d/podman
+            sudo rm -f /etc/apparmor.d/podman
+          fi
+
       - name: Start Podman socket
         run: |
+          set -Eeuxo pipefail
           podman --version
           systemctl --user enable --now podman.socket
           echo "DOCKER_HOST=unix://$(podman info --format '{{.Host.RemoteSocket.Path}}')" >> "$GITHUB_ENV"
