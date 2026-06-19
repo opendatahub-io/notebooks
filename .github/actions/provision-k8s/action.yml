@@ -83,12 +83,12 @@ runs:
         sudo systemctl daemon-reload
         sudo systemctl start crio.service
       env:
-        CRIO_VERSION: 1.34
+        CRIO_VERSION: 1.36
         # This has to be kept in sync with the packages above, otherwise
         # [ERROR KubeletVersion]: the kubelet version is higher than the control plane version.
         #  This is not a supported version skew and may lead to a malfunctional cluster.
         #  Kubelet version: "1.33.0" Control plane version: "1.30.12"
-        KUBERNETES_VERSION: 1.34
+        KUBERNETES_VERSION: 1.36
         # Also update version in kubeadm.yaml
 
     - run: sudo crictl info
