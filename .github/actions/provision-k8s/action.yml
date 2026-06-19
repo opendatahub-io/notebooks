@@ -83,12 +83,12 @@ runs:
         sudo systemctl daemon-reload
         sudo systemctl start crio.service
       env:
-        CRIO_VERSION: 1.34
+        CRIO_VERSION: 1.36
         # This has to be kept in sync with the packages above, otherwise
         # [ERROR KubeletVersion]: the kubelet version is higher than the control plane version.
         #  This is not a supported version skew and may lead to a malfunctional cluster.
         #  Kubelet version: "1.33.0" Control plane version: "1.30.12"
-        KUBERNETES_VERSION: 1.34
+        KUBERNETES_VERSION: 1.36
         # Also update version in kubeadm.yaml
 
     - run: sudo crictl info
@@ -179,11 +179,8 @@ runs:
       shell: bash
       run: |
         set -Eeuxo pipefail
-        # InspectFailed Failed to inspect image "": rpc error: code = Unknown desc = short name mode is enforcing, but image name rancher/local-path-provisioner:v0.0.31 returns ambiguous list
-        (curl -fsSL https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.32/deploy/local-path-storage.yaml |
-          sed 's|image: rancher/local-path-provisioner|image: docker.io/rancher/local-path-provisioner|g' |
+        curl -fsSL "https://raw.githubusercontent.com/rancher/local-path-provisioner/v${RANCHER_FULL_VERSION}/deploy/local-path-storage.yaml" |
           kubectl apply -f -
-        )
         kubectl wait deployments --all --namespace=local-path-storage --for=condition=Available --timeout=100s || (
           kubectl describe deployments --namespace=local-path-storage
           kubectl --namespace=local-path-storage get events --sort-by='.lastTimestamp'
@@ -193,3 +190,5 @@ runs:
         # https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/
         kubectl get storageclass
         kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+      env:
+        RANCHER_FULL_VERSION: 0.0.36
