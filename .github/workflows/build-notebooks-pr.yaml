@@ -18,7 +18,7 @@ jobs:
     name: Generate job matrix
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       has_jobs: ${{ steps.gen.outputs.has_jobs }}

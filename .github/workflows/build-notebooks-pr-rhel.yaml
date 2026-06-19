@@ -26,7 +26,7 @@ jobs:
   authorize:
     name: Authorize
     permissions: {}  # only needs implicit metadata:read for getCollaboratorPermissionLevel
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       authorized: ${{ steps.check.outputs.authorized }}
     steps:
@@ -66,7 +66,7 @@ jobs:
     name: Generate job matrix
     needs: [authorize]
     if: needs.authorize.outputs.authorized == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       has_jobs: ${{ steps.gen.outputs.has_jobs }}
