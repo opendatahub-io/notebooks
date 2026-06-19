@@ -146,3 +146,9 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: junit.xml
+
+      - name: Capture kernel logs on failure
+        if: ${{ failure() }}
+        uses: ./.github/actions/capture-kernel-logs
+        with:
+          log-prefix: ${{ matrix.name }}
