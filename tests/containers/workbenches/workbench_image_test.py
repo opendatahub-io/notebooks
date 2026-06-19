@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import logging
 import os
 import pathlib
@@ -10,6 +11,7 @@ import urllib.error
 import urllib.request
 from typing import TYPE_CHECKING, Self
 
+import allure
 import docker.types
 import pytest
 import testcontainers.core.container
@@ -133,6 +135,52 @@ class TestWorkbenchImage:
                     ],
                 )
 
+    @pytest.mark.codeserver
+    @allure.issue("RHAIENG-5652")
+    def test_nginx_absolute_redirect_off(self, subtests: pytest_subtests.SubTests, codeserver_image: Image) -> None:
+        """CWE-601: absolute_redirect off must be present in the live nginx config."""
+        with WorkbenchContainer(image=codeserver_image.name, user=1000, group_add=[0]) as container:
+            container.start(wait_for_readiness=True)
+            with subtests.test("absolute_redirect off is present in /etc/nginx/nginx.conf"):
+                exit_code, output = container.exec(["grep", "-r", "absolute_redirect off", "/etc/nginx/nginx.conf"])
+                assert exit_code == 0, (
+                    f"'absolute_redirect off' not found in /etc/nginx/nginx.conf — "
+                    f"open-redirect (CWE-601) mitigation may be missing.\nOutput: {output.decode()}"
+                )
+
+    @pytest.mark.codeserver
+    @allure.issue("RHAIENG-5652")
+    def test_nginx_no_open_redirect(self, subtests: pytest_subtests.SubTests, codeserver_image: Image) -> None:
+        """CWE-601 regression: return 302 rules must emit relative Location headers (FIND-011).
+
+        A forged Host header must not appear in the Location response header.
+        """
+        redirect_paths = ["/", "/codeserver"]
+        forged_host = "evil.example"
+
+        with WorkbenchContainer(image=codeserver_image.name, user=1000, group_add=[0]) as container:
+            container.start(wait_for_readiness=True)
+            port = int(container.get_exposed_port(container.port))
+
+            for path in redirect_paths:
+                with subtests.test(f"GET {path} with forged Host must yield relative Location"):
+                    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+                    try:
+                        conn.request("GET", path, headers={"Host": forged_host})
+                        resp = conn.getresponse()
+                        assert resp.status == 302, f"Expected 302 for {path}, got {resp.status}"
+                        location = resp.getheader("Location", "")
+                        assert not location.startswith("http"), (
+                            f"Open redirect (CWE-601): GET {path} with Host:{forged_host} "
+                            f"returned absolute Location: {location!r}. "
+                            f"Expected a relative path (e.g. '/codeserver/')."
+                        )
+                        assert location.startswith("/"), (
+                            f"Location header for {path} is neither absolute nor relative: {location!r}"
+                        )
+                    finally:
+                        conn.close()
+
     @pytest.mark.openshift
     def test_image_run_on_openshift(self, workbench_image: str):
         client = kubernetes_utils.get_client()
@@ -173,12 +221,19 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
 
         # connect
         host = container_host or self.get_container_host_ip()
+        # Podman publishes IPv4 ports; connecting to "localhost" may resolve to ::1 first.
+        if host == "localhost":
+            host = "127.0.0.1"
         port = container_port or self.get_exposed_port(self.port)
         try:
             # host may be an ipv6 address, need to be careful with formatting this
-            if ":" in host:
-                host = f"[{host}]"
-            result = urllib.request.urlopen(urllib.request.Request(f"http://{host}:{port}{base_url}"), timeout=1)
+            host_for_url = f"[{host}]" if ":" in host else host
+            # /api redirects to /codeserver/healthz/ and avoids the / -> /codeserver/ hop
+            # (absolute redirects on / previously broke Podman port-forward readiness checks).
+            probe_path = base_url or "/api"
+            result = urllib.request.urlopen(
+                urllib.request.Request(f"http://{host_for_url}:{port}{probe_path}"), timeout=1
+            )
         except urllib.error.URLError as e:
             raise e
 
