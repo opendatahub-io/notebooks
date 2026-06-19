@@ -104,7 +104,7 @@ runs:
         sudo journalctl -xeu crio.service
 
     # do this early, it's a good check that cri-o is not completely broken
-    - name: "Show crio images information"
+    - name: Show crio images information
       shell: bash
       run: sudo crictl images
 
@@ -168,27 +168,35 @@ runs:
         kubectl describe nodes
         kubectl wait --for=condition=Ready nodes --all --timeout=100s || (kubectl describe nodes && false)
 
-    - name: Wait for pods to be running
+    - name: Deploy local-path provisioner
       shell: bash
       run: |
         set -Eeuxo pipefail
-        kubectl wait deployments --all --all-namespaces --for=condition=Available --timeout=100s
-        kubectl wait pods --all --all-namespaces --for=condition=Ready --timeout=100s
-
-    - name: "Install local-path provisioner"
-      shell: bash
-      run: |
-        set -Eeuxo pipefail
-        curl -fsSL "https://raw.githubusercontent.com/rancher/local-path-provisioner/v${RANCHER_FULL_VERSION}/deploy/local-path-storage.yaml" |
+        # Deploy early so its image pull overlaps with CoreDNS becoming ready
+        curl --retry 3 --retry-delay 5 --retry-all-errors -fsSL \
+          "https://raw.githubusercontent.com/rancher/local-path-provisioner/v${RANCHER_FULL_VERSION}/deploy/local-path-storage.yaml" |
           kubectl apply -f -
-        kubectl wait deployments --all --namespace=local-path-storage --for=condition=Available --timeout=100s || (
-          kubectl describe deployments --namespace=local-path-storage
-          kubectl --namespace=local-path-storage get events --sort-by='.lastTimestamp'
-          kubectl --namespace=local-path-storage describe pods
+      env:
+        RANCHER_FULL_VERSION: 0.0.36
+
+    - name: Wait for all deployments and pods
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
+        kubectl wait deployments --all --all-namespaces --for=condition=Available --timeout=100s || (
+          kubectl describe deployments --all-namespaces
+          kubectl get events --all-namespaces --sort-by='.lastTimestamp'
+          kubectl describe pods --all-namespaces
           false
         )
+        kubectl wait pods --all --all-namespaces --for=condition=Ready --timeout=100s || (
+          kubectl describe pods --all-namespaces
+          false
+        )
+
+    - name: Configure default StorageClass
+      shell: bash
+      run: |
         # https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/
         kubectl get storageclass
         kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
-      env:
-        RANCHER_FULL_VERSION: 0.0.36
