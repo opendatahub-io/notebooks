@@ -26,7 +26,7 @@ runs:
       id: cached-linuxbrew
       with:
         path: /home/linuxbrew/.linuxbrew
-        key: linuxbrew-${{ runner.os }}-${{ runner.arch }}
+        key: linuxbrew-${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}
 
     # Restored cache can have wrong ownership or immutable flags; fix so brew/podman and mode changes work.
     - name: Fix .linuxbrew ownership and permissions after cache restore
