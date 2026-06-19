@@ -23,8 +23,8 @@ runs:
         #  EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
         #  ExecStart=/usr/bin/kubelet $KUBELET_KUBEADM_ARGS
         # and otherwise fetching from microsoft-prod wastes time
-        sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
-        sudo rm -f /etc/apt/sources.list.d/azure-cli.list
+        sudo rm -f /etc/apt/sources.list.d/microsoft-prod.{list,sources}
+        sudo rm -f /etc/apt/sources.list.d/azure-cli.{list,sources}
 
         cat <<'EOF' | sudo tee /etc/dpkg/dpkg.cfg.d/01_nodoc > /dev/null
         path-exclude /usr/share/doc/*

@@ -28,6 +28,8 @@ nodeRegistration:
     #  https://cep.dev/posts/adventure-trying-change-kubelet-rootdir/
     - name: root-dir
       value: /home/runner/.local/share/containers/kubelet-root-dir
+patches:
+  directory: ci/cached-builds/kubeadm-patches
 timeouts:
   controlPlaneComponentHealthCheck: 4m0s
   discovery: 5m0s

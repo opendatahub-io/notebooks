@@ -15,10 +15,12 @@ runs:
 
     # Ensure parent dir exists and is runner-owned so cache restore can set file modes (avoids "Cannot change mode: Operation not permitted").
     - name: Prepare .linuxbrew parent for cache
+      id: prep-linuxbrew
       shell: bash
       run: |
         sudo mkdir -p /home/linuxbrew
         sudo chown -R "$(whoami):$(whoami)" /home/linuxbrew
+        echo "image-os=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
 
     - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
       # https://docs.github.com/en/actions/reference/variables-reference#default-environment-variables
@@ -26,7 +28,7 @@ runs:
       id: cached-linuxbrew
       with:
         path: /home/linuxbrew/.linuxbrew
-        key: linuxbrew-${{ runner.os }}-${{ runner.arch }}
+        key: linuxbrew-${{ runner.os }}-${{ runner.arch }}-${{ steps.prep-linuxbrew.outputs.image-os }}
 
     # Restored cache can have wrong ownership or immutable flags; fix so brew/podman and mode changes work.
     - name: Fix .linuxbrew ownership and permissions after cache restore
