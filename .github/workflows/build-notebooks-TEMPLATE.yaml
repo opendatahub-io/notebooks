@@ -95,6 +95,8 @@ jobs:
         if: ${{ fromJson(inputs.github).event_name == 'pull_request_target' }}
         with:
           ref: "refs/pull/${{ fromJson(inputs.github).event.number }}/merge"
+          # checkout v7 blocks fork PR refs in pull_request_target unless opted in
+          allow-unsafe-pr-checkout: true
           fetch-depth: 0
           lfs: ${{ contains(inputs.target, 'codeserver') }}
           submodules: recursive
