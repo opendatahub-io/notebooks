@@ -56,7 +56,9 @@ networking:
   serviceSubnet: 10.96.0.0/12
 apiServer: {}
 controllerManager: {}
-dns: {}
+# Single-node CI cluster doesn't need 2 CoreDNS replicas; saves ~5-10s on pod scheduling
+dns:
+  replicas: 1
 proxy: {}
 scheduler: {}
 ---
