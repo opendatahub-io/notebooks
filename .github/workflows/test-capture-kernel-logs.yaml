@@ -1,0 +1,35 @@
+---
+name: Test Capture Kernel Logs Action
+
+"on":
+  push:
+    branches: [main, stable, 'rhoai-*']
+    paths:
+      - '.github/actions/capture-kernel-logs/**'
+      - '.github/workflows/test-capture-kernel-logs.yaml'
+  pull_request:
+    paths:
+      - '.github/actions/capture-kernel-logs/**'
+      - '.github/workflows/test-capture-kernel-logs.yaml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test-capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - name: Trigger a failure so the action runs
+        run: exit 1
+        continue-on-error: false
+        id: trigger-failure
+
+      - name: Capture kernel logs on failure
+        if: ${{ failure() }}
+        uses: ./.github/actions/capture-kernel-logs
+        with:
+          log-prefix: test-capture
