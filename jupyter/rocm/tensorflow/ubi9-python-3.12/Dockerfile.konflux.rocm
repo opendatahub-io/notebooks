@@ -57,7 +57,7 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 # compat-openssl11 provides libcrypto.so.1.1 required by FIPS-compliance scanning.
 # hadolint ignore=DL3041
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
+    bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
 # Other apps and tools installed as default user
 USER 1001
@@ -119,7 +119,7 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 # Install useful OS packages
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat
+    bash /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat
 
 # Copy dynamically-linked mongocli built in earlier build stage
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/mongocli

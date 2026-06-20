@@ -49,7 +49,7 @@ COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
 
 # Install useful OS packages
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
+    bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
 
 USER 1001
@@ -107,7 +107,7 @@ COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
 
 # Install useful OS packages
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat
+    bash /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat
 
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/mongocli
 
