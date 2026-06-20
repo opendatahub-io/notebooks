@@ -24,7 +24,7 @@ COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients libxcrypt-compat
+    bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients libxcrypt-compat
 
 
 USER 1001
