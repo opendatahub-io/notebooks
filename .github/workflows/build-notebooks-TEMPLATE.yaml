@@ -693,33 +693,8 @@ jobs:
           fi
         if: "${{ !cancelled() && steps.install-compsize.outcome == 'success' }}"
 
-      # Capture kernel logs on failure (OOM debugging); upload as uncompressed artifacts instead of flooding job logs
-      - name: Capture kernel logs
+      - name: Capture kernel logs on failure
         if: "${{ failure() }}"
-        env:
-          LOG_PREFIX: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}"
-        run: |
-          set -euo pipefail
-          log_dir="${RUNNER_TEMP}/kernel-logs"
-          mkdir -p "${log_dir}"
-          sudo dmesg > "${log_dir}/${LOG_PREFIX}_dmesg.log"
-          sudo journalctl --no-pager -k > "${log_dir}/${LOG_PREFIX}_journalctl-k.log"
-          echo "Kernel logs captured in ${log_dir}/"
-
-      - name: Upload dmesg log
-        if: "${{ failure() }}"
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: ./.github/actions/capture-kernel-logs
         with:
-          path: "${{ runner.temp }}/kernel-logs/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_dmesg.log"
-          archive: false
-          retention-days: 14
-          if-no-files-found: error
-
-      - name: Upload journalctl kernel log
-        if: "${{ failure() }}"
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          path: "${{ runner.temp }}/kernel-logs/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_journalctl-k.log"
-          archive: false
-          retention-days: 14
-          if-no-files-found: error
+          log-prefix: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}"

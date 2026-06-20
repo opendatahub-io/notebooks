@@ -15,6 +15,7 @@ runs:
     - name: Configure apt for CI
       shell: bash
       run: |
+        set -Eeuxo pipefail
         # These are idempotent and fast — safe to run every time
         sudo rm -f /var/lib/man-db/auto-update
 
@@ -49,6 +50,7 @@ runs:
       if: ${{ inputs.update == 'true' }}
       shell: bash
       run: |
+        set -Eeuxo pipefail
         sudo apt-get update
 
     - name: Install packages
