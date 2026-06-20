@@ -9,7 +9,7 @@ runs:
   using: composite
   steps:
     - name: Capture kernel logs
-      if: ${{ failure() }}
+
       shell: bash
       env:
         LOG_PREFIX: ${{ inputs.log-prefix }}
@@ -21,7 +21,7 @@ runs:
         sudo journalctl --no-pager -k > "${log_dir}/${LOG_PREFIX}_journalctl-k.log"
 
     - name: Upload dmesg log
-      if: ${{ failure() }}
+
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       with:
         path: "${{ runner.temp }}/kernel-logs/${{ inputs.log-prefix }}_dmesg.log"
@@ -30,7 +30,7 @@ runs:
         if-no-files-found: error
 
     - name: Upload journalctl kernel log
-      if: ${{ failure() }}
+
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       with:
         path: "${{ runner.temp }}/kernel-logs/${{ inputs.log-prefix }}_journalctl-k.log"
