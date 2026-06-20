@@ -71,6 +71,7 @@ runs:
       id: playwright-version
       shell: bash
       run: |
+        set -Eeuxo pipefail
         if [[ -n "${INPUT_PLAYWRIGHT_VERSION}" ]]; then
           echo "version=${INPUT_PLAYWRIGHT_VERSION}" >> "$GITHUB_OUTPUT"
         else
@@ -93,6 +94,7 @@ runs:
       id: pnpm-version
       shell: bash
       run: |
+        set -Eeuxo pipefail
         ver=$(scripts/get-pnpm-version.sh "${WORKING_DIRECTORY}/pnpm-lock.yaml")
         echo "version=${ver}" >> "$GITHUB_OUTPUT"
         echo "Resolved pnpm version: ${ver}"

@@ -18,6 +18,7 @@ runs:
       id: prep-linuxbrew
       shell: bash
       run: |
+        set -Eeuxo pipefail
         sudo mkdir -p /home/linuxbrew
         sudo chown -R "$(whoami):$(whoami)" /home/linuxbrew
         echo "image-os=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
@@ -35,6 +36,7 @@ runs:
       if: steps.cached-linuxbrew.outputs.cache-hit == 'true'
       shell: bash
       run: |
+        set -Eeuxo pipefail
         if [[ -d /home/linuxbrew/.linuxbrew ]]; then
           sudo chattr -R -i /home/linuxbrew/.linuxbrew 2>/dev/null || true
           sudo chown -R "$(whoami):$(whoami)" /home/linuxbrew/.linuxbrew
@@ -45,6 +47,7 @@ runs:
       if: contains(fromJSON('["linux/amd64", "linux/s390x", "linux/ppc64le"]'), inputs.platform) && steps.cached-linuxbrew.outputs.cache-hit != 'true'
       shell: bash
       run: |
+        set -Eeuxo pipefail
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         /home/linuxbrew/.linuxbrew/bin/brew install podman
 
@@ -61,6 +64,7 @@ runs:
       # If you're feeling brave, you can try to install from source with:
       shell: bash
       run: |
+        set -Eeuxo pipefail
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         /home/linuxbrew/.linuxbrew/bin/brew install --build-from-source podman
 

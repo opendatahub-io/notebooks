@@ -165,6 +165,7 @@ runs:
     - name: Show nodes status and wait for readiness
       shell: bash
       run: |
+        set -Eeuxo pipefail
         kubectl describe nodes
         kubectl wait --for=condition=Ready nodes --all --timeout=100s || (kubectl describe nodes && false)
 
@@ -197,6 +198,7 @@ runs:
     - name: Configure default StorageClass
       shell: bash
       run: |
+        set -Eeuxo pipefail
         # https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/
         kubectl get storageclass
         kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
