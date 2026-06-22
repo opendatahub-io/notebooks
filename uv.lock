@@ -630,6 +630,22 @@ wheels = [
 ]
 
 [[package]]
+name = "inline-snapshot"
+version = "0.34.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "asttokens", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "executing", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "pytest", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "rich", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "typing-extensions", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b8/2e/00c99468c7788bdb4f7d861bcfbfb091a5fe1bc475f9dd031f667c422a73/inline_snapshot-0.34.1.tar.gz", hash = "sha256:f8af37876c42069b7c0ed73f64357ace482955c3225ebcd27f243197ecfbcb65", size = 2638769, upload-time = "2026-06-05T16:58:47.921Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ba/83/21747d0ee2276e973a2889e960f2ec904fbbe83fac6fecd8a57995bb81df/inline_snapshot-0.34.1-py3-none-any.whl", hash = "sha256:4c043215866dfdbe6a3ead92d9d0a9294720c7deebddc346dc781654cb19daa9", size = 90039, upload-time = "2026-06-05T16:58:46.038Z" },
+]
+
+[[package]]
 name = "invoke"
 version = "3.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -969,6 +985,7 @@ dev = [
     { name = "authlib", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "certifi", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "docker", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "inline-snapshot", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "keyring", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "kubernetes", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "openshift-python-wrapper", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -1000,6 +1017,7 @@ dev = [
     { name = "authlib", specifier = ">=1.6.12" },
     { name = "certifi" },
     { name = "docker" },
+    { name = "inline-snapshot", specifier = ">=0.34.1" },
     { name = "keyring" },
     { name = "kubernetes" },
     { name = "openshift-python-wrapper" },
