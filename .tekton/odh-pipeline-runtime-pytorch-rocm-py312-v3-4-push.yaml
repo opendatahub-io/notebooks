@@ -34,7 +34,7 @@ spec:
   - name: output-image
     value: quay.io/rhoai/odh-pipeline-runtime-pytorch-rocm-py312-rhel9:{{target_branch}}
   - name: rhoai-version
-    value: "3.4.1"
+    value: "3.4.2"
   - name: dockerfile
     value: runtimes/rocm-pytorch/ubi9-python-3.12/Dockerfile.konflux.rocm
   - name: path-context

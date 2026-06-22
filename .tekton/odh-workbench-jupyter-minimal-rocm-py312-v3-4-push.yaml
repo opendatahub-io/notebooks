@@ -34,7 +34,7 @@ spec:
   - name: output-image
     value: quay.io/rhoai/odh-workbench-jupyter-minimal-rocm-py312-rhel9:{{target_branch}}
   - name: rhoai-version
-    value: "3.4.1"
+    value: "3.4.2"
   - name: dockerfile
     value: jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.rocm
   - name: build-args-file
