@@ -82,6 +82,14 @@ def test_minimal_valid_config_passes_validation() -> None:
             ["missing github-actions group packageRule"],
             id="missing-github-actions-group",
         ),
+        pytest.param(
+            lambda config: testdata.with_package_rules_removed(
+                config,
+                lambda rule: rule.get("description", "").startswith(validator.CENTOS_STREAM_RULE_DESCRIPTION),
+            ),
+            [f"missing CentOS Stream pin packageRule: {validator.CENTOS_STREAM_RULE_DESCRIPTION!r}"],
+            id="missing-centos-stream-pin",
+        ),
     ],
 )
 def test_validate_config_reports_expected_errors(

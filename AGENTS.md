@@ -90,7 +90,9 @@ make refresh-lock-files
   `.tekton/` pipelines, or renaming image labels in `ci/` metadata files.
 - **Never:** Comment out tests to silence failures. Copy internal-only links or
   hostnames into public docs. Modify `.tekton/` in `red-hat-data-services/notebooks`
-  directly (PipelineRuns are synced from `konflux-central`).
+  directly (PipelineRuns are synced from `konflux-central`). Bump container OS bases
+  to RHEL/UBI/CentOS 10 or accept MintMaker PRs that do — the project stays on EL9;
+  see [base-images/README.md](base-images/README.md#os-version-policy-el9-only).
 
 ## Communication
 

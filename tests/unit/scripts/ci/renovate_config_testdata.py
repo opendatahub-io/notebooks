@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from scripts.ci.validate_renovate_config import (
+    CENTOS_STREAM_ALLOWED_VERSIONS,
+    CENTOS_STREAM_RULE_DESCRIPTION,
     EXPECTED_COMMIT_MESSAGE_PREFIX,
     EXPECTED_PREFIX_MATCH_BASE,
     MINTMAKER_POLICIES,
@@ -42,11 +44,22 @@ def github_actions_group_rule() -> dict[str, Any]:
     }
 
 
+def centos_stream_pin_rule() -> dict[str, Any]:
+    return {
+        "description": CENTOS_STREAM_RULE_DESCRIPTION,
+        "matchManagers": ["dockerfile"],
+        "matchPackageNames": ["quay.io/centos/centos"],
+        "allowedVersions": CENTOS_STREAM_ALLOWED_VERSIONS,
+        "pinDigests": True,
+    }
+
+
 def minimal_valid_config(*extra_rules: dict[str, Any]) -> dict[str, Any]:
     package_rules: list[dict[str, Any]] = [prefix_rule()]
     for policy in MINTMAKER_POLICIES:
         package_rules.extend(mintmaker_gate_rules(policy))
     package_rules.append(github_actions_group_rule())
+    package_rules.append(centos_stream_pin_rule())
     package_rules.extend(extra_rules)
     return {
         "enabledManagers": list(REQUIRED_ENABLED_MANAGERS),

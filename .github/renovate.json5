@@ -260,6 +260,15 @@
       "allowedVersions": "/^43$/",
     },
     {
+      // Digest-only FROM lines track the registry default tag; quay.io/centos/centos
+      // now resolves stream10.  Keep stream9@sha256 in Dockerfiles and block tag bumps.
+      "description": "Pin CentOS Stream base to stream9 (c9s only; no stream10)",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["quay.io/centos/centos"],
+      "allowedVersions": "/^stream9$/",
+      "pinDigests": true,
+    },
+    {
       "description": "Track registry.redhat.io base images",
       "matchManagers": ["custom.regex"],
       "matchDatasources": ["docker"],
