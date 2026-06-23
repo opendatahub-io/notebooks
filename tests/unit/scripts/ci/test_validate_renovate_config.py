@@ -37,6 +37,25 @@ def test_commit_message_prefix_for_branch_merged_rules() -> None:
     )
 
 
+def test_renovate_enabled_for_odh_main_only() -> None:
+    config = {
+        "packageRules": [
+            {"matchRepositories": [validator.ODH_REPO], "enabled": False},
+            {
+                "matchRepositories": [validator.ODH_REPO],
+                "matchBaseBranches": sorted(validator.ODH_ENABLED_BRANCHES),
+                "enabled": True,
+            },
+        ]
+    }
+    assert validator.renovate_enabled_for(config, validator.ODH_REPO, "main") is True, (
+        "Expected MintMaker enabled on ODH main"
+    )
+    assert validator.renovate_enabled_for(config, validator.ODH_REPO, "stable") is False, (
+        "Expected MintMaker disabled on ODH stable"
+    )
+
+
 def test_validate_config_reports_missing_prefix_rule() -> None:
     config = {"enabledManagers": list(validator.REQUIRED_ENABLED_MANAGERS), "packageRules": []}
     errors = validator.validate_config(config)
@@ -56,6 +75,12 @@ def test_validate_config_rejects_shadow_renovate_json(tmp_path) -> None:
                 "description": validator.PREFIX_RULE_DESCRIPTION,
                 "matchBaseBranches": validator.EXPECTED_PREFIX_MATCH_BASE,
                 "commitMessagePrefix": validator.EXPECTED_COMMIT_MESSAGE_PREFIX,
+            },
+            {"matchRepositories": [validator.ODH_REPO], "enabled": False},
+            {
+                "matchRepositories": [validator.ODH_REPO],
+                "matchBaseBranches": sorted(validator.ODH_ENABLED_BRANCHES),
+                "enabled": True,
             },
             {"matchRepositories": [validator.RHDS_REPO], "enabled": False},
             {

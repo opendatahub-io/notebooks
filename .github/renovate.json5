@@ -8,6 +8,8 @@
 //   - opendatahub-io/notebooks @ main
 //   - red-hat-data-services/notebooks @ rhoai-2.25, rhoai-3.3, rhoai-3.4
 // MintMaker OFF:
+//   - opendatahub-io/notebooks @ stable, candidate, legacy poc branches (release-data may
+//     still list them until an ops MR removes them — packageRules gate PR creation)
 //   - red-hat-data-services/notebooks @ main (autosync from ODH main), EA, EOL branches
 //
 // This file is ignored if `.github/renovate.json` is also present —
@@ -142,6 +144,17 @@
       "description": "Prefix PR titles with branch name for non-main branches",
       "matchBaseBranches": ["!/^main$/"],
       "commitMessagePrefix": "[{{{baseBranch}}}]",
+    },
+    {
+      description: "ODH upstream: disable MintMaker on all branches by default",
+      matchRepositories: ["opendatahub-io/notebooks"],
+      enabled: false,
+    },
+    {
+      description: "ODH upstream: enable MintMaker on main only",
+      matchRepositories: ["opendatahub-io/notebooks"],
+      matchBaseBranches: ["main"],
+      enabled: true,
     },
     {
       description: "RHDS fork: disable MintMaker by default (autosync main, EA, EOL, rhoai-2.24 — release-data may still list 2.24 until ops MR)",
