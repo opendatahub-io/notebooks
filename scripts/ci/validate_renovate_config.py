@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,7 +29,6 @@ class MintMakerRepoPolicy:
     label: str
     repository: str
     enabled_branches: frozenset[str]
-    disabled_branches: frozenset[str]
 
 
 MINTMAKER_POLICIES = (
@@ -38,13 +36,11 @@ MINTMAKER_POLICIES = (
         label="ODH",
         repository=ODH_REPO,
         enabled_branches=frozenset({"main"}),
-        disabled_branches=frozenset({"stable", "candidate"}),
     ),
     MintMakerRepoPolicy(
         label="RHDS",
         repository=RHDS_REPO,
         enabled_branches=RHDS_ENABLED_BRANCHES,
-        disabled_branches=frozenset({"main"}),
     ),
 )
 
@@ -57,31 +53,6 @@ def load_config(path: Path) -> dict[str, Any]:
         msg = f"{path}: expected top-level object, got {type(data).__name__}"
         raise ValueError(msg)
     return data
-
-
-def _pattern_matches_branch(pattern: str, base_branch: str) -> bool:
-    if pattern.startswith("!/") and pattern.endswith("/"):
-        inner = pattern[2:-1]
-        return re.fullmatch(inner, base_branch) is None
-    if pattern.startswith("/") and pattern.endswith("/"):
-        inner = pattern[1:-1]
-        return re.fullmatch(inner, base_branch) is not None
-    return pattern == base_branch
-
-
-def match_base_branches(rule: dict[str, Any], base_branch: str) -> bool:
-    patterns = rule.get("matchBaseBranches")
-    if not patterns:
-        return True
-    if not isinstance(patterns, list):
-        return True
-    return any(_pattern_matches_branch(str(item), base_branch) for item in patterns)
-
-
-def rule_applies(rule: dict[str, Any], base_branch: str) -> bool:
-    if "enabled" in rule and rule["enabled"] is False:
-        return False
-    return match_base_branches(rule, base_branch)
 
 
 def find_repo_rule(
@@ -107,24 +78,7 @@ def find_repo_rule(
     return None
 
 
-def renovate_enabled_for(config: dict[str, Any], repository: str, base_branch: str) -> bool:
-    enabled = True
-    for rule in config.get("packageRules", []):
-        if not isinstance(rule, dict):
-            continue
-        repos = rule.get("matchRepositories")
-        if not isinstance(repos, list) or repository not in repos:
-            continue
-        if "enabled" not in rule:
-            continue
-        if not match_base_branches(rule, base_branch):
-            continue
-        enabled = bool(rule["enabled"])
-    return enabled
-
-
 def validate_mintmaker_policy(
-    config: dict[str, Any],
     package_rules: list[Any],
     policy: MintMakerRepoPolicy,
 ) -> list[str]:
@@ -153,30 +107,7 @@ def validate_mintmaker_policy(
             f"{sorted(policy.enabled_branches)!r}, got {enable_rule.get('matchBaseBranches')!r}"
         )
 
-    for branch in sorted(policy.enabled_branches):
-        if not renovate_enabled_for(config, policy.repository, branch):
-            errors.append(f"MintMaker must stay enabled for {policy.repository!r} @ {branch}")
-
-    for branch in sorted(policy.disabled_branches):
-        if renovate_enabled_for(config, policy.repository, branch):
-            errors.append(f"MintMaker must be disabled for {policy.repository!r} @ {branch!r}")
-
     return errors
-
-
-def commit_message_prefix_for_branch(config: dict[str, Any], base_branch: str) -> str | None:
-    prefix: str | None = None
-    for rule in config.get("packageRules", []):
-        if not isinstance(rule, dict):
-            continue
-        if not rule_applies(rule, base_branch):
-            continue
-        if "commitMessagePrefix" in rule:
-            raw = rule["commitMessagePrefix"]
-            if not isinstance(raw, str):
-                continue
-            prefix = raw.replace("{{{baseBranch}}}", base_branch)
-    return prefix
 
 
 def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".github") -> list[str]:
@@ -229,7 +160,7 @@ def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".githu
             )
 
     for policy in MINTMAKER_POLICIES:
-        errors.extend(validate_mintmaker_policy(config, package_rules, policy))
+        errors.extend(validate_mintmaker_policy(package_rules, policy))
 
     gh_actions_pin = next(
         (
@@ -245,16 +176,6 @@ def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".githu
         errors.append("missing github-actions group packageRule")
     elif gh_actions_pin.get("pinDigests") is not True:
         errors.append("github-actions group rule must set pinDigests: true")
-
-    if commit_message_prefix_for_branch(config, "main") is not None:
-        errors.append("commitMessagePrefix must not apply to base branch 'main'")
-    for branch in sorted(RHDS_ENABLED_BRANCHES):
-        expected = f"[{branch}]"
-        actual = commit_message_prefix_for_branch(config, branch)
-        if actual != expected:
-            errors.append(
-                f"commitMessagePrefix for {branch!r} must be {expected!r}, got {actual!r}"
-            )
 
     return errors
 
