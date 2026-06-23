@@ -60,7 +60,9 @@ that embeds that stage. Do not assume there is one shared parent image definitio
 ### ODH vs RHOAI builds
 
 `KONFLUX` selects the product variant (ODH midstream vs RHOAI downstream), not whether
-the build runs on Konflux/Tekton. See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
+the build runs on Konflux/Tekton. ODH workbenches stack on c9s odh-base-images;
+RHOAI stacks on RHEL 9.6 AIPCC bases (`ubi9-python-*` paths are EL9 naming only).
+See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 [CONTRIBUTING.md](CONTRIBUTING.md) for local-build gotchas.
 
 ## Common commands
