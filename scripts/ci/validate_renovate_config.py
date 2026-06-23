@@ -22,6 +22,8 @@ RHDS_ENABLED_BRANCHES = frozenset({"rhoai-2.25", "rhoai-3.3", "rhoai-3.4"})
 PREFIX_RULE_DESCRIPTION = "Prefix PR titles with branch name for non-main branches"
 EXPECTED_PREFIX_MATCH_BASE = ["!/^main$/"]
 EXPECTED_COMMIT_MESSAGE_PREFIX = "[{{{baseBranch}}}]"
+CENTOS_STREAM_RULE_DESCRIPTION = "Pin CentOS Stream base to stream9 (c9s only; no stream10)"
+CENTOS_STREAM_ALLOWED_VERSIONS = "/^stream9$/"
 
 
 @dataclass(frozen=True)
@@ -176,6 +178,30 @@ def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".githu
         errors.append("missing github-actions group packageRule")
     elif gh_actions_pin.get("pinDigests") is not True:
         errors.append("github-actions group rule must set pinDigests: true")
+
+    centos_stream_pin = next(
+        (
+            rule
+            for rule in package_rules
+            if isinstance(rule, dict)
+            and rule.get("description", "").startswith(CENTOS_STREAM_RULE_DESCRIPTION)
+        ),
+        None,
+    )
+    if centos_stream_pin is None:
+        errors.append(f"missing CentOS Stream pin packageRule: {CENTOS_STREAM_RULE_DESCRIPTION!r}")
+    else:
+        if centos_stream_pin.get("matchManagers") != ["dockerfile"]:
+            errors.append("CentOS Stream pin rule must match dockerfile manager only")
+        if centos_stream_pin.get("matchPackageNames") != ["quay.io/centos/centos"]:
+            errors.append("CentOS Stream pin rule must match quay.io/centos/centos only")
+        if centos_stream_pin.get("allowedVersions") != CENTOS_STREAM_ALLOWED_VERSIONS:
+            errors.append(
+                "CentOS Stream pin rule allowedVersions must be "
+                f"{CENTOS_STREAM_ALLOWED_VERSIONS!r}, got {centos_stream_pin.get('allowedVersions')!r}"
+            )
+        if centos_stream_pin.get("pinDigests") is not True:
+            errors.append("CentOS Stream pin rule must set pinDigests: true")
 
     return errors
 

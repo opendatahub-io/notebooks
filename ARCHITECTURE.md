@@ -41,6 +41,16 @@ CUDA/ROCm versions). In ODH (OpenDataHub), base images are built from `base-imag
 in this repo. In RHOAI (Red Hat OpenShift AI), base images come from the AIPCC pipeline
 instead.
 
+### Supported OS versions
+
+The entire project targets **Enterprise Linux 9 only**. ODH `base-images/` and ODH
+workbench/runtime builds use CentOS Stream 9 (`c9s`); RHOAI/Konflux builds use
+RHEL 9.6 EUS (AIPCC). The `ubi9-python-*` paths are an EL9 naming convention, not
+`FROM ubi9` bases. Do not move to stream10, ubi10, or rhel10 without an explicit
+project decision. See [base-images/README.md](base-images/README.md#os-version-policy-el9-only)
+for Dockerfile pinning conventions and the Renovate rule that blocks MintMaker stream10
+bumps.
+
 Each image directory (e.g. `jupyter/minimal/ubi9-python-3.12/`) contains:
 - `Dockerfile.*` — one per variant (cpu, cuda, rocm, konflux.cpu, etc.)
 - `pyproject.toml` — Python dependencies

@@ -7,6 +7,22 @@ All images are **CentOS Stream 9** (c9s) with **Python 3.12**.
 > **RHEL 9.6 EUS** base images from [AIPCC](https://gitlab.com/redhat/rhel-ai/core/base-images/app),
 > not these c9s images.
 
+## OS version policy (EL9 only)
+
+This repository builds on **Enterprise Linux 9 only**. ODH `base-images/` and ODH
+workbench/runtime builds use CentOS Stream 9 (`stream9`, `c9s`) via
+`quay.io/opendatahub/odh-base-image-*-py312-c9s`. RHOAI/Konflux builds use RHEL
+9.6 EUS (AIPCC) via `quay.io/aipcc/base-images/*-el9.6`. The `ubi9-python-*`
+directory names denote EL9 compatibility; they are not `FROM ubi9` bases.
+Accidental upgrades to stream10, ubi10, or rhel10 are out of scope until explicitly planned.
+
+Pin OS `FROM` references with an explicit tag and digest — for example
+`quay.io/centos/centos:stream9@sha256:…`. Digest-only refs (without a tag) let
+Renovate/MintMaker follow the registry default tag, which can jump to stream10.
+Tag bumps for `quay.io/centos/centos` are blocked by `allowedVersions` in
+[`.github/renovate.json5`](../.github/renovate.json5); digest refreshes within
+`stream9` remain allowed.
+
 ## Layout
 
 | Directory | Purpose |
