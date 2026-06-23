@@ -127,7 +127,6 @@ def test_commit_message_prefix_skips_disabled_main_rule() -> None:
             [
                 "missing ODH MintMaker disable rule for 'opendatahub-io/notebooks'",
                 "MintMaker must be disabled for 'opendatahub-io/notebooks' @ 'candidate'",
-                "MintMaker must be disabled for 'opendatahub-io/notebooks' @ 'konflux-poc-1'",
                 "MintMaker must be disabled for 'opendatahub-io/notebooks' @ 'stable'",
             ],
             id="missing-odh-disable",

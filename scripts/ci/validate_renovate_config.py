@@ -38,7 +38,7 @@ MINTMAKER_POLICIES = (
         label="ODH",
         repository=ODH_REPO,
         enabled_branches=frozenset({"main"}),
-        disabled_branches=frozenset({"stable", "candidate", "konflux-poc-1"}),
+        disabled_branches=frozenset({"stable", "candidate"}),
     ),
     MintMakerRepoPolicy(
         label="RHDS",
