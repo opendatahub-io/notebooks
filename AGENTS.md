@@ -60,7 +60,9 @@ that embeds that stage. Do not assume there is one shared parent image definitio
 ### ODH vs RHOAI builds
 
 `KONFLUX` selects the product variant (ODH midstream vs RHOAI downstream), not whether
-the build runs on Konflux/Tekton. See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
+the build runs on Konflux/Tekton. ODH workbenches stack on c9s odh-base-images;
+RHOAI stacks on RHEL 9.6 AIPCC bases (`ubi9-python-*` paths are EL9 naming only).
+See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 [CONTRIBUTING.md](CONTRIBUTING.md) for local-build gotchas.
 
 ## Common commands
@@ -90,7 +92,9 @@ make refresh-lock-files
   `.tekton/` pipelines, or renaming image labels in `ci/` metadata files.
 - **Never:** Comment out tests to silence failures. Copy internal-only links or
   hostnames into public docs. Modify `.tekton/` in `red-hat-data-services/notebooks`
-  directly (PipelineRuns are synced from `konflux-central`).
+  directly (PipelineRuns are synced from `konflux-central`). Bump container OS bases
+  to RHEL/UBI/CentOS 10 or accept MintMaker PRs that do — the project stays on EL9;
+  see [base-images/README.md](base-images/README.md#os-version-policy-el9-only).
 
 ## Communication
 
