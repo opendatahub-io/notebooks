@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -17,13 +18,37 @@ DEFAULT_CONFIG = ROOT / ".github" / "renovate.json5"
 
 REQUIRED_ENABLED_MANAGERS = frozenset({"tekton", "dockerfile", "custom.regex", "github-actions"})
 ODH_REPO = "opendatahub-io/notebooks"
-ODH_ENABLED_BRANCHES = frozenset({"main"})
 RHDS_REPO = "red-hat-data-services/notebooks"
 RHDS_ENABLED_BRANCHES = frozenset({"rhoai-2.25", "rhoai-3.3", "rhoai-3.4"})
-ODH_DISABLED_BRANCHES = frozenset({"stable", "candidate", "konflux-poc-1"})
 PREFIX_RULE_DESCRIPTION = "Prefix PR titles with branch name for non-main branches"
 EXPECTED_PREFIX_MATCH_BASE = ["!/^main$/"]
 EXPECTED_COMMIT_MESSAGE_PREFIX = "[{{{baseBranch}}}]"
+
+
+@dataclass(frozen=True)
+class MintMakerRepoPolicy:
+    label: str
+    repository: str
+    enabled_branches: frozenset[str]
+    disabled_branches: frozenset[str]
+
+
+MINTMAKER_POLICIES = (
+    MintMakerRepoPolicy(
+        label="ODH",
+        repository=ODH_REPO,
+        enabled_branches=frozenset({"main"}),
+        disabled_branches=frozenset({"stable", "candidate", "konflux-poc-1"}),
+    ),
+    MintMakerRepoPolicy(
+        label="RHDS",
+        repository=RHDS_REPO,
+        enabled_branches=RHDS_ENABLED_BRANCHES,
+        disabled_branches=frozenset({"main"}),
+    ),
+)
+
+ODH_ENABLED_BRANCHES = MINTMAKER_POLICIES[0].enabled_branches
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -59,13 +84,27 @@ def rule_applies(rule: dict[str, Any], base_branch: str) -> bool:
     return match_base_branches(rule, base_branch)
 
 
-def _rule_matches_repository(rule: dict[str, Any], repository: str) -> bool:
-    repos = rule.get("matchRepositories")
-    if not repos:
-        return True
-    if not isinstance(repos, list):
-        return True
-    return repository in repos
+def find_repo_rule(
+    package_rules: list[Any],
+    repository: str,
+    *,
+    enabled: bool,
+    require_match_base_branches: bool | None = None,
+) -> dict[str, Any] | None:
+    for rule in package_rules:
+        if not isinstance(rule, dict):
+            continue
+        if rule.get("matchRepositories") != [repository]:
+            continue
+        if rule.get("enabled") is not enabled:
+            continue
+        has_match_base_branches = "matchBaseBranches" in rule
+        if require_match_base_branches is True and not has_match_base_branches:
+            continue
+        if require_match_base_branches is False and has_match_base_branches:
+            continue
+        return rule
+    return None
 
 
 def renovate_enabled_for(config: dict[str, Any], repository: str, base_branch: str) -> bool:
@@ -73,13 +112,56 @@ def renovate_enabled_for(config: dict[str, Any], repository: str, base_branch: s
     for rule in config.get("packageRules", []):
         if not isinstance(rule, dict):
             continue
-        if not _rule_matches_repository(rule, repository):
+        repos = rule.get("matchRepositories")
+        if not isinstance(repos, list) or repository not in repos:
+            continue
+        if "enabled" not in rule:
             continue
         if not match_base_branches(rule, base_branch):
             continue
-        if "enabled" in rule:
-            enabled = bool(rule["enabled"])
+        enabled = bool(rule["enabled"])
     return enabled
+
+
+def validate_mintmaker_policy(
+    config: dict[str, Any],
+    package_rules: list[Any],
+    policy: MintMakerRepoPolicy,
+) -> list[str]:
+    errors: list[str] = []
+
+    disable_rule = find_repo_rule(
+        package_rules,
+        policy.repository,
+        enabled=False,
+        require_match_base_branches=False,
+    )
+    if disable_rule is None:
+        errors.append(f"missing {policy.label} MintMaker disable rule for {policy.repository!r}")
+
+    enable_rule = find_repo_rule(
+        package_rules,
+        policy.repository,
+        enabled=True,
+        require_match_base_branches=True,
+    )
+    if enable_rule is None:
+        errors.append(f"missing {policy.label} MintMaker enable rule for {policy.repository!r}")
+    elif set(enable_rule.get("matchBaseBranches", [])) != policy.enabled_branches:
+        errors.append(
+            f"{policy.label} enable rule matchBaseBranches must be "
+            f"{sorted(policy.enabled_branches)!r}, got {enable_rule.get('matchBaseBranches')!r}"
+        )
+
+    for branch in sorted(policy.enabled_branches):
+        if not renovate_enabled_for(config, policy.repository, branch):
+            errors.append(f"MintMaker must stay enabled for {policy.repository!r} @ {branch}")
+
+    for branch in sorted(policy.disabled_branches):
+        if renovate_enabled_for(config, policy.repository, branch):
+            errors.append(f"MintMaker must be disabled for {policy.repository!r} @ {branch!r}")
+
+    return errors
 
 
 def commit_message_prefix_for_branch(config: dict[str, Any], base_branch: str) -> str | None:
@@ -146,68 +228,8 @@ def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".githu
                 f"{EXPECTED_COMMIT_MESSAGE_PREFIX!r}, got {prefix_rule.get('commitMessagePrefix')!r}"
             )
 
-    odh_disable = next(
-        (
-            rule
-            for rule in package_rules
-            if isinstance(rule, dict)
-            and rule.get("matchRepositories") == [ODH_REPO]
-            and rule.get("enabled") is False
-            and "matchBaseBranches" not in rule
-        ),
-        None,
-    )
-    if odh_disable is None:
-        errors.append(f"missing ODH MintMaker disable rule for {ODH_REPO!r}")
-
-    odh_enable = next(
-        (
-            rule
-            for rule in package_rules
-            if isinstance(rule, dict)
-            and rule.get("matchRepositories") == [ODH_REPO]
-            and rule.get("enabled") is True
-        ),
-        None,
-    )
-    if odh_enable is None:
-        errors.append(f"missing ODH MintMaker enable rule for {ODH_REPO!r}")
-    elif set(odh_enable.get("matchBaseBranches", [])) != ODH_ENABLED_BRANCHES:
-        errors.append(
-            "ODH enable rule matchBaseBranches must be "
-            f"{sorted(ODH_ENABLED_BRANCHES)!r}, got {odh_enable.get('matchBaseBranches')!r}"
-        )
-
-    rhds_disable = next(
-        (
-            rule
-            for rule in package_rules
-            if isinstance(rule, dict)
-            and rule.get("matchRepositories") == [RHDS_REPO]
-            and rule.get("enabled") is False
-        ),
-        None,
-    )
-    if rhds_disable is None:
-        errors.append(f"missing RHDS MintMaker disable rule for {RHDS_REPO!r}")
-
-    rhds_enable = next(
-        (
-            rule
-            for rule in package_rules
-            if isinstance(rule, dict)
-            and rule.get("matchRepositories") == [RHDS_REPO]
-            and rule.get("enabled") is True
-        ),
-        None,
-    )
-    if rhds_enable is None:
-        errors.append(f"missing RHDS MintMaker enable rule for {RHDS_REPO!r}")
-    elif set(rhds_enable.get("matchBaseBranches", [])) != RHDS_ENABLED_BRANCHES:
-        errors.append(
-            "RHDS enable rule matchBaseBranches must be "
-            f"{sorted(RHDS_ENABLED_BRANCHES)!r}, got {rhds_enable.get('matchBaseBranches')!r}"
-        )
+    for policy in MINTMAKER_POLICIES:
+        errors.extend(validate_mintmaker_policy(config, package_rules, policy))
 
     gh_actions_pin = next(
         (
@@ -224,15 +246,9 @@ def validate_config(config: dict[str, Any], *, config_dir: Path = ROOT / ".githu
     elif gh_actions_pin.get("pinDigests") is not True:
         errors.append("github-actions group rule must set pinDigests: true")
 
-    if not renovate_enabled_for(config, ODH_REPO, "main"):
-        errors.append(f"MintMaker must stay enabled for {ODH_REPO!r} @ main")
-    for branch in ODH_DISABLED_BRANCHES:
-        if renovate_enabled_for(config, ODH_REPO, branch):
-            errors.append(f"MintMaker must be disabled for {ODH_REPO!r} @ {branch!r}")
-
     if commit_message_prefix_for_branch(config, "main") is not None:
         errors.append("commitMessagePrefix must not apply to base branch 'main'")
-    for branch in ("rhoai-3.4", "rhoai-2.25"):
+    for branch in sorted(RHDS_ENABLED_BRANCHES):
         expected = f"[{branch}]"
         actual = commit_message_prefix_for_branch(config, branch)
         if actual != expected:
