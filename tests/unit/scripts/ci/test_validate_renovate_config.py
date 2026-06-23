@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from scripts.ci import validate_renovate_config as validator
 from tests.unit.scripts.ci import renovate_config_testdata as testdata
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 POLICY_ENABLED_CASES = [
     pytest.param(policy, branch, True, id=f"{policy.label}-{branch}-enabled")
@@ -173,8 +175,10 @@ def test_commit_message_prefix_skips_disabled_main_rule() -> None:
                 ["rhoai-2.25"],
             ),
             [
-                "RHDS enable rule matchBaseBranches must be "
-                "['rhoai-2.25', 'rhoai-3.3', 'rhoai-3.4'], got ['rhoai-2.25']",
+                (
+                    "RHDS enable rule matchBaseBranches must be "
+                    "['rhoai-2.25', 'rhoai-3.3', 'rhoai-3.4'], got ['rhoai-2.25']"
+                ),
                 "MintMaker must stay enabled for 'red-hat-data-services/notebooks' @ rhoai-3.3",
                 "MintMaker must stay enabled for 'red-hat-data-services/notebooks' @ rhoai-3.4",
             ],

@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from scripts.ci.validate_renovate_config import (
     EXPECTED_COMMIT_MESSAGE_PREFIX,
     EXPECTED_PREFIX_MATCH_BASE,
     MINTMAKER_POLICIES,
-    MintMakerRepoPolicy,
     PREFIX_RULE_DESCRIPTION,
     REQUIRED_ENABLED_MANAGERS,
+    MintMakerRepoPolicy,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def prefix_rule() -> dict[str, Any]:
@@ -56,11 +58,7 @@ def with_package_rules_removed(
     config: dict[str, Any],
     predicate: Callable[[dict[str, Any]], bool],
 ) -> dict[str, Any]:
-    package_rules = [
-        rule
-        for rule in config["packageRules"]
-        if not (isinstance(rule, dict) and predicate(rule))
-    ]
+    package_rules = [rule for rule in config["packageRules"] if not (isinstance(rule, dict) and predicate(rule))]
     return {**config, "packageRules": package_rules}
 
 
