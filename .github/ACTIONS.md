@@ -19,6 +19,12 @@ Notebook builds and RPM lock renewal use [`.github/actions/install-podman-action
 It configures the **system Podman** package shipped on the runner image (5.7+), starts the rootful API socket, and sets `PODMAN_SOCK` / `CONTAINER_HOST`.
 Linuxbrew is no longer used.
 
+`ci/cached-builds/containers.conf` sets explicit `dns_servers` because GHA runners use
+`systemd-resolved` (`127.0.0.53`), which is unreachable from container network namespaces
+and breaks hermetic prefetch (`cdn.redhat.com`). See [podman #17075](https://github.com/containers/podman/issues/17075)
+and pasta/systemd-resolved notes in [podman networking](https://sanj.dev/post/podman-pasta-vs-slirp4netns-networking/).
+`test-install-podman` validates container IP and DNS reachability (HTTP + `dig` UDP/TCP) after configure.
+
 We have considered investigating custom runners, either just plain containers/VMs, or something fronting an OpenShift cluster, in
 
 * https://github.com/opendatahub-io/notebooks/issues/1389

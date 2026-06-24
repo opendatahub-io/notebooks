@@ -17,6 +17,17 @@ runs:
           sudo apt-get -qq install -y acl
         fi
 
+    # ubuntu-26.04 AppArmor: podman profile cannot SIGTERM pasta without this peer rule.
+    # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1100135
+    - name: Fix AppArmor pasta/podman signal conflict
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
+        if [[ -f /etc/apparmor.d/abstractions/pasta ]] && ! grep -q 'peer=podman' /etc/apparmor.d/abstractions/pasta; then
+          echo '  signal (receive) peer=podman,' | sudo tee -a /etc/apparmor.d/abstractions/pasta
+          sudo apparmor_parser -r /etc/apparmor.d/usr.bin.pasta
+        fi
+
     - name: Configure Podman
       shell: bash
       run: |

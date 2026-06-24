@@ -413,6 +413,10 @@ jobs:
               fi
               echo "Subscription build with rhds variant detected"
               PREFETCH_ARGS="$PREFETCH_ARGS --rhds"
+            else
+              # ODH must not see subscription credentials (hermeto-fetch-rpm.sh would
+              # attempt disposable registration). Same pattern as rpms-lock-renewal.yaml.
+              unset SUBSCRIPTION_ACTIVATION_KEY SUBSCRIPTION_ORG
             fi
 
             scripts/lockfile-generators/prefetch-all.sh $PREFETCH_ARGS
