@@ -1,0 +1,99 @@
+# Disconnected Readiness Scanner — Exclusions for opendatahub-io/notebooks
+#
+# These manifests are consumed by the opendatahub-operator, which handles
+# params.env → RELATED_IMAGE_* wiring at the operator level. Scanning this
+# repository in isolation produces false positives because the scanner cannot
+# see the operator-side substitution logic.
+#
+# Operator wiring reference:
+#   Repo:  opendatahub-io/opendatahub-operator
+#   File:  internal/controller/components/workbenches/workbenches.go (Init method)
+#   Logic: pkg/deploy/envParams.go (ApplyParams)
+#
+# How it works:
+#   1. The operator clones this repo's manifests/ directory at build time
+#      (see get_all_manifests.sh, build/manifests-config.yaml).
+#   2. At startup, the workbenches controller calls ApplyParams() which maps
+#      every params-latest.env key to a RELATED_IMAGE_* environment variable.
+#   3. In disconnected/air-gapped environments, OLM sets RELATED_IMAGE_* vars
+#      from the CSV's relatedImages list (digest-pinned), and ApplyParams
+#      substitutes them into the params files.
+#   4. Kustomize replacements inject these values from the ConfigMap into the
+#      ImageStream spec.tags[].from.name fields.
+#
+# N-1 version images (params.env) already use @sha256: digests and do not
+# require RELATED_IMAGE substitution — the digest reference is inherently
+# mirrorable in disconnected registries.
+
+exclusions:
+  # N-version images (params-latest.env) — wired via RELATED_IMAGE_* at operator level
+  - rule: params-env-wiring
+    paths:
+      - manifests/odh/base
+      - manifests/odh/overlays/additional
+    images:
+      - key: odh-workbench-jupyter-minimal-cpu-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_WORKBENCH_JUPYTER_MINIMAL_CPU_PY312_IMAGE in opendatahub-operator"
+      - key: odh-workbench-jupyter-minimal-cuda-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_WORKBENCH_JUPYTER_MINIMAL_CUDA_PY312_IMAGE in opendatahub-operator"
+      - key: odh-workbench-jupyter-minimal-rocm-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_WORKBENCH_JUPYTER_MINIMAL_ROCM_PY312_IMAGE in opendatahub-operator"
+      - key: odh-workbench-jupyter-datascience-cpu-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_WORKBENCH_JUPYTER_DATASCIENCE_CPU_PY312_IMAGE in opendatahub-operator"
+      - key: odh-workbench-jupyter-pytorch-cuda-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_WORKBENCH_JUPYTER_PYTORCH_CUDA_PY312_IMAGE in opendatahub-operator"
+      - key: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_WORKBENCH_JUPYTER_PYTORCH_LLMCOMPRESSOR_CUDA_PY312_IMAGE in opendatahub-operator"
+      - key: odh-workbench-jupyter-pytorch-rocm-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_WORKBENCH_JUPYTER_PYTORCH_ROCM_PY312_IMAGE in opendatahub-operator"
+      - key: odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_WORKBENCH_JUPYTER_TENSORFLOW_CUDA_PY312_IMAGE in opendatahub-operator"
+      - key: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_WORKBENCH_JUPYTER_TENSORFLOW_ROCM_PY312_IMAGE in opendatahub-operator"
+      - key: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_WORKBENCH_JUPYTER_TRUSTYAI_CPU_PY312_IMAGE in opendatahub-operator"
+      - key: odh-workbench-codeserver-datascience-cpu-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_WORKBENCH_CODESERVER_DATASCIENCE_CPU_PY312_IMAGE in opendatahub-operator"
+      - key: odh-pipeline-runtime-datascience-cpu-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_PIPELINE_RUNTIME_DATASCIENCE_CPU_PY312_IMAGE in opendatahub-operator"
+      - key: odh-pipeline-runtime-minimal-cpu-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_PIPELINE_RUNTIME_MINIMAL_CPU_PY312_IMAGE in opendatahub-operator"
+      - key: odh-pipeline-runtime-pytorch-cuda-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_PIPELINE_RUNTIME_PYTORCH_CUDA_PY312_IMAGE in opendatahub-operator"
+      - key: odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_PIPELINE_RUNTIME_PYTORCH_LLMCOMPRESSOR_CUDA_PY312_IMAGE in opendatahub-operator"
+      - key: odh-pipeline-runtime-pytorch-rocm-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_PIPELINE_RUNTIME_PYTORCH_ROCM_PY312_IMAGE in opendatahub-operator"
+      - key: odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_PIPELINE_RUNTIME_TENSORFLOW_CUDA_PY312_IMAGE in opendatahub-operator"
+      - key: odh-pipeline-runtime-tensorflow-rocm-py312-ubi9-n
+        reason: "Wired to RELATED_IMAGE_ODH_PIPELINE_RUNTIME_TENSORFLOW_ROCM_PY312_IMAGE in opendatahub-operator"
+
+  # N-1 version images (params.env) — already use @sha256: digests
+  - rule: params-env-wiring
+    paths:
+      - manifests/odh/base
+      - manifests/odh/overlays/additional
+    images:
+      - key: odh-workbench-jupyter-minimal-cpu-py312-ubi9-3-4
+        reason: "Pinned by @sha256: digest — inherently mirrorable without RELATED_IMAGE substitution"
+      - key: odh-workbench-jupyter-minimal-cuda-py312-ubi9-3-4
+        reason: "Pinned by @sha256: digest — inherently mirrorable without RELATED_IMAGE substitution"
+      - key: odh-workbench-jupyter-minimal-rocm-py312-ubi9-3-4
+        reason: "Pinned by @sha256: digest — inherently mirrorable without RELATED_IMAGE substitution"
+      - key: odh-workbench-jupyter-datascience-cpu-py312-ubi9-3-4
+        reason: "Pinned by @sha256: digest — inherently mirrorable without RELATED_IMAGE substitution"
+      - key: odh-workbench-jupyter-pytorch-cuda-py312-ubi9-3-4
+        reason: "Pinned by @sha256: digest — inherently mirrorable without RELATED_IMAGE substitution"
+      - key: odh-workbench-jupyter-pytorch-rocm-py312-ubi9-3-4
+        reason: "Pinned by @sha256: digest — inherently mirrorable without RELATED_IMAGE substitution"
+      - key: odh-workbench-jupyter-tensorflow-cuda-py312-ubi9-3-4
+        reason: "Pinned by @sha256: digest — inherently mirrorable without RELATED_IMAGE substitution"
+      - key: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-3-4
+        reason: "Pinned by @sha256: digest — inherently mirrorable without RELATED_IMAGE substitution"
+      - key: odh-workbench-jupyter-trustyai-cpu-py312-ubi9-3-4
+        reason: "Pinned by @sha256: digest — inherently mirrorable without RELATED_IMAGE substitution"
+      - key: odh-workbench-codeserver-datascience-cpu-py312-ubi9-3-4
+        reason: "Pinned by @sha256: digest — inherently mirrorable without RELATED_IMAGE substitution"
+      - key: odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9-3-4
+        reason: "Pinned by @sha256: digest — inherently mirrorable without RELATED_IMAGE substitution"
