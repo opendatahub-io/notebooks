@@ -2867,6 +2867,13 @@ arches:
     name: libstdc++
     evr: 11.5.0-14.el9
     sourcerpm: gcc-11.5.0-14.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/l/libtasn1-4.16.0-10.el9_8.aarch64.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 80446
+    checksum: sha256:322524934c9b1f0714d2299705dbd41ec93451078e8144babc88c51bd19f6e07
+    name: libtasn1
+    evr: 4.16.0-10.el9_8
+    sourcerpm: libtasn1-4.16.0-10.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/l/libtdb-1.4.14-1.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 54805
@@ -2881,6 +2888,13 @@ arches:
     name: libunistring
     evr: 0.9.10-15.el9
     sourcerpm: libunistring-0.9.10-15.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/l/libusbx-1.0.30-1.el9_8.aarch64.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 84255
+    checksum: sha256:bf6c3276eca3195ee1b0daa3d949a6ac93a962881d2287b20dbbce2841c4b006
+    name: libusbx
+    evr: 1.0.30-1.el9_8
+    sourcerpm: libusbx-1.0.30-1.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/l/libutempter-1.2.1-6.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 30505
@@ -5954,20 +5968,6 @@ arches:
     name: libselinux
     evr: 3.6-4.el9
     sourcerpm: libselinux-3.6-4.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/libtasn1-4.16.0-10.el9.aarch64.rpm
-    repoid: baseos
-    size: 73901
-    checksum: sha256:18fee5d9b7dc486f774d1fac61238a6d6ac1a2dbdf61fdc38496838015e61712
-    name: libtasn1
-    evr: 4.16.0-10.el9
-    sourcerpm: libtasn1-4.16.0-10.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/libusbx-1.0.30-1.el9.aarch64.rpm
-    repoid: baseos
-    size: 77732
-    checksum: sha256:b480be150230167d7b9fb230eca6017471a400587b51cdff52a542b2802fe4f4
-    name: libusbx
-    evr: 1.0.30-1.el9
-    sourcerpm: libusbx-1.0.30-1.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/libxml2-2.9.13-15.el9.aarch64.rpm
     repoid: baseos
     size: 747314
@@ -8954,6 +8954,13 @@ arches:
     name: libstdc++
     evr: 11.5.0-14.el9
     sourcerpm: gcc-11.5.0-14.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/l/libtasn1-4.16.0-10.el9_8.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 87068
+    checksum: sha256:cbd7e8b7236d395a591ab0e0c28b8a3d37944d451c008aad4fa4063b9c62e825
+    name: libtasn1
+    evr: 4.16.0-10.el9_8
+    sourcerpm: libtasn1-4.16.0-10.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/l/libtdb-1.4.14-1.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 61865
@@ -8968,6 +8975,13 @@ arches:
     name: libunistring
     evr: 0.9.10-15.el9
     sourcerpm: libunistring-0.9.10-15.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/l/libusbx-1.0.30-1.el9_8.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 91811
+    checksum: sha256:b9f897dddc74cec35be373aecc43ead7ac27e91663bcc91f2d5575e04c8d98c6
+    name: libusbx
+    evr: 1.0.30-1.el9_8
+    sourcerpm: libusbx-1.0.30-1.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/l/libutempter-1.2.1-6.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 30656
@@ -12041,20 +12055,6 @@ arches:
     name: libselinux
     evr: 3.6-4.el9
     sourcerpm: libselinux-3.6-4.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/libtasn1-4.16.0-10.el9.ppc64le.rpm
-    repoid: baseos
-    size: 80502
-    checksum: sha256:74ef2e5c1139705dc17363e93de7c92dc71c80f59ca4e8176a9c66a8ca2730f1
-    name: libtasn1
-    evr: 4.16.0-10.el9
-    sourcerpm: libtasn1-4.16.0-10.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/libusbx-1.0.30-1.el9.ppc64le.rpm
-    repoid: baseos
-    size: 85274
-    checksum: sha256:b6f9b278ccc263f315d4e88e2c3514a3c1675260aa68d66a0285090b74151030
-    name: libusbx
-    evr: 1.0.30-1.el9
-    sourcerpm: libusbx-1.0.30-1.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/libxml2-2.9.13-15.el9.ppc64le.rpm
     repoid: baseos
     size: 842298
@@ -15027,6 +15027,13 @@ arches:
     name: libstdc++
     evr: 11.5.0-14.el9
     sourcerpm: gcc-11.5.0-14.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/l/libtasn1-4.16.0-10.el9_8.s390x.rpm
+    repoid: ubi-9-for-s390x-baseos-rpms
+    size: 81089
+    checksum: sha256:af302cefa6d25b679f160d87f363b7fdf70756465e7ee8b8744fcef23a7d9da5
+    name: libtasn1
+    evr: 4.16.0-10.el9_8
+    sourcerpm: libtasn1-4.16.0-10.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/l/libtdb-1.4.14-1.el9.s390x.rpm
     repoid: ubi-9-for-s390x-baseos-rpms
     size: 53645
@@ -15041,6 +15048,13 @@ arches:
     name: libunistring
     evr: 0.9.10-15.el9
     sourcerpm: libunistring-0.9.10-15.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/l/libusbx-1.0.30-1.el9_8.s390x.rpm
+    repoid: ubi-9-for-s390x-baseos-rpms
+    size: 82492
+    checksum: sha256:483de54129480743f7c06a9d75a99e32327a099946a8a8d6215f67232e01b814
+    name: libusbx
+    evr: 1.0.30-1.el9_8
+    sourcerpm: libusbx-1.0.30-1.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/s390x/baseos/os/Packages/l/libutempter-1.2.1-6.el9.s390x.rpm
     repoid: ubi-9-for-s390x-baseos-rpms
     size: 30191
@@ -18114,20 +18128,6 @@ arches:
     name: libselinux
     evr: 3.6-4.el9
     sourcerpm: libselinux-3.6-4.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/Packages/libtasn1-4.16.0-10.el9.s390x.rpm
-    repoid: baseos
-    size: 74508
-    checksum: sha256:ce71d8eb0cfb625616683e3db2db40bcb8bb7506c46dbea6097c2cc2b2d360fe
-    name: libtasn1
-    evr: 4.16.0-10.el9
-    sourcerpm: libtasn1-4.16.0-10.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/Packages/libusbx-1.0.30-1.el9.s390x.rpm
-    repoid: baseos
-    size: 76030
-    checksum: sha256:fdebd9892ed1b44bde02308b0017b73c78696f60659a4bc8fd6331c7e9147fcf
-    name: libusbx
-    evr: 1.0.30-1.el9
-    sourcerpm: libusbx-1.0.30-1.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/Packages/libxml2-2.9.13-15.el9.s390x.rpm
     repoid: baseos
     size: 726614
