@@ -2776,6 +2776,13 @@ arches:
     name: libstdc++
     evr: 11.5.0-14.el9
     sourcerpm: gcc-11.5.0-14.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/l/libtasn1-4.16.0-10.el9_8.aarch64.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 80446
+    checksum: sha256:322524934c9b1f0714d2299705dbd41ec93451078e8144babc88c51bd19f6e07
+    name: libtasn1
+    evr: 4.16.0-10.el9_8
+    sourcerpm: libtasn1-4.16.0-10.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/l/libtirpc-1.3.3-9.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 98735
@@ -4673,13 +4680,6 @@ arches:
     name: libselinux-utils
     evr: 3.6-4.el9
     sourcerpm: libselinux-3.6-4.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/libtasn1-4.16.0-10.el9.aarch64.rpm
-    repoid: baseos
-    size: 73901
-    checksum: sha256:18fee5d9b7dc486f774d1fac61238a6d6ac1a2dbdf61fdc38496838015e61712
-    name: libtasn1
-    evr: 4.16.0-10.el9
-    sourcerpm: libtasn1-4.16.0-10.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/aarch64/os/Packages/libxml2-2.9.13-15.el9.aarch64.rpm
     repoid: baseos
     size: 747314
@@ -7663,6 +7663,13 @@ arches:
     name: libstdc++
     evr: 11.5.0-14.el9
     sourcerpm: gcc-11.5.0-14.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/l/libtasn1-4.16.0-10.el9_8.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 87068
+    checksum: sha256:cbd7e8b7236d395a591ab0e0c28b8a3d37944d451c008aad4fa4063b9c62e825
+    name: libtasn1
+    evr: 4.16.0-10.el9_8
+    sourcerpm: libtasn1-4.16.0-10.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/l/libtirpc-1.3.3-9.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 112487
@@ -9546,13 +9553,6 @@ arches:
     name: libselinux-utils
     evr: 3.6-4.el9
     sourcerpm: libselinux-3.6-4.el9.src.rpm
-  - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/libtasn1-4.16.0-10.el9.ppc64le.rpm
-    repoid: baseos
-    size: 80502
-    checksum: sha256:74ef2e5c1139705dc17363e93de7c92dc71c80f59ca4e8176a9c66a8ca2730f1
-    name: libtasn1
-    evr: 4.16.0-10.el9
-    sourcerpm: libtasn1-4.16.0-10.el9.src.rpm
   - url: https://mirror.stream.centos.org/9-stream/BaseOS/ppc64le/os/Packages/libxml2-2.9.13-15.el9.ppc64le.rpm
     repoid: baseos
     size: 842298
