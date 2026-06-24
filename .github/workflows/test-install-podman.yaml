@@ -42,3 +42,29 @@ jobs:
 
           # https://github.com/containers/podman/blob/main/docs/tutorials/podman_tutorial.md#running-a-sample-container
           podman run --name basic_httpd -dt -p 8080:80/tcp docker.io/nginx
+
+      - name: Test container networking (IP and DNS)
+        run: |
+          set -Eeuxo pipefail
+
+          # Well-known IPs — raw L3/L4 reachability without DNS (TCP to public resolvers).
+          # Do not use HTTP to 1.1.1.1:80; Cloudflare DNS is not a web server on port 80.
+          podman run --rm docker.io/alpine sh -euxc \
+            'nc -zvw5 8.8.8.8 53 && nc -zvw5 1.1.1.1 53'
+
+          # Public hostname — exercises container DNS via libc resolver (catches 127.0.0.53 stub leaks).
+          # Explicit UDP/TCP resolver checks (catches pasta TCP regressions: podman #23239).
+          podman run --rm docker.io/alpine sh -euxc '
+            apk add --no-cache bind-tools ca-certificates >/dev/null
+            wget -q -O /dev/null -T 15 http://example.com/
+            wget -q -O /dev/null -T 15 https://github.com/
+            dig @8.8.8.8 +short example.com | grep -q .
+            dig @8.8.8.8 +tcp +short example.com | grep -q .
+            dig @8.8.8.8 +short github.com | grep -q .
+            dig @8.8.8.8 +tcp +short github.com | grep -q .
+          '
+
+          echo "Container IP and DNS reachability OK"
+        env:
+          # Match build workflows: remote client talks to rootful podman.socket.
+          CONTAINER_HOST: unix:///var/run/podman/podman.sock
