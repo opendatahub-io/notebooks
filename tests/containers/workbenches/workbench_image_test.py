@@ -75,6 +75,7 @@ class TestWorkbenchImage:
             container.with_network(network)
             try:
                 client = testcontainers.core.docker_client.DockerClient()
+                # Rootless is a podman-only flag; .get() defaults for Docker API compat
                 rootless: bool = client.client.info().get("Rootless", False)
                 # with rootful podman, --publish does not expose IPv6-only ports
                 # see https://github.com/containers/podman/issues/14491 and friends
