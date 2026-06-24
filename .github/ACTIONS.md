@@ -23,7 +23,13 @@ Linuxbrew is no longer used.
 `systemd-resolved` (`127.0.0.53`), which is unreachable from container network namespaces
 and breaks hermetic prefetch (`cdn.redhat.com`). See [podman #17075](https://github.com/containers/podman/issues/17075)
 and pasta/systemd-resolved notes in [podman networking](https://sanj.dev/post/podman-pasta-vs-slirp4netns-networking/).
-`test-install-podman` validates container IP and DNS reachability (HTTP + `dig` UDP/TCP) after configure.
+
+The install action also sets `iptables -P FORWARD ACCEPT` and `net.ipv4.ip_forward=1`
+because Docker on GHA runners sets `FORWARD DROP`, which breaks rootful netavark egress
+([podman #24486](https://github.com/containers/podman/issues/24486),
+[runner-images #13422](https://github.com/actions/runner-images/issues/13422)).
+
+`test-install-podman` validates container IP and DNS reachability (TCP `nc`, HTTP `wget`, `dig` UDP/TCP) after configure.
 
 We have considered investigating custom runners, either just plain containers/VMs, or something fronting an OpenShift cluster, in
 

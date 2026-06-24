@@ -40,7 +40,9 @@ runs:
         sudo mount --bind -o rw,noexec,nosuid,nodev,bind "$TMPDIR" /var/tmp
 
         # the (default) config location is also where cri-o gets its storage defaults (that can be overriden in crio.conf)
+        sudo mkdir -p /etc/containers
         sudo cp ci/cached-builds/containers.conf /etc/containers.conf
+        sudo cp ci/cached-builds/containers.conf /etc/containers/containers.conf
         sudo cp ci/cached-builds/storage.conf /etc/containers/storage.conf
         sudo cp ci/cached-builds/registries.conf /etc/containers/registries.conf
 
@@ -53,7 +55,18 @@ runs:
         # podman 5.5.0: The podman system reset command no longer removes the user's podman.sock API socket
         sudo rm -rf /var/run/podman
 
-        # Start rootful API socket (distro units on ubuntu-26.04)
+        # Rootful bridge egress needs forwarding + FORWARD accept. Docker on GHA sets FORWARD DROP
+        # which breaks netavark MASQUERADE silently (podman #24486, runner-images #13422).
+        # Same pattern as provision-k8s and microk8s workarounds in this repo.
+        sudo modprobe br_netfilter
+        sudo sysctl -w net.ipv4.ip_forward=1
+        sudo iptables -P FORWARD ACCEPT
+
+        # Override distro units (linuxbrew path used /usr/local/lib/systemd/system/ too).
+        # https://github.com/containers/podman/blob/main/docs/tutorials/socket_activation.md
+        sudo mkdir -p /usr/local/lib/systemd/system/
+        sudo cp ci/cached-builds/podman.service /usr/local/lib/systemd/system/podman.service
+        sudo cp ci/cached-builds/podman.socket /usr/local/lib/systemd/system/podman.socket
         sudo systemctl daemon-reload
         sudo systemctl unmask podman.service podman.socket
         sudo systemctl enable --now podman.socket
@@ -68,6 +81,9 @@ runs:
         # quick check podman works
         podman ps
 
+        # Reload netavark rules after FORWARD policy fix (if default network already exists).
+        podman network reload --all 2>/dev/null || true
+
     - name: Show error logs (on failure)
       if: ${{ failure() }}
       shell: bash
@@ -77,3 +93,5 @@ runs:
         journalctl -xe
         ls -AlF /var/run/podman/podman.sock || echo "Socket /var/run/podman/podman.sock not found"
         sudo ss -xlpn | grep 'podman.sock' || echo "No active listener found for podman.sock via ss"
+        sudo iptables -S FORWARD || true
+        podman network inspect podman 2>/dev/null || true
