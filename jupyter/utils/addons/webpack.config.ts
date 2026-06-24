@@ -6,7 +6,6 @@ import path from 'node:path';
 
 import CleanupWebpackPlugin from './cleanup-webpack-plugin.ts';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
-import HtmlWebpackPlugin from "html-webpack-plugin";
 import {PurgeCSSPlugin} from 'purgecss-webpack-plugin';
 
 // Define __dirname for ES modules
@@ -59,11 +58,6 @@ const config: webpack.Configuration = {
     ]
   },
   plugins: [
-    // https://webpack.js.org/guides/output-management/#setting-up-htmlwebpackplugin
-    new HtmlWebpackPlugin({
-        title: 'Example spinner page',
-        inject: false,
-    }),
     // Use the cleanup plugin for any remaining files we want to remove
     new CleanupWebpackPlugin({
         patterns: [

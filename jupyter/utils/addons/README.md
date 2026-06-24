@@ -33,33 +33,42 @@ RUN # Apply JupyterLab addons \
 
 ## Development
 
-### Example
+### Previewing the demo
 
-Interactive demo of the spinner functionality:
+No dev server. Build, then open the static demo page:
 
-1. Build the project: `pnpm build` or `pnpm build:dev`
-2. Open `dist/index.html` in a browser
-3. Clicking button simulates JupyterLab finished loading (spinner disappears)
+```bash
+pnpm install   # first time only
+pnpm build
+open dist/index.html       # macOS
+xdg-open dist/index.html   # Linux
+```
+
+Click **Finish loading** to simulate JupyterLab loading (spinner disappears).
+
+After editing `partial-head.html`, `partial-body.html`, or the PurgeCSS safelist in
+`webpack.config.ts`, re-run `pnpm build` and reload the browser tab.
 
 ### Build Process
 
-The project uses webpack to bundle the JavaScript files and tree-shake the CSS:
+The project uses webpack to tree-shake the PatternFly CSS:
 
-- `pnpm build`: Creates a production build with minification
-- `pnpm build:dev`: Creates a development build with source maps
-- `pnpm build:clean`: Cleans the output directory and cache before building
-- `pnpm clean`: Removes the dist directory and build cache
-- `pnpm start`: Starts the webpack development server and opens `dist/index.html` (test page) in a browser
-- `pnpm watch`: Watches for file changes and rebuilds automatically
-- `pnpm test`: Runs the test-build.sh script to report tree-shaking effectiveness
+- `pnpm build` — production CSS tree-shake + regenerate demo HTML
+- `pnpm build:dev` — development build with source maps + demo HTML
+- `pnpm build:clean` — clean output, then build
+- `pnpm clean` — remove `dist/` and `.cache/`
+- `pnpm watch` — watch CSS rebuild; re-run `./build-demo.sh` after partial HTML edits
+- `pnpm test` — build + tree-shake verification (`test-build.sh`)
+
+CI (`.github/workflows/test-addons.yaml`) runs `pnpm test` when files under `jupyter/utils/addons/` change.
 
 ## Files
 
 - `apply.sh`: Script to apply the addons to a JupyterLab during Dockerfile build
-- `partial-head.html`, `partial-body.html`: HTML content to be injected into the head section of JupyterLab
-- `cleanup-webpack-plugin.mts`: Custom webpack plugin for asset cleanup (removes unnecessary files)
+- `partial-head.html`, `partial-body.html`: HTML content injected into JupyterLab `index.html`
+- `build-demo.sh`: Generates `dist/index.html` local demo page from the partials
+- `cleanup-webpack-plugin.ts`: Custom webpack plugin for asset cleanup (removes unnecessary files)
 - `webpack.config.ts`: Webpack configuration with enhanced tree-shaking
-- `dist/pf.css`: Tree-shaken PatternFly CSS file with only the necessary styles
-- `src/index.ejs`: Template for the example page built into `dist/index.html`
-- `dist/index.html`: Example HTML file demonstrating usage of the output
+- `dist/pf.css`: Tree-shaken PatternFly CSS file with only the necessary styles (shipped in images)
+- `dist/index.html`: Local demo only (not shipped to JupyterLab images)
 - `test-build.sh`: Script to verify the tree-shaking effectiveness
