@@ -12,6 +12,7 @@ dependencies = [
     "nbdime",
     "nbgitpuller",
     "odh-jupyter-trash-cleanup",
+    "setuptools<81",  # RHAIENG-5847: >=81 emits pkg_resources UserWarning via google namespace packages
 ]
 
 [tool.uv]

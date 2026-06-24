@@ -105,19 +105,26 @@ class TestDataScienceLibs(unittest.TestCase):
         print("✅ Torchvision test passed.")
 
     def test_torchaudio(self):
-        """🧪 Tests torchaudio waveform generation."""
+        """Tests torchaudio waveform generation."""
         if "-pytorch-" not in self.image:
             self.skipTest("Not a Torch image")
         try:
-            import torchaudio  # pyright: ignore[reportMissingImports]
+            import torchaudio  # pyright: ignore[reportMissingImports]  # noqa: F401
         except ImportError:
-            # TODO: determine if having torchaudio installed is a requirement
             self.skipTest("Torchaudio is not installed.")
 
+        import math
+
+        import torch  # pyright: ignore[reportMissingImports]
+
         sample_rate = 16000
-        waveform = torchaudio.functional.generate_sine(440, sample_rate=sample_rate, duration=0.5)
+        duration = 0.5
+        freq = 440
+        # TODO(RHAIENG-5848): generate_sine was removed in torchaudio 2.9; replace with proper torchaudio API
+        t = torch.linspace(0, duration, int(sample_rate * duration))
+        waveform = torch.sin(2 * math.pi * freq * t).unsqueeze(0)
         self.assertEqual(waveform.shape, (1, 8000), "Torchaudio waveform shape is incorrect.")
-        print("✅ Torchaudio test passed.")
+        print("Torchaudio test passed.")
 
     def test_feast(self):
         """Tests that the feast module imports and the CLI entry point works."""
