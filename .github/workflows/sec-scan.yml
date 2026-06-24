@@ -16,7 +16,7 @@ env:
   RELEASE_VERSION_N_1: 2023a
 jobs:
   initialize:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     steps:
@@ -41,7 +41,7 @@ jobs:
 
   check-vulnerabilities:
     needs: [initialize]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     steps:
@@ -122,7 +122,7 @@ jobs:
   # Creates the Pull Request
   open-pull-request:
     needs: [check-vulnerabilities]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       pull-requests: write
     steps:

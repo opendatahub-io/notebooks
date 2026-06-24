@@ -14,7 +14,7 @@ name: Update commit-latest.env on params-latest.env change
 
 jobs:
   sync-commit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     concurrency:
       group: update-commit-latest-env-${{ github.ref }}
       cancel-in-progress: false

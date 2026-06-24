@@ -28,7 +28,7 @@ env:
 jobs:
   build:
     name: Build (${{ matrix.arch }})
-    runs-on: ${{ fromJSON('{"amd64":"ubuntu-24.04","arm64":"ubuntu-24.04-arm"}')[matrix.arch] }}
+    runs-on: ${{ fromJSON('{"amd64":"ubuntu-26.04","arm64":"ubuntu-26.04-arm"}')[matrix.arch] }}
     permissions:
       contents: read
     strategy:
@@ -68,7 +68,7 @@ jobs:
 
   manifest:
     name: Create and push multiarch manifest
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: build
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.push_image == true
     permissions:

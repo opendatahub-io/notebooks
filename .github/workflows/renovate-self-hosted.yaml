@@ -61,7 +61,7 @@ jobs:
       github.event_name != 'schedule'
       || github.repository_owner == 'opendatahub-io'
       || github.repository == 'red-hat-data-services/notebooks'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     env:
       CONTAINER_ENGINE: docker
       # Pin with scripts/ci/renovate_run.py default; bump both when upgrading Renovate.
