@@ -20,7 +20,7 @@ dependencies = [
     # https://redhat-internal.slack.com/archives/C079FE5H94J/p1770229449708539
     # "auto-round==0.9.2",
     "compressed-tensors",
-    # pinned: resolver backtracks to 0.10.0.2 without floor due to setuptools<81 constraint interaction
+    # pinned: resolver backtracks to 0.10.0.2 without floor due to setuptools<80.9 constraint interaction
     "llmcompressor>=0.11.0",
 ]
 
