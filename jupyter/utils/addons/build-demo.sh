@@ -1,6 +1,6 @@
 #!/bin/bash
 # Generate dist/index.html demo page from partial HTML files (local preview only).
-set -e
+set -Eeuxo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DIST_DIR="$SCRIPT_DIR/dist"
