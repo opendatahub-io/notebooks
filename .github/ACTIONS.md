@@ -13,6 +13,12 @@ We have [IBM PowerPC and Z runners](https://community.ibm.com/community/user/blo
 
 - **Linux**: `ubuntu-24.04-ppc64le`, `ubuntu-24.04-s390x`
 
+## Podman on CI
+
+Notebook builds and RPM lock renewal use [`.github/actions/install-podman-action`](actions/install-podman-action/action.yml) on `ubuntu-26.04` runners.
+It configures the **system Podman** package shipped on the runner image (5.7+), starts the rootful API socket, and sets `PODMAN_SOCK` / `CONTAINER_HOST`.
+Linuxbrew is no longer used.
+
 We have considered investigating custom runners, either just plain containers/VMs, or something fronting an OpenShift cluster, in
 
 * https://github.com/opendatahub-io/notebooks/issues/1389
