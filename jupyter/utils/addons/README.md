@@ -65,8 +65,9 @@ CI (`.github/workflows/test-addons.yaml`) runs `pnpm test` when files under `jup
 ## Files
 
 - `apply.sh`: Script to apply the addons to a JupyterLab during Dockerfile build
+- `demo/lab-index.template.html`: Minimal `index.html` stub for local preview (not shipped in images)
 - `partial-head.html`, `partial-body.html`: HTML content injected into JupyterLab `index.html`
-- `build-demo.sh`: Generates `dist/index.html` local demo page from the partials
+- `build-demo.sh`: Copies the demo template to `dist/` and runs `apply.sh` (mirrors image build)
 - `cleanup-webpack-plugin.ts`: Custom webpack plugin for asset cleanup (removes unnecessary files)
 - `webpack.config.ts`: Webpack configuration with enhanced tree-shaking
 - `dist/pf.css`: Tree-shaken PatternFly CSS file with only the necessary styles (shipped in images)
