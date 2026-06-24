@@ -58,4 +58,4 @@ Renovate has package rules to track these correctly.
 ## Podman on ubuntu-26.04 runners
 
 `install-podman-action` configures the runner's system Podman (no Linuxbrew).
-When changing Podman setup, keep rootful `podman.socket` + `CONTAINER_HOST=unix:///var/run/podman/podman.sock` behavior aligned with `build-notebooks-TEMPLATE.yaml` and `rpms-lock-renewal.yaml`.
+When changing Podman setup, keep rootful `podman.socket` behavior aligned with `install-podman-action` (`PODMAN_SOCK`, `CONTAINER_HOST` in `$GITHUB_ENV`).

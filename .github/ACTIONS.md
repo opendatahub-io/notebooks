@@ -16,8 +16,7 @@ We have [IBM PowerPC and Z runners](https://community.ibm.com/community/user/blo
 ## Podman on CI
 
 Notebook builds and RPM lock renewal use [`.github/actions/install-podman-action`](actions/install-podman-action/action.yml) on `ubuntu-26.04` runners.
-It configures the **system Podman** package shipped on the runner image (5.7+), starts the rootful API socket, and sets `PODMAN_SOCK` / `CONTAINER_HOST`.
-Linuxbrew is no longer used.
+It configures the **system Podman** package shipped on the runner image (5.7+), starts the rootful API socket, and exports `PODMAN_SOCK` and `CONTAINER_HOST` to `$GITHUB_ENV`.
 
 `ci/cached-builds/containers.conf` sets explicit `dns_servers` because GHA runners use
 `systemd-resolved` (`127.0.0.53`), which is unreachable from container network namespaces
