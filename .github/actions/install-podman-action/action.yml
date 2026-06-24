@@ -54,7 +54,8 @@ runs:
         # https://github.com/containers/podman/pull/25504
         # podman 5.5.0: The podman system reset command no longer removes the user's podman.sock API socket
         sudo rm -rf /var/run/podman
-        mkdir -p "$HOME/.local/share/containers/storage/tmp" "$TMPDIR"
+        sudo mkdir -p "$HOME/.local/share/containers/storage/tmp" "$TMPDIR"
+        sudo chown -R "${USER}:${USER}" "$HOME/.local/share/containers/storage" "$TMPDIR"
 
         # Rootful bridge egress needs forwarding + FORWARD accept. Docker on GHA sets FORWARD DROP
         # which breaks netavark MASQUERADE silently (podman #24486, runner-images #13422).
@@ -81,6 +82,9 @@ runs:
 
         # quick check podman works
         podman ps
+
+        # Docker may reset FORWARD DROP after podman starts; re-apply before container egress.
+        sudo iptables -P FORWARD ACCEPT
 
         # Reload netavark rules after FORWARD policy fix (if default network already exists).
         podman network reload --all 2>/dev/null || true
