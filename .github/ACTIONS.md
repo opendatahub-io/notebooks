@@ -11,7 +11,7 @@ We have [IBM PowerPC and Z runners](https://community.ibm.com/community/user/blo
 
 * https://github.com/IBM/actionspz/issues/63
 
-- **Linux**: `ubuntu-26.04-ppc64le`, `ubuntu-26.04-s390x`
+- **Linux**: `ubuntu-24.04-ppc64le`, `ubuntu-24.04-s390x`
 
 We have considered investigating custom runners, either just plain containers/VMs, or something fronting an OpenShift cluster, in
 
