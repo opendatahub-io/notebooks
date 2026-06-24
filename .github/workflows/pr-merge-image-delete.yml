@@ -11,7 +11,7 @@ env:
   QUAY_IMAGE_REPO: ${{ secrets.QUAY_IMAGE_REPO }}
 jobs:
   delete-pr-quay-image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Git checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0

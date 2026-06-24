@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 # tweak-gha.sh — Reduce VS Code build parallelism for GitHub Actions runners.
 #
-# GitHub Actions runners (ubuntu-24.04) have only 16GB RAM. The VS Code build
+# GitHub Actions runners (ubuntu-26.04) have only 16GB RAM. The VS Code build
 # spawns multiple worker processes that each load the full TypeScript project
 # via ts.createLanguageService (~2-3GB per worker). With upstream defaults
 # (4 mangler workers + cpus/2 transpiler workers + 16GB Node heap), total

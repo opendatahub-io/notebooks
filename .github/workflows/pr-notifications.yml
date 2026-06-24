@@ -13,7 +13,7 @@ jobs:
       issues: write
       # addLabels on PRs needs this despite docs saying issues:write suffices
       pull-requests: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
 
       # SECURITY: never clone untrusted code in pull_request_target workflows
@@ -35,7 +35,7 @@ jobs:
     if: github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
     permissions:
       pull-requests: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
 
       # SECURITY: never clone untrusted code in pull_request_target workflows
