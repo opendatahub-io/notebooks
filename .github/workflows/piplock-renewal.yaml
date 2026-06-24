@@ -45,7 +45,7 @@ jobs:
   refresh-lock-files:
     # Only run on Wednesday schedule or manual dispatch with 'update-lockfiles' operation
     if: (github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'update-lockfiles') || (github.event_name == 'schedule' && github.event.schedule == '0 1 * * 3')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     concurrency:
       group: refresh-lock-files-${{ github.ref }}
       cancel-in-progress: false
@@ -143,7 +143,7 @@ jobs:
   auto-merge-lockfile-prs:
     # Run on auto-merge schedule or manual dispatch with 'auto-merge' operation
     if: (github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'auto-merge') || (github.event_name == 'schedule' && github.event.schedule == '0 9,15 * * 1-5')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       pull-requests: write  # github.token is only used for PR approval (line 225)
     steps:

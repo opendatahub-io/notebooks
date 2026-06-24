@@ -7,7 +7,7 @@ on:  # yamllint disable-line rule:truthy
 
 jobs:
   check-odh-images:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -30,7 +30,7 @@ jobs:
             manifests/odh/base/params.env
 
   notify-on-failure:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: check-odh-images
     if: failure()
     permissions:

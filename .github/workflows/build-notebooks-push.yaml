@@ -28,7 +28,7 @@ permissions:
 jobs:
   gen:
     name: Generate job matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # for odh-io/notebooks and rhds/notebooks, allow only main, rhoai-*, release-*
     if: ${{ github.event_name == 'workflow_dispatch' ||
       (github.repository != 'opendatahub-io/notebooks' && github.repository != 'red-hat-data-services/notebooks')
