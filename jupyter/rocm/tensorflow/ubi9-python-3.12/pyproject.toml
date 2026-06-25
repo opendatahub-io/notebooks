@@ -17,6 +17,8 @@ dependencies = [
 
     "odh-notebooks-meta-db-connectors-deps",
     "odh-notebooks-meta-jupyterlab-deps",
+    # PDF export (nbconvert); RHAIENG-5765 / AIPCC-7795
+    "pandoc-rhai",
     "odh-notebooks-meta-jupyterlab-datascience-deps",
 
     # Base packages
@@ -41,7 +43,13 @@ environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]
 
+[[tool.uv.index]]
+name = "pandoc"
+url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/rocm7.14-ubi9/simple/"
+explicit = true
+
 [tool.uv.sources]
+pandoc-rhai = { index = "pandoc" }
 odh-notebooks-meta-workbench-datascience-deps = { path = "../../../../dependencies/odh-notebooks-meta-workbench-datascience-deps" }
 odh-notebooks-meta-db-connectors-deps = { path = "../../../../dependencies/odh-notebooks-meta-db-connectors-deps" }
 odh-notebooks-meta-jupyterlab-deps = { path = "../../../../dependencies/odh-notebooks-meta-jupyterlab-deps" }
