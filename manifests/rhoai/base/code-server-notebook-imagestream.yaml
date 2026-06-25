@@ -38,7 +38,7 @@ spec:
             {"name": "MLflow", "version": "3.14"},
             {"name": "Feast", "version": "0.63"}
           ]
-        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-codeserver-datascience-cpu-py312-rhel9
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py312-ubi9-commit-n_PLACEHOLDER
       from:
@@ -68,7 +68,7 @@ spec:
             {"name": "Kubeflow-Training", "version": "1.9"},
             {"name": "MLflow", "version": "3.10"}
           ]
-        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-codeserver-datascience-cpu-py312-rhel9
         opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py312-ubi9-commit-3-4_PLACEHOLDER
       from:
@@ -98,7 +98,7 @@ spec:
             {"name": "ipykernel", "version": "6.30"},
             {"name": "Kubeflow-Training", "version": "1.9"}
           ]
-        openshift.io/imported-from: quay.io/modh/codeserver
+        openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-codeserver-datascience-cpu-py312-rhel9
         opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py312-ubi9-commit-2025-2_PLACEHOLDER
       from:
@@ -129,7 +129,7 @@ spec:
             {"name": "ipykernel", "version": "6.29"},
             {"name": "Kubeflow-Training", "version": "1.9"}
           ]
-        openshift.io/imported-from: quay.io/modh/codeserver
+        openshift.io/imported-from: registry.redhat.io/rhoai/odh-workbench-codeserver-datascience-cpu-py311-rhel9
         opendatahub.io/notebook-build-commit: odh-workbench-codeserver-datascience-cpu-py311-ubi9-commit-2025-1_PLACEHOLDER
         opendatahub.io/image-tag-outdated: 'true'
       from:

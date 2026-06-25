@@ -26,7 +26,7 @@ spec:
           [
             {"name": "JupyterLab", "version": "4.6"}
           ]
-        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/default-image: "true"
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-n_PLACEHOLDER
@@ -48,7 +48,7 @@ spec:
           [
             {"name": "JupyterLab", "version": "4.5"}
           ]
-        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9
         opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-minimal-cpu-py312-ubi9-commit-3-4_PLACEHOLDER
       from:
