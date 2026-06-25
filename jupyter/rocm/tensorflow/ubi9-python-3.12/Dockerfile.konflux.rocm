@@ -142,9 +142,9 @@ ARG PYLOCK_FLAVOR
 
 WORKDIR /opt/app-root/bin
 
-# Root required for uv pip install and runtime setup; switch to 1001 before WORKDIR at end
+# uv pip install as 1001:0 (gid 0) for OpenShift; root only for dnf/mongocli above
 # hadolint ignore=DL3002
-USER root
+USER 1001:0
 
 ARG LABEL_REGISTRY_PREFIX
 ARG LABEL_COMPONENT
@@ -196,6 +196,8 @@ fix-permissions /opt/app-root -P
 EOF
 
 COPY ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monkey_patch_protobuf_6x.py /opt/app-root/lib/python3.12/site-packages/
+
+USER 0
 
 COPY ${TENSORFLOW_SOURCE_CODE}/utils/link-solibs.py /tmp/link-solibs.py
 RUN python3 /tmp/link-solibs.py && rm /tmp/link-solibs.py
