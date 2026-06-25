@@ -65,6 +65,30 @@ BUILD_PROFILE_CHMOD_GW changed=18626  (unchanged)
 - **`chmod g+w` on site-packages is still required** (same 18,626 changes).
 - Sample ownership after user install: dir `1001:0 775`, files `1001:0 664` (group-writable, but tree walk still finds many entries without `g+w` bit as tested by `find -perm`).
 
+### Why ~18k paths “lack `g+w`” (not a 664 bug)
+
+The counter uses GNU find `! -perm -g+w`, which requires **both** group-read **and** group-write (`g+r` **and** `g+w`). That is stricter than “group can write”.
+
+| Mode | Group bits | Matches `-perm -g+w`? | OpenShift needs |
+|------|------------|----------------------|-----------------|
+| **644** file | `r--` | **No** (no `g+w`) | `g+w` for arbitrary UID pip writes |
+| **664** file | `rw-` | **Yes** | OK |
+| **755** dir | `r-x` | **No** (no `g+w`) | `g+w` on dirs for create/unlink in tree |
+| **775** dir | `rwx` | **Yes** | OK |
+
+**uv does not create 664/775 for OpenShift.** It unpacks wheels with **ZIP-stored modes** (typically **644** files, **755** dirs), independent of `useradd` `UMASK=0007` — verified in a slim container: root and uid **1001** both produced `f644=96`, `d755=10`, `f664_lacks_gw=0` for packaging+requests.
+
+So the ~18,626 `chmod g+w` changes are almost entirely:
+
+1. **~644 files** — including `.py`, `.pyc` from `--compile-bytecode` / `compileall` (also 644)
+2. **~755 directories** — package trees, `__pycache__`, `.dist-info`
+
+Occasional **664** samples in logs are outliers (e.g. specific dist-info paths), not the bulk.
+
+**`chmod g+w` vs `fix-permissions`:** production script uses `chmod g+rw` and `chmod g+x` on dirs; our counter only adds `g+w`. The 723 post-chmod `g+rw` gaps are paths outside `site-packages` (jupyter config trees).
+
+**Implication:** umask / `USER 1001:0` alone will not fix this — uv applies wheel modes. Options: post-install `chmod` (current), `fix-permissions` scoped rules, or upstream uv hook to install with `g+rw`/`g+rwx` (no such flag today).
+
 Also run arbitrary-UID smoke on production-style `minimal-timing` image.
 
 ### Arbitrary UID smoke / container tests

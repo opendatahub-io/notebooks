@@ -36,7 +36,8 @@ COPY ${JUPYTER_REUSABLE_UTILS} utils/
 COPY ci/build-profile/profile-step.sh /usr/local/bin/profile-step.sh
 COPY ci/build-profile/chmod-gw-count.sh /usr/local/bin/chmod-gw-count.sh
 COPY ci/build-profile/fix-permissions-count /usr/local/bin/fix-permissions-count
-RUN chmod +x /usr/local/bin/profile-step.sh /usr/local/bin/chmod-gw-count.sh /usr/local/bin/fix-permissions-count
+COPY ci/build-profile/analyze-site-package-modes.sh /usr/local/bin/analyze-site-package-modes.sh
+RUN chmod +x /usr/local/bin/profile-step.sh /usr/local/bin/chmod-gw-count.sh /usr/local/bin/fix-permissions-count /usr/local/bin/analyze-site-package-modes.sh
 
 USER 0
 
@@ -78,6 +79,7 @@ EOF
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 /usr/local/bin/profile-step.sh chmod_gw /usr/local/bin/chmod-gw-count.sh /opt/app-root/lib/python3.12/site-packages
+/usr/local/bin/analyze-site-package-modes.sh /opt/app-root/lib/python3.12/site-packages
 /usr/local/bin/profile-step.sh fix_permissions /usr/local/bin/fix-permissions-count /opt/app-root -P
 EOF
 
