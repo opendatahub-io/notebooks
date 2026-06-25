@@ -136,36 +136,47 @@ The profile Dockerfile omits production datascience/python stages; resolver expe
 
 ## 5. Phase B decision gate (implemented)
 
-**Verdict:** Full elimination of post-install `chmod`/`fix-permissions` requires **group-writable wheel rewrite** before `uv pip install`. `USER 1001:0` + `umask 002` alone is insufficient (uv applies wheel ZIP modes 644/755).
+**Verdict:** Post-install `chmod -R g+w` + full-tree `fix-permissions` can be replaced by
+**`USER 1001:0` + `umask 0002` + one filtered `find` pass** on `site-packages`. Wheel ZIP
+rewrite at prefetch time was explored and rejected.
 
-**Chosen production model** (applied to all `Dockerfile.konflux.*`; non-konflux paths are symlinks):
+**Chosen production model** (all `Dockerfile.konflux.*`; non-konflux paths are symlinks):
 
 | Step | User | Notes |
 |------|------|-------|
 | `dnf`, `rpm --import`, `install_pdf_deps.sh`, mongocli COPY | **root (0)** | OS packages only |
-| `prepare_group_writable_wheels.py` + `uv pip install` + jupyter config + `apply.sh` | **1001:0** | `umask 0002`; install from `/tmp/pip-gw` |
+| `uv pip install` + jupyter config + `apply.sh` | **1001:0** | `umask 0002`; install from `/cachi2/output/deps/pip` |
+| Post-install fixup | **1001:0** | `ensure-openshift-site-packages.sh` — `find ! -perm -g+w -exec chmod g+w {} +` |
 | Final runtime | **1001** | Entrypoint / WORKDIR |
 
-Utility: [`base-images/utils/prepare_group_writable_wheels.py`](../../base-images/utils/prepare_group_writable_wheels.py) — copies prefetched wheels with ZIP modes **664** (files) / **775** (dirs) so uv extracts OpenShift-safe trees without post-install tree walks.
+Utility: [`base-images/utils/ensure-openshift-site-packages.sh`](../../base-images/utils/ensure-openshift-site-packages.sh).
 
 **Removed from all Jupyter leaf stages:** `chmod -R g+w site-packages`, `fix-permissions /opt/app-root`, trustyai `chown -R`/`chmod -R g=u` blocks.
 
-**Harness experiments added** (re-run via GHA):
+**Harness: side-by-side strategies** (`minimal-compare`, `PERM_STRATEGY`):
 
-- `minimal-user1001` + `FIXUP_MODE=none` — baseline failure expected without wheel rewrite
-- `minimal-umask002` — confirms umask-only dead end on full env
-- `minimal-gw-wheels` — validates wheel rewrite + no fixup
-- `pytorch-perm` — production stage graph with permission counters
+| Strategy | umask 0002 | Post-install fixup | Expected `lacks_gw_perm` |
+|----------|------------|--------------------|--------------------------|
+| `none` | no | no | ~18k (baseline failure) |
+| `umask-only` | yes | no | 0 on full minimal (GHA); verify per image |
+| `find-only` | no | filtered find | 0 |
+| `umask-find` | yes | filtered find | 0 (production) |
+| `chmod-r` | no | `chmod -R g+w` | 0 (slow baseline) |
+| `chmod-find-filtered` | no | filtered find + counter | 0 (same as find-only) |
+
+Re-run via GHA `investigate-build-profile` with `experiment: minimal-compare` for timings + pip smoke (`uid 23456:0`).
+
+**Also:** `minimal-umask002`, `minimal-timing` (production-shaped), `pytorch-perm` (resolver still blocked).
 
 ---
 
-## 6. Recommendations (superseded §5 pre-implementation)
+## 6. Recommendations
 
-1. ~~Drop redundant chmod~~ — **Done:** both passes removed; wheel rewrite replaces need.
+1. ~~Drop redundant chmod + fix-permissions~~ — **Done:** single filtered find replaces both.
 2. ~~USER 1001:0 for uv~~ — **Done** across konflux Dockerfiles.
-3. ~~Investigate uv/file mode~~ — **Resolved:** prefetch-time wheel ZIP mode rewrite (not uv upstream).
-4. Re-run harness on GHA after push; confirm `BUILD_PROFILE_PIP_INSTALL ok` on `minimal-gw-wheels`.
-5. Pytorch perm counts — pending GHA `pytorch-perm` run with fixed production Dockerfile overlay.
+3. ~~Wheel ZIP rewrite~~ — **Rejected;** umask + filtered find is sufficient.
+4. Re-run harness on GHA; confirm `BUILD_PROFILE_PIP_INSTALL ok` on `minimal-compare-umask-find` (and `umask-only` if umask alone holds).
+5. Pytorch perm counts — pending production-stage profiling.
 
 ---
 

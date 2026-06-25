@@ -102,11 +102,11 @@ Both variants can be built locally or on Konflux/Tekton.
 ### OpenShift file ownership during image build (#3928)
 
 Notebook images target OpenShift arbitrary UID with supplemental **gid 0**. Hermetic
-`uv pip install` steps therefore run as **`USER 1001:0`** after root-only `dnf`/PDF
-stages. Wheels from the Cachi2 prefetch are copied to `/tmp/pip-gw` with group-writable
-ZIP modes (664/775) via `base-images/utils/prepare_group_writable_wheels.py` before
-install, so leaf stages do not need post-install `chmod` or `fix-permissions` tree walks.
-See `ci/build-profile/RESULTS.md` for profiling data.
+`uv pip install` runs as **`USER 1001:0`** after root-only `dnf`/PDF stages, with
+**`umask 0002`** so new files are group-writable where the umask applies. Any remaining
+paths (wheel ZIP modes from `uv`) get a single filtered pass via
+`base-images/utils/ensure-openshift-site-packages.sh` (`find ! -perm -g+w -exec chmod g+w {} +`).
+No full-tree `fix-permissions` on leaf stages. See `ci/build-profile/RESULTS.md`.
 
 ## Testing layers
 
