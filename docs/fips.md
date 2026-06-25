@@ -15,7 +15,7 @@ The `check-payload` FIPS scanner flags binaries that are not dynamically linked
 
 | Binary | Path | Why it's in the image | Crypto? |
 |--------|------|-----------------------|---------|
-| pandoc | `/usr/local/pandoc/bin/pandoc` | PDF export from JupyterLab (notebook to LaTeX to PDF) | Yes (see below) |
+| pandoc | `/opt/app-root/bin/pandoc` | PDF export from JupyterLab (notebook to LaTeX to PDF) | Yes (see below) |
 | py-spy | `/opt/app-root/bin/py-spy` | Python profiler; transitive dep from Ray/CodeFlare | No |
 | rg (ripgrep) | `/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg` | IDE search, required by code-server | No |
 
@@ -28,7 +28,7 @@ downloaded from GitHub releases. Inspecting the binary reveals it contains the
 full Haskell-native TLS stack:
 
 ```bash
-strings /usr/local/pandoc/bin/pandoc | grep -E 'tls-|http-client-tls|crypton'
+strings /opt/app-root/bin/pandoc | grep -E 'tls-|http-client-tls|crypton'
 # tls-2.1.10          — Haskell native TLS (not OpenSSL)
 # http-client-tls     — HTTP client using the tls library
 # crypton-connection   — crypto primitives (bundled C, not OpenSSL)
