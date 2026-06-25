@@ -104,8 +104,10 @@ Both variants can be built locally or on Konflux/Tekton.
 Notebook images target OpenShift arbitrary UID with supplemental **gid 0**. Hermetic
 `uv pip install` runs as **`USER 1001:0`** after root-only `dnf`/PDF stages, with
 **`umask 0002`** so new files are group-writable where the umask applies. Any remaining
-paths (wheel ZIP modes from `uv`) get a single filtered pass via
-`base-images/utils/ensure-openshift-site-packages.sh` (`find ! -perm -g+w -exec chmod g+w {} +`).
+paths (wheel ZIP modes from `uv`) get a filtered pass via
+`base-images/utils/ensure-openshift-site-packages.sh`: `chmod g+w` on files and
+directories only, then `chmod -h g+w` on symlinks (does not follow link targets,
+e.g. rocm pytorch `de-vendor-torch.py` into system libs).
 Leaf stages do not run full-tree `fix-permissions`. Paths outside site-packages that
 build steps create directly (e.g. `jupyter_server_config.py`, `labconfig/`, `pf.css`
 from `apply.sh`) get explicit modes or `chmod` at creation time; see [#3928](https://github.com/opendatahub-io/notebooks/issues/3928).
