@@ -1,0 +1,4 @@
+# RHAIENG-5765: pandoc-rhai from cuda13.0-ubi9 (sidecar; not in pyproject because rocm lock uses rocm7.14)
+pandoc-rhai==3.9.0.2 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:44d54660d2823a06fdcbc741e4a3e5aa6839311107ee0a7c2ad5be0229a0169e \
+    --hash=sha256:196aefabb4a2a4a2eabb150a848dedd61e23e4ef99eae2775147aae58a7c0abe

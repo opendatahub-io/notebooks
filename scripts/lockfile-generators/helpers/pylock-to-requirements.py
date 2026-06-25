@@ -34,11 +34,6 @@ Output format:
     Packages locked as a direct URL (uv ``archive``) become ``name @ URL`` so
     pip/Hermeto do not look them up on the index (e.g. tensorflow-rocm from AMD).
 
-    Wheels served from a different RHAI index profile than --default-index
-    (e.g. pandoc-rhai on rocm7.14 while the lock default is rocm7.1-EA2) also become
-    ``name @ URL`` lines so Konflux/Hermeto can prefetch them without
-    ``--extra-index-url`` (which Hermeto does not support).
-
     If index-url is provided, it is emitted as the first line:
         --index-url https://...
 """
@@ -51,15 +46,6 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 # uv pip compile records its index in the first-line comment, e.g.
 #   --default-index=https://pypi.org/simple
 _DEFAULT_INDEX_RE = re.compile(r"--default-index=(https?://\S+)")
-_RHOAI_PULP_PROFILE_RE = re.compile(
-    r"https://packages\.redhat\.com/api/pulp-content/public-rhai/rhoai/([^/]+/[^/]+)/"
-)
-_RHOAI_SIMPLE_PROFILE_RE = re.compile(
-    r"https://packages\.redhat\.com/api/pypi/public-rhai/rhoai/([^/]+/[^/]+)/simple/"
-)
-_WHEEL_PLATFORM_MACHINE_RE = re.compile(
-    r"(?:linux_|manylinux[^.]+\.)(aarch64|x86_64|ppc64le|s390x)\.whl$"
-)
 
 
 def strip_format_json_param(index_url: str) -> str:
@@ -83,114 +69,6 @@ def extract_default_index_from_pylock(pylock_path: Path) -> str:
     return strip_format_json_param(m.group(1).rstrip("'\"")) if m else ""
 
 
-def extract_rhoai_profile_from_simple_index(index_url: str) -> str | None:
-    m = _RHOAI_SIMPLE_PROFILE_RE.match(strip_format_json_param(index_url))
-    return m.group(1) if m else None
-
-
-def rhoai_wheel_profile(wheel_url: str) -> str | None:
-    match = _RHOAI_PULP_PROFILE_RE.match(wheel_url)
-    return match.group(1) if match else None
-
-
-def wheel_is_cross_index(*, wheel_url: str, default_profile: str | None) -> bool:
-    profile = rhoai_wheel_profile(wheel_url)
-    return bool(default_profile and profile and profile != default_profile)
-
-
-def platform_machine_from_wheel_url(wheel_url: str) -> str | None:
-    match = _WHEEL_PLATFORM_MACHINE_RE.search(wheel_url)
-    return match.group(1) if match else None
-
-
-def append_marker(base_marker: str, extra_marker: str) -> str:
-    if not extra_marker:
-        return base_marker
-    if not base_marker:
-        return extra_marker
-    return f"{base_marker} and {extra_marker}"
-
-
-def format_direct_url_entry(
-    *,
-    name: str,
-    url: str,
-    marker: str,
-    hashes: dict[str, str],
-) -> str:
-    hash_lines = [f"--hash={algo}:{digest}" for algo, digest in hashes.items()]
-    entry = f"{name} @ {url}"
-    if marker:
-        entry += f" ; {marker}"
-    if hash_lines:
-        entry += " \\\n" + " \\\n".join(f"    {h}" for h in hash_lines)
-    return entry
-
-
-def package_requirement_lines(*, pkg: dict, default_profile: str | None) -> list[str]:
-    name = pkg["name"]
-    version = pkg["version"]
-    marker = pkg.get("marker", "")
-
-    archive = pkg.get("archive")
-    if isinstance(archive, dict) and (archive_url := (archive.get("url") or "").strip()):
-        return [
-            format_direct_url_entry(
-                name=name,
-                url=archive_url,
-                marker=marker,
-                hashes=archive.get("hashes", {}),
-            )
-        ]
-
-    cross_index_wheels: list[dict] = []
-    index_wheels: list[dict] = []
-    for wheel in pkg.get("wheels", []):
-        wheel_url = (wheel.get("url") or "").strip()
-        if wheel_is_cross_index(wheel_url=wheel_url, default_profile=default_profile):
-            cross_index_wheels.append(wheel)
-        else:
-            index_wheels.append(wheel)
-
-    lines: list[str] = []
-    for wheel in cross_index_wheels:
-        wheel_url = wheel["url"]
-        wheel_marker = append_marker(
-            marker,
-            f"platform_machine == '{platform_machine}'"
-            if (platform_machine := platform_machine_from_wheel_url(wheel_url))
-            else "",
-        )
-        lines.append(
-            format_direct_url_entry(
-                name=name,
-                url=wheel_url,
-                marker=wheel_marker,
-                hashes=wheel.get("hashes", {}),
-            )
-        )
-
-    if not index_wheels and cross_index_wheels:
-        return lines
-
-    hashes: list[str] = []
-    for wheel in index_wheels:
-        for algo, digest in wheel.get("hashes", {}).items():
-            hashes.append(f"--hash={algo}:{digest}")
-    sdist = pkg.get("sdist")
-    if isinstance(sdist, dict):
-        for algo, digest in sdist.get("hashes", {}).items():
-            hashes.append(f"--hash={algo}:{digest}")
-
-    entry = f"{name}=={version}"
-    if marker:
-        entry += f" ; {marker}"
-    if hashes:
-        entry += " \\\n" + " \\\n".join(f"    {h}" for h in hashes)
-    lines.append(entry)
-    return lines
-
-
 def main():
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <pylock.toml> <requirements.txt> [index-url]",
@@ -208,29 +86,56 @@ def main():
     with open(pylock_path, "rb") as f:
         data = tomllib.load(f)
 
-    default_profile = (
-        extract_rhoai_profile_from_simple_index(index_url) if index_url else None
-    )
-
     lines = []
-    header_line_count = 0
 
     # Emit --index-url as the first line so pip/uv know where to find packages
     if index_url:
         lines.append(f"--index-url {index_url}")
-        header_line_count += 1
 
     # Process each [[packages]] entry from the lock file
     for pkg in data.get("packages", []):
-        lines.extend(
-            package_requirement_lines(pkg=pkg, default_profile=default_profile)
-        )
+        name = pkg["name"]
+        version = pkg["version"]
+        marker = pkg.get("marker", "")  # e.g. "sys_platform == 'linux'"
+
+        archive = pkg.get("archive")
+        if isinstance(archive, dict) and (archive_url := (archive.get("url") or "").strip()):
+            # Direct URL (not on PyPI): PEP 508 "name @ URL" so prefetchers fetch this file.
+            hashes = [
+                f"--hash={algo}:{digest}"
+                for algo, digest in archive.get("hashes", {}).items()
+            ]
+            entry = f"{name} @ {archive_url}"
+            if marker:
+                entry += f" ; {marker}"
+            if hashes:
+                entry += " \\\n" + " \\\n".join(f"    {h}" for h in hashes)
+            lines.append(entry)
+            continue
+
+        # Collect hashes from wheels and sdist (index-served packages).
+        hashes = []
+        for whl in pkg.get("wheels", []):
+            for algo, digest in whl.get("hashes", {}).items():
+                hashes.append(f"--hash={algo}:{digest}")
+        sdist = pkg.get("sdist")
+        if isinstance(sdist, dict):
+            for algo, digest in sdist.get("hashes", {}).items():
+                hashes.append(f"--hash={algo}:{digest}")
+
+        entry = f"{name}=={version}"
+        if marker:
+            entry += f" ; {marker}"
+        if hashes:
+            entry += " \\\n" + " \\\n".join(f"    {h}" for h in hashes)
+
+        lines.append(entry)
 
     # Write the output file
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text("\n".join(lines) + "\n")
 
-    pkg_count = len(lines) - header_line_count
+    pkg_count = len(lines) - (1 if index_url else 0)
     print(f"  Generated {output_path} ({pkg_count} packages)")
 
 
