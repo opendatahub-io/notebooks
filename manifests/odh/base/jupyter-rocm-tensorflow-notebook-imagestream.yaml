@@ -46,7 +46,7 @@ spec:
             {"name": "MLflow", "version": "3.13"},
             {"name": "Feast", "version": "0.63"}
           ]
-        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-tensorflow-rocm-py312-ubi9
         opendatahub.io/workbench-image-recommended: 'true'
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-commit-n_PLACEHOLDER
       from:
@@ -85,7 +85,7 @@ spec:
             {"name": "MySQL Connector/Python", "version": "9.6"},
             {"name": "MLflow", "version": "3.10"}
           ]
-        openshift.io/imported-from: quay.io/opendatahub/workbench-images
+        openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-tensorflow-rocm-py312-ubi9
         opendatahub.io/workbench-image-recommended: 'false'
         opendatahub.io/notebook-build-commit: odh-workbench-jupyter-tensorflow-rocm-py312-ubi9-commit-3-4_PLACEHOLDER
       from:
