@@ -113,7 +113,7 @@ build steps create directly (e.g. `jupyter_server_config.py`, `labconfig/`, `pf.
 from `apply.sh`) get explicit modes or `chmod` at creation time; see [#3928](https://github.com/opendatahub-io/notebooks/issues/3928).
 
 Non-konflux `Dockerfile.cpu|cuda|rocm` paths are symlinks to `Dockerfile.konflux.*` and
-inherit the same ownership model.
+inherit the same ownership model. Rollout tracked in [#3928](https://github.com/opendatahub-io/notebooks/issues/3928).
 
 ## Testing layers
 
