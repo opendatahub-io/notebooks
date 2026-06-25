@@ -18,6 +18,8 @@ on:  # yamllint disable-line rule:truthy
           - all
           - minimal-timing
           - minimal-user1001
+          - minimal-umask002
+          - minimal-gw-wheels
           - dnf-benchmark
           - pytorch-perm
       ref:
@@ -90,9 +92,9 @@ jobs:
             rg 'BUILD_PROFILE_CHMOD_GW|BUILD_PROFILE_FIX_PERMS' "${LOG_DIR}"/*.log "${LOG_DIR}/combined.log" 2>/dev/null | sort -u || true
             echo '```'
             echo ""
-            echo "#### DNF / arbitrary UID"
+            echo "#### DNF / arbitrary UID / pip / modes"
             echo '```'
-            rg 'BUILD_PROFILE_DNF|BUILD_PROFILE_ARBITRARY_UID|BUILD_PROFILE_OWNERSHIP|BUILD_PROFILE_FIXUP' \
+            rg 'BUILD_PROFILE_DNF|BUILD_PROFILE_ARBITRARY_UID|BUILD_PROFILE_PIP_INSTALL|BUILD_PROFILE_OWNERSHIP|BUILD_PROFILE_FIXUP|BUILD_PROFILE_MODE_ANALYSIS|PREPARE_GROUP_WRITABLE_WHEELS' \
               "${LOG_DIR}"/*.log "${LOG_DIR}/combined.log" 2>/dev/null | sort -u || true
             echo '```'
           } >> "${GITHUB_STEP_SUMMARY}"

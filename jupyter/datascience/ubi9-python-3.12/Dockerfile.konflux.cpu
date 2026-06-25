@@ -136,20 +136,23 @@ RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-h
 
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 
-# hadolint ignore=DL3002
-# Run as root (same as jupyter-minimal): uv from cpu-base is root-owned; chmod g+w must be root.
+COPY base-images/utils/prepare_group_writable_wheels.py /usr/local/bin/prepare_group_writable_wheels.py
 COPY ${DATASCIENCE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/setup-kale.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
+USER 1001:0
+
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+umask 0002
+python3 /usr/local/bin/prepare_group_writable_wheels.py /cachi2/output/deps/pip /tmp/pip-gw
 
 echo "Installing software and packages"
 UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
     --no-verify-hashes \
-    --find-links /cachi2/output/deps/pip \
+    --find-links /tmp/pip-gw \
     --requirements=./requirements.txt
 
 mkdir /opt/app-root/runtimes
@@ -162,8 +165,6 @@ install -D -m 0644 /opt/app-root/bin/utils/jupyter_server_config.py \
 jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 jupyter labextension disable jupyterlab-kubeflow-kale
 /opt/app-root/bin/utils/addons/apply.sh
-chmod -R g+w /opt/app-root/lib/python3.12/site-packages
-fix-permissions /opt/app-root -P
 EOF
 
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/

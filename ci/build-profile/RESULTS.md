@@ -134,14 +134,38 @@ The profile Dockerfile omits production datascience/python stages; resolver expe
 
 ---
 
-## 5. Recommendations (ordered)
+## 5. Phase B decision gate (implemented)
 
-1. **Drop redundant `chmod -R g+w site-packages`** when `fix-permissions /opt/app-root` follows in the same `RUN` (saves ~2s minimal, more on large envs) — see #3007.
-2. **Run `uv pip install` + jupyter config as `USER 1001:0`** after root-only `dnf` stages — eliminates **~19k `chown`** in `fix-permissions`; keep scoped `fix-permissions` on paths root mutates (`etc/jupyter`, `share/jupyter`).
-3. **Investigate uv/file mode** — why **18,626** paths lack `g+w` even when files are `664`; possible `umask` or dir/file bit pattern fix to avoid chmod entirely.
-4. **Do not prioritize `UV_LINK_MODE`** for hermetic volume builds — wheels are on bind-mount; install always materializes into the image layer.
-5. **PDF deps** — largest OS install bucket on minimal/datascience ancestors; only pay on images that need PDF export.
-6. **Re-run harness** after SIGPIPE fix to validate arbitrary UID + `pytest tests/containers` on `minimal-user1001-chmod-only` vs production.
+**Verdict:** Full elimination of post-install `chmod`/`fix-permissions` requires **group-writable wheel rewrite** before `uv pip install`. `USER 1001:0` + `umask 002` alone is insufficient (uv applies wheel ZIP modes 644/755).
+
+**Chosen production model** (applied to all `Dockerfile.konflux.*`; non-konflux paths are symlinks):
+
+| Step | User | Notes |
+|------|------|-------|
+| `dnf`, `rpm --import`, `install_pdf_deps.sh`, mongocli COPY | **root (0)** | OS packages only |
+| `prepare_group_writable_wheels.py` + `uv pip install` + jupyter config + `apply.sh` | **1001:0** | `umask 0002`; install from `/tmp/pip-gw` |
+| Final runtime | **1001** | Entrypoint / WORKDIR |
+
+Utility: [`base-images/utils/prepare_group_writable_wheels.py`](../../base-images/utils/prepare_group_writable_wheels.py) — copies prefetched wheels with ZIP modes **664** (files) / **775** (dirs) so uv extracts OpenShift-safe trees without post-install tree walks.
+
+**Removed from all Jupyter leaf stages:** `chmod -R g+w site-packages`, `fix-permissions /opt/app-root`, trustyai `chown -R`/`chmod -R g=u` blocks.
+
+**Harness experiments added** (re-run via GHA):
+
+- `minimal-user1001` + `FIXUP_MODE=none` — baseline failure expected without wheel rewrite
+- `minimal-umask002` — confirms umask-only dead end on full env
+- `minimal-gw-wheels` — validates wheel rewrite + no fixup
+- `pytorch-perm` — production stage graph with permission counters
+
+---
+
+## 6. Recommendations (superseded §5 pre-implementation)
+
+1. ~~Drop redundant chmod~~ — **Done:** both passes removed; wheel rewrite replaces need.
+2. ~~USER 1001:0 for uv~~ — **Done** across konflux Dockerfiles.
+3. ~~Investigate uv/file mode~~ — **Resolved:** prefetch-time wheel ZIP mode rewrite (not uv upstream).
+4. Re-run harness on GHA after push; confirm `BUILD_PROFILE_PIP_INSTALL ok` on `minimal-gw-wheels`.
+5. Pytorch perm counts — pending GHA `pytorch-perm` run with fixed production Dockerfile overlay.
 
 ---
 

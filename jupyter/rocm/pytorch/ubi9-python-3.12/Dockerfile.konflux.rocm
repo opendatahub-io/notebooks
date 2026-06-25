@@ -140,14 +140,17 @@ LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
       com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
       version="${RELEASE}"
 
+COPY base-images/utils/prepare_group_writable_wheels.py /usr/local/bin/prepare_group_writable_wheels.py
 COPY ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY ${PYTORCH_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY ${PYTORCH_SOURCE_CODE}/de-vendor-torch.py ./
 
-USER 0
+USER 1001:0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+umask 0002
+python3 /usr/local/bin/prepare_group_writable_wheels.py /cachi2/output/deps/pip /tmp/pip-gw
 
 echo "Installing software and packages"
 # Cachi2 prefetched pip deps; --no-deps per pylock.toml
@@ -155,7 +158,7 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
     --no-verify-hashes \
-    --find-links /cachi2/output/deps/pip \
+    --find-links /tmp/pip-gw \
     --requirements=./requirements.txt
 
 # setup path for runtime configuration
@@ -175,9 +178,6 @@ jupyter labextension disable jupyterlab-kubeflow-kale
 # De-vendor the ROCm libs that are embedded in Pytorch
 python3 ./de-vendor-torch.py
 rm ./de-vendor-torch.py
-# Fix permissions to support pip in Openshift environments
-chmod -R g+w /opt/app-root/lib/python3.12/site-packages
-fix-permissions /opt/app-root -P
 EOF
 
 COPY jupyter/rocm/tensorflow/ubi9-python-3.12/utils/link-solibs.py /tmp/link-solibs.py

@@ -143,9 +143,7 @@ ARG PYLOCK_FLAVOR
 
 WORKDIR /opt/app-root/bin
 
-# Root required for uv pip install and runtime setup; switch to 1001 before WORKDIR at end
-# hadolint ignore=DL3002
-USER root
+USER 1001:0
 
 ARG LABEL_REGISTRY_PREFIX
 ARG LABEL_COMPONENT
@@ -161,11 +159,14 @@ LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
       version="${RELEASE}"
 
 # Install Python packages and Jupyterlab extensions from lockfile (requirements.cuda.txt used only for Cachi2 prefetch)
+COPY base-images/utils/prepare_group_writable_wheels.py /usr/local/bin/prepare_group_writable_wheels.py
 COPY ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY ${PYTORCH_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+umask 0002
+python3 /usr/local/bin/prepare_group_writable_wheels.py /cachi2/output/deps/pip /tmp/pip-gw
 
 echo "Installing software and packages"
 # Install Python packages from lockfile (hermetic: use Cachi2 prefetched pip deps)
@@ -174,7 +175,7 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
     --no-verify-hashes \
-    --find-links /cachi2/output/deps/pip \
+    --find-links /tmp/pip-gw \
     --requirements=./requirements.txt
 
 # setup path for runtime configuration
@@ -191,9 +192,6 @@ jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 jupyter labextension disable jupyterlab-kubeflow-kale
 # Apply JupyterLab addons
 /opt/app-root/bin/utils/addons/apply.sh
-# Fix permissions to support pip in Openshift environments
-chmod -R g+w /opt/app-root/lib/python3.12/site-packages
-fix-permissions /opt/app-root -P
 EOF
 
 USER 1001

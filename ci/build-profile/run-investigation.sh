@@ -66,15 +66,13 @@ profile_build() {
   elapsed=$((end - start))
   echo "BUILD_PROFILE_TOTAL ${name} ${elapsed} exit=${status}"
   echo "::notice title=build-profile::total ${name} elapsed=${elapsed}s exit=${status}"
-  rg 'BUILD_PROFILE_' "${log}" || true
+  rg 'BUILD_PROFILE_|PREPARE_GROUP_WRITABLE_WHEELS' "${log}" || true
   return "${status}"
 }
 
 arbitrary_uid_smoke() {
   local image="$1"
   local name="$2"
-  # OpenShift uses large UIDs (e.g. 1000880000) but rootless podman on GHA/mac only
-  # allows subuid-mapped IDs. Match tests/containers (jupyterlab uses 4321 + gid 0).
   local uid="${ARBITRARY_UID_SMOKE:-4321}"
   echo "=== Arbitrary UID smoke: ${name} (uid=${uid}:0) ==="
   if ${CONTAINER_ENGINE} run --rm --user "${uid}:0" --entrypoint="" "${image}" \
@@ -86,13 +84,48 @@ arbitrary_uid_smoke() {
   fi
 }
 
+pip_install_smoke() {
+  local image="$1"
+  local name="$2"
+  local uid="${PIP_INSTALL_UID:-23456}"
+  echo "=== Pip install smoke: ${name} (uid=${uid}:0) ==="
+  if ${CONTAINER_ENGINE} run --rm --user "${uid}:0" --entrypoint="" "${image}" \
+    python3 -m pip install cowsay; then
+    echo "BUILD_PROFILE_PIP_INSTALL ${name} ok"
+  else
+    echo "BUILD_PROFILE_PIP_INSTALL ${name} FAILED" >&2
+    return 1
+  fi
+}
+
+mode_analysis_in_image() {
+  local image="$1"
+  local name="$2"
+  echo "=== Mode analysis in ${name} ==="
+  ${CONTAINER_ENGINE} run --rm --entrypoint="" "${image}" \
+    /usr/local/bin/analyze-site-package-modes.sh /opt/app-root/lib/python3.12/site-packages \
+    2>&1 | tee -a "${BUILD_LOG_DIR}/${name}-modes.log" || true
+}
+
 run_container_tests() {
   local image="$1"
+  local extra_mark="${2:-}"
   echo "=== Container tests for ${image} ==="
+  local mark="not openshift and not cuda and not rocm"
+  if [[ -n "${extra_mark}" ]]; then
+    mark="${mark} and ${extra_mark}"
+  fi
   uv run pytest tests/containers \
     --image="${image}" \
-    -m "not openshift and not cuda and not rocm" \
+    -m "${mark}" \
     --maxfail=3 -q
+}
+
+run_pip_test() {
+  local image="$1"
+  echo "=== pytest pip install for ${image} ==="
+  uv run pytest tests/containers/base_image_test.py::TestBaseImage::test_pip_install_cowsay_runs \
+    --image="${image}" -q
 }
 
 case "${EXPERIMENT}" in
@@ -113,17 +146,53 @@ case "${EXPERIMENT}" in
       profile_build "minimal-user1001-${mode}" \
         ci/build-profile/dockerfiles/minimal-user1001.Dockerfile.cpu \
         jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf \
-        "--build-arg FIXUP_MODE=${mode}"
+        "--build-arg FIXUP_MODE=${mode}" || true
       img="${IMAGE_REGISTRY}:minimal-user1001-${mode}-${IMAGE_TAG}"
-      arbitrary_uid_smoke "${img}" "minimal-user1001-${mode}" || true
+      if ${CONTAINER_ENGINE} image exists "${img}" >/dev/null 2>&1; then
+        arbitrary_uid_smoke "${img}" "minimal-user1001-${mode}" || true
+        if [[ "${mode}" == "none" ]]; then
+          pip_install_smoke "${img}" "minimal-user1001-none" || true
+          run_pip_test "${img}" || true
+        fi
+      fi
     done
+    ;;
+esac
+
+case "${EXPERIMENT}" in
+  minimal-umask002|all)
+    if [[ "${EXPERIMENT}" == "minimal-umask002" ]]; then
+      prefetch_component jupyter/minimal/ubi9-python-3.12 cpu
+    fi
+    profile_build minimal-umask002 \
+      ci/build-profile/dockerfiles/minimal-umask002.Dockerfile.cpu \
+      jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf || true
+    ;;
+esac
+
+case "${EXPERIMENT}" in
+  minimal-gw-wheels|all)
+    if [[ "${EXPERIMENT}" == "minimal-gw-wheels" ]]; then
+      prefetch_component jupyter/minimal/ubi9-python-3.12 cpu
+    fi
+    profile_build minimal-gw-wheels \
+      ci/build-profile/dockerfiles/minimal-gw-wheels.Dockerfile.cpu \
+      jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf || true
+    img="${IMAGE_REGISTRY}:minimal-gw-wheels-${IMAGE_TAG}"
+    if ${CONTAINER_ENGINE} image exists "${img}" >/dev/null 2>&1; then
+      arbitrary_uid_smoke "${img}" "minimal-gw-wheels" || true
+      pip_install_smoke "${img}" "minimal-gw-wheels" || true
+      run_pip_test "${img}" || true
+    fi
+    ;;
+esac
+
+case "${EXPERIMENT}" in
+  minimal-timing|minimal-user1001|all)
     img="${IMAGE_REGISTRY}:minimal-timing-${IMAGE_TAG}"
     if ${CONTAINER_ENGINE} image exists "${img}" >/dev/null 2>&1; then
       arbitrary_uid_smoke "${img}" "minimal-timing" || true
-    fi
-    if [[ "${EXPERIMENT}" == "all" ]]; then
-      img="${IMAGE_REGISTRY}:minimal-timing-${IMAGE_TAG}"
-      if ${CONTAINER_ENGINE} image exists "${img}" >/dev/null 2>&1; then
+      if [[ "${EXPERIMENT}" == "all" ]]; then
         run_container_tests "${img}" || true
       fi
     fi
@@ -144,7 +213,6 @@ esac
 
 case "${EXPERIMENT}" in
   pytorch-perm|all)
-    # Re-prefetch so pip wheels match pytorch requirements (not minimal's).
     prefetch_component jupyter/pytorch/ubi9-python-3.12 cuda
     profile_build pytorch-perm \
       ci/build-profile/dockerfiles/pytorch-perm.Dockerfile.cuda \

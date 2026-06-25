@@ -1,5 +1,5 @@
 #########################
-# Investigation profile: uv pip install as USER 1001:0 (#3928)
+# Investigation: umask 002 before uv on full minimal env (#3928)
 #########################
 ARG BASE_IMAGE
 
@@ -21,8 +21,6 @@ FROM cpu-base AS jupyter-minimal
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
-# none | chmod-only | full (production fixup)
-ARG FIXUP_MODE=none
 ARG LABEL_REGISTRY_PREFIX
 ARG LABEL_COMPONENT
 ARG RELEASE
@@ -31,11 +29,8 @@ LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" version="${RELEASE}"
 
 WORKDIR /opt/app-root/bin
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
-COPY ci/build-profile/profile-step.sh /usr/local/bin/profile-step.sh
-COPY ci/build-profile/chmod-gw-count.sh /usr/local/bin/chmod-gw-count.sh
-COPY ci/build-profile/fix-permissions-count /usr/local/bin/fix-permissions-count
 COPY ci/build-profile/analyze-site-package-modes.sh /usr/local/bin/analyze-site-package-modes.sh
-RUN chmod +x /usr/local/bin/profile-step.sh /usr/local/bin/chmod-gw-count.sh /usr/local/bin/fix-permissions-count /usr/local/bin/analyze-site-package-modes.sh
+RUN chmod +x /usr/local/bin/analyze-site-package-modes.sh
 
 USER 0
 
@@ -52,62 +47,23 @@ COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.tom
 COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
-# Install Python and jupyter config as default application user (1001:0).
 USER 1001:0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-echo "BUILD_PROFILE_USER1001 uid=$(id -u) gid=$(id -g)"
-/usr/local/bin/profile-step.sh uv_pip_install_user1001 bash -c '
+umask 0002
+echo "BUILD_PROFILE_UMASK002 umask=$(umask)"
 UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
     --no-verify-hashes \
     --find-links /cachi2/output/deps/pip \
     --requirements=./requirements.txt
-'
 jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 sed -i -e "s/Python.*/$(python --version | cut -d . -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
 cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter
 /opt/app-root/bin/utils/addons/apply.sh
 /usr/local/bin/analyze-site-package-modes.sh /opt/app-root/lib/python3.12/site-packages
-EOF
-
-USER 0
-
-ARG FIXUP_MODE
-ENV FIXUP_MODE=${FIXUP_MODE}
-
-RUN /bin/bash <<EOF
-set -Eeuxo pipefail
-mode="\${FIXUP_MODE:-none}"
-echo "BUILD_PROFILE_FIXUP_MODE=\${mode}"
-case "\${mode}" in
-  none)
-    echo "BUILD_PROFILE_FIXUP skipped"
-    ;;
-  chmod-only)
-    /usr/local/bin/profile-step.sh chmod_gw /usr/local/bin/chmod-gw-count.sh /opt/app-root/lib/python3.12/site-packages
-    ;;
-  full)
-    /usr/local/bin/profile-step.sh chmod_gw /usr/local/bin/chmod-gw-count.sh /opt/app-root/lib/python3.12/site-packages
-    /usr/local/bin/profile-step.sh fix_permissions /usr/local/bin/fix-permissions-count /opt/app-root -P
-    ;;
-  *)
-    echo "Unknown FIXUP_MODE=\${mode}" >&2
-    exit 1
-    ;;
-esac
-# Report ownership sample after install (head closes pipe; avoid pipefail SIGPIPE)
-set +o pipefail
-sample="/opt/app-root/lib/python3.12/site-packages"
-if [[ -d "\${sample}" ]]; then
-  echo "BUILD_PROFILE_OWNERSHIP_SAMPLE \$(stat -c '%u:%g %a %n' "\${sample}" | head -1)"
-  find "\${sample}" -maxdepth 2 -type f 2>/dev/null | head -3 | while read -r f; do
-    stat -c 'BUILD_PROFILE_OWNERSHIP_SAMPLE %u:%g %a %n' "\${f}" || true
-  done
-fi
-set -o pipefail
 EOF
 
 USER 1001

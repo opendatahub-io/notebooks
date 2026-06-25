@@ -99,6 +99,15 @@ paths resolve to the same content, so the meaningful difference is the selected
 build-args file and manifest set rather than a separate Dockerfile implementation.
 Both variants can be built locally or on Konflux/Tekton.
 
+### OpenShift file ownership during image build (#3928)
+
+Notebook images target OpenShift arbitrary UID with supplemental **gid 0**. Hermetic
+`uv pip install` steps therefore run as **`USER 1001:0`** after root-only `dnf`/PDF
+stages. Wheels from the Cachi2 prefetch are copied to `/tmp/pip-gw` with group-writable
+ZIP modes (664/775) via `base-images/utils/prepare_group_writable_wheels.py` before
+install, so leaf stages do not need post-install `chmod` or `fix-permissions` tree walks.
+See `ci/build-profile/RESULTS.md` for profiling data.
+
 ## Testing layers
 
 | Layer | Location | What it tests | How to run |

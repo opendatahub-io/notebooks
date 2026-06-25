@@ -1,84 +1,52 @@
 #########################
-# configuration args    #
+# Investigation: USER 1001:0 + group-writable wheel rewrite, no post-install fixup (#3928)
 #########################
 ARG BASE_IMAGE
 
-####################
-# rocm-base        #
-####################
-FROM ${BASE_IMAGE} AS rocm-base
+FROM ${BASE_IMAGE} AS cpu-base
 
 WORKDIR /opt/app-root/bin
-
-# OS Packages needs to be installed as root (intermediate stage; jupyter stage ends with USER 1001).
-# hadolint ignore=DL3002
 USER 0
 
-# [HERMETIC] Import GPG keys for prefetched RPM verification.
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-
-# Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
-# Install useful OS packages
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
     bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
-
-# Create unversioned .so symlinks for ROCm libs (RHAIENG-2643)
-COPY jupyter/rocm/tensorflow/ubi9-python-3.12/utils/link-solibs.py /tmp/link-solibs.py
-RUN python3 /tmp/link-solibs.py
-
-########################
-# rocm-jupyter-minimal #
-########################
-FROM rocm-base AS rocm-jupyter-minimal
+FROM cpu-base AS jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
 ARG PYLOCK_FLAVOR
-
 ARG LABEL_REGISTRY_PREFIX
 ARG LABEL_COMPONENT
 ARG RELEASE
 
-LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
-      com.redhat.component="${LABEL_COMPONENT}" \
-      io.k8s.display-name="${LABEL_COMPONENT}" \
-      summary="Minimal Jupyter ROCm notebook image for ODH notebooks" \
-      description="Minimal Jupyter ROCm notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-      io.k8s.description="Minimal Jupyter ROCm notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
-      version="${RELEASE}"
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" version="${RELEASE}"
 
 WORKDIR /opt/app-root/bin
-
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
+COPY base-images/utils/prepare_group_writable_wheels.py /usr/local/bin/prepare_group_writable_wheels.py
+COPY ci/build-profile/analyze-site-package-modes.sh /usr/local/bin/analyze-site-package-modes.sh
+RUN chmod +x /usr/local/bin/analyze-site-package-modes.sh
 
 USER 0
 
-# [HERMETIC] Import GPG keys for prefetched RPM verification.
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-
-# Bust layer cache when prefetched RPM set changes
 COPY prefetch-input/odh/rpms.lock.yaml /dev/null
 COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
-### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
 ENV PATH="/usr/local/pandoc/bin:$PATH"
 
-### END Dependencies for PDF export
-
-COPY base-images/utils/prepare_group_writable_wheels.py /usr/local/bin/prepare_group_writable_wheels.py
 COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
-
 
 USER 1001:0
 
@@ -86,31 +54,19 @@ RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 umask 0002
 python3 /usr/local/bin/prepare_group_writable_wheels.py /cachi2/output/deps/pip /tmp/pip-gw
-
-echo "Installing software and packages"
-# Install Python packages from lockfile (Cachi2 prefetched pip deps; --no-deps per pylock.toml)
 UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
     --no-verify-hashes \
     --find-links /tmp/pip-gw \
     --requirements=./requirements.txt
-
-# Disable announcement plugin of jupyterlab
 jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
-# Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y
-sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
-# copy jupyter configuration
+sed -i -e "s/Python.*/$(python --version | cut -d . -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
 cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter
-# Apply JupyterLab addons
 /opt/app-root/bin/utils/addons/apply.sh
+/usr/local/bin/analyze-site-package-modes.sh /opt/app-root/lib/python3.12/site-packages
 EOF
 
-# Workaround for https://issues.redhat.com/browse/AIPCC-8152
-ENV ROCM_PATH=/opt/rocm
-
 USER 1001
-
 WORKDIR /opt/app-root/src
-
 ENTRYPOINT ["start-notebook.sh"]

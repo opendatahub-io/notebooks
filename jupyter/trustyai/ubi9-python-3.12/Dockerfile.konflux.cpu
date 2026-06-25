@@ -117,8 +117,6 @@ RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-h
 
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 
-# hadolint ignore=DL3002
-# Run as root (same as jupyter-minimal): uv from cpu-base is root-owned; chmod g+w must be root.
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/setup-kale.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
@@ -164,25 +162,24 @@ dnf install -y --setopt=tsflags=nodocs "${PACKAGES[@]}"
 dnf -y clean all --enablerepo='*'
 EOF
 
+COPY base-images/utils/prepare_group_writable_wheels.py /usr/local/bin/prepare_group_writable_wheels.py
 COPY ${TRUSTYAI_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements-trustyai.txt
+
+USER 1001:0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+umask 0002
+python3 /usr/local/bin/prepare_group_writable_wheels.py /cachi2/output/deps/pip /tmp/pip-gw
 echo "Installing trustworthy-ai stack"
 UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
     --compile-bytecode --index-strategy=unsafe-best-match \
     --no-verify-hashes \
-    --find-links /cachi2/output/deps/pip \
+    --find-links /tmp/pip-gw \
     --requirements=./requirements-trustyai.txt
 EOF
 
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-# change ownership to default user (all packages were installed as root and has root:root ownership
-chown -R 1001:0 /opt/app-root/
-chmod -R g=u /opt/app-root
-EOF
 
 USER 1001
 
@@ -202,9 +199,6 @@ jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 jupyter labextension disable jupyterlab-kubeflow-kale
 # Apply JupyterLab addons
 /opt/app-root/bin/utils/addons/apply.sh
-# Fix permissions to support pip in Openshift environments
-chmod -R g+w /opt/app-root/lib/python3.12/site-packages
-fix-permissions /opt/app-root -P
 EOF
 
 WORKDIR /opt/app-root/src
