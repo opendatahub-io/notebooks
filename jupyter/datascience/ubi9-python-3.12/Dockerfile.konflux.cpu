@@ -140,10 +140,13 @@ COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 COPY ${DATASCIENCE_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/setup-kale.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
+COPY base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
+
 USER 1001:0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+umask 0002
 
 echo "Installing software and packages"
 UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
@@ -165,7 +168,7 @@ install -D -m 0644 /opt/app-root/bin/utils/jupyter_server_config.py \
 jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 jupyter labextension disable jupyterlab-kubeflow-kale
 /opt/app-root/bin/utils/addons/apply.sh
-fix-permissions /opt/app-root -P
+/usr/local/bin/ensure-openshift-site-packages.sh
 EOF
 
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/

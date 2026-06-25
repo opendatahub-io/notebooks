@@ -99,6 +99,18 @@ paths resolve to the same content, so the meaningful difference is the selected
 build-args file and manifest set rather than a separate Dockerfile implementation.
 Both variants can be built locally or on Konflux/Tekton.
 
+### OpenShift file ownership during image build (#3928)
+
+Notebook images target OpenShift arbitrary UID with supplemental **gid 0**. Hermetic
+`uv pip install` runs as **`USER 1001:0`** after root-only `dnf`/PDF stages, with
+**`umask 0002`** so new files are group-writable where the umask applies. Any remaining
+paths (wheel ZIP modes from `uv`) get a single filtered pass via
+`base-images/utils/ensure-openshift-site-packages.sh` (`find ! -perm -g+w -exec chmod g+w {} +`).
+Leaf stages do not run full-tree `fix-permissions`.
+
+Non-konflux `Dockerfile.cpu|cuda|rocm` paths are symlinks to `Dockerfile.konflux.*` and
+inherit the same ownership model.
+
 ## Testing layers
 
 | Layer | Location | What it tests | How to run |

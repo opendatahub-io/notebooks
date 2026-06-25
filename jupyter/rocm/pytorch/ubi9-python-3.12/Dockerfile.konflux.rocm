@@ -148,6 +148,7 @@ USER 1001:0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+umask 0002
 
 echo "Installing software and packages"
 # Cachi2 prefetched pip deps; --no-deps per pylock.toml
@@ -177,7 +178,7 @@ jupyter labextension disable jupyterlab-kubeflow-kale
 # De-vendor the ROCm libs that are embedded in Pytorch
 python3 ./de-vendor-torch.py
 rm ./de-vendor-torch.py
-fix-permissions /opt/app-root -P
+/usr/local/bin/ensure-openshift-site-packages.sh
 EOF
 
 USER 0

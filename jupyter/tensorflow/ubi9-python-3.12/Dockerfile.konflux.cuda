@@ -162,8 +162,11 @@ LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
 COPY ${TENSORFLOW_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY ${TENSORFLOW_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
+COPY base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
+
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+umask 0002
 
 echo "Installing software and packages"
 # Install Python packages from lockfile (hermetic: use Cachi2 prefetched pip deps)
@@ -191,7 +194,7 @@ jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 jupyter labextension disable jupyterlab-kubeflow-kale
 # Apply JupyterLab addons
 /opt/app-root/bin/utils/addons/apply.sh
-fix-permissions /opt/app-root -P
+/usr/local/bin/ensure-openshift-site-packages.sh
 EOF
 
 USER 1001

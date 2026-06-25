@@ -165,10 +165,13 @@ EOF
 
 COPY ${TRUSTYAI_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements-trustyai.txt
 
+COPY base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
+
 USER 1001:0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+umask 0002
 echo "Installing trustworthy-ai stack"
 UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \
@@ -178,12 +181,14 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
     --requirements=./requirements-trustyai.txt
 
 pandoc --version
+/usr/local/bin/ensure-openshift-site-packages.sh
 EOF
 
 USER 1001
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
+umask 0002
 # setup path for runtime configuration
 mkdir /opt/app-root/runtimes
 # Remove default Elyra runtime-images
@@ -198,7 +203,7 @@ jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 jupyter labextension disable jupyterlab-kubeflow-kale
 # Apply JupyterLab addons
 /opt/app-root/bin/utils/addons/apply.sh
-fix-permissions /opt/app-root -P
+/usr/local/bin/ensure-openshift-site-packages.sh
 EOF
 
 WORKDIR /opt/app-root/src
