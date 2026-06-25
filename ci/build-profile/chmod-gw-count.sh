@@ -13,31 +13,11 @@ if [[ ! -e "${target}" ]]; then
   exit 1
 fi
 
-total=0
-already_gw=0
-changed=0
+total=$(find -L "${target}" | wc -l | tr -d ' ')
+already_gw=$(find -L "${target}" -perm -g+w | wc -l | tr -d ' ')
+need_gw=$(find -L "${target}" ! -perm -g+w | wc -l | tr -d ' ')
 
-while IFS= read -r -d '' path; do
-  total=$((total + 1))
-  if [[ -L "${path}" ]]; then
-    continue
-  fi
-  if [[ -d "${path}" ]]; then
-    if [[ -perm /g+w ]]; then
-      already_gw=$((already_gw + 1))
-    else
-      chmod g+w "${path}"
-      changed=$((changed + 1))
-    fi
-  elif [[ -f "${path}" ]]; then
-    if [[ -perm /g+w ]]; then
-      already_gw=$((already_gw + 1))
-    else
-      chmod g+w "${path}"
-      changed=$((changed + 1))
-    fi
-  fi
-done < <(find -L "${target}" -print0)
+find -L "${target}" ! -perm -g+w -exec chmod g+w {} +
 
-echo "BUILD_PROFILE_CHMOD_GW path=${target} total=${total} already_gw=${already_gw} changed=${changed}"
-echo "::notice title=build-profile::chmod-gw path=${target} total=${total} already_gw=${already_gw} changed=${changed}"
+echo "BUILD_PROFILE_CHMOD_GW path=${target} total=${total} already_gw=${already_gw} changed=${need_gw}"
+echo "::notice title=build-profile::chmod-gw path=${target} total=${total} already_gw=${already_gw} changed=${need_gw}"

@@ -106,7 +106,7 @@ case "${EXPERIMENT}" in
     if [[ "${EXPERIMENT}" == "minimal-user1001" ]]; then
       prefetch_component jupyter/minimal/ubi9-python-3.12 cpu
     fi
-    for mode in none full; do
+    for mode in none chmod-only full; do
       profile_build "minimal-user1001-${mode}" \
         ci/build-profile/dockerfiles/minimal-user1001.Dockerfile.cpu \
         jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf \
@@ -135,6 +135,7 @@ esac
 
 case "${EXPERIMENT}" in
   pytorch-perm|all)
+    # Re-prefetch so pip wheels match pytorch requirements (not minimal's).
     prefetch_component jupyter/pytorch/ubi9-python-3.12 cuda
     profile_build pytorch-perm \
       ci/build-profile/dockerfiles/pytorch-perm.Dockerfile.cuda \

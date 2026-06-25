@@ -17,11 +17,13 @@ echo "=== dnf benchmark: install_pdf_deps (texlive + pandoc) ==="
 /usr/local/bin/profile-step.sh dnf_pdf_deps ./utils/install_pdf_deps.sh
 
 # Optional: explicit rpm install of same cpu-base set (no solver) when RPM paths exist
-RPM_DIR="/cachi2/output/deps/rpm/${RPM_ARCH:-x86_64}/RPMS"
+RPM_DIR="/cachi2/output/deps/rpm/${RPM_ARCH:-x86_64}"
 if [[ -d "${RPM_DIR}" ]]; then
+  count=$(find "${RPM_DIR}" -name '*.rpm' | wc -l | tr -d ' ')
+  export REPO_RPM_COUNT="${count}"
   mapfile -t rpm_files < <(
     for pkg in "${CPU_BASE_PKGS[@]}"; do
-      find "${RPM_DIR}" -maxdepth 1 -name "${pkg}-*.rpm" -print | head -1
+      find "${RPM_DIR}" -name "${pkg}-*.rpm" -print | head -1
     done
   )
   missing=0
