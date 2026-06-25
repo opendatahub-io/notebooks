@@ -96,14 +96,16 @@ case "\${mode}" in
     exit 1
     ;;
 esac
-# Report ownership sample after install
+# Report ownership sample after install (head closes pipe; avoid pipefail SIGPIPE)
+set +o pipefail
 sample="/opt/app-root/lib/python3.12/site-packages"
 if [[ -d "\${sample}" ]]; then
   echo "BUILD_PROFILE_OWNERSHIP_SAMPLE \$(stat -c '%u:%g %a %n' "\${sample}" | head -1)"
-  find "\${sample}" -maxdepth 2 -type f | head -3 | while read -r f; do
-    stat -c 'BUILD_PROFILE_OWNERSHIP_SAMPLE %u:%g %a %n' "\${f}"
+  find "\${sample}" -maxdepth 2 -type f 2>/dev/null | head -3 | while read -r f; do
+    stat -c 'BUILD_PROFILE_OWNERSHIP_SAMPLE %u:%g %a %n' "\${f}" || true
   done
 fi
+set -o pipefail
 EOF
 
 USER 1001
