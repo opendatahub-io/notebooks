@@ -65,7 +65,13 @@ BUILD_PROFILE_CHMOD_GW changed=18626  (unchanged)
 - **`chmod g+w` on site-packages is still required** (same 18,626 changes).
 - Sample ownership after user install: dir `1001:0 775`, files `1001:0 664` (group-writable, but tree walk still finds many entries without `g+w` bit as tested by `find -perm`).
 
+Also run arbitrary-UID smoke on production-style `minimal-timing` image.
+
 ### Arbitrary UID smoke / container tests
+
+Earlier runs used UID **1000880000** (realistic OpenShift) but **rootless podman cannot `setresuid` to that value** on GHA (`crun: Invalid argument`). That was a **harness false negative**, not a permission regression.
+
+Smoke test now uses **4321:0** (same as `tests/containers/workbenches/jupyterlab/`) and writes under `$HOME` (`/opt/app-root/src`, mode 770, gid 0). Re-run needed for user1001 variant verdict.
 
 User1001 variant builds returned **exit 141** (SIGPIPE from `head` in ownership sample + `pipefail`) so images were **not tagged**; smoke tests and pytest targeted a missing image. **Fix committed** on branch (`set +o pipefail` around sample). Re-run needed for OpenShift parity tests.
 

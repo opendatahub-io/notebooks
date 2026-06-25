@@ -73,9 +73,12 @@ profile_build() {
 arbitrary_uid_smoke() {
   local image="$1"
   local name="$2"
-  echo "=== Arbitrary UID smoke: ${name} ==="
-  if ${CONTAINER_ENGINE} run --rm --user 1000880000:0 --entrypoint="" "${image}" \
-    bash -c 'touch /opt/app-root/src/.write-test && rm /opt/app-root/src/.write-test && echo BUILD_PROFILE_ARBITRARY_UID_OK'; then
+  # OpenShift uses large UIDs (e.g. 1000880000) but rootless podman on GHA/mac only
+  # allows subuid-mapped IDs. Match tests/containers (jupyterlab uses 4321 + gid 0).
+  local uid="${ARBITRARY_UID_SMOKE:-4321}"
+  echo "=== Arbitrary UID smoke: ${name} (uid=${uid}:0) ==="
+  if ${CONTAINER_ENGINE} run --rm --user "${uid}:0" --entrypoint="" "${image}" \
+    bash -c 'touch "${HOME}/.write-test" && rm "${HOME}/.write-test" && echo BUILD_PROFILE_ARBITRARY_UID_OK'; then
     echo "BUILD_PROFILE_ARBITRARY_UID ${name} ok"
   else
     echo "BUILD_PROFILE_ARBITRARY_UID ${name} FAILED" >&2
@@ -114,6 +117,10 @@ case "${EXPERIMENT}" in
       img="${IMAGE_REGISTRY}:minimal-user1001-${mode}-${IMAGE_TAG}"
       arbitrary_uid_smoke "${img}" "minimal-user1001-${mode}" || true
     done
+    img="${IMAGE_REGISTRY}:minimal-timing-${IMAGE_TAG}"
+    if ${CONTAINER_ENGINE} image exists "${img}" >/dev/null 2>&1; then
+      arbitrary_uid_smoke "${img}" "minimal-timing" || true
+    fi
     if [[ "${EXPERIMENT}" == "all" ]]; then
       img="${IMAGE_REGISTRY}:minimal-timing-${IMAGE_TAG}"
       if ${CONTAINER_ENGINE} image exists "${img}" >/dev/null 2>&1; then
