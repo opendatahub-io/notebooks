@@ -103,6 +103,29 @@ def build_rhoai_index_url(*, release: str, accelerator: str) -> str:
     return f"{RHOAI_INDEX_ROOT}/{release}/{accelerator}-ubi9/simple/"
 
 
+# ROCm workbench locks stay on EA2 rocm7.1 until tensorflow_rocm lands on rocm7.14,
+# but pandoc-rhai wheels are published on the stable rocm7.14 production index.
+PANDOC_ROCM_ACCELERATOR = "rocm7.14"
+
+
+def stable_rhoai_release(release: str) -> str:
+    """Drop EA suffix so pandoc resolves from stable 3.5 profiles, not 3.5-EA2."""
+    return release.split("-EA", maxsplit=1)[0]
+
+
+def resolve_pandoc_index_url(resolved: ResolvedIndexConfig) -> str:
+    """RHAI index URL for pandoc-rhai (may differ from the lock default index)."""
+    if resolved.accelerator.startswith("rocm"):
+        return build_rhoai_index_url(
+            release=stable_rhoai_release(resolved.release),
+            accelerator=PANDOC_ROCM_ACCELERATOR,
+        )
+    return build_rhoai_index_url(
+        release=stable_rhoai_release(resolved.release),
+        accelerator=resolved.accelerator,
+    )
+
+
 def build_rhoai_test_index_url(*, release: str, accelerator: str) -> str:
     return f"{RHOAI_INDEX_ROOT}/{release}/{accelerator}-ubi9-test/simple/"
 

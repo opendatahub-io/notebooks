@@ -64,6 +64,7 @@ import os
 import re
 import subprocess
 import sys
+from contextlib import contextmanager, nullcontext
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -74,7 +75,12 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import typer
 
-from scripts.index_url_resolver import IndexResolutionError, ResolvedIndexConfig, resolve_index_config
+from scripts.index_url_resolver import (
+    IndexResolutionError,
+    ResolvedIndexConfig,
+    resolve_index_config,
+    resolve_pandoc_index_url,
+)
 
 # region Configuration
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -322,6 +328,47 @@ def resolve_rh_index_config(
         return None
 
 
+def project_uses_pandoc_source_index(project_dir: Path) -> bool:
+    return 'pandoc-rhai = { index = "pandoc" }' in (project_dir / "pyproject.toml").read_text()
+
+
+_PANDOC_INDEX_URL_RE = re.compile(
+    r'(\[\[tool\.uv\.index\]\]\nname = "pandoc"\nurl = ")[^"]+(")',
+)
+
+
+def with_pandoc_explicit_index_url(pyproject_text: str, url: str) -> str:
+    """Ensure pandoc is resolved from an explicit named index only (not a global extra index)."""
+    block = (
+        '[[tool.uv.index]]\n'
+        'name = "pandoc"\n'
+        f'url = "{url}"\n'
+        "explicit = true\n\n"
+    )
+    if 'name = "pandoc"' in pyproject_text:
+        return _PANDOC_INDEX_URL_RE.sub(rf"\1{url}\2", pyproject_text, count=1)
+    anchor = "[tool.uv.sources]"
+    if anchor not in pyproject_text:
+        msg = "pyproject.toml uses pandoc source index but has no [tool.uv.sources] anchor"
+        raise ValueError(msg)
+    return pyproject_text.replace(anchor, block + anchor, 1)
+
+
+@contextmanager
+def temporary_pandoc_index_url(project_dir: Path, url: str):
+    path = project_dir / "pyproject.toml"
+    original = path.read_text(encoding="utf-8")
+    updated = with_pandoc_explicit_index_url(original, url)
+    if updated == original:
+        yield
+        return
+    path.write_text(updated, encoding="utf-8")
+    try:
+        yield
+    finally:
+        path.write_text(original, encoding="utf-8")
+
+
 def get_index_flags(project_dir: Path, flavor: str, log: LogBuffer) -> list[str] | None:
     """Build uv index flags from build-args/konflux.<flavor>.conf.
 
@@ -422,6 +469,10 @@ def run_lock(
         lock_path, ci_check=ci_check, live_timestamp=live_timestamp
     )
     cmd.append(f"--exclude-newer={exclude_newer}")
+    # RHAIENG-5765: cpu-ubi9 pandoc-rhai wheels may lack upload-time metadata; the
+    # setting lives in dependencies/pandoc-rhai-rhoai but uv pip compile does not
+    # read pyproject [tool.uv] from path dependencies when compiling leaf projects.
+    cmd.append("--exclude-newer-package=pandoc-rhai=false")
 
     cmd.extend(index_flags)
     default_index = next(
@@ -430,6 +481,12 @@ def run_lock(
     )
     if default_index is not None:
         log.print(f"  🌐 Lock INDEX_URL: {default_index}")
+    resolved = resolve_rh_index_config(project_dir, flavor, log)
+    pandoc_ctx = nullcontext()
+    if resolved is not None and project_uses_pandoc_source_index(project_dir):
+        pandoc_url = resolve_pandoc_index_url(resolved)
+        log.print(f"  📄 Pandoc INDEX_URL: {pandoc_url}")
+        pandoc_ctx = temporary_pandoc_index_url(project_dir, pandoc_url)
     extra_idx = lock_extra_index_flags_from_env()
     if extra_idx:
         cmd.extend(extra_idx)
@@ -444,15 +501,16 @@ def run_lock(
     }
 
     try:
-        result = subprocess.run(
-            cmd,
-            cwd=project_dir,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=600,
-            env=compile_env,
-        )
+        with pandoc_ctx:
+            result = subprocess.run(
+                cmd,
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=600,
+                env=compile_env,
+            )
     except subprocess.TimeoutExpired:
         log.warning(f"Timed out generating {desc} in {project_dir}")
         (project_dir / output).unlink(missing_ok=True)

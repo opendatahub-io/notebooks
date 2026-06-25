@@ -79,7 +79,6 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
-ENV PATH="/usr/local/pandoc/bin:$PATH"
 
 ### END Dependencies for PDF export
 
@@ -157,6 +156,8 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
     --no-verify-hashes \
     --find-links /cachi2/output/deps/pip \
     --requirements=./requirements.txt
+
+pandoc --version
 
 # setup path for runtime configuration
 mkdir /opt/app-root/runtimes
