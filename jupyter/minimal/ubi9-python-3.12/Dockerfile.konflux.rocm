@@ -78,6 +78,8 @@ COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.tom
 COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
+USER 1001:0
+
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 
