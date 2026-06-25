@@ -207,4 +207,5 @@ chmod g+w /opt/app-root/etc/jupyter/labconfig
 /usr/local/bin/ensure-openshift-site-packages.sh
 EOF
 
+USER 1001
 WORKDIR /opt/app-root/src
