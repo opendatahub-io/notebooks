@@ -67,7 +67,7 @@ profile_build() {
   local start end elapsed
   start=$(date +%s)
   # shellcheck disable=SC2086
-  "${ROOT_DIR}/scripts/sandbox.py" --dockerfile "${dockerfile}" --platform "${PLATFORM}" -- \
+  uv run "${ROOT_DIR}/scripts/sandbox.py" --dockerfile "${dockerfile}" --platform "${PLATFORM}" -- \
     ${CONTAINER_ENGINE} build --no-cache ${volumes} --platform="${PLATFORM}" \
     --tag "${tag}" --file "${dockerfile}" ${build_args[@]} ${extra_args} {} \
     2>&1 | tee "${log}"
