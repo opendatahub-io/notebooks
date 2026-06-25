@@ -25,6 +25,9 @@ on:  # yamllint disable-line rule:truthy
         required: false
         default: investigate/build-permissions-3928
         type: string
+  push:
+    branches:
+      - investigate/build-permissions-3928
 
 concurrency:
   group: investigate-build-profile-${{ github.ref }}
@@ -32,13 +35,13 @@ concurrency:
 
 jobs:
   investigate:
-    name: "${{ inputs.experiment }}"
+    name: "${{ inputs.experiment || 'all' }}"
     runs-on: ubuntu-26.04
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 1
           submodules: recursive
           persist-credentials: false
@@ -63,7 +66,7 @@ jobs:
           BUILD_LOG_DIR="${LOG_DIR}" \
           BUILD_ARCH=linux/amd64 \
           RPM_ARCH=x86_64 \
-          ci/build-profile/run-investigation.sh "${{ inputs.experiment }}" \
+          ci/build-profile/run-investigation.sh "${{ inputs.experiment || 'all' }}" \
             2>&1 | tee "${LOG_DIR}/combined.log"
         env:
           CONTAINER_ENGINE: podman
@@ -74,8 +77,8 @@ jobs:
           LOG_DIR="${RUNNER_TEMP}/build-profile-logs"
           {
             echo "### Build profile investigation (#3928)"
-            echo "- **experiment**: ${{ inputs.experiment }}"
-            echo "- **ref**: ${{ inputs.ref }}"
+            echo "- **experiment**: ${{ inputs.experiment || 'all' }}"
+            echo "- **ref**: ${{ inputs.ref || github.ref }}"
             echo ""
             echo "#### Timings (seconds)"
             echo '```'
@@ -98,6 +101,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6d985fbedaebd5c55a6c07c6ead  # v6.0.0
         with:
-          name: build-profile-logs-${{ inputs.experiment }}-${{ github.run_id }}
+          name: build-profile-logs-${{ inputs.experiment || 'all' }}-${{ github.run_id }}
           path: ${{ runner.temp }}/build-profile-logs/
           if-no-files-found: warn
