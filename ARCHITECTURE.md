@@ -106,7 +106,9 @@ Notebook images target OpenShift arbitrary UID with supplemental **gid 0**. Herm
 **`umask 0002`** so new files are group-writable where the umask applies. Any remaining
 paths (wheel ZIP modes from `uv`) get a single filtered pass via
 `base-images/utils/ensure-openshift-site-packages.sh` (`find ! -perm -g+w -exec chmod g+w {} +`).
-Leaf stages do not run full-tree `fix-permissions`.
+Leaf stages do not run full-tree `fix-permissions`. Paths outside site-packages that
+build steps create directly (e.g. `jupyter_server_config.py`, `labconfig/`, `pf.css`
+from `apply.sh`) get explicit modes or `chmod` at creation time; see [#3928](https://github.com/opendatahub-io/notebooks/issues/3928).
 
 Non-konflux `Dockerfile.cpu|cuda|rocm` paths are symlinks to `Dockerfile.konflux.*` and
 inherit the same ownership model.
