@@ -177,8 +177,6 @@ jupyter labextension disable jupyterlab-kubeflow-kale
 # De-vendor the ROCm libs that are embedded in Pytorch
 python3 ./de-vendor-torch.py
 rm ./de-vendor-torch.py
-# Fix permissions to support pip in Openshift environments
-chmod -R g+w /opt/app-root/lib/python3.12/site-packages
 fix-permissions /opt/app-root -P
 EOF
 
