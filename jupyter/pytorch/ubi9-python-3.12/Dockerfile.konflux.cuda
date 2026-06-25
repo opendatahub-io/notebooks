@@ -10,7 +10,7 @@ ARG BASE_IMAGE
 # Source: git submodule at repo-root prefetch-input/mongocli.         #
 # Go deps prefetched by Konflux/Cachi2 (gomod).                        #
 ######################################################
-FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3-1782219569 AS mongocli-builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3-1782348382 AS mongocli-builder
 
 ARG PYTORCH_SOURCE_CODE=jupyter/pytorch/ubi9-python-3.12
 
@@ -144,6 +144,8 @@ LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
 # pylock.toml documents the graph; requirements.cuda.txt drives Cachi2 prefetch and hermetic uv install
 COPY ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY ${PYTORCH_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
+
+USER 1001:0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
