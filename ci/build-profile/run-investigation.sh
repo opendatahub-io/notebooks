@@ -21,19 +21,10 @@ read_conf() {
 }
 
 cachi2_volumes() {
-  local component_dir="$1"
-  local prefetch_dir
-  if [[ -d "${component_dir}/prefetch-input" ]]; then
-    prefetch_dir="${component_dir}/prefetch-input"
-  elif grep -q 'prefetch-input/' "${component_dir}"/Dockerfile* 2>/dev/null && [[ -d prefetch-input ]]; then
-    prefetch_dir="prefetch-input"
-  else
-    prefetch_dir=""
-  fi
-  if [[ -n "${prefetch_dir}" && -d cachi2/output ]]; then
-  echo \
-    --volume "${ROOT_DIR}/cachi2/output:/cachi2/output:Z" \
-    --volume "${ROOT_DIR}/cachi2/output/deps/rpm/${RPM_ARCH}/repos.d/:/etc/yum.repos.d/:Z"
+  if [[ -d cachi2/output/deps/rpm/${RPM_ARCH}/repos.d ]]; then
+    echo \
+      --volume "${ROOT_DIR}/cachi2/output:/cachi2/output:Z" \
+      --volume "${ROOT_DIR}/cachi2/output/deps/rpm/${RPM_ARCH}/repos.d/:/etc/yum.repos.d/:Z"
   fi
 }
 
@@ -52,7 +43,7 @@ profile_build() {
   local tag="${IMAGE_REGISTRY}:${name}-${IMAGE_TAG}"
   local log="${BUILD_LOG_DIR}/${name}.log"
   local volumes
-  volumes=$(cachi2_volumes "$(dirname "${dockerfile}")")
+  volumes=$(cachi2_volumes)
 
   local build_args=()
   if [[ -f "${conf}" ]]; then
