@@ -1,0 +1,42 @@
+#!/bin/sh
+# Instrumented fix-permissions: count candidates then apply (base-images/utils/fix-permissions).
+
+set +e
+
+SYMLINK_OPT=${2:--L}
+
+[ "$(id -u)" -ne 0 ] && CHECK_OWNER=" -uid $(id -u)"
+
+if ! [ -e "$1" ]; then
+  echo "ERROR: File or directory $1 does not exist." >&2
+  exit 0
+fi
+
+# shellcheck disable=SC2086
+total_paths=$(find $SYMLINK_OPT "$1" ${CHECK_OWNER} 2>/dev/null | wc -l | tr -d ' ')
+# shellcheck disable=SC2086
+chown_before=$(find $SYMLINK_OPT "$1" ${CHECK_OWNER} \! -uid ${CNB_USER_ID:?} 2>/dev/null | wc -l | tr -d ' ')
+# shellcheck disable=SC2086
+chgrp_before=$(find $SYMLINK_OPT "$1" ${CHECK_OWNER} \! -gid ${CNB_GROUP_ID:?} 2>/dev/null | wc -l | tr -d ' ')
+# shellcheck disable=SC2086
+chmod_g_rw_before=$(find $SYMLINK_OPT "$1" ${CHECK_OWNER} \! -perm -g+rw 2>/dev/null | wc -l | tr -d ' ')
+# shellcheck disable=SC2086
+chmod_g_x_before=$(find $SYMLINK_OPT "$1" ${CHECK_OWNER} -perm /u+x -a \! -perm /g+x 2>/dev/null | wc -l | tr -d ' ')
+# shellcheck disable=SC2086
+chmod_dir_g_x_before=$(find $SYMLINK_OPT "$1" ${CHECK_OWNER} -type d \! -perm /g+x 2>/dev/null | wc -l | tr -d ' ')
+
+# shellcheck disable=SC2086
+find $SYMLINK_OPT "$1" ${CHECK_OWNER} \! -uid ${CNB_USER_ID:?} -exec chown ${CNB_USER_ID:?} {} +
+# shellcheck disable=SC2086
+find $SYMLINK_OPT "$1" ${CHECK_OWNER} \! -gid ${CNB_GROUP_ID:?} -exec chgrp ${CNB_GROUP_ID:?} {} +
+# shellcheck disable=SC2086
+find $SYMLINK_OPT "$1" ${CHECK_OWNER} \! -perm -g+rw -exec chmod g+rw {} +
+# shellcheck disable=SC2086
+find $SYMLINK_OPT "$1" ${CHECK_OWNER} -perm /u+x -a \! -perm /g+x -exec chmod g+x {} +
+# shellcheck disable=SC2086
+find $SYMLINK_OPT "$1" ${CHECK_OWNER} -type d \! -perm /g+x -exec chmod g+x {} +
+
+echo "BUILD_PROFILE_FIX_PERMS path=$1 total_paths=${total_paths} chown_before=${chown_before} chgrp_before=${chgrp_before} chmod_g_rw_before=${chmod_g_rw_before} chmod_g_x_before=${chmod_g_x_before} chmod_dir_g_x_before=${chmod_dir_g_x_before}"
+echo "::notice title=build-profile::fix-permissions path=$1 total=${total_paths} chown=${chown_before} chgrp=${chgrp_before} g_rw=${chmod_g_rw_before}"
+
+exit 0

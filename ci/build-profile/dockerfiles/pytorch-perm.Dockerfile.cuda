@@ -1,0 +1,122 @@
+ARG TARGETARCH
+
+ARG BASE_IMAGE
+
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3-1782219569 AS mongocli-builder
+
+ARG PYTORCH_SOURCE_CODE=jupyter/pytorch/ubi9-python-3.12
+
+USER 0
+
+COPY prefetch-input/mongocli /tmp/mongocli-src
+WORKDIR /tmp/mongocli-src
+
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+export GOCACHE=/cachi2/output/deps/gomod
+export GOMODCACHE=/cachi2/output/deps/gomod/pkg/mod
+export GOPATH=/cachi2/output/deps/gomod
+export GOPROXY=file:///cachi2/output/deps/gomod/pkg/mod/cache/download
+CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
+EOF
+
+USER 1001
+
+FROM ${BASE_IMAGE} AS cuda-base
+
+WORKDIR /opt/app-root/bin
+USER 0
+
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
+
+RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+    bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
+
+USER 1001
+
+FROM cuda-base AS cuda-jupyter-minimal
+
+ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
+ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.12
+
+USER 0
+WORKDIR /opt/app-root/bin
+
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
+COPY ${JUPYTER_REUSABLE_UTILS} utils/
+COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
+
+RUN ./utils/install_pdf_deps.sh
+ENV PATH="/usr/local/pandoc/bin:$PATH"
+USER 1001
+WORKDIR /opt/app-root/src
+ENTRYPOINT ["start-notebook.sh"]
+
+FROM cuda-jupyter-minimal AS cuda-jupyter-datascience
+
+ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
+
+USER root
+WORKDIR /opt/app-root/bin
+COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
+
+RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+    bash /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat
+
+COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/mongocli
+USER 1001
+COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/setup-kale.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
+WORKDIR /opt/app-root/src
+
+FROM cuda-jupyter-datascience AS cuda-jupyter-pytorch
+
+ARG PYTORCH_SOURCE_CODE=jupyter/pytorch/ubi9-python-3.12
+ARG PYLOCK_FLAVOR
+ARG LABEL_REGISTRY_PREFIX
+ARG LABEL_COMPONENT
+ARG RELEASE
+
+WORKDIR /opt/app-root/bin
+USER root
+
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" version="${RELEASE}"
+
+COPY ci/build-profile/profile-step.sh /usr/local/bin/profile-step.sh
+COPY ci/build-profile/chmod-gw-count.sh /usr/local/bin/chmod-gw-count.sh
+COPY ci/build-profile/fix-permissions-count /usr/local/bin/fix-permissions-count
+RUN chmod +x /usr/local/bin/profile-step.sh /usr/local/bin/chmod-gw-count.sh /usr/local/bin/fix-permissions-count
+
+COPY ${PYTORCH_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
+COPY ${PYTORCH_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
+
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+
+/usr/local/bin/profile-step.sh uv_pip_install bash -c '
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
+    --strict --no-deps --no-config --no-progress \
+    --compile-bytecode --index-strategy=unsafe-best-match \
+    --no-verify-hashes \
+    --find-links /cachi2/output/deps/pip \
+    --requirements=./requirements.txt
+'
+
+mkdir /opt/app-root/runtimes
+rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json
+sed -i -e "s/Python.*/$(python --version | cut -d . -f-2)\",/" /opt/app-root/share/jupyter/kernels/python3/kernel.json
+cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter
+jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+jupyter labextension disable jupyterlab-kubeflow-kale
+/opt/app-root/bin/utils/addons/apply.sh
+
+/usr/local/bin/profile-step.sh chmod_gw /usr/local/bin/chmod-gw-count.sh /opt/app-root/lib/python3.12/site-packages
+/usr/local/bin/profile-step.sh fix_permissions /usr/local/bin/fix-permissions-count /opt/app-root -P
+EOF
+
+USER 1001
+WORKDIR /opt/app-root/src

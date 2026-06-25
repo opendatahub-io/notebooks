@@ -1,0 +1,35 @@
+#########################
+# Investigation profile: dnf timing vs explicit rpm (#3928)
+#########################
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE} AS dnf-benchmark
+
+WORKDIR /opt/app-root/bin
+USER 0
+
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
+RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-EPEL-9 || true
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+COPY prefetch-input/odh/rpms.lock.yaml /dev/null
+COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
+
+COPY jupyter/utils utils/
+COPY ci/build-profile/profile-step.sh /usr/local/bin/profile-step.sh
+COPY ci/build-profile/dnf-benchmark.sh /usr/local/bin/dnf-benchmark.sh
+RUN chmod +x /usr/local/bin/profile-step.sh /usr/local/bin/dnf-benchmark.sh
+
+RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+    /bin/bash <<'EOF'
+set -Eeuxo pipefail
+arch="${RPM_ARCH:-x86_64}"
+rpm_dir="/cachi2/output/deps/rpm/${arch}/RPMS"
+if [[ -d "${rpm_dir}" ]]; then
+  count=$(find "${rpm_dir}" -name '*.rpm' | wc -l | tr -d ' ')
+else
+  count=0
+fi
+export REPO_RPM_COUNT="${count}"
+export RPM_ARCH="${arch}"
+/usr/local/bin/dnf-benchmark.sh
+EOF

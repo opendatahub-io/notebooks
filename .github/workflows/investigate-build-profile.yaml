@@ -1,0 +1,103 @@
+---
+# Investigation workflow for build permissions/cost profiling (#3928).
+# Dispatched manually; runs cold builds with instrumentation and reports metrics.
+name: Investigate build profile
+
+permissions:
+  contents: read
+
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+    inputs:
+      experiment:
+        description: Which experiment to run
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - minimal-timing
+          - minimal-user1001
+          - dnf-benchmark
+          - pytorch-perm
+      ref:
+        description: Git ref (branch or SHA)
+        required: false
+        default: investigate/build-permissions-3928
+        type: string
+
+concurrency:
+  group: investigate-build-profile-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  investigate:
+    name: "${{ inputs.experiment }}"
+    runs-on: ubuntu-26.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Install tooling
+        run: |
+          set -Eeuxo pipefail
+          uv sync --group dev --locked
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ripgrep
+          chmod +x ci/build-profile/*.sh ci/build-profile/run-investigation.sh
+
+      - name: Run investigation
+        id: investigate
+        run: |
+          set -Eeuxo pipefail
+          LOG_DIR="${RUNNER_TEMP}/build-profile-logs"
+          mkdir -p "${LOG_DIR}"
+          BUILD_LOG_DIR="${LOG_DIR}" \
+          BUILD_ARCH=linux/amd64 \
+          RPM_ARCH=x86_64 \
+          ci/build-profile/run-investigation.sh "${{ inputs.experiment }}" \
+            2>&1 | tee "${LOG_DIR}/combined.log"
+        env:
+          CONTAINER_ENGINE: podman
+
+      - name: Summarize metrics
+        if: always()
+        run: |
+          LOG_DIR="${RUNNER_TEMP}/build-profile-logs"
+          {
+            echo "### Build profile investigation (#3928)"
+            echo "- **experiment**: ${{ inputs.experiment }}"
+            echo "- **ref**: ${{ inputs.ref }}"
+            echo ""
+            echo "#### Timings (seconds)"
+            echo '```'
+            rg 'BUILD_PROFILE_STEP|BUILD_PROFILE_TOTAL' "${LOG_DIR}"/*.log "${LOG_DIR}/combined.log" 2>/dev/null | sort -u || true
+            echo '```'
+            echo ""
+            echo "#### Permission counts"
+            echo '```'
+            rg 'BUILD_PROFILE_CHMOD_GW|BUILD_PROFILE_FIX_PERMS' "${LOG_DIR}"/*.log "${LOG_DIR}/combined.log" 2>/dev/null | sort -u || true
+            echo '```'
+            echo ""
+            echo "#### DNF / arbitrary UID"
+            echo '```'
+            rg 'BUILD_PROFILE_DNF|BUILD_PROFILE_ARBITRARY_UID|BUILD_PROFILE_OWNERSHIP|BUILD_PROFILE_FIXUP' \
+              "${LOG_DIR}"/*.log "${LOG_DIR}/combined.log" 2>/dev/null | sort -u || true
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6d985fbedaebd5c55a6c07c6ead  # v6.0.0
+        with:
+          name: build-profile-logs-${{ inputs.experiment }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/build-profile-logs/
+          if-no-files-found: warn
