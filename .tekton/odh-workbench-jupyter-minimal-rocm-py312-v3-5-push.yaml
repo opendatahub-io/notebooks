@@ -45,7 +45,7 @@ spec:
     value: true
   # Hermetic: RPMs from prefetch-input/rhds; pip from requirements.rocm.txt (see opendatahub-io/notebooks/.tekton minimal ROCm PR pipeline)
   - name: hermetic
-    value: false
+    value: 'true'
   - name: build-source-image
     value: true
   - name: build-image-index

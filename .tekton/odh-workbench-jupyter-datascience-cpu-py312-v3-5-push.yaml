@@ -43,7 +43,7 @@ spec:
     value: true
   # Hermetic: gomod (mongocli), RPM (datascience prefetch-input/rhds), pip (requirements.cpu.txt); same as odh-workbench-jupyter-datascience-cpu-py312-pull-request
   - name: hermetic
-    value: false # Set to false, pending AIPCC-7795
+    value: 'true'
   - name: build-source-image
     value: true
   - name: build-image-index
