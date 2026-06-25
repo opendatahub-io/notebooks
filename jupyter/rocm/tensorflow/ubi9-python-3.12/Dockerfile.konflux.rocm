@@ -198,7 +198,7 @@ chmod g+w /opt/app-root/etc/jupyter/labconfig
 /usr/local/bin/ensure-openshift-site-packages.sh
 EOF
 
-COPY ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monkey_patch_protobuf_6x.py /opt/app-root/lib/python3.12/site-packages/
+COPY --chown=1001:0 --chmod=0664 ${JUPYTER_REUSABLE_UTILS}/usercustomize.pth ${JUPYTER_REUSABLE_UTILS}/monkey_patch_protobuf_6x.py /opt/app-root/lib/python3.12/site-packages/
 
 USER 0
 

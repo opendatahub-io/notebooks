@@ -1,4 +1,5 @@
 #!/bin/bash
+set -Eeuo pipefail
 
 # See https://github.com/jupyterlab/jupyterlab/issues/5463
 # This is a hack to apply partial HTML code to JupyterLab's `index.html` file

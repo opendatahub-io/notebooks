@@ -183,7 +183,7 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
 pandoc --version
 EOF
 
-USER 1001
+USER 1001:0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
