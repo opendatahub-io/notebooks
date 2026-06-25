@@ -63,7 +63,7 @@ print("Scikit-learn smoke test completed successfully.")
 
     @allure.description("Check that mysql client functionality is working with SASL plain auth.")
     def test_mysql_connection(self, tf: TestFrame, datascience_image: Image, subtests):
-        MYSQL_CONNECTOR_PYTHON_VERSION = "9.6.0"
+        MYSQL_CONNECTOR_PYTHON_VERSION = "9.7.0"
 
         network = testcontainers.core.network.Network()
         tf.defer(network.create())

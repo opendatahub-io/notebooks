@@ -15,6 +15,7 @@ runs:
     - name: Configure apt for CI
       shell: bash
       run: |
+        set -Eeuxo pipefail
         # These are idempotent and fast — safe to run every time
         sudo rm -f /var/lib/man-db/auto-update
 
@@ -23,8 +24,8 @@ runs:
         #  EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
         #  ExecStart=/usr/bin/kubelet $KUBELET_KUBEADM_ARGS
         # and otherwise fetching from microsoft-prod wastes time
-        sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
-        sudo rm -f /etc/apt/sources.list.d/azure-cli.list
+        sudo rm -f /etc/apt/sources.list.d/microsoft-prod.{list,sources}
+        sudo rm -f /etc/apt/sources.list.d/azure-cli.{list,sources}
 
         cat <<'EOF' | sudo tee /etc/dpkg/dpkg.cfg.d/01_nodoc > /dev/null
         path-exclude /usr/share/doc/*
@@ -49,6 +50,7 @@ runs:
       if: ${{ inputs.update == 'true' }}
       shell: bash
       run: |
+        set -Eeuxo pipefail
         sudo apt-get update
 
     - name: Install packages

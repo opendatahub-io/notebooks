@@ -38,10 +38,10 @@ name: Build & Publish Notebook Servers (TEMPLATE)
         # language=json
         default: >-
           {
-            "linux/amd64": "ubuntu-24.04",
-            "linux/arm64": "ubuntu-24.04-arm",
-            "linux/ppc64le": "ubuntu-24.04",
-            "linux/s390x": "ubuntu-24.04"
+            "linux/amd64": "ubuntu-26.04",
+            "linux/arm64": "ubuntu-26.04-arm",
+            "linux/ppc64le": "ubuntu-26.04",
+            "linux/s390x": "ubuntu-26.04"
           }
         description: "Available contexts for runs-on are: github, inputs, matrix, needs, strategy, vars. Let's use inputs"
         type: string
@@ -54,10 +54,9 @@ jobs:
     env:
       # Some pieces of code (image pulls, for example) in podman consult TMPDIR or default to /var/tmp
       TMPDIR: /home/runner/.local/share/containers/tmpdir
-      # Use the rootful instance of podman for sharing images with cri-o
+      # Rootful podman for sharing images with cri-o (CONTAINER_HOST from install-podman-action).
       # https://podman-desktop.io/blog/sharing-podman-images-with-kubernetes-cluster#introduction
       # https://access.redhat.com/solutions/6986565
-      CONTAINER_HOST: unix:///var/run/podman/podman.sock
       # We don't push here when building PRs, so we can use the same IMAGE_REGISTRY in all branches of the workflow
       IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
       # GitHub image registry used for storing $(CONTAINER_ENGINE)'s cache
@@ -80,7 +79,7 @@ jobs:
           echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >>${GITHUB_ENV}
           echo "CACHE=${CACHE,,}" >>${GITHUB_ENV}
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         if: ${{ fromJson(inputs.github).event_name != 'pull_request_target' }}
         with:
           # Full history: shallow clone + Hermeto’s symlink-preserving source copy makes
@@ -91,10 +90,12 @@ jobs:
           persist-credentials: false  # https://github.com/actions/checkout/issues/2312
       # we need to checkout the pr branch, not pr target (the default for pull_request_target)
       # user access check is done in calling workflow
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         if: ${{ fromJson(inputs.github).event_name == 'pull_request_target' }}
         with:
           ref: "refs/pull/${{ fromJson(inputs.github).event.number }}/merge"
+          # checkout v7 blocks fork PR refs in pull_request_target unless opted in
+          allow-unsafe-pr-checkout: true
           fetch-depth: 0
           lfs: ${{ contains(inputs.target, 'codeserver') }}
           submodules: recursive
@@ -411,6 +412,10 @@ jobs:
               fi
               echo "Subscription build with rhds variant detected"
               PREFETCH_ARGS="$PREFETCH_ARGS --rhds"
+            else
+              # ODH must not see subscription credentials (hermeto-fetch-rpm.sh would
+              # attempt disposable registration). Same pattern as rpms-lock-renewal.yaml.
+              unset SUBSCRIPTION_ACTIVATION_KEY SUBSCRIPTION_ORG
             fi
 
             scripts/lockfile-generators/prefetch-all.sh $PREFETCH_ARGS
@@ -465,14 +470,26 @@ jobs:
       - name: Run Testcontainers container tests (in PyTest)
         id: pytest-testcontainers
         if: ${{ !cancelled() && steps.make-target.outcome == 'success' }}
-        run: |
-          set -Eeuxo pipefail
-          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
           # pulling the Ryuk container from docker.io introduces CI flakiness
           TESTCONTAINERS_RYUK_DISABLED: "true"
+          OUTPUT_IMAGE: "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          JUNIT_XML: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_testcontainers-junit.xml"
+        run: |
+          set -Eeuxo pipefail
+          mkdir -p "$(dirname "${JUNIT_XML}")"
+          uv run pytest --capture=fd tests/containers -m 'not openshift and not cuda and not rocm and not manifest_validation' --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}"
+
+      - name: Upload Testcontainers pytest JUnit XML
+        if: ${{ always() && steps.pytest-testcontainers.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          path: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_testcontainers-junit.xml"
+          archive: false
+          retention-days: 14
+          if-no-files-found: warn
 
       # endregion Pytest image tests
 
@@ -526,15 +543,27 @@ jobs:
       - name: Run OpenShift container tests (in PyTest)
         id: pytest-openshift
         if: ${{ !cancelled() && steps.make-target.outcome == 'success' && steps.provision-k8s.outcome == 'success' && steps.have-tests.outputs.tests == 'true' }}
-        run: |
-          set -Eeuxo pipefail
-          uv run pytest --capture=fd tests/containers -m 'openshift and not cuda and not rocm' --image="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
         env:
           # TODO(jdanek): this Testcontainers stuff should not be necessary but currently it has to be there
           DOCKER_HOST: "unix:///var/run/podman/podman.sock"
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
           # pulling the Ryuk container from docker.io introduces CI flakiness
           TESTCONTAINERS_RYUK_DISABLED: "true"
+          OUTPUT_IMAGE: "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
+          JUNIT_XML: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_openshift-junit.xml"
+        run: |
+          set -Eeuxo pipefail
+          mkdir -p "$(dirname "${JUNIT_XML}")"
+          uv run pytest --capture=fd tests/containers -m 'openshift and not cuda and not rocm' --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}"
+
+      - name: Upload OpenShift pytest JUnit XML
+        if: ${{ always() && steps.pytest-openshift.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          path: "${{ runner.temp }}/pytest-reports/${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_openshift-junit.xml"
+          archive: false
+          retention-days: 14
+          if-no-files-found: warn
 
       # region Trivy vulnerability scan
 
@@ -651,6 +680,7 @@ jobs:
           podman-socket: /var/run/podman/podman.sock
           upload-report: ${{ fromJson(inputs.github).event_name == 'pull_request' }}
           artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
+          junit-artifact-file: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-junit.xml"
           grep-pattern: '@codeserver'
 
       # endregion
@@ -666,10 +696,8 @@ jobs:
           fi
         if: "${{ !cancelled() && steps.install-compsize.outcome == 'success' }}"
 
-      # print system logs, useful when hunting for OOM kills
-
-      - run: sudo dmesg
+      - name: Capture kernel logs on failure
         if: "${{ failure() }}"
-
-      - run: journalctl --no-pager -k
-        if: "${{ failure() }}"
+        uses: ./.github/actions/capture-kernel-logs
+        with:
+          log-prefix: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}"

@@ -50,6 +50,7 @@ dev = [
     "pygments",
     # rich powers the local live progress table in ci/check-image-availability.py
     "rich>=14.3.2",
+    "inline-snapshot>=0.34.1",
 ]
 
 [tool.uv]
@@ -110,6 +111,10 @@ show_missing = true
 skip_empty = true
 
 # inspired from https://github.com/red-hat-data-services/ods-ci/blob/master/pyproject.toml
+
+# https://15r10nk.github.io/inline-snapshot/configuration/
+[tool.inline-snapshot]
+format-command = "ruff format --stdin-filename {filename}"
 
 # https://microsoft.github.io/pyright/#/configuration
 [tool.pyright]

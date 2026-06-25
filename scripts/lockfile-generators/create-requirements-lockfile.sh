@@ -98,12 +98,14 @@ REQUIREMENTS_FILE="${PROJECT_DIR}/requirements.${FLAVOR}.txt"
 PUBLIC_INDEX_PROJECTS=()
 
 PYLOCKS_MODE="rh-index"
-for _d in "${PUBLIC_INDEX_PROJECTS[@]}"; do
-  if [[ "$PROJECT_DIR" == "$_d" || "$PROJECT_DIR" == "$_d/"* ]]; then
-    PYLOCKS_MODE="public-index"
-    break
-  fi
-done
+if ((${#PUBLIC_INDEX_PROJECTS[@]} > 0)); then
+  for _d in "${PUBLIC_INDEX_PROJECTS[@]}"; do
+    if [[ "$PROJECT_DIR" == "$_d" || "$PROJECT_DIR" == "$_d/"* ]]; then
+      PYLOCKS_MODE="public-index"
+      break
+    fi
+  done
+fi
 
 PYLOCK_FILE="${PROJECT_DIR}/uv.lock.d/pylock.${FLAVOR}.toml"
 REQUIREMENTS_INDEX_URL=""

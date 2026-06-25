@@ -5,6 +5,7 @@ requires-python = "==3.12.*"
 
 dependencies = [
     "odh-elyra",
+    "kubeflow-kale[jupyter]",
     "jupyter-bokeh",
     "jupyterlab-lsp",
     "jupyterlab-widgets",
@@ -15,5 +16,5 @@ dependencies = [
 package = false
 
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]

@@ -75,7 +75,8 @@ class TestWorkbenchImage:
             container.with_network(network)
             try:
                 client = testcontainers.core.docker_client.DockerClient()
-                rootless: bool = client.client.info()["Rootless"]
+                # Rootless is a podman-only flag; .get() defaults for Docker API compat
+                rootless: bool = client.client.info().get("Rootless", False)
                 # with rootful podman, --publish does not expose IPv6-only ports
                 # see https://github.com/containers/podman/issues/14491 and friends
                 container.start(wait_for_readiness=rootless)
@@ -273,11 +274,11 @@ def grab_and_check_logs(
     # Here is a list of allowed messages that match some block keyword from the list above, but we allow them
     # for some reason.
     allowed_messages = [
-        # We don't touch this - it should be fixed in the future by the package upgrade.
+        # RHAIENG-5767: jupyter-events package emits this on every JupyterLab start
         "JupyterEventsVersionWarning: The `version` property of an event schema must be a string. It has been type coerced, but in a future version of this library, it will fail to validate.",
         # This is a message from our reverse proxy nginx caused by the fact that we attempt to connect to the code-server before it's actually running (container.start(wait_for_readiness=True)).
         "connect() failed (111: Connection refused) while connecting to upstream, client",
-        # We use oauth-proxy to give us authentication, and we use OpenShift route to get HTTPS
+        # RHAIENG-5644: oauth-proxy / kube-rbac-proxy provides external auth; in-container Jupyter auth is disabled
         "WARNING: The Jupyter server is listening on all IP addresses and not using encryption. This is not recommended.",
     ]
     if extra_allowed:

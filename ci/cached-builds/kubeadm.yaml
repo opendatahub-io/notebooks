@@ -28,6 +28,8 @@ nodeRegistration:
     #  https://cep.dev/posts/adventure-trying-change-kubelet-rootdir/
     - name: root-dir
       value: /home/runner/.local/share/containers/kubelet-root-dir
+patches:
+  directory: ci/cached-builds/kubeadm-patches
 timeouts:
   controlPlaneComponentHealthCheck: 4m0s
   discovery: 5m0s
@@ -39,7 +41,7 @@ timeouts:
 ---
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
-kubernetesVersion: 1.34.0
+kubernetesVersion: 1.36.2
 clusterName: kubernetes
 caCertificateValidityPeriod: 87600h0m0s
 certificateValidityPeriod: 8760h0m0s

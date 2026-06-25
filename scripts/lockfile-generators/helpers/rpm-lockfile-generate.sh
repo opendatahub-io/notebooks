@@ -14,8 +14,9 @@ set -euo pipefail
 #      (ubi.repo, centos.repo, epel.repo).
 #   4. Run rpm-lockfile-prototype rpms.in.yaml to generate rpms.lock.yaml.
 
-# Parse arguments: accept positional, named 'prefetch-input=...', or '--prefetch-input=...'
-PREFETCH_INPUT_DIR=""
+# Parse arguments: accept env var (from create-rpm-lockfile.sh), positional,
+# named 'prefetch-input=...', or '--prefetch-input=...'
+PREFETCH_INPUT_DIR="${PREFETCH_INPUT_DIR:-}"
 for arg in "$@"; do
     case "$arg" in
         prefetch-input=*|PREFETCH_INPUT_DIR=*)
@@ -62,11 +63,22 @@ pushd "/workspace/$PREFETCH_INPUT_DIR" >/dev/null
         overall_status=$(subscription-manager status 2>/dev/null | grep "Overall Status" | awk -F': ' '{print $2}' || true)
         echo "System Registration Status: $overall_status"
 
-        # CRB is disabled by default in RHEL subscriptions but needed for
-        # -devel packages (openblas-devel, pybind11-devel, ninja-build, etc.)
-        echo "Enabling codeready-builder (CRB) repo..."
+        # RHOAI/AIPCC runtime images use RHEL 9.6 EUS repos (baseos/appstream/CRB).
+        # Without EUS enabled, rpm-lockfile-prototype resolves system RPMs like python3
+        # from the older non-EUS dist channel (el9_6.2) instead of EUS (el9_6.6).
         basearch=$(rpm --eval '%{_arch}')
-        subscription-manager repos --enable="codeready-builder-for-rhel-9-${basearch}-rpms" 2>/dev/null || true
+        echo "Enabling RHEL 9.6 EUS repos (match AIPCC/RHOAI base images)..."
+        for repo in \
+            "rhel-9-for-${basearch}-baseos-eus-rpms" \
+            "rhel-9-for-${basearch}-appstream-eus-rpms" \
+            "codeready-builder-for-rhel-9-${basearch}-eus-rpms"; do
+            subscription-manager repos --enable="$repo" 2>/dev/null || true
+        done
+
+        # Layered-product repos for openshift-clients and texlive-tcolorbox (also set in
+        # Dockerfile.rpm-lockfile at image build time; re-enable here for cached images).
+        dnf config-manager --set-enabled "rhocp-4.16-for-rhel-9-${basearch}-rpms" 2>/dev/null || true
+        dnf config-manager --set-enabled "rhelai-3.3-for-rhel-9-${basearch}-rpms" 2>/dev/null || true
 
         # subscription-manager generates redhat.repo with literal x86_64
         # in URLs (e.g. .../9.6/x86_64/appstream/os). For multi-arch

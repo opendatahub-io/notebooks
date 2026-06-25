@@ -15,21 +15,48 @@ runs:
       run: |
         set -Eeuxo pipefail
 
+        # Retry helper: retries a command with exponential backoff
+        # Usage: retry_cmd <max_retries> <command...>
+        retry_cmd() {
+          local max_retries=$1; shift
+          local attempt=1
+          local delay=5
+          while true; do
+            echo "Attempt ${attempt}/${max_retries}: $*"
+            if "$@"; then
+              return 0
+            fi
+            if (( attempt >= max_retries )); then
+              echo "All ${max_retries} attempts failed for: $*"
+              return 1
+            fi
+            echo "Attempt ${attempt} failed, retrying in ${delay}s..."
+            sleep "${delay}"
+            delay=$(( delay * 2 ))
+            attempt=$(( attempt + 1 ))
+          done
+        }
+
         # https://github.com/cri-o/packaging?tab=readme-ov-file#distributions-using-deb-packages
 
-        curl -fsSL https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/Release.key | \
-          sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        # Fetch the Kubernetes apt signing key with retry and fallback to CDN
+        K8S_KEY_PRIMARY="https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/Release.key"
+        K8S_KEY_FALLBACK="https://prod-cdn.packages.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/Release.key"
+        if ! retry_cmd 3 bash -c "set -o pipefail; curl -fsSL '${K8S_KEY_PRIMARY}' | sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"; then
+          echo "Primary URL failed, falling back to CDN: ${K8S_KEY_FALLBACK}"
+          retry_cmd 3 bash -c "set -o pipefail; curl -fsSL '${K8S_KEY_FALLBACK}' | sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"
+        fi
 
         echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/ /" | \
           sudo tee /etc/apt/sources.list.d/kubernetes.list
 
-        curl -fsSL https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v${CRIO_VERSION}/deb/Release.key | \
-          sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
+        # Fetch the CRI-O apt signing key with retry
+        retry_cmd 3 bash -c "set -o pipefail; curl -fsSL 'https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v${CRIO_VERSION}/deb/Release.key' | sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/cri-o-apt-keyring.gpg"
 
         echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v${CRIO_VERSION}/deb/ /" | \
           sudo tee /etc/apt/sources.list.d/cri-o.list
 
-        sudo apt-get update
+        retry_cmd 3 sudo apt-get update
 
         # [ERROR FileExisting-conntrack]: conntrack not found in system path
         # see man apt-patterns for the ~name=version* syntax
@@ -56,12 +83,12 @@ runs:
         sudo systemctl daemon-reload
         sudo systemctl start crio.service
       env:
-        CRIO_VERSION: 1.34
+        CRIO_VERSION: 1.36
         # This has to be kept in sync with the packages above, otherwise
         # [ERROR KubeletVersion]: the kubelet version is higher than the control plane version.
         #  This is not a supported version skew and may lead to a malfunctional cluster.
         #  Kubelet version: "1.33.0" Control plane version: "1.30.12"
-        KUBERNETES_VERSION: 1.34
+        KUBERNETES_VERSION: 1.36
         # Also update version in kubeadm.yaml
 
     - run: sudo crictl info
@@ -77,7 +104,7 @@ runs:
         sudo journalctl -xeu crio.service
 
     # do this early, it's a good check that cri-o is not completely broken
-    - name: "Show crio images information"
+    - name: Show crio images information
       shell: bash
       run: sudo crictl images
 
@@ -138,31 +165,40 @@ runs:
     - name: Show nodes status and wait for readiness
       shell: bash
       run: |
+        set -Eeuxo pipefail
         kubectl describe nodes
         kubectl wait --for=condition=Ready nodes --all --timeout=100s || (kubectl describe nodes && false)
 
-    - name: Wait for pods to be running
+    - name: Deploy local-path provisioner
       shell: bash
       run: |
         set -Eeuxo pipefail
-        kubectl wait deployments --all --all-namespaces --for=condition=Available --timeout=100s
-        kubectl wait pods --all --all-namespaces --for=condition=Ready --timeout=100s
-
-    - name: "Install local-path provisioner"
-      shell: bash
-      run: |
-        set -Eeuxo pipefail
-        # InspectFailed Failed to inspect image "": rpc error: code = Unknown desc = short name mode is enforcing, but image name rancher/local-path-provisioner:v0.0.31 returns ambiguous list
-        (curl -fsSL https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.32/deploy/local-path-storage.yaml |
-          sed 's|image: rancher/local-path-provisioner|image: docker.io/rancher/local-path-provisioner|g' |
+        # Deploy early so its image pull overlaps with CoreDNS becoming ready
+        curl --retry 3 --retry-delay 5 --retry-all-errors -fsSL \
+          "https://raw.githubusercontent.com/rancher/local-path-provisioner/v${RANCHER_FULL_VERSION}/deploy/local-path-storage.yaml" |
           kubectl apply -f -
-        )
-        kubectl wait deployments --all --namespace=local-path-storage --for=condition=Available --timeout=100s || (
-          kubectl describe deployments --namespace=local-path-storage
-          kubectl --namespace=local-path-storage get events --sort-by='.lastTimestamp'
-          kubectl --namespace=local-path-storage describe pods
+      env:
+        RANCHER_FULL_VERSION: 0.0.36
+
+    - name: Wait for all deployments and pods
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
+        kubectl wait deployments --all --all-namespaces --for=condition=Available --timeout=100s || (
+          kubectl describe deployments --all-namespaces
+          kubectl get events --all-namespaces --sort-by='.lastTimestamp'
+          kubectl describe pods --all-namespaces
           false
         )
+        kubectl wait pods --all --all-namespaces --for=condition=Ready --timeout=100s || (
+          kubectl describe pods --all-namespaces
+          false
+        )
+
+    - name: Configure default StorageClass
+      shell: bash
+      run: |
+        set -Eeuxo pipefail
         # https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/
         kubectl get storageclass
         kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'

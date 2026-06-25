@@ -14,6 +14,7 @@ dependencies = [
 
     "odh-notebooks-meta-db-connectors-deps",
     "odh-notebooks-meta-runtime-elyra-deps",
+    "odh-notebooks-meta-runtime-kale-deps",
 
     # Base packages
     "setuptools",
@@ -26,7 +27,7 @@ dependencies = [
 
 [tool.uv]
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]
 override-dependencies = [
     # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
@@ -36,4 +37,5 @@ override-dependencies = [
 [tool.uv.sources]
 odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }
 odh-notebooks-meta-runtime-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-datascience-deps" }
+odh-notebooks-meta-runtime-kale-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-kale-deps" }
 odh-notebooks-meta-db-connectors-deps = { path = "../../../dependencies/odh-notebooks-meta-db-connectors-deps" }

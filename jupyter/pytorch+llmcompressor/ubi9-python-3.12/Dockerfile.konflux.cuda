@@ -10,7 +10,7 @@ ARG BASE_IMAGE
 # Source: git submodule at prefetch-input/mongocli;                   #
 # Go deps prefetched by Konflux/Cachi2 (gomod).     #
 ######################################################
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25.9-1778504036 AS mongocli-builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3-1782219569 AS mongocli-builder
 
 # OS Packages needs to be installed as root
 USER 0
@@ -57,7 +57,7 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 # compat-openssl11 provides libcrypto.so.1.1 required by FIPS-compliance scanning.
 # hadolint ignore=DL3041
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
+    bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
 # Other apps and tools installed as default user
 USER 1001
@@ -91,7 +91,7 @@ COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
-ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+ENV PATH="/usr/local/pandoc/bin:$PATH"
 
 ### END Dependencies for PDF export
 
@@ -119,7 +119,7 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 # Install useful OS packages
 RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
-    /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat protobuf
+    bash /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat protobuf
 
 # Copy dynamically-linked mongocli built in earlier build stage
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/mongocli
@@ -127,8 +127,8 @@ COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/mongocli
 # Other apps and tools installed as default user
 USER 1001
 
-# Copy Elyra setup to utils so that it's sourced at startup
-COPY "${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh" "${DATASCIENCE_SOURCE_CODE}/utils" ./utils/
+# Copy Elyra and Kale setup to utils so that they are sourced at startup
+COPY "${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh" "${DATASCIENCE_SOURCE_CODE}/setup-kale.sh" "${DATASCIENCE_SOURCE_CODE}/utils" ./utils/
 
 WORKDIR /opt/app-root/src
 
@@ -187,6 +187,8 @@ sed -i -e "s/Python.*/$(python --version | cut -d '.' -f-2)\",/" /opt/app-root/s
 cp /opt/app-root/bin/utils/jupyter_server_config.py /opt/app-root/etc/jupyter
 # Disable announcement plugin of jupyterlab
 jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+# Disable kale extension
+jupyter labextension disable jupyterlab-kubeflow-kale
 # Apply JupyterLab addons
 /opt/app-root/bin/utils/addons/apply.sh
 # Fix permissions to support pip in Openshift environments

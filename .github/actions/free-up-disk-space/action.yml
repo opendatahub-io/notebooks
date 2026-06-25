@@ -7,7 +7,7 @@ runs:
     - name: Free up disk space
       shell: bash
       run: |
-        set -x
+        set -Eeuxo pipefail
         df -h
         sudo docker system prune -af  || true
         sudo apt-get clean

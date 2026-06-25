@@ -36,10 +36,19 @@ from packaging.markers import Marker
 
 OUT_DIR = Path("cachi2/output/deps/pip")
 PYPI_JSON = "https://pypi.org/pypi/{name}/{version}/json"
-# 20 workers balances throughput vs Akamai burst rate-limiting on console.redhat.com.
-# uv uses 50 by default (astral-sh/uv#10570 discusses reducing to 20 for stability).
+# 8 workers balances throughput vs Akamai burst rate-limiting on packages.redhat.com.
+# uv uses 50 by default (astral-sh/uv#10570 discusses reducing to 8 for stability).
 # At 10: stable 22s, at 20: 13s, at 50: 12s but high variance (Akamai throttling).
-MAX_WORKERS = 20
+MAX_WORKERS = 8
+# wget --timeout sets dns/connect/read idle timeouts (not total transfer time).
+# Large wheels (e.g. torch >1GB) need a generous read idle window on slow links.
+WGET_NETWORK_TIMEOUT_SECONDS = 300
+# Per-file wall-clock cap for subprocess.run(); must cover multi-GB wheels when
+# MAX_WORKERS parallel downloads share CI bandwidth (~1GB at ~1 MB/s ≈ 17 min).
+DOWNLOAD_PROCESS_TIMEOUT_SECONDS = 3600
+# Transient wget failures (Akamai/S3 blips under parallel load) are retried
+# sequentially before the prefetch step fails.
+DOWNLOAD_MAX_PASSES = 3
 
 ARCH_ALIASES: dict[str, list[str]] = {
     "amd64": ["x86_64", "amd64"],
@@ -247,26 +256,47 @@ def resolve_one(args: tuple) -> list[tuple[str, str, str]]:
         return fetch_pypi_urls(name, version, wanted_hashes)
 
 
+def _wget_error_detail(result: subprocess.CompletedProcess[str] | subprocess.CalledProcessError) -> str:
+    for stream in (result.stderr, result.stdout):
+        if not stream:
+            continue
+        lines = [line.strip() for line in stream.splitlines() if line.strip()]
+        if lines:
+            return lines[-1]
+    return f"wget exit {result.returncode}"
+
+
 def download_one(args: tuple) -> tuple[bool, str]:
     """Download one file. Called in parallel."""
     url, dest_path, expected_hash = args
     try:
         subprocess.run(
-            ["wget", "-q", "-O", str(dest_path), "--tries=3", "--waitretry=2", "--timeout=30", url],
-            check=True, timeout=120,
+            [
+                "wget", "-q", "-O", str(dest_path),
+                "--tries=3", "--waitretry=2",
+                f"--timeout={WGET_NETWORK_TIMEOUT_SECONDS}",
+                url,
+            ],
+            check=True, timeout=DOWNLOAD_PROCESS_TIMEOUT_SECONDS,
+            capture_output=True, text=True,
         )
     except subprocess.TimeoutExpired:
         Path(dest_path).unlink(missing_ok=True)
         return False, f"TIMEOUT {Path(dest_path).name}"
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
         Path(dest_path).unlink(missing_ok=True)
-        return False, f"FAIL {Path(dest_path).name}: wget error"
+        return False, f"FAIL {Path(dest_path).name}: {_wget_error_detail(e)}"
 
     actual = file_sha256(Path(dest_path))
     if actual != expected_hash:
         Path(dest_path).unlink(missing_ok=True)
         return False, f"HASH MISMATCH {Path(dest_path).name}: got {actual[:16]}..., expected {expected_hash[:16]}..."
     return True, f"OK {Path(dest_path).name}"
+
+
+def _is_retryable(msg: str) -> bool:
+    """Permanent failures (bad digest) should not be retried."""
+    return not msg.startswith("HASH MISMATCH")
 
 
 def file_sha256(path: Path) -> str:
@@ -282,7 +312,7 @@ def main():
 
     index_url = detect_index_url(req_path)
     use_simple = index_url is not None and "pypi.org" not in index_url
-    is_aipcc = index_url is not None and "console.redhat.com/api/pypi/" in index_url
+    is_aipcc = index_url is not None and "packages.redhat.com/api/pypi/" in index_url
     skip_sdists = is_aipcc
 
     print(f"=== download-pip-packages.py ===")
@@ -339,24 +369,49 @@ def main():
         print("\nNothing to download.")
         return
 
-    # Phase 5: parallel download
-    print(f"\nPhase 5: Downloading {len(to_download)} files ({MAX_WORKERS} parallel)...")
-    failures = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        results = list(executor.map(download_one, to_download))
+    # Phase 5: parallel download with sequential retries for transient failures
+    pending = list(to_download)
+    downloaded = 0
+    last_errors: dict[Path, str] = {}
+    permanent_failures: list[tuple[str, Path, str]] = []
 
-    for ok, msg in results:
-        if not ok:
-            failures.append(msg)
+    for pass_num in range(1, DOWNLOAD_MAX_PASSES + 1):
+        if not pending:
+            break
+
+        workers = MAX_WORKERS if pass_num == 1 else 1
+        if pass_num == 1:
+            print(f"\nPhase 5: Downloading {len(pending)} files ({workers} parallel)...")
+        else:
+            print(f"\nPhase 5 (retry {pass_num - 1}/{DOWNLOAD_MAX_PASSES - 1}): "
+                  f"{len(pending)} failed download(s), retrying sequentially...")
+
+        retry: list[tuple[str, Path, str]] = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+            results = list(executor.map(download_one, pending))
+
+        for item, (ok, msg) in zip(pending, results):
+            if ok:
+                downloaded += 1
+            else:
+                last_errors[item[1]] = msg
+                if _is_retryable(msg) and pass_num < DOWNLOAD_MAX_PASSES:
+                    retry.append(item)
+                else:
+                    permanent_failures.append(item)
+
+        pending = retry
+
+    pending = permanent_failures
+    print(f"\n  Downloaded: {downloaded}, Failed: {len(pending)}")
+
+    if pending:
+        for _url, dest_path, _sha in pending:
+            msg = last_errors.get(dest_path, f"FAIL {dest_path.name}")
             print(f"  ERROR: {msg}", file=sys.stderr)
-
-    downloaded = sum(1 for ok, _ in results if ok)
-    print(f"\n  Downloaded: {downloaded}, Failed: {len(failures)}")
-
-    if failures:
-        print(f"\nERROR: {len(failures)} download(s) failed:", file=sys.stderr)
-        for f in failures:
-            print(f"  {f}", file=sys.stderr)
+        print(f"\nERROR: {len(pending)} download(s) failed:", file=sys.stderr)
+        for _url, dest_path, _sha in pending:
+            print(f"  {last_errors.get(dest_path, f'FAIL {dest_path.name}')}", file=sys.stderr)
         sys.exit(1)
 
     total_files = len(list(out_dir.iterdir()))

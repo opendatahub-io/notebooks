@@ -33,11 +33,11 @@ jobs:
   find-images:
     name: Find test images
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     outputs:
       matrix: ${{ steps.find.outputs.matrix }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           fetch-depth: 1
           submodules: false
@@ -86,12 +86,12 @@ jobs:
   container-tests:
     name: "${{ matrix.name }}"
     needs: find-images
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.find-images.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv
@@ -99,8 +99,23 @@ jobs:
       - name: Install deps
         run: uv sync --locked
 
+      # Workaround: ubuntu-26.04 AppArmor stub profile for podman gives it a named label
+      # ("podman") instead of "unconfined". The pasta profile only allows signals from
+      # "unconfined" (via abstractions/base), so podman can't SIGTERM pasta on container
+      # stop → "rootless netns: kill network process: permission denied".
+      # Fix: allow pasta to receive signals from the podman profile.
+      # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1100135
+      - name: Fix AppArmor pasta/podman signal conflict
+        run: |
+          set -Eeuxo pipefail
+          if [[ -f /etc/apparmor.d/abstractions/pasta ]] && ! grep -q 'peer=podman' /etc/apparmor.d/abstractions/pasta; then
+            echo '  signal (receive) peer=podman,' | sudo tee -a /etc/apparmor.d/abstractions/pasta
+            sudo apparmor_parser -r /etc/apparmor.d/usr.bin.pasta
+          fi
+
       - name: Start Podman socket
         run: |
+          set -Eeuxo pipefail
           podman --version
           systemctl --user enable --now podman.socket
           echo "DOCKER_HOST=unix://$(podman info --format '{{.Host.RemoteSocket.Path}}')" >> "$GITHUB_ENV"
@@ -129,3 +144,9 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: junit.xml
+
+      - name: Capture kernel logs on failure
+        if: ${{ failure() }}
+        uses: ./.github/actions/capture-kernel-logs
+        with:
+          log-prefix: ${{ matrix.name }}

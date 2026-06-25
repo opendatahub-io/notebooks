@@ -5,6 +5,7 @@ requires-python = "==3.12.*"
 
 dependencies = [
     "odh-notebooks-meta-runtime-elyra-deps",
+    "odh-notebooks-meta-runtime-kale-deps",
 
     # Base packages
     "setuptools",
@@ -17,8 +18,9 @@ dependencies = [
 
 [tool.uv]
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]
 
 [tool.uv.sources]
 odh-notebooks-meta-runtime-elyra-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-elyra-deps" }
+odh-notebooks-meta-runtime-kale-deps = { path = "../../../dependencies/odh-notebooks-meta-runtime-kale-deps" }

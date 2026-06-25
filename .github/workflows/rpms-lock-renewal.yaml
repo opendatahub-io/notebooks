@@ -1,0 +1,237 @@
+---
+# Regenerate rpms.lock.yaml from rpms.in.yaml for ODH (upstream) or RHDS (downstream).
+name: RPM Lock Files Renewal Action
+
+permissions: {}  # least-privilege: grant per-job below
+
+on:  # yamllint disable-line rule:truthy
+  # Weekly ODH lockfile refresh (no Red Hat subscription required).
+  schedule:
+    - cron: "0 2 * * 3"  # Wednesday 2am UTC
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: 'Which RPM lockfile variant to regenerate'
+        required: true
+        default: 'odh'
+        type: choice
+        options:
+          - 'odh'
+          - 'rhds'
+      branch:
+        description: 'Branch to update'
+        required: false
+        default: 'main'
+      use_cache:
+        description: 'Use GHCR layer cache (Uncheck to rebuild from scratch)'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  refresh-rpm-lock-files:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 2 * * 3')
+    runs-on: ubuntu-26.04
+    concurrency:
+      group: refresh-rpm-lock-files-${{ github.ref }}
+      cancel-in-progress: false
+    permissions:
+      contents: read  # checkout only; push and PR creation use the PAT
+      packages: write  # push/pull rpm-lockfile build cache to ghcr.io
+    env:
+      BRANCH: ${{ github.event.inputs.branch || 'main' }}
+      # Scheduled runs refresh ODH only; RHDS requires manual dispatch with subscription secrets.
+      VARIANT: ${{ github.event.inputs.variant || 'odh' }}
+      TMPDIR: /home/runner/.local/share/containers/tmpdir
+      CI: "true"
+      # workflow_dispatch only; scheduled runs always use cache (input unset → true).
+      USE_CACHE: ${{ github.event.inputs.use_cache != 'false' && 'true' || 'false' }}
+      # GitHub Container Registry used for podman build layer cache (see build-notebooks-TEMPLATE.yaml).
+      CACHE: "ghcr.io/${{ github.repository }}/rpm-lockfile-build-cache-${{ github.event.inputs.variant || 'odh' }}"
+
+    steps:
+      - name: Downcase CACHE registry path
+        run: echo "CACHE=${CACHE,,}" >> "${GITHUB_ENV}"
+
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ env.BRANCH }}
+          persist-credentials: false
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Prepare Podman temp directory
+        run: mkdir -p "$TMPDIR"
+
+      # RHDS secrets and registry auth must be configured before Install Podman.
+      # install-podman-action runs `sudo podman system reset`, which can leave
+      # root-owned files under $HOME/.config/containers and break a later cp.
+      - name: Install git-crypt
+        if: env.VARIANT == 'rhds'
+        uses: ./.github/actions/apt-install
+        with:
+          packages: git-crypt
+
+      - name: Unlock encrypted secrets with git-crypt
+        if: env.VARIANT == 'rhds'
+        run: |
+          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
+          trap 'rm -f ./git-crypt-key' EXIT
+          git-crypt unlock ./git-crypt-key
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+
+      - name: Configure registry auth from pull-secret
+        if: env.VARIANT == 'rhds'
+        run: |
+          mkdir -p "$HOME/.config/containers"
+          # Don't use sudo here. Credentials must be runner-readable; after install-podman-action,
+          # CONTAINER_HOST makes podman a remote client that forwards auth to the rootful server.
+          cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
+
+      - name: Mask subscription credentials
+        if: env.VARIANT == 'rhds'
+        env:
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
+          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+        run: |
+          # Mask before any podman build/run so activation key never appears in logs.
+          # Secrets are passed only via env vars (never CLI args); see prefetch-all.sh.
+          if [[ -z "$SUBSCRIPTION_ACTIVATION_KEY" || -z "$SUBSCRIPTION_ORG" ]]; then
+            echo "RHDS variant requires SUBSCRIPTION_ACTIVATION_KEY and SUBSCRIPTION_ORG repository secrets." >&2
+            exit 1
+          fi
+          echo "::add-mask::${SUBSCRIPTION_ACTIVATION_KEY}"
+          echo "::add-mask::${SUBSCRIPTION_ORG}"
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Podman
+        uses: ./.github/actions/install-podman-action
+        with:
+          platform: linux/amd64
+
+      - name: Free up disk space
+        uses: ./.github/actions/free-up-disk-space
+
+      - name: Compute CONTAINER_BUILD_CACHE_ARGS
+        id: container-build-cache-args
+        shell: python
+        env:
+          USE_CACHE: ${{ env.USE_CACHE }}
+          VARIANT: ${{ env.VARIANT }}
+        run: |
+          import os
+          import sys
+
+          cache = os.environ["CACHE"]
+          event_name = os.environ["GITHUB_EVENT_NAME"]
+          variant = os.environ.get("VARIANT", "odh")
+          use_cache = os.environ.get("USE_CACHE", "true").lower() == "true"
+
+          if event_name not in ("schedule", "workflow_dispatch"):
+              raise ValueError(f"Unexpected event name: {event_name}")
+
+          if variant == "rhds":
+              # RHDS builds register with subscription-manager; do not push layers to GHCR.
+              if use_cache:
+                  cache_args = f"--cache-from {cache}"
+                  print("RHDS: read-only GHCR cache (no --cache-to)", file=sys.stderr)
+              else:
+                  cache_args = ""
+                  print("RHDS: rebuild from scratch (no GHCR cache)", file=sys.stderr)
+          elif use_cache:
+              cache_args = f"--cache-from {cache} --cache-to {cache}"
+              print("ODH: using and updating GHCR layer cache", file=sys.stderr)
+          else:
+              # Skip --cache-from for a clean rebuild; still publish fresh ODH layers afterward.
+              cache_args = f"--cache-to {cache}"
+              print("ODH: rebuild from scratch; will refresh GHCR cache after build", file=sys.stderr)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"CONTAINER_BUILD_CACHE_ARGS={cache_args}\n")
+
+      - name: Regenerate rpms.lock.yaml
+        env:
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
+          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+          CONTAINER_BUILD_CACHE_ARGS: ${{ steps.container-build-cache-args.outputs.CONTAINER_BUILD_CACHE_ARGS }}
+        run: |
+          set -euo pipefail
+
+          # ODH must not see subscription credentials (create-rpm-lockfile.sh would switch to UBI9).
+          if [[ "$VARIANT" != "rhds" ]]; then
+            unset SUBSCRIPTION_ACTIVATION_KEY SUBSCRIPTION_ORG
+          fi
+
+          RPM_INPUTS=(
+            "prefetch-input/${VARIANT}/rpms.in.yaml"
+            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
+          )
+
+          echo "Regenerating RPM lockfiles for variant: ${VARIANT} (USE_CACHE=${USE_CACHE})"
+          if [[ "$USE_CACHE" == "false" ]]; then
+            podman rmi -f localhost/notebook-rpm-lockfile:latest 2>/dev/null || true
+          fi
+          for rpm_input in "${RPM_INPUTS[@]}"; do
+            if [[ ! -f "$rpm_input" ]]; then
+              echo "Skipping missing input: $rpm_input"
+              continue
+            fi
+            echo "=== Generating lockfile from $rpm_input ==="
+            ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
+          done
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          for lockfile in \
+            "prefetch-input/${VARIANT}/rpms.lock.yaml" \
+            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml"; do
+            if [[ -f "$lockfile" ]]; then
+              git add "$lockfile"
+            fi
+          done
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          VARIANT_UPPER=$(echo "$VARIANT" | tr '[:lower:]' '[:upper:]')
+          BRANCH_NAME="rpms-lockfile-${VARIANT}-update-$(date +%Y%m%d-%H%M)"
+          git checkout -b "$BRANCH_NAME"
+          git commit -m "Update ${VARIANT_UPPER} rpms.lock.yaml lock files"
+          git push -u "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH_NAME"
+
+          # gh pr create fails if the label does not exist yet (see automated-lockfile-update).
+          gh label create "automated-rpms-lockfile-update" \
+            --description "Auto-created RPM lockfile update PR" \
+            --color "0E8A16" \
+            2>/dev/null || true
+
+          gh pr create \
+            --title "GHA: Update ${VARIANT_UPPER} rpms.lock.yaml lock files" \
+            --head "$BRANCH_NAME" \
+            --body "$(cat <<EOF
+          Automated regeneration of \`rpms.lock.yaml\` from \`rpms.in.yaml\` for the **${VARIANT_UPPER}** variant.
+
+          Updated paths:
+          - \`prefetch-input/${VARIANT}/rpms.lock.yaml\`
+          - \`codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml\`
+          EOF
+          )" \
+            --label "automated-rpms-lockfile-update" \
+            --base "$BRANCH"
