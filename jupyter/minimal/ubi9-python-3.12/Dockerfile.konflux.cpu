@@ -69,13 +69,14 @@ COPY prefetch-input/rhds/rpms.lock.yaml /dev/null
 
 ### BEGIN Dependencies for PDF export
 RUN ./utils/install_pdf_deps.sh
-ENV PATH="/usr/local/pandoc/bin:$PATH"
 
 ### END Dependencies for PDF export
 
 COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
+
+USER 1001:0
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
@@ -88,6 +89,8 @@ UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --n
     --no-verify-hashes \
     --find-links /cachi2/output/deps/pip \
     --requirements=./requirements.txt
+
+pandoc --version
 
 # Disable announcement plugin of jupyterlab
 jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
