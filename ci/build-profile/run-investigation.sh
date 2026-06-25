@@ -115,8 +115,10 @@ case "${EXPERIMENT}" in
       arbitrary_uid_smoke "${img}" "minimal-user1001-${mode}" || true
     done
     if [[ "${EXPERIMENT}" == "all" ]]; then
-      img="${IMAGE_REGISTRY}:minimal-user1001-none-${IMAGE_TAG}"
-      run_container_tests "${img}" || true
+      img="${IMAGE_REGISTRY}:minimal-timing-${IMAGE_TAG}"
+      if ${CONTAINER_ENGINE} image exists "${img}" >/dev/null 2>&1; then
+        run_container_tests "${img}" || true
+      fi
     fi
     ;;
 esac
