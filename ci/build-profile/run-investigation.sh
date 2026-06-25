@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run build-profile investigations (#3928). Intended for GHA and local cold builds.
-set -Eeuo pipefail
+set -Euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT_DIR}"
@@ -64,18 +64,19 @@ profile_build() {
   fi
 
   echo "=== Build ${name} -> ${tag} ==="
-  local start end elapsed
+  local start end elapsed status=0
   start=$(date +%s)
   # shellcheck disable=SC2086
   uv run "${ROOT_DIR}/scripts/sandbox.py" --dockerfile "${dockerfile}" --platform "${PLATFORM}" -- \
     ${CONTAINER_ENGINE} build --no-cache ${volumes} --platform="${PLATFORM}" \
     --tag "${tag}" --file "${dockerfile}" ${build_args[@]} ${extra_args} '{};' \
-    2>&1 | tee "${log}"
+    2>&1 | tee "${log}" || status=$?
   end=$(date +%s)
   elapsed=$((end - start))
-  echo "BUILD_PROFILE_TOTAL ${name} ${elapsed}"
-  echo "::notice title=build-profile::total ${name} elapsed=${elapsed}s"
+  echo "BUILD_PROFILE_TOTAL ${name} ${elapsed} exit=${status}"
+  echo "::notice title=build-profile::total ${name} elapsed=${elapsed}s exit=${status}"
   rg 'BUILD_PROFILE_' "${log}" || true
+  return "${status}"
 }
 
 arbitrary_uid_smoke() {
@@ -105,7 +106,7 @@ case "${EXPERIMENT}" in
     prefetch_component jupyter/minimal/ubi9-python-3.12 cpu
     profile_build minimal-timing \
       ci/build-profile/dockerfiles/minimal-timing.Dockerfile.cpu \
-      jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf
+      jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf || true
     ;;
 esac
 
@@ -137,7 +138,7 @@ case "${EXPERIMENT}" in
     profile_build dnf-benchmark \
       ci/build-profile/dockerfiles/dnf-benchmark.Dockerfile.cpu \
       jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf \
-      "--build-arg RPM_ARCH=${RPM_ARCH}"
+      "--build-arg RPM_ARCH=${RPM_ARCH}" || true
     ;;
 esac
 
@@ -146,7 +147,7 @@ case "${EXPERIMENT}" in
     prefetch_component jupyter/pytorch/ubi9-python-3.12 cuda
     profile_build pytorch-perm \
       ci/build-profile/dockerfiles/pytorch-perm.Dockerfile.cuda \
-      jupyter/pytorch/ubi9-python-3.12/build-args/cuda.conf
+      jupyter/pytorch/ubi9-python-3.12/build-args/cuda.conf || true
     ;;
 esac
 
