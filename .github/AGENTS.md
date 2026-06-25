@@ -54,3 +54,8 @@ Some actions only publish exact version tags (no `v8` major tag, only `v8.0.0`):
 - `actions/add-to-project` — use `@v1.0.2`, not `@v1`
 
 Renovate has package rules to track these correctly.
+
+## Podman on ubuntu-26.04 runners
+
+`install-podman-action` configures the runner's system Podman (no Linuxbrew).
+When changing Podman setup, keep rootful `podman.socket` behavior aligned with `install-podman-action` (`PODMAN_SOCK`, `CONTAINER_HOST` in `$GITHUB_ENV`).

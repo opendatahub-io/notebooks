@@ -21,7 +21,6 @@ concurrency:
 
 env:
   TMPDIR: /home/runner/.local/share/containers/tmpdir
-  CONTAINER_HOST: unix:///var/run/podman/podman.sock
 
 jobs:
   test-install:
@@ -65,6 +64,3 @@ jobs:
           '
 
           echo "Container IP and DNS reachability OK"
-        env:
-          # Match build workflows: remote client talks to rootful podman.socket.
-          CONTAINER_HOST: unix:///var/run/podman/podman.sock

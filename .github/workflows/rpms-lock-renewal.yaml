@@ -43,7 +43,6 @@ jobs:
       # Scheduled runs refresh ODH only; RHDS requires manual dispatch with subscription secrets.
       VARIANT: ${{ github.event.inputs.variant || 'odh' }}
       TMPDIR: /home/runner/.local/share/containers/tmpdir
-      CONTAINER_HOST: unix:///var/run/podman/podman.sock
       CI: "true"
       # workflow_dispatch only; scheduled runs always use cache (input unset → true).
       USE_CACHE: ${{ github.event.inputs.use_cache != 'false' && 'true' || 'false' }}
@@ -90,9 +89,8 @@ jobs:
         if: env.VARIANT == 'rhds'
         run: |
           mkdir -p "$HOME/.config/containers"
-          # Don't use sudo here. With CONTAINER_HOST set, podman is a remote client
-          # that forwards auth to the rootful server during builds; credentials
-          # must be readable by the runner user (see build-notebooks-TEMPLATE.yaml).
+          # Don't use sudo here. Credentials must be runner-readable; after install-podman-action,
+          # CONTAINER_HOST makes podman a remote client that forwards auth to the rootful server.
           cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
 
       - name: Mask subscription credentials
