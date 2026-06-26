@@ -67,8 +67,6 @@ spec:
       binary:
         arch: "x86_64,aarch64"
       requirements_files: ["requirements.cuda.txt"]
-  - name: fips-check-blocking
-    value: "false"
   pipelineRef:
     resolver: git
     params:

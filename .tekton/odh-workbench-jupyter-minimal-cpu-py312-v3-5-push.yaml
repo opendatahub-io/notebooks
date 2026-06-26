@@ -69,8 +69,6 @@ spec:
       binary:
         arch: "x86_64,aarch64,ppc64le,s390x"
       requirements_files: [requirements.cpu.txt]
-  - name: fips-check-blocking
-    value: "false"
   pipelineRef:
     resolver: git
     params:

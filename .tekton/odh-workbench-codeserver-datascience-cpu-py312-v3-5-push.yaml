@@ -181,8 +181,6 @@ spec:
     # Registry-only npm deps (ProdSec); @parcel/watcher, @emmetio/css-parser, @playwright/browser-chromium in custom-packages/package.json
     - path: codeserver/ubi9-python-3.12/prefetch-input/patches/code-server-v4.106.3/custom-packages
       type: npm
-  - name: fips-check-blocking
-    value: "false"
   pipelineRef:
     resolver: git
     params:
