@@ -36,4 +36,22 @@ else
     rm -f "$tmp"
 fi
 
+# When IPv6 is disabled (e.g. container sysctls in CI), nginx cannot bind [::]:8888.
+# Use a temp file: sed -i writes into /etc/nginx/ which is not writable by UID 1001.
+if [ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null)" = "1" ]; then
+    tmp=$(mktemp)
+    sed '/listen[[:space:]]\+\[::\]:8888/d' /etc/nginx/nginx.conf > "$tmp"
+    cat "$tmp" > /etc/nginx/nginx.conf
+    rm -f "$tmp"
+fi
+
+# Relative return 302 paths must emit relative Location headers; otherwise nginx
+# expands them with the container listen port (8888) and breaks port-mapped clients.
+if ! grep -q 'absolute_redirect off' /etc/nginx/nginx.conf; then
+    tmp=$(mktemp)
+    sed '/server {/a\        absolute_redirect off;' /etc/nginx/nginx.conf > "$tmp"
+    cat "$tmp" > /etc/nginx/nginx.conf
+    rm -f "$tmp"
+fi
+
 nginx

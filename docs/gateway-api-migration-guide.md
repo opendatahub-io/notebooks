@@ -218,7 +218,7 @@ fetch(menuUrl).then(...);
 ```nginx
 # ❌ REMOVE THIS - Too broad, causes infinite loops
 location ${NB_PREFIX}/ {
-    return 302 $custom_scheme://$http_host/app/;
+    return 302 /myapp/;
 }
 ```
 
@@ -226,21 +226,28 @@ location ${NB_PREFIX}/ {
 
 ### 2. Update Redirects to Preserve NB_PREFIX
 
-**All redirects must include `${NB_PREFIX}`** to keep requests within the Gateway route:
+**All redirects must include `${NB_PREFIX}`** to keep requests within the Gateway route. Use **relative** redirect targets only — do not build `Location` from `$http_host` or `$custom_scheme` (CWE-601 open redirect when the pod is accessed directly with a crafted `Host` header).
 
 ```nginx
 # ❌ BAD - Strips prefix
 location = ${NB_PREFIX} {
-    return 302 $custom_scheme://$http_host/myapp/;
+    return 302 /myapp/;
 }
 
-# ✅ GOOD - Preserves prefix
+# ❌ BAD - Reflects client Host header into Location (CWE-601)
 location ${NB_PREFIX} {
     return 302 $custom_scheme://$http_host${NB_PREFIX}/myapp/;
 }
+
+# ✅ GOOD - Relative path preserves prefix; nginx must not rewrite it absolute
+location ${NB_PREFIX} {
+    return 302 ${NB_PREFIX}/myapp/;
+}
 ```
 
-**Note**: Use `location ${NB_PREFIX}` (without `=`) to handle both with and without trailing slash.
+Set `absolute_redirect off;` in the nginx `server` block (or at build time via `nginxconf.sed`) so nginx keeps `Location` relative instead of expanding it with the listen address and client `Host`.
+
+**Note**: Use `location ${NB_PREFIX}` (without `=`) to handle both with and without trailing slash. `${NB_PREFIX}` is substituted at container startup by the platform, not taken from request headers.
 
 ### 3. Add Prefix-Aware Proxy Location
 
@@ -251,8 +258,8 @@ location ${NB_PREFIX}/myapp/ {
     # Strip the prefix before proxying to backend
     rewrite ^${NB_PREFIX}/myapp/(.*)$ /$1 break;
     
-    # Proxy to your application
-    proxy_pass http://localhost:8080/;
+    # Proxy to your application (127.0.0.1 avoids localhost → ::1 resolution on IPv6 hosts)
+    proxy_pass http://127.0.0.1:8080/;
     proxy_http_version 1.1;
     
     # Essential for WebSocket support
@@ -370,14 +377,14 @@ location /prefix {
 For Gateway API, you need:
 
 ```nginx
-# Redirect root to app
+# Redirect root to app (relative Location; requires absolute_redirect off)
 location ${NB_PREFIX} {
-    return 302 $custom_scheme://$http_host${NB_PREFIX}/myapp/;
+    return 302 ${NB_PREFIX}/myapp/;
 }
 
 # Proxy app traffic (longer prefix wins)
 location ${NB_PREFIX}/myapp/ {
-    proxy_pass http://localhost:8080/;
+    proxy_pass http://127.0.0.1:8080/;
 }
 ```
 
