@@ -121,14 +121,14 @@ if [ ! -d "$logs_dir" ]; then
   mkdir -p "$logs_dir"
 fi
 
-# IPv6 support
+# IPv6 support (skip when IPv6 is disabled, e.g. via container sysctls in CI)
 echo "Checking IPv6 support..."
-if [ -f /proc/net/if_inet6 ]; then
+if [ -f /proc/net/if_inet6 ] && [ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null)" != "1" ]; then
     BIND_ADDR="[::]:8787"  # IPv6/dual-stack
     echo "IPv6 detected: binding to all interfaces (IPv4 + IPv6)"
 else
     BIND_ADDR="0.0.0.0:8787"  # IPv4 only
-    echo "IPv6 not detected: falling back to IPv4 only"
+    echo "IPv6 not available: falling back to IPv4 only"
 fi
 
 # Start server with explicit --user-data-dir so code-server writes settings,

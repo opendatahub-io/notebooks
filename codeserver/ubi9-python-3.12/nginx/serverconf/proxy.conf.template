@@ -16,12 +16,12 @@ location /api/ {
 # api calls from culler get to CGI processing
 ###############
 location = /api/kernels {
-    return 302 $custom_scheme://$http_host/api/kernels/;
+    return 302 /api/kernels/;
     access_log  off;
 }
 
 location /api/kernels/ {
-  proxy_pass http://localhost:8080;
+  proxy_pass http://127.0.0.1:8080;
   proxy_set_header Host $host;
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -35,11 +35,11 @@ location /api/kernels/ {
 # root and prefix get to code-server endpoint
 ###############
 location = / {
-    return 302 $custom_scheme://$http_host/codeserver/;
+    return 302 /codeserver/;
 }
 
 location = /codeserver {
-    return 302 $custom_scheme://$http_host/codeserver/;
+    return 302 /codeserver/;
 }
 
 location /codeserver/ {
