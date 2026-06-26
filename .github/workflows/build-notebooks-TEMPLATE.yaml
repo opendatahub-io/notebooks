@@ -666,6 +666,14 @@ jobs:
 
       # endregion
 
+      # ci-exp f4: prune exited containers before Playwright (baseline test order).
+      - name: Prune podman containers before Playwright
+        if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' && steps.fips-check.outcome == 'success' }}
+        run: |
+          set -Eeuxo pipefail
+          podman container prune -f
+          podman ps -a
+
       # region TypeScript (browser) image tests
 
       # https://playwright.dev/docs/ci

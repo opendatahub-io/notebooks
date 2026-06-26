@@ -327,3 +327,5 @@ and remove with `podman rm codeserver`.
 
 - **PYTHONPATH:** The image sets `ENV PYTHONPATH=/opt/app-root/lib/python3.12/site-packages` so that the app Python interpreter and runtime-installed packages (e.g. `pip install mysql-connector-python`) are found. See [docs/mysql-test-failure-analysis.md](docs/mysql-test-failure-analysis.md) for details.
 - **Image metadata in CI:** On GitHub Actions, container tests run against rootful Podman. Image labels can be returned in `ContainerConfig` instead of `Config`; the test suite reads from both so code-server detection and the MySQL connection test work in CI. See [tests/containers/docs/github-vs-local-image-metadata.md](../../tests/containers/docs/github-vs-local-image-metadata.md).
+
+<!-- ci-exp: f4-prune-before-playwright — matrix selector only, no functional change -->
