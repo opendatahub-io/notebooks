@@ -1,0 +1,14 @@
+# Experiment variant: disable transient_store (default CI uses transient_store=true).
+# https://github.com/containers/storage/blob/main/docs/containers-storage.conf.5.md
+[storage]
+driver = "overlay"
+
+graphroot = "/home/runner/.local/share/containers/storage"
+runroot = "/home/runner/.local/share/containers/storage"
+
+transient_store = false
+
+[storage.options]
+pull_options = {enable_partial_images = "true", use_hard_links = "false", ostree_repos=""}
+
+[storage.options.overlay]

@@ -1,0 +1,231 @@
+---
+# Codeserver CI experiments: skip image build, pull a pre-built image, run test stages only.
+#
+# Trigger (after pushing this branch):
+#   gh workflow run experiment-codeserver-ci.yaml --ref <branch> -f experiment=e1-playwright-only
+#   gh workflow run experiment-codeserver-ci.yaml --ref <branch> -f experiment=e2-playwright-then-testcontainers
+#   gh workflow run experiment-codeserver-ci.yaml --ref <branch> -f experiment=e3-testcontainers-then-playwright
+#   gh workflow run experiment-codeserver-ci.yaml --ref <branch> -f experiment=e4-no-transient-store
+#   gh workflow run experiment-codeserver-ci.yaml --ref <branch> -f experiment=e4-split-runroot
+#
+# Optional image override (skip auto-resolve from ghcr main tags):
+#   gh workflow run experiment-codeserver-ci.yaml --ref <branch> \
+#     -f experiment=e1-playwright-only \
+#     -f image_ref=ghcr.io/opendatahub-io/notebooks/workbench-images:codeserver-ubi9-python-3.12-main_<sha>_odh_linux_amd64
+#
+# Fire all five in parallel:
+#   for e in e1-playwright-only e2-playwright-then-testcontainers e3-testcontainers-then-playwright \
+#            e4-no-transient-store e4-split-runroot; do
+#     gh workflow run experiment-codeserver-ci.yaml --ref <branch> -f experiment="$e"
+#   done
+name: Experiment Codeserver CI
+
+"on":
+  workflow_dispatch:
+    inputs:
+      experiment:
+        description: "Which test/storage experiment to run"
+        type: choice
+        required: true
+        options:
+          - e1-playwright-only
+          - e2-playwright-then-testcontainers
+          - e3-testcontainers-then-playwright
+          - e4-no-transient-store
+          - e4-split-runroot
+      image_ref:
+        description: "Full image ref to test; empty = latest main codeserver from ghcr"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  TMPDIR: /home/runner/.local/share/containers/tmpdir
+  IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
+
+jobs:
+  experiment:
+    name: "${{ inputs.experiment }}"
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Downcase IMAGE_REGISTRY
+        run: echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> "$GITHUB_ENV"
+        env:
+          IMAGE_REGISTRY: ${{ env.IMAGE_REGISTRY }}
+
+      - name: Free up disk space
+        uses: ./.github/actions/free-up-disk-space
+
+      - name: Mount lvm overlay for podman storage
+        run: |
+          set -Eeuxo pipefail
+          df -h
+          bash ./ci/cached-builds/gha_lvm_overlay.sh
+          df -h
+
+      - name: Apply storage.conf experiment variant
+        run: |
+          set -Eeuxo pipefail
+          case "${EXPERIMENT}" in
+            e4-no-transient-store)
+              cp ci/cached-builds/storage.conf.no-transient-store ci/cached-builds/storage.conf
+              echo "Using storage.conf.no-transient-store (transient_store=false)"
+              ;;
+            e4-split-runroot)
+              cp ci/cached-builds/storage.conf.split-runroot ci/cached-builds/storage.conf
+              echo "Using storage.conf.split-runroot (separate runroot)"
+              ;;
+            *)
+              echo "Using default ci/cached-builds/storage.conf"
+              ;;
+          esac
+          grep -E '^(graphroot|runroot|transient_store)' ci/cached-builds/storage.conf || true
+        env:
+          EXPERIMENT: ${{ inputs.experiment }}
+
+      - name: Install Podman
+        uses: ./.github/actions/install-podman-action
+        with:
+          platform: linux/amd64
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve test image
+        id: image
+        env:
+          IMAGE_REF_INPUT: ${{ inputs.image_ref }}
+          IMAGE_REGISTRY: ${{ env.IMAGE_REGISTRY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: python
+        # language=python
+        run: |
+          import json, os, re, subprocess, sys
+
+          image_ref = os.environ["IMAGE_REF_INPUT"].strip()
+          if image_ref:
+              if not re.fullmatch(r"[a-zA-Z0-9_./:@-]+", image_ref):
+                  print(f"::error::Invalid image_ref: {image_ref}", file=sys.stderr)
+                  sys.exit(1)
+              resolved = image_ref
+          else:
+              sys.path.insert(0, "ci")
+              from find_images_for_test_matrix import find_suitable_sha
+
+              registry = os.environ["IMAGE_REGISTRY"]
+              suffix = "_odh_linux_amd64"
+              required = ["codeserver-ubi9-python-3.12"]
+              result = subprocess.run(
+                  ["skopeo", "list-tags", "--creds", f"token:{os.environ['GH_TOKEN']}", f"docker://{registry}"],
+                  capture_output=True,
+                  text=True,
+                  timeout=180,
+              )
+              if result.returncode != 0:
+                  print(f"::error::skopeo list-tags failed: {result.stderr}", file=sys.stderr)
+                  sys.exit(1)
+              sha = find_suitable_sha(suffix, required, result.stdout)
+              resolved = f"{registry}:codeserver-ubi9-python-3.12-main_{sha}{suffix}"
+              print(f"Auto-resolved latest main codeserver tag (sha={sha})")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"ref={resolved}\n")
+          print(f"Test image: {resolved}")
+
+      - name: Pull test image
+        run: |
+          set -Eeuxo pipefail
+          podman pull "${IMAGE_REF}"
+          podman images --digests
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Install from uv.lock (project + dev deps)
+        run: uv sync --group dev --locked
+
+      - name: Run Testcontainers container tests (before Playwright)
+        id: pytest-testcontainers-first
+        if: ${{ inputs.experiment == 'e3-testcontainers-then-playwright' }}
+        env:
+          DOCKER_HOST: "unix:///var/run/podman/podman.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+          OUTPUT_IMAGE: "${{ steps.image.outputs.ref }}"
+          JUNIT_XML: "${{ runner.temp }}/pytest-reports/${{ inputs.experiment }}_testcontainers-first-junit.xml"
+        run: |
+          set -Eeuxo pipefail
+          mkdir -p "$(dirname "${JUNIT_XML}")"
+          uv run pytest --capture=fd tests/containers \
+            -m 'not openshift and not cuda and not rocm and not manifest_validation' \
+            --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}"
+
+      - name: Run Playwright tests (first)
+        id: playwright-first
+        if: ${{ !cancelled() && inputs.experiment != 'e3-testcontainers-then-playwright' }}
+        uses: ./.github/actions/playwright-test
+        with:
+          test-target: ${{ steps.image.outputs.ref }}
+          podman-socket: /var/run/podman/podman.sock
+          upload-report: "true"
+          artifact-name: "${{ inputs.experiment }}_playwright-report"
+          junit-artifact-file: "${{ inputs.experiment }}_playwright-junit.xml"
+          grep-pattern: "@codeserver"
+
+      - name: Run Testcontainers container tests (after Playwright)
+        id: pytest-testcontainers-after
+        if: ${{ !cancelled() && contains(fromJSON('["e2-playwright-then-testcontainers", "e4-no-transient-store", "e4-split-runroot"]'), inputs.experiment) }}
+        env:
+          DOCKER_HOST: "unix:///var/run/podman/podman.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+          OUTPUT_IMAGE: "${{ steps.image.outputs.ref }}"
+          JUNIT_XML: "${{ runner.temp }}/pytest-reports/${{ inputs.experiment }}_testcontainers-after-junit.xml"
+        run: |
+          set -Eeuxo pipefail
+          mkdir -p "$(dirname "${JUNIT_XML}")"
+          uv run pytest --capture=fd tests/containers \
+            -m 'not openshift and not cuda and not rocm and not manifest_validation' \
+            --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}"
+
+      - name: Run Playwright tests (after Testcontainers)
+        id: playwright-after
+        if: ${{ !cancelled() && inputs.experiment == 'e3-testcontainers-then-playwright' }}
+        uses: ./.github/actions/playwright-test
+        with:
+          test-target: ${{ steps.image.outputs.ref }}
+          podman-socket: /var/run/podman/podman.sock
+          upload-report: "true"
+          artifact-name: "${{ inputs.experiment }}_playwright-report"
+          junit-artifact-file: "${{ inputs.experiment }}_playwright-junit.xml"
+          grep-pattern: "@codeserver"
+
+      - name: Upload Testcontainers pytest JUnit XML
+        if: ${{ always() && (steps.pytest-testcontainers-first.conclusion == 'success' || steps.pytest-testcontainers-first.conclusion == 'failure' || steps.pytest-testcontainers-after.conclusion == 'success' || steps.pytest-testcontainers-after.conclusion == 'failure') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          path: "${{ runner.temp }}/pytest-reports/${{ inputs.experiment }}_*-junit.xml"
+          archive: false
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Capture kernel logs on failure
+        if: failure()
+        uses: ./.github/actions/capture-kernel-logs
+        with:
+          log-prefix: "${{ inputs.experiment }}"
