@@ -232,3 +232,18 @@ class TestCopyTreeWithIgnore:
 
         assert (dst / "file.txt").is_file()
         assert (dst / "sub/nested.txt").is_file()
+
+    def test_symlink_aliases_to_same_target_both_copied(self, tmp_path: pathlib.Path):
+        src = tmp_path / "src"
+        src.mkdir()
+        target = src / "target"
+        target.mkdir()
+        (target / "data.txt").write_text("data")
+        (src / "alias1").symlink_to("target", target_is_directory=True)
+        (src / "alias2").symlink_to("target", target_is_directory=True)
+
+        dst = tmp_path / "dst"
+        _copy_tree(src, dst)
+
+        assert (dst / "alias1/data.txt").read_text() == "data"
+        assert (dst / "alias2/data.txt").read_text() == "data"

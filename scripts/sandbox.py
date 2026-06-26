@@ -172,37 +172,69 @@ def _copy_tree(
     if src.name in root_only_ignore and len(repo_base_rel.parts) == 1:
         return
 
-    visited: set[str] = set()
+    _copy_tree_dir(
+        src,
+        dst,
+        pathlib.Path("."),
+        repo_base_rel,
+        root_only_ignore,
+        any_depth_ignore,
+        frozenset(),
+    )
 
-    for dirpath, dirnames, filenames in os.walk(src, followlinks=True):
-        real_dir = os.path.realpath(dirpath)
-        if real_dir in visited:
-            dirnames.clear()
-            continue
-        visited.add(real_dir)
 
-        rel = pathlib.Path(dirpath).relative_to(src)
-        parent_at_repo_root = len((repo_base_rel / rel).parts) == 0
-        dirnames[:] = [
-            d for d in dirnames
-            if not _ignore_dirname(
-                d,
+def _copy_tree_dir(
+        src_dir: pathlib.Path,
+        dst_dir: pathlib.Path,
+        rel: pathlib.Path,
+        repo_base_rel: pathlib.Path,
+        root_only_ignore: set[str],
+        any_depth_ignore: set[str],
+        ancestor_realpaths: frozenset[str],
+) -> None:
+    real_dir = os.path.realpath(src_dir)
+    if real_dir in ancestor_realpaths:
+        return
+
+    try:
+        dst_dir.mkdir(parents=True, exist_ok=True)
+    except PermissionError:
+        log.warning(f"cannot create directory, skipping subtree: {rel}")
+        return
+
+    parent_at_repo_root = len((repo_base_rel / rel).parts) == 0
+    chain = ancestor_realpaths | {real_dir}
+
+    try:
+        entries = list(os.scandir(src_dir))
+    except OSError as err:
+        log.warning(f"cannot read directory, skipping subtree: {rel}", error=str(err))
+        return
+
+    for entry in entries:
+        name = entry.name
+        if entry.is_dir(follow_symlinks=True):
+            if _ignore_dirname(
+                name,
                 root_only_ignore=root_only_ignore,
                 any_depth_ignore=any_depth_ignore,
                 parent_at_repo_root=parent_at_repo_root,
+            ):
+                continue
+            _copy_tree_dir(
+                pathlib.Path(entry.path),
+                dst_dir / name,
+                rel / name,
+                repo_base_rel,
+                root_only_ignore,
+                any_depth_ignore,
+                chain,
             )
-        ]
-        try:
-            (dst / rel).mkdir(parents=True, exist_ok=True)
-        except PermissionError:
-            log.warning(f"cannot create directory, skipping subtree: {rel}")
-            dirnames.clear()
-            continue
-        for fname in filenames:
+        elif entry.is_file(follow_symlinks=False):
             try:
-                shutil.copy(pathlib.Path(dirpath) / fname, dst / rel / fname)
+                shutil.copy(entry.path, dst_dir / name)
             except PermissionError:
-                log.warning(f"cannot copy file, skipping: {rel / fname}")
+                log.warning(f"cannot copy file, skipping: {rel / name}")
 
 
 def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
