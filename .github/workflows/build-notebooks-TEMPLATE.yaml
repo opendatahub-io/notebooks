@@ -627,15 +627,17 @@ jobs:
         run: |
           set -Eeuxo pipefail
           PODMAN="$(which podman)"
-          IMAGE_MOUNT_DIR=$(sudo "${PODMAN}" image mount "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}")
+          IMAGE_MOUNT_DIR=$(sudo "${PODMAN}" image mount "${OUTPUT_IMAGE}")
           sudo "${PODMAN}" run --rm --user=0 \
             -v "${IMAGE_MOUNT_DIR}:${IMAGE_MOUNT_DIR}:ro,z" \
             -v "${PWD}/scripts/check-payload/config.toml:/config.toml:ro,z" \
             "${CHECK_PAYLOAD_IMAGE}" \
             scan local --path "${IMAGE_MOUNT_DIR}" -c /config.toml
-          sudo "${PODMAN}" image unmount --all
+          # unmount only this image; --all left Podman overlay storage inconsistent (#3949)
+          sudo "${PODMAN}" image unmount "${OUTPUT_IMAGE}"
         env:
           CHECK_PAYLOAD_IMAGE: ghcr.io/${{ github.repository }}/check-payload:0.3.16
+          OUTPUT_IMAGE: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}
 
       # endregion
 
