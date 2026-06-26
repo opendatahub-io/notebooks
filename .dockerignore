@@ -1,6 +1,8 @@
 # NOTE: scripts/sandbox.py uses a limited parser that only extracts
 # single-segment directory patterns (name/ or **/name/) from this file.
-# Negation (!), globs (*.ext), and multi-segment paths are ignored.
+# Root-relative patterns (ci/) apply only at the repository root; **/name/
+# applies at any depth. Negation (!), globs (*.ext), and multi-segment paths
+# are ignored.
 
 bin/
 ci/

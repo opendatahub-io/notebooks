@@ -106,28 +106,56 @@ def _load_dockerignore(root: pathlib.Path) -> list[str]:
     ]
 
 
-def _ignored_dir_names(root: pathlib.Path) -> set[str]:
-    """Return a set of bare directory names that should be skipped during os.walk.
+def _ignored_dir_names(root: pathlib.Path) -> tuple[set[str], set[str]]:
+    """Return directory-name sets for .dockerignore pruning during os.walk.
 
-    Both ``**/name/`` and root-relative ``name/`` patterns are accepted —
-    any single-segment pattern ending with ``/`` is treated as a directory
-    name to prune at any depth.  Multi-segment paths (e.g. ``a/b/``) and
-    file-glob patterns (e.g. ``*.log``) are excluded.
+    Returns ``(root_only, any_depth)``:
+
+    * ``**/name/`` patterns apply at any depth (e.g. ``**/node_modules/``).
+    * bare ``name/`` patterns apply only when the directory sits at the
+      repository root (e.g. top-level ``ci/``), matching Docker semantics.
+
+    Multi-segment paths (e.g. ``a/b/``) and file-glob patterns (e.g. ``*.log``)
+    are excluded.
 
     TODO: negation patterns (``!name``) are filtered out, not honored as re-inclusions.
     TODO: followlinks=True in _copy_tree can still loop on circular symlinks.
     """
-    ignored: set[str] = set()
+    root_only: set[str] = set()
+    any_depth: set[str] = set()
     for pattern in _load_dockerignore(root):
         if not pattern.endswith("/"):
             continue
+        is_globstar = pattern.startswith("**/")
         name = pattern.removeprefix("**/").removesuffix("/")
         if name and "/" not in name and not any(c in name for c in ("*", "?", "[")):
-            ignored.add(name)
-    return ignored
+            (any_depth if is_globstar else root_only).add(name)
+    return root_only, any_depth
 
 
-def _copy_tree(src: pathlib.Path, dst: pathlib.Path, dir_ignore_names: set[str] | None = None):
+def _should_ignore_dir(
+        dirname: str,
+        rel: pathlib.Path,
+        repo_base_rel: pathlib.Path,
+        root_only_ignore: set[str],
+        any_depth_ignore: set[str],
+) -> bool:
+    if dirname in any_depth_ignore:
+        return True
+    if dirname in root_only_ignore:
+        return len((repo_base_rel / rel).parts) == 0
+    return False
+
+
+def _copy_tree(
+        src: pathlib.Path,
+        dst: pathlib.Path,
+        *,
+        repo_base_rel: pathlib.Path | None = None,
+        root_only_ignore: set[str] | None = None,
+        any_depth_ignore: set[str] | None = None,
+        dir_ignore_names: set[str] | None = None,
+):
     """Copy a directory tree, copying only file content (no metadata/xattrs).
 
     shutil.copytree's internal copystat() on directories fails on macOS with
@@ -136,17 +164,27 @@ def _copy_tree(src: pathlib.Path, dst: pathlib.Path, dir_ignore_names: set[str] 
     Directories that cannot be created (e.g. macOS EPERM on certain dotfiles
     in temp directories) are logged and skipped.
 
-    *dir_ignore_names* is an optional set of bare directory names (e.g.
-    ``{"node_modules", ".pnpm-store"}``) that will be pruned from each
-    ``dirnames`` list during the walk so that os.walk never descends into them.
-    This mirrors the ``**/name/`` patterns in ``.dockerignore`` and avoids the
-    ``OSError: [Errno 63] File name too long`` crash caused by deeply-nested
-    content-addressed stores such as ``.pnpm-store``.
+    *any_depth_ignore* mirrors ``**/name/`` patterns from ``.dockerignore``.
+    *root_only_ignore* mirrors bare ``name/`` patterns and only prunes
+    directories that would live at the repository root.  *dir_ignore_names* is
+    a legacy alias for *any_depth_ignore* (used by unit tests).
     """
+    if dir_ignore_names is not None and any_depth_ignore is None:
+        any_depth_ignore = dir_ignore_names
+    root_only_ignore = root_only_ignore or set()
+    any_depth_ignore = any_depth_ignore or set()
+    if repo_base_rel is None:
+        try:
+            repo_base_rel = src.relative_to(ROOT_DIR)
+        except ValueError:
+            repo_base_rel = pathlib.Path()
+
     for dirpath, dirnames, filenames in os.walk(src, followlinks=True):
-        if dir_ignore_names:
-            dirnames[:] = [d for d in dirnames if d not in dir_ignore_names]
         rel = pathlib.Path(dirpath).relative_to(src)
+        dirnames[:] = [
+            d for d in dirnames
+            if not _should_ignore_dir(d, rel, repo_base_rel, root_only_ignore, any_depth_ignore)
+        ]
         try:
             (dst / rel).mkdir(parents=True, exist_ok=True)
         except PermissionError:
@@ -166,7 +204,7 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
     if gitignore.exists():
         shutil.copy(gitignore, tmpdir)
 
-    dir_ignore_names = _ignored_dir_names(ROOT_DIR)
+    root_only_ignore, any_depth_ignore = _ignored_dir_names(ROOT_DIR)
 
     for dep in prereqs:
         if dep.is_absolute():
@@ -185,7 +223,13 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
                 m_path = pathlib.Path(m)
                 (tmpdir / m_path.parent).mkdir(parents=True, exist_ok=True)
                 if m_path.is_dir():
-                    _copy_tree(m_path, tmpdir / m_path, dir_ignore_names=dir_ignore_names)
+                    _copy_tree(
+                        m_path,
+                        tmpdir / m_path,
+                        repo_base_rel=m_path,
+                        root_only_ignore=root_only_ignore,
+                        any_depth_ignore=any_depth_ignore,
+                    )
                 else:
                     shutil.copy(m_path, tmpdir / m_path.parent)
             continue
@@ -195,7 +239,13 @@ def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
             sys.exit(1)
 
         if dep.is_dir():
-            _copy_tree(dep, tmpdir / dep, dir_ignore_names=dir_ignore_names)
+            _copy_tree(
+                dep,
+                tmpdir / dep,
+                repo_base_rel=dep,
+                root_only_ignore=root_only_ignore,
+                any_depth_ignore=any_depth_ignore,
+            )
         else:
             (tmpdir / dep.parent).mkdir(parents=True, exist_ok=True)
             shutil.copy(dep, tmpdir / dep.parent)
