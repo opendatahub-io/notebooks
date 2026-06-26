@@ -1,0 +1,326 @@
+---
+# Codeserver CI experiments: skip image build, pull a pre-built GHCR image, run test stages only.
+#
+# Phase 1 — reproduce Playwright overlay failure (~30–45 min, no `make codeserver-*`):
+#   gh workflow run experiment-codeserver-ci.yaml \
+#     --ref fix/ci-codeserver-playwright-after-check-payload-unmount \
+#     -f experiment=baseline
+#
+# Optional explicit image (e.g. from failing main before #3951):
+#   gh workflow run experiment-codeserver-ci.yaml \
+#     --ref fix/ci-codeserver-playwright-after-check-payload-unmount \
+#     -f experiment=baseline \
+#     -f image_ref=ghcr.io/opendatahub-io/notebooks/workbench-images:codeserver-ubi9-python-3.12-main_<sha>_odh_linux_amd64
+#
+# Phase 2 — one-knob fix experiments (same pre-pulled image, workflow_dispatch only):
+#   gh workflow run experiment-codeserver-ci.yaml --ref <branch> -f experiment=f1-playwright-first
+#   gh workflow run experiment-codeserver-ci.yaml --ref <branch> -f experiment=f2-no-transient-store
+#   gh workflow run experiment-codeserver-ci.yaml --ref <branch> -f experiment=f3-split-runroot
+#   gh workflow run experiment-codeserver-ci.yaml --ref <branch> -f experiment=f4-prune-before-playwright
+#
+# Expected baseline failure signature (Playwright step, after check-payload unmount --all):
+#   faccessat .../storage/overlay/...: no such file or directory
+#   error creating container storage: getting graph driver info: ...
+# See opendatahub-io/notebooks#3949.
+name: Experiment Codeserver CI
+
+"on":
+  workflow_dispatch:
+    inputs:
+      experiment:
+        description: "baseline = old CI order (Playwright last); f1–f4 = single-knob fixes"
+        type: choice
+        required: true
+        default: baseline
+        options:
+          - baseline
+          - f1-playwright-first
+          - f2-no-transient-store
+          - f3-split-runroot
+          - f4-prune-before-playwright
+      image_ref:
+        description: "Full image ref; empty = latest main codeserver tag from ghcr"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  TMPDIR: /home/runner/.local/share/containers/tmpdir
+  IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
+  TARGET: codeserver-ubi9-python-3.12
+
+jobs:
+  experiment:
+    name: "${{ inputs.experiment }}"
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Downcase IMAGE_REGISTRY
+        run: echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> "$GITHUB_ENV"
+        env:
+          IMAGE_REGISTRY: ${{ env.IMAGE_REGISTRY }}
+
+      - name: Free up disk space
+        uses: ./.github/actions/free-up-disk-space
+
+      - name: Mount lvm overlay for podman storage
+        run: |
+          set -Eeuxo pipefail
+          df -h
+          bash ./ci/cached-builds/gha_lvm_overlay.sh
+          df -h
+
+      - name: Apply storage.conf experiment variant
+        run: |
+          set -Eeuxo pipefail
+          case "${EXPERIMENT}" in
+            f2-no-transient-store)
+              cp ci/cached-builds/storage.conf.no-transient-store ci/cached-builds/storage.conf
+              echo "F2: transient_store=false"
+              ;;
+            f3-split-runroot)
+              cp ci/cached-builds/storage.conf.split-runroot ci/cached-builds/storage.conf
+              echo "F3: separate runroot from graphroot"
+              ;;
+            *)
+              echo "Default storage.conf (transient_store=true, shared runroot/graphroot)"
+              ;;
+          esac
+          grep -E '^(graphroot|runroot|transient_store)' ci/cached-builds/storage.conf || true
+        env:
+          EXPERIMENT: ${{ inputs.experiment }}
+
+      - name: Install Podman
+        uses: ./.github/actions/install-podman-action
+        with:
+          platform: linux/amd64
+
+      - name: Install skopeo
+        uses: ./.github/actions/apt-install
+        with:
+          packages: skopeo
+          update: "false"
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve test image
+        id: image
+        env:
+          IMAGE_REF_INPUT: ${{ inputs.image_ref }}
+          IMAGE_REGISTRY: ${{ env.IMAGE_REGISTRY }}
+          TARGET: ${{ env.TARGET }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: python
+        # language=python
+        run: |
+          import os, re, subprocess, sys
+
+          target = os.environ["TARGET"]
+          image_ref = os.environ["IMAGE_REF_INPUT"].strip()
+          if image_ref:
+              if not re.fullmatch(r"[a-zA-Z0-9_./:@-]+", image_ref):
+                  print(f"::error::Invalid image_ref: {image_ref}", file=sys.stderr)
+                  sys.exit(1)
+              resolved = image_ref
+          else:
+              sys.path.insert(0, "ci")
+              from find_images_for_test_matrix import find_suitable_sha
+
+              registry = os.environ["IMAGE_REGISTRY"]
+              suffix = "_odh_linux_amd64"
+              required = [target]
+              result = subprocess.run(
+                  ["skopeo", "list-tags", "--creds", f"token:{os.environ['GH_TOKEN']}", f"docker://{registry}"],
+                  capture_output=True,
+                  text=True,
+                  timeout=180,
+              )
+              if result.returncode != 0:
+                  print(f"::error::skopeo list-tags failed: {result.stderr}", file=sys.stderr)
+                  sys.exit(1)
+              sha = find_suitable_sha(suffix, required, result.stdout)
+              resolved = f"{registry}:{target}-main_{sha}{suffix}"
+              print(f"Auto-resolved latest main codeserver tag (sha={sha})")
+
+          # registry:target-main_<sha>_odh_linux_amd64
+          registry, _, tag = resolved.rpartition(":")
+          prefix = f"{target}-"
+          if not tag.startswith(prefix):
+              print(f"::error::Tag {tag!r} does not start with {prefix!r}", file=sys.stderr)
+              sys.exit(1)
+          image_tag = tag.removeprefix(prefix)
+          notebook_tag = tag
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"ref={resolved}\n")
+              f.write(f"registry={registry}\n")
+              f.write(f"image_tag={image_tag}\n")
+              f.write(f"notebook_tag={notebook_tag}\n")
+          print(f"Test image: {resolved}")
+          print(f"IMAGE_TAG={image_tag} NOTEBOOK_TAG={notebook_tag}")
+
+      - name: Pull test image
+        run: |
+          set -Eeuxo pipefail
+          podman pull "${IMAGE_REF}"
+          podman images --digests
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
+        with:
+          go-version: "stable"
+          cache-dependency-path: |
+            scripts/buildinputs/go.mod
+            scripts/check-payload/go.mod
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Install from uv.lock (project + dev deps)
+        run: uv sync --group dev --locked
+
+      # F1: Playwright before pytest (matches #3951 ordering fix; only knob changed).
+      - name: Run Playwright tests (first)
+        id: playwright-first
+        if: ${{ inputs.experiment == 'f1-playwright-first' }}
+        uses: ./.github/actions/playwright-test
+        with:
+          test-target: ${{ steps.image.outputs.ref }}
+          podman-socket: /var/run/podman/podman.sock
+          upload-report: "true"
+          artifact-name: "${{ inputs.experiment }}_playwright-report"
+          junit-artifact-file: "${{ inputs.experiment }}_playwright-junit.xml"
+          grep-pattern: "@codeserver"
+
+      # Old CI order: testcontainers → k8s → openshift → check-payload → Playwright last.
+      - name: Run Testcontainers container tests (in PyTest)
+        id: pytest-testcontainers
+        if: ${{ !cancelled() }}
+        env:
+          DOCKER_HOST: "unix:///var/run/podman/podman.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+          OUTPUT_IMAGE: "${{ steps.image.outputs.ref }}"
+          JUNIT_XML: "${{ runner.temp }}/pytest-reports/${{ inputs.experiment }}_testcontainers-junit.xml"
+        run: |
+          set -Eeuxo pipefail
+          mkdir -p "$(dirname "${JUNIT_XML}")"
+          uv run pytest --capture=fd tests/containers \
+            -m 'not openshift and not cuda and not rocm and not manifest_validation' \
+            --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}"
+
+      - name: Upload Testcontainers pytest JUnit XML
+        if: ${{ always() && steps.pytest-testcontainers.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          path: "${{ runner.temp }}/pytest-reports/${{ inputs.experiment }}_testcontainers-junit.xml"
+          archive: false
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Change pull policy to IfNotPresent
+        if: ${{ !cancelled() && steps.pytest-testcontainers.outcome == 'success' }}
+        run: |
+          set -Eeuxo pipefail
+          find . \( -name "statefulset.yaml" -o -name "pod.yaml" \) -type f -exec \
+            sed -i'' 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/g' {} \;
+          git diff --stat
+
+      - name: Provision K8s cluster
+        id: provision-k8s
+        if: ${{ !cancelled() && steps.pytest-testcontainers.outcome == 'success' }}
+        uses: ./.github/actions/provision-k8s
+
+      - name: Run image tests
+        id: makefile-tests
+        if: ${{ !cancelled() && steps.pytest-testcontainers.outcome == 'success' && steps.provision-k8s.outcome == 'success' }}
+        run: python3 ci/cached-builds/make_test.py --target ${{ env.TARGET }}
+        env:
+          IMAGE_TAG: "${{ steps.image.outputs.image_tag }}"
+          NOTEBOOK_TAG: "${{ steps.image.outputs.notebook_tag }}"
+          IMAGE_REGISTRY: "${{ steps.image.outputs.registry }}"
+          KONFLUX: "no"
+
+      - name: Run OpenShift container tests (in PyTest)
+        id: pytest-openshift
+        if: ${{ !cancelled() && steps.pytest-testcontainers.outcome == 'success' && steps.provision-k8s.outcome == 'success' }}
+        env:
+          DOCKER_HOST: "unix:///var/run/podman/podman.sock"
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: "/var/run/podman/podman.sock"
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+          OUTPUT_IMAGE: "${{ steps.image.outputs.ref }}"
+          JUNIT_XML: "${{ runner.temp }}/pytest-reports/${{ inputs.experiment }}_openshift-junit.xml"
+        run: |
+          set -Eeuxo pipefail
+          mkdir -p "$(dirname "${JUNIT_XML}")"
+          uv run pytest --capture=fd tests/containers \
+            -m 'openshift and not cuda and not rocm' \
+            --image="${OUTPUT_IMAGE}" --junitxml="${JUNIT_XML}"
+
+      - name: Upload OpenShift pytest JUnit XML
+        if: ${{ always() && steps.pytest-openshift.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          path: "${{ runner.temp }}/pytest-reports/${{ inputs.experiment }}_openshift-junit.xml"
+          archive: false
+          retention-days: 14
+          if-no-files-found: warn
+
+      # Old CI: check-payload with `image unmount --all` immediately before Playwright (#3949).
+      - name: Check image with check-payload for FIPS compliance
+        id: fips-check
+        if: ${{ !cancelled() && steps.pytest-testcontainers.outcome == 'success' }}
+        run: |
+          set -Eeuxo pipefail
+          PODMAN="$(which podman)"
+          OUTPUT_IMAGE="${{ steps.image.outputs.ref }}"
+          IMAGE_MOUNT_DIR=$(sudo "${PODMAN}" image mount "${OUTPUT_IMAGE}")
+          sudo --preserve-env=PATH,GOCACHE,GOMODCACHE go tool github.com/openshift/check-payload scan local --path "${IMAGE_MOUNT_DIR}"
+          sudo "${PODMAN}" image unmount --all
+        working-directory: scripts/check-payload
+        env:
+          GOCACHE: /home/runner/.cache/go-build
+          GOMODCACHE: /home/runner/go/pkg/mod
+
+      # F4: prune exited containers before Playwright (single knob; Playwright still last).
+      - name: Prune podman containers before Playwright
+        if: ${{ !cancelled() && inputs.experiment == 'f4-prune-before-playwright' && steps.fips-check.outcome == 'success' }}
+        run: |
+          set -Eeuxo pipefail
+          podman container prune -f
+          podman ps -a
+
+      - name: Run Playwright tests (last)
+        id: playwright-last
+        if: ${{ !cancelled() && inputs.experiment != 'f1-playwright-first' && steps.fips-check.outcome == 'success' }}
+        uses: ./.github/actions/playwright-test
+        with:
+          test-target: ${{ steps.image.outputs.ref }}
+          podman-socket: /var/run/podman/podman.sock
+          upload-report: "true"
+          artifact-name: "${{ inputs.experiment }}_playwright-report"
+          junit-artifact-file: "${{ inputs.experiment }}_playwright-junit.xml"
+          grep-pattern: "@codeserver"
+
+      - run: df -h
+        if: ${{ !cancelled() }}
+
+      - name: Capture kernel logs on failure
+        if: failure()
+        uses: ./.github/actions/capture-kernel-logs
+        with:
+          log-prefix: "${{ inputs.experiment }}"

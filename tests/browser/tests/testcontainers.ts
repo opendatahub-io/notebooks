@@ -18,16 +18,15 @@ export function setupTestcontainers() {
                 const XDG_RUNTIME_DIR = process.env['XDG_RUNTIME_DIR'] || `/var/run/user/${process.env['UID']}`
                 process.env['DOCKER_HOST'] = `unix://${XDG_RUNTIME_DIR}/podman/podman.sock`;
             }
-            process.env['TESTCONTAINERS_RYUK_DISABLED'] = 'false';
-            process.env['TESTCONTAINERS_RYUK_PRIVILEGED'] = 'true';
+            // Match pytest CI: Ryuk pulls from docker.io and is disabled in GHA workflows.
+            process.env['TESTCONTAINERS_RYUK_DISABLED'] ??= 'true';
             break
         }
         case "darwin": {
             // let result = spawnSync('podman', ['machine', 'inspect', '--format={{.ConnectionInfo.PodmanSocket.Path}}']);
             // let dockerHost = result.stdout.toString().trimEnd()
             // process.env['DOCKER_HOST'] = `unix://${dockerHost}`;
-            process.env['TESTCONTAINERS_RYUK_DISABLED'] = 'false';
-            process.env['TESTCONTAINERS_RYUK_PRIVILEGED'] = 'true';
+            process.env['TESTCONTAINERS_RYUK_DISABLED'] ??= 'true';
             break
         }
     }
