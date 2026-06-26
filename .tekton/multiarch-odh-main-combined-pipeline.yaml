@@ -14,10 +14,11 @@ spec:
     This pipeline is pushed as a Tekton bundle to [quay.io](https://quay.io/repository/konflux-ci/tekton-catalog/pipeline-docker-build-multi-platform-oci-ta?tab=tags)_
 
     Combined pipeline for PRs and Pushes.
-    Logic is controlled by the 'event-type' parameter.
+    The event-type param (from Pipelines as Code) is normalized to pipeline-type
+    for rhoai-init (pull_request -> pull-request).
   params:
   - name: event-type
-    description: "Event type from Pipelines as Code: 'push' or 'pull_request'"
+    description: "Pipeline execution type from Pipelines as Code (push or pull_request); normalized to pipeline-type for rhoai-init"
     type: string
     default: "pull_request"
   - description: Source Repository URL
@@ -154,24 +155,41 @@ spec:
       operator: in
       values:
       - "true"
-    - input: $(params.event-type)
+    - input: $(tasks.normalize-pipeline-type.results.pipeline-type)
       operator: in
       values:
       - "push"
 
   tasks:
+  - name: normalize-pipeline-type
+    params:
+    - name: event-type
+      value: $(params.event-type)
+    taskSpec:
+      params:
+      - name: event-type
+        type: string
+      results:
+      - name: pipeline-type
+        description: pipeline-type value for rhoai-init
+      steps:
+      - image: quay.io/rhoai-konflux/alpine:latest
+        name: normalize
+        script: |
+          case "$(params.event-type)" in
+            pull_request) pipeline_type=pull-request ;;
+            *) pipeline_type="$(params.event-type)" ;;
+          esac
+          echo -n "${pipeline_type}" > "$(results.pipeline-type.path)"
+
   - name: rhoai-init
-    # Only run on Push; shared task adds Build IC CC line on failure notifications.
-    when:
-    - input: $(params.event-type)
-      operator: in
-      values:
-      - "push"
     params:
     - name: expected-cluster
       value: $(params.expected-cluster)
     - name: pipeline-type
-      value: push
+      value: $(tasks.normalize-pipeline-type.results.pipeline-type)
+    runAfter:
+    - normalize-pipeline-type
     taskRef:
       resolver: git
       params:
@@ -195,7 +213,6 @@ spec:
       - name: kind
         value: task
       resolver: bundles
-    # Wait for rhoai-init. If rhoai-init is skipped (PR), this runs immediately.
     runAfter:
     - rhoai-init
   - name: clone-repository
@@ -622,6 +639,7 @@ spec:
       value: $(tasks.build-image-index.results.IMAGE_DIGEST)
     - name: ADDITIONAL_TAGS
       value:
+      - $(tasks.rhoai-init.results.mandatory-tag)
       - $(params.additional-tags[*])
     runAfter:
     - build-image-index
