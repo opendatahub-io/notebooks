@@ -624,6 +624,27 @@ jobs:
 
       # endregion
 
+      # region TypeScript (browser) image tests
+
+      # https://playwright.dev/docs/ci
+      # https://playwright.dev/docs/docker
+      # we leave little free disk space after we mount LVM for podman storage
+      # not enough to install playwright; running playwright in podman uses the space we have
+      # Run before check-payload: `podman image unmount` after FIPS mount breaks overlay storage
+      # for testcontainers (opendatahub-io/notebooks#3949).
+      - name: Run Playwright tests
+        if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' }}
+        uses: ./.github/actions/playwright-test
+        with:
+          test-target: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}
+          podman-socket: /var/run/podman/podman.sock
+          upload-report: ${{ fromJson(inputs.github).event_name == 'pull_request' }}
+          artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
+          junit-artifact-file: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-junit.xml"
+          grep-pattern: '@codeserver'
+
+      # endregion
+
       # region check-payload for FIPS compliance
 
       # F0512 15:43:03.219076 21568 main.go:294] Error: exec: "oc": executable file not found in $PATH
@@ -653,35 +674,17 @@ jobs:
           set -Eeuxo pipefail
           # resolve podman under current user, not under sudo/root
           PODMAN="$(which podman)"
+          OUTPUT_IMAGE="${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}"
           # mount the image
-          IMAGE_MOUNT_DIR=$(sudo "${PODMAN}" image mount "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}")
+          IMAGE_MOUNT_DIR=$(sudo "${PODMAN}" image mount "${OUTPUT_IMAGE}")
           # run the check-payload scan
           sudo --preserve-env=PATH,GOCACHE,GOMODCACHE go tool github.com/openshift/check-payload scan local --path "${IMAGE_MOUNT_DIR}"
-          # unmount the image
-          sudo "${PODMAN}" image unmount --all
+          # unmount only this image; --all left Podman overlay storage inconsistent (#3949)
+          sudo "${PODMAN}" image unmount "${OUTPUT_IMAGE}"
         working-directory: scripts/check-payload
         env:
           GOCACHE: /home/runner/.cache/go-build
           GOMODCACHE: /home/runner/go/pkg/mod
-
-      # endregion
-
-      # region TypeScript (browser) image tests
-
-      # https://playwright.dev/docs/ci
-      # https://playwright.dev/docs/docker
-      # we leave little free disk space after we mount LVM for podman storage
-      # not enough to install playwright; running playwright in podman uses the space we have
-      - name: Run Playwright tests
-        if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' }}
-        uses: ./.github/actions/playwright-test
-        with:
-          test-target: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}
-          podman-socket: /var/run/podman/podman.sock
-          upload-report: ${{ fromJson(inputs.github).event_name == 'pull_request' }}
-          artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
-          junit-artifact-file: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-junit.xml"
-          grep-pattern: '@codeserver'
 
       # endregion
 
