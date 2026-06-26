@@ -1,3 +1,7 @@
+# NOTE: scripts/sandbox.py uses a limited parser that only extracts
+# single-segment directory patterns (name/ or **/name/) from this file.
+# Negation (!), globs (*.ext), and multi-segment paths are ignored.
+
 bin/
 ci/
 tests/
