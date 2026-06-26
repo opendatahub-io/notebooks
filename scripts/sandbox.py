@@ -132,18 +132,16 @@ def _ignored_dir_names(root: pathlib.Path) -> tuple[set[str], set[str]]:
     return root_only, any_depth
 
 
-def _should_ignore_dir(
+def _ignore_dirname(
         dirname: str,
-        rel: pathlib.Path,
-        repo_base_rel: pathlib.Path,
+        *,
         root_only_ignore: set[str],
         any_depth_ignore: set[str],
+        parent_at_repo_root: bool,
 ) -> bool:
     if dirname in any_depth_ignore:
         return True
-    if dirname in root_only_ignore:
-        return len((repo_base_rel / rel).parts) == 0
-    return False
+    return dirname in root_only_ignore and parent_at_repo_root
 
 
 def _copy_tree(
@@ -153,7 +151,6 @@ def _copy_tree(
         repo_base_rel: pathlib.Path | None = None,
         root_only_ignore: set[str] | None = None,
         any_depth_ignore: set[str] | None = None,
-        dir_ignore_names: set[str] | None = None,
 ):
     """Copy a directory tree, copying only file content (no metadata/xattrs).
 
@@ -163,28 +160,16 @@ def _copy_tree(
     Directories that cannot be created (e.g. macOS EPERM on certain dotfiles
     in temp directories) are logged and skipped.
 
-    *any_depth_ignore* mirrors ``**/name/`` patterns from ``.dockerignore``.
-    *root_only_ignore* mirrors bare ``name/`` patterns and only prunes
-    directories that would live at the repository root.  *dir_ignore_names* is
-    a legacy alias for *any_depth_ignore* (used by unit tests).
+    Ignore sets follow ``_ignored_dir_names`` / ``.dockerignore`` semantics.
     """
-    if dir_ignore_names is not None and any_depth_ignore is None:
-        any_depth_ignore = dir_ignore_names
     root_only_ignore = root_only_ignore or set()
     any_depth_ignore = any_depth_ignore or set()
     if repo_base_rel is None:
-        try:
-            repo_base_rel = src.relative_to(ROOT_DIR)
-        except ValueError:
-            repo_base_rel = pathlib.Path()
+        repo_base_rel = src.relative_to(ROOT_DIR) if src.is_relative_to(ROOT_DIR) else pathlib.Path()
 
-    if _should_ignore_dir(
-        src.name,
-        pathlib.Path(),
-        repo_base_rel.parent,
-        root_only_ignore,
-        any_depth_ignore,
-    ):
+    if src.name in any_depth_ignore:
+        return
+    if src.name in root_only_ignore and len(repo_base_rel.parts) == 1:
         return
 
     visited: set[str] = set()
@@ -197,9 +182,15 @@ def _copy_tree(
         visited.add(real_dir)
 
         rel = pathlib.Path(dirpath).relative_to(src)
+        parent_at_repo_root = len((repo_base_rel / rel).parts) == 0
         dirnames[:] = [
             d for d in dirnames
-            if not _should_ignore_dir(d, rel, repo_base_rel, root_only_ignore, any_depth_ignore)
+            if not _ignore_dirname(
+                d,
+                root_only_ignore=root_only_ignore,
+                any_depth_ignore=any_depth_ignore,
+                parent_at_repo_root=parent_at_repo_root,
+            )
         ]
         try:
             (dst / rel).mkdir(parents=True, exist_ok=True)
@@ -215,7 +206,6 @@ def _copy_tree(
 
 
 def setup_sandbox(prereqs: list[pathlib.Path], tmpdir: pathlib.Path):
-    # always adding .gitignore
     gitignore = ROOT_DIR / ".gitignore"
     if gitignore.exists():
         shutil.copy(gitignore, tmpdir)

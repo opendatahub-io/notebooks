@@ -1,17 +1,13 @@
 #! /usr/bin/env python3
 
-import glob
 import pathlib
 import tempfile
 
 import pyfakefs.fake_filesystem
 import pytest
-import structlog
 
 from ci.logging_config import configure_logging
 from scripts.sandbox import _copy_tree, _ignored_dir_names, _load_dockerignore, setup_sandbox
-
-log = structlog.get_logger()
 
 ROOT_DIR = pathlib.Path(__file__).parent.parent
 
@@ -54,8 +50,6 @@ class TestSandbox:
 
         with tempfile.TemporaryDirectory(delete=True) as tmpdir:
             setup_sandbox([pathlib.Path("a/b/c")], pathlib.Path(tmpdir))
-            for g in glob.glob("**/*", recursive=True):
-                log.debug(g)
             assert (pathlib.Path(tmpdir) / "a").is_dir()
             assert (pathlib.Path(tmpdir) / "a" / "b").is_dir()
             assert (pathlib.Path(tmpdir) / "a" / "b" / "c").is_file()
@@ -136,7 +130,7 @@ class TestCopyTreeWithIgnore:
 
         dst = tmp_path / "dst"
         dst.mkdir()
-        _copy_tree(src, dst, dir_ignore_names={"node_modules"})
+        _copy_tree(src, dst, any_depth_ignore={"node_modules"})
 
         assert (dst / "keep" / "file.txt").is_file()
         assert not (dst / "node_modules").exists()
@@ -152,7 +146,7 @@ class TestCopyTreeWithIgnore:
 
         dst = tmp_path / "dst"
         dst.mkdir()
-        _copy_tree(src, dst, dir_ignore_names={".pnpm-store"})
+        _copy_tree(src, dst, any_depth_ignore={".pnpm-store"})
 
         assert (dst / "good" / "data").is_file()
         assert not (dst / ".pnpm-store").exists()
@@ -165,7 +159,7 @@ class TestCopyTreeWithIgnore:
 
         dst = tmp_path / "dst"
         dst.mkdir()
-        _copy_tree(src, dst)  # no dir_ignore_names
+        _copy_tree(src, dst)
 
         assert (dst / "node_modules" / "pkg" / "index.js").is_file()
 
