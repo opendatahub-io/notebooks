@@ -87,6 +87,14 @@ spec:
     description: List of platforms to build the container images on. The available set of values is determined by the configuration of the multi-platform-controller.
     name: build-platforms
     type: array
+  - name: expected-cluster
+    default: ""
+    type: string
+    description: The cluster that this pipeline is expected to be run from
+  - name: enable-slack-failure-notification
+    default: "true"
+    type: string
+    description: Show a slack notification on failure
   results:
   - description: ""
     name: IMAGE_URL
@@ -121,9 +129,9 @@ spec:
     - name: message
       value: "$(tasks.rhoai-init.results.slack-message-failure-text)"
     - name: secret-name
-      value: slack-secret
+      value: ci-slack-secret
     - name: key-name
-      value: slack-webhook
+      value: secret
     taskRef:
       params:
       - name: name
@@ -134,60 +142,45 @@ spec:
         value: task
       resolver: bundles
     when:
-    # Run only on Push
-    - input: $(params.event-type)
-      operator: in
-      values:
-      - "push"
-    # Run only on Failure
     - input: $(tasks.status)
       operator: in
       values:
       - "Failed"
+    - input: $(tasks.rhoai-init.results.skip-slack-message)
+      operator: in
+      values:
+      - "false"
+    - input: $(params.enable-slack-failure-notification)
+      operator: in
+      values:
+      - "true"
+    - input: $(params.event-type)
+      operator: in
+      values:
+      - "push"
 
   tasks:
   - name: rhoai-init
-    # Only run on Push
+    # Only run on Push; shared task adds Build IC CC line on failure notifications.
     when:
     - input: $(params.event-type)
       operator: in
       values:
       - "push"
     params:
-    - name: pipelinerun-name
-      value: "$(context.pipelineRun.name)"
-    taskSpec:
-      results:
-      - description: Notification text to be posted to slack
-        name: slack-message-failure-text
-      steps:
-      - image: quay.io/rhoai-konflux/alpine:latest
-        name: rhoai-init
-        env:
-        - name: slack_message
-          valueFrom:
-            secretKeyRef:
-              name: slack-secret
-              key: slack-component-failure-notification
-        script: |
-          pipelinerun_name=$(params.pipelinerun-name)
-          echo "pipelinerun-name = $pipelinerun_name"
-          application_name=opendatahub-release
-          echo "application-name = $application_name"
-
-          component_name=${pipelinerun_name/-on-*/}
-          echo "component-name = $component_name"
-
-          KONFLUX_SERVER="https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com"
-          build_url="${KONFLUX_SERVER}/ns/open-data-hub-tenant/applications/${application_name}/pipelineruns/${pipelinerun_name}/logs"
-
-          build_time="$(date +%Y-%m-%dT%H:%M:%S)"
-
-          slack_message=${slack_message/__BUILD__URL__/$build_url}
-          slack_message=${slack_message/__PIPELINERUN__NAME__/$pipelinerun_name}
-          slack_message=${slack_message/__BUILD__TIME__/$build_time}
-
-          echo -en "${slack_message}" > "$(results.slack-message-failure-text.path)"
+    - name: expected-cluster
+      value: $(params.expected-cluster)
+    - name: pipeline-type
+      value: push
+    taskRef:
+      resolver: git
+      params:
+      - name: url
+        value: https://github.com/red-hat-data-services/rhoai-konflux-tasks.git
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: konflux-tekton-tasks/rhoai-init/0.3/rhoai-init.yaml
 
   - name: init
     params:
