@@ -1,5 +1,8 @@
-# Change port
+# Change port; run-nginx.sh removes the IPv6 listen at runtime when IPv6 is disabled via sysctl.
 /listen/s%80%8888 default_server%
+
+# Keep Location headers relative so port-mapped container tests and routes preserve the client port.
+/server {/a\        absolute_redirect off;
 
 # One worker only
 /worker_processes/s%auto%1%
