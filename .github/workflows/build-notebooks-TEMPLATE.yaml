@@ -436,6 +436,28 @@ jobs:
       - name: "Show podman images information"
         run: podman images --digests
 
+      # region TypeScript (browser) image tests
+
+      # https://playwright.dev/docs/ci
+      # https://playwright.dev/docs/docker
+      # we leave little free disk space after we mount LVM for podman storage
+      # not enough to install playwright; running playwright in podman uses the space we have
+      # Run before pytest/k8s testcontainers: storage.conf transient_store drops overlay
+      # layers when containers exit; later testcontainers calls then hit stale graph-driver
+      # metadata (opendatahub-io/notebooks#3949).
+      - name: Run Playwright tests
+        if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' }}
+        uses: ./.github/actions/playwright-test
+        with:
+          test-target: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}
+          podman-socket: /var/run/podman/podman.sock
+          upload-report: ${{ fromJson(inputs.github).event_name == 'pull_request' }}
+          artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
+          junit-artifact-file: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-junit.xml"
+          grep-pattern: '@codeserver'
+
+      # endregion
+
       # endregion
 
       # region TypeScript (browser) image tests
