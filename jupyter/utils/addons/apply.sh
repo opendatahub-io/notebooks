@@ -1,4 +1,5 @@
 #!/bin/bash
+set -Eeuo pipefail
 
 # See https://github.com/jupyterlab/jupyterlab/issues/5463
 # This is a hack to apply partial HTML code to JupyterLab's `index.html` file
@@ -36,8 +37,8 @@ if [ ! -f "$css_file" ]; then
   fi
 fi
 
-# Copy the tree-shaken CSS file to the static directory
-cp "$css_file" "$static_dir/pf.css"
+# Install tree-shaken CSS with group-writable mode for OpenShift arbitrary UID (gid 0)
+install -m 0664 "$css_file" "$static_dir/pf.css"
 
 head_content=$(tr -d '\n' <"$head_file" | sed 's/@/\\@/g')
 body_content=$(tr -d '\n' <"$body_file" | sed 's/@/\\@/g')
