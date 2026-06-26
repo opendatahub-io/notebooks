@@ -205,3 +205,36 @@ class TestCopyTreeWithIgnore:
 
         assert not (dst / "repo/ci").exists()
         assert (dst / "repo/keep").is_dir()
+
+    def test_ignored_src_root_not_copied(self, tmp_path: pathlib.Path):
+        src = tmp_path / "ci"
+        src.mkdir()
+        (src / "build.sh").write_text("#!/bin/bash")
+
+        dst = tmp_path / "dst"
+        dst.mkdir()
+        _copy_tree(
+            src,
+            dst / "ci",
+            repo_base_rel=pathlib.Path("ci"),
+            root_only_ignore={"ci"},
+            any_depth_ignore=set(),
+        )
+
+        assert not (dst / "ci").exists()
+
+    def test_symlink_loop_does_not_hang(self, tmp_path: pathlib.Path):
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "file.txt").write_text("keep")
+        sub = src / "sub"
+        sub.mkdir()
+        (sub / "nested.txt").write_text("nested")
+        sub.joinpath("back").symlink_to(src)
+
+        dst = tmp_path / "dst"
+        dst.mkdir()
+        _copy_tree(src, dst)
+
+        assert (dst / "file.txt").is_file()
+        assert (dst / "sub/nested.txt").is_file()

@@ -119,7 +119,6 @@ def _ignored_dir_names(root: pathlib.Path) -> tuple[set[str], set[str]]:
     are excluded.
 
     TODO: negation patterns (``!name``) are filtered out, not honored as re-inclusions.
-    TODO: followlinks=True in _copy_tree can still loop on circular symlinks.
     """
     root_only: set[str] = set()
     any_depth: set[str] = set()
@@ -179,7 +178,24 @@ def _copy_tree(
         except ValueError:
             repo_base_rel = pathlib.Path()
 
+    if _should_ignore_dir(
+        src.name,
+        pathlib.Path(),
+        repo_base_rel.parent,
+        root_only_ignore,
+        any_depth_ignore,
+    ):
+        return
+
+    visited: set[str] = set()
+
     for dirpath, dirnames, filenames in os.walk(src, followlinks=True):
+        real_dir = os.path.realpath(dirpath)
+        if real_dir in visited:
+            dirnames.clear()
+            continue
+        visited.add(real_dir)
+
         rel = pathlib.Path(dirpath).relative_to(src)
         dirnames[:] = [
             d for d in dirnames
