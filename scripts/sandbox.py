@@ -230,7 +230,7 @@ def _copy_tree_dir(
                 any_depth_ignore,
                 chain,
             )
-        elif entry.is_file(follow_symlinks=False):
+        elif entry.is_file(follow_symlinks=True):
             try:
                 shutil.copy(entry.path, dst_dir / name)
             except PermissionError:

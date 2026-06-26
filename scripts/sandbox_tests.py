@@ -247,3 +247,15 @@ class TestCopyTreeWithIgnore:
 
         assert (dst / "alias1/data.txt").read_text() == "data"
         assert (dst / "alias2/data.txt").read_text() == "data"
+
+    def test_symlinked_file_is_copied(self, tmp_path: pathlib.Path):
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "real.txt").write_text("content")
+        (src / "link.txt").symlink_to("real.txt")
+
+        dst = tmp_path / "dst"
+        _copy_tree(src, dst)
+
+        assert (dst / "real.txt").read_text() == "content"
+        assert (dst / "link.txt").read_text() == "content"
