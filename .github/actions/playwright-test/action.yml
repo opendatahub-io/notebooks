@@ -120,6 +120,7 @@ runs:
           --env "CI=true" \
           --env "PNPM_CONFIG_fund=false" \
           --env "DEBUG=testcontainers:*" \
+          --env "TESTCONTAINERS_RYUK_DISABLED=true" \
           --env "PODMAN_SOCK=/var/run/docker.sock" \
           --env "TEST_TARGET" \
           --env "GREP_PATTERN" \
