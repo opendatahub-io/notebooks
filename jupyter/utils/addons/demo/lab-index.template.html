@@ -1,10 +1,8 @@
-<!-- example spinner page to test spinner manually -->
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8"/>
-    <title><%= htmlWebpackPlugin.options.title %></title>
-    <%= require('html-loader!../partial-head.html').default.replace("{{page_config.fullStaticUrl}}", ".") %>
+    <title>Example spinner page</title>
 </head>
 <body>
 <p>Check the following</p>
@@ -27,6 +25,5 @@
         );
     });
 </script>
-<%= require('html-loader!../partial-body.html').default %>
 </body>
 </html>

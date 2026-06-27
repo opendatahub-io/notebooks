@@ -8,9 +8,8 @@
   license: 'Apache-2.0',
   scripts: {
     test: './test-build.sh',
-    build: 'webpack --mode production',
-    'build:dev': 'webpack --mode development',
-    start: 'webpack serve --open',
+    build: 'webpack --mode production && ./build-demo.sh',
+    'build:dev': 'webpack --mode development && ./build-demo.sh',
     watch: 'webpack --watch',
     clean: 'rm -rf dist .cache',
     'build:clean': 'pnpm clean && pnpm build',
@@ -24,14 +23,18 @@
     '@types/webpack': '^5.28.5',
     // plugins for webpack
     'css-loader': '^7.1.4',
-    'html-loader': '^5.1.0',
-    'html-webpack-plugin': '^5.6.7',
     'mini-css-extract-plugin': '^2.10.2',
     'purgecss-webpack-plugin': '^8.0.0',
     typescript: '^6.0.3',
     webpack: '^5.106.2',
     'webpack-cli': '^7.0.2',
-    'webpack-dev-server': '^5.2.4',
+  },
+  devEngines: {
+    packageManager: {
+      name: 'pnpm',
+      version: '>=11.0.0 <12',
+      onFail: 'download',
+    },
   },
   // DO NOT add "pnpm": { ... } here — pnpm 11 ignores it silently (pnpm#11536).
   // All pnpm settings go in pnpm-workspace.yaml.

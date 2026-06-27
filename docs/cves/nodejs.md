@@ -4,7 +4,7 @@
 
 Node.js vulnerabilities may come from
 * tests and developer utilities in `tests/browser` (false positive, Component Not Present)
-* css minifier in `jupyter/utils/addons` (false positive, Component Not Present)
+* css minifier in `jupyter/utils/addons` (false positive, Component Not Present; lockfile is dev-only — CI validates via `.github/workflows/test-addons.yaml`)
 * the code-server IDE itself (needs investigation, probably true finding)
 
 ## Determine where the vulnerability came from
