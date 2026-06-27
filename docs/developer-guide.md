@@ -35,7 +35,7 @@ Different images can reference different `${BASE_IMAGE}` values and therefore us
 different CUDA/ROCm versions. For detailed architecture documentation, see
 [ARCHITECTURE.md](../ARCHITECTURE.md).
 
-Detailed instructions on how developers can contribute to this project can be found in the [contribution.md](https://github.com/opendatahub-io/notebooks/blob/main/CONTRIBUTING.md#some-basic-instructions-to-create-a-new-notebook) file.
+Detailed instructions on how developers can contribute to this project can be found in the [contribution.md](https://github.com/opendatahub-io/notebooks/blob/main/CONTRIBUTING.md#some-basic-instructions-to-create-a-new-notebook) file. For testing procedures — including a step-by-step package upgrade checklist — see the [Testing Guide](agents/testing.md).
 
 ## Workbench ImageStreams
 
