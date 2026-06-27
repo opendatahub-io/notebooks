@@ -1,17 +1,13 @@
 #! /usr/bin/env python3
 
-import glob
 import pathlib
 import tempfile
 
 import pyfakefs.fake_filesystem
 import pytest
-import structlog
 
 from ci.logging_config import configure_logging
 from scripts.sandbox import _copy_tree, _ignored_dir_names, _load_dockerignore, setup_sandbox
-
-log = structlog.get_logger()
 
 ROOT_DIR = pathlib.Path(__file__).parent.parent
 
@@ -54,8 +50,6 @@ class TestSandbox:
 
         with tempfile.TemporaryDirectory(delete=True) as tmpdir:
             setup_sandbox([pathlib.Path("a/b/c")], pathlib.Path(tmpdir))
-            for g in glob.glob("**/*", recursive=True):
-                log.debug(g)
             assert (pathlib.Path(tmpdir) / "a").is_dir()
             assert (pathlib.Path(tmpdir) / "a" / "b").is_dir()
             assert (pathlib.Path(tmpdir) / "a" / "b" / "c").is_file()
@@ -88,36 +82,39 @@ class TestLoadDockerignore:
 class TestIgnoredDirNames:
     def test_extracts_globstar_patterns(self, repo_root: pathlib.Path):
         (repo_root / ".dockerignore").write_text("**/node_modules/\n**/.pnpm-store/\n")
-        result = _ignored_dir_names(repo_root)
-        assert "node_modules" in result
-        assert ".pnpm-store" in result
+        root_only, any_depth = _ignored_dir_names(repo_root)
+        assert root_only == set()
+        assert "node_modules" in any_depth
+        assert ".pnpm-store" in any_depth
 
-    def test_includes_root_relative_patterns(self, repo_root: pathlib.Path):
+    def test_splits_root_relative_patterns(self, repo_root: pathlib.Path):
         (repo_root / ".dockerignore").write_text("ci/\nbin/\nnode_modules/\n")
-        result = _ignored_dir_names(repo_root)
-        assert "ci" in result
-        assert "bin" in result
-        assert "node_modules" in result
+        root_only, any_depth = _ignored_dir_names(repo_root)
+        assert root_only == {"ci", "bin", "node_modules"}
+        assert any_depth == set()
 
     def test_excludes_nested_path_patterns(self, repo_root: pathlib.Path):
         (repo_root / ".dockerignore").write_text("**/a/b/\n")
-        result = _ignored_dir_names(repo_root)
-        assert "a/b" not in result
-        assert "b" not in result
+        root_only, any_depth = _ignored_dir_names(repo_root)
+        assert root_only == set()
+        assert "a/b" not in any_depth
+        assert "b" not in any_depth
 
     def test_excludes_negation_patterns(self, repo_root: pathlib.Path):
         (repo_root / ".dockerignore").write_text("**/vendor/\n!**/vendor/\n")
-        result = _ignored_dir_names(repo_root)
-        assert "vendor" in result
-        assert len(result) == 1
+        root_only, any_depth = _ignored_dir_names(repo_root)
+        assert root_only == set()
+        assert any_depth == {"vendor"}
 
     def test_returns_empty_when_no_dockerignore(self, repo_root: pathlib.Path):
-        assert _ignored_dir_names(repo_root) == set()
+        assert _ignored_dir_names(repo_root) == (set(), set())
 
     def test_real_dockerignore(self):
-        result = _ignored_dir_names(ROOT_DIR)
-        assert result == {
+        root_only, any_depth = _ignored_dir_names(ROOT_DIR)
+        assert root_only == {
             "bin", "ci", "tests", ".idea", "env", "venv", ".venv", "docs", "examples",
+        }
+        assert any_depth == {
             "node_modules", ".mypy_cache", ".pytest_cache", "__pycache__",
         }
 
@@ -133,7 +130,7 @@ class TestCopyTreeWithIgnore:
 
         dst = tmp_path / "dst"
         dst.mkdir()
-        _copy_tree(src, dst, dir_ignore_names={"node_modules"})
+        _copy_tree(src, dst, any_depth_ignore={"node_modules"})
 
         assert (dst / "keep" / "file.txt").is_file()
         assert not (dst / "node_modules").exists()
@@ -149,7 +146,7 @@ class TestCopyTreeWithIgnore:
 
         dst = tmp_path / "dst"
         dst.mkdir()
-        _copy_tree(src, dst, dir_ignore_names={".pnpm-store"})
+        _copy_tree(src, dst, any_depth_ignore={".pnpm-store"})
 
         assert (dst / "good" / "data").is_file()
         assert not (dst / ".pnpm-store").exists()
@@ -162,6 +159,103 @@ class TestCopyTreeWithIgnore:
 
         dst = tmp_path / "dst"
         dst.mkdir()
-        _copy_tree(src, dst)  # no dir_ignore_names
+        _copy_tree(src, dst)
 
         assert (dst / "node_modules" / "pkg" / "index.js").is_file()
+
+    def test_root_only_ci_not_ignored_in_nested_tree(self, tmp_path: pathlib.Path):
+        src = tmp_path / "codeserver/prefetch-input/patches/code-server-v4.106.3"
+        (src / "ci/build").mkdir(parents=True)
+        (src / "ci/build/build-vscode.sh").write_text("#!/bin/bash")
+
+        dst = tmp_path / "dst"
+        dst.mkdir()
+        _copy_tree(
+            src,
+            dst / src.relative_to(tmp_path),
+            repo_base_rel=src.relative_to(tmp_path),
+            root_only_ignore={"ci"},
+            any_depth_ignore=set(),
+        )
+
+        assert (dst / src.relative_to(tmp_path) / "ci/build/build-vscode.sh").is_file()
+
+    def test_root_only_ci_ignored_at_repo_root(self, tmp_path: pathlib.Path):
+        src = tmp_path / "repo"
+        src.mkdir()
+        (src / "ci").mkdir()
+        (src / "ci/build.sh").write_text("#!/bin/bash")
+        (src / "keep").mkdir()
+
+        dst = tmp_path / "dst"
+        dst.mkdir()
+        _copy_tree(
+            src,
+            dst / "repo",
+            repo_base_rel=pathlib.Path("."),
+            root_only_ignore={"ci"},
+            any_depth_ignore=set(),
+        )
+
+        assert not (dst / "repo/ci").exists()
+        assert (dst / "repo/keep").is_dir()
+
+    def test_ignored_src_root_not_copied(self, tmp_path: pathlib.Path):
+        src = tmp_path / "ci"
+        src.mkdir()
+        (src / "build.sh").write_text("#!/bin/bash")
+
+        dst = tmp_path / "dst"
+        dst.mkdir()
+        _copy_tree(
+            src,
+            dst / "ci",
+            repo_base_rel=pathlib.Path("ci"),
+            root_only_ignore={"ci"},
+            any_depth_ignore=set(),
+        )
+
+        assert not (dst / "ci").exists()
+
+    def test_symlink_loop_does_not_hang(self, tmp_path: pathlib.Path):
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "file.txt").write_text("keep")
+        sub = src / "sub"
+        sub.mkdir()
+        (sub / "nested.txt").write_text("nested")
+        sub.joinpath("back").symlink_to(src)
+
+        dst = tmp_path / "dst"
+        dst.mkdir()
+        _copy_tree(src, dst)
+
+        assert (dst / "file.txt").is_file()
+        assert (dst / "sub/nested.txt").is_file()
+
+    def test_symlink_aliases_to_same_target_both_copied(self, tmp_path: pathlib.Path):
+        src = tmp_path / "src"
+        src.mkdir()
+        target = src / "target"
+        target.mkdir()
+        (target / "data.txt").write_text("data")
+        (src / "alias1").symlink_to("target", target_is_directory=True)
+        (src / "alias2").symlink_to("target", target_is_directory=True)
+
+        dst = tmp_path / "dst"
+        _copy_tree(src, dst)
+
+        assert (dst / "alias1/data.txt").read_text() == "data"
+        assert (dst / "alias2/data.txt").read_text() == "data"
+
+    def test_symlinked_file_is_copied(self, tmp_path: pathlib.Path):
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "real.txt").write_text("content")
+        (src / "link.txt").symlink_to("real.txt")
+
+        dst = tmp_path / "dst"
+        _copy_tree(src, dst)
+
+        assert (dst / "real.txt").read_text() == "content"
+        assert (dst / "link.txt").read_text() == "content"
