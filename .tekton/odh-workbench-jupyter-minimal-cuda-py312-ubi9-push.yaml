@@ -57,7 +57,7 @@ spec:
       type: pip
       binary:
         arch: x86_64
-      requirements_files: [requirements.cuda.txt]
+      requirements_files: [requirements.cuda.txt, requirements.pandoc.cuda.txt]
   - name: additional-tags
     value:
     - '{{target_branch}}-{{revision}}'

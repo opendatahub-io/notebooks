@@ -45,7 +45,7 @@ spec:
       type: pip
       binary:
         arch: x86_64
-      requirements_files: [requirements.rocm.txt]
+      requirements_files: [requirements.rocm.txt, requirements.pandoc.rocm.txt]
   - name: additional-tags
     value:
     - 3.5-v1.46

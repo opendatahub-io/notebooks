@@ -65,7 +65,7 @@ spec:
       type: pip
       binary:
         arch: x86_64, ppc64le, s390x
-      requirements_files: [requirements.cpu.txt]
+      requirements_files: [requirements.cpu.txt, requirements.pandoc.cpu.txt]
   # Added taskRunSpecs to increase compute resources
   taskRunSpecs:
   - pipelineTaskName: prefetch-dependencies
