@@ -95,6 +95,9 @@ runs:
           podman network reload --all
         fi
 
+    - run: podman system info
+      shell: bash
+
     - name: Show error logs (on failure)
       if: ${{ failure() }}
       shell: bash
