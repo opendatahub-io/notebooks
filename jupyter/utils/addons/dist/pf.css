@@ -1,6 +1,17 @@
-@charset "UTF-8";
-
+@property --pf-v6-global--thinking--BoxShadow--Spread {
+  syntax: "<length>";
+  initial-value: 0;
+  inherits: false;
+}
 :root {
+}
+@media screen and (prefers-reduced-motion: no-preference) {
+  :root {
+  }
+}
+:root {
+  container-type: inline-size;
+  container-name: pf-v6-contain-viewport pf-v6-contain-table;
 }
 
 @property --pf-v6-global--danger-jiggle--TranslateX {
