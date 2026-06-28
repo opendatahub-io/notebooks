@@ -52,8 +52,6 @@ jobs:
     # https://docs.github.com/en/actions/how-tos/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
     runs-on: ${{ fromJSON(inputs.PLATFORM_RUNNERS)[inputs.platform] || 'no-such-runner' }}
     env:
-      # Some pieces of code (image pulls, for example) in podman consult TMPDIR or default to /var/tmp
-      TMPDIR: /var/tmp
       # Rootful podman for sharing images with cri-o (CONTAINER_HOST from install-podman-action).
       # https://podman-desktop.io/blog/sharing-podman-images-with-kubernetes-cluster#introduction
       # https://access.redhat.com/solutions/6986565
@@ -108,8 +106,6 @@ jobs:
         run: docker run --rm --privileged tonistiigi/binfmt --install ${platform#*/}
         env:
           platform: ${{ inputs.platform }}
-
-      - run: mkdir -p $TMPDIR
 
       # do this early because it's fast and why not
       - name: Install git-crypt

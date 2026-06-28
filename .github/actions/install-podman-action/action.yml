@@ -35,10 +35,6 @@ runs:
 
         podman --version
 
-        # podman running as service ignores the TMPDIR env var here, let's give it a bind-mount to /var/tmp
-        mkdir -p "$TMPDIR"
-        sudo mount --bind -o rw,noexec,nosuid,nodev "$TMPDIR" /var/tmp
-
         # Podman 5.x reads /etc/containers/containers.conf (not /etc/containers.conf).
         # /etc/containers/ is also where cri-o gets storage defaults (overridable in crio.conf).
         sudo mkdir -p /etc/containers
@@ -47,15 +43,15 @@ runs:
         sudo cp ci/cached-builds/registries.conf /etc/containers/registries.conf
 
         # should reset storage when changing storage.conf
-        sudo mkdir -p "$TMPDIR" /mnt/containers/storage/tmp
+        sudo mkdir -p /mnt/containers/storage/tmp
         # remote (CONTAINER_HOST) podman does not do reset (and refuses --force option)
         sudo podman system reset --force
 
         # https://github.com/containers/podman/pull/25504
         # podman 5.5.0: The podman system reset command no longer removes the user's podman.sock API socket
         sudo rm -rf /var/run/podman
-        sudo mkdir -p "$TMPDIR" /mnt/containers/storage/tmp
-        sudo chown -R "${USER}:${USER}" "$TMPDIR" /mnt/containers/storage
+        sudo mkdir -p /mnt/containers/storage/tmp
+        sudo chown -R "${USER}:${USER}" /mnt/containers/storage
 
         # Rootful bridge egress needs forwarding + FORWARD accept. Docker on GHA sets FORWARD DROP
         # which breaks netavark MASQUERADE silently (podman #24486, runner-images #13422).
