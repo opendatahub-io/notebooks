@@ -47,7 +47,7 @@ runs:
         sudo cp ci/cached-builds/registries.conf /etc/containers/registries.conf
 
         # should reset storage when changing storage.conf
-        mkdir -p "$TMPDIR" /mnt/containers/storage/tmp
+        sudo mkdir -p "$TMPDIR" /mnt/containers/storage/tmp
         # remote (CONTAINER_HOST) podman does not do reset (and refuses --force option)
         sudo podman system reset --force
 

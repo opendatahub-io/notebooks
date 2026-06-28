@@ -53,7 +53,7 @@ jobs:
     runs-on: ${{ fromJSON(inputs.PLATFORM_RUNNERS)[inputs.platform] || 'no-such-runner' }}
     env:
       # Some pieces of code (image pulls, for example) in podman consult TMPDIR or default to /var/tmp
-      TMPDIR: /home/runner/.local/share/containers/tmpdir
+      TMPDIR: /var/tmp
       # Rootful podman for sharing images with cri-o (CONTAINER_HOST from install-podman-action).
       # https://podman-desktop.io/blog/sharing-podman-images-with-kubernetes-cluster#introduction
       # https://access.redhat.com/solutions/6986565

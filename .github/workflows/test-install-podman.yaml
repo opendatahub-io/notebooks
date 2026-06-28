@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  TMPDIR: /home/runner/.local/share/containers/tmpdir
+  TMPDIR: /var/tmp
 
 jobs:
   test-install:
