@@ -1,7 +1,9 @@
 #! /usr/bin/env python3
 
+import signal
 import shutil
 import subprocess
+import sys
 import time
 
 import structlog
@@ -14,6 +16,11 @@ log = structlog.get_logger()
 _HAS_FREE = shutil.which("free") is not None
 
 PATHS_TO_MONITOR: list[str] = ["/", "/mnt", "/mnt/containers/storage"]
+
+
+def _handle_signal(signum: int, _frame: object) -> None:
+    log.info("Resource monitoring stopped", signal=signal.Signals(signum).name)
+    sys.exit(0)
 
 
 def get_disk_usage(path: str) -> dict[str, str]:
@@ -54,6 +61,9 @@ def get_memory_usage() -> dict[str, str]:
 
 
 def main() -> None:
+    signal.signal(signal.SIGTERM, _handle_signal)
+    signal.signal(signal.SIGINT, _handle_signal)
+
     log.info("Starting resource monitoring")
 
     while True:
