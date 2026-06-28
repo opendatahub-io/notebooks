@@ -29,7 +29,15 @@ def get_disk_usage(path: str) -> dict[str, str]:
 def get_memory_usage() -> dict[str, str]:
     if not _HAS_FREE:
         return {}
-    result = subprocess.run(["free", "-h"], capture_output=True, text=True)
+    try:
+        result = subprocess.run(
+            ["free", "-h"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        return {"status": "timeout"}
     if result.returncode != 0:
         return {"status": "error"}
     info: dict[str, str] = {}
