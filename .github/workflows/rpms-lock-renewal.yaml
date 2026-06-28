@@ -120,9 +120,6 @@ jobs:
         with:
           platform: linux/amd64
 
-      - name: Free up disk space
-        uses: ./.github/actions/free-up-disk-space
-
       - name: Compute CONTAINER_BUILD_CACHE_ARGS
         id: container-build-cache-args
         shell: python

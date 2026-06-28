@@ -170,31 +170,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # region Free up disk space
+      # region Prepare disk
 
-      - name: Free up disk space
-        uses: ./.github/actions/free-up-disk-space
-        # https://docs.github.com/en/actions/learn-github-actions/expressions
-        # NOTE: the arm64 GitHub hosted runner does not have the /mnt-mounted scratch disk
-        if: "${{ contains(inputs.target, 'rocm') || contains(inputs.target, 'cuda') ||
-         contains(inputs.target, 'pytorch') || contains(inputs.target, 'tensorflow') ||
-         contains(inputs.target, 'codeserver') || inputs.platform == 'linux/arm64' }}"
-
-      - name: Install btrfs-compsize
-        id: install-compsize
-        uses: ./.github/actions/apt-install
-        with:
-          packages: btrfs-compsize
-
-      - name: Mount lvm overlay for podman builds
+      - name: Print disk stats
         run: |
+          set -Eeuxo pipefail
           df -h
           free -h
 
-          bash ./ci/cached-builds/gha_lvm_overlay.sh
+      - name: Prepare build environment
+        run: |
+          set -Eeuxo pipefail
 
-          df -h
-          free -h
+          # opendatahub-io/notebooks#3965; the only promise GitHub gives us
+          #  is >=15GiB disk space on /. In practice, we can either get a single
+          #  volume machine or a two volume machine (with extra volume mounted
+          #  under /mnt. Either case, /mnt should be large enough to fit our images.
+          sudo mkdir -p /mnt/containers/storage
+          sudo chown -R runner:runner /mnt/containers/storage
 
       # endregion
 
@@ -419,9 +412,6 @@ jobs:
             fi
 
             scripts/lockfile-generators/prefetch-all.sh $PREFETCH_ARGS
-            if [ -x scripts/lockfile-generators/post-prefetch.sh ]; then
-              scripts/lockfile-generators/post-prefetch.sh --component-dir "$COMPONENT_DIR"
-            fi
             echo "EXTRA_BUILD_ARGS=" >> "$GITHUB_OUTPUT"
           else
             echo "No prefetch-input/ found for $COMPONENT_DIR — skipping"
@@ -445,12 +435,7 @@ jobs:
         run: |
           # Print disk and memory stats every 30s so OOM/disk-full failures
           # leave a breadcrumb trail in the logs.
-          (while true; do
-            echo "=== $(date -u '+%H:%M:%S') ==="
-            df -h / /mnt "${HOME}/.local/share/containers" 2>/dev/null || df -h
-            free -h
-            sleep 30
-          done) &
+          uv run scripts/monitor_resources.py &
 
           uv run make ${{ inputs.target }}
         env:
@@ -473,8 +458,7 @@ jobs:
 
       # https://playwright.dev/docs/ci
       # https://playwright.dev/docs/docker
-      # we leave little free disk space after we mount LVM for podman storage
-      # not enough to install playwright; running playwright in podman uses the space we have
+      # opendatahub-io/notebooks#3965: podman storage is configured to have sufficient disk space
       - name: Run Playwright tests
         if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' }}
         uses: ./.github/actions/playwright-test
@@ -691,14 +675,6 @@ jobs:
 
       - run: df -h
         if: "${{ !cancelled() }}"
-
-      - run: |
-          if mountpoint -q "${HOME}/.local/share/containers"; then
-            sudo compsize -x "${HOME}/.local/share/containers"
-          else
-            echo "Skipping compsize: ${HOME}/.local/share/containers is not a btrfs mountpoint."
-          fi
-        if: "${{ !cancelled() && steps.install-compsize.outcome == 'success' }}"
 
       - name: Capture kernel logs on failure
         if: "${{ failure() }}"
