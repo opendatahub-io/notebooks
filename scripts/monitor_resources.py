@@ -1,52 +1,61 @@
 #! /usr/bin/env python3
 
-import time
-import subprocess
-import os
 import shutil
+import subprocess
+import time
+
 import structlog
+
 from ci.logging_config import configure_logging
 
 configure_logging()
 log = structlog.get_logger()
 
-def get_disk_usage(path: str) -> str:
-    if not os.path.exists(path):
-        return "not found"
+_HAS_FREE = shutil.which("free") is not None
 
-    result = subprocess.run(['df', '-h', path], capture_output=True, text=True)
+PATHS_TO_MONITOR: list[str] = ["/", "/mnt", "/mnt/containers/storage"]
+
+
+def get_disk_usage(path: str) -> dict[str, str]:
+    try:
+        usage = shutil.disk_usage(path)
+    except OSError:
+        return {"status": "not found"}
+    pct = usage.used / usage.total * 100 if usage.total else 0
+    gib_free = usage.free / (1024**3)
+    return {"used_pct": f"{pct:.0f}%", "free_gib": f"{gib_free:.1f}"}
+
+
+def get_memory_usage() -> dict[str, str]:
+    if not _HAS_FREE:
+        return {}
+    result = subprocess.run(["free", "-h"], capture_output=True, text=True)
     if result.returncode != 0:
-        return "error"
+        return {"status": "error"}
+    info: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        if parts and parts[0] == "Mem:":
+            info["mem_total"] = parts[1]
+            info["mem_used"] = parts[2]
+            info["mem_free"] = parts[3]
+        elif parts and parts[0] == "Swap:":
+            info["swap_total"] = parts[1]
+            info["swap_used"] = parts[2]
+    return info
 
-    # The output format is generally:
-    # Filesystem      Size  Used Avail Use% Mounted on
-    # ...
-    lines = result.stdout.splitlines()
-    if len(lines) > 1:
-        return lines[1].split()[4]
-    return "unknown format"
-
-def get_memory_usage() -> str:
-    if not shutil.which('free'):
-        return "free command not found"
-    result = subprocess.run(['free', '-h'], capture_output=True, text=True)
-    if result.returncode == 0:
-        # Just grab the 'Mem:' line and maybe 'Swap:'?
-        # The bash command outputted everything from free -h
-        return result.stdout.strip()
-    return "error"
 
 def main() -> None:
-    # Common system container paths and partitions
-    paths_to_monitor: list[str] = ['/', '/mnt', '/var/lib/containers']
-    
     log.info("Starting resource monitoring")
-    
+
     while True:
-        log.info("Resource stats", 
-                 disk={path: get_disk_usage(path) for path in paths_to_monitor},
-                 memory=get_memory_usage())
+        log.info(
+            "Resource stats",
+            disk={path: get_disk_usage(path) for path in PATHS_TO_MONITOR},
+            memory=get_memory_usage(),
+        )
         time.sleep(30)
+
 
 if __name__ == "__main__":
     main()

@@ -187,7 +187,7 @@ jobs:
           #  volume machine or a two volume machine (with extra volume mounted
           #  under /mnt. Either case, /mnt should be large enough to fit our images.
           sudo mkdir -p /mnt/containers/storage
-          sudo chown -R runner:runner /mnt/containers/storage
+          sudo chown -R "${USER}:${USER}" /mnt/containers/storage
 
       # endregion
 
