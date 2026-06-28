@@ -47,15 +47,15 @@ runs:
         sudo cp ci/cached-builds/registries.conf /etc/containers/registries.conf
 
         # should reset storage when changing storage.conf
-        mkdir -p "$HOME/.local/share/containers/storage/tmp" "$TMPDIR"
+        mkdir -p "$TMPDIR" /mnt/containers/storage/tmp
         # remote (CONTAINER_HOST) podman does not do reset (and refuses --force option)
         sudo podman system reset --force
 
         # https://github.com/containers/podman/pull/25504
         # podman 5.5.0: The podman system reset command no longer removes the user's podman.sock API socket
         sudo rm -rf /var/run/podman
-        sudo mkdir -p "$HOME/.local/share/containers/storage/tmp" "$TMPDIR"
-        sudo chown -R "${USER}:${USER}" "$HOME/.local/share/containers/storage" "$TMPDIR"
+        sudo mkdir -p "$TMPDIR" /mnt/containers/storage/tmp
+        sudo chown -R "${USER}:${USER}" "$TMPDIR" /mnt/containers/storage
 
         # Rootful bridge egress needs forwarding + FORWARD accept. Docker on GHA sets FORWARD DROP
         # which breaks netavark MASQUERADE silently (podman #24486, runner-images #13422).
