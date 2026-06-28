@@ -14,10 +14,11 @@ spec:
     This pipeline is pushed as a Tekton bundle to [quay.io](https://quay.io/repository/konflux-ci/tekton-catalog/pipeline-docker-build-multi-platform-oci-ta?tab=tags)_
 
     Combined pipeline for PRs and Pushes.
-    Logic is controlled by the 'event-type' parameter.
+    The event-type param (from Pipelines as Code) is normalized to pipeline-type
+    for rhoai-init (pull_request -> pull-request).
   params:
   - name: event-type
-    description: "Event type from Pipelines as Code: 'push' or 'pull_request'"
+    description: "Pipeline execution type from Pipelines as Code (push or pull_request); normalized to pipeline-type for rhoai-init"
     type: string
     default: "pull_request"
   - description: Source Repository URL
@@ -87,6 +88,14 @@ spec:
     description: List of platforms to build the container images on. The available set of values is determined by the configuration of the multi-platform-controller.
     name: build-platforms
     type: array
+  - name: expected-cluster
+    default: stone-prd-rh01
+    type: string
+    description: The cluster that this pipeline is expected to be run from
+  - name: enable-slack-failure-notification
+    default: "true"
+    type: string
+    description: Show a slack notification on failure
   results:
   - description: ""
     name: IMAGE_URL
@@ -121,9 +130,9 @@ spec:
     - name: message
       value: "$(tasks.rhoai-init.results.slack-message-failure-text)"
     - name: secret-name
-      value: slack-secret
+      value: ci-slack-secret
     - name: key-name
-      value: slack-webhook
+      value: secret
     taskRef:
       params:
       - name: name
@@ -134,60 +143,62 @@ spec:
         value: task
       resolver: bundles
     when:
-    # Run only on Push
-    - input: $(params.event-type)
-      operator: in
-      values:
-      - "push"
-    # Run only on Failure
     - input: $(tasks.status)
       operator: in
       values:
       - "Failed"
-
-  tasks:
-  - name: rhoai-init
-    # Only run on Push
-    when:
-    - input: $(params.event-type)
+    - input: $(tasks.rhoai-init.results.skip-slack-message)
+      operator: in
+      values:
+      - "false"
+    - input: $(params.enable-slack-failure-notification)
+      operator: in
+      values:
+      - "true"
+    - input: $(tasks.normalize-pipeline-type.results.pipeline-type)
       operator: in
       values:
       - "push"
+
+  tasks:
+  - name: normalize-pipeline-type
     params:
-    - name: pipelinerun-name
-      value: "$(context.pipelineRun.name)"
+    - name: event-type
+      value: $(params.event-type)
     taskSpec:
+      params:
+      - name: event-type
+        type: string
       results:
-      - description: Notification text to be posted to slack
-        name: slack-message-failure-text
+      - name: pipeline-type
+        description: pipeline-type value for rhoai-init
       steps:
       - image: quay.io/rhoai-konflux/alpine:latest
-        name: rhoai-init
-        env:
-        - name: slack_message
-          valueFrom:
-            secretKeyRef:
-              name: slack-secret
-              key: slack-component-failure-notification
+        name: normalize
         script: |
-          pipelinerun_name=$(params.pipelinerun-name)
-          echo "pipelinerun-name = $pipelinerun_name"
-          application_name=opendatahub-release
-          echo "application-name = $application_name"
+          case "$(params.event-type)" in
+            pull_request) pipeline_type=pull-request ;;
+            *) pipeline_type="$(params.event-type)" ;;
+          esac
+          echo -n "${pipeline_type}" > "$(results.pipeline-type.path)"
 
-          component_name=${pipelinerun_name/-on-*/}
-          echo "component-name = $component_name"
-
-          KONFLUX_SERVER="https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com"
-          build_url="${KONFLUX_SERVER}/ns/open-data-hub-tenant/applications/${application_name}/pipelineruns/${pipelinerun_name}/logs"
-
-          build_time="$(date +%Y-%m-%dT%H:%M:%S)"
-
-          slack_message=${slack_message/__BUILD__URL__/$build_url}
-          slack_message=${slack_message/__PIPELINERUN__NAME__/$pipelinerun_name}
-          slack_message=${slack_message/__BUILD__TIME__/$build_time}
-
-          echo -en "${slack_message}" > "$(results.slack-message-failure-text.path)"
+  - name: rhoai-init
+    params:
+    - name: expected-cluster
+      value: $(params.expected-cluster)
+    - name: pipeline-type
+      value: $(tasks.normalize-pipeline-type.results.pipeline-type)
+    runAfter:
+    - normalize-pipeline-type
+    taskRef:
+      resolver: git
+      params:
+      - name: url
+        value: https://github.com/red-hat-data-services/rhoai-konflux-tasks.git
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: konflux-tekton-tasks/rhoai-init/0.3/rhoai-init.yaml
 
   - name: init
     params:
@@ -202,7 +213,6 @@ spec:
       - name: kind
         value: task
       resolver: bundles
-    # Wait for rhoai-init. If rhoai-init is skipped (PR), this runs immediately.
     runAfter:
     - rhoai-init
   - name: clone-repository
@@ -629,6 +639,7 @@ spec:
       value: $(tasks.build-image-index.results.IMAGE_DIGEST)
     - name: ADDITIONAL_TAGS
       value:
+      - $(tasks.rhoai-init.results.mandatory-tag)
       - $(params.additional-tags[*])
     runAfter:
     - build-image-index
