@@ -20,6 +20,13 @@ resources:
   - runtime-rocm-tensorflow-imagestream.yaml
   - runtime-tensorflow-imagestream.yaml
   - runtime-pytorch-llmcompressor-imagestream.yaml
+  - runtime-datascience-imagestream-2025-2.yaml
+  - runtime-minimal-imagestream-2025-2.yaml
+  - runtime-pytorch-imagestream-2025-2.yaml
+  - runtime-pytorch-llmcompressor-imagestream-2025-2.yaml
+  - runtime-rocm-pytorch-imagestream-2025-2.yaml
+  - runtime-rocm-tensorflow-imagestream-2025-2.yaml
+  - runtime-tensorflow-imagestream-2025-2.yaml
 
 configMapGenerator:
   - envs:
@@ -1247,4 +1254,95 @@ replacements:
           group: image.openshift.io
           kind: ImageStream
           name: runtime-pytorch-llmcompressor
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-datascience-cpu-py312-ubi9-2025-2
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-datascience-2025-2
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-minimal-cpu-py312-ubi9-2025-2
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-minimal-2025-2
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-pytorch-cuda-py312-ubi9-2025-2
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-pytorch-2025-2
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9-2025-2
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-pytorch-llmcompressor-2025-2
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-pytorch-rocm-py312-ubi9-2025-2
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-rocm-pytorch-2025-2
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-tensorflow-rocm-py312-ubi9-2025-2
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-rocm-tensorflow-2025-2
+          version: v1
+  - source:
+      fieldPath: data.odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-2025-2
+      kind: ConfigMap
+      name: notebook-image-params
+      version: v1
+    targets:
+      - fieldPaths:
+          - spec.tags.0.from.name
+        select:
+          group: image.openshift.io
+          kind: ImageStream
+          name: runtime-tensorflow-2025-2
           version: v1
