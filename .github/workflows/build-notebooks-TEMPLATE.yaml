@@ -628,7 +628,7 @@ jobs:
           set -Eeuxo pipefail
           PODMAN="$(which podman)"
           IMAGE_MOUNT_DIR=$(sudo "${PODMAN}" image mount "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}")
-          sudo "${PODMAN}" run --rm \
+          sudo "${PODMAN}" run --rm --user=0 \
             -v "${IMAGE_MOUNT_DIR}:${IMAGE_MOUNT_DIR}:ro,z" \
             -v "${PWD}/scripts/check-payload/config.toml:/config.toml:ro,z" \
             "${CHECK_PAYLOAD_IMAGE}" \
