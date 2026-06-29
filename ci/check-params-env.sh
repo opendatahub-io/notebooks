@@ -30,7 +30,7 @@ if [ "${KONFLUX:-no}" = 'yes' ]; then
     # This value needs to be updated everytime we deliberately change number of the
     # images we want to have in the `params.env` or `params-latest.env` file.
     EXPECTED_COMMIT_NUM_RECORDS=43
-    EXPECTED_PARAMS_NUM_RECORDS=50
+    EXPECTED_PARAMS_NUM_RECORDS=57
 else
     _MANIFESTS_VARIANT="odh"
     # This value needs to be updated everytime we deliberately change number of the
@@ -601,6 +601,48 @@ function check_image_variable_matches_name_and_commitref_and_size() {
             expected_commitref="main"
             expected_build_name="konflux"
             expected_img_size=5859
+            ;;
+        odh-pipeline-runtime-datascience-cpu-py312-ubi9-2025-2)
+            expected_name="rhoai/odh-pipeline-runtime-datascience-cpu-py312-rhel9"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=1015
+            ;;
+        odh-pipeline-runtime-minimal-cpu-py312-ubi9-2025-2)
+            expected_name="rhoai/odh-pipeline-runtime-minimal-cpu-py312-rhel9"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=595
+            ;;
+        odh-pipeline-runtime-pytorch-cuda-py312-ubi9-2025-2)
+            expected_name="rhoai/odh-pipeline-runtime-pytorch-cuda-py312-rhel9"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=8768
+            ;;
+        odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-ubi9-2025-2)
+            expected_name="rhoai/odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312-rhel9"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=8723
+            ;;
+        odh-pipeline-runtime-pytorch-rocm-py312-ubi9-2025-2)
+            expected_name="rhoai/odh-pipeline-runtime-pytorch-rocm-py312-rhel9"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=8725
+            ;;
+        odh-pipeline-runtime-tensorflow-cuda-py312-ubi9-2025-2)
+            expected_name="rhoai/odh-pipeline-runtime-tensorflow-cuda-py312-rhel9"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=8206
+            ;;
+        odh-pipeline-runtime-tensorflow-rocm-py312-ubi9-2025-2)
+            expected_name="rhoai/odh-pipeline-runtime-tensorflow-rocm-py312-rhel9"
+            expected_commitref="main"
+            expected_build_name="konflux"
+            expected_img_size=6614
             ;;
         *)
             echo "Unimplemented variable name: '${image_variable}'"
