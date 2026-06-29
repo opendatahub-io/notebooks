@@ -1,0 +1,131 @@
+---
+name: Build buildinputs image
+
+"on":
+  push:
+    branches: [main, stable, 'rhoai-*']
+    paths: &buildinputs_paths
+      - .github/workflows/build-buildinputs.yaml
+      - scripts/buildinputs/**
+  pull_request:
+    paths: *buildinputs_paths
+  workflow_dispatch:
+
+concurrency:
+  group: build-buildinputs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Build and publish buildinputs
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_ref: ${{ steps.publish-outputs.outputs.image_ref }}
+      image_digest: ${{ steps.publish-outputs.outputs.image_digest }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4.1.0
+
+      - name: Calculate image tags
+        id: meta
+        shell: python
+        # language=python
+        run: |
+          import os
+
+          image = f"ghcr.io/{os.environ['GITHUB_REPOSITORY'].lower()}/buildinputs"
+          ref_name = os.environ["GITHUB_REF_NAME"]
+          sha = os.environ["GITHUB_SHA"]
+          tags = [f"{image}:{sha}"]
+          if ref_name == "main":
+              tags.append(f"{image}:main")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"image={image}\n")
+              f.write(f"tags={','.join(tags)}\n")
+
+      - name: Log in to GHCR
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7.2.0
+        id: build
+        with:
+          context: ./scripts/buildinputs
+          file: ./scripts/buildinputs/Dockerfile
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke-test buildinputs
+        shell: bash
+        env:
+          BUILDINPUTS_IMAGE: ${{ github.event_name == 'pull_request' && steps.build.outputs.imageid || format('{0}@{1}', steps.meta.outputs.image, steps.build.outputs.digest) }}
+        run: |
+          set -euo pipefail
+
+          workdir="$(mktemp -d)"
+          chmod a+rx "${workdir}"
+          trap 'rm -rf "${workdir}"' EXIT
+
+          cat > "${workdir}/Dockerfile" <<'EOF'
+          ARG BASE_IMAGE=alpine
+          FROM ${BASE_IMAGE}
+          COPY hello.txt /hello.txt
+          EOF
+          printf 'hello\n' > "${workdir}/hello.txt"
+
+          output="$(
+            docker run --rm \
+            -e TARGETPLATFORM=linux/amd64 \
+            -v "${workdir}:/work:ro" \
+            "${BUILDINPUTS_IMAGE}" \
+            --build-arg BASE_IMAGE=alpine \
+            /work/Dockerfile
+          )"
+
+          printf '%s' "$output" | python3 -c 'import json,sys; files=json.load(sys.stdin); expected=["hello.txt"]; sys.exit(f"unexpected buildinputs output: {files!r} != {expected!r}") if files != expected else None'
+
+      - name: Export publish outputs
+        id: publish-outputs
+        shell: python
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IMAGE: ${{ steps.meta.outputs.image }}
+          IMAGE_ID: ${{ steps.build.outputs.imageid }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        # language=python
+        run: |
+          import os
+
+          image = os.environ["IMAGE"]
+          image_id = os.environ["IMAGE_ID"]
+          digest = os.environ["IMAGE_DIGEST"]
+          event_name = os.environ["EVENT_NAME"]
+
+          if event_name == "pull_request" or not digest:
+              image_ref = image_id
+              image_digest = ""
+          else:
+              image_ref = f"{image}@{digest}"
+              image_digest = digest
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"image_ref={image_ref}\n")
+              f.write(f"image_digest={image_digest}\n")

@@ -42,7 +42,7 @@ jobs:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
       # Scheduled runs refresh ODH only; RHDS requires manual dispatch with subscription secrets.
       VARIANT: ${{ github.event.inputs.variant || 'odh' }}
-      TMPDIR: /home/runner/.local/share/containers/tmpdir
+      TMPDIR: /var/tmp
       CI: "true"
       # workflow_dispatch only; scheduled runs always use cache (input unset → true).
       USE_CACHE: ${{ github.event.inputs.use_cache != 'false' && 'true' || 'false' }}
@@ -119,9 +119,6 @@ jobs:
         uses: ./.github/actions/install-podman-action
         with:
           platform: linux/amd64
-
-      - name: Free up disk space
-        uses: ./.github/actions/free-up-disk-space
 
       - name: Compute CONTAINER_BUILD_CACHE_ARGS
         id: container-build-cache-args
