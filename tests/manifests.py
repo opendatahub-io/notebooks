@@ -117,11 +117,12 @@ def extract_metadata_from_path(directory: Path) -> NotebookMetadata:
         accelerator_flavor = "rocm"
     elif "cuda" in notebook_identity_parts:
         accelerator_flavor = "cuda"
-    # The shell script has an implicit rule for pytorch being cuda. We can
-    # replicate this by checking for a specific Dockerfile.
-    elif (directory / "Dockerfile.cuda").exists():
+    # jupyter/pytorch has no "cuda" in the path; papermill treats jupyter-pytorch-* as cuda
+    # via name matching (_get_accelerator_flavor in test_jupyter_with_papermill.sh).
+    # When inferring from a directory path, detect cuda/rocm from Dockerfile.konflux.* variants.
+    elif (directory / "Dockerfile.konflux.cuda").exists():
         accelerator_flavor = "cuda"
-    elif (directory / "Dockerfile.rocm").exists():
+    elif (directory / "Dockerfile.konflux.rocm").exists():
         accelerator_flavor = "rocm"
 
     return NotebookMetadata(

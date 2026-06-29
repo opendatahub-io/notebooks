@@ -74,7 +74,7 @@ class TestMakefile:
         ntb.assert_subdict(
             {
                 "VARIANT": "cpu",
-                "DOCKERFILE_NAME": "Dockerfile.cpu",
+                "DOCKERFILE_NAME": "Dockerfile.konflux.cpu",
                 "CONF_FILE": "jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf",
             },
             _extract_assignments(konflux_default),
@@ -89,8 +89,14 @@ class TestMakefile:
             _extract_assignments(konflux_yes),
         )
 
-        assert "--file 'jupyter/minimal/ubi9-python-3.12/Dockerfile.cpu'" in konflux_default
-        assert "--file 'jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu'" in konflux_yes
+        assert (
+            "#*# Image build Dockerfile: <jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu>"
+            in konflux_default
+        )
+        assert (
+            "#*# Image build Dockerfile: <jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu>"
+            in konflux_yes
+        )
 
 
 def _extract_assignments(makefile_output: str) -> dict[str, str]:
