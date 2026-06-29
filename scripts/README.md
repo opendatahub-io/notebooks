@@ -194,8 +194,23 @@ python scripts/cve/cve_due_dates.py --summary
 
 CLI tool written in Go that computes the list of input files required to build a Dockerfile.
 This is useful to determine what images need to be built on CI when testing a GitHub Pull Request.
+CI now runs the published helper image from GHCR instead of compiling the tool on every runner.
 
 ### Examples
+
+**Podman run**:
+
+```shell
+podman run --rm \
+  -e TARGETPLATFORM=linux/amd64 \
+  -v "$PWD:$PWD:ro,z" \
+  -w "$PWD" \
+  ghcr.io/opendatahub-io/notebooks/buildinputs:main \
+  -build-arg=BASE_IMAGE=fake-image \
+  jupyter/datascience/ubi9-python-3.11/Dockerfile
+```
+
+**Native local binary**:
 
 ```shell
 make bin/buildinputs
