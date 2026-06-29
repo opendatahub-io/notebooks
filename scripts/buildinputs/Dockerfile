@@ -15,9 +15,9 @@ ARG TARGETARCH
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -trimpath -buildvcs=false -ldflags="-s -w" -o /out/buildinputs .
+    go build -trimpath -buildvcs=false -ldflags="-s -w" -o /tmp/buildinputs .
 
 FROM scratch
 
-COPY --from=build /out/buildinputs /buildinputs
+COPY --from=build /tmp/buildinputs /buildinputs
 ENTRYPOINT ["/buildinputs"]
