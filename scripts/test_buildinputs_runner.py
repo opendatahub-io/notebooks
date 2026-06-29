@@ -5,10 +5,11 @@ import pathlib
 from scripts import buildinputs_runner
 
 
-def test_buildinputs_image_uses_repository_slug(monkeypatch):
+def test_buildinputs_image_uses_repository_slug(monkeypatch, request):
     monkeypatch.delenv("BUILDINPUTS_IMAGE", raising=False)
     monkeypatch.setenv("GITHUB_REPOSITORY", "Example/Repo")
     buildinputs_runner._repository_slug.cache_clear()
+    request.addfinalizer(buildinputs_runner._repository_slug.cache_clear)
 
     assert buildinputs_runner.buildinputs_image() == "ghcr.io/example/repo/buildinputs:main"
 

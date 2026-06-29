@@ -203,7 +203,7 @@ CI now runs the published helper image from GHCR instead of compiling the tool o
 ```shell
 podman run --rm \
   -e TARGETPLATFORM=linux/amd64 \
-  -v "$PWD:$PWD:ro" \
+  -v "$PWD:$PWD:ro,z" \
   -w "$PWD" \
   ghcr.io/opendatahub-io/notebooks/buildinputs:main \
   -build-arg=BASE_IMAGE=fake-image \
