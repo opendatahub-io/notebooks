@@ -1,0 +1,131 @@
+---
+name: Build check-payload image
+
+"on":
+  push:
+    branches: [main, stable, 'rhoai-*']
+    paths: &check_payload_paths
+      - .github/workflows/build-check-payload.yaml
+      - scripts/check-payload/Dockerfile
+  pull_request:
+    paths: *check_payload_paths
+  workflow_dispatch:
+
+concurrency:
+  group: build-check-payload-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CHECK_PAYLOAD_VERSION: "0.3.16"
+
+jobs:
+  publish:
+    name: Build and publish check-payload
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_ref: ${{ steps.publish-outputs.outputs.image_ref }}
+      image_digest: ${{ steps.publish-outputs.outputs.image_digest }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4.1.0
+
+      - name: Calculate image tags
+        id: meta
+        shell: python
+        # language=python
+        run: |
+          import os
+
+          image = f"ghcr.io/{os.environ['GITHUB_REPOSITORY'].lower()}/check-payload"
+          version = os.environ["CHECK_PAYLOAD_VERSION"]
+          sha = os.environ["GITHUB_SHA"]
+          tags = [f"{image}:{sha}", f"{image}:{version}"]
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"image={image}\n")
+              f.write(f"tags={','.join(tags)}\n")
+
+      - name: Log in to GHCR
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7.2.0
+        id: build
+        with:
+          context: ./scripts/check-payload
+          file: ./scripts/check-payload/Dockerfile
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: CHECK_PAYLOAD_VERSION=${{ env.CHECK_PAYLOAD_VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke-test check-payload
+        shell: bash
+        env:
+          CHECK_PAYLOAD_IMAGE: ${{ github.event_name == 'pull_request' && steps.build.outputs.imageid || format('{0}@{1}', steps.meta.outputs.image, steps.build.outputs.digest) }}
+        run: |
+          set -euo pipefail
+
+          # check-payload expects /etc/redhat-release and RHEL filesystem layout;
+          # ubi9-micro is the smallest real RHEL rootfs (~40 MB) that satisfies this.
+          # The exported tree contains root-owned files, so use sudo for cleanup
+          # and --user=0 so check-payload can read them.
+          scan_root="$(mktemp -d)"
+          chmod a+rx "${scan_root}"
+          trap 'sudo rm -rf "${scan_root}"' EXIT
+
+          cid=$(docker create registry.access.redhat.com/ubi9-micro:latest)
+          docker export "$cid" | tar -C "${scan_root}" -xf -
+          docker rm "$cid"
+
+          # -c config.toml suppresses known false positives (e.g. ldconfig
+          # is statically linked by design in glibc)
+          docker run --rm --user=0 \
+            -v "${scan_root}:${scan_root}:ro" \
+            -v "${PWD}/scripts/check-payload/config.toml:/config.toml:ro" \
+            "${CHECK_PAYLOAD_IMAGE}" \
+            scan local --path "${scan_root}" -c /config.toml
+
+      - name: Export publish outputs
+        id: publish-outputs
+        shell: python
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IMAGE: ${{ steps.meta.outputs.image }}
+          IMAGE_ID: ${{ steps.build.outputs.imageid }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        # language=python
+        run: |
+          import os
+
+          image = os.environ["IMAGE"]
+          image_id = os.environ["IMAGE_ID"]
+          digest = os.environ["IMAGE_DIGEST"]
+          event_name = os.environ["EVENT_NAME"]
+
+          if event_name == "pull_request" or not digest:
+              image_ref = image_id
+              image_digest = ""
+          else:
+              image_ref = f"{image}@{digest}"
+              image_digest = digest
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"image_ref={image_ref}\n")
+              f.write(f"image_digest={image_digest}\n")
