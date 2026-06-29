@@ -4,6 +4,11 @@ name: Build buildinputs image
 "on":
   push:
     branches: [main, stable, 'rhoai-*']
+    paths: &buildinputs_paths
+      - .github/workflows/build-buildinputs.yaml
+      - scripts/buildinputs/**
+  pull_request:
+    paths: *buildinputs_paths
   workflow_dispatch:
 
 concurrency:
@@ -32,35 +37,47 @@ jobs:
 
       - name: Calculate image tags
         id: meta
-        shell: bash
+        shell: python
+        # language=python
         run: |
-          set -euo pipefail
+          import os
 
-          image="ghcr.io/${GITHUB_REPOSITORY,,}/buildinputs"
+          image = f"ghcr.io/{os.environ['GITHUB_REPOSITORY'].lower()}/buildinputs"
+          ref_name = os.environ["GITHUB_REF_NAME"]
+          sha = os.environ["GITHUB_SHA"]
+          tags = [f"{image}:{sha}"]
+          if ref_name == "main":
+              tags.append(f"{image}:main")
 
-          {
-            echo "image=${image}"
-            echo "tags<<EOF"
-            echo "${image}:${GITHUB_SHA}"
-            if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-              echo "${image}:main"
-            fi
-            echo "EOF"
-          } >> "${GITHUB_OUTPUT}"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"image={image}\n")
+              f.write(f"tags={','.join(tags)}\n")
 
-      - name: Build amd64 image for smoke test
+      - name: Log in to GHCR
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7.2.0
+        id: build
         with:
           context: ./scripts/buildinputs
           file: ./scripts/buildinputs/Dockerfile
-          platforms: linux/amd64
-          load: true
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64,linux/ppc64le,linux/s390x' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Smoke-test buildinputs
         shell: bash
+        env:
+          BUILDINPUTS_IMAGE: ${{ github.event_name == 'pull_request' && steps.build.outputs.imageid || format('{0}@{1}', steps.meta.outputs.image, steps.build.outputs.digest) }}
         run: |
           set -euo pipefail
 
@@ -74,42 +91,41 @@ jobs:
           EOF
           printf 'hello\n' > "${workdir}/hello.txt"
 
-          docker run --rm \
+          output="$(
+            docker run --rm \
             -e TARGETPLATFORM=linux/amd64 \
             -v "${workdir}:/work:ro" \
-            "${{ steps.meta.outputs.image }}:${GITHUB_SHA}" \
+            "${BUILDINPUTS_IMAGE}" \
             --build-arg BASE_IMAGE=alpine \
-            /work/Dockerfile | grep -q '"hello.txt"'
+            /work/Dockerfile
+          )"
 
-      - name: Log in to GHCR
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push multi-arch image
-        id: publish
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7.2.0
-        with:
-          context: ./scripts/buildinputs
-          file: ./scripts/buildinputs/Dockerfile
-          platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          printf '%s' "$output" | python3 -c 'import json,sys; files=json.load(sys.stdin); expected=["hello.txt"]; raise SystemExit(f"unexpected buildinputs output: {files!r} != {expected!r}") if files != expected else None'
 
       - name: Export publish outputs
         id: publish-outputs
-        shell: bash
+        shell: python
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IMAGE: ${{ steps.meta.outputs.image }}
+          IMAGE_ID: ${{ steps.build.outputs.imageid }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        # language=python
         run: |
-          set -euo pipefail
+          import os
 
-          image="${{ steps.meta.outputs.image }}"
-          digest="${{ steps.publish.outputs.digest }}"
+          image = os.environ["IMAGE"]
+          image_id = os.environ["IMAGE_ID"]
+          digest = os.environ["IMAGE_DIGEST"]
+          event_name = os.environ["EVENT_NAME"]
 
-          {
-            echo "image_ref=${image}@${digest}"
-            echo "image_digest=${digest}"
-          } >> "${GITHUB_OUTPUT}"
+          if event_name == "pull_request" or not digest:
+              image_ref = image_id
+              image_digest = ""
+          else:
+              image_ref = f"{image}@{digest}"
+              image_digest = digest
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"image_ref={image_ref}\n")
+              f.write(f"image_digest={image_digest}\n")
