@@ -1,0 +1,115 @@
+---
+name: Build buildinputs image
+
+"on":
+  push:
+    branches: [main, stable, 'rhoai-*']
+  workflow_dispatch:
+
+concurrency:
+  group: build-buildinputs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Build and publish buildinputs
+    runs-on: ubuntu-26.04
+    outputs:
+      image_ref: ${{ steps.publish-outputs.outputs.image_ref }}
+      image_digest: ${{ steps.publish-outputs.outputs.image_digest }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4.1.0
+
+      - name: Calculate image tags
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          image="ghcr.io/${GITHUB_REPOSITORY,,}/buildinputs"
+
+          {
+            echo "image=${image}"
+            echo "tags<<EOF"
+            echo "${image}:${GITHUB_SHA}"
+            if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+              echo "${image}:main"
+            fi
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Build amd64 image for smoke test
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7.2.0
+        with:
+          context: ./scripts/buildinputs
+          file: ./scripts/buildinputs/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke-test buildinputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          workdir="$(mktemp -d)"
+          trap 'rm -rf "${workdir}"' EXIT
+
+          cat > "${workdir}/Dockerfile" <<'EOF'
+          ARG BASE_IMAGE=alpine
+          FROM ${BASE_IMAGE}
+          COPY hello.txt /hello.txt
+          EOF
+          printf 'hello\n' > "${workdir}/hello.txt"
+
+          docker run --rm \
+            -e TARGETPLATFORM=linux/amd64 \
+            -v "${workdir}:/work:ro" \
+            "${{ steps.meta.outputs.image }}:${GITHUB_SHA}" \
+            --build-arg BASE_IMAGE=alpine \
+            /work/Dockerfile | grep -q '"hello.txt"'
+
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push multi-arch image
+        id: publish
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7.2.0
+        with:
+          context: ./scripts/buildinputs
+          file: ./scripts/buildinputs/Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Export publish outputs
+        id: publish-outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          image="${{ steps.meta.outputs.image }}"
+          digest="${{ steps.publish.outputs.digest }}"
+
+          {
+            echo "image_ref=${image}@${digest}"
+            echo "image_digest=${digest}"
+          } >> "${GITHUB_OUTPUT}"

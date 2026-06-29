@@ -30,6 +30,14 @@ because Docker on GHA runners sets `FORWARD DROP`, which breaks rootful netavark
 
 `test-install-podman` validates container IP and DNS reachability (TCP `nc`, HTTP `wget`, `dig` UDP/TCP) after configure.
 
+## buildinputs image
+
+The `build-buildinputs` workflow publishes a multi-arch helper image at
+`ghcr.io/${{ github.repository }}/buildinputs`. It is tagged with the commit SHA
+for reproducibility and `main` on the main branch. Downstream jobs should prefer
+the published image digest when they need `scripts/buildinputs` instead of
+building the Go helper locally.
+
 We have considered investigating custom runners, either just plain containers/VMs, or something fronting an OpenShift cluster, in
 
 * https://github.com/opendatahub-io/notebooks/issues/1389
