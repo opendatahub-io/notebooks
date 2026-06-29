@@ -111,9 +111,6 @@ Leaf stages do not run full-tree `fix-permissions`. Paths outside site-packages 
 build steps create directly (e.g. `jupyter_server_config.py`, `labconfig/`, `pf.css`
 from `apply.sh`) get explicit modes or `chmod` at creation time; see [#3928](https://github.com/opendatahub-io/notebooks/issues/3928).
 
-Non-konflux `Dockerfile.cpu|cuda|rocm` paths are symlinks to `Dockerfile.konflux.*` and
-inherit the same ownership model.
-
 ## Testing layers
 
 | Layer | Location | What it tests | How to run |

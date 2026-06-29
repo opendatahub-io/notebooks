@@ -20,6 +20,18 @@ def repo_root() -> Path:
     return _REPO_ROOT
 
 
+def test_detect_flavors_uses_konflux_dockerfiles(repo_root: Path) -> None:
+    flavors = pg.detect_flavors(repo_root / "jupyter" / "minimal" / "ubi9-python-3.12")
+    assert flavors == {"cpu", "cuda", "rocm"}
+
+
+def test_detect_flavors_empty_when_no_konflux_dockerfiles(tmp_path: Path) -> None:
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    (project_dir / "Dockerfile.cpu").write_text("FROM scratch\n", encoding="utf-8")
+    assert pg.detect_flavors(project_dir) == set()
+
+
 def test_utc_now_iso_format() -> None:
     s = pg.utc_now_iso()
     assert len(s) == 20
