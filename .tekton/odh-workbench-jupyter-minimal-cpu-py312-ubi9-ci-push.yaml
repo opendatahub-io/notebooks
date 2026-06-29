@@ -43,7 +43,7 @@ spec:
       type: pip
       binary:
         arch: x86_64
-      requirements_files: [requirements.cpu.txt]
+      requirements_files: [requirements.cpu.txt, requirements.pandoc.cpu.txt]
   - name: additional-tags
     value:
     - 3.5-v1.46

@@ -75,6 +75,7 @@ RUN ./utils/install_pdf_deps.sh
 
 COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
+COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/requirements.pandoc.rocm.txt ./requirements.pandoc.txt
 COPY --chown=1001:0 ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
 COPY --chown=1001:0 --chmod=0755 base-images/utils/ensure-openshift-site-packages.sh /usr/local/bin/ensure-openshift-site-packages.sh
@@ -86,6 +87,7 @@ set -Eeuxo pipefail
 umask 0002
 
 echo "Installing software and packages"
+cat ./requirements.pandoc.txt >> ./requirements.txt
 # Install Python packages from lockfile (Cachi2 prefetched pip deps; --no-deps per pylock.toml)
 UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
     --strict --no-deps --no-config --no-progress \

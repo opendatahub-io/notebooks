@@ -63,7 +63,7 @@ spec:
       type: pip
       binary:
         arch: x86_64
-      requirements_files: [requirements.rocm.txt]
+      requirements_files: [requirements.rocm.txt, requirements.pandoc.rocm.txt]
   # Added taskRunSpecs to increase compute resources
   taskRunSpecs:
   - pipelineTaskName: prefetch-dependencies
