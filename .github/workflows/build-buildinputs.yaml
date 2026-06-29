@@ -15,14 +15,13 @@ concurrency:
   group: build-buildinputs-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-  packages: write
-
 jobs:
   publish:
     name: Build and publish buildinputs
     runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      packages: write
     outputs:
       image_ref: ${{ steps.publish-outputs.outputs.image_ref }}
       image_digest: ${{ steps.publish-outputs.outputs.image_digest }}
@@ -100,7 +99,7 @@ jobs:
             /work/Dockerfile
           )"
 
-          printf '%s' "$output" | python3 -c 'import json,sys; files=json.load(sys.stdin); expected=["hello.txt"]; raise SystemExit(f"unexpected buildinputs output: {files!r} != {expected!r}") if files != expected else None'
+          printf '%s' "$output" | python3 -c 'import json,sys; files=json.load(sys.stdin); expected=["hello.txt"]; sys.exit(f"unexpected buildinputs output: {files!r} != {expected!r}") if files != expected else None'
 
       - name: Export publish outputs
         id: publish-outputs

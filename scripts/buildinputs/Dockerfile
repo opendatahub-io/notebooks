@@ -20,4 +20,5 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 FROM scratch
 
 COPY --from=build /tmp/buildinputs /buildinputs
+USER 65532:65532
 ENTRYPOINT ["/buildinputs"]
