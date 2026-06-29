@@ -191,7 +191,6 @@ COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/nginx/root/ /
 
 ## Configure nginx
 COPY ${CODESERVER_SOURCE_CODE}/nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
-COPY ${CODESERVER_SOURCE_CODE}/nginx/httpconf/ /opt/app-root/etc/nginx.d/
 COPY ${CODESERVER_SOURCE_CODE}/nginx/api/ /opt/app-root/api/
 
 # Changing ownership and user rights to support following use-cases:

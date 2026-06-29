@@ -2,12 +2,18 @@
 # api calls from probes get to code-server /healthz endpoint
 ###############
 location = /api {
-  return 302 /codeserver/healthz/;
+  return 302 $healthz_path;
   access_log  off;
 }
 
 location /api/ {
-  return 302 /codeserver/healthz/;
+  return 302 $healthz_path;
+  access_log  off;
+}
+
+# Gateway API: health checks arrive at {NB_PREFIX}/api
+location ~ ^/[^/]+/[^/]+/[^/]+/api/?$ {
+  return 302 $healthz_path;
   access_log  off;
 }
 ###############
@@ -16,7 +22,13 @@ location /api/ {
 # api calls from culler get to CGI processing
 ###############
 location = /api/kernels {
-    return 302 $custom_scheme://$http_host/api/kernels/;
+    return 302 $custom_scheme://$http_host$api_kernels_path;
+    access_log  off;
+}
+
+# Gateway API: culler requests arrive at {NB_PREFIX}/api/kernels
+location ~ ^/[^/]+/[^/]+/[^/]+/api/kernels/?$ {
+    return 302 $custom_scheme://$http_host$api_kernels_path;
     access_log  off;
 }
 
@@ -35,14 +47,20 @@ location /api/kernels/ {
 # root and prefix get to code-server endpoint
 ###############
 location = / {
-    return 302 $custom_scheme://$http_host/codeserver/;
+    return 302 $custom_scheme://$http_host$codeserver_base;
 }
 
 location = /codeserver {
-    return 302 $custom_scheme://$http_host/codeserver/;
+    return 302 $custom_scheme://$http_host$codeserver_base;
 }
 
-location /codeserver/ {
+# Gateway API: redirect {NB_PREFIX} to code-server entrypoint
+location ~ ^/[^/]+/[^/]+/[^/]+/?$ {
+    return 302 $custom_scheme://$http_host$codeserver_base;
+}
+
+location ~ /codeserver/ {
+    rewrite ^.*/codeserver/(.*)$ /$1 break;
     # Standard code-server/NGINX configuration
     proxy_pass http://workbench_server/;
     proxy_http_version 1.1;
@@ -56,6 +74,7 @@ location /codeserver/ {
     proxy_set_header X-Forwarded-Proto $custom_scheme;
     proxy_set_header Host $http_host;
     proxy_set_header X-NginX-Proxy true;
+    proxy_set_header X-Forwarded-Prefix $base_path;
     proxy_redirect off;
 
     access_log /var/log/nginx/codeserver.access.log json if=$loggable;
