@@ -59,7 +59,7 @@ that embeds that stage. Do not assume there is one shared parent image definitio
 
 ### ODH vs RHOAI builds
 
-`KONFLUX` selects the product variant (ODH midstream vs RHOAI downstream), not whether
+`PRODUCT` selects the product variant (ODH midstream vs RHOAI downstream), not whether
 the build runs on Konflux/Tekton. ODH workbenches stack on c9s odh-base-images;
 RHOAI stacks on RHEL 9.6 AIPCC bases (`ubi9-python-*` paths are EL9 naming only).
 See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
@@ -85,7 +85,7 @@ make refresh-lock-files
 
 ## Boundaries
 
-- **Always:** Run `make test` after Dockerfile or dependency changes. Keep `KONFLUX`
+- **Always:** Run `make test` after Dockerfile or dependency changes. Keep `PRODUCT`
   consistent across `make <target>` and `make test-<target>`. Override the entrypoint
   when inspecting images (`podman run --rm -it --entrypoint="" <image> bash`).
 - **Ask first:** Adding new base images, changing CI workflow structure, modifying
@@ -108,9 +108,9 @@ Use formatting: bold, italics and code blocks.
   Without this, arguments are ignored and Jupyter starts.
 - One-off commands (no interactive shell):
   `podman run --rm --entrypoint="" <image> rpm -qa | sort`
-- `KONFLUX` must match between `make <target>` and `make test-<target>`.
+- `PRODUCT` must match between `make <target>` and `make test-<target>`.
   Mismatches cause version assertion failures because the test reads the
-  imagestream manifest selected by `KONFLUX`.
+  imagestream manifest selected by `PRODUCT`.
 - Python 3.14: `except ExcA, ExcB:` (no parentheses) is valid when there is no
   `as` clause (PEP 758). Ruff format enforces this style. Parentheses are still
   required when binding: `except (ExcA, ExcB) as e:`.
@@ -127,7 +127,7 @@ Most dependency/CVE work is `chore`. See `.coderabbit.yaml` for validation rules
 ## Repo-specific reminders
 
 - Use `uv` and `make refresh-lock-files`. Keep dependency guidance aligned with current repo tooling.
-- For local testing gotchas such as worktree naming, `pyfakefs`, `KONFLUX` matching, and CI `-n` metadata,
+- For local testing gotchas such as worktree naming, `pyfakefs`, `PRODUCT` matching, and CI `-n` metadata,
   see [CONTRIBUTING.md](CONTRIBUTING.md).
 - For GitHub Actions changes, run the SHA pinning flow in [`.github/AGENTS.md`](.github/AGENTS.md).
 - For browser tests, follow [`tests/browser/AGENTS.md`](tests/browser/AGENTS.md) instead of inventing local conventions.

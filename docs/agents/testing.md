@@ -3,7 +3,7 @@
 This document is the test catalog for the notebooks repository. It describes what
 tests exist, where they live, how to run them, and how they map to CI.
 
-For operational gotchas (worktree naming, pyfakefs, KONFLUX matching, CI `-n` metadata),
+For operational gotchas (worktree naming, pyfakefs, PRODUCT matching, CI `-n` metadata),
 see [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 ## Setup

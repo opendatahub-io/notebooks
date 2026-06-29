@@ -146,16 +146,16 @@ make test-${NOTEBOOK_NAME}
 
 #### ODH vs RHOAI local builds
 
-`KONFLUX` selects the product variant, not whether the build runs on Konflux/Tekton.
+`PRODUCT` selects the product variant, not whether the build runs on Konflux/Tekton.
 Both variants are built on Konflux in CI; the variable changes which `build-args/*.conf`
 and manifest tree the Makefile uses locally.
 
-| `KONFLUX` value | Product variant | Build args | Manifests |
+| `PRODUCT` value | Product variant | Build args | Manifests |
 |-----------------|-----------------|------------|-----------|
-| unset or `no` | ODH (midstream default) | `build-args/<variant>.conf` | `manifests/odh/` |
-| `yes` | RHOAI downstream | `build-args/konflux.<variant>.conf` | `manifests/rhoai/` |
+| unset or `odh` | ODH (midstream default) | `build-args/<variant>.conf` | `manifests/odh/` |
+| `rhoai` | RHOAI downstream | `build-args/konflux.<variant>.conf` | `manifests/rhoai/` |
 
-Keep the same `KONFLUX` value for both the build step and the matching `make test-*`
+Keep the same `PRODUCT` value for both the build step and the matching `make test-*`
 step so the imagestream manifests and expected package versions line up.
 
 For deeper references:

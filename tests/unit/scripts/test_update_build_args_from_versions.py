@@ -1836,7 +1836,7 @@ def test_plan_updates_rewrites_root_makefile_release_defaults(tmp_path: Path) ->
             IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
             RELEASE          ?= 3.5
             RELEASE_PYTHON_VERSION ?= 3.12
-            KONFLUX ?= no
+            PRODUCT ?= odh
             """
         ),
         encoding="utf-8",
@@ -1849,7 +1849,7 @@ def test_plan_updates_rewrites_root_makefile_release_defaults(tmp_path: Path) ->
         "IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images",
         "RELEASE          ?= 3.4",
         "RELEASE_PYTHON_VERSION ?= 3.11",
-        "KONFLUX ?= no",
+        "PRODUCT ?= odh",
     ]
 
 
@@ -1864,7 +1864,7 @@ def test_main_updates_root_makefile_release_defaults(tmp_path: Path) -> None:
             IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
             RELEASE          ?= 3.5
             RELEASE_PYTHON_VERSION ?= 3.12
-            KONFLUX ?= no
+            PRODUCT ?= odh
             """
         ),
         encoding="utf-8",
@@ -1875,7 +1875,7 @@ def test_main_updates_root_makefile_release_defaults(tmp_path: Path) -> None:
         "IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images",
         "RELEASE          ?= 3.4",
         "RELEASE_PYTHON_VERSION ?= 3.11",
-        "KONFLUX ?= no",
+        "PRODUCT ?= odh",
     ]
 
 

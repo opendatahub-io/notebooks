@@ -86,17 +86,16 @@ make all-images                              # build everything
 make test                                    # run quick static tests (pytest + lint)
 ```
 
-The `KONFLUX` Makefile variable selects the **product variant**, not whether the build
+The `PRODUCT` Makefile variable selects the **product variant**, not whether the build
 runs on Konflux/Tekton:
 
-- **ODH mode** (default: `KONFLUX=no` or unset): uses `build-args/<variant>.conf`
+- **ODH** (default: `PRODUCT=odh` or unset): uses `build-args/<variant>.conf`
   and `manifests/odh/`
-- **RHOAI mode** (`KONFLUX=yes`): uses `build-args/konflux.<variant>.conf`
+- **RHOAI** (`PRODUCT=rhoai`): uses `build-args/konflux.<variant>.conf`
   and `manifests/rhoai/`
 
-Since RHAIENG-4516, `Dockerfile.<variant>` paths and `Dockerfile.konflux.<variant>`
-paths resolve to the same content, so the meaningful difference is the selected
-build-args file and manifest set rather than a separate Dockerfile implementation.
+Each notebook image uses a single `Dockerfile.konflux.<variant>`; `PRODUCT` selects
+which build-args conf file and manifest set the Makefile passes to the build.
 Both variants can be built locally or on Konflux/Tekton.
 
 ### OpenShift file ownership during image build (#3928)

@@ -107,8 +107,8 @@ are skipped; steps 2 (pip), 3 (npm), and 5 (gomod) still run when their inputs e
 
 **Step 3 (NPM):** The script finds the Tekton file automatically via
 `find_tekton_yaml`: it looks for a `.tekton/*pull-request*.yaml` whose
-`dockerfile` param matches this component, RHDS first
-(`COMPONENT_DIR/Dockerfile.konflux.`*), then ODH (`COMPONENT_DIR/Dockerfile.`*).
+`dockerfile` param matches this component (`COMPONENT_DIR/Dockerfile.konflux.*`)
+for both ODH and RHDS variants.
 If no Tekton file is found, npm is skipped. If the Tekton file has no
 `npm`-type `prefetch-input` entries, `download-npm.sh` exits successfully
 (nothing to download).
@@ -959,7 +959,7 @@ RPM repo files (replace `<arch>` with `x86_64`, `aarch64`, etc.).
 ```bash
 # Same volume path as Makefile; build-args from build-args/cpu.conf
 podman build \
-    -f codeserver/ubi9-python-3.12/Dockerfile.cpu \
+    -f codeserver/ubi9-python-3.12/Dockerfile.konflux.cpu \
     --platform linux/arm64 \
     -t code-server-test \
     --build-arg BASE_IMAGE=quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest \

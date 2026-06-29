@@ -16,14 +16,14 @@ chain from its own base image:
 
 ```mermaid
 flowchart TD
-    subgraph pytorchCuda ["jupyter/pytorch — Dockerfile.cuda"]
+    subgraph pytorchCuda ["jupyter/pytorch — Dockerfile.konflux.cuda"]
         pBase["${BASE_IMAGE}\n(e.g. AIPCC cuda-13.0)"] --> pCudaBase[cuda-base]
         pCudaBase --> pMinimal[cuda-jupyter-minimal]
         pMinimal --> pDS[cuda-jupyter-datascience]
         pDS --> pPT[cuda-jupyter-pytorch]
     end
 
-    subgraph trustyaiCpu ["jupyter/trustyai — Dockerfile.cpu"]
+    subgraph trustyaiCpu ["jupyter/trustyai — Dockerfile.konflux.cpu"]
         tBase["${BASE_IMAGE}\n(e.g. AIPCC cpu)"] --> tCpuBase[cpu-base]
         tCpuBase --> tMinimal[jupyter-minimal]
         tMinimal --> tDS[jupyter-datascience]

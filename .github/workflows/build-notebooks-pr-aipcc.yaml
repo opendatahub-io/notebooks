@@ -119,5 +119,5 @@ jobs:
       platform: "${{ matrix.platform }}"
       # rhds/notebooks builds from AIPCC base images that are RHEL-based
       subscription: ${{ true }}
-      konflux: ${{ true }}
+      product: rhoai
     secrets: inherit

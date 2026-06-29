@@ -168,17 +168,16 @@ project: `rhoai-tenant` on cluster **stone-prod-p02** (GitHub checks: **Konflux 
 ### How notebooks images are built
 
 Each notebook image (workbench or pipeline runtime) has:
-- A `Dockerfile.<variant>` (e.g., `Dockerfile.cpu`, `Dockerfile.cuda`, `Dockerfile.rocm`)
-- A `Dockerfile.konflux.<variant>` path for the downstream RHOAI naming convention
-- Build-args conf files in `build-args/` (e.g., `cpu.conf`, `konflux.cpu.conf`) containing `BASE_IMAGE`, `PYLOCK_FLAVOR`, and related metadata. For `konflux.*.conf`, the effective `INDEX_URL` is derived dynamically from `BASE_IMAGE`.
+- A `Dockerfile.konflux.<variant>` (e.g., `Dockerfile.konflux.cpu`, `Dockerfile.konflux.cuda`, `Dockerfile.konflux.rocm`)
+- Build-args conf files in `build-args/` (e.g., `cpu.conf`, `konflux.cpu.conf`) containing `BASE_IMAGE`, `PYLOCK_FLAVOR`, `PRODUCT`, and related metadata. For `konflux.*.conf`, the effective `INDEX_URL` is derived dynamically from `BASE_IMAGE`.
 
-`KONFLUX` selects the **product variant**, not whether the build runs on Konflux itself:
+`PRODUCT` selects the **product variant**, not whether the build runs on Konflux itself:
 
-- `KONFLUX=no` or unset selects the ODH midstream variant (`build-args/<variant>.conf`, `manifests/odh/`)
-- `KONFLUX=yes` selects the RHOAI downstream variant (`build-args/konflux.<variant>.conf`, `manifests/rhoai/`)
+- `PRODUCT=odh` or unset selects the ODH midstream variant (`build-args/<variant>.conf`, `manifests/odh/`)
+- `PRODUCT=rhoai` selects the RHOAI downstream variant (`build-args/konflux.<variant>.conf`, `manifests/rhoai/`)
 
-Since RHAIENG-4516, `Dockerfile.<variant>` and `Dockerfile.konflux.<variant>` resolve to the same
-content, so the important switch is the selected build-args file and manifest tree. The conf file
+The Makefile always builds `Dockerfile.konflux.<variant>`; the meaningful switch is the selected
+build-args file and manifest tree. The conf file
 is parsed by awk into quoted `--build-arg 'KEY=VALUE'` flags (see the `build_image` function in the
 Makefile), and Konflux builds inject a computed `INDEX_URL` alongside the checked-in args.
 Downstream Tekton/buildah flows that use `konflux.*.conf` via `--build-arg-file` must mirror that
@@ -523,15 +522,14 @@ These GitHub Actions workflows manage the automated synchronization of configura
 
 ## Dockerfile deduplication
 
-The repo has ~59 Dockerfiles with two axes of duplication:
-1. **ODH vs Konflux** -- every `Dockerfile.<variant>` has a `Dockerfile.konflux.<variant>` twin that differs only in LABEL metadata (~21 Konflux files)
-2. **cpu/cuda/rocm variants** -- within the same directory, these are ~95% identical
+The repo has many Dockerfiles with variant duplication:
+1. **cpu/cuda/rocm variants** -- within the same directory, these are ~95% identical
 
 Tracking issues:
 - GitHub: [opendatahub-io/notebooks#3355 -- Dockerfile Deduplication Plan](https://github.com/opendatahub-io/notebooks/issues/3355)
 - Jira: [RHOAIENG-54488 -- Merge Dockerfiles into single unified Dockerfile per component](https://issues.redhat.com/browse/RHOAIENG-54488)
 
-**Phase 1** (Konflux dedup): Parameterize LABEL blocks via build-args so `Dockerfile.cpu` and `Dockerfile.konflux.cpu` become byte-identical. The CI alignment check (`scripts/check_dockerfile_alignment.sh`) already verifies semantic identity; the goal is to achieve byte-identity.
+**Phase 1** (Konflux dedup, RHAIENG-5164): Notebook images use a single `Dockerfile.konflux.<variant>` per component; `PRODUCT` selects ODH vs RHOAI build-args conf files. Legacy `Dockerfile.cpu` symlinks and the alignment checker were removed.
 
 **Phase 2** (variant merge): Merge cpu/cuda/rocm variants into a single Dockerfile per component using build-args for the accelerator-specific differences. The primary candidate is `jupyter/minimal`.
 

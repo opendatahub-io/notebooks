@@ -4,7 +4,7 @@ set -euo pipefail
 # setup-offline-binaries.sh - Populate local caches for hermetic code-server build
 #
 # [HERMETIC] This script is sourced before `npm ci --offline` in the rpm-base
-# stage of Dockerfile.cpu. It populates local caches for all binaries that code-server's
+# stage of Dockerfile.konflux.cpu. It populates local caches for all binaries that code-server's
 # build process would normally download at build time:
 #
 #   1. npm config: offline, prefer-offline, fetch-retries=0 (and legacy-peer-deps).

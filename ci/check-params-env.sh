@@ -15,7 +15,7 @@ set -euo pipefail
 #
 # Local execution:
 #   ./ci/check-params-env.sh              # validates ODH manifests
-#   KONFLUX=yes ./ci/check-params-env.sh  # validates RHOAI manifests
+#   PRODUCT=rhoai ./ci/check-params-env.sh  # validates RHOAI manifests
 #
 #   Note: please execute from the root directory so that relative path matches
 #
@@ -24,8 +24,8 @@ set -euo pipefail
 
 # ----------------------------- GLOBAL VARIABLES ----------------------------- #
 
-# When KONFLUX=yes, validate the RHOAI manifests; otherwise default to ODH.
-if [ "${KONFLUX:-no}" = 'yes' ]; then
+# When PRODUCT=rhoai, validate the RHOAI manifests; otherwise default to ODH.
+if [ "${PRODUCT:-odh}" = 'rhoai' ]; then
     _MANIFESTS_VARIANT="rhoai"
     # This value needs to be updated everytime we deliberately change number of the
     # images we want to have in the `params.env` or `params-latest.env` file.

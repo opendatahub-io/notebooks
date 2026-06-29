@@ -141,7 +141,7 @@ except Exception as e:
 
             # Use same interpreter for pip and -c so runtime-installed package is visible (PYTHONPATH).
             # Code-server image uses /opt/app-root/bin/python3; others use default python.
-            # Detection: label "name" contains "-code-server-" (set in Dockerfile.cpu). Fallback: image ref
+            # Detection: label "name" contains "-code-server-" (set in Dockerfile.konflux.cpu). Fallback: image ref
             # contains "codeserver" when daemon is Podman and labels came from ContainerConfig (conftest handles that).
             name_label = datascience_image.labels.get("name", "")
             is_codeserver = "-code-server-" in name_label or "codeserver" in datascience_image.name.lower()
