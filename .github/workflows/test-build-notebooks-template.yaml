@@ -13,7 +13,6 @@ permissions:
       - '.github/workflows/test-build-notebooks-template.yaml'
       - '.github/actions/install-podman-action/**'
       - '.github/actions/provision-k8s/**'
-      - '.github/actions/free-up-disk-space/**'
       - 'ci/cached-builds/**'
   pull_request:
     paths:
@@ -21,7 +20,6 @@ permissions:
       - '.github/workflows/test-build-notebooks-template.yaml'
       - '.github/actions/install-podman-action/**'
       - '.github/actions/provision-k8s/**'
-      - '.github/actions/free-up-disk-space/**'
       - 'ci/cached-builds/**'
   workflow_dispatch:
 

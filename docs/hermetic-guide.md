@@ -123,10 +123,6 @@ handles hermetic builds transparently for any target that ships a
    lockfiles are used instead of the ODH (CentOS Stream) ones. This avoids
    RPM conflicts between the RHEL-based base image and CentOS Stream
    packages (e.g. `openssl-fips-provider` vs `openssl-fips-provider-so`).
-   If `post-prefetch.sh` exists, it is called next -- this script moves
-   the prefetched data (~2-3 GB) from the root partition to the
-   LVM-backed build volume and leaves a symlink behind, preventing `/`
-   from filling up.
 2. **Build step** -- runs `make` as usual. The volume mount is appended to
    `CONTAINER_BUILD_CACHE_ARGS` by the prefetch step itself.
 3. **Resource limits** -- GHA runners have 4 vCPUs and 16 GB RAM, which is
@@ -247,11 +243,9 @@ Changes to `.github/workflows/build-notebooks-TEMPLATE.yaml`:
 
 - **Prefetch step** added before the build, gated by the existence of a
   `prefetch-input/` directory in the target component (not hardcoded to
-  codeserver). Runs `prefetch-all.sh` and optionally `post-prefetch.sh`.
+  codeserver). Runs `prefetch-all.sh`.
 - **Submodule checkout** (`submodules: recursive`) enabled for all targets.
   Git LFS is enabled only for codeserver (`lfs: contains(inputs.target, 'codeserver')`).
-- **Disk management** -- `post-prefetch.sh` relocates prefetched data from
-  the root partition to the LVM-backed build volume and symlinks it back.
 - **Resource limits** -- `--build-arg GHA_BUILD=true` for codeserver targets.
   Inside the build, `apply-patch.sh` calls `patches/tweak-gha.sh` to reduce
   VS Code build parallelism for the runner's 16 GB RAM.
