@@ -8,9 +8,13 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
+import unittest.mock
 from typing import Literal
+
+from scripts.buildinputs_runner import buildinputs
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent.parent.resolve()
 MAKE = shutil.which("gmake") or shutil.which("make") or "make"
@@ -156,25 +160,19 @@ def should_build_target(changed_files: list[str], target_directory: str) -> str:
     # detect change in any of the files outside
     dockerfiles = find_dockerfiles(target_directory)
     for dockerfile in dockerfiles:
-        stdout = subprocess.check_output(
-            args=[
-                PROJECT_ROOT / "bin/buildinputs",
-                *["-build-arg=BASE_IMAGE=fake-image"],
-                target_directory + "/" + dockerfile,
-            ],
-            env={
-                "TARGETPLATFORM": f"linux/{get_go_arch()}",
-                **os.environ,
-            },  # TODO(jdanek): still not ideal for qemu-user
-            text=True,
-            cwd=PROJECT_ROOT,
+        dependencies = _resolve_symlinks(
+            [
+                str(path)
+                for path in buildinputs(
+                    target_directory + "/" + dockerfile,
+                    platform=f"linux/{get_go_arch()}",
+                    build_args={"BASE_IMAGE": "fake-image"},
+                )
+            ]
         )
-        logging.debug(f"{target_directory=} {dockerfile=} {stdout=}")
-        if stdout == "\n":
-            # no dependencies
+        logging.debug(f"{target_directory=} {dockerfile=} {dependencies=}")
+        if not dependencies:
             continue
-        dependencies: list[str] = json.loads(stdout)
-        dependencies = _resolve_symlinks(dependencies)
         for dependency in dependencies:
             for changed_file in changed_files:
                 if _is_file_in_directory(changed_file, dependency):
@@ -236,7 +234,18 @@ class TestSelf(unittest.TestCase):
         assert dockerfile == "jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.rocm"
 
     def test_should_build_target(self):
-        assert "" == should_build_target(["README.md"], "jupyter/datascience/ubi9-python-3.12")
+        current_module = sys.modules[__name__]
+        with unittest.mock.patch.object(current_module, "buildinputs", return_value=[]):
+            assert "" == should_build_target(["README.md"], "jupyter/datascience/ubi9-python-3.12")
+
+    def test_should_build_target_dependency_change(self):
+        fake_return = [pathlib.Path("jupyter/datascience/ubi9-python-3.12/helper.txt")]
+        current_module = sys.modules[__name__]
+        with unittest.mock.patch.object(current_module, "buildinputs", return_value=fake_return):
+            assert should_build_target(
+                ["jupyter/datascience/ubi9-python-3.12/helper.txt"],
+                "jupyter/datascience/ubi9-python-3.12",
+            ) == "jupyter/datascience/ubi9-python-3.12/helper.txt"
 
     def test_resolve_symlinks_no_symlinks(self):
         """No symlinks in input paths -> returned unchanged."""

@@ -2,10 +2,8 @@
 
 import argparse
 import glob
-import json
 import os
 import pathlib
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -14,9 +12,9 @@ from typing import cast, Literal
 import structlog
 
 from ci.logging_config import configure_logging
+from scripts.buildinputs_runner import buildinputs
 
 ROOT_DIR = pathlib.Path(__file__).parent.parent
-MAKE = shutil.which("gmake") or shutil.which("make")
 
 log = structlog.get_logger()
 
@@ -73,25 +71,6 @@ def extract_build_args(remaining: list[str]) -> dict[str, str]:
         key, value = arg.split("=", 1)
         build_args[key] = value
     return build_args
-
-
-def buildinputs(
-        dockerfile: pathlib.Path | str,
-        platform: Literal["linux/amd64", "linux/arm64", "linux/s390x", "linux/ppc64le"] = "linux/amd64",
-        build_args: dict[str, str] | None = None
-) -> list[pathlib.Path]:
-    if not (ROOT_DIR / "bin/buildinputs").exists():
-        subprocess.check_call([MAKE, "bin/buildinputs"], cwd=ROOT_DIR)
-    if not build_args:
-        build_args = {}
-    stdout = subprocess.check_output([ROOT_DIR / "bin/buildinputs",
-                                      *[f"-build-arg={k}={v}" for k, v in build_args.items()],
-                                      str(dockerfile)],
-                                     text=True, cwd=ROOT_DIR,
-                                     env={**os.environ, "TARGETPLATFORM": platform})
-    prereqs = list(dict.fromkeys(pathlib.Path(file) for file in json.loads(stdout)))
-    print(f"{prereqs=}")
-    return prereqs
 
 
 def _load_dockerignore(root: pathlib.Path) -> list[str]:
