@@ -81,6 +81,7 @@ jobs:
           set -euo pipefail
 
           workdir="$(mktemp -d)"
+          chmod a+rx "${workdir}"
           trap 'rm -rf "${workdir}"' EXIT
 
           cat > "${workdir}/Dockerfile" <<'EOF'
