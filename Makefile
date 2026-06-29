@@ -171,8 +171,11 @@ endef
 
 # https://stackoverflow.com/questions/78899903/how-to-create-a-make-target-which-is-an-implicit-dependency-for-all-other-target
 skip-init-for := all-images deploy% undeploy% test% validate% refresh-lock-files sync-build-args-from-versions sync-commit-env-files update-imagestream-annotations refresh-imagestream-metadata scan-image-vulnerabilities print-release
+# CI uses the pre-built container image via buildinputs_runner.py instead
+ifneq ($(CI),true)
 ifneq (,$(filter-out $(skip-init-for),$(MAKECMDGOALS) $(.DEFAULT_GOAL)))
 $(SELF): bin/buildinputs
+endif
 endif
 
 bin/buildinputs: scripts/buildinputs/buildinputs.go scripts/buildinputs/go.mod scripts/buildinputs/go.sum
