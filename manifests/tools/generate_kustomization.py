@@ -64,9 +64,10 @@ class Workbench:
 
 @dataclass
 class Runtime:
-    """A runtime image: single tag (N), params replacement only."""
+    """A runtime image: single tag, params replacement only."""
 
-    param_key: str
+    base_key: str
+    suffix: str
     imagestream: str
     resource_file: str
 
@@ -191,7 +192,7 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
 
         if full_key.startswith("odh-pipeline-runtime-"):
             res_file = _find_resource_file(all_resources, istream, imagestream_to_resource)
-            runtimes.append(Runtime(base_key, istream, res_file))
+            runtimes.append(Runtime(base_key, suffix, istream, res_file))
             if res_file not in runtime_resource_files:
                 runtime_resource_files.append(res_file)
         else:
@@ -336,9 +337,9 @@ def _workbench_commit_replacements(wb: Workbench) -> list[str]:
 
 
 def _runtime_params_replacement(rt: Runtime) -> str:
-    """Single image-params replacement for a runtime (N only)."""
+    """Single image-params replacement for a runtime."""
     return _replacement_block(
-        f"{rt.param_key}-n",
+        f"{rt.base_key}{rt.suffix}",
         "notebook-image-params",
         "spec.tags.0.from.name",
         rt.imagestream,
@@ -362,7 +363,7 @@ def generate(base_dir: Path) -> str:
     for wb in workbenches:
         replacement_blocks.extend(_workbench_commit_replacements(wb))
 
-    # 3) Runtime image-params (N only) for all runtimes
+    # 3) Runtime image-params for all runtimes
     for rt in runtimes:
         replacement_blocks.append(_runtime_params_replacement(rt))
 
