@@ -1,0 +1,61 @@
+# [cite_start]Use Node 22 as base, matching your log's version [cite: 60]
+FROM node:22-bookworm
+
+# Install build dependencies required by node-gyp
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    curl \
+    xz-utils
+
+# Define Zig version and architecture
+ARG ZIG_VERSION=0.15.2
+ARG ARCH=aarch64
+
+# Download and extract Zig
+# URL format: https://ziglang.org/download/<version>/zig-<arch>-<os>-<version>.tar.xz
+RUN curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-${ARCH}-linux-${ZIG_VERSION}.tar.xz" -o zig.tar.xz && \
+    tar -xf zig.tar.xz -C /usr/local/bin --strip-components=1 && \
+    rm zig.tar.xz
+
+# Verify installation
+RUN zig version
+
+# Set the Problematic Environment Variables
+# The failure is caused specifically by the '.2.34' suffix in the target triple
+# [cite_start]which recent Zig versions reject[cite: 90].
+ENV CC="zig cc -target s390x-linux-gnu.2.34"
+ENV CXX="zig c++ -target s390x-linux-gnu.2.34"
+
+# Setup a minimal project
+WORKDIR /app
+
+# We manually create a package.json forcing the installation of the package
+# [cite_start]that failed in your logs (@vscode/deviceid)[cite: 87].
+RUN echo '{ \
+  "name": "repro-build-failure", \
+  "version": "1.0.0", \
+  "dependencies": { \
+    "@vscode/deviceid": "latest" \
+  } \
+}' > package.json
+
+RUN zig version
+RUN sh -c 'cat > hello.c' <<EOF
+#include <stdio.h>
+int main() {
+    printf("Hello, World!\\n");
+    return 0;
+}
+EOF
+RUN zig cc -target s390x-linux-gnu.2.34 -c hello.c
+RUN mkdir -p Release/obj.target/
+RUN zig c++ -target s390x-linux-gnu -o Release/obj.target/windows.node -shared -pthread -rdynamic -m64 -march=z196 -Wl,-soname=windows.node -Wl,--start-group -Wl,--end-group
+#RUN #/usr/local/sbin/zig cc -target s390x-linux-gnu.2.34 -dM -E -x c /dev/null
+
+RUN zig c++ -target s390x-linux-gnu -o Release/obj.target/windows.node -shared -pthread -rdynamic -m64 -march=z196 -Wl,-soname=windows.node -Wl,--start-group -Wl,--end-group
+
+# Run the failing compilation
+# This should fail with: "zig: error: version '.2.34' in target triple ... is invalid"
+RUN npm    install --verbose # || cat /root/.npm/_logs/*.log
