@@ -9,7 +9,6 @@ import shutil
 import subprocess
 from typing import Literal
 
-
 ROOT_DIR = pathlib.Path(__file__).parent.parent.resolve()
 MAKE = shutil.which("gmake") or shutil.which("make")
 
@@ -27,7 +26,7 @@ def _repository_slug() -> str:
             cwd=ROOT_DIR,
             text=True,
         ).strip()
-    except (FileNotFoundError, subprocess.CalledProcessError):
+    except FileNotFoundError, subprocess.CalledProcessError:
         return "opendatahub-io/notebooks"
 
     if match := re.search(r"[:/]([^/]+/[^/]+?)(?:\.git)?$", origin):
@@ -83,26 +82,29 @@ def containarized_buildinputs(
     stdout = subprocess.check_output(command, text=True, cwd=ROOT_DIR)
     return stdout
 
+
 def local_buildinputs(
     dockerfile: pathlib.Path | str,
     platform: Literal["linux/amd64", "linux/arm64", "linux/s390x", "linux/ppc64le"] = "linux/amd64",
-    build_args: dict[str, str] | None = None
+    build_args: dict[str, str] | None = None,
 ) -> str:
     if not (ROOT_DIR / "bin/buildinputs").exists():
         subprocess.check_call([MAKE, "bin/buildinputs"], cwd=ROOT_DIR)
     if not build_args:
         build_args = {}
-    stdout = subprocess.check_output([ROOT_DIR / "bin/buildinputs",
-                                      *[f"-build-arg={k}={v}" for k, v in build_args.items()],
-                                      str(dockerfile)],
-                                     text=True, cwd=ROOT_DIR,
-                                     env={**os.environ, "TARGETPLATFORM": platform})
+    stdout = subprocess.check_output(
+        [ROOT_DIR / "bin/buildinputs", *[f"-build-arg={k}={v}" for k, v in build_args.items()], str(dockerfile)],
+        text=True,
+        cwd=ROOT_DIR,
+        env={**os.environ, "TARGETPLATFORM": platform},
+    )
     return stdout
+
 
 def buildinputs(
     dockerfile: pathlib.Path | str,
     platform: Literal["linux/amd64", "linux/arm64", "linux/s390x", "linux/ppc64le"] = "linux/amd64",
-    build_args: dict[str, str] | None = None
+    build_args: dict[str, str] | None = None,
 ) -> list[pathlib.Path]:
 
     if "CI" in os.environ and os.environ["CI"] == "true":

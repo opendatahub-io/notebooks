@@ -1,6 +1,5 @@
 import fnmatch
 import functools
-import json
 import logging
 import os
 import pathlib
@@ -12,9 +11,9 @@ import sys
 import tempfile
 import unittest
 import unittest.mock
-from typing import Literal
+from typing import Literal, cast
 
-from scripts.buildinputs_runner import buildinputs
+from scripts.buildinputs_runner import Platform, buildinputs
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent.parent.resolve()
 MAKE = shutil.which("gmake") or shutil.which("make") or "make"
@@ -165,7 +164,7 @@ def should_build_target(changed_files: list[str], target_directory: str) -> str:
                 str(path)
                 for path in buildinputs(
                     target_directory + "/" + dockerfile,
-                    platform=f"linux/{get_go_arch()}",
+                    platform=cast("Platform", f"linux/{get_go_arch()}"),
                     build_args={"BASE_IMAGE": "fake-image"},
                 )
             ]
@@ -242,10 +241,13 @@ class TestSelf(unittest.TestCase):
         fake_return = [pathlib.Path("jupyter/datascience/ubi9-python-3.12/helper.txt")]
         current_module = sys.modules[__name__]
         with unittest.mock.patch.object(current_module, "buildinputs", return_value=fake_return):
-            assert should_build_target(
-                ["jupyter/datascience/ubi9-python-3.12/helper.txt"],
-                "jupyter/datascience/ubi9-python-3.12",
-            ) == "jupyter/datascience/ubi9-python-3.12/helper.txt"
+            assert (
+                should_build_target(
+                    ["jupyter/datascience/ubi9-python-3.12/helper.txt"],
+                    "jupyter/datascience/ubi9-python-3.12",
+                )
+                == "jupyter/datascience/ubi9-python-3.12/helper.txt"
+            )
 
     def test_resolve_symlinks_no_symlinks(self):
         """No symlinks in input paths -> returned unchanged."""
