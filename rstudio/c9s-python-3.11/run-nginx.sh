@@ -18,7 +18,23 @@ fi
 if [ -z "$NB_PREFIX" ]; then
     cp /opt/app-root/etc/nginx.default.d/proxy.conf.template /opt/app-root/etc/nginx.default.d/proxy.conf
 else
-    export BASE_URL=$(echo $NB_PREFIX | awk -F/ '{ print $4"-"$3 }')$(echo $NOTEBOOK_ARGS | grep -Po 'hub_host":"\K.*?(?=")' | awk -F/ '{ print $3 }' | awk -F. '{for (i=2; i<=NF; i++) printf ".%s", $i}')
+    nb_prefix_part=$(echo "$NB_PREFIX" | awk -F/ '{
+        n = 0
+        for (i = 1; i <= NF; i++) if ($i != "") seg[++n] = $i
+        if (n >= 2) print seg[n] "-" seg[n - 1]
+    }')
+    if [ -z "$nb_prefix_part" ] || [[ "$nb_prefix_part" != *-* ]] \
+        || [ -z "${nb_prefix_part%%-*}" ] || [ -z "${nb_prefix_part#*-}" ]; then
+        nb_prefix_part=""
+    fi
+    hub_host_suffix=$(echo "$NOTEBOOK_ARGS" | grep -Po 'hub_host":"\K.*?(?=")' | awk -F/ '{ print $3 }' | awk -F. '{for (i=2; i<=NF; i++) printf ".%s", $i}')
+    BASE_URL="${nb_prefix_part}${hub_host_suffix}"
+
+    if [ -z "$BASE_URL" ] || [ "$BASE_URL" = "$nb_prefix_part" ]; then
+        export BASE_URL=""
+    else
+        export BASE_URL
+    fi
     envsubst '${NB_PREFIX},${BASE_URL}' < /opt/app-root/etc/nginx.default.d/proxy.conf.template_nbprefix > /opt/app-root/etc/nginx.default.d/proxy.conf
 
     # A temp file is used because piping envsubst directly into the same file via `tee`
