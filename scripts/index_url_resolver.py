@@ -103,27 +103,9 @@ def build_rhoai_index_url(*, release: str, accelerator: str) -> str:
     return f"{RHOAI_INDEX_ROOT}/{release}/{accelerator}-ubi9/simple/"
 
 
-# ROCm workbench locks stay on EA2 rocm7.1 until tensorflow_rocm lands on rocm7.14,
-# but pandoc-rhai wheels are published on the stable rocm7.14 production index.
-PANDOC_ROCM_ACCELERATOR = "rocm7.14"
-
-
 def stable_rhoai_release(release: str) -> str:
-    """Drop EA suffix so pandoc resolves from stable 3.5 profiles, not 3.5-EA2."""
+    """Drop EA suffix when resolving ROCm indexes from stable 3.5 profiles."""
     return release.split("-EA", maxsplit=1)[0]
-
-
-def resolve_pandoc_index_url(resolved: ResolvedIndexConfig) -> str:
-    """RHAI index URL for pandoc-rhai (may differ from the lock default index)."""
-    if resolved.accelerator.startswith("rocm"):
-        return build_rhoai_index_url(
-            release=stable_rhoai_release(resolved.release),
-            accelerator=PANDOC_ROCM_ACCELERATOR,
-        )
-    return build_rhoai_index_url(
-        release=stable_rhoai_release(resolved.release),
-        accelerator=resolved.accelerator,
-    )
 
 
 def build_rhoai_test_index_url(*, release: str, accelerator: str) -> str:
@@ -195,16 +177,31 @@ def resolve_index_config(
     accelerator = parse_accelerator(match.group("image"), conf_file)
     release = parse_release(match.group("tag"), conf_file)
     flavor = resolve_flavor(conf_file, entries)
-    production_url, test_url = index_url_candidates(release=release, accelerator=accelerator)
+    release_candidates = [release]
+    if accelerator.startswith("rocm"):
+        stable = stable_rhoai_release(release)
+        if stable != release:
+            release_candidates.insert(0, stable)
 
-    if index_url_exists(production_url):
-        selected_index_url = production_url
-    elif index_url_exists(test_url):
-        selected_index_url = test_url
-    else:
+    selected_index_url: str | None = None
+    checked_urls: list[str] = []
+    for release_candidate in release_candidates:
+        production_url, test_url = index_url_candidates(
+            release=release_candidate,
+            accelerator=accelerator,
+        )
+        for candidate_url in (production_url, test_url):
+            checked_urls.append(candidate_url)
+            if index_url_exists(candidate_url):
+                selected_index_url = candidate_url
+                break
+        if selected_index_url is not None:
+            break
+
+    if selected_index_url is None:
         raise IndexResolutionError(
-            f"Neither production nor -test RH index is available for {conf_file}: "
-            f"{production_url} / {test_url}"
+            f"No production or -test RH index is available for {conf_file}: "
+            + " / ".join(checked_urls)
         )
 
     return ResolvedIndexConfig(
