@@ -68,29 +68,34 @@ class TestMakefile:
     def test_makefile__build_image__konflux(self):
         import ntb  # noqa: PLC0415 `import` should be at the top-level of a file
 
+        minimal_image_dir = "jupyter/minimal/ubi9-python-3.12/"
+
         konflux_default = dry_run_makefile(target=self.MINIMAL_IMAGE, makefile_dir=PROJECT_ROOT)
         konflux_yes = dry_run_makefile(target=self.MINIMAL_IMAGE, makefile_dir=PROJECT_ROOT, env={"KONFLUX": "yes"})
 
         ntb.assert_subdict(
             {
                 "VARIANT": "cpu",
-                "DOCKERFILE_NAME": "Dockerfile.cpu",
-                "CONF_FILE": "jupyter/minimal/ubi9-python-3.12/build-args/cpu.conf",
+                "DOCKERFILE_NAME": "Dockerfile.konflux.cpu",
+                "CONF_FILE": (minimal_image_dir + "build-args/cpu.conf"),
             },
             _extract_assignments(konflux_default),
         )
+        assert f"--file '{minimal_image_dir + 'Dockerfile.konflux.cpu'}'" in konflux_default
+        assert f"with {minimal_image_dir + 'build-args/cpu.conf'}" in konflux_default
+        assert "--build-arg 'PRODUCT=odh'" in konflux_default
 
         ntb.assert_subdict(
             {
                 "VARIANT": "cpu",
                 "DOCKERFILE_NAME": "Dockerfile.konflux.cpu",
-                "CONF_FILE": "jupyter/minimal/ubi9-python-3.12/build-args/konflux.cpu.conf",
+                "CONF_FILE": (minimal_image_dir + "build-args/konflux.cpu.conf"),
             },
             _extract_assignments(konflux_yes),
         )
-
-        assert "--file 'jupyter/minimal/ubi9-python-3.12/Dockerfile.cpu'" in konflux_default
-        assert "--file 'jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu'" in konflux_yes
+        assert f"--file '{minimal_image_dir + 'Dockerfile.konflux.cpu'}'" in konflux_yes
+        assert f"with {minimal_image_dir + 'build-args/konflux.cpu.conf'}" in konflux_yes
+        assert "--build-arg 'PRODUCT=rhoai'" in konflux_yes
 
 
 def _extract_assignments(makefile_output: str) -> dict[str, str]:

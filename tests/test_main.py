@@ -494,13 +494,11 @@ def test_files_that_should_be_same_are_same(subtests: pytest_subtests.plugin.Sub
 
 @allure.issue("RHOAIENG-42632")
 def test_rhds_pipelines_use_rhds_args(subtests: pytest_subtests.plugin.SubTests):
-    r"""Pipelines under .tekton/ that build `^Dockerfile\.konflux.*` dockerfiles have to use
-    `^konflux\..*` args files. For example, this would be a violation of the rule:
+    r"""RHDS pipelines (output-image under quay.io/rhoai/) must pair Dockerfile.konflux.*
+    with konflux.* build-args conf files.
 
-    - name: dockerfile
-      value: jupyter/rocm/tensorflow/ubi9-python-3.12/Dockerfile.konflux.rocm
-    - name: build-args-file
-      value: jupyter/rocm/tensorflow/ubi9-python-3.12/build-args/rocm.conf
+    ODH pipelines publish to quay.io/opendatahub/ and use build-args/<variant>.conf even
+    when building Dockerfile.konflux.* — that pairing is valid and not checked here.
     """
     for file in PROJECT_ROOT.glob(".tekton/*.yaml"):
         with subtests.test(msg="checking tekton pipeline", pipeline=file):
@@ -521,19 +519,27 @@ def test_rhds_pipelines_use_rhds_args(subtests: pytest_subtests.plugin.SubTests)
 
             dockerfile_param = None
             build_args_file_param = None
+            output_image_param = None
 
             for param in pipeline["spec"]["params"]:
                 if param["name"] == "dockerfile":
                     dockerfile_param = pathlib.Path(param["value"])
                 if param["name"] == "build-args-file":
                     build_args_file_param = pathlib.Path(param["value"])
+                if param["name"] == "output-image":
+                    output_image_param = param["value"]
+
+            if not output_image_param or not str(output_image_param).startswith("quay.io/rhoai/"):
+                continue
 
             assert dockerfile_param is not None, (
                 f"Pipeline {file.relative_to(PROJECT_ROOT)} is missing the required 'dockerfile' parameter"
             )
 
-            if not dockerfile_param.name.startswith("Dockerfile.konflux"):
-                continue
+            assert dockerfile_param.name.startswith("Dockerfile.konflux"), (
+                f"Pipeline {file.relative_to(PROJECT_ROOT)} publishes to quay.io/rhoai/ "
+                f"but does not use a Dockerfile.konflux.* ({dockerfile_param.name})"
+            )
 
             assert build_args_file_param is not None, (
                 f"Pipeline {file.relative_to(PROJECT_ROOT)} builds a konflux Dockerfile ({dockerfile_param.name}) "

@@ -25,7 +25,7 @@ spec:
   - name: output-image
     value: quay.io/opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9:odh-stable
   - name: dockerfile
-    value: jupyter/pytorch+llmcompressor/ubi9-python-3.12/Dockerfile.cuda
+    value: jupyter/pytorch+llmcompressor/ubi9-python-3.12/Dockerfile.konflux.cuda
   - name: build-args-file
     value: jupyter/pytorch+llmcompressor/ubi9-python-3.12/build-args/cuda.conf
   - name: path-context

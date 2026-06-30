@@ -27,7 +27,7 @@ spec:
   - name: output-image
     value: quay.io/opendatahub/odh-pipeline-runtime-pytorch-cuda-py312-ubi9:odh-stable
   - name: dockerfile
-    value: runtimes/pytorch/ubi9-python-3.12/Dockerfile.cuda
+    value: runtimes/pytorch/ubi9-python-3.12/Dockerfile.konflux.cuda
   - name: build-args-file
     value: runtimes/pytorch/ubi9-python-3.12/build-args/cuda.conf
   - name: path-context

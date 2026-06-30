@@ -232,7 +232,7 @@ class TestSelf(unittest.TestCase):
 
     def test_get_build_dockerfile(self):
         dockerfile = get_build_dockerfile("rocm-jupyter-pytorch-ubi9-python-3.12")
-        assert dockerfile == "jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.rocm"
+        assert dockerfile == "jupyter/rocm/pytorch/ubi9-python-3.12/Dockerfile.konflux.rocm"
 
     def test_should_build_target(self):
         current_module = sys.modules[__name__]

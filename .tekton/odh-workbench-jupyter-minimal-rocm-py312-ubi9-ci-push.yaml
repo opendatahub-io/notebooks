@@ -27,7 +27,7 @@ spec:
   - name: output-image
     value: quay.io/opendatahub/odh-workbench-jupyter-minimal-rocm-py312-ubi9:odh-stable
   - name: dockerfile
-    value: jupyter/minimal/ubi9-python-3.12/Dockerfile.rocm
+    value: jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.rocm
   - name: build-args-file
     value: jupyter/minimal/ubi9-python-3.12/build-args/rocm.conf
   - name: path-context

@@ -61,7 +61,7 @@ from tests.manifests import (  # noqa: E402
 logger = logging.getLogger(__name__)
 
 # Force accelerator flavor when resolving ImageStream paths. ``extract_metadata_from_path`` may
-# infer "cuda" from Dockerfile.cuda even for the CPU ImageStream (same tree builds both).
+# infer "cuda" from Dockerfile.konflux.cuda even for the CPU ImageStream (same tree builds both).
 _ACCELERATOR_OVERRIDE_FOR_RESOURCE: dict[str, str | None] = {
     "jupyter-minimal-notebook-imagestream.yaml": None,
     "jupyter-minimal-gpu-notebook-imagestream.yaml": "cuda",

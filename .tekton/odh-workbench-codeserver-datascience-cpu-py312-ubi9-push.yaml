@@ -36,7 +36,7 @@ spec:
   - name: output-image
     value: quay.io/opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9:{{revision}}
   - name: dockerfile
-    value: codeserver/ubi9-python-3.12/Dockerfile.cpu
+    value: codeserver/ubi9-python-3.12/Dockerfile.konflux.cpu
   - name: build-args-file
     value: codeserver/ubi9-python-3.12/build-args/cpu.conf
   - name: hermetic

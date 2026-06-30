@@ -31,7 +31,7 @@ spec:
     value:
     - linux-d160-m4xlarge/amd64
   - name: dockerfile
-    value: runtimes/pytorch/ubi9-python-3.12/Dockerfile.cuda
+    value: runtimes/pytorch/ubi9-python-3.12/Dockerfile.konflux.cuda
   - name: build-args-file
     value: runtimes/pytorch/ubi9-python-3.12/build-args/cuda.conf
   - name: path-context

@@ -31,7 +31,7 @@ spec:
     value:
     - linux-d160-m4xlarge/amd64
   - name: dockerfile
-    value: runtimes/rocm-tensorflow/ubi9-python-3.12/Dockerfile.rocm
+    value: runtimes/rocm-tensorflow/ubi9-python-3.12/Dockerfile.konflux.rocm
   - name: build-args-file
     value: runtimes/rocm-tensorflow/ubi9-python-3.12/build-args/rocm.conf
   - name: path-context
