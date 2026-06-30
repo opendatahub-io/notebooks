@@ -137,10 +137,10 @@ def get_build_dockerfile(make_target: str, env: dict[str, str] | None = None) ->
 
 
 def find_dockerfiles(directory: str) -> list:
-    """Finds and returns a list of files matching the pattern 'Dockerfile*' in the specified directory."""
+    """Finds and returns Dockerfile.konflux.* files in the specified directory."""
     matching_files = []
     for filename in os.listdir(directory):
-        if fnmatch.fnmatch(filename, "Dockerfile*") and filename != "Dockerfile.konflux":
+        if fnmatch.fnmatch(filename, "Dockerfile.konflux.*"):
             matching_files.append(filename)
     return matching_files
 
@@ -257,23 +257,6 @@ class TestSelf(unittest.TestCase):
 
     def test_resolve_symlinks_empty(self):
         assert _resolve_symlinks([]) == []
-
-    def test_resolve_symlinks_expands_target(self):
-        """Editing a symlink target adds the symlink path."""
-        result = _resolve_symlinks(["jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu"])
-        assert "jupyter/minimal/ubi9-python-3.12/Dockerfile.cpu" in result
-        assert "jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu" in result
-
-    def test_resolve_symlinks_pointer_change(self):
-        """Editing the symlink itself needs no expansion — already in list."""
-        result = _resolve_symlinks(["jupyter/minimal/ubi9-python-3.12/Dockerfile.cpu"])
-        assert result == ["jupyter/minimal/ubi9-python-3.12/Dockerfile.cpu"]
-
-    def test_should_build_with_symlinked_dockerfile_target_change(self):
-        """Changing Dockerfile.konflux.cpu triggers build for target using Dockerfile.cpu."""
-        changed = _resolve_symlinks(["jupyter/minimal/ubi9-python-3.12/Dockerfile.konflux.cpu"])
-        result = should_build_target(changed, "jupyter/minimal/ubi9-python-3.12")
-        assert result
 
     def test_resolve_symlinks_preserves_suffix_for_directory_symlink(self):
         """When real_dir/sub/file changes and link_dir → real_dir, we should

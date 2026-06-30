@@ -7,7 +7,7 @@ directories using either internal Red Hat wheel indexes or the public PyPI index
 
 Features:
   - Supports multiple Python project directories, detected by pyproject.toml.
-  - Detects available Dockerfile flavors (CPU, CUDA, ROCm) for rh-index mode.
+  - Detects available Dockerfile.konflux.* flavors (CPU, CUDA, ROCm) for rh-index mode.
   - Validates Python version extracted from directory name (expects format .../ubi9-python-X.Y).
   - Generates per-flavor locks in 'uv.lock.d/' for rh-index mode.
   - Overwrites existing pylock.toml in-place for public PyPI index mode.
@@ -232,8 +232,8 @@ def find_target_dirs(target_dir: Path | None, log: LogBuffer) -> list[Path]:
 
 
 def detect_flavors(project_dir: Path) -> set[str]:
-    """Detect available Dockerfile flavors (cpu, cuda, rocm) in a directory."""
-    return {f for f in FLAVORS if (project_dir / f"Dockerfile.{f}").is_file()}
+    """Detect available Dockerfile.konflux.* flavors (cpu, cuda, rocm) in a directory."""
+    return {f for f in FLAVORS if (project_dir / f"Dockerfile.konflux.{f}").is_file()}
 
 
 def extract_python_version(project_dir: Path) -> str | None:
@@ -584,7 +584,7 @@ def process_directory(
 
     flavors = detect_flavors(tdir)
     if not flavors:
-        log.warning(f"No Dockerfiles found in {tdir} (cpu/cuda/rocm). Skipping.")
+        log.warning(f"No Dockerfile.konflux.* files found in {tdir} (cpu/cuda/rocm). Skipping.")
         return tdir, False, log
 
     log.print(f"📦 Python version: {python_version}")

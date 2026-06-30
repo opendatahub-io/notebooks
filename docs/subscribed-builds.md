@@ -8,7 +8,7 @@ This guide explains how to set up the subscription for local builds. The CI work
 (`.github/workflows/build-notebooks-TEMPLATE.yaml`, lines 127-148) does the same thing
 automatically using GitHub secrets.
 
-In this guide, `KONFLUX=yes` means "use the downstream RHOAI/AIPCC product variant."
+In this guide, `PRODUCT=rhoai` means "use the downstream RHOAI/AIPCC product variant."
 It does not mean "run only on Konflux." Both ODH and RHOAI variants are built on Konflux
 in CI. For the ODH vs RHOAI variant split and local testing gotchas, see
 [CONTRIBUTING.md](../CONTRIBUTING.md).
@@ -124,7 +124,7 @@ The Makefile does **not** pass `--no-cache` by default, so if you had prior fail
 the podman command directly with `--no-cache` first, then switch to the Makefile:
 
 ```bash
-make runtime-minimal-ubi9-python-3.12 KONFLUX=yes
+make runtime-minimal-ubi9-python-3.12 PRODUCT=rhoai
 ```
 
 ## Cleanup
@@ -175,7 +175,7 @@ Each image directory has `build-args/` configs:
 
 | Config file | Base image source | Dockerfile |
 |---|---|---|
-| `cpu.conf` / `cuda.conf` | ODH CentOS Stream | `Dockerfile.cpu` / `Dockerfile.cuda` |
+| `cpu.conf` / `cuda.conf` | ODH CentOS Stream | `Dockerfile.konflux.cpu` / `Dockerfile.konflux.cuda` |
 | `konflux.cpu.conf` / `konflux.cuda.conf` | AIPCC RHEL (needs subscription) | `Dockerfile.konflux.cpu` / `Dockerfile.konflux.cuda` |
 | `konflux.rocm.conf` | AIPCC RHEL (needs subscription) | `Dockerfile.konflux.rocm` |
 
@@ -186,7 +186,7 @@ The CI workflow (`.github/workflows/build-notebooks-TEMPLATE.yaml`) follows the 
 1. Runs `subscription-manager register` inside a UBI9 container ("Add subscriptions from GitHub secret" step)
 2. Writes `mounts.conf` (same step)
 3. Copies pull-secret for quay.io/aipcc access (same step)
-4. Builds with `KONFLUX=yes` ("Build: make" step)
+4. Builds with `PRODUCT=rhoai` ("Build: make" step)
 
 The `build-notebooks-pr-aipcc.yaml` workflow triggers these downstream-variant builds for PRs
-with `subscription: true` and `konflux: true`.
+with `subscription: true` and `product: rhoai`.

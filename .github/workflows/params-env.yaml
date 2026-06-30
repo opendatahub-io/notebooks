@@ -32,10 +32,10 @@ jobs:
         include:
           - variant: odh
             packages: skopeo jq
-            konflux: ''
+            product: odh
           - variant: rhoai
             packages: skopeo jq git-crypt
-            konflux: 'yes'
+            product: rhoai
     name: validation-of-params-env-${{ matrix.variant }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
@@ -73,4 +73,4 @@ jobs:
         run: |
           bash ./ci/check-params-env.sh
         env:
-          KONFLUX: ${{ matrix.konflux }}
+          PRODUCT: ${{ matrix.product }}

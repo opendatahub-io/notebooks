@@ -31,8 +31,11 @@ CONTAINER_BUILD_SECURITY_ARGS ?= $(if $(filter podman,$(CONTAINER_ENGINE)),--sec
 PUSH_IMAGES ?= yes
 # INDEX_MODE: auto (default), public-index, or rh-index - controls lock file generation
 INDEX_MODE ?= auto
-# KONFLUX: select RHOAI build-args (konflux.*.conf) vs ODH (default: no)
-KONFLUX ?= no
+# PRODUCT: select ODH (odh) vs RHOAI (rhoai) build-args conf files
+PRODUCT ?= odh
+ifneq ($(filter odh rhoai,$(PRODUCT)),$(PRODUCT))
+$(error PRODUCT must be 'odh' or 'rhoai', got '$(PRODUCT)')
+endif
 
 
 # OS dependant: Generate date, select appropriate cmd to locate container engine
@@ -153,7 +156,7 @@ define image
 	$(eval DOCKERFILE := $(BUILD_DIRECTORY)/Dockerfile.konflux.$(VARIANT))
 	$(if $(wildcard $(DOCKERFILE)),,$(error Dockerfile not found for variant '$(VARIANT)' in '$(BUILD_DIRECTORY)'))
 
-	$(eval CONF_FILE := $(BUILD_DIRECTORY)/build-args/$(if $(KONFLUX:no=),konflux.,$(empty))$(shell echo $(VARIANT)).conf)
+	$(eval CONF_FILE := $(BUILD_DIRECTORY)/build-args/$(if $(filter rhoai,$(PRODUCT)),konflux.,)$(shell echo $(VARIANT)).conf)
 	$(info #*# Image build Dockerfile: <$(DOCKERFILE)> #(MACHINE-PARSED LINE)#*#...)
 	$(info #*# Image build directory: <$(BUILD_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
 
@@ -529,7 +532,6 @@ validate-renovate-config:
 test:
 	@echo "Running quick static tests"
 	uv run pytest -m 'not buildonlytest'
-	@./scripts/check_dockerfile_alignment.sh
 
 .PHONY: check-actions
 check-actions:

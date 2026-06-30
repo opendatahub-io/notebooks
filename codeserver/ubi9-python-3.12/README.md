@@ -151,7 +151,7 @@ If you prefer to run `podman build` directly instead of `make`:
 
 ```bash
 podman build \
-    -f codeserver/ubi9-python-3.12/Dockerfile.cpu \
+    -f codeserver/ubi9-python-3.12/Dockerfile.konflux.cpu \
     --platform linux/amd64 \
     -t codeserver-test \
     --build-arg BASE_IMAGE=quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest \
@@ -218,8 +218,8 @@ mechanism:
    which lockfiles to process.
 2. The `prefetch-dependencies` Tekton task runs before the build, downloading
    all dependencies into `/cachi2/output/deps/`.
-3. The build uses `Dockerfile.konflux.cpu` (not `Dockerfile.cpu`) which is
-   tailored for the Konflux environment.
+3. The build uses `Dockerfile.konflux.cpu`, which is tailored for hermetic
+   Konflux and local prefetch builds.
 4. Konflux injects cachi2 repos automatically and manages network isolation
    at the pipeline level.
 5. **Resource limits:** The codeserver PipelineRuns set `taskRunSpecs` for the

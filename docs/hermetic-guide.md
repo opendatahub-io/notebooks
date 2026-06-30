@@ -50,7 +50,7 @@ Benefits:
 │                                                                  │
 │  podman build ... -v ./cachi2:/cachi2:z                          │
 │                                                                  │
-│  Dockerfile.cpu:                                                 │
+│  Dockerfile.konflux.cpu:                                           │
 │    dnf install … (from /cachi2/output/deps/rpm/)                 │
 │    npm ci --offline (from /cachi2/output/deps/npm/)              │
 │    uv pip install --no-index (from /cachi2/output/deps/pip/)     │
@@ -60,7 +60,7 @@ Benefits:
 
 ## Build environments
 
-The same `Dockerfile.cpu` works across three environments. The difference is
+The same `Dockerfile.konflux.cpu` works across three environments. The difference is
 how dependencies are prefetched and how resource limits are applied.
 
 | Environment | Prefetch method | Resource limits | Docs |
@@ -156,7 +156,7 @@ everything. The lockfiles must be committed and up-to-date.
 
 ## What changed to make builds hermetic
 
-### Dockerfile.cpu (multi-stage, network-isolated)
+### Dockerfile.konflux.cpu (multi-stage, network-isolated)
 
 The Dockerfile was rewritten from a network-dependent build to a fully offline
 one. Key changes in each stage:

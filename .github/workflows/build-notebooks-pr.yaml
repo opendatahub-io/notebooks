@@ -113,5 +113,5 @@ jobs:
       github: "${{ toJSON(github) }}"
       platform: "${{ matrix.platform }}"
       subscription: ${{ true }}
-      konflux: ${{ true }}
+      product: rhoai
     secrets: inherit

@@ -96,12 +96,7 @@ find_tekton_yaml() {
     [[ -f "$f" ]] || continue
     dockerfile_path=$(yq -r '.spec.params[] | select(.name == "dockerfile") | .value' "$f" 2>/dev/null)
     [[ -n "$dockerfile_path" ]] || continue
-    if [[ "$variant" == "odh" ]]; then
-      if [[ "$dockerfile_path" == "$comp_dir/Dockerfile."* ]] && [[ "$dockerfile_path" != "$comp_dir/Dockerfile.konflux."* ]]; then
-        echo "$f"
-        found=1
-      fi
-    elif [[ "$variant" == "rhds" ]]; then
+    if [[ "$variant" == "odh" ]] || [[ "$variant" == "rhds" ]]; then
       if [[ "$dockerfile_path" == "$comp_dir/Dockerfile.konflux."* ]]; then
         echo "$f"
         found=1

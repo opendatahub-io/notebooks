@@ -70,8 +70,8 @@ class TestMakefile:
 
         minimal_image_dir = "jupyter/minimal/ubi9-python-3.12/"
 
-        konflux_default = dry_run_makefile(target=self.MINIMAL_IMAGE, makefile_dir=PROJECT_ROOT)
-        konflux_yes = dry_run_makefile(target=self.MINIMAL_IMAGE, makefile_dir=PROJECT_ROOT, env={"KONFLUX": "yes"})
+        product_default = dry_run_makefile(target=self.MINIMAL_IMAGE, makefile_dir=PROJECT_ROOT)
+        product_rhoai = dry_run_makefile(target=self.MINIMAL_IMAGE, makefile_dir=PROJECT_ROOT, env={"PRODUCT": "rhoai"})
 
         ntb.assert_subdict(
             {
@@ -79,11 +79,11 @@ class TestMakefile:
                 "DOCKERFILE_NAME": "Dockerfile.konflux.cpu",
                 "CONF_FILE": (minimal_image_dir + "build-args/cpu.conf"),
             },
-            _extract_assignments(konflux_default),
+            _extract_assignments(product_default),
         )
-        assert f"--file '{minimal_image_dir + 'Dockerfile.konflux.cpu'}'" in konflux_default
-        assert f"with {minimal_image_dir + 'build-args/cpu.conf'}" in konflux_default
-        assert "--build-arg 'PRODUCT=odh'" in konflux_default
+        assert f"--file '{minimal_image_dir + 'Dockerfile.konflux.cpu'}'" in product_default
+        assert f"with {minimal_image_dir + 'build-args/cpu.conf'}" in product_default
+        assert "--build-arg 'PRODUCT=odh'" in product_default
 
         ntb.assert_subdict(
             {
@@ -91,11 +91,11 @@ class TestMakefile:
                 "DOCKERFILE_NAME": "Dockerfile.konflux.cpu",
                 "CONF_FILE": (minimal_image_dir + "build-args/konflux.cpu.conf"),
             },
-            _extract_assignments(konflux_yes),
+            _extract_assignments(product_rhoai),
         )
-        assert f"--file '{minimal_image_dir + 'Dockerfile.konflux.cpu'}'" in konflux_yes
-        assert f"with {minimal_image_dir + 'build-args/konflux.cpu.conf'}" in konflux_yes
-        assert "--build-arg 'PRODUCT=rhoai'" in konflux_yes
+        assert f"--file '{minimal_image_dir + 'Dockerfile.konflux.cpu'}'" in product_rhoai
+        assert f"with {minimal_image_dir + 'build-args/konflux.cpu.conf'}" in product_rhoai
+        assert "--build-arg 'PRODUCT=rhoai'" in product_rhoai
 
 
 def _extract_assignments(makefile_output: str) -> dict[str, str]:
