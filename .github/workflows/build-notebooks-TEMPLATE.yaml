@@ -118,15 +118,10 @@ jobs:
           SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
           SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
 
-      # for bin/buildinputs in scripts/sandbox.py
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
-        with:
-          cache-dependency-path: "scripts/buildinputs/go.sum"
-
       - run: sudo apt-get update
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3.7.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -163,6 +158,12 @@ jobs:
         uses: './.github/actions/install-podman-action'
         with:
           platform: ${{ inputs.platform }}
+
+      # After install-podman-action prepends linuxbrew to PATH (which ships go 1.25.1 on arm64).
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
+        with:
+          go-version-file: scripts/buildinputs/go.mod
+          cache-dependency-path: scripts/buildinputs/go.mod
 
       - name: Calculate image name and tag
         id: calculated_vars
