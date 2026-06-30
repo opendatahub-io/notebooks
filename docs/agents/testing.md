@@ -24,7 +24,7 @@ PATH="/opt/homebrew/opt/make/libexec/gnubin:$PATH"
 
 | Target | What it runs | Requires |
 |--------|-------------|----------|
-| `make test` | Static tests (pytest) + Dockerfile alignment check | Nothing |
+| `make test` | Static tests (pytest) | Nothing |
 | `make test-unit` | Python unit tests + doctests + Go tests | Nothing (Go auto-downloads) |
 | `make test-integration PYTEST_ARGS="--image=<img>"` | Container integration tests | Podman/Docker |
 | `make test-<notebook>` | Notebook smoke test via papermill | kubectl + deployed workbench |
