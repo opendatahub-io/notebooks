@@ -23,6 +23,7 @@ dev = [
     # Python 3.14 changed the internal typing._eval_type() function signature - it now includes a new prefer_fwd_module parameter
     # and so pydantic 2.10+ is required to work with from __future__ import annotations on Python 3.14
     "pydantic>=2.10.0",
+    "typing-extensions>=4.14.0",
     "requests",
     "pyyaml",
     "onnx>=1.21.0; platform_machine != 's390x'",  # CVE-2026-28500
