@@ -296,17 +296,16 @@ class TestSelf(unittest.TestCase):
 
 
 @pytest.fixture
-def dockerfile_symlink_fs(fs, monkeypatch):
+def dockerfile_symlink_fs(fs, monkeypatch, request):
     """Fake repo with Dockerfile.cpu → Dockerfile.konflux.cpu; clears symlink cache on teardown."""
     mod = sys.modules[__name__]
     fake_root = "/fake-repo"
     component = "jupyter/minimal/ubi9-python-3.12"
     monkeypatch.setattr(mod, "PROJECT_ROOT", pathlib.Path(fake_root))
     mod._symlink_reverse_map.cache_clear()
+    request.addfinalizer(mod._symlink_reverse_map.cache_clear)
     fs.create_file(f"{fake_root}/{component}/Dockerfile.konflux.cpu")
     fs.create_symlink(f"{fake_root}/{component}/Dockerfile.cpu", "Dockerfile.konflux.cpu")
-    yield
-    mod._symlink_reverse_map.cache_clear()
 
 
 def test_resolve_symlinks_expands_dockerfile_symlink_target(dockerfile_symlink_fs):
