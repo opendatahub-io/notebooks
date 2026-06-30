@@ -767,7 +767,7 @@ The script performs three steps:
 This single command:
 
 1. Delegates to `pylocks_generator.sh` to resolve `codeserver/ubi9-python-3.12/pyproject.toml`
-  via the RHOAI index (from `build-args/cpu.conf`) → `uv.lock.d/pylock.cpu.toml`.
+  via the RHOAI index (from `build-args/konflux.cpu.conf`) → `uv.lock.d/pylock.cpu.toml`.
 2. Converts `pylock.cpu.toml` → `codeserver/ubi9-python-3.12/requirements.cpu.txt`
   (with `--index-url` header and `--hash` lines).
 3. Downloads all wheels from the pylock URLs into `cachi2/output/deps/pip/`,
@@ -941,30 +941,35 @@ Running `podman build` directly differs from `gmake` in these ways:
 | ----------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | **Build context** | Minimal (via `scripts/sandbox.py`: only files needed by the Dockerfile)            | Full repo (`.`).                                                                                     |
 | **Volume**        | `--volume $(ROOT_DIR)cachi2/output:/cachi2/output:Z` (mounts only `cachi2/output`) | Often `-v ./cachi2:/cachi2` (mounts whole dir); equivalent is `-v ./cachi2/output:/cachi2/output:z`. |
-| **Build args**    | From `build-args/cpu.conf`: `INDEX_URL`, `BASE_IMAGE`, `PYLOCK_FLAVOR`             | You must pass these explicitly.                                                                      |
+| **Build args**    | From `build-args/cpu.conf` (`PRODUCT=odh`) or `build-args/konflux.cpu.conf` (`PRODUCT=rhoai`) | You must pass these explicitly (see below).                                                          |
 | **Tag**           | `$(IMAGE_REGISTRY):codeserver-ubi9-python-3.12-$(RELEASE)_$(DATE)`                 | Whatever you pass with `-t`.                                                                         |
 | **Label**         | `--label release=$(RELEASE)`                                                       | Omitted unless you add it.                                                                           |
 | **Cache**         | Default `CONTAINER_BUILD_CACHE_ARGS ?= --no-cache`                                 | Podman uses its default cache unless you pass `--no-cache`.                                          |
 
 
 To approximate the make build when running podman manually, use the same volume
-path as make and pass all build-args from `build-args/cpu.conf`:
+path as make and pass build-args from the conf file your `PRODUCT` selects
+(`build-args/cpu.conf` for ODH, `build-args/konflux.cpu.conf` for RHOAI). The
+example below uses `konflux.cpu.conf` values (including a derived `INDEX_URL`)
+to match the RH-index lockfile path and `Dockerfile.konflux.cpu`:
 
 - `-v $(realpath ./cachi2/output):/cachi2/output:z` — prefetched deps (pip, npm, generic, RPMs).
 - `-v $(realpath ./cachi2/output/deps/rpm/<arch>/repos.d):/etc/yum.repos.d/:z` — hermeto-generated
 RPM repo files (replace `<arch>` with `x86_64`, `aarch64`, etc.).
 - Pass the same `BASE_IMAGE`, `PYLOCK_FLAVOR`, and
-`INDEX_URL` as in `codeserver/ubi9-python-3.12/build-args/cpu.conf`.
+`INDEX_URL` as in `codeserver/ubi9-python-3.12/build-args/konflux.cpu.conf`
+(`INDEX_URL` is derived from `BASE_IMAGE`; resolve with
+`uv run python scripts/index_url_resolver.py index-url` on that file).
 
 ```bash
-# Same volume path as Makefile; build-args from build-args/cpu.conf
+# Same volume path as Makefile; build-args from build-args/konflux.cpu.conf
 podman build \
     -f codeserver/ubi9-python-3.12/Dockerfile.konflux.cpu \
     --platform linux/arm64 \
     -t code-server-test \
-    --build-arg BASE_IMAGE=quay.io/opendatahub/odh-base-image-cpu-py312-c9s:latest \
+    --build-arg BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-1782270118 \
     --build-arg PYLOCK_FLAVOR=cpu \
-    --build-arg INDEX_URL=https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/ \
+    --build-arg INDEX_URL=https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple/ \
     -v "$(realpath ./cachi2/output):/cachi2/output:z" \
     -v "$(realpath ./cachi2/output/deps/rpm/aarch64/repos.d):/etc/yum.repos.d/:z" \
     .
