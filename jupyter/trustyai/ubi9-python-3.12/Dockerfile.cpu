@@ -30,12 +30,13 @@ COPY ${TRUSTYAI_SOURCE_CODE}/pylock.toml .
 COPY ${TRUSTYAI_SOURCE_CODE}/devel_env_setup.sh .
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    pip install --no-cache uv && \
+    pip install --no-cache uv setuptools wheel && \
     # the devel script is ppc64le specific - sets up build-time dependencies
     source ./devel_env_setup.sh && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+    printf '%s\n' 'setuptools>=80.9.0,<82' 'wheel' > build_constraints.txt && \
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-    UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+    UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml --build-constraint build_constraints.txt
 
 ####################
 # cpu-base         #
