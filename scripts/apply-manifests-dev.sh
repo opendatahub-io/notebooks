@@ -16,6 +16,7 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 PLATFORM="rhoai"
+PLATFORM_EXPLICIT=false
 TARGET="applications"
 REVERT_DIR=""
 OPERATOR_NS=""
@@ -92,7 +93,7 @@ configure_platform() {
       REVERT_DIR="${REVERT_DIR:-/tmp/rhoai-manifests-revert}"
       ;;
     *)
-      die "--platform must be odh or rhoai (got: ${PLATFORM})"
+      die "${PLATFORM} is not supported; use odh or rhoai"
       ;;
   esac
   OPERATOR_MANIFESTS_TAR_DIR="/opt/manifests/workbenches/notebooks/${MANIFESTS_VARIANT}"
@@ -109,6 +110,7 @@ parse_args() {
     case "$1" in
       --platform)
         PLATFORM="${2:?}"
+        PLATFORM_EXPLICIT=true
         shift 2
         ;;
       --target)
@@ -209,14 +211,24 @@ parse_args() {
   esac
 
   if [[ "${COMMAND}" == "revert" && -z "${REVERT_DIR}" ]]; then
-    if [[ -f /tmp/rhoai-manifests-revert/platform.txt ]]; then
-      REVERT_DIR=/tmp/rhoai-manifests-revert
-    elif [[ -f /tmp/odh-manifests-revert/platform.txt ]]; then
-      REVERT_DIR=/tmp/odh-manifests-revert
+    local primary_revert_dir secondary_revert_dir
+    if [[ "${PLATFORM}" == "odh" ]]; then
+      primary_revert_dir=/tmp/odh-manifests-revert
+      secondary_revert_dir=/tmp/rhoai-manifests-revert
+    else
+      primary_revert_dir=/tmp/rhoai-manifests-revert
+      secondary_revert_dir=/tmp/odh-manifests-revert
+    fi
+
+    if [[ -f "${primary_revert_dir}/platform.txt" ]]; then
+      REVERT_DIR="${primary_revert_dir}"
+    elif [[ -f "${secondary_revert_dir}/platform.txt" ]]; then
+      REVERT_DIR="${secondary_revert_dir}"
     fi
   fi
 
-  if [[ -n "${REVERT_DIR}" && -f "${REVERT_DIR}/platform.txt" ]]; then
+  if [[ "${COMMAND}" == "revert" && "${PLATFORM_EXPLICIT}" == false \
+        && -n "${REVERT_DIR}" && -f "${REVERT_DIR}/platform.txt" ]]; then
     PLATFORM="$(tr -d '[:space:]' < "${REVERT_DIR}/platform.txt")"
   fi
 
@@ -228,10 +240,8 @@ save_revert_metadata() {
   printf '%s\n' "${OPERATOR_NS}" > "${REVERT_DIR}/operator-ns.txt"
 }
 
-check_prerequisites() {
+check_cluster_prerequisites() {
   need_cmd oc
-  need_cmd kustomize
-  [[ -d "${MANIFESTS_DIR}" ]] || die "Manifest directory not found: ${MANIFESTS_DIR}"
 
   oc whoami >/dev/null 2>&1 || die "Not logged in to OpenShift (oc whoami failed)"
 
@@ -239,6 +249,12 @@ check_prerequisites() {
   wb_state="$(oc get datasciencecluster default-dsc \
     -o jsonpath='{.spec.components.workbenches.managementState}' 2>/dev/null || true)"
   [[ "${wb_state}" == "Managed" ]] || die "Workbenches must be Managed (got: ${wb_state:-<unset>})"
+}
+
+check_build_prerequisites() {
+  check_cluster_prerequisites
+  need_cmd kustomize
+  [[ -d "${MANIFESTS_DIR}" ]] || die "Manifest directory not found: ${MANIFESTS_DIR}"
 }
 
 operator_pod_labels_for_platform() {
@@ -323,12 +339,17 @@ imagestream_names_from_build() {
 }
 
 target_namespaces() {
-  local wb_ns
-  wb_ns="$(workbench_namespace)"
+  local wb_ns=""
   case "${TARGET}" in
     applications) printf '%s\n' "${APPLICATIONS_NS}" ;;
-    workbench) printf '%s\n' "${wb_ns}" ;;
+    workbench)
+      wb_ns="$(workbench_namespace)"
+      [[ -n "${wb_ns}" ]] || die "Workbench namespace is unset"
+      printf '%s\n' "${wb_ns}"
+      ;;
     both)
+      wb_ns="$(workbench_namespace)"
+      [[ -n "${wb_ns}" ]] || die "Workbench namespace is unset"
       printf '%s\n' "${APPLICATIONS_NS}"
       if [[ "${wb_ns}" != "${APPLICATIONS_NS}" ]]; then
         printf '%s\n' "${wb_ns}"
@@ -350,11 +371,15 @@ snapshot_baseline() {
   kustomize build "${REVERT_DIR}/base" > "${REVERT_DIR}/rendered-before.yaml"
   imagestream_names_from_build "${REVERT_DIR}/base" > "${REVERT_DIR}/baseline-imagestream-names.txt"
 
+  target_namespaces > "${REVERT_DIR}/snapshot-namespaces.txt"
   local ns
   while IFS= read -r ns; do
     oc get imagestreams -n "${ns}" -l opendatahub.io/component=true -o yaml \
       > "${REVERT_DIR}/imagestreams-${ns}-before.yaml" 2>/dev/null || true
-  done < <(target_namespaces)
+    oc get imagestreams -n "${ns}" -l opendatahub.io/component=true \
+      -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+      > "${REVERT_DIR}/imagestreams-${ns}-before.txt" 2>/dev/null || true
+  done < "${REVERT_DIR}/snapshot-namespaces.txt"
 
   date -u +"%Y-%m-%dT%H:%M:%SZ" > "${REVERT_DIR}/snapshot-time.txt"
   log "Baseline snapshot complete ($(wc -l < "${REVERT_DIR}/baseline-imagestream-names.txt") ImageStreams)"
@@ -388,13 +413,13 @@ apply_to_namespace() {
 }
 
 cmd_snapshot() {
-  check_prerequisites
+  check_build_prerequisites
   ensure_operator_resolved
   snapshot_baseline "${RESOLVED_OPERATOR_POD}"
 }
 
 cmd_preview() {
-  check_prerequisites
+  check_build_prerequisites
   local workdir
   ensure_operator_resolved
   workdir="$(build_workdir "${RESOLVED_OPERATOR_POD}")"
@@ -404,11 +429,11 @@ cmd_preview() {
   log "Resource counts:"
   kustomize build "${workdir}" | awk '/^kind: / { counts[$2]++ } END { for (k in counts) print counts[k], k }' | sort -rn
 
-  rm -rf "${workdir}"
+  cleanup_temp_files "${workdir}" ""
 }
 
 cmd_apply() {
-  check_prerequisites
+  check_build_prerequisites
   local workdir rendered
   ensure_operator_resolved
   workdir="$(build_workdir "${RESOLVED_OPERATOR_POD}")"
@@ -435,27 +460,26 @@ cmd_apply() {
     fi
   fi
 
-  rm -rf "${workdir}"
-  rm -f "${rendered}"
-
-  log "Done. Revert with: ${SCRIPT_DIR}/$(basename "$0") --platform ${PLATFORM} revert --clean-test"
+  log "Done. Revert with: ${SCRIPT_DIR}/$(basename "$0") revert --clean-test (active plat: ${PLATFORM})"
   log "Snapshot saved in ${REVERT_DIR}"
+  cleanup_temp_files "${workdir}" "${rendered}"
 }
 
 delete_test_added_imagestreams() {
-  local baseline="${REVERT_DIR}/baseline-imagestream-names.txt"
   local applied="${REVERT_DIR}/applied-imagestream-names.txt"
   local ns_file="${REVERT_DIR}/applied-namespaces.txt"
-  [[ -f "${baseline}" && -f "${applied}" ]] \
+  [[ -f "${applied}" ]] \
     || die "Missing snapshot files in ${REVERT_DIR}; run apply or snapshot first"
   [[ -f "${ns_file}" ]] || die "Missing ${ns_file}; run apply first"
 
-  local ns name
+  local ns name before_names
   while IFS= read -r ns; do
     [[ -n "${ns}" ]] || continue
+    before_names="${REVERT_DIR}/imagestreams-${ns}-before.txt"
+    [[ -f "${before_names}" ]] || die "Missing ${before_names}; cannot safely clean test ImageStreams"
     while IFS= read -r name; do
       [[ -n "${name}" ]] || continue
-      if grep -qx "${name}" "${baseline}"; then
+      if grep -Fxq -- "${name}" "${before_names}"; then
         continue
       fi
       if oc get imagestream "${name}" -n "${ns}" >/dev/null 2>&1; then
@@ -471,12 +495,14 @@ delete_test_added_imagestreams() {
 }
 
 cmd_revert() {
-  check_prerequisites
+  check_cluster_prerequisites
   [[ -f "${REVERT_DIR}/rendered-before.yaml" ]] \
     || die "No revert snapshot at ${REVERT_DIR}/rendered-before.yaml — run apply or snapshot first"
 
-  local ns wb_ns
-  if [[ -f "${REVERT_DIR}/applied-namespaces.txt" ]]; then
+  local ns ns_file wb_ns
+  ns_file="${REVERT_DIR}/applied-namespaces.txt"
+  [[ -f "${ns_file}" ]] || ns_file="${REVERT_DIR}/snapshot-namespaces.txt"
+  if [[ -f "${ns_file}" ]]; then
     while IFS= read -r ns; do
       [[ -n "${ns}" ]] || continue
       log "Restoring baseline in ${ns}"
@@ -485,7 +511,7 @@ cmd_revert() {
       else
         oc apply -n "${ns}" -f "${REVERT_DIR}/rendered-before.yaml"
       fi
-    done < "${REVERT_DIR}/applied-namespaces.txt"
+    done < "${ns_file}"
   else
     log "Restoring baseline in ${APPLICATIONS_NS}"
     if [[ "${DRY_RUN}" == true ]]; then
@@ -510,6 +536,18 @@ cmd_revert() {
   fi
 
   log "Revert complete. ImageStreams from before your test may still exist — that is expected."
+}
+
+cleanup_temp_files() {
+  local workdir="${1:-}"
+  local rendered="${2:-}"
+
+  if [[ -n "${workdir}" ]]; then
+    rm -rf -- "${workdir}"
+  fi
+  if [[ -n "${rendered}" ]]; then
+    rm -f -- "${rendered}"
+  fi
 }
 
 main() {
