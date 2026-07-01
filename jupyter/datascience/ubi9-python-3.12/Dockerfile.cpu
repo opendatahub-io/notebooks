@@ -143,6 +143,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         make install -j$(nproc) && \
         cd ../../python && \
         pip install --no-cache-dir -r requirements-build.txt && \
+        pip install --upgrade pip && \
+        # RHAIENG-5986: requirements-build.txt may pull setuptools 82+ (no pkg_resources)
+        pip install --force-reinstall setuptools==80.9.0 wheel && \
         PYARROW_WITH_PARQUET=1 \
         PYARROW_WITH_DATASET=1 \
         PYARROW_WITH_FILESYSTEM=1 \
@@ -337,9 +340,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
     # RHOAIENG-58277: Meson 1.11.0 breaks pandas 2.3.3 source builds
-    printf '%s\n' 'meson<1.11' 'setuptools>=80.9.0,<82' > build_constraints.txt && \
+    echo "meson<1.11" > build_constraints.txt && \
     if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then \
-        pip install --no-cache-dir 'setuptools>=80.9.0,<82' wheel && \
         # We need special flags and environment variables when building packages
         GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 \
         CFLAGS="-O3" CXXFLAGS="-O3" \
