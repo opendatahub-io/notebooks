@@ -297,7 +297,7 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         ("ipython-genutils", (">=0.2.0", "~=0.2.0")),
         ("jinja2", (">=3.1.6", "~=3.1.6")),
         ("jupyter-client", ("~=8.6.3", ">=8.6.3")),
-        ("requests", ("~=2.32.3", ">=2.0.0")),
+        ("requests", ("~=2.32.5", ">=2.33.1")),
         ("urllib3", ("~=2.5.0", "~=2.3.0")),
         ("transformers", ("<5.0,>4.0", "~=4.55.0")),
         ("datasets", ("", "~=3.4.1")),

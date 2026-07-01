@@ -102,6 +102,8 @@ override-dependencies = [
     "pillow>=12.1.1",
     # RHOAIENG-53183: CVE-2026-32274 Black: Arbitrary file writes from unsanitized user input in cache file name
     "black>=26.3.1",
+    # RHAIENG-5948 / RHAIENG-5267: requests==2.32 dep conflict with chardet
+    "requests>=2.33.1",
 ]
 
 # from https://redhat-internal.slack.com/archives/C079FE5H94J/p1756934476976759?thread_ts=1756933154.294109&cid=C079FE5H94J
@@ -109,7 +111,7 @@ constraint-dependencies = [
     "loguru==0.7.3",
     "pyyaml==6.0.2",
     "numpy==2.2.6",
-    "requests==2.32.5",
+    "requests>=2.33.1",
     "tqdm==4.67.1",
     # apicc is still on torch 2.7.1
     # "torch==2.8.0",
