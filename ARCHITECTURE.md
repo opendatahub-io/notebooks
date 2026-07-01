@@ -163,6 +163,12 @@ ImageStream annotations in `manifests/*/base/`. Key annotations include `opendat
 `opendatahub.io/notebook-python-dependencies`. When launching a workbench, the dashboard injects
 the `NOTEBOOK_ARGS` environment variable with OAuth proxy and configuration settings.
 
+### Trust boundaries
+
+Platform env vars (`NB_PREFIX`, `NOTEBOOK_ARGS`) are set by the controller, not by HTTP
+requests. We do not validate them inside the image — see
+[docs/security/workbench-trust-boundaries.md](docs/security/workbench-trust-boundaries.md).
+
 ### Notebook controller (kubeflow)
 
 The [ODH Notebook Controller](https://github.com/opendatahub-io/kubeflow/tree/main/components/odh-notebook-controller)
