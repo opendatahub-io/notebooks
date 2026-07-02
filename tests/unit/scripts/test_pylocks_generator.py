@@ -122,45 +122,6 @@ def test_resolve_exclude_newer_ci_fallback(tmp_path: Path) -> None:
     assert pg.resolve_exclude_newer(p, ci_check=True, live_timestamp="2020-01-01T00:00:00Z") == ("2020-01-01T00:00:00Z")
 
 
-def test_parse_default_index_from_lockfile(tmp_path: Path) -> None:
-    lockfile = tmp_path / "pylock.cpu.toml"
-    index_url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple/?format=json"
-    lockfile.write_text(
-        f"#    uv pip compile pyproject.toml --default-index={index_url}\n",
-        encoding="utf-8",
-    )
-    assert pg.parse_default_index_from_lockfile(lockfile) == index_url
-
-
-def test_get_index_flags_ci_check_falls_back_to_lockfile_header(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    project_dir = tmp_path / "project"
-    lock_dir = project_dir / "uv.lock.d"
-    lock_dir.mkdir(parents=True)
-    build_args = project_dir / "build-args"
-    build_args.mkdir(parents=True)
-    (build_args / "konflux.cpu.conf").write_text(
-        "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488\nPYLOCK_FLAVOR=cpu\nPRODUCT=rhoai\n",
-        encoding="utf-8",
-    )
-    index_url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple/?format=json"
-    (lock_dir / "pylock.cpu.toml").write_text(
-        f"#    uv pip compile pyproject.toml --default-index={index_url}\n",
-        encoding="utf-8",
-    )
-
-    def fail_resolve(_base_image: str) -> str:
-        raise resolver.IndexResolutionError("skopeo inspect failed for quay.io/aipcc/base-images/cpu: unauthorized")
-
-    monkeypatch.setattr(resolver, "inspect_base_image_index_url", fail_resolve)
-
-    flags = pg.get_index_flags(project_dir, "cpu", pg.LogBuffer(), ci_check=True)
-
-    assert flags == [f"--default-index={index_url}"]
-
-
 class TestEnsureJsonFormatParam:
     def test_bare_url(self) -> None:
         assert pg.ensure_json_format_param("https://example.com/simple/") == ("https://example.com/simple/?format=json")

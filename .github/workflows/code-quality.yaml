@@ -22,6 +22,23 @@ jobs:
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv
 
+      - name: Install skopeo
+        uses: ./.github/actions/apt-install
+        with:
+          packages: skopeo
+
+      - name: Login to quay.io/aipcc (if the secret is present)
+        shell: bash
+        env:
+          AIPCC_USER: ${{ secrets.AIPCC_QUAY_BOT_USERNAME }}
+          AIPCC_PASS: ${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}
+        run: |
+          if [[ -z "${AIPCC_USER}" ]]; then
+            echo "AIPCC_QUAY_BOT_USERNAME is not set, skipping quay.io/aipcc login"
+            exit 0
+          fi
+          printf '%s' "${AIPCC_PASS}" | skopeo login --username "${AIPCC_USER}" --password-stdin quay.io
+
       - name: Rerun all code generators we have
         run: bash ci/generate_code.sh
 
