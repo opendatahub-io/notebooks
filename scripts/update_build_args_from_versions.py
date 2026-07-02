@@ -5,9 +5,10 @@
 This flow validates the root config, scans managed image-tree ``build-args``
 files, rewrites managed ``BASE_IMAGE`` and ``RELEASE`` assignments plus the
 root ``Makefile`` release defaults, resolves newer RHDS ``channel: fast``
-releases to the highest already-published phase per target repository, and
-uses ``skopeo`` to select the latest build in the chosen release-and-phase
-family.
+releases to the highest already-published phase per target repository, uses
+``skopeo`` to select the latest build in the chosen release-and-phase family,
+and pins each resolved ``BASE_IMAGE`` to an immutable ``repository@sha256:…``
+reference.
 """
 
 from __future__ import annotations
@@ -613,11 +614,131 @@ def collect_conf_targets(root_dir: Path) -> list[ConfTarget]:
     return targets
 
 
+def image_reference_is_digest(ref: str) -> bool:
+    return ref.startswith("sha256:")
+
+
 def split_image_ref(image: str) -> tuple[str, str]:
+    if "@" in image:
+        repository, ref = image.rsplit("@", 1)
+        if not ref:
+            raise ValueError(f"Image reference is missing a digest: {image}")
+        if ":" in repository:
+            repository = repository.rsplit(":", 1)[0]
+        return repository, ref
+
     name, separator, tag = image.rpartition(":")
     if not separator:
         raise ValueError(f"Image reference is missing a tag: {image}")
     return name, tag
+
+
+def inspect_image_manifest(
+    image: str,
+    *,
+    warning_color: str | None = None,
+) -> dict[str, Any] | None:
+    try:
+        result = subprocess.run(
+            [
+                "skopeo",
+                "inspect",
+                "--retry-times",
+                "3",
+                "--override-arch",
+                "amd64",
+                "--override-os",
+                "linux",
+                f"docker://{image}",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        log_warning("Could not inspect image manifest for %s: %s", image, exc, color=warning_color)
+        return None
+
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip() or f"exit code {result.returncode}"
+        log_warning("skopeo inspect failed for %s: %s", image, detail, color=warning_color)
+        return None
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        log_warning("skopeo inspect returned invalid JSON for %s: %s", image, exc, color=warning_color)
+        return None
+
+    if not isinstance(payload, dict):
+        log_warning("skopeo inspect returned unexpected payload for %s", image, color=warning_color)
+        return None
+    return payload
+
+
+def cached_inspect_image_manifest(
+    image: str,
+    manifest_cache: dict[str, dict[str, Any]] | None,
+    *,
+    warning_color: str | None = None,
+) -> dict[str, Any] | None:
+    if manifest_cache is not None and image in manifest_cache:
+        return manifest_cache[image]
+
+    payload = inspect_image_manifest(image, warning_color=warning_color)
+    if payload is not None and manifest_cache is not None:
+        manifest_cache[image] = payload
+    return payload
+
+
+def image_tag_from_reference(
+    image: str,
+    manifest_cache: dict[str, dict[str, Any]] | None = None,
+) -> str:
+    _repository, ref = split_image_ref(image)
+    if not image_reference_is_digest(ref):
+        return ref
+
+    payload = cached_inspect_image_manifest(image, manifest_cache)
+    if payload is None:
+        raise ValueError(f"Cannot determine tag for digested image {image}")
+
+    name = payload.get("Name")
+    if isinstance(name, str) and ":" in name:
+        return name.rsplit(":", 1)[1]
+
+    repo_tags = payload.get("RepoTags")
+    if isinstance(repo_tags, list):
+        for tag in repo_tags:
+            if isinstance(tag, str):
+                return tag
+
+    raise ValueError(f"Cannot determine tag for digested image {image}")
+
+
+def resolve_image_digest(
+    image: str,
+    digest_cache: dict[str, str] | None = None,
+) -> str:
+    repository, ref = split_image_ref(image)
+    if image_reference_is_digest(ref):
+        return image if "@" in image else f"{repository}@{ref}"
+
+    if digest_cache is not None and image in digest_cache:
+        return f"{repository}@{digest_cache[image]}"
+
+    payload = inspect_image_manifest(image)
+    if payload is None:
+        raise ValueError(f"skopeo inspect failed while resolving digest for {image}")
+
+    digest = payload.get("Digest")
+    if not isinstance(digest, str) or not digest:
+        raise ValueError(f"skopeo inspect returned no digest for {image}")
+
+    if digest_cache is not None:
+        digest_cache[image] = digest
+    return f"{repository}@{digest}"
 
 
 def normalize_stream_version(version: str) -> str:
@@ -960,6 +1081,7 @@ def build_rhds_seed_tag(release_version: str, phase: str | None) -> str:
 def determine_rhds_fast_bundle_phase(
     states: list[TargetState],
     release: ReleaseConfig,
+    manifest_cache: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[bool, str | None]:
     target_version = parse_release_version(release.full_version)
     same_release_phases: set[str | None] = set()
@@ -970,7 +1092,7 @@ def determine_rhds_fast_bundle_phase(
         if peer_state.policy.mode != "fast":
             continue
 
-        _peer_repository, peer_tag = split_image_ref(peer_state.current_base_image)
+        peer_tag = image_tag_from_reference(peer_state.current_base_image, manifest_cache)
         match = RHDS_TAG_RE.fullmatch(peer_tag)
         if match is None:
             continue
@@ -1029,8 +1151,9 @@ def build_rhds_pinned_image(
     use_bundle_phase: bool = False,
     bundle_phase: str | None = None,
     forward_phase: str | None = "ea.1",
+    manifest_cache: dict[str, dict[str, Any]] | None = None,
 ) -> str:
-    _current_name, current_tag = split_image_ref(current_base_image)
+    current_tag = image_tag_from_reference(current_base_image, manifest_cache)
     repository = build_rhds_pinned_repository(accelerator, version, release)
     return f"{repository}:{build_rhds_pinned_tag(current_tag, target_release_version, use_bundle_phase=use_bundle_phase, bundle_phase=bundle_phase, forward_phase=forward_phase)}"
 
@@ -1085,6 +1208,7 @@ def resolve_rhds_base_image(
     rhds_bundle_phase_known: bool,
     rhds_bundle_phase: str | None,
     stable_repo_overrides: dict[str, str] | None = None,
+    manifest_cache: dict[str, dict[str, Any]] | None = None,
 ) -> str:
     target = state.target
     policy = state.policy
@@ -1119,9 +1243,8 @@ def resolve_rhds_base_image(
         use_release_bundle_phase=use_release_bundle_phase,
         rhds_bundle_phase=rhds_bundle_phase,
     )
-    repository, current_tag = build_rhds_pinned_repository(target.accelerator, policy.version, release), split_image_ref(
-        current_base_image
-    )[1]
+    repository = build_rhds_pinned_repository(target.accelerator, policy.version, release)
+    current_tag = image_tag_from_reference(current_base_image, manifest_cache)
 
     if RHDS_TAG_RE.fullmatch(current_tag) is None:
         stable_match = RHDS_STABLE_TAG_RE.fullmatch(current_tag)
@@ -1174,6 +1297,7 @@ def resolve_rhds_base_image(
             use_bundle_phase=rhds_bundle_phase_known and use_release_bundle_phase and target_version == current_version,
             bundle_phase=rhds_bundle_phase,
             forward_phase=forward_phase,
+            manifest_cache=manifest_cache,
         )
     return resolve_latest_published_rhds_image(candidate, tag_cache)
 
@@ -1199,6 +1323,7 @@ def build_target_base_image(
     rhds_bundle_phase_known: bool,
     rhds_bundle_phase: str | None,
     stable_repo_overrides: dict[str, str] | None = None,
+    manifest_cache: dict[str, dict[str, Any]] | None = None,
 ) -> str:
     match state.target.distribution:
         case "rhds":
@@ -1210,6 +1335,7 @@ def build_target_base_image(
                 rhds_bundle_phase_known,
                 rhds_bundle_phase,
                 stable_repo_overrides,
+                manifest_cache,
             )
         case "odh":
             return resolve_odh_base_image(state, release)
@@ -1299,6 +1425,8 @@ def plan_updates(
     states: list[TargetState] = []
     tag_cache: dict[str, tuple[str, ...]] = {}
     stable_acc_version_cache: dict[tuple[str, str], str | None | object] = {}
+    manifest_cache: dict[str, dict[str, Any]] = {}
+    digest_cache: dict[str, str] = {}
 
     for target in collect_conf_targets(root_dir):
         original_text = target.path.read_text(encoding="utf-8")
@@ -1321,18 +1449,26 @@ def plan_updates(
             )
         )
 
-    rhds_bundle_phase_known, rhds_bundle_phase = determine_rhds_fast_bundle_phase(states, config.release)
+    rhds_bundle_phase_known, rhds_bundle_phase = determine_rhds_fast_bundle_phase(
+        states,
+        config.release,
+        manifest_cache,
+    )
 
     updates: list[PlannedUpdate] = []
     for state in states:
-        resolved_base_image = build_target_base_image(
-            state,
-            config.release,
-            tag_cache,
-            stable_acc_version_cache,
-            rhds_bundle_phase_known,
-            rhds_bundle_phase,
-            stable_repo_overrides,
+        resolved_base_image = resolve_image_digest(
+            build_target_base_image(
+                state,
+                config.release,
+                tag_cache,
+                stable_acc_version_cache,
+                rhds_bundle_phase_known,
+                rhds_bundle_phase,
+                stable_repo_overrides,
+                manifest_cache,
+            ),
+            digest_cache,
         )
         updates.append(
             PlannedUpdate(
