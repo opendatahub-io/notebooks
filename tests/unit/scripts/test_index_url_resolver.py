@@ -235,10 +235,86 @@ def test_no_test_fallback_when_label_already_points_to_test_index(
     assert resolved.index_url == label_url, f"expected label URL {label_url}, got {resolved.index_url}"
 
 
-def test_error_when_label_missing(
+def test_error_when_label_url_invalid_host_falls_back_to_tag(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cpu.conf",
+        [
+            "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488",
+            "PYLOCK_FLAVOR=cpu",
+            "PRODUCT=rhoai",
+        ],
+    )
+    label_url = prod_index_url(release="3.5-EA2", accelerator="cpu")
+    monkeypatch.setattr(
+        resolver,
+        "inspect_base_image_index_url",
+        make_skopeo_label_stub("https://evil.example.com/api/pypi/rhoai/3.5/cpu-ubi9/simple/"),
+    )
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
+
+    resolved = resolver.resolve_index_config(conf_file)
+
+    assert resolved.index_url == label_url, f"expected tag-derived index {label_url}, got {resolved.index_url}"
+    assert resolved.release == "3.5-EA2", f"expected release 3.5-EA2, got {resolved.release}"
+    assert resolved.accelerator == "cpu", f"expected accelerator cpu, got {resolved.accelerator}"
+
+
+def test_resolve_falls_back_to_tag_when_label_has_template_placeholders(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cpu.conf",
+        [
+            "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488",
+            "PYLOCK_FLAVOR=cpu",
+            "PRODUCT=rhoai",
+        ],
+    )
+    template_url = (
+        "https://packages.redhat.com/api/pypi/public-rhai/rhoai/${INDEX_VERSION}/${INDEX_VARIANT}-test/simple/"
+    )
+    label_url = prod_index_url(release="3.5-EA2", accelerator="cpu")
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", make_skopeo_label_stub(template_url))
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
+
+    resolved = resolver.resolve_index_config(conf_file)
+
+    assert resolved.index_url == label_url, f"expected tag-derived index {label_url}, got {resolved.index_url}"
+
+
+def test_resolve_falls_back_to_tag_when_label_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cpu.conf",
+        [
+            "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488",
+            "PYLOCK_FLAVOR=cpu",
+            "PRODUCT=rhoai",
+        ],
+    )
+    label_url = prod_index_url(release="3.5-EA2", accelerator="cpu")
+
+    def stub_no_label(base_image: str) -> str:
+        raise resolver.IndexResolutionError(f"{resolver.INDEX_URL_LABEL} label is missing from {base_image}")
+
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", stub_no_label)
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
+
+    resolved = resolver.resolve_index_config(conf_file)
+
+    assert resolved.index_url == label_url, f"expected tag-derived index {label_url}, got {resolved.index_url}"
+
+
+def test_error_when_label_missing_and_tag_unusable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     conf_file = write_conf(
         tmp_path,
         "konflux.cpu.conf",
@@ -253,31 +329,9 @@ def test_error_when_label_missing(
         raise resolver.IndexResolutionError(f"{resolver.INDEX_URL_LABEL} label is missing from {base_image}")
 
     monkeypatch.setattr(resolver, "inspect_base_image_index_url", stub_no_label)
+    monkeypatch.setattr(resolver, "index_url_exists", lambda _url: False)
 
-    with pytest.raises(resolver.IndexResolutionError, match="label is missing"):
-        resolver.resolve_index_config(conf_file)
-
-
-def test_error_when_label_url_invalid_host(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    conf_file = write_conf(
-        tmp_path,
-        "konflux.cpu.conf",
-        [
-            "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488",
-            "PYLOCK_FLAVOR=cpu",
-            "PRODUCT=rhoai",
-        ],
-    )
-    monkeypatch.setattr(
-        resolver,
-        "inspect_base_image_index_url",
-        make_skopeo_label_stub("https://evil.example.com/api/pypi/rhoai/3.5/cpu-ubi9/simple/"),
-    )
-
-    with pytest.raises(resolver.IndexResolutionError, match="unexpected host"):
+    with pytest.raises(resolver.IndexResolutionError, match="No production or -test RH index is available"):
         resolver.resolve_index_config(conf_file)
 
 
@@ -300,6 +354,7 @@ def test_inspect_base_image_index_url_parses_config_labels(
 
     def fake_run(cmd, **kwargs):
         assert_skopeo_inspect_cmd(cmd, base_image)
+
         class FakeResult:
             returncode = 0
             stdout = skopeo_output
@@ -321,6 +376,7 @@ def test_inspect_base_image_index_url_error_on_missing_label(
 
     def fake_run(cmd, **kwargs):
         assert_skopeo_inspect_cmd(cmd, base_image)
+
         class FakeResult:
             returncode = 0
             stdout = skopeo_output
@@ -341,6 +397,7 @@ def test_inspect_base_image_index_url_error_on_skopeo_failure(
 
     def fake_run(cmd, **kwargs):
         assert_skopeo_inspect_cmd(cmd, base_image)
+
         class FakeResult:
             returncode = 1
             stdout = ""

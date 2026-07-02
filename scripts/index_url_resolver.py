@@ -40,6 +40,15 @@ class ResolvedIndexConfig:
 _RHOAI_INDEX_PATH_RE = re.compile(
     r"/rhoai/(?P<release>[^/]+)/(?P<accelerator>[^/]+)-ubi9(?:-test)?/simple/?$",
 )
+_BASE_IMAGE_RE = re.compile(
+    r"^quay\.io/aipcc/base-images/(?P<image>[^:]+):(?P<tag>[^:]+)$",
+)
+_ACCELERATOR_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"^cpu$"), "cpu"),
+    (re.compile(r"^cuda-(?P<version>\d+\.\d+)-el\d+(?:\.\d+)?$"), "cuda"),
+    (re.compile(r"^rocm-(?P<version>\d+\.\d+)-el\d+(?:\.\d+)?$"), "rocm"),
+)
+_TAG_RE = re.compile(r"^(?P<minor>\d+\.\d+)\.\d+(?:-ea\.(?P<ea>\d+))?(?:[-.].+)?$")
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 
@@ -76,6 +85,50 @@ def resolve_flavor(conf_file: Path, entries: dict[str, str]) -> str:
     if stem.startswith("konflux."):
         return stem.removeprefix("konflux.")
     return stem
+
+
+def is_unexpanded_label_index_url(index_url: str) -> bool:
+    """Return True when a label still contains build-time placeholders."""
+    return "${" in index_url
+
+
+def parse_accelerator(image_name: str, conf_file: Path) -> str:
+    for pattern, prefix in _ACCELERATOR_PATTERNS:
+        match = pattern.fullmatch(image_name)
+        if not match:
+            continue
+        version = match.groupdict().get("version")
+        return prefix if version is None else f"{prefix}{version}"
+    raise IndexResolutionError(f"Unsupported BASE_IMAGE accelerator in {conf_file}: {image_name}")
+
+
+def parse_release(tag: str, conf_file: Path) -> str:
+    match = _TAG_RE.fullmatch(tag)
+    if match is None:
+        raise IndexResolutionError(f"Unsupported BASE_IMAGE tag in {conf_file}: {tag}")
+    release = match.group("minor")
+    ea = match.group("ea")
+    return release if ea is None else f"{release}-EA{int(ea)}"
+
+
+def build_rhoai_index_url(*, release: str, accelerator: str) -> str:
+    return f"{RHOAI_INDEX_ROOT}/{release}/{accelerator}-ubi9/simple/"
+
+
+def stable_rhoai_release(release: str) -> str:
+    """Drop EA suffix when resolving ROCm indexes from stable 3.5 profiles."""
+    return release.split("-EA", maxsplit=1)[0]
+
+
+def build_rhoai_test_index_url(*, release: str, accelerator: str) -> str:
+    return f"{RHOAI_INDEX_ROOT}/{release}/{accelerator}-ubi9-test/simple/"
+
+
+def index_url_candidates(*, release: str, accelerator: str) -> tuple[str, str]:
+    return (
+        build_rhoai_index_url(release=release, accelerator=accelerator),
+        build_rhoai_test_index_url(release=release, accelerator=accelerator),
+    )
 
 
 def inspect_base_image_index_url(base_image: str) -> str:
@@ -197,6 +250,103 @@ def index_url_exists(index_url: str) -> bool:
         return False
 
 
+def _select_index_url_from_label(label_url: str, conf_file: Path) -> str:
+    checked_urls: list[str] = [label_url]
+    if index_url_exists(label_url):
+        return label_url
+
+    test_url = build_test_variant_url(label_url)
+    if test_url is not None:
+        checked_urls.append(test_url)
+        if index_url_exists(test_url):
+            return test_url
+
+    raise IndexResolutionError(
+        f"No production or -test RH index is available for {conf_file}: " + " / ".join(checked_urls)
+    )
+
+
+def _resolve_from_label(
+    base_image: str,
+    conf_file: Path,
+    *,
+    flavor: str,
+    product: str,
+) -> ResolvedIndexConfig | None:
+    try:
+        label_url = inspect_base_image_index_url(base_image)
+        if is_unexpanded_label_index_url(label_url):
+            return None
+        validate_label_index_url(label_url, base_image)
+    except IndexResolutionError:
+        return None
+
+    selected_index_url = _select_index_url_from_label(label_url, conf_file)
+    release, accelerator = parse_release_and_accelerator_from_url(selected_index_url)
+
+    return ResolvedIndexConfig(
+        conf_file=conf_file,
+        product=product,
+        index_profile="rhoai",
+        flavor=flavor,
+        base_image=base_image,
+        accelerator=accelerator,
+        release=release,
+        index_url=selected_index_url,
+    )
+
+
+def _resolve_from_base_image_tag(
+    base_image: str,
+    conf_file: Path,
+    *,
+    flavor: str,
+    product: str,
+) -> ResolvedIndexConfig:
+    match = _BASE_IMAGE_RE.fullmatch(base_image)
+    if match is None:
+        raise IndexResolutionError(f"Unsupported BASE_IMAGE format in {conf_file}: {base_image}")
+
+    accelerator = parse_accelerator(match.group("image"), conf_file)
+    release = parse_release(match.group("tag"), conf_file)
+    release_candidates = [release]
+    if accelerator.startswith("rocm"):
+        stable = stable_rhoai_release(release)
+        if stable != release:
+            release_candidates.insert(0, stable)
+
+    selected_index_url: str | None = None
+    checked_urls: list[str] = []
+    for release_candidate in release_candidates:
+        production_url, test_url = index_url_candidates(
+            release=release_candidate,
+            accelerator=accelerator,
+        )
+        for candidate_url in (production_url, test_url):
+            checked_urls.append(candidate_url)
+            if index_url_exists(candidate_url):
+                selected_index_url = candidate_url
+                break
+        if selected_index_url is not None:
+            break
+
+    if selected_index_url is None:
+        raise IndexResolutionError(
+            f"No production or -test RH index is available for {conf_file}: " + " / ".join(checked_urls)
+        )
+
+    return ResolvedIndexConfig(
+        conf_file=conf_file,
+        product=product,
+        index_profile="rhoai",
+        flavor=flavor,
+        base_image=base_image,
+        accelerator=accelerator,
+        release=release,
+        index_url=selected_index_url,
+    )
+
+
 def resolve_index_config(
     conf_file: Path,
     *,
@@ -216,40 +366,21 @@ def resolve_index_config(
     if not base_image:
         raise IndexResolutionError(f"BASE_IMAGE is missing in {conf_file}")
 
-    label_url = inspect_base_image_index_url(base_image)
-    validate_label_index_url(label_url, base_image)
-
     flavor = resolve_flavor(conf_file, entries)
 
-    selected_index_url: str | None = None
-    checked_urls: list[str] = []
-
-    checked_urls.append(label_url)
-    if index_url_exists(label_url):
-        selected_index_url = label_url
-    else:
-        test_url = build_test_variant_url(label_url)
-        if test_url is not None:
-            checked_urls.append(test_url)
-            if index_url_exists(test_url):
-                selected_index_url = test_url
-
-    if selected_index_url is None:
-        raise IndexResolutionError(
-            f"No production or -test RH index is available for {conf_file}: " + " / ".join(checked_urls)
-        )
-
-    release, accelerator = parse_release_and_accelerator_from_url(selected_index_url)
-
-    return ResolvedIndexConfig(
-        conf_file=conf_file,
-        product=product,
-        index_profile="rhoai",
+    if resolved := _resolve_from_label(
+        base_image,
+        conf_file,
         flavor=flavor,
-        base_image=base_image,
-        accelerator=accelerator,
-        release=release,
-        index_url=selected_index_url,
+        product=product,
+    ):
+        return resolved
+
+    return _resolve_from_base_image_tag(
+        base_image,
+        conf_file,
+        flavor=flavor,
+        product=product,
     )
 
 
