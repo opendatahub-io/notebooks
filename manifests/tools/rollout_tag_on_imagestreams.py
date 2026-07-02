@@ -26,8 +26,8 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Callable, Iterator
 
-from consolio import Consolio
 import yaml
+from rich.console import Console
 from manifests.tools.commit_env_refs import commit_field_key, parse_env_file
 from manifests.tools.generate_kustomization import generate as generate_kustomization
 from ruamel.yaml import YAML
@@ -72,19 +72,14 @@ class ReleasedImage:
 class StepReporter:
     def __init__(self, stream: Any | None = None) -> None:
         self.stream = sys.stdout if stream is None else stream
-        self.is_tty = bool(getattr(self.stream, "isatty", lambda: False)())
-        self.console = Consolio(
-            spinner_type="dots",
-            no_colors=not self.is_tty,
-            no_animation=not self.is_tty,
-        )
+        self.console = Console(file=self.stream)
+        self.is_tty = self.console.is_terminal
 
     def print_step(self, message: str) -> None:
         if not self.is_tty:
             print(message, file=self.stream, flush=True)
             return
-        self.console.reset_indent()
-        self.console.print("cmp", message)
+        self.console.print(f"[bold green]✓[/bold green] {message}")
 
     @contextmanager
     def running_step(
@@ -104,7 +99,7 @@ class StepReporter:
                 completed += 1
                 detail = f"[{completed}/{total}] {message}"
                 if self.is_tty:
-                    self.console.print(1, "inf", detail)
+                    self.console.print(f"  [bold cyan]i[/bold cyan] {detail}")
                 else:
                     print(f"  {detail}", file=self.stream, flush=True)
                 self.stream.flush()
@@ -127,9 +122,9 @@ class StepReporter:
                 self.print_step(done_message)
             return
 
-        with self.console.spinner(start_message, inline=True):
+        with self.console.status(start_message, spinner="dots"):
             yield None
-        self.console.print("cmp", done_message)
+        self.print_step(done_message)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
