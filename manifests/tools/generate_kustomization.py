@@ -65,9 +65,10 @@ class Workbench:
 
 @dataclass
 class Runtime:
-    """A runtime image: single tag (N), params replacement only."""
+    """A runtime image: single tag, params replacement only."""
 
-    param_key: str
+    base_key: str
+    suffix: str
     imagestream: str
     resource_file: str
 
@@ -219,7 +220,7 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
         m = _PARAM_KEY_RE.match(full_key)
         assert m, f"Could not parse param key: {full_key}"
         res_file = _find_resource_file(all_resources, istream, imagestream_to_resource)
-        runtimes.append(Runtime(m.group(1), istream, res_file))
+        runtimes.append(Runtime(m.group(1), m.group(2), istream, res_file))
         if res_file not in runtime_resource_files:
             runtime_resource_files.append(res_file)
 
@@ -238,13 +239,18 @@ def discover_config(base_dir: Path) -> tuple[list[str], list[Workbench], list[st
     return ordered_resources, workbenches, runtime_resource_files, runtimes
 
 
+def _is_imagestream_resource(resource: str) -> bool:
+    """Return True for ImageStream manifest files, including versioned variants."""
+    return "-imagestream" in resource and resource.endswith(".yaml")
+
+
 def _discover_param_pairs_from_imagestreams(
     base_dir: Path,
     all_resources: list[str],
 ) -> list[tuple[str, str]]:
     pairs: list[tuple[str, str]] = []
     for resource in all_resources:
-        if not resource.endswith("-imagestream.yaml"):
+        if not _is_imagestream_resource(resource):
             continue
         resource_path = base_dir / resource
         if not resource_path.exists():
@@ -379,9 +385,9 @@ def _workbench_commit_replacements(wb: Workbench) -> list[str]:
 
 
 def _runtime_params_replacement(rt: Runtime) -> str:
-    """Single image-params replacement for a runtime (N only)."""
+    """Single image-params replacement for a runtime."""
     return _replacement_block(
-        f"{rt.param_key}-n",
+        f"{rt.base_key}{rt.suffix}",
         "notebook-image-params",
         "spec.tags.0.from.name",
         rt.imagestream,
@@ -405,7 +411,7 @@ def generate(base_dir: Path) -> str:
     for wb in workbenches:
         replacement_blocks.extend(_workbench_commit_replacements(wb))
 
-    # 3) Runtime image-params (N only) for all runtimes
+    # 3) Runtime image-params for all runtimes
     for rt in runtimes:
         replacement_blocks.append(_runtime_params_replacement(rt))
 
