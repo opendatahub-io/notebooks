@@ -208,7 +208,6 @@ This requires:
 
 - **`skopeo`** installed and on `$PATH`
 - **Network access** to the container registry hosting the base images
-  (currently `quay.io/aipcc/base-images`)
 - **Pull credentials** configured if the registry requires authentication
   (e.g. via `skopeo login` or a Docker/Podman auth file)
 

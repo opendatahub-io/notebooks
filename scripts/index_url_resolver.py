@@ -136,7 +136,7 @@ def validate_label_index_url(index_url: str, base_image: str) -> None:
         raise IndexResolutionError(f"{INDEX_URL_LABEL} label in {base_image} has unsupported scheme: {index_url}")
     if parsed.netloc != expected_prefix.netloc:
         raise IndexResolutionError(f"{INDEX_URL_LABEL} label in {base_image} has unexpected host: {index_url}")
-    if not parsed.path.startswith(expected_prefix.path):
+    if not _RHOAI_INDEX_PATH_RE.search(parsed.path):
         raise IndexResolutionError(f"{INDEX_URL_LABEL} label in {base_image} has unexpected path: {index_url}")
 
 
@@ -161,7 +161,7 @@ def parse_release_and_accelerator_from_url(index_url: str) -> tuple[str, str]:
     parsed = urlparse(index_url)
     match = _RHOAI_INDEX_PATH_RE.search(parsed.path)
     if match is None:
-        return ("", "")
+        raise IndexResolutionError(f"Cannot extract release/accelerator from index URL: {index_url}")
     return (match.group("release"), match.group("accelerator"))
 
 

@@ -161,10 +161,16 @@ def test_get_index_flags_uses_konflux_conf(
         "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488\nPYLOCK_FLAVOR=cpu\nPRODUCT=rhoai\n",
         encoding="utf-8",
     )
+    label_url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/"
+    monkeypatch.setattr(
+        resolver,
+        "inspect_base_image_index_url",
+        lambda _base_image: label_url,
+    )
     monkeypatch.setattr(
         resolver,
         "index_url_exists",
-        lambda url: url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/",
+        lambda url: url == label_url,
     )
 
     flags = pg.get_index_flags(project_dir, "cpu", pg.LogBuffer())
@@ -185,7 +191,12 @@ def test_get_index_flags_falls_back_to_test_index(
         "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488\nPYLOCK_FLAVOR=cpu\nPRODUCT=rhoai\n",
         encoding="utf-8",
     )
-
+    label_url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/"
+    monkeypatch.setattr(
+        resolver,
+        "inspect_base_image_index_url",
+        lambda _base_image: label_url,
+    )
     monkeypatch.setattr(
         resolver,
         "index_url_exists",
