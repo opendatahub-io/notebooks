@@ -37,7 +37,7 @@ spec:
     value: 5d
   - name: build-platforms
     value:
-    - linux-d160-m2xlarge/amd64
+    - linux/x86_64
   - name: dockerfile
     value: runtimes/pytorch+llmcompressor/ubi9-python-3.12/Dockerfile.konflux.cuda
   - name: path-context
