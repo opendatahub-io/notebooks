@@ -15,7 +15,7 @@ required-markers = [
 ]
 
 [options]
-exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
+exclude-newer = "2026-06-29T13:30:10.758732Z"
 exclude-newer-span = "P3D"
 
 [manifest]
@@ -295,6 +295,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a2/61/f083b5ac52e505dfc1c624eafbf8c7589a0d7f32daa398d2e7590efa5fda/colorlog-6.10.1.tar.gz", hash = "sha256:eb4ae5cb65fe7fec7773c2306061a8e63e02efc2c72eba9d27b0fa23c94f1321", size = 17162, upload-time = "2025-10-16T16:14:11.978Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6d/c1/e419ef3723a074172b68aaa89c9f3de486ed4c2399e2dbd8113a4fdcaf9e/colorlog-6.10.1-py3-none-any.whl", hash = "sha256:2d7e8348291948af66122cff006c9f8da6255d224e7cf8e37d8de2df3bad8c9c", size = 11743, upload-time = "2025-10-16T16:14:10.512Z" },
+]
+
+[[package]]
+name = "consolio"
+version = "0.1.15"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/38/2605162816a9172fe7f46dba9fd17916978913834406f1844b3e9c5ea8ba/consolio-0.1.15.tar.gz", hash = "sha256:17d723468e4f8545d06fd8e1ae21c752549fb0e99c27c20429fd692b8b28c7aa", size = 10443, upload-time = "2025-10-08T22:35:40.997Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4e/a8/e089e0d5a112a9a3f9b8da77eeda269ad939ea75962df0d6ac4efbe22144/consolio-0.1.15-py3-none-any.whl", hash = "sha256:70910195cf61dec564e08564dc02c61b733e86b82f3f37aa9783d95e88c0a158", size = 9601, upload-time = "2025-10-08T22:35:39.75Z" },
 ]
 
 [[package]]
@@ -984,6 +993,7 @@ dev = [
     { name = "allure-pytest", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "authlib", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "certifi", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "consolio", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "docker", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "inline-snapshot", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "keyring", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -1016,6 +1026,7 @@ dev = [
     { name = "allure-pytest" },
     { name = "authlib", specifier = ">=1.6.12" },
     { name = "certifi" },
+    { name = "consolio", specifier = ">=0.1.15" },
     { name = "docker" },
     { name = "inline-snapshot", specifier = ">=0.34.1" },
     { name = "keyring" },
