@@ -48,7 +48,7 @@ RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
 
 # Install useful OS packages
-RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
     bash /utils/dnf-helper.sh install perl mesa-libGL skopeo compat-openssl11 openshift-clients
 
 
@@ -105,7 +105,7 @@ WORKDIR /opt/app-root/bin
 COPY prefetch-input/odh/rpms.lock.yaml /tmp/.docker-stamp-rpms-lock
 
 # Install useful OS packages
-RUN --mount=type=bind,source=base-images/utils/dnf-helper.sh,target=/utils/dnf-helper.sh,ro \
+RUN --mount=type=bind,source=base-images/utils,target=/utils,ro \
     bash /utils/dnf-helper.sh install jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat
 
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/mongocli
