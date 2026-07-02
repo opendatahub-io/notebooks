@@ -51,6 +51,7 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: read  # checkout only; push and PR creation use the PAT
+      packages: read
     env:
       BRANCH: ${{ github.event.inputs.branch || 'main' }}
       INDEX_MODE: ${{ github.event.inputs.index_mode || 'auto' }}
@@ -93,6 +94,14 @@ jobs:
         run: |
           uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant odh
           uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant rhoai
+
+      - name: Login to GitHub Container Registry
+        if: ${{ github.repository != 'opendatahub-io/notebooks' }}
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate manifests (make test)
         run: make test
