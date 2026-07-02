@@ -196,6 +196,25 @@ override-dependencies = [
 2. Update the version number in the manifest's JSON array
 3. Only update the N version (current), not N-1 (previous release)
 
+## Prerequisites
+
+### Registry Access for `rh-index` Mode
+
+The `rh-index` lock refresh mode resolves the internal AIPCC PyPI index URL by
+inspecting the `com.redhat.aiplatform.index_url` label on the base container
+image specified in each `build-args/konflux.*.conf` file.
+
+This requires:
+
+- **`skopeo`** installed and on `$PATH`
+- **Network access** to the container registry hosting the base images
+  (currently `quay.io/aipcc/base-images`)
+- **Pull credentials** configured if the registry requires authentication
+  (e.g. via `skopeo login` or a Docker/Podman auth file)
+
+If `skopeo` is unavailable or the registry is unreachable, the resolver will
+report a clear error describing the failure.
+
 ## Related Files
 
 - `scripts/pylocks_generator.sh` - Lock file generation script
