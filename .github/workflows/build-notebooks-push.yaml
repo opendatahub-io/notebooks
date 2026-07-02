@@ -28,6 +28,9 @@ permissions:
 jobs:
   gen:
     name: Generate job matrix
+    permissions:
+      contents: read
+      packages: read
     runs-on: ubuntu-26.04
     # for odh-io/notebooks and rhds/notebooks, allow only main, rhoai-*, release-*
     if: ${{ github.event_name == 'workflow_dispatch' ||
@@ -39,6 +42,14 @@ jobs:
       has_jobs: ${{ steps.gen.outputs.has_jobs }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - name: Login to GitHub Container Registry
+        if: ${{ github.repository != 'opendatahub-io/notebooks' }}
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine targets to build (we want to build everything on push)
         run: |
