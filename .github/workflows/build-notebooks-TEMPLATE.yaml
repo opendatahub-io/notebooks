@@ -28,6 +28,10 @@ name: Build & Publish Notebook Servers (TEMPLATE)
         default: false
         description: "add RHEL subscription from github secret"
         type: boolean
+      product:
+        required: false
+        description: "product variant override (odh/rhoai); defaults to odh on opendatahub-io/notebooks, rhoai elsewhere"
+        type: string
 
 jobs:
   build:
@@ -50,6 +54,7 @@ jobs:
       # Makefile variables
       BUILD_ARCH: ${{ inputs.platform }}
       RELEASE_PYTHON_VERSION: ${{ inputs.python }}
+      PRODUCT: ${{ inputs.product || (github.repository == 'opendatahub-io/notebooks' && 'odh' || 'rhoai') }}
 
     steps:
 
@@ -82,6 +87,27 @@ jobs:
           platform: ${{ inputs.platform }}
 
       - run: mkdir -p $TMPDIR
+
+      - name: Verify subscription secrets are available
+        if: ${{ inputs.subscription }}
+        env:
+          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
+          AIPCC_QUAY_BOT_USERNAME: ${{ secrets.AIPCC_QUAY_BOT_USERNAME }}
+          AIPCC_QUAY_BOT_PASSWORD: ${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for var in SUBSCRIPTION_ORG SUBSCRIPTION_ACTIVATION_KEY AIPCC_QUAY_BOT_USERNAME AIPCC_QUAY_BOT_PASSWORD GIT_CRYPT_KEY; do
+            if [[ -z "${!var:-}" ]]; then
+              echo "::error::${var} secret is not available in this context (likely a fork PR). Push to a same-repo branch for full CI validation."
+              missing=1
+            fi
+          done
+          if [[ $missing -ne 0 ]]; then
+            exit 1
+          fi
 
       # do this early because it's fast and why not
       - name: Unlock encrypted secrets with git-crypt

@@ -22,15 +22,31 @@ jobs:
   gen:
     name: Generate job matrix
     runs-on: ubuntu-latest
-    # rhds/notebooks builds from quay.io/aipcc bases and requires pull_request_target trigger
-    if: ${{ github.repository != 'red-hat-data-services/notebooks' }}
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       has_jobs: ${{ steps.gen.outputs.has_jobs }}
+      is_fork: ${{ steps.fork-check.outputs.is_fork }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           persist-credentials: false  # https://github.com/actions/checkout/issues/2312
+
+      - name: Check if PR is from a fork
+        id: fork-check
+        env:
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
+        run: |
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "is_fork=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_fork=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Flag fork PR in workflow summary
+        if: steps.fork-check.outputs.is_fork == 'true'
+        run: |
+          echo "::error title=Fork PR — subscription builds will fail::This PR is from a fork. Subscription builds (RHEL, AIPCC) need secrets unavailable to forks. Push your branch to the main repo for full CI."
 
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
         with:
@@ -39,19 +55,33 @@ jobs:
       - name: Determine targets to build based on changed files
         run: |
           set -x
-          git fetch --no-tags origin 'pull/${{ github.event.pull_request.number }}/head:${{ github.event.pull_request.head.ref }}'
-          git fetch --no-tags origin '+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}'
+          git fetch --no-tags origin "pull/${PR_NUMBER}/head:${HEAD_REF}"
+          git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
           python3 ci/cached-builds/gen_gha_matrix_jobs.py \
-            --from-ref 'origin/${{ github.event.pull_request.base.ref }}' \
-            --to-ref '${{ github.event.pull_request.head.ref }}' \
-            --rhel-images exclude \
+            --from-ref "origin/${BASE_REF}" \
+            --to-ref "${HEAD_REF}" \
+            --rhel-images include \
             --s390x-images include
         id: gen
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         shell: bash
 
+      - name: Annotate PR for fork guidance
+        if: steps.fork-check.outputs.is_fork == 'true'
+        run: |
+          FIRST_FILE=$(git diff --name-only "origin/${BASE_REF}...${HEAD_REF}" | head -1)
+          FIRST_FILE="${FIRST_FILE:-CONTRIBUTING.md}"
+          echo "::warning file=${FIRST_FILE},line=1,title=Fork PR — subscription builds will fail::Push your branch to the main repo for full CI. See CONTRIBUTING.md."
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+
   build:
+    name: "${{ matrix.target }} · ${{ matrix.platform }} [rhoai]"
     needs: ["gen"]
     strategy:
       fail-fast: false
@@ -63,5 +93,6 @@ jobs:
       python: "${{ matrix.python }}"
       github: "${{ toJSON(github) }}"
       platform: "${{ matrix.platform }}"
-      subscription: "${{ matrix.subscription }}"
+      subscription: ${{ true }}
+      product: rhoai
     secrets: inherit

@@ -77,7 +77,7 @@ define build_image
 	# Checks if there’s a build-args/*.conf matching the Dockerfile
 	$(eval BUILD_DIR := $(dir $(2)))
 	$(eval DOCKERFILE_NAME := $(notdir $(2)))
-	$(eval CONF_FILE := $(BUILD_DIR)build-args/$(shell echo $(DOCKERFILE_NAME) | cut -d. -f2).conf)
+	$(eval CONF_FILE := $(BUILD_DIR)build-args/$(shell echo $(DOCKERFILE_NAME) | awk -F. '{print $$NF}').conf)
 
 	# if the conf file exists, transform it into --build-arg KEY=VALUE flags
 	$(eval BUILD_ARGS := $(shell \
@@ -132,55 +132,55 @@ bin/buildinputs: scripts/buildinputs/buildinputs.go scripts/buildinputs/go.mod s
 
 .PHONY: jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
 
 .PHONY: jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION)
 jupyter-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/datascience/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+	$(call image,$@,jupyter/datascience/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
 
 .PHONY: cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 cuda-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cuda)
 
 .PHONY: cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
 cuda-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+	$(call image,$@,jupyter/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cuda)
 
 .PHONY: cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
 cuda-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+	$(call image,$@,jupyter/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cuda)
 
 .PHONY: cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION)
 cuda-jupyter-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/pytorch+llmcompressor/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+	$(call image,$@,jupyter/pytorch+llmcompressor/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cuda)
 
 .PHONY: jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION)
 jupyter-trustyai-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/trustyai/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+	$(call image,$@,jupyter/trustyai/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
 
 .PHONY: runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 runtime-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+	$(call image,$@,runtimes/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
 
 .PHONY: runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION)
 runtime-datascience-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/datascience/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+	$(call image,$@,runtimes/datascience/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
 
 .PHONY: runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
 runtime-cuda-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+	$(call image,$@,runtimes/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cuda)
 
 .PHONY: runtime-cuda-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION)
 runtime-cuda-pytorch-llmcompressor-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/pytorch+llmcompressor/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+	$(call image,$@,runtimes/pytorch+llmcompressor/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cuda)
 
 .PHONY: runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
 runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cuda)
+	$(call image,$@,runtimes/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cuda)
 
 .PHONY: codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION)
 codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,codeserver/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.cpu)
+	$(call image,$@,codeserver/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
 
 ####################################### Buildchain for Python using C9S #######################################
 
@@ -205,23 +205,23 @@ cuda-rstudio-rhel9-python-$(RELEASE_PYTHON_VERSION):
 ####################################### Buildchain for AMD Python using UBI9 #######################################
 .PHONY: rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
+	$(call image,$@,jupyter/minimal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
 
 .PHONY: rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
 rocm-jupyter-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/rocm/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
+	$(call image,$@,jupyter/rocm/tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
 
 .PHONY: rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
 rocm-jupyter-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,jupyter/rocm/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
+	$(call image,$@,jupyter/rocm/pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
 
 .PHONY: rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION)
 rocm-runtime-pytorch-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/rocm-pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
+	$(call image,$@,runtimes/rocm-pytorch/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
 
 .PHONY: rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION)
 rocm-runtime-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
-	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.rocm)
+	$(call image,$@,runtimes/rocm-tensorflow/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.rocm)
 
 ####################################### Deployments #######################################
 
