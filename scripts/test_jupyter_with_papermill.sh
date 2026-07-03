@@ -226,6 +226,36 @@ function _get_source_of_truth_filepath()
 }
 
 # Description:
+#   Extracts the major.minor version of a package from a requirements.txt file
+function _get_package_version_from_requirements()
+{
+    local package_name="${1:-}"
+    local requirements_file="${2:-}"
+
+    if [ -f "${requirements_file}" ]; then
+        local full_version
+        full_version=$(grep -E "^${package_name}==" "${requirements_file}" | sed -E 's/.*==([0-9]+\.[0-9]+).*/\1/' | head -1)
+        printf '%s' "${full_version}"
+    fi
+}
+
+# Description:
+#   Extracts major.minor from pylock.toml (rhoai-2.25 lockfile layout)
+function _get_package_version_from_pylock()
+{
+    local package_name="${1:-}"
+    local pylock_file="${2:-}"
+
+    if [ -f "${pylock_file}" ]; then
+        local full_version
+        full_version=$(awk -v pkg="name = \"${package_name}\"" '$0 == pkg { getline; if ($1 == "version") { gsub(/"/, "", $3); print $3; exit } }' "${pylock_file}")
+        if [ -n "${full_version}" ]; then
+            printf '%s' "$(echo "${full_version}" | sed -E 's/^([0-9]+\.[0-9]+).*/\1/')"
+        fi
+    fi
+}
+
+# Description:
 #   Creates an 'expected_version.json' file based on the relevant imagestream manifest within the notebooks repo relevant to the notebook under test on the
 #   running pod to be used as the "source of truth" for test_notebook.ipynb tests that assert on package version.
 #
@@ -246,12 +276,51 @@ function _create_test_versions_source_of_truth()
         exit 1
     fi
 
-    local nbdime_version='4.0'
-    local nbgitpuller_version='1.2'
+    local nbdime_version
+    local nbgitpuller_version
+    local notebook_dir
+    notebook_dir="$(_get_jupyter_notebook_directory "${notebook_id}")"
+    local requirements_file="${notebook_dir}/requirements.cpu.txt"
+    case "${accelerator_flavor}" in
+        cuda)
+            if [ -f "${notebook_dir}/requirements.cuda.txt" ]; then
+                requirements_file="${notebook_dir}/requirements.cuda.txt"
+            fi
+            ;;
+        rocm)
+            if [ -f "${notebook_dir}/requirements.rocm.txt" ]; then
+                requirements_file="${notebook_dir}/requirements.rocm.txt"
+            fi
+            ;;
+    esac
+    local pylock_file="${notebook_dir}/pylock.toml"
+
+    nbdime_version="$(_get_package_version_from_requirements 'nbdime' "${requirements_file}")"
+    nbdime_version="${nbdime_version:-4.0}"
+
+    nbgitpuller_version="$(_get_package_version_from_requirements 'nbgitpuller' "${requirements_file}")"
+    nbgitpuller_version="${nbgitpuller_version:-1.2}"
+
+    local compressed_tensors_version=''
+    local lm_eval_version=''
+    if [[ "${notebook_id}" == *llmcompressor* ]]; then
+        compressed_tensors_version="$(_get_package_version_from_requirements 'compressed-tensors' "${requirements_file}")"
+        lm_eval_version="$(_get_package_version_from_requirements 'lm-eval' "${requirements_file}")"
+        if [ -z "${compressed_tensors_version}" ] && [ -f "${pylock_file}" ]; then
+            compressed_tensors_version="$(_get_package_version_from_pylock 'compressed-tensors' "${pylock_file}")"
+        fi
+        if [ -z "${lm_eval_version}" ] && [ -f "${pylock_file}" ]; then
+            lm_eval_version="$(_get_package_version_from_pylock 'lm-eval' "${pylock_file}")"
+        fi
+    fi
 
     expected_versions=$("${yqbin}" '.spec.tags[0].annotations | .["opendatahub.io/notebook-software"] + .["opendatahub.io/notebook-python-dependencies"]' "${test_version_truth_filepath}" |
         "${yqbin}" -N -p json -o yaml |
-        nbdime_version=${nbdime_version} nbgitpuller_version=${nbgitpuller_version} "${yqbin}" '. + [{"name": "nbdime", "version": strenv(nbdime_version)},{"name": "nbgitpuller", "version": strenv(nbgitpuller_version)}]' |
+        nbdime_version=${nbdime_version} nbgitpuller_version=${nbgitpuller_version} \
+        compressed_tensors_version=${compressed_tensors_version} lm_eval_version=${lm_eval_version} \
+        "${yqbin}" '. + [{"name": "nbdime", "version": strenv(nbdime_version)}, {"name": "nbgitpuller", "version": strenv(nbgitpuller_version)}]
+          + (strenv(compressed_tensors_version) | select(. != "") | [{"name": "compressed-tensors", "version": .}] // [])
+          + (strenv(lm_eval_version) | select(. != "") | [{"name": "lm-eval", "version": .}] // [])' |
         "${yqbin}" -N -o json '[ .[] | (.name | key) = "key" | (.version | key) = "value" ] | from_entries')
 
     # Following disabled shellcheck intentional as the intended behavior is for those ${1}, ${2} variables to only be expanded when running within kubernetes
@@ -411,8 +480,6 @@ function _handle_test()
 {
     local notebook_id=
     notebook_id=$(_get_notebook_id)
-
-    _create_test_versions_source_of_truth "${notebook_id}"
 
     "${kbin}" exec "${notebook_workload_name}" -- /bin/sh -c "python3 -m pip install papermill"
 
