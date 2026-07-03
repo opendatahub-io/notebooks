@@ -143,6 +143,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         make install -j$(nproc) && \
         cd ../../python && \
         pip install --no-cache-dir -r requirements-build.txt && \
+        pip install --upgrade pip && \
+        # RHAIENG-5986: requirements-build.txt may pull setuptools 82+ (no pkg_resources)
+        pip install --force-reinstall setuptools==80.9.0 wheel && \
         PYARROW_WITH_PARQUET=1 \
         PYARROW_WITH_DATASET=1 \
         PYARROW_WITH_FILESYSTEM=1 \

@@ -75,6 +75,10 @@ dependencies = [
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython'",
 ]
+# RHAIENG-5986: pandas 1.5.3 setup.py imports pkg_resources but does not declare
+# setuptools as a PEP 517 build dependency. uv reads this from pyproject.toml even
+# when installing locked requirements via `uv pip install --requirements=pylock.toml`.
+extra-build-dependencies = { pandas = ["setuptools>=80.9.0,<82", "wheel"] }
 override-dependencies = [
     # RHAIENG-3211: CVE-2026-26007 cryptography Subgroup Attack
     "cryptography>=46.0.5",

@@ -27,6 +27,7 @@ WORKDIR /root
 ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
 
 COPY ${TRUSTYAI_SOURCE_CODE}/pylock.toml .
+COPY ${TRUSTYAI_SOURCE_CODE}/pyproject.toml .
 COPY ${TRUSTYAI_SOURCE_CODE}/devel_env_setup.sh .
 
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -34,8 +35,13 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     # the devel script is ppc64le specific - sets up build-time dependencies
     source ./devel_env_setup.sh && \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
+    # RHAIENG-5986: cap setuptools version in isolated sdist builds (pkg_resources removed in 82+)
+    printf '%s\n' 'setuptools>=80.9.0,<82' > build_constraints.txt && \
+    # [tool.uv] extra-build-dependencies in pyproject.toml supplies setuptools for pandas;
+    # pylock.toml is the install input; pyproject.toml is copied for uv config only.
+    # do not use --no-config — uv must discover pyproject.toml in this directory.
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
-    UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
+    UV_LINK_MODE=copy uv pip install --strict --no-deps --refresh --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml --build-constraint build_constraints.txt
 
 ####################
 # cpu-base         #
