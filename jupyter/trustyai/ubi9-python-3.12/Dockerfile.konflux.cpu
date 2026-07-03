@@ -37,7 +37,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     # This may have to download and compile some dependencies, and as we don't lock requirements from `build-system.requires`,
     # RHAIENG-5986: cap setuptools version in isolated sdist builds (pkg_resources removed in 82+)
     printf '%s\n' 'setuptools>=80.9.0,<82' > build_constraints.txt && \
-
     # [tool.uv.pip] extra-build-dependencies in pyproject.toml supplies setuptools for pandas;
     # do not use --no-config here — uv must read pyproject.toml (build isolation, not host env).
     #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
