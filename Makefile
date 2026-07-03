@@ -18,6 +18,12 @@ $(error This Make does not support .RECIPEPREFIX. Please use GNU Make 4.0 or lat
 endif
 .RECIPEPREFIX =
 
+# PRODUCT: rhoai-only on this branch (see RHAIENG-6036)
+PRODUCT ?= rhoai
+ifneq ($(filter rhoai,$(PRODUCT)),$(PRODUCT))
+$(error PRODUCT must be 'rhoai' on rhoai-2.25, got '$(PRODUCT)')
+endif
+
 IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
 RELEASE	 		 ?= 2025b
 RELEASE_PYTHON_VERSION	 ?= 3.12
