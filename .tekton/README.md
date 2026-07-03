@@ -10,8 +10,6 @@ The 18 `*-v2-25-push.yaml` files are synchronized from [`konflux-central`](https
 
 The `*-pull-request.yaml` files are maintained in this repository only. They power `/build-konflux` and related PaC PR triggers for `red-hat-data-services/notebooks` on `rhoai-2.25`. Edit them here; they are not synced from `konflux-central`.
 
-**Gap:** `odh-pipeline-runtime-pytorch-llmcompressor-cuda-py312` has a `*-v2-25-push.yaml` but no matching `*-pull-request.yaml` yet.
-
 ## Making changes
 
 ### Push pipelines (post-merge)
@@ -36,3 +34,5 @@ git push origin rhoai-2.25
 ### Pull-request pipelines (pre-merge)
 
 Edit the relevant `*-pull-request.yaml` in this repo and open a PR on `red-hat-data-services/notebooks`.
+
+To retrigger Konflux PR builds without editing manifests, comment `/build-konflux` on the pull request. PaC matches that against `pipelinesascode.tekton.dev/on-comment` in the `*-pull-request.yaml` files (tensorflow-rocm images also accept `/build-tensorflow-rocm`).
