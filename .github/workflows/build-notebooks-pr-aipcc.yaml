@@ -93,4 +93,5 @@ jobs:
       github: "${{ toJSON(github) }}"
       platform: "${{ matrix.platform }}"
       subscription: "${{ matrix.subscription }}"
+      product: rhoai
     secrets: inherit
