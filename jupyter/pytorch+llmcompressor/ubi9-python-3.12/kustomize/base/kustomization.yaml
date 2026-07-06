@@ -1,11 +1,11 @@
 ---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namePrefix: jupyter-pytorch-llmcompressor-ubi9-python-3-12-
+namePrefix: jupyter-pytorch-llmc-ubi9-python-3-12-
 labels:
   - includeSelectors: true
     pairs:
-      app: jupyter-pytorch-llmcompressor-ubi9-python-3-12
+      app: jupyter-pytorch-llmc-ubi9-python-3-12
 resources:
   - service.yaml
   - statefulset.yaml
