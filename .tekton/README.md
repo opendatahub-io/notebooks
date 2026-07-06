@@ -1,39 +1,38 @@
-# ⚠️ Do Not Modify Files in the `.tekton/` Directory Directly
+# `.tekton/` on `rhoai-2.25`
 
-The `.tekton/` directory in each component repository is **automatically synchronized** from [`konflux-central`](https://github.com/red-hat-data-services/konflux-central) using automation. Any edits made directly to Tekton files in the component repositories will be **overwritten** by the next sync.
+## konflux-central sync (push pipelines only)
 
-All Tekton file updates **must be made in the `konflux-central` repository**.
+The 18 `*-v2-25-push.yaml` files are synchronized from [`konflux-central`](https://github.com/red-hat-data-services/konflux-central) (`pipelineruns/notebooks/.tekton/` on branch `rhoai-2.25`). Edits to those files in this repository will be overwritten by the next sync.
 
-## ✅ How to Make Changes
+`konflux-central` does not contain pull-request PipelineRuns for notebooks on the 2.25 release.
 
-To modify the pipelines for `notebooks` in the `rhoai-2.25` release:
+## Pull-request pipelines (local only)
 
-- Clone the [`konflux-central`](https://github.com/red-hat-data-services/konflux-central) repository.
+The `*-pull-request.yaml` files are maintained in this repository only. They power `/build-konflux` and related PaC PR triggers for `red-hat-data-services/notebooks` on `rhoai-2.25`. Edit them here; they are not synced from `konflux-central`.
+
+## Making changes
+
+### Push pipelines (post-merge)
+
+To modify post-merge Konflux builds:
+
+- Clone [`konflux-central`](https://github.com/red-hat-data-services/konflux-central).
+- Check out branch `rhoai-2.25`.
+- Edit files under `pipelineruns/notebooks/.tekton/` (the `*-v2-25-push.yaml` set).
+- Commit, push, and wait for automation to sync into this repo.
 
 ```bash
 git clone git@github.com:red-hat-data-services/konflux-central.git
 cd konflux-central
-```
-
-- Check out the release branch
-
-```bash
 git checkout rhoai-2.25
-```
-
-- Navigate to the Tekton files for your component(s).
-
-```bash
 cd pipelineruns/notebooks/.tekton
-```
-
-- Make the required changes to the Tekton YAML files.
-
-- Commit and push your changes.
-
-```bash
+# edit *-v2-25-push.yaml
 git commit -am "Update pipelinerun for notebooks (rhoai-2.25)"
 git push origin rhoai-2.25
 ```
 
-- Once pushed, automation will automatically sync your updates to the corresponding component repository.
+### Pull-request pipelines (pre-merge)
+
+Edit the relevant `*-pull-request.yaml` in this repo and open a PR on `red-hat-data-services/notebooks`.
+
+To retrigger Konflux PR builds without editing manifests, comment `/build-konflux` on the pull request. PaC matches that against `pipelinesascode.tekton.dev/on-comment` in the `*-pull-request.yaml` files (tensorflow-rocm images also accept `/build-tensorflow-rocm`).
