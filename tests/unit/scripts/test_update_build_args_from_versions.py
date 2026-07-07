@@ -54,12 +54,23 @@ def stub_image_digest_pinning(monkeypatch: pytest.MonkeyPatch, updater) -> None:
     monkeypatch.setattr(
         updater,
         "resolve_image_digest",
-        lambda image, digest_cache=None: pin_image_for_test(image),
+        lambda image, digest_cache=None, source_tag_by_digest=None: pin_image_for_test(image),
     )
 
 
+_RESOLVE_IMAGE_DIGEST_TESTS = frozenset(
+    {
+        "test_resolve_image_digest_uses_skopeo_inspect",
+        "test_resolve_image_digest_records_source_tag_for_digest_reference",
+        "test_resolve_image_digest_keeps_already_pinned_reference",
+    }
+)
+
+
 @pytest.fixture(autouse=True)
-def _stub_image_digest_pinning(monkeypatch: pytest.MonkeyPatch) -> None:
+def _stub_image_digest_pinning(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    if request.node.name in _RESOLVE_IMAGE_DIGEST_TESTS:
+        return
     stub_image_digest_pinning(monkeypatch, load_updater())
 
 
@@ -676,7 +687,29 @@ def test_split_image_ref_accepts_tag_and_digest_references() -> None:
 
 def test_resolve_image_digest_uses_skopeo_inspect(monkeypatch: pytest.MonkeyPatch) -> None:
     updater = load_updater()
+    digest = "sha256:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+
+    inspect_calls: list[str] = []
+
+    def fake_inspect(image: str, warning_color=None) -> dict[str, str]:
+        inspect_calls.append(image)
+        return {"Digest": digest}
+
+    monkeypatch.setattr(updater, "inspect_image_manifest", fake_inspect)
+
+    pinned = updater.resolve_image_digest("quay.io/aipcc/base-images/cpu:3.5.0-1782914735")
+
+    assert inspect_calls == ["quay.io/aipcc/base-images/cpu:3.5.0-1782914735"]
+    assert pinned == f"quay.io/aipcc/base-images/cpu@{digest}"
+    assert pinned != pin_image_for_test("quay.io/aipcc/base-images/cpu:3.5.0-1782914735")
+
+
+def test_resolve_image_digest_records_source_tag_for_digest_reference(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    updater = load_updater()
     digest = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    source_tag_by_digest: dict[str, str] = {}
 
     monkeypatch.setattr(
         updater,
@@ -684,9 +717,13 @@ def test_resolve_image_digest_uses_skopeo_inspect(monkeypatch: pytest.MonkeyPatc
         lambda image, warning_color=None: {"Digest": digest},
     )
 
-    pinned = updater.resolve_image_digest("quay.io/aipcc/base-images/cpu:3.5.0-1782914735")
+    pinned = updater.resolve_image_digest(
+        "quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771",
+        source_tag_by_digest=source_tag_by_digest,
+    )
 
     assert pinned == f"quay.io/aipcc/base-images/cpu@{digest}"
+    assert source_tag_by_digest[pinned] == "3.5.0-ea.2-1777919771"
 
 
 def test_resolve_image_digest_keeps_already_pinned_reference() -> None:
@@ -697,20 +734,103 @@ def test_resolve_image_digest_keeps_already_pinned_reference() -> None:
     assert updater.resolve_image_digest(image) == image
 
 
-def test_image_tag_from_reference_inspects_digested_image(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_image_tag_from_reference_uses_source_tag_cache() -> None:
     updater = load_updater()
     digest = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     image = f"quay.io/aipcc/base-images/cpu@{digest}"
 
-    monkeypatch.setattr(
-        updater,
-        "inspect_image_manifest",
-        lambda image, warning_color=None: {
-            "Name": "quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771",
-        },
+    assert (
+        updater.image_tag_from_reference(
+            image,
+            source_tag_by_digest={image: "3.5.0-ea.2-1777919771"},
+        )
+        == "3.5.0-ea.2-1777919771"
     )
 
-    assert updater.image_tag_from_reference(image) == "3.5.0-ea.2-1777919771"
+
+def test_image_tag_from_reference_returns_none_without_cached_tag_mapping() -> None:
+    updater = load_updater()
+    digest = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    image = f"quay.io/aipcc/base-images/cpu@{digest}"
+
+    assert updater.image_tag_from_reference(image) is None
+
+
+def test_image_tag_from_reference_matches_digest_from_digest_cache() -> None:
+    updater = load_updater()
+    digest = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    image = f"quay.io/aipcc/base-images/cpu@{digest}"
+
+    assert (
+        updater.image_tag_from_reference(
+            image,
+            digest_cache={
+                "quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771": digest,
+                "quay.io/aipcc/base-images/cpu:3.5.0-1777921111": "sha256:deadbeef",
+            },
+        )
+        == "3.5.0-ea.2-1777919771"
+    )
+
+
+def test_image_tag_from_reference_prefers_highest_semantic_match_from_digest_cache() -> None:
+    updater = load_updater()
+    digest = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    image = f"quay.io/aipcc/base-images/cpu@{digest}"
+
+    assert (
+        updater.image_tag_from_reference(
+            image,
+            digest_cache={
+                "quay.io/aipcc/base-images/cpu:3.9.0-ea.1-1": digest,
+                "quay.io/aipcc/base-images/cpu:3.10.0-ea.1-1": digest,
+            },
+        )
+        == "3.10.0-ea.1-1"
+    )
+
+
+def test_image_tag_from_reference_reuses_digest_to_tag_repository_cache() -> None:
+    updater = load_updater()
+    digest = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    image = f"quay.io/aipcc/base-images/cpu@{digest}"
+    digest_to_tag_by_repository = {
+        "quay.io/aipcc/base-images/cpu": {digest: "3.5.0-ea.2-1777919771"},
+    }
+
+    assert (
+        updater.image_tag_from_reference(
+            image,
+            digest_to_tag_by_repository=digest_to_tag_by_repository,
+        )
+        == "3.5.0-ea.2-1777919771"
+    )
+
+
+def test_select_best_matching_tag_prefers_higher_semantic_version() -> None:
+    updater = load_updater()
+
+    selected = updater.select_best_matching_tag(
+        [
+            "3.9.0-ea.1-1",
+            "3.10.0-ea.1-1",
+        ]
+    )
+
+    assert selected == "3.10.0-ea.1-1"
+
+
+def test_select_best_matching_tag_prefers_higher_build_number() -> None:
+    updater = load_updater()
+
+    selected = updater.select_best_matching_tag(
+        [
+            "3.5.0-ea.2-9",
+            "3.5.0-ea.2-10",
+        ]
+    )
+
+    assert selected == "3.5.0-ea.2-10"
 
 
 def test_select_latest_matching_rhds_tag_prefers_highest_build_in_same_family() -> None:
