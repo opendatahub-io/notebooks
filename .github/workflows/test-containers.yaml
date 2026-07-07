@@ -1,0 +1,142 @@
+---
+name: Test Infrastructure Self-Test
+
+"on":
+  workflow_dispatch:
+  pull_request:
+    paths: &test-containers-paths
+      - 'tests/containers/**'
+      - 'tests/conftest.py'
+      - 'pytest.ini'
+      - '.github/workflows/test-containers.yaml'
+      - 'ci/find_images_for_test_matrix.py'
+  push:
+    branches: [main, stable, 'rhoai-*']
+    paths: *test-containers-paths
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  TESTCONTAINERS_RYUK_DISABLED: "true"
+  IMAGE_REGISTRY: "ghcr.io/${{ github.repository }}/workbench-images"
+
+jobs:
+  find-images:
+    name: Find test images
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.find.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 1
+          submodules: false
+          persist-credentials: false
+
+      - name: Find images for test matrix
+        id: find
+        env:
+          IMAGE_REGISTRY: ${{ env.IMAGE_REGISTRY }}
+          GH_TOKEN: ${{ github.token }}
+          REF_NAME: ${{ github.event.pull_request.base.ref || github.ref_name }}
+        shell: python
+        # language=python
+        run: |
+          import json, os, re, subprocess, sys
+          sys.path.insert(0, "ci")
+
+          from find_images_for_test_matrix import find_suitable_sha
+
+          registry = os.environ["IMAGE_REGISTRY"]
+          ref_prefix = re.sub(r"[^a-zA-Z0-9._-]", "_", os.environ["REF_NAME"])[:40]
+          tag_suffix = "_odh_linux_amd64" if os.environ.get("GITHUB_REPOSITORY") == "opendatahub-io/notebooks" else ""
+          required = [
+              "codeserver-ubi9-python-3.12",
+              "jupyter-minimal-ubi9-python-3.12",
+              "jupyter-datascience-ubi9-python-3.12",
+              "runtime-datascience-ubi9-python-3.12",
+          ]
+
+          result = subprocess.run(
+              ["skopeo", "list-tags", "--creds", f"token:{os.environ['GH_TOKEN']}", f"docker://{registry}"],
+              capture_output=True, text=True, timeout=180,
+          )
+          if result.returncode != 0:
+              print(f"::error::skopeo list-tags failed: {result.stderr}", file=sys.stderr)
+              sys.exit(1)
+
+          sha = find_suitable_sha(ref_prefix, tag_suffix, required, result.stdout)
+          matrix = {"include": [
+              {"name": img, "image": f"{registry}:{img}-{ref_prefix}_{sha}{tag_suffix}"} for img in required
+          ]}
+          print(f"Using ref {ref_prefix!r}, SHA {sha}")
+          print(json.dumps(matrix, indent=2))
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"matrix={json.dumps(matrix)}\n")
+
+  container-tests:
+    name: "${{ matrix.name }}"
+    needs: find-images
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.find-images.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
+        with:
+          version-file: pyproject.toml
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.14"
+
+      - name: Install deps
+        run: uv sync --locked
+
+      - name: Start Podman socket
+        run: |
+          set -Eeuxo pipefail
+          podman --version
+          systemctl --user enable --now podman.socket
+          echo "DOCKER_HOST=unix://$(podman info --format '{{.Host.RemoteSocket.Path}}')" >> "$GITHUB_ENV"
+
+      - name: Login to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and run tests
+        env:
+          TEST_IMAGE: ${{ matrix.image }}
+        run: |
+          set -Eeuxo pipefail
+          podman pull "${TEST_IMAGE}"
+          uv run pytest tests/containers \
+            -m 'not openshift and not cuda and not rocm' \
+            --image="${TEST_IMAGE}" \
+            -v
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3  # v1.2.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: junit.xml
