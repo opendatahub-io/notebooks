@@ -5,9 +5,10 @@
 This flow validates the root config, scans managed image-tree ``build-args``
 files, rewrites managed ``BASE_IMAGE`` and ``RELEASE`` assignments plus the
 root ``Makefile`` release defaults, resolves newer RHDS ``channel: fast``
-releases to the highest already-published phase per target repository, and
-uses ``skopeo`` to select the latest build in the chosen release-and-phase
-family.
+releases to the highest already-published phase per target repository, uses
+``skopeo`` to select the latest build in the chosen release-and-phase family,
+and pins each resolved ``BASE_IMAGE`` to an immutable ``repository@sha256:…``
+reference.
 """
 
 from __future__ import annotations
@@ -613,11 +614,182 @@ def collect_conf_targets(root_dir: Path) -> list[ConfTarget]:
     return targets
 
 
+def image_reference_is_digest(ref: str) -> bool:
+    return ref.startswith("sha256:")
+
+
 def split_image_ref(image: str) -> tuple[str, str]:
+    if "@" in image:
+        repository, ref = image.rsplit("@", 1)
+        if not ref:
+            raise ValueError(f"Image reference is missing a digest: {image}")
+        if ":" in repository:
+            repository = repository.rsplit(":", 1)[0]
+        return repository, ref
+
     name, separator, tag = image.rpartition(":")
     if not separator:
         raise ValueError(f"Image reference is missing a tag: {image}")
     return name, tag
+
+
+def inspect_image_manifest(
+    image: str,
+    *,
+    warning_color: str | None = None,
+) -> dict[str, Any] | None:
+    try:
+        result = subprocess.run(
+            [
+                "skopeo",
+                "inspect",
+                "--retry-times",
+                "3",
+                "--override-arch",
+                "amd64",
+                "--override-os",
+                "linux",
+                f"docker://{image}",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        log_warning("Could not inspect image manifest for %s: %s", image, exc, color=warning_color)
+        return None
+
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip() or f"exit code {result.returncode}"
+        log_warning("skopeo inspect failed for %s: %s", image, detail, color=warning_color)
+        return None
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        log_warning("skopeo inspect returned invalid JSON for %s: %s", image, exc, color=warning_color)
+        return None
+
+    if not isinstance(payload, dict):
+        log_warning("skopeo inspect returned unexpected payload for %s", image, color=warning_color)
+        return None
+    return payload
+
+
+def rhds_tag_sort_key(tag: str) -> tuple[tuple[int, int, int], int, int] | tuple[int, str]:
+    match = RHDS_TAG_RE.fullmatch(tag)
+    if match is None:
+        return (0, tag)
+    return (
+        parse_release_version(match.group("version")),
+        rank_rhds_phase(match.group("phase")),
+        int(match.group("build")),
+    )
+
+
+def select_best_matching_tag(matches: list[str]) -> str:
+    rhds_matches = [tag for tag in matches if RHDS_TAG_RE.fullmatch(tag)]
+    candidates = rhds_matches if rhds_matches else matches
+    return max(candidates, key=rhds_tag_sort_key)
+
+
+def _matching_tags_from_digest_cache(
+    repository: str,
+    digest_ref: str,
+    digest_cache: dict[str, str] | None,
+) -> list[str]:
+    if digest_cache is None:
+        return []
+
+    prefix = f"{repository}:"
+    return [
+        tagged_image.removeprefix(prefix)
+        for tagged_image, cached_digest in digest_cache.items()
+        if cached_digest == digest_ref and tagged_image.startswith(prefix)
+    ]
+
+
+def resolve_tag_for_digest_reference(
+    image: str,
+    *,
+    source_tag_by_digest: dict[str, str] | None = None,
+    digest_cache: dict[str, str] | None = None,
+    digest_to_tag_by_repository: dict[str, dict[str, str]] | None = None,
+) -> str | None:
+    if source_tag_by_digest is not None and image in source_tag_by_digest:
+        return source_tag_by_digest[image]
+
+    repository, digest_ref = split_image_ref(image)
+
+    if digest_to_tag_by_repository is not None:
+        repo_index = digest_to_tag_by_repository.get(repository)
+        if repo_index is not None and digest_ref in repo_index:
+            selected = repo_index[digest_ref]
+            if source_tag_by_digest is not None:
+                source_tag_by_digest[image] = selected
+            return selected
+
+    cached_matches = _matching_tags_from_digest_cache(repository, digest_ref, digest_cache)
+    if cached_matches:
+        selected = select_best_matching_tag(cached_matches)
+        if source_tag_by_digest is not None:
+            source_tag_by_digest[image] = selected
+        if digest_to_tag_by_repository is not None:
+            digest_to_tag_by_repository.setdefault(repository, {})[digest_ref] = selected
+        return selected
+
+    return None
+
+
+def image_tag_from_reference(
+    image: str,
+    *,
+    source_tag_by_digest: dict[str, str] | None = None,
+    digest_cache: dict[str, str] | None = None,
+    digest_to_tag_by_repository: dict[str, dict[str, str]] | None = None,
+) -> str | None:
+    _repository, ref = split_image_ref(image)
+    if not image_reference_is_digest(ref):
+        return ref
+
+    return resolve_tag_for_digest_reference(
+        image,
+        source_tag_by_digest=source_tag_by_digest,
+        digest_cache=digest_cache,
+        digest_to_tag_by_repository=digest_to_tag_by_repository,
+    )
+
+
+def resolve_image_digest(
+    image: str,
+    digest_cache: dict[str, str] | None = None,
+    source_tag_by_digest: dict[str, str] | None = None,
+) -> str:
+    repository, ref = split_image_ref(image)
+    if image_reference_is_digest(ref):
+        return image if "@" in image else f"{repository}@{ref}"
+
+    if digest_cache is not None and image in digest_cache:
+        pinned = f"{repository}@{digest_cache[image]}"
+        if source_tag_by_digest is not None:
+            source_tag_by_digest[pinned] = ref
+        return pinned
+
+    payload = inspect_image_manifest(image)
+    if payload is None:
+        raise ValueError(f"skopeo inspect failed while resolving digest for {image}")
+
+    digest = payload.get("Digest")
+    if not isinstance(digest, str) or not digest:
+        raise ValueError(f"skopeo inspect returned no digest for {image}")
+
+    if digest_cache is not None:
+        digest_cache[image] = digest
+    pinned = f"{repository}@{digest}"
+    if source_tag_by_digest is not None:
+        source_tag_by_digest[pinned] = ref
+    return pinned
 
 
 def normalize_stream_version(version: str) -> str:
@@ -960,6 +1132,10 @@ def build_rhds_seed_tag(release_version: str, phase: str | None) -> str:
 def determine_rhds_fast_bundle_phase(
     states: list[TargetState],
     release: ReleaseConfig,
+    *,
+    source_tag_by_digest: dict[str, str] | None = None,
+    digest_cache: dict[str, str] | None = None,
+    digest_to_tag_by_repository: dict[str, dict[str, str]] | None = None,
 ) -> tuple[bool, str | None]:
     target_version = parse_release_version(release.full_version)
     same_release_phases: set[str | None] = set()
@@ -970,7 +1146,14 @@ def determine_rhds_fast_bundle_phase(
         if peer_state.policy.mode != "fast":
             continue
 
-        _peer_repository, peer_tag = split_image_ref(peer_state.current_base_image)
+        peer_tag = image_tag_from_reference(
+            peer_state.current_base_image,
+            source_tag_by_digest=source_tag_by_digest,
+            digest_cache=digest_cache,
+            digest_to_tag_by_repository=digest_to_tag_by_repository,
+        )
+        if peer_tag is None:
+            continue
         match = RHDS_TAG_RE.fullmatch(peer_tag)
         if match is None:
             continue
@@ -1029,8 +1212,18 @@ def build_rhds_pinned_image(
     use_bundle_phase: bool = False,
     bundle_phase: str | None = None,
     forward_phase: str | None = "ea.1",
+    source_tag_by_digest: dict[str, str] | None = None,
+    digest_cache: dict[str, str] | None = None,
+    digest_to_tag_by_repository: dict[str, dict[str, str]] | None = None,
 ) -> str:
-    _current_name, current_tag = split_image_ref(current_base_image)
+    current_tag = image_tag_from_reference(
+        current_base_image,
+        source_tag_by_digest=source_tag_by_digest,
+        digest_cache=digest_cache,
+        digest_to_tag_by_repository=digest_to_tag_by_repository,
+    )
+    if current_tag is None:
+        raise ValueError(f"Cannot determine RHDS tag for digested image {current_base_image}")
     repository = build_rhds_pinned_repository(accelerator, version, release)
     return f"{repository}:{build_rhds_pinned_tag(current_tag, target_release_version, use_bundle_phase=use_bundle_phase, bundle_phase=bundle_phase, forward_phase=forward_phase)}"
 
@@ -1085,6 +1278,9 @@ def resolve_rhds_base_image(
     rhds_bundle_phase_known: bool,
     rhds_bundle_phase: str | None,
     stable_repo_overrides: dict[str, str] | None = None,
+    source_tag_by_digest: dict[str, str] | None = None,
+    digest_cache: dict[str, str] | None = None,
+    digest_to_tag_by_repository: dict[str, dict[str, str]] | None = None,
 ) -> str:
     target = state.target
     policy = state.policy
@@ -1119,11 +1315,17 @@ def resolve_rhds_base_image(
         use_release_bundle_phase=use_release_bundle_phase,
         rhds_bundle_phase=rhds_bundle_phase,
     )
-    repository, current_tag = build_rhds_pinned_repository(target.accelerator, policy.version, release), split_image_ref(
-        current_base_image
-    )[1]
+    repository = build_rhds_pinned_repository(target.accelerator, policy.version, release)
+    current_tag = image_tag_from_reference(
+        current_base_image,
+        source_tag_by_digest=source_tag_by_digest,
+        digest_cache=digest_cache,
+        digest_to_tag_by_repository=digest_to_tag_by_repository,
+    )
 
-    if RHDS_TAG_RE.fullmatch(current_tag) is None:
+    if current_tag is None:
+        candidate = f"{repository}:{build_rhds_seed_tag(target_release_version, bundle_seed_phase)}"
+    elif RHDS_TAG_RE.fullmatch(current_tag) is None:
         stable_match = RHDS_STABLE_TAG_RE.fullmatch(current_tag)
         if MIDSTREAM_VERSION_RE.fullmatch(current_tag):
             current_minor = parse_minor_version(current_tag)
@@ -1174,6 +1376,9 @@ def resolve_rhds_base_image(
             use_bundle_phase=rhds_bundle_phase_known and use_release_bundle_phase and target_version == current_version,
             bundle_phase=rhds_bundle_phase,
             forward_phase=forward_phase,
+            source_tag_by_digest=source_tag_by_digest,
+            digest_cache=digest_cache,
+            digest_to_tag_by_repository=digest_to_tag_by_repository,
         )
     return resolve_latest_published_rhds_image(candidate, tag_cache)
 
@@ -1199,6 +1404,9 @@ def build_target_base_image(
     rhds_bundle_phase_known: bool,
     rhds_bundle_phase: str | None,
     stable_repo_overrides: dict[str, str] | None = None,
+    source_tag_by_digest: dict[str, str] | None = None,
+    digest_cache: dict[str, str] | None = None,
+    digest_to_tag_by_repository: dict[str, dict[str, str]] | None = None,
 ) -> str:
     match state.target.distribution:
         case "rhds":
@@ -1210,6 +1418,9 @@ def build_target_base_image(
                 rhds_bundle_phase_known,
                 rhds_bundle_phase,
                 stable_repo_overrides,
+                source_tag_by_digest,
+                digest_cache,
+                digest_to_tag_by_repository,
             )
         case "odh":
             return resolve_odh_base_image(state, release)
@@ -1299,6 +1510,9 @@ def plan_updates(
     states: list[TargetState] = []
     tag_cache: dict[str, tuple[str, ...]] = {}
     stable_acc_version_cache: dict[tuple[str, str], str | None | object] = {}
+    source_tag_by_digest: dict[str, str] = {}
+    digest_cache: dict[str, str] = {}
+    digest_to_tag_by_repository: dict[str, dict[str, str]] = {}
 
     for target in collect_conf_targets(root_dir):
         original_text = target.path.read_text(encoding="utf-8")
@@ -1321,18 +1535,31 @@ def plan_updates(
             )
         )
 
-    rhds_bundle_phase_known, rhds_bundle_phase = determine_rhds_fast_bundle_phase(states, config.release)
+    rhds_bundle_phase_known, rhds_bundle_phase = determine_rhds_fast_bundle_phase(
+        states,
+        config.release,
+        source_tag_by_digest=source_tag_by_digest,
+        digest_cache=digest_cache,
+        digest_to_tag_by_repository=digest_to_tag_by_repository,
+    )
 
     updates: list[PlannedUpdate] = []
     for state in states:
-        resolved_base_image = build_target_base_image(
-            state,
-            config.release,
-            tag_cache,
-            stable_acc_version_cache,
-            rhds_bundle_phase_known,
-            rhds_bundle_phase,
-            stable_repo_overrides,
+        resolved_base_image = resolve_image_digest(
+            build_target_base_image(
+                state,
+                config.release,
+                tag_cache,
+                stable_acc_version_cache,
+                rhds_bundle_phase_known,
+                rhds_bundle_phase,
+                stable_repo_overrides,
+                source_tag_by_digest,
+                digest_cache,
+                digest_to_tag_by_repository,
+            ),
+            digest_cache,
+            source_tag_by_digest,
         )
         updates.append(
             PlannedUpdate(
