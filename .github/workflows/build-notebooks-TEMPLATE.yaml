@@ -585,10 +585,9 @@ jobs:
       - run: sudo compsize -x "${HOME}/.local/share/containers"
         if: "${{ !cancelled() && steps.install-compsize.outcome == 'success' }}"
 
-      # print system logs, useful when hunting for OOM kills
-
-      - run: sudo dmesg
+      # Capture kernel logs on failure (OOM debugging); upload as uncompressed artifacts instead of flooding job logs
+      - name: Capture kernel logs on failure
         if: "${{ failure() }}"
-
-      - run: journalctl --no-pager -k
-        if: "${{ failure() }}"
+        uses: ./.github/actions/capture-kernel-logs
+        with:
+          log-prefix: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}"
