@@ -1251,7 +1251,10 @@ def test_plan_updates_uses_published_ga_for_new_release_when_available(
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == pinned_base_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-1777921111")
+    assert updates[0].updated_text.strip() == pinned_base_image(
+        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-1777921111"
+    )
+
 
 def test_plan_updates_uses_highest_published_phase_for_new_release_when_ga_missing(
     tmp_path: Path,
@@ -1276,8 +1279,8 @@ def test_plan_updates_uses_highest_published_phase_for_new_release_when_ga_missi
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert (
-        updates[0].updated_text.strip() == pinned_base_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1777919999")
+    assert updates[0].updated_text.strip() == pinned_base_image(
+        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1777919999"
     )
 
 
@@ -1351,8 +1354,8 @@ def test_plan_updates_builds_fast_rhds_candidate_before_latest_resolution(
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
     assert seen == ["quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777919771"]
-    assert (
-        updates[0].updated_text.strip() == pinned_base_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777929999")
+    assert updates[0].updated_text.strip() == pinned_base_image(
+        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.6.0-ea.1-1777929999"
     )
 
 
@@ -1532,7 +1535,7 @@ def test_plan_updates_allows_independent_mixed_rhds_channels(
 
     assert seen == ["quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771"]
     assert rendered["konflux.cpu.conf"] == pinned_base_image("quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1780000000")
-    assert rendered["konflux.cuda.conf"] == pinned_base_image(rhds_gpu_stable_image('cuda'))
+    assert rendered["konflux.cuda.conf"] == pinned_base_image(rhds_gpu_stable_image("cuda"))
 
 
 def test_plan_updates_allows_cuda_minimal_stable_and_pytorch_fast(
@@ -1566,8 +1569,10 @@ def test_plan_updates_allows_cuda_minimal_stable_and_pytorch_fast(
     rendered = {update.target.path: update.updated_text.strip() for update in updates}
 
     assert seen == ["quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1777919771"]
-    assert rendered[minimal_conf] == pinned_base_image(rhds_gpu_stable_image('cuda'))
-    assert rendered[pytorch_conf] == pinned_base_image("quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000000")
+    assert rendered[minimal_conf] == pinned_base_image(rhds_gpu_stable_image("cuda"))
+    assert rendered[pytorch_conf] == pinned_base_image(
+        "quay.io/aipcc/base-images/cuda-25.0-el9.6:3.5.0-ea.2-1780000000"
+    )
 
 
 @pytest.mark.parametrize(
@@ -1639,7 +1644,9 @@ def test_plan_updates_uses_odh_midstream_rocm_repo(tmp_path: Path) -> None:
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == pinned_base_image("quay.io/opendatahub/odh-midstream-rocm-base-8-0:latest")
+    assert updates[0].updated_text.strip() == pinned_base_image(
+        "quay.io/opendatahub/odh-midstream-rocm-base-8-0:latest"
+    )
 
 
 def test_plan_updates_picks_rhds_stable_tag_matching_shared_acc_version_over_newer_build(
@@ -1680,7 +1687,7 @@ def test_plan_updates_picks_rhds_stable_tag_matching_shared_acc_version_over_new
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == pinned_base_image(rhds_gpu_stable_image('cuda', build='1780598175'))
+    assert updates[0].updated_text.strip() == pinned_base_image(rhds_gpu_stable_image("cuda", build="1780598175"))
 
 
 def test_inspect_image_config_warns_in_red_on_skopeo_failure(
@@ -1808,7 +1815,9 @@ def test_plan_updates_uses_odh_midstream_cpu_repo(tmp_path: Path) -> None:
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == pinned_base_image("quay.io/opendatahub/odh-midstream-python-base-3-11:latest")
+    assert updates[0].updated_text.strip() == pinned_base_image(
+        "quay.io/opendatahub/odh-midstream-python-base-3-11:latest"
+    )
 
 
 def test_plan_updates_uses_odh_in_house_cpu_repo_from_release_python_version(tmp_path: Path) -> None:
@@ -1820,8 +1829,9 @@ def test_plan_updates_uses_odh_in_house_cpu_repo_from_release_python_version(tmp
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == pinned_base_image("quay.io/opendatahub/odh-base-image-cpu-py311-c9s:latest")
-
+    assert updates[0].updated_text.strip() == pinned_base_image(
+        "quay.io/opendatahub/odh-base-image-cpu-py311-c9s:latest"
+    )
 
 
 def test_plan_updates_can_switch_odh_rocm_back_to_in_house_repo(tmp_path: Path) -> None:
@@ -1833,7 +1843,9 @@ def test_plan_updates_can_switch_odh_rocm_back_to_in_house_repo(tmp_path: Path) 
 
     updates = updater.plan_updates(tmp_path, updater.load_versions_config(tmp_path / "versions_config.yml"))
 
-    assert updates[0].updated_text.strip() == pinned_base_image("quay.io/opendatahub/odh-base-image-rocm-py312-c9s:v8.0")
+    assert updates[0].updated_text.strip() == pinned_base_image(
+        "quay.io/opendatahub/odh-base-image-rocm-py312-c9s:v8.0"
+    )
 
 
 def test_plan_updates_rewrites_release_to_minor_version(
