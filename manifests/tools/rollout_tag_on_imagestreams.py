@@ -895,7 +895,7 @@ def main(argv: list[str] | None = None) -> int:
     changed_paths.extend(imagestream_changed_paths)
     step_index += 1
 
-    if not args.dry_run and imagestream_changed_paths:
+    if imagestream_changed_paths:
         if "odh" in variants:
             params_changed_paths, released_images = run_odh_params_step(
                 root / "manifests" / "odh" / "base",

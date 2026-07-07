@@ -258,12 +258,23 @@ def _discover_param_pairs_from_imagestreams(
         document = yaml.safe_load(resource_path.read_text())
         if not isinstance(document, dict):
             continue
-        imagestream_name = document.get("metadata", {}).get("name")
-        tags = document.get("spec", {}).get("tags", [])
+        metadata = document.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        imagestream_name = metadata.get("name")
+        spec = document.get("spec")
+        if not isinstance(spec, dict):
+            continue
+        tags = spec.get("tags")
         if not isinstance(imagestream_name, str) or not isinstance(tags, list):
             continue
         for tag in tags:
-            from_name = tag.get("from", {}).get("name")
+            if not isinstance(tag, dict):
+                continue
+            from_block = tag.get("from")
+            if not isinstance(from_block, dict):
+                continue
+            from_name = from_block.get("name")
             if isinstance(from_name, str) and from_name.endswith("_PLACEHOLDER"):
                 pairs.append((from_name.removesuffix("_PLACEHOLDER"), imagestream_name))
     return pairs
