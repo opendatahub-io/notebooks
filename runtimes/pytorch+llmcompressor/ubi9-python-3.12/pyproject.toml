@@ -73,8 +73,6 @@ explicit = true
 [tool.uv]
 
 override-dependencies = [
-    # vllm is a requirement, however, as compressed-tensors is pinned, this can't be installed together
-    "compressed-tensors",
     # RHAIENG-3209: CVE-2026-25990  Pillow: Out-of-bounds Write
     # Upstream: https://github.com/vllm-project/llm-compressor/releases/tag/0.7.1.1
     "pillow>=12.1.1",

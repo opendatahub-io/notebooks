@@ -92,8 +92,6 @@ explicit = true
 # https://github.com/astral-sh/uv/issues/4422
 
 override-dependencies = [
-    # vllm is a requirement, however, as compressed-tensors is pinned, this can't be installed together
-    "compressed-tensors",
     # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
     # Upstream: https://github.com/elyra-ai/elyra/issues/3325
     "urllib3>=2.6.0",
