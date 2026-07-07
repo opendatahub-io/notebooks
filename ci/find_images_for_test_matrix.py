@@ -3,7 +3,12 @@ import sys
 
 
 def find_suitable_sha(ref_prefix: str, tag_suffix: str, required: list[str], skopeo_output: str) -> str:
-    """Skopeo lists tags oldest to newest."""
+    """Skopeo lists tags oldest to newest.
+
+    Image tags are formed as ``{target}-{ref_prefix}_{sha}{tag_suffix}``.
+    On RHDS rhoai-2.25 push builds the ref prefix is currently empty, yielding
+    tags like ``jupyter-minimal-ubi9-python-3.12-_<sha>``.
+    """
     tags = list(json.loads(skopeo_output)["Tags"])
 
     sha_list: list[list[str]] = []
@@ -45,6 +50,22 @@ def test_find_suitable_sha__rhoai_branch_without_suffix():
     )
 
 
+def test_find_suitable_sha__rhds_empty_ref_prefix():
+    sha = "568c8cfa48c44e90b30ce8e37c671d15b03950de"
+    skopeo_output = json.dumps(
+        {
+            "Tags": [
+                f"jupyter-minimal-ubi9-python-3.12-_{sha}",
+                f"jupyter-datascience-ubi9-python-3.12-_{sha}",
+            ]
+        }
+    )
+    assert (
+        find_suitable_sha("", "", ["jupyter-minimal-ubi9-python-3.12", "jupyter-datascience-ubi9-python-3.12"], skopeo_output)
+        == sha
+    )
+
+
 def test_find_suitable_sha__multiple():
     skopeo_output = json.dumps(
         {
@@ -62,5 +83,6 @@ def test_find_suitable_sha__multiple():
 if __name__ == "__main__":
     test_find_suitable_sha__single()
     test_find_suitable_sha__rhoai_branch_without_suffix()
+    test_find_suitable_sha__rhds_empty_ref_prefix()
     test_find_suitable_sha__multiple()
     print("OK")
