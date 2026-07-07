@@ -4,7 +4,7 @@ name: Test Infrastructure Self-Test
 "on":
   workflow_dispatch:
   pull_request:
-    paths:
+    paths: &test-containers-paths
       - 'tests/containers/**'
       - 'tests/conftest.py'
       - 'pytest.ini'
@@ -12,12 +12,7 @@ name: Test Infrastructure Self-Test
       - 'ci/find_images_for_test_matrix.py'
   push:
     branches: [main, stable, 'rhoai-*']
-    paths:
-      - 'tests/containers/**'
-      - 'tests/conftest.py'
-      - 'pytest.ini'
-      - '.github/workflows/test-containers.yaml'
-      - 'ci/find_images_for_test_matrix.py'
+    paths: *test-containers-paths
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
