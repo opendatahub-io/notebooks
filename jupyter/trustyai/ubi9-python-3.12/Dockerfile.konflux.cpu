@@ -195,8 +195,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 USER 1001
 
-RUN # setup path for runtime configuration \
-    mkdir /opt/app-root/runtimes && \
+# setup path for runtime configuration
+RUN mkdir /opt/app-root/runtimes && \
     # Remove default Elyra runtime-images \
     rm /opt/app-root/share/jupyter/metadata/runtime-images/*.json && \
     # Replace Notebook's launcher, "(ipykernel)" with Python's version 3.x.y \
