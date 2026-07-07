@@ -55,14 +55,8 @@ jobs:
           from find_images_for_test_matrix import find_suitable_sha
 
           registry = os.environ["IMAGE_REGISTRY"]
-          repository = os.environ.get("GITHUB_REPOSITORY", "")
-          if repository == "red-hat-data-services/notebooks":
-              # RHDS push tags are currently {target}-_{sha} (empty ref prefix; see build-notebooks-TEMPLATE).
-              ref_prefix = ""
-              tag_suffix = ""
-          else:
-              ref_prefix = re.sub(r"[^a-zA-Z0-9._-]", "_", os.environ["REF_NAME"])[:40]
-              tag_suffix = "_odh_linux_amd64"
+          ref_prefix = re.sub(r"[^a-zA-Z0-9._-]", "_", os.environ["REF_NAME"])[:40]
+          tag_suffix = "_odh_linux_amd64" if os.environ.get("GITHUB_REPOSITORY") == "opendatahub-io/notebooks" else ""
           required = [
               "codeserver-ubi9-python-3.12",
               "jupyter-minimal-ubi9-python-3.12",
