@@ -11,21 +11,26 @@ Release notes are being updated to reflect this:
 ## What fails check-payload and why
 
 The `check-payload` FIPS scanner flags binaries that are not dynamically linked
-(`ErrNotDynLinked`). Three binaries in workbench images trigger this:
+(`ErrNotDynLinked`). Two binaries in workbench images currently trigger this
+(`py-spy` previously did, but is now excluded via `exclude-dependencies`):
 
 | Binary | Path | Why it's in the image | Crypto? |
 |--------|------|-----------------------|---------|
-| pandoc | `/opt/app-root/bin/pandoc` | PDF export from JupyterLab (notebook to LaTeX to PDF) | Yes (see below) |
-| py-spy | `/opt/app-root/bin/py-spy` | Python profiler; transitive dep from Ray/CodeFlare | No |
+| pandoc | `.../pandoc_rhai/data/bin/pandoc` | PDF export via `pandoc-rhai` 3.9.0.2 pip wheel | No (dynamically linked, `-http` build) |
+| py-spy | *(removed)* | Was a transitive dep from Ray/CodeFlare; excluded via `exclude-dependencies` | No |
 | rg (ripgrep) | `/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg` | IDE search, required by code-server | No |
 
 Tracked under [RHOAIENG-58626](https://redhat.atlassian.net/browse/RHOAIENG-58626).
 
 ## Pandoc deep dive
 
-The workbench images ship pandoc 3.7.0.2, a **statically linked** prebuilt binary
-downloaded from GitHub releases. Inspecting the binary reveals it contains the
-full Haskell-native TLS stack:
+Workbench images ship **pandoc-rhai 3.9.0.2** via pip, with the ELF binary at
+`site-packages/pandoc_rhai/data/bin/pandoc` and a console-script wrapper at
+`/opt/app-root/bin/pandoc` (RHAIENG-5765). The wheel is **dynamically linked**
+and built with the Cabal `-http` flag, which removes the HTTP/TLS client stack.
+
+Older images (< RHOAI 3.5) used a statically linked pandoc 3.7.0.2 tarball at
+`/opt/app-root/bin/pandoc` with a full Haskell-native TLS stack:
 
 ```bash
 strings /opt/app-root/bin/pandoc | grep -E 'tls-|http-client-tls|crypton'

@@ -30,6 +30,9 @@ dependencies = [
 
 [tool.uv]
 package = false
+# FIPS: py-spy is a statically linked Rust profiler pulled transitively by Ray
+# (codeflare-sdk). Not required for codeflare-sdk or feast runtime.
+exclude-dependencies = ["py-spy"]
 
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",

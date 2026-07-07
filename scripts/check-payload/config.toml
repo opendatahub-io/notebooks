@@ -222,23 +222,13 @@ files = [
     "/usr/libexec/valgrind/none-amd64-linux",
 ]
 
-# py-spy is waived since it doesn't do anything with crypto in a
-# security context
+# py-spy is excluded from images via exclude-dependencies (RHAIENG-58916).
+# pandoc-rhai 3.9.0.2 is dynamically linked (RHAIENG-5765) — no waiver needed.
 
-# when scanning with `scan image --spec`
-[[payload.python-311-container.ignore]]
-error = "ErrNotDynLinked"
-files = [
-    # executable is not dynamically linked
-    "/opt/app-root/bin/py-spy",
-]
-# when scanning with `scan local --path`, the above does not apply
+# when scanning with `scan local --path`
 [[ignore]]
 error = "ErrNotDynLinked"
 files = [
-    # executable is not dynamically linked
-    "/opt/app-root/bin/py-spy",
-    "/opt/app-root/bin/pandoc",
     # when code-server is not installed from rpm, the exclusion below won't apply
     "/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg",
 ]
