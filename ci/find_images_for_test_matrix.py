@@ -33,19 +33,12 @@ def find_suitable_sha(ref_prefix: str, tag_suffix: str, required: list[str], sko
 
 def test_find_suitable_sha__single():
     skopeo_output = json.dumps({"Tags": ["codeserver-ubi9-python-3.12-main_abdcef_odh_linux_amd64"]})
-    assert (
-        find_suitable_sha("main", "_odh_linux_amd64", ["codeserver-ubi9-python-3.12"], skopeo_output) == "abdcef"
-    )
+    assert find_suitable_sha("main", "_odh_linux_amd64", ["codeserver-ubi9-python-3.12"], skopeo_output) == "abdcef"
 
 
 def test_find_suitable_sha__rhoai_branch_without_suffix():
-    skopeo_output = json.dumps(
-        {"Tags": ["jupyter-minimal-ubi9-python-3.12-rhoai-2.25_abc123def456"]}
-    )
-    assert (
-        find_suitable_sha("rhoai-2.25", "", ["jupyter-minimal-ubi9-python-3.12"], skopeo_output)
-        == "abc123def456"
-    )
+    skopeo_output = json.dumps({"Tags": ["jupyter-minimal-ubi9-python-3.12-rhoai-2.25_abc123def456"]})
+    assert find_suitable_sha("rhoai-2.25", "", ["jupyter-minimal-ubi9-python-3.12"], skopeo_output) == "abc123def456"
 
 
 def test_find_suitable_sha__multiple():
