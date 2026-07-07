@@ -297,8 +297,20 @@ def test_image_pyprojects_version_alignment(subtests: pytest_subtests.plugin.Sub
         ("ipython-genutils", (">=0.2.0", "~=0.2.0")),
         ("jinja2", (">=3.1.6", "~=3.1.6")),
         ("jupyter-client", ("~=8.6.3", ">=8.6.3")),
-        ("requests", ("~=2.32.5", ">=2.33.1")),
-        ("urllib3", ("~=2.5.0", "~=2.3.0")),
+        (
+            "requests",
+            (
+                "~=2.32.5",  # runtimes and most images
+                "==2.34.2",  # RHAIIS 3.2.2 llmcompressor (jupyter + runtime)
+            ),
+        ),
+        (
+            "urllib3",
+            (
+                "~=2.6.0",  # runtimes and most images
+                ">=2.7.0",  # RHAIIS 3.2.2 llmcompressor (jupyter override + runtime direct dep)
+            ),
+        ),
         ("transformers", ("<5.0,>4.0", "~=4.55.0")),
         ("datasets", ("", "~=3.4.1")),
         ("accelerate", ("!=1.1.0,>=0.20.3", "~=1.5.2")),
