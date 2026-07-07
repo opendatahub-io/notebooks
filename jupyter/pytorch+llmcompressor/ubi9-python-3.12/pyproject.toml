@@ -14,11 +14,11 @@ dependencies = [
     "torch==2.7.1",
     "torchvision~=0.22.1",
 
-    # llmcompressor packages
-    # see https://redhat-internal.slack.com/archives/C0961HQ858Q/p1757007056725559?thread_ts=1756924127.136609&cid=C0961HQ858Q
-
-    # llmcompressor packages
-    "llmcompressor~=0.7.1",
+    # llmcompressor stack (RHAIIS 3.2.2 model-opt/cuda-ubi9 — source of truth for RHOAI 2.25):
+    # https://gitlab.com/redhat/rhel-ai/rhaiis/pipeline/-/blob/3.2.2/collections/model-opt/cuda-ubi9/requirements.txt
+    # https://gitlab.com/redhat/rhel-ai/rhaiis/pipeline/-/blob/3.2.2/collections/model-opt/cuda-ubi9/constraints.txt
+    # See jupyter/pytorch+llmcompressor/README.md for alignment notes and RHAIENG-6035.
+    "llmcompressor==0.7.1.3",
     "lm-eval~=0.4.9",
 
     # Datascience and useful extensions
@@ -64,15 +64,6 @@ dependencies = [
     "setuptools~=80.9.0",
 ]
 
-## https://docs.astral.sh/uv/concepts/resolution/#dependency-metadata
-#[[tool.uv.dependency-metadata]]
-## TODO(HACK): vllm is a requirement, however, as compressed-tensors is pinned, this can't be installed together
-#name = "vllm"
-#version = "0.8.5"
-#requires-dist = [
-#    "compressed-tensors"
-#]
-
 # https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-sources
 [tool.uv.sources]
 # https://docs.astral.sh/uv/guides/integration/pytorch/#using-uv-with-pytorch
@@ -88,28 +79,25 @@ explicit = true
 # https://docs.astral.sh/uv/concepts/resolution/#dependency-overrides
 # https://docs.astral.sh/uv/reference/settings/#override-dependencies
 [tool.uv]
-# https://github.com/astral-sh/uv/issues/2686
-# https://github.com/astral-sh/uv/issues/4422
-
+# RHAIIS model-opt uses constraints.txt only (fromager has no uv-style overrides).
+# RHAIIS pins are mirrored in constraint-dependencies; overrides below are
+# notebooks-only where constraints cannot replace a transitive upper bound.
 override-dependencies = [
-    # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
-    # Upstream: https://github.com/elyra-ai/elyra/issues/3325
-    "urllib3>=2.6.0",
-    # RHAIENG-3209: CVE-2026-25990  Pillow: Out-of-bounds Write
-    # Upstream: https://github.com/vllm-project/llm-compressor/releases/tag/0.7.1.1
-    "pillow>=12.1.1",
-    # RHOAIENG-53183: CVE-2026-32274 Black: Arbitrary file writes from unsanitized user input in cache file name
+    # RHAIENG-2458: elyra pins urllib3 below RHAIIS/CVE floor; constraints alone do not replace transitive caps
+    "urllib3>=2.7.0",
+    # RHOAIENG-53183: notebooks-only CVE (not in RHAIIS model-opt constraints.txt)
     "black>=26.3.1",
-    # RHAIENG-5948 / RHAIENG-5267: requests==2.32 dep conflict with chardet
-    "requests>=2.33.1",
+    # feast~=0.54.1 caps pyarrow<=17; RHAIIS constraints.txt requires pyarrow>=23 (CVE floor)
+    "pyarrow>=23.0.1,<24.0.0",
 ]
 
-# from https://redhat-internal.slack.com/archives/C079FE5H94J/p1756934476976759?thread_ts=1756933154.294109&cid=C079FE5H94J
+# RHAIIS 3.2.2 collections/model-opt/cuda-ubi9/constraints.txt (+ llmcompressor in requirements.txt)
+# https://gitlab.com/redhat/rhel-ai/rhaiis/pipeline/-/tree/3.2.2/collections/model-opt/cuda-ubi9
 constraint-dependencies = [
     "loguru==0.7.3",
     "pyyaml==6.0.2",
     "numpy==2.2.6",
-    "requests>=2.33.1",
+    "requests==2.34.2",
     "tqdm==4.67.1",
     # apicc is still on torch 2.7.1
     # "torch==2.8.0",
@@ -117,7 +105,12 @@ constraint-dependencies = [
     "datasets==4.0.0",
     "accelerate==1.10.0",
     "pynvml==12.0.0",
-    "pillow==12.1.1",
+    "pillow==12.2.0",
+    "urllib3>=2.7.0",
+    "aiohttp>=3.14.0",
+    "filelock>=3.20.3",
+    "python-dotenv>=1.2.2",
+    "pyarrow>=23.0.1,<24.0.0",
 ]
 
 environments = [
