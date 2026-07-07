@@ -82,6 +82,12 @@ print("Scikit-learn smoke test completed successfully.")
 
     @allure.description("Check that mysql client functionality is working with SASL plain auth.")
     def test_mysql_connection(self, tf: TestFrame, datascience_image: Image, subtests):
+        name_label = datascience_image.labels.get("name", "")
+        if "-rstudio-" in name_label:
+            pytest.skip(f"Image {datascience_image.name} does have -rstudio- in {datascience_image.labels['name']=}'")
+
+        MYSQL_CONNECTOR_PYTHON_VERSION = "9.3.0"
+
         network = testcontainers.core.network.Network()
         tf.defer(network.create())
 
@@ -159,17 +165,17 @@ except Exception as e:
             notebook = docker_utils.NotebookContainer(container)
             notebook.require_running(context="after start")
 
+            # ODH labels use "-code-server-"; RHOAI/RHDS Konflux labels use "-codeserver-".
+            is_codeserver = "-code-server-" in name_label or "-codeserver-" in name_label
+
             # RHOAIENG-140: code-server image users are expected to install their own db clients
-            if "-code-server-" in datascience_image.labels["name"]:
-                exit_code, output = notebook.exec(["python", "-m", "pip", "install", "mysql-connector-python==9.3.0"])
+            if is_codeserver:
+                exit_code, output = notebook.exec(
+                    ["python", "-m", "pip", "install", f"mysql-connector-python=={MYSQL_CONNECTOR_PYTHON_VERSION}"]
+                )
                 output_str = output.decode()
                 print(output_str)
-
                 assert exit_code == 0, f"Failed to install mysql-connector-python: {output_str}"
-            elif "-rstudio-" in datascience_image.labels["name"]:
-                pytest.skip(
-                    f"Image {datascience_image.name} does have -rstudio- in {datascience_image.labels['name']=}'"
-                )
 
             with subtests.test("Setting the user..."):
                 exit_code, output = notebook.exec(["python", "-c", setup_mysql_user])
