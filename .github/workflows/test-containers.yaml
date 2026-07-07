@@ -56,7 +56,10 @@ jobs:
 
           registry = os.environ["IMAGE_REGISTRY"]
           ref_prefix = re.sub(r"[^a-zA-Z0-9._-]", "_", os.environ["REF_NAME"])[:40]
-          tag_suffix = "_odh_linux_amd64" if os.environ.get("GITHUB_REPOSITORY") == "opendatahub-io/notebooks" else ""
+          if os.environ.get("GITHUB_REPOSITORY") == "opendatahub-io/notebooks":
+              tag_suffix = "_odh_linux_amd64"
+          else:
+              tag_suffix = "_rhoai_linux_amd64"
           required = [
               "codeserver-ubi9-python-3.12",
               "jupyter-minimal-ubi9-python-3.12",

@@ -36,9 +36,12 @@ def test_find_suitable_sha__single():
     assert find_suitable_sha("main", "_odh_linux_amd64", ["codeserver-ubi9-python-3.12"], skopeo_output) == "abdcef"
 
 
-def test_find_suitable_sha__rhoai_branch_without_suffix():
-    skopeo_output = json.dumps({"Tags": ["jupyter-minimal-ubi9-python-3.12-rhoai-2.25_abc123def456"]})
-    assert find_suitable_sha("rhoai-2.25", "", ["jupyter-minimal-ubi9-python-3.12"], skopeo_output) == "abc123def456"
+def test_find_suitable_sha__rhoai_branch_with_platform_suffix():
+    skopeo_output = json.dumps({"Tags": ["jupyter-minimal-ubi9-python-3.12-rhoai-2.25_abc1234_rhoai_linux_amd64"]})
+    assert (
+        find_suitable_sha("rhoai-2.25", "_rhoai_linux_amd64", ["jupyter-minimal-ubi9-python-3.12"], skopeo_output)
+        == "abc1234"
+    )
 
 
 def test_find_suitable_sha__multiple():
@@ -57,6 +60,6 @@ def test_find_suitable_sha__multiple():
 
 if __name__ == "__main__":
     test_find_suitable_sha__single()
-    test_find_suitable_sha__rhoai_branch_without_suffix()
+    test_find_suitable_sha__rhoai_branch_with_platform_suffix()
     test_find_suitable_sha__multiple()
     print("OK")
