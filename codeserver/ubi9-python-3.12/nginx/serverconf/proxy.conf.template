@@ -42,9 +42,10 @@ location = /codeserver {
     return 302 /codeserver/;
 }
 
-location /codeserver/ {
+location ~ /codeserver/ {
+    rewrite ^.*/codeserver/(.*)$ /$1 break;
     # Standard code-server/NGINX configuration
-    proxy_pass http://workbench_server/;
+    proxy_pass http://workbench_server;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection $connection_upgrade;
