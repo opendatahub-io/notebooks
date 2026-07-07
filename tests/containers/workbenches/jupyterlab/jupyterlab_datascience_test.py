@@ -156,10 +156,12 @@ except Exception as e:
         (container.with_network(network).with_command("/bin/sh -c 'sleep infinity'"))
         try:
             container.start(wait_for_readiness=False)
+            notebook = docker_utils.NotebookContainer(container)
+            notebook.require_running(context="after start")
 
             # RHOAIENG-140: code-server image users are expected to install their own db clients
             if "-code-server-" in datascience_image.labels["name"]:
-                exit_code, output = container.exec(["python", "-m", "pip", "install", "mysql-connector-python==9.3.0"])
+                exit_code, output = notebook.exec(["python", "-m", "pip", "install", "mysql-connector-python==9.3.0"])
                 output_str = output.decode()
                 print(output_str)
 
@@ -170,7 +172,7 @@ except Exception as e:
                 )
 
             with subtests.test("Setting the user..."):
-                exit_code, output = container.exec(["python", "-c", setup_mysql_user])
+                exit_code, output = notebook.exec(["python", "-c", setup_mysql_user])
                 output_str = output.decode()
 
                 print(output_str)
@@ -179,7 +181,7 @@ except Exception as e:
                 assert exit_code == 0
 
             with subtests.test("Checking the output of the clearpassuser script..."):
-                exit_code, output = container.exec(["python", "-c", clearpassuser])
+                exit_code, output = notebook.exec(["python", "-c", clearpassuser])
                 output_str = output.decode()
 
                 print(output_str)

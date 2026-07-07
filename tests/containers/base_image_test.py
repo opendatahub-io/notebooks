@@ -28,23 +28,15 @@ if TYPE_CHECKING:
 class TestBaseImage:
     """Tests that are applicable for all images we have in this repository."""
 
-    def _run_test(self, image: str, test_fn: Callable[[testcontainers.core.container.DockerContainer], None]):
-        container = testcontainers.core.container.DockerContainer(image=image, user=23456, group_add=[0])
-        container.with_command("/bin/sh -c 'sleep infinity'")
+    def _run_test(self, image: str, test_fn: Callable[[docker_utils.NotebookContainer], None]):
         try:
-            container.start()
-            test_fn(container)
-            return
+            with docker_utils.running_container(image) as container:
+                test_fn(container)
         except Exception as e:
             pytest.fail(f"Unexpected exception in test: {e}")
-        finally:
-            docker_utils.NotebookContainer(container).stop(timeout=0)
-
-        # If the return doesn't happen in the try block, fail the test
-        pytest.fail("The test did not pass as expected.")
 
     def test_elf_files_can_link_runtime_libs(self, subtests: pytest_subtests.SubTests, image):
-        def test_fn(container: testcontainers.core.container.DockerContainer):
+        def test_fn(container: docker_utils.NotebookContainer):
             def check_elf_file():
                 """This python function will be executed on the image itself.
                 That's why it has to have here all imports it needs."""
@@ -131,7 +123,7 @@ class TestBaseImage:
         if utils.is_rstudio_image(image):
             pytest.skip("oc command is not preinstalled in RStudio images.")
 
-        def test_fn(container: testcontainers.core.container.DockerContainer):
+        def test_fn(container: docker_utils.NotebookContainer):
             ecode, output = container.exec(["/bin/sh", "-c", "oc version"])
 
             logging.debug(output.decode())
@@ -143,7 +135,7 @@ class TestBaseImage:
         if utils.is_rstudio_image(image):
             pytest.skip("skopeo command is not preinstalled in RStudio images.")
 
-        def test_fn(container: testcontainers.core.container.DockerContainer):
+        def test_fn(container: docker_utils.NotebookContainer):
             ecode, output = container.exec(["/bin/sh", "-c", "skopeo --version"])
 
             logging.debug(output.decode())
@@ -154,7 +146,7 @@ class TestBaseImage:
     def test_pip_install_cowsay_runs(self, image: str):
         """Checks that the Python virtualenv in the image is writable."""
 
-        def test_fn(container: testcontainers.core.container.DockerContainer):
+        def test_fn(container: docker_utils.NotebookContainer):
             ecode, output = container.exec(["python3", "-m", "pip", "install", "cowsay"])
             logging.debug(output.decode())
             assert ecode == 0
@@ -201,26 +193,28 @@ class TestBaseImage:
 
             try:
                 container.start()
+                notebook = docker_utils.NotebookContainer(container)
+                notebook.require_running(context="after start")
 
                 with subtests.test("/proc/sys/crypto/fips_enabled is 1"):
                     # sysctl here works too, but it may not be present in image
-                    ecode, output = container.exec(["/bin/sh", "-c", "cat /proc/sys/crypto/fips_enabled"])
+                    ecode, output = notebook.exec(["/bin/sh", "-c", "cat /proc/sys/crypto/fips_enabled"])
                     assert ecode == 0, output.decode()
                     assert "1\n" == output.decode(), f"Unexpected crypto/fips_enabled content: {output.decode()}"
 
                 # 0: enabled, 1: partial success, 2: not enabled
                 with subtests.test("/fips-mode-setup --is-enabled reports 1"):
-                    ecode, output = container.exec(["/bin/sh", "-c", "fips-mode-setup --is-enabled"])
+                    ecode, output = notebook.exec(["/bin/sh", "-c", "fips-mode-setup --is-enabled"])
                     assert ecode == 1, output.decode()
 
                 with subtests.test("/fips-mode-setup --check reports partial success"):
-                    ecode, output = container.exec(["/bin/sh", "-c", "fips-mode-setup --check"])
+                    ecode, output = notebook.exec(["/bin/sh", "-c", "fips-mode-setup --check"])
                     assert ecode == 1, output.decode()
                     assert "FIPS mode is enabled.\n" in output.decode(), output.decode()
                     assert "Inconsistent state detected.\n" in output.decode(), output.decode()
 
                 with subtests.test("oc version command runs"):
-                    ecode, output = container.exec(["/bin/sh", "-c", "oc version"])
+                    ecode, output = notebook.exec(["/bin/sh", "-c", "oc version"])
                     assert ecode == 0, output.decode()
             finally:
                 docker_utils.NotebookContainer(container).stop(timeout=0)
@@ -239,7 +233,7 @@ class TestBaseImage:
             # RStudio image doesn't have '/opt/app-root/share' directory
             directories_to_check.append([f"{app_root_path}/share", "775", expected_gid, expected_uid])
 
-        def test_fn(container: testcontainers.core.container.DockerContainer):
+        def test_fn(container: docker_utils.NotebookContainer):
             for item in directories_to_check:
                 with subtests.test(f"Checking permissions of the: {item[0]}"):
                     # ignore `:%u`, it does not matter what the uid is, it's the gid that is nonrandom on openshift
