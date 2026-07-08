@@ -12,7 +12,8 @@ dependencies = [
     "odh-notebooks-meta-runtime-kale-deps",
 
     # Base packages
-    "setuptools",
+    # RHAIENG-5847: >=80.9 emits pkg_resources UserWarning via google namespace packages
+    "setuptools<80.9",
     "wheel",
 
     # Hermetic bootstrap: locked in requirements.*.txt; Dockerfile installs unpinned from find-links.

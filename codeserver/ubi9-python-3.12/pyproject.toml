@@ -20,7 +20,8 @@ dependencies = [
 
     # Base packages
     "wheel",
-    "setuptools",
+    # RHAIENG-5847: >=80.9 emits pkg_resources UserWarning via google namespace packages
+    "setuptools<80.9",
 
     "ipykernel",
     "debugpy",
