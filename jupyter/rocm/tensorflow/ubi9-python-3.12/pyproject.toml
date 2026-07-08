@@ -74,5 +74,6 @@ override-dependencies = [
 ]
 
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    "python_version == '3.12' and sys_platform == 'linux' and platform_machine == 'x86_64'",
+    # aarch64 omitted: lock resolution fails — pinned ROCm torch stack has no linux/aarch64 wheels
 ]

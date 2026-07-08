@@ -5,7 +5,7 @@ requires-python = "==3.12.*"
 
 dependencies = [
     # PyTorch packages
-    "torch==2.7.1+cu128; platform_machine != 'ppc64le'",
+    "torch==2.7.1+cu128; platform_machine != 'ppc64le' and platform_machine != 's390x'",
 
     # Triton here is a dependency of torch, and is just being
     # explicitly re-declared so that the index to pull it from can be
@@ -18,7 +18,7 @@ dependencies = [
     #
     # Since it's a dependency of torch, I've also added same platform
     # exclusion marker to omit for ppc64le.
-    "triton==3.3.1; platform_machine != 'ppc64le'",
+    "triton==3.3.1; platform_machine != 'ppc64le' and platform_machine != 's390x'",
 
     # TrustyAI packages
     # More information available at:
@@ -26,7 +26,7 @@ dependencies = [
     #   - https://github.com/trustyai-explainability/trustyai-explainability-python/blob/main/requirements.txt
     "transformers~=4.56.1",
     "datasets~=4.0.0",
-    "accelerate~=1.10.1; platform_machine != 'ppc64le'",
+    "accelerate~=1.10.1; platform_machine != 'ppc64le' and platform_machine != 's390x'",
     "trustyai~=0.6.2",
     # Datascience and useful extensions
     "boto3~=1.40.27",
@@ -41,7 +41,7 @@ dependencies = [
     "skl2onnx~=1.19.1",
     "onnxconverter-common~=1.16.0",  # ONNX 1.21+ (skl2onnx); was ~=1.13.0
     "onnx>=1.21.0; platform_machine != 's390x'",  # CVE-2026-28500
-    "codeflare-sdk~=0.31.2; platform_machine != 'ppc64le'",
+    "codeflare-sdk~=0.31.2; platform_machine != 'ppc64le' and platform_machine != 's390x'",
     "kubeflow-training==1.9.3",
 
     # DB connectors
@@ -73,7 +73,10 @@ dependencies = [
 
 [tool.uv]
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    "python_version == '3.12' and sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "python_version == '3.12' and sys_platform == 'linux' and platform_machine == 'ppc64le'",
+    "python_version == '3.12' and sys_platform == 'linux' and platform_machine == 's390x'",
+    "python_version == '3.12' and sys_platform == 'linux' and platform_machine == 'aarch64'",
 ]
 # RHAIENG-5986: pandas 1.5.3 setup.py imports pkg_resources but does not declare
 # setuptools as a PEP 517 build dependency. uv reads this from pyproject.toml even

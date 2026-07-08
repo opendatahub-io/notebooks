@@ -67,7 +67,8 @@ explicit = true
 
 [tool.uv]
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    "python_version == '3.12' and sys_platform == 'linux' and platform_machine == 'x86_64'",
+    # aarch64 omitted: lock resolution fails — torchvision==0.22.1+cu128 has no linux/aarch64 wheels
 ]
 override-dependencies = [
     # RHAIENG-3209: CVE-2026-25990  Pillow: Out-of-bounds Write

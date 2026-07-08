@@ -7,7 +7,7 @@ error() {
 
 # Red Hat's build tooling depends on requirements.txt files with hashes
 # Namely, Konflux (https://konflux-ci.dev/), and Cachi2 (https://github.com/containerbuildsystem/cachi2).
-
+#
 # Optional behavior:
 # - If FORCE_LOCKFILES_UPGRADE=1 (env) or --upgrade (arg) is provided, perform a
 #   ground-up relock and force upgrades using `uv pip compile --upgrade`.
@@ -63,9 +63,13 @@ if [[ ! -f "$CVE_CONSTRAINTS_FILE" ]]; then
 fi
 
 # The following will create a pylock.toml file for every pyproject.toml we have.
+cd "$ROOT_DIR"
 ${UV} --version
+
+FAILED_DIRS=()
 while IFS= read -r -d '' lockfile; do
   lock_dir=$(dirname "$lockfile")
+  set +e
   (
     cd "$lock_dir"
     # Relative path avoids absolute paths in pylock.toml headers (CI vs local).
@@ -81,10 +85,24 @@ while IFS= read -r -d '' lockfile; do
       --generate-hashes \
       --emit-index-url \
       --python-version="${PWD##*-}" \
-      --python-platform linux \
+      --universal \
       --no-annotate \
       --constraints "${constraints_path}" \
       ${ADDITIONAL_UV_FLAGS:-} \
       --quiet
   )
-done < <(find . -name pylock.toml -print0)
+  status=$?
+  set -e
+  if [[ $status -ne 0 ]]; then
+    error "Failed to regenerate pylock.toml in $lock_dir"
+    FAILED_DIRS+=("$lock_dir")
+  fi
+done < <(find jupyter runtimes rstudio codeserver -name pylock.toml -print0)
+
+if [[ ${#FAILED_DIRS[@]} -gt 0 ]]; then
+  error "Lock generation failed for:"
+  for d in "${FAILED_DIRS[@]}"; do
+    error "  • $d"
+  done
+  exit 1
+fi

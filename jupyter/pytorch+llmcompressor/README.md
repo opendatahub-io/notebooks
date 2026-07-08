@@ -38,8 +38,7 @@ PyTorch (`torch==2.7.1`, `torchvision~=0.22.1`) comes from the CUDA base image /
 ## Regenerating the lockfile
 
 ```bash
-bash scripts/pylocks_generator.sh public-index jupyter/pytorch+llmcompressor/ubi9-python-3.12
-bash scripts/pylocks_generator.sh public-index runtimes/pytorch+llmcompressor/ubi9-python-3.12
+make refresh-pipfilelock-files PYTHON_VERSION=3.12
 ```
 
 Keep jupyter and runtime `pyproject.toml` constraint blocks in sync when bumping RHAIIS alignment.

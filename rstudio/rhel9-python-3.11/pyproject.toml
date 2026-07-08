@@ -11,5 +11,6 @@ dependencies = [
 
 [tool.uv]
 environments = [
-    "sys_platform == 'linux' and implementation_name == 'cpython'",
+    "python_version == '3.11' and sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "python_version == '3.11' and sys_platform == 'linux' and platform_machine == 'aarch64'",
 ]
