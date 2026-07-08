@@ -62,7 +62,7 @@ WORKDIR /opt/app-root/src
 ################
 FROM cuda-base AS cuda-rstudio
 
-ARG RSTUDIO_SOURCE_CODE=rstudio/rhel9-python-3.12
+ARG RSTUDIO_SOURCE_CODE=rstudio/rhel9-python-3.11
 ARG TARGETARCH
 
 WORKDIR /opt/app-root/bin
@@ -74,17 +74,17 @@ ARG SERVERURL_DEFAULT=""
 ARG BASEURL_DEFAULT=""
 # TILL HERE
 
-LABEL name="rhoai/odh-workbench-rstudio-minimal-cuda-py312-rhel9" \
-      com.redhat.component="odh-workbench-rstudio-minimal-cuda-py312-rhel9" \
-      summary="RStudio Server CUDA image with python 3.12 based on Red Hat Enterprise Linux 9" \
-      description="RStudio Server CUDA image with python 3.12 based on Red Hat Enterprise Linux 9" \
+LABEL name="rhoai/odh-workbench-rstudio-minimal-cuda-py311-rhel9" \
+      com.redhat.component="odh-workbench-rstudio-minimal-cuda-py311-rhel9" \
+      summary="RStudio Server CUDA image with python 3.11 based on Red Hat Enterprise Linux 9" \
+      description="RStudio Server CUDA image with python 3.11 based on Red Hat Enterprise Linux 9" \
       maintainer="Red Hat AI Notebooks Team" \
-      io.k8s.display-name="RStudio Server CUDA image with python 3.12 based on Red Hat Enterprise Linux 9" \
-      io.k8s.description="RStudio Server CUDA image with python 3.12 based on Red Hat Enterprise Linux 9" \
+      io.k8s.display-name="RStudio Server CUDA image with python 3.11 based on Red Hat Enterprise Linux 9" \
+      io.k8s.description="RStudio Server CUDA image with python 3.11 based on Red Hat Enterprise Linux 9" \
       authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
       io.openshift.build.commit.ref="main" \
-      io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/rstudio/rhel9-python-3.12" \
-      io.openshift.build.image="quay.io/opendatahub/workbench-images:rstudio-rhel9-python-3.12"
+      io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/rstudio/rhel9-python-3.11" \
+      io.openshift.build.image="quay.io/opendatahub/workbench-images:rstudio-rhel9-python-3.11"
 
 USER 0
 
@@ -261,7 +261,7 @@ echo "Installing softwares and packages"
 #  we often don't know the correct hashes and `--require-hashes` would therefore fail on non amd64, where building is common.
 uv pip install --strict --no-deps --no-cache --no-config --no-progress --verify-hashes --compile-bytecode --index-strategy=unsafe-best-match --requirements=./pylock.toml
 # Fix permissions to support pip in Openshift environments
-chmod -R g+w /opt/app-root/lib/python3.12/site-packages
+chmod -R g+w /opt/app-root/lib/python3.11/site-packages
 fix-permissions /opt/app-root -P
 EOF
 
