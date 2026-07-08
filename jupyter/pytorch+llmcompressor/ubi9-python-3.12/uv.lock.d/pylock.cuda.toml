@@ -2004,7 +2004,10 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 name = "tensorboard"
 version = "2.20.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.5/cuda13.0-ubi9/tensorboard-2.20.0-py3-none-any.whl", upload-time = 2026-06-08T11:29:56Z, size = 5525680, hashes = { sha256 = "9dc9f978cb84c0723acf9a345d96c184f0293d18f166bb8d59ee098e6cfaaba6" } }]
+wheels = [
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.5/cuda13.0-ubi9/tensorboard-2.20.0-10-py3-none-any.whl", upload-time = 2026-07-03T00:35:52Z, size = 5527733, hashes = { sha256 = "6da63d8e8c5e77860111c3ae65773bef58234ac6ec5d1b6813f440e5fa59ad42" } },
+    { url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.5/cuda13.0-ubi9/tensorboard-2.20.0-py3-none-any.whl", upload-time = 2026-06-08T11:29:56Z, size = 5525680, hashes = { sha256 = "9dc9f978cb84c0723acf9a345d96c184f0293d18f166bb8d59ee098e6cfaaba6" } },
+]
 
 [[packages]]
 name = "tensorboard-data-server"
