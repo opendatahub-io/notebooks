@@ -4,7 +4,7 @@
 #   - Added odh-notebooks-meta-workbench-datascience-deps (shared meta-package replacing
 #     individual deps like boto3, kafka-python-ng, numpy, pandas, plotly, scipy, scikit-learn)
 #   - Upgraded feast ~=0.59.0 (pinned for RHOAI 3.4 compatibility)
-#   - Excluded py-spy on ppc64le (maturin can't fetch crates.io in --network=none)
+#   - py-spy excluded via exclude-dependencies (FIPS / RHAIENG-58916)
 #   - Added urllib3>=2.7.0 override (CVE-2026-44431, CVE-2026-44432; CVE-2025-66418 in 2.6.0)
 #   - protobuf==6.31.1 override (AIPCC-13675: UPB C extension segfault on s390x)
 #   - Added local path source for the meta-package
@@ -33,13 +33,13 @@ dependencies = [
     "opencensus",
     "smart-open",
     "virtualenv",
-    # https://issues.redhat.com/browse/AIPCC-9544 py-spy excluded on ppc64le for codeserver
-    "py-spy; platform_machine != 's390x' and platform_machine != 'ppc64le'",
     "prometheus-client",
     "ripgrep",
 ]
 
 [tool.uv]
+exclude-dependencies = ["py-spy"]
+
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]

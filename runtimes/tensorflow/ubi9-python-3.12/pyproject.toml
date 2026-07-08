@@ -26,6 +26,8 @@ dependencies = [
 ]
 
 [tool.uv]
+# FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
+exclude-dependencies = ["py-spy"]
 
 override-dependencies = [
     # AIPCC-13675: https://redhat.atlassian.net/browse/AIPCC-13675

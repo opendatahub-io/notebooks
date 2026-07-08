@@ -21,6 +21,9 @@ dependencies = [
 ]
 
 [tool.uv]
+# FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
+exclude-dependencies = ["py-spy"]
+
 environments = [
     "sys_platform == 'linux' and implementation_name == 'cpython' and python_full_version == '3.12.*'",
 ]

@@ -33,6 +33,8 @@ odh-notebooks-meta-jupyterlab-deps = { path = "../../../dependencies/odh-noteboo
 odh-notebooks-meta-jupyterlab-datascience-deps = { path = "../../../dependencies/odh-notebooks-meta-jupyterlab-datascience-deps" }
 
 [tool.uv]
+# FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
+exclude-dependencies = ["py-spy"]
 
 override-dependencies = [
     # odh-elyra pins jupyter-resource-usage<1.2.dev0, but 1.1.1 needs psutil<6 while

@@ -24,6 +24,8 @@ dependencies = [
 ]
 
 [tool.uv]
+# FIPS: exclude statically linked py-spy profiler (RHAIENG-58916)
+exclude-dependencies = ["py-spy"]
 
 override-dependencies = [
     # tensorflow-rocm depends on protobuf>=3.20.3, <6.0.0 and kfp depends on protobuf>=6.31.1
