@@ -170,23 +170,8 @@
     {
       description: "Group GitHub Actions digest updates into a single PR",
       matchManagers: ["github-actions"],
-      // Exclude uses-with golangci/golangci-lint: pinDigests cannot apply to
-      // version: vX.Y.Z and aborts the whole group (RHAIENG-6163).
-      // Do NOT rely on a later packageRule with pinDigests:false / enabled:false
-      // alone — Renovate 43 dry-runs still emitted isPinDigest for this dep.
-      // Do NOT add matchDepTypes: ["uses-with"] on an exception rule either;
-      // that also failed to stop pinDigest (CodeRabbit suggested it).
-      matchPackageNames: ["!golangci/golangci-lint"],
       groupName: "github-actions",
       pinDigests: true,
-    },
-    {
-      // Keep version bumps for the uses-with dep, but never pinDigests (nowhere
-      // to store a SHA on `version: vX.Y.Z`). Separate from the group above.
-      description: "golangci-lint uses-with: version bumps only, no digest pin",
-      matchManagers: ["github-actions"],
-      matchPackageNames: ["golangci/golangci-lint"],
-      pinDigests: false,
     },
     {
       // astral-sh/setup-uv uses exact version tags (v8.0.0), not major tags (v8).
