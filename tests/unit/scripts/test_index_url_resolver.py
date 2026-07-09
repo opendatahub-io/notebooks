@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -22,14 +23,38 @@ def prod_index_url(*, release: str, accelerator: str) -> str:
     return f"https://packages.redhat.com/api/pypi/public-rhai/rhoai/{release}/{accelerator}-ubi9/simple/"
 
 
-def test_index_url_candidates_use_prod_then_test_suffix() -> None:
-    assert resolver.index_url_candidates(release="3.5-EA2", accelerator="cpu") == (
-        "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/",
-        "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/",
-    )
+def _test_index_url(*, release: str, accelerator: str) -> str:
+    return f"https://packages.redhat.com/api/pypi/public-rhai/rhoai/{release}/{accelerator}-ubi9-test/simple/"
 
 
-def test_resolve_rhoai_cpu_index_from_konflux_conf(
+def make_skopeo_label_stub(label_url: str):
+    """Return a function that replaces inspect_base_image_index_url and returns the given URL."""
+
+    def stub(base_image: str) -> str:
+        return label_url
+
+    return stub
+
+
+def assert_skopeo_inspect_cmd(cmd: list[str], base_image: str) -> None:
+    assert cmd[:3] == ["skopeo", "inspect", "--retry-times"], f"unexpected skopeo prefix: {cmd}"
+    assert cmd[-1] == f"docker://{base_image}", f"expected docker://{base_image}, got {cmd[-1]!r}"
+
+
+def test_build_test_variant_url_from_production() -> None:
+    prod = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/"
+    expected = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/"
+    result = resolver.build_test_variant_url(prod)
+    assert result == expected, f"expected {expected}, got {result}"
+
+
+def test_build_test_variant_url_returns_none_for_test_url() -> None:
+    test = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/"
+    result = resolver.build_test_variant_url(test)
+    assert result is None, f"expected None for test URL, got {result}"
+
+
+def test_resolve_rhoai_cpu_index_from_label(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -42,23 +67,21 @@ def test_resolve_rhoai_cpu_index_from_konflux_conf(
             "PRODUCT=rhoai",
         ],
     )
-    monkeypatch.setattr(
-        resolver,
-        "index_url_exists",
-        lambda url: url == prod_index_url(release="3.5-EA2", accelerator="cpu"),
-    )
+    label_url = prod_index_url(release="3.5-EA2", accelerator="cpu")
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", make_skopeo_label_stub(label_url))
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
 
     resolved = resolver.resolve_index_config(conf_file)
 
-    assert resolved.product == "rhoai"
-    assert resolved.index_profile == "rhoai"
-    assert resolved.flavor == "cpu"
-    assert resolved.accelerator == "cpu"
-    assert resolved.release == "3.5-EA2"
-    assert resolved.index_url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/"
+    assert resolved.product == "rhoai", f"expected product rhoai, got {resolved.product}"
+    assert resolved.index_profile == "rhoai", f"expected index_profile rhoai, got {resolved.index_profile}"
+    assert resolved.flavor == "cpu", f"expected flavor cpu, got {resolved.flavor}"
+    assert resolved.accelerator == "cpu", f"expected accelerator cpu, got {resolved.accelerator}"
+    assert resolved.release == "3.5-EA2", f"expected release 3.5-EA2, got {resolved.release}"
+    assert resolved.index_url == label_url, f"expected index_url {label_url}, got {resolved.index_url}"
 
 
-def test_resolve_rhoai_cuda_index_from_konflux_conf(
+def test_resolve_rhoai_cuda_index_from_label(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -71,21 +94,19 @@ def test_resolve_rhoai_cuda_index_from_konflux_conf(
             "PRODUCT=rhoai",
         ],
     )
-    monkeypatch.setattr(
-        resolver,
-        "index_url_exists",
-        lambda url: url == prod_index_url(release="3.5-EA2", accelerator="cuda13.0"),
-    )
+    label_url = prod_index_url(release="3.5-EA2", accelerator="cuda13.0")
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", make_skopeo_label_stub(label_url))
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
 
     resolved = resolver.resolve_index_config(conf_file)
 
-    assert resolved.flavor == "cuda"
-    assert resolved.accelerator == "cuda13.0"
-    assert resolved.release == "3.5-EA2"
-    assert resolved.index_url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cuda13.0-ubi9/simple/"
+    assert resolved.flavor == "cuda", f"expected flavor cuda, got {resolved.flavor}"
+    assert resolved.accelerator == "cuda13.0", f"expected accelerator cuda13.0, got {resolved.accelerator}"
+    assert resolved.release == "3.5-EA2", f"expected release 3.5-EA2, got {resolved.release}"
+    assert resolved.index_url == label_url, f"expected index_url {label_url}, got {resolved.index_url}"
 
 
-def test_resolve_rhoai_rocm_index_prefers_stable_release_test_index(
+def test_resolve_rhoai_rocm_index_from_label(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -98,48 +119,16 @@ def test_resolve_rhoai_rocm_index_prefers_stable_release_test_index(
             "PRODUCT=rhoai",
         ],
     )
-    checked_urls: list[str] = []
-
-    def fake_index_url_exists(url: str) -> bool:
-        checked_urls.append(url)
-        return url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/rocm7.1-ubi9-test/simple/"
-
-    monkeypatch.setattr(resolver, "index_url_exists", fake_index_url_exists)
+    label_url = prod_index_url(release="3.5-EA2", accelerator="rocm7.1")
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", make_skopeo_label_stub(label_url))
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
 
     resolved = resolver.resolve_index_config(conf_file)
 
-    assert resolved.index_url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/rocm7.1-ubi9-test/simple/"
-    assert checked_urls == [
-        "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/rocm7.1-ubi9/simple/",
-        "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/rocm7.1-ubi9-test/simple/",
-    ]
-
-
-def test_resolve_rhoai_rocm_index_from_konflux_conf(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    conf_file = write_conf(
-        tmp_path,
-        "konflux.rocm.conf",
-        [
-            "BASE_IMAGE=quay.io/aipcc/base-images/rocm-7.1-el9.6:3.5.0-ea.2-1778760581",
-            "PYLOCK_FLAVOR=rocm",
-            "PRODUCT=rhoai",
-        ],
-    )
-    monkeypatch.setattr(
-        resolver,
-        "index_url_exists",
-        lambda url: url == prod_index_url(release="3.5-EA2", accelerator="rocm7.1"),
-    )
-
-    resolved = resolver.resolve_index_config(conf_file)
-
-    assert resolved.flavor == "rocm"
-    assert resolved.accelerator == "rocm7.1"
-    assert resolved.release == "3.5-EA2"
-    assert resolved.index_url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/rocm7.1-ubi9/simple/"
+    assert resolved.flavor == "rocm", f"expected flavor rocm, got {resolved.flavor}"
+    assert resolved.accelerator == "rocm7.1", f"expected accelerator rocm7.1, got {resolved.accelerator}"
+    assert resolved.release == "3.5-EA2", f"expected release 3.5-EA2, got {resolved.release}"
+    assert resolved.index_url == label_url, f"expected index_url {label_url}, got {resolved.index_url}"
 
 
 def test_reject_non_konflux_conf_when_required(tmp_path: Path) -> None:
@@ -170,6 +159,8 @@ def test_resolve_rhoai_falls_back_to_test_index_when_prod_unavailable(
             "PRODUCT=rhoai",
         ],
     )
+    label_url = prod_index_url(release="3.5-EA2", accelerator="cpu")
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", make_skopeo_label_stub(label_url))
 
     checked_urls: list[str] = []
 
@@ -181,11 +172,12 @@ def test_resolve_rhoai_falls_back_to_test_index_when_prod_unavailable(
 
     resolved = resolver.resolve_index_config(conf_file)
 
-    assert resolved.index_url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/"
+    expected = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/"
+    assert resolved.index_url == expected, f"expected fallback test index {expected}, got {resolved.index_url}"
     assert checked_urls == [
         "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/",
         "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/",
-    ]
+    ], f"unexpected probe order: {checked_urls}"
 
 
 def test_resolve_rhoai_does_not_check_test_when_prod_is_available(
@@ -201,6 +193,8 @@ def test_resolve_rhoai_does_not_check_test_when_prod_is_available(
             "PRODUCT=rhoai",
         ],
     )
+    label_url = prod_index_url(release="3.5-EA2", accelerator="cpu")
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", make_skopeo_label_stub(label_url))
 
     checked_urls: list[str] = []
 
@@ -212,10 +206,224 @@ def test_resolve_rhoai_does_not_check_test_when_prod_is_available(
 
     resolved = resolver.resolve_index_config(conf_file)
 
-    assert resolved.index_url == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/"
+    expected = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/"
+    assert resolved.index_url == expected, f"expected prod index {expected}, got {resolved.index_url}"
     assert checked_urls == [
         "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/",
-    ]
+    ], f"unexpected probe order: {checked_urls}"
+
+
+def test_no_test_fallback_when_label_already_points_to_test_index(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When the label URL already has -test, no further fallback is attempted."""
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cpu.conf",
+        [
+            "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488",
+            "PYLOCK_FLAVOR=cpu",
+            "PRODUCT=rhoai",
+        ],
+    )
+    label_url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9-test/simple/"
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", make_skopeo_label_stub(label_url))
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
+
+    resolved = resolver.resolve_index_config(conf_file)
+    assert resolved.index_url == label_url, f"expected label URL {label_url}, got {resolved.index_url}"
+
+
+def test_error_when_label_url_invalid_host_falls_back_to_tag(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cpu.conf",
+        [
+            "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488",
+            "PYLOCK_FLAVOR=cpu",
+            "PRODUCT=rhoai",
+        ],
+    )
+    label_url = prod_index_url(release="3.5-EA2", accelerator="cpu")
+    monkeypatch.setattr(
+        resolver,
+        "inspect_base_image_index_url",
+        make_skopeo_label_stub("https://evil.example.com/api/pypi/rhoai/3.5/cpu-ubi9/simple/"),
+    )
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
+
+    resolved = resolver.resolve_index_config(conf_file)
+
+    assert resolved.index_url == label_url, f"expected tag-derived index {label_url}, got {resolved.index_url}"
+    assert resolved.release == "3.5-EA2", f"expected release 3.5-EA2, got {resolved.release}"
+    assert resolved.accelerator == "cpu", f"expected accelerator cpu, got {resolved.accelerator}"
+
+
+def test_resolve_falls_back_to_tag_when_label_has_template_placeholders(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cpu.conf",
+        [
+            "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488",
+            "PYLOCK_FLAVOR=cpu",
+            "PRODUCT=rhoai",
+        ],
+    )
+    template_url = (
+        "https://packages.redhat.com/api/pypi/public-rhai/rhoai/${INDEX_VERSION}/${INDEX_VARIANT}-test/simple/"
+    )
+    label_url = prod_index_url(release="3.5-EA2", accelerator="cpu")
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", make_skopeo_label_stub(template_url))
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
+
+    resolved = resolver.resolve_index_config(conf_file)
+
+    assert resolved.index_url == label_url, f"expected tag-derived index {label_url}, got {resolved.index_url}"
+
+
+def test_resolve_falls_back_to_tag_when_label_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cpu.conf",
+        [
+            "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488",
+            "PYLOCK_FLAVOR=cpu",
+            "PRODUCT=rhoai",
+        ],
+    )
+    label_url = prod_index_url(release="3.5-EA2", accelerator="cpu")
+
+    def stub_no_label(base_image: str) -> str:
+        raise resolver.IndexResolutionError(f"{resolver.INDEX_URL_LABEL} label is missing from {base_image}")
+
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", stub_no_label)
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
+
+    resolved = resolver.resolve_index_config(conf_file)
+
+    assert resolved.index_url == label_url, f"expected tag-derived index {label_url}, got {resolved.index_url}"
+
+
+def test_error_when_label_missing_and_tag_unusable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cpu.conf",
+        [
+            "BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488",
+            "PYLOCK_FLAVOR=cpu",
+            "PRODUCT=rhoai",
+        ],
+    )
+
+    def stub_no_label(base_image: str) -> str:
+        raise resolver.IndexResolutionError(f"{resolver.INDEX_URL_LABEL} label is missing from {base_image}")
+
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", stub_no_label)
+    monkeypatch.setattr(resolver, "index_url_exists", lambda _url: False)
+
+    with pytest.raises(resolver.IndexResolutionError, match="No production or -test RH index is available"):
+        resolver.resolve_index_config(conf_file)
+
+
+def test_inspect_base_image_index_url_parses_config_labels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify that inspect_base_image_index_url correctly extracts the label from skopeo output."""
+    base_image = "quay.io/aipcc/base-images/cpu:3.5.0-1782914735"
+    expected_url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/"
+    skopeo_output = json.dumps(
+        {
+            "config": {
+                "Labels": {
+                    "com.redhat.aiplatform.index_url": expected_url,
+                    "other.label": "ignored",
+                }
+            }
+        }
+    )
+
+    def fake_run(cmd, **kwargs):
+        assert_skopeo_inspect_cmd(cmd, base_image)
+
+        class FakeResult:
+            returncode = 0
+            stdout = skopeo_output
+            stderr = ""
+
+        return FakeResult()
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+
+    result = resolver.inspect_base_image_index_url(base_image)
+    assert result == expected_url, f"expected label URL {expected_url}, got {result}"
+
+
+def test_inspect_base_image_index_url_error_on_missing_label(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base_image = "quay.io/aipcc/base-images/cpu:3.5.0-1782914735"
+    skopeo_output = json.dumps({"config": {"Labels": {"other.label": "value"}}})
+
+    def fake_run(cmd, **kwargs):
+        assert_skopeo_inspect_cmd(cmd, base_image)
+
+        class FakeResult:
+            returncode = 0
+            stdout = skopeo_output
+            stderr = ""
+
+        return FakeResult()
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+
+    with pytest.raises(resolver.IndexResolutionError, match="label is missing"):
+        resolver.inspect_base_image_index_url(base_image)
+
+
+def test_inspect_base_image_index_url_error_on_skopeo_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base_image = "quay.io/aipcc/base-images/cpu:3.5.0-1782914735"
+
+    def fake_run(cmd, **kwargs):
+        assert_skopeo_inspect_cmd(cmd, base_image)
+
+        class FakeResult:
+            returncode = 1
+            stdout = ""
+            stderr = "unauthorized: access denied"
+
+        return FakeResult()
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+
+    with pytest.raises(resolver.IndexResolutionError, match="skopeo inspect failed"):
+        resolver.inspect_base_image_index_url(base_image)
+
+
+def test_inspect_base_image_index_url_error_on_skopeo_not_found(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base_image = "quay.io/aipcc/base-images/cpu:3.5.0-1782914735"
+
+    def fake_run(cmd, **kwargs):
+        assert_skopeo_inspect_cmd(cmd, base_image)
+        raise FileNotFoundError("skopeo")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+
+    with pytest.raises(resolver.IndexResolutionError, match="skopeo is not available"):
+        resolver.inspect_base_image_index_url(base_image)
 
 
 def test_cli_prints_plain_index_url(
@@ -231,16 +439,40 @@ def test_cli_prints_plain_index_url(
             "PRODUCT=rhoai",
         ],
     )
-    monkeypatch.setattr(
-        resolver,
-        "index_url_exists",
-        lambda url: url == prod_index_url(release="3.5-EA2", accelerator="rocm7.1"),
-    )
+    label_url = prod_index_url(release="3.5-EA2", accelerator="rocm7.1")
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", make_skopeo_label_stub(label_url))
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
 
     runner = CliRunner()
     result = runner.invoke(resolver.app, ["index-url", str(conf_file)])
 
-    assert result.exit_code == 0
-    assert (
-        result.stdout.strip() == "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/rocm7.1-ubi9/simple/"
-    )
+    assert result.exit_code == 0, f"CLI failed: {result.stdout} {result.exception}"
+    expected_stdout = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/rocm7.1-ubi9/simple/"
+    assert result.stdout.strip() == expected_stdout, f"expected {expected_stdout}, got {result.stdout.strip()!r}"
+
+
+def test_parse_release_and_accelerator_from_url() -> None:
+    url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cuda13.0-ubi9/simple/"
+    release, accelerator = resolver.parse_release_and_accelerator_from_url(url)
+    assert release == "3.5-EA2", f"expected release 3.5-EA2, got {release}"
+    assert accelerator == "cuda13.0", f"expected accelerator cuda13.0, got {accelerator}"
+
+
+def test_parse_release_and_accelerator_from_test_url() -> None:
+    url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/rocm7.1-ubi9-test/simple/"
+    release, accelerator = resolver.parse_release_and_accelerator_from_url(url)
+    assert release == "3.5", f"expected release 3.5, got {release}"
+    assert accelerator == "rocm7.1", f"expected accelerator rocm7.1, got {accelerator}"
+
+
+def test_validate_label_index_url_rejects_malformed_path() -> None:
+    base_image = "quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1778762488"
+    malformed_url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/simple/"
+    with pytest.raises(resolver.IndexResolutionError, match="unexpected path"):
+        resolver.validate_label_index_url(malformed_url, base_image)
+
+
+def test_parse_release_and_accelerator_from_url_rejects_malformed_path() -> None:
+    malformed_url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/simple/"
+    with pytest.raises(resolver.IndexResolutionError, match="Cannot extract release/accelerator"):
+        resolver.parse_release_and_accelerator_from_url(malformed_url)
