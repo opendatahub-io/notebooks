@@ -26,7 +26,7 @@ class TestCodeServerImage:
             import jupyter  # noqa: F401
 
             # mirrors JupyterInterpreterDependencyService.isKernelSpecAvailable()
-            subprocess.run(["jupyter", "kernelspec", "--version"], check=True)
+            subprocess.run(["jupyter", "kernelspec", "--version"], check=True, timeout=30)
             print("jupyter extension dependencies OK")
 
         with docker_utils.running_container(codeserver_image.name) as container:
