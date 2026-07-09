@@ -69,6 +69,7 @@ const config: webpack.Configuration = {
         patterns: [
             /^main.js$/, // useless empty js file
             /\.woff2$/, // Red Hat fonts used in pf.css
+            /\.svg$/, // PatternFly asset URLs resolved during CSS build
         ]
     }),
     // https://webpack.js.org/plugins/mini-css-extract-plugin/
