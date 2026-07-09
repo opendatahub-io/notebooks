@@ -10,8 +10,8 @@
   }
 }
 :root {
-  container-type: inline-size;
   container-name: pf-v6-contain-viewport pf-v6-contain-table;
+  container-type: inline-size;
 }
 
 @property --pf-v6-global--danger-jiggle--TranslateX {
@@ -69,10 +69,10 @@
   width: 100%;
   height: 100%;
   stroke: var(--pf-v6-c-spinner--Color);
+  stroke-width: var(--pf-v6-c-spinner--StrokeWidth);
+  stroke-linecap: round;
   stroke-dasharray: 283;
   stroke-dashoffset: 280;
-  stroke-linecap: round;
-  stroke-width: var(--pf-v6-c-spinner--StrokeWidth);
   transform-origin: 50% 50%;
   animation: pf-v6-c-spinner-animation-dash var(--pf-v6-c-spinner--AnimationDuration) var(--pf-v6-c-spinner__path--AnimationTimingFunction) infinite;
 }

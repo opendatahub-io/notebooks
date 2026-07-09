@@ -16,11 +16,11 @@
     'build:clean': 'pnpm clean && pnpm build',
   },
   dependencies: {
-    '@patternfly/patternfly': '6.5.2',
+    '@patternfly/patternfly': '6.6.0',
   },
   devDependencies: {
     // webpack to minify css file
-    '@types/node': '^26.0.0',
+    '@types/node': '^26.1.0',
     '@types/webpack': '^5.28.5',
     // plugins for webpack
     'css-loader': '^7.1.4',
@@ -29,8 +29,8 @@
     'mini-css-extract-plugin': '^2.10.2',
     'purgecss-webpack-plugin': '^8.0.0',
     typescript: '^6.0.3',
-    webpack: '^5.107.2',
-    'webpack-cli': '^7.0.3',
+    webpack: '^5.108.4',
+    'webpack-cli': '^7.2.1',
     'webpack-dev-server': '^5.2.5',
   },
   // DO NOT add "pnpm": { ... } here — pnpm 11 ignores it silently (pnpm#11536).
