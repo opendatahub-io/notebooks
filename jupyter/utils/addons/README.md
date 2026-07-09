@@ -49,7 +49,6 @@ The project uses webpack to bundle the JavaScript files and tree-shake the CSS:
 - `pnpm build:dev`: Creates a development build with source maps
 - `pnpm build:clean`: Cleans the output directory and cache before building
 - `pnpm clean`: Removes the dist directory and build cache
-- `pnpm start`: Starts the webpack development server and opens `dist/index.html` (test page) in a browser
 - `pnpm watch`: Watches for file changes and rebuilds automatically
 - `pnpm test`: Runs the test-build.sh script to report tree-shaking effectiveness
 

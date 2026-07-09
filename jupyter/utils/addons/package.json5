@@ -10,7 +10,6 @@
     test: './test-build.sh',
     build: 'webpack --mode production',
     'build:dev': 'webpack --mode development',
-    start: 'webpack serve --open',
     watch: 'webpack --watch',
     clean: 'rm -rf dist .cache',
     'build:clean': 'pnpm clean && pnpm build',
@@ -31,7 +30,6 @@
     typescript: '^6.0.3',
     webpack: '^5.108.4',
     'webpack-cli': '^7.2.1',
-    'webpack-dev-server': '^5.2.5',
   },
   // DO NOT add "pnpm": { ... } here — pnpm 11 ignores it silently (pnpm#11536).
   // All pnpm settings go in pnpm-workspace.yaml.
