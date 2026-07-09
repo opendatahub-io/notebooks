@@ -178,15 +178,20 @@
       // input of golangci/golangci-lint-action (depType uses-with). pinDigests
       // cannot apply to a plain version string, so the grouped branch fails.
       //
-      // Do not add matchDepTypes here. A dry-run with matchDepTypes: ["uses-with"]
-      // still emitted pinDigest for golangci/golangci-lint and the grouped branch
-      // failed; Cilium's package-name-only pinDigests:false also did not stop
-      // pinDigest generation in our Renovate 43 dry-run — disable the update
-      // type explicitly instead.
-      description: "Disable pinDigest for golangci-lint uses-with dep",
+      // Do NOT add matchDepTypes: ["uses-with"] — dry-run
+      // https://github.com/opendatahub-io/notebooks/actions/runs/29012903496
+      // still emitted pinDigest and the grouped branch failed. CodeRabbit
+      // suggested matchDepTypes for "tighter scope"; that broke the fix.
+      //
+      // Also insufficient in Renovate 43 dry-runs:
+      // - pinDigests: false alone (Cilium-style)
+      // - matchUpdateTypes: ["pinDigest"] + enabled: false
+      // Both still left isPinDigest:true on golangci/golangci-lint.
+      // Disable the whole github-actions extraction of this package instead;
+      // keep managing `version:` in code-quality.yaml manually / via pinact.
+      description: "Disable github-actions extraction of golangci-lint version input",
       matchManagers: ["github-actions"],
       matchPackageNames: ["golangci/golangci-lint"],
-      matchUpdateTypes: ["pinDigest"],
       enabled: false,
     },
     {
