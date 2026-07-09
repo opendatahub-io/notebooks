@@ -27,12 +27,12 @@ jobs:
       security-events: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           persist-credentials: false
 
       - name: Cache Semgrep
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
           path: ~/.local/pipx/venvs/semgrep
           key: ${{ runner.os }}-pipx-semgrep-${{ env.SEMGREP_VERSION }}
@@ -47,6 +47,6 @@ jobs:
       - name: Upload SARIF
         # Fork PRs cannot write security-events; skip upload (same guard as gitleaks.yaml).
         if: ${{ !cancelled() && (steps.run-semgrep.outcome == 'success' || steps.run-semgrep.outcome == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa  # v4.36.0
+        uses: github/codeql-action/upload-sarif@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a  # v4.36.3
         with:
           sarif_file: semgrep.sarif
