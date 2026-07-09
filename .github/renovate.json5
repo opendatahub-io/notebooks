@@ -177,9 +177,11 @@
       // github-actions manager extracts golangci/golangci-lint from the version:
       // input of golangci/golangci-lint-action (depType uses-with). pinDigests
       // cannot apply to a plain version string, so the grouped branch fails.
+      // Do not add matchDepTypes here. A dry-run with matchDepTypes: ["uses-with"]
+      // still emitted pinDigest for golangci/golangci-lint and the grouped branch
+      // failed; Cilium's fix uses package name + pinDigests: false only.
       description: "Do not pin digest for golangci-lint uses-with dep",
       matchManagers: ["github-actions"],
-      matchDepTypes: ["uses-with"],
       matchPackageNames: ["golangci/golangci-lint"],
       pinDigests: false,
     },
