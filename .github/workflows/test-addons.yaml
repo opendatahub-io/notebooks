@@ -1,0 +1,47 @@
+---
+name: Test Jupyter Addons
+"on":
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/test-addons.yaml'
+      - 'jupyter/utils/addons/**'
+  push:
+    branches: [main, stable, 'rhoai-*']
+    paths:
+      - '.github/workflows/test-addons.yaml'
+      - 'jupyter/utils/addons/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test-addons:
+    name: Build and verify addons
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Read pnpm version from lockfile
+        id: pnpm-ver
+        run: |
+          ver=$(scripts/get-pnpm-version.sh jupyter/utils/addons/pnpm-lock.yaml)
+          echo "version=${ver}" >> "$GITHUB_OUTPUT"
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6.0.9
+        with:
+          version: ${{ steps.pnpm-ver.outputs.version }}
+          cache: true
+          cache_dependency_path: jupyter/utils/addons/pnpm-lock.yaml
+          # language=yaml
+          run_install: |
+            - cwd: jupyter/utils/addons
+              args: [--frozen-lockfile]
+
+      - run: pnpm test
+        working-directory: jupyter/utils/addons
