@@ -31,6 +31,13 @@
     webpack: '^5.108.4',
     'webpack-cli': '^7.2.1',
   },
+  devEngines: {
+    packageManager: {
+      name: 'pnpm',
+      version: '>=11.5.3 <12',
+      onFail: 'download',
+    },
+  },
   // DO NOT add "pnpm": { ... } here — pnpm 11 ignores it silently (pnpm#11536).
   // All pnpm settings go in pnpm-workspace.yaml.
   // "packageManager": "pnpm@10.8.1" // forces install of a precise version, so annoying
