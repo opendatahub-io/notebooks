@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test script to verify the tree-shaking improvements
-set -e
+set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CSS_FILE="$SCRIPT_DIR/dist/pf.css"
