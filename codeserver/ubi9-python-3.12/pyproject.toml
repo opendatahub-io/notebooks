@@ -22,8 +22,14 @@ dependencies = [
     "wheel",
     "setuptools",
 
-    "ipykernel",
     "debugpy",
+
+    # RHAIENG-6157: VS Code Jupyter extension requires these
+    #  ipykernel: raw-kernel gate
+    #  jupyter+notebook: Jupyter-Server gate (s390x/ppc64le, no built-in native zeromq for nodejs)
+    "ipykernel",
+    "jupyter",
+    "notebook",
 
     # RHAIENG-1475: skl2onnx excluded on s390x for codeserver
     "skl2onnx; platform_machine != 's390x'",
