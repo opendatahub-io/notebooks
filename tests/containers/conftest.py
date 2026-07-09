@@ -101,7 +101,9 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
         # Without it, metafunc.parametrize defaults to function scope and silently
         # overrides the fixture scope (https://github.com/pytest-dev/pytest/issues/634),
         # causing ScopeMismatch for any session-scoped fixture that depends on `image`.
-        metafunc.parametrize(image.__name__, metafunc.config.getoption("--image"), scope="session")
+        image_option = metafunc.config.getoption("--image")
+        assert image_option is not None
+        metafunc.parametrize(image.__name__, image_option, scope="session")
 
 
 def get_image_metadata(image: str) -> Image:
@@ -347,7 +349,7 @@ def test_frame():
 
             This is somewhat similar to Go's `defer`."""
             self.resources.append((resource, cleanup_func))
-            return resource.__enter__()  # noqa: PLC2801 Unnecessary dunder call to `__enter__`  # pyright: ignore[reportAttributeAccessIssue]
+            return resource.__enter__()  # noqa: PLC2801 Unnecessary dunder call to `__enter__`
 
         def destroy(self):
             """Runs __exit__() on the registered resources as a cleanup."""

@@ -23,7 +23,7 @@ dev = [
     "pyfakefs",
     # Python 3.14 changed the internal typing._eval_type() function signature - it now includes a new prefer_fwd_module parameter
     # and so pydantic 2.10+ is required to work with from __future__ import annotations on Python 3.14
-    "pydantic>=2.10.0",
+    "pydantic>=2.13.0",
     "requests",
     #
     "pyyaml",
@@ -38,7 +38,7 @@ dev = [
     "kubernetes",
     "openshift-python-wrapper",
     # Transitive via openshift-python-wrapper → fastmcp;
-    "authlib>=1.6.12",
+    "authlib>=1.7.2",
     "typer",
     # certifi provides CA bundle needed on macOS where Python's bundled OpenSSL
     # does not read from the system Keychain, causing CERTIFICATE_VERIFY_FAILED
@@ -49,8 +49,8 @@ dev = [
     # pygments provides syntax highlighting for pretty-printed JSON in log output
     "pygments",
     # rich powers the local live progress table in ci/check-image-availability.py
-    "rich>=14.3.2",
-    "inline-snapshot>=0.34.1",
+    "rich>=15.0.0",
+    "inline-snapshot>=0.34.2",
 ]
 
 [tool.uv]
@@ -130,6 +130,11 @@ include = ["ci/", "tests/", "base-images/"]
 ignore = [ ]
 pythonVersion = "3.14"
 pythonPlatform = "Linux"
+
+# docker/podman exec() stubs type output as Iterator[bytes]; runtime returns bytes.
+[[tool.pyright.executionEnvironments]]
+root = "tests/containers"
+reportAttributeAccessIssue = "none"
 
 # https://docs.astral.sh/ruff/configuration
 [tool.ruff]
@@ -216,6 +221,9 @@ ignore = [
     "UP032", # Use f-string instead of `format` call
     "RET507", # Unnecessary `else` after `continue` statement
     "RET508", # Unnecessary `elif` after `break` statement
+    # ruff 0.15.18+ preview rules — too noisy for existing try/contextmanager patterns
+    "PLW0717", # too-many-statements-in-try-clause
+    "RUF075", # fallible-context-manager
 ]
 
 # Allow unused variables when underscore-prefixed.

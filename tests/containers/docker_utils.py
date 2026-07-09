@@ -286,15 +286,15 @@ def container_exec_with_stdin(
         # Try to unwrap a file-like object (e.g., BufferedReader -> SocketIO -> socket)
         raw_io = getattr(stream, "raw", stream)
         if hasattr(raw_io, "_sock"):
-            raw_sock = raw_io._sock  # pyright: ignore[reportAttributeAccessIssue]
+            raw_sock = raw_io._sock
 
     if raw_sock:
         raw_sock.sendall(stdin_data)
     else:
         # Fallback to stream.write() if no raw socket found. This may fail.
         try:
-            stream.write(stdin_data)  # pyright: ignore[reportAttributeAccessIssue]
-            stream.flush()  # pyright: ignore[reportAttributeAccessIssue]
+            stream.write(stdin_data)
+            stream.flush()
         except (OSError, io.UnsupportedOperation) as e:
             raise OSError(f"Could not write to container exec stdin using stream of type {type(stream)}") from e
 
@@ -306,9 +306,9 @@ def container_exec_with_stdin(
             # Fallback for stream objects that have a shutdown method.
             raw_io = getattr(stream, "raw", stream)
             if hasattr(raw_io, "_sock"):
-                raw_io._sock.shutdown(pysocket.SHUT_WR)  # pyright: ignore[reportAttributeAccessIssue]
+                raw_io._sock.shutdown(pysocket.SHUT_WR)
             else:
-                stream.shutdown(pysocket.SHUT_WR)  # pyright: ignore[reportAttributeAccessIssue]
+                stream.shutdown(pysocket.SHUT_WR)
     except OSError, AttributeError:
         # This is expected if the remote process closes the connection first.
         pass
@@ -334,7 +334,7 @@ def container_exec_with_stdin(
     else:
         # Fallback to stream.read() if we couldn't get a raw socket.
         # This may hang if the shutdown logic above also failed.
-        output = stream.read()  # pyright: ignore[reportAttributeAccessIssue]
+        output = stream.read()
         stream.close()
 
     # Get the exit code of the process.
@@ -347,7 +347,7 @@ def get_socket_path(client: docker.client.DockerClient) -> str:
     """Determine the local socket path.
     This works even when `podman machine` with its own host-mounts is involved
     NOTE: this will not work for remote docker, but we will cross the bridge when we come to it"""
-    socket_path = _the_one(adapter.socket_path for adapter in client.api.adapters.values())  # pyright: ignore[reportAttributeAccessIssue]
+    socket_path = _the_one(adapter.socket_path for adapter in client.api.adapters.values())
     return socket_path
 
 
