@@ -8,7 +8,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-comment: "^/build-konflux"
+    pipelinesascode.tekton.dev/on-comment: ^/kfbuild\s+(all|odh\-workbench\-codeserver\-datascience\-cpu\-py312\-ubi9|codeserver/ubi9\-python\-3\.12)
     pipelinesascode.tekton.dev/on-event: "[pull_request]"
   labels:
     appstudio.openshift.io/application: automation
@@ -47,9 +47,10 @@ spec:
     value: true
   - name: build-platforms
     value:
-    - linux-extra-fast/amd64
-    - linux-m2xlarge/arm64
+    - linux-d160-m4xlarge/amd64
+    - linux-d160-m4xlarge/arm64
     - linux/ppc64le
+    - linux/s390x
   - name: image-expires-after
     value: 5d
   - name: enable-slack-failure-notification
