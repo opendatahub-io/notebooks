@@ -37,8 +37,9 @@ export npm_config_nodedir=/usr
 export PLAYWRIGHT_BROWSERS_PATH="${HOME}/.cache/ms-playwright"
 export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 export PLAYWRIGHT_SKIP_FFMPEG_INSTALL=1
-# VSCODE_OFFLINE_CACHE: used by the patched fetch.js (patches/code-server-v4.106.3/lib/vscode/build/lib/fetch.js)
-# to read .vsix extensions and Node.js binaries from local files instead of downloading.
+# VSCODE_OFFLINE_CACHE: directory where setup-offline-binaries.sh stages built-in .vsix files
+# (from utils/) before npm ci. VS Code 1.112 uses builtInExtensions pre-population instead of
+# patching lib/vscode/build/lib/fetch.ts for offline downloads.
 if [[ "$CODESERVER_SOURCE_PREFETCH" = /* ]]; then
   export VSCODE_OFFLINE_CACHE="${CODESERVER_SOURCE_PREFETCH}/.vscode-offline-cache"
 else

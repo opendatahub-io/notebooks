@@ -11,7 +11,7 @@ Release notes are being updated to reflect this:
 ## What fails check-payload and why
 
 The `check-payload` FIPS scanner flags binaries that are not dynamically linked
-(`ErrNotDynLinked`). Two binaries in workbench images currently trigger this
+(`ErrNotDynLinked`). Binaries in workbench images that currently trigger this
 (`py-spy` previously did, but is now excluded via `exclude-dependencies`):
 
 | Binary | Path | Why it's in the image | Crypto? |
@@ -19,6 +19,7 @@ The `check-payload` FIPS scanner flags binaries that are not dynamically linked
 | pandoc | `.../pandoc_rhai/data/bin/pandoc` | PDF export via `pandoc-rhai` 3.9.0.2 pip wheel | No (dynamically linked, `-http` build) |
 | py-spy | *(removed)* | Was a transitive dep from Ray/CodeFlare; excluded via `exclude-dependencies` | No |
 | rg (ripgrep) | `/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg` | IDE search, required by code-server | No |
+| apply-seccomp | `.../node_modules/@anthropic-ai/sandbox-runtime/**/seccomp/*/apply-seccomp` | VS Code 1.112+ optional AI/MCP terminal sandbox (seccomp BPF loader) | No |
 
 Tracked under [RHOAIENG-58626](https://redhat.atlassian.net/browse/RHOAIENG-58626).
 
@@ -100,7 +101,7 @@ for each release. Example:
 ### Local and CI scans
 
 The file [`scripts/check-payload/config.toml`](../scripts/check-payload/config.toml)
-contains suppressions for the three binaries. This config is used when running
+contains suppressions for these binaries. This config is used when running
 `check-payload` locally or in CI (e.g. the `fips-check` GitHub Actions job) but
 does **not** affect the Konflux release pipeline.
 
@@ -116,7 +117,7 @@ exception:
 | Item | Status | Target |
 |------|--------|--------|
 | Build pandoc from source with `-f -http` | In progress ([AIPCC-7795](https://redhat.atlassian.net/browse/AIPCC-7795)) | 3.5 EA1+ |
-| Add pandoc/py-spy/rg to check-payload global exceptions | PR open ([check-payload #327](https://github.com/openshift/check-payload/pull/327)) | Pending review |
+| Add pandoc/py-spy/rg/apply-seccomp to check-payload global exceptions | PR open ([check-payload #327](https://github.com/openshift/check-payload/pull/327)) | Pending review |
 | Granular FBC FIPS exceptions in Konflux | RFE filed ([EC-1796](https://redhat.atlassian.net/browse/EC-1796)) | TBD |
 
 ## References
@@ -125,7 +126,7 @@ exception:
 - [RHOAIENG-60236](https://redhat.atlassian.net/browse/RHOAIENG-60236) — Update release notes re: workbench FIPS exclusion
 - [AIPCC-7795](https://redhat.atlassian.net/browse/AIPCC-7795) — Build pandoc from source (AIPCC wheels)
 - [EC-1796](https://redhat.atlassian.net/browse/EC-1796) — RFE: Granular FBC FIPS scan exceptions
-- [check-payload #327](https://github.com/openshift/check-payload/pull/327) — Global exceptions for pandoc, py-spy, rg
+- [check-payload #327](https://github.com/openshift/check-payload/pull/327) — Global exceptions for pandoc, py-spy, rg, apply-seccomp
 - [Slack: 3.3.3 release FIPS discussion (May 5, 2026)](https://redhat-internal.slack.com/archives/C0AU47VSVSN/p1777977041600609) — Thread with full technical analysis
 - [Slack: forum-ocp-fips discussion](https://redhat-internal.slack.com/archives/C05U13J3LLS/p1777326908529319) — ProdSec guidance on exceptions
 - [Slack: pandoc removal discussion](https://redhat-internal.slack.com/archives/C0961HQ858Q/p1776946326109889) — Why removing pandoc is not preferred

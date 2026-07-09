@@ -123,7 +123,12 @@ EOF
   ) > product.json
 
   # Build for current architecture so we can use system Node (see setup-offline-binaries.sh).
-  node --max-old-space-size=16384 --optimize-for-size \
+  # ODH: ppc64/s390x builds run under QEMU with tsc (not tsgo); use a smaller heap to avoid OOM.
+  NODE_HEAP_MB=16384
+  case "${NODE_ARCH}" in
+    ppc64|s390x) NODE_HEAP_MB=6144 ;;
+  esac
+  node --max-old-space-size="${NODE_HEAP_MB}" --optimize-for-size \
        ./node_modules/gulp/bin/gulp.js \
        "vscode-reh-web-linux-${GULP_ARCH}${MINIFY:+-min}"
 

@@ -64,7 +64,7 @@ VSIX_UTILS="${CODESERVER_SOURCE_CODE}/utils"
 
 # Copy .vsix extension files from utils/ (git-tracked large files)
 cp "${VSIX_UTILS}/ms-vscode.js-debug-companion.1.1.3.vsix" "${VSCODE_OFFLINE_CACHE}/"
-cp "${VSIX_UTILS}/ms-vscode.js-debug.1.105.0.vsix" "${VSCODE_OFFLINE_CACHE}/"
+cp "${VSIX_UTILS}/ms-vscode.js-debug.1.112.0.vsix" "${VSCODE_OFFLINE_CACHE}/"
 cp "${VSIX_UTILS}/ms-vscode.vscode-js-profile-table.1.0.10.vsix" "${VSCODE_OFFLINE_CACHE}/"
 
 # [HERMETIC] Pre-populate .build/node/ with system Node (like che-code) so gulp skips download.
@@ -109,7 +109,7 @@ populate_vsix() {
 }
 
 populate_vsix "${VSIX_UTILS}/ms-vscode.js-debug-companion.1.1.3.vsix" "ms-vscode.js-debug-companion"
-populate_vsix "${VSIX_UTILS}/ms-vscode.js-debug.1.105.0.vsix" "ms-vscode.js-debug"
+populate_vsix "${VSIX_UTILS}/ms-vscode.js-debug.1.112.0.vsix" "ms-vscode.js-debug"
 populate_vsix "${VSIX_UTILS}/ms-vscode.vscode-js-profile-table.1.0.10.vsix" "ms-vscode.vscode-js-profile-table"
 
 # Rewrite all package-lock.json "resolved" URLs to point to the cachi2 file cache.
