@@ -278,6 +278,15 @@
       "groupName": "Red Hat registry base images",
       "semanticCommits": "enabled",
     },
+    {
+      // uses-with dep from golangci-lint-action version: input; see cilium/cilium@4127ed6
+      description: "Do not pin digest for golangci-lint uses-with dep",
+      matchManagers: ["github-actions"],
+      matchPackageNames: ["golangci/golangci-lint"],
+      // matchDepTypes: ["uses-with"],  // do NOT add — PR dry-runs still hit branch
+      // update failure with this set; Cilium uses package name + pinDigests only
+      pinDigests: false,
+    },
   ],
 
   "forkProcessing": "enabled",
