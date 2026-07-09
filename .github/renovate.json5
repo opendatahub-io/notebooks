@@ -179,6 +179,7 @@
       // cannot apply to a plain version string, so the grouped branch fails.
       description: "Do not pin digest for golangci-lint uses-with dep",
       matchManagers: ["github-actions"],
+      matchDepTypes: ["uses-with"],
       matchPackageNames: ["golangci/golangci-lint"],
       pinDigests: false,
     },
