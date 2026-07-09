@@ -20,10 +20,10 @@ class TestCodeServerImage:
             # ruff: noqa: PLC0415 `import` should be at the top-level of a file
             import subprocess
 
-            import notebook  # pyright: ignore reportMissingImports  # noqa: F401
+            import notebook  # pyright: ignore[reportMissingImports]  # noqa: F401
 
             # mirrors JupyterInterpreterDependencyService.getDependenciesNotInstalled()
-            import jupyter  # pyright: ignore reportMissingImports  # noqa: F401
+            import jupyter  # noqa: F401
 
             # mirrors JupyterInterpreterDependencyService.isKernelSpecAvailable()
             subprocess.run(["jupyter", "kernelspec", "--version"], check=True)
@@ -49,7 +49,7 @@ class TestCodeServerImage:
     def test_jupyter_kernel_starts_and_executes(self, codeserver_image: conftest.Image) -> None:
         def start_kernel_and_execute():
             # ruff: noqa: PLC0415 `import` should be at the top-level of a file
-            from jupyter_client import KernelManager
+            from jupyter_client.manager import KernelManager  # pyright: ignore[reportMissingImports]
 
             km = KernelManager(kernel_name="python3")
             km.start_kernel()
