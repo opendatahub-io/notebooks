@@ -177,13 +177,17 @@
       // github-actions manager extracts golangci/golangci-lint from the version:
       // input of golangci/golangci-lint-action (depType uses-with). pinDigests
       // cannot apply to a plain version string, so the grouped branch fails.
+      //
       // Do not add matchDepTypes here. A dry-run with matchDepTypes: ["uses-with"]
       // still emitted pinDigest for golangci/golangci-lint and the grouped branch
-      // failed; Cilium's fix uses package name + pinDigests: false only.
-      description: "Do not pin digest for golangci-lint uses-with dep",
+      // failed; Cilium's package-name-only pinDigests:false also did not stop
+      // pinDigest generation in our Renovate 43 dry-run — disable the update
+      // type explicitly instead.
+      description: "Disable pinDigest for golangci-lint uses-with dep",
       matchManagers: ["github-actions"],
       matchPackageNames: ["golangci/golangci-lint"],
-      pinDigests: false,
+      matchUpdateTypes: ["pinDigest"],
+      enabled: false,
     },
     {
       // astral-sh/setup-uv uses exact version tags (v8.0.0), not major tags (v8).
