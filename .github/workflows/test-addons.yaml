@@ -20,6 +20,7 @@ jobs:
   test-addons:
     name: Build and verify addons
     runs-on: ubuntu-26.04
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
