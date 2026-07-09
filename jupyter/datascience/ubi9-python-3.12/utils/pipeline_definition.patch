@@ -3,7 +3,7 @@
 @@ -265,6 +265,9 @@
          if parameter_class is None:
              return None  # runtime type does not support parameters, skip
- 
+
 +        if not ElyraProperty.subclass_exists_for_property(parameter_class.property_id):
 +            ElyraProperty.build_property_map()
 +

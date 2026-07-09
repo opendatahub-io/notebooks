@@ -4,7 +4,7 @@
 This document aims to provide an overview of the rebuilding plan for the notebook images. There are two types of updates that are implemented:
 
 1.  *Release updates* - These updates will be carried out twice a year and will incorporate major updates to the notebook images.
-  
+
 2.  *Patch updates* - These updates will be carried out weekly and will focus on incorporating security updates to the notebook images.
 
 ## Scope and frequency of the updates

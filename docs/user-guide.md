@@ -1,7 +1,7 @@
 The following sections are aimed to provide a comprehensive guide on effectively utilizing an out-of-the-box notebook by a user.
 There are two options for launching a workbench image: either through the Enabled applications or the Data Science Project.
 
-## Notebook Spawner 
+## Notebook Spawner
 
 In the ODH dashboard, you can navigate to Applications -> Enabled -> Launch Application from the Jupyter tile. The notebook server spawner page displays a list of available container images you can run as a single user."
 
@@ -36,11 +36,10 @@ During the release lifecycle, which is the period during which the update is sup
 Our goal is to ensure that notebook images are supported for a minimum of one year, meaning that typically two supported images will be available at any given time. This provides sufficient time for users to update their code to use components from the latest notebook images. We will continue to make older images available in the registry for users to add as custom notebook images, even if they are no longer supported. This way, users can still access the older images if needed.
 Example lifecycle (not actual dates):
 
-2023-01-01 - only one version of the notebook images is available - version 1 for all images.  
-2023-06-01 - release updated images - version 2 (v2023a). Versions 1 & 2 are supported and available for selection in the UI.  
-2023-12-01 - release updated images - version 3 (v2023b). Versions 2 & 3 are supported and available for selection in the UI.  
-2024-06-01 - release updated images - version 4 (v2024a). Versions 3 & 4 are supported and available for selection in the UI.  
+2023-01-01 - only one version of the notebook images is available - version 1 for all images.
+2023-06-01 - release updated images - version 2 (v2023a). Versions 1 & 2 are supported and available for selection in the UI.
+2023-12-01 - release updated images - version 3 (v2023b). Versions 2 & 3 are supported and available for selection in the UI.
+2024-06-01 - release updated images - version 4 (v2024a). Versions 3 & 4 are supported and available for selection in the UI.
 
 
 [Previous Page](https://github.com/opendatahub-io/notebooks/wiki/Developer-Guide)
-

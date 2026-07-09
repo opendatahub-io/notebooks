@@ -27,7 +27,7 @@ odh-<image type>-<image-feature>-<image-scope>-<accelerator>-<python version>-<o
 
 #### Examples:
 
-Standards example: 
+Standards example:
 
 * odh-workbench-jupyter-minimal-cuda-py311-rhel9
 * odh-workbench-jupyter-minimal-cpu-py311-rhel9
@@ -37,14 +37,14 @@ Standards example:
 
 
 
-_Motivation_:  
-Based on: https://issues.redhat.com/browse/RHOAIENG-21539  
+_Motivation_:
+Based on: https://issues.redhat.com/browse/RHOAIENG-21539
 Image Name: Short and meaningful name of the image that will be used for creating build/delivery repositories for the image. The image name must be prefixed with "odh-" and suffixed with the RHEL version (like so: -rhel7, -rhel8).
 
 ### Previous Pattern
 
-The workbench image name convention in RHOAI for IDE content was not structured and changed on different image scopes.  
-Format: _image_name:tag_  
+The workbench image name convention in RHOAI for IDE content was not structured and changed on different image scopes.
+Format: _image_name:tag_
 Example:
 
 - Image:
@@ -54,9 +54,9 @@ Example:
   - name: runtime-images
   - tag: rocm-runtime-tensorflow-ubi9-python-3.11-20250418-c0fa3b2
 
-## Split of params 
+## Split of params
 
-Konflux would be help with build of workbenches. Konflux patch the sha of the built image into params file as a process of nudging.  
+Konflux would be help with build of workbenches. Konflux patch the sha of the built image into params file as a process of nudging.
 To keep this file not getting overriden, we have split the params file into 2 files.
 - params-latest.env: Any workbench images that represent the image version N (the latest one).
 - params.env: Rest of the workbench images that represent the n-1 and extras.

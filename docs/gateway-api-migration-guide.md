@@ -89,7 +89,7 @@ def kernels():
     # Handle culler endpoint
     return {'kernels': []}, 200
 
-@app.route(f'{nb_prefix}/api/terminals')  
+@app.route(f'{nb_prefix}/api/terminals')
 def terminals():
     # Handle culler endpoint
     return {'terminals': []}, 200
@@ -257,18 +257,18 @@ Set `absolute_redirect off;` in the nginx `server` block (or at build time via `
 location ${NB_PREFIX}/myapp/ {
     # Strip the prefix before proxying to backend
     rewrite ^${NB_PREFIX}/myapp/(.*)$ /$1 break;
-    
+
     # Proxy to your application (127.0.0.1 avoids localhost → ::1 resolution on IPv6 hosts)
     proxy_pass http://127.0.0.1:8080/;
     proxy_http_version 1.1;
-    
+
     # Essential for WebSocket support
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection $connection_upgrade;
-    
+
     # Long timeout for interactive sessions
     proxy_read_timeout 20d;
-    
+
     # Pass through important headers
     proxy_set_header Host $http_host;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -388,5 +388,5 @@ location ${NB_PREFIX}/myapp/ {
 }
 ```
 
-Request `/notebook/ns/wb` → matches first location → redirects  
+Request `/notebook/ns/wb` → matches first location → redirects
 Request `/notebook/ns/wb/myapp/` → matches second location (longer) → proxies

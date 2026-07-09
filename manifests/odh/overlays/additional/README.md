@@ -6,4 +6,3 @@ The source build files for any notebook in this repo must exist under the [opend
 
 Notebooks:
 ===
-
