@@ -128,7 +128,7 @@ class ImageDeployment:
         accelerator: Literal["amd.com/gpu", "nvidia.com/gpu"] | None = None,
         is_runtime_image: bool = False,
         timeout: float = TestFrameConstants.READINESS_TIMEOUT,
-    ) -> kubernetes.client.models.v1_pod.V1Pod:  # pyright: ignore[reportAttributeAccessIssue]
+    ) -> kubernetes.client.models.v1_pod.V1Pod:
         LOGGER.debug(f"Deploying {self.image}")
         # custom namespace is necessary, because we cannot assign a SCC to pods created in one of the default namespaces:
         #  default, kube-system, kube-public, openshift-node, openshift-infra, openshift.
@@ -158,7 +158,7 @@ class ImageDeployment:
                         #       level: 's0:c34,c4'
                         #     fsGroup: 1001130000
                         #     seccompProfile:
-                        #       type: RuntimeDefault
+                        #       profileType: RuntimeDefault
                         # ```
                         "openshift.io/scc": "restricted-v2"
                     },
@@ -217,11 +217,11 @@ class ImageDeployment:
         )
 
         core_v1_api = kubernetes.client.api.core_v1_api.CoreV1Api(api_client=self.client.client)
-        pod_name: kubernetes.client.models.v1_pod_list.V1PodList = core_v1_api.list_namespaced_pod(  # pyright: ignore[reportAttributeAccessIssue]
+        pod_name: kubernetes.client.models.v1_pod_list.V1PodList = core_v1_api.list_namespaced_pod(
             namespace=ns.name, label_selector=f"app={container_name}"
         )
         assert len(pod_name.items) == 1
-        self.pod: kubernetes.client.models.v1_pod.V1Pod = pod_name.items[0]  # pyright: ignore[reportAttributeAccessIssue]
+        self.pod: kubernetes.client.models.v1_pod.V1Pod = pod_name.items[0]
 
         if not is_runtime_image:
             p = socket_proxy.SocketProxy(lambda: exposing_contextmanager(core_v1_api, self.pod), "localhost", 0)  # pyright: ignore[reportArgumentType]
@@ -467,7 +467,7 @@ class Utils:
 @contextlib.contextmanager
 def exposing_contextmanager(
     core_v1_api: kubernetes.client.CoreV1Api,
-    pod: kubernetes.client.models.V1Pod,  # pyright: ignore[reportAttributeAccessIssue]
+    pod: kubernetes.client.models.V1Pod,
 ) -> Generator[socket]:
     # If we e.g., specify the wrong port, the pf = portforward() call succeeds,
     # but pf.connected will later flip to False

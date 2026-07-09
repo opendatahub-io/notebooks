@@ -281,6 +281,7 @@ class WorkbenchContainer(testcontainers.core.container.DockerContainer):
             script_path.write_text(script_content)
             docker_utils.container_cp(self.get_wrapped_container(), src=str(script_path), dst=dest)
         exit_code, output = self.exec([python, f"{dest}/{script_name}"])
+        assert exit_code is not None
         return exit_code, output.decode()
 
 
