@@ -59,7 +59,13 @@ def pytest_addoption(parser: Parser) -> None:
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_generate_tests
 def pytest_generate_tests(metafunc: Metafunc) -> None:
     if image.__name__ in metafunc.fixturenames:
-        metafunc.parametrize(image.__name__, metafunc.config.getoption("--image"))
+        # scope="session" is required here to match the fixture's declared scope.
+        # Without it, metafunc.parametrize defaults to function scope and silently
+        # overrides the fixture scope (https://github.com/pytest-dev/pytest/issues/634),
+        # causing ScopeMismatch for any session-scoped fixture that depends on `image`.
+        image_option = metafunc.config.getoption("--image")
+        assert image_option is not None, "--image option must be provided"
+        metafunc.parametrize(image.__name__, image_option, scope="session")
 
 
 def get_image_metadata(image: str) -> Image:
@@ -123,6 +129,24 @@ def tf() -> Generator[TestFrame[Any]]:
 @pytest.fixture(scope="session")
 def image(request):
     yield request.param
+
+
+@pytest.fixture(scope="session")
+def container_arch(image: str) -> str:
+    """Detect the CPU architecture of the container image. Runs once per session."""
+    container = testcontainers.core.container.DockerContainer(image=image, user=0)
+    container.with_command("/bin/sh -c 'sleep infinity'")
+    known_architectures = {"x86_64", "aarch64", "s390x", "ppc64le"}
+    try:
+        container.start()
+        exit_code, output = container.exec(["uname", "-m"])
+        assert exit_code == 0, f"uname -m failed: {output}"
+        arch = output.decode().strip()
+        if arch not in known_architectures:
+            raise ValueError(f"Unexpected architecture {arch!r}, expected one of {known_architectures}")
+        return arch
+    finally:
+        docker_utils.NotebookContainer(container).stop(timeout=0)
 
 
 @pytest.fixture(scope="function")
