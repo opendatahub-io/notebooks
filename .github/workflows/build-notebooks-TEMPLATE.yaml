@@ -627,6 +627,8 @@ jobs:
         run: |
           set -Eeuxo pipefail
           PODMAN="$(which podman)"
+          # Pull via the CONTAINER_HOST remote client (has GHCR auth); sudo podman runs as root and lacks credentials
+          "${PODMAN}" pull "${CHECK_PAYLOAD_IMAGE}"
           IMAGE_MOUNT_DIR=$(sudo "${PODMAN}" image mount "${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}")
           sudo "${PODMAN}" run --rm --user=0 \
             -v "${IMAGE_MOUNT_DIR}:${IMAGE_MOUNT_DIR}:ro,z" \
