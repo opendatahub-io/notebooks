@@ -3,6 +3,23 @@
 Code-server (VS Code in the browser) image with Python 3.12 on UBI 9, built
 for Open Data Hub / OpenShift AI workbenches.
 
+## Code-server version
+
+| Component | Version |
+|-----------|---------|
+| code-server | **v4.112.0** (submodule `prefetch-input/code-server`) |
+| VS Code | **1.112.0** |
+| Node.js (RPM) | **22.22.0** (`nodejs:22` module) |
+
+Hermetic-build customizations live in **`prefetch-input/patches/code-server-v4.112.0/`**
+(overlay copied over the submodule at build time). See that directory's
+[`README.md`](prefetch-input/patches/code-server-v4.112.0/README.md) for the full
+list of overrides, what gets overwritten vs. preserved from older releases, and
+how to regenerate lockfiles when bumping code-server again.
+
+User-facing VS Code extensions (Python, Jupyter) and built-in build `.vsix` files
+are documented in [`../Extensions.md`](../Extensions.md).
+
 ## Hermetic build overview
 
 Every dependency (RPMs, npm packages, Python wheels, generic tarballs) is

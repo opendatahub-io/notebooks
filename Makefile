@@ -375,8 +375,7 @@ validate-runtime-image: bin/kubectl
 			echo "=> Checking notebook execution..."
 			if ! $(KUBECTL_BIN) cp "$(CURDIR)/ci/requirements-elyra.txt" runtime-pod:/tmp/requirements-elyra.txt || \
 				! $(KUBECTL_BIN) exec runtime-pod -- /bin/sh -c "python3 -m pip install -r /tmp/requirements-elyra.txt > /dev/null && \
-					curl -fsSL https://raw.githubusercontent.com/nteract/papermill/main/papermill/tests/notebooks/simple_execute.ipynb --output simple_execute.ipynb && \
-					python3 -m papermill simple_execute.ipynb output.ipynb > /dev/null" ; then
+					python3 -m papermill \$$(python3 -c \"import papermill, pathlib; print(pathlib.Path(papermill.__file__).parent / 'tests/notebooks/simple_execute.ipynb')\") /tmp/output.ipynb > /dev/null" ; then
 				echo "ERROR: Image does not meet Python requirements criteria in pipfile"
 				fail=1
 			fi

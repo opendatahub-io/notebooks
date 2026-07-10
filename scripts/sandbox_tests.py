@@ -164,7 +164,7 @@ class TestCopyTreeWithIgnore:
         assert (dst / "node_modules" / "pkg" / "index.js").is_file()
 
     def test_root_only_ci_not_ignored_in_nested_tree(self, tmp_path: pathlib.Path):
-        src = tmp_path / "codeserver/prefetch-input/patches/code-server-v4.106.3"
+        src = tmp_path / "codeserver/prefetch-input/patches/code-server-v4.112.0"
         (src / "ci/build").mkdir(parents=True)
         (src / "ci/build/build-vscode.sh").write_text("#!/bin/bash")
 

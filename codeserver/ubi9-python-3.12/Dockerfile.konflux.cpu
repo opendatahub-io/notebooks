@@ -25,8 +25,8 @@ ARG BASE_IMAGE
 #   - code-server source: prefetch-input/code-server/ (git submodule)
 #   - Node.js/npm: installed from prefetched RPMs
 #   - npm dependencies: package-lock.json resolved URLs rewritten to file:///cachi2/...
-#   - node-gyp: system headers via nodejs-devel RPM (NPM_CONFIG_NODEDIR=/usr),
-#     VS Code remote headers (22.20.0) from prefetched tarballs, ripgrep from RHOAI Python wheel (deps/pip)
+#   - node-gyp: system headers via nodejs-devel RPM (NPM_CONFIG_NODEDIR=/usr);
+#     preinstall.ts overlay skips Electron/Node header tarball downloads
 #   - Build scripts patched to avoid any network fetches (patches/*.patch)
 ############################################################################################
 # e.g., registry.access.redhat.com/ubi9/python-312:latest
@@ -45,8 +45,8 @@ ENV CODESERVER_SOURCE_PREFETCH=${CODESERVER_SOURCE_CODE}/prefetch-input/code-ser
 ARG BASE_IMAGE
 ARG GHA_BUILD=false
 
-ARG NODE_VERSION=22.21.1
-ARG CODESERVER_VERSION=v4.106.3
+ARG NODE_VERSION=22.22.0
+ARG CODESERVER_VERSION=v4.112.0
 
 # [HERMETIC] Import GPG keys for prefetched RPM verification.
 # CentOS key imported only if prefetched (present in Dockerfile.cpu; may be absent in Konflux).
@@ -61,7 +61,7 @@ RUN dnf module enable nodejs:22 -y
 # libxkbfile-devel = util-macros + libxkbfile (Previously built from source)
 RUN dnf install -y \
         nodejs nodejs-devel npm \
-        jq patch libtool rsync gettext gcc-toolset-14 gcc-toolset-14-libatomic-devel \
+        jq patch libtool rsync gettext git-lfs gcc-toolset-14 gcc-toolset-14-libatomic-devel \
         krb5-devel libX11-devel libxkbfile-devel && \
     dnf clean all
 
@@ -179,7 +179,7 @@ ARG TARGETOS
 ARG TARGETARCH
 
 ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
-ARG CODESERVER_VERSION=v4.106.3
+ARG CODESERVER_VERSION=v4.112.0
 ARG PYLOCK_FLAVOR
 
 ARG LABEL_REGISTRY_PREFIX
@@ -236,7 +236,7 @@ COPY --chown=1001:0 ${CODESERVER_SOURCE_CODE}/utils utils/
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 mkdir -p /opt/app-root/extensions-temp
-code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2026.0.0.vsix --extensions-dir /opt/app-root/extensions-temp
+code-server --install-extension /opt/app-root/bin/utils/ms-python.python-2026.4.0.vsix --extensions-dir /opt/app-root/extensions-temp
 code-server --install-extension /opt/app-root/bin/utils/ms-toolsai.jupyter-2025.9.1.vsix --extensions-dir /opt/app-root/extensions-temp
 EOF
 
