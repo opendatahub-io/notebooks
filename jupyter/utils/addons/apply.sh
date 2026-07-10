@@ -30,7 +30,7 @@ fi
 
 if [ ! -f "$css_file" ]; then
   echo "Tree-shaken CSS file not found. Building it now..."
-  cd "$script_dir" && pnpm build
+  cd "$script_dir" && pnpm run build:css
   if [ ! -f "$css_file" ]; then
     echo "Failed to build CSS file"
     exit 1

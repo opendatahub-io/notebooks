@@ -53,8 +53,9 @@ After editing `partial-head.html`, `partial-body.html`, or the PurgeCSS safelist
 
 The project uses webpack to tree-shake the PatternFly CSS:
 
-- `pnpm build` — production CSS tree-shake + regenerate demo HTML
-- `pnpm build:dev` — development build with source maps + demo HTML
+- `pnpm build:css` — production CSS tree-shake only
+- `pnpm build` — `build:css` + regenerate demo HTML
+- `pnpm build:dev` — development CSS build + demo HTML
 - `pnpm build:clean` — clean output, then build
 - `pnpm clean` — remove `dist/` and `.cache/`
 - `pnpm watch` — watch CSS rebuild; re-run `./build-demo.sh` after partial HTML edits

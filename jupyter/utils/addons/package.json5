@@ -8,8 +8,10 @@
   license: 'Apache-2.0',
   scripts: {
     test: './test-build.sh',
-    build: 'webpack --mode production && ./build-demo.sh',
-    'build:dev': 'webpack --mode development && ./build-demo.sh',
+    'build:css': 'webpack --mode production',
+    'build:css:dev': 'webpack --mode development',
+    build: 'pnpm build:css && ./build-demo.sh',
+    'build:dev': 'pnpm build:css:dev && ./build-demo.sh',
     watch: 'webpack --watch',
     clean: 'rm -rf dist .cache',
     'build:clean': 'pnpm clean && pnpm build',

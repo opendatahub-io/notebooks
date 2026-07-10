@@ -1,5 +1,4 @@
 #!/bin/bash
-# Local demo: copy a JupyterLab-like index template, then inject partials via apply.sh.
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,7 +17,7 @@ cp "$TEMPLATE" "$OUTPUT"
 export JUPYTER_ADDONS_INDEX_FILE="$OUTPUT"
 "$SCRIPT_DIR/apply.sh"
 
-# file:// preview has no JupyterLab runtime to resolve {{page_config.fullStaticUrl}}
+# file:// preview: JupyterLab resolves {{page_config.fullStaticUrl}} at runtime
 perl -pi -e 's|\{\{page_config.fullStaticUrl\}\}|.|g' "$OUTPUT"
 
 echo "Wrote $OUTPUT"
