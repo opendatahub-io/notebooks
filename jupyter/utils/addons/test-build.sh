@@ -7,8 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CSS_FILE="$SCRIPT_DIR/dist/pf.css"
 ORIGINAL_CSS="$SCRIPT_DIR/node_modules/@patternfly/patternfly/patternfly-no-globals.css"
 
-echo "Building project..."
-cd "$SCRIPT_DIR" && pnpm build
+echo "Building CSS..."
+cd "$SCRIPT_DIR" && pnpm run build:css
 
 # Check if the CSS file exists
 if [ ! -f "$CSS_FILE" ]; then
@@ -45,10 +45,11 @@ fi
 
 # SVG assets from PatternFly CSS are resolved at build time then removed; dist must
 # not ship them or reference them (inline spinner SVG in index.html is fine).
-SVG_COUNT=$(find "$SCRIPT_DIR/dist" -name '*.svg' | wc -l | tr -d ' ')
+SVG_FILES=$(find "$SCRIPT_DIR/dist" -name '*.svg' || true)
+SVG_COUNT=$(printf '%s\n' "$SVG_FILES" | sed '/^$/d' | wc -l | tr -d ' ')
 if [ "$SVG_COUNT" -gt 0 ]; then
   echo "ERROR: Found $SVG_COUNT SVG file(s) in dist/ — cleanup plugin should remove them!"
-  find "$SCRIPT_DIR/dist" -name '*.svg'
+  printf '%s\n' "$SVG_FILES"
   exit 1
 fi
 

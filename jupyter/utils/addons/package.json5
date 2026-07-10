@@ -8,8 +8,10 @@
   license: 'Apache-2.0',
   scripts: {
     test: './test-build.sh',
-    build: 'webpack --mode production',
-    'build:dev': 'webpack --mode development',
+    'build:css': 'webpack --mode production',
+    'build:css:dev': 'webpack --mode development',
+    build: 'pnpm build:css && ./build-demo.sh',
+    'build:dev': 'pnpm build:css:dev && ./build-demo.sh',
     watch: 'webpack --watch',
     clean: 'rm -rf dist .cache',
     'build:clean': 'pnpm clean && pnpm build',
@@ -23,8 +25,6 @@
     '@types/webpack': '^5.28.5',
     // plugins for webpack
     'css-loader': '^7.1.4',
-    'html-loader': '^5.1.0',
-    'html-webpack-plugin': '^5.6.7',
     'mini-css-extract-plugin': '^2.10.2',
     'purgecss-webpack-plugin': '^8.0.0',
     typescript: '^6.0.3',

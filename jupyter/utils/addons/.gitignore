@@ -3,6 +3,10 @@ node_modules/
 .pnpm-store/
 .cache/
 
+# dist/ — only pf.css is shipped in images; demo HTML is generated locally
+dist/*
+!dist/pf.css
+
 # Logs
 logs
 *.log
