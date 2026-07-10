@@ -80,7 +80,7 @@ ENV ROCM_PATH=/opt/rocm
 # Workaround for 2.25.2 issue https://issues.redhat.com/browse/RHAIENG-1638 missing rocm package in older AIPCC builds
 # https://issues.redhat.com/browse/AIPCC-5882
 USER 0
-RUN dnf --setopt=reposdir=/etc/rhaipcc/repos.d --enablerepo="external-amd-rocm-*" install -y rocm-device-libs
+RUN dnf --setopt=reposdir=/etc/rhaipcc/repos.d --enablerepo="external-amd-rocm-*" install -y rocm-device-libs && dnf clean all
 USER 1001
 
 WORKDIR /opt/app-root/src
