@@ -56,6 +56,23 @@ fi
 export RIPGREP_BINARY_PATH
 echo "Using ripgrep from Python wheel: ${RIPGREP_BINARY_PATH}"
 
+# [RHAIENG-6193] .vsix files under utils/ are Git LFS objects. If the clone task did not
+# smudge LFS (regression in git-clone-oci-ta 0.2), these are ~130 byte pointer stubs, not
+# real ZIPs. Fail fast here instead of ~1h into the VS Code compile when the build later
+# tries (and fails) to download the extension from GitHub with no network access.
+require_valid_vsix() {
+    local f="$1"
+    if [[ ! -f "$f" ]]; then
+        echo "ERROR: ${f} not found" >&2
+        exit 1
+    fi
+    if ! unzip -tqq "$f" >/dev/null 2>&1; then
+        echo "ERROR: ${f} is not a valid .vsix zip (Git LFS pointer not materialized? see RHAIENG-6193)" >&2
+        head -c 200 "$f" >&2 || true
+        exit 1
+    fi
+}
+
 # Setup VSCode marketplace extensions and Node.js binaries from prefetched files.
 # VSCODE_OFFLINE_CACHE is already exported by codeserver-offline-env.sh.
 # Built-in .vsix (js-debug, etc.) are in repo at utils/ (COPY'd into image); not from cachi2.
@@ -63,9 +80,12 @@ mkdir -p "${VSCODE_OFFLINE_CACHE}"
 VSIX_UTILS="${CODESERVER_SOURCE_CODE}/utils"
 
 # Copy .vsix extension files from utils/ (git-tracked large files)
-cp "${VSIX_UTILS}/ms-vscode.js-debug-companion.1.1.3.vsix" "${VSCODE_OFFLINE_CACHE}/"
-cp "${VSIX_UTILS}/ms-vscode.js-debug.1.112.0.vsix" "${VSCODE_OFFLINE_CACHE}/"
-cp "${VSIX_UTILS}/ms-vscode.vscode-js-profile-table.1.0.10.vsix" "${VSCODE_OFFLINE_CACHE}/"
+for f in "${VSIX_UTILS}/ms-vscode.js-debug-companion.1.1.3.vsix" \
+         "${VSIX_UTILS}/ms-vscode.js-debug.1.112.0.vsix" \
+         "${VSIX_UTILS}/ms-vscode.vscode-js-profile-table.1.0.10.vsix"; do
+    require_valid_vsix "${f}"
+    cp "${f}" "${VSCODE_OFFLINE_CACHE}/"
+done
 
 # [HERMETIC] Pre-populate .build/node/ with system Node (like che-code) so gulp skips download.
 # build-vscode.sh is patched to build for current arch (vscode-reh-web-linux-${NODE_ARCH}).
@@ -96,10 +116,11 @@ populate_vsix() {
         return
     fi
 
+    require_valid_vsix "${vsix_file}"
+
     echo "Extracting ${ext_name} from $(basename "${vsix_file}")..."
-    local tmp_dir="/tmp/vsix-extract-$$"
-    rm -rf "${tmp_dir}"
-    mkdir -p "${tmp_dir}"
+    local tmp_dir
+    tmp_dir="$(mktemp -d /tmp/vsix-extract.XXXXXX)"
     # .vsix is a ZIP; the extension contents are in the extension/ subdirectory
     unzip -qo "${vsix_file}" "extension/*" -d "${tmp_dir}"
     rm -rf "${ext_dir}"
