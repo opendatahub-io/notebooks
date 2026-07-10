@@ -21,6 +21,28 @@ Pull requests are the best way to propose changes to the notebooks repository:
 - Make sure your code lints.
 - Issue that pull request!
 
+### Contributing from branches vs forks
+
+**Recommended:** If you have write access to the repo, push your branch directly
+and create the PR from there:
+
+```bash
+git push origin HEAD:<your-initials>/branch-name
+```
+
+This gives CI full access to build secrets (RHEL subscription, AIPCC registry) and
+uses the org's paid runners with higher concurrency limits.
+
+**Fork PRs:** If you open a PR from a fork, CI still schedules the full build matrix
+(including RHEL and AIPCC subscription targets), but those jobs fail because fork
+workflows cannot access the required secrets. Non-subscription checks (for example
+code quality) may still run. A bot will comment with instructions for re-creating
+the PR from a same-repo branch.
+
+For pull requests against **`red-hat-data-services/notebooks`**, push branches to
+that repository (for example `git push rhds HEAD:fix/my-branch`) and open the PR
+from a same-repo branch — not from a personal fork.
+
 ### Some basic instructions to create a new notebook
 
 - Decide from which notebook you want to derive the new notebook

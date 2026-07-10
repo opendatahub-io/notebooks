@@ -216,10 +216,15 @@ make undeploy9-${NOTEBOOK_NAME} # Cleanup
 
 When contributing to this project:
 
-1. **Fork and branch** from main
+1. **Fork and branch** from main (ODH) or push a same-repo branch (RHDS/RHOAI)
 2. **Write clear commit messages**
 3. **Add tests** for new functionality
 4. **Update documentation**
+
+**RHDS (`red-hat-data-services/notebooks`):** Open PRs from branches pushed to
+`red-hat-data-services/notebooks`, not from forks. Fork PRs still schedule
+subscription and AIPCC registry builds, but those jobs fail without repo secrets.
+See [CONTRIBUTING.md](CONTRIBUTING.md#contributing-from-branches-vs-forks).
 
 For detailed contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
