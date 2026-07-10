@@ -46,8 +46,8 @@ xdg-open dist/index.html   # Linux
 
 Click **Finish loading** to simulate JupyterLab loading (spinner disappears).
 
-After editing `partial-head.html`, `partial-body.html`, or the PurgeCSS safelist in
-`webpack.config.ts`, re-run `pnpm build` and reload the browser tab.
+After editing `partial-head.html`, `partial-body.html`, `demo/lab-index.template.html`, or the
+PurgeCSS safelist in `webpack.config.ts`, re-run `pnpm build` and reload the browser tab.
 
 ### Build Process
 
