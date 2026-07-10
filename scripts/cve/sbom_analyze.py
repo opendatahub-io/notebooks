@@ -59,7 +59,7 @@ def extract_purl_type(purl: str) -> str:
 def get_components_from_sbom(sbom: dict) -> list[dict]:
     """Get normalized component list from any SBOM format."""
     fmt = detect_sbom_format(sbom)
-    
+
     if fmt == "syft":
         return sbom.get("artifacts", [])
     elif fmt == "spdx-manifest-box":
@@ -90,9 +90,9 @@ def normalize_component(component: dict, fmt: str) -> dict:
             if ref.get("referenceType") == "purl":
                 purl = ref.get("referenceLocator")
                 break
-        
+
         pkg_type = extract_purl_type(purl) if purl else "unknown"
-        
+
         # sourceInfo contains the path where the package was found
         source_info = component.get("sourceInfo", "")
         locations = []
@@ -101,7 +101,7 @@ def normalize_component(component: dict, fmt: str) -> dict:
             if ": " in source_info:
                 path = source_info.split(": ", 1)[-1]
                 locations = [path]
-        
+
         return {
             "name": component.get("name", ""),
             "version": component.get("versionInfo"),
@@ -127,12 +127,12 @@ def find_package(sbom: dict, package_name: str, case_insensitive: bool = True) -
     """Find a package in the SBOM and return its details."""
     fmt = detect_sbom_format(sbom)
     components = get_components_from_sbom(sbom)
-    
+
     results = []
     for component in components:
         normalized = normalize_component(component, fmt)
         name = normalized.get("name", "")
-        
+
         if case_insensitive:
             match = package_name.lower() in name.lower()
         else:
@@ -147,13 +147,13 @@ def find_packages_at_path(sbom: dict, path_pattern: str) -> list[dict]:
     """Find all packages installed at a path matching the pattern."""
     fmt = detect_sbom_format(sbom)
     components = get_components_from_sbom(sbom)
-    
+
     results = []
     for component in components:
         normalized = normalize_component(component, fmt)
         locations = normalized.get("locations", [])
         source_info = normalized.get("sourceInfo", "") or ""
-        
+
         # Check both locations and sourceInfo
         matching_locations = [loc for loc in locations if path_pattern in loc]
         source_match = path_pattern in source_info
@@ -166,7 +166,7 @@ def find_packages_at_path(sbom: dict, path_pattern: str) -> list[dict]:
 def get_sbom_info(sbom: dict) -> dict:
     """Extract SBOM metadata (source, version, etc.)."""
     fmt = detect_sbom_format(sbom)
-    
+
     if fmt == "syft":
         return {
             "format": "syft",
@@ -203,7 +203,7 @@ def summarize_by_type(sbom: dict) -> dict[str, int]:
     """Summarize packages by ecosystem type."""
     fmt = detect_sbom_format(sbom)
     components = get_components_from_sbom(sbom)
-    
+
     counts: dict[str, int] = {}
     for component in components:
         normalized = normalize_component(component, fmt)
@@ -309,19 +309,19 @@ Location patterns help determine remediation:
     if args.json:
         # JSON mode: collect all outputs into a single dict
         result: dict[str, Any] = {}
-        
+
         if args.info:
             result["info"] = get_sbom_info(sbom)
-        
+
         if args.summary:
             result["summary"] = summarize_by_type(sbom)
-        
+
         if args.path:
             result["path"] = find_packages_at_path(sbom, args.path)
-        
+
         if args.package_name:
             result["search"] = find_package(sbom, args.package_name, case_insensitive=not args.exact)
-        
+
         print(json.dumps(result, indent=2))
     else:
         # Human-readable mode

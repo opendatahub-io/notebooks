@@ -187,7 +187,7 @@ RELEASE_PYTHON_VERSION=3.12 BUILD_ARCH=linux/arm64 \
     --component-dir jupyter/datascience/ubi9-python-3.12
 ```
 
-Use `BUILD_ARCH=linux/amd64` when building for x86_64. Prefetch arch and build  
+Use `BUILD_ARCH=linux/amd64` when building for x86_64. Prefetch arch and build
 arch must match (Makefile mounts `cachi2/output/deps/rpm/<arch>/repos.d/`).
 
 ### Build
@@ -198,8 +198,8 @@ gmake jupyter-datascience-ubi9-python-3.12 \
   PUSH_IMAGES=no
 ```
 
-The Makefile auto-mounts `cachi2/output/` when prefetch exists. See  
-[Appendix: Local podman build](#appendix-local-podman-build) for manual  
+The Makefile auto-mounts `cachi2/output/` when prefetch exists. See
+[Appendix: Local podman build](#appendix-local-podman-build) for manual
 `podman build` details.
 
 ---

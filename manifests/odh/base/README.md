@@ -23,12 +23,12 @@ NOTE: In overlays/additional there are new set of Python 3.12 images, they are a
 18. code-server-notebook-imagestream.yaml
 19. codeserver-datascience-cpu-py312-ubi9-imagestream.yaml
 
-The order would also be same as `opendatahub.io/notebook-image-order` listed in each imagestreams.  
+The order would also be same as `opendatahub.io/notebook-image-order` listed in each imagestreams.
 _Note_: On deprecation/removal of imagestream, the index of that image is retired with it.
 
 ## Params file
 
-Please read workbench-naming for the name convention to follow in params.env.  
+Please read workbench-naming for the name convention to follow in params.env.
 [Workbench Naming](../../docs/workbenches-naming.md)
 
 - params-latest.env: This file contains references to latest versions of workbench images that are updated by konflux nudges.

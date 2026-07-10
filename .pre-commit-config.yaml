@@ -5,15 +5,16 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks  # Enables fast path
     rev: v6.0.0  # This is ignored for fast path detection
     hooks:
-      # - id: trailing-whitespace
-      #   exclude: '^ci/secrets/'
+      - id: trailing-whitespace
+        exclude: '^ci/secrets/'
       - id: check-added-large-files
-      # - id: end-of-file-fixer
-      #   exclude: '^ci/secrets/'
-      # - id: check-json
+      - id: end-of-file-fixer
+        exclude: '^ci/secrets/'
+      - id: check-json
+        exclude: '^ci/secrets/|tsconfig\.json$'
       - id: check-toml
-      # - id: check-yaml
-      #   args: ['--allow-multiple-documents']
+      - id: check-yaml
+        args: ['--allow-multiple-documents']
       - id: check-symlinks
       - id: check-merge-conflict
       - id: check-executables-have-shebangs

@@ -9,11 +9,11 @@ In the field of Database Management Systems effective interaction is crucial for
 ### Installation Guide
 
 1.  Open the code-server workbench and navigate to the Extensions view.
-    
+
 2.  Search for the desired extension using the provided recommended links.
-    
+
 3.  Click "Install" to add the extension to your code-server environment.
-    
+
 ### Recommended extensions list
 
 **MongoDB for code-server**
@@ -56,7 +56,7 @@ This versatile extension serves as a database manager for MySQL/MariaDB, Postgre
 
 Custom notebook images are a powerful tool when working with containerized environments, especially in scenarios where you need specific libraries, OS packages, or applications that are not readily available in base images. This tutorial will guide you through the process of creating a custom notebook image with Database Management System (DBMS) clients using Dockerfile.
 
-## Prerequisites  
+## Prerequisites
 
 Before you begin, make sure you have Docker installed on your system.
 
@@ -69,7 +69,7 @@ Start by cloning the Open Data Hub notebooks repository:
 **Step 2: Create a New Dockerfile**
 
 Navigate to the codeserver folder and create a new folder for your custom image. For example, let's name it ubi9-python-3.9-db-clients. Inside this folder, create a Dockerfile with the following instructions:
- 
+
 ```
 # The base image auto assigned by the make recipe from the next step, in this case is the code-server notebook.
 ARG BASE_IMAGE
@@ -100,11 +100,11 @@ USER 1001
 
 WORKDIR /opt/app-root/src
 ```
-  
+
 **Step 3: Add RPM Files**
 
-Create two RPM files, mongodb-org-6.0.repo-x86_64 and mssql-2022.repo-x86_64, in the folder you created earlier. The content for these files is provided in the tutorial.  
-  
+Create two RPM files, mongodb-org-6.0.repo-x86_64 and mssql-2022.repo-x86_64, in the folder you created earlier. The content for these files is provided in the tutorial.
+
 Filename: mongodb-org-6.0.repo-x86_64
 
 ```
@@ -113,9 +113,9 @@ name=MongoDB Repository
 baseurl=https://repo.mongodb.org/yum/redhat/9/mongodb-org/6.0/x86_64/
 gpgcheck=1
 enabled=1
-gpgkey=https://www.mongodb.org/static/pgp/server-6.0.asc  
+gpgkey=https://www.mongodb.org/static/pgp/server-6.0.asc
 ```
-  
+
 Filename: mssql-2022.repo-x86_64
 
 ```
@@ -126,7 +126,7 @@ enabled=1
 gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 ```
-  
+
 **Step 4: Build and Push the Image**
 
 To streamline the build and push process, update the Makefile with a new recipe:
@@ -136,13 +136,13 @@ To streamline the build and push process, update the Makefile with a new recipe:
 codeserver-ubi9-python-3.9-db-clients: codeserver-ubi9-python-3.9
 $(call image,$@,codeserver/ubi9-python-3.9-db-clients,$<)
 ```
-  
+
 Run the following command to build and push the image:
 
 ```
 $ make codeserver-ubi9-python-3.9-db-clients -e IMAGE_REGISTRY=quay.io/${YOUR_USERNAME}/workbench-images
 ```
- 
+
 Note: Replace `${YOUR_USERNAME}` with your actual username, and the registry can be any valid registry, not just quay.io.
 
 **Step 5: Import Custom Image into ODH/RHOAI**
@@ -161,6 +161,6 @@ Open a new terminal inside the code-server and run the following command to ensu
 
 `$ yum list installed | grep -E 'mssql|mongo|postgresql'`
 
-If everything is set up correctly, you should see a list of installed packages related to MongoDB, MSSQL, and PostgreSQL.  
-  
+If everything is set up correctly, you should see a list of installed packages related to MongoDB, MSSQL, and PostgreSQL.
+
 Here you may find an example: [https://github.com/atheo89/notebooks/tree/add-db-clients-example/codeserver/ubi9-python-3.9-plus](https://github.com/atheo89/notebooks/tree/add-db-clients-example/codeserver/ubi9-python-3.9-plus)

@@ -7,7 +7,7 @@ Also see `/ci` directory for yet more scripts.
 
 This guide explains how to set up your environment and run the two TypeScript scripts located in:
 
-`tests/browser/scripts/` 
+`tests/browser/scripts/`
 -   `start_browser.ts` — launches a Chrome instance with remote debugging enabled
 -   `add_snyk_target.ts` — connects to that browser and automates Snyk actions
 
@@ -17,7 +17,7 @@ This guide explains how to set up your environment and run the two TypeScript sc
 
 Install **Node.js + npm**:
 
-`brew install node` 
+`brew install node`
 
 (Or download from [https://nodejs.org](https://nodejs.org))
 
@@ -25,7 +25,7 @@ Install **Node.js + npm**:
 
 # 2️⃣ Install TypeScript & ts-node
 
-`npm install -g typescript ts-node` 
+`npm install -g typescript ts-node`
 
 ----------
 
@@ -33,11 +33,11 @@ Install **Node.js + npm**:
 
 From the repo root:
 
-`npm init -y` 
+`npm init -y`
 
 This generates:
 
--   `package.json` — declares dependencies and scripts    
+-   `package.json` — declares dependencies and scripts
 -   `package-lock.json` — _locks_ exact dependency versions for reproducible installs
 
 ----------
@@ -46,7 +46,7 @@ This generates:
 
 Playwright **must** be installed locally so the scripts can import it:
 
-`npm install playwright` 
+`npm install playwright`
 
 This updates:
 
@@ -56,7 +56,7 @@ This updates:
 
 Then install browser binaries:
 
-`npx playwright install` 
+`npx playwright install`
 
 ----------
 
@@ -64,7 +64,7 @@ Then install browser binaries:
 
 ## 🔵 Step 1 — Start the browser
 
-`npx ts-node --esm tests/browser/scripts/start_browser.ts` 
+`npx ts-node --esm tests/browser/scripts/start_browser.ts`
 
 This will:
 
@@ -87,9 +87,9 @@ Requires the browser server in `start_browser.ts` to be running.
 
 In a new terminal:
 
-`npx ts-node --esm tests/browser/scripts/add_snyk_target.ts` 
+`npx ts-node --esm tests/browser/scripts/add_snyk_target.ts`
 
-### ⚠️ Log into Snyk 
+### ⚠️ Log into Snyk
 
 Use the browser window to log in:
 

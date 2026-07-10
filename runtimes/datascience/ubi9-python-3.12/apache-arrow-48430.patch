@@ -15,7 +15,7 @@ index 64adc8a060f..c7c744e676f 100644
 @@ -3856,7 +3856,24 @@ function(build_orc)
      add_library(orc::orc INTERFACE IMPORTED)
      target_link_libraries(orc::orc INTERFACE orc)
- 
+
 -    list(APPEND ARROW_BUNDLED_STATIC_LIBS orc)
 +    # ar -M rejects paths with "c++/" because "+" is a line continuation
 +    # character in MRI scripts, so we have to create a copy of the static lib

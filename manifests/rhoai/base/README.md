@@ -29,12 +29,12 @@ Listing the order in which each imagestreams are introduced based on the `openda
 - runtime-tensorflow-imagestream.yaml
 - runtime-pytorch-llmcompressor-imagestream.yaml
 
-The order is determined by the `opendatahub.io/notebook-image-order` annotation listed in each imagestream file.  
+The order is determined by the `opendatahub.io/notebook-image-order` annotation listed in each imagestream file.
 _Note_: On deprecation/removal of imagestream, the index of that image is retired with it.
 
 ## Params file
 
-Please read workbench-naming for the name convention to follow in params.env.  
+Please read workbench-naming for the name convention to follow in params.env.
 [Workbench Naming](../../docs/workbenches-naming.md)
 
 - params-latest.env: This file contains references to latest versions of workbench images that are updated by konflux nudges.
