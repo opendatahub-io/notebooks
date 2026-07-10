@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test script to verify the tree-shaking improvements
-set -e
+set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CSS_FILE="$SCRIPT_DIR/dist/pf.css"
@@ -40,6 +40,20 @@ fi
 
 if ! grep -q "pf-v6-c-spinner__path" "$CSS_FILE"; then
   echo "ERROR: Spinner path class not found in CSS!"
+  exit 1
+fi
+
+# SVG assets from PatternFly CSS are resolved at build time then removed; dist must
+# not ship them or reference them (inline spinner SVG in index.html is fine).
+SVG_COUNT=$(find "$SCRIPT_DIR/dist" -name '*.svg' | wc -l | tr -d ' ')
+if [ "$SVG_COUNT" -gt 0 ]; then
+  echo "ERROR: Found $SVG_COUNT SVG file(s) in dist/ — cleanup plugin should remove them!"
+  find "$SCRIPT_DIR/dist" -name '*.svg'
+  exit 1
+fi
+
+if grep -q '\.svg' "$CSS_FILE"; then
+  echo "ERROR: CSS references .svg assets that are not shipped!"
   exit 1
 fi
 

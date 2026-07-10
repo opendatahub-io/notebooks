@@ -49,7 +49,6 @@ The project uses webpack to bundle the JavaScript files and tree-shake the CSS:
 - `pnpm build:dev`: Creates a development build with source maps
 - `pnpm build:clean`: Cleans the output directory and cache before building
 - `pnpm clean`: Removes the dist directory and build cache
-- `pnpm start`: Starts the webpack development server and opens `dist/index.html` (test page) in a browser
 - `pnpm watch`: Watches for file changes and rebuilds automatically
 - `pnpm test`: Runs the test-build.sh script to report tree-shaking effectiveness
 
@@ -57,7 +56,7 @@ The project uses webpack to bundle the JavaScript files and tree-shake the CSS:
 
 - `apply.sh`: Script to apply the addons to a JupyterLab during Dockerfile build
 - `partial-head.html`, `partial-body.html`: HTML content to be injected into the head section of JupyterLab
-- `cleanup-webpack-plugin.mts`: Custom webpack plugin for asset cleanup (removes unnecessary files)
+- `cleanup-webpack-plugin.ts`: Custom webpack plugin for asset cleanup (removes unnecessary files)
 - `webpack.config.ts`: Webpack configuration with enhanced tree-shaking
 - `dist/pf.css`: Tree-shaken PatternFly CSS file with only the necessary styles
 - `src/index.ejs`: Template for the example page built into `dist/index.html`
