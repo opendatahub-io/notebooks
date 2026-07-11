@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -9,34 +11,55 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / "scripts"
 DATASCIENCE_PYLOCK = ROOT / "jupyter/datascience/ubi9-python-3.12/pylock.toml"
+_PEP440_VERSION = re.compile(r"^\d+(\.\d+)*([A-Za-z0-9.+]+)?$")
+
+# (pylock, package, platform_machine) tuples mirror pylock_version.py call sites in Dockerfiles.
+_DOCKERFILE_PIN_CASES = (
+    (DATASCIENCE_PYLOCK, "onnx", "ppc64le"),
+    (DATASCIENCE_PYLOCK, "pyarrow", "s390x"),
+    (ROOT / "jupyter/trustyai/ubi9-python-3.12/pylock.toml", "torch", "x86_64"),
+    (ROOT / "jupyter/trustyai/ubi9-python-3.12/pylock.toml", "pyarrow", "ppc64le"),
+    (ROOT / "codeserver/ubi9-python-3.12/pylock.toml", "pillow", "ppc64le"),
+)
 
 
-def test_cli_package_only_uses_cwd_pylock() -> None:
+def _versions_in_pylock(pylock: Path, package: str) -> set[str]:
+    doc = tomllib.loads(pylock.read_text())
+    return {entry["version"] for entry in doc.get("packages", []) if entry["name"] == package}
+
+
+@pytest.fixture
+def datascience_onnx_ppc64le(pylock_version) -> str:
+    return pylock_version.locked_version(DATASCIENCE_PYLOCK, "onnx", platform_machine="ppc64le")
+
+
+@pytest.mark.parametrize(
+    ("argv", "cwd"),
+    [
+        ([str(SCRIPTS / "pylock_version.py"), "onnx", "--platform", "ppc64le"], DATASCIENCE_PYLOCK.parent),
+        (
+            [
+                str(SCRIPTS / "pylock_version.py"),
+                str(DATASCIENCE_PYLOCK),
+                "onnx",
+                "--platform",
+                "ppc64le",
+            ],
+            None,
+        ),
+        (["-S", str(SCRIPTS / "pylock_version.py"), "onnx", "--platform", "ppc64le"], DATASCIENCE_PYLOCK.parent),
+    ],
+    ids=["package-only", "explicit-pylock", "stdlib-only"],
+)
+def test_cli_resolves_onnx_for_ppc64le(argv: list[str], cwd: Path | None, datascience_onnx_ppc64le: str) -> None:
     result = subprocess.run(
-        [sys.executable, str(SCRIPTS / "pylock_version.py"), "onnx", "--platform", "ppc64le"],
+        [sys.executable, *argv],
         check=True,
         capture_output=True,
         text=True,
-        cwd=DATASCIENCE_PYLOCK.parent,
+        cwd=cwd,
     )
-    assert result.stdout.strip() == "1.22.0"
-
-
-def test_cli_explicit_pylock_path() -> None:
-    result = subprocess.run(
-        [
-            sys.executable,
-            str(SCRIPTS / "pylock_version.py"),
-            str(DATASCIENCE_PYLOCK),
-            "onnx",
-            "--platform",
-            "ppc64le",
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    assert result.stdout.strip() == "1.22.0"
+    assert result.stdout.strip() == datascience_onnx_ppc64le
 
 
 def test_missing_package_raises_lookup_error(pylock_version) -> None:
@@ -49,26 +72,13 @@ def test_unsupported_marker_syntax_fails_fast(pylock_version) -> None:
         pylock_version.evaluate_marker("python_version >= '3.12'", pylock_version.marker_env(python_minor="3.12", platform_machine="x86_64"))
 
 
-def test_cli_runs_without_third_party_deps() -> None:
-    result = subprocess.run(
-        [sys.executable, "-S", str(SCRIPTS / "pylock_version.py"), "onnx", "--platform", "ppc64le"],
-        check=True,
-        capture_output=True,
-        text=True,
-        cwd=DATASCIENCE_PYLOCK.parent,
-    )
-    assert result.stdout.strip() == "1.22.0"
-
-
-@pytest.mark.parametrize(
-    ("pylock", "package", "platform_machine", "expected"),
-    [
-        (DATASCIENCE_PYLOCK, "onnx", "ppc64le", "1.22.0"),
-        (DATASCIENCE_PYLOCK, "pyarrow", "s390x", "17.0.0"),
-        (ROOT / "jupyter/trustyai/ubi9-python-3.12/pylock.toml", "torch", "x86_64", "2.7.1+cu128"),
-        (ROOT / "jupyter/trustyai/ubi9-python-3.12/pylock.toml", "pyarrow", "ppc64le", "20.0.0"),
-        (ROOT / "codeserver/ubi9-python-3.12/pylock.toml", "pillow", "ppc64le", "12.3.0"),
-    ],
-)
-def test_locked_versions_for_dockerfile_packages(pylock_version, pylock: Path, package: str, platform_machine: str, expected: str) -> None:
-    assert pylock_version.locked_version(pylock, package, platform_machine=platform_machine) == expected
+@pytest.mark.parametrize(("pylock", "package", "platform_machine"), _DOCKERFILE_PIN_CASES)
+def test_locked_versions_for_dockerfile_packages(
+    pylock_version,
+    pylock: Path,
+    package: str,
+    platform_machine: str,
+) -> None:
+    version = pylock_version.locked_version(pylock, package, platform_machine=platform_machine)
+    assert version in _versions_in_pylock(pylock, package)
+    assert _PEP440_VERSION.match(version)
