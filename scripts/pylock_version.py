@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
 """Read pinned package versions from pylock.toml for native image builds.
 
-Marker support is intentionally narrow: ``or`` / ``and`` groups of ``==`` and
-``!=`` comparisons on the env keys built by :func:`marker_env`, with ``.*``
-wildcards for python version pins. Anything else raises :class:`ValueError`.
+Marker evaluation
+-----------------
+:func:`evaluate_marker` is **not** a general PEP 508 implementation. It matches
+the flat ``(A and B and …) or (C and D) or …`` shape that ``uv`` emits in this
+repo's ``pylock.toml`` files today:
+
+* single-quoted literals only (``'…'``) — double quotes are rejected up front
+* ``==`` and ``!=`` comparisons on :func:`marker_env` keys, with ``.*`` wildcards
+* top-level ``or``, conjunctions joined by ``and`` — no nested ``(A or B) and C``
+
+It does **not** parse arbitrary PEP 508: ``in`` / ``not in``, other comparison
+operators, double-quoted strings, or ``and`` / ``or`` *inside* quoted literals
+(e.g. ``platform_system == 'Linux and Windows'`` would be split incorrectly).
+If ``uv`` changes its marker format, :func:`_assert_marker_format_supported`
+should fail loudly with a message to update this script.
 
 Callers format output in shell: ``v${VERSION}`` or ``apache-arrow-${VERSION}`` for git
 branches. When the lock carries a local segment (e.g. torch ``2.7.1+cu128``), strip
@@ -25,6 +37,33 @@ from typing import Any
 
 _DEFAULT_PYLOCK = Path("pylock.toml")
 _CLAUSE = re.compile(r"^(\w+)\s*(==|!=)\s*'([^']*)'$")
+_NON_EQ_COMPARISON = re.compile(r"(?<![=!])(>=|<=|~=)")
+_MARKER_FORMAT_HINT = (
+    "pylock_version.py only supports uv's current single-quoted, flat (or-of-ands) "
+    "marker style — not full PEP 508. If uv changed pylock marker output, update "
+    "scripts/pylock_version.py (or use packaging.markers) before merging the lockfile."
+)
+
+
+def _assert_marker_format_supported(marker: str) -> None:
+    """Reject marker shapes outside uv's current pylock style before parsing."""
+    if '"' in marker:
+        raise ValueError(f"unsupported marker uses double-quoted literals: {marker!r}. {_MARKER_FORMAT_HINT}")
+    if _NON_EQ_COMPARISON.search(marker):
+        raise ValueError(f"unsupported marker comparison operator: {marker!r}. {_MARKER_FORMAT_HINT}")
+    if re.search(r"\s+in\s+", marker):
+        raise ValueError(f"unsupported marker uses 'in' expression: {marker!r}. {_MARKER_FORMAT_HINT}")
+    for branch in _split_outside_parens(marker, " or "):
+        inner = _strip_outer_parens(branch)
+        if " or " in inner:
+            raise ValueError(f"unsupported nested marker disjunction: {marker!r}. {_MARKER_FORMAT_HINT}")
+        for clause in _split_outside_parens(inner, " and "):
+            if not _CLAUSE.fullmatch(clause.strip()):
+                raise ValueError(
+                    f"unsupported marker clause {clause.strip()!r} in {marker!r}. "
+                    f"Quoted literals must not contain ' and ' / ' or ', and each "
+                    f"comparison must use single-quoted values. {_MARKER_FORMAT_HINT}"
+                )
 
 
 def default_pylock_path() -> Path:
@@ -84,7 +123,7 @@ def _strip_outer_parens(marker: str) -> str:
 def _matches_clause(clause: str, env: dict[str, str]) -> bool:
     match = _CLAUSE.fullmatch(clause.strip())
     if not match:
-        raise ValueError(f"unsupported marker comparison: {clause!r}")
+        raise ValueError(f"unsupported marker comparison: {clause!r}. {_MARKER_FORMAT_HINT}")
     key, operator, expected = match.groups()
     if key not in env:
         raise ValueError(f"unsupported marker variable: {key!r}")
@@ -99,6 +138,8 @@ def _branch_matches(branch: str, env: dict[str, str]) -> bool:
 
 
 def evaluate_marker(marker: str, env: dict[str, str]) -> bool:
+    """Return whether *marker* matches *env* (uv flat or-of-ands style only)."""
+    _assert_marker_format_supported(marker)
     return any(_branch_matches(branch, env) for branch in _split_outside_parens(marker, " or "))
 
 

@@ -68,8 +68,30 @@ def test_missing_package_raises_lookup_error(pylock_version) -> None:
 
 
 def test_unsupported_marker_syntax_fails_fast(pylock_version) -> None:
-    with pytest.raises(ValueError, match="unsupported marker comparison"):
-        pylock_version.evaluate_marker("python_version >= '3.12'", pylock_version.marker_env(python_minor="3.12", platform_machine="x86_64"))
+    env = pylock_version.marker_env(python_minor="3.12", platform_machine="x86_64")
+    with pytest.raises(ValueError, match="unsupported marker comparison operator"):
+        pylock_version.evaluate_marker("python_version >= '3.12'", env)
+    with pytest.raises(ValueError, match="double-quoted literals"):
+        pylock_version.evaluate_marker('python_version == "3.12"', env)
+    with pytest.raises(ValueError, match="nested marker disjunction"):
+        pylock_version.evaluate_marker("(python_version == '3.12' or python_version == '3.11') and sys_platform == 'linux'", env)
+
+
+@pytest.mark.parametrize(
+    "pylock",
+    [
+        DATASCIENCE_PYLOCK,
+        ROOT / "jupyter/trustyai/ubi9-python-3.12/pylock.toml",
+        ROOT / "codeserver/ubi9-python-3.12/pylock.toml",
+        ROOT / "runtimes/datascience/ubi9-python-3.12/pylock.toml",
+    ],
+)
+def test_native_build_pylocks_use_supported_marker_format(pylock_version, pylock: Path) -> None:
+    doc = tomllib.loads(pylock.read_text())
+    markers = {entry["marker"] for entry in doc.get("packages", []) if entry.get("marker")}
+    assert markers, f"expected markers in {pylock}"
+    for marker in markers:
+        pylock_version._assert_marker_format_supported(marker)
 
 
 @pytest.mark.parametrize(("pylock", "package", "platform_machine"), _DOCKERFILE_PIN_CASES)
