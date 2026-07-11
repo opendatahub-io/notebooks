@@ -74,7 +74,9 @@ def test_unsupported_marker_syntax_fails_fast(pylock_version) -> None:
     with pytest.raises(ValueError, match="double-quoted literals"):
         pylock_version.evaluate_marker('python_version == "3.12"', env)
     with pytest.raises(ValueError, match="nested marker disjunction"):
-        pylock_version.evaluate_marker("(python_version == '3.12' or python_version == '3.11') and sys_platform == 'linux'", env)
+        pylock_version.evaluate_marker(
+            "(python_version == '3.12' or python_version == '3.11') and sys_platform == 'linux'", env
+        )
 
 
 @pytest.mark.parametrize(

@@ -30,9 +30,7 @@ def test_dockerfiles_read_native_versions_from_pylock(image_dir: Path) -> None:
         assert "pylock_version.py" in text, f"{dockerfile.name} should copy pylock_version.py"
         for package in ("onnx", "pyarrow"):
             lookup = re.compile(rf"pylock_version\.py.*\b{package}\b", re.DOTALL)
-            assert lookup.search(text), (
-                f"{dockerfile.name} should resolve {package} via pylock_version.py"
-            )
+            assert lookup.search(text), f"{dockerfile.name} should resolve {package} via pylock_version.py"
 
 
 @pytest.mark.parametrize("image_dir", NATIVE_IMAGE_DIRS, ids=lambda p: p.relative_to(ROOT).as_posix())
