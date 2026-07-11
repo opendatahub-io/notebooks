@@ -53,7 +53,7 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     TORCH_VERSION=${TORCH_VERSION%%+*}
     TORCH_TAG="v${TORCH_VERSION}"
     cd ${TMP}
-    git clone --recursive https://github.com/pytorch/pytorch.git -b ${TORCH_TAG}
+    git clone --recursive https://github.com/pytorch/pytorch.git -b "${TORCH_TAG}"
     cd pytorch
     uv pip install -r requirements.txt
     python setup.py develop
@@ -100,7 +100,7 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     ls -ltr ${WHEELS_DIR}
 
     cd ${CURDIR}
-    uv pip install --refresh ${WHEELS_DIR}/*.whl accelerate==$(python3 ./pylock_version.py accelerate --platform x86_64)
+    uv pip install --refresh ${WHEELS_DIR}/*.whl "accelerate==$(python3 ./pylock_version.py accelerate --platform x86_64)"
 
     uv pip list
     cd ${CURDIR}
