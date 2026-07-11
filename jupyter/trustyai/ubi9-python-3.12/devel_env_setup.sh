@@ -49,6 +49,7 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     # Torch
     cd ${CURDIR}
     TORCH_VERSION=$(python3 ./pylock_version.py torch --platform x86_64)
+    # Drop PEP 440 local segment (+cu128) for git tag; pre-releases (1.0a1) are unchanged.
     TORCH_VERSION=${TORCH_VERSION%%+*}
     TORCH_TAG="v${TORCH_VERSION}"
     cd ${TMP}

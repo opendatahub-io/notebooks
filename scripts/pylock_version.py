@@ -5,8 +5,11 @@ Marker support is intentionally narrow: ``or`` / ``and`` groups of ``==`` and
 ``!=`` comparisons on the env keys built by :func:`marker_env`, with ``.*``
 wildcards for python version pins. Anything else raises :class:`ValueError`.
 
-Callers format output for git tags (``v${VERSION%%+*}``) or Arrow branches
-(``apache-arrow-${VERSION}``) in shell.
+Callers format output in shell: ``v${VERSION}`` or ``apache-arrow-${VERSION}`` for git
+branches. When the lock carries a local segment (e.g. torch ``2.7.1+cu128``), strip
+only the ``+…`` suffix (``${VERSION%%+*}``) before tagging — that removes local
+versions but not pre-releases (``1.0a1`` stays ``1.0a1``). Current native-build
+pins are plain releases, so this is sufficient today.
 """
 
 from __future__ import annotations
