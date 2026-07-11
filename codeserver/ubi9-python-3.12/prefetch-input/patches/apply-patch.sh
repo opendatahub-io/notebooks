@@ -96,6 +96,29 @@ if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" || "$ARCH" == "ppc64le" || "$ARCH
         echo "WARNING: ripgrep postinstall not found at ${RIPGREP_PATCHED}"
     fi
 
+    # [AGENT-BROWSER] Overwrite agent-browser postinstall in the cached npm tarball.
+    # The npm tarball bundles native binaries for linux-x64/arm64 only; ppc64le/s390x
+    # are missing. Upstream postinstall then downloads from GitHub releases (not npm),
+    # which fails in hermetic builds. arm64/amd64 succeed because the bundled binary
+    # is found before any download is attempted.
+    AGENT_BROWSER_PATCHED="${CODESERVER_SOURCE_PREFETCH}/agent-browser/postinstall.js"
+    AGENT_BROWSER_TGZ=$(find /cachi2/output/deps/npm -name "agent-browser-*.tgz" -type f 2>/dev/null | head -1)
+    if [[ -n "${AGENT_BROWSER_TGZ}" && -f "${AGENT_BROWSER_PATCHED}" ]]; then
+        echo "Patching agent-browser: overwrite with ${AGENT_BROWSER_PATCHED}"
+        tmpdir=$(mktemp -d)
+        tar xzf "${AGENT_BROWSER_TGZ}" -C "$tmpdir"
+        cp "${AGENT_BROWSER_PATCHED}" "$tmpdir/package/scripts/postinstall.js"
+        tar czf "${AGENT_BROWSER_TGZ}" -C "$tmpdir" package
+        rm -rf "$tmpdir"
+        jq 'del(.packages["node_modules/agent-browser"].integrity)' \
+            lib/vscode/package-lock.json > /tmp/lock-agent-browser.json \
+            && mv /tmp/lock-agent-browser.json lib/vscode/package-lock.json
+    elif [[ -z "${AGENT_BROWSER_TGZ}" ]]; then
+        echo "WARNING: agent-browser tarball not found in /cachi2/output/deps/npm/"
+    elif [[ ! -f "${AGENT_BROWSER_PATCHED}" ]]; then
+        echo "WARNING: agent-browser postinstall not found at ${AGENT_BROWSER_PATCHED}"
+    fi
+
     if [[ "$ARCH" == "ppc64le" || "$ARCH" == "s390x" ]]; then
         # Try to patch the cached tarball (remove postinstall from its package.json)
         VSCE_TGZ=$(find /cachi2/output/deps/npm -name "*vsce-sign*.tgz" -type f 2>/dev/null | head -1)
