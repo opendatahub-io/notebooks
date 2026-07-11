@@ -3,19 +3,13 @@
 
 Marker evaluation
 -----------------
-:func:`evaluate_marker` is **not** a general PEP 508 implementation. It matches
-the flat ``(A and B and …) or (C and D) or …`` shape that ``uv`` emits in this
-repo's ``pylock.toml`` files today:
+:func:`evaluate_marker` parses PEP 508-style markers with :mod:`ast` and evaluates
+them against a restricted whitelist of environment keys (:func:`marker_env`). It
+supports nested ``and`` / ``or`` / ``not``, parentheses, ``in`` / ``not in`` tuple
+literals, and ``==`` / ``!=`` with ``.*`` wildcards via :func:`fnmatch.fnmatchcase`.
 
-* single-quoted literals only (``'…'``) — double quotes are rejected up front
-* ``==`` and ``!=`` comparisons on :func:`marker_env` keys, with ``.*`` wildcards
-* top-level ``or``, conjunctions joined by ``and`` — no nested ``(A or B) and C``
-
-It does **not** parse arbitrary PEP 508: ``in`` / ``not in``, other comparison
-operators, double-quoted strings, or ``and`` / ``or`` *inside* quoted literals
-(e.g. ``platform_system == 'Linux and Windows'`` would be split incorrectly).
-If ``uv`` changes its marker format, :func:`_assert_marker_format_supported`
-should fail loudly with a message to update this script.
+Version-specifier operators (``>=``, ``~=``, etc.) and unknown marker variables
+raise :class:`ValueError` instead of silently mis-parsing.
 
 Callers format output in shell: ``v${VERSION}`` or ``apache-arrow-${VERSION}`` for git
 branches. When the lock carries a local segment (e.g. torch ``2.7.1+cu128``), strip
@@ -27,6 +21,7 @@ pins are plain releases, so this is sufficient today.
 from __future__ import annotations
 
 import argparse
+import ast
 import fnmatch
 import platform
 import re
@@ -36,34 +31,21 @@ from pathlib import Path
 from typing import Any
 
 _DEFAULT_PYLOCK = Path("pylock.toml")
-_CLAUSE = re.compile(r"^(\w+)\s*(==|!=)\s*'([^']*)'$")
-_NON_EQ_COMPARISON = re.compile(r"(?<![=!])(>=|<=|~=)")
-_MARKER_FORMAT_HINT = (
-    "pylock_version.py only supports uv's current single-quoted, flat (or-of-ands) "
-    "marker style — not full PEP 508. If uv changed pylock marker output, update "
-    "scripts/pylock_version.py (or use packaging.markers) before merging the lockfile."
+_ALLOWED_NAMES = frozenset(
+    {
+        "python_version",
+        "python_full_version",
+        "implementation_name",
+        "platform_python_implementation",
+        "sys_platform",
+        "platform_machine",
+        "platform_system",
+        "platform_release",
+        "platform_version",
+        "os_name",
+        "extra",
+    }
 )
-
-
-def _assert_marker_format_supported(marker: str) -> None:
-    """Reject marker shapes outside uv's current pylock style before parsing."""
-    if '"' in marker:
-        raise ValueError(f"unsupported marker uses double-quoted literals: {marker!r}. {_MARKER_FORMAT_HINT}")
-    if _NON_EQ_COMPARISON.search(marker):
-        raise ValueError(f"unsupported marker comparison operator: {marker!r}. {_MARKER_FORMAT_HINT}")
-    if re.search(r"\s+in\s+", marker):
-        raise ValueError(f"unsupported marker uses 'in' expression: {marker!r}. {_MARKER_FORMAT_HINT}")
-    for branch in _split_outside_parens(marker, " or "):
-        inner = _strip_outer_parens(branch)
-        if " or " in inner:
-            raise ValueError(f"unsupported nested marker disjunction: {marker!r}. {_MARKER_FORMAT_HINT}")
-        for clause in _split_outside_parens(inner, " and "):
-            if not _CLAUSE.fullmatch(clause.strip()):
-                raise ValueError(
-                    f"unsupported marker clause {clause.strip()!r} in {marker!r}. "
-                    f"Quoted literals must not contain ' and ' / ' or ', and each "
-                    f"comparison must use single-quoted values. {_MARKER_FORMAT_HINT}"
-                )
 
 
 def default_pylock_path() -> Path:
@@ -89,58 +71,68 @@ def marker_env(*, python_minor: str, platform_machine: str) -> dict[str, str]:
     }
 
 
-def _split_outside_parens(marker: str, sep: str) -> list[str]:
-    parts: list[str] = []
-    depth = 0
-    start = 0
-    for index, char in enumerate(marker):
-        if char == "(":
-            depth += 1
-        elif char == ")":
-            depth -= 1
-        elif depth == 0 and marker.startswith(sep, index):
-            parts.append(marker[start:index].strip())
-            start = index + len(sep)
-    parts.append(marker[start:].strip())
-    return parts
+def _eval_marker(node: ast.AST, env: dict[str, str]) -> bool | str | tuple[str, ...]:
+    match node:
+        case ast.Expression(body):
+            return _eval_marker(body, env)
 
+        case ast.BoolOp(op=ast.And(), values=values):
+            return all(_eval_marker(value, env) for value in values)
+        case ast.BoolOp(op=ast.Or(), values=values):
+            return any(_eval_marker(value, env) for value in values)
 
-def _strip_outer_parens(marker: str) -> str:
-    marker = marker.strip()
-    while marker.startswith("(") and marker.endswith(")"):
-        depth = 0
-        for index, char in enumerate(marker):
-            if char == "(":
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0 and index != len(marker) - 1:
-                    return marker
-        marker = marker[1:-1].strip()
-    return marker
+        case ast.UnaryOp(op=ast.Not(), operand=operand):
+            return not _eval_marker(operand, env)
 
+        case ast.Compare(left=left, ops=[op], comparators=[right]):
+            left_value = _eval_marker(left, env)
+            right_value = _eval_marker(right, env)
 
-def _matches_clause(clause: str, env: dict[str, str]) -> bool:
-    match = _CLAUSE.fullmatch(clause.strip())
-    if not match:
-        raise ValueError(f"unsupported marker comparison: {clause!r}. {_MARKER_FORMAT_HINT}")
-    key, operator, expected = match.groups()
-    if key not in env:
-        raise ValueError(f"unsupported marker variable: {key!r}")
-    actual = env[key]
-    equals = fnmatch.fnmatchcase(actual, expected) if expected.endswith(".*") else actual == expected
-    return equals if operator == "==" else not equals
+            match op:
+                case ast.Eq():
+                    if isinstance(right_value, str) and right_value.endswith(".*"):
+                        return fnmatch.fnmatchcase(left_value, right_value)
+                    return left_value == right_value
+                case ast.NotEq():
+                    if isinstance(right_value, str) and right_value.endswith(".*"):
+                        return not fnmatch.fnmatchcase(left_value, right_value)
+                    return left_value != right_value
+                case ast.In():
+                    if not isinstance(right_value, tuple):
+                        raise ValueError("'in' requires a tuple literal")
+                    return left_value in right_value
+                case ast.NotIn():
+                    if not isinstance(right_value, tuple):
+                        raise ValueError("'not in' requires a tuple literal")
+                    return left_value not in right_value
+                case _:
+                    raise ValueError(f"comparison operator not supported: {op}")
 
+        case ast.Name(id=name):
+            if name not in _ALLOWED_NAMES:
+                raise ValueError(f"unknown marker variable: {name}")
+            return env.get(name, "")
 
-def _branch_matches(branch: str, env: dict[str, str]) -> bool:
-    branch = _strip_outer_parens(branch)
-    return all(_matches_clause(clause, env) for clause in _split_outside_parens(branch, " and "))
+        case ast.Constant(value=str(string_value)):
+            return string_value
+
+        case ast.Tuple(elts=elts):
+            return tuple(_eval_marker(elt, env) for elt in elts)
+
+        case _:
+            raise ValueError(f"unsupported syntax: {ast.dump(node)}")
 
 
 def evaluate_marker(marker: str, env: dict[str, str]) -> bool:
-    """Return whether *marker* matches *env* (uv flat or-of-ands style only)."""
-    _assert_marker_format_supported(marker)
-    return any(_branch_matches(branch, env) for branch in _split_outside_parens(marker, " or "))
+    """Return whether *marker* matches *env*."""
+    try:
+        tree = ast.parse(marker, mode="eval")
+    except SyntaxError as exc:
+        raise ValueError(f"invalid marker syntax: {marker!r}") from exc
+    result = _eval_marker(tree, env)
+    if not isinstance(result, bool):
+        raise ValueError(f"marker must evaluate to bool, got {result!r}: {marker!r}")
+    return result
 
 
 def load_pylock_packages(pylock_text: str, *, python_minor: str, platform_machine: str) -> dict[str, dict[str, Any]]:

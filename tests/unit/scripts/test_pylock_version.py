@@ -69,14 +69,24 @@ def test_missing_package_raises_lookup_error(pylock_version) -> None:
 
 def test_unsupported_marker_syntax_fails_fast(pylock_version) -> None:
     env = pylock_version.marker_env(python_minor="3.12", platform_machine="x86_64")
-    with pytest.raises(ValueError, match="unsupported marker comparison operator"):
+    with pytest.raises(ValueError, match="comparison operator not supported"):
         pylock_version.evaluate_marker("python_version >= '3.12'", env)
-    with pytest.raises(ValueError, match="double-quoted literals"):
-        pylock_version.evaluate_marker('python_version == "3.12"', env)
-    with pytest.raises(ValueError, match="nested marker disjunction"):
-        pylock_version.evaluate_marker(
-            "(python_version == '3.12' or python_version == '3.11') and sys_platform == 'linux'", env
-        )
+    with pytest.raises(ValueError, match="unknown marker variable"):
+        pylock_version.evaluate_marker("os_release == '9'", env)
+
+
+def test_marker_ast_evaluator_handles_nested_and_in(pylock_version) -> None:
+    env = pylock_version.marker_env(python_minor="3.12", platform_machine="ppc64le")
+    assert pylock_version.evaluate_marker(
+        "(python_version == '3.12' or python_version == '3.11') and sys_platform == 'linux'",
+        env,
+    )
+    assert pylock_version.evaluate_marker(
+        "platform_machine in ('ppc64le', 's390x')",
+        env,
+    )
+    assert pylock_version.evaluate_marker("not (platform_machine == 'x86_64')", env)
+    assert not pylock_version.evaluate_marker("not (platform_machine == 'ppc64le')", env)
 
 
 @pytest.mark.parametrize(
@@ -88,12 +98,13 @@ def test_unsupported_marker_syntax_fails_fast(pylock_version) -> None:
         ROOT / "runtimes/datascience/ubi9-python-3.12/pylock.toml",
     ],
 )
-def test_native_build_pylocks_use_supported_marker_format(pylock_version, pylock: Path) -> None:
+def test_native_build_pylocks_have_parseable_markers(pylock_version, pylock: Path) -> None:
     doc = tomllib.loads(pylock.read_text())
     markers = {entry["marker"] for entry in doc.get("packages", []) if entry.get("marker")}
     assert markers, f"expected markers in {pylock}"
+    env = pylock_version.marker_env(python_minor="3.12", platform_machine="x86_64")
     for marker in markers:
-        pylock_version._assert_marker_format_supported(marker)
+        pylock_version.evaluate_marker(marker, env)
 
 
 @pytest.mark.parametrize(("pylock", "package", "platform_machine"), _DOCKERFILE_PIN_CASES)
