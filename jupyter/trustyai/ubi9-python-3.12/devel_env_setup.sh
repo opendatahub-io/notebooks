@@ -48,8 +48,9 @@ if [[ $(uname -m) == "ppc64le" ]]; then
 
     # Torch
     cd ${CURDIR}
-    TORCH_TAG=$(python3 ./pylock_version.py torch --platform x86_64 --format git-tag)
-    TORCH_VERSION=${TORCH_TAG#v}
+    TORCH_VERSION=$(python3 ./pylock_version.py torch --platform x86_64)
+    TORCH_VERSION=${TORCH_VERSION%%+*}
+    TORCH_TAG="v${TORCH_VERSION}"
     cd ${TMP}
     git clone --recursive https://github.com/pytorch/pytorch.git -b ${TORCH_TAG}
     cd pytorch

@@ -11,14 +11,6 @@ SCRIPTS = ROOT / "scripts"
 DATASCIENCE_PYLOCK = ROOT / "jupyter/datascience/ubi9-python-3.12/pylock.toml"
 
 
-def test_format_git_tag_strips_local_version(pylock_version) -> None:
-    assert pylock_version.format_version("2.7.1+cu128", "git-tag") == "v2.7.1"
-
-
-def test_format_apache_arrow_branch(pylock_version) -> None:
-    assert pylock_version.format_version("17.0.0", "apache-arrow-branch") == "apache-arrow-17.0.0"
-
-
 def test_cli_package_only_uses_cwd_pylock() -> None:
     result = subprocess.run(
         [sys.executable, str(SCRIPTS / "pylock_version.py"), "onnx", "--platform", "ppc64le"],

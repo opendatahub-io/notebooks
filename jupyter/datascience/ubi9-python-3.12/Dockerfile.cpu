@@ -145,7 +145,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=cache,target=/root/.cache/dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
-    ARROW_BRANCH=$(python3 /tmp/pylock_version.py /tmp/pylock.toml pyarrow --platform "$TARGETARCH" --format apache-arrow-branch)
+    PYARROW_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml pyarrow --platform "$TARGETARCH")
+    ARROW_BRANCH="apache-arrow-${PYARROW_VERSION}"
     # Install build dependencies (shared for pyarrow and onnx)
     dnf install -y cmake make gcc-c++ pybind11-devel wget
     dnf clean all
@@ -220,7 +221,8 @@ WORKDIR /root
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
-    ONNX_TAG=$(python3 /tmp/pylock_version.py /tmp/pylock.toml onnx --platform ppc64le --format git-tag)
+    ONNX_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml onnx --platform ppc64le)
+    ONNX_TAG="v${ONNX_VERSION}"
     source /opt/rh/gcc-toolset-13/enable
     git clone --recursive https://github.com/onnx/onnx.git
     cd onnx
