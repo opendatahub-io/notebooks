@@ -57,7 +57,7 @@ Example:
 ## Split of params
 
 Konflux would be help with build of workbenches. Konflux patch the sha of the built image into params file as a process of nudging.
-To keep this file not getting overriden, we have split the params file into 2 files.
+To keep this file not getting overridden, we have split the params file into 2 files.
 - params-latest.env: Any workbench images that represent the image version N (the latest one).
 - params.env: Rest of the workbench images that represent the n-1 and extras.
 
