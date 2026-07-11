@@ -33,6 +33,7 @@ ARG TRUSTYAI_SOURCE_CODE=jupyter/trustyai/ubi9-python-3.12
 COPY ${TRUSTYAI_SOURCE_CODE}/pylock.toml .
 COPY ${TRUSTYAI_SOURCE_CODE}/pyproject.toml .
 COPY ${TRUSTYAI_SOURCE_CODE}/devel_env_setup.sh .
+COPY scripts/pylock_version.py ./pylock_version.py
 
 RUN --mount=type=cache,target=/root/.cache/uv /bin/bash <<'EOF'
 set -Eeuxo pipefail

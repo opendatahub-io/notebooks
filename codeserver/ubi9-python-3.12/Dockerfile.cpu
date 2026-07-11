@@ -50,6 +50,7 @@ ARG CODESERVER_SOURCE_CODE=codeserver/ubi9-python-3.12
 # copy requirements and scripts
 COPY ${CODESERVER_SOURCE_CODE}/pylock.toml ./
 COPY ${CODESERVER_SOURCE_CODE}/devel_env_setup.sh ./
+COPY scripts/pylock_version.py ./pylock_version.py
 
 # This stage installs (builds) all the packages needed and caches it in uv-cache
 # Important: Since HOME & USER for the python-312 has been changed,

@@ -133,6 +133,9 @@ EOF
 FROM cpu-base AS pyarrow-builder
 
 ARG TARGETARCH
+ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
+COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml /tmp/pylock.toml
+COPY scripts/pylock_version.py /tmp/pylock_version.py
 # hadolint ignore=DL3002
 USER 0
 WORKDIR /tmp/build-wheels
@@ -142,11 +145,12 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=cache,target=/root/.cache/dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
+    PYARROW_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml pyarrow --platform "$TARGETARCH")
     # Install build dependencies (shared for pyarrow and onnx)
     dnf install -y cmake make gcc-c++ pybind11-devel wget
     dnf clean all
     # Build and collect pyarrow wheel
-    git clone --depth 1 --branch "apache-arrow-17.0.0" https://github.com/apache/arrow.git
+    git clone --depth 1 --branch "apache-arrow-${PYARROW_VERSION}" https://github.com/apache/arrow.git
     cd arrow/cpp
     mkdir release && cd release
     cmake -DCMAKE_BUILD_TYPE=Release \
@@ -212,15 +216,18 @@ EOF
 #######################################################
 FROM common-builder AS onnx-builder
 ARG TARGETARCH
-ARG ONNX_VERSION=v1.20.1
+ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
+COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml /tmp/pylock.toml
+COPY scripts/pylock_version.py /tmp/pylock_version.py
 WORKDIR /root
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
+    ONNX_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml onnx --platform ppc64le)
     source /opt/rh/gcc-toolset-13/enable
     git clone --recursive https://github.com/onnx/onnx.git
     cd onnx
-    git checkout ${ONNX_VERSION}
+    git checkout "v${ONNX_VERSION}"
     git submodule update --init --recursive
     pip install --no-cache-dir -r requirements.txt
     CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)"

@@ -48,7 +48,7 @@ if [[ $(uname -m) == "ppc64le" ]]; then
 
     # Torch
     cd ${CURDIR}
-    TORCH_VERSION=$(grep -A1 '"torch"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
+    TORCH_VERSION=$(python3 ./pylock_version.py torch)
     cd ${TMP}
     git clone --recursive https://github.com/pytorch/pytorch.git -b v${TORCH_VERSION}
     cd pytorch
@@ -60,7 +60,7 @@ if [[ $(uname -m) == "ppc64le" ]]; then
 
     cd ${CURDIR}
     # Pyarrow
-    PYARROW_VERSION=$(grep -A1 '"pyarrow"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
+    PYARROW_VERSION=$(python3 ./pylock_version.py pyarrow)
     cd ${TMP}
     git clone --recursive https://github.com/apache/arrow.git -b apache-arrow-${PYARROW_VERSION}
     cd arrow/cpp
@@ -83,7 +83,7 @@ if [[ $(uname -m) == "ppc64le" ]]; then
 
     # Pillow (use auditwheel repaired wheel to avoid pulling runtime libs from EPEL)
     cd ${CURDIR}
-    PILLOW_VERSION=$(grep -A1 '"pillow"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
+    PILLOW_VERSION=$(python3 ./pylock_version.py pillow)
     cd ${TMP}
     git clone --recursive https://github.com/python-pillow/Pillow.git -b ${PILLOW_VERSION}
     cd Pillow
@@ -97,7 +97,7 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     ls -ltr ${WHEELS_DIR}
 
     cd ${CURDIR}
-    uv pip install --refresh ${WHEELS_DIR}/*.whl accelerate==$(grep -A1 '"accelerate"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
+    uv pip install --refresh ${WHEELS_DIR}/*.whl accelerate==$(python3 ./pylock_version.py accelerate)
 
     uv pip list
     cd ${CURDIR}
