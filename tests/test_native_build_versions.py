@@ -23,13 +23,16 @@ def test_dockerfiles_read_native_versions_from_pylock(image_dir: Path) -> None:
         re.compile(r"ONNX_VERSION=1\.20\.1"),
         re.compile(r"apache-arrow-17\.0\.0"),
     )
-    version_lookup = re.compile(r"pylock_version\.py.*\b(onnx|pyarrow)\b")
     for dockerfile in dockerfiles:
         text = dockerfile.read_text()
         for pattern in forbidden:
             assert not pattern.search(text), f"{dockerfile.name} still uses {pattern.pattern}"
         assert "pylock_version.py" in text, f"{dockerfile.name} should copy pylock_version.py"
-        assert version_lookup.search(text), f"{dockerfile.name} should resolve onnx/pyarrow via pylock_version.py"
+        for package in ("onnx", "pyarrow"):
+            lookup = re.compile(rf"pylock_version\.py.*\b{package}\b", re.DOTALL)
+            assert lookup.search(text), (
+                f"{dockerfile.name} should resolve {package} via pylock_version.py"
+            )
 
 
 @pytest.mark.parametrize("image_dir", NATIVE_IMAGE_DIRS, ids=lambda p: p.relative_to(ROOT).as_posix())
