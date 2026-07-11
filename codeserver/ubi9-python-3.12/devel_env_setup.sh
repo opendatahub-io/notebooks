@@ -94,10 +94,10 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     export PKG_CONFIG_PATH=$(find / -type d -name "pkgconfig" 2>/dev/null | tr '\n' ':')
     export CMAKE_ARGS="-DPython3_EXECUTABLE=python"
     
-    PYARROW_VERSION=$(python3 ./pylock_version.py pyarrow)
+    PYARROW_VERSION=$(python3 ./pylock_version.py pyarrow --platform ppc64le)
     build_pyarrow "${PYARROW_VERSION}"
 
-    PILLOW_VERSION=$(python3 ./pylock_version.py pillow)
+    PILLOW_VERSION=$(python3 ./pylock_version.py pillow --platform ppc64le)
     build_pillow "${PILLOW_VERSION}"
 
     uv pip install ${WHEEL_DIR}/*.whl

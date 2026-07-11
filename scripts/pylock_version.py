@@ -9,10 +9,12 @@ import re
 import sys
 import tomllib
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import packaging.markers
+import packaging.version
 
+VersionFormat = Literal["pep440", "git-tag", "apache-arrow-branch"]
 _VERSION_FORMATS = frozenset({"pep440", "git-tag", "apache-arrow-branch"})
 _DEFAULT_PYLOCK = Path("pylock.toml")
 
@@ -20,14 +22,7 @@ _DEFAULT_PYLOCK = Path("pylock.toml")
 def default_pylock_path() -> Path:
     if _DEFAULT_PYLOCK.is_file():
         return _DEFAULT_PYLOCK
-    sibling = Path(__file__).resolve().parent / _DEFAULT_PYLOCK.name
-    if sibling.is_file():
-        return sibling
-    return _DEFAULT_PYLOCK
-
-
-def default_platform_machine() -> str:
-    return platform.machine()
+    raise FileNotFoundError(f"{_DEFAULT_PYLOCK} not found in {Path.cwd()}")
 
 
 def python_minor_from_path(pylock_path: Path) -> str:
@@ -83,16 +78,17 @@ def locked_version(
             f"package {package!r} not found in {pylock_path} "
             f"for platform_machine={platform_machine!r} python={resolved_python!r}"
         )
-        raise SystemExit(msg) from exc
+        raise LookupError(msg) from exc
 
 
-def format_version(version: str, fmt: str) -> str:
+def format_version(version: str, fmt: VersionFormat) -> str:
     if fmt == "pep440":
         return version
+    base = packaging.version.Version(version).base_version
     if fmt == "git-tag":
-        return f"v{version}"
+        return f"v{base}"
     if fmt == "apache-arrow-branch":
-        return f"apache-arrow-{version}"
+        return f"apache-arrow-{base}"
     raise ValueError(f"unsupported format: {fmt}")
 
 
@@ -124,7 +120,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if len(args.positional) == 1:
-        pylock_path = default_pylock_path()
+        try:
+            pylock_path = default_pylock_path()
+        except FileNotFoundError as exc:
+            raise SystemExit(str(exc)) from exc
         package = args.positional[0]
     elif len(args.positional) == 2:
         pylock_path = Path(args.positional[0])
@@ -132,12 +131,15 @@ def main(argv: list[str] | None = None) -> int:
     else:
         parser.error("expected PACKAGE or PYLOCK PACKAGE")
 
-    version = locked_version(
-        pylock_path,
-        package,
-        python_minor=args.python_minor,
-        platform_machine=args.platform or default_platform_machine(),
-    )
+    try:
+        version = locked_version(
+            pylock_path,
+            package,
+            python_minor=args.python_minor,
+            platform_machine=args.platform or platform.machine(),
+        )
+    except LookupError as exc:
+        raise SystemExit(str(exc)) from exc
     print(format_version(version, args.format))
     return 0
 

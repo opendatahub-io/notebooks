@@ -250,7 +250,7 @@ RUN echo "onnx-builder stage TARGETARCH: ${TARGETARCH}"
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ]; then
-    ONNX_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml onnx --platform ppc64le)
+    source /etc/profile.d/ppc64le.sh
     source /opt/rh/gcc-toolset-13/enable
     git clone --recursive https://github.com/onnx/onnx.git
     cd onnx && git checkout "v${ONNX_VERSION}"
@@ -281,7 +281,7 @@ RUN echo "arrow-builder stage TARGETARCH: ${TARGETARCH}"
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ]; then
-    PYARROW_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml pyarrow --platform ppc64le)
+    source /etc/profile.d/ppc64le.sh
     git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git --recursive
     cd arrow && rm -rf .git && mkdir dist
     pip3 install --no-cache-dir -r python/requirements-build.txt

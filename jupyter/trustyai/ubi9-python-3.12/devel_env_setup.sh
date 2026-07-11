@@ -48,9 +48,10 @@ if [[ $(uname -m) == "ppc64le" ]]; then
 
     # Torch
     cd ${CURDIR}
-    TORCH_VERSION=$(python3 ./pylock_version.py torch)
+    TORCH_TAG=$(python3 ./pylock_version.py torch --platform x86_64 --format git-tag)
+    TORCH_VERSION=${TORCH_TAG#v}
     cd ${TMP}
-    git clone --recursive https://github.com/pytorch/pytorch.git -b v${TORCH_VERSION}
+    git clone --recursive https://github.com/pytorch/pytorch.git -b ${TORCH_TAG}
     cd pytorch
     uv pip install -r requirements.txt
     python setup.py develop
@@ -60,7 +61,7 @@ if [[ $(uname -m) == "ppc64le" ]]; then
 
     cd ${CURDIR}
     # Pyarrow
-    PYARROW_VERSION=$(python3 ./pylock_version.py pyarrow)
+    PYARROW_VERSION=$(python3 ./pylock_version.py pyarrow --platform ppc64le)
     cd ${TMP}
     git clone --recursive https://github.com/apache/arrow.git -b apache-arrow-${PYARROW_VERSION}
     cd arrow/cpp
@@ -83,7 +84,7 @@ if [[ $(uname -m) == "ppc64le" ]]; then
 
     # Pillow (use auditwheel repaired wheel to avoid pulling runtime libs from EPEL)
     cd ${CURDIR}
-    PILLOW_VERSION=$(python3 ./pylock_version.py pillow)
+    PILLOW_VERSION=$(python3 ./pylock_version.py pillow --platform ppc64le)
     cd ${TMP}
     git clone --recursive https://github.com/python-pillow/Pillow.git -b ${PILLOW_VERSION}
     cd Pillow
@@ -97,7 +98,7 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     ls -ltr ${WHEELS_DIR}
 
     cd ${CURDIR}
-    uv pip install --refresh ${WHEELS_DIR}/*.whl accelerate==$(python3 ./pylock_version.py accelerate)
+    uv pip install --refresh ${WHEELS_DIR}/*.whl accelerate==$(python3 ./pylock_version.py accelerate --platform x86_64)
 
     uv pip list
     cd ${CURDIR}
