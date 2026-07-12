@@ -255,7 +255,7 @@ if [ "$TARGETARCH" = "ppc64le" ]; then
     git clone --recursive https://github.com/onnx/onnx.git
     cd onnx && git checkout "v${ONNX_VERSION}"
     git submodule update --init --recursive
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements-min.txt
     CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)"
     export CMAKE_ARGS
     pip wheel . -w /onnx_wheels
