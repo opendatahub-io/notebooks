@@ -1,0 +1,15 @@
+--- a/rpm_lockfile/__init__.py
++++ b/rpm_lockfile/__init__.py
+@@ -143,6 +143,12 @@
+             if download_filelists:
+                 conf.optional_metadata_types = ["filelists"]
+             conf.installroot = str(root_dir)
++            module_platform_id = os.getenv("RPM_LOCKFILE_MODULE_PLATFORM_ID", "")
++            if module_platform_id:
++                conf.module_platform_id = module_platform_id
++            skip_unavailable = os.getenv("RPM_LOCKFILE_SKIP_UNAVAILABLE")
++            if skip_unavailable is not None:
++                conf.skip_if_unavailable = skip_unavailable == "1"
+             conf.cachedir = os.getenv(
+                 "RPM_LOCKFILE_PROTOTYPE_DNF_CACHE", os.path.join(cache_dir, "cache")
+             )

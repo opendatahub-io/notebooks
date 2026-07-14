@@ -1,0 +1,331 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# create-requirements-lockfile.sh — Generate requirements.<flavor>.txt for hermetic builds.
+#
+# Why this script exists
+# ----------------------
+# Hermetic builds need every Python wheel prefetched.  This script:
+#   1. Delegates to pylocks_generator.py to generate a lockfile
+#      (PUBLIC_INDEX_PROJECTS → public-index → root pylock.toml; else rh-index → uv.lock.d/pylock.<flavor>.toml).
+#      (ensures consistency with CI's check-generated-code).
+#   2. Converts the pylock to a pip-compatible requirements.<flavor>.txt.
+#   3. (--download) Downloads every wheel into cachi2/output/deps/pip/.
+#
+# This script MUST be run from the repository root.
+#
+# Examples
+# --------
+#   # Generate pylock + requirements.txt
+#   ./scripts/lockfile-generators/create-requirements-lockfile.sh \
+#       --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml
+#
+#   # Generate + download all wheels
+#   ./scripts/lockfile-generators/create-requirements-lockfile.sh \
+#       --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml --download
+#
+#   # Custom flavor
+#   ./scripts/lockfile-generators/create-requirements-lockfile.sh \
+#       --pyproject-toml codeserver/ubi9-python-3.12/pyproject.toml --flavor cuda
+
+SCRIPTS_PATH="scripts/lockfile-generators"
+PYLOCKS_GENERATOR="scripts/pylocks_generator.py"
+
+# --- Defaults ---
+PYPROJECT=""
+FLAVOR="cpu"
+DO_DOWNLOAD=false
+
+# --- Functions ---
+show_help() {
+  cat << 'EOF'
+Usage: ./scripts/lockfile-generators/create-requirements-lockfile.sh [OPTIONS]
+
+Generate pylock.<flavor>.toml (via pylocks_generator.py) and convert it to
+a pip-compatible requirements.<flavor>.txt with sha256 hashes.
+
+Options:
+  --pyproject-toml FILE  Path to pyproject.toml (required)
+                         (e.g. codeserver/ubi9-python-3.12/pyproject.toml)
+  --flavor NAME          Lock file flavor (default: cpu).
+                         Must match a Dockerfile.<flavor> and
+                         build-args/konflux.<flavor>.conf for the RH-index flow.
+  --download             After generating, download all wheels into
+                         cachi2/output/deps/pip/ for offline builds.
+  -h, --help             Show this help message and exit
+
+Steps performed:
+  1. pylocks_generator.py rh-index or public-index (see PUBLIC_INDEX_PROJECTS in script)
+  2. Convert pylock → <project>/requirements.<flavor>.txt
+  3. (--download) Download all wheels from the lockfile URLs
+EOF
+}
+
+error_exit() {
+  echo "Error: $1" >&2
+  echo "Use --help for usage information." >&2
+  exit 1
+}
+
+# --- Validation ---
+if [[ ! -d "$SCRIPTS_PATH" ]]; then
+  error_exit "This script MUST be run from the repository root."
+fi
+if [[ ! -f "$PYLOCKS_GENERATOR" ]]; then
+  error_exit "pylocks_generator.py not found at ${PYLOCKS_GENERATOR}"
+fi
+
+# --- Argument Parsing ---
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)           show_help; exit 0 ;;
+    --pyproject-toml)    PYPROJECT="$2"; shift 2 ;;
+    --flavor)            FLAVOR="$2"; shift 2 ;;
+    --download)          DO_DOWNLOAD=true; shift ;;
+    *)                   error_exit "Unknown argument: '$1'" ;;
+  esac
+done
+
+[[ -z "$PYPROJECT" ]] && error_exit "--pyproject-toml is required."
+[[ -f "$PYPROJECT" ]] || error_exit "File not found: $PYPROJECT"
+
+# Derive paths
+PROJECT_DIR="$(dirname "$PYPROJECT")"
+REQUIREMENTS_FILE="${PROJECT_DIR}/requirements.${FLAVOR}.txt"
+
+# Use public-index when PROJECT_DIR equals a listed path or is a subdirectory (e.g. .../ubi9-python-3.12).
+# Produces root pylock.toml (not uv.lock.d/pylock.<flavor>.toml) — same layout as jupyter/rocm/tensorflow.
+# rhoai-2.25 codeserver: lock against public PyPI (same as other notebook images).
+# RH wheels are patched in afterward for ppc64le/s390x (and uv/ripgrep on all arches).
+PUBLIC_INDEX_PROJECTS=("codeserver/ubi9-python-3.12")
+
+PYLOCKS_MODE="rh-index"
+if ((${#PUBLIC_INDEX_PROJECTS[@]} > 0)); then
+  for _d in "${PUBLIC_INDEX_PROJECTS[@]}"; do
+    if [[ "$PROJECT_DIR" == "$_d" || "$PROJECT_DIR" == "$_d/"* ]]; then
+      PYLOCKS_MODE="public-index"
+      break
+    fi
+  done
+fi
+
+PYLOCK_FILE="${PROJECT_DIR}/uv.lock.d/pylock.${FLAVOR}.toml"
+REQUIREMENTS_INDEX_URL=""
+if [[ "$PYLOCKS_MODE" == "public-index" ]]; then
+  PYLOCK_FILE="${PROJECT_DIR}/pylock.toml"
+  HERMETO_INDEX_URL="https://pypi.org/simple"
+else
+  KONFLUX_CONF_FILE="${PROJECT_DIR}/build-args/konflux.${FLAVOR}.conf"
+  [[ -f "$KONFLUX_CONF_FILE" ]] || error_exit "Konflux config not found: $KONFLUX_CONF_FILE"
+  REQUIREMENTS_INDEX_URL="$(./uv run python scripts/index_url_resolver.py index-url "$KONFLUX_CONF_FILE")"
+  # Lock against RH index + PyPI fallback; Hermeto accepts only a single --index-url.
+  export UV_LOCK_EXTRA_INDEX_URL="${UV_LOCK_EXTRA_INDEX_URL:-${PIP_LOCK_EXTRA_INDEX_URL:-https://pypi.org/simple}}"
+  export PIP_LOCK_EXTRA_INDEX_URL="$UV_LOCK_EXTRA_INDEX_URL"
+  HERMETO_INDEX_URL="https://pypi.org/simple"
+fi
+
+# =========================================================================
+# Step 1: Generate pylock.toml via pylocks_generator.py
+#
+# Delegates to the same script CI uses (ci/generate_code.sh), ensuring the
+# generated pylock.toml is identical to what check-generated-code expects.
+# =========================================================================
+echo "=== Step 1: Generating pylock via pylocks_generator.py ==="
+echo "  project dir : ${PROJECT_DIR}"
+echo "  flavor      : ${FLAVOR}"
+echo "  index mode  : ${PYLOCKS_MODE}"
+echo ""
+
+if [[ "$PYLOCKS_MODE" == "public-index" ]]; then
+  # Match ci/generate_code.sh → scripts/sync-python-lockfiles.sh exactly so
+  # check-generated-code stays green (no --exclude-newer / --no-emit-package).
+  echo "  Generating root pylock.toml (sync-python-lockfiles compatible)..."
+  (
+    cd "$PROJECT_DIR"
+    constraints_path="$(
+      CVE_CONSTRAINTS_FILE="${PWD}/../../dependencies/cve-constraints.txt" python3 -c \
+        'import os; print(os.path.relpath(os.environ["CVE_CONSTRAINTS_FILE"], os.getcwd()))'
+    )"
+    # Resolve python version from directory suffix (ubi9-python-3.12 → 3.12).
+    python_version="${PWD##*-}"
+    "$(git rev-parse --show-toplevel)/uv" pip compile pyproject.toml \
+      --output-file pylock.toml \
+      --format pylock.toml \
+      --generate-hashes \
+      --emit-index-url \
+      --python-version="${python_version}" \
+      --universal \
+      --no-annotate \
+      --constraints "${constraints_path}" \
+      --quiet
+  )
+else
+  ./uv run "$PYLOCKS_GENERATOR" "$PYLOCKS_MODE" "$PROJECT_DIR"
+fi
+
+if [[ ! -f "$PYLOCK_FILE" ]]; then
+  error_exit "Lock generation did not produce ${PYLOCK_FILE}"
+fi
+
+# Hermetic Dockerfile expects uv.lock.d/pylock.<flavor>.toml.
+# For public-index: keep root pylock.toml as pure PyPI (check-generated-code /
+# ci/generate_code.sh) and patch a copy under uv.lock.d for hermetic builds.
+if [[ "$PYLOCKS_MODE" == "public-index" ]]; then
+  mkdir -p "${PROJECT_DIR}/uv.lock.d"
+  cp "$PYLOCK_FILE" "${PROJECT_DIR}/uv.lock.d/pylock.${FLAVOR}.toml"
+  PYLOCK_FILE="${PROJECT_DIR}/uv.lock.d/pylock.${FLAVOR}.toml"
+fi
+
+RH_WHEEL_REF="${PROJECT_DIR}/uv.lock.d/rh-wheel-only.ref.toml"
+if [[ -f "$RH_WHEEL_REF" ]]; then
+  echo ""
+  echo "=== Patching RH wheel-only packages for hermeto prefetch ==="
+  # Rust sdists break hermeto cargo prefetch — replace on all arches.
+  RH_WHEEL_REPLACE_ALL=(uv ripgrep)
+  # Native deps missing ppc64le/s390x PyPI wheels — merge BE RH wheels only.
+  RH_WHEEL_MERGE_BE=(
+      argon2-cffi-bindings cryptography debugpy httptools librt markupsafe
+      matplotlib ml-dtypes numpy onnx pandas pillow psutil pyarrow pyyaml pyzmq
+      scikit-learn scipy tornado uvloop
+  )
+  python3 "${SCRIPTS_PATH}/helpers/patch-rh-wheel-only-packages.py" \
+      replace "$PYLOCK_FILE" "$RH_WHEEL_REF" \
+      "${RH_WHEEL_REPLACE_ALL[@]}"
+  python3 "${SCRIPTS_PATH}/helpers/patch-rh-wheel-only-packages.py" \
+      merge-be "$PYLOCK_FILE" "$RH_WHEEL_REF" \
+      "${RH_WHEEL_MERGE_BE[@]}"
+fi
+
+echo ""
+echo "--- Done: ${PYLOCK_FILE} ---"
+wc -l "$PYLOCK_FILE"
+
+# =========================================================================
+# Step 2: Convert pylock.<flavor>.toml → requirements.<flavor>.txt
+#
+# The pylock.toml (PEP 751) format is not yet supported by pip or cachi2.
+# This step converts it to a pip-compatible requirements.txt with
+# --hash=sha256:… lines for integrity verification.
+# =========================================================================
+echo ""
+echo "=== Step 2: Converting $(basename "$PYLOCK_FILE") → requirements.${FLAVOR}.txt ==="
+
+REQ_INDEX="${HERMETO_INDEX_URL:-$REQUIREMENTS_INDEX_URL}"
+if [[ -n "$REQ_INDEX" ]]; then
+  python3 "${SCRIPTS_PATH}/helpers/pylock-to-requirements.py" \
+      "$PYLOCK_FILE" "$REQUIREMENTS_FILE" "$REQ_INDEX"
+else
+  python3 "${SCRIPTS_PATH}/helpers/pylock-to-requirements.py" \
+      "$PYLOCK_FILE" "$REQUIREMENTS_FILE"
+fi
+
+echo ""
+echo "--- Done: ${REQUIREMENTS_FILE} ---"
+wc -l "${REQUIREMENTS_FILE}"
+
+# =========================================================================
+# Step 3 (optional): Download all wheels from pylock.toml
+#
+# Downloads every wheel referenced in the pylock into
+# cachi2/output/deps/pip/ for local offline builds (podman).
+# In Konflux, cachi2 handles this automatically via prefetch-input.
+#
+# Each wheel's sha256 checksum is verified after download (or on cache hit).
+# A file is skipped only when present on disk and its digest matches this URL's
+# expected hash; otherwise it is removed and fetched again.
+# =========================================================================
+if [[ "$DO_DOWNLOAD" == true ]]; then
+  echo ""
+  echo "=== Step 3: Downloading wheels ==="
+
+  # Output directory must match Cachi2 layout so prefetched wheels are found
+  # during hermetic/offline builds (e.g. Docker COPY from cachi2/output/deps/pip).
+  OUT_DIR="cachi2/output/deps/pip"
+  mkdir -p "$OUT_DIR"
+
+  # Use sha256sum on Linux, shasum -a 256 on macOS (portable).
+  if command -v sha256sum &>/dev/null; then
+    sha256_of() { sha256sum "$1" | cut -d' ' -f1; }
+  else
+    sha256_of() { shasum -a 256 "$1" | cut -d' ' -f1; }
+  fi
+
+  # Count lines in pylock that look like "url = \"...\" ... sha256 = \"...\""
+  # (one per wheel; multi-line wheel blocks have one such line per wheel).
+  total=$(grep -c 'url = ".*sha256 = "' "$PYLOCK_FILE" || true)
+  echo "  ${total} wheel(s) to download into ${OUT_DIR}/"
+  echo ""
+
+  idx=0
+  # Read one line per wheel from the lockfile (same pattern as above).
+  while IFS= read -r line; do
+    idx=$((idx + 1))
+
+    # Extract URL and expected sha256 from lockfile line (TOML-style).
+    url=$(echo "$line" | sed 's/.*url = "\([^"]*\)".*/\1/')
+    sha=$(echo "$line" | sed 's/.*sha256 = "\([^"]*\)".*/\1/')
+
+    if [[ -z "$url" || -z "$sha" ]]; then
+      echo "  ERROR: failed to parse url or sha256 from lockfile line (wheel ${idx})" >&2
+      echo "  line: ${line:0:120}..." >&2
+      exit 1
+    fi
+
+    # Filename is the last path segment of the URL, without query/fragment.
+    filename="${url##*/}"; filename="${filename%%[?#]*}"
+    if [[ -z "$filename" ]]; then
+      echo "  ERROR: could not derive filename from URL (wheel ${idx})" >&2
+      echo "  URL: ${url}" >&2
+      exit 1
+    fi
+    dest="${OUT_DIR}/${filename}"
+
+    echo "[${idx}/${total}] ${filename}"
+
+    # Resume partial runs: reuse a file only if its digest matches this wheel.
+    if [[ -f "$dest" ]]; then
+      actual=$(sha256_of "$dest")
+      if [[ "$actual" == "$sha" ]]; then
+        echo "  Already present (checksum OK), skipping download."
+      else
+        echo "  WARNING: Ignoring stale or mismatched cached wheel (digest does not match this lockfile entry)." >&2
+        echo "    file:     ${dest}" >&2
+        echo "    got:      ${actual}" >&2
+        echo "    expected: ${sha}" >&2
+        echo "  Removing cached file and re-downloading." >&2
+        rm -f "$dest"
+      fi
+    fi
+
+    if [[ ! -f "$dest" ]]; then
+      echo "  Downloading: ${url}"
+      if ! wget -q -O "$dest" "$url"; then
+        echo "  ERROR: download failed for ${filename}" >&2
+        echo "  URL: ${url}" >&2
+        echo "  Run 'wget -O /dev/null \"${url}\"' to see the full error." >&2
+        rm -f "$dest"
+        exit 1
+      fi
+    fi
+
+    # Verify digest so corrupted downloads are detected.
+    actual=$(sha256_of "$dest")
+    if [[ "$actual" != "$sha" ]]; then
+      echo "  ERROR: checksum mismatch (got ${actual}, expected ${sha})" >&2
+      rm -f "$dest"
+      exit 1
+    fi
+    echo "  Checksum OK (sha256:${actual:0:16}...)"
+  done < <(grep 'url = ".*sha256 = "' "$PYLOCK_FILE")
+
+  echo ""
+  echo "Done: ${total} file(s) present and validated in ${OUT_DIR}/"
+fi
+
+echo ""
+echo "=== All done ==="
+echo "  pylock.toml      : ${PYLOCK_FILE}"
+echo "  requirements     : ${REQUIREMENTS_FILE}"
+if [[ "$DO_DOWNLOAD" == true ]]; then
+  echo "  wheels           : cachi2/output/deps/pip/"
+fi

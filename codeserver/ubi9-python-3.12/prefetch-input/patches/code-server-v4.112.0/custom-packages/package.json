@@ -1,0 +1,11 @@
+{
+  "name": "code-server-hermetic-git-deps",
+  "version": "1.0.0",
+  "description": "Pins npm deps for hermetic/Konflux builds. All deps use registry.npmjs.org tarball URLs only (no codeload.github.com or git refs) so Cachi2/Hermeto can prefetch them and ProdSec allows them as npm packages. Prefetched into deps/npm/ and consumed by rewrite-npm-urls.sh when building code-server/VSCode. @parcel/watcher and @emmetio/css-parser were switched from GitHub refs to registry versions; lib/vscode and extensions/emmet patches align those lockfiles.",
+  "private": true,
+  "dependencies": {
+    "@emmetio/css-parser": "0.4.1",
+    "@parcel/watcher": "2.5.6",
+    "@playwright/browser-chromium": "1.47.2"
+  }
+}

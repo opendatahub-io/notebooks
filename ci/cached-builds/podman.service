@@ -13,9 +13,8 @@ StartLimitIntervalSec=0
 Delegate=true
 Type=exec
 KillMode=process
-Environment="PATH=/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
-WorkingDirectory=/home/linuxbrew/.linuxbrew
-ExecStart=/home/linuxbrew/.linuxbrew/opt/podman/bin/podman --log-level=info system service
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/usr/bin/podman --log-level=info system service
 
 [Install]
 WantedBy=default.target

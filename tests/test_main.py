@@ -53,7 +53,11 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests):
                     "pyproject.toml is missing a [project.dependencies] section"
                 )
 
-            pylock = tomllib.loads(file.with_name("pylock.toml").read_text())
+            lock_path = file.parent / "uv.lock.d" / "pylock.cpu.toml"
+            if lock_path.is_file():
+                pylock = tomllib.loads(lock_path.read_text())
+            else:
+                pylock = tomllib.loads(file.with_name("pylock.toml").read_text())
             pylock_packages: dict[str, dict[str, Any]] = {p["name"]: p for p in pylock["packages"]}
             with subtests.test(msg="checking pylock.toml consistency with pyproject.toml", pyproject=file):
                 for d in pyproject["project"]["dependencies"]:

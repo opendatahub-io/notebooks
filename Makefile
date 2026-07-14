@@ -46,6 +46,8 @@ WHERE_WHICH ?= which
 # linux/amd64 or darwin/arm64
 OS_ARCH=$(shell go env GOOS)/$(shell go env GOARCH)
 BUILD_ARCH ?= linux/amd64
+RPM_ARCH := $(subst amd64,x86_64,$(subst arm64,aarch64,$(lastword $(subst /, ,$(BUILD_ARCH)))))
+CONTAINER_BUILD_SECURITY_ARGS ?=
 
 IMAGE_TAG		 ?= $(RELEASE)_$(DATE)
 KUBECTL_BIN      ?= bin/kubectl
@@ -71,24 +73,46 @@ endif
 # Build function for the notebook image:
 #   ARG 1: Image tag name.
 #   ARG 2: Path of Dockerfile we want to build.
+#   ARG 3: Path of the build-args conf file to use.
 define build_image
 	$(eval IMAGE_NAME := $(IMAGE_REGISTRY):$(1)-$(IMAGE_TAG))
 
-	# Checks if there’s a build-args/*.conf matching the Dockerfile
 	$(eval BUILD_DIR := $(dir $(2)))
 	$(eval DOCKERFILE_NAME := $(notdir $(2)))
-	$(eval CONF_FILE := $(BUILD_DIR)build-args/$(shell echo $(DOCKERFILE_NAME) | awk -F. '{print $$NF}').conf)
+	$(eval CONF_FILE := $(3))
 
-	# if the conf file exists, transform it into --build-arg KEY=VALUE flags
-	$(eval BUILD_ARGS := $(shell \
-		if [ -f $(CONF_FILE) ]; then \
-			awk -F= '!/^#/ && NF {gsub(/^[ \t]+|[ \t]+$$/, "", $$1); gsub(/^[ \t]+|[ \t]+$$/, "", $$2); printf "--build-arg %s=%s ", $$1, $$2}' $(CONF_FILE); \
+	$(eval _BUILD_ARGS_OUT := $(shell \
+		if [ -f '$(CONF_FILE)' ]; then \
+			awk '!/^[[:space:]]*#/ && NF { \
+				gsub(/^[[:space:]]+|[[:space:]]+$$/, ""); \
+				if (!/^[A-Za-z_][A-Za-z0-9_]*=/) { \
+					printf "ERROR: malformed conf line (expected KEY=VALUE): %s\n", $$0 > "/dev/stderr"; \
+					err=1; next; \
+				} \
+				gsub(/\047/, "\047\\\047\047"); \
+				out = out sprintf("--build-arg \047%s\047 ", $$0); \
+			} END { if (err) { printf "PARSE_FAILED"; exit 1 } else { printf "%s", out } }' '$(CONF_FILE)'; \
 		fi))
+	$(if $(findstring PARSE_FAILED,$(_BUILD_ARGS_OUT)),$(error Failed to parse $(CONF_FILE) — see stderr for details))
+	$(eval BUILD_ARGS := $(_BUILD_ARGS_OUT))
 
+$(eval _DOCKERFILE_USES_PREFETCH := $(shell grep -q 'prefetch-input/' $(2) 2>/dev/null && echo yes))
+$(eval PREFETCH_INPUT_DIR := $(or $(wildcard $(BUILD_DIR)prefetch-input),$(if $(_DOCKERFILE_USES_PREFETCH),$(wildcard $(ROOT_DIR)prefetch-input),)))
+$(eval CACHI2_VOLUME := $(if $(and $(wildcard cachi2/output),$(PREFETCH_INPUT_DIR)),\
+	--volume $(ROOT_DIR)/cachi2/output:/cachi2/output:Z \
+	--volume $(ROOT_DIR)/cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d/:/etc/yum.repos.d/:Z,))
 	$(info # Building $(IMAGE_NAME) using $(DOCKERFILE_NAME) with $(CONF_FILE) and $(BUILD_ARGS)...)
 
+	@if [ -n '$(PREFETCH_INPUT_DIR)' ] && [ ! -d cachi2/output ]; then \
+	  echo "Prefetch required for hermetic build. Run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR)) -- see scripts/lockfile-generators/README.md"; \
+	  exit 1; \
+	fi
+	@if [ -d cachi2/output ] && [ -n '$(PREFETCH_INPUT_DIR)' ] && [ ! -d 'cachi2/output/deps/rpm/$(RPM_ARCH)/repos.d' ]; then \
+	  echo "Missing RPM repos for $(RPM_ARCH). Re-run: scripts/lockfile-generators/prefetch-all.sh --component-dir $(patsubst %/,%,$(BUILD_DIR))"; \
+	  exit 1; \
+	fi
 	$(ROOT_DIR)/scripts/sandbox.py --dockerfile '$(2)' --platform '$(BUILD_ARCH)' -- \
-		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_CACHE_ARGS) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
+		$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_SECURITY_ARGS) $(CONTAINER_BUILD_CACHE_ARGS) $(CACHI2_VOLUME) --platform=$(BUILD_ARCH) --label release=$(RELEASE) --tag $(IMAGE_NAME) --file '$(2)' $(BUILD_ARGS) {}\;
 endef
 
 # Push function for the notebook image:
@@ -105,11 +129,18 @@ endef
 #
 # PUSH_IMAGES: allows skipping podman push
 define image
-	$(info #*# Image build Dockerfile: <$(2)> #(MACHINE-PARSED LINE)#*#...)
 	$(eval BUILD_DIRECTORY := $(shell echo $(2) | sed 's/\/Dockerfile.*//'))
+	$(eval VARIANT := $(shell echo $(notdir $(2)) | awk -F. '{print $$NF}'))
+	# Prefer hermetic Dockerfile.konflux.<variant> when present (codeserver);
+	# fall back to the path passed by the target (rstudio and other non-hermetic images).
+	$(eval DOCKERFILE := $(or $(wildcard $(BUILD_DIRECTORY)/Dockerfile.konflux.$(VARIANT)),$(2)))
+	$(if $(wildcard $(DOCKERFILE)),,$(error Dockerfile not found for variant '$(VARIANT)' in '$(BUILD_DIRECTORY)'))
+
+	$(eval CONF_FILE := $(BUILD_DIRECTORY)/build-args/$(if $(and $(filter rhoai,$(PRODUCT)),$(wildcard $(BUILD_DIRECTORY)/build-args/konflux.$(VARIANT).conf)),konflux.,)$(shell echo $(VARIANT)).conf)
+	$(info #*# Image build Dockerfile: <$(DOCKERFILE)> #(MACHINE-PARSED LINE)#*#...)
 	$(info #*# Image build directory: <$(BUILD_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
 
-	$(call build_image,$(1),$(2))
+	$(call build_image,$(1),$(DOCKERFILE),$(CONF_FILE))
 
 	$(if $(PUSH_IMAGES:no=),
 		$(call push_image,$(1))

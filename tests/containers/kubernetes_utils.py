@@ -46,14 +46,6 @@ logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 
-def port_forward_http_ready(image: str, port: int) -> bool:
-    """Return True when the workbench HTTP endpoint behind port-forward responds."""
-    base = f"http://127.0.0.1:{port}"
-    with requests.Session() as session:
-        response = session.get(f"{base}/", timeout=5, allow_redirects=True)
-    return response.status_code == 200
-
-
 # https://github.com/RedHatQE/openshift-python-wrapper/tree/main/examples
 
 
@@ -275,12 +267,11 @@ class ImageDeployment:
 
             self.port = p.get_actual_port()
             LOGGER.debug(f"Listening on port {self.port}")
-            # Use TIMEOUT_2MIN for slower cold starts (e.g. code-server on arm64).
             Wait.until(
                 "Connecting to pod succeeds",
                 1,
-                TestFrameConstants.TIMEOUT_2MIN,
-                lambda: port_forward_http_ready(self.image, self.port),
+                30,
+                lambda: requests.get(f"http://localhost:{self.port}").status_code == 200,
             )
             LOGGER.debug("Done setting up portforward")
 

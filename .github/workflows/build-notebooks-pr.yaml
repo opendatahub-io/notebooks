@@ -21,7 +21,7 @@ concurrency:
 jobs:
   gen:
     name: Generate job matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       has_jobs: ${{ steps.gen.outputs.has_jobs }}
@@ -94,6 +94,10 @@ jobs:
       python: "${{ matrix.python }}"
       github: "${{ toJSON(github) }}"
       platform: "${{ matrix.platform }}"
-      subscription: ${{ true }}
+      # Hermetic codeserver on rhoai-2.25 uses public UBI9 + public RPM/PyPI locks —
+      # no RHEL subscription / AIPCC quay / git-crypt secrets required. Other RHOAI
+      # targets still need them (AIPCC bases). Matrix "subscription" is only true
+      # for *rhel* targets; keep forcing it for non-codeserver RHOAI images.
+      subscription: ${{ !contains(matrix.target, 'codeserver') }}
       product: rhoai
     secrets: inherit

@@ -7,7 +7,8 @@ Documentation=man:podman-system-service(1)
 
 [Socket]
 ListenStream=%t/podman/podman.sock
-SocketMode=0666
+# Root-only mode bits; runner access via setfacl in install-podman-action.
+SocketMode=0600
 
 [Install]
 WantedBy=sockets.target

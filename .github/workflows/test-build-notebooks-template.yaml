@@ -32,6 +32,8 @@ jobs:
       python: "3.12"
       github: ${{ toJson(github) }}
       platform: linux/amd64
-      subscription: ${{ true }}
+      # Match downstream/main: self-test uses a public-base image and must not
+      # require subscription secrets (unavailable on fork PRs).
+      subscription: ${{ false }}
       product: rhoai
     secrets: inherit

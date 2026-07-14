@@ -6,85 +6,50 @@ set -e
 
 source ${NGINX_CONTAINER_SCRIPTS_PATH}/common.sh
 
+# disabled, only used to source nginx files in user directory
+#process_extending_files ${NGINX_APP_ROOT}/src/nginx-start ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
+
 if [ ! -v NGINX_LOG_TO_VOLUME -a -v NGINX_LOG_PATH ]; then
     /bin/ln -sf /dev/stdout ${NGINX_LOG_PATH}/access.log
     /bin/ln -sf /dev/stderr ${NGINX_LOG_PATH}/error.log
 fi
 
+# substitute NB_PREFIX in proxy configuration if it exists
 if [ -z "$NB_PREFIX" ]; then
-    NB_PREFIX_FALLBACK="/"
-else
-    NB_PREFIX_FALLBACK="$NB_PREFIX"
-fi
-
-cat <<EOF > "${NGINX_CONFIGURATION_PATH}/http.conf"
-map \$http_upgrade \$connection_upgrade {
-    default upgrade;
-    ''      close;
-}
-
-map \$request \$loggable {
-    ~\\/codeserver\\/healthz  0;
-    default 1;
-}
-
-map \$time_iso8601 \$time_iso8601_p1 {
-    ~([^+]+) \$1;
-}
-map \$time_iso8601 \$time_iso8601_p2 {
-    ~\\+([0-9:]+)\$ \$1;
-}
-map \$msec \$millisec {
-    ~\\.([0-9]+)\$ \$1;
-}
-
-log_format json escape=json '[{'
-    '"id":"code-server",'
-    '"name":"code-server",'
-    '"last_activity":"\$time_iso8601_p1.\$millisec+\$time_iso8601_p2",'
-    '"execution_state":"busy",'
-    '"connections": 1'
-    '}]';
-
-map \$http_x_forwarded_proto \$custom_scheme {
-    default \$scheme;
-    https https;
-}
-
-map \$http_x_forwarded_prefix \$base_path {
-    default \$http_x_forwarded_prefix;
-    ""      ${NB_PREFIX_FALLBACK};
-}
-
-map \$base_path \$codeserver_base {
-    "/"     "/codeserver/";
-    default "\$base_path/codeserver/";
-}
-
-map \$base_path \$healthz_path {
-    "/"     "/codeserver/healthz/";
-    default "\$base_path/codeserver/healthz/";
-}
-
-map \$base_path \$api_kernels_path {
-    "/"     "/api/kernels/";
-    default "\$base_path/api/kernels/";
-}
-
-upstream workbench_server {
-    server localhost:8787 max_fails=0;
-}
-EOF
-
-if [ -z "$NB_PREFIX" ]; then
-    export BASE_URL=""
     cp /opt/app-root/etc/nginx.default.d/proxy.conf.template /opt/app-root/etc/nginx.default.d/proxy.conf
 else
-    export BASE_URL=$(echo $NB_PREFIX | awk -F/ '{ print $4"-"$3 }')$(echo $NOTEBOOK_ARGS | grep -Po 'hub_host":"\K.*?(?=")' | awk -F/ '{ print $3 }' | awk -F. '{for (i=2; i<=NF; i++) printf ".%s", $i}')
+    export BASE_URL=$(echo "$NB_PREFIX" | awk -F/ '{ print $4"-"$3 }')$(echo "$NOTEBOOK_ARGS" | grep -Po 'hub_host":"\K.*?(?=")' | awk -F/ '{ print $3 }' | awk -F. '{for (i=2; i<=NF; i++) printf ".%s", $i}')
+    # If BASE_URL is empty or invalid (missing hub_host), use wildcard server_name
+    if [ -z "$BASE_URL" ] || [ "$BASE_URL" = "$(echo "$NB_PREFIX" | awk -F/ '{ print $4"-"$3 }')" ]; then
+        export BASE_URL="_"
+    fi
+    # Substitute ${NB_PREFIX} and ${BASE_URL} placeholders in the proxy config template.
     envsubst '${NB_PREFIX},${BASE_URL}' < /opt/app-root/etc/nginx.default.d/proxy.conf.template_nbprefix > /opt/app-root/etc/nginx.default.d/proxy.conf
 
+    # Substitute ${BASE_URL} in the main nginx.conf (placed there at build time by nginxconf.sed).
+    # A temp file is used because piping envsubst directly into the same file via `tee`
+    # is a race condition: `tee` can truncate the file before `envsubst` finishes reading it,
+    # resulting in an empty/corrupt config and "no events section" errors from nginx.
     tmp=$(mktemp)
     envsubst '${BASE_URL}' < /etc/nginx/nginx.conf > "$tmp"
+    cat "$tmp" > /etc/nginx/nginx.conf
+    rm -f "$tmp"
+fi
+
+# When IPv6 is disabled (e.g. container sysctls in CI), nginx cannot bind [::]:8888.
+# Use a temp file: sed -i writes into /etc/nginx/ which is not writable by UID 1001.
+if [ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null)" = "1" ]; then
+    tmp=$(mktemp)
+    sed '/listen[[:space:]]\+\[::\]:8888/d' /etc/nginx/nginx.conf > "$tmp"
+    cat "$tmp" > /etc/nginx/nginx.conf
+    rm -f "$tmp"
+fi
+
+# Relative return 302 paths must emit relative Location headers; otherwise nginx
+# expands them with the container listen port (8888) and breaks port-mapped clients.
+if ! grep -q 'absolute_redirect off' /etc/nginx/nginx.conf; then
+    tmp=$(mktemp)
+    sed '/server {/a\        absolute_redirect off;' /etc/nginx/nginx.conf > "$tmp"
     cat "$tmp" > /etc/nginx/nginx.conf
     rm -f "$tmp"
 fi
