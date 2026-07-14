@@ -53,6 +53,8 @@ const test = base.extend<MyFixtures>({
 
 test.beforeAll(setupTestcontainers)
 
+test.describe('code-server', { tag: '@codeserver' }, () => {
+
 test('open codeserver', async ({codeServer, page}) => {
   await page.goto(codeServer.url)
 
@@ -94,5 +96,7 @@ test('use the terminal to run command', async ({codeServer, page}, testInfo) => 
     await codeServer.openFile(file)
     await expect(page.getByText("The answer is 42.")).toBeVisible()
   })
+
+})
 
 })

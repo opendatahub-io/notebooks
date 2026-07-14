@@ -2,7 +2,15 @@
 
 `uv` is a fast Python package installer and resolver, designed to be a drop-in replacement for `pip` and `pip-tools`. It aims to provide a more efficient and reliable experience for managing Python dependencies.
 
-This guide will walk you through common `uv` workflows: upgrading packages, locking dependencies, creating `requirements.txt` files, and resolving conflicts.
+> **Notebook / runtime images on this branch (`rhoai-2.25`):** each image directory has its
+> own `pyproject.toml` and committed `pylock.toml`. Regenerate all of them with
+> `bash ci/generate_code.sh` (runs [`scripts/sync-python-lockfiles.sh`](../scripts/sync-python-lockfiles.sh)).
+> CI job `check-generated-code` enforces that these files stay in sync.
+>
+> **Codeserver hermetic builds** additionally require `requirements.cpu.txt` and
+> `uv.lock.d/pylock.cpu.toml`. See
+> [lockfile generators](../scripts/lockfile-generators/README.md#python-lockfiles-on-rhoai-225)
+> and [codeserver README](../codeserver/ubi9-python-3.12/README.md#regenerating-lockfiles).
 
 More Info: https://docs.astral.sh/uv/
 ---

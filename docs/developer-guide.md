@@ -141,6 +141,19 @@ tests:
           from: src
 ```
 
+## Python lockfiles (`rhoai-2.25`)
+
+Image Python dependencies live in each component's `pyproject.toml` with a committed
+`pylock.toml` (PEP 751 format).
+
+| Change | Command | Docs |
+| ------ | ------- | ---- |
+| Any image `pyproject.toml` | `bash ci/generate_code.sh` | [`scripts/sync-python-lockfiles.sh`](../scripts/sync-python-lockfiles.sh) |
+| Codeserver hermetic locks | `prefetch-all.sh --rhds --component-dir codeserver/ubi9-python-3.12` | [lockfile generators](../scripts/lockfile-generators/README.md), [codeserver README](../codeserver/ubi9-python-3.12/README.md) |
+
+CI validates the first path via the `check-generated-code` job in
+[`.github/workflows/code-quality.yaml`](../.github/workflows/code-quality.yaml).
+
 ## GitHub Actions
 This section provides an overview of the automation functionalities.
 

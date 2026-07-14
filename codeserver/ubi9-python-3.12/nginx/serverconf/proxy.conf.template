@@ -2,18 +2,12 @@
 # api calls from probes get to code-server /healthz endpoint
 ###############
 location = /api {
-  return 302 $healthz_path;
+  return 302 /codeserver/healthz/;
   access_log  off;
 }
 
 location /api/ {
-  return 302 $healthz_path;
-  access_log  off;
-}
-
-# Gateway API: health checks arrive at {NB_PREFIX}/api
-location ~ ^/[^/]+/[^/]+/[^/]+/api/?$ {
-  return 302 $healthz_path;
+  return 302 /codeserver/healthz/;
   access_log  off;
 }
 ###############
@@ -22,18 +16,12 @@ location ~ ^/[^/]+/[^/]+/[^/]+/api/?$ {
 # api calls from culler get to CGI processing
 ###############
 location = /api/kernels {
-    return 302 $custom_scheme://$http_host$api_kernels_path;
-    access_log  off;
-}
-
-# Gateway API: culler requests arrive at {NB_PREFIX}/api/kernels
-location ~ ^/[^/]+/[^/]+/[^/]+/api/kernels/?$ {
-    return 302 $custom_scheme://$http_host$api_kernels_path;
+    return 302 /api/kernels/;
     access_log  off;
 }
 
 location /api/kernels/ {
-  proxy_pass http://localhost:8080;
+  proxy_pass http://127.0.0.1:8080;
   proxy_set_header Host $host;
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -47,22 +35,16 @@ location /api/kernels/ {
 # root and prefix get to code-server endpoint
 ###############
 location = / {
-    return 302 $custom_scheme://$http_host$codeserver_base;
+    return 302 /codeserver/;
 }
 
 location = /codeserver {
-    return 302 $custom_scheme://$http_host$codeserver_base;
+    return 302 /codeserver/;
 }
 
-# Gateway API: redirect {NB_PREFIX} to code-server entrypoint
-location ~ ^/[^/]+/[^/]+/[^/]+/?$ {
-    return 302 $custom_scheme://$http_host$codeserver_base;
-}
-
-location ~ /codeserver/ {
-    rewrite ^.*/codeserver/(.*)$ /$1 break;
+location /codeserver/ {
     # Standard code-server/NGINX configuration
-    proxy_pass http://workbench_server;
+    proxy_pass http://workbench_server/;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection $connection_upgrade;
@@ -74,7 +56,6 @@ location ~ /codeserver/ {
     proxy_set_header X-Forwarded-Proto $custom_scheme;
     proxy_set_header Host $http_host;
     proxy_set_header X-NginX-Proxy true;
-    proxy_set_header X-Forwarded-Prefix $base_path;
     proxy_redirect off;
 
     access_log /var/log/nginx/codeserver.access.log json if=$loggable;

@@ -1,14 +1,27 @@
+# [HERMETIC] 2.25 codeserver: hermetic build deps + original rhoai-2.25 datascience pins.
 [project]
 name = "notebooks"
 version = "0.1.0"
 requires-python = "==3.12.*"
 
 dependencies = [
+    # Installer/tooling (prefetched for cachi2 offline install).
+    # uv/ripgrep patched to RH wheels post-lock (PyPI sdists break hermeto cargo prefetch).
+    "uv",
+    "micropipenv[toml]",
+
     # Base packages
     "wheel~=0.46.2",
     "setuptools~=80.9.0",
 
-    # Datascience packages
+    "debugpy",
+
+    # RHAIENG-6157: VS Code Jupyter extension requires these
+    "ipykernel~=6.30.1",
+    "jupyter",
+    "notebook",
+
+    # Datascience packages (rhoai-2.25 pins)
     "boto3~=1.40.27",
     "kafka-python-ng~=2.2.3",
     "matplotlib~=3.10.6",
@@ -17,9 +30,8 @@ dependencies = [
     "plotly~=6.3.0",
     "scikit-learn~=1.7.2",
     "scipy~=1.16.1",
-    "skl2onnx~=1.19.1",
-    "onnx>=1.21.0; platform_machine != 's390x'",  # CVE-2026-28500
-    "ipykernel~=6.30.1",
+    "skl2onnx~=1.19.1; platform_machine != 's390x'",
+    "onnx>=1.21.0; platform_machine != 's390x'",
     "kubeflow-training==1.9.3",
     "feast~=0.54.1",
 
@@ -27,8 +39,10 @@ dependencies = [
     "opencensus~=0.11.4",
     "smart-open~=7.3.1",
     "virtualenv~=20.34.0",
-    "py-spy~=0.4.1",
     "prometheus-client~=0.22.1",
+
+    # Hermetic code-server build (ripgrep wheel for @vscode/ripgrep postinstall)
+    "ripgrep",
 ]
 
 [tool.uv]
@@ -39,10 +53,6 @@ environments = [
     "python_version == '3.12' and sys_platform == 'linux' and platform_machine == 'aarch64'",
 ]
 override-dependencies = [
-    # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
-    # Upstream: https://github.com/kubernetes-client/python/issues/2458
     "urllib3>=2.6.0",
-    # RHAIENG-3209: CVE-2026-25990  Pillow: Out-of-bounds Write
-    # Upstream: https://github.com/vllm-project/llm-compressor/releases/tag/0.7.1.1
     "pillow>=12.1.1",
 ]

@@ -170,51 +170,39 @@ dirs = ["/assets/downloads/cli"]
 error = "ErrGoMissingTag"
 dirs = ["/assets/downloads/cli"]
 
+# AI Pipelines override (RHOAIENG-24702 and RHOAIENG-38121)
+# When FIPS is enabled, /usr/bin/argoexec-fips is used. /usr/bin/argoexec is
+# only used for portability reasons in non-FIPS environments.
+[[payload.odh-data-science-pipelines-argo-argoexec-container.ignore]]
+error = "ErrGoNotCgoEnabled"
+files = ["/usr/bin/argoexec"]
+
+[[payload.odh-data-science-pipelines-argo-argoexec-container.ignore]]
+error = "ErrGoMissingSymbols"
+files = ["/usr/bin/argoexec"]
+
+[[payload.odh-data-science-pipelines-argo-argoexec-container.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/bin/argoexec"]
+
+# AI Pipelines override (RHOAIENG-24702 and RHOAIENG-38121)
+# When FIPS is enabled, /usr/bin/launcher-v2-fips is used. /usr/bin/launcher-v2 is
+# only used for portability reasons in non-FIPS environments.
+[[payload.odh-ml-pipelines-launcher-container.ignore]]
+error = "ErrGoNotCgoEnabled"
+files = ["/usr/bin/launcher-v2"]
+
+[[payload.odh-ml-pipelines-launcher-container.ignore]]
+error = "ErrGoMissingSymbols"
+files = ["/usr/bin/launcher-v2"]
+
+[[payload.odh-ml-pipelines-launcher-container.ignore]]
+error = "ErrNotDynLinked"
+files = ["/usr/bin/launcher-v2"]
+
 # Temporary supprsssions for workbenches
 # https://github.com/openshift/check-payload/blob/main/internal/types/errors.go
-
-[[rpm.rstudio-server.ignore]]
-error = "ErrNotDynLinked"
-files = [
-    # executable is not dynamically linked
-    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/pandoc",
-    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/typst",
-]
-
-[[rpm.rstudio-server.ignore]]
-error = "ErrNotDynLinked"
-files = [
-    # executable is not dynamically linked
-    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
-]
-
-[[rpm.rstudio-server.ignore]]
-error = "ErrGoNotCgoEnabled"
-files = [
-    # go binary is not CGO_ENABLED
-    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
-]
-
-[[rpm.rstudio-server.ignore]]
-error = "ErrGoNoCgoInit"
-files = [
-    # x_cgo_init or _cgo_topofstack not found
-    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
-]
-
-[[rpm.rstudio-server.ignore]]
-error = "ErrLibcryptoMissing"
-files = [
-    # openssl: did not find libcrypto library within binary
-    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
-]
-
-[[rpm.rstudio-server.ignore]]
-error = "ErrGoMissingSymbols"
-files = [
-    # go binary does not contain required symbol(s)
-    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
-]
+# See docs/fips.md for full context on FIPS compliance status.
 
 # valgrind is waived since it doesn't do anything with crypto in a
 # security context
@@ -234,25 +222,20 @@ files = [
     "/usr/libexec/valgrind/none-amd64-linux",
 ]
 
-# py-spy is waived since it doesn't do anything with crypto in a
-# security context
+# py-spy is excluded from images via exclude-dependencies (RHAIENG-58916).
+# pandoc-rhai 3.9.0.2 is dynamically linked (RHAIENG-5765) — no waiver needed.
 
-# when scanning with `scan image --spec`
-[[payload.python-311-container.ignore]]
-error = "ErrNotDynLinked"
-files = [
-    # executable is not dynamically linked
-    "/opt/app-root/bin/py-spy",
-]
-# when scanning with `scan local --path`, the above does not apply
+# when scanning with `scan local --path`
 [[ignore]]
 error = "ErrNotDynLinked"
 files = [
-    # executable is not dynamically linked
-    "/opt/app-root/bin/py-spy",
-    "/usr/local/pandoc/bin/pandoc",
     # when code-server is not installed from rpm, the exclusion below won't apply
     "/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg",
+]
+dirs = [
+    # VS Code 1.112+ @anthropic-ai/sandbox-runtime seccomp BPF loaders (no crypto)
+    "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/dist/vendor/seccomp",
+    "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/vendor/seccomp",
 ]
 
 [[rpm.code-server.ignore]]
@@ -260,4 +243,9 @@ error = "ErrNotDynLinked"
 files = [
     # executable is not dynamically linked
     "/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg",
+]
+dirs = [
+    # VS Code 1.112+ @anthropic-ai/sandbox-runtime seccomp BPF loaders (no crypto)
+    "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/dist/vendor/seccomp",
+    "/usr/lib/code-server/lib/vscode/node_modules/@anthropic-ai/sandbox-runtime/vendor/seccomp",
 ]

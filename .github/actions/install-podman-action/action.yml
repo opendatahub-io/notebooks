@@ -1,95 +1,98 @@
 ---
-name: 'Install Podman'
-description: 'Installs Podman from Homebrew'
+name: 'Configure Podman'
+description: 'Configure rootful Podman from the ubuntu-26.04 runner image (Podman 5.7+)'
 inputs:
   platform:
-    description: 'Target platform for Podman installation (linux/amd64, linux/s390x, linux/ppc64le, linux/arm64)'
+    description: 'Target platform for builds (linux/amd64, linux/s390x, linux/ppc64le, linux/arm64)'
     required: true
 runs:
-  using: "composite"
+  using: composite
   steps:
-    # https://github.com/containers/buildah/issues/2521#issuecomment-884779112
-    - name: Workaround https://github.com/containers/podman/issues/22152#issuecomment-2027705598
-      shell: bash
-      run: sudo apt-get -qq remove podman crun
-
-    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-      # https://docs.github.com/en/actions/reference/variables-reference#default-environment-variables
-      # https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables
-      id: cached-linuxbrew
-      with:
-        path: /home/linuxbrew/.linuxbrew
-        key: linuxbrew-${{ runner.os }}-${{ runner.arch }}
-
-    - name: Install podman (linux/amd64, or qemu-user emulation)
-      if: contains(fromJSON('["linux/amd64", "linux/s390x", "linux/ppc64le"]'), inputs.platform) && steps.cached-linuxbrew.outputs.cache-hit != 'true'
+    - name: Ensure socket ACL dependency
       shell: bash
       run: |
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        /home/linuxbrew/.linuxbrew/bin/brew install podman
+        set -Eeuxo pipefail
+        command -v setfacl >/dev/null || {
+          echo "setfacl is required on the supported ubuntu-26.04 runners" >&2
+          exit 1
+        }
 
-    # Warning: Your CPU architecture (arm64) is not supported. We only support
-    # x86_64 CPU architectures. You will be unable to use binary packages (bottles).
-    #
-    # This is a Tier 2 configuration:
-    #  https://docs.brew.sh/Support-Tiers#tier-2
-    # Do not report any issues to Homebrew/* repositories!
-    # Read the above document instead before opening any issues or PRs.
-    - name: Install podman (linux/arm64)
-      if: inputs.platform == 'linux/arm64' && steps.cached-linuxbrew.outputs.cache-hit != 'true'
-      # Error: podman: no bottle available!
-      # If you're feeling brave, you can try to install from source with:
+    # ubuntu-26.04 AppArmor: podman profile cannot SIGTERM pasta without this peer rule.
+    # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1100135
+    - name: Fix AppArmor pasta/podman signal conflict
       shell: bash
       run: |
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        /home/linuxbrew/.linuxbrew/bin/brew install --build-from-source podman
-
-    - name: Add linuxbrew to PATH
-      shell: bash
-      run: echo "/home/linuxbrew/.linuxbrew/bin/" >> $GITHUB_PATH
+        set -Eeuxo pipefail
+        if [[ -f /etc/apparmor.d/abstractions/pasta ]] && ! grep -q 'peer=podman' /etc/apparmor.d/abstractions/pasta; then
+          echo '  signal (receive) peer=podman,' | sudo tee -a /etc/apparmor.d/abstractions/pasta
+          sudo apparmor_parser -r /etc/apparmor.d/usr.bin.pasta
+        fi
 
     - name: Configure Podman
       shell: bash
       run: |
         set -Eeuxo pipefail
 
-        # podman running as service ignores the TMPDIR env var here, let's give it a bind-mount to /var/tmp
-        mkdir -p $TMPDIR
-        sudo mount --bind -o rw,noexec,nosuid,nodev,bind $TMPDIR /var/tmp
+        podman --version
 
-        # podman from brew has its own /etc (was giving me Failed to obtain podman configuration: runroot must be set)
-        # the (default) config location is also where cri-o gets its storage defaults (that can be overriden in crio.conf)
-        sudo cp ci/cached-builds/containers.conf /etc/containers.conf
-        sudo cp ci/cached-builds/containers.conf /home/linuxbrew/.linuxbrew/opt/podman/etc/containers.conf
+        # Podman 5.x reads /etc/containers/containers.conf (not /etc/containers.conf).
+        # /etc/containers/ is also where cri-o gets storage defaults (overridable in crio.conf).
+        sudo mkdir -p /etc/containers
+        sudo cp ci/cached-builds/containers.conf /etc/containers/containers.conf
         sudo cp ci/cached-builds/storage.conf /etc/containers/storage.conf
-        sudo cp ci/cached-builds/storage.conf /home/linuxbrew/.linuxbrew/opt/podman/etc/containers/storage.conf
         sudo cp ci/cached-builds/registries.conf /etc/containers/registries.conf
-        sudo cp ci/cached-builds/registries.conf /home/linuxbrew/.linuxbrew/opt/podman/etc/containers/registries.conf
 
         # should reset storage when changing storage.conf
-        mkdir -p $HOME/.local/share/containers/storage/tmp
+        sudo mkdir -p /mnt/containers/storage/tmp
         # remote (CONTAINER_HOST) podman does not do reset (and refuses --force option)
-        sudo /home/linuxbrew/.linuxbrew/opt/podman/bin/podman system reset --force
+        sudo podman system reset --force
 
         # https://github.com/containers/podman/pull/25504
         # podman 5.5.0: The podman system reset command no longer removes the user's podman.sock API socket
         sudo rm -rf /var/run/podman
+        sudo mkdir -p /mnt/containers/storage/tmp
+        sudo chown -R "${USER}:${USER}" /mnt/containers/storage
 
+        # Rootful bridge egress needs forwarding + FORWARD accept. Docker on GHA sets FORWARD DROP
+        # which breaks netavark MASQUERADE silently (podman #24486, runner-images #13422).
+        # Same pattern as provision-k8s and microk8s workarounds in this repo.
+        # Use iptables, not nft: ubuntu-26.04 is nftables-backed but exposes iptables-nft;
+        # netavark installs rules through that API, so this matches what Podman expects.
+        sudo modprobe br_netfilter
+        sudo sysctl -w net.ipv4.ip_forward=1
+        sudo iptables -P FORWARD ACCEPT
+
+        # Override distro units (linuxbrew path used /usr/local/lib/systemd/system/ too).
         # https://github.com/containers/podman/blob/main/docs/tutorials/socket_activation.md
-        # since `brew services start podman` is buggy, let's do our own brew-compatible service
-        # Regarding directory paths, see https://unix.stackexchange.com/questions/224992/where-do-i-put-my-systemd-unit-file
         sudo mkdir -p /usr/local/lib/systemd/system/
         sudo cp ci/cached-builds/podman.service /usr/local/lib/systemd/system/podman.service
         sudo cp ci/cached-builds/podman.socket /usr/local/lib/systemd/system/podman.socket
         sudo systemctl daemon-reload
-        sudo systemctl unmask --now podman.service podman.socket
-        sudo systemctl start podman.socket
+        sudo systemctl unmask podman.service podman.socket
+        sudo systemctl enable --now podman.socket
 
-        # needed (much) later for trivy
-        echo "PODMAN_SOCK=/var/run/podman/podman.sock" >> $GITHUB_ENV
+        # Grant runner user access without sudo for CONTAINER_HOST clients
+        sudo setfacl -m "u:${USER}:x" /var/run/podman
+        sudo setfacl -m "u:${USER}:rw" /var/run/podman/podman.sock
+
+        # needed (much) later for trivy; CONTAINER_HOST makes podman a remote client to rootful socket
+        podman_sock=/var/run/podman/podman.sock
+        echo "PODMAN_SOCK=${podman_sock}" >> "$GITHUB_ENV"
+        echo "CONTAINER_HOST=unix://${podman_sock}" >> "$GITHUB_ENV"
 
         # quick check podman works
         podman ps
+
+        # Docker may reset FORWARD DROP after podman starts; re-apply before container egress.
+        sudo iptables -P FORWARD ACCEPT
+
+        # Reload netavark rules after FORWARD policy fix (only when a network already exists).
+        if [[ -n "$(podman network ls -q)" ]]; then
+          podman network reload --all
+        fi
+
+    - run: podman system info
+      shell: bash
 
     - name: Show error logs (on failure)
       if: ${{ failure() }}
@@ -100,3 +103,5 @@ runs:
         journalctl -xe
         ls -AlF /var/run/podman/podman.sock || echo "Socket /var/run/podman/podman.sock not found"
         sudo ss -xlpn | grep 'podman.sock' || echo "No active listener found for podman.sock via ss"
+        sudo iptables -S FORWARD || true
+        podman network inspect podman 2>/dev/null || true
