@@ -27,7 +27,12 @@ RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 BASE_PKGS=(perl mesa-libGL skopeo compat-openssl11 openshift-clients python3)
 if [ "$(uname -m)" = "s390x" ]; then
-    BASE_PKGS+=(gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel)
+    S390X_PKGS=(gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel)
+    # ODH and RHOAI use different base images here. Only request the s390x helper
+    # packages that are missing so we avoid upgrading an existing compiler/OpenMPI stack.
+    for pkg in "${S390X_PKGS[@]}"; do
+        rpm -q "${pkg}" >/dev/null 2>&1 || BASE_PKGS+=("${pkg}")
+    done
 fi
 dnf install -y "${BASE_PKGS[@]}"
 dnf clean all
