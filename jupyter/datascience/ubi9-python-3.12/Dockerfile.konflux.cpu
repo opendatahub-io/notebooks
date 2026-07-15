@@ -149,6 +149,8 @@ if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
     git clone --depth 1 --branch "apache-arrow-17.0.0" https://github.com/apache/arrow.git
     cd arrow/cpp
     mkdir release && cd release
+    # ORC 2.0.1 was removed from downloads.apache.org; archive mirror has the expected tarball hash
+    export ARROW_ORC_URL="https://archive.apache.org/dist/orc/orc-2.0.1/orc-2.0.1.tar.gz"
     cmake -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/usr/local \
           -DARROW_PYTHON=ON \

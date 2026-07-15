@@ -160,6 +160,8 @@ if [ "$TARGETARCH" = "s390x" ]; then
     # Build C++ library first
     cd cpp
     mkdir build && cd build
+    # ORC 2.0.1 was removed from downloads.apache.org; archive mirror has the expected tarball hash
+    export ARROW_ORC_URL="https://archive.apache.org/dist/orc/orc-2.0.1/orc-2.0.1.tar.gz"
     cmake -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=$ARROW_HOME \
           -DARROW_PYTHON=ON \

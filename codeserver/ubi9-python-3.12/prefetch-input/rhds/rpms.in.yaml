@@ -11,14 +11,13 @@
 # Previously, the Dockerfile ran `dnf install` with network access.
 #
 # rhoai-2.25 Konflux builds use BASE_IMAGE=registry.access.redhat.com/ubi9/python-312:latest
-# with public UBI + CentOS Stream repos (same as non-hermetic Dockerfile.cpu). Regenerate
+# with public UBI repos + openshift-clients mirror (no subscription). Regenerate
 # rhds/rpms.lock.yaml via create-rpm-lockfile.sh without subscription.
 
 contentOrigin:
   repofiles:
-    # rhoai-2.25 — public UBI + CentOS Stream + openshift mirror (no subscription)
+    # rhoai-2.25 — public UBI + openshift mirror (no subscription)
     - ../repos/ubi.repo
-    - ../repos/centos.repo
     - ../repos/openshift-clients.repo
 
     # RHOAI 3.5+ AIPCC — RHEL subscription repos (requires --activation-key --org)
@@ -119,7 +118,6 @@ packages:
   # Dev libraries
   - openssl-devel
   - zlib-devel
-  - boost-devel
   - tcl-devel
   - tk-devel
   - libatomic
@@ -142,10 +140,10 @@ packages:
   - tar
   - wget
 
-  # libxkbfile-devel: provides xkbfile.h needed by native-keymap
-  # (node-gyp native addon in lib/vscode)
-  - libxkbfile-devel
-  - qhull-devel
+  # libxkbfile: runtime lib for native-keymap (node-gyp addon in lib/vscode).
+  # xkbfile.h / xkbfile.pc: built from prefetched X.org tarballs (artifacts.in.yaml).
+  - libxkbfile
+  - libX11-devel
 
   # -- Missing these in RHEL AIPCC ----
   - patch

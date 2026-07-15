@@ -18,6 +18,21 @@ if [[ -f /opt/rh/gcc-toolset-14/enable ]]; then
     . /opt/rh/gcc-toolset-14/enable
 fi
 
+# libxkbfile built from prefetched X.org tarballs (install-xkbfile-from-generic.sh).
+export PKG_CONFIG_PATH="$(
+    find /usr/lib64/pkgconfig /usr/lib/pkgconfig /usr/share/pkgconfig -type d 2>/dev/null \
+        | tr '\n' ':'
+)${PKG_CONFIG_PATH:-}"
+
+# nodejs-devel 22 ships config-<arch>.gypi (e.g. config-ppc64le.gypi), not config.gypi.
+# node-gyp warns and falls back to process.config when config.gypi is absent; symlink
+# the arch-specific file so native modules get consistent build variables on all arches.
+node_include="/usr/include/node"
+arch_gypi="${node_include}/config-$(uname -m).gypi"
+if [[ -f "${arch_gypi}" && ! -e "${node_include}/config.gypi" ]]; then
+    ln -sf "config-$(uname -m).gypi" "${node_include}/config.gypi"
+fi
+
 export TMPDIR=/tmp
 # argon2: point at local mirror so it never hits the network. We do not prefetch
 # argon2 prebuilds; when the tarball is missing here, node-pre-gyp falls back to

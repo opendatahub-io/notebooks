@@ -59,12 +59,20 @@ RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 # (modules.yaml) because rpms.in.yaml declares moduleEnable: [nodejs:22].
 RUN dnf module enable nodejs:22 -y
 
-# libxkbfile-devel = util-macros + libxkbfile (Previously built from source)
+# libxkbfile-devel is not in public UBI repos. Headers for native-keymap come from
+# prefetched X.org tarballs (install-xkbfile-from-generic.sh); libxkbfile RPM is runtime.
 RUN dnf install -y \
         nodejs nodejs-devel npm \
         jq patch libtool rsync gettext git-lfs gcc-toolset-14 gcc-toolset-14-libatomic-devel \
-        krb5-devel libX11-devel libxkbfile-devel && \
+        make autoconf automake pkgconf-pkg-config \
+        krb5-devel libX11-devel libxkbfile && \
     dnf clean all
+
+# [HERMETIC] util-macros + libxkbfile from generic artifacts (replaces libxkbfile-devel RPM).
+COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/install-xkbfile-from-generic.sh \
+    ${CODESERVER_SOURCE_CODE}/patches/
+RUN chmod +x ${CODESERVER_SOURCE_CODE}/patches/install-xkbfile-from-generic.sh && \
+    ${CODESERVER_SOURCE_CODE}/patches/install-xkbfile-from-generic.sh
 
 # [HERMETIC] Git metadata needed by code-server's build scripts (version detection, submodules).
 COPY .git /root/.git
