@@ -8,7 +8,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-comment: "^/build-konflux"
+    pipelinesascode.tekton.dev/on-comment: "^/(build-konflux|build-runtime-datascience)"
     pipelinesascode.tekton.dev/on-label: "[kfbuild-all, kfbuild-runtime, kfbuild-cpu, kfbuild-datascience, kfbuild-runtime-datascience-cpu]"
     pipelinesascode.tekton.dev/on-target-branch: "[{{target_branch}}]"
     pipelinesascode.tekton.dev/on-event: "[pull_request]"
