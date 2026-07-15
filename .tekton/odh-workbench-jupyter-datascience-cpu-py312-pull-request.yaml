@@ -8,7 +8,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-comment: "^/(build-konflux|build-jupyter-datascience)"
+    pipelinesascode.tekton.dev/on-comment: "^/(build-konflux|build-datascience)"
     pipelinesascode.tekton.dev/on-label: "[kfbuild-all, kfbuild-workbench, kfbuild-cpu, kfbuild-datascience, kfbuild-jupyter, kfbuild-workbench-jupyter-datascience-cpu]"
     pipelinesascode.tekton.dev/on-target-branch: "[{{target_branch}}]"
     pipelinesascode.tekton.dev/on-event: "[pull_request]"
