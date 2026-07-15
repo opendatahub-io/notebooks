@@ -1,0 +1,335 @@
+---
+# Combined lock file renewal: pylocks, manifest annotations, ODH RPMs, RHDS RPMs.
+# Replaces scheduled runs in rpms-lock-renewal.yaml and piplock-renewal.yaml
+# Opens one PR with up to four commits (one per step).
+name: Full Lock Files Renewal Action
+
+permissions: {}  # least-privilege: grant per-job below
+
+on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron: "0 1 * * 3"  # Weekly lockfile update (Wednesday 1am UTC)
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to update'
+        required: false
+        default: 'main'
+      index_mode:
+        description: 'Index mode for Pip lock file generation'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - 'auto'
+          - 'public-index'
+          - 'rh-index'
+      force_upgrade:
+        description: 'Force upgrade all Pip packages to latest versions'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+      use_cache:
+        description: 'Use GHCR layer cache for RPM lockfile builds (uncheck to rebuild from scratch)'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  renew-lock-files:
+    runs-on: ubuntu-26.04
+    concurrency:
+      group: renew-lock-files-${{ github.ref }}
+      cancel-in-progress: false
+    permissions:
+      contents: read  # checkout only; push and PR creation use the PAT
+      packages: write  # push/pull rpm-lockfile build cache to ghcr.io
+    env:
+      BRANCH: ${{ github.event.inputs.branch || 'main' }}
+      INDEX_MODE: ${{ github.event.inputs.index_mode || 'auto' }}
+      TMPDIR: /var/tmp
+      CI: "true"
+      USE_CACHE: ${{ github.event.inputs.use_cache != 'false' && 'true' || 'false' }}
+      # Force upgrade on scheduled runs, or when explicitly requested
+      FORCE_LOCKFILES_UPGRADE: ${{ github.event_name == 'schedule' && '1' || (github.event.inputs.force_upgrade == 'true' && '1' || '0') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ env.BRANCH }}
+          persist-credentials: false
+          fetch-depth: 0  # update_imagestream_annotations_from_pylock.py uses git show for tag SHAs
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Create renewal branch
+        run: |
+          BRANCH_NAME="lockfile-renewal-$(date +%Y%m%d-%H%M)"
+          git checkout -b "$BRANCH_NAME"
+          echo "RENEWAL_BRANCH=$BRANCH_NAME" >> "${GITHUB_ENV}"
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Install skopeo
+        uses: ./.github/actions/apt-install
+        with:
+          packages: skopeo
+
+      - name: Login to quay.io/aipcc (if the secret is present)
+        shell: bash
+        env:
+          AIPCC_USER: ${{ secrets.AIPCC_QUAY_BOT_USERNAME }}
+          AIPCC_PASS: ${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}
+        run: |
+          if [[ -z "${AIPCC_USER}" ]]; then
+            echo "AIPCC_QUAY_BOT_USERNAME is not set, skipping quay.io/aipcc login"
+            exit 0
+          fi
+          printf '%s' "${AIPCC_PASS}" | skopeo login --username "${AIPCC_USER}" --password-stdin quay.io
+
+      - name: Commit pylock updates
+        env:
+          FORCE_LOCKFILES_UPGRADE: ${{ env.FORCE_LOCKFILES_UPGRADE }}
+        run: |
+          set -euo pipefail
+
+          make refresh-lock-files INDEX_MODE="$INDEX_MODE"
+
+          git add -u -- ':(glob)**/pylock.toml' ':(glob)**/uv.lock.d/pylock*.toml' ':(glob)**/requirements.*.txt'
+
+          if git diff --cached --quiet; then
+            echo "No pylock changes to commit."
+            exit 0
+          fi
+
+          if git diff --cached -I '^#.*--exclude-newer' --quiet; then
+            echo "Only pylock timestamp changes. Skipping pylock commit."
+            git reset HEAD
+            git checkout -- .
+            exit 0
+          fi
+
+          git commit -m "Update pylock lock files"
+
+      - name: Commit manifest annotation updates
+        run: |
+          set -euo pipefail
+
+          # Regenerate Dockerfiles after lockfile changes.
+          # Lockfiles may bump package versions (e.g. uv) that dockerfile_fragments.py
+          # derives and embeds in Dockerfiles. Without this step, Dockerfiles drift
+          # out of sync and check-generated-code fails.
+          uv run scripts/dockerfile_fragments.py
+          uv run manifests/tools/generate_kustomization.py
+
+          uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant odh
+          uv run python manifests/tools/update_imagestream_annotations_from_pylock.py --variant rhoai
+
+          git add -u
+
+          if git diff --cached --quiet; then
+            echo "No manifest annotation changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update manifest annotations and generated Dockerfiles"
+
+      - name: Prepare Podman temp directory
+        run: mkdir -p "$TMPDIR"
+
+      # RHDS secrets and registry auth must be configured before Install Podman.
+      # install-podman-action runs `sudo podman system reset`, which can leave
+      # root-owned files under $HOME/.config/containers and break a later cp.
+      - name: Install git-crypt
+        uses: ./.github/actions/apt-install
+        with:
+          packages: git-crypt
+
+      - name: Unlock encrypted secrets with git-crypt
+        run: |
+          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
+          trap 'rm -f ./git-crypt-key' EXIT
+          git-crypt unlock ./git-crypt-key
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+
+      - name: Configure registry auth from pull-secret
+        run: |
+          mkdir -p "$HOME/.config/containers"
+          cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
+
+      - name: Mask subscription credentials
+        env:
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
+          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+        run: |
+          if [[ -z "$SUBSCRIPTION_ACTIVATION_KEY" || -z "$SUBSCRIPTION_ORG" ]]; then
+            echo "RHDS variant requires SUBSCRIPTION_ACTIVATION_KEY and SUBSCRIPTION_ORG repository secrets." >&2
+            exit 1
+          fi
+          echo "::add-mask::${SUBSCRIPTION_ACTIVATION_KEY}"
+          echo "::add-mask::${SUBSCRIPTION_ORG}"
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0  # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Podman
+        uses: ./.github/actions/install-podman-action
+        with:
+          platform: linux/amd64
+
+      - name: Commit ODH RPM lockfile updates
+        env:
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
+          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+        run: |
+          set -euo pipefail
+
+          VARIANT=odh
+          CACHE="ghcr.io/${{ github.repository }}/rpm-lockfile-build-cache-${VARIANT}"
+          CACHE="${CACHE,,}"
+          unset SUBSCRIPTION_ACTIVATION_KEY SUBSCRIPTION_ORG
+
+          if [[ "$USE_CACHE" == "true" ]]; then
+            CONTAINER_BUILD_CACHE_ARGS="--cache-from ${CACHE} --cache-to ${CACHE}"
+          else
+            CONTAINER_BUILD_CACHE_ARGS="--cache-to ${CACHE}"
+            podman rmi -f localhost/notebook-rpm-lockfile:latest 2>/dev/null || true
+          fi
+          export CONTAINER_BUILD_CACHE_ARGS
+
+          RPM_INPUTS=(
+            "prefetch-input/${VARIANT}/rpms.in.yaml"
+            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
+          )
+
+          for rpm_input in "${RPM_INPUTS[@]}"; do
+            if [[ ! -f "$rpm_input" ]]; then
+              echo "Skipping missing input: $rpm_input"
+              continue
+            fi
+            echo "=== Generating ODH lockfile from $rpm_input ==="
+            ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
+          done
+
+          for lockfile in \
+            "prefetch-input/${VARIANT}/rpms.lock.yaml" \
+            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml"; do
+            if [[ -f "$lockfile" ]]; then
+              git add "$lockfile"
+            fi
+          done
+
+          if git diff --cached --quiet; then
+            echo "No ODH RPM changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update ODH rpms.lock.yaml lock files"
+
+      - name: Commit RHDS RPM lockfile updates
+        env:
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
+          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+        run: |
+          set -euo pipefail
+
+          VARIANT=rhds
+          CACHE="ghcr.io/${{ github.repository }}/rpm-lockfile-build-cache-${VARIANT}"
+          CACHE="${CACHE,,}"
+
+          if [[ "$USE_CACHE" == "true" ]]; then
+            CONTAINER_BUILD_CACHE_ARGS="--cache-from ${CACHE}"
+          else
+            CONTAINER_BUILD_CACHE_ARGS=""
+            podman rmi -f localhost/notebook-rpm-lockfile:latest 2>/dev/null || true
+          fi
+          export CONTAINER_BUILD_CACHE_ARGS
+
+          RPM_INPUTS=(
+            "prefetch-input/${VARIANT}/rpms.in.yaml"
+            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.in.yaml"
+          )
+
+          for rpm_input in "${RPM_INPUTS[@]}"; do
+            if [[ ! -f "$rpm_input" ]]; then
+              echo "Skipping missing input: $rpm_input"
+              continue
+            fi
+            echo "=== Generating RHDS lockfile from $rpm_input ==="
+            ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input "$rpm_input"
+          done
+
+          for lockfile in \
+            "prefetch-input/${VARIANT}/rpms.lock.yaml" \
+            "codeserver/ubi9-python-3.12/prefetch-input/${VARIANT}/rpms.lock.yaml"; do
+            if [[ -f "$lockfile" ]]; then
+              git add "$lockfile"
+            fi
+          done
+
+          if git diff --cached --quiet; then
+            echo "No RHDS RPM changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update RHDS rpms.lock.yaml lock files"
+
+      - name: Login to GitHub Container Registry for validation
+        if: ${{ github.repository != 'opendatahub-io/notebooks' }}
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0  # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate manifests (make test)
+        run: make test
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$(git rev-list --count "${BRANCH}..HEAD" 2>/dev/null || echo 0)" -eq 0 ]]; then
+            echo "No commits on renewal branch. Skipping PR creation."
+            exit 0
+          fi
+
+          COMMIT_COUNT=$(git rev-list --count "${BRANCH}..HEAD")
+          echo "Pushing ${COMMIT_COUNT} commit(s) on ${RENEWAL_BRANCH}"
+
+          git push -u "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "${RENEWAL_BRANCH}"
+
+          gh label create "automated-full-lockfile-renewal" \
+            --description "Auto-created full lockfile renewal PR (pylock, manifests, ODH/RHDS RPMs)" \
+            --color "0E8A16" \
+            2>/dev/null || true
+
+          gh pr create \
+            --title "GHA: Renew lock files" \
+            --head "${RENEWAL_BRANCH}" \
+            --body "$(cat <<'EOF'
+          Automated lock file renewal in a single PR with separate commits:
+
+          1. Pylock lock files
+          2. Manifest annotations and generated Dockerfiles
+          3. ODH `rpms.lock.yaml` regeneration
+          4. RHDS `rpms.lock.yaml` regeneration
+          EOF
+          )" \
+            --label "automated-full-lockfile-renewal" \
+            --base "$BRANCH"

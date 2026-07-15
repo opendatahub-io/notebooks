@@ -1,13 +1,11 @@
 ---
 # Regenerate rpms.lock.yaml from rpms.in.yaml for ODH (upstream) or RHDS (downstream).
+# Scheduled runs moved to lock-renewal.yaml; this workflow remains for manual fallback.
 name: RPM Lock Files Renewal Action
 
 permissions: {}  # least-privilege: grant per-job below
 
 on:  # yamllint disable-line rule:truthy
-  # Weekly ODH lockfile refresh (no Red Hat subscription required).
-  schedule:
-    - cron: "0 2 * * 3"  # Wednesday 2am UTC
   workflow_dispatch:
     inputs:
       variant:
@@ -30,7 +28,7 @@ on:  # yamllint disable-line rule:truthy
 
 jobs:
   refresh-rpm-lock-files:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 2 * * 3')
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-26.04
     concurrency:
       group: refresh-rpm-lock-files-${{ github.ref }}

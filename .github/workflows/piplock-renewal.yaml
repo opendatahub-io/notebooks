@@ -1,14 +1,11 @@
 ---
-# This GitHub action is meant to update the lock files (pylock.toml)
-name: Lock Files Renewal Action
+# This GitHub action is meant to update the lock files (pylock.toml).
+# Scheduled runs moved to lock-renewal.yaml; this workflow remains for manual fallback.
+name: Lock Files Renewal Action (Pip)
 
 permissions: {}  # least-privilege: grant per-job below
 
 on:  # yamllint disable-line rule:truthy
-  # Triggers the workflow every Wednesday at 1am UTC
-  schedule:
-    - cron: "0 1 * * 3"  # Weekly lockfile update
-    - cron: "0 9,15 * * 1-5"  # Auto-merge check at 9am and 3pm UTC on weekdays
   workflow_dispatch:  # for manual trigger workflow from GH Web UI
     inputs:
       operation:
@@ -44,7 +41,7 @@ on:  # yamllint disable-line rule:truthy
 jobs:
   refresh-lock-files:
     # Only run on Wednesday schedule or manual dispatch with 'update-lockfiles' operation
-    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'update-lockfiles') || (github.event_name == 'schedule' && github.event.schedule == '0 1 * * 3')
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'update-lockfiles'
     runs-on: ubuntu-26.04
     concurrency:
       group: refresh-lock-files-${{ github.ref }}
@@ -162,7 +159,7 @@ jobs:
 
   auto-merge-lockfile-prs:
     # Run on auto-merge schedule or manual dispatch with 'auto-merge' operation
-    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'auto-merge') || (github.event_name == 'schedule' && github.event.schedule == '0 9,15 * * 1-5')
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'auto-merge'
     runs-on: ubuntu-26.04
     permissions:
       pull-requests: write  # github.token is only used for PR approval (line 225)
