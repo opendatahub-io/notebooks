@@ -171,9 +171,14 @@ def main():
         if result:
             artifacts.append(result)
 
+    # Empty input: [] is intentional (e.g. hybrid hermetic=false builds that
+    # fetch generics at build time). Write an empty lockfile and succeed.
+    # Non-empty input that yields zero processed artifacts is still an error.
     if not artifacts:
-        print("Error: No artifacts were processed.", file=sys.stderr)
-        sys.exit(1)
+        if items:
+            print("Error: No artifacts were processed.", file=sys.stderr)
+            sys.exit(1)
+        print("No artifacts listed in input; writing empty lockfile.")
 
     # Write lockfile
     lock_data = {

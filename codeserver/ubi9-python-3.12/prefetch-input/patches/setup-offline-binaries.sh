@@ -53,9 +53,23 @@ fi
 # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 (set in codeserver-offline-env.sh) prevents
 # the @playwright/browser-chromium postinstall from attempting any download.
 
-# Setup VSCode ripgrep from RHOAI Python wheel (ripgrep==15.0.0 in pyproject.toml; prefetched by cachi2 into deps/pip).
-# The patched @vscode/ripgrep postinstall.js copies the binary from RIPGREP_BINARY_PATH into its bin/.
-pip install --no-cache-dir --no-index --find-links "${HERMETO_OUTPUT}/deps/pip" ripgrep
+# Setup VSCode ripgrep from the RH AIPCC wheel (same URLs as requirements.cpu.txt).
+# Prefer a prefetched pip cache when present; otherwise download the arch-specific
+# public-rhai wheel (not bare PyPI — PyPI lacks ppc64le/s390x wheels we need).
+# The patched @vscode/ripgrep postinstall.js copies the binary from RIPGREP_BINARY_PATH.
+if [[ -d "${HERMETO_OUTPUT}/deps/pip" ]] && compgen -G "${HERMETO_OUTPUT}/deps/pip"/ripgrep*.whl > /dev/null; then
+  pip install --no-cache-dir --no-index --find-links "${HERMETO_OUTPUT}/deps/pip" ripgrep
+else
+  case "$(uname -m)" in
+    x86_64)  _rg_arch=x86_64 ;;
+    aarch64) _rg_arch=aarch64 ;;
+    ppc64le) _rg_arch=ppc64le ;;
+    s390x)   _rg_arch=s390x ;;
+    *) echo "ERROR: unsupported arch for ripgrep wheel: $(uname -m)" >&2; exit 1 ;;
+  esac
+  pip install --no-cache-dir \
+    "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.5/cpu-ubi9/ripgrep-15.1.0-2-py3-none-linux_${_rg_arch}.whl"
+fi
 RIPGREP_BINARY_PATH=$(which rg)
 if [[ -z "${RIPGREP_BINARY_PATH}" || ! -x "${RIPGREP_BINARY_PATH}" ]]; then
   echo "ERROR: ripgrep binary not found after pip install (which rg: $(which rg))"
