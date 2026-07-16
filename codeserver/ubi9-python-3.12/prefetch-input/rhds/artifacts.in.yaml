@@ -1,16 +1,11 @@
 ---
 # artifacts.in.yaml - Generic (non-RPM, non-pip) artifacts to prefetch
 #
-# This manifest tells cachi2 to download these URLs before the build starts.
-# They are stored at /cachi2/output/deps/generic/<filename>. The corresponding lock file (artifacts.lock.yaml)
-# is auto-generated and contains integrity hashes for each URL.
+# rhoai-2.25 codeserver builds with hermetic=false and does not prefetch generics
+# (X.org / CentOS GPG). Those are fetched at build time when needed so they do
+# not appear in the Hermeto SBOM (Conforma allowed_package_sources).
+#
+# Kept as an empty manifest so local/Konflux tooling that expects this file still
+# resolves. Re-add URLs here only if hermetic generic prefetch is restored.
 
-input:
-    # Temporary add it here, so it won't break the RHDS build, until we have enough time
-    # to update all .tekton files for all versions.
-    - url: https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official
-
-    # X.org sources for libxkbfile headers (xkbfile.pc). libxkbfile-devel is not in
-    # public UBI repos; pre-hermetic builds compiled these from source (get_code_server_rpm.sh).
-    - url: https://www.x.org/releases/individual/util/util-macros-1.20.2.tar.gz
-    - url: https://www.x.org/releases/individual/lib/libxkbfile-1.1.3.tar.gz
+input: []

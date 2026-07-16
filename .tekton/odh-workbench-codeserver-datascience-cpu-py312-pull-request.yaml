@@ -46,8 +46,11 @@ spec:
     value: .
   - name: enable-cache-proxy
     value: true
+  # rhoai-2.25: hermetic waiver (hermetic_task.hermetic until 2027-05-03). Keep npm
+  # prefetch for the large VS Code tree; install pip / X.org / oc at build time so
+  # Hermeto does not emit Conforma-failing binary-wheel / generic / openshift-clients SBOM attrs.
   - name: hermetic
-    value: true
+    value: false
   - name: build-image-index
     value: true
   - name: build-platforms
@@ -66,15 +69,6 @@ spec:
     value: "rhel-subscription-activation-key-rhoai-devops-for-notebooks-rhel9-6"
   - name: prefetch-input
     value:
-    - path: codeserver/ubi9-python-3.12/prefetch-input/rhds
-      type: rpm
-    - path: codeserver/ubi9-python-3.12/prefetch-input/rhds
-      type: generic
-    - path: codeserver/ubi9-python-3.12
-      type: pip
-      binary:
-        arch: "x86_64,aarch64,ppc64le,s390x"
-      requirements_files: ["requirements.cpu.txt"]
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-selfhost-import-aid
       type: npm
     - path: codeserver/ubi9-python-3.12/prefetch-input/code-server/lib/vscode/.vscode/extensions/vscode-selfhost-test-provider

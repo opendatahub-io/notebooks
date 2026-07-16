@@ -1,9 +1,12 @@
 ############################################################################################
-# Hermetic Dockerfile for codeserver/ubi9-python-3.12
+# Dockerfile for codeserver/ubi9-python-3.12 (rhoai-2.25)
 #
-# RHAIENG-2846: All build steps run without network access. Every dependency
-# (RPMs, npm packages, Python wheels, generic tarballs) is prefetched by cachi2
-# and mounted at /cachi2/output/deps/{rpm,pip,generic}/ during the build.
+# Hybrid (hermetic=false on v2-25 push pipeline):
+#   - npm: still prefetched by cachi2 (/cachi2/output/deps/npm) for the large VS Code tree
+#   - RPMs: installed from UBI/AppStream over the network (dnf)
+#   - Python: uv/pip install from PyPI at build time (avoids hermeto:pip:package:binary)
+#   - X.org util-macros/libxkbfile: downloaded at build time when not prefetched
+#   - oc: curl openshift-client tarball (pre-hermetic path; avoids openshift-clients RPM repo id)
 #
 # Multi-stage layout:
 #   rpm-base  -> builds code-server from prefetched source (release-standalone, all arches)
@@ -49,18 +52,14 @@ ENV GHA_BUILD=${GHA_BUILD}
 ARG NODE_VERSION=22.22.0
 ARG CODESERVER_VERSION=v4.112.0
 
-# [HERMETIC] Import GPG keys for prefetched RPM verification.
-# CentOS key imported only if prefetched (present in Dockerfile.cpu; may be absent in Konflux).
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# [HERMETIC] Enable nodejs:22 module stream so DNF can resolve nodejs-devel
-# and other modular packages. The hermeto repos include module metadata
-# (modules.yaml) because rpms.in.yaml declares moduleEnable: [nodejs:22].
+# Enable nodejs:22 module stream so DNF can resolve nodejs-devel and other modular packages.
 RUN dnf module enable nodejs:22 -y
 
 # libxkbfile-devel is not in public UBI repos. Headers for native-keymap come from
-# prefetched X.org tarballs (install-xkbfile-from-generic.sh); libxkbfile RPM is runtime.
+# X.org sources (install-xkbfile-from-generic.sh); libxkbfile RPM is runtime.
+# curl binary comes from curl-minimal (UBI default); do not install curl (conflicts).
 RUN dnf install -y \
         nodejs nodejs-devel npm \
         jq patch libtool rsync gettext git-lfs gcc-toolset-14 gcc-toolset-14-libatomic-devel \
@@ -68,7 +67,7 @@ RUN dnf install -y \
         krb5-devel libX11-devel libxkbfile && \
     dnf clean all
 
-# [HERMETIC] util-macros + libxkbfile from generic artifacts (replaces libxkbfile-devel RPM).
+# util-macros + libxkbfile from X.org (prefetch if present, else download at build time).
 COPY ${CODESERVER_CONTEXT}/prefetch-input/patches/install-xkbfile-from-generic.sh \
     ${CODESERVER_SOURCE_CODE}/patches/
 RUN chmod +x ${CODESERVER_SOURCE_CODE}/patches/install-xkbfile-from-generic.sh && \
@@ -147,9 +146,8 @@ RUN echo "done" > /tmp/control
 ############################################################################################
 # cpu-base: Runtime base image with OS packages, tools (oc)
 #
-# [HERMETIC] Previously this stage ran `subscription-manager refresh`, `dnf upgrade --refresh`,
-# and `curl` to download the oc client. Now all packages come from prefetched RPMs;
-# the oc client is installed via the openshift-clients RPM (see rpms.in.yaml).
+# Installs OS packages via dnf (network) and oc from the OpenShift client tarball
+# (pre-hermetic path) to avoid openshift-clients RPM repository_id Conforma failures.
 ############################################################################################
 FROM ${BASE_IMAGE} AS cpu-base
 
@@ -158,24 +156,26 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER 0
 
-# [HERMETIC] Import GPG keys for prefetched RPM verification.
-# CentOS key imported only if prefetched (present in Dockerfile.cpu; may be absent in Konflux).
-RUN rpm --import /cachi2/output/deps/generic/RPM-GPG-KEY-CentOS-Official || true
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 
-# [HERMETIC] Enable nodejs:22 module stream (see rpm-base comment).
+# Enable nodejs:22 module stream (see rpm-base comment).
 RUN dnf module enable nodejs:22 -y
 
-# [HERMETIC] Install Node.js runtime from prefetched RPMs.
-RUN dnf install -y nodejs npm && dnf clean all
+RUN dnf install -y nodejs npm tar && dnf clean all
 
-# Install useful OS packages (runtime dependencies); oc from openshift-clients RPM.
-# compat-openssl11 provides libcrypto.so.1.1 for openshift-clients on EL9 (check-payload FIPS scan).
+# Install useful OS packages; oc from mirror.openshift.com client tarball (not RPM).
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-dnf install -y tar perl mesa-libGL skopeo compat-openssl11 openshift-clients
+dnf install -y tar perl mesa-libGL skopeo
 dnf clean all
 rm -rf /var/cache/dnf
+# Install the oc client (same approach as pre-hermetic Dockerfile.cpu)
+curl -fsSL "https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz" \
+    -o /tmp/openshift-client-linux.tar.gz
+tar -xzf /tmp/openshift-client-linux.tar.gz -C /usr/local/bin oc
+rm -f /tmp/openshift-client-linux.tar.gz
+chmod 755 /usr/local/bin/oc
+oc version --client
 EOF
 
 # ppc64le/s390x: install openblas-threads (provides libopenblasp.so.0 at runtime for numpy/scipy)
@@ -354,17 +354,17 @@ ENV PYTHONPATH=/opt/app-root/lib/python3.12/site-packages
 COPY ${CODESERVER_SOURCE_CODE}/uv.lock.d/pylock.${PYLOCK_FLAVOR}.toml ./pylock.toml
 COPY ${CODESERVER_SOURCE_CODE}/requirements.${PYLOCK_FLAVOR}.txt ./requirements.txt
 
-# [HERMETIC] Install all Python packages from cachi2 pip cache (--no-index).
-# /cachi2/output/deps/pip/ contains PyPI wheels and RHOAI ppc64le/s390x wheels.
+# Install Python packages at build time from requirements.cpu.txt (PyPI + RH
+# public-rhai direct URLs for wheel-only pkgs). hermetic=false avoids Hermeto
+# binary-wheel SBOM attributes that fail registry-rhoai-prod.
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 echo "Installing software and packages"
-# UBI base images do not ship uv; bootstrap from prefetched wheel before offline install.
-python3 -m pip install --no-index --find-links /cachi2/output/deps/pip uv
-UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install --no-index \
+python3 -m pip install --upgrade pip
+python3 -m pip install uv
+UV_NO_CACHE=true UV_LINK_MODE=copy UV_PREVIEW_FEATURES=pylock uv pip install \
     --strict --no-deps --no-config --no-progress \
-    --compile-bytecode --index-strategy=unsafe-best-match \
-    --find-links /cachi2/output/deps/pip \
+    --compile-bytecode \
     --requirements=./requirements.txt
 
 # change ownership to default user (all packages were installed as root and has root:root ownership
