@@ -38,7 +38,8 @@ From the repo root:
 This generates:
 
 -   `package.json` — declares dependencies and scripts
--   `package-lock.json` — _locks_ exact dependency versions for reproducible installs
+
+> **Note:** `npm init -y` creates only `package.json`. The `package-lock.json` file is generated later, by the first `npm install` step below.
 
 ----------
 
