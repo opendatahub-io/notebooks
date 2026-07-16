@@ -29,7 +29,7 @@ Install **Node.js + npm**:
 
 ----------
 
-# 3️⃣ Initialize the project (creates package.json **and** package-lock.json)
+# 3️⃣ Initialize the project (creates package.json)
 
 From the repo root:
 
