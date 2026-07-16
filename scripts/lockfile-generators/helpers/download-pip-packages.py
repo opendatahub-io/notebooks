@@ -28,6 +28,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -50,6 +51,10 @@ DOWNLOAD_PROCESS_TIMEOUT_SECONDS = 3600
 # Transient wget failures (Akamai/S3 blips under parallel load) are retried
 # sequentially before the prefetch step fails.
 DOWNLOAD_MAX_PASSES = 3
+# Metadata resolve retries for transient TLS/network blips against PyPI.
+METADATA_FETCH_ATTEMPTS = 3
+METADATA_FETCH_TIMEOUT_SECONDS = 60
+METADATA_FETCH_BACKOFF_SECONDS = 2.0
 
 ARCH_ALIASES: dict[str, list[str]] = {
     "amd64": ["x86_64", "amd64"],
@@ -231,13 +236,30 @@ def should_keep_for_arch(filename: str, arch: str, skip_sdists: bool) -> bool:
     return any(a in platform_tag for a in ARCH_ALIASES.get(arch, [arch]))
 
 
+def _http_get(url: str, *, accept: str) -> bytes:
+    """GET with retries for transient TLS/network failures."""
+    last_error: Exception | None = None
+    for attempt in range(1, METADATA_FETCH_ATTEMPTS + 1):
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"Accept": accept, "User-Agent": "prefetch/1.0"},
+            )
+            with urllib.request.urlopen(req, timeout=METADATA_FETCH_TIMEOUT_SECONDS) as r:
+                return r.read()
+        except Exception as e:
+            last_error = e
+            if attempt < METADATA_FETCH_ATTEMPTS:
+                time.sleep(METADATA_FETCH_BACKOFF_SECONDS * attempt)
+    assert last_error is not None
+    raise last_error
+
+
 def fetch_simple_index_urls(index_url: str, name: str, version: str, wanted_hashes: set[str]) -> list[tuple[str, str, str]]:
     normalized = re.sub(r"[-_.]+", "-", name).lower()
     page_url = f"{index_url.rstrip('/')}/{normalized}/"
     try:
-        req = urllib.request.Request(page_url, headers={"Accept": "text/html", "User-Agent": "prefetch/1.0"})
-        with urllib.request.urlopen(req, timeout=30) as r:
-            html = r.read().decode()
+        html = _http_get(page_url, accept="text/html").decode()
     except Exception as e:
         print(f"  WARN: failed to fetch index page for {name}: {e}", file=sys.stderr)
         return []
@@ -257,9 +279,7 @@ def fetch_simple_index_urls(index_url: str, name: str, version: str, wanted_hash
 def fetch_pypi_urls(name: str, version: str, wanted_hashes: set[str]) -> list[tuple[str, str, str]]:
     url = PYPI_JSON.format(name=name, version=version)
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "prefetch/1.0"})
-        with urllib.request.urlopen(req, timeout=30) as r:
-            data = json.loads(r.read().decode())
+        data = json.loads(_http_get(url, accept="application/json").decode())
     except Exception as e:
         print(f"  WARN: failed to fetch PyPI metadata for {name}: {e}", file=sys.stderr)
         return []
@@ -279,13 +299,29 @@ def fetch_pypi_urls(name: str, version: str, wanted_hashes: set[str]) -> list[tu
     return out
 
 
-def resolve_one(args: tuple) -> list[tuple[str, str, str]]:
-    """Resolve URLs for one package. Called in parallel."""
+def resolve_one(args: tuple) -> tuple[str, str, list[tuple[str, str, str]]]:
+    """Resolve URLs for one package. Called in parallel.
+
+    Prefer the configured index mode, then fall back to the other PyPI endpoint so
+    a transient SSL timeout against the JSON API cannot silently omit a package.
+    """
     name, version, wanted_hashes, index_url, use_simple = args
+    simple_url = index_url if (index_url and "pypi.org" not in index_url) else "https://pypi.org/simple"
+
     if use_simple:
-        return fetch_simple_index_urls(index_url, name, version, wanted_hashes)
-    else:
-        return fetch_pypi_urls(name, version, wanted_hashes)
+        urls = fetch_simple_index_urls(simple_url, name, version, wanted_hashes)
+        if not urls and "pypi.org" in simple_url:
+            print(f"  WARN: simple index empty for {name}=={version}; falling back to PyPI JSON API",
+                  file=sys.stderr)
+            urls = fetch_pypi_urls(name, version, wanted_hashes)
+        return name, version, urls
+
+    urls = fetch_pypi_urls(name, version, wanted_hashes)
+    if not urls:
+        print(f"  WARN: PyPI JSON empty for {name}=={version}; falling back to simple index",
+              file=sys.stderr)
+        urls = fetch_simple_index_urls(simple_url, name, version, wanted_hashes)
+    return name, version, urls
 
 
 def _wget_error_detail(result: subprocess.CompletedProcess[str] | subprocess.CalledProcessError) -> str:
@@ -387,16 +423,33 @@ def main():
 
     print(f"\nPhase 3: Resolving URLs for {len(to_resolve)} packages ({MAX_WORKERS} parallel)...")
 
-    # Phase 3: parallel resolve
+    # Phase 3: parallel resolve — fail hard if a required package has no artifacts.
+    # A silent empty resolve used to leave wheels out of the cache and fail only
+    # later at `uv pip install --no-index` (e.g. defusedxml after PyPI TLS timeout).
     all_files: list[tuple[str, str, str]] = list(direct_urls)
+    unresolved: list[str] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        for urls in executor.map(resolve_one, to_resolve):
+        for name, version, urls in executor.map(resolve_one, to_resolve):
+            if not urls:
+                unresolved.append(f"{name}=={version}")
+                continue
             all_files.extend(urls)
+
+    if unresolved:
+        print(f"\nERROR: failed to resolve {len(unresolved)} package(s) from index:",
+              file=sys.stderr)
+        for pkg in unresolved:
+            print(f"  {pkg}", file=sys.stderr)
+        print("Metadata fetch failed after retries/fallback; re-run prefetch or check network.",
+              file=sys.stderr)
+        sys.exit(1)
 
     # Phase 4: filter by arch and type
     to_download = []
+    kept_after_filter = 0
     for url, filename, sha in all_files:
         if should_keep_for_arch(filename, arch, skip_sdists):
+            kept_after_filter += 1
             dest = out_dir / filename
             if dest.exists():
                 actual = file_sha256(dest)
@@ -407,7 +460,12 @@ def main():
             to_download.append((url, dest, sha))
 
     print(f"  Resolved {len(all_files)} total files from index")
-    print(f"  After arch filter: {len(to_download)} to download ({len(all_files) - len(to_download)} skipped/cached)")
+    print(f"  After arch filter: {kept_after_filter} kept "
+          f"({len(to_download)} to download, {kept_after_filter - len(to_download)} cached)")
+
+    if kept_after_filter == 0 and not direct_urls and to_resolve:
+        print("\nERROR: every resolved artifact was filtered out for this arch.", file=sys.stderr)
+        sys.exit(1)
 
     if not to_download:
         print("\nNothing to download.")
