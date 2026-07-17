@@ -128,6 +128,34 @@ def _warn_on_pylock_version_mismatch_for_packages(package_names: frozenset[str])
     _LOG.warning("\n".join(lines))
 
 
+def _major_minor_from_version(version: str) -> str | None:
+    try:
+        parsed = packaging.version.Version(version)
+    except packaging.version.InvalidVersion:
+        return None
+    return f"{parsed.major}.{parsed.minor}"
+
+
+def _collect_pylock_major_minor_versions() -> dict[str, set[str]]:
+    """Collect major.minor lock pins across all image pylocks keyed by canonical package name."""
+    versions_by_pkg: dict[str, set[str]] = defaultdict(set)
+    for lock_path in _iter_image_pyproject_pylock_files():
+        if not lock_path.is_file():
+            continue
+        doc = tomllib.loads(lock_path.read_text())
+        for pkg in doc.get("packages", []):
+            name = pkg.get("name")
+            version = pkg.get("version")
+            if name is None or version is None:
+                continue
+            major_minor = _major_minor_from_version(version)
+            if major_minor is None:
+                continue
+            canonical_name = packaging.utils.canonicalize_name(name)
+            versions_by_pkg[canonical_name].add(major_minor)
+    return versions_by_pkg
+
+
 def test_dockerfiles_unintended_subscription_manager_pattern():
     """Konflux will not `subscription-manager register --org --activationkey` if the pattern matches.
     Because it is easy to be matched by mistake (e.g. in a string/comment on the same line), add a check.
@@ -357,8 +385,9 @@ def test_image_pyprojects(subtests: pytest_subtests.plugin.SubTests, manifests_d
 def test_image_manifests_version_alignment(
     subtests: pytest_subtests.plugin.SubTests, manifests_directory: pathlib.Path
 ):
-    """Check that the recommended (latest, "N") tag across all imagestreams agrees on package versions."""
+    """Check recommended-tag package versions across imagestreams, allowing lockfile-backed rolling drifts."""
     collected_manifests = []
+    pylock_major_minor_versions = _collect_pylock_major_minor_versions()
     for file in PROJECT_ROOT.glob("**/pyproject.toml"):
         logging.info(file)
         directory = file.parent  # "ubi9-python-3.11"
@@ -423,6 +452,18 @@ def test_image_manifests_version_alignment(
                 assert set(versions) == set(exception[1]), (
                     f"{name} is allowed to have {set(exception[1])} but actually has {set(versions)}. "
                     f"Manifest breakdown: {pprint.pformat(mapping)}"
+                )
+                continue
+            pip_name = packaging.utils.canonicalize_name(manifest_name_to_pip(name))
+            pylock_versions = pylock_major_minor_versions.get(pip_name, set())
+            if len(pylock_versions) > 1 and set(versions).issubset(pylock_versions):
+                _LOG.warning(
+                    "Allowing rolling latest-tag version drift for %s; manifest versions=%s, pylock versions=%s. "
+                    "Manifest breakdown: %s",
+                    name,
+                    sorted(set(versions)),
+                    sorted(pylock_versions),
+                    pprint.pformat(mapping),
                 )
                 continue
             # all hope is lost, the check has failed
