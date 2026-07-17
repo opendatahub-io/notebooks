@@ -74,7 +74,11 @@ pnpm playwright show-trace path/to/trace.zip
 Build the image:
 
 ```shell
-podman build -t workbench-images-tests:latest -f tests/browser/Dockerfile tests/browser/
+podman build \
+  --build-arg PLAYWRIGHT_VERSION="$(python3 scripts/get_playwright_version.py)" \
+  -t workbench-images-tests:latest \
+  -f tests/browser/Dockerfile \
+  tests/browser/
 ```
 
 List available tests:

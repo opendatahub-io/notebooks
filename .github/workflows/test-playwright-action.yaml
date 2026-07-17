@@ -3,16 +3,14 @@ name: Test Playwright Action
 "on":
   workflow_dispatch:
   pull_request:
-    paths:
+    paths: &playwright-action-paths
       - '.github/actions/playwright-test/**'
       - '.github/workflows/test-playwright-action.yaml'
       - 'tests/browser/**'
+      - '.github/workflows/build-browser-tests.yaml'
   push:
     branches: [main, stable, 'rhoai-*']
-    paths:
-      - '.github/actions/playwright-test/**'
-      - '.github/workflows/test-playwright-action.yaml'
-      - 'tests/browser/**'
+    paths: *playwright-action-paths
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -120,10 +118,24 @@ jobs:
         env:
           TEST_IMAGE: ${{ steps.get-image.outputs.image }}
 
+      - name: Build browser tests image
+        id: browser-tests-image
+        run: |
+          set -Eeuxo pipefail
+          IMAGE="localhost/workbench-images-tests:ci"
+          PLAYWRIGHT_VERSION=$(python3 scripts/get_playwright_version.py tests/browser/package.json5)
+          podman build \
+            --build-arg "PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}" \
+            -t "${IMAGE}" \
+            -f tests/browser/Dockerfile \
+            tests/browser
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
       - name: Run Playwright tests
         uses: ./.github/actions/playwright-test
         with:
           test-target: ${{ steps.get-image.outputs.image }}
+          playwright-image: ${{ steps.browser-tests-image.outputs.image }}
           podman-socket: /var/run/podman/podman.sock
           upload-report: 'true'
           artifact-name: playwright-action-test-report

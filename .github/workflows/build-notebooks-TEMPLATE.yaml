@@ -447,11 +447,28 @@ jobs:
       # https://playwright.dev/docs/ci
       # https://playwright.dev/docs/docker
       # opendatahub-io/notebooks#3965: podman storage is configured to have sufficient disk space
-      - name: Run Playwright tests
+      # Build the same image as .github/workflows/build-browser-tests.yaml so codeserver
+      # Playwright runs use baked-in deps (pnpm + Playwright) from tests/browser/Dockerfile.
+      - name: Build browser tests image
+        id: browser-tests-image
         if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' }}
+        run: |
+          set -Eeuxo pipefail
+          IMAGE="localhost/workbench-images-tests:ci"
+          PLAYWRIGHT_VERSION=$(python3 scripts/get_playwright_version.py tests/browser/package.json5)
+          podman build \
+            --build-arg "PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}" \
+            -t "${IMAGE}" \
+            -f tests/browser/Dockerfile \
+            tests/browser
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Run Playwright tests
+        if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' && steps.browser-tests-image.outcome == 'success' }}
         uses: ./.github/actions/playwright-test
         with:
           test-target: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}
+          playwright-image: ${{ steps.browser-tests-image.outputs.image }}
           podman-socket: /var/run/podman/podman.sock
           upload-report: ${{ fromJson(inputs.github).event_name == 'pull_request' }}
           artifact-name: "${{ inputs.target }}_${{ steps.calculated_vars.outputs.BUILD_TYPE }}_${{ steps.calculated_vars.outputs.SANITIZED_PLATFORM }}_playwright-report"
