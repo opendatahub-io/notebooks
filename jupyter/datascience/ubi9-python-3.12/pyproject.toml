@@ -39,6 +39,9 @@ override-dependencies = [
     "urllib3>=2.7.0",
     # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
     "protobuf==6.31.1",
+    # RHOAIENG-75322: kubeflow-training 1.9.3 crashes with kubernetes 36.x
+    # due to openapi_types dict syntax change (dict(str,str) -> dict[str,str])
+    "kubernetes<36",
 ]
 
 [tool.uv.sources]
