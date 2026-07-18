@@ -20,17 +20,17 @@
     playwright: '=1.61.1',
     '@playwright/test': '=1.61.1',
     //
-    testcontainers: '^12.0.3',
+    testcontainers: '^12.0.4',
     '@kubernetes/client-node': '^1.4.0',
-    tslog: '^4.10.2',
-    //
+    tslog: '^5.0.0',
+    // Stay on TS 6.x until typescript-eslint peers allow TS 7 (<6.1.0 today)
     typescript: '^6.0.3',
-    '@types/node': '^26.0.0',
+    '@types/node': '^26.1.1',
     // ESLint with type-aware rules + Playwright plugin (see ADR 0012),
-    eslint: '^10.5.0',
+    eslint: '^10.7.0',
     '@eslint/js': '^10.0.1',
-    'typescript-eslint': '^8.62.0',
-    'eslint-plugin-playwright': '^2.10.4',
+    'typescript-eslint': '^8.64.0',
+    'eslint-plugin-playwright': '^2.10.5',
     //
     jiti: '^2.7.0',
   },

@@ -4,7 +4,7 @@ description: |
   Run Playwright browser tests for workbench images.
 
   Features:
-  - Runs Playwright tests inside the official Microsoft Playwright container
+  - Runs Playwright tests inside the repo's tests/browser image
   - Uses Podman to run the test container with proper isolation
   - Supports testcontainers for container orchestration
   - Uploads test reports as artifacts on pull requests
@@ -12,6 +12,9 @@ description: |
   Requirements:
   - Podman must be installed and running
   - The workbench image must be available in the local Podman storage
+  - Caller must build tests/browser/Dockerfile with
+    `--build-arg PLAYWRIGHT_VERSION=$(python3 scripts/get_playwright_version.py)`
+    and pass playwright-image
   - tests/browser directory must contain the Playwright test configuration
 
 inputs:
@@ -22,12 +25,16 @@ inputs:
     description: 'Path to Podman socket'
     required: false
     default: '/var/run/podman/podman.sock'
-  playwright-version:
-    description: 'Version of the Playwright container to use (e.g., v1.58.1-noble). If not provided, extracted from package.json5'
-    required: false
-    default: ''
+  playwright-image:
+    description: >
+      Playwright runner image built from tests/browser/Dockerfile with
+      --build-arg PLAYWRIGHT_VERSION matching package.json5
+      (e.g. localhost/workbench-images-tests:ci). Tests run from the image
+      (baked deps + ENTRYPOINT). The action verifies the image label
+      org.opendatahub.playwright.version matches package.json5.
+    required: true
   working-directory:
-    description: 'Directory containing the Playwright tests'
+    description: 'Directory containing the Playwright tests (host paths for report mounts)'
     required: false
     default: 'tests/browser'
   upload-report:
@@ -67,81 +74,58 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Determine Playwright version
-      id: playwright-version
+    - name: Verify Playwright image version matches package.json5
       shell: bash
       run: |
         set -Eeuxo pipefail
-        if [[ -n "${INPUT_PLAYWRIGHT_VERSION}" ]]; then
-          echo "version=${INPUT_PLAYWRIGHT_VERSION}" >> "$GITHUB_OUTPUT"
-        else
-          # Extract version from package.json5 (single source of truth)
-          # package.json5 has: "@playwright/test": "=1.59.1"
-          # Container tag format is: v1.59.1-noble
-          PKG_VERSION=$(grep -oP "['\"]@playwright/test['\"]\s*:\s*['\"]=?\K[0-9.]+" "${WORKING_DIRECTORY}/package.json5")
-          if [[ -z "$PKG_VERSION" ]]; then
-            echo "::error::Failed to extract Playwright version from package.json5"
-            exit 1
-          fi
-          echo "version=v${PKG_VERSION}-noble" >> "$GITHUB_OUTPUT"
-          echo "Extracted Playwright version: v${PKG_VERSION}-noble"
+        PKG_VERSION=$(python3 scripts/get_playwright_version.py "${WORKING_DIRECTORY}/package.json5")
+        IMG_VERSION=$(podman inspect --format '{{ index .Config.Labels "org.opendatahub.playwright.version" }}' "${PLAYWRIGHT_IMAGE}")
+        if [[ -z "${IMG_VERSION}" || "${IMG_VERSION}" == "<no value>" ]]; then
+          echo "::error::playwright-image is missing label org.opendatahub.playwright.version; rebuild with --build-arg PLAYWRIGHT_VERSION=${PKG_VERSION}"
+          exit 1
         fi
-      env:
-        INPUT_PLAYWRIGHT_VERSION: ${{ inputs.playwright-version }}
-        WORKING_DIRECTORY: ${{ inputs.working-directory }}
-
-    - name: Determine pnpm version
-      id: pnpm-version
-      shell: bash
-      run: |
-        set -Eeuxo pipefail
-        ver=$(scripts/get-pnpm-version.sh "${WORKING_DIRECTORY}/pnpm-lock.yaml")
-        echo "version=${ver}" >> "$GITHUB_OUTPUT"
-        echo "Resolved pnpm version: ${ver}"
+        if [[ "${IMG_VERSION}" != "${PKG_VERSION}" ]]; then
+          echo "::error::playwright-image label org.opendatahub.playwright.version='${IMG_VERSION}' does not match package.json5 '${PKG_VERSION}'"
+          exit 1
+        fi
+        echo "Playwright version OK: ${PKG_VERSION}"
       env:
         WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        PLAYWRIGHT_IMAGE: ${{ inputs.playwright-image }}
 
     - name: Run Playwright tests
       id: playwright
       shell: bash
       # --ipc=host because Microsoft says so in Playwright docs
       # --net=host because testcontainers connects to the Reaper container's exposed port
-      # we need to pass through the relevant environment variables
-      #  DEBUG configures Node.js debuggers, sets different verbosity as needed
-      #  CI=true is set on every CI nowadays
-      #  PODMAN_SOCK should be mounted to /var/run/docker.sock, other likely mounting locations may not exist (mkdir -p)
-      #  TEST_TARGET is the workbench image the test will run
-      # --volume(s) let us access docker socket and not clobber host's node_modules
+      # Image ENTRYPOINT: pnpm exec playwright test --project=chromium
+      # Mount results/ and playwright-report/ so artifacts land on the host.
       run: |
+        set -Eeuxo pipefail
+        mkdir -p results playwright-report
+        # language=bash
+        args=()
+        if [[ -n "${GREP_PATTERN}" ]]; then
+          args+=(--grep "${GREP_PATTERN}")
+        fi
         podman run \
-          --interactive --rm \
+          --rm \
           --ipc=host \
           --net=host \
           --env "CI=true" \
-          --env "PNPM_CONFIG_fund=false" \
           --env "DEBUG=testcontainers:*" \
           --env "PODMAN_SOCK=/var/run/docker.sock" \
           --env "TEST_TARGET" \
-          --env "GREP_PATTERN" \
-          --env "PNPM_VERSION" \
           --volume "${PODMAN_SOCKET}":/var/run/docker.sock \
-          --volume "${PWD}":/mnt \
-          --volume /mnt/node_modules \
-          "mcr.microsoft.com/playwright:${PLAYWRIGHT_VERSION}" \
-          /bin/bash <<'EOF'
-            set -Eeuxo pipefail
-            cd /mnt
-            npm install -g "pnpm@${PNPM_VERSION}" && pnpm ci
-            pnpm exec playwright test ${GREP_PATTERN:+--grep "$GREP_PATTERN"}
-            exit 0
-        EOF
+          --volume "${PWD}/results":/home/pwuser/tests/browser/results:Z \
+          --volume "${PWD}/playwright-report":/home/pwuser/tests/browser/playwright-report:Z \
+          "${PLAYWRIGHT_IMAGE}" \
+          "${args[@]}"
       working-directory: ${{ inputs.working-directory }}
       env:
-        # Only set TEST_TARGET if provided, otherwise playwright.config.ts uses its default
         TEST_TARGET: ${{ inputs.test-target || '' }}
         PODMAN_SOCKET: ${{ inputs.podman-socket }}
-        PLAYWRIGHT_VERSION: ${{ steps.playwright-version.outputs.version }}
-        PNPM_VERSION: ${{ steps.pnpm-version.outputs.version }}
+        PLAYWRIGHT_IMAGE: ${{ inputs.playwright-image }}
         GREP_PATTERN: ${{ inputs.grep-pattern }}
 
     - name: Stage Playwright JUnit XML

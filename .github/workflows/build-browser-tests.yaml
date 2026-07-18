@@ -42,7 +42,10 @@ jobs:
       - name: Build container image
         id: build
         run: |
+          set -Eeuxo pipefail
+          PLAYWRIGHT_VERSION=$(python3 scripts/get_playwright_version.py "${CONTEXT}/package.json5")
           podman build \
+            --build-arg "PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}" \
             -t "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest-${{ matrix.arch }}" \
             -f "${CONTEXT}/Dockerfile" \
             "${CONTEXT}"
