@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pathlib
+
 import allure
 import pytest
 
@@ -46,6 +48,27 @@ class TestRuntimeImage:
 
         output = output_bytes.decode()
         assert exit_code == 0, f"'feast version' failed: {output}"
+
+    @allure.issue("AIPCC-13675")
+    @allure.description("Force UPB and run protobuf endian/packed roundtrips (catches silent s390x decode bugs).")
+    def test_protobuf_upb_roundtrips(self, runtime_image: conftest.Image) -> None:
+        if "-minimal-" in runtime_image.labels["name"]:
+            pytest.skip("Protobuf/feast stack is not the focus of minimal runtime images.")
+
+        script = pathlib.Path(__file__).resolve().parents[1] / "workbenches" / "jupyterlab" / "protobuf_testunits.py"
+        with docker_utils.running_container(runtime_image.name) as container:
+            docker_utils.container_cp(container, script, "/opt/app-root/src/")
+            exit_code, output_bytes = container.exec(
+                [
+                    "env",
+                    "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=upb",
+                    "python3",
+                    "/opt/app-root/src/protobuf_testunits.py",
+                ]
+            )
+
+        output = output_bytes.decode()
+        assert exit_code == 0, f"protobuf_testunits failed: {output}"
 
     @allure.description("Check that MLflow module imports and core functions are available.")
     def test_mlflow_import(self, runtime_image: conftest.Image) -> None:

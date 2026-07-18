@@ -6,6 +6,8 @@ import unittest
 # Suppress noisy logs from libraries, especially during testing
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 os.environ["KMP_WARNINGS"] = "0"
+# Prefer UPB for feast/protobuf paths (AIPCC-13675); protobuf_testunits.py asserts it.
+os.environ.setdefault("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", "upb")
 
 
 # ruff: noqa: PLC0415 `import` should be at the top-level of a file
