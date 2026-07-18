@@ -12,6 +12,9 @@ has historically broken on s390x (AIPCC-13675), not a pure-Python fallback that
 would give false confidence.
 """
 
+# Image-only deps; not installed in the notebooks repo venv.
+# pyright: reportMissingImports=false, reportMissingModuleSource=false
+
 from __future__ import annotations
 
 import os
