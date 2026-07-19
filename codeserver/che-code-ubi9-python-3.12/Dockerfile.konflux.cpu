@@ -19,13 +19,8 @@ RUN rm -rf /checode-linux-libc/ubi9/extensions/che-commands \
            /checode-linux-libc/ubi9/extensions/che-github-authentication \
            /checode-linux-libc/ubi9/extensions/che-telemetry \
            /checode-linux-libc/ubi9/extensions/che-terminal \
-           /checode-linux-libc/ubi9/extensions/node_modules
-
-# Update branding in product.json
-RUN sed -i \
-    -e 's/"Red Hat OpenShift Dev Spaces with Microsoft Visual Studio Code - Open Source IDE"/"VS Code - Open Source Workbench"/g' \
-    -e 's/"serverApplicationName":"che-code"/"serverApplicationName":"vscode-workbench"/g' \
-    /checode-linux-libc/ubi9/product.json
+           /checode-linux-libc/ubi9/extensions/node_modules \
+           /checode-linux-libc/ubi9/out/media/che-icon.svg
 
 ##########################################################
 # Stage 2: Final image with Python + Kubeflow bridge
