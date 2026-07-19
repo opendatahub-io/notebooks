@@ -1,16 +1,25 @@
-# PoC: Run Dev Spaces che-code in Kubeflow Notebooks
+# Run Dev Spaces che-code in Kubeflow Notebooks
 # Reuses pre-built VS Code binaries from registry.redhat.io/devspaces/code-rhel9
 # instead of building code-server from source (avoids apply-patch.sh native dep patching).
 #
 # Multi-stage build:
-# 1. checode: strip Che-only extensions and update branding
-# 2. ext-builder: compile kubeflow-activity-tracker TypeScript extension
-# 3. final: ubi9/python-312 + NGINX bridge + culler + activity tracker
+# 1. checode: strip Che-only extensions
+# 2. ext-builder: compile activity-tracker extension + patch product.json
+# 3. final: python-312 + NGINX bridge + culler + activity tracker
+#
+# Build context is the repo root (.), not this directory.
+
+#########################
+# configuration args    #
+#########################
+ARG BASE_IMAGE
+ARG CHECODE_IMAGE=registry.redhat.io/devspaces/code-rhel9:3.29@sha256:c9761d88a68b5aa69f4dea88d0d5bd6242fcbe5f271cce1d392f09fb1e3651b5
+ARG NODEJS_IMAGE=registry.access.redhat.com/ubi9/nodejs-22:9.8-1784151010@sha256:0905d5a102059b449b95cf3a926e073e026524e06b132b401c36c9c4f7096e37
 
 ##########################################################
 # Stage 1: Prepare che-code binaries
 ##########################################################
-FROM registry.redhat.io/devspaces/code-rhel9:3.29 AS checode
+FROM ${CHECODE_IMAGE} AS checode
 
 # hadolint ignore=DL3002
 USER root
@@ -33,7 +42,7 @@ RUN rm -rf /checode-linux-libc/ubi9/extensions/che-commands \
 # The RHOAI downstream image (registry.redhat.io/devspaces/code-rhel9) uses
 # UBI9 where the bundled libs work, but the Dockerfile must handle both.
 ##########################################################
-FROM registry.access.redhat.com/ubi9/nodejs-22:latest AS ext-builder
+FROM ${NODEJS_IMAGE} AS ext-builder
 
 ENV CHECODE_CONTEXT=codeserver/che-code-ubi9-python-3.12
 
@@ -53,9 +62,24 @@ RUN node /tmp/patch-product-json.js /tmp/product.json
 ##########################################################
 # Stage 3: Final image with Python + Kubeflow bridge
 ##########################################################
-FROM registry.redhat.io/ubi9/python-312:latest
+FROM ${BASE_IMAGE}
 
 USER root
+
+ENV CHECODE_CONTEXT=codeserver/che-code-ubi9-python-3.12
+
+ARG LABEL_REGISTRY_PREFIX
+ARG LABEL_COMPONENT
+ARG RELEASE
+
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
+      com.redhat.component="${LABEL_COMPONENT}" \
+      io.k8s.display-name="${LABEL_COMPONENT}" \
+      summary="che-code image with python 3.12 based on UBI 9" \
+      description="che-code image with python 3.12 based on UBI 9" \
+      io.k8s.description="che-code image with python 3.12 based on UBI 9" \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
+      version="${RELEASE}"
 
 # Copy pre-built VS Code binaries (with pruned extensions)
 COPY --from=checode /checode-linux-libc/ubi9 /opt/app-root/checode
