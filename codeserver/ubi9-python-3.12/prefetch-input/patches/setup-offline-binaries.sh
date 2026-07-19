@@ -116,8 +116,6 @@ populate_vsix() {
         return
     fi
 
-    require_valid_vsix "${vsix_file}"
-
     echo "Extracting ${ext_name} from $(basename "${vsix_file}")..."
     local tmp_dir
     tmp_dir="$(mktemp -d /tmp/vsix-extract.XXXXXX)"
