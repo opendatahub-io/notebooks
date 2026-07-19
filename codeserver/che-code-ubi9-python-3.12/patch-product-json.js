@@ -10,6 +10,11 @@ d.nameLong = "VS Code - Open Source Workbench";
 d.serverApplicationName = "vscode-workbench";
 d.welcomePageTitle = "VS Code - Open Source";
 d.welcomePageSubtitle = "";
+// Build quality channel ("stable" or "insider"). Without this, VS Code treats
+// the build as Code-OSS and blocks --install-extension for extension-pack members
+// with "not allowed to be updated in the current product quality 'undefined'".
+// See: https://github.com/VSCodium/vscodium/wiki/Product.json
+d.quality = "stable";
 d.configurationDefaults = {
   "security.workspace.trust.enabled": false,
   "security.workspace.trust.startupPrompt": "never",
