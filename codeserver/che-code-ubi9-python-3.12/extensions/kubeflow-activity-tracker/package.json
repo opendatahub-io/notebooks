@@ -19,10 +19,13 @@
     }
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/vscode": "^1.63.0",
-    "typescript": "^7.0.0"
+    "jest-mock-vscode": "^4.0.0",
+    "typescript": "^7.0.0",
+    "vitest": "^3.0.0"
   }
 }

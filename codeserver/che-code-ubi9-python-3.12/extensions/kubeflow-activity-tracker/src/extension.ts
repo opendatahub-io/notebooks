@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import { writeFileSync } from 'fs';
 
-const ACTIVITY_FILE = '/tmp/last-activity';
-const DEBOUNCE_MS = 5000;
+export const ACTIVITY_FILE = '/tmp/last-activity';
+export const DEBOUNCE_MS = 5000;
 
 export function activate(context: vscode.ExtensionContext) {
 	let lastWrite = 0;
