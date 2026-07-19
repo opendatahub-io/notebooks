@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
+PID=""
 
 function start_process() {
     trap stop_process TERM INT
@@ -15,5 +18,7 @@ function start_process() {
 }
 
 function stop_process() {
-    kill -TERM "$PID"
+    if [[ -n "$PID" ]]; then
+        kill -TERM "$PID"
+    fi
 }

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Source utility scripts
 for f in /opt/app-root/bin/utils/*.sh; do source "$f"; done
