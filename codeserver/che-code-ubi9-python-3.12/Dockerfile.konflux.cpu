@@ -4,7 +4,8 @@
 #
 # Multi-stage build:
 # 1. checode: strip Che-only extensions and update branding
-# 2. final: ubi9/python-312 + NGINX bridge + culler + activity tracker
+# 2. ext-builder: compile kubeflow-activity-tracker TypeScript extension
+# 3. final: ubi9/python-312 + NGINX bridge + culler + activity tracker
 
 ##########################################################
 # Stage 1: Prepare che-code binaries
@@ -24,7 +25,30 @@ RUN rm -rf /checode-linux-libc/ubi9/extensions/che-commands \
            /checode-linux-libc/ubi9/out/media/che-icon.svg
 
 ##########################################################
-# Stage 2: Final image with Python + Kubeflow bridge
+# Stage 2: Build activity-tracker extension + patch product.json
+#
+# product.json patching runs here instead of in the checode stage because the
+# upstream ODH che-code image (quay.io/che-incubator/che-code) is based on
+# RHEL 8 (glibc 2.28), but the bundled node + ld_libs/openssl need glibc 2.34.
+# The RHOAI downstream image (registry.redhat.io/devspaces/code-rhel9) uses
+# UBI9 where the bundled libs work, but the Dockerfile must handle both.
+##########################################################
+FROM registry.access.redhat.com/ubi9/nodejs-22:latest AS ext-builder
+
+USER root
+
+# Build kubeflow-activity-tracker extension
+COPY ${CHECODE_CONTEXT}/extensions/kubeflow-activity-tracker/ /tmp/ext/
+WORKDIR /tmp/ext
+RUN npm ci && npm run build
+
+# Patch product.json: update branding + inject configurationDefaults
+COPY --from=checode /checode-linux-libc/ubi9/product.json /tmp/product.json
+COPY ${CHECODE_CONTEXT}/patch-product-json.js /tmp/
+RUN node /tmp/patch-product-json.js /tmp/product.json
+
+##########################################################
+# Stage 3: Final image with Python + Kubeflow bridge
 ##########################################################
 FROM registry.redhat.io/ubi9/python-312:latest
 
@@ -73,8 +97,9 @@ COPY ${CHECODE_CONTEXT}/nginx/api/kernels/access.cgi /opt/app-root/api/kernels/
 COPY ${CHECODE_CONTEXT}/culler-server.py /opt/app-root/bin/
 RUN chmod +x /opt/app-root/api/kernels/access.cgi /opt/app-root/bin/culler-server.py
 
-# Kubeflow activity tracker extension (replaces che-activity-tracker)
-COPY extensions/kubeflow-activity-tracker/ /opt/app-root/checode/extensions/kubeflow-activity-tracker/
+# Kubeflow activity tracker extension (built from TypeScript in ext-builder stage)
+COPY --from=ext-builder /tmp/ext/out/ /opt/app-root/checode/extensions/kubeflow-activity-tracker/out/
+COPY --from=ext-builder /tmp/ext/package.json /opt/app-root/checode/extensions/kubeflow-activity-tracker/
 
 # Entrypoint and utility scripts
 RUN mkdir -p /opt/app-root/bin/utils
