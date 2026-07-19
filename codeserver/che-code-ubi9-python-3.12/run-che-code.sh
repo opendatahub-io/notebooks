@@ -32,12 +32,21 @@ if [[ ! -f "${VSCODE_USER_SETTINGS}" ]]; then
   "workbench.enableExperiments": false,
   "extensions.autoCheckUpdates": false,
   "extensions.autoUpdate": false,
-  "chat.disableAIFeatures": true,
   "security.workspace.trust.enabled": false,
   "security.workspace.trust.startupPrompt": "never"
 }
 SETTINGS_EOF
 fi
+
+# Set DevWorkspace env vars so che-api/che-github-authentication can initialize.
+# Without these, K8sHelper.getDevWorkspaceNamespace() throws and the Device Code Flow
+# command never gets registered. The K8s API calls fail gracefully (no in-cluster config).
+export DEVWORKSPACE_ID="${DEVWORKSPACE_ID:-kubeflow}"
+export DEVWORKSPACE_NAMESPACE="${DEVWORKSPACE_NAMESPACE:-default}"
+export DEVWORKSPACE_NAME="${DEVWORKSPACE_NAME:-workbench}"
+export DEVWORKSPACE_POD_NAME="${DEVWORKSPACE_POD_NAME:-${HOSTNAME}}"
+export DEVWORKSPACE_FLATTENED_DEVFILE="${DEVWORKSPACE_FLATTENED_DEVFILE:-/dev/null}"
+export PROJECTS_ROOT="${PROJECTS_ROOT:-${HOME}}"
 
 # Set LD_LIBRARY_PATH for bundled native libs (libnode, libbrotli, libz, libssl, libcrypto)
 CHECODE_DIR=/opt/app-root/checode

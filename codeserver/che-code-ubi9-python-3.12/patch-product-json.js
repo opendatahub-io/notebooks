@@ -18,7 +18,6 @@ d.configurationDefaults = {
   "workbench.enableExperiments": false,
   "extensions.autoCheckUpdates": false,
   "extensions.autoUpdate": false,
-  "chat.disableAIFeatures": true,
 };
 
 fs.writeFileSync(path, JSON.stringify(d));
