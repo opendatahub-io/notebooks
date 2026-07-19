@@ -35,6 +35,9 @@ RUN rm -rf /checode-linux-libc/ubi9/extensions/che-commands \
 ##########################################################
 FROM registry.access.redhat.com/ubi9/nodejs-22:latest AS ext-builder
 
+ENV CHECODE_CONTEXT=codeserver/che-code-ubi9-python-3.12
+
+# hadolint ignore=DL3002
 USER root
 
 # Build kubeflow-activity-tracker extension
