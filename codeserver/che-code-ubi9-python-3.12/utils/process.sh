@@ -6,7 +6,7 @@ PID=""
 function start_process() {
     trap stop_process TERM INT
 
-    echo "Running command: $@"
+    echo "Running command: $*"
     "$@" &
 
     PID=$!
