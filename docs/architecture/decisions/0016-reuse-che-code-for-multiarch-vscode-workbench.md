@@ -73,6 +73,42 @@ for behavior outside DevWorkspaces:
 | **Replace** | che-activity-tracker | Tracks 7 VS Code events for idle culling but calls machine-exec. Replaced with kubeflow-activity-tracker that writes `/tmp/last-activity` instead |
 | **Remove** | che-commands, che-telemetry, che-terminal | Throw on activation or send data to nonexistent backends |
 
+### VS Code extensions from Open VSX
+
+Extensions are sourced from [Open VSX](https://open-vsx.org/), not the
+Microsoft Visual Studio Marketplace. The Marketplace license restricts
+redistribution to products built on the VS Code OSS codebase that are
+distributed by Microsoft — che-code does not qualify. Open VSX is the same
+registry that code-server and che-code use as their default extension gallery.
+
+The `.vsix` files are committed to the repository via git-lfs (same pattern as
+the existing code-server image) and installed at image build time using
+`server-main.js --install-extension`. They are universal (architecture-
+independent) and work on all four target architectures.
+
+| Extension | Version | Source |
+|---|---|---|
+| ms-python.python | 2026.4.0 | Python language support (Jedi IntelliSense) |
+| ms-python.vscode-python-envs | 1.36.0 | Python environment manager |
+| ms-toolsai.jupyter | 2025.9.1 | Jupyter notebook support |
+| ms-toolsai.jupyter-renderers | 1.3.0 | Output renderers (plotly, etc.) |
+| ms-toolsai.jupyter-keymap | 1.1.2 | Jupyter keybindings |
+| ms-toolsai.vscode-jupyter-cell-tags | 0.1.9 | Cell tag metadata |
+| ms-toolsai.vscode-jupyter-slideshow | 0.1.6 | Slideshow cell types |
+
+**Not included:**
+
+- **ms-python.vscode-pylance** — proprietary license, not published on Open VSX.
+  The Python extension falls back to Jedi for IntelliSense.
+- **ms-python.debugpy** — platform-specific native binaries with no ppc64le or
+  s390x builds on Open VSX. Users on amd64/arm64 can install it at runtime from
+  the gallery.
+
+Each extension declares an `engines.vscode` constraint (e.g., `^1.95.0`). The
+che-code 3.29 image ships VS Code 1.116.0 (verified from its `product.json`),
+which satisfies all constraints. When updating extensions, verify that the new
+version's engine constraint is compatible with the pinned che-code tag.
+
 ### Product-level defaults via `configurationDefaults`
 
 VS Code's `product.json` `configurationDefaults` field sets defaults before user

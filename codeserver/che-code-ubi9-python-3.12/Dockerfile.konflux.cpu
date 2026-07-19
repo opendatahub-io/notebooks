@@ -128,6 +128,22 @@ RUN chmod +x /opt/app-root/api/kernels/access.cgi /opt/app-root/bin/culler-serve
 COPY --from=ext-builder /tmp/ext/out/ /opt/app-root/checode/extensions/kubeflow-activity-tracker/out/
 COPY --from=ext-builder /tmp/ext/package.json /opt/app-root/checode/extensions/kubeflow-activity-tracker/
 
+# VS Code extensions from Open VSX (universal .vsix, all arches)
+# Sourced from https://open-vsx.org/ — NOT the MS Marketplace (license prohibits redistribution)
+COPY ${CHECODE_CONTEXT}/utils/*.vsix /tmp/vsix/
+ENV CHECODE_DIR=/opt/app-root/checode
+RUN LD_LIBRARY_PATH="${CHECODE_DIR}/ld_libs/core:${CHECODE_DIR}/ld_libs/openssl" \
+    "${CHECODE_DIR}/node" "${CHECODE_DIR}/out/server-main.js" \
+        --install-extension /tmp/vsix/ms-python.python-2026.4.0.vsix \
+        --install-extension /tmp/vsix/ms-python.vscode-python-envs-1.36.0.vsix \
+        --install-extension /tmp/vsix/ms-toolsai.jupyter-2025.9.1.vsix \
+        --install-extension /tmp/vsix/ms-toolsai.jupyter-renderers-1.3.0.vsix \
+        --install-extension /tmp/vsix/ms-toolsai.jupyter-keymap-1.1.2.vsix \
+        --install-extension /tmp/vsix/ms-toolsai.vscode-jupyter-cell-tags-0.1.9.vsix \
+        --install-extension /tmp/vsix/ms-toolsai.vscode-jupyter-slideshow-0.1.6.vsix \
+        --extensions-dir "${CHECODE_DIR}/extensions" \
+    && rm -rf /tmp/vsix
+
 # Entrypoint and utility scripts
 RUN mkdir -p /opt/app-root/bin/utils
 COPY ${CHECODE_CONTEXT}/run-che-code.sh ${CHECODE_CONTEXT}/run-nginx.sh /opt/app-root/bin/
