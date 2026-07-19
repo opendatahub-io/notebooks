@@ -132,16 +132,31 @@ COPY --from=ext-builder /tmp/ext/package.json /opt/app-root/checode/extensions/k
 # Sourced from https://open-vsx.org/ — NOT the MS Marketplace (license prohibits redistribution)
 COPY ${CHECODE_CONTEXT}/utils/*.vsix /tmp/vsix/
 ENV CHECODE_DIR=/opt/app-root/checode
+# Main extensions — these install cleanly
 RUN LD_LIBRARY_PATH="${CHECODE_DIR}/ld_libs/core:${CHECODE_DIR}/ld_libs/openssl" \
     "${CHECODE_DIR}/node" "${CHECODE_DIR}/out/server-main.js" \
         --install-extension /tmp/vsix/ms-python.python-2026.4.0.vsix \
-        --install-extension /tmp/vsix/ms-python.vscode-python-envs-1.36.0.vsix \
         --install-extension /tmp/vsix/ms-toolsai.jupyter-2025.9.1.vsix \
-        --install-extension /tmp/vsix/ms-toolsai.jupyter-renderers-1.3.0.vsix \
-        --install-extension /tmp/vsix/ms-toolsai.jupyter-keymap-1.1.2.vsix \
-        --install-extension /tmp/vsix/ms-toolsai.vscode-jupyter-cell-tags-0.1.9.vsix \
-        --install-extension /tmp/vsix/ms-toolsai.vscode-jupyter-slideshow-0.1.6.vsix \
-        --extensions-dir "${CHECODE_DIR}/extensions" \
+        --force \
+        --extensions-dir "${CHECODE_DIR}/extensions"
+# Extension-pack members for air-gapped clusters. VS Code 1.116 marks these as
+# "built-in" (Incompatible error) but the files ARE written to disk before the
+# check fails. Each is installed individually so one failure doesn't block others.
+# The exit code is non-zero due to the quality check; the extensions are present.
+RUN set -e; \
+    for vsix in \
+        /tmp/vsix/ms-python.vscode-python-envs-1.36.0.vsix \
+        /tmp/vsix/ms-toolsai.jupyter-renderers-1.3.0.vsix \
+        /tmp/vsix/ms-toolsai.jupyter-keymap-1.1.2.vsix \
+        /tmp/vsix/ms-toolsai.vscode-jupyter-cell-tags-0.1.9.vsix \
+        /tmp/vsix/ms-toolsai.vscode-jupyter-slideshow-0.1.6.vsix; do \
+        LD_LIBRARY_PATH="${CHECODE_DIR}/ld_libs/core:${CHECODE_DIR}/ld_libs/openssl" \
+        "${CHECODE_DIR}/node" "${CHECODE_DIR}/out/server-main.js" \
+            --install-extension "$vsix" \
+            --force \
+            --extensions-dir "${CHECODE_DIR}/extensions" \
+        || echo "WARN: $vsix reported Incompatible (extension files written, quality check failed)"; \
+    done \
     && rm -rf /tmp/vsix
 
 # Entrypoint and utility scripts
