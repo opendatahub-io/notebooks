@@ -13,7 +13,7 @@
 # configuration args    #
 #########################
 ARG BASE_IMAGE
-ARG CHECODE_IMAGE=registry.redhat.io/devspaces/code-rhel9:3.29@sha256:c9761d88a68b5aa69f4dea88d0d5bd6242fcbe5f271cce1d392f09fb1e3651b5
+ARG CHECODE_IMAGE
 ARG NODEJS_IMAGE=registry.access.redhat.com/ubi9/nodejs-22:9.8-1784151010@sha256:0905d5a102059b449b95cf3a926e073e026524e06b132b401c36c9c4f7096e37
 
 ##########################################################
@@ -24,10 +24,14 @@ FROM ${CHECODE_IMAGE} AS checode
 # hadolint ignore=DL3002
 USER root
 
-# Remove Che-only extensions (audit: these either throw or conflict outside DevWorkspaces)
-# Keep che-github-authentication: provides Device Code Flow for GitHub/Copilot auth
-# (built-in github-authentication uses OAuth redirect which can't work in a container)
+# Remove Che-only extensions that throw or conflict outside DevWorkspaces.
+# Keep only: che-api (required by che-github-authentication),
+#            che-github-authentication (provides Device Code Flow for Copilot auth)
 RUN rm -rf /checode-linux-libc/ubi9/extensions/che-commands \
+           /checode-linux-libc/ubi9/extensions/che-port \
+           /checode-linux-libc/ubi9/extensions/che-activity-tracker \
+           /checode-linux-libc/ubi9/extensions/che-resource-monitor \
+           /checode-linux-libc/ubi9/extensions/che-remote \
            /checode-linux-libc/ubi9/extensions/che-telemetry \
            /checode-linux-libc/ubi9/extensions/che-terminal \
            /checode-linux-libc/ubi9/extensions/node_modules \
@@ -95,8 +99,25 @@ RUN dnf install -y \
         nginx \
         nss_wrapper \
         gettext \
+        skopeo \
     && dnf clean all \
     && rm -rf /var/cache/dnf
+
+# oc client (same install pattern as the code-server image)
+RUN curl -sL "https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz" \
+    | tar xz -C /usr/local/bin oc kubectl
+
+# VS Code Jupyter extension requires jupyter_client + notebook + kernelspec
+# to run cells without falling back to a broken pip install (RHAIENG-6157)
+RUN pip install --no-cache-dir jupyter-client notebook ipykernel
+
+# Register the workbench Python explicitly so Jupyter can discover it on
+# architectures where Python Environment Tools (pet) is unavailable.
+RUN python3 -m ipykernel install \
+        --prefix=/opt/app-root \
+        --name=app-root \
+        --display-name='Python (app-root)'
+ENV JUPYTER_PATH=/opt/app-root/share/jupyter
 
 # NGINX environment (matching existing code-server image conventions)
 ENV NGINX_APP_ROOT=/opt/app-root \

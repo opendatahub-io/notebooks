@@ -28,6 +28,8 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.onDidChangeTerminalState,
 		vscode.window.onDidChangeActiveTerminal,
 	];
+	// The manifest enables terminalDataWriteEvent because this proposed API is
+	// needed to refresh activity after the terminal's first interaction.
 	const terminalDataEvent = (vscode.window as typeof vscode.window & {
 		onDidWriteTerminalData?: vscode.Event<unknown>;
 	}).onDidWriteTerminalData;
