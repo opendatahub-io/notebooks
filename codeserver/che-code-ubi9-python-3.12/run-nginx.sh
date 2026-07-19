@@ -4,14 +4,14 @@ source /opt/app-root/etc/generate_container_user
 
 set -euo pipefail
 
-source ${NGINX_CONTAINER_SCRIPTS_PATH}/common.sh
+source "${NGINX_CONTAINER_SCRIPTS_PATH}/common.sh"
 
 # disabled, only used to source nginx files in user directory
 #process_extending_files ${NGINX_APP_ROOT}/src/nginx-start ${NGINX_CONTAINER_SCRIPTS_PATH}/nginx-start
 
-if [ ! -v NGINX_LOG_TO_VOLUME -a -v NGINX_LOG_PATH ]; then
-    /bin/ln -sf /dev/stdout ${NGINX_LOG_PATH}/access.log
-    /bin/ln -sf /dev/stderr ${NGINX_LOG_PATH}/error.log
+if [ ! -v NGINX_LOG_TO_VOLUME ] && [ -v NGINX_LOG_PATH ]; then
+    /bin/ln -sf /dev/stdout "${NGINX_LOG_PATH}/access.log"
+    /bin/ln -sf /dev/stderr "${NGINX_LOG_PATH}/error.log"
 fi
 
 # substitute NB_PREFIX in proxy configuration if it exists
