@@ -48,10 +48,10 @@ hermetically for ppc64le and s390x:
 
 Create a new image `codeserver/che-code-ubi9-python-3.12/` that:
 
-1. **Copies pre-built VS Code binaries** from the multi-stage
-   `registry.redhat.io/devspaces/code-rhel9:3.29` image into a
-   `ubi9/python-312` base — no npm install, no source compilation, no
-   `apply-patch.sh`.
+1. **Copies pre-built VS Code binaries** from a che-code image into a
+   Python base — no npm install, no source compilation, no
+   `apply-patch.sh`. The source image differs by build track (see
+   "Dual-source che-code image" below).
 
 2. **Bridges the Kubeflow contract** with NGINX (port 8888 → 3100) and a
    Python culler server (port 8080) that serves the `/api/kernels/` idle
@@ -108,6 +108,30 @@ Each extension declares an `engines.vscode` constraint (e.g., `^1.95.0`). The
 che-code 3.29 image ships VS Code 1.116.0 (verified from its `product.json`),
 which satisfies all constraints. When updating extensions, verify that the new
 version's engine constraint is compatible with the pinned che-code tag.
+
+### Dual-source che-code image
+
+The `CHECODE_IMAGE` build-arg selects the source of VS Code binaries:
+
+| Track | Image | Arches | Auth |
+|---|---|---|---|
+| **ODH** | `quay.io/che-incubator/che-code:7.120.0` | amd64, arm64 | Public (no subscription) |
+| **RHOAI** | `registry.redhat.io/devspaces/code-rhel9:3.29` | amd64, arm64, ppc64le, s390x | Red Hat subscription |
+
+Both images ship VS Code 1.116.0. The upstream `che-incubator/che-code` is the
+open-source build from [che-incubator/che-code](https://github.com/che-incubator/che-code);
+the downstream `devspaces/code-rhel9` is the Red Hat product build with IBM
+architecture support added by the Dev Spaces team.
+
+ODH builds cannot pull from `registry.redhat.io` (requires a Red Hat
+subscription that GitHub Actions runners don't have), so the ODH track uses
+the public upstream image. ppc64le and s390x are not available in the upstream
+image but are acceptable gaps for the ODH community build.
+
+The tag mapping is not obvious: upstream `7.120.0` corresponds to downstream
+`3.29` — both ship VS Code 1.116.0. To find the matching upstream tag for a
+new downstream release, check the VS Code version in each image's
+`product.json` (see AGENTS.md for the procedure).
 
 ### Product-level defaults via `configurationDefaults`
 

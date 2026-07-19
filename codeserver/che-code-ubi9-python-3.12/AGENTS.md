@@ -87,21 +87,52 @@ prohibits redistribution outside Microsoft VS Code products).
 
 ### Updating the che-code base image
 
-When bumping `CHECODE_IMAGE` to a new DevSpaces tag:
+There are two che-code images to keep in sync — they must ship the same
+VS Code version:
 
-1. Update the tag and digest in `Dockerfile.konflux.cpu` (line `ARG CHECODE_IMAGE=...`).
-   Get the new manifest list digest:
+| Track | Config file | Image |
+|---|---|---|
+| ODH | `build-args/cpu.conf` | `quay.io/che-incubator/che-code` (public, amd64+arm64) |
+| RHOAI | `build-args/konflux.cpu.conf` | `registry.redhat.io/devspaces/code-rhel9` (subscription, +ppc64le+s390x) |
+
+**Tag mapping is not 1:1.** Upstream tags (e.g., `7.120.0`) don't match
+downstream tags (e.g., `3.29`). Match them by VS Code version:
+
+```bash
+# Check upstream VS Code version (on a linux machine):
+podman run --rm --entrypoint cat \
+    quay.io/che-incubator/che-code:7.120.0 \
+    /checode-linux-libc/ubi9/product.json | python3 -c "
+import json, sys; print(json.load(sys.stdin)['version'])"
+# → 1.116.0
+
+# Check downstream VS Code version:
+podman run --rm --entrypoint cat \
+    registry.redhat.io/devspaces/code-rhel9:3.29 \
+    /checode-linux-libc/ubi9/product.json | python3 -c "
+import json, sys; print(json.load(sys.stdin)['version'])"
+# → 1.116.0  (must match)
+```
+
+**Steps to bump:**
+
+1. Find the new downstream tag from the DevSpaces release.
+2. Check its VS Code version (command above).
+3. Find the upstream tag with the same VS Code version — check recent tags
+   on [quay.io/che-incubator/che-code](https://quay.io/repository/che-incubator/che-code?tab=tags).
+4. Get manifest list digests for both:
 
    ```bash
-   skopeo inspect --raw docker://registry.redhat.io/devspaces/code-rhel9:NEW_TAG | \
+   skopeo inspect --raw docker://IMAGE:TAG | \
        python3 -c "import hashlib,sys; print('sha256:'+hashlib.sha256(sys.stdin.buffer.read()).hexdigest())"
    ```
 
-2. Check the new VS Code version (step 1 above) and verify all extension
-   engine constraints still hold.
-
-3. Re-audit the Che extensions — new DevSpaces releases may add or remove
-   extensions from `/checode-linux-libc/ubi9/extensions/`.
+5. Update `CHECODE_IMAGE` in both `build-args/cpu.conf` and
+   `build-args/konflux.cpu.conf` with `tag@sha256:digest`.
+6. Verify all extension engine constraints still hold (see step 2 in
+   "VS Code extensions: update procedure" above).
+7. Re-audit the Che extensions — new releases may add or remove extensions
+   from `/checode-linux-libc/ubi9/extensions/`.
 
 ### Build-args
 
