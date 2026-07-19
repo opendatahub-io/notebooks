@@ -1,0 +1,177 @@
+# 17. Universal PyPI-first JupyterLab workbench and pipeline runtime
+
+Date: 2026-07-19
+
+## Status
+
+Proposed
+
+## Context
+
+The RHOAI notebooks project currently ships JupyterLab workbenches and pipeline
+runtime images as separate container images. Workbenches include JupyterLab and
+its extensions; runtimes include the Elyra bootstrapper and ML framework
+libraries but no interactive IDE. This separation means:
+
+1. **Two images per variant** (minimal, datascience, pytorch, tensorflow) — one
+   workbench and one runtime — doubling build, test, and CVE remediation effort.
+2. **Both share 90% of their dependency tree.** The workbench adds JupyterLab;
+   the runtime adds Elyra's bootstrapper. The ML framework libraries (when
+   present) are identical.
+3. **Version drift between pairs.** A workbench might ship pandas 2.3 while its
+   corresponding runtime ships pandas 2.2, causing subtle pipeline failures
+   when notebooks run differently in the runtime environment.
+
+Meanwhile, the `opendatahub-io/distributed-workloads` project already ships
+**universal training images** (ADR #0013, RHOAIENG-35690) that serve as both
+JupyterLab workbenches and Kubeflow Training runtimes from a single image. The
+switching mechanism is a 5-line entrypoint script that checks `NOTEBOOK_ARGS`.
+
+Both existing image families (workbenches and runtimes) use AIPCC base images
+with the Red Hat AI Python Index as their default pip source. RHAISTRAT-1482
+("AIPCC Notebook Upstream Inclusion") defines a complementary "community" track
+where images use stock UBI with upstream PyPI, trading AIPCC supply chain
+certification for broader package availability — particularly important on
+ppc64le and s390x where the Red Hat AI Python Index has limited coverage.
+
+The spike in PR #3740 (RHAIENG-5334) demonstrated that workbenches can be built
+from UBI9 + PyPI with no AIPCC base images. The che-code wrapper (ADR #0016,
+PR #4106) established the pattern for PyPI-first workbenches. This ADR extends
+that pattern to JupyterLab and merges the workbench/runtime split.
+
+## Decision
+
+### Create a universal JupyterLab image that is both a workbench and a pipeline runtime
+
+A new image at `jupyter/universal/ubi9-python-3.12/` that:
+
+1. **Starts from stock UBI9 Python** — `registry.access.redhat.com/ubi9/python-312:latest`,
+   not an AIPCC base image. pip and uv are configured to use `https://pypi.org/simple/`.
+
+2. **Installs JupyterLab from PyPI** — `jupyterlab`, `jupyter-server`,
+   `jupyter-server-proxy`, `jupyter-server-terminals`, `jupyterlab-git`,
+   `nbdime`, `nbgitpuller`.
+
+3. **Installs pipeline runtime dependencies from PyPI** — `ipykernel`,
+   `papermill`, `nbclient`, `nbconvert`, `nbformat`, `minio`, `urllib3`.
+
+4. **Includes the Elyra bootstrapper** — copied from
+   `prefetch-input/elyra-v4.3.1/elyra/kfp/bootstrapper.py` to
+   `/opt/app-root/bin/utils/bootstrapper.py`, matching the path used by
+   existing runtime images. Includes the empty `requirements-elyra.txt` and
+   `pip.conf` files that prevent Elyra's processor from falling into remote
+   install code paths.
+
+5. **Uses a dual-mode entrypoint** (`entrypoint-universal.sh`) following the
+   distributed-workloads pattern:
+
+   ```bash
+   if [ -n "${NOTEBOOK_ARGS:-}" ]; then
+       exec sh -lc 'exec start-notebook.sh ${NOTEBOOK_ARGS}'
+   fi
+   exec "${@:-start-notebook.sh}"
+   ```
+
+   - **Workbench mode:** The Kubeflow Notebooks controller sets `NOTEBOOK_ARGS`
+     (e.g., `--ServerApp.token='' --ServerApp.base_url=/notebook/ns/name`). The
+     entrypoint starts JupyterLab via `start-notebook.sh`.
+   - **Runtime mode:** Elyra / AI Pipelines overrides the container command to
+     run `bootstrapper.py`, which executes the notebook or Python script. The
+     entrypoint runs whatever command was passed.
+   - **Default:** If neither `NOTEBOOK_ARGS` is set nor a command is provided,
+     falls back to `start-notebook.sh` (interactive JupyterLab).
+
+6. **Does not install ML frameworks.** Users `pip install torch`,
+   `tensorflow[and-cuda]`, or other libraries at runtime. PyTorch wheels bundle
+   their own CUDA/ROCm runtime libraries, so a CPU-only base image works for
+   GPU workloads (validated on L40S and MI300X in the #3740 spike).
+
+### Non-hermetic initially, Konflux hermetic to follow
+
+The Dockerfile is named `Dockerfile.konflux.cpu` following the standard naming
+convention, but the initial build is non-hermetic (`pip install` from PyPI at
+build time). A follow-up iteration will add Cachi2/Hermeto prefetch and
+lockfiles to make it hermetic while retaining PyPI as the package source.
+
+### Relationship to existing images
+
+| Image | Package source | Workbench? | Runtime? | ML frameworks |
+|---|---|---|---|---|
+| `jupyter/minimal` (existing) | AIPCC index | Yes | No | No |
+| `jupyter/datascience` (existing) | AIPCC index | Yes | No | Yes (pre-installed) |
+| `runtimes/minimal` (existing) | AIPCC index | No | Yes | No |
+| `runtimes/pytorch` (existing) | AIPCC index | No | Yes | Yes (pre-installed) |
+| `jupyter/universal` (new) | PyPI | Yes | Yes | No (user installs) |
+| `distributed-workloads` universal | AIPCC index | Yes | Yes (Training) | Yes (pre-installed) |
+
+The universal image does not replace existing AIPCC-based images. It is a
+complementary offering for the community/upstream track where users want full
+PyPI access and are willing to install their own ML frameworks.
+
+## Consequences
+
+### Positive
+
+- **One image instead of two.** A single universal image replaces a
+  workbench + runtime pair. Users develop in the same environment their
+  pipelines execute in, eliminating version drift between interactive and
+  batch execution.
+
+- **Simpler maintenance.** One Dockerfile, one set of dependencies, one CVE
+  remediation pipeline per variant instead of two.
+
+- **Full PyPI access.** Users can `pip install` any package. No
+  missing-package errors from a curated index. Particularly valuable on
+  ppc64le/s390x.
+
+- **Smaller base image.** Stock UBI9 Python (~300 MB) vs AIPCC base image
+  (~800-1200 MB). The universal image installs only what it needs.
+
+- **GPU support without GPU images.** PyTorch and TensorFlow wheels from PyPI
+  bundle CUDA/ROCm runtime libraries. Users install the framework they need at
+  workbench startup — no need for separate CUDA/ROCm image variants.
+
+### Negative / risks
+
+- **No AIPCC supply chain guarantees.** Packages come from upstream PyPI, not
+  Red Hat-built wheels. This is the explicit trade-off of the community track
+  per RHAISTRAT-1482.
+
+- **Larger runtime footprint when frameworks are installed.** Users who
+  `pip install torch` download ~2 GB at workbench startup. This is slower than
+  pre-installed frameworks but is a one-time cost per PVC (installs persist
+  across restarts).
+
+- **Elyra bootstrapper is copied, not packaged.** The bootstrapper.py file is
+  copied from the repo's `prefetch-input/` tree rather than installed as a pip
+  package. This matches the existing runtime image pattern but means
+  bootstrapper updates require a manual file copy.
+
+- **Not hermetic yet.** The initial Dockerfile fetches from PyPI at build time.
+  Supply chain security for production (Konflux Conforma policies) requires
+  hermetic builds with prefetched dependencies. This is planned as a follow-up.
+
+### Non-goals
+
+- Replacing AIPCC-based workbench or runtime images. Those serve the Red Hat
+  certified supply chain track. This image serves the community/upstream track.
+
+- Pre-installing ML frameworks. The universal image is intentionally minimal.
+  Users choose their framework and version at runtime.
+
+- GPU-specific image variants. PyTorch/TensorFlow bundle their own CUDA/ROCm
+  libraries. A single CPU base image covers all GPU accelerators.
+
+## References
+
+- PR: (to be created)
+- ADR #0016: [Reuse Dev Spaces che-code for multiarch VS Code workbench](0016-reuse-che-code-for-multiarch-vscode-workbench.md)
+- ADR #0013 (architecture-context): Universal training image — dual-purpose
+  workbench and training runtime (RHOAIENG-35690, RHAISTRAT-44)
+- RHAISTRAT-1482: AIPCC Notebook Upstream Inclusion
+  ([refinement doc](https://docs.google.com/document/d/1i1Xv24RIe13wmUibdTF_QIcvBOvnYL4tzQTVU6XsZ7U/edit))
+- PR #3740: PyPI-configured minimal workbench images (spike, RHAIENG-5334)
+- [Red Hat AI Python Package Index](https://access.redhat.com/articles/7137881)
+- distributed-workloads universal images:
+  `opendatahub-io/distributed-workloads/images/universal/training/`
+- DSP → AI Pipelines rename: RHOAIENG-31866
