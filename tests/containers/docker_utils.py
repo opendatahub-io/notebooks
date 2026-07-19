@@ -123,12 +123,22 @@ def running_container(
 
 
 def container_cp(
-    container: Container, src: str | PathLike, dst: str, user: int | None = None, group: int | None = None
+    container: Container | testcontainers.core.container.DockerContainer,
+    src: str | PathLike,
+    dst: str,
+    user: int | None = None,
+    group: int | None = None,
 ) -> None:
     """
-    Copies a directory into a container
+    Copies a file or directory into a container.
+
+    Accepts either a docker-py ``Container`` or a testcontainers ``DockerContainer``
+    (the latter is unwrapped — ``DockerContainer`` has no ``put_archive``).
     From https://stackoverflow.com/questions/46390309/how-to-copy-a-file-from-host-to-container-using-docker-py-docker-sdk
     """
+    if isinstance(container, testcontainers.core.container.DockerContainer):
+        container = container.get_wrapped_container()
+
     fh = io.BytesIO()
     tar = tarfile.open(fileobj=fh, mode="w:gz")
 

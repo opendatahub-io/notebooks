@@ -25,15 +25,25 @@ class TestWorkbenchImage:
                 # check explicitly that we can connect to the ide running in the workbench
                 with subtests.test("Attempting to connect to the workbench..."):
                     container._connect()
-                unittests = pathlib.Path(__file__).parent / "libraries_testunits.py"
-                docker_utils.container_cp(container.get_wrapped_container(), unittests, "/opt/app-root/src/")
+                src_dir = pathlib.Path(__file__).parent
+                for script in ("libraries_testunits.py", "protobuf_testunits.py"):
+                    docker_utils.container_cp(
+                        container.get_wrapped_container(),
+                        src_dir / script,
+                        "/opt/app-root/src/",
+                    )
                 ecode, stdout = container.exec(
                     [
                         "env",
                         f"IMAGE={jupyterlab_datascience_image.labels['name']}",
+                        # Force UPB before any google.protobuf import (see protobuf_testunits.py).
+                        "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=upb",
                         "bash",
                         "-c",
-                        "python3 /opt/app-root/src/libraries_testunits.py",
+                        (
+                            "python3 /opt/app-root/src/libraries_testunits.py"
+                            " && python3 /opt/app-root/src/protobuf_testunits.py"
+                        ),
                     ]
                 )
                 stdout_decoded = stdout.decode()
