@@ -231,6 +231,8 @@ error = "ErrNotDynLinked"
 files = [
     # when code-server is not installed from rpm, the exclusion below won't apply
     "/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg",
+    # che-code wrapper: pre-built ripgrep from Dev Spaces che-code image (RHOAIENG-58626)
+    "/opt/app-root/checode/node_modules/@vscode/ripgrep/bin/rg",
 ]
 dirs = [
     # VS Code 1.112+ @anthropic-ai/sandbox-runtime seccomp BPF loaders (no crypto)
