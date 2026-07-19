@@ -1,0 +1,72 @@
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/python-312:latest
+
+FROM ${BASE_IMAGE}
+
+ARG RELEASE
+ARG LABEL_REGISTRY_PREFIX
+ARG LABEL_COMPONENT
+
+LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
+      summary="Universal JupyterLab workbench and pipeline runtime" \
+      description="Dual-purpose image: interactive JupyterLab workbench (when NOTEBOOK_ARGS is set) or headless pipeline runtime (when command is overridden). Python packages installed from PyPI." \
+      io.k8s.display-name="Universal JupyterLab | CPU | Python 3.12" \
+      io.k8s.description="Universal JupyterLab workbench and pipeline runtime" \
+      authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+      release="${RELEASE}"
+
+USER 0
+
+# Override pip/uv config to use PyPI directly (not AIPCC index)
+RUN printf '[global]\nindex-url = https://pypi.org/simple/\n' > /opt/app-root/pip.conf && \
+    printf '[[index]]\nurl = "https://pypi.org/simple/"\n' > /opt/app-root/uv.toml
+
+# libatomic is needed by ROCm PyTorch wheels when users pip install torch
+RUN dnf install -y --nodocs libatomic && \
+    dnf clean all
+
+# JupyterLab workbench packages
+RUN pip install --no-cache-dir \
+    jupyterlab \
+    jupyter-server \
+    jupyter-server-proxy \
+    jupyter-server-terminals \
+    jupyterlab-git \
+    nbdime \
+    nbgitpuller
+
+# Pipeline runtime packages (Elyra bootstrapper deps + papermill)
+RUN pip install --no-cache-dir \
+    ipykernel \
+    papermill \
+    nbclient \
+    nbconvert \
+    nbformat \
+    minio \
+    urllib3
+
+# Workbench utilities
+COPY jupyter/utils/process.sh /opt/app-root/bin/utils/process.sh
+COPY jupyter/utils/jupyter_server_config.py /opt/app-root/etc/jupyter/jupyter_server_config.py
+COPY jupyter/minimal/ubi9-python-3.12/start-notebook.sh /opt/app-root/bin/start-notebook.sh
+
+# Elyra pipeline runtime utilities
+COPY prefetch-input/elyra-v4.3.1/elyra/kfp/bootstrapper.py /opt/app-root/bin/utils/bootstrapper.py
+COPY jupyter/universal/ubi9-python-3.12/utils/pip.conf /opt/app-root/bin/utils/pip.conf
+COPY jupyter/universal/ubi9-python-3.12/utils/requirements-elyra.txt /opt/app-root/bin/utils/requirements-elyra.txt
+
+# Universal entrypoint: workbench mode (NOTEBOOK_ARGS) or runtime mode (command override)
+COPY jupyter/universal/ubi9-python-3.12/entrypoint-universal.sh /opt/app-root/bin/entrypoint-universal.sh
+
+RUN chmod +x /opt/app-root/bin/start-notebook.sh \
+             /opt/app-root/bin/entrypoint-universal.sh \
+             /opt/app-root/bin/utils/process.sh && \
+    chmod -R g+w /opt/app-root
+
+ENV SHELL=/bin/bash \
+    ELYRA_INSTALL_PACKAGES="false"
+
+USER 1001
+WORKDIR /opt/app-root/src
+
+ENTRYPOINT ["/opt/app-root/bin/entrypoint-universal.sh"]
+CMD ["start-notebook.sh"]

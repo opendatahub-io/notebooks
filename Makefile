@@ -237,6 +237,10 @@ runtime-cuda-tensorflow-ubi9-python-$(RELEASE_PYTHON_VERSION):
 codeserver-ubi9-python-$(RELEASE_PYTHON_VERSION):
 	$(call image,$@,codeserver/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
 
+.PHONY: jupyter-universal-ubi9-python-$(RELEASE_PYTHON_VERSION)
+jupyter-universal-ubi9-python-$(RELEASE_PYTHON_VERSION):
+	$(call image,$@,jupyter/universal/ubi9-python-$(RELEASE_PYTHON_VERSION)/Dockerfile.konflux.cpu)
+
 ####################################### Buildchain for AMD Python using UBI9 #######################################
 .PHONY: rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION)
 rocm-jupyter-minimal-ubi9-python-$(RELEASE_PYTHON_VERSION):
