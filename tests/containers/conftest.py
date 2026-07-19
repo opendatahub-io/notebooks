@@ -272,6 +272,15 @@ def codeserver_image(image: str) -> Image:
     return image_metadata
 
 
+@pytest.fixture(scope="session")
+def classic_codeserver_image(codeserver_image: Image) -> Image:
+    """Skip unless the image is a classic code-server workbench (not che-code)."""
+    name = codeserver_image.labels["name"]
+    if "-che-code-" in name:
+        pytest.skip(f"Image {name!r} is che-code, not classic code-server")
+    return codeserver_image
+
+
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_sessionstart
 def pytest_sessionstart(session: Session) -> None:
     # first preflight check: ping the Docker API

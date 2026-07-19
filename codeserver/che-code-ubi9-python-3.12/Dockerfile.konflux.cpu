@@ -95,6 +95,10 @@ RUN dnf install -y \
     && dnf clean all \
     && rm -rf /var/cache/dnf
 
+# VS Code Jupyter extension requires jupyter_client + notebook + kernelspec
+# to run cells without falling back to a broken pip install (RHAIENG-6157)
+RUN pip install --no-cache-dir jupyter-client notebook ipykernel
+
 # NGINX environment (matching existing code-server image conventions)
 ENV NGINX_APP_ROOT=/opt/app-root \
     NGINX_CONF_PATH=/etc/nginx/nginx.conf \
