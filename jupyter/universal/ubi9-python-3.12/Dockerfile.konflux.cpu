@@ -50,7 +50,7 @@ COPY jupyter/utils/jupyter_server_config.py /opt/app-root/etc/jupyter/jupyter_se
 COPY jupyter/minimal/ubi9-python-3.12/start-notebook.sh /opt/app-root/bin/start-notebook.sh
 
 # Elyra pipeline runtime utilities
-COPY prefetch-input/elyra-v4.3.1/elyra/kfp/bootstrapper.py /opt/app-root/bin/utils/bootstrapper.py
+COPY jupyter/universal/ubi9-python-3.12/utils/bootstrapper.py /opt/app-root/bin/utils/bootstrapper.py
 COPY jupyter/universal/ubi9-python-3.12/utils/pip.conf /opt/app-root/bin/utils/pip.conf
 COPY jupyter/universal/ubi9-python-3.12/utils/requirements-elyra.txt /opt/app-root/bin/utils/requirements-elyra.txt
 
