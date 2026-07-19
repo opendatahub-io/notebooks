@@ -92,8 +92,13 @@ RUN dnf install -y \
         nginx \
         nss_wrapper \
         gettext \
+        skopeo \
     && dnf clean all \
     && rm -rf /var/cache/dnf
+
+# oc client (same install pattern as the code-server image)
+RUN curl -sL "https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz" \
+    | tar xz -C /usr/local/bin oc kubectl
 
 # VS Code Jupyter extension requires jupyter_client + notebook + kernelspec
 # to run cells without falling back to a broken pip install (RHAIENG-6157)
