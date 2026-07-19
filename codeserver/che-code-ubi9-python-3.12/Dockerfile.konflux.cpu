@@ -1,0 +1,99 @@
+# PoC: Run Dev Spaces che-code in Kubeflow Notebooks
+# Reuses pre-built VS Code binaries from registry.redhat.io/devspaces/code-rhel9
+# instead of building code-server from source (avoids apply-patch.sh native dep patching).
+#
+# Multi-stage build:
+# 1. checode: strip Che-only extensions and update branding
+# 2. final: ubi9/python-312 + NGINX bridge + culler + activity tracker
+
+##########################################################
+# Stage 1: Prepare che-code binaries
+##########################################################
+FROM registry.redhat.io/devspaces/code-rhel9:3.29 AS checode
+
+USER root
+
+# Remove Che-only extensions (audit: these either throw or conflict outside DevWorkspaces)
+RUN rm -rf /checode-linux-libc/ubi9/extensions/che-commands \
+           /checode-linux-libc/ubi9/extensions/che-github-authentication \
+           /checode-linux-libc/ubi9/extensions/che-telemetry \
+           /checode-linux-libc/ubi9/extensions/che-terminal
+
+# Update branding in product.json
+RUN sed -i \
+    -e 's/"Red Hat OpenShift Dev Spaces with Microsoft Visual Studio Code - Open Source IDE"/"VS Code - Open Source Workbench"/g' \
+    -e 's/"serverApplicationName":"che-code"/"serverApplicationName":"vscode-workbench"/g' \
+    /checode-linux-libc/ubi9/product.json
+
+##########################################################
+# Stage 2: Final image with Python + Kubeflow bridge
+##########################################################
+FROM registry.redhat.io/ubi9/python-312:latest
+
+USER root
+
+# Copy pre-built VS Code binaries (with pruned extensions)
+COPY --from=checode /checode-linux-libc/ubi9 /opt/app-root/checode
+# Overwrite with patched product.json (branding + configurationDefaults)
+COPY --from=ext-builder /tmp/product.json /opt/app-root/checode/product.json
+
+# Runtime deps: nginx (reverse proxy), nss_wrapper (OpenShift UID), gettext (envsubst)
+# curl-minimal is already in the base image; httpd replaced by Python culler-server.py
+RUN dnf install -y \
+        nginx \
+        nss_wrapper \
+        gettext \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
+
+# NGINX environment (matching existing code-server image conventions)
+ENV NGINX_APP_ROOT=/opt/app-root \
+    NGINX_CONF_PATH=/etc/nginx/nginx.conf \
+    NGINX_DEFAULT_CONF_PATH=/opt/app-root/etc/nginx.default.d \
+    NGINX_CONTAINER_SCRIPTS_PATH=/usr/share/container-scripts/nginx \
+    NGINX_LOG_PATH=/var/log/nginx
+
+# NGINX root overlay (nginxconf.sed, generate_container_user, passwd.template, common.sh)
+# The root/ tree mirrors the filesystem: root/opt/app-root/... → /opt/app-root/...
+COPY ${CHECODE_CONTEXT}/nginx/root/opt/app-root/ /opt/app-root/
+COPY ${CHECODE_CONTEXT}/nginx/root/usr/ /usr/
+
+# Apply sed-based nginx.conf modifications (port 8888, worker_processes, etc.)
+RUN sed -i -f /opt/app-root/nginxconf.sed /etc/nginx/nginx.conf
+
+# NGINX http-level config (upstream, log format, WebSocket map)
+RUN mkdir -p /opt/app-root/etc/nginx.d
+COPY ${CHECODE_CONTEXT}/nginx/httpconf/ /opt/app-root/etc/nginx.d/
+
+# NGINX server-level config templates (proxy rules)
+RUN mkdir -p /opt/app-root/etc/nginx.default.d
+COPY ${CHECODE_CONTEXT}/nginx/serverconf/ /opt/app-root/etc/nginx.default.d/
+
+# Culler: Python HTTP server + CGI script (replaces httpd)
+RUN mkdir -p /opt/app-root/api/kernels
+COPY ${CHECODE_CONTEXT}/nginx/api/kernels/access.cgi /opt/app-root/api/kernels/
+COPY ${CHECODE_CONTEXT}/culler-server.py /opt/app-root/bin/
+RUN chmod +x /opt/app-root/api/kernels/access.cgi /opt/app-root/bin/culler-server.py
+
+# Kubeflow activity tracker extension (replaces che-activity-tracker)
+COPY extensions/kubeflow-activity-tracker/ /opt/app-root/checode/extensions/kubeflow-activity-tracker/
+
+# Entrypoint and utility scripts
+RUN mkdir -p /opt/app-root/bin/utils
+COPY ${CHECODE_CONTEXT}/run-che-code.sh ${CHECODE_CONTEXT}/run-nginx.sh /opt/app-root/bin/
+COPY ${CHECODE_CONTEXT}/utils/ /opt/app-root/bin/utils/
+RUN chmod +x /opt/app-root/bin/*.sh
+
+# Ensure writable dirs for NGINX/httpd under non-root
+RUN mkdir -p /var/log/nginx /var/lib/nginx/tmp /run \
+    && chown -R 1001:0 /var/log/nginx /var/lib/nginx /etc/nginx /run \
+    && chmod -R g+rwX /var/log/nginx /var/lib/nginx /etc/nginx /run \
+    && chown -R 1001:0 /opt/app-root \
+    && chmod -R g+rwX /opt/app-root
+
+ENV HOME=/opt/app-root/src
+WORKDIR /opt/app-root/src
+EXPOSE 8888
+USER 1001
+
+CMD ["/opt/app-root/bin/run-che-code.sh"]
