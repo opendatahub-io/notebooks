@@ -18,6 +18,27 @@ echo "[{\"id\":\"che-code\",\"name\":\"che-code\",\"last_activity\":\"$(date -Is
 # Custom prompt
 echo 'PS1="\[\e[34;1m\]\u:\w \$ \[\e[0m\]"' >> "${HOME}/.bashrc"
 
+# VS Code user settings (only written on first start, not overwritten on restart)
+VSCODE_DATA_DIR="${HOME}/.vscode-server"
+VSCODE_USER_SETTINGS_DIR="${VSCODE_DATA_DIR}/data/User"
+VSCODE_USER_SETTINGS="${VSCODE_USER_SETTINGS_DIR}/settings.json"
+if [[ ! -f "${VSCODE_USER_SETTINGS}" ]]; then
+    mkdir -p "${VSCODE_USER_SETTINGS_DIR}"
+    cat > "${VSCODE_USER_SETTINGS}" << 'SETTINGS_EOF'
+{
+  "python.defaultInterpreterPath": "/opt/app-root/bin/python3",
+  "telemetry.telemetryLevel": "off",
+  "telemetry.enableTelemetry": false,
+  "workbench.enableExperiments": false,
+  "extensions.autoCheckUpdates": false,
+  "extensions.autoUpdate": false,
+  "chat.disableAIFeatures": true,
+  "security.workspace.trust.enabled": false,
+  "security.workspace.trust.startupPrompt": "never"
+}
+SETTINGS_EOF
+fi
+
 # Set LD_LIBRARY_PATH for bundled native libs (libnode, libbrotli, libz, libssl, libcrypto)
 CHECODE_DIR=/opt/app-root/checode
 if [[ -d "${CHECODE_DIR}/ld_libs/core" ]]; then
