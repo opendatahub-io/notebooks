@@ -24,25 +24,10 @@ RUN printf '[global]\nindex-url = https://pypi.org/simple/\n' > /opt/app-root/pi
 RUN dnf install -y --nodocs libatomic && \
     dnf clean all
 
-# JupyterLab workbench packages
-RUN pip install --no-cache-dir \
-    jupyterlab \
-    jupyter-server \
-    jupyter-server-proxy \
-    jupyter-server-terminals \
-    jupyterlab-git \
-    nbdime \
-    nbgitpuller
-
-# Pipeline runtime packages (Elyra bootstrapper deps + papermill)
-RUN pip install --no-cache-dir \
-    ipykernel \
-    papermill \
-    nbclient \
-    nbconvert \
-    nbformat \
-    minio \
-    urllib3
+# JupyterLab + pipeline runtime packages
+COPY jupyter/universal/ubi9-python-3.12/requirements.cpu.txt /tmp/requirements.cpu.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.cpu.txt && \
+    rm /tmp/requirements.cpu.txt
 
 # Workbench utilities
 COPY jupyter/utils/process.sh /opt/app-root/bin/utils/process.sh

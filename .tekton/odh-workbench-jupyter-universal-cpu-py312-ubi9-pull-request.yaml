@@ -51,6 +51,11 @@ spec:
     value: jupyter/universal/ubi9-python-3.12/build-args/cpu.conf
   - name: hermetic
     value: 'false'
+  - name: prefetch-input
+    value:
+    - path: jupyter/universal/ubi9-python-3.12
+      type: pip
+      requirements_files: [requirements.cpu.txt]
   taskRunSpecs:
   - pipelineTaskName: build-images
     stepSpecs:
