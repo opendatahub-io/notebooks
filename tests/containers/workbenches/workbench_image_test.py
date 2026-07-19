@@ -19,7 +19,7 @@ import testcontainers.core.docker_client
 import testcontainers.core.network
 import testcontainers.core.waiting_utils
 
-from tests.containers import docker_utils, kubernetes_utils, podman_machine_utils
+from tests.containers import conftest, docker_utils, kubernetes_utils, podman_machine_utils
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -151,7 +151,7 @@ class TestWorkbenchImage:
 
     @pytest.mark.codeserver
     @allure.issue("RHAIENG-5652")
-    def test_nginx_no_open_redirect(self, subtests: pytest_subtests.SubTests, classic_codeserver_image: Image) -> None:
+    def test_nginx_no_open_redirect(self, subtests: pytest_subtests.SubTests, codeserver_image: Image) -> None:
         """CWE-601 regression: return 302 rules must emit relative Location headers (FIND-011).
 
         A forged Host header must not appear in the Location response header.
@@ -159,7 +159,12 @@ class TestWorkbenchImage:
         redirect_paths = ["/", "/codeserver"]
         forged_host = "evil.example"
 
-        with WorkbenchContainer(image=classic_codeserver_image.name, user=1000, group_add=[0]) as container:
+        if codeserver_image.workbench_type is not conftest.WorkbenchType.CODESERVER:
+            pytest.skip(
+                f"Open-redirect test is specific to classic code-server NGINX rules ({codeserver_image.workbench_type})"
+            )
+
+        with WorkbenchContainer(image=codeserver_image.name, user=1000, group_add=[0]) as container:
             container.start(wait_for_readiness=True)
             port = int(container.get_exposed_port(container.port))
 

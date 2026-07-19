@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import enum
 import logging
 import os
 import platform
@@ -20,6 +21,28 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
     from pytest import ExitCode, Metafunc, Parser, Session
+
+
+class WorkbenchType(enum.StrEnum):
+    JUPYTER = "jupyter"
+    CODESERVER = "codeserver"
+    CHE_CODE = "che-code"
+    OTHER = "other"
+
+    @property
+    def is_vscode(self) -> bool:
+        return self in (WorkbenchType.CODESERVER, WorkbenchType.CHE_CODE)
+
+
+def classify_workbench(label_name: str) -> WorkbenchType:
+    if "-che-code-" in label_name:
+        return WorkbenchType.CHE_CODE
+    if "-code-server-" in label_name or "-codeserver-" in label_name:
+        return WorkbenchType.CODESERVER
+    if "-jupyter-" in label_name:
+        return WorkbenchType.JUPYTER
+    return WorkbenchType.OTHER
+
 
 SECURITY_OPTION_ROOTLESS = "name=rootless"
 TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE"
@@ -47,6 +70,10 @@ class Image:
     labels: dict[str, str]
     # Env from image config when available (local inspect or skopeo); used when source_location is missing
     env: dict[str, str] | None = None
+    workbench_type: WorkbenchType = WorkbenchType.OTHER
+
+    def __post_init__(self):
+        self.workbench_type = classify_workbench(self.labels.get("name", ""))
 
     @classmethod
     def from_docker(cls, image: docker.models.images.Image, name: str):
@@ -124,14 +151,11 @@ def get_image_metadata(image: str) -> Image:
 
 
 def skip_if_not_workbench_image(image: str) -> Image:
-    """Skip unless the image is JupyterLab or code-server (RStudio is no longer in this repo)."""
+    """Skip unless the image is JupyterLab or a VS Code workbench."""
     image_metadata = get_image_metadata(image)
 
-    ide_server_label_fragments = ("-code-server-", "-codeserver-", "-che-code-", "-jupyter-")
-    if not any(ide in image_metadata.labels["name"] for ide in ide_server_label_fragments):
-        pytest.skip(
-            f"Image {image} does not have any of '{ide_server_label_fragments=} in {image_metadata.labels['name']=}'"
-        )
+    if image_metadata.workbench_type is WorkbenchType.OTHER:
+        pytest.skip(f"Image {image} is not a workbench (label name={image_metadata.labels.get('name')!r})")
 
     return image_metadata
 
@@ -259,26 +283,11 @@ def datascience_image(image: str) -> Image:
 
 @pytest.fixture(scope="session")
 def codeserver_image(image: str) -> Image:
-    """Skip unless the image is a code-server workbench.
-
-    ODH labels use "code-server" (e.g. "odh-notebook-code-server-ubi9-python-3.12"),
-    RHOAI/RHDS labels use "codeserver" (e.g. "rhoai/odh-workbench-codeserver-datascience-cpu-py312-rhel9").
-    """
+    """Skip unless the image is any VS Code workbench (code-server or che-code)."""
     image_metadata = skip_if_not_workbench_image(image)
-    name = image_metadata.labels["name"]
-    if "-code-server-" not in name and "-codeserver-" not in name and "-che-code-" not in name:
-        pytest.skip(f"Image {image} does not have '-code-server-', '-codeserver-', or '-che-code-' in {name!r}")
-
+    if not image_metadata.workbench_type.is_vscode:
+        pytest.skip(f"Image {image} is {image_metadata.workbench_type}, not a VS Code workbench")
     return image_metadata
-
-
-@pytest.fixture(scope="session")
-def classic_codeserver_image(codeserver_image: Image) -> Image:
-    """Skip unless the image is a classic code-server workbench (not che-code)."""
-    name = codeserver_image.labels["name"]
-    if "-che-code-" in name:
-        pytest.skip(f"Image {name!r} is che-code, not classic code-server")
-    return codeserver_image
 
 
 # https://docs.pytest.org/en/latest/reference/reference.html#pytest.hookspec.pytest_sessionstart
