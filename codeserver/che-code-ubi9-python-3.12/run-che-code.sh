@@ -54,7 +54,7 @@ if [[ -d "${CHECODE_DIR}/ld_libs/core" ]]; then
     export LD_LIBRARY_PATH="${CHECODE_DIR}/ld_libs/core${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 fi
 if [[ -d "${CHECODE_DIR}/ld_libs/openssl" ]]; then
-    export LD_LIBRARY_PATH="${CHECODE_DIR}/ld_libs/openssl:$LD_LIBRARY_PATH"
+    export LD_LIBRARY_PATH="${CHECODE_DIR}/ld_libs/openssl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 fi
 
 # Detect bind address
