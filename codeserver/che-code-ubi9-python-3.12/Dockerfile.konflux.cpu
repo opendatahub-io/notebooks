@@ -11,6 +11,7 @@
 ##########################################################
 FROM registry.redhat.io/devspaces/code-rhel9:3.29 AS checode
 
+# hadolint ignore=DL3002
 USER root
 
 # Remove Che-only extensions (audit: these either throw or conflict outside DevWorkspaces)
