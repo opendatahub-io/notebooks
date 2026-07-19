@@ -18,7 +18,8 @@ USER root
 RUN rm -rf /checode-linux-libc/ubi9/extensions/che-commands \
            /checode-linux-libc/ubi9/extensions/che-github-authentication \
            /checode-linux-libc/ubi9/extensions/che-telemetry \
-           /checode-linux-libc/ubi9/extensions/che-terminal
+           /checode-linux-libc/ubi9/extensions/che-terminal \
+           /checode-linux-libc/ubi9/extensions/node_modules
 
 # Update branding in product.json
 RUN sed -i \
