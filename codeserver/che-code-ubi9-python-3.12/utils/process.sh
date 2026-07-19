@@ -7,13 +7,13 @@ function start_process() {
     "$@" &
 
     PID=$!
-    wait $PID
+    wait "$PID"
     trap - TERM INT
-    wait $PID
+    wait "$PID"
     STATUS=$?
-    exit $STATUS
+    exit "$STATUS"
 }
 
 function stop_process() {
-    kill -TERM $PID
+    kill -TERM "$PID"
 }
