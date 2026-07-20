@@ -43,6 +43,9 @@ spec:
   - name: build-platforms
     value:
     - linux-d160-m4xlarge/amd64
+    - linux-d160-m4xlarge/arm64
+    - linux/ppc64le
+    - linux/s390x
   - name: dockerfile
     value: jupyter/universal/ubi9-python-3.12/Dockerfile.konflux.cpu
   - name: path-context
@@ -55,6 +58,8 @@ spec:
     value:
     - path: jupyter/universal/ubi9-python-3.12
       type: pip
+      binary:
+        arch: x86_64,aarch64,ppc64le,s390x
       requirements_files: [requirements.cpu.txt, requirements-build.cpu.txt]
   taskRunSpecs:
   - pipelineTaskName: build-images
