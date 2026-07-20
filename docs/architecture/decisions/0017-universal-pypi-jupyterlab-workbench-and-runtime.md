@@ -106,6 +106,30 @@ RPM dependencies (libatomic) are not yet prefetched — the build runs with
 `hermetic: 'false'` while pip deps are still prefetched. Full hermeticity
 (including RPMs) is a follow-up.
 
+### Build strategy: clean Dockerfile, Konflux-transparent prefetch
+
+Unlike existing AIPCC-based images, the Dockerfile has **no references to
+`/cachi2/output`**, no `--no-index --find-links` flags, and no conditional
+hermetic/non-hermetic branches. It is a plain `pip install -r requirements.txt`
+that works identically in local builds, GHA, and Konflux.
+
+- **Local and GHA builds** are non-hermetic: pip resolves and downloads from
+  PyPI at build time. No prefetch step is needed.
+- **Konflux builds** are hermetic for pip: the `prefetch-dependencies` task
+  downloads all wheels/sdists listed in the requirements files before the build
+  starts. Konflux transparently interposes `--no-index --find-links` via
+  environment variables and volume mounts — the Dockerfile does not need to
+  know about this.
+
+This is a deliberate departure from the existing images, which embed
+`/cachi2/output` paths and `--no-index` flags directly in their Dockerfiles.
+The goal is a single Dockerfile that is readable, testable locally without
+any prefetch setup, and still passes Konflux Conforma policies.
+
+A local hermetic "Konflux-like" build method (reproducing the prefetch +
+interposition locally) will be developed separately, without adding cachi2
+paths to the Dockerfile.
+
 ### Relationship to existing images
 
 | Image | Package source | Workbench? | Runtime? | ML frameworks |
