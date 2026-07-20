@@ -20,7 +20,6 @@ Usage:
 
 import io
 import json
-import re
 import sys
 import tarfile
 import tomllib
@@ -28,19 +27,30 @@ import urllib.request
 import zipfile
 
 from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
+
+# Normalized name → /pypi/{name}/json payload (avoids a second metadata fetch
+# when a package was just resolved via get_latest_version).
+_pypi_project_cache: dict[str, dict] = {}
 
 
-def normalize(name: str) -> str:
-    return re.sub(r"[-_.]+", "-", name).lower()
-
-
-def get_latest_version(name: str) -> str | None:
+def fetch_pypi_project(name: str) -> dict | None:
+    key = canonicalize_name(name)
+    if key in _pypi_project_cache:
+        return _pypi_project_cache[key]
     try:
         resp = urllib.request.urlopen(f"https://pypi.org/pypi/{name}/json", timeout=10)
         data = json.loads(resp.read())
-        return data["info"]["version"]
-    except Exception:
+    except Exception as e:
+        print(f"  WARN: pypi {name}: {e}", file=sys.stderr)
         return None
+    _pypi_project_cache[key] = data
+    return data
+
+
+def get_latest_version(name: str) -> str | None:
+    data = fetch_pypi_project(name)
+    return data["info"]["version"] if data else None
 
 
 def is_root_pyproject(path: str) -> bool:
@@ -51,22 +61,30 @@ def is_root_pyproject(path: str) -> bool:
 
 def read_pyproject_meta(content: bytes) -> tuple[list[str], list[str]]:
     toml = tomllib.loads(content.decode())
-    build_requires = toml.get("build-system", {}).get("requires", []) or []
-    project_deps = toml.get("project", {}).get("dependencies", []) or []
+    build_requires = toml.get("build-system", {}).get("requires") or []
+    project_deps = toml.get("project", {}).get("dependencies") or []
     return build_requires, project_deps
+
+
+def _sdist_files(name: str, version: str) -> list[dict]:
+    """Return PyPI file records for an sdist of name==version."""
+    cached = _pypi_project_cache.get(canonicalize_name(name))
+    if cached and version in cached.get("releases", {}):
+        return cached["releases"][version]
+
+    url = f"https://pypi.org/pypi/{name}/{version}/json"
+    try:
+        resp = urllib.request.urlopen(url, timeout=10)
+        data = json.loads(resp.read())
+    except Exception as e:
+        print(f"  WARN: {name}=={version}: {e}", file=sys.stderr)
+        return []
+    return data.get("urls", [])
 
 
 def extract_sdist_meta(name: str, version: str) -> tuple[list[str], list[str]]:
     """Return (build-system.requires, project.dependencies) from the sdist root pyproject."""
-    url = f"https://pypi.org/pypi/{name}/{version}/json"
-    try:
-        resp = urllib.request.urlopen(url, timeout=10)
-    except Exception as e:
-        print(f"  WARN: {name}=={version}: {e}", file=sys.stderr)
-        return [], []
-
-    data = json.loads(resp.read())
-    sdist_urls = [u for u in data.get("urls", []) if u["packagetype"] == "sdist"]
+    sdist_urls = [u for u in _sdist_files(name, version) if u.get("packagetype") == "sdist"]
     if not sdist_urls:
         return [], []
 
@@ -74,24 +92,26 @@ def extract_sdist_meta(name: str, version: str) -> tuple[list[str], list[str]]:
     sdist_filename = sdist_urls[0]["filename"]
 
     try:
-        resp2 = urllib.request.urlopen(sdist_url, timeout=30)
-        sdist_data = resp2.read()
+        sdist_data = urllib.request.urlopen(sdist_url, timeout=30).read()
     except Exception as e:
         print(f"  WARN: download {name}=={version}: {e}", file=sys.stderr)
         return [], []
 
-    if sdist_filename.endswith((".tar.gz", ".tgz")):
-        with tarfile.open(fileobj=io.BytesIO(sdist_data), mode="r:gz") as tf:
-            for m in tf.getmembers():
-                if is_root_pyproject(m.name):
-                    fobj = tf.extractfile(m)
-                    if fobj:
-                        return read_pyproject_meta(fobj.read())
-    elif sdist_filename.endswith(".zip"):
-        with zipfile.ZipFile(io.BytesIO(sdist_data)) as zf:
-            for zname in zf.namelist():
-                if is_root_pyproject(zname):
-                    return read_pyproject_meta(zf.read(zname))
+    try:
+        if sdist_filename.endswith((".tar.gz", ".tgz")):
+            with tarfile.open(fileobj=io.BytesIO(sdist_data), mode="r:gz") as tf:
+                for m in tf.getmembers():
+                    if is_root_pyproject(m.name):
+                        fobj = tf.extractfile(m)
+                        if fobj:
+                            return read_pyproject_meta(fobj.read())
+        elif sdist_filename.endswith(".zip"):
+            with zipfile.ZipFile(io.BytesIO(sdist_data)) as zf:
+                for zname in zf.namelist():
+                    if is_root_pyproject(zname):
+                        return read_pyproject_meta(zf.read(zname))
+    except Exception as e:
+        print(f"  WARN: parse {name}=={version}: {e}", file=sys.stderr)
 
     return [], []
 
@@ -111,9 +131,16 @@ def parse_requirements_file(path: str) -> dict[str, str]:
                 continue
             for spec in req.specifier:
                 if spec.operator == "==":
-                    packages[normalize(req.name)] = spec.version
+                    packages[canonicalize_name(req.name)] = spec.version
                     break
     return packages
+
+
+def req_name(req_str: str) -> str | None:
+    try:
+        return canonicalize_name(Requirement(req_str).name)
+    except Exception:
+        return None
 
 
 def enqueue_new(
@@ -121,16 +148,15 @@ def enqueue_new(
     seen: set[str],
     next_round: list[tuple[str, str]],
     *,
-    as_build_dep: bool,
+    kind: str,
 ) -> None:
     if dep_name in seen:
         return
-    seen.add(dep_name)
     dep_version = get_latest_version(dep_name)
     if not dep_version:
         return
+    seen.add(dep_name)
     next_round.append((dep_name, dep_version))
-    kind = "new build dep" if as_build_dep else "build-backend install dep"
     print(f"    -> {kind}: {dep_name}=={dep_version}")
 
 
@@ -140,10 +166,8 @@ def main() -> None:
         sys.exit(1)
 
     runtime_pinned = parse_requirements_file(sys.argv[1])
-    runtime_names = set(runtime_pinned.keys())
-
     to_process: list[tuple[str, str]] = list(runtime_pinned.items())
-    seen: set[str] = set(runtime_names)
+    seen: set[str] = set(runtime_pinned)
     all_build_dep_names: set[str] = set()
 
     iteration = 0
@@ -154,37 +178,26 @@ def main() -> None:
 
         for name, version in to_process:
             build_requires, project_deps = extract_sdist_meta(name, version)
-            is_build_package = name not in runtime_names
 
             if build_requires:
                 print(f"  {name}=={version} build-system.requires: {build_requires}")
 
             for req_str in build_requires:
-                try:
-                    req = Requirement(req_str)
-                except Exception:
+                dep_name = req_name(req_str)
+                if not dep_name:
                     continue
-                dep_name = normalize(req.name)
                 all_build_dep_names.add(dep_name)
-                enqueue_new(dep_name, seen, next_round, as_build_dep=True)
+                enqueue_new(dep_name, seen, next_round, kind="new build dep")
 
-            # Follow install deps of build backends / build-only packages so we
-            # discover *their* build-system.requires (e.g. hatchling →
-            # trove-classifiers → calver). Runtime packages' install deps are
-            # already in requirements.cpu.txt.
-            if is_build_package and project_deps:
+            # Build-only packages: follow install deps to find their build-system.requires.
+            if name not in runtime_pinned and project_deps:
                 print(f"  {name}=={version} project.dependencies: {project_deps}")
                 for req_str in project_deps:
-                    try:
-                        req = Requirement(req_str)
-                    except Exception:
-                        continue
-                    enqueue_new(
-                        normalize(req.name),
-                        seen,
-                        next_round,
-                        as_build_dep=False,
-                    )
+                    dep_name = req_name(req_str)
+                    if dep_name:
+                        enqueue_new(
+                            dep_name, seen, next_round, kind="build-backend install dep"
+                        )
 
         to_process = next_round
 
