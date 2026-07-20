@@ -28,10 +28,12 @@ RUN dnf install -y --nodocs libatomic skopeo && \
 # oc client: RHOAI sets OC_IMAGE to registry.redhat.io/openshift4/ose-cli-rhel9
 # (subscription-based, current, all arches); ODH leaves it as scratch and
 # falls back to the public mirror.openshift.com tarball.
+# ose-cli ships kubectl as an absolute symlink to /usr/bin/oc — plain cp follows
+# that link into the build root (where it does not exist). Copy oc and relink.
 RUN --mount=from=oc-source,target=/oc-source \
     if [ -f /oc-source/usr/bin/oc ]; then \
         cp /oc-source/usr/bin/oc /usr/local/bin/oc; \
-        cp /oc-source/usr/bin/kubectl /usr/local/bin/kubectl; \
+        ln -sf oc /usr/local/bin/kubectl; \
     else \
         curl -sL "https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz" \
         | tar xz -C /usr/local/bin oc kubectl; \
