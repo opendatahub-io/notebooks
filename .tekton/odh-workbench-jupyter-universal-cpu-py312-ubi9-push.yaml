@@ -52,6 +52,8 @@ spec:
   - name: prefetch-input
     value:
     - path: jupyter/universal/ubi9-python-3.12
+      type: rpm
+    - path: jupyter/universal/ubi9-python-3.12
       type: pip
       binary:
         arch: x86_64,aarch64,ppc64le,s390x

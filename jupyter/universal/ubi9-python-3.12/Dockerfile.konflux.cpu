@@ -1,5 +1,7 @@
 ARG BASE_IMAGE
+ARG OC_IMAGE=scratch
 
+FROM ${OC_IMAGE} AS oc-source
 FROM ${BASE_IMAGE}
 
 ARG RELEASE
@@ -22,8 +24,19 @@ RUN printf '[global]\nindex-url = https://pypi.org/simple/\n' > /opt/app-root/pi
 
 RUN dnf install -y --nodocs libatomic skopeo && \
     dnf clean all
-RUN curl -sL "https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz" \
-    | tar xz -C /usr/local/bin oc kubectl
+
+# oc client: RHOAI sets OC_IMAGE to registry.redhat.io/openshift4/ose-cli-rhel9
+# (subscription-based, current, all arches); ODH leaves it as scratch and
+# falls back to the public mirror.openshift.com tarball.
+RUN --mount=from=oc-source,target=/oc-source \
+    if [ -f /oc-source/usr/bin/oc ]; then \
+        cp /oc-source/usr/bin/oc /usr/local/bin/oc; \
+        cp /oc-source/usr/bin/kubectl /usr/local/bin/kubectl; \
+    else \
+        curl -sL "https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz" \
+        | tar xz -C /usr/local/bin oc kubectl; \
+    fi
+RUN oc version
 
 # JupyterLab + pipeline runtime packages
 COPY jupyter/universal/ubi9-python-3.12/requirements.cpu.txt /tmp/requirements.cpu.txt
