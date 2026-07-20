@@ -67,14 +67,16 @@ A new image at `jupyter/universal/ubi9-python-3.12/` that:
 
    ```bash
    if [ -n "${NOTEBOOK_ARGS:-}" ]; then
-       exec sh -lc 'exec start-notebook.sh ${NOTEBOOK_ARGS}'
+       exec sh -lc 'exec start-notebook.sh'
    fi
    exec "${@:-start-notebook.sh}"
    ```
 
    - **Workbench mode:** The Kubeflow Notebooks controller sets `NOTEBOOK_ARGS`
      (e.g., `--ServerApp.token='' --ServerApp.base_url=/notebook/ns/name`). The
-     entrypoint starts JupyterLab via `start-notebook.sh`.
+     entrypoint starts JupyterLab via a login shell (`sh -lc`) so profile
+     scripts are sourced; `start-notebook.sh` reads `NOTEBOOK_ARGS` from the
+     environment (it does not take those flags as argv).
    - **Runtime mode:** Elyra / AI Pipelines overrides the container command to
      run `bootstrapper.py`, which executes the notebook or Python script. The
      entrypoint runs whatever command was passed.
