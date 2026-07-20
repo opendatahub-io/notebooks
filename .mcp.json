@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "atlassian": {
+      "command": "npx",
+      "args": ["-y", "mcp-atlassian"],
+      "env": {
+        "JIRA_EMAIL": "${env:JIRA_EMAIL}",
+        "JIRA_API_TOKEN": "${env:JIRA_API_TOKEN}",
+        "JIRA_URL": "https://redhat.atlassian.net"
+      }
+    }
+  }
+}

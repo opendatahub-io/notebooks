@@ -405,7 +405,8 @@ pathspec==1.1.1 ; python_full_version == '3.12.*' and implementation_name == 'cp
 pexpect==4.9.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:93c4b76aa1c36c159646620ebb09c04ba30daa3bc1e28e793098c5554ebcbc74
 pillow==12.3.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:cdcda964ac24774b4fa1b2925c878b38a75d8f962e55c6e113e44f29c8281d5d
+    --hash=sha256:cdcda964ac24774b4fa1b2925c878b38a75d8f962e55c6e113e44f29c8281d5d \
+    --hash=sha256:e5cd6613a7abd866a169f83995b4fedb0a9df4bab3457ff30efea02bb5c5491e
 pip==26.1.2 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:6e5cb0abb9dbb335d7915fc846d0d64797e2660cbaf37a565a005d6fbffe899a
 platformdirs==4.10.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -438,7 +439,8 @@ pure-eval==0.2.3 ; python_full_version == '3.12.*' and implementation_name == 'c
     --hash=sha256:b3e3d360352293adfc3c4393071595d4e90e81755e60fb041d2c365aa0f38208
 pyarrow==24.0.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:0fd3310cce94c76e4cafd2b880162ca6aec89ab19c177e19cd0e4ef55511729a \
-    --hash=sha256:c5e2b75450683ee84d61ac141888020e0e1b38ba8167b837786ed476e09790a7
+    --hash=sha256:c5e2b75450683ee84d61ac141888020e0e1b38ba8167b837786ed476e09790a7 \
+    --hash=sha256:0adbbec7e56f823ae27fa60216408e4b8410804b9e46e20a3d96c402d992cb5d
 pyasn1==0.6.4 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:d56d1e3931acf8b5fc7c504f05484d6a5cd1c08b44f53ea1fd0a7baa0beed3f1
 pyasn1-modules==0.4.2 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -563,9 +565,8 @@ tensorboard==2.19.0 ; python_full_version == '3.12.*' and implementation_name ==
     --hash=sha256:5e71b98663a641a7ce8a6e70b0be8e1a4c0c45d48760b076383ac4755c35b9a0
 tensorboard-data-server==0.7.2 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:7e0610d205889588983836ec05dc098e80f97b7e7bbff7e994ebb78f578d0ddb
-tensorflow-rocm==2.19.1 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:0242333942b871c870c09c39330051125258578de42421a3b139daa509c451aa \
-    --hash=sha256:a48d2cfd5f8d175fb18333ae57d8c41518cfdd7e262c0873f8821de9d4486008
+tensorflow-rocm==2.19.1+rocm7.14.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:9bfb73a55cbaedb39c1e0c7794406daeccd1d76180a8ea0bd2346d7037bbd286
 termcolor==3.3.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:364d6249f58634fc2208fb06f6dbfee633f012c7f0ad32e6870b3bb2a96b1504
 terminado==0.18.1 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
