@@ -161,6 +161,138 @@ RUN if [ -d "${ROCM_HOME}/share/amd_smi" ]; then \
       chmod g+w "${pth_file}"; \
     fi
 
+# TensorFlow ROCm compatibility shim for EL9 userspace:
+# tensorflow-rocm 2.19.x can require GLIBCXX_3.4.30 / GLIBC_2.35 symbols that are
+# not provided by stock EL9 runtime libs. Build wrapper libs and prefer them.
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+
+COMPAT_DIR=/usr/local/lib64/glibc-compat
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "${TMPDIR}"' EXIT
+mkdir -p "${COMPAT_DIR}"
+
+python -m pip install --no-cache-dir patchelf
+
+# --- libstdc++ wrapper (GLIBCXX_3.4.30: std::condition_variable::wait) ---
+cp /lib64/libstdc++.so.6.0.29 "${COMPAT_DIR}/libstdcxx_real.so.6"
+patchelf --set-soname libstdcxx_real.so.6 "${COMPAT_DIR}/libstdcxx_real.so.6"
+
+cat > "${TMPDIR}/stdcxx_compat.cc" << 'SRCEOF'
+#include <pthread.h>
+
+extern "C" void
+_ZNSt18condition_variable4waitERSt11unique_lockISt5mutexE(
+    void *condvar, void *ulock)
+{
+    pthread_cond_wait(
+        static_cast<pthread_cond_t *>(condvar),
+        *static_cast<pthread_mutex_t **>(ulock));
+}
+SRCEOF
+
+cat > "${TMPDIR}/stdcxx_compat.map" << 'MAPEOF'
+GLIBCXX_3.4 {};
+GLIBCXX_3.4.1 {} GLIBCXX_3.4;
+GLIBCXX_3.4.2 {} GLIBCXX_3.4.1;
+GLIBCXX_3.4.3 {} GLIBCXX_3.4.2;
+GLIBCXX_3.4.4 {} GLIBCXX_3.4.3;
+GLIBCXX_3.4.5 {} GLIBCXX_3.4.4;
+GLIBCXX_3.4.6 {} GLIBCXX_3.4.5;
+GLIBCXX_3.4.7 {} GLIBCXX_3.4.6;
+GLIBCXX_3.4.8 {} GLIBCXX_3.4.7;
+GLIBCXX_3.4.9 {} GLIBCXX_3.4.8;
+GLIBCXX_3.4.10 {} GLIBCXX_3.4.9;
+GLIBCXX_3.4.11 {} GLIBCXX_3.4.10;
+GLIBCXX_3.4.12 {} GLIBCXX_3.4.11;
+GLIBCXX_3.4.13 {} GLIBCXX_3.4.12;
+GLIBCXX_3.4.14 {} GLIBCXX_3.4.13;
+GLIBCXX_3.4.15 {} GLIBCXX_3.4.14;
+GLIBCXX_3.4.16 {} GLIBCXX_3.4.15;
+GLIBCXX_3.4.17 {} GLIBCXX_3.4.16;
+GLIBCXX_3.4.18 {} GLIBCXX_3.4.17;
+GLIBCXX_3.4.19 {} GLIBCXX_3.4.18;
+GLIBCXX_3.4.20 {} GLIBCXX_3.4.19;
+GLIBCXX_3.4.21 {} GLIBCXX_3.4.20;
+GLIBCXX_3.4.22 {} GLIBCXX_3.4.21;
+GLIBCXX_3.4.23 {} GLIBCXX_3.4.22;
+GLIBCXX_3.4.24 {} GLIBCXX_3.4.23;
+GLIBCXX_3.4.25 {} GLIBCXX_3.4.24;
+GLIBCXX_3.4.26 {} GLIBCXX_3.4.25;
+GLIBCXX_3.4.27 {} GLIBCXX_3.4.26;
+GLIBCXX_3.4.28 {} GLIBCXX_3.4.27;
+GLIBCXX_3.4.29 {} GLIBCXX_3.4.28;
+GLIBCXX_3.4.30 {
+    global:
+        _ZNSt18condition_variable4waitERSt11unique_lockISt5mutexE;
+} GLIBCXX_3.4.29;
+CXXABI_1.3 {};
+CXXABI_1.3.1 {} CXXABI_1.3;
+CXXABI_1.3.2 {} CXXABI_1.3.1;
+CXXABI_1.3.3 {} CXXABI_1.3.2;
+CXXABI_1.3.4 {} CXXABI_1.3.3;
+CXXABI_1.3.5 {} CXXABI_1.3.4;
+CXXABI_1.3.6 {} CXXABI_1.3.5;
+CXXABI_1.3.7 {} CXXABI_1.3.6;
+CXXABI_1.3.8 {} CXXABI_1.3.7;
+CXXABI_1.3.9 {} CXXABI_1.3.8;
+CXXABI_1.3.10 {} CXXABI_1.3.9;
+CXXABI_1.3.11 {} CXXABI_1.3.10;
+CXXABI_1.3.12 {} CXXABI_1.3.11;
+CXXABI_1.3.13 {} CXXABI_1.3.12;
+CXXABI_TM_1 {};
+MAPEOF
+
+g++ -shared -fPIC \
+    -Wl,--version-script="${TMPDIR}/stdcxx_compat.map" \
+    -Wl,-soname,libstdc++.so.6 \
+    -Wl,-rpath,"${COMPAT_DIR}" \
+    -o "${COMPAT_DIR}/libstdc++.so.6" \
+    "${TMPDIR}/stdcxx_compat.cc" \
+    -lpthread "${COMPAT_DIR}/libstdcxx_real.so.6"
+
+# --- libm wrapper (GLIBC_2.35: hypot, hypotf) ---
+cp /lib64/libm.so.6 "${COMPAT_DIR}/libm_real.so.6"
+patchelf --set-soname libm_real.so.6 "${COMPAT_DIR}/libm_real.so.6"
+
+cat > "${TMPDIR}/libm_compat.c" << 'SRCEOF'
+#include <math.h>
+
+double __glibc_235_hypot(double x, double y) { return hypot(x, y); }
+float __glibc_235_hypotf(float x, float y) { return hypotf(x, y); }
+
+__asm__(".symver __glibc_235_hypot, hypot@GLIBC_2.35");
+__asm__(".symver __glibc_235_hypotf, hypotf@GLIBC_2.35");
+SRCEOF
+
+{
+    prev=""
+    while IFS= read -r ver; do
+        if [ -z "${prev}" ]; then
+            echo "${ver} {};"
+        else
+            echo "${ver} {} ${prev};"
+        fi
+        prev="${ver}"
+    done < <(readelf -V /lib64/libm.so.6 2>/dev/null \
+        | grep "Name: GLIBC_" \
+        | sed 's/.*Name: //' \
+        | sed 's/ .*//' \
+        | sort -t. -k1,1n -k2,2n -k3,3n -u)
+    echo "GLIBC_2.35 { global: hypot; hypotf; } ${prev};"
+} > "${TMPDIR}/libm_compat.map"
+
+gcc -shared -fPIC \
+    -Wl,--version-script="${TMPDIR}/libm_compat.map" \
+    -Wl,-soname,libm.so.6 \
+    -Wl,-rpath,"${COMPAT_DIR}" \
+    -o "${COMPAT_DIR}/libm.so.6" \
+    "${TMPDIR}/libm_compat.c" \
+    -lm "${COMPAT_DIR}/libm_real.so.6"
+
+python -m pip uninstall -y patchelf
+EOF
+
 # https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/post-install.html#configure-rocm-shared-objects
 RUN tee --append /etc/ld.so.conf.d/rocm.conf <<EOF
   ${ROCM_HOME}/lib
@@ -213,6 +345,9 @@ ENV VIRTUAL_ENV=${APP_ROOT} \
     LC_ALL=en_US.UTF-8 \
     PS1="(app-root) \w\$ "
 ### END AIPCC pip and uv config files
+
+# tensorflow-rocm on EL9: prefer ABI compatibility shims built above.
+ENV LD_LIBRARY_PATH=/usr/local/lib64/glibc-compat${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
 
 # RHELAI-2417, RHELAI-1720: workaround for PyArrow
 # libjemalloc.so.2: cannot allocate memory in static TLS block
