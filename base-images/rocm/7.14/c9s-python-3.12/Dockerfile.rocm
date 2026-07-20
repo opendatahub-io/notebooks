@@ -1,0 +1,358 @@
+ARG TARGETARCH
+
+FROM quay.io/centos/centos:stream9@sha256:a93e3316b14a226863327f35110909569ec554fc9e092bc307282cf00e17e3d0 AS buildscripts
+COPY base-images/utils/aipcc.sh /mnt/aipcc.sh
+COPY base-images/utils/fix-permissions /mnt/usr/bin/
+
+####################
+# base             #
+####################
+# quay.io/sclorg/python-312-c9s:c9s
+FROM quay.io/sclorg/python-312-c9s@sha256:012a2fe921fbbf6a297c6ff4827ed73b5dd21e08ccc34e4015586f97b17985fc AS base
+
+USER 0
+ARG TARGETARCH
+ENV TARGETARCH=${TARGETARCH}
+ENV PYTHON=python3.12
+ENV VIRTUAL_ENV=/opt/app-root/
+
+# Duplicated in the AIPCC config block below; needed here so aipcc.sh
+# (which runs in this stage) can pip-install from the configured index.
+ARG INDEX_URL
+ENV PIP_INDEX_URL=${INDEX_URL}
+ENV UV_INDEX_URL=${INDEX_URL}
+
+# OpenShift s2i / Cloud Native Buildpack user
+ENV CNB_USER_ID=1001 \
+    CNB_GROUP_ID=0
+
+# Custom fix-permissions script that extends sclorg version with chown to UID 1001
+COPY --from=buildscripts /mnt/usr/bin/ /usr/bin/
+
+RUN \
+--mount=from=buildscripts,source=/mnt,target=/mnt \
+--mount=type=cache,sharing=locked,id=dnf-c9s,target=/var/cache/dnf \
+/bin/bash <<'EOF'
+set -Eeuxo pipefail
+/mnt/aipcc.sh
+fix-permissions ${APP_ROOT} -P
+EOF
+
+USER 1001
+WORKDIR /opt/app-root/bin
+
+########################
+# rocm-base            #
+########################
+FROM base AS rocm-base
+
+USER 0
+WORKDIR /opt/app-root/bin
+
+# Please keep in sync with ROCm/python3.12 dependent images.
+ARG ROCM_MAJOR=7
+ARG ROCM_MAJOR_MINOR=7-14
+ARG ROCM_MAJOR_MINOR_DOT=7.14
+ARG ROCM_VERSION=7.14.0
+ARG RELEASEVER=9.6
+ARG THEROCK_REPO_URL=https://repo.amd.com/rocm/packages-multi-arch/rhel9/x86_64/
+ARG FRAMEWORKS_REPO_URL=https://rocm.frameworks.amd.com/rpm-multi-arch/amdrocm-migraphx/
+ARG ROCM_HOME=/opt/rocm/core
+
+ENV ROCM_VERSION=${ROCM_VERSION}
+ENV ROCM_HOME=${ROCM_HOME}
+
+# ROCm 7.14+ uses TheRock (amdrocm-*) repositories and packages.
+RUN dnf install -y \
+      --allowerasing \
+      curl \
+      ca-certificates \
+      dnf-plugins-core \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
+
+# ROCm GPG keys (GA + TheRock key used by prerelease channels).
+RUN curl -fsSL "https://repo.radeon.com/rocm/rocm.gpg.key" > /etc/pki/rpm-gpg/RPM-GPG-KEY-AMD-ROCM && \
+    curl -fsSL "https://rocm.prereleases.amd.com/packages/gpg/rocm.gpg" > /etc/pki/rpm-gpg/RPM-GPG-KEY-AMD-ROCM-THEROCK
+
+RUN { echo "[therock]"; \
+      echo "name=TheRock ROCm ${ROCM_VERSION}"; \
+      echo "baseurl=${THEROCK_REPO_URL}"; \
+      echo "enabled=1"; \
+      echo "priority=150"; \
+      echo "gpgcheck=1"; \
+      echo "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AMD-ROCM"; \
+      echo "       file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AMD-ROCM-THEROCK"; \
+    } > /etc/yum.repos.d/rocm.repo
+
+# MIGraphX is distributed via a separate frameworks repository.
+RUN { echo "[rocm-frameworks]"; \
+      echo "name=ROCm Frameworks (migraphx)"; \
+      echo "baseurl=${FRAMEWORKS_REPO_URL}"; \
+      echo "enabled=1"; \
+      echo "priority=200"; \
+      echo "gpgcheck=0"; \
+    } > /etc/yum.repos.d/rocm-frameworks.repo
+
+# Install ROCm runtime/devel libraries and compiler toolchain.
+RUN dnf install -y \
+      gcc-toolset-14 \
+      gcc-toolset-14-gcc-c++ \
+      gcc-toolset-14-gcc-gfortran \
+      gcc-toolset-14-libatomic-devel \
+      libdrm \
+      amdrocm-amdsmi \
+      amdrocm-llvm \
+      amdrocm-runtime \
+      amdrocm-runtime-devel \
+      amdrocm-rccl \
+      amdrocm-rccl-devel \
+      amdrocm-math-common \
+      amdrocm-core-sdk \
+      amdrocm-core-devel \
+      amdrocm-blas \
+      amdrocm-blas-devel \
+      amdrocm-dnn \
+      amdrocm-dnn-devel \
+      amdrocm-fft \
+      amdrocm-fft-devel \
+      amdrocm-solver \
+      amdrocm-solver-devel \
+      amdrocm-sparse \
+      amdrocm-sparse-devel \
+      amdrocm-rand \
+      amdrocm-rand-devel \
+      amdrocm-ccl-devel \
+      amdrocm-migraphx \
+      amdrocm-migraphx-devel \
+      make \
+      findutils \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
+
+# ROCm 7.14 installs under /opt/rocm/core.
+ENV PATH=${ROCM_HOME}/bin:${ROCM_HOME}/hip/bin:${PATH}
+ENV LD_LIBRARY_PATH=${ROCM_HOME}/lib:${ROCM_HOME}/lib64
+
+# Backward compatibility symlinks for software expecting /opt/rocm/*.
+RUN ln -sfn "${ROCM_HOME}"/include /opt/rocm/include && \
+    ln -sfn "${ROCM_HOME}"/lib /opt/rocm/lib && \
+    ln -sfn "${ROCM_HOME}"/bin /opt/rocm/bin && \
+    ln -sfn "${ROCM_HOME}"/share /opt/rocm/share && \
+    for subdir in llvm hip; do \
+      if [ -d "${ROCM_HOME}/${subdir}" ]; then \
+        ln -sfn "${ROCM_HOME}/${subdir}" "/opt/rocm/${subdir}"; \
+      fi; \
+    done
+
+# Ensure ROCm CLI tools use the system Python path.
+RUN for script in "${ROCM_HOME}/bin/amd-smi" "${ROCM_HOME}/bin/rocm-smi"; do \
+      if [ -f "${script}" ]; then \
+        sed -i -e '1s,#!/usr/bin/env python3,#!/usr/bin/python3,' "${script}"; \
+      fi; \
+    done
+
+# Make amdsmi importable by Python.
+RUN if [ -d "${ROCM_HOME}/share/amd_smi" ]; then \
+      sitepkg_path="$(python -c "import sysconfig; print(sysconfig.get_path('platlib'))")"; \
+      pth_file="${sitepkg_path}/rocm-amdsmi.pth"; \
+      echo "${ROCM_HOME}/share/amd_smi" > "${pth_file}"; \
+      chown 1001:0 "${pth_file}"; \
+      chmod g+w "${pth_file}"; \
+    fi
+
+# TensorFlow ROCm compatibility shim for EL9 userspace:
+# tensorflow-rocm 2.19.x can require GLIBCXX_3.4.30 / GLIBC_2.35 symbols that are
+# not provided by stock EL9 runtime libs. Build wrapper libs and prefer them.
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+
+COMPAT_DIR=/usr/local/lib64/glibc-compat
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "${TMPDIR}"' EXIT
+mkdir -p "${COMPAT_DIR}"
+
+python -m pip install --no-cache-dir patchelf
+
+# --- libstdc++ wrapper (GLIBCXX_3.4.30: std::condition_variable::wait) ---
+cp /lib64/libstdc++.so.6.0.29 "${COMPAT_DIR}/libstdcxx_real.so.6"
+patchelf --set-soname libstdcxx_real.so.6 "${COMPAT_DIR}/libstdcxx_real.so.6"
+
+cat > "${TMPDIR}/stdcxx_compat.cc" << 'SRCEOF'
+#include <pthread.h>
+
+extern "C" void
+_ZNSt18condition_variable4waitERSt11unique_lockISt5mutexE(
+    void *condvar, void *ulock)
+{
+    pthread_cond_wait(
+        static_cast<pthread_cond_t *>(condvar),
+        *static_cast<pthread_mutex_t **>(ulock));
+}
+SRCEOF
+
+cat > "${TMPDIR}/stdcxx_compat.map" << 'MAPEOF'
+GLIBCXX_3.4 {};
+GLIBCXX_3.4.1 {} GLIBCXX_3.4;
+GLIBCXX_3.4.2 {} GLIBCXX_3.4.1;
+GLIBCXX_3.4.3 {} GLIBCXX_3.4.2;
+GLIBCXX_3.4.4 {} GLIBCXX_3.4.3;
+GLIBCXX_3.4.5 {} GLIBCXX_3.4.4;
+GLIBCXX_3.4.6 {} GLIBCXX_3.4.5;
+GLIBCXX_3.4.7 {} GLIBCXX_3.4.6;
+GLIBCXX_3.4.8 {} GLIBCXX_3.4.7;
+GLIBCXX_3.4.9 {} GLIBCXX_3.4.8;
+GLIBCXX_3.4.10 {} GLIBCXX_3.4.9;
+GLIBCXX_3.4.11 {} GLIBCXX_3.4.10;
+GLIBCXX_3.4.12 {} GLIBCXX_3.4.11;
+GLIBCXX_3.4.13 {} GLIBCXX_3.4.12;
+GLIBCXX_3.4.14 {} GLIBCXX_3.4.13;
+GLIBCXX_3.4.15 {} GLIBCXX_3.4.14;
+GLIBCXX_3.4.16 {} GLIBCXX_3.4.15;
+GLIBCXX_3.4.17 {} GLIBCXX_3.4.16;
+GLIBCXX_3.4.18 {} GLIBCXX_3.4.17;
+GLIBCXX_3.4.19 {} GLIBCXX_3.4.18;
+GLIBCXX_3.4.20 {} GLIBCXX_3.4.19;
+GLIBCXX_3.4.21 {} GLIBCXX_3.4.20;
+GLIBCXX_3.4.22 {} GLIBCXX_3.4.21;
+GLIBCXX_3.4.23 {} GLIBCXX_3.4.22;
+GLIBCXX_3.4.24 {} GLIBCXX_3.4.23;
+GLIBCXX_3.4.25 {} GLIBCXX_3.4.24;
+GLIBCXX_3.4.26 {} GLIBCXX_3.4.25;
+GLIBCXX_3.4.27 {} GLIBCXX_3.4.26;
+GLIBCXX_3.4.28 {} GLIBCXX_3.4.27;
+GLIBCXX_3.4.29 {} GLIBCXX_3.4.28;
+GLIBCXX_3.4.30 {
+    global:
+        _ZNSt18condition_variable4waitERSt11unique_lockISt5mutexE;
+} GLIBCXX_3.4.29;
+CXXABI_1.3 {};
+CXXABI_1.3.1 {} CXXABI_1.3;
+CXXABI_1.3.2 {} CXXABI_1.3.1;
+CXXABI_1.3.3 {} CXXABI_1.3.2;
+CXXABI_1.3.4 {} CXXABI_1.3.3;
+CXXABI_1.3.5 {} CXXABI_1.3.4;
+CXXABI_1.3.6 {} CXXABI_1.3.5;
+CXXABI_1.3.7 {} CXXABI_1.3.6;
+CXXABI_1.3.8 {} CXXABI_1.3.7;
+CXXABI_1.3.9 {} CXXABI_1.3.8;
+CXXABI_1.3.10 {} CXXABI_1.3.9;
+CXXABI_1.3.11 {} CXXABI_1.3.10;
+CXXABI_1.3.12 {} CXXABI_1.3.11;
+CXXABI_1.3.13 {} CXXABI_1.3.12;
+CXXABI_TM_1 {};
+MAPEOF
+
+g++ -shared -fPIC \
+    -Wl,--version-script="${TMPDIR}/stdcxx_compat.map" \
+    -Wl,-soname,libstdc++.so.6 \
+    -Wl,-rpath,"${COMPAT_DIR}" \
+    -o "${COMPAT_DIR}/libstdc++.so.6" \
+    "${TMPDIR}/stdcxx_compat.cc" \
+    -lpthread "${COMPAT_DIR}/libstdcxx_real.so.6"
+
+# --- libm wrapper (GLIBC_2.35: hypot, hypotf) ---
+cp /lib64/libm.so.6 "${COMPAT_DIR}/libm_real.so.6"
+patchelf --set-soname libm_real.so.6 "${COMPAT_DIR}/libm_real.so.6"
+
+cat > "${TMPDIR}/libm_compat.c" << 'SRCEOF'
+#include <math.h>
+
+double __glibc_235_hypot(double x, double y) { return hypot(x, y); }
+float __glibc_235_hypotf(float x, float y) { return hypotf(x, y); }
+
+__asm__(".symver __glibc_235_hypot, hypot@GLIBC_2.35");
+__asm__(".symver __glibc_235_hypotf, hypotf@GLIBC_2.35");
+SRCEOF
+
+{
+    prev=""
+    while IFS= read -r ver; do
+        if [ -z "${prev}" ]; then
+            echo "${ver} {};"
+        else
+            echo "${ver} {} ${prev};"
+        fi
+        prev="${ver}"
+    done < <(readelf -V /lib64/libm.so.6 2>/dev/null \
+        | grep "Name: GLIBC_" \
+        | sed 's/.*Name: //' \
+        | sed 's/ .*//' \
+        | sort -t. -k1,1n -k2,2n -k3,3n -u)
+    echo "GLIBC_2.35 { global: hypot; hypotf; } ${prev};"
+} > "${TMPDIR}/libm_compat.map"
+
+gcc -shared -fPIC \
+    -Wl,--version-script="${TMPDIR}/libm_compat.map" \
+    -Wl,-soname,libm.so.6 \
+    -Wl,-rpath,"${COMPAT_DIR}" \
+    -o "${COMPAT_DIR}/libm.so.6" \
+    "${TMPDIR}/libm_compat.c" \
+    -lm "${COMPAT_DIR}/libm_real.so.6"
+
+python -m pip uninstall -y patchelf
+EOF
+
+# https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/post-install.html#configure-rocm-shared-objects
+RUN tee --append /etc/ld.so.conf.d/rocm.conf <<EOF
+  ${ROCM_HOME}/lib
+  ${ROCM_HOME}/lib64
+EOF
+
+RUN tee /etc/ld.so.conf.d/gcc-toolset-14.conf <<EOF
+/opt/rh/gcc-toolset-14/root/usr/lib64
+/opt/rh/gcc-toolset-14/root/usr/lib
+EOF
+
+RUN ldconfig
+
+# Runtime dependencies for PyTorch packages (libmpi_cxx.so, libqhull_r.so, libsnappy.so)
+# libqhull_r is in CRB (Code Ready Builder) repo.
+RUN dnf config-manager --set-enabled crb && \
+    dnf -y install \
+      openmpi \
+      libqhull_r \
+      snappy \
+    && dnf -y clean all --enablerepo="*" && \
+    rm -rf /var/cache/dnf
+
+### BEGIN AIPCC pip and uv config files
+ARG INDEX_URL
+ENV PIP_INDEX_URL=${INDEX_URL}
+ENV UV_INDEX_URL=${INDEX_URL}
+COPY --chmod=664 --chown=1001:0 base-images/utils/pip.conf.in /opt/app-root/pip.conf
+COPY --chmod=664 --chown=1001:0 base-images/utils/uv.toml.in /opt/app-root/uv.toml
+RUN /bin/bash <<'EOF'
+set -Eeuxo pipefail
+if [ -z "${INDEX_URL}" ]; then
+  echo "ERROR: INDEX_URL build arg is required" >&2
+  exit 1
+fi
+sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/pip.conf
+sed -i "s|@INDEX_URL@|${INDEX_URL}|g" /opt/app-root/uv.toml
+EOF
+
+# Python and virtual env settings
+ENV VIRTUAL_ENV=${APP_ROOT} \
+    PIP_CONFIG_FILE=/opt/app-root/pip.conf \
+    UV_CONFIG_FILE=/opt/app-root/uv.toml \
+    PIP_NO_CACHE_DIR=off \
+    UV_NO_CACHE=true \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=utf-8 \
+    LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8 \
+    PS1="(app-root) \w\$ "
+### END AIPCC pip and uv config files
+
+# tensorflow-rocm on EL9: prefer ABI compatibility shims built above.
+ENV LD_LIBRARY_PATH=/usr/local/lib64/glibc-compat${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+
+# RHELAI-2417, RHELAI-1720: workaround for PyArrow
+# libjemalloc.so.2: cannot allocate memory in static TLS block
+ENV LD_PRELOAD=/usr/lib64/libjemalloc.so.2
+
+# Restore user workspace
+USER 1001
+WORKDIR /opt/app-root/src
