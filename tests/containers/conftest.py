@@ -228,10 +228,9 @@ def jupyterlab_image(image: str) -> Image:
 
 @pytest.fixture(scope="session")
 def jupyterlab_datascience_image(jupyterlab_image: Image) -> Image:
-    if "-minimal-" in jupyterlab_image.labels["name"]:
-        pytest.skip(
-            f"Image {jupyterlab_image.name} is not datascience image because it has '-minimal-' in {jupyterlab_image.labels['name']=}'"
-        )
+    name = jupyterlab_image.labels["name"]
+    if "-minimal-" in name or "-universal-" in name:
+        pytest.skip(f"Image {jupyterlab_image.name} is not datascience image: {name!r}")
 
     return jupyterlab_image
 
@@ -249,10 +248,9 @@ def jupyterlab_trustyai_image(jupyterlab_image: Image) -> Image:
 @pytest.fixture(scope="session")
 def datascience_image(image: str) -> Image:
     image_metadata = get_image_metadata(image)
-    if "-minimal-" in image_metadata.labels["name"]:
-        pytest.skip(
-            f"Image {image_metadata.name} is not datascience image because it has '-minimal-' in {image_metadata.labels['name']=}'"
-        )
+    name = image_metadata.labels["name"]
+    if "-minimal-" in name or "-universal-" in name:
+        pytest.skip(f"Image {image_metadata.name} is not datascience image: {name!r}")
 
     return image_metadata
 

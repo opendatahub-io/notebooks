@@ -20,8 +20,10 @@ USER 0
 RUN printf '[global]\nindex-url = https://pypi.org/simple/\n' > /opt/app-root/pip.conf && \
     printf '[[index]]\nurl = "https://pypi.org/simple/"\n' > /opt/app-root/uv.toml
 
-# libatomic is needed by ROCm PyTorch wheels when users pip install torch
-RUN dnf install -y --nodocs libatomic && \
+RUN dnf install -y --nodocs \
+        libatomic \
+        openshift-clients \
+        skopeo && \
     dnf clean all
 
 # JupyterLab + pipeline runtime packages
