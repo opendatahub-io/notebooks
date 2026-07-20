@@ -24,9 +24,12 @@ single lockfile must cover every arch.
 
 scikit-build-core
 -----------------
-When tool.scikit-build.cmake.version / ninja.version is set, scikit-build-core
-requests the PyPI ``cmake`` / ``ninja`` packages via get_requires_for_build_wheel.
-Those are not in build-system.requires; we synthesize them from the TOML.
+When a project uses scikit-build-core, ``get_requires_for_build_wheel`` may
+request the PyPI ``cmake`` / ``ninja`` packages even if they are absent from
+``build-system.requires``. Defaults (scikit-build-core 1.x): ``cmake>=3.15``
+(or the configured ``tool.scikit-build.cmake.version``) and ``ninja>=1.5``.
+We synthesize those into the closure so Hermeto can prefetch them — hermetic
+images typically lack system cmake/ninja/make.
 
 PEP 508 markers
 ---------------
@@ -125,21 +128,52 @@ def is_root_pyproject(path: str) -> bool:
     return path == "pyproject.toml" or (len(parts) == 2 and parts[1] == "pyproject.toml")
 
 
+def _skbuild_version_req(tool_name: str, version: object, *, default: str) -> str | None:
+    """Map tool.scikit-build.<tool>.version to a PEP 508 req, or default/None."""
+    if version is True:
+        return tool_name
+    if version == "":
+        return None  # explicitly disabled
+    if isinstance(version, str) and re.match(r"^[\d<=>!~]", version):
+        return (
+            f"{tool_name}=={version}"
+            if version[0].isdigit()
+            else f"{tool_name}{version}"
+        )
+    # Unset, CMakeLists.txt, or other non-specifier → hermetic default.
+    return default
+
+
 def scikit_build_tool_requires(toml: dict) -> list[str]:
-    """Synthesize cmake/ninja PyPI reqs from tool.scikit-build (not CMakeLists.txt)."""
-    sb = toml.get("tool", {}).get("scikit-build") or {}
+    """Synthesize cmake/ninja PyPI reqs matching scikit-build-core defaults.
+
+    scikit-build-core's get_requires_for_build_wheel requests these even when
+    they are not listed under build-system.requires (e.g. pyzmq sets only
+    tool.scikit-build.cmake.version; ninja still defaults to >=1.5).
+    """
+    build_requires = toml.get("build-system", {}).get("requires") or []
+    sb = toml.get("tool", {}).get("scikit-build")
+    uses_skbuild = sb is not None or any(
+        "scikit-build-core" in r.split(";")[0].lower() for r in build_requires
+    )
+    if not uses_skbuild:
+        return []
+
+    sb = sb if isinstance(sb, dict) else {}
+    cmake_section = sb.get("cmake") if isinstance(sb.get("cmake"), dict) else {}
+    ninja_section = sb.get("ninja") if isinstance(sb.get("ninja"), dict) else {}
+
     requires: list[str] = []
-    for tool_name in ("cmake", "ninja"):
-        section = sb.get(tool_name)
-        if not isinstance(section, dict):
-            continue
-        version = section.get("version")
-        if version is True:
-            requires.append(tool_name)
-            continue
-        if not isinstance(version, str) or not re.match(r"^[\d<=>!~]", version):
-            continue
-        requires.append(f"{tool_name}=={version}" if version[0].isdigit() else f"{tool_name}{version}")
+    cmake_req = _skbuild_version_req(
+        "cmake", cmake_section.get("version"), default="cmake>=3.15"
+    )
+    if cmake_req:
+        requires.append(cmake_req)
+    ninja_req = _skbuild_version_req(
+        "ninja", ninja_section.get("version"), default="ninja>=1.5"
+    )
+    if ninja_req:
+        requires.append(ninja_req)
     return requires
 
 
