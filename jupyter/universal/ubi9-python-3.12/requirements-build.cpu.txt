@@ -24,6 +24,8 @@ bleach==6.4.0
     # via nbconvert
 build==1.5.0
     # via -r jupyter/universal/ubi9-python-3.12/requirements-build.in
+calver==2025.10.20
+    # via -r jupyter/universal/ubi9-python-3.12/requirements-build.in
 certifi==2026.6.17
     # via
     #   httpcore
@@ -330,7 +332,9 @@ traitlets==5.15.1
     #   nbconvert
     #   nbformat
 trove-classifiers==2026.6.1.19
-    # via hatchling
+    # via
+    #   -r jupyter/universal/ubi9-python-3.12/requirements-build.in
+    #   hatchling
 typing-extensions==4.16.0
     # via
     #   -r jupyter/universal/ubi9-python-3.12/requirements-build.in
