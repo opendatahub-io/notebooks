@@ -13,25 +13,27 @@
 # To re-extract build deps from sdists (when requirements.cpu.txt changes):
 #
 #   uv run python3 jupyter/universal/ubi9-python-3.12/extract-build-deps.py \
-#       jupyter/universal/ubi9-python-3.12/requirements.cpu.txt \
-#       jupyter/universal/ubi9-python-3.12/requirements-build.cpu.txt
+#       jupyter/universal/ubi9-python-3.12/requirements.cpu.txt
 #
 
 build
+calver
 cffi
+coherent-licensed
 cython
 expandvars
 flit-core
+flit-scm
 hatch-fancy-pypi-readme
 hatch-jupyter-builder
 hatch-nodejs-version
 hatch-vcs
 hatchling
+jupyter-builder
 jupyter-client
 jupyter-packaging
 jupyterlab
 maturin
-nanobind
 packaging
 pdm-backend
 pkgconfig
@@ -42,7 +44,5 @@ setuptools-rust
 setuptools-scm
 tomli
 typing-extensions
-trove-classifiers
 vcs-versioning
 wheel
-calver
