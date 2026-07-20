@@ -32,6 +32,16 @@ location /api/kernels/ {
 ###############
 
 ###############
+# Upstream che-code (quay.io/che-incubator) generates HTML referencing
+# ./oss-dev/static/... but doesn't route that prefix. Strip it so
+# /oss-dev/foo → /foo reaches the server's actual static file handler.
+# Harmless for downstream (devspaces/code-rhel9) which handles both paths.
+###############
+location /oss-dev/ {
+    rewrite ^/oss-dev/(.*)$ /$1 last;
+}
+
+###############
 # Everything else -> che-code server
 ###############
 location / {

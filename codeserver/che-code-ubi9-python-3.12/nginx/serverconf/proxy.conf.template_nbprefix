@@ -33,6 +33,15 @@ location ${NB_PREFIX}/api/kernels/ {
 ###############
 
 ###############
+# Upstream che-code (quay.io/che-incubator) generates HTML referencing
+# ./oss-dev/static/... but doesn't route that prefix. Strip it so the
+# request reaches the server's actual static file handler.
+###############
+location ${NB_PREFIX}/oss-dev/ {
+    rewrite ^${NB_PREFIX}/oss-dev/(.*)$ ${NB_PREFIX}/$1 last;
+}
+
+###############
 # Everything else -> che-code server
 # No rewrite needed: --server-base-path handles NB_PREFIX internally
 ###############
