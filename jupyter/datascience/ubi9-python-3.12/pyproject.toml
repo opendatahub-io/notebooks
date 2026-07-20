@@ -40,8 +40,12 @@ override-dependencies = [
     # AIPCC-13675: protobuf 6.33.6+ UPB C extension segfaults on s390x
     "protobuf==6.31.1",
     # RHOAIENG-75322: kubeflow-training 1.9.3 crashes with kubernetes 36.x
-    # due to openapi_types dict syntax change (dict(str,str) -> dict[str,str])
+    # due to openapi_types dict syntax change (dict(str,str) -> dict[str,str]).
+    # TODO(RHOAIENG-75322): remove in 3.6 EA1 as kubeflow-training is deprecated for 3.6 EA1
     "kubernetes<36",
+    # RHOAIENG-75322: pin requests to prevent resolver cascade downgrades caused by the kubernetes<36 constraint altering the dependency graph
+    # TODO(RHOAIENG-75322): remove in 3.6 EA1 as kubeflow-training is deprecated for 3.6 EA1
+    "requests==2.33.0",
 ]
 
 [tool.uv.sources]
