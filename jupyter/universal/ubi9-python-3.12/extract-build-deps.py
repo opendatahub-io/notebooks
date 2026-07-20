@@ -14,9 +14,17 @@ calver). So for every package discovered as a build dep, we also follow its
 project.dependencies to continue the closure — still seeded only from the
 runtime lockfile.
 
+PEP 508 version specifiers and environment markers from build-system.requires
+are preserved for recursion: markers are evaluated for the target build env
+(Python 3.12 / Linux), non-applicable deps are skipped, and enqueue resolves a
+version that satisfies the specifier (not always latest). The paste output for
+requirements-build.in keeps the AND-merged version bounds (and extras).
+
 Usage:
     python3 extract-build-deps.py requirements.cpu.txt
 """
+
+from __future__ import annotations
 
 import io
 import json
@@ -25,12 +33,27 @@ import tarfile
 import tomllib
 import urllib.request
 import zipfile
+from dataclasses import dataclass, field
 
 from packaging.requirements import Requirement
+from packaging.specifiers import SpecifierSet
 from packaging.utils import canonicalize_name
+from packaging.version import InvalidVersion, Version
+
+# Match `uv pip compile --python-version 3.12 --python-platform linux`.
+TARGET_ENV = {
+    "python_version": "3.12",
+    "python_full_version": "3.12.0",
+    "os_name": "posix",
+    "sys_platform": "linux",
+    "platform_system": "Linux",
+    "platform_machine": "x86_64",
+    "implementation_name": "cpython",
+    "implementation_version": "3.12.0",
+}
 
 # Normalized name → /pypi/{name}/json payload (avoids a second metadata fetch
-# when a package was just resolved via get_latest_version).
+# when a package was just resolved for enqueue).
 _pypi_project_cache: dict[str, dict] = {}
 
 
@@ -48,9 +71,24 @@ def fetch_pypi_project(name: str) -> dict | None:
     return data
 
 
-def get_latest_version(name: str) -> str | None:
+def resolve_version(name: str, specifier: SpecifierSet) -> str | None:
+    """Latest PyPI release of name that satisfies specifier (empty = any)."""
     data = fetch_pypi_project(name)
-    return data["info"]["version"] if data else None
+    if not data:
+        return None
+    matched: list[Version] = []
+    for ver_str, files in data.get("releases", {}).items():
+        if not files:
+            continue
+        try:
+            ver = Version(ver_str)
+        except InvalidVersion:
+            continue
+        if ver in specifier:
+            matched.append(ver)
+    if not matched:
+        return None
+    return str(max(matched))
 
 
 def is_root_pyproject(path: str) -> bool:
@@ -136,28 +174,105 @@ def parse_requirements_file(path: str) -> dict[str, str]:
     return packages
 
 
-def req_name(req_str: str) -> str | None:
+def parse_req(req_str: str) -> Requirement | None:
     try:
-        return canonicalize_name(Requirement(req_str).name)
+        return Requirement(req_str)
     except Exception:
         return None
 
 
+def marker_applies(req: Requirement) -> bool:
+    if req.marker is None:
+        return True
+    try:
+        return bool(req.marker.evaluate(TARGET_ENV))
+    except Exception:
+        return True
+
+
+def compact_specifier(spec: SpecifierSet) -> SpecifierSet:
+    """Collapse redundant lower/upper bounds into an equivalent SpecifierSet."""
+    if not spec:
+        return spec
+
+    lower: tuple[str, Version] | None = None  # (>= or >)
+    upper: tuple[str, Version] | None = None  # (<= or <)
+    others: list[str] = []
+
+    for clause in spec:
+        op, ver = clause.operator, Version(clause.version)
+        if op in (">=", ">"):
+            if lower is None or ver > lower[1] or (ver == lower[1] and op == ">"):
+                lower = (op, ver)
+        elif op in ("<=", "<"):
+            if upper is None or ver < upper[1] or (ver == upper[1] and op == "<"):
+                upper = (op, ver)
+        else:
+            others.append(f"{op}{clause.version}")
+
+    parts: list[str] = []
+    if lower:
+        parts.append(f"{lower[0]}{lower[1]}")
+    if upper:
+        parts.append(f"{upper[0]}{upper[1]}")
+    parts.extend(others)
+    return SpecifierSet(",".join(parts))
+
+
+@dataclass
+class BuildDepConstraint:
+    """Accumulated PEP 508 constraint for one build-dep package."""
+
+    extras: set[str] = field(default_factory=set)
+    specifier: SpecifierSet = field(default_factory=SpecifierSet)
+    conflict: bool = False
+
+    def merge(self, req: Requirement) -> None:
+        """AND-merge req. On unsatisfiable intersection, fall back to bare name."""
+        self.extras.update(req.extras)
+        if self.conflict:
+            return
+        name = canonicalize_name(req.name)
+        merged_spec = self.specifier & req.specifier
+        if resolve_version(name, merged_spec) is None:
+            print(
+                f"  WARN: conflict merging {req} into {name}{self.specifier}; "
+                f"emitting bare {name}",
+                file=sys.stderr,
+            )
+            self.conflict = True
+            self.specifier = SpecifierSet()
+            return
+        self.specifier = merged_spec
+
+    def as_requirement(self, name: str) -> str:
+        extras = f"[{','.join(sorted(self.extras))}]" if self.extras else ""
+        if self.conflict or not self.specifier:
+            return f"{name}{extras}"
+        return f"{name}{extras}{compact_specifier(self.specifier)}"
+
+
 def enqueue_new(
-    dep_name: str,
-    seen: set[str],
+    req: Requirement,
+    seen_versions: set[tuple[str, str]],
     next_round: list[tuple[str, str]],
     *,
     kind: str,
 ) -> None:
-    if dep_name in seen:
+    name = canonicalize_name(req.name)
+    version = resolve_version(name, req.specifier)
+    if not version:
+        print(
+            f"  WARN: no PyPI version for {req}",
+            file=sys.stderr,
+        )
         return
-    dep_version = get_latest_version(dep_name)
-    if not dep_version:
+    key = (name, version)
+    if key in seen_versions:
         return
-    seen.add(dep_name)
-    next_round.append((dep_name, dep_version))
-    print(f"    -> {kind}: {dep_name}=={dep_version}")
+    seen_versions.add(key)
+    next_round.append((name, version))
+    print(f"    -> {kind}: {name}=={version} (from {req})")
 
 
 def main() -> None:
@@ -167,8 +282,9 @@ def main() -> None:
 
     runtime_pinned = parse_requirements_file(sys.argv[1])
     to_process: list[tuple[str, str]] = list(runtime_pinned.items())
-    seen: set[str] = set(runtime_pinned)
-    all_build_dep_names: set[str] = set()
+    # Track name==version so conflicting upper/lower bounds can each be scanned.
+    seen_versions: set[tuple[str, str]] = set(runtime_pinned.items())
+    build_deps: dict[str, BuildDepConstraint] = {}
 
     iteration = 0
     while to_process:
@@ -183,28 +299,30 @@ def main() -> None:
                 print(f"  {name}=={version} build-system.requires: {build_requires}")
 
             for req_str in build_requires:
-                dep_name = req_name(req_str)
-                if not dep_name:
+                req = parse_req(req_str)
+                if req is None or not marker_applies(req):
                     continue
-                all_build_dep_names.add(dep_name)
-                enqueue_new(dep_name, seen, next_round, kind="new build dep")
+                dep_name = canonicalize_name(req.name)
+                build_deps.setdefault(dep_name, BuildDepConstraint()).merge(req)
+                enqueue_new(req, seen_versions, next_round, kind="new build dep")
 
             # Build-only packages: follow install deps to find their build-system.requires.
             if name not in runtime_pinned and project_deps:
                 print(f"  {name}=={version} project.dependencies: {project_deps}")
                 for req_str in project_deps:
-                    dep_name = req_name(req_str)
-                    if dep_name:
-                        enqueue_new(
-                            dep_name, seen, next_round, kind="build-backend install dep"
-                        )
+                    req = parse_req(req_str)
+                    if req is None or not marker_applies(req):
+                        continue
+                    enqueue_new(
+                        req, seen_versions, next_round, kind="build-backend install dep"
+                    )
 
         to_process = next_round
 
-    print(f"\n=== Unique build dep package names ({len(all_build_dep_names)}) ===")
+    print(f"\n=== Unique build dep requirements ({len(build_deps)}) ===")
     print("# Paste into requirements-build.in:")
-    for dep in sorted(all_build_dep_names):
-        print(dep)
+    for dep_name in sorted(build_deps):
+        print(build_deps[dep_name].as_requirement(dep_name))
 
 
 if __name__ == "__main__":

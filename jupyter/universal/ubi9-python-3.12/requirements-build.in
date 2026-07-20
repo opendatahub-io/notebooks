@@ -4,6 +4,10 @@
 # to compile the sdists. This file lists the transitive closure of all
 # build-system.requires from every sdist in the dependency tree.
 #
+# Constraints are AND-merged across packages (PEP 508). Environment markers
+# are evaluated for Python 3.12 / Linux (same as uv pip compile below);
+# non-applicable deps are omitted.
+#
 # To regenerate requirements-build.cpu.txt:
 #
 #   uv pip compile --python-version 3.12 --python-platform linux --no-header \
@@ -18,31 +22,28 @@
 
 build
 calver
-cffi
-coherent-licensed
-cython
+cffi>=1.0.1
+cython>=3.0.0
 expandvars
-flit-core
-flit-scm
-hatch-fancy-pypi-readme
-hatch-jupyter-builder
-hatch-nodejs-version
-hatch-vcs
-hatchling
-jupyter-builder
-jupyter-client
-jupyter-packaging
-jupyterlab
-maturin
-packaging
+flit-core>=3.12,<4
+hatch-fancy-pypi-readme>=23.2.0
+hatch-jupyter-builder>=0.8.3
+hatch-nodejs-version>=0.3.2
+hatch-vcs>=0.5,<0.6.0
+hatchling>=1.29,<2
+jupyter-builder>=1.0.2
+jupyter-client>=6
+jupyter-packaging>=0.10
+jupyterlab>=4.0.6,<5.0.0a0
+maturin>=1.9,<2.0
+packaging>=20.0
 pdm-backend
 pkgconfig
-poetry-core
-scikit-build-core
-setuptools
-setuptools-rust
-setuptools-scm
-tomli
+poetry-core>=2.0.0
+scikit-build-core>=0.10
+setuptools>=82.0.1,<83.1,!=24.0.0,!=34.0.0,!=34.0.1,!=34.0.2,!=34.0.3,!=34.1.0,!=34.1.1,!=34.2.0,!=34.3.0,!=34.3.1,!=34.3.2,!=36.2.0
+setuptools-rust>=1.11.0
+setuptools-scm[toml]
 typing-extensions
-vcs-versioning
+vcs-versioning>=2.0.0.dev0,<3
 wheel

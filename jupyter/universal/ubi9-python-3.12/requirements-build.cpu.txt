@@ -37,8 +37,6 @@ cffi==2.1.0
     #   argon2-cffi-bindings
 charset-normalizer==3.4.9
     # via requests
-coherent-licensed==0.5.2
-    # via -r jupyter/universal/ubi9-python-3.12/requirements-build.in
 comm==0.2.3
     # via ipykernel
 cython==3.2.8
@@ -58,10 +56,6 @@ expandvars==1.1.2
 fastjsonschema==2.21.2
     # via nbformat
 flit-core==3.12.0
-    # via
-    #   -r jupyter/universal/ubi9-python-3.12/requirements-build.in
-    #   flit-scm
-flit-scm==1.7.0
     # via -r jupyter/universal/ubi9-python-3.12/requirements-build.in
 fqdn==1.5.1
     # via jsonschema
@@ -297,7 +291,6 @@ setuptools-rust==1.13.0
 setuptools-scm==10.2.0
     # via
     #   -r jupyter/universal/ubi9-python-3.12/requirements-build.in
-    #   flit-scm
     #   hatch-vcs
 six==1.17.0
     # via
@@ -313,8 +306,6 @@ terminado==0.18.1
     #   jupyter-server-terminals
 tinycss2==1.5.1
     # via bleach
-tomli==2.4.1
-    # via -r jupyter/universal/ubi9-python-3.12/requirements-build.in
 tomlkit==0.15.1
     # via jupyter-packaging
 tornado==6.5.7
