@@ -55,7 +55,7 @@ spec:
     value:
     - path: jupyter/universal/ubi9-python-3.12
       type: pip
-      requirements_files: [requirements.cpu.txt]
+      requirements_files: [requirements.cpu.txt, requirements-build.cpu.txt]
   taskRunSpecs:
   - pipelineTaskName: build-images
     stepSpecs:

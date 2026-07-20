@@ -1,0 +1,40 @@
+# Build dependencies (PEP 517 build-system.requires) for sdists in requirements.cpu.txt.
+#
+# Hermeto prefetches sdists alongside wheels. pip needs these build backends
+# to compile the sdists. This file lists the union of all build-system.requires
+# from every sdist in the dependency tree.
+#
+# To regenerate requirements-build.cpu.txt:
+#
+#   uv pip compile --python-version 3.12 --python-platform linux --no-header \
+#       jupyter/universal/ubi9-python-3.12/requirements-build.in \
+#       -o jupyter/universal/ubi9-python-3.12/requirements-build.cpu.txt
+#
+# To re-extract build deps from sdists (when requirements.cpu.txt changes):
+#
+#   python3 jupyter/universal/ubi9-python-3.12/extract-build-deps.py \
+#       jupyter/universal/ubi9-python-3.12/requirements.cpu.txt
+#
+
+# Build backends
+setuptools
+setuptools-scm
+wheel
+flit_core
+hatchling
+hatch-vcs
+hatch-fancy-pypi-readme
+hatch-jupyter-builder
+hatch-nodejs-version
+poetry-core
+pdm-backend
+maturin
+scikit-build-core
+
+# Build-time deps of specific packages
+expandvars
+pkgconfig
+packaging
+Cython
+jupyter-packaging
+build
