@@ -14,15 +14,27 @@ calver). So for every package discovered as a build dep, we also follow its
 project.dependencies to continue the closure — still seeded only from the
 runtime lockfile.
 
-PEP 508 version specifiers and environment markers from build-system.requires
-are preserved for recursion. Markers are evaluated for Python 3.12 / Linux
-against each Konflux build arch (x86_64, aarch64, ppc64le, s390x) — the same
-set as Tekton build-platforms and pip binary.arch prefetch. A dependency is
-included if its marker applies on *any* of those arches (union). Non-Linux or
-wrong-Python markers (e.g. os_name == 'nt', python_version < '3.11') remain
-excluded. Enqueue resolves a version that satisfies the specifier (not always
-latest). The paste output for requirements-build.in keeps AND-merged version
-bounds (and extras) for a single Hermeto lockfile.
+Arch-aware logging
+------------------
+Konflux builds linux/x86_64, aarch64, ppc64le, and s390x. For each package we
+log which arches lack a usable Python 3.12 wheel (must build from sdist) vs
+where a wheel exists. The emitted requirements-build.in is still the full
+transitive closure — Hermeto may use an sdist even when a wheel exists, and a
+single lockfile must cover every arch.
+
+scikit-build-core
+-----------------
+When tool.scikit-build.cmake.version / ninja.version is set, scikit-build-core
+requests the PyPI ``cmake`` / ``ninja`` packages via get_requires_for_build_wheel.
+Those are not in build-system.requires; we synthesize them from the TOML.
+
+PEP 508 markers
+---------------
+Markers are evaluated for Python 3.12 / Linux against each Konflux arch. A
+dependency is included if its marker applies on *any* arch (union). Non-Linux
+or wrong-Python markers (e.g. os_name == 'nt') remain excluded. Enqueue
+resolves a version that satisfies the specifier. Paste output for
+requirements-build.in keeps AND-merged version bounds for one Hermeto lockfile.
 
 Usage:
     python3 extract-build-deps.py requirements.cpu.txt
@@ -32,6 +44,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import sys
 import tarfile
 import tomllib
@@ -54,10 +67,18 @@ _TARGET_ENV_BASE = {
     "implementation_name": "cpython",
     "implementation_version": "3.12.0",
 }
+TARGET_MACHINES = ("x86_64", "aarch64", "ppc64le", "s390x")
 TARGET_ENVS = [
-    {**_TARGET_ENV_BASE, "platform_machine": machine}
-    for machine in ("x86_64", "aarch64", "ppc64le", "s390x")
+    {**_TARGET_ENV_BASE, "platform_machine": machine} for machine in TARGET_MACHINES
 ]
+
+# Filename substrings that identify a wheel's architecture tag.
+_MACHINE_IN_WHEEL = {
+    "x86_64": ("x86_64", "amd64"),
+    "aarch64": ("aarch64", "arm64"),
+    "ppc64le": ("ppc64le",),
+    "s390x": ("s390x",),
+}
 
 # Normalized name → /pypi/{name}/json payload (avoids a second metadata fetch
 # when a package was just resolved for enqueue).
@@ -104,32 +125,107 @@ def is_root_pyproject(path: str) -> bool:
     return path == "pyproject.toml" or (len(parts) == 2 and parts[1] == "pyproject.toml")
 
 
+def scikit_build_tool_requires(toml: dict) -> list[str]:
+    """Synthesize cmake/ninja PyPI reqs from tool.scikit-build (not CMakeLists.txt)."""
+    sb = toml.get("tool", {}).get("scikit-build") or {}
+    requires: list[str] = []
+    for tool_name in ("cmake", "ninja"):
+        section = sb.get(tool_name)
+        if not isinstance(section, dict):
+            continue
+        version = section.get("version")
+        if version is True:
+            requires.append(tool_name)
+            continue
+        if not isinstance(version, str) or not re.match(r"^[\d<=>!~]", version):
+            continue
+        requires.append(f"{tool_name}=={version}" if version[0].isdigit() else f"{tool_name}{version}")
+    return requires
+
+
 def read_pyproject_meta(content: bytes) -> tuple[list[str], list[str]]:
     toml = tomllib.loads(content.decode())
-    build_requires = toml.get("build-system", {}).get("requires") or []
+    build_requires = list(toml.get("build-system", {}).get("requires") or [])
+    build_requires.extend(scikit_build_tool_requires(toml))
     project_deps = toml.get("project", {}).get("dependencies") or []
     return build_requires, project_deps
 
 
-def _sdist_files(name: str, version: str) -> list[dict]:
-    """Return PyPI file records for an sdist of name==version."""
-    cached = _pypi_project_cache.get(canonicalize_name(name))
-    if cached and version in cached.get("releases", {}):
-        return cached["releases"][version]
+# (name, version) → urls[] from project or versioned JSON.
+_release_files_cache: dict[tuple[str, str], list[dict]] = {}
+# (name, version) → /pypi/{name}/{version}/json payload (for requires_dist).
+_version_json_cache: dict[tuple[str, str], dict] = {}
 
-    url = f"https://pypi.org/pypi/{name}/{version}/json"
+
+def fetch_version_json(name: str, version: str) -> dict | None:
+    key = (canonicalize_name(name), version)
+    if key in _version_json_cache:
+        return _version_json_cache[key]
     try:
-        resp = urllib.request.urlopen(url, timeout=10)
+        resp = urllib.request.urlopen(f"https://pypi.org/pypi/{name}/{version}/json", timeout=10)
         data = json.loads(resp.read())
     except Exception as e:
         print(f"  WARN: {name}=={version}: {e}", file=sys.stderr)
-        return []
-    return data.get("urls", [])
+        return None
+    _version_json_cache[key] = data
+    _release_files_cache[key] = data.get("urls", [])
+    return data
+
+
+def release_files(name: str, version: str) -> list[dict]:
+    """PyPI file records (wheels + sdist) for name==version."""
+    key = (canonicalize_name(name), version)
+    if key in _release_files_cache:
+        return _release_files_cache[key]
+
+    project = fetch_pypi_project(name)
+    if project and version in project.get("releases", {}):
+        files = project["releases"][version]
+        _release_files_cache[key] = files
+        return files
+
+    data = fetch_version_json(name, version)
+    return data.get("urls", []) if data else []
+
+
+def _wheel_matches_machine(filename: str, machine: str) -> bool:
+    return any(token in filename for token in _MACHINE_IN_WHEEL[machine])
+
+
+def wheel_usable_on(filename: str, machine: str) -> bool:
+    """True if this wheel can install on CPython 3.12 for the given linux machine.
+
+    Uses filename tag substrings (not packaging.tags) — same idea as the
+    prefetch arch filter, plus cp312/abi3/py3-none handling.
+    """
+    name = filename.lower()
+    if not name.endswith(".whl"):
+        return False
+
+    if "none-any" in name:
+        return any(tag in name for tag in ("py3-", "py2.py3-"))
+
+    # py3-none-<platform> (e.g. cmake embedding native binaries).
+    if re.search(r"py(2\.)?3-none-", name):
+        return _wheel_matches_machine(name, machine)
+
+    if "cp312" not in name:
+        abi3 = re.search(r"cp3(\d+)-abi3", name)
+        if not (abi3 and int(abi3.group(1)) <= 12):
+            return False
+
+    return _wheel_matches_machine(name, machine)
+
+
+def arches_needing_sdist(name: str, version: str) -> list[str]:
+    """Target machines with no usable wheel for name==version (must build sdist)."""
+    wheels = [f["filename"] for f in release_files(name, version) if f.get("packagetype") == "bdist_wheel"]
+    return [m for m in TARGET_MACHINES if not any(wheel_usable_on(w, m) for w in wheels)]
 
 
 def extract_sdist_meta(name: str, version: str) -> tuple[list[str], list[str]]:
-    """Return (build-system.requires, project.dependencies) from the sdist root pyproject."""
-    sdist_urls = [u for u in _sdist_files(name, version) if u.get("packagetype") == "sdist"]
+    """Return (build-system.requires + scikit-build tools, project.dependencies)."""
+    sdist_urls = [u for u in release_files(name, version) if u.get("packagetype") == "sdist"]
     if not sdist_urls:
         return [], []
 
@@ -304,10 +400,27 @@ def main() -> None:
         print(f"\n=== Iteration {iteration}: processing {len(to_process)} packages ===")
 
         for name, version in to_process:
+            needing = arches_needing_sdist(name, version)
+            is_build_package = name not in runtime_pinned
+
+            if needing:
+                have = [m for m in TARGET_MACHINES if m not in needing]
+                print(
+                    f"  {name}=={version}: sdist needed on {','.join(needing)}"
+                    + (f" (wheels on {','.join(have)})" if have else " (no wheels)")
+                )
+            else:
+                print(
+                    f"  {name}=={version}: wheel on all arches "
+                    f"({','.join(TARGET_MACHINES)})"
+                )
+
+            # Always collect build-system.requires (+ scikit-build tools) for the
+            # full transitive closure — do not omit packages that have wheels.
             build_requires, project_deps = extract_sdist_meta(name, version)
 
             if build_requires:
-                print(f"  {name}=={version} build-system.requires: {build_requires}")
+                print(f"  {name}=={version} build requires: {build_requires}")
 
             for req_str in build_requires:
                 req = parse_req(req_str)
@@ -317,8 +430,7 @@ def main() -> None:
                 build_deps.setdefault(dep_name, BuildDepConstraint()).merge(req)
                 enqueue_new(req, seen_versions, next_round, kind="new build dep")
 
-            # Build-only packages: follow install deps to find their build-system.requires.
-            if name not in runtime_pinned and project_deps:
+            if is_build_package and project_deps:
                 print(f"  {name}=={version} project.dependencies: {project_deps}")
                 for req_str in project_deps:
                     req = parse_req(req_str)
