@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Extract PEP 517 build-system.requires from sdists on PyPI.
+"""Extract PEP 517 build-system.requires transitively from sdists on PyPI.
 
 For each pinned package in a requirements.txt, downloads its sdist (if one
-exists), reads pyproject.toml, and prints the union of all build deps.
+exists), reads pyproject.toml, and collects build deps. Then recursively
+resolves build deps of build deps until no new packages are discovered.
 
 Usage:
     python3 extract-build-deps.py requirements.cpu.txt
@@ -10,11 +11,27 @@ Usage:
 
 import io
 import json
+import re
 import sys
 import tarfile
 import tomllib
 import urllib.request
 import zipfile
+
+from packaging.requirements import Requirement
+
+
+def normalize(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def get_latest_version(name: str) -> str | None:
+    try:
+        resp = urllib.request.urlopen(f"https://pypi.org/pypi/{name}/json", timeout=10)
+        data = json.loads(resp.read())
+        return data["info"]["version"]
+    except Exception:
+        return None
 
 
 def extract_build_requires(name: str, version: str) -> list[str]:
@@ -60,36 +77,73 @@ def extract_build_requires(name: str, version: str) -> list[str]:
     return []
 
 
+def parse_requirements_file(path: str) -> dict[str, str]:
+    packages: dict[str, str] = {}
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or line.startswith("-"):
+                continue
+            if "==" not in line:
+                continue
+            try:
+                req = Requirement(line.split("\\")[0].strip())
+            except Exception:
+                continue
+            for spec in req.specifier:
+                if spec.operator == "==":
+                    packages[normalize(req.name)] = spec.version
+                    break
+    return packages
+
+
 def main() -> None:
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} requirements.txt", file=sys.stderr)
         sys.exit(1)
 
     reqs_file = sys.argv[1]
-    all_build_deps: set[str] = set()
+    pinned = parse_requirements_file(reqs_file)
 
-    with open(reqs_file) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "==" not in line:
-                continue
-            name_version = line.split(";")[0].strip().split("\\")[0].strip()
-            if "==" not in name_version:
-                continue
-            name, version = name_version.split("==", 1)
-            name = name.strip()
-            version = version.strip()
+    to_process: list[tuple[str, str]] = list(pinned.items())
+    seen: set[str] = set(pinned.keys())
+    all_build_dep_names: set[str] = set()
 
+    iteration = 0
+    while to_process:
+        iteration += 1
+        next_round: list[tuple[str, str]] = []
+        print(f"\n=== Iteration {iteration}: processing {len(to_process)} packages ===")
+
+        for name, version in to_process:
             requires = extract_build_requires(name, version)
-            if requires:
-                print(f"{name}=={version}: {requires}")
-                all_build_deps.update(requires)
+            if not requires:
+                continue
 
-    print(f"\n# Unique build deps ({len(all_build_deps)})")
-    for dep in sorted(all_build_deps, key=str.lower):
-        print(f"  {dep}")
+            print(f"  {name}=={version}: {requires}")
+
+            for req_str in requires:
+                try:
+                    req = Requirement(req_str)
+                except Exception:
+                    continue
+
+                dep_name = normalize(req.name)
+                all_build_dep_names.add(dep_name)
+
+                if dep_name not in seen:
+                    seen.add(dep_name)
+                    dep_version = get_latest_version(req.name)
+                    if dep_version:
+                        next_round.append((dep_name, dep_version))
+                        print(f"    -> new build dep: {dep_name}=={dep_version}")
+
+        to_process = next_round
+
+    print(f"\n=== Unique build dep package names ({len(all_build_dep_names)}) ===")
+    print("# Paste into requirements-build.in:")
+    for dep in sorted(all_build_dep_names):
+        print(dep)
 
 
 if __name__ == "__main__":
