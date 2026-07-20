@@ -5,8 +5,9 @@
 # build-system.requires from every sdist in the dependency tree.
 #
 # Constraints are AND-merged across packages (PEP 508). Environment markers
-# are evaluated for Python 3.12 / Linux (same as uv pip compile below);
-# non-applicable deps are omitted.
+# are evaluated for Python 3.12 / Linux on each of x86_64, aarch64, ppc64le,
+# s390x (union — same arches as Konflux build-platforms); non-applicable deps
+# are omitted.
 #
 # To regenerate requirements-build.cpu.txt:
 #

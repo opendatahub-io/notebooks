@@ -15,10 +15,14 @@ project.dependencies to continue the closure — still seeded only from the
 runtime lockfile.
 
 PEP 508 version specifiers and environment markers from build-system.requires
-are preserved for recursion: markers are evaluated for the target build env
-(Python 3.12 / Linux), non-applicable deps are skipped, and enqueue resolves a
-version that satisfies the specifier (not always latest). The paste output for
-requirements-build.in keeps the AND-merged version bounds (and extras).
+are preserved for recursion. Markers are evaluated for Python 3.12 / Linux
+against each Konflux build arch (x86_64, aarch64, ppc64le, s390x) — the same
+set as Tekton build-platforms and pip binary.arch prefetch. A dependency is
+included if its marker applies on *any* of those arches (union). Non-Linux or
+wrong-Python markers (e.g. os_name == 'nt', python_version < '3.11') remain
+excluded. Enqueue resolves a version that satisfies the specifier (not always
+latest). The paste output for requirements-build.in keeps AND-merged version
+bounds (and extras) for a single Hermeto lockfile.
 
 Usage:
     python3 extract-build-deps.py requirements.cpu.txt
@@ -40,17 +44,20 @@ from packaging.specifiers import SpecifierSet
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
-# Match `uv pip compile --python-version 3.12 --python-platform linux`.
-TARGET_ENV = {
+# Python 3.12 / Linux, one env per Konflux build arch (union for markers).
+_TARGET_ENV_BASE = {
     "python_version": "3.12",
     "python_full_version": "3.12.0",
     "os_name": "posix",
     "sys_platform": "linux",
     "platform_system": "Linux",
-    "platform_machine": "x86_64",
     "implementation_name": "cpython",
     "implementation_version": "3.12.0",
 }
+TARGET_ENVS = [
+    {**_TARGET_ENV_BASE, "platform_machine": machine}
+    for machine in ("x86_64", "aarch64", "ppc64le", "s390x")
+]
 
 # Normalized name → /pypi/{name}/json payload (avoids a second metadata fetch
 # when a package was just resolved for enqueue).
@@ -182,12 +189,16 @@ def parse_req(req_str: str) -> Requirement | None:
 
 
 def marker_applies(req: Requirement) -> bool:
+    """True if the requirement has no marker or it applies on any TARGET_ENVS arch."""
     if req.marker is None:
         return True
-    try:
-        return bool(req.marker.evaluate(TARGET_ENV))
-    except Exception:
-        return True
+    for env in TARGET_ENVS:
+        try:
+            if req.marker.evaluate(env):
+                return True
+        except Exception:
+            return True
+    return False
 
 
 def compact_specifier(spec: SpecifierSet) -> SpecifierSet:
