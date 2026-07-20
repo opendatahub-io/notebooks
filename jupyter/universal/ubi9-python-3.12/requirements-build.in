@@ -13,7 +13,8 @@
 # To re-extract build deps from sdists (when requirements.cpu.txt changes):
 #
 #   uv run python3 jupyter/universal/ubi9-python-3.12/extract-build-deps.py \
-#       jupyter/universal/ubi9-python-3.12/requirements.cpu.txt
+#       jupyter/universal/ubi9-python-3.12/requirements.cpu.txt \
+#       jupyter/universal/ubi9-python-3.12/requirements-build.cpu.txt
 #
 
 build

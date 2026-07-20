@@ -99,11 +99,12 @@ def parse_requirements_file(path: str) -> dict[str, str]:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} requirements.txt", file=sys.stderr)
+        print(f"Usage: {sys.argv[0]} requirements.txt [requirements-build.cpu.txt ...]", file=sys.stderr)
         sys.exit(1)
 
-    reqs_file = sys.argv[1]
-    pinned = parse_requirements_file(reqs_file)
+    pinned: dict[str, str] = {}
+    for reqs_file in sys.argv[1:]:
+        pinned.update(parse_requirements_file(reqs_file))
 
     to_process: list[tuple[str, str]] = list(pinned.items())
     seen: set[str] = set(pinned.keys())
