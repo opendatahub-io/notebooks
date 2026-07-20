@@ -67,6 +67,7 @@ start_process "${CHECODE_DIR}/node" "${CHECODE_DIR}/out/server-main.js" \
     --host "$HOST" \
     --port 3100 \
     --without-connection-token \
+    --disable-workspace-trust \
     --server-base-path "${NB_PREFIX:-/}" \
     --server-data-dir "${HOME}/.vscode-server" \
     --extensions-dir "${CHECODE_DIR}/extensions" \

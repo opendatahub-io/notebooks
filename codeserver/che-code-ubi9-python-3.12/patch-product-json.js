@@ -15,9 +15,6 @@ d.welcomePageSubtitle = "";
 // with "not allowed to be updated in the current product quality 'undefined'".
 // See: https://github.com/VSCodium/vscodium/wiki/Product.json
 d.quality = "stable";
-// Product-level flag: disables the workspace trust feature entirely.
-// configurationDefaults alone doesn't prevent the trust dialog on first open.
-d.enableWorkspaceTrust = false;
 d.configurationDefaults = {
   "security.workspace.trust.enabled": false,
   "security.workspace.trust.startupPrompt": "never",
