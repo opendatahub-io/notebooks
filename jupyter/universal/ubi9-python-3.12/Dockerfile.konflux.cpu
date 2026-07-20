@@ -20,11 +20,10 @@ USER 0
 RUN printf '[global]\nindex-url = https://pypi.org/simple/\n' > /opt/app-root/pip.conf && \
     printf '[[index]]\nurl = "https://pypi.org/simple/"\n' > /opt/app-root/uv.toml
 
-RUN dnf install -y --nodocs \
-        libatomic \
-        openshift-clients \
-        skopeo && \
+RUN dnf install -y --nodocs libatomic skopeo && \
     dnf clean all
+RUN curl -sL "https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz" \
+    | tar xz -C /usr/local/bin oc kubectl
 
 # JupyterLab + pipeline runtime packages
 COPY jupyter/universal/ubi9-python-3.12/requirements.cpu.txt /tmp/requirements.cpu.txt
