@@ -55,8 +55,8 @@ A new image at `jupyter/universal/ubi9-python-3.12/` that:
 3. **Installs pipeline runtime dependencies from PyPI** — `ipykernel`,
    `papermill`, `nbclient`, `nbconvert`, `nbformat`, `minio`, `urllib3`.
 
-4. **Includes the Elyra bootstrapper** — copied from
-   `prefetch-input/elyra-v4.3.1/elyra/kfp/bootstrapper.py` to
+4. **Includes the Elyra bootstrapper** — vendored at
+   `jupyter/universal/ubi9-python-3.12/utils/bootstrapper.py` and copied to
    `/opt/app-root/bin/utils/bootstrapper.py`, matching the path used by
    existing runtime images. Includes the empty `requirements-elyra.txt` and
    `pip.conf` files that prevent Elyra's processor from falling into remote
@@ -98,10 +98,21 @@ wheels and sdists before the build starts; the build itself runs with
 `--no-index --find-links /cachi2/output/deps/pip` injected by Konflux.
 
 Because Hermeto prefetches sdists alongside wheels, pip needs build backends
-(setuptools, hatchling, poetry-core, maturin, etc.) to compile them. These are
-declared in a separate `requirements-build.cpu.txt` lockfile, extracted from
-the `build-system.requires` of every sdist in the dependency tree using
-`extract-build-deps.py`. Both files are listed in the Tekton PipelineRun's
+and related tools to compile them on arches without wheels (notably ppc64le
+and s390x). These are declared in a separate `requirements-build.cpu.txt`
+lockfile. `extract-build-deps.py` builds that closure by:
+
+- walking every sdist reachable from `requirements.cpu.txt`
+- collecting PEP 517 `build-system.requires` (AND-merging constraints)
+- evaluating environment markers for Python 3.12 / Linux on each Konflux
+  arch (`x86_64`, `aarch64`, `ppc64le`, `s390x`) and taking the union
+- synthesizing scikit-build-core defaults that are *not* in
+  `build-system.requires` but are requested at wheel-build time via
+  `get_requires_for_build_wheel` — today `cmake>=3.15` and `ninja>=1.5`
+  (e.g. pyzmq only sets `tool.scikit-build.cmake.version`; ninja still
+  defaults to `>=1.5`)
+
+Both runtime and build lockfiles are listed in the Tekton PipelineRun's
 `prefetch-input`.
 
 RPM dependencies (`libatomic`, `skopeo`) are prefetched via a per-image
@@ -115,10 +126,20 @@ the repo root directory. Since ours is in `jupyter/universal/ubi9-python-3.12/`,
 automatic RPM lockfile refresh requires a separate GHA workflow or manual
 regeneration via `rpm-lockfile-prototype --image <base> rpms.in.yaml`.
 
-The `oc` and `kubectl` binaries are installed from the stable tarball at
-`mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/`.
-This is public (no auth), available for all 4 arches, and always points to
-the latest stable OCP release. Alternatives considered:
+The `oc` and `kubectl` clients are installed conditionally:
+
+- **RHOAI / subscribed builds** set `OC_IMAGE` to
+  `registry.redhat.io/openshift4/ose-cli-rhel9` (pinned digest in
+  `build-args/konflux.cpu.conf`). The Dockerfile copies `oc` from that
+  image and creates `kubectl` as a relative symlink (`ln -sf oc …`) —
+  ose-cli ships `kubectl` as an absolute symlink to `/usr/bin/oc`, which
+  plain `cp` cannot follow into the build root.
+- **ODH / local builds** leave `OC_IMAGE=scratch` and fall back to the
+  public tarball at
+  `mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/`
+  (no auth, all four arches, tracks latest stable OCP).
+
+Alternatives considered and rejected for the ODH path:
 
 - `registry.redhat.io/openshift4/ose-cli` — requires subscription auth,
   not available on `registry.access.redhat.com`
@@ -127,7 +148,7 @@ the latest stable OCP release. Alternatives considered:
 - OKD `quay.io/openshift/origin-cli` — only up to 4.9, amd64 only
 - OKD `quay.io/okd/scos-content:*-cli` — amd64+arm64 only, no IBM arches
 
-The tarball download is not hermetic (network at build time). Making it
+The ODH tarball download is not hermetic (network at build time). Making it
 hermetic would require adding it to a `generic` prefetch artifact.
 
 ### Build strategy: clean Dockerfile, Konflux-transparent prefetch
@@ -209,12 +230,13 @@ PyPI access and are willing to install their own ML frameworks.
   bootstrapper updates require a manual file copy.
 
 - **Build deps must be tracked separately.** PEP 517 `build-system.requires`
-  are not captured by `uv pip compile` or any standard lockfile format. The
-  `extract-build-deps.py` script downloads sdists from PyPI to extract them —
-  a manual step when `requirements.cpu.txt` changes.
+  (and scikit-build cmake/ninja defaults) are not captured by `uv pip compile`.
+  `extract-build-deps.py` downloads sdists from PyPI to extract them — a
+  manual step when `requirements.cpu.txt` changes.
 
-- **RPMs not yet hermetic.** `libatomic` is installed via `dnf` from UBI9 base
-  repos. Full RPM hermeticity requires rpms.lock.yaml + Hermeto RPM prefetch.
+- **ODH `oc` install is not hermetic.** When `OC_IMAGE` is scratch, the
+  Dockerfile curls the OpenShift client tarball at build time. RHOAI builds
+  avoid that by copying from the subscribed `ose-cli-rhel9` image.
 
 ### Non-goals
 
@@ -229,7 +251,7 @@ PyPI access and are willing to install their own ML frameworks.
 
 ## References
 
-- PR: (to be created)
+- PR: https://github.com/opendatahub-io/notebooks/pull/4110
 - ADR #0016: [Reuse Dev Spaces che-code for multiarch VS Code workbench](0016-reuse-che-code-for-multiarch-vscode-workbench.md)
 - ADR #0013 (architecture-context): Universal training image — dual-purpose
   workbench and training runtime (RHOAIENG-35690, RHAISTRAT-44)
