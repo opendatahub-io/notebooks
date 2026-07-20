@@ -8,7 +8,7 @@ set -euo pipefail
 # Runtime mode:   Elyra/AI Pipelines step overrides the command to run bootstrapper.py
 
 if [ -n "${NOTEBOOK_ARGS:-}" ]; then
-    exec sh -lc 'exec start-notebook.sh ${NOTEBOOK_ARGS}'
+    exec sh -lc 'exec start-notebook.sh'
 fi
 
 exec "${@:-start-notebook.sh}"
