@@ -178,7 +178,7 @@ class TestDataScienceLibs(unittest.TestCase):
                     "labels": {"app": "pytorch"},
                     "annotations": {"test-key": "test-value"},
                 },
-                "spec": {"pytorchReplicaSpecs": {}},
+                "spec": {"pytorchReplicaSpecs": {"Master": {"replicas": 1}}, "runPolicy": {"cleanPodPolicy": "None"}},
                 "status": {},
             }
         )
