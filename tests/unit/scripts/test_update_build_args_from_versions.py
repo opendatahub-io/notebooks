@@ -92,8 +92,8 @@ def stub_published_rhds_gpu_stable_tags(
     rocm_build: str = "1780598175",
 ) -> None:
     tags_by_repository = {
-        f"quay.io/aipcc/base-images/cuda-stable": (f"{full_version}-{cuda_build}",),
-        f"quay.io/aipcc/base-images/rocm-stable": (f"{full_version}-{rocm_build}",),
+        "quay.io/aipcc/base-images/cuda-stable": (f"{full_version}-{cuda_build}",),
+        "quay.io/aipcc/base-images/rocm-stable": (f"{full_version}-{rocm_build}",),
     }
     monkeypatch.setattr(
         updater,
