@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -55,6 +56,13 @@ def test_pkce_pair_verifier_is_url_safe() -> None:
     verifier, _ = _pkce_pair()
     allowed = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
     assert set(verifier).issubset(allowed)
+
+
+def test_pkce_pair_uses_s256_challenge() -> None:
+    verifier, challenge = _pkce_pair()
+    digest = hashlib.sha256(verifier.encode("ascii")).digest()
+    expected = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+    assert challenge == expected
 
 
 # ── _parse_expires_at ──────────────────────────────────────────────────
