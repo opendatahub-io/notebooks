@@ -92,17 +92,17 @@ test.describe('che-code', { tag: '@checode' }, () => {
     test.setTimeout(60000)
     await loadEditor(codeServer, page)
 
-    await test.step("Python extension is installed", async () => {
-      // Use command palette to check — more reliable than Extensions sidebar
-      await page.keyboard.press('Control+Shift+P')
-      await page.waitForSelector('.quick-input-widget', { timeout: 5000 })
-      await page.keyboard.type('Python: ', { delay: 50 })
-      // If the Python extension is active, it contributes Python: commands
-      await expect(
-        page.locator('.quick-input-widget .quick-input-list .monaco-list-row')
-            .filter({ hasText: /^Python:/ }).first()
-      ).toBeVisible({ timeout: 10000 })
-      await page.keyboard.press('Escape')
+    await test.step("wait for extensions to activate", async () => {
+      // Poll until Python commands appear — extension activation is async
+      await expect(async () => {
+        await page.keyboard.press('Control+Shift+P')
+        await page.waitForSelector('.quick-input-widget', { timeout: 3000 })
+        await page.keyboard.type('Python: ', { delay: 30 })
+        const row = page.locator('.quick-input-widget .quick-input-list .monaco-list-row')
+            .filter({ hasText: /Python:/ }).first()
+        await expect(row).toBeVisible({ timeout: 3000 })
+        await page.keyboard.press('Escape')
+      }).toPass({ timeout: 45000, intervals: [2000, 3000, 5000] })
     })
   })
 
