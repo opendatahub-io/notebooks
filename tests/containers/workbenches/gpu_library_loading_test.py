@@ -509,7 +509,12 @@ class TestGPULibraryLoading:
             import os
 
             rocm_path = os.environ.get("ROCM_PATH", "/opt/rocm")
-            rocm_lib = os.path.join(rocm_path, "lib")
+
+            # ROCm installs can place shared libs in either /opt/rocm/lib (older layout)
+            # or a versioned core directory such as /opt/rocm/core-7.14/lib.
+            candidate_rocm_libs = [os.path.join(rocm_path, "lib")]
+            candidate_rocm_libs.extend(sorted(glob.glob(os.path.join(rocm_path, "core-*", "lib"))))
+            rocm_libs = [path for path in candidate_rocm_libs if os.path.isdir(path)]
 
             critical_basenames = [
                 "libhipblaslt",
@@ -523,16 +528,32 @@ class TestGPULibraryLoading:
                 "librccl",
             ]
 
-            results = {"loaded": [], "failed": [], "not_found": [], "missing_unversioned": [], "rocm_lib": rocm_lib}
+            if not rocm_libs:
+                return {
+                    "loaded": [],
+                    "failed": [],
+                    "not_found": critical_basenames,
+                    "missing_unversioned": [],
+                    "rocm_lib": f"no ROCm lib dir found under {rocm_path}",
+                }
+
+            results = {"loaded": [], "failed": [], "not_found": [], "missing_unversioned": [], "rocm_lib": rocm_libs[0]}
 
             for basename in critical_basenames:
-                pattern = os.path.join(rocm_lib, f"{basename}.so*")
-                matches = sorted(glob.glob(pattern))
+                matches = []
+                selected_rocm_lib = rocm_libs[0]
+                for rocm_lib in rocm_libs:
+                    pattern = os.path.join(rocm_lib, f"{basename}.so*")
+                    matches = sorted(glob.glob(pattern))
+                    if matches:
+                        selected_rocm_lib = rocm_lib
+                        break
+
                 if not matches:
                     results["not_found"].append(basename)
                     continue
 
-                unversioned = os.path.join(rocm_lib, f"{basename}.so")
+                unversioned = os.path.join(selected_rocm_lib, f"{basename}.so")
                 has_unversioned = os.path.exists(unversioned) or os.path.islink(unversioned)
                 if not has_unversioned:
                     results["missing_unversioned"].append(basename)
