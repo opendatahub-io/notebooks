@@ -433,8 +433,8 @@ tensorboard==2.19.0 ; python_full_version == '3.12.*' and implementation_name ==
     --hash=sha256:5e71b98663a641a7ce8a6e70b0be8e1a4c0c45d48760b076383ac4755c35b9a0
 tensorboard-data-server==0.7.2 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:7e0610d205889588983836ec05dc098e80f97b7e7bbff7e994ebb78f578d0ddb
-tensorflow-rocm==2.19.1 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:0242333942b871c870c09c39330051125258578de42421a3b139daa509c451aa
+tensorflow-rocm==2.19.1+rocm7.14.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:9bfb73a55cbaedb39c1e0c7794406daeccd1d76180a8ea0bd2346d7037bbd286
 termcolor==3.3.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:5a3d2c4098211c5ad9be04e57407cfeac4cf14921b5bfc4772b6ee9ed2bbe863
 threadpoolctl==3.6.0 ; python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux' \

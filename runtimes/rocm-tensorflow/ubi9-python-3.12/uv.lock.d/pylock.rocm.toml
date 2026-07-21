@@ -1306,9 +1306,9 @@ wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoa
 
 [[packages]]
 name = "tensorflow-rocm"
-version = "2.19.1"
+version = "2.19.1+rocm7.14.0"
 marker = "python_full_version == '3.12.*' and implementation_name == 'cpython' and sys_platform == 'linux'"
-wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.5/rocm7.14-ubi9/tensorflow_rocm-2.19.1-cp312-cp312-linux_x86_64.whl", upload-time = 2026-07-11T02:04:37Z, size = 466191574, hashes = { sha256 = "0242333942b871c870c09c39330051125258578de42421a3b139daa509c451aa" } }]
+wheels = [{ url = "https://packages.redhat.com/api/pulp-content/public-rhai/rhoai/3.5/rocm7.14-ubi9/tensorflow_rocm-2.19.1+rocm7.14.0-cp312-cp312-linux_x86_64.whl", upload-time = 2026-07-18T03:43:09Z, size = 466328599, hashes = { sha256 = "9bfb73a55cbaedb39c1e0c7794406daeccd1d76180a8ea0bd2346d7037bbd286" } }]
 
 [[packages]]
 name = "termcolor"
