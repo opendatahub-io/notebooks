@@ -183,9 +183,11 @@ PATH="$STUBDIR:$PATH" bash /opt/app-root/api/kernels/access.cgi | tail -1
     return json.loads(output.decode())
 
 
-def _assert_valid_kernel_record(kernel: dict[str, Any]) -> None:
-    assert kernel.get("id") == "code-server", f"expected id 'code-server', got {kernel.get('id')!r}"
-    assert kernel.get("name") == "code-server", f"expected name 'code-server', got {kernel.get('name')!r}"
+def _assert_valid_kernel_record(
+    kernel: dict[str, Any], *, expected_id: str = "code-server", expected_name: str = "code-server"
+) -> None:
+    assert kernel.get("id") == expected_id, f"expected id {expected_id!r}, got {kernel.get('id')!r}"
+    assert kernel.get("name") == expected_name, f"expected name {expected_name!r}, got {kernel.get('name')!r}"
     assert kernel.get("connections") == 1, f"expected connections 1, got {kernel.get('connections')!r}"
 
     last_activity = kernel.get("last_activity")
@@ -210,6 +212,12 @@ def _assert_last_activity_within_window(last_activity: str, *, before: float, af
 @pytest.mark.codeserver
 class TestCullingApi:
     """Regression tests for access.cgi /api/kernels/ shim (RHAIENG-3712)."""
+
+    @pytest.fixture(autouse=True)
+    def skip_che_code(self, codeserver_image: conftest.Image) -> None:
+        """The Che Code image uses its Python culler instead of the legacy httpd stack."""
+        if codeserver_image.workbench_type is conftest.WorkbenchType.CHE_CODE:
+            pytest.skip("Che Code uses the Python culler; these tests cover the legacy httpd culling stack")
 
     @allure.issue("RHAIENG-3712")
     @allure.description(
@@ -316,3 +324,23 @@ class TestCullingApi:
             assert status == 200, f"expected 200 for legacy kernels URL, got {status}"
             assert kernels is not None and len(kernels) == 1
             _assert_valid_kernel_record(kernels[0])
+
+
+@pytest.mark.codeserver
+class TestCullingApiContract:
+    """Verify the common Kubeflow culler response across implementations."""
+
+    def test_kernels_api_common_contract(self, codeserver_image: conftest.Image) -> None:
+        is_che_code = codeserver_image.workbench_type is conftest.WorkbenchType.CHE_CODE
+        expected_id = "che-code" if is_che_code else "code-server"
+
+        with WorkbenchContainer(image=codeserver_image.name, user=1000, group_add=[0]) as container:
+            container.start(wait_for_readiness=False)
+            _wait_for_healthz(container)
+            if not is_che_code:
+                _install_culling_stack(container, codeserver_image)
+
+            status, kernels = _get_kernels_via_http(container, kernels_path="/api/kernels/")
+            assert status == 200
+            assert kernels is not None and len(kernels) == 1
+            _assert_valid_kernel_record(kernels[0], expected_id=expected_id, expected_name=expected_id)

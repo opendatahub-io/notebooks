@@ -4,7 +4,11 @@ set -euo pipefail
 # Source utility scripts
 for f in /opt/app-root/bin/utils/*.sh; do source "$f"; done
 
-# Start NGINX on port 8888 (proxies to che-code on 3100)
+# Set up nss_wrapper so the random OpenShift UID gets a proper passwd entry with /bin/bash
+source /opt/app-root/etc/generate_container_user
+export SHELL=/bin/bash
+
+# Start the required services and supervise all of them from this PID 1 shell.
 /opt/app-root/bin/run-nginx.sh &
 NGINX_PID=$!
 python3 /opt/app-root/bin/culler-server.py &

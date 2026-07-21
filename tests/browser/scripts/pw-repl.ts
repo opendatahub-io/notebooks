@@ -6,6 +6,7 @@
 // Script file:  npx tsx scripts/pw-repl.ts 9222 --script /tmp/commands.js
 
 import { chromium, type Page, type Browser, type BrowserContext, type Frame } from 'playwright';
+import { expect } from '@playwright/test';
 import * as repl from 'node:repl';
 import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -84,12 +85,14 @@ async function runBatch(code: string) {
     const ts = await import('typescript');
     const wrappedTs = `
       import type { Page, Browser, BrowserContext, Frame } from 'playwright';
+      import type { Expect } from '@playwright/test';
       export default async function run(
         page: Page, browser: Browser, contexts: BrowserContext[],
         waitForLocator: typeof import('./pw-repl').waitForLocator,
         findTextInFrames: typeof import('./pw-repl').findTextInFrames,
         jsClick: typeof import('./pw-repl').jsClick,
         dumpAria: typeof import('./pw-repl').dumpAria,
+        expect: Expect,
       ) { ${code} }`;
     const { outputText, diagnostics } = ts.default.transpileModule(wrappedTs, {
       compilerOptions: { module: ts.default.ModuleKind.CommonJS, target: ts.default.ScriptTarget.ES2022, strict: false },
@@ -103,7 +106,7 @@ async function runBatch(code: string) {
     // eslint-disable-next-line @typescript-eslint/no-implied-eval, @typescript-eslint/no-unsafe-call
     new Function('exports', 'require', outputText)(mod, nodeRequire);
     const result = await mod.default(page, browser, contexts,
-      waitForLocator, findTextInFrames, jsClick, dumpAria);
+      waitForLocator, findTextInFrames, jsClick, dumpAria, expect);
     if (result !== undefined) console.log(result);
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
@@ -129,6 +132,7 @@ async function runInteractive() {
   r.context.findTextInFrames = findTextInFrames;
   r.context.jsClick = jsClick;
   r.context.dumpAria = dumpAria;
+  r.context.expect = expect;
   r.setupHistory('.pw-repl-history', () => {});
   r.on('exit', () => {
     console.error('Disconnecting.');

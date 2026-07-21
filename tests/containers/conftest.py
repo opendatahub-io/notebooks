@@ -278,6 +278,8 @@ def jupyterlab_trustyai_image(jupyterlab_image: Image) -> Image:
 def datascience_image(image: str) -> Image:
     image_metadata = get_image_metadata(image)
     name = image_metadata.labels["name"]
+    if image_metadata.workbench_type is WorkbenchType.CHE_CODE:
+        pytest.skip(f"Image {image} is a Che Code workbench without the datascience Python stack")
     if "-minimal-" in name or "-baseline-" in name:
         pytest.skip(
             f"Image {image_metadata.name} is not datascience image because it has "

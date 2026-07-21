@@ -154,6 +154,9 @@ class TestWorkbenchImage:
 
         A forged Host header must not appear in the Location response header.
         """
+        if codeserver_image.workbench_type.value == "che-code":
+            pytest.skip("Che Code does not expose the legacy code-server redirect routes")
+
         redirect_paths = ["/", "/codeserver"]
         forged_host = "evil.example"
 
@@ -330,6 +333,9 @@ def grab_and_check_logs(
     allowed_messages = [
         # RHAIENG-5767: jupyter-events package emits this on every JupyterLab start
         "JupyterEventsVersionWarning: The `version` property of an event schema must be a string. It has been type coerced, but in a future version of this library, it will fail to validate.",
+        # Che Code's bundled Node runtime emits this harmless deprecation warning during startup.
+        "[DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized",
+        "(Use `node --trace-deprecation ...` to show where the warning was created)",
         # This is a message from our reverse proxy nginx caused by the fact that we attempt to connect to the code-server before it's actually running (container.start(wait_for_readiness=True)).
         "connect() failed (111: Connection refused) while connecting to upstream, client",
         # RHAIENG-5644: oauth-proxy / kube-rbac-proxy provides external auth; in-container Jupyter auth is disabled

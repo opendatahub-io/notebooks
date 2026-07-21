@@ -190,6 +190,13 @@ RUN set -e; \
     done \
     && rm -rf /tmp/vsix
 
+# The x86_64 `pet` helper is distributed with the Linux-x64 Microsoft
+# Marketplace ms-python.python VSIX, but Microsoft Marketplace artifacts are
+# not permitted inputs for this image. The Open VSX universal package above
+# does not include that native helper. The image therefore declares the
+# interpreter explicitly and registers an `app-root` kernelspec above instead;
+# no native binary is required and ARM64 remains fully supported.
+
 # Entrypoint and utility scripts
 RUN mkdir -p /opt/app-root/bin/utils
 COPY ${CHECODE_CONTEXT}/run-che-code.sh ${CHECODE_CONTEXT}/run-nginx.sh /opt/app-root/bin/
