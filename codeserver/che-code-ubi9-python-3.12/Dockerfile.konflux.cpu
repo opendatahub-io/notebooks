@@ -24,10 +24,14 @@ FROM ${CHECODE_IMAGE} AS checode
 # hadolint ignore=DL3002
 USER root
 
-# Remove Che-only extensions (audit: these either throw or conflict outside DevWorkspaces)
-# Keep che-github-authentication: provides Device Code Flow for GitHub/Copilot auth
-# (built-in github-authentication uses OAuth redirect which can't work in a container)
+# Remove Che-only extensions that throw or conflict outside DevWorkspaces.
+# Keep only: che-api (required by che-github-authentication),
+#            che-github-authentication (provides Device Code Flow for Copilot auth)
 RUN rm -rf /checode-linux-libc/ubi9/extensions/che-commands \
+           /checode-linux-libc/ubi9/extensions/che-port \
+           /checode-linux-libc/ubi9/extensions/che-activity-tracker \
+           /checode-linux-libc/ubi9/extensions/che-resource-monitor \
+           /checode-linux-libc/ubi9/extensions/che-remote \
            /checode-linux-libc/ubi9/extensions/che-telemetry \
            /checode-linux-libc/ubi9/extensions/che-terminal \
            /checode-linux-libc/ubi9/extensions/node_modules \
