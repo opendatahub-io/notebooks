@@ -149,6 +149,56 @@ class TestDataScienceLibs(unittest.TestCase):
         self.assertTrue(hasattr(mlflow, "log_param"), "MLflow does not have log_param function.")
         print(f"✅ MLflow test passed (version: {mlflow.__version__}).")
 
+    def test_kubeflow_training(self):
+        """Tests kubeflow-training SDK can deserialize responses with the kubernetes client.
+
+        Catches incompatibility between the SDK's ApiClient and the kubernetes
+        client's openapi_types format (e.g. dict(str,str) vs dict[str,str]).
+        See RHOAIENG-75322.
+        """
+        if "-datascience-" not in self.image:
+            self.skipTest("Not a DataScience image")
+
+        import json
+
+        from kubeflow.training.api_client import ApiClient  # pyright: ignore[reportMissingImports]
+
+        api_client = ApiClient()
+
+        # Minimal PyTorchJob response with dict-typed fields (labels, annotations).
+        # These fields trigger the openapi_types deserialization path that breaks
+        # when the kubernetes client uses dict[str,str] instead of dict(str,str).
+        mock_response_data = json.dumps(
+            {
+                "apiVersion": "kubeflow.org/v1",
+                "kind": "PyTorchJob",
+                "metadata": {
+                    "name": "test-job",
+                    "namespace": "default",
+                    "labels": {"app": "pytorch"},
+                    "annotations": {"test-key": "test-value"},
+                },
+                "spec": {"pytorchReplicaSpecs": {"Master": {"replicas": 1}}, "runPolicy": {"cleanPodPolicy": "None"}},
+                "status": {},
+            }
+        )
+
+        mock_response = type("RESTResponse", (), {"data": mock_response_data})()
+
+        try:
+            result = api_client.deserialize(mock_response, "KubeflowOrgV1PyTorchJob")
+        except AttributeError as e:
+            if "dict[" in str(e):
+                self.fail(
+                    "kubeflow-training SDK cannot deserialize responses with the installed "
+                    f"kubernetes client: {e}. See RHOAIENG-75322."
+                )
+            raise
+
+        self.assertIsNotNone(result, "Deserialized PyTorchJob should not be None.")
+        self.assertEqual(result.metadata.name, "test-job", "PyTorchJob metadata.name mismatch.")
+        print("✅ Kubeflow Training test passed.")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
