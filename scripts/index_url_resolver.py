@@ -40,9 +40,14 @@ class ResolvedIndexConfig:
 _RHOAI_INDEX_PATH_RE = re.compile(
     r"/rhoai/(?P<release>[^/]+)/(?P<accelerator>[^/]+)-ubi9(?:-test)?/simple/?$",
 )
+# Tag form:  quay.io/aipcc/base-images/cpu:3.5.0-1782270118
+# Digest form (RHDS pins): quay.io/aipcc/base-images/cpu@sha256:…
+# The image name must stop at ':' or '@' so digests are not misparsed as
+# image="cpu@sha256", tag="<hex>" (which breaks parse_accelerator).
 _BASE_IMAGE_RE = re.compile(
-    r"^quay\.io/aipcc/base-images/(?P<image>[^:]+):(?P<tag>[^:]+)$",
+    r"^quay\.io/aipcc/base-images/(?P<image>[^:@]+)(?::(?P<tag>[^@]+)|@(?P<digest>sha256:[0-9a-f]+))$",
 )
+_RELEASE_OVERRIDE_RE = re.compile(r"^(?P<minor>\d+\.\d+)(?:-EA(?P<ea>\d+))?$")
 _ACCELERATOR_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"^cpu$"), "cpu"),
     (re.compile(r"^cuda-(?P<version>\d+\.\d+)-el\d+(?:\.\d+)?$"), "cuda"),
@@ -109,6 +114,16 @@ def parse_release(tag: str, conf_file: Path) -> str:
     release = match.group("minor")
     ea = match.group("ea")
     return release if ea is None else f"{release}-EA{int(ea)}"
+
+
+def parse_release_override(release: str, conf_file: Path) -> str:
+    """Normalize RELEASE from a build-args conf (used for digest-pinned BASE_IMAGE)."""
+    match = _RELEASE_OVERRIDE_RE.fullmatch(release)
+    if match is None:
+        raise IndexResolutionError(f"Unsupported RELEASE in {conf_file}: {release}")
+    minor = match.group("minor")
+    ea = match.group("ea")
+    return minor if ea is None else f"{minor}-EA{int(ea)}"
 
 
 def build_rhoai_index_url(*, release: str, accelerator: str) -> str:
@@ -302,13 +317,24 @@ def _resolve_from_base_image_tag(
     *,
     flavor: str,
     product: str,
+    release_override: str | None = None,
 ) -> ResolvedIndexConfig:
     match = _BASE_IMAGE_RE.fullmatch(base_image)
     if match is None:
         raise IndexResolutionError(f"Unsupported BASE_IMAGE format in {conf_file}: {base_image}")
 
     accelerator = parse_accelerator(match.group("image"), conf_file)
-    release = parse_release(match.group("tag"), conf_file)
+    tag = match.group("tag")
+    if tag is not None:
+        release = parse_release(tag, conf_file)
+    elif release_override:
+        # Digest pins have no tag; fall back to RELEASE written beside BASE_IMAGE.
+        release = parse_release_override(release_override, conf_file)
+    else:
+        raise IndexResolutionError(
+            f"Digest-pinned BASE_IMAGE in {conf_file} requires RELEASE for index "
+            f"resolution fallback: {base_image}"
+        )
     release_candidates = [release]
     if accelerator.startswith("rocm"):
         stable = stable_rhoai_release(release)
@@ -381,6 +407,7 @@ def resolve_index_config(
         conf_file,
         flavor=flavor,
         product=product,
+        release_override=entries.get("RELEASE"),
     )
 
 
