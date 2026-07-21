@@ -27,17 +27,21 @@ def test_jira_client_no_auth_headers() -> None:
 # ── create_issue extra_fields ──────────────────────────────────────────
 
 
-def test_create_issue_merges_extra_fields() -> None:
+def _capturing_client() -> tuple[JiraClient, dict]:
     client = JiraClient("https://jira.example", {})
     captured: dict = {}
 
     def fake_request(method: str, endpoint: str, params=None, data=None):
-        if method == "POST" and endpoint == "/rest/api/3/issue":
-            captured.clear()
-            captured.update(data or {})
+        if data:
+            captured.update(data)
         return {"key": "RHAIENG-1"}
 
     client._request = fake_request
+    return client, captured
+
+
+def test_create_issue_merges_extra_fields() -> None:
+    client, captured = _capturing_client()
 
     client.create_issue(
         "RHAIENG",
@@ -52,15 +56,7 @@ def test_create_issue_merges_extra_fields() -> None:
 
 
 def test_create_issue_extra_fields_do_not_override_protected_keys() -> None:
-    client = JiraClient("https://jira.example", {})
-    captured: dict = {}
-
-    def fake_request(method: str, endpoint: str, params=None, data=None):
-        if data:
-            captured.update(data)
-        return {"key": "X"}
-
-    client._request = fake_request
+    client, captured = _capturing_client()
 
     client.create_issue(
         "RHAIENG",

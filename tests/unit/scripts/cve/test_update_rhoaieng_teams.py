@@ -37,7 +37,7 @@ def test_update_rhoaieng_teams_no_updates_needed(mock_client: MagicMock, expecte
     mock_client.update_issue.assert_not_called()
 
 
-def test_update_rhoaieng_teams_updates_needed(mock_client: MagicMock, expected_team_id: str) -> None:
+def test_update_rhoaieng_teams_updates_needed(mock_client: MagicMock) -> None:
     issues = [
         {"key": "RHOAIENG-1", "fields": {}},
         {"key": "RHOAIENG-2", "fields": {cct.RHAIENG_TEAM_CUSTOM_FIELD: {"id": "wrong-id", "value": "Wrong Team"}}},
@@ -56,7 +56,7 @@ def test_update_rhoaieng_teams_updates_needed(mock_client: MagicMock, expected_t
     mock_client.update_issue.assert_any_call("RHOAIENG-4", expected_team_extra)
 
 
-def test_update_rhoaieng_teams_dry_run(mock_client: MagicMock, expected_team_id: str) -> None:
+def test_update_rhoaieng_teams_dry_run(mock_client: MagicMock) -> None:
     issues = [{"key": "RHOAIENG-1", "fields": {}}]
 
     cct.update_rhoaieng_teams(mock_client, issues, dry_run=True)
@@ -65,7 +65,6 @@ def test_update_rhoaieng_teams_dry_run(mock_client: MagicMock, expected_team_id:
 
 def test_update_rhoaieng_teams_handles_exception(
     mock_client: MagicMock,
-    expected_team_id: str,
     capsys: CaptureFixture[str],
 ) -> None:
     issues = [{"key": "RHOAIENG-1", "fields": {}}]
