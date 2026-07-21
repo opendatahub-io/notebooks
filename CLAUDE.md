@@ -21,14 +21,14 @@ This file configures AI assistants (Claude Code, Cursor) for the Notebooks repos
 
 3. **Test the setup:**
    ```
-   /hello
+   /fix-cve status
    ```
 
 ## References
 
 | Resource | Description |
 |----------|-------------|
-| `.claude/commands/` | Slash commands (e.g., `/hello`, `/fix-cve`) |
+| `.claude/commands/` | Slash commands (e.g., `/fix-cve`) |
 | `.claude/skills/` | AI skills/playbooks (e.g., CVE resolution) |
 | [docs/claude-mcp.md](docs/claude-mcp.md) | Full MCP setup guide |
 | [AGENTS.md](AGENTS.md) | Repository agent guidelines |
@@ -37,11 +37,10 @@ This file configures AI assistants (Claude Code, Cursor) for the Notebooks repos
 
 | Command | Description |
 |---------|-------------|
-| `/hello` | Smoke test — greets you via Jira MCP |
 | `/fix-cve` | CVE resolution workflow |
 | `/fix-cve plan` | Sprint planning — assign top CVEs |
 | `/fix-cve <TICKET>` | Fix a specific CVE ticket |
-| `/fix-cve status` | Show your assigned CVE tickets |
+| `/fix-cve status` | Show your assigned CVE tickets (also tests Jira MCP) |
 
 ## Available Skills
 
@@ -110,7 +109,7 @@ https://redhat.atlassian.net/browse/RHAIENG-XXXX
 1. Verify `.env.mcp.local` exists and has valid credentials
 2. Check that `.cursor/mcp.json` or `.mcp.json` exists
 3. Restart Claude Code / Cursor
-4. Test with `/hello`
+4. Test with `/fix-cve status`
 
 ### Jira Authentication Failed
 

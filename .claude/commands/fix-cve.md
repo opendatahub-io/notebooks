@@ -80,17 +80,18 @@ The following are **PRE-APPROVED** — execute without asking:
 ✓ Current Sprint: Notebooks - Narwal
 ✓ Searching for unassigned CVEs...
 ✓ Found 10 CVEs
-✓ Assigning RHAIENG-4406...
-✓ Assigning RHAIENG-4458...
-✓ Creating branch fix/cve-2026-34986-go-jose...
-✓ Searching web for CVE-2026-34986 fixed version...
-✓ Found: go-jose >= 4.0.5
-✓ Adding constraint to cve-constraints.txt...
-✓ Running make refresh-lock-files...
+✓ Assigning RHAIENG-4406 [rhoai-2.25]...
+✓ Assigning RHAIENG-4458 [rhoai-3.3]...
+✓ Checking out rds/rhoai-2.25...
+✓ Creating branch fix/cve-2026-34986-tornado...
+✓ Running make refresh-lock-files (RHOAI ≥3.4 auto-upgrade)...
+✓ Verifying CVE resolved in lockfiles...
+✓ CVE still present - adding constraint to cve-constraints.txt...
+✓ Re-running make refresh-lock-files...
 ✓ Committing changes...
-✓ Pushing to origin...
-✓ Creating PR...
-✓ PR #4100 created
+✓ Pushing to red-hat-data-services/notebooks...
+✓ Creating PR to rhoai-2.25...
+✓ PR #2550 created
 ✓ Commenting on RHAIENG-4406...
 ⚠️ CVE-2026-1462: Cannot fix - keras 3.8.0 not available (logged)
 ✓ Results logged to cve-resolution-log.md
@@ -150,40 +151,59 @@ Group same CVE ID across releases.
 
 ### Step 6: Fix Each CVE
 
+**IMPORTANT:** RHAIENG CVE tickets must be fixed on the **downstream** repository
+(`red-hat-data-services/notebooks`) on the release branch indicated in the ticket title.
+
+Extract the target branch from the ticket title suffix (e.g., `[rhoai-2.25]` → `rhoai-2.25`).
+
 **For EACH CVE (loop through all):**
 
-1. **Search web for fix version** (just do it, don't ask):
-   ```
-   Search: "CVE-2026-XXXXX fixed version"
-   ```
+1. **Determine target branch** from ticket title:
+   - `[rhoai-2.25]` → branch `rhoai-2.25`
+   - `[rhoai-3.3]` → branch `rhoai-3.3`
+   - etc.
 
-2. **Create branch** (just do it):
+2. **Add remote if needed** (just do it):
    ```bash
-   git checkout -b fix/cve-YYYY-NNNNN-package origin/main
+   git remote add rds https://github.com/red-hat-data-services/notebooks.git 2>/dev/null || true
+   git fetch rds
    ```
 
-3. **Add constraint** (just do it):
+3. **Create branch from downstream release branch** (just do it):
+   ```bash
+   git checkout -b fix/cve-YYYY-NNNNN-package rds/rhoai-X.Y
    ```
-   # CVE-YYYY-NNNNN: description
+
+4. **For RHOAI releases ≥3.4:** First try `make refresh-lock-files` to auto-upgrade packages.
+   This often resolves CVEs automatically since we don't pin specific versions.
+
+5. **Check if CVE is resolved** by verifying the package version in lockfiles.
+   If NOT resolved (CVE in transitive dependency), add constraint:
+   ```
+   # RHAIENG-XXXX: CVE-YYYY-NNNNN description
    package>=X.Y.Z
    ```
+   Then re-run `make refresh-lock-files`.
 
-4. **Regenerate lockfiles** (just do it):
+6. **For RHOAI releases <3.4:** Add constraint to `dependencies/cve-constraints.txt`:
+   ```
+   # RHAIENG-XXXX: CVE-YYYY-NNNNN description
+   package>=X.Y.Z
+   ```
+   Then run `make refresh-lock-files`.
+
+7. **If fix fails:** Log reason, continue to next CVE
+
+8. **Commit** (just do it):
    ```bash
-   make refresh-lock-files
+   git add dependencies/cve-constraints.txt */pylock.toml
+   git commit -m "RHAIENG-XXXX: chore(deps): fix CVE-..."
    ```
 
-5. **If fix fails:** Log reason, continue to next CVE
-
-6. **Commit** (just do it):
+9. **Push and create PR to downstream** (just do it):
    ```bash
-   git add . && git commit -m "RHAIENG-XXXX: chore(deps): fix CVE-..."
-   ```
-
-7. **Push and create PR** (just do it):
-   ```bash
-   git push -u origin fix/cve-...
-   gh pr create --title "..." --body "..."
+   git push -u rds fix/cve-...
+   gh pr create --repo red-hat-data-services/notebooks --base rhoai-X.Y --title "..." --body "..."
    ```
 
 ### Step 7: Comment on Jira Tickets
@@ -218,7 +238,7 @@ Append to `docs/cves/logs/cve-resolution-log.md`:
 [list all failures]
 
 **PRs ready for review:**
-https://github.com/opendatahub-io/notebooks/pulls?q=is%3Aopen+author%3A[user]
+https://github.com/red-hat-data-services/notebooks/pulls?q=is%3Aopen+author%3A[user]
 
 Please review when you have a chance. Thanks! 🙏
 ───────────────────────────────────────────────
@@ -273,4 +293,4 @@ When a CVE cannot be fixed, **log the research**:
 
 - [CVE Developer Guide](../../docs/cves/cve-developer-guide.md)
 - [Python CVE Fixes](../../docs/cves/python.md)
-- `/hello` - Test Jira MCP connection
+- [Agents CVE Autofix](../../docs/cves/agents-cve-autofix.md)

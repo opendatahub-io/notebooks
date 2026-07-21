@@ -50,12 +50,14 @@ cp .mcp.json.example .mcp.json
 
 Test the connection:
 ```
-/hello
+/fix-cve status
 ```
 
 Expected output:
 ```
-Hello [Your Name]!
+✓ Connected to Jira
+Searching for assigned CVEs...
+[Shows your assigned CVE tickets]
 ```
 
 ## Configuration Files
