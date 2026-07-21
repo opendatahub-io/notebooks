@@ -40,12 +40,9 @@ class ResolvedIndexConfig:
 _RHOAI_INDEX_PATH_RE = re.compile(
     r"/rhoai/(?P<release>[^/]+)/(?P<accelerator>[^/]+)-ubi9(?:-test)?/simple/?$",
 )
-# Tag form:  quay.io/aipcc/base-images/cpu:3.5.0-1782270118
-# Digest form (RHDS pins): quay.io/aipcc/base-images/cpu@sha256:…
-# The image name must stop at ':' or '@' so digests are not misparsed as
-# image="cpu@sha256", tag="<hex>" (which breaks parse_accelerator).
+# Accepts tag (:3.5.0-…) or digest (@sha256:…) refs; image name stops at : or @.
 _BASE_IMAGE_RE = re.compile(
-    r"^quay\.io/aipcc/base-images/(?P<image>[^:@]+)(?::(?P<tag>[^@]+)|@(?P<digest>sha256:[0-9a-f]+))$",
+    r"^quay\.io/aipcc/base-images/(?P<image>[^:@]+)(?::(?P<tag>[^@]+)|@sha256:[0-9a-f]+)$",
 )
 _RELEASE_OVERRIDE_RE = re.compile(r"^(?P<minor>\d+\.\d+)(?:-EA(?P<ea>\d+))?$")
 _ACCELERATOR_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
@@ -107,13 +104,15 @@ def parse_accelerator(image_name: str, conf_file: Path) -> str:
     raise IndexResolutionError(f"Unsupported BASE_IMAGE accelerator in {conf_file}: {image_name}")
 
 
+def _format_release(minor: str, ea: str | None) -> str:
+    return minor if ea is None else f"{minor}-EA{int(ea)}"
+
+
 def parse_release(tag: str, conf_file: Path) -> str:
     match = _TAG_RE.fullmatch(tag)
     if match is None:
         raise IndexResolutionError(f"Unsupported BASE_IMAGE tag in {conf_file}: {tag}")
-    release = match.group("minor")
-    ea = match.group("ea")
-    return release if ea is None else f"{release}-EA{int(ea)}"
+    return _format_release(match.group("minor"), match.group("ea"))
 
 
 def parse_release_override(release: str, conf_file: Path) -> str:
@@ -121,9 +120,7 @@ def parse_release_override(release: str, conf_file: Path) -> str:
     match = _RELEASE_OVERRIDE_RE.fullmatch(release)
     if match is None:
         raise IndexResolutionError(f"Unsupported RELEASE in {conf_file}: {release}")
-    minor = match.group("minor")
-    ea = match.group("ea")
-    return minor if ea is None else f"{minor}-EA{int(ea)}"
+    return _format_release(match.group("minor"), match.group("ea"))
 
 
 def build_rhoai_index_url(*, release: str, accelerator: str) -> str:
@@ -311,7 +308,7 @@ def _resolve_from_label(
     )
 
 
-def _resolve_from_base_image_tag(
+def _resolve_from_base_image_ref(
     base_image: str,
     conf_file: Path,
     *,
@@ -328,7 +325,6 @@ def _resolve_from_base_image_tag(
     if tag is not None:
         release = parse_release(tag, conf_file)
     elif release_override:
-        # Digest pins have no tag; fall back to RELEASE written beside BASE_IMAGE.
         release = parse_release_override(release_override, conf_file)
     else:
         raise IndexResolutionError(
@@ -402,7 +398,7 @@ def resolve_index_config(
     ):
         return resolved
 
-    return _resolve_from_base_image_tag(
+    return _resolve_from_base_image_ref(
         base_image,
         conf_file,
         flavor=flavor,
