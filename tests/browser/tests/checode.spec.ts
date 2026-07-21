@@ -70,19 +70,27 @@ async function loadEditor(codeServer: CodeServer, page: import('@playwright/test
   expect(await codeServer.isEditorVisible()).toBe(true);
 }
 
+/** Type a command into the VS Code command palette and select the first match. */
 async function runCommand(page: import('@playwright/test').Page, command: string) {
   await page.keyboard.press('Control+Shift+P');
   await page.waitForSelector('.quick-input-widget', { timeout: 5000 });
   await page.keyboard.type(command, { delay: 50 });
-  await page.waitForTimeout(1000);
-  // Wait for the exact command to appear and click it, or press Enter if it's the first match
-  const exactRow = page.locator('.quick-input-widget .monaco-list-row')
-      .filter({ hasText: new RegExp(command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') });
-  if (await exactRow.count() > 0) {
-    await exactRow.first().click({ timeout: 5000 }).catch(() => page.keyboard.press('Enter'));
-  } else {
-    await page.keyboard.press('Enter');
-  }
+  // Wait for the matching row to appear as the first result before pressing Enter
+  const pattern = new RegExp(command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  await expect(async () => {
+    const firstLabel = await page.locator('.quick-input-widget .monaco-list-row').first()
+        .getAttribute('aria-label')
+    expect(firstLabel).toMatch(pattern)
+  }).toPass({ timeout: 10000 })
+  await page.keyboard.press('Enter');
+}
+
+/** Wait for a quick-input option matching `text` to appear, then press Enter. */
+async function pickQuickInputOption(page: import('@playwright/test').Page, text: string) {
+  await page.keyboard.type(text, { delay: 30 });
+  const option = page.locator('.quick-input-widget .monaco-list-row').filter({ hasText: new RegExp(text, 'i') });
+  await expect(option.first()).toBeVisible({ timeout: 10000 });
+  await page.keyboard.press('Enter');
 }
 
 test.describe('che-code', { tag: '@checode' }, () => {
@@ -95,7 +103,7 @@ test.describe('che-code', { tag: '@checode' }, () => {
 
   test('welcome screen renders', async ({codeServer, page}, testInfo) => {
     await loadEditor(codeServer, page)
-    await page.waitForTimeout(3000)
+    await utils.waitForStableDOM(page, ".part.editor", 1000, 15000)
     await utils.takeScreenshot(page, testInfo, "welcome.png")
   })
 
@@ -108,7 +116,6 @@ test.describe('che-code', { tag: '@checode' }, () => {
     await loadEditor(codeServer, page)
 
     await test.step("wait for extensions to activate", async () => {
-      // Poll until Python commands appear — extension activation is async
       await expect(async () => {
         await page.keyboard.press('Control+Shift+P')
         await page.waitForSelector('.quick-input-widget', { timeout: 3000 })
@@ -138,35 +145,36 @@ test.describe('che-code', { tag: '@checode' }, () => {
       const selectKernel = page.getByRole('button', { name: /Select Kernel/i })
       await expect(selectKernel.first()).toBeVisible({ timeout: 10000 })
       await selectKernel.first().click()
-
-      // Pick "Python Environments..."
       await page.waitForSelector('.quick-input-widget', { timeout: 5000 })
-      await page.keyboard.type('Python Env', { delay: 30 })
-      await page.waitForTimeout(1000)
-      await page.keyboard.press('Enter')
-      await page.waitForTimeout(2000)
+
+      // Pick "Python Environments..." — wait for it to appear, then Enter
+      await pickQuickInputOption(page, 'Python Env')
+
+      // Wait for interpreter list to load (title changes to "Select a Python Environment")
+      await expect(page.locator('.quick-input-widget').getByText('Select a Python Environment')).toBeVisible({ timeout: 10000 })
 
       // Filter for app-root (has ipykernel pre-installed, works air-gapped)
-      await page.keyboard.type('app-root', { delay: 30 })
-      await page.waitForTimeout(1000)
-      await page.keyboard.press('Enter')
+      await pickQuickInputOption(page, 'app-root')
 
-      // Verify kernel is connected
-      await expect(page.getByRole('button', { name: /Restart/i })).toBeVisible({ timeout: 30000 })
-    })
-
-    await test.step("dismiss any dialogs", async () => {
-      await page.keyboard.press('Escape')
-      await page.waitForTimeout(1000)
+      // Wait for kernel picker to close and kernel name to appear in toolbar
+      await expect(async () => {
+        // Dismiss any lingering quick-input or dialog
+        if (await page.locator('.quick-input-widget').isVisible().catch(() => false)) {
+          await page.keyboard.press('Escape')
+        }
+        const snap = await page.ariaSnapshot()
+        expect(snap).toContain('app-root')
+        expect(snap).not.toMatch(/Select Kernel.*Python Environments/s)
+      }).toPass({ timeout: 30000 })
     })
 
     await test.step("type expression into cell", async () => {
-      // Click the cell editor area to focus it
       const cellEditor = page.locator('.cell-editor-container .monaco-editor')
       await expect(cellEditor.first()).toBeVisible({ timeout: 10000 })
       await cellEditor.first().click()
-      await page.waitForTimeout(500)
       await page.keyboard.type('3 + 4')
+      // Verify the expression appeared in the cell
+      await expect(page.locator('.cell-editor-container .view-line').first()).toContainText('3 + 4', { timeout: 5000 })
     })
 
     await test.step("execute cell and verify completion", async () => {
@@ -179,8 +187,6 @@ test.describe('che-code', { tag: '@checode' }, () => {
     })
 
     await test.step("no runtime package installation occurred", async () => {
-      // If ipykernel is missing, VS Code installs it at runtime — a regression
-      // for air-gapped deployments. Check that no "Installing" notification appeared.
       const snap = await page.ariaSnapshot()
       expect(snap).not.toContain('Installing ipykernel')
       expect(snap).not.toContain('Installing collected package')

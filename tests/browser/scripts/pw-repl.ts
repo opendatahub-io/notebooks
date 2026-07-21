@@ -5,7 +5,8 @@
 // Batch:        npx tsx scripts/pw-repl.ts 9222 --eval 'await page.screenshot({path:"/tmp/s.png"})'
 // Script file:  npx tsx scripts/pw-repl.ts 9222 --script /tmp/commands.js
 
-import { chromium, type Page, type Browser, type BrowserContext, type Frame } from 'playwright';
+import { chromium, type Page, type Browser, type BrowserContext, type Frame, type Locator } from 'playwright';
+import { expect } from '@playwright/test';
 import * as repl from 'node:repl';
 import * as fs from 'node:fs';
 
@@ -79,12 +80,14 @@ async function runBatch(code: string) {
     const ts = await import('typescript');
     const wrappedTs = `
       import type { Page, Browser, BrowserContext, Frame } from 'playwright';
+      import type { Expect } from '@playwright/test';
       export default async function run(
         page: Page, browser: Browser, contexts: BrowserContext[],
         waitForLocator: typeof import('./pw-repl').waitForLocator,
         findTextInFrames: typeof import('./pw-repl').findTextInFrames,
         jsClick: typeof import('./pw-repl').jsClick,
         dumpAria: typeof import('./pw-repl').dumpAria,
+        expect: Expect,
       ) { ${code} }`;
     const { outputText, diagnostics } = ts.default.transpileModule(wrappedTs, {
       compilerOptions: { module: ts.default.ModuleKind.CommonJS, target: ts.default.ScriptTarget.ES2022, strict: false },
@@ -92,11 +95,10 @@ async function runBatch(code: string) {
     if (diagnostics && diagnostics.length > 0) {
       for (const d of diagnostics) console.error('TS:', ts.default.flattenDiagnosticMessageText(d.messageText, '\n'));
     }
-    // Extract the compiled function body from the CommonJS output
     const mod: any = {};
     new Function('exports', 'require', outputText)(mod, require);
     const result = await mod.default(page, browser, contexts,
-      waitForLocator, findTextInFrames, jsClick, dumpAria);
+      waitForLocator, findTextInFrames, jsClick, dumpAria, expect);
     if (result !== undefined) console.log(result);
   } catch (err: any) {
     console.error('ERROR:', err.message ?? err);
@@ -121,6 +123,7 @@ async function runInteractive() {
   r.context.findTextInFrames = findTextInFrames;
   r.context.jsClick = jsClick;
   r.context.dumpAria = dumpAria;
+  r.context.expect = expect;
   r.setupHistory('.pw-repl-history', () => {});
   r.on('exit', async () => {
     console.error('Disconnecting.');
