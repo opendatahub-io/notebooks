@@ -314,6 +314,88 @@ def test_resolve_falls_back_to_tag_when_label_missing(
     assert resolved.index_url == label_url, f"expected tag-derived index {label_url}, got {resolved.index_url}"
 
 
+def test_resolve_digest_pinned_base_image_uses_release_when_label_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Digest pins (no tag) must fall back via RELEASE, not misparse image as cpu@sha256."""
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cpu.conf",
+        [
+            "BASE_IMAGE=quay.io/aipcc/base-images/cpu@sha256:2f93df7e0b1b823bb63311f38b91cb8e0dc305d588813815dd4f77061fd15585",
+            "PYLOCK_FLAVOR=cpu",
+            "PRODUCT=rhoai",
+            "RELEASE=3.5",
+        ],
+    )
+    label_url = prod_index_url(release="3.5", accelerator="cpu")
+
+    def stub_no_label(base_image: str) -> str:
+        raise resolver.IndexResolutionError(f"skopeo inspect failed for {base_image}")
+
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", stub_no_label)
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
+
+    resolved = resolver.resolve_index_config(conf_file)
+
+    assert resolved.accelerator == "cpu", f"expected accelerator cpu, got {resolved.accelerator}"
+    assert resolved.release == "3.5", f"expected release 3.5, got {resolved.release}"
+    assert resolved.index_url == label_url, f"expected index {label_url}, got {resolved.index_url}"
+
+
+def test_resolve_digest_pinned_cuda_base_image_uses_release_when_label_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cuda.conf",
+        [
+            "BASE_IMAGE=quay.io/aipcc/base-images/cuda-13.0-el9.6@sha256:1620d9ade9a2a196b9d9bcca7842918dbf911273957abdd064a25e5f9d3f027c",
+            "PYLOCK_FLAVOR=cuda",
+            "PRODUCT=rhoai",
+            "RELEASE=3.5",
+        ],
+    )
+    label_url = prod_index_url(release="3.5", accelerator="cuda13.0")
+
+    def stub_no_label(base_image: str) -> str:
+        raise resolver.IndexResolutionError(f"skopeo inspect failed for {base_image}")
+
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", stub_no_label)
+    monkeypatch.setattr(resolver, "index_url_exists", lambda url: url == label_url)
+
+    resolved = resolver.resolve_index_config(conf_file)
+
+    assert resolved.accelerator == "cuda13.0", f"expected accelerator cuda13.0, got {resolved.accelerator}"
+    assert resolved.release == "3.5", f"expected release 3.5, got {resolved.release}"
+    assert resolved.index_url == label_url, f"expected index {label_url}, got {resolved.index_url}"
+
+
+def test_digest_pinned_base_image_requires_release_when_label_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conf_file = write_conf(
+        tmp_path,
+        "konflux.cpu.conf",
+        [
+            "BASE_IMAGE=quay.io/aipcc/base-images/cpu@sha256:2f93df7e0b1b823bb63311f38b91cb8e0dc305d588813815dd4f77061fd15585",
+            "PYLOCK_FLAVOR=cpu",
+            "PRODUCT=rhoai",
+        ],
+    )
+
+    def stub_no_label(base_image: str) -> str:
+        raise resolver.IndexResolutionError(f"skopeo inspect failed for {base_image}")
+
+    monkeypatch.setattr(resolver, "inspect_base_image_index_url", stub_no_label)
+
+    with pytest.raises(resolver.IndexResolutionError, match="requires RELEASE"):
+        resolver.resolve_index_config(conf_file)
+
+
 def test_error_when_label_missing_and_tag_unusable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     conf_file = write_conf(
         tmp_path,
