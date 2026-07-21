@@ -94,7 +94,16 @@ RHDS_CHANNELS = frozenset({"fast", "stable"})
 ODH_ORIGINS = frozenset({"in-house", "midstream"})
 RHDS_STABLE_OVERRIDE_ACCELERATORS = frozenset({"cuda", "rocm"})
 RHDS_TAG_RE = re.compile(r"^(?P<version>\d+\.\d+\.\d+)(?:-(?P<phase>ea\.\d+))?-(?P<build>\d+)$")
-RHDS_STABLE_TAG_RE = re.compile(r"^(?P<version>\d+\.\d+\.\d+)-stable-(?P<build>\d+)$")
+# Published stable GPU tags use either:
+#   <full_version>                 e.g. 3.5.0
+#   <full_version>-<build>         e.g. 3.5.0-1784563933
+# Legacy pre-3.5 stable repos also used:
+#   <full_version>-stable-<build>  e.g. 3.5.0-stable-1780598175
+RHDS_STABLE_TAG_RE = re.compile(
+    r"^(?P<version>\d+\.\d+\.\d+)(?:-(?:(?P<legacy_stable>stable)-)?(?P<build>\d+))?$",
+)
+RHDS_GPU_STABLE_REPOSITORY_SUFFIX = "-stable"
+RHDS_GPU_STABLE_REPOSITORY_PREFIX = "quay.io/aipcc/base-images/"
 MIDSTREAM_VERSION_RE = re.compile(r"^\d+\.\d+$")
 PYTHON_VERSION_RE = re.compile(r"^\d+\.\d+$")
 _STABLE_ACC_VERSION_INSPECT_FAILED = object()
@@ -618,6 +627,21 @@ def image_reference_is_digest(ref: str) -> bool:
     return ref.startswith("sha256:")
 
 
+def is_rhds_gpu_stable_repository(repository: str) -> bool:
+    return repository.startswith(RHDS_GPU_STABLE_REPOSITORY_PREFIX) and repository.endswith(
+        RHDS_GPU_STABLE_REPOSITORY_SUFFIX,
+    )
+
+
+def treat_as_rhds_stable_tag(image: str, tag: str) -> bool:
+    if RHDS_STABLE_TAG_RE.fullmatch(tag) is None:
+        return False
+    repository, _ref = split_image_ref(image)
+    if is_rhds_gpu_stable_repository(repository):
+        return True
+    return "-stable-" in tag
+
+
 def split_image_ref(image: str) -> tuple[str, str]:
     if "@" in image:
         repository, ref = image.rsplit("@", 1)
@@ -925,7 +949,7 @@ def resolve_matching_published_rhds_stable_image(
     configured_normalized = normalize_stream_version(configured_acc_version)
     candidates = sorted(
         (
-            (int(match.group("build")), tag)
+            (int(match.group("build") or 0), tag)
             for tag in list_rhds_repository_tags(repository, tag_cache)
             if (match := RHDS_STABLE_TAG_RE.fullmatch(tag)) is not None and match.group("version") == release_version
         ),
@@ -1110,7 +1134,7 @@ def build_rhds_gpu_stable_repository(
         raise ValueError(f"Unsupported RHDS stable accelerator: {accelerator}")
     if stable_repo_overrides and accelerator in stable_repo_overrides:
         return stable_repo_overrides[accelerator]
-    return f"quay.io/aipcc/base-images/{accelerator}-{release.rhds_os_base}"
+    return f"quay.io/aipcc/base-images/{accelerator}-stable"
 
 
 def describe_rhds_phase(phase: str | None) -> str:
@@ -1325,27 +1349,29 @@ def resolve_rhds_base_image(
 
     if current_tag is None:
         candidate = f"{repository}:{build_rhds_seed_tag(target_release_version, bundle_seed_phase)}"
-    elif RHDS_TAG_RE.fullmatch(current_tag) is None:
+    elif treat_as_rhds_stable_tag(current_base_image, current_tag):
         stable_match = RHDS_STABLE_TAG_RE.fullmatch(current_tag)
+        assert stable_match is not None
+        current_version = parse_release_version(stable_match.group("version"))
+        target_version = parse_release_version(target_release_version)
+        if current_version > target_version:
+            seed_phase = None
+        elif current_version < target_version:
+            seed_phase = determine_highest_published_rhds_phase_for_release(
+                repository,
+                target_release_version,
+                tag_cache,
+            )
+        else:
+            seed_phase = bundle_seed_phase
+        candidate = f"{repository}:{build_rhds_seed_tag(target_release_version, seed_phase)}"
+    elif RHDS_TAG_RE.fullmatch(current_tag) is None:
         if MIDSTREAM_VERSION_RE.fullmatch(current_tag):
             current_minor = parse_minor_version(current_tag)
             target_minor = parse_minor_version(release_minor_version(target_release_version))
             if current_minor > target_minor:
                 seed_phase = None
             elif current_minor < target_minor:
-                seed_phase = determine_highest_published_rhds_phase_for_release(
-                    repository,
-                    target_release_version,
-                    tag_cache,
-                )
-            else:
-                seed_phase = bundle_seed_phase
-        elif stable_match is not None:
-            current_version = parse_release_version(stable_match.group("version"))
-            target_version = parse_release_version(target_release_version)
-            if current_version > target_version:
-                seed_phase = None
-            elif current_version < target_version:
                 seed_phase = determine_highest_published_rhds_phase_for_release(
                     repository,
                     target_release_version,

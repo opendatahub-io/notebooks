@@ -78,10 +78,9 @@ def rhds_gpu_stable_image(
     accelerator: str,
     *,
     full_version: str = "3.5.0",
-    rhds_os_base: str = "el9.6",
     build: str = "1780598175",
 ) -> str:
-    return f"quay.io/aipcc/base-images/{accelerator}-{rhds_os_base}:{full_version}-stable-{build}"
+    return f"quay.io/aipcc/base-images/{accelerator}-stable:{full_version}-{build}"
 
 
 def stub_published_rhds_gpu_stable_tags(
@@ -89,13 +88,12 @@ def stub_published_rhds_gpu_stable_tags(
     updater,
     *,
     full_version: str = "3.5.0",
-    rhds_os_base: str = "el9.6",
     cuda_build: str = "1780598175",
     rocm_build: str = "1780598175",
 ) -> None:
     tags_by_repository = {
-        f"quay.io/aipcc/base-images/cuda-{rhds_os_base}": (f"{full_version}-stable-{cuda_build}",),
-        f"quay.io/aipcc/base-images/rocm-{rhds_os_base}": (f"{full_version}-stable-{rocm_build}",),
+        "quay.io/aipcc/base-images/cuda-stable": (f"{full_version}-{cuda_build}",),
+        "quay.io/aipcc/base-images/rocm-stable": (f"{full_version}-{rocm_build}",),
     }
     monkeypatch.setattr(
         updater,
@@ -1790,9 +1788,9 @@ def test_plan_updates_picks_rhds_stable_tag_matching_shared_acc_version_over_new
         monkeypatch,
         updater,
         {
-            "quay.io/aipcc/base-images/cuda-el9.6": (
-                "3.5.0-stable-1780598175",
-                "3.5.0-stable-1780598176",
+            "quay.io/aipcc/base-images/cuda-stable": (
+                "3.5.0-1780598175",
+                "3.5.0-1780598176",
             )
         },
     )
@@ -1907,7 +1905,7 @@ def test_plan_updates_raises_when_no_rhds_stable_image_matches_shared_acc_versio
     stub_rhds_repository_tags(
         monkeypatch,
         updater,
-        {"quay.io/aipcc/base-images/cuda-el9.6": ("3.5.0-stable-1780598175",)},
+        {"quay.io/aipcc/base-images/cuda-stable": ("3.5.0-1780598175",)},
     )
     monkeypatch.setattr(updater, "inspect_rhds_stable_acc_version", lambda image, accelerator: "24.9")
 
@@ -2163,8 +2161,8 @@ def test_main_updates_cuda_stable_with_rhds_stable_repo_override(
 
     def fake_list(repository: str, tag_cache=None) -> tuple[str, ...]:
         seen.append(repository)
-        if repository == "quay.io/example/testing/cuda-el9.6":
-            return ("3.5.0-stable-9999999999",)
+        if repository == "quay.io/example/testing/cuda-stable":
+            return ("3.5.0-9999999999",)
         return ()
 
     monkeypatch.setattr(updater, "list_rhds_repository_tags", fake_list)
@@ -2177,15 +2175,15 @@ def test_main_updates_cuda_stable_with_rhds_stable_repo_override(
                 str(tmp_path),
                 "--config",
                 str(tmp_path / "versions_config.yml"),
-                "--rhds-stable-repo-override=cuda=quay.io/example/testing/cuda-el9.6",
+                "--rhds-stable-repo-override=cuda=quay.io/example/testing/cuda-stable",
             ]
         )
         == 0
     )
-    assert seen == ["quay.io/example/testing/cuda-el9.6"]
+    assert seen == ["quay.io/example/testing/cuda-stable"]
     assert conf.read_text(encoding="utf-8").splitlines() == [
         "INDEX_URL=unchanged",
-        pinned_base_image("quay.io/example/testing/cuda-el9.6:3.5.0-stable-9999999999"),
+        pinned_base_image("quay.io/example/testing/cuda-stable:3.5.0-9999999999"),
         "PYLOCK_FLAVOR=cuda",
         "RELEASE=3.5",
     ]

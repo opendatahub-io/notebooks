@@ -869,7 +869,11 @@ def get_accelerator_version_for_directory(directory: pathlib.Path, accelerator_n
     conf_file = directory / "build-args" / f"konflux.{flavor}.conf"
     env = parse_env_file(conf_file)
     base_image = env.get("BASE_IMAGE", "")
-    if re.search(rf"{re.escape(flavor)}-[^:]+:\d+\.\d+\.\d+-stable-\d+$", base_image, flags=re.IGNORECASE):
+    if re.search(
+        rf"{re.escape(flavor)}-stable:\d+\.\d+\.\d+(?:-\d+)?$|{re.escape(flavor)}-[^:]+:\d+\.\d+\.\d+-stable-\d+$",
+        base_image,
+        flags=re.IGNORECASE,
+    ):
         return None
     match = re.search(rf"{re.escape(flavor)}-v?(\d+\.\d+)", base_image, flags=re.IGNORECASE)
     if not match:
@@ -881,7 +885,7 @@ def test_get_accelerator_version_for_directory_returns_none_for_gpu_stable_tag(t
     directory = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12"
     conf_file = directory / "build-args" / "konflux.cuda.conf"
     conf_file.parent.mkdir(parents=True)
-    conf_file.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cuda-el9.6:3.5.0-stable-1780598175\n")
+    conf_file.write_text("BASE_IMAGE=quay.io/aipcc/base-images/cuda-stable:3.5.0-1780598175\n")
 
     assert get_accelerator_version_for_directory(directory, "CUDA") is None
 

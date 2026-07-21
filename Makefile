@@ -436,7 +436,7 @@ refresh-lock-files:
 #   gmake sync-build-args-from-versions
 #   gmake sync-build-args-from-versions SYNC_BUILD_ARGS_ARGS=--check
 #   gmake sync-build-args-from-versions SYNC_BUILD_ARGS_ARGS=--dry-run
-#   gmake sync-build-args-from-versions SYNC_BUILD_ARGS_ARGS=--rhds-stable-repo-override=cuda=quay.io/<org>/cuda-el9.6
+#   gmake sync-build-args-from-versions SYNC_BUILD_ARGS_ARGS=--rhds-stable-repo-override=cuda=quay.io/<org>/cuda-stable
 # Prerequisites:
 #   - skopeo on PATH (RHDS tag resolution uses skopeo list-tags)
 #   - Registry access for quay.io/aipcc/base-images when syncing RHDS build args
