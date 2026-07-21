@@ -8,7 +8,7 @@ import pytest
 from scripts.cve import create_cve_trackers as cct
 
 if TYPE_CHECKING:
-    from pytest import CaptureFixture
+    from pytest import CaptureFixture, MonkeyPatch
 
 
 @pytest.fixture
@@ -16,12 +16,13 @@ def mock_client() -> MagicMock:
     return MagicMock()
 
 
-@pytest.fixture
-def expected_team_id() -> str:
-    return cct.RHAIENG_TEAM_OPTION_ID_DEFAULT
+@pytest.fixture(autouse=True)
+def _clean_team_env(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.delenv("JIRA_RHAIENG_TEAM_OPTION_ID", raising=False)
 
 
-def test_update_rhoaieng_teams_no_updates_needed(mock_client: MagicMock, expected_team_id: str) -> None:
+def test_update_rhoaieng_teams_no_updates_needed(mock_client: MagicMock) -> None:
+    expected_team_id = cct.RHAIENG_TEAM_OPTION_ID_DEFAULT
     issues = [
         {
             "key": "RHOAIENG-1",
