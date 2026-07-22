@@ -156,9 +156,6 @@ class TestDataScienceLibs(unittest.TestCase):
         client's openapi_types format (e.g. dict(str,str) vs dict[str,str]).
         See RHOAIENG-75322.
         """
-        if "-datascience-" not in self.image:
-            self.skipTest("Not a DataScience image")
-
         import json
 
         from kubeflow.training.api_client import ApiClient  # pyright: ignore[reportMissingImports]

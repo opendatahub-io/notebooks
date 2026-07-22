@@ -39,6 +39,10 @@ override-dependencies = [
     # RHAIENG-2458: urllib3>=2.7.0 — CVE-2026-44431, CVE-2026-44432 (2.7.0); CVE-2025-66418 (2.6.0)
     # Override needed because odh-elyra pulls in appengine-python-standard with urllib3<2
     "urllib3>=2.7.0",
+    # RHOAIENG-75322: kubeflow-training 1.9.3 crashes with kubernetes 36.x
+    # due to openapi_types dict syntax change (dict(str,str) -> dict[str,str]).
+    # TODO(RHOAIENG-75322): remove in 3.6 EA1 as kubeflow-training is deprecated for 3.6 EA1
+    "kubernetes<36",
 ]
 
 environments = [
