@@ -1,21 +1,12 @@
 #!/bin/bash
 
-# Install dependencies required for Notebooks PDF exports
+# Install OS dependencies required for JupyterLab PDF export.
+# Uses RHEL/UBI AppStream texlive RPMs plus EPEL for texlive-tcolorbox and pandoc.
+# Requires AppStream (subscription or c9s); plain unsubscribed UBI lacks these packages
+# (see https://github.com/red-hat-data-services/notebooks/issues/2310).
+# Backport of main's RPM approach (RHAIENG-2186 / RHAIENG-2345); replaces Utah/CTAN curl.
 
-set -euxo pipefail
-
-# Mapping of `uname -m` values to equivalent GOARCH values
-declare -A UNAME_TO_GOARCH
-UNAME_TO_GOARCH["x86_64"]="amd64"
-UNAME_TO_GOARCH["aarch64"]="arm64"
-UNAME_TO_GOARCH["ppc64le"]="ppc64le"
-UNAME_TO_GOARCH["s390x"]="s390x"
-
-ARCH="${UNAME_TO_GOARCH[$(uname -m)]}"
-if [[ -z "${ARCH:-}" ]]; then
-    echo "Unsupported architecture: $(uname -m)" >&2
-    exit 1
-fi
+set -Eeuxo pipefail
 
 # Skip PDF export installation for s390x and ppc64le architectures
 if [[ "$(uname -m)" == "s390x" || "$(uname -m)" == "ppc64le" ]]; then
@@ -23,21 +14,58 @@ if [[ "$(uname -m)" == "s390x" || "$(uname -m)" == "ppc64le" ]]; then
     exit 0
 fi
 
-# tex live installation
-# Pin to the TeX Live 2025 historic archive so the installer version and
-# package repository version always match (mirror.ctan.org now serves 2026).
-TEXLIVE_HISTORIC="https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2025/tlnet-final"
-echo "Installing TexLive to allow PDf export from Notebooks"
-curl -fL "${TEXLIVE_HISTORIC}/install-tl-unx.tar.gz" -o install-tl-unx.tar.gz
-zcat < install-tl-unx.tar.gz | tar xf -
-cd install-tl-2*
-perl ./install-tl --no-interaction --scheme=scheme-small --texdir=/usr/local/texlive --repository="${TEXLIVE_HISTORIC}"
-ln -s /usr/local/texlive/bin/"$(uname -m)-linux" /usr/local/texlive/bin/linux
-cd /usr/local/texlive/bin/linux
-./tlmgr --repository="${TEXLIVE_HISTORIC}" install tcolorbox pdfcol adjustbox titling enumitem soul ucs collection-fontsrecommended
+# https://github.com/rh-aiservices-bu/workbench-images/blob/main/snippets/ides/1-jupyter/os/os-packages.txt
+# texlive-tcolorbox is not in AppStream; install from EPEL (do not curl a pinned Fedora RPM URL).
+PACKAGES=(
+texlive-adjustbox
+texlive-bibtex
+texlive-charter
+texlive-ec
+texlive-euro
+texlive-eurosym
+texlive-fpl
+texlive-jknapltx
+texlive-knuth-local
+texlive-lm-math
+texlive-marvosym
+texlive-mathpazo
+texlive-mflogo-font
+texlive-parskip
+texlive-plain
+texlive-pxfonts
+texlive-rsfs
+texlive-tcolorbox
+texlive-times
+texlive-titling
+texlive-txfonts
+texlive-ulem
+texlive-upquote
+texlive-utopia
+texlive-wasy
+texlive-wasy-type1
+texlive-wasysym
+texlive-xetex
+# dependencies of texlive-tcolorbox
+texlive-environ
+texlive-trimspaces
+)
 
-# pandoc installation
-curl -fL "https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-${ARCH}.tar.gz"  -o /tmp/pandoc.tar.gz
-mkdir -p /usr/local/pandoc
-tar xvzf /tmp/pandoc.tar.gz --strip-components 1 -C /usr/local/pandoc/
-rm -f /tmp/pandoc.tar.gz
+# EPEL provides texlive-tcolorbox and pandoc (dynamic binary; check-payload friendly).
+dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+
+if ! dnf install -y "${PACKAGES[@]}" pandoc; then
+    echo "ERROR: Failed to install texlive/pandoc RPMs." >&2
+    echo "AppStream texlive packages require a subscribed RHEL/UBI build or c9s AppStream." >&2
+    echo "Unsubscribed UBI-only template builds are tracked in" >&2
+    echo "https://github.com/red-hat-data-services/notebooks/issues/2310" >&2
+    exit 1
+fi
+
+dnf clean all
+
+pdflatex --version
+pandoc --version
+texhash
+kpsewhich tcolorbox.sty
+command -v pandoc
+command -v pdflatex

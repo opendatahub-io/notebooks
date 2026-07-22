@@ -60,7 +60,7 @@ class TestJupyterLabImage:
         if container_arch in ("s390x", "ppc64le"):
             pytest.skip(f"PDF export not supported on {container_arch} architecture")
         container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
-        test_file_name = "test.ipybn"
+        test_file_name = "test.ipynb"
         test_file_content = """{
                 "cells": [
                     {
