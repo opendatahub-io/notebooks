@@ -203,6 +203,53 @@ files = ["/usr/bin/launcher-v2"]
 # Temporary supprsssions for workbenches
 # https://github.com/openshift/check-payload/blob/main/internal/types/errors.go
 # See docs/fips.md for full context on FIPS compliance status.
+#
+# Restored after #2513 dropped these 2.25-needed waivers (main no longer ships
+# static GitHub pandoc / py-spy the same way). Keep codeserver sandbox dirs
+# from #2513.
+
+[[rpm.rstudio-server.ignore]]
+error = "ErrNotDynLinked"
+files = [
+    # executable is not dynamically linked
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/pandoc",
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/typst",
+]
+
+[[rpm.rstudio-server.ignore]]
+error = "ErrNotDynLinked"
+files = [
+    # executable is not dynamically linked
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
+]
+
+[[rpm.rstudio-server.ignore]]
+error = "ErrGoNotCgoEnabled"
+files = [
+    # go binary is not CGO_ENABLED
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
+]
+
+[[rpm.rstudio-server.ignore]]
+error = "ErrGoNoCgoInit"
+files = [
+    # x_cgo_init or _cgo_topofstack not found
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
+]
+
+[[rpm.rstudio-server.ignore]]
+error = "ErrLibcryptoMissing"
+files = [
+    # openssl: did not find libcrypto library within binary
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
+]
+
+[[rpm.rstudio-server.ignore]]
+error = "ErrGoMissingSymbols"
+files = [
+    # go binary does not contain required symbol(s)
+    "/usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/esbuild",
+]
 
 # valgrind is waived since it doesn't do anything with crypto in a
 # security context
@@ -222,13 +269,25 @@ files = [
     "/usr/libexec/valgrind/none-amd64-linux",
 ]
 
-# py-spy is excluded from images via exclude-dependencies (RHAIENG-58916).
-# pandoc-rhai 3.9.0.2 is dynamically linked (RHAIENG-5765) — no waiver needed.
+# py-spy is still shipped on rhoai-2.25 (not yet exclude-dependencies); waived —
+# it does not do crypto in a security context.
+# GitHub tarball pandoc under /usr/local/pandoc is static (until RPM/EPEL path
+# lands via RHAIENG-2345 / #2550).
 
-# when scanning with `scan local --path`
+# when scanning with `scan image --spec`
+[[payload.python-311-container.ignore]]
+error = "ErrNotDynLinked"
+files = [
+    # executable is not dynamically linked
+    "/opt/app-root/bin/py-spy",
+]
+# when scanning with `scan local --path`, the above does not apply
 [[ignore]]
 error = "ErrNotDynLinked"
 files = [
+    # executable is not dynamically linked
+    "/opt/app-root/bin/py-spy",
+    "/usr/local/pandoc/bin/pandoc",
     # when code-server is not installed from rpm, the exclusion below won't apply
     "/usr/lib/code-server/lib/vscode/node_modules/@vscode/ripgrep/bin/rg",
 ]
