@@ -59,14 +59,16 @@ jobs:
 
           set +e # Don't abort if a delete operation fails as all images might not be available for the PR
 
-          # Python 3.11
-          skopeo delete docker://${QUAY_IMAGE_REPO}:rstudio-c9s-python-3.11-pr-${{ env.PR }}
-          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-rstudio-c9s-python-3.11-pr-${{ env.PR }}
+          # Python 3.11 (legacy PR tags; keep deletes best-effort)
+          skopeo delete docker://${QUAY_IMAGE_REPO}:rstudio-rhel9-python-3.11-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-rstudio-rhel9-python-3.11-pr-${{ env.PR }}
 
           # Python 3.12
           skopeo delete docker://${QUAY_IMAGE_REPO}:base-ubi9-python-3.12-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:base-c9s-python-3.12-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-ubi9-python-3.12-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:rstudio-rhel9-python-3.12-pr-${{ env.PR }}
+          skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-rstudio-rhel9-python-3.12-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:cuda-c9s-python-3.12-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-minimal-ubi9-python-3.12-pr-${{ env.PR }}
           skopeo delete docker://${QUAY_IMAGE_REPO}:jupyter-datascience-ubi9-python-3.12-pr-${{ env.PR }}

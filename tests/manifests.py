@@ -359,8 +359,6 @@ class TestManifests:
             / "jupyter-trustyai-notebook-imagestream.yaml",
             "codeserver-ubi9-python-3.12": MANIFESTS_ODH_DIR / "base" / "code-server-notebook-imagestream.yaml",
             "rstudio-ubi9-python-3.11": MANIFESTS_ODH_DIR / "base" / "rstudio-buildconfig.yaml",
-            "rstudio-c9s-python-3.11": MANIFESTS_ODH_DIR / "base" / "rstudio-buildconfig.yaml",
-            "cuda-rstudio-c9s-python-3.11": MANIFESTS_ODH_DIR / "base" / "cuda-rstudio-buildconfig.yaml",
             "rstudio-rhel9-python-3.11": MANIFESTS_ODH_DIR / "base" / "rstudio-buildconfig.yaml",
             "cuda-rstudio-rhel9-python-3.11": MANIFESTS_ODH_DIR / "base" / "cuda-rstudio-buildconfig.yaml",
         }
