@@ -6,6 +6,11 @@ Extensions are `.vsix` files committed to `utils/` via git-lfs, downloaded from
 [Open VSX](https://open-vsx.org/) (NOT the Microsoft Marketplace — its license
 prohibits redistribution outside Microsoft VS Code products).
 
+> [!NOTE]
+> Open VSX is the only permitted extension registry for this image. Never
+> download, install, extract from, or otherwise use artifacts from the Microsoft
+> Marketplace registry; doing so violates its terms of service.
+
 ### Step-by-step
 
 1. **Check the che-code VS Code version.** The pinned `CHECODE_IMAGE` in
@@ -140,4 +145,16 @@ import json, sys; print(json.load(sys.stdin)['version'])"
 - `build-args/konflux.cpu.conf` — RHOAI (UBI9 base, Red Hat ecosystem)
 
 Both use the same `Dockerfile.konflux.cpu`. The `BASE_IMAGE` ARG selects
-the Python base; `CHECODE_IMAGE` and `NODEJS_IMAGE` are the same for both.
+the Python base. `CHECODE_IMAGE` is track-specific and must be updated in
+both build-args files when changing either Che Code track; only `NODEJS_IMAGE`
+is shared between the two tracks.
+
+## Agent skills
+
+Use the [Che Code development-loop skill](.agents/skills/che-code-development/)
+for disposable-container iteration, runtime mounts, native-architecture
+testing, and cached full-image validation. Use the
+[VS Code web-testing skill](.agents/skills/vscode-web-testing/) for browser
+navigation and authentication; its device-auth reference explains why the
+flow must start by clicking **Open** in Che Code's dialog rather than manually
+opening the GitHub URL.

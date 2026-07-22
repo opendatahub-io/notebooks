@@ -24,16 +24,9 @@ FROM ${CHECODE_IMAGE} AS checode
 # hadolint ignore=DL3002
 USER root
 
-# Remove Che-only extensions that throw or conflict outside DevWorkspaces.
-# Keep only: che-api (required by che-github-authentication),
-#            che-github-authentication (provides Device Code Flow for Copilot auth)
-RUN rm -rf /checode-linux-libc/ubi9/extensions/che-commands \
-           /checode-linux-libc/ubi9/extensions/che-port \
-           /checode-linux-libc/ubi9/extensions/che-activity-tracker \
-           /checode-linux-libc/ubi9/extensions/che-resource-monitor \
-           /checode-linux-libc/ubi9/extensions/che-remote \
-           /checode-linux-libc/ubi9/extensions/che-telemetry \
-           /checode-linux-libc/ubi9/extensions/che-terminal \
+# Remove every upstream Che extension; this image runs outside a DevWorkspace.
+# GitHub authentication uses VS Code's built-in device-code setting instead.
+RUN rm -rf /checode-linux-libc/ubi9/extensions/che-* \
            /checode-linux-libc/ubi9/extensions/node_modules \
            /checode-linux-libc/ubi9/out/media/che-icon.svg
 
@@ -58,10 +51,16 @@ COPY ${CHECODE_CONTEXT}/extensions/kubeflow-activity-tracker/ /tmp/ext/
 WORKDIR /tmp/ext
 RUN npm ci && npm run build
 
-# Patch product.json: update branding + inject configurationDefaults
+# Patch product.json like the regular Code Server image does in
+# codeserver/ubi9-python-3.12/run-code-server.sh. Che Code additionally needs
+# its compiled web allowlist and device provider capability patched below.
 COPY --from=checode /checode-linux-libc/ubi9/product.json /tmp/product.json
+COPY --from=checode /checode-linux-libc/ubi9/out/vs/code/browser/workbench/workbench.js /tmp/workbench.js
+COPY --from=checode /checode-linux-libc/ubi9/extensions/github-authentication/dist/extension.js /tmp/github-authentication.js
+COPY --from=checode /checode-linux-libc/ubi9/extensions/github-authentication/package.json /tmp/github-authentication-package.json
+COPY ${CHECODE_CONTEXT}/extensions/github-authentication/dist/browser/extension.js /tmp/github-authentication-browser.js
 COPY ${CHECODE_CONTEXT}/patch-product-json.js /tmp/
-RUN node /tmp/patch-product-json.js /tmp/product.json
+RUN node /tmp/patch-product-json.js /tmp/product.json /tmp/workbench.js /tmp/github-authentication.js /tmp/github-authentication-browser.js /tmp/github-authentication-package.json
 
 ##########################################################
 # Stage 3: Final image with Python + Kubeflow bridge
@@ -92,6 +91,15 @@ LABEL name="${LABEL_REGISTRY_PREFIX}/${LABEL_COMPONENT}" \
 COPY --from=checode /checode-linux-libc/ubi9 /opt/app-root/checode
 # Overwrite with patched product.json (branding + configurationDefaults)
 COPY --from=ext-builder /tmp/product.json /opt/app-root/checode/product.json
+# Overwrite the browser bundle with the trusted GitHub auth allowlist embedded.
+COPY --from=ext-builder /tmp/workbench.js /opt/app-root/checode/out/vs/code/browser/workbench/workbench.js
+COPY --from=ext-builder /tmp/github-authentication.js /opt/app-root/checode/extensions/github-authentication/dist/extension.js
+COPY --from=ext-builder /tmp/github-authentication-browser.js /opt/app-root/checode/extensions/github-authentication/dist/browser/extension.js
+COPY --from=ext-builder /tmp/github-authentication-package.json /opt/app-root/checode/extensions/github-authentication/package.json
+
+# Standalone replacement for the Che GitHub extension. It deliberately has no
+# dependency on eclipse-che.api, so the built-in VS Code terminal remains usable.
+COPY ${CHECODE_CONTEXT}/extensions/kubeflow-github-authentication/ /opt/app-root/checode/extensions/kubeflow-github-authentication/
 
 # Runtime deps: nginx (reverse proxy), nss_wrapper (OpenShift UID), gettext (envsubst)
 # curl-minimal is already in the base image; httpd replaced by Python culler-server.py
