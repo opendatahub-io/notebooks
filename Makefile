@@ -141,11 +141,16 @@ define image
 	$(eval BUILD_DIRECTORY := $(shell echo $(2) | sed 's/\/Dockerfile.*//'))
 	$(eval VARIANT := $(shell echo $(notdir $(2)) | cut -d. -f2))
 	$(eval DOCKERFILE := $(BUILD_DIRECTORY)/Dockerfile$(if $(KONFLUX:no=),.konflux,$(empty)).$(VARIANT))
+	$(if $(strip $(DOCKERFILE)),,$(error Dockerfile not found for variant '$(VARIANT)' in '$(BUILD_DIRECTORY)'))
+
 	$(eval CONF_FILE := $(BUILD_DIRECTORY)/build-args/$(if $(KONFLUX:no=),konflux.,$(empty))$(shell echo $(VARIANT)).conf)
 	$(info #*# Image build Dockerfile: <$(DOCKERFILE)> #(MACHINE-PARSED LINE)#*#...)
 	$(info #*# Image build directory: <$(BUILD_DIRECTORY)> #(MACHINE-PARSED LINE)#*#...)
 
-	$(call build_image,$(1),$(DOCKERFILE),$(CONF_FILE))
+	# realpath dereferences symlinks — podman API rejects symlinks with "must be a regular file"
+	$(eval DOCKERFILE_BUILD := $(realpath $(DOCKERFILE)))
+	$(if $(strip $(DOCKERFILE_BUILD)),,$(error Resolved Dockerfile path is empty for '$(DOCKERFILE)' — file missing or broken symlink))
+	$(call build_image,$(1),$(DOCKERFILE_BUILD),$(CONF_FILE))
 
 	$(if $(PUSH_IMAGES:no=),
 		$(call push_image,$(1))
