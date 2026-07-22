@@ -7,7 +7,7 @@ set -eoux pipefail
 # OpenBlas is built from source (instead of distro provided) with recommended flags for performance #
 #####################################################################################################
 WHEELS_DIR=/wheelsdir
-mkdir -p ${WHEELS_DIR}
+mkdir -p "${WHEELS_DIR}"
 if [[ $(uname -m) == "ppc64le" ]]; then
     CURDIR=$(pwd)
 
@@ -20,7 +20,7 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
     source /opt/rh/gcc-toolset-13/enable
-    source $HOME/.cargo/env
+    source "$HOME/.cargo/env"
     
     uv pip install cmake
 
@@ -30,16 +30,17 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     # Install OpenBlas
     # IMPORTANT: Ensure Openblas is installed in the final image
     cd /root
-    curl -L https://github.com/OpenMathLib/OpenBLAS/releases/download/v${OPENBLAS_VERSION}/OpenBLAS-${OPENBLAS_VERSION}.tar.gz | tar xz
+    curl -L "https://github.com/OpenMathLib/OpenBLAS/releases/download/v${OPENBLAS_VERSION}/OpenBLAS-${OPENBLAS_VERSION}.tar.gz" | tar xz
     # rename directory for mounting (without knowing version numbers) in multistage builds
-    mv OpenBLAS-${OPENBLAS_VERSION}/ OpenBLAS/
+    openblas_src="OpenBLAS-${OPENBLAS_VERSION}"
+    mv "${openblas_src}/" OpenBLAS/
     cd OpenBLAS/
-    make -j${MAX_JOBS} TARGET=POWER9 BINARY=64 USE_OPENMP=1 USE_THREAD=1 NUM_THREADS=120 DYNAMIC_ARCH=1 INTERFACE64=0
+    make -j"${MAX_JOBS}" TARGET=POWER9 BINARY=64 USE_OPENMP=1 USE_THREAD=1 NUM_THREADS=120 DYNAMIC_ARCH=1 INTERFACE64=0
     make install
     cd ..
 
     # set path for openblas
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/OpenBLAS/lib/:/usr/local/lib64:/usr/local/lib
+    export LD_LIBRARY_PATH="/opt/OpenBLAS/lib/:/usr/local/lib64:/usr/local/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
     export PKG_CONFIG_PATH=$(find / -type d -name "pkgconfig" 2>/dev/null | tr '\n' ':')
     export CMAKE_ARGS="-DPython3_EXECUTABLE=python"
     export CMAKE_POLICY_VERSION_MINIMUM=3.5
@@ -47,23 +48,27 @@ if [[ $(uname -m) == "ppc64le" ]]; then
     TMP=$(mktemp -d)
 
     # Torch
-    cd ${CURDIR}
-    TORCH_VERSION=$(grep -A1 '"torch"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
-    cd ${TMP}
-    git clone --recursive https://github.com/pytorch/pytorch.git -b v${TORCH_VERSION}
+    cd "${CURDIR}"
+    # torch is pinned under x86_64 markers; we build the same version from source on ppc64le
+    TORCH_VERSION=$(python3 ./pylock_version.py torch --platform x86_64)
+    # Drop PEP 440 local segment (+cu128) for git tag; pre-releases (1.0a1) are unchanged.
+    TORCH_VERSION=${TORCH_VERSION%%+*}
+    TORCH_TAG="v${TORCH_VERSION}"
+    cd "${TMP}"
+    git clone --recursive https://github.com/pytorch/pytorch.git -b "${TORCH_TAG}"
     cd pytorch
     # lintrunner's sdist pyproject.toml is non-compliant with PEP 621; skip it (dev-only dep)
     grep -v '^lintrunner' requirements.txt | uv pip install -r /dev/stdin
     python setup.py develop
     rm -f dist/torch*+git*whl
     MAX_JOBS=${MAX_JOBS:-$(nproc)} \
-        PYTORCH_BUILD_VERSION=${TORCH_VERSION} PYTORCH_BUILD_NUMBER=1 uv build --wheel --out-dir ${WHEELS_DIR}
+        PYTORCH_BUILD_VERSION="${TORCH_VERSION}" PYTORCH_BUILD_NUMBER=1 uv build --wheel --out-dir "${WHEELS_DIR}"
 
-    cd ${CURDIR}
+    cd "${CURDIR}"
     # Pyarrow
-    PYARROW_VERSION=$(grep -A1 '"pyarrow"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
-    cd ${TMP}
-    git clone --recursive https://github.com/apache/arrow.git -b apache-arrow-${PYARROW_VERSION}
+    PYARROW_VERSION=$(python3 ./pylock_version.py pyarrow --platform ppc64le)
+    cd "${TMP}"
+    git clone --recursive https://github.com/apache/arrow.git -b "apache-arrow-${PYARROW_VERSION}"
     cd arrow/cpp
     mkdir build && cd build && \
     cmake -DCMAKE_BUILD_TYPE=release \
@@ -74,34 +79,36 @@ if [[ $(uname -m) == "ppc64le" ]]; then
         -DARROW_BUILD_STATIC="OFF" \
         -DARROW_PARQUET=ON \
         .. && \
-    make install -j ${MAX_JOBS:-$(nproc)} && \
+    make install -j "${MAX_JOBS:-$(nproc)}" && \
     cd ../../python/ && \
     uv pip install -v -r requirements-wheel-build.txt && \
     PYARROW_PARALLEL=${PYARROW_PARALLEL:-$(nproc)} \
     python setup.py build_ext \
     --build-type=release --bundle-arrow-cpp \
-    bdist_wheel --dist-dir ${WHEELS_DIR}
+    bdist_wheel --dist-dir "${WHEELS_DIR}"
 
     # Pillow (use auditwheel repaired wheel to avoid pulling runtime libs from EPEL)
-    cd ${CURDIR}
-    PILLOW_VERSION=$(grep -A1 '"pillow"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
-    cd ${TMP}
-    git clone --recursive https://github.com/python-pillow/Pillow.git -b ${PILLOW_VERSION}
+    cd "${CURDIR}"
+    PILLOW_VERSION=$(python3 ./pylock_version.py pillow --platform ppc64le)
+    cd "${TMP}"
+    git clone --recursive https://github.com/python-pillow/Pillow.git -b "${PILLOW_VERSION}"
     cd Pillow
     uv build --wheel --out-dir /pillowwheel
     : ================= Fix Pillow Wheel ====================
     cd /pillowwheel
     uv pip install auditwheel
     auditwheel repair pillow*.whl
-    mv wheelhouse/pillow*.whl ${WHEELS_DIR}
+    mv wheelhouse/pillow*.whl "${WHEELS_DIR}"
 
-    ls -ltr ${WHEELS_DIR}
+    ls -ltr "${WHEELS_DIR}"
 
-    cd ${CURDIR}
-    uv pip install --refresh ${WHEELS_DIR}/*.whl accelerate==$(grep -A1 '"accelerate"' pylock.toml | grep -Eo '\b[0-9\.]+\b')
+    cd "${CURDIR}"
+    # accelerate is pinned under x86_64 markers; install the same version on ppc64le
+    ACCELERATE_VERSION=$(python3 ./pylock_version.py accelerate --platform x86_64)
+    uv pip install --refresh "${WHEELS_DIR}"/*.whl "accelerate==${ACCELERATE_VERSION}"
 
     uv pip list
-    cd ${CURDIR}
+    cd "${CURDIR}"
 else
     # only for mounting on non-ppc64le
     mkdir -p /root/OpenBLAS/
