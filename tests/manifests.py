@@ -340,8 +340,6 @@ class TestManifests:
             "jupyter-trustyai-ubi9-python-3.12": ROOT_DIR / "manifests/base/jupyter-trustyai-notebook-imagestream.yaml",
             "codeserver-ubi9-python-3.12": ROOT_DIR / "manifests/base/code-server-notebook-imagestream.yaml",
             "rstudio-ubi9-python-3.11": ROOT_DIR / "manifests/base/rstudio-buildconfig.yaml",
-            "rstudio-c9s-python-3.11": ROOT_DIR / "manifests/base/rstudio-buildconfig.yaml",
-            "cuda-rstudio-c9s-python-3.11": ROOT_DIR / "manifests/base/cuda-rstudio-buildconfig.yaml",
             "rstudio-rhel9-python-3.11": ROOT_DIR / "manifests/base/rstudio-buildconfig.yaml",
             "cuda-rstudio-rhel9-python-3.11": ROOT_DIR / "manifests/base/cuda-rstudio-buildconfig.yaml",
         }
