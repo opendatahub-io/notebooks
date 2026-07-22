@@ -17,10 +17,17 @@ WORKDIR /opt/app-root/bin
 USER root
 
 #!!! BEGIN upgrade first to avoid fixable vulnerabilities
-# If we have a Red Hat subscription prepared, refresh it
+# RHSM: align release 9 with UBI appstream; drop EUS repos (RHAIENG-6037).
+# The base image ships UBI repositories (ubi.repo). UBI tracks latest RHEL 9, not an EUS minor.
+# EUS activation keys (e.g. release 9.6) skew RPM NVRs against UBI and break flexiblas installs.
 RUN set -Eeuxo pipefail && \
-    if command -v subscription-manager &> /dev/null; then \
-        subscription-manager identity &>/dev/null && subscription-manager refresh || echo "No identity, skipping refresh."; \
+    if command -v subscription-manager &> /dev/null && subscription-manager identity &>/dev/null; then \
+        subscription-manager release --set=9 \
+        && subscription-manager repos --disable='*' \
+          --enable=rhel-9-for-x86_64-baseos-rpms \
+          --enable=rhel-9-for-x86_64-appstream-rpms \
+          --enable=codeready-builder-for-rhel-9-x86_64-rpms \
+        && dnf clean all; \
     fi
 
 # Problem: The operation would result in removing the following protected packages: systemd
@@ -80,7 +87,8 @@ USER 0
 # uncomment the below line if you fall on this error: subscription-manager is disabled when running inside a container. Please refer to your host system for subscription management.
 #RUN sed -i 's/\(def in_container():\)/\1\n    return False/g' /usr/lib64/python*/*-packages/rhsm/config.py
 
-# If necessary, run the subscription manager command using the provided credentials. Only include --serverurl and --baseurl if they are provided
+# Register (BuildConfig); GHA uses mounted entitlement in base instead.
+# --release=9: base is UBI (latest RHEL 9); override EUS default on the activation key (RHAIENG-6037).
 RUN set -Eeuo pipefail && \
     if [ -d "${SECRET_DIR}" ]; then \
         SERVERURL=$(cat ${SECRET_DIR}/SERVERURL 2>/dev/null || echo ${SERVERURL_DEFAULT}) && \
@@ -92,8 +100,19 @@ RUN set -Eeuo pipefail && \
             ${BASEURL:+--baseurl=$BASEURL} \
             --username=$USERNAME \
             --password=$PASSWORD \
+            --release=9 \
             --force \
             --auto-attach; \
+    fi
+
+RUN set -Eeuxo pipefail && \
+    if command -v subscription-manager &> /dev/null && subscription-manager identity &>/dev/null; then \
+        subscription-manager release --set=9 \
+        && subscription-manager repos --disable='*' \
+          --enable=rhel-9-for-x86_64-baseos-rpms \
+          --enable=rhel-9-for-x86_64-appstream-rpms \
+          --enable=codeready-builder-for-rhel-9-x86_64-rpms \
+        && dnf clean all; \
     fi
 
 # TILL HERE
