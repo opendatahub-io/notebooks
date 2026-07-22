@@ -60,6 +60,9 @@ jobs:
       python: "${{ matrix.python }}"
       github: "${{ toJSON(github) }}"
       platform: "${{ matrix.platform }}"
-      subscription: "${{ matrix.subscription }}"
+      # Matrix gen only sets subscription for *rhel* targets. RHOAI ubi9 images still
+      # need AppStream (e.g. texlive RPMs in install_pdf_deps.sh). Match build-notebooks-pr.yaml:
+      # force subscription for everything except hermetic codeserver (public UBI locks).
+      subscription: ${{ !contains(matrix.target, 'codeserver') }}
       product: rhoai
     secrets: inherit

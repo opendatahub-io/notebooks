@@ -32,8 +32,9 @@ jobs:
       python: "3.12"
       github: ${{ toJson(github) }}
       platform: linux/amd64
-      # Match downstream/main: self-test uses a public-base image and must not
-      # require subscription secrets (unavailable on fork PRs).
-      subscription: ${{ false }}
+      # jupyter-minimal install_pdf_deps.sh needs RHEL AppStream texlive RPMs
+      # (RHAIENG-2345 / #2310). Same-repo PRs inherit subscription secrets;
+      # fork PRs that touch these paths will fail without them (see CONTRIBUTING.md).
+      subscription: ${{ true }}
       product: rhoai
     secrets: inherit
