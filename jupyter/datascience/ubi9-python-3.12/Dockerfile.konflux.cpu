@@ -46,6 +46,9 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER root
 ARG TARGETARCH
+ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.12
+COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml /tmp/pylock.toml
+COPY scripts/pylock_version.py /tmp/pylock_version.py
 
 # Inject the official UBI 9 repository configuration into the AIPCC base image.
 # The Quay-based AIPCC image is "repo-less" by default (https://gitlab.com/redhat/rhel-ai/core/base-images/app#repositories), so dnf cannot upgrade or install packages.
@@ -142,11 +145,13 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=cache,target=/root/.cache/dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ] || [ "$TARGETARCH" = "s390x" ]; then
+    PYARROW_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml pyarrow --platform "$TARGETARCH")
+    ARROW_BRANCH="apache-arrow-${PYARROW_VERSION}"
     # Install build dependencies (shared for pyarrow and onnx)
     dnf install -y cmake make gcc-c++ pybind11-devel wget
     dnf clean all
     # Build and collect pyarrow wheel
-    git clone --depth 1 --branch "apache-arrow-17.0.0" https://github.com/apache/arrow.git
+    git clone --depth 1 --branch "${ARROW_BRANCH}" https://github.com/apache/arrow.git
     cd arrow/cpp
     mkdir release && cd release
     # ORC 2.0.1 was removed from downloads.apache.org; archive mirror has the expected tarball hash
@@ -214,17 +219,18 @@ EOF
 #######################################################
 FROM common-builder AS onnx-builder
 ARG TARGETARCH
-ARG ONNX_VERSION=v1.20.1
 WORKDIR /root
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "${TARGETARCH}" = "ppc64le" ]; then
+    ONNX_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml onnx --platform ppc64le)
+    ONNX_TAG="v${ONNX_VERSION}"
     source /opt/rh/gcc-toolset-13/enable
     git clone --recursive https://github.com/onnx/onnx.git
     cd onnx
-    git checkout ${ONNX_VERSION}
+    git checkout "${ONNX_TAG}"
     git submodule update --init --recursive
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements-min.txt
     CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)"
     export CMAKE_ARGS
     pip wheel . -w /root/onnx_wheel

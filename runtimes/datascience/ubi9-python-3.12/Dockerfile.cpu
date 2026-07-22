@@ -12,6 +12,9 @@ FROM registry.access.redhat.com/ubi9/ubi AS ubi-repos
 FROM ${BASE_IMAGE} AS cpu-base
 
 ARG TARGETARCH
+ARG DATASCIENCE_SOURCE_CODE=runtimes/datascience/ubi9-python-3.12
+COPY ${DATASCIENCE_SOURCE_CODE}/pylock.toml /tmp/pylock.toml
+COPY scripts/pylock_version.py /tmp/pylock_version.py
 
 WORKDIR /opt/app-root/bin
 
@@ -58,13 +61,17 @@ EOF
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
-if [ "$TARGETARCH" = "ppc64le" ]; then cat > /etc/profile.d/ppc64le.sh <<'PROFILE_EOF'
+if [ "$TARGETARCH" = "ppc64le" ]; then
+    ONNX_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml onnx --platform ppc64le)
+    PYARROW_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml pyarrow --platform ppc64le)
+    # NB: unquoted heredoc — escape $ for vars that must expand at login
+    cat > /etc/profile.d/ppc64le.sh <<PROFILE_EOF
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
-export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:/usr/lib64:/usr/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}
 export OPENBLAS_VERSION=0.3.30
-export ONNX_VERSION=1.20.1
-export PYARROW_VERSION=17.0.0
-export PATH="$HOME/.cargo/bin:$PATH"
+export ONNX_VERSION=${ONNX_VERSION}
+export PYARROW_VERSION=${PYARROW_VERSION}
+export PATH="\$HOME/.cargo/bin:\$PATH"
 export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
 PROFILE_EOF
 fi
@@ -130,26 +137,17 @@ ARG TARGETARCH
 USER 0
 WORKDIR /tmp/build-wheels
 
-# Set pyarrow version for s390x
-RUN /bin/bash <<'EOF'
-set -Eeuxo pipefail
-if [ "$TARGETARCH" = "s390x" ]; then
-    echo 'export PYARROW_VERSION=17.0.0' >> /etc/profile.d/s390x.sh
-fi
-EOF
-
 # Build pyarrow optimized for s390x
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=cache,target=/root/.cache/dnf /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "s390x" ]; then
+    PYARROW_VERSION=$(python3 /tmp/pylock_version.py /tmp/pylock.toml pyarrow --platform s390x)
     # Install build dependencies
     dnf install -y cmake make gcc-c++ pybind11-devel wget git \
         openssl-devel zlib-devel bzip2-devel lz4-devel \
         ninja-build
     dnf clean all
-    # Source the environment variables
-    source /etc/profile.d/s390x.sh
     # Clone specific version of arrow
     git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git
     cd arrow
@@ -249,18 +247,18 @@ USER root
 WORKDIR /root
 
 ARG TARGETARCH
-ENV ONNX_VERSION=1.20.1
 
 RUN echo "onnx-builder stage TARGETARCH: ${TARGETARCH}"
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ]; then
+    source /etc/profile.d/ppc64le.sh
     source /opt/rh/gcc-toolset-13/enable
     git clone --recursive https://github.com/onnx/onnx.git
-    cd onnx && git checkout v${ONNX_VERSION}
+    cd onnx && git checkout "v${ONNX_VERSION}"
     git submodule update --init --recursive
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements-min.txt
     CMAKE_ARGS="-DPython3_EXECUTABLE=$(which python3.12)"
     export CMAKE_ARGS
     pip wheel . -w /onnx_wheels
@@ -280,13 +278,13 @@ USER root
 WORKDIR /root
 
 ARG TARGETARCH
-ENV PYARROW_VERSION=17.0.0
 
 RUN echo "arrow-builder stage TARGETARCH: ${TARGETARCH}"
 
 RUN /bin/bash <<'EOF'
 set -Eeuxo pipefail
 if [ "$TARGETARCH" = "ppc64le" ]; then
+    source /etc/profile.d/ppc64le.sh
     git clone -b apache-arrow-${PYARROW_VERSION} https://github.com/apache/arrow.git --recursive
     cd arrow && rm -rf .git && mkdir dist
     pip3 install --no-cache-dir -r python/requirements-build.txt
