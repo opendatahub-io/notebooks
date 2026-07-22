@@ -40,8 +40,7 @@ The OpenDataHub Notebooks repository provides a collection of containerized note
 ├── codeserver/ # Code-Server (VS Code in the browser) image definitions and configs
 │ ├── ubi9-python-3.11/
 ├── rstudio/ # RStudio image definitions and configs
-│ ├── rhel9-python-3.11/
-│ └── c9s-python-3.11/
+│ └── rhel9-python-3.11/
 ├── ci/ # Continuous Integration scripts, checks, and configuration
 ├── cuda/ # CUDA-specific files (NVIDIA GPU support), e.g., repo files, licenses
 ├── manifests/ # Kubernetes manifests for deploying the images
