@@ -90,18 +90,14 @@ def test_marker_env_sets_os_name(pylock_version) -> None:
 
 def test_marker_ast_evaluator_handles_nested_and_in(pylock_version) -> None:
     env = pylock_version.marker_env(python_minor="3.12", platform_machine="ppc64le")
-    marker_or_and = (
-        "(python_version == '3.12' or python_version == '3.11') and sys_platform == 'linux'"
-    )
+    marker_or_and = "(python_version == '3.12' or python_version == '3.11') and sys_platform == 'linux'"
     assert pylock_version.evaluate_marker(marker_or_and, env), f"expected true for {marker_or_and!r}"
     marker_in = "platform_machine in ('ppc64le', 's390x')"
     assert pylock_version.evaluate_marker(marker_in, env), f"expected true for {marker_in!r}"
     marker_not_x86 = "not (platform_machine == 'x86_64')"
     assert pylock_version.evaluate_marker(marker_not_x86, env), f"expected true for {marker_not_x86!r}"
     marker_not_ppc = "not (platform_machine == 'ppc64le')"
-    assert not pylock_version.evaluate_marker(marker_not_ppc, env), (
-        f"expected false for {marker_not_ppc!r}"
-    )
+    assert not pylock_version.evaluate_marker(marker_not_ppc, env), f"expected false for {marker_not_ppc!r}"
 
 
 @pytest.mark.parametrize(
@@ -135,6 +131,4 @@ def test_locked_versions_for_dockerfile_packages(
     assert version in _versions_in_pylock(pylock, package), (
         f"{package}@{platform_machine} resolved {version!r} not present in {pylock}"
     )
-    assert _LOOKS_LIKE_VERSION.match(version), (
-        f"{package}@{platform_machine} resolved invalid version {version!r}"
-    )
+    assert _LOOKS_LIKE_VERSION.match(version), f"{package}@{platform_machine} resolved invalid version {version!r}"
