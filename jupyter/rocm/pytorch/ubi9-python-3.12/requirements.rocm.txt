@@ -3,8 +3,8 @@ absl-py==2.4.0 ; python_full_version >= '3.12' and implementation_name == 'cpyth
     --hash=sha256:27392fbda337bd3e9f7a1a0405c9b22d314238bbbbb6e910f4208dcd4750740e
 aiohappyeyeballs==2.6.1 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:a80202be86e008deac1f890d385d721617c4e26feeb21c4469a37596e123ff2f
-aiohttp==3.13.5 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:8c9d54ee69580ab69482144e0b71be7813fd65d9ca7eafff178b447509b52d41
+aiohttp==3.14.1 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:6ae27ca015b47dfb963bb874582a99e665d5065cf7481c1ff24ebec35b8a5132
 aiohttp-cors==0.8.1 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:f5ecebcaa53dac556c98b24fe9ca8d6ad466c6db3ba699683bf233543ee13b20
 aiosignal==1.4.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -118,8 +118,8 @@ fastapi==0.135.3 ; python_full_version >= '3.12' and implementation_name == 'cpy
     --hash=sha256:0c8155b0e86fffcd0abff88ca8ea6146d957124cadf263dae85423b5ebf0b470
 fastjsonschema==2.21.2 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:0490403541dd9bc35dd6df21b404061664ade7b970bb273c5dc3e566b61a1e9b
-feast==0.61.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:f0c36edacd29273a0bbf28aaec7b971d823158a78ea1ee0eff37417e0a52a7e7
+feast==0.63.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:2b5a5efdf696043f81f30c548b61e9aec8ee2680e8d9e5ea6952768f302bbc0b
 filelock==3.25.2 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:4d2d1b7e90eed7dd7ef75a3f549869d15da1a0bb41e6e0e69d9e5003f1d97fba
 flake8==7.1.2 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -140,8 +140,8 @@ fsspec==2026.3.0 ; python_full_version >= '3.12' and implementation_name == 'cpy
     --hash=sha256:9697877b97d918c301a21fa0a0cab3cabd3134f964610d3334ec1b2cceb67ef2
 gitdb==4.0.12 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:595192f8d0f0b53c0869245ed6263f4d072ab0c628201fbc7d62f66768891c38
-gitpython==3.1.46 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:55697ec38448485f38c99298121762a47750975619b76315865ddd7eefc710d2
+gitpython==3.1.50 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:86d3f97b7553c57d8b0395013d8a976a8ea227acbca8f530a030a1c577e94b93
 google-api-core==2.30.2 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:33001f1576bcdcdccb5497c6eb0fa62ea0defe6d4dd360fa06d30a163eb9d55b
 google-auth==2.49.1 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -228,14 +228,14 @@ jupyter-packaging==0.12.3 ; python_full_version >= '3.12' and implementation_nam
     --hash=sha256:60a8b93d6f4b270b3d78fc816fcb17c6d8ae72996c8053ede169f5c35a0e1a15
 jupyter-resource-usage==1.1.1 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:80ed54f4e74a4bcecead0ca4819f9113b7b7e920d50096f251f677421a7176c9
-jupyter-server==2.17.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:08be867ed731a482c5f8bf919ee03f12402028bab203c88b4c3d79fed8eaf029
+jupyter-server==2.20.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:35a13d9e735415b2d91fd09f0e0818828745ee6616248c5979b5a4221feed477
 jupyter-server-proxy==4.5.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:d95e9e60b927832f746e9fcd361e213eedc6dafab2d2e059a22b5d8ac4aed5b2
 jupyter-server-terminals==0.5.4 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:467999cb28fe48f192395c44c260925250ebbeb840b117bfddbcf1a4b3b4013c
-jupyterlab==4.5.6 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:64a89bae77943750db27bb2a36e702951432c5dad1665ee9597f8d48e53d1532
+jupyterlab==4.5.8 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:3582e42567962e023ba907b89c9f2e9db02240981fdffa178ac1507d7f9edfde
 jupyterlab-git==0.51.4 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:1831a4bdbc338405fc4acc33a68a7601b817b408749a997ecda41d14d18baf57
 jupyterlab-lsp==5.1.1 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -292,8 +292,8 @@ mdurl==0.1.2 ; python_full_version >= '3.12' and implementation_name == 'cpython
     --hash=sha256:a00418333ec4837cdcba5f1e8e08fb7eef9ea9246b5e347cc341690126c59b5f
 minio==7.2.20 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:3e8a3c0db8f53b3968b846a2c1f35d7f61641360b00628c6e6646098dc2b0eff
-mistune==3.2.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:a4f38976cdfc0436aa660d9f97f07535bfc4341c7cccf1865bc46cd99aa746b4
+mistune==3.3.3 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:ee6c33bb7b46f737a180423aeae059ed374918047f57ed8022798fc1ff85f289
 ml-dtypes==0.5.4 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:a999bd90e07262c7673f762396626883d48068245831d49934dbf2f4635a215e
 mlflow==3.10.1+rhaiv.3 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -368,8 +368,6 @@ opentelemetry-sdk==1.40.0 ; python_full_version >= '3.12' and implementation_nam
     --hash=sha256:eba352a2517fa42612bec823deaca1652e31e0451772d3935b482399e3ded6cb
 opentelemetry-semantic-conventions==0.61b0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:d019603a068efa0ad3426734e2c14ccd9429258f7a495bc68ddce299f6c5a5c0
-orjson==3.11.8 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:8544d34de59217a2c37cd4ca8a61e7561ec3262608c9e027247b9e1a7604d286
 packaging==26.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:c318ca8898b1b505d6bac8efd15d23a41337bab06227c36f811e11d4820f4ead
 pandas==2.3.3 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -446,8 +444,8 @@ pygithub==2.9.0 ; python_full_version >= '3.12' and implementation_name == 'cpyt
     --hash=sha256:c184de28b32ebaa0adfff36a8cfe4611574606d6945fa0654efc4427d25026fd
 pygments==2.20.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:0dd1006a280bdf91488aea47899cbf170560ba7772de374d101dd86cfbfb9e71
-pyjwt==2.12.1 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:923f69d7e1712520d83f8e3a6c5041da7c6cab3362df7356f47122d8c7b579f7
+pyjwt==2.13.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:54fba8e16c765ba7fd63e19830cd889d769c69bd2ec116329f7fdd91cdb24c07
 pylint==4.0.5 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:57ab2489c399cafaf980e321b7d8ae677e1e3e9a5f55cb8217ddcc3a0cf07c76
 pymongo==4.16.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -587,8 +585,8 @@ typing-inspection==0.4.2 ; python_full_version >= '3.12' and implementation_name
     --hash=sha256:ea5ab3215bab8e8048c1cc243d39a3eacebede51842ee8a412f1330e313125f2
 tzdata==2026.1 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:d8a6fb27672332d2870062e9f71eec95cfec7f36e8303c4b2224ba7971de39fa
-ujson==5.12.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:9e08d2ef2da4ed5db0dcd67db995f9af60bb0e5b060e8456f3d04a73846e567e
+ujson==5.13.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:d8a6694b8529df821c7dd40eba8eff3e87b31a92fd08a19de21d2227393ce233
 uri-template==1.3.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:c91bd41205dc203341d792ebc4d2f321fbba2dd414f7f56ea675ffd4553d3390
 urllib3==2.6.3 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -631,7 +629,8 @@ yapf==0.43.0 ; python_full_version >= '3.12' and implementation_name == 'cpython
     --hash=sha256:72b04c65370e00eab76f81a24f3a244efaaeed3384c6bdb40ccec3adb597b3d0
 yarl==1.23.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:1240fc36ab655611db2fa570fcd28d9f1a730c25caff06205f0a008733b9698a \
-    --hash=sha256:b47711ee24a58c958d2c0c7ec1ddd19950c62ba6a094383f5c87d5821868453d
+    --hash=sha256:b47711ee24a58c958d2c0c7ec1ddd19950c62ba6a094383f5c87d5821868453d \
+    --hash=sha256:2fb7e69f7b035a3768cbb59321283a5ac58b55ac911f60ea99b043c8cf3762c9
 yaspin==3.4.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:1c959597aa1fe0723b1bb54c6011216ab3cf502bf258af8e79d457f502ff50a0
 zipp==3.23.0 ; python_full_version >= '3.12' and implementation_name == 'cpython' and sys_platform == 'linux' \

@@ -3,9 +3,9 @@ absl-py==2.4.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:541b7c5ba88ed58a008365e719dcb4de1eda50328a4e79dd6203b0670404521b
 aiohappyeyeballs==2.6.1 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:a4f4595538dfdf0e3c8017a599bd5b8f12319bf38918ce5d92e0fc66edb09de0
-aiohttp==3.13.5 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:859a2a9f16e32e6951356614ea42b485830284da7c4d1705aea46ae5774a7ea6 \
-    --hash=sha256:97f903a6b031722d341d8d220caef9900b7d92d48c2e1bb0eca77acd79cdaafb
+aiohttp==3.14.1 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:b10115a64ed24195cdea88b7a9386ae5c07d2f423bcf9f52828e3c3fc7b6a0c2 \
+    --hash=sha256:b4b2e022aeeed293ed3299372cf7075da920f466ad533a7f8342de2ded947e66
 aiohttp-cors==0.8.1 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:aa22cfb1127240cd13e73ca255b4737637e41bd145e21d2a7e4089550c70c6b3
 aiosignal==1.4.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -101,8 +101,8 @@ fastapi==0.135.3 ; implementation_name == 'cpython' and sys_platform == 'linux' 
     --hash=sha256:b4da6dcdc4d0f22b5114ac7e26de8e9844c7a6349fe1b490a0083113982b7a2a
 fastjsonschema==2.21.2 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:5d2d776cfb97c7eaec5909bfdfcfe82d3dd5de73962196a2b25e52c3dee22835
-feast==0.61.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:c6907a53d48ac99a954c1e98a0a975d83bf499ffb02b060716c39adf14a2870e
+feast==0.63.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:3c465769d03633567c1f4ea3fa42a568c8a370ad7b70142cb65ba89851df8824
 filelock==3.25.2 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:1a06237406de68d077f625dd66d1c6ed8948192a5b5e9d509e224613f0cecd1c
 flask==3.1.3 ; implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -118,8 +118,8 @@ fsspec==2026.3.0 ; implementation_name == 'cpython' and sys_platform == 'linux' 
     --hash=sha256:fa2fd38d7478d60fc27e9781905bc96317e73f76b81fb32747c9c693e327005a
 gitdb==4.0.12 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:7eb16a6e9c4562cc1be28136acd015b3c1f40329962b2cd385d3b576771a4cf0
-gitpython==3.1.46 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:503c6f3b68f99cc518b1497d4ddd300197a8f9b8ce2cdb695f94ba6b09434af6
+gitpython==3.1.50 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:bf316795820a08d1a229bd2e9a5b78f09802333852e88890354566bf4d967116
 google-api-core==2.30.2 ; python_full_version >= '3.6' and implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:6e1330f5ec6439eee90e12987912b9d11c7507cd561652c11db9d891832025b4
 google-auth==2.49.1 ; implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -217,8 +217,8 @@ mdurl==0.1.2 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:994896ac435f16a670f35fe10069d820810983ddda3f7f7e70b56acae859e2de
 minio==7.2.20 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:004172b5fa2ceff9aeb8cd26f3d10929fa36c5fcd287d6e360692712c38c7780
-mistune==3.2.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:25fa0e70cb4cb8067db8f1f300d416225a181bb71468be3f04dd018605815a47
+mistune==3.3.3 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:5a04ced97386f293c06b4b836dba1614bcd95c9bfa7376db262c699ebe3a6e3c
 ml-dtypes==0.5.4 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:91311d34af48e92bda34f92eb4910f36508b9f401ce231db63d8a60543051d40 \
     --hash=sha256:a7400c8eea09f7df8fd7e80dc0ba40c24c5c412779355b9d604736cd12c4fd4e
@@ -284,9 +284,6 @@ opentelemetry-sdk==1.40.0 ; implementation_name == 'cpython' and sys_platform ==
     --hash=sha256:88f7959776f33938c057d3c2f5e1d04602e85d0b3f60038fc070f4c27e26372b
 opentelemetry-semantic-conventions==0.61b0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:c889093dd423ed76fc564703ce146eeb555ae46cdecab0d0f031857375ee4cc9
-orjson==3.11.8 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:50f924a57442a726147ac559701c5cbdc51984a3f6a8b3185f17413b243ebfd3 \
-    --hash=sha256:9e2c16c6835e8c77697d00b24046a3d5b0d866a07c5dc4ac4c6678cbc01e4ff6
 packaging==26.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:063afd476d2e966b74f3748927e0ecd6b6522a8577bcb5d3781bb1512f573957
 pandas==2.3.3 ; implementation_name == 'cpython' and sys_platform == 'linux' \
@@ -366,8 +363,8 @@ pydantic-core==2.41.5 ; implementation_name == 'cpython' and sys_platform == 'li
     --hash=sha256:a5fac903e11068ef1fe40b07de65c1abf9ce0a803dcbce6ec718eaceea3a0617
 pygments==2.20.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:b24941db8a952d67e0f8878037a1c50ebd7b4e1534ae5b7709c552822c52d22e
-pyjwt==2.12.1 ; implementation_name == 'cpython' and sys_platform == 'linux' \
-    --hash=sha256:b13a02b71642df2a4b01a39b67b12fd88cda6fb09f7236ce4f1bde57ca6cb432
+pyjwt==2.13.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:ccb523d233b0c22dfe29ce686c852b5d673c41c628ef2c2167969a7fbc67bd75
 pymongo==4.16.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:57fe9b5de800445ba9eddf9c1dad8587d6433ff975eba2d1e7a3658bb5c848cd \
     --hash=sha256:f977d1cb05000d047f85f965a1aadb236bb997f0768a799e6f004da4fd022b40
@@ -519,6 +516,8 @@ wrapt==2.1.2 ; implementation_name == 'cpython' and sys_platform == 'linux' \
     --hash=sha256:2de40682741ed39f83a6754b7c2f7aa4912b80960791fcdd9d588c07dcadcb47 \
     --hash=sha256:e3133cb3364937ed0da41f99789404a1c439808375ed4ab838869581455a1ea8
 yarl==1.23.0 ; implementation_name == 'cpython' and sys_platform == 'linux' \
+    --hash=sha256:a3b9eef378c39057ed4d1d7f94f45bb24fbd5f5f3503f2f6b988105734f76718 \
+    --hash=sha256:126715989993639b54df31399717efb8d3cd347452ba872939dda48fcbde5678 \
     --hash=sha256:e0d589b9bd196c3a0f1fae4e24ddb797cc6955247e55a19e5981957679ab2e86 \
     --hash=sha256:157216b1a209178b5d7be8f4854168fffd05c9d074883705a6a7fac1b723cb98 \
     --hash=sha256:3f5c05557bab8c3ebb8d95e863e62b621d262a71c73aa00ef1785d5c63300b61 \
