@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -125,6 +126,7 @@ class GitHubReviewClient:
     pull_number: int
     _pending_review_id: int | None = field(default=None, init=False)
     _head_commit_id: str | None = field(default=None, init=False)
+    _authenticated_login: str | None = field(default=None, init=False)
     invocations: list[ReviewToolInvocation] = field(default_factory=list, init=False)
 
     def _pull_path(self, owner: str, repo: str, pull_number: int) -> str:
@@ -201,19 +203,45 @@ class GitHubReviewClient:
             )
         raise ValueError(f"Unsupported pull_request_read method: {method}")
 
+    def _current_user_login(self) -> str:
+        if self._authenticated_login is None:
+            user = gh_api_json("user")
+            if not isinstance(user, dict) or not user.get("login"):
+                raise TypeError("Expected GitHub user response to include login")
+            self._authenticated_login = str(user["login"])
+        return self._authenticated_login
+
     def _find_pending_review_id(self, owner: str, repo: str, pull_number: int) -> int:
+        login = self._current_user_login()
         reviews = gh_api_list_pages(self._pull_path(owner, repo, pull_number) + "/reviews", timeout=180)
         for review in reversed(reviews):
             if not isinstance(review, dict):
                 continue
-            if review.get("state") == "PENDING" and review.get("id") is not None:
+            user = review.get("user")
+            reviewer_login = user.get("login") if isinstance(user, dict) else None
+            if (
+                review.get("state") == "PENDING"
+                and review.get("id") is not None
+                and reviewer_login == login
+            ):
                 return int(review["id"])
         raise ValueError("No pending pull request review found for the current token")
 
     def _ensure_pending_review_id(self, owner: str, repo: str, pull_number: int) -> int:
         if self._pending_review_id is not None:
             return self._pending_review_id
-        return self._find_pending_review_id(owner, repo, pull_number)
+
+        base_path = self._pull_path(owner, repo, pull_number)
+        try:
+            self._pending_review_id = self._find_pending_review_id(owner, repo, pull_number)
+            return self._pending_review_id
+        except ValueError:
+            response = self._create_pending_review(base_path, owner, repo, pull_number, {})
+            if isinstance(response, dict) and response.get("id") is not None:
+                self._pending_review_id = int(response["id"])
+            if self._pending_review_id is None:
+                raise ValueError("Failed to create or reuse a pending pull request review")
+            return self._pending_review_id
 
     def pull_request_review_write(self, **kwargs: Any) -> object:
         args = _with_pr_defaults(kwargs, self.repository, self.pull_number)
@@ -291,7 +319,7 @@ class GitHubReviewClient:
             owner = str(args["owner"])
             repo = str(args["repo"])
             pull_number = int(args["pullNumber"])
-            self._ensure_pending_review_id(owner, repo, pull_number)
+            review_id = self._ensure_pending_review_id(owner, repo, pull_number)
             commit_id = self._head_commit_sha(owner, repo, pull_number)
 
             subject_type = str(args["subjectType"]).upper()
@@ -299,6 +327,7 @@ class GitHubReviewClient:
                 "body": args["body"],
                 "commit_id": commit_id,
                 "path": args["path"],
+                "pull_request_review_id": review_id,
             }
             if subject_type == "FILE":
                 payload["subject_type"] = "file"
@@ -330,8 +359,13 @@ class GitHubReviewClient:
 
     def _first_error_snippet(self, invocations: list[ReviewToolInvocation]) -> str:
         for invocation in invocations:
-            if invocation.error:
-                return invocation.error.splitlines()[0][:160]
+            if not invocation.error:
+                continue
+            if '"message":' in invocation.error:
+                match = re.search(r'"message"\s*:\s*"([^"]+)"', invocation.error)
+                if match:
+                    return match.group(1)[:160]
+            return invocation.error.splitlines()[0][:160]
         return ""
 
     def posting_failure_reason(self) -> str | None:

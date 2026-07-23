@@ -29,6 +29,7 @@ def test_add_comment_posts_commit_id_and_line_payload() -> None:
             "body": "nit",
             "commit_id": "abc123",
             "path": "README.md",
+            "pull_request_review_id": 99,
             "line": 5,
             "side": "RIGHT",
         },
@@ -54,7 +55,59 @@ def test_add_comment_posts_file_subject_type() -> None:
             "body": "file-level note",
             "commit_id": "abc123",
             "path": "README.md",
+            "pull_request_review_id": 99,
             "subject_type": "file",
+        },
+    )
+
+
+def test_add_comment_creates_pending_review_when_missing() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    client._head_commit_id = "abc123"  # noqa: SLF001
+
+    with (
+        patch.object(client, "_current_user_login", return_value="ci-bot"),
+        patch(
+            "odh_ci_agent.github_review_tools.gh_api_list_pages",
+            return_value=[
+                {
+                    "id": 88,
+                    "state": "PENDING",
+                    "user": {"login": "other-user"},
+                }
+            ],
+        ),
+        patch(
+            "odh_ci_agent.github_review_tools.gh_api_json",
+            side_effect=[
+                {"id": 99, "state": "PENDING"},
+                {"id": 1},
+            ],
+        ) as mock_api,
+    ):
+        client.add_comment_to_pending_review(
+            path="README.md",
+            body="nit",
+            subjectType="LINE",
+            line=5,
+        )
+
+    assert client._pending_review_id == 99  # noqa: SLF001
+    mock_api.assert_any_call(
+        "repos/owner/repo/pulls/12/reviews",
+        method="POST",
+        input_json={},
+    )
+    mock_api.assert_any_call(
+        "repos/owner/repo/pulls/12/comments",
+        method="POST",
+        input_json={
+            "body": "nit",
+            "commit_id": "abc123",
+            "path": "README.md",
+            "pull_request_review_id": 99,
+            "line": 5,
+            "side": "RIGHT",
         },
     )
 
