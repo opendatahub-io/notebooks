@@ -125,7 +125,7 @@ Rules:
 - Do not comment on license headers, copyright headers, or boilerplate.
 - Do not comment on hardcoded dates or times being in the future — you do not know the current date.
 - When suggesting code changes, use the suggestion field, not markdown code blocks. Code suggestions must be compilable/runnable and match the indentation of the code they replace. Keep suggestions succinct.
-- If a GitHub review tool returns an error, quote or summarize the error accurately. Do not blame generic "GitHub API limitations", "threading", or "schema restrictions".
+- If `add_comment_to_pending_review` or `pull_request_review_write` fails, quote or summarize the tool error. Do not claim GitHub cannot post threaded comments or give other vague excuses.
 - Only say you posted inline review comments when `add_comment_to_pending_review` succeeded and the review was submitted.
 
 Severity calibration:
@@ -187,17 +187,13 @@ _INLINE_COMMENT_CLAIMS = (
     "posted comments on",
 )
 
-_API_LIMITATION_EXCUSES = (
-    "api limitation",
-    "api limitations",
-    "api restriction",
-    "api restrictions",
-    "api threading",
-    "schema restriction",
-    "schema restrictions",
-    "threading limitation",
-    "threading limitations",
+_VAGUE_GITHUB_EXCUSE_PHRASES = (
+    "due to limitations",
     "github pr api",
+    "github api",
+    "threading",
+    "schema restriction",
+    "cannot accept threaded",
 )
 
 
@@ -206,9 +202,9 @@ def _text_claims_inline_comments_posted(text: str) -> bool:
     return any(phrase in lowered for phrase in _INLINE_COMMENT_CLAIMS)
 
 
-def _text_blames_api_limitations(text: str) -> bool:
+def _text_hides_tool_error_behind_vague_github_excuse(text: str) -> bool:
     lowered = text.lower()
-    return any(phrase in lowered for phrase in _API_LIMITATION_EXCUSES)
+    return any(phrase in lowered for phrase in _VAGUE_GITHUB_EXCUSE_PHRASES)
 
 
 def _review_write_attempted(review_client: GitHubReviewClient) -> bool:
@@ -237,9 +233,12 @@ def review_run_failed(
     if (
         review_client is not None
         and _review_write_attempted(review_client)
-        and _text_blames_api_limitations(text)
+        and _text_hides_tool_error_behind_vague_github_excuse(text)
     ):
-        return "agent attributed GitHub review tool failures to API limitations"
+        return (
+            "agent said review comments could not be posted on GitHub "
+            "instead of reporting the review tool error"
+        )
     if not has_prepared_context and not invoked_review_tools(tool_calls):
         return "review completed without invoking GitHub review tools"
     return None

@@ -223,7 +223,7 @@ def test_review_run_failed_detects_false_inline_comment_claim() -> None:
     assert reason == "failed to post inline review comments (1 attempt(s)): Invalid request"
 
 
-def test_review_run_failed_detects_api_limitation_excuses() -> None:
+def test_review_run_failed_detects_vague_github_excuse_when_posting_failed() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
     client.invocations.append(
         ReviewToolInvocation(
@@ -244,7 +244,7 @@ def test_review_run_failed_detects_api_limitation_excuses() -> None:
     assert reason == "failed to post inline review comments (1 attempt(s)): Invalid request"
 
 
-def test_review_run_failed_detects_api_limitation_excuses_without_posting_failure() -> None:
+def test_review_run_failed_detects_vague_github_excuse_without_posting_failure() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
     client.invocations.append(
         ReviewToolInvocation(
@@ -261,7 +261,10 @@ def test_review_run_failed_detects_api_limitation_excuses_without_posting_failur
         review_client=client,
     )
 
-    assert reason == "agent attributed GitHub review tool failures to API limitations"
+    assert reason == (
+        "agent said review comments could not be posted on GitHub "
+        "instead of reporting the review tool error"
+    )
 
 
 def test_parse_github_repository_splits_owner_and_repo() -> None:
