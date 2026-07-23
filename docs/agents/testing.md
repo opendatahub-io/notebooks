@@ -89,10 +89,9 @@ The `check-generated-code` job runs `ci/generate_code.sh`, then verifies a clean
   unrelated files, `pylocks_generator` is skipped so external AIPCC index churn does not
   fail the job. Shared inputs (`dependencies/cve-constraints.txt`, lock generator scripts)
   still trigger full lock regen. CI fetches base and PR head refs (same pattern as
-  `build-notebooks-pr.yaml`), then runs `pylocks_generator --pr-base origin/<base-branch>`
-  with `gha_pr_changed_files.list_changed_files()` (`git diff` three-dot). Locally:
-  `bash ci/generate_code.sh --pr-base origin/main` or
-  `bash ci/generate_code.sh --pr-base "$(git merge-base origin/main HEAD)"`.
+  `build-notebooks-pr.yaml`), then runs `pylocks_generator --pr-base origin/<base-branch>
+  --pr-to-ref <pr-branch>` with `gha_pr_changed_files.list_changed_files()` (`git diff`
+  three-dot). Locally: `bash ci/generate_code.sh --pr-base origin/main` (default head: `HEAD`).
   See [RHAIENG-6397](https://redhat.atlassian.net/browse/RHAIENG-6397).
 - **Push** (`main`, `stable`, `rhoai-*`): full lock regen for all image dirs (unchanged).
 

@@ -55,7 +55,8 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
-        run: bash ci/generate_code.sh --pr-base "origin/${BASE_REF}"
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: bash ci/generate_code.sh --pr-base "origin/${BASE_REF}" --pr-to-ref "${HEAD_REF}"
 
       - name: Rerun all code generators we have (push)
         if: github.event_name != 'pull_request'

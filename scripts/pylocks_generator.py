@@ -288,14 +288,19 @@ def _is_lock_chain_file(relative_to_project: Path) -> bool:
     return bool(relative_to_project.parts) and relative_to_project.parts[0] == "uv.lock.d"
 
 
-def resolve_pr_scoped_target_dirs(pr_base: str, log: LogBuffer) -> list[Path]:
+def resolve_pr_scoped_target_dirs(
+    pr_base: str,
+    log: LogBuffer,
+    *,
+    pr_to_ref: str = "HEAD",
+) -> list[Path]:
     """Image project dirs whose lock chain changed in the PR, or all dirs if global inputs changed.
 
-    ``pr_base`` is the base ref for a three-dot PR diff (``pr_base...HEAD``). CI passes
-    ``origin/<base-branch>`` after fetching refs; locally use ``origin/main`` or a merge-base SHA.
+    ``pr_base`` and ``pr_to_ref`` form a three-dot PR diff (``pr_base...pr_to_ref``). CI passes
+    ``origin/<base-branch>`` and the fetched PR branch name; locally use ``origin/main`` and ``HEAD``.
     """
-    log.info(f"PR lock scoping from {pr_base}")
-    changed = _list_changed_files(pr_base, "HEAD")
+    log.info(f"PR lock scoping from {pr_base}...{pr_to_ref}")
+    changed = _list_changed_files(pr_base, pr_to_ref)
     all_dirs = discover_all_image_project_dirs()
 
     if any(_is_global_lock_input(path) for path in changed):
@@ -705,9 +710,16 @@ def main(
         str | None,
         typer.Option(
             "--pr-base",
-            help="Base ref for PR scoping (three-dot diff pr_base...HEAD); CI uses origin/<base-branch>",
+            help="Base ref for PR scoping (three-dot diff pr_base...pr_to_ref); CI uses origin/<base-branch>",
         ),
     ] = None,
+    pr_to_ref: Annotated[
+        str,
+        typer.Option(
+            "--pr-to-ref",
+            help="Head ref for PR scoping (three-dot diff pr_base...pr_to_ref); CI uses fetched PR branch",
+        ),
+    ] = "HEAD",
 ) -> None:
     """Generate pylock.toml lock files for Python project directories."""
     log = LogBuffer(buffered=False)
@@ -737,7 +749,7 @@ def main(
         if target_dir is not None:
             log.error("Cannot combine a specific target directory with --pr-base.")
             raise SystemExit(1)
-        target_dirs = resolve_pr_scoped_target_dirs(pr_base, log)
+        target_dirs = resolve_pr_scoped_target_dirs(pr_base, log, pr_to_ref=pr_to_ref)
         if not target_dirs:
             log.ok("Skipped pylocks regeneration.")
             return

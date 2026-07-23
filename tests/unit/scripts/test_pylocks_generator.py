@@ -312,15 +312,16 @@ def test_resolve_pr_scoped_diffs_from_base_ref(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     base_ref = "origin/main"
+    head_ref = "rhaieng-6397-scoped-pr-lock-regen"
     changed_files_mock = Mock(
         return_value=["jupyter/minimal/ubi9-python-3.12/pyproject.toml"],
     )
     monkeypatch.setattr(pg, "_list_changed_files", changed_files_mock)
     expected = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
-    assert pg.resolve_pr_scoped_target_dirs(base_ref, pg.LogBuffer()) == [expected], (
+    assert pg.resolve_pr_scoped_target_dirs(base_ref, pg.LogBuffer(), pr_to_ref=head_ref) == [expected], (
         "three-dot diff from base ref should scope to touched image dir"
     )
-    changed_files_mock.assert_called_once_with(base_ref, "HEAD")
+    changed_files_mock.assert_called_once_with(base_ref, head_ref)
 
 
 def test_resolve_pr_scoped_skips_unrelated(monkeypatch: pytest.MonkeyPatch) -> None:
