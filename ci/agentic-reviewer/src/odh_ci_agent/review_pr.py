@@ -13,7 +13,11 @@ from typing import TYPE_CHECKING
 from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig, types
 
 from odh_ci_agent import mcp_github
-from odh_ci_agent.github_review_tools import make_github_review_tools, review_tool_policies
+from odh_ci_agent.github_review_tools import (
+    GitHubReviewClient,
+    make_github_review_tools,
+    review_tool_policies,
+)
 from odh_ci_agent.pr_review_summary import ensure_marker, extract_review_summary_body, marker_for_run
 
 if TYPE_CHECKING:
@@ -143,16 +147,18 @@ When you are done, reply with one line saying whether you posted inline review c
 """.strip()
 
 
-def build_config(inputs: ReviewInputs) -> LocalAgentConfig:
-    return LocalAgentConfig(
+def build_config(inputs: ReviewInputs) -> tuple[LocalAgentConfig, GitHubReviewClient]:
+    tools, client = make_github_review_tools(inputs.repository, inputs.pull_request_number)
+    config = LocalAgentConfig(
         model=inputs.model,
         workspaces=[],
         capabilities=CapabilitiesConfig(enable_subagents=False, enabled_tools=[]),
-        tools=make_github_review_tools(inputs.repository, inputs.pull_request_number),
+        tools=tools,
         policies=review_tool_policies(),
         mcp_servers=[],
         save_dir=required_env("AGY_TRAJECTORY_DIR"),
     )
+    return config, client
 
 
 def format_usage_metadata(usage_metadata: UsageMetadata | None) -> str:
@@ -176,11 +182,14 @@ def review_run_failed(
     tool_calls: list[mcp_github.NamedToolCall],
     *,
     has_prepared_context: bool,
+    review_client: GitHubReviewClient | None = None,
 ) -> str | None:
     if "Denied by policy" in text:
         return "GitHub review tools were denied by policy"
     if "unable to retrieve the pull request" in text.lower():
         return "agent reported inability to fetch pull request data"
+    if review_client is not None and (posting_failure := review_client.posting_failure_reason()):
+        return posting_failure
     if not has_prepared_context and not invoked_review_tools(tool_calls):
         return "review completed without invoking GitHub review tools"
     return None
@@ -200,7 +209,7 @@ def persist_review_summary(text: str) -> None:
 
 
 async def run_review(inputs: ReviewInputs) -> int:
-    config = build_config(inputs)
+    config, review_client = build_config(inputs)
 
     async with Agent(config) as agent:
         response = await agent.chat(build_prompt(inputs))
@@ -246,6 +255,7 @@ async def run_review(inputs: ReviewInputs) -> int:
             text,
             tool_calls,
             has_prepared_context=has_prepared_review_context(inputs),
+            review_client=review_client,
         )
         if failure_reason:
             print(f"\nFAIL: {failure_reason}", file=sys.stderr)

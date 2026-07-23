@@ -14,7 +14,7 @@ PR review (`odh-ci-review-pr`) uses **in-process Python tools** registered on `L
 
 `odh-ci-prepare-review-context` runs before review in CI and supplies bounded JSON (metadata, file excerpts, check runs). The agent should use that first and call `pull_request_read` only when it needs a section missing from context (full diff, specific file list page, review comments, etc.).
 
-Tool JSON schemas are defined in `src/odh_ci_agent/github_review_tools.py` (aligned with GitHub MCP). `mcp_github_normalize.py` maps common alias parameter names to the canonical shape at execution time; do not duplicate schemas in prompts.
+Tool JSON schemas are defined in `src/odh_ci_agent/github_review_tools.py` (aligned with GitHub MCP). Do not duplicate schemas in prompts.
 
 CI summary (`odh-ci-summarize-ci-run`) still uses read-only GitHub Actions MCP when local log context is insufficient.
 

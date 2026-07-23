@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from unittest.mock import patch
-
 import pytest
 from google.antigravity.tools.tool_runner import ToolWithSchema
 
 from odh_ci_agent import mcp_github, review_pr
-from odh_ci_agent.github_review_tools import GitHubReviewClient, make_github_review_tools
+from odh_ci_agent.github_review_tools import GitHubReviewClient, ReviewToolInvocation, make_github_review_tools
 
 EXAMPLE_VALUE = "placeholder-value"
 
@@ -88,7 +86,7 @@ def test_build_config_registers_python_review_tools(monkeypatch: pytest.MonkeyPa
         model="gemini-3.5-flash",
     )
 
-    config = review_pr.build_config(inputs)
+    config, _client = review_pr.build_config(inputs)
 
     assert config.capabilities is not None
     assert config.save_dir == "agy-trajectory/pr-review"
@@ -176,20 +174,32 @@ def test_review_run_failed_accepts_invoked_review_tool() -> None:
 
 
 def test_make_github_review_tools_exposes_mcp_aligned_schemas() -> None:
-    tools = make_github_review_tools("owner/repo", 12)
+    tools, _client = make_github_review_tools("owner/repo", 12)
     read_tool = next(tool for tool in tools if tool.fn.__name__ == "pull_request_read")
 
     assert read_tool.input_schema["properties"]["pullNumber"]["type"] == "number"
     assert "get_diff" in read_tool.input_schema["properties"]["method"]["enum"]
 
 
-def test_pull_request_read_aliases_are_normalized() -> None:
+def test_review_run_failed_detects_failed_comment_posting() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    client.invocations.append(
+        ReviewToolInvocation(
+            tool_name="add_comment_to_pending_review",
+            method=None,
+            success=False,
+            error="Invalid request",
+        )
+    )
 
-    with patch("odh_ci_agent.github_review_tools.gh_api_json", return_value={"number": 12}) as mock_api:
-        client.pull_request_read(method="get_pull_request", pull_number=99)
+    reason = review_pr.review_run_failed(
+        "No comments were posted.",
+        [],
+        has_prepared_context=True,
+        review_client=client,
+    )
 
-    mock_api.assert_called_once_with("repos/owner/repo/pulls/99")
+    assert reason == "failed to post inline review comments (1 attempt(s))"
 
 
 def test_parse_github_repository_splits_owner_and_repo() -> None:
