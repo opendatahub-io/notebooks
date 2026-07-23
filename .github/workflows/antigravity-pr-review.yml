@@ -67,6 +67,7 @@ jobs:
       - name: 'Run Antigravity pull request review'
         env:
           ADDITIONAL_CONTEXT: '${{ inputs.additional_context || github.event.inputs.additional_context }}'
+          AGY_TRAJECTORY_DIR: 'agy-trajectory/pr-review'
           GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
           GEMINI_MODEL: '${{ vars.GEMINI_MODEL }}'
           GITHUB_REPOSITORY: '${{ github.repository }}'
@@ -75,6 +76,15 @@ jobs:
           PULL_REQUEST_NUMBER: '${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
           REVIEW_BODY_PATH: 'review-summary-body.md'
         run: 'uv run --package odh-ci-agent odh-ci-review-pr'
+
+      - name: 'Upload Antigravity run trajectory'
+        if: |-
+          always() && hashFiles('agy-trajectory/pr-review/**') != ''
+        uses: 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'  # v7.0.1
+        with:
+          name: 'antigravity-pr-review-${{ github.run_id }}'
+          path: 'agy-trajectory/pr-review/'
+          if-no-files-found: 'error'
 
       - name: 'Upsert review summary comment'
         env:

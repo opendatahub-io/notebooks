@@ -110,9 +110,11 @@ jobs:
         run: 'uv run --package odh-ci-agent odh-ci-fetch-pr-source-snapshot'
 
       - name: 'Summarize CI run'
+        id: 'summarize'
         if: |-
           ${{ steps.prep.outputs.mode != 'progress' }}
         env:
+          AGY_TRAJECTORY_DIR: 'agy-trajectory/ci-summary'
           COMMENT_BODY_PATH: 'ci-comment-body.md'
           CI_RUN_CONTEXT_PATH: 'ci-run-context.json'
           GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
@@ -122,6 +124,15 @@ jobs:
           SOURCE_WORKSPACE: 'unsafe-pr-source'
           SUMMARIZE_MODE: '${{ steps.prep.outputs.mode }}'
         run: 'uv run --package odh-ci-agent odh-ci-summarize-ci-run'
+
+      - name: 'Upload Antigravity run trajectory'
+        if: |-
+          always() && hashFiles('agy-trajectory/ci-summary/**') != ''
+        uses: 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'  # v7.0.1
+        with:
+          name: 'antigravity-ci-summary-${{ github.run_id }}'
+          path: 'agy-trajectory/ci-summary/'
+          if-no-files-found: 'error'
 
       - name: 'Upsert CI summary comment'
         if: |-

@@ -52,7 +52,8 @@ def test_build_prompt_includes_repository_pr_and_context() -> None:
     assert "## 📋 Review Summary" in prompt
 
 
-def test_build_config_disables_builtin_tools_and_scopes_mcp() -> None:
+def test_build_config_disables_builtin_tools_and_scopes_mcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGY_TRAJECTORY_DIR", "agy-trajectory/pr-review")
     inputs = review_pr.ReviewInputs(
         github_token=EXAMPLE_VALUE,
         repository="owner/repo",
@@ -66,6 +67,7 @@ def test_build_config_disables_builtin_tools_and_scopes_mcp() -> None:
     server = config.mcp_servers[0]
 
     assert config.capabilities is not None
+    assert config.save_dir == "agy-trajectory/pr-review"
     assert config.capabilities.enabled_tools == []
     assert config.capabilities.enable_subagents is False
     assert isinstance(server, McpStreamableHttpServer)

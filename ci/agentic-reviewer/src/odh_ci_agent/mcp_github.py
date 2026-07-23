@@ -102,21 +102,9 @@ def tool_allow_policies(
     server: BaseMcpServerConfig,
     tool_names: Sequence[str],
 ) -> list[policy.Policy]:
-    """Allow MCP tools under every name shape the harness may use.
+    """Allow MCP tools using the SDK ``server/tool`` policy target format."""
 
-    The Go harness may invoke MCP tools as ``server/tool`` (with ``server_name`` set),
-    as bare tool ids, or as ``mcp_{server}_{tool}`` without ``server_name``. Allow all
-    shapes so ``deny_all()`` does not block legitimate review/summary tool calls.
-    """
-
-    policies: list[policy.Policy] = list(policy.allow(server, tool_names))
-    for tool_name in tool_names:
-        prefixed = prefixed_tool_name(server.name, tool_name)
-        policies.append(policy.allow(prefixed))
-        policies.append(policy.allow(tool_name))
-        # Harness may set server_name while tool_call.name is already prefixed.
-        policies.append(policy.allow(f"{server.name}/{prefixed}"))
-    return policies
+    return list(policy.allow(server, tool_names))
 
 
 def review_policies(server: BaseMcpServerConfig) -> list[policy.Policy]:

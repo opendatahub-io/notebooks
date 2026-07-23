@@ -92,6 +92,7 @@ def build_config(context: Mapping[str, object]) -> LocalAgentConfig:
         capabilities=CapabilitiesConfig(enable_subagents=False, enabled_tools=SOURCE_READ_BUILTINS),
         policies=policies,
         mcp_servers=mcp_servers,
+        save_dir=required_env("AGY_TRAJECTORY_DIR"),
     )
 
 
@@ -181,6 +182,10 @@ async def summarize(context: Mapping[str, object], body_path: str) -> int:
 
         write_body(body_path, render_failure_comment(context, text))
 
+        print("--- conversation_id ---")
+        print(agent.conversation_id or "null")
+        print("--- save_dir ---")
+        print(config.save_dir)
         print("--- usage_metadata ---")
         print(format_usage_metadata(response.usage_metadata))
         print("--- total_usage ---")

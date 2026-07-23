@@ -145,6 +145,7 @@ def build_config(inputs: ReviewInputs) -> LocalAgentConfig:
         capabilities=CapabilitiesConfig(enable_subagents=False, enabled_tools=[]),
         policies=mcp_github.review_policies(review_server),
         mcp_servers=[review_server],
+        save_dir=required_env("AGY_TRAJECTORY_DIR"),
     )
 
 
@@ -219,6 +220,10 @@ async def run_review(inputs: ReviewInputs) -> int:
 
         tool_calls = [tool_call async for tool_call in response.tool_calls]
 
+        print("\n--- conversation_id ---")
+        print(agent.conversation_id or "null")
+        print("\n--- save_dir ---")
+        print(config.save_dir)
         print("\n--- usage_metadata ---")
         print(format_usage_metadata(response.usage_metadata))
         print("\n--- total_usage ---")
