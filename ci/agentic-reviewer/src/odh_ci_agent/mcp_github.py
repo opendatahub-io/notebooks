@@ -21,12 +21,17 @@ GITHUB_ACTIONS_SERVER_NAME = "github_actions"
 HARNESS_CALL_MCP_TOOL = "call_mcp_tool"
 HARNESS_LIST_RESOURCES = "list_resources"
 
-GITHUB_MCP_BASE_URL = "https://api.githubcopilot.com/mcp"
-GITHUB_MCP_PULL_REQUESTS_URL = f"{GITHUB_MCP_BASE_URL}/x/pull_requests"
-GITHUB_MCP_ACTIONS_READONLY_URL = f"{GITHUB_MCP_BASE_URL}/x/actions/readonly"
-
-GITHUB_REVIEW_SERVER_NAME = "github"
-GITHUB_ACTIONS_SERVER_NAME = "github_actions"
+PULL_REQUEST_READ_METHODS = (
+    "get",
+    "get_diff",
+    "get_status",
+    "get_files",
+    "get_commits",
+    "get_review_comments",
+    "get_reviews",
+    "get_comments",
+    "get_check_runs",
+)
 
 GITHUB_REVIEW_TOOLS = (
     "pull_request_read",
@@ -53,6 +58,15 @@ GITHUB_REVIEW_DISABLED_TOOLS = (
 )
 
 MCP_TOOL_PREFIX = "mcp"
+
+
+def parse_github_repository(repository: str) -> tuple[str, str]:
+    """Split ``owner/repo`` into owner and repository name."""
+
+    owner, separator, repo = repository.partition("/")
+    if not owner or not separator or not repo:
+        raise ValueError(f"Invalid GitHub repository slug: {repository!r}")
+    return owner, repo
 
 
 def prefixed_tool_name(server_name: str, tool_name: str) -> str:

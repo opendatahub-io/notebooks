@@ -40,16 +40,37 @@ def test_build_prompt_includes_repository_pr_and_context() -> None:
         pull_request_number=99,
         additional_context="focus on tests",
         model=None,
+        review_context_json='{"title":"Example"}',
     )
 
     prompt = review_pr.build_prompt(inputs)
 
     assert "owner/repo" in prompt
+    assert "Repository owner: owner" in prompt
+    assert "Repository name: repo" in prompt
     assert "99" in prompt
     assert "focus on tests" in prompt
+    assert '"pullNumber": 99' in prompt
+    assert "get_pull_request" in prompt
+    assert "Do not call `pull_request_read`" in prompt
     assert "empty body (inline comments only)" in prompt
     assert "not in the GitHub review body" in prompt
     assert "## 📋 Review Summary" in prompt
+
+
+def test_build_prompt_requires_pull_request_read_without_context() -> None:
+    inputs = review_pr.ReviewInputs(
+        github_token=EXAMPLE_VALUE,
+        repository="owner/repo",
+        pull_request_number=42,
+        additional_context="",
+        model=None,
+    )
+
+    prompt = review_pr.build_prompt(inputs)
+
+    assert "Prepared review context is null" in prompt
+    assert "Call `pull_request_read`" in prompt
 
 
 def test_build_config_disables_builtin_tools_and_scopes_mcp(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -118,15 +139,32 @@ def test_review_run_failed_detects_policy_denial() -> None:
     reason = review_pr.review_run_failed(
         "Denied by policy 'deny_all'.",
         [],
+        has_prepared_context=False,
     )
 
     assert reason == "GitHub MCP tools were denied by policy"
 
 
 def test_review_run_failed_detects_missing_tool_calls() -> None:
-    reason = review_pr.review_run_failed("All good.", [])
+    reason = review_pr.review_run_failed("All good.", [], has_prepared_context=False)
 
     assert reason == "review completed without invoking GitHub MCP review tools"
+
+
+def test_review_run_failed_allows_prepared_context_without_mcp_reads() -> None:
+    reason = review_pr.review_run_failed("All good.", [], has_prepared_context=True)
+
+    assert reason is None
+
+
+def test_review_run_failed_detects_reported_fetch_failure() -> None:
+    reason = review_pr.review_run_failed(
+        "I am unable to retrieve the pull request details due to persistent errors.",
+        [],
+        has_prepared_context=True,
+    )
+
+    assert reason == "agent reported inability to fetch pull request data"
 
 
 def test_review_run_failed_accepts_invoked_review_tool() -> None:
@@ -138,4 +176,16 @@ def test_review_run_failed_accepts_invoked_review_tool() -> None:
         }
         server_name = None
 
-    assert review_pr.review_run_failed("done", [ToolCall()]) is None
+    assert review_pr.review_run_failed("done", [ToolCall()], has_prepared_context=False) is None
+
+
+def test_parse_github_repository_splits_owner_and_repo() -> None:
+    assert mcp_github.parse_github_repository("opendatahub-io/notebooks") == (
+        "opendatahub-io",
+        "notebooks",
+    )
+
+
+def test_parse_github_repository_rejects_invalid_slug() -> None:
+    with pytest.raises(ValueError, match="Invalid GitHub repository slug"):
+        mcp_github.parse_github_repository("invalid")

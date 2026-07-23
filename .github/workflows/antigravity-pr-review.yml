@@ -64,6 +64,15 @@ jobs:
       - name: 'Install from uv.lock (project + dev deps)'
         run: 'uv sync --locked --package odh-ci-agent'
 
+      - name: 'Prepare review context'
+        env:
+          ADDITIONAL_CONTEXT: '${{ inputs.additional_context || github.event.inputs.additional_context }}'
+          GITHUB_REPOSITORY: '${{ github.repository }}'
+          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          PULL_REQUEST_NUMBER: '${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
+          REVIEW_CONTEXT_PATH: 'review-context.json'
+        run: 'uv run --package odh-ci-agent odh-ci-prepare-review-context'
+
       - name: 'Run Antigravity pull request review'
         env:
           ADDITIONAL_CONTEXT: '${{ inputs.additional_context || github.event.inputs.additional_context }}'
@@ -75,6 +84,7 @@ jobs:
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           PULL_REQUEST_NUMBER: '${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
           REVIEW_BODY_PATH: 'review-summary-body.md'
+          REVIEW_CONTEXT_PATH: 'review-context.json'
         run: 'uv run --package odh-ci-agent odh-ci-review-pr'
 
       - name: 'Upload Antigravity run trajectory'

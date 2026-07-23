@@ -67,7 +67,8 @@ def test_review_policies_allow_harness_call_mcp_tool_from_trajectory() -> None:
                 "Arguments": {
                     "owner": "opendatahub-io",
                     "repo": "notebooks",
-                    "pull_number": 3806,
+                    "pullNumber": 3806,
+                    "method": "get",
                 },
             },
         )
