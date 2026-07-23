@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -275,11 +276,16 @@ def test_image_project_dir_for_repo_file_codeserver(repo_root: Path) -> None:
     assert pg.image_project_dir_for_repo_file("codeserver/ubi9-python-3.12/uv.lock.d/pylock.cpu.toml") == project
 
 
-def test_is_lock_chain_file() -> None:
-    assert pg._is_lock_chain_file(Path("pyproject.toml"))
-    assert pg._is_lock_chain_file(Path("uv.lock.d/pylock.cpu.toml"))
-    assert pg._is_lock_chain_file(Path("requirements.cpu.txt"))
-    assert not pg._is_lock_chain_file(Path("README.md"))
+def test_is_lock_chain_file(subtests: pytest.Subtests) -> None:
+    cases = [
+        (Path("pyproject.toml"), True),
+        (Path("uv.lock.d/pylock.cpu.toml"), True),
+        (Path("requirements.cpu.txt"), True),
+        (Path("README.md"), False),
+    ]
+    for path, expected in cases:
+        with subtests.test(path=str(path)):
+            assert pg._is_lock_chain_file(path) is expected, f"{path} lock-chain={expected}"
 
 
 def test_resolve_pr_scoped_touched_requirements(
@@ -300,17 +306,13 @@ def test_resolve_pr_scoped_diffs_from_merge_base_ref(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     merge_base = "b61e56bea2594f7e31042d33d3a0981aceb80512"
-    monkeypatch.setattr(
-        pg,
-        "_list_changed_files",
-        lambda from_ref, to_ref="HEAD": (
-            ["jupyter/minimal/ubi9-python-3.12/pyproject.toml"]
-            if from_ref == merge_base
-            else []
-        ),
+    changed_files_mock = Mock(
+        return_value=["jupyter/minimal/ubi9-python-3.12/pyproject.toml"],
     )
+    monkeypatch.setattr(pg, "_list_changed_files", changed_files_mock)
     expected = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
     assert pg.resolve_pr_scoped_target_dirs(merge_base, pg.LogBuffer()) == [expected]
+    changed_files_mock.assert_called_once_with(merge_base)
 
 
 def test_resolve_pr_scoped_skips_unrelated(monkeypatch: pytest.MonkeyPatch) -> None:
