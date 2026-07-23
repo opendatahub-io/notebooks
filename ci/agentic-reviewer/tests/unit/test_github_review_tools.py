@@ -162,6 +162,35 @@ def test_create_pending_review_recreates_existing_pending_review_with_staged_com
     assert client._draft_review_comments == []  # noqa: SLF001
 
 
+def test_find_pending_review_id_falls_back_to_single_bot_review_when_user_lookup_is_denied() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+
+    with (
+        patch(
+            "odh_ci_agent.github_review_tools.gh_api_json",
+            side_effect=GitHubCommandError(
+                ("gh", "api"),
+                403,
+                '{"message":"Resource not accessible by integration","status":"403"}',
+                "gh: Resource not accessible by integration (HTTP 403)",
+            ),
+        ),
+        patch(
+            "odh_ci_agent.github_review_tools.gh_api_list_pages",
+            return_value=[
+                {
+                    "id": 55,
+                    "state": "PENDING",
+                    "user": {"login": "github-actions[bot]"},
+                }
+            ],
+        ),
+    ):
+        review_id = client._find_pending_review_id("owner", "repo", 12)  # noqa: SLF001
+
+    assert review_id == 55
+
+
 def test_posting_failure_reason_when_all_comment_attempts_fail() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
     client.invocations.extend(

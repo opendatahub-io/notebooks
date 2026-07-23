@@ -141,6 +141,7 @@ class GitHubReviewClient:
     _pending_review_id: int | None = field(default=None, init=False)
     _head_commit_id: str | None = field(default=None, init=False)
     _authenticated_login: str | None = field(default=None, init=False)
+    _authenticated_login_unavailable: bool = field(default=False, init=False)
     _draft_review_body: str | None = field(default=None, init=False)
     _draft_review_comments: list[dict[str, object]] = field(default_factory=list, init=False)
     invocations: list[ReviewToolInvocation] = field(default_factory=list, init=False)
@@ -242,9 +243,19 @@ class GitHubReviewClient:
             )
         raise ValueError(f"Unsupported pull_request_read method: {method}")
 
-    def _current_user_login(self) -> str:
-        if self._authenticated_login is None:
-            user = gh_api_json("user")
+    def _is_integration_user_lookup_denied(self, error: GitHubCommandError) -> bool:
+        haystacks = (error.stdout.lower(), error.stderr.lower(), str(error).lower())
+        return any("resource not accessible by integration" in haystack for haystack in haystacks)
+
+    def _current_user_login(self) -> str | None:
+        if self._authenticated_login is None and not self._authenticated_login_unavailable:
+            try:
+                user = gh_api_json("user")
+            except GitHubCommandError as exc:
+                if self._is_integration_user_lookup_denied(exc):
+                    self._authenticated_login_unavailable = True
+                    return None
+                raise
             if not isinstance(user, dict) or not user.get("login"):
                 raise TypeError("Expected GitHub user response to include login")
             self._authenticated_login = str(user["login"])
@@ -253,17 +264,27 @@ class GitHubReviewClient:
     def _find_pending_review_id(self, owner: str, repo: str, pull_number: int) -> int:
         login = self._current_user_login()
         reviews = gh_api_list_pages(self._pull_path(owner, repo, pull_number) + "/reviews", timeout=180)
+        pending_reviews: list[dict[str, object]] = []
         for review in reversed(reviews):
             if not isinstance(review, dict):
                 continue
+            if review.get("state") != "PENDING" or review.get("id") is None:
+                continue
             user = review.get("user")
             reviewer_login = user.get("login") if isinstance(user, dict) else None
-            if (
-                review.get("state") == "PENDING"
-                and review.get("id") is not None
-                and reviewer_login == login
-            ):
+            pending_reviews.append(review)
+            if login is not None and reviewer_login == login:
                 return int(review["id"])
+        if login is None:
+            bot_pending_reviews = [
+                review
+                for review in pending_reviews
+                if str((review.get("user") or {}).get("login", "")).endswith("[bot]")
+            ]
+            if len(bot_pending_reviews) == 1:
+                return int(bot_pending_reviews[0]["id"])
+            if len(pending_reviews) == 1:
+                return int(pending_reviews[0]["id"])
         raise ValueError("No pending pull request review found for the current token")
 
     def _ensure_pending_review_id(self, owner: str, repo: str, pull_number: int) -> int:
