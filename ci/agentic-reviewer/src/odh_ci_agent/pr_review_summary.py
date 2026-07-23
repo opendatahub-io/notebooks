@@ -6,6 +6,19 @@ from odh_ci_agent.ci_summary import utc_now_iso
 
 REVIEW_SUMMARY_MARKER_PREFIX = "antigravity-pr-review"
 REVIEW_SUMMARY_HEADER = "## 📋 Review Summary"
+SUPERSEDED_NOTICE = "Superseded by newer run:"
+
+
+def is_superseded_comment(body: str) -> bool:
+    return SUPERSEDED_NOTICE in body
+
+
+def is_review_summary_comment(body: str) -> bool:
+    return REVIEW_SUMMARY_MARKER_PREFIX in body
+
+
+def is_active_review_summary_comment(body: str) -> bool:
+    return is_review_summary_comment(body) and not is_superseded_comment(body)
 
 
 def marker_for_run(run_id: int, *, updated_at: str | None = None) -> str:
