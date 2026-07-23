@@ -70,7 +70,7 @@ PULL_REQUEST_REVIEW_WRITE_SCHEMA = {
 
 ADD_COMMENT_SCHEMA = {
     "type": "object",
-    "description": "Add a review comment to the current user's pending pull request review.",
+    "description": "Stage a line-level review comment for the current user's pending pull request review.",
     "properties": {
         "owner": {"type": "string", "description": "Repository owner."},
         "repo": {"type": "string", "description": "Repository name."},
@@ -79,8 +79,8 @@ ADD_COMMENT_SCHEMA = {
         "body": {"type": "string", "description": "Review comment text."},
         "subjectType": {
             "type": "string",
-            "description": "Comment target level.",
-            "enum": ["FILE", "LINE"],
+            "description": "Comment target level. Only LINE comments are supported in CI.",
+            "enum": ["LINE"],
         },
         "line": {"type": "number", "description": "Diff line number for LINE comments."},
         "side": {
@@ -93,6 +93,10 @@ ADD_COMMENT_SCHEMA = {
             "type": "string",
             "description": "Starting diff side for multi-line comments.",
             "enum": ["LEFT", "RIGHT"],
+        },
+        "suggestion": {
+            "type": "string",
+            "description": "Optional replacement snippet rendered as a GitHub suggestion block.",
         },
     },
     "required": ["path", "body", "subjectType"],
@@ -127,6 +131,8 @@ class GitHubReviewClient:
     _pending_review_id: int | None = field(default=None, init=False)
     _head_commit_id: str | None = field(default=None, init=False)
     _authenticated_login: str | None = field(default=None, init=False)
+    _draft_review_body: str | None = field(default=None, init=False)
+    _draft_review_comments: list[dict[str, object]] = field(default_factory=list, init=False)
     invocations: list[ReviewToolInvocation] = field(default_factory=list, init=False)
 
     def _pull_path(self, owner: str, repo: str, pull_number: int) -> str:
@@ -164,6 +170,29 @@ class GitHubReviewClient:
             raise ValueError("Pull request response did not include head.sha")
         self._head_commit_id = head_sha
         return head_sha
+
+    def _clear_local_draft(self) -> None:
+        self._draft_review_body = None
+        self._draft_review_comments.clear()
+
+    def _render_comment_body(self, body: str, suggestion: object | None) -> str:
+        rendered_body = body.strip()
+        if suggestion is None:
+            return rendered_body
+        rendered_suggestion = str(suggestion).strip("\n")
+        if not rendered_suggestion:
+            return rendered_body
+        return f"{rendered_body}\n\n```suggestion\n{rendered_suggestion}\n```"
+
+    def _stage_pending_review(self, args: dict[str, Any]) -> object:
+        body = args.get("body")
+        if isinstance(body, str) and body.strip():
+            self._draft_review_body = body
+        return {
+            "state": "PENDING",
+            "staged": True,
+            "comment_count": len(self._draft_review_comments),
+        }
 
     def pull_request_read(self, **kwargs: Any) -> object:
         args = _with_pr_defaults(kwargs, self.repository, self.pull_number)
@@ -243,6 +272,15 @@ class GitHubReviewClient:
                 raise ValueError("Failed to create or reuse a pending pull request review")
             return self._pending_review_id
 
+    def _delete_pending_review(self, base_path: str, review_id: int) -> object:
+        response = gh_api_json(f"{base_path}/reviews/{review_id}", method="DELETE")
+        self._pending_review_id = None
+        return response
+
+    def _is_pending_review_conflict(self, error: GitHubCommandError) -> bool:
+        haystacks = (error.stdout.lower(), error.stderr.lower(), str(error).lower())
+        return any("pending review" in haystack for haystack in haystacks)
+
     def pull_request_review_write(self, **kwargs: Any) -> object:
         args = _with_pr_defaults(kwargs, self.repository, self.pull_number)
         owner = str(args["owner"])
@@ -255,7 +293,7 @@ class GitHubReviewClient:
             return self._record_invocation(
                 "pull_request_review_write",
                 method,
-                lambda: self._create_pending_review(base_path, owner, repo, pull_number, args),
+                lambda: self._stage_pending_review(args),
             )
 
         if method == "submit_pending":
@@ -266,8 +304,13 @@ class GitHubReviewClient:
             )
 
         if method == "delete_pending":
-            review_id = self._ensure_pending_review_id(owner, repo, pull_number)
-            return gh_api_json(f"{base_path}/reviews/{review_id}", method="DELETE")
+            def _delete_pending() -> object:
+                self._clear_local_draft()
+                if self._pending_review_id is None:
+                    return {"deleted": False, "staged": False}
+                return self._delete_pending_review(base_path, self._pending_review_id)
+
+            return self._record_invocation("pull_request_review_write", method, _delete_pending)
 
         raise ValueError(f"Unsupported pull_request_review_write method: {method}")
 
@@ -280,18 +323,29 @@ class GitHubReviewClient:
         args: dict[str, Any],
     ) -> object:
         payload: dict[str, object] = {}
-        if args.get("body"):
-            payload["body"] = args["body"]
+        if self._draft_review_comments:
+            payload["comments"] = list(self._draft_review_comments)
+            payload["commit_id"] = self._head_commit_sha(owner, repo, pull_number)
+        body = args.get("body")
+        if isinstance(body, str) and body.strip():
+            payload["body"] = body
+        elif self._draft_review_body:
+            payload["body"] = self._draft_review_body
         try:
             response = gh_api_json(f"{base_path}/reviews", method="POST", input_json=payload)
         except GitHubCommandError as exc:
-            if "pending review" not in exc.stderr.lower():
+            if not self._is_pending_review_conflict(exc):
                 raise
             review_id = self._find_pending_review_id(owner, repo, pull_number)
-            self._pending_review_id = review_id
-            return {"id": review_id, "state": "PENDING", "reused": True}
+            if self._draft_review_comments:
+                self._delete_pending_review(base_path, review_id)
+                response = gh_api_json(f"{base_path}/reviews", method="POST", input_json=payload)
+            else:
+                self._pending_review_id = review_id
+                return {"id": review_id, "state": "PENDING", "reused": True}
         if isinstance(response, dict) and response.get("id") is not None:
             self._pending_review_id = int(response["id"])
+            self._clear_local_draft()
         return response
 
     def _submit_pending_review(
@@ -302,6 +356,8 @@ class GitHubReviewClient:
         pull_number: int,
         args: dict[str, Any],
     ) -> object:
+        if self._pending_review_id is None or self._draft_review_comments or self._draft_review_body:
+            self._create_pending_review(base_path, owner, repo, pull_number, {})
         review_id = self._ensure_pending_review_id(owner, repo, pull_number)
         return gh_api_json(
             f"{base_path}/reviews/{review_id}/events",
@@ -315,52 +371,49 @@ class GitHubReviewClient:
     def add_comment_to_pending_review(self, **kwargs: Any) -> object:
         args = _with_pr_defaults(kwargs, self.repository, self.pull_number)
 
-        def _post_comment() -> object:
-            owner = str(args["owner"])
-            repo = str(args["repo"])
-            pull_number = int(args["pullNumber"])
-            review_id = self._ensure_pending_review_id(owner, repo, pull_number)
-            commit_id = self._head_commit_sha(owner, repo, pull_number)
-
-            subject_type = str(args["subjectType"]).upper()
+        def _stage_comment() -> object:
             payload: dict[str, object] = {
-                "body": args["body"],
-                "commit_id": commit_id,
-                "path": args["path"],
-                "pull_request_review_id": review_id,
+                "body": self._render_comment_body(str(args["body"]), args.get("suggestion")),
+                "path": str(args["path"]),
+                "line": int(args["line"]),
+                "side": str(args.get("side", "RIGHT")).upper(),
             }
-            if subject_type == "FILE":
-                payload["subject_type"] = "file"
-            else:
-                payload.update(
-                    {
-                        "line": int(args["line"]),
-                        "side": args.get("side", "RIGHT"),
-                    }
-                )
-                if "startLine" in args:
-                    payload["start_line"] = int(args["startLine"])
-                if "startSide" in args:
-                    payload["start_side"] = args["startSide"]
+            if "startLine" in args:
+                payload["start_line"] = int(args["startLine"])
+            if "startSide" in args:
+                payload["start_side"] = str(args["startSide"]).upper()
+            self._draft_review_comments.append(payload)
+            return {
+                "staged": True,
+                "comment_count": len(self._draft_review_comments),
+            }
 
-            return gh_api_json(
-                f"{self._pull_path(owner, repo, pull_number)}/comments",
-                method="POST",
-                input_json=payload,
-            )
-
-        return self._record_invocation("add_comment_to_pending_review", None, _post_comment)
+        return self._record_invocation("add_comment_to_pending_review", None, _stage_comment)
 
     def inline_comments_posted(self) -> bool:
-        return any(
-            invocation.tool_name == "add_comment_to_pending_review" and invocation.success
-            for invocation in self.invocations
+        return (
+            any(
+                invocation.tool_name == "add_comment_to_pending_review" and invocation.success
+                for invocation in self.invocations
+            )
+            and any(
+                invocation.tool_name == "pull_request_review_write"
+                and invocation.method == "submit_pending"
+                and invocation.success
+                for invocation in self.invocations
+            )
         )
 
     def _first_error_snippet(self, invocations: list[ReviewToolInvocation]) -> str:
         for invocation in invocations:
             if not invocation.error:
                 continue
+            if '"errors":[' in invocation.error:
+                array_match = re.search(r'"errors"\s*:\s*\[(.*?)\]', invocation.error, re.DOTALL)
+                if array_match:
+                    item_match = re.search(r'"([^"]+)"', array_match.group(1))
+                    if item_match:
+                        return item_match.group(1)[:160]
             if '"message":' in invocation.error:
                 match = re.search(r'"message"\s*:\s*"([^"]+)"', invocation.error)
                 if match:
@@ -397,10 +450,10 @@ class GitHubReviewClient:
 
         if comment_attempts and any(invocation.success for invocation in comment_attempts):
             if not submit_attempts:
-                return "posted inline comments but never submitted the pending review"
+                return "staged inline comments but never submitted the pending review"
             if not any(invocation.success for invocation in submit_attempts):
                 detail = self._first_error_snippet([i for i in submit_attempts if not i.success])
-                message = "posted inline comments but failed to submit the pending review"
+                message = "staged inline comments but failed to submit the pending review"
                 return f"{message}: {detail}" if detail else message
             return None
 

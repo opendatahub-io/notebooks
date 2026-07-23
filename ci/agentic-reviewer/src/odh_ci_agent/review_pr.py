@@ -121,6 +121,7 @@ Rules:
 - Keep each comment focused on one problem.
 - Use severity emojis: 🔴 critical, 🟠 high, 🟡 medium, 🟢 low.
 - Only comment on lines that changed in the diff (lines starting with + or -). Do not comment on context lines (lines starting with a space). Pay close attention to line numbers — out-of-bounds comments cause API failures.
+- Use `subjectType: "LINE"` for inline findings. File-level review comments are not supported in this CI reviewer.
 - Do not ask the author to "check", "confirm", or "verify" something.
 - Do not comment on license headers, copyright headers, or boilerplate.
 - Do not comment on hardcoded dates or times being in the future — you do not know the current date.
