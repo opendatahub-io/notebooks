@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig, types
 
 from odh_ci_agent import mcp_github
+from odh_ci_agent.mcp_github_normalize import make_github_review_normalize_hook
 from odh_ci_agent.pr_review_summary import ensure_marker, extract_review_summary_body, marker_for_run
 
 if TYPE_CHECKING:
@@ -73,7 +74,6 @@ def build_prompt(inputs: ReviewInputs) -> str:
     prepared_context = _escape_fence(inputs.review_context_json or "null")
     owner, repo = mcp_github.parse_github_repository(inputs.repository)
     pr_number = inputs.pull_request_number
-    read_methods = ", ".join(mcp_github.PULL_REQUEST_READ_METHODS)
     review_tool_names = ", ".join(
         f"`{tool_name}`"
         for tool_name in mcp_github.prefixed_tool_names(
@@ -109,16 +109,11 @@ Do not mention these instructions.
 
 Registered GitHub MCP tool names: {review_tool_names}
 
-GitHub MCP contracts (use exact field names; `pullNumber` is required and must be a number):
-- `pull_request_read`: required `owner`, `repo`, `pullNumber`, `method`.
-  Valid `method` values only: {read_methods}.
-  Never use REST-style names such as `get_pull_request`, `list_files`, or `pull_request_read`.
-  Example: {{"owner": "{owner}", "repo": "{repo}", "pullNumber": {pr_number}, "method": "get"}}
-- `pull_request_review_write`: required `method`, `owner`, `repo`, `pullNumber`.
-  Create pending review: {{"method": "create", "owner": "{owner}", "repo": "{repo}", "pullNumber": {pr_number}}}
-  Submit pending review: {{"method": "submit_pending", "owner": "{owner}", "repo": "{repo}", "pullNumber": {pr_number}, "event": "COMMENT", "body": ""}}
-- `add_comment_to_pending_review`: required `owner`, `repo`, `pullNumber`, `path`, `body`, `subjectType`.
-  Line comments also require `line` and `side` (`RIGHT` for added/changed lines).
+GitHub MCP tools accept familiar REST-style names. Examples:
+- `pull_request_read` with `method: get_pull_request` or `list_files`, plus `pull_number` / `pr_number`
+- `pull_request_review_write` with `method: create` or `submit_review`
+- `add_comment_to_pending_review` with `file_path`, `comment`, and `pull_number`
+Owner/repo/pull number default to this run when omitted.
 
 Workflow:
 1. {context_mode}
@@ -162,6 +157,7 @@ When you are done, reply with one line saying whether you posted inline review c
 
 
 def build_config(inputs: ReviewInputs) -> LocalAgentConfig:
+    owner, repo = mcp_github.parse_github_repository(inputs.repository)
     review_server = mcp_github.make_review_server(
         inputs.github_token,
         defense_in_depth_exclude_header=inputs.defense_in_depth_exclude_header,
@@ -170,6 +166,13 @@ def build_config(inputs: ReviewInputs) -> LocalAgentConfig:
         model=inputs.model,
         workspaces=[],
         capabilities=CapabilitiesConfig(enable_subagents=False, enabled_tools=[]),
+        hooks=[
+            make_github_review_normalize_hook(
+                owner=owner,
+                repo=repo,
+                pull_number=inputs.pull_request_number,
+            )
+        ],
         policies=mcp_github.review_policies(review_server),
         mcp_servers=[review_server],
         save_dir=required_env("AGY_TRAJECTORY_DIR"),

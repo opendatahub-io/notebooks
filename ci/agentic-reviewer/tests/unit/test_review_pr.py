@@ -50,8 +50,8 @@ def test_build_prompt_includes_repository_pr_and_context() -> None:
     assert "Repository name: repo" in prompt
     assert "99" in prompt
     assert "focus on tests" in prompt
-    assert '"pullNumber": 99' in prompt
     assert "get_pull_request" in prompt
+    assert "pull_number" in prompt
     assert "Do not call `pull_request_read`" in prompt
     assert "empty body (inline comments only)" in prompt
     assert "not in the GitHub review body" in prompt
@@ -89,6 +89,7 @@ def test_build_config_disables_builtin_tools_and_scopes_mcp(monkeypatch: pytest.
 
     assert config.capabilities is not None
     assert config.save_dir == "agy-trajectory/pr-review"
+    assert len(config.hooks) == 1
     assert config.capabilities.enabled_tools == []
     assert config.capabilities.enable_subagents is False
     assert isinstance(server, McpStreamableHttpServer)
