@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -256,10 +257,119 @@ def test_generate_requirements_txt_falls_back_to_pylock_header_when_index_resolu
 
     success = pg.generate_requirements_txt(project_dir, "cpu", log)
 
-    assert success is True
+    assert success is True, "generate_requirements_txt should succeed when index resolution fails"
     assert captured_cmd == [
         pg.sys.executable,
         str(pg.PYLOCK_TO_REQUIREMENTS),
         str(project_dir / "uv.lock.d" / "pylock.cpu.toml"),
         str(project_dir / "requirements.cpu.txt"),
+    ], f"unexpected pylock-to-requirements command: {captured_cmd}"
+
+
+def test_image_project_dir_for_repo_file_jupyter(repo_root: Path) -> None:
+    project = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
+    assert pg.image_project_dir_for_repo_file("jupyter/minimal/ubi9-python-3.12/pyproject.toml") == project, (
+        "jupyter pyproject.toml should map to image project dir"
+    )
+
+
+def test_image_project_dir_for_repo_file_codeserver(repo_root: Path) -> None:
+    project = repo_root / "codeserver" / "ubi9-python-3.12"
+    assert pg.image_project_dir_for_repo_file("codeserver/ubi9-python-3.12/uv.lock.d/pylock.cpu.toml") == project, (
+        "codeserver pylock path should map to image project dir"
+    )
+
+
+def test_is_lock_chain_file(subtests: pytest.Subtests) -> None:
+    cases = [
+        (Path("pyproject.toml"), True),
+        (Path("uv.lock.d/pylock.cpu.toml"), True),
+        (Path("requirements.cpu.txt"), True),
+        (Path("README.md"), False),
     ]
+    for path, expected in cases:
+        with subtests.test(path=str(path)):
+            assert pg._is_lock_chain_file(path) is expected, f"{path} lock-chain={expected}"
+
+
+def test_resolve_pr_scoped_touched_requirements(
+    repo_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        pg,
+        "_list_changed_files",
+        lambda _base, _to="HEAD": ["jupyter/minimal/ubi9-python-3.12/requirements.cuda.txt"],
+    )
+    expected = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
+    assert pg.resolve_pr_scoped_target_dirs("base", pg.LogBuffer()) == [expected], (
+        "requirements.txt change should scope to touched image dir"
+    )
+
+
+def test_resolve_pr_scoped_diffs_from_base_ref(
+    repo_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base_ref = "origin/main"
+    head_ref = "rhaieng-6397-scoped-pr-lock-regen"
+    changed_files_mock = Mock(
+        return_value=["jupyter/minimal/ubi9-python-3.12/pyproject.toml"],
+    )
+    monkeypatch.setattr(pg, "_list_changed_files", changed_files_mock)
+    expected = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
+    assert pg.resolve_pr_scoped_target_dirs(base_ref, pg.LogBuffer(), pr_to_ref=head_ref) == [expected], (
+        "three-dot diff from base ref should scope to touched image dir"
+    )
+    changed_files_mock.assert_called_once_with(base_ref, head_ref)
+
+
+def test_resolve_pr_scoped_skips_unrelated(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(pg, "_list_changed_files", lambda _base, _to="HEAD": ["README.md"])
+    assert pg.resolve_pr_scoped_target_dirs("base", pg.LogBuffer()) == [], (
+        "unrelated file changes should not trigger lock regen"
+    )
+
+
+def test_resolve_pr_scoped_touched_pyproject(
+    repo_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        pg,
+        "_list_changed_files",
+        lambda _base, _to="HEAD": ["jupyter/minimal/ubi9-python-3.12/pyproject.toml"],
+    )
+    expected = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
+    assert pg.resolve_pr_scoped_target_dirs("base", pg.LogBuffer()) == [expected], (
+        "pyproject.toml change should scope to touched image dir"
+    )
+
+
+def test_resolve_pr_scoped_touched_codeserver(
+    repo_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        pg,
+        "_list_changed_files",
+        lambda _base, _to="HEAD": ["codeserver/ubi9-python-3.12/pyproject.toml"],
+    )
+    expected = repo_root / "codeserver" / "ubi9-python-3.12"
+    assert pg.resolve_pr_scoped_target_dirs("base", pg.LogBuffer()) == [expected], (
+        "codeserver pyproject.toml change should scope to touched image dir"
+    )
+
+
+def test_resolve_pr_scoped_global_input_expands_to_all(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        pg,
+        "_list_changed_files",
+        lambda _base, _to="HEAD": ["dependencies/cve-constraints.txt"],
+    )
+    scoped = pg.resolve_pr_scoped_target_dirs("base", pg.LogBuffer())
+    all_dirs = pg.discover_all_image_project_dirs()
+    assert scoped == all_dirs, "global input change should expand to all image dirs"
+    assert len(scoped) > 1, "expected multiple image project dirs for global-input fallback"

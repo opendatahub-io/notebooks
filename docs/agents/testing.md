@@ -80,6 +80,21 @@ exposed as `make` targets:
 Closing this gap (moving inline CI logic into Makefile targets) is tracked in
 [#3174](https://github.com/opendatahub-io/notebooks/issues/3174).
 
+### `check-generated-code` (lock scoping)
+
+The `check-generated-code` job runs `ci/generate_code.sh`, then verifies a clean working tree with `git status --porcelain`.
+
+- **Pull requests:** lock regen is scoped to image directories whose lock chain the PR
+  touched (`pyproject.toml`, `pylock.toml`, `requirements.*.txt`, or `uv.lock.d/*`). If the PR only changes
+  unrelated files, `pylocks_generator` is skipped so external AIPCC index churn does not
+  fail the job. Shared inputs (`dependencies/cve-constraints.txt`, lock generator scripts)
+  still trigger full lock regen. CI fetches base and PR head refs (same pattern as
+  `build-notebooks-pr.yaml`), then runs `pylocks_generator --pr-base origin/<base-branch>
+  --pr-to-ref <pr-branch>` with `gha_pr_changed_files.list_changed_files()` (`git diff`
+  three-dot). Locally: `bash ci/generate_code.sh --pr-base origin/main` (default head: `HEAD`).
+  See [RHAIENG-6397](https://redhat.atlassian.net/browse/RHAIENG-6397).
+- **Push** (`main`, `stable`, `rhoai-*`): full lock regen for all image dirs (unchanged).
+
 ## Frameworks and tools
 
 | Tool | Purpose |
