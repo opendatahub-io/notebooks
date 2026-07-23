@@ -257,3 +257,7 @@ def test_make_github_review_tools_returns_client_and_tools() -> None:
     assert len(tools) == 3
     assert client.repository == "owner/repo"
     assert client.pull_number == 12
+    comment_tool = next(tool for tool in tools if tool.fn.__name__ == "add_comment_to_pending_review")
+    review_tool = next(tool for tool in tools if tool.fn.__name__ == "pull_request_review_write")
+    assert "posted to GitHub only when" in comment_tool.input_schema["description"]
+    assert "submit_pending" in review_tool.input_schema["description"]

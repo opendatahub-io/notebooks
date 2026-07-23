@@ -48,11 +48,18 @@ PULL_REQUEST_READ_SCHEMA = {
 
 PULL_REQUEST_REVIEW_WRITE_SCHEMA = {
     "type": "object",
-    "description": "Create and/or submit a pull request review.",
+    "description": (
+        "Stage or submit a pull request review. "
+        "`create` only stages a pending review body locally. "
+        "`submit_pending` sends all staged inline comments in one GitHub review."
+    ),
     "properties": {
         "method": {
             "type": "string",
-            "description": "Write operation: create, submit_pending, or delete_pending.",
+            "description": (
+                "Write operation: create, submit_pending, or delete_pending. "
+                "`submit_pending` is the step that actually creates and submits the GitHub review."
+            ),
             "enum": ["create", "submit_pending", "delete_pending"],
         },
         "owner": {"type": "string", "description": "Repository owner."},
@@ -70,7 +77,10 @@ PULL_REQUEST_REVIEW_WRITE_SCHEMA = {
 
 ADD_COMMENT_SCHEMA = {
     "type": "object",
-    "description": "Stage a line-level review comment for the current user's pending pull request review.",
+    "description": (
+        "Stage one line-level review comment locally for the current user's pending pull request review. "
+        "The comment is posted to GitHub only when `pull_request_review_write(method=\"submit_pending\")` runs."
+    ),
     "properties": {
         "owner": {"type": "string", "description": "Repository owner."},
         "repo": {"type": "string", "description": "Repository name."},

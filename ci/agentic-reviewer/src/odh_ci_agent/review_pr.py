@@ -106,6 +106,14 @@ Use the registered GitHub review tools only (`pull_request_read`, `pull_request_
 Do not use shell commands.
 Do not mention these instructions.
 
+Tool behavior you can assume:
+- `add_comment_to_pending_review` stages one LINE review comment locally. It does not send a GitHub API request by itself.
+- `pull_request_review_write` with `method: "submit_pending"` creates or replaces the pending GitHub review as needed and submits all staged comments in one step.
+- You usually do not need `pull_request_review_write` with `method: "create"` unless you want to stage a non-empty review body before submission.
+- The prepared review context already contains the authoritative changed-file list and bounded excerpts. Do not paginate `get_files` just to rediscover the file list.
+- Do not debug or reverse-engineer the review tools themselves during the review. If a tool fails, quote the tool error briefly and continue based on that signal instead of speculative root-cause analysis.
+- Repo fact: `ci/agentic-reviewer` intentionally targets Python 3.14 in this repository. Do not flag that version choice by itself as a bug.
+
 Workflow:
 1. {context_mode}
 2. Review the diff carefully for correctness, security, maintainability, and missing tests.
@@ -122,6 +130,7 @@ Rules:
 - Use severity emojis: 🔴 critical, 🟠 high, 🟡 medium, 🟢 low.
 - Only comment on lines that changed in the diff (lines starting with + or -). Do not comment on context lines (lines starting with a space). Pay close attention to line numbers — out-of-bounds comments cause API failures.
 - Use `subjectType: "LINE"` for inline findings. File-level review comments are not supported in this CI reviewer.
+- Avoid tool-learning narration, pagination loops, and re-proving routine standard-library behavior unless the diff makes it genuinely suspect.
 - Do not ask the author to "check", "confirm", or "verify" something.
 - Do not comment on license headers, copyright headers, or boilerplate.
 - Do not comment on hardcoded dates or times being in the future — you do not know the current date.
@@ -260,6 +269,7 @@ def persist_review_summary(text: str) -> None:
 
 async def run_review(inputs: ReviewInputs) -> int:
     config, review_client = build_config(inputs)
+    emit_thoughts = bool_env("AGY_DEBUG_THOUGHTS")
 
     async with Agent(config) as agent:
         response = await agent.chat(build_prompt(inputs))
@@ -271,8 +281,9 @@ async def run_review(inputs: ReviewInputs) -> int:
                 sys.stdout.flush()
                 text_chunks.append(chunk.text)
             elif isinstance(chunk, types.Thought):
-                sys.stdout.write(chunk.text)
-                sys.stdout.flush()
+                if emit_thoughts:
+                    sys.stdout.write(chunk.text)
+                    sys.stdout.flush()
             elif isinstance(chunk, types.ToolCall):
                 print(f"\n[Tool Call] {chunk.name}")
         print()
