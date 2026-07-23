@@ -28,12 +28,28 @@ jobs:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          MERGE_BASE="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${PR_BASE_SHA}...${PR_HEAD_SHA}" --jq '.merge_base_commit.sha')"
+          COMPARE_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${PR_BASE_SHA}...${PR_HEAD_SHA}")"
+          MERGE_BASE="$(jq -r '.merge_base_commit.sha' <<<"${COMPARE_JSON}")"
           if [[ -z "${MERGE_BASE}" || "${MERGE_BASE}" == "null" ]]; then
             echo "::error::Could not resolve merge-base from GitHub compare API"
             exit 1
           fi
-          git fetch --no-tags --depth=1 origin "${MERGE_BASE}"
+          COMMITS_AHEAD="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${MERGE_BASE}...${PR_HEAD_SHA}" --jq '.ahead_by')"
+          git fetch --no-tags origin "${MERGE_BASE}"
+          if [[ "${COMMITS_AHEAD}" =~ ^[0-9]+$ ]] && [[ "${COMMITS_AHEAD}" -gt 0 ]]; then
+            git fetch --no-tags --deepen="${COMMITS_AHEAD}" origin "${PR_HEAD_SHA}"
+          fi
+          if ! git merge-base --is-ancestor "${MERGE_BASE}" HEAD 2>/dev/null; then
+            depth=0
+            while ! git merge-base --is-ancestor "${MERGE_BASE}" HEAD 2>/dev/null; do
+              depth=$((depth + 100))
+              if [[ "${depth}" -gt 5000 ]]; then
+                echo "::error::Could not connect merge-base ${MERGE_BASE} to HEAD after deepening ${depth} commits"
+                exit 1
+              fi
+              git fetch --no-tags --deepen=100 origin "${PR_HEAD_SHA}"
+            done
+          fi
           echo "MERGE_BASE=${MERGE_BASE}" >> "${GITHUB_ENV}"
 
       - name: Setup uv and Python
