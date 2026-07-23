@@ -19,6 +19,12 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
+      - name: Fetch PR merge base for lock scoping
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: git fetch --no-tags --depth=1 origin "${PR_BASE_SHA}"
+
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv
 
@@ -39,7 +45,14 @@ jobs:
           fi
           printf '%s' "${AIPCC_PASS}" | skopeo login --username "${AIPCC_USER}" --password-stdin quay.io
 
-      - name: Rerun all code generators we have
+      - name: Rerun all code generators we have (pr)
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: bash ci/generate_code.sh --pr-base "${PR_BASE_SHA}"
+
+      - name: Rerun all code generators we have (push)
+        if: github.event_name != 'pull_request'
         run: bash ci/generate_code.sh
 
       - name: Check there aren't any modified files present

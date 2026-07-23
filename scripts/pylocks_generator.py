@@ -39,6 +39,10 @@ Usage:
        python pylocks_generator.py --requirements-only
        python pylocks_generator.py rh-index jupyter/minimal/ubi9-python-3.12 --requirements-only
 
+  6. PR-scoped lock regen (CI only; skips dirs whose lock chain the PR did not touch)::
+
+       PYLOCKS_CI_CHECK=1 python pylocks_generator.py auto --pr-base <merge-base-sha>
+
 Reproducible CI checks (PYLOCKS_CI_CHECK):
   When ``PYLOCKS_CI_CHECK=1`` (set only by ``check-generated-code`` in CI),
   ``uv pip compile`` always passes ``--exclude-newer`` parsed from the existing
@@ -83,6 +87,12 @@ CVE_CONSTRAINTS_FILE = ROOT_DIR / "dependencies" / "cve-constraints.txt"
 PYLOCK_TO_REQUIREMENTS = ROOT_DIR / "scripts" / "lockfile-generators" / "helpers" / "pylock-to-requirements.py"
 PUBLIC_INDEX = "--default-index=https://pypi.org/simple"
 MAIN_DIRS = ("jupyter", "runtimes", "codeserver")
+# Shared lock inputs: a PR touching any of these regenerates all image project locks.
+GLOBAL_LOCK_INPUTS: tuple[Path, ...] = (
+    Path("dependencies/cve-constraints.txt"),
+    Path("scripts/pylocks_generator.py"),
+    Path("scripts/index_url_resolver.py"),
+)
 UV_MIN_VERSION = (0, 4, 0)
 
 NO_EMIT_PACKAGES = (
@@ -207,6 +217,16 @@ def check_uv(log: LogBuffer) -> None:
         raise SystemExit(1)
 
 
+def discover_all_image_project_dirs() -> list[Path]:
+    """All image project directories under MAIN_DIRS (each contains pyproject.toml)."""
+    dirs: set[Path] = set()
+    for base_name in MAIN_DIRS:
+        base = ROOT_DIR / base_name
+        if base.is_dir():
+            dirs.update(p.parent for p in base.rglob("pyproject.toml"))
+    return sorted(dirs)
+
+
 def find_target_dirs(target_dir: Path | None, log: LogBuffer) -> list[Path]:
     """Find directories containing pyproject.toml."""
     if target_dir is not None:
@@ -217,12 +237,85 @@ def find_target_dirs(target_dir: Path | None, log: LogBuffer) -> list[Path]:
         return [candidate]
 
     log.info("Scanning main directories for Python projects...")
-    dirs: set[Path] = set()
-    for base_name in MAIN_DIRS:
-        base = ROOT_DIR / base_name
-        if base.is_dir():
-            dirs.update(p.parent for p in base.rglob("pyproject.toml"))
-    return sorted(dirs)
+    return discover_all_image_project_dirs()
+
+
+def _list_changed_files(from_ref: str, to_ref: str = "HEAD") -> list[str]:
+    """PR file diff via ci/cached-builds helper (symlink-aware three-dot diff)."""
+    cached_builds = ROOT_DIR / "ci" / "cached-builds"
+    if str(cached_builds) not in sys.path:
+        sys.path.insert(0, str(cached_builds))
+    import gha_pr_changed_files
+
+    return gha_pr_changed_files.list_changed_files(from_ref, to_ref)
+
+
+def _path_under(path: Path, prefix: Path) -> bool:
+    try:
+        path.relative_to(prefix)
+        return True
+    except ValueError:
+        return False
+
+
+def image_project_dir_for_repo_file(
+    repo_relative: str,
+    project_dirs: list[Path] | None = None,
+) -> Path | None:
+    """Map a repo-relative file path to its image project directory, if any."""
+    path = Path(repo_relative)
+    dirs = project_dirs if project_dirs is not None else discover_all_image_project_dirs()
+    matches = [
+        project_dir
+        for project_dir in dirs
+        if path == (rel := project_dir.relative_to(ROOT_DIR)) or _path_under(path, rel)
+    ]
+    if not matches:
+        return None
+    return max(matches, key=lambda project_dir: len(project_dir.parts))
+
+
+def _is_global_lock_input(changed_path: str) -> bool:
+    normalized = changed_path.replace("\\", "/")
+    for global_path in GLOBAL_LOCK_INPUTS:
+        entry = global_path.as_posix()
+        if normalized == entry or normalized.startswith(f"{entry}/"):
+            return True
+    return False
+
+
+def _is_lock_chain_file(relative_to_project: Path) -> bool:
+    if relative_to_project.name in ("pyproject.toml", "pylock.toml"):
+        return True
+    if relative_to_project.name.startswith("requirements.") and relative_to_project.suffix == ".txt":
+        return True
+    return bool(relative_to_project.parts) and relative_to_project.parts[0] == "uv.lock.d"
+
+
+def resolve_pr_scoped_target_dirs(pr_base: str, log: LogBuffer) -> list[Path]:
+    """Image project dirs whose lock chain changed in the PR, or all dirs if global inputs changed."""
+    changed = _list_changed_files(pr_base)
+    all_dirs = discover_all_image_project_dirs()
+
+    if any(_is_global_lock_input(path) for path in changed):
+        log.info("Global lock input changed in PR; regenerating all image project locks.")
+        return all_dirs
+
+    touched: set[Path] = set()
+    for repo_relative in changed:
+        project_dir = image_project_dir_for_repo_file(repo_relative, all_dirs)
+        if project_dir is None:
+            continue
+        inner = Path(repo_relative).relative_to(project_dir.relative_to(ROOT_DIR))
+        if _is_lock_chain_file(inner):
+            touched.add(project_dir)
+
+    if not touched:
+        log.info("No image lock-chain changes in PR; skipping pylocks regeneration.")
+        return []
+
+    log.info(f"PR lock-chain changes in {len(touched)} project director(ies).")
+    return sorted(touched)
 
 
 def detect_flavors(project_dir: Path) -> set[str]:
@@ -607,6 +700,13 @@ def main(
     requirements_only: Annotated[
         bool, typer.Option("--requirements-only", help="Only regenerate requirements.txt from existing pylock files, skip lock generation")
     ] = False,
+    pr_base: Annotated[
+        str | None,
+        typer.Option(
+            "--pr-base",
+            help="Merge-base ref for PR-scoped lock regen (only dirs whose lock chain changed)",
+        ),
+    ] = None,
 ) -> None:
     """Generate pylock.toml lock files for Python project directories."""
     log = LogBuffer(buffered=False)
@@ -632,10 +732,19 @@ def main(
         log.info("PYLOCKS_CI_CHECK=1: using pinned --exclude-newer from each lockfile header when present.")
 
     # TARGET DIRECTORIES
-    target_dirs = find_target_dirs(target_dir, log)
-    if not target_dirs:
-        log.error("No directories containing pyproject.toml were found.")
-        raise SystemExit(1)
+    if pr_base is not None:
+        if target_dir is not None:
+            log.error("Cannot combine a specific target directory with --pr-base.")
+            raise SystemExit(1)
+        target_dirs = resolve_pr_scoped_target_dirs(pr_base, log)
+        if not target_dirs:
+            log.ok("Skipped pylocks regeneration.")
+            return
+    else:
+        target_dirs = find_target_dirs(target_dir, log)
+        if not target_dirs:
+            log.error("No directories containing pyproject.toml were found.")
+            raise SystemExit(1)
 
     # PARALLEL LOCK GENERATION
     success_dirs: list[Path] = []
