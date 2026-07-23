@@ -41,9 +41,7 @@ Usage:
 
   6. PR-scoped lock regen (CI only; skips dirs whose lock chain the PR did not touch)::
 
-       PYLOCKS_CI_CHECK=1 python pylocks_generator.py auto --pr-base <merge-base-sha>
-       PYLOCKS_CI_CHECK=1 python pylocks_generator.py auto --pr-base <merge-base-sha> \\
-           --pr-changed-files-file /path/to/changed-files.txt
+       PYLOCKS_CI_CHECK=1 python pylocks_generator.py auto --pr-base origin/main
 
 Reproducible CI checks (PYLOCKS_CI_CHECK):
   When ``PYLOCKS_CI_CHECK=1`` (set only by ``check-generated-code`` in CI),
@@ -252,17 +250,6 @@ def _list_changed_files(from_ref: str, to_ref: str = "HEAD") -> list[str]:
     return gha_pr_changed_files.list_changed_files(from_ref, to_ref)
 
 
-def _load_pr_changed_files(path: Path) -> list[str]:
-    """Load PR changed paths from a file (one repo-relative path per line)."""
-    cached_builds = ROOT_DIR / "ci" / "cached-builds"
-    if str(cached_builds) not in sys.path:
-        sys.path.insert(0, str(cached_builds))
-    import gha_pr_changed_files
-
-    files = [line.strip() for line in path.read_text().splitlines() if line.strip()]
-    return gha_pr_changed_files.expand_changed_paths(files)
-
-
 def _path_under(path: Path, prefix: Path) -> bool:
     return path.is_relative_to(prefix)
 
@@ -301,20 +288,14 @@ def _is_lock_chain_file(relative_to_project: Path) -> bool:
     return bool(relative_to_project.parts) and relative_to_project.parts[0] == "uv.lock.d"
 
 
-def resolve_pr_scoped_target_dirs(
-    pr_base: str,
-    log: LogBuffer,
-    *,
-    changed_files: list[str] | None = None,
-) -> list[Path]:
+def resolve_pr_scoped_target_dirs(pr_base: str, log: LogBuffer) -> list[Path]:
     """Image project dirs whose lock chain changed in the PR, or all dirs if global inputs changed.
 
-    ``pr_base`` is the merge-base ref for a three-dot PR diff (``pr_base...HEAD``). CI resolves
-    it via the GitHub compare API; locally use ``git merge-base <base> HEAD``. When
-    ``changed_files`` is set (CI passes compare API ``files[].filename``), git diff is skipped.
+    ``pr_base`` is the base ref for a three-dot PR diff (``pr_base...HEAD``). CI passes
+    ``origin/<base-branch>`` after fetching refs; locally use ``origin/main`` or a merge-base SHA.
     """
-    log.info(f"PR lock scoping from merge-base {pr_base}")
-    changed = changed_files if changed_files is not None else _list_changed_files(pr_base, "HEAD")
+    log.info(f"PR lock scoping from {pr_base}")
+    changed = _list_changed_files(pr_base, "HEAD")
     all_dirs = discover_all_image_project_dirs()
 
     if any(_is_global_lock_input(path) for path in changed):
@@ -724,14 +705,7 @@ def main(
         str | None,
         typer.Option(
             "--pr-base",
-            help="Merge-base ref for PR scoping (three-dot diff pr_base...HEAD); CI passes compare API result",
-        ),
-    ] = None,
-    pr_changed_files_file: Annotated[
-        Path | None,
-        typer.Option(
-            "--pr-changed-files-file",
-            help="PR changed paths, one per line (CI: GitHub compare API files[].filename)",
+            help="Base ref for PR scoping (three-dot diff pr_base...HEAD); CI uses origin/<base-branch>",
         ),
     ] = None,
 ) -> None:
@@ -763,8 +737,7 @@ def main(
         if target_dir is not None:
             log.error("Cannot combine a specific target directory with --pr-base.")
             raise SystemExit(1)
-        changed_files = _load_pr_changed_files(pr_changed_files_file) if pr_changed_files_file else None
-        target_dirs = resolve_pr_scoped_target_dirs(pr_base, log, changed_files=changed_files)
+        target_dirs = resolve_pr_scoped_target_dirs(pr_base, log)
         if not target_dirs:
             log.ok("Skipped pylocks regeneration.")
             return

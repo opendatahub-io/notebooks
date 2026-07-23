@@ -307,34 +307,20 @@ def test_resolve_pr_scoped_touched_requirements(
     )
 
 
-def test_resolve_pr_scoped_diffs_from_merge_base_ref(
+def test_resolve_pr_scoped_diffs_from_base_ref(
     repo_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    merge_base = "b61e56bea2594f7e31042d33d3a0981aceb80512"
+    base_ref = "origin/main"
     changed_files_mock = Mock(
         return_value=["jupyter/minimal/ubi9-python-3.12/pyproject.toml"],
     )
     monkeypatch.setattr(pg, "_list_changed_files", changed_files_mock)
     expected = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
-    assert pg.resolve_pr_scoped_target_dirs(merge_base, pg.LogBuffer()) == [expected], (
-        "merge-base diff should scope to touched image dir"
+    assert pg.resolve_pr_scoped_target_dirs(base_ref, pg.LogBuffer()) == [expected], (
+        "three-dot diff from base ref should scope to touched image dir"
     )
-    changed_files_mock.assert_called_once_with(merge_base, "HEAD")
-
-
-def test_resolve_pr_scoped_uses_explicit_changed_files(
-    repo_root: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    changed_files_mock = Mock()
-    monkeypatch.setattr(pg, "_list_changed_files", changed_files_mock)
-    expected = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
-    changed = ["jupyter/minimal/ubi9-python-3.12/pyproject.toml"]
-    assert pg.resolve_pr_scoped_target_dirs("base", pg.LogBuffer(), changed_files=changed) == [expected], (
-        "explicit changed_files should scope without git diff"
-    )
-    changed_files_mock.assert_not_called()
+    changed_files_mock.assert_called_once_with(base_ref, "HEAD")
 
 
 def test_resolve_pr_scoped_skips_unrelated(monkeypatch: pytest.MonkeyPatch) -> None:
