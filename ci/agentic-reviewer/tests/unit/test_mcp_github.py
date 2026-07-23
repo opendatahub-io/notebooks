@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
+
+from google.antigravity.hooks import policy
+from google.antigravity.types import ToolCall
 
 from odh_ci_agent import mcp_github
 
@@ -40,8 +44,28 @@ def test_review_policies_allow_server_prefixed_and_bare_tool_names() -> None:
     allowed_tools = {policy_item.tool for policy_item in policies if policy_item.decision.name == "APPROVE"}
 
     assert "github/pull_request_read" in allowed_tools
+    assert "github/mcp_github_pull_request_read" in allowed_tools
     assert "mcp_github_pull_request_read" in allowed_tools
     assert "pull_request_read" in allowed_tools
+
+
+def test_review_policies_allow_prefixed_tool_with_server_name() -> None:
+    server = mcp_github.make_review_server("token")
+    hook = policy.enforce(mcp_github.review_policies(server), mcp_servers=[server])
+
+    async def allowed() -> bool:
+        tool_call = ToolCall(
+            name=mcp_github.prefixed_tool_name(
+                mcp_github.GITHUB_REVIEW_SERVER_NAME,
+                "pull_request_read",
+            ),
+            args={},
+            server_name=mcp_github.GITHUB_REVIEW_SERVER_NAME,
+        )
+        result = await hook.run(None, tool_call)
+        return result.allow
+
+    assert asyncio.run(allowed()) is True
 
 
 def test_unexpected_tool_calls_returns_only_disallowed_names() -> None:
