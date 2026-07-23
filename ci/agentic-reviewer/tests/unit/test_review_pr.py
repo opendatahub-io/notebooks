@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from google.antigravity.types import McpStreamableHttpServer
 
-from odh_ci_agent import review_pr
+from odh_ci_agent import mcp_github, review_pr
 
 EXAMPLE_VALUE = "placeholder-value"
 
@@ -131,6 +131,11 @@ def test_review_run_failed_detects_missing_tool_calls() -> None:
 
 def test_review_run_failed_accepts_invoked_review_tool() -> None:
     class ToolCall:
-        name = "mcp_github_pull_request_read"
+        name = mcp_github.HARNESS_CALL_MCP_TOOL
+        args = {
+            "ServerName": mcp_github.GITHUB_REVIEW_SERVER_NAME,
+            "ToolName": "pull_request_read",
+        }
+        server_name = None
 
     assert review_pr.review_run_failed("done", [ToolCall()]) is None

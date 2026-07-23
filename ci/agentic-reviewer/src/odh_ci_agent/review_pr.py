@@ -173,8 +173,11 @@ def allowed_review_tool_names() -> frozenset[str]:
 
 
 def invoked_review_tools(tool_calls: list[mcp_github.NamedToolCall]) -> list[str]:
-    allowed = allowed_review_tool_names()
-    return [tool_call.name for tool_call in tool_calls if tool_call.name in allowed]
+    return mcp_github.invoked_mcp_tools(
+        tool_calls,
+        mcp_github.GITHUB_REVIEW_TOOLS,
+        server_name=mcp_github.GITHUB_REVIEW_SERVER_NAME,
+    )
 
 
 def review_run_failed(text: str, tool_calls: list[mcp_github.NamedToolCall]) -> str | None:
