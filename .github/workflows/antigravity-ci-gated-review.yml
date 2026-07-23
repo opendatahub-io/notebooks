@@ -1,0 +1,89 @@
+---
+name: '🛡️ Antigravity CI-Gated Review'
+
+"on":
+  workflow_run:
+    workflows:
+      - 'Build Notebooks (pr)'
+    types:
+      - 'completed'
+
+concurrency:
+  group: 'antigravity-ci-gated-review-${{ github.event.workflow_run.id }}'
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: |-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: 'ubuntu-latest'
+    timeout-minutes: 12
+    permissions:
+      actions: 'read'
+      contents: 'read'
+      issues: 'write'
+      pull-requests: 'write'
+    steps:
+      - name: 'Mint identity token'
+        id: 'mint_identity_token'
+        if: |-
+          ${{ vars.APP_ID }}
+        uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b'  # v2.1.1
+        with:
+          app-id: '${{ vars.APP_ID }}'
+          private-key: '${{ secrets.APP_PRIVATE_KEY }}'
+          permission-actions: 'read'
+          permission-contents: 'read'
+          permission-issues: 'write'
+          permission-pull-requests: 'write'
+
+      - name: 'Checkout repository'
+        uses: 'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd'  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: 'Setup uv and Python'
+        uses: './.github/actions/setup-uv'
+
+      - name: 'Install from uv.lock (project + dev deps)'
+        run: 'uv sync --locked --package odh-ci-agent'
+
+      - name: 'Prepare review context'
+        if: |-
+          ${{ github.event.workflow_run.pull_requests[0].number }}
+        env:
+          ADDITIONAL_CONTEXT: 'CI-gated follow-up review after a successful notebook matrix build.'
+          GITHUB_REPOSITORY: '${{ github.repository }}'
+          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          PULL_REQUEST_NUMBER: '${{ github.event.workflow_run.pull_requests[0].number }}'
+          REVIEW_CONTEXT_PATH: 'review-context.json'
+        run: 'uv run --package odh-ci-agent odh-ci-prepare-review-context'
+
+      - name: 'Run CI-gated Antigravity review'
+        if: |-
+          ${{ github.event.workflow_run.pull_requests[0].number }}
+        env:
+          ADDITIONAL_CONTEXT: 'CI-gated follow-up review after a successful notebook matrix build.'
+          GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
+          GEMINI_MODEL: '${{ vars.GEMINI_MODEL }}'
+          GITHUB_REPOSITORY: '${{ github.repository }}'
+          GITHUB_RUN_ID: '${{ github.run_id }}'
+          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          PULL_REQUEST_NUMBER: '${{ github.event.workflow_run.pull_requests[0].number }}'
+          REVIEW_BODY_PATH: 'review-summary-body.md'
+          REVIEW_CONTEXT_PATH: 'review-context.json'
+        run: 'uv run --package odh-ci-agent odh-ci-review-pr'
+
+      - name: 'Upsert review summary comment'
+        if: |-
+          ${{ github.event.workflow_run.pull_requests[0].number }}
+        env:
+          GITHUB_REPOSITORY: '${{ github.repository }}'
+          GITHUB_RUN_ID: '${{ github.run_id }}'
+          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          PULL_REQUEST_NUMBER: '${{ github.event.workflow_run.pull_requests[0].number }}'
+          REVIEW_BODY_PATH: 'review-summary-body.md'
+          WORKFLOW_RUN_URL: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+        run: 'uv run --package odh-ci-agent odh-ci-upsert-review-comment'
