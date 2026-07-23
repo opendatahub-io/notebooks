@@ -251,11 +251,7 @@ def _list_changed_files(from_ref: str, to_ref: str = "HEAD") -> list[str]:
 
 
 def _path_under(path: Path, prefix: Path) -> bool:
-    try:
-        path.relative_to(prefix)
-        return True
-    except ValueError:
-        return False
+    return path.is_relative_to(prefix)
 
 
 def image_project_dir_for_repo_file(
