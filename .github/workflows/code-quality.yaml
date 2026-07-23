@@ -18,12 +18,8 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-
-      - name: Fetch PR merge base for lock scoping
-        if: github.event_name == 'pull_request'
-        env:
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: git fetch --no-tags --depth=1 origin "${PR_BASE_SHA}"
+        with:
+          fetch-depth: 0
 
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv

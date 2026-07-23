@@ -286,6 +286,7 @@ def test_resolve_pr_scoped_touched_requirements(
     repo_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(pg, "_merge_base_with_head", lambda _base: "base")
     monkeypatch.setattr(
         pg,
         "_list_changed_files",
@@ -295,7 +296,29 @@ def test_resolve_pr_scoped_touched_requirements(
     assert pg.resolve_pr_scoped_target_dirs("base", pg.LogBuffer()) == [expected]
 
 
+def test_resolve_pr_scoped_uses_merge_base(
+    repo_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    merge_base = "b61e56bea2594f7e31042d33d3a0981aceb80512"
+    monkeypatch.setattr(pg, "_merge_base_with_head", lambda _base: merge_base)
+    monkeypatch.setattr(
+        pg,
+        "_list_changed_files",
+        lambda from_ref, to_ref="HEAD": (
+            ["jupyter/minimal/ubi9-python-3.12/pyproject.toml"]
+            if from_ref == merge_base
+            else []
+        ),
+    )
+    expected = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
+    assert pg.resolve_pr_scoped_target_dirs("700203d19866528215a41844b961a175eb08b498", pg.LogBuffer()) == [
+        expected
+    ]
+
+
 def test_resolve_pr_scoped_skips_unrelated(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(pg, "_merge_base_with_head", lambda _base: "base")
     monkeypatch.setattr(pg, "_list_changed_files", lambda _base, _to="HEAD": ["README.md"])
     assert pg.resolve_pr_scoped_target_dirs("base", pg.LogBuffer()) == []
 
@@ -304,6 +327,7 @@ def test_resolve_pr_scoped_touched_pyproject(
     repo_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(pg, "_merge_base_with_head", lambda _base: "base")
     monkeypatch.setattr(
         pg,
         "_list_changed_files",
@@ -317,6 +341,7 @@ def test_resolve_pr_scoped_touched_codeserver(
     repo_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(pg, "_merge_base_with_head", lambda _base: "base")
     monkeypatch.setattr(
         pg,
         "_list_changed_files",
@@ -329,6 +354,7 @@ def test_resolve_pr_scoped_touched_codeserver(
 def test_resolve_pr_scoped_global_input_expands_to_all(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(pg, "_merge_base_with_head", lambda _base: "base")
     monkeypatch.setattr(
         pg,
         "_list_changed_files",
