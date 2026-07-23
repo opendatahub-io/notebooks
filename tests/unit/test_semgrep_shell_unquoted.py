@@ -30,6 +30,7 @@ def pattern() -> re.Pattern[str]:
     "line",
     [
         "rm $FILE",
+        "rm\t$FILE",
         "rm ${FILE}",
         "cp $SRC $DST",
         "rm $FILE && echo ok",
@@ -47,7 +48,8 @@ def test_flags_unquoted_var_in_dangerous_cmd(pattern: re.Pattern[str], line: str
     [
         'rm "$FILE"',
         "rm '$FILE'",
-        "python pylock_version.py --platform x86_64",
+        "rmdir $FILE",
+        'rm "$FILE"\necho $OTHER',
         # Quoted rm must not match $OTHER after shell command separators.
         'rm "$FILE" && echo $OTHER',
         'rm "$FILE" || echo $OTHER',
