@@ -2,6 +2,8 @@
 
 Antigravity SDK agents for GitHub pull request review and CI failure summaries in this repository.
 
+See [AGENTS.md](AGENTS.md) for architecture, trajectory debugging, and agent conventions.
+
 ## Quick start
 
 ```shell

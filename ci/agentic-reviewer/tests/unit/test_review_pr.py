@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
-from google.antigravity.types import McpStreamableHttpServer
+from google.antigravity.tools.tool_runner import ToolWithSchema
 
 from odh_ci_agent import mcp_github, review_pr
+from odh_ci_agent.github_review_tools import GitHubReviewClient, make_github_review_tools
 
 EXAMPLE_VALUE = "placeholder-value"
 
@@ -50,9 +53,11 @@ def test_build_prompt_includes_repository_pr_and_context() -> None:
     assert "Repository name: repo" in prompt
     assert "99" in prompt
     assert "focus on tests" in prompt
-    assert "get_pull_request" in prompt
-    assert "pull_number" in prompt
-    assert "Do not call `pull_request_read`" in prompt
+    assert "parameter schema" in prompt
+    assert "get_diff" in prompt
+    assert "Do not call `pull_request_read`" not in prompt
+    assert "mcp_github_" not in prompt
+    assert "REST-style" not in prompt
     assert "empty body (inline comments only)" in prompt
     assert "not in the GitHub review body" in prompt
     assert "## 📋 Review Summary" in prompt
@@ -73,7 +78,7 @@ def test_build_prompt_requires_pull_request_read_without_context() -> None:
     assert "Call `pull_request_read`" in prompt
 
 
-def test_build_config_disables_builtin_tools_and_scopes_mcp(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_config_registers_python_review_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGY_TRAJECTORY_DIR", "agy-trajectory/pr-review")
     inputs = review_pr.ReviewInputs(
         github_token=EXAMPLE_VALUE,
@@ -81,26 +86,19 @@ def test_build_config_disables_builtin_tools_and_scopes_mcp(monkeypatch: pytest.
         pull_request_number=99,
         additional_context="",
         model="gemini-3.5-flash",
-        defense_in_depth_exclude_header=True,
     )
 
     config = review_pr.build_config(inputs)
-    server = config.mcp_servers[0]
 
     assert config.capabilities is not None
     assert config.save_dir == "agy-trajectory/pr-review"
-    assert len(config.hooks) == 1
     assert config.capabilities.enabled_tools == []
     assert config.capabilities.enable_subagents is False
-    assert isinstance(server, McpStreamableHttpServer)
-    assert server.name == "github"
-    assert server.enabled_tools == [
-        "pull_request_read",
-        "pull_request_review_write",
-        "add_comment_to_pending_review",
-    ]
-    assert server.headers is not None
-    assert "X-MCP-Exclude-Tools" in server.headers
+    assert config.mcp_servers == []
+    assert len(config.tools) == 3
+    assert all(isinstance(tool, ToolWithSchema) for tool in config.tools)
+    tool_names = {tool.fn.__name__ for tool in config.tools}
+    assert tool_names == set(mcp_github.GITHUB_REVIEW_TOOLS)
 
 
 def test_bool_env_truthy_values(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -143,16 +141,16 @@ def test_review_run_failed_detects_policy_denial() -> None:
         has_prepared_context=False,
     )
 
-    assert reason == "GitHub MCP tools were denied by policy"
+    assert reason == "GitHub review tools were denied by policy"
 
 
 def test_review_run_failed_detects_missing_tool_calls() -> None:
     reason = review_pr.review_run_failed("All good.", [], has_prepared_context=False)
 
-    assert reason == "review completed without invoking GitHub MCP review tools"
+    assert reason == "review completed without invoking GitHub review tools"
 
 
-def test_review_run_failed_allows_prepared_context_without_mcp_reads() -> None:
+def test_review_run_failed_allows_prepared_context_without_tool_reads() -> None:
     reason = review_pr.review_run_failed("All good.", [], has_prepared_context=True)
 
     assert reason is None
@@ -170,14 +168,28 @@ def test_review_run_failed_detects_reported_fetch_failure() -> None:
 
 def test_review_run_failed_accepts_invoked_review_tool() -> None:
     class ToolCall:
-        name = mcp_github.HARNESS_CALL_MCP_TOOL
-        args = {
-            "ServerName": mcp_github.GITHUB_REVIEW_SERVER_NAME,
-            "ToolName": "pull_request_read",
-        }
+        name = "pull_request_read"
+        args = {}
         server_name = None
 
     assert review_pr.review_run_failed("done", [ToolCall()], has_prepared_context=False) is None
+
+
+def test_make_github_review_tools_exposes_mcp_aligned_schemas() -> None:
+    tools = make_github_review_tools("owner/repo", 12)
+    read_tool = next(tool for tool in tools if tool.fn.__name__ == "pull_request_read")
+
+    assert read_tool.input_schema["properties"]["pullNumber"]["type"] == "number"
+    assert "get_diff" in read_tool.input_schema["properties"]["method"]["enum"]
+
+
+def test_pull_request_read_aliases_are_normalized() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+
+    with patch("odh_ci_agent.github_review_tools.gh_api_json", return_value={"number": 12}) as mock_api:
+        client.pull_request_read(method="get_pull_request", pull_number=99)
+
+    mock_api.assert_called_once_with("repos/owner/repo/pulls/99")
 
 
 def test_parse_github_repository_splits_owner_and_repo() -> None:

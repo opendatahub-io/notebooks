@@ -136,9 +136,10 @@ def normalize_pull_request_read_args(
     mapped_method = None
     if isinstance(method, str):
         method_key = method.strip().lower()
-        mapped_method = PULL_REQUEST_READ_METHOD_ALIASES.get(method_key)
-        if mapped_method is None and method_key in PULL_REQUEST_READ_METHODS:
-            mapped_method = method_key
+        if method_key:
+            mapped_method = PULL_REQUEST_READ_METHOD_ALIASES.get(method_key)
+            if mapped_method is None and method_key in PULL_REQUEST_READ_METHODS:
+                mapped_method = method_key
     normalized["method"] = mapped_method or "get"
     _drop_keys(normalized, "action", "operation", "op")
     return normalized
@@ -153,7 +154,8 @@ def normalize_pull_request_review_write_args(
     mapped_method = None
     if isinstance(method, str):
         method_key = method.strip().lower()
-        mapped_method = REVIEW_WRITE_METHOD_ALIASES.get(method_key)
+        if method_key:
+            mapped_method = REVIEW_WRITE_METHOD_ALIASES.get(method_key)
     normalized["method"] = mapped_method or "create"
     _drop_keys(normalized, "action", "operation", "op")
     return normalized

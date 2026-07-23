@@ -71,6 +71,14 @@ def run_command(
     return result
 
 
+def gh_api_diff(path: str, *, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> str:
+    result = run_command(
+        ["gh", "api", _query_path(path), "-H", "Accept: application/vnd.github.diff"],
+        timeout=timeout,
+    )
+    return result.stdout
+
+
 def gh_api_json(
     path: str,
     *,
