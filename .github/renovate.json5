@@ -123,12 +123,14 @@
         "/(jupyter|codeserver|runtimes)/.+/build-args/konflux\\..+\\.conf$/",
       ],
       "matchStrings": [
-        "BASE_IMAGE=(?<depName>[^:]+):(?<currentValue>\\S+)",
+        "BASE_IMAGE=(?<depName>[^:]+):(?<currentValue>[^@\\s]+)(?:@(?<currentDigest>\\S+))?",
       ],
       // Renovate's auto-replace locates the full match (replaceString) first, then
       // substitutes with this template.  Without it the default template may not
       // reconstruct the BASE_IMAGE=… line correctly.
-      "autoReplaceStringTemplate": "BASE_IMAGE={{{depName}}}:{{{newValue}}}",
+      // {{{newDigest}}} is populated when pinDigests is enabled on the matching
+      // packageRule — it resolves the tag to its registry manifest digest.
+      "autoReplaceStringTemplate": "BASE_IMAGE={{{depName}}}:{{{newValue}}}@{{{newDigest}}}",
       "datasourceTemplate": "docker",
       // Stable tags become [major, minor, patch, timestamp].
       // EA tags keep [major, minor, patch] and encode ea_version + timestamp in
@@ -195,6 +197,7 @@
       "matchDatasources": ["docker"],
       "matchPackageNames": ["/^quay\\.io\\/aipcc\\//"],
       "groupName": "konflux BASE_IMAGE {{{depNameSanitized}}}",
+      "pinDigests": true,
       "recreateWhen": "always",
       "semanticCommits": "enabled",
     },
@@ -276,6 +279,7 @@
       // https://docs.renovatebot.com/configuration-options/#matchpackagenames
       "matchPackageNames": ["/^registry\\.redhat\\.io\\/rhai\\//"],
       "groupName": "Red Hat registry base images",
+      "pinDigests": true,
       "semanticCommits": "enabled",
     },
     {
