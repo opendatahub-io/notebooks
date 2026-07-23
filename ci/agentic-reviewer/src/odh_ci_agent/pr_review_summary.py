@@ -31,7 +31,11 @@ def extract_review_summary_body(text: str) -> str:
     """Return markdown for the upserted review summary comment."""
 
     if REVIEW_SUMMARY_HEADER not in text:
-        return f"{REVIEW_SUMMARY_HEADER}\n\nAutomated review completed. See inline comments for findings.\n"
+        return (
+            f"{REVIEW_SUMMARY_HEADER}\n\n"
+            "Automated review completed without a structured summary. "
+            "Check the workflow logs for details.\n"
+        )
 
     excerpt = text[text.index(REVIEW_SUMMARY_HEADER) :].strip()
     cleaned_lines: list[str] = []
@@ -41,4 +45,8 @@ def extract_review_summary_body(text: str) -> str:
             break
         cleaned_lines.append(line)
     body = "\n".join(cleaned_lines).strip()
-    return body or (f"{REVIEW_SUMMARY_HEADER}\n\nAutomated review completed. See inline comments for findings.\n")
+    return body or (
+        f"{REVIEW_SUMMARY_HEADER}\n\n"
+        "Automated review completed without a structured summary. "
+        "Check the workflow logs for details.\n"
+    )

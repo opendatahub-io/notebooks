@@ -98,16 +98,34 @@ def make_actions_readonly_server(token: str) -> McpStreamableHttpServer:
     )
 
 
+def tool_allow_policies(
+    server: BaseMcpServerConfig,
+    tool_names: Sequence[str],
+) -> list[policy.Policy]:
+    """Allow MCP tools under every name shape the harness may use.
+
+    The Go harness may invoke MCP tools as ``server/tool`` (with ``server_name`` set),
+    as bare tool ids, or as ``mcp_{server}_{tool}`` without ``server_name``. Allow all
+    shapes so ``deny_all()`` does not block legitimate review/summary tool calls.
+    """
+
+    policies: list[policy.Policy] = list(policy.allow(server, tool_names))
+    for tool_name in tool_names:
+        policies.append(policy.allow(prefixed_tool_name(server.name, tool_name)))
+        policies.append(policy.allow(tool_name))
+    return policies
+
+
 def review_policies(server: BaseMcpServerConfig) -> list[policy.Policy]:
     """Deny by default and allow only PR review MCP tools."""
 
-    return [policy.deny_all(), *policy.allow(server, GITHUB_REVIEW_TOOLS)]
+    return [policy.deny_all(), *tool_allow_policies(server, GITHUB_REVIEW_TOOLS)]
 
 
 def actions_read_policies(server: BaseMcpServerConfig) -> list[policy.Policy]:
     """Deny by default and allow only read-only GitHub Actions MCP tools."""
 
-    return [policy.deny_all(), *policy.allow(server, GITHUB_ACTIONS_READ_TOOLS)]
+    return [policy.deny_all(), *tool_allow_policies(server, GITHUB_ACTIONS_READ_TOOLS)]
 
 
 def tool_call_names(tool_calls: Iterable[NamedToolCall]) -> list[str]:

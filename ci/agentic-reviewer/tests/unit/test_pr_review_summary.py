@@ -7,7 +7,8 @@ def test_extract_review_summary_body_returns_default_when_missing_header() -> No
     body = pr_review_summary.extract_review_summary_body("Review complete.")
 
     assert body.startswith("## 📋 Review Summary")
-    assert "inline comments" in body
+    assert "workflow logs" in body
+    assert "inline comments" not in body
 
 
 def test_extract_review_summary_body_keeps_summary_sections() -> None:

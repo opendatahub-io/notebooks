@@ -110,3 +110,25 @@ def test_persist_review_summary_writes_marked_body(tmp_path, monkeypatch: pytest
 
 def test_format_usage_metadata_none() -> None:
     assert review_pr.format_usage_metadata(None) == "null"
+
+
+def test_review_run_failed_detects_policy_denial() -> None:
+    reason = review_pr.review_run_failed(
+        "Denied by policy 'deny_all'.",
+        [],
+    )
+
+    assert reason == "GitHub MCP tools were denied by policy"
+
+
+def test_review_run_failed_detects_missing_tool_calls() -> None:
+    reason = review_pr.review_run_failed("All good.", [])
+
+    assert reason == "review completed without invoking GitHub MCP review tools"
+
+
+def test_review_run_failed_accepts_invoked_review_tool() -> None:
+    class ToolCall:
+        name = "mcp_github_pull_request_read"
+
+    assert review_pr.review_run_failed("done", [ToolCall()]) is None

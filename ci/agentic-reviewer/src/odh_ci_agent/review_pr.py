@@ -159,6 +159,31 @@ def write_review_body(path: str, body: str) -> None:
         file_handle.write(body.rstrip() + "\n")
 
 
+def allowed_review_tool_names() -> frozenset[str]:
+    return frozenset(
+        [
+            *mcp_github.GITHUB_REVIEW_TOOLS,
+            *mcp_github.prefixed_tool_names(
+                mcp_github.GITHUB_REVIEW_SERVER_NAME,
+                mcp_github.GITHUB_REVIEW_TOOLS,
+            ),
+        ]
+    )
+
+
+def invoked_review_tools(tool_calls: list[mcp_github.NamedToolCall]) -> list[str]:
+    allowed = allowed_review_tool_names()
+    return [tool_call.name for tool_call in tool_calls if tool_call.name in allowed]
+
+
+def review_run_failed(text: str, tool_calls: list[mcp_github.NamedToolCall]) -> str | None:
+    if "Denied by policy" in text:
+        return "GitHub MCP tools were denied by policy"
+    if not invoked_review_tools(tool_calls):
+        return "review completed without invoking GitHub MCP review tools"
+    return None
+
+
 def persist_review_summary(text: str) -> None:
     body_path = os.environ.get("REVIEW_BODY_PATH", "").strip()
     if not body_path:
@@ -210,6 +235,11 @@ async def run_review(inputs: ReviewInputs) -> int:
         )
         if disallowed:
             print(f"\nFAIL: disallowed tools invoked: {disallowed}", file=sys.stderr)
+            return 1
+
+        failure_reason = review_run_failed(text, tool_calls)
+        if failure_reason:
+            print(f"\nFAIL: {failure_reason}", file=sys.stderr)
             return 1
 
     persist_review_summary(text)

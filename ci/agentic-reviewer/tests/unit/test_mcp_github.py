@@ -34,6 +34,16 @@ def test_make_actions_readonly_server_uses_enabled_tools() -> None:
     assert server.enabled_tools == list(mcp_github.GITHUB_ACTIONS_READ_TOOLS)
 
 
+def test_review_policies_allow_server_prefixed_and_bare_tool_names() -> None:
+    server = mcp_github.make_review_server("token")
+    policies = mcp_github.review_policies(server)
+    allowed_tools = {policy_item.tool for policy_item in policies if policy_item.decision.name == "APPROVE"}
+
+    assert "github/pull_request_read" in allowed_tools
+    assert "mcp_github_pull_request_read" in allowed_tools
+    assert "pull_request_read" in allowed_tools
+
+
 def test_unexpected_tool_calls_returns_only_disallowed_names() -> None:
     tool_calls = [
         ToolCallLike(name="mcp_github_pull_request_read"),
