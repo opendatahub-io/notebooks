@@ -323,6 +323,20 @@ def test_resolve_pr_scoped_diffs_from_merge_base_ref(
     changed_files_mock.assert_called_once_with(merge_base, "HEAD")
 
 
+def test_resolve_pr_scoped_uses_explicit_changed_files(
+    repo_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    changed_files_mock = Mock()
+    monkeypatch.setattr(pg, "_list_changed_files", changed_files_mock)
+    expected = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
+    changed = ["jupyter/minimal/ubi9-python-3.12/pyproject.toml"]
+    assert pg.resolve_pr_scoped_target_dirs("base", pg.LogBuffer(), changed_files=changed) == [expected], (
+        "explicit changed_files should scope without git diff"
+    )
+    changed_files_mock.assert_not_called()
+
+
 def test_resolve_pr_scoped_skips_unrelated(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(pg, "_list_changed_files", lambda _base, _to="HEAD": ["README.md"])
     assert pg.resolve_pr_scoped_target_dirs("base", pg.LogBuffer()) == [], (

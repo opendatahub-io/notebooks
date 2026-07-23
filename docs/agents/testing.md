@@ -88,9 +88,10 @@ The `check-generated-code` job runs `ci/generate_code.sh`, then verifies a clean
   touched (`pyproject.toml`, `pylock.toml`, `requirements.*.txt`, or `uv.lock.d/*`). If the PR only changes
   unrelated files, `pylocks_generator` is skipped so external AIPCC index churn does not
   fail the job. Shared inputs (`dependencies/cve-constraints.txt`, lock generator scripts)
-  still trigger full lock regen. CI resolves merge-base via `gh api compare/base...head`,
-  fetches that commit, deepens the PR checkout until it is an ancestor of `HEAD`, then runs
-  `pylocks_generator --pr-base` with a local `git diff` for the file list. Locally: `bash ci/generate_code.sh --pr-base "$(git merge-base origin/main HEAD)"`.
+  still trigger full lock regen. CI resolves merge-base and changed paths via
+  `gh api compare/base...head` (`merge_base_commit` + `files[].filename`), then runs
+  `pylocks_generator --pr-base` with that file list (no shallow git deepen). Locally:
+  `bash ci/generate_code.sh --pr-base "$(git merge-base origin/main HEAD)"` uses `git diff`. `bash ci/generate_code.sh --pr-base "$(git merge-base origin/main HEAD)"`.
   See [RHAIENG-6397](https://redhat.atlassian.net/browse/RHAIENG-6397).
 - **Push** (`main`, `stable`, `rhoai-*`): full lock regen for all image dirs (unchanged).
 

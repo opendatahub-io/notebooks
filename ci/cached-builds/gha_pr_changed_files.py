@@ -83,6 +83,11 @@ def _resolve_symlinks(paths: list[str]) -> list[str]:
     return sorted(expanded)
 
 
+def expand_changed_paths(paths: list[str]) -> list[str]:
+    """Expand a changed-file list with symlink logical paths (e.g. GitHub compare API)."""
+    return _resolve_symlinks(paths)
+
+
 def list_changed_files(from_ref: str, to_ref: str) -> list[str]:
     logging.debug("Getting list of changed files from git diff")
 

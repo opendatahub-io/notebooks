@@ -21,7 +21,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Fetch PR merge base for lock scoping
+      - name: Resolve PR changed files for lock scoping
         if: github.event_name == 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -34,23 +34,9 @@ jobs:
             echo "::error::Could not resolve merge-base from GitHub compare API"
             exit 1
           fi
-          COMMITS_AHEAD="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${MERGE_BASE}...${PR_HEAD_SHA}" --jq '.ahead_by')"
-          git fetch --no-tags origin "${MERGE_BASE}"
-          if [[ "${COMMITS_AHEAD}" =~ ^[0-9]+$ ]] && [[ "${COMMITS_AHEAD}" -gt 0 ]]; then
-            git fetch --no-tags --deepen="${COMMITS_AHEAD}" origin "${PR_HEAD_SHA}"
-          fi
-          if ! git merge-base --is-ancestor "${MERGE_BASE}" HEAD 2>/dev/null; then
-            depth=0
-            while ! git merge-base --is-ancestor "${MERGE_BASE}" HEAD 2>/dev/null; do
-              depth=$((depth + 100))
-              if [[ "${depth}" -gt 5000 ]]; then
-                echo "::error::Could not connect merge-base ${MERGE_BASE} to HEAD after deepening ${depth} commits"
-                exit 1
-              fi
-              git fetch --no-tags --deepen=100 origin "${PR_HEAD_SHA}"
-            done
-          fi
+          jq -r '.files[].filename' <<<"${COMPARE_JSON}" > "${RUNNER_TEMP}/pr-changed-files.txt"
           echo "MERGE_BASE=${MERGE_BASE}" >> "${GITHUB_ENV}"
+          echo "PR_CHANGED_FILES=${RUNNER_TEMP}/pr-changed-files.txt" >> "${GITHUB_ENV}"
 
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv
@@ -76,7 +62,8 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           MERGE_BASE: ${{ env.MERGE_BASE }}
-        run: bash ci/generate_code.sh --pr-base "${MERGE_BASE}"
+          PR_CHANGED_FILES: ${{ env.PR_CHANGED_FILES }}
+        run: bash ci/generate_code.sh --pr-base "${MERGE_BASE}" --pr-changed-files "${PR_CHANGED_FILES}"
 
       - name: Rerun all code generators we have (push)
         if: github.event_name != 'pull_request'
