@@ -125,6 +125,8 @@ Rules:
 - Do not comment on license headers, copyright headers, or boilerplate.
 - Do not comment on hardcoded dates or times being in the future — you do not know the current date.
 - When suggesting code changes, use the suggestion field, not markdown code blocks. Code suggestions must be compilable/runnable and match the indentation of the code they replace. Keep suggestions succinct.
+- If a GitHub review tool returns an error, quote or summarize the error accurately. Do not blame generic "GitHub API limitations", "threading", or "schema restrictions".
+- Only say you posted inline review comments when `add_comment_to_pending_review` succeeded and the review was submitted.
 
 Severity calibration:
 - .md / documentation files: medium or low.
@@ -177,6 +179,45 @@ def invoked_review_tools(tool_calls: list[mcp_github.NamedToolCall]) -> list[str
     return [tool_call.name for tool_call in tool_calls if tool_call.name in allowed]
 
 
+_INLINE_COMMENT_CLAIMS = (
+    "posted inline",
+    "i posted inline",
+    "posted review comments",
+    "left inline comments",
+    "posted comments on",
+)
+
+_API_LIMITATION_EXCUSES = (
+    "api limitation",
+    "api limitations",
+    "api restriction",
+    "api restrictions",
+    "api threading",
+    "schema restriction",
+    "schema restrictions",
+    "threading limitation",
+    "threading limitations",
+    "github pr api",
+)
+
+
+def _text_claims_inline_comments_posted(text: str) -> bool:
+    lowered = text.lower()
+    return any(phrase in lowered for phrase in _INLINE_COMMENT_CLAIMS)
+
+
+def _text_blames_api_limitations(text: str) -> bool:
+    lowered = text.lower()
+    return any(phrase in lowered for phrase in _API_LIMITATION_EXCUSES)
+
+
+def _review_write_attempted(review_client: GitHubReviewClient) -> bool:
+    return any(
+        invocation.tool_name in {"add_comment_to_pending_review", "pull_request_review_write"}
+        for invocation in review_client.invocations
+    )
+
+
 def review_run_failed(
     text: str,
     tool_calls: list[mcp_github.NamedToolCall],
@@ -190,6 +231,15 @@ def review_run_failed(
         return "agent reported inability to fetch pull request data"
     if review_client is not None and (posting_failure := review_client.posting_failure_reason()):
         return posting_failure
+    if review_client is not None and _text_claims_inline_comments_posted(text):
+        if not review_client.inline_comments_posted():
+            return "agent claimed inline review comments were posted but GitHub review tools did not succeed"
+    if (
+        review_client is not None
+        and _review_write_attempted(review_client)
+        and _text_blames_api_limitations(text)
+    ):
+        return "agent attributed GitHub review tool failures to API limitations"
     if not has_prepared_context and not invoked_review_tools(tool_calls):
         return "review completed without invoking GitHub review tools"
     return None

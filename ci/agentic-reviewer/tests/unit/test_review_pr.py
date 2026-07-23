@@ -199,7 +199,69 @@ def test_review_run_failed_detects_failed_comment_posting() -> None:
         review_client=client,
     )
 
-    assert reason == "failed to post inline review comments (1 attempt(s))"
+    assert reason == "failed to post inline review comments (1 attempt(s)): Invalid request"
+
+
+def test_review_run_failed_detects_false_inline_comment_claim() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    client.invocations.append(
+        ReviewToolInvocation(
+            tool_name="add_comment_to_pending_review",
+            method=None,
+            success=False,
+            error="Invalid request",
+        )
+    )
+
+    reason = review_pr.review_run_failed(
+        "I posted inline review comments on the changed files.",
+        [],
+        has_prepared_context=True,
+        review_client=client,
+    )
+
+    assert reason == "failed to post inline review comments (1 attempt(s)): Invalid request"
+
+
+def test_review_run_failed_detects_api_limitation_excuses() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    client.invocations.append(
+        ReviewToolInvocation(
+            tool_name="add_comment_to_pending_review",
+            method=None,
+            success=False,
+            error="Invalid request",
+        )
+    )
+
+    reason = review_pr.review_run_failed(
+        "I did not post inline review comments due to limitations with the GitHub PR API threading.",
+        [],
+        has_prepared_context=True,
+        review_client=client,
+    )
+
+    assert reason == "failed to post inline review comments (1 attempt(s)): Invalid request"
+
+
+def test_review_run_failed_detects_api_limitation_excuses_without_posting_failure() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    client.invocations.append(
+        ReviewToolInvocation(
+            tool_name="pull_request_review_write",
+            method="create",
+            success=True,
+        )
+    )
+
+    reason = review_pr.review_run_failed(
+        "I did not post inline review comments due to limitations with the GitHub PR API threading.",
+        [],
+        has_prepared_context=True,
+        review_client=client,
+    )
+
+    assert reason == "agent attributed GitHub review tool failures to API limitations"
 
 
 def test_parse_github_repository_splits_owner_and_repo() -> None:

@@ -322,6 +322,18 @@ class GitHubReviewClient:
 
         return self._record_invocation("add_comment_to_pending_review", None, _post_comment)
 
+    def inline_comments_posted(self) -> bool:
+        return any(
+            invocation.tool_name == "add_comment_to_pending_review" and invocation.success
+            for invocation in self.invocations
+        )
+
+    def _first_error_snippet(self, invocations: list[ReviewToolInvocation]) -> str:
+        for invocation in invocations:
+            if invocation.error:
+                return invocation.error.splitlines()[0][:160]
+        return ""
+
     def posting_failure_reason(self) -> str | None:
         """Return a failure reason when the agent tried but failed to post a review."""
 
@@ -330,23 +342,46 @@ class GitHubReviewClient:
             for invocation in self.invocations
             if invocation.tool_name == "add_comment_to_pending_review"
         ]
+        create_attempts = [
+            invocation
+            for invocation in self.invocations
+            if invocation.tool_name == "pull_request_review_write" and invocation.method == "create"
+        ]
         submit_attempts = [
             invocation
             for invocation in self.invocations
             if invocation.tool_name == "pull_request_review_write" and invocation.method == "submit_pending"
         ]
 
-        if not comment_attempts:
+        if not comment_attempts and not create_attempts and not submit_attempts:
             return None
 
-        if not any(invocation.success for invocation in comment_attempts):
-            return f"failed to post inline review comments ({len(comment_attempts)} attempt(s))"
+        if comment_attempts and not any(invocation.success for invocation in comment_attempts):
+            detail = self._first_error_snippet([i for i in comment_attempts if not i.success])
+            message = f"failed to post inline review comments ({len(comment_attempts)} attempt(s))"
+            return f"{message}: {detail}" if detail else message
 
-        if not submit_attempts:
-            return "posted inline comments but never submitted the pending review"
+        if comment_attempts and any(invocation.success for invocation in comment_attempts):
+            if not submit_attempts:
+                return "posted inline comments but never submitted the pending review"
+            if not any(invocation.success for invocation in submit_attempts):
+                detail = self._first_error_snippet([i for i in submit_attempts if not i.success])
+                message = "posted inline comments but failed to submit the pending review"
+                return f"{message}: {detail}" if detail else message
+            return None
 
-        if not any(invocation.success for invocation in submit_attempts):
-            return "posted inline comments but failed to submit the pending review"
+        failed_writes = [
+            invocation
+            for invocation in self.invocations
+            if invocation.tool_name in {"add_comment_to_pending_review", "pull_request_review_write"}
+            and not invocation.success
+        ]
+        if failed_writes:
+            first = failed_writes[0]
+            label = first.tool_name if first.method is None else f"{first.tool_name}({first.method})"
+            detail = self._first_error_snippet(failed_writes)
+            message = f"GitHub review tool {label} failed"
+            return f"{message}: {detail}" if detail else message
 
         return None
 

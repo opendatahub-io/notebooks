@@ -114,7 +114,10 @@ def test_posting_failure_reason_when_all_comment_attempts_fail() -> None:
                 line=6,
             )
 
-    assert client.posting_failure_reason() == "failed to post inline review comments (2 attempt(s))"
+    assert client.posting_failure_reason() == (
+        "failed to post inline review comments (2 attempt(s)): "
+        "GitHub CLI command failed with exit code 422: gh api"
+    )
 
 
 def test_posting_failure_reason_when_comments_posted_but_review_not_submitted() -> None:
@@ -140,13 +143,41 @@ def test_posting_failure_reason_when_submit_fails_after_comments_posted() -> Non
         ]
     )
 
-    assert client.posting_failure_reason() == "posted inline comments but failed to submit the pending review"
+    assert client.posting_failure_reason() == (
+        "posted inline comments but failed to submit the pending review: submit failed"
+    )
 
 
 def test_posting_failure_reason_none_when_no_comment_attempts() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
 
     assert client.posting_failure_reason() is None
+
+
+def test_posting_failure_reason_when_failed_create_without_comments() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    client.invocations.append(
+        ReviewToolInvocation(
+            tool_name="pull_request_review_write",
+            method="create",
+            success=False,
+            error='gh: Unprocessable Entity (HTTP 422)',
+        )
+    )
+
+    assert client.posting_failure_reason() == (
+        "GitHub review tool pull_request_review_write(create) failed: "
+        "gh: Unprocessable Entity (HTTP 422)"
+    )
+
+
+def test_inline_comments_posted_tracks_successful_comment() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    assert client.inline_comments_posted() is False
+    client.invocations.append(
+        ReviewToolInvocation(tool_name="add_comment_to_pending_review", method=None, success=True)
+    )
+    assert client.inline_comments_posted() is True
 
 
 def test_make_github_review_tools_returns_client_and_tools() -> None:
