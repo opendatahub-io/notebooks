@@ -240,22 +240,6 @@ def find_target_dirs(target_dir: Path | None, log: LogBuffer) -> list[Path]:
     return discover_all_image_project_dirs()
 
 
-def _merge_base_with_head(base_ref: str) -> str:
-    """Merge-base of the PR base branch tip and HEAD (for three-dot PR diffs)."""
-    result = subprocess.run(
-        ["git", "merge-base", base_ref, "HEAD"],
-        cwd=ROOT_DIR,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise SystemExit(
-            f"git merge-base {base_ref} HEAD failed: {result.stderr.strip() or result.returncode}"
-        )
-    return result.stdout.strip()
-
-
 def _list_changed_files(from_ref: str, to_ref: str = "HEAD") -> list[str]:
     """PR file diff via ci/cached-builds helper (symlink-aware three-dot diff)."""
     cached_builds = ROOT_DIR / "ci" / "cached-builds"
@@ -311,12 +295,11 @@ def _is_lock_chain_file(relative_to_project: Path) -> bool:
 def resolve_pr_scoped_target_dirs(pr_base: str, log: LogBuffer) -> list[Path]:
     """Image project dirs whose lock chain changed in the PR, or all dirs if global inputs changed.
 
-    ``pr_base`` is the PR target branch tip (e.g. ``pull_request.base.sha``). The merge-base
-    with HEAD is computed before diffing so rebased or behind-main branches still work.
+    ``pr_base`` is the merge-base ref for a three-dot PR diff (``pr_base...HEAD``). CI resolves
+    it via the GitHub compare API; locally use ``git merge-base <base> HEAD``.
     """
-    merge_base = _merge_base_with_head(pr_base)
-    log.info(f"PR lock scoping from merge-base {merge_base}")
-    changed = _list_changed_files(merge_base)
+    log.info(f"PR lock scoping from merge-base {pr_base}")
+    changed = _list_changed_files(pr_base)
     all_dirs = discover_all_image_project_dirs()
 
     if any(_is_global_lock_input(path) for path in changed):
@@ -726,7 +709,7 @@ def main(
         str | None,
         typer.Option(
             "--pr-base",
-            help="PR target branch tip (e.g. pull_request.base.sha); merge-base with HEAD is used for scoping",
+            help="Merge-base ref for PR scoping (three-dot diff pr_base...HEAD); CI passes compare API result",
         ),
     ] = None,
 ) -> None:

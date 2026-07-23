@@ -10,8 +10,8 @@ usage() {
   cat <<'EOF'
 Usage: ci/generate_code.sh [--pr-base REF]
 
-  --pr-base REF   PR only: regenerate locks for image dirs whose lock chain changed
-                  (pyproject.toml, pylock.toml, requirements.*.txt, or uv.lock.d/*).
+  --pr-base REF   PR only: merge-base ref for lock scoping (pyproject.toml, pylock.toml,
+                  requirements.*.txt, or uv.lock.d/*). Locally: git merge-base <base> HEAD.
                   Omit on push for full regen.
 EOF
 }

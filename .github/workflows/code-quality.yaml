@@ -18,8 +18,20 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-        with:
-          fetch-depth: 0
+
+      - name: Fetch PR merge base for lock scoping
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          MERGE_BASE="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${PR_BASE_SHA}...${PR_HEAD_SHA}" --jq '.merge_base_commit.sha')"
+          if [[ -z "${MERGE_BASE}" || "${MERGE_BASE}" == "null" ]]; then
+            echo "::error::Could not resolve merge-base from GitHub compare API"
+            exit 1
+          fi
+          git fetch --no-tags --depth=1 origin "${MERGE_BASE}"
+          echo "MERGE_BASE=${MERGE_BASE}" >> "${GITHUB_ENV}"
 
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv
@@ -44,8 +56,8 @@ jobs:
       - name: Rerun all code generators we have (pr)
         if: github.event_name == 'pull_request'
         env:
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: bash ci/generate_code.sh --pr-base "${PR_BASE_SHA}"
+          MERGE_BASE: ${{ env.MERGE_BASE }}
+        run: bash ci/generate_code.sh --pr-base "${MERGE_BASE}"
 
       - name: Rerun all code generators we have (push)
         if: github.event_name != 'pull_request'
