@@ -311,8 +311,10 @@ def test_resolve_pr_scoped_diffs_from_merge_base_ref(
     )
     monkeypatch.setattr(pg, "_list_changed_files", changed_files_mock)
     expected = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
-    assert pg.resolve_pr_scoped_target_dirs(merge_base, pg.LogBuffer()) == [expected]
-    changed_files_mock.assert_called_once_with(merge_base)
+    assert pg.resolve_pr_scoped_target_dirs(merge_base, pg.LogBuffer()) == [expected], (
+        "merge-base diff should scope to touched image dir"
+    )
+    changed_files_mock.assert_called_once_with(merge_base, "HEAD")
 
 
 def test_resolve_pr_scoped_skips_unrelated(monkeypatch: pytest.MonkeyPatch) -> None:

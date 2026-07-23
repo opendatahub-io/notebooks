@@ -295,7 +295,7 @@ def resolve_pr_scoped_target_dirs(pr_base: str, log: LogBuffer) -> list[Path]:
     it via the GitHub compare API; locally use ``git merge-base <base> HEAD``.
     """
     log.info(f"PR lock scoping from merge-base {pr_base}")
-    changed = _list_changed_files(pr_base)
+    changed = _list_changed_files(pr_base, "HEAD")
     all_dirs = discover_all_image_project_dirs()
 
     if any(_is_global_lock_input(path) for path in changed):
