@@ -268,16 +268,16 @@ def test_generate_requirements_txt_falls_back_to_pylock_header_when_index_resolu
 
 def test_image_project_dir_for_repo_file_jupyter(repo_root: Path) -> None:
     project = repo_root / "jupyter" / "minimal" / "ubi9-python-3.12"
-    assert (
-        pg.image_project_dir_for_repo_file("jupyter/minimal/ubi9-python-3.12/pyproject.toml") == project
-    ), "jupyter pyproject.toml should map to image project dir"
+    assert pg.image_project_dir_for_repo_file("jupyter/minimal/ubi9-python-3.12/pyproject.toml") == project, (
+        "jupyter pyproject.toml should map to image project dir"
+    )
 
 
 def test_image_project_dir_for_repo_file_codeserver(repo_root: Path) -> None:
     project = repo_root / "codeserver" / "ubi9-python-3.12"
-    assert (
-        pg.image_project_dir_for_repo_file("codeserver/ubi9-python-3.12/uv.lock.d/pylock.cpu.toml") == project
-    ), "codeserver pylock path should map to image project dir"
+    assert pg.image_project_dir_for_repo_file("codeserver/ubi9-python-3.12/uv.lock.d/pylock.cpu.toml") == project, (
+        "codeserver pylock path should map to image project dir"
+    )
 
 
 def test_is_lock_chain_file(subtests: pytest.Subtests) -> None:
