@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import subprocess
+from unittest.mock import patch
+
 import pytest
 from odh_ci_agent import github_api
 
@@ -25,6 +28,16 @@ def test_query_path_encodes_query_string() -> None:
 def test_gh_api_pages_rejects_non_positive_per_page() -> None:
     with pytest.raises(ValueError, match="per_page must be a positive integer"):
         github_api.gh_api_pages("repos/foo/bar/issues", item_key="items", per_page=0)
+
+
+def test_gh_api_json_returns_none_on_empty_stdout(monkeypatch: pytest.MonkeyPatch) -> None:
+    with patch(
+        "odh_ci_agent.github_api.run_command",
+        return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+    ):
+        result = github_api.gh_api_json("repos/owner/repo/pulls/1/reviews/1", method="DELETE")
+
+    assert result is None
 
 
 def test_parse_positive_issue_number_accepts_canonical_values() -> None:

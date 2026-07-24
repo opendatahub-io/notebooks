@@ -105,6 +105,8 @@ def gh_api_json(
         command.extend(["--input", "-"])
         input_text = json.dumps(input_json, separators=(",", ":"), sort_keys=True)
     result = run_command(command, input_text=input_text, timeout=timeout)
+    if not result.stdout.strip():
+        return None
     return json.loads(result.stdout)
 
 
