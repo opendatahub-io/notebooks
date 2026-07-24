@@ -6,7 +6,7 @@ from odh_ci_agent.pr_review_summary import (
     marker_for_run,
 )
 from odh_ci_agent.upsert_review_comment import (
-    latest_active_review_summary_comment,
+    latest_review_summary_comment,
     other_active_review_summary_comments,
 )
 
@@ -15,7 +15,7 @@ def _comment(comment_id: int, body: str, *, updated_at: str = "2026-01-02T00:00:
     return {"id": comment_id, "body": body, "updated_at": updated_at}
 
 
-def test_latest_active_review_summary_comment_skips_superseded() -> None:
+def test_latest_review_summary_comment_reuses_latest_even_if_superseded() -> None:
     marker = marker_for_run(100)
     comments = [
         _comment(1, f"## Summary\n\n{marker}", updated_at="2026-01-01T00:00:00Z"),
@@ -26,19 +26,19 @@ def test_latest_active_review_summary_comment_skips_superseded() -> None:
         ),
     ]
 
-    latest = latest_active_review_summary_comment(comments)
+    latest = latest_review_summary_comment(comments)
 
     assert latest is not None
-    assert latest["id"] == 1
+    assert latest["id"] == 2
 
 
-def test_latest_active_review_summary_comment_picks_newest_active() -> None:
+def test_latest_review_summary_comment_picks_newest_summary_comment() -> None:
     comments = [
         _comment(1, f"## Summary\n\n{marker_for_run(10)}", updated_at="2026-01-01T00:00:00Z"),
         _comment(2, f"## Summary\n\n{marker_for_run(11)}", updated_at="2026-01-03T00:00:00Z"),
     ]
 
-    latest = latest_active_review_summary_comment(comments)
+    latest = latest_review_summary_comment(comments)
 
     assert latest is not None
     assert latest["id"] == 2

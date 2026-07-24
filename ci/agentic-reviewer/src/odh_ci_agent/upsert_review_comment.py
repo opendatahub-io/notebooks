@@ -10,6 +10,7 @@ from odh_ci_agent.github_api import gh_api_json, gh_api_list_pages
 from odh_ci_agent.pr_review_summary import (
     ensure_marker,
     is_active_review_summary_comment,
+    is_review_summary_comment,
     marker_for_run,
 )
 
@@ -33,15 +34,15 @@ def comment_sort_key(comment: dict[str, object]) -> tuple[str, int]:
     )
 
 
-def latest_active_review_summary_comment(
+def latest_review_summary_comment(
     comments: list[dict[str, object]],
 ) -> dict[str, object] | None:
-    active_comments = [
-        comment for comment in comments if is_active_review_summary_comment(str(comment.get("body", "")))
+    review_summary_comments = [
+        comment for comment in comments if is_review_summary_comment(str(comment.get("body", "")))
     ]
-    if not active_comments:
+    if not review_summary_comments:
         return None
-    return max(active_comments, key=comment_sort_key)
+    return max(review_summary_comments, key=comment_sort_key)
 
 
 def other_active_review_summary_comments(
@@ -108,7 +109,7 @@ def main() -> None:
     comments = gh_api_list_pages(f"repos/{repository}/issues/{issue_number}/comments")
     comment_objects = [comment for comment in comments if isinstance(comment, dict)]
 
-    existing_comment = latest_active_review_summary_comment(comment_objects)
+    existing_comment = latest_review_summary_comment(comment_objects)
 
     if existing_comment is None:
         created = gh_api_json(
