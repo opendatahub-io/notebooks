@@ -115,7 +115,7 @@ ADD_COMMENT_SCHEMA = {
             "description": "Optional replacement snippet rendered as a GitHub suggestion block.",
         },
     },
-    "required": ["path", "body", "subjectType"],
+    "required": ["path", "body", "subjectType", "line"],
 }
 
 
