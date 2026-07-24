@@ -21,3 +21,5 @@ Unit tests live under `tests/unit/` and run with the root test suite:
 ```shell
 make test-unit
 ```
+
+For local checks, workflow soak tests, and GHA trigger matrices, see [TESTING.md](TESTING.md).

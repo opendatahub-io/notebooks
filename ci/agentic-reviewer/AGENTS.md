@@ -95,3 +95,5 @@ Pre-tool hooks in the Python SDK only return allow/deny to the Go harness; they 
 ## Tests
 
 Unit tests: `ci/agentic-reviewer/tests/unit/`. May require `git add -f` if locally excluded.
+
+Workflow and soak-test procedure: [TESTING.md](TESTING.md).
