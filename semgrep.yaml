@@ -46,6 +46,10 @@ rules:
     patterns:
       - pattern-regex: |-
           (?i)(password|passwd|pwd|secret|token|api[_-]?key|private[_-]?key)\s*[:=]+\s*["'][^"']{8,}["']
+    paths:
+      exclude:
+        # nss_wrapper config files: NSS_WRAPPER_PASSWD is a file path, not a password
+        - "**/generate_container_user"
     metadata:
       cwe: "CWE-798"
       owasp: "A07:2021 - Identification and Authentication Failures"
@@ -552,6 +556,9 @@ rules:
       Remediation: Move secrets to environment variables or secret management.
     pattern-regex: |-
       (?i)^[[:space:]]*(password|passwd|secret|token|api[_-]?key|private[_-]?key):[[:space:]]*["']?[^"'\s]{8,}
+    paths:
+      exclude:
+        - ".tekton/**"
     metadata:
       cwe: "CWE-798"
       category: "security"

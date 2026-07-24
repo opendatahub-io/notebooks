@@ -1,0 +1,63 @@
+###############
+# api calls from probes get to che-code /healthz endpoint
+###############
+location = /api {
+  return 302 /healthz;
+  access_log  off;
+}
+
+location /api/ {
+  return 302 /healthz;
+  access_log  off;
+}
+###############
+
+###############
+# api calls from culler get to CGI processing
+###############
+location = /api/kernels {
+    return 302 /api/kernels/;
+    access_log  off;
+}
+
+location /api/kernels/ {
+  proxy_pass http://127.0.0.1:8080;
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  gzip off;
+  access_log off;
+}
+###############
+
+###############
+# Upstream che-code (quay.io/che-incubator) generates HTML referencing
+# ./oss-dev/static/... but doesn't route that prefix. Strip it so
+# /oss-dev/foo → /foo reaches the server's actual static file handler.
+# Harmless for downstream (devspaces/code-rhel9) which handles both paths.
+###############
+location /oss-dev/ {
+    rewrite ^/oss-dev/(.*)$ /$1 last;
+}
+
+###############
+# Everything else -> che-code server
+###############
+location / {
+    proxy_pass http://workbench_server;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_read_timeout 20d;
+
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $custom_scheme;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-NginX-Proxy true;
+    proxy_redirect off;
+
+    access_log /var/log/nginx/checode.access.log json if=$loggable;
+}
+###############

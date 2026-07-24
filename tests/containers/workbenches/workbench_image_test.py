@@ -19,7 +19,7 @@ import testcontainers.core.docker_client
 import testcontainers.core.network
 import testcontainers.core.waiting_utils
 
-from tests.containers import docker_utils, kubernetes_utils, podman_machine_utils
+from tests.containers import conftest, docker_utils, kubernetes_utils, podman_machine_utils
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -158,6 +158,11 @@ class TestWorkbenchImage:
         """
         redirect_paths = ["/", "/codeserver"]
         forged_host = "evil.example"
+
+        if codeserver_image.workbench_type is not conftest.WorkbenchType.CODESERVER:
+            pytest.skip(
+                f"Open-redirect test is specific to classic code-server NGINX rules ({codeserver_image.workbench_type})"
+            )
 
         with WorkbenchContainer(image=codeserver_image.name, user=1000, group_add=[0]) as container:
             container.start(wait_for_readiness=True)

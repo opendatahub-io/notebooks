@@ -49,16 +49,8 @@ func TestParseAllDockerfiles(t *testing.T) {
 
 	for _, dockerfile := range dockerfiles {
 		t.Run(dockerfile, func(t *testing.T) {
-			buildArgs := map[string]string{"BASE_IMAGE": "fake-image"}
-
-			// Set PYLOCK_FLAVOR from uv.lock.d/ contents if the directory exists
 			dockerfileDir := filepath.Dir(dockerfile)
-			if entries, err := filepath.Glob(filepath.Join(dockerfileDir, "uv.lock.d", "pylock.*.toml")); err == nil && len(entries) > 0 {
-				// Extract flavor from "pylock.cpu.toml" → "cpu"
-				base := filepath.Base(entries[0])
-				flavor := strings.TrimPrefix(strings.TrimSuffix(base, ".toml"), "pylock.")
-				buildArgs["PYLOCK_FLAVOR"] = flavor
-			}
+			buildArgs := loadBuildArgs(dockerfileDir)
 
 			result := getDockerfileDeps(dockerfile, "amd64", buildArgs)
 			if len(result) == 0 {
@@ -138,4 +130,36 @@ func TestParseFileWithStageMount(t *testing.T) {
 	if len(result) != 0 {
 		t.Fatalf("unexpected deps reported for the dockerfile: %s", result)
 	}
+}
+
+// loadBuildArgs returns build-arg key=value pairs for a Dockerfile directory.
+// It reads the first build-args/*.conf file (same format the Makefile uses)
+// and merges in PYLOCK_FLAVOR from uv.lock.d/ if present. BASE_IMAGE always
+// gets a fake value so ARGs without defaults don't cause panics.
+func loadBuildArgs(dockerfileDir string) map[string]string {
+	buildArgs := map[string]string{"BASE_IMAGE": "fake-image"}
+
+	if confFiles, err := filepath.Glob(filepath.Join(dockerfileDir, "build-args", "*.conf")); err == nil && len(confFiles) > 0 {
+		if data, err := os.ReadFile(confFiles[0]); err == nil {
+			for line := range strings.SplitSeq(string(data), "\n") {
+				line = strings.TrimSpace(line)
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+				if k, v, ok := strings.Cut(line, "="); ok {
+					if _, exists := buildArgs[k]; !exists {
+						buildArgs[k] = v
+					}
+				}
+			}
+		}
+	}
+
+	if entries, err := filepath.Glob(filepath.Join(dockerfileDir, "uv.lock.d", "pylock.*.toml")); err == nil && len(entries) > 0 {
+		base := filepath.Base(entries[0])
+		flavor := strings.TrimPrefix(strings.TrimSuffix(base, ".toml"), "pylock.")
+		buildArgs["PYLOCK_FLAVOR"] = flavor
+	}
+
+	return buildArgs
 }

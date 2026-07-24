@@ -451,7 +451,7 @@ jobs:
       # Playwright runs use baked-in deps (pnpm + Playwright) from tests/browser/Dockerfile.
       - name: Build browser tests image
         id: browser-tests-image
-        if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' }}
+        if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && !contains(inputs.target, 'che-code') && steps.make-target.outcome == 'success' }}
         run: |
           set -Eeuxo pipefail
           IMAGE="localhost/workbench-images-tests:ci"
@@ -464,7 +464,7 @@ jobs:
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
       - name: Run Playwright tests
-        if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' && steps.browser-tests-image.outcome == 'success' }}
+        if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && !contains(inputs.target, 'che-code') && steps.make-target.outcome == 'success' && steps.browser-tests-image.outcome == 'success' }}
         uses: ./.github/actions/playwright-test
         with:
           test-target: ${{ steps.calculated_vars.outputs.OUTPUT_IMAGE }}

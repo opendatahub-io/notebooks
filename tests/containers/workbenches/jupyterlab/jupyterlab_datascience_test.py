@@ -143,8 +143,7 @@ except Exception as e:
             # Code-server image uses /opt/app-root/bin/python3; others use default python.
             # Detection: label "name" contains "-code-server-" (set in Dockerfile.konflux.cpu). Fallback: image ref
             # contains "codeserver" when daemon is Podman and labels came from ContainerConfig (conftest handles that).
-            name_label = datascience_image.labels.get("name", "")
-            is_codeserver = "-code-server-" in name_label or "codeserver" in datascience_image.name.lower()
+            is_codeserver = datascience_image.workbench_type.is_vscode
             python_exe = "/opt/app-root/bin/python3" if is_codeserver else "python"
             print(f"Using python executable: {python_exe}")
 
