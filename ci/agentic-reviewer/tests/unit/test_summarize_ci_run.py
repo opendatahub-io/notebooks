@@ -54,7 +54,7 @@ def test_build_config_enables_read_only_source_tools(monkeypatch) -> None:
 
     config = summarize_ci_run.build_config(context)
 
-    assert config.workspaces == ["/workspace/notebooks"]
+    assert config.workspaces == ["/workspace/notebooks/unsafe-pr-source"]
     assert config.capabilities is not None
     assert config.capabilities.enabled_tools == [
         BuiltinTools.LIST_DIR,

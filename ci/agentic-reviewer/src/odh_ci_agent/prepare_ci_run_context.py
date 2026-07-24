@@ -12,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 from odh_ci_agent.ci_summary import build_clusters, int_value, marker_for_run, render_progress_comment, utc_now_iso
 from odh_ci_agent.github_api import gh_api_json, gh_api_list_pages, gh_api_pages, gh_job_log
 from odh_ci_agent.patch_excerpt import capped_patch_excerpt
+from odh_ci_agent.source_workspace import resolve_source_workspace
 
 MAX_LOG_LINES = 150
 MAX_LOG_CHARS = 12_000
@@ -495,7 +496,7 @@ def build_context(
         "run_conclusion": run_conclusion,
         "run_status": run_status,
         "source_head_sha": source_head_sha,
-        "source_workspace": os.environ.get("SOURCE_WORKSPACE", os.environ.get("GITHUB_WORKSPACE", os.getcwd())),
+        "source_workspace": str(resolve_source_workspace()),
         "trigger_job_id": trigger_job_id,
         "trigger_job_name": trigger_job_name,
         "updated_at": updated_at,

@@ -127,7 +127,7 @@ def test_build_context_uses_pull_request_and_trigger_job_name(monkeypatch) -> No
     }
     assert context["pull_request"] == pr_context
     assert context["source_head_sha"] == "abc123"
-    assert context["source_workspace"] == "/workspace/notebooks"
+    assert context["source_workspace"] == "/workspace/notebooks/unsafe-pr-source"
     assert context["trigger_job_name"] == "jupyter-datascience · linux/arm64 [odh]"
     progress = context["progress"]
     assert isinstance(progress, dict)

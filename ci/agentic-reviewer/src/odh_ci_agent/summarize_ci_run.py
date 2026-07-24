@@ -22,6 +22,7 @@ from odh_ci_agent.ci_summary import (
     string_list,
 )
 from odh_ci_agent.github_api import read_github_token
+from odh_ci_agent.source_workspace import resolve_source_workspace
 
 SOURCE_READ_BUILTINS = [
     BuiltinTools.LIST_DIR,
@@ -76,7 +77,7 @@ def should_enable_actions_fallback(context: Mapping[str, object]) -> bool:
 
 def build_config(context: Mapping[str, object]) -> LocalAgentConfig:
     github_credential = read_github_token()
-    source_workspace = os.environ.get("SOURCE_WORKSPACE", os.environ.get("GITHUB_WORKSPACE", os.getcwd()))
+    source_workspace = str(resolve_source_workspace())
     mcp_servers = []
     policies = [
         mcp_github.policy.deny_all(),
