@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from odh_ci_agent.source_workspace import resolve_source_workspace
 
 
