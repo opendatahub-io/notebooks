@@ -1,4 +1,4 @@
-"""Helpers for filtering agent-plugin metadata out of review context."""
+"""Helpers for preparing changed-file lists in agent review context."""
 
 from __future__ import annotations
 
@@ -7,25 +7,10 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-AGENT_META_PREFIXES = (".agents/plugins/", ".agents/skills/")
-
-
-def is_agent_meta_path(filename: str) -> bool:
-    normalized = filename.replace("\\", "/").removeprefix("./").lstrip("/")
-    return any(normalized.startswith(prefix) for prefix in AGENT_META_PREFIXES)
-
 
 def filter_changed_files(
     files: Sequence[Mapping[str, object]],
 ) -> tuple[list[dict[str, object]], int]:
-    """Return agent-facing changed files and how many meta paths were omitted."""
+    """Return changed files for agent context and how many paths were omitted."""
 
-    kept: list[dict[str, object]] = []
-    omitted = 0
-    for file_info in files:
-        filename = file_info.get("filename")
-        if isinstance(filename, str) and is_agent_meta_path(filename):
-            omitted += 1
-            continue
-        kept.append(dict(file_info))
-    return kept, omitted
+    return [dict(file_info) for file_info in files], 0

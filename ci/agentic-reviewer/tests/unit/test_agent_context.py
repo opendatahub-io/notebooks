@@ -1,42 +1,20 @@
 from __future__ import annotations
 
-from odh_ci_agent import agent_context
+from odh_ci_agent.agent_context import filter_changed_files
 
 
-def test_is_agent_meta_path() -> None:
-    assert agent_context.is_agent_meta_path(".agents/plugins/github/SKILL.md") is True
-    assert agent_context.is_agent_meta_path(".agents/skills/foo/SKILL.md") is True
-    assert agent_context.is_agent_meta_path("ci/agentic-reviewer/src/odh_ci_agent/review_pr.py") is False
-    assert agent_context.is_agent_meta_path("jupyter/minimal/Dockerfile") is False
-
-
-def test_filter_changed_files_counts_omitted() -> None:
+def test_filter_changed_files_keeps_agents_paths() -> None:
     files = [
-        {"filename": "ci/foo.py"},
-        {"filename": ".agents/plugins/github/SKILL.md"},
-        {"filename": ".agents/skills/review/SKILL.md"},
-        {"filename": "Makefile"},
+        {"filename": "src/main.py", "status": "modified"},
+        {"filename": ".agents/plugins/foo/SKILL.md", "status": "added"},
+        {"filename": ".agents/skills/bar/SKILL.md", "status": "added"},
     ]
 
-    kept, omitted = agent_context.filter_changed_files(files)
+    kept, omitted = filter_changed_files(files)
 
-    assert [file_info["filename"] for file_info in kept] == ["ci/foo.py", "Makefile"]
-    assert omitted == 2
-
-
-def test_prepare_review_context_excludes_agent_meta_files() -> None:
-    files = [
-        {"filename": "ci/foo.py", "patch": "@@ diff", "additions": 1, "deletions": 0, "status": "modified"},
-        {
-            "filename": ".agents/plugins/github/SKILL.md",
-            "patch": "@@ plugin",
-            "additions": 1,
-            "deletions": 0,
-            "status": "added",
-        },
+    assert omitted == 0
+    assert [entry["filename"] for entry in kept] == [
+        "src/main.py",
+        ".agents/plugins/foo/SKILL.md",
+        ".agents/skills/bar/SKILL.md",
     ]
-
-    kept, omitted = agent_context.filter_changed_files(files)
-
-    assert [file_info["filename"] for file_info in kept] == ["ci/foo.py"]
-    assert omitted == 1
