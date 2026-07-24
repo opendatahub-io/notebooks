@@ -102,13 +102,62 @@ def test_submit_pending_review_uses_events_endpoint() -> None:
     client._pending_review_id = 77
 
     with patch("odh_ci_agent.github_review_tools.gh_api_json", return_value={"state": "COMMENTED"}) as mock_api:
-        client.pull_request_review_write(method="submit_pending", event="COMMENT", body="")
+        client.pull_request_review_write(method="submit_pending", event="COMMENT", body="summary")
 
     mock_api.assert_called_once_with(
         "repos/owner/repo/pulls/12/reviews/77/events",
         method="POST",
-        input_json={"event": "COMMENT", "body": ""},
+        input_json={"event": "COMMENT", "body": "summary"},
     )
+
+
+def test_submit_pending_skips_empty_review_without_api_call() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+
+    with patch("odh_ci_agent.github_review_tools.gh_api_json") as mock_api:
+        result = client.pull_request_review_write(method="submit_pending", event="COMMENT", body="")
+
+    assert result == {"skipped": True, "reason": "no review comments or body to submit"}
+    mock_api.assert_not_called()
+
+
+def test_submit_pending_coerces_request_changes_to_comment() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    client._pending_review_id = 77
+
+    with patch("odh_ci_agent.github_review_tools.gh_api_json", return_value={"state": "COMMENTED"}) as mock_api:
+        client.pull_request_review_write(
+            method="submit_pending",
+            event="REQUEST_CHANGES",
+            body="Please address the inline comments.",
+        )
+
+    mock_api.assert_called_once_with(
+        "repos/owner/repo/pulls/12/reviews/77/events",
+        method="POST",
+        input_json={"event": "COMMENT", "body": "Please address the inline comments."},
+    )
+
+
+def test_posting_failure_reason_ignores_failed_submit_when_later_submit_succeeds() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    client.invocations.extend(
+        [
+            ReviewToolInvocation(
+                tool_name="pull_request_review_write",
+                method="submit_pending",
+                success=False,
+                error='{"errors":["Could not comment for pull request review."]}',
+            ),
+            ReviewToolInvocation(
+                tool_name="pull_request_review_write",
+                method="submit_pending",
+                success=True,
+            ),
+        ]
+    )
+
+    assert client.posting_failure_reason() is None
 
 
 def test_create_pending_review_recreates_existing_pending_review_with_staged_comments() -> None:

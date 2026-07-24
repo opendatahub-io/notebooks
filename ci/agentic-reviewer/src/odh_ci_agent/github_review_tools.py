@@ -67,7 +67,10 @@ PULL_REQUEST_REVIEW_WRITE_SCHEMA = {
         "body": {"type": "string", "description": "Review comment text."},
         "event": {
             "type": "string",
-            "description": "Review action when submitting.",
+            "description": (
+                "Review action when submitting. CI only supports COMMENT; "
+                "APPROVE and REQUEST_CHANGES are coerced to COMMENT."
+            ),
             "enum": ["APPROVE", "REQUEST_CHANGES", "COMMENT"],
         },
     },
@@ -390,6 +393,19 @@ class GitHubReviewClient:
             self._clear_local_draft()
         return response
 
+    def _review_submit_body(self, args: dict[str, Any]) -> str:
+        body = args.get("body")
+        if isinstance(body, str) and body.strip():
+            return body.strip()
+        if self._draft_review_body and self._draft_review_body.strip():
+            return self._draft_review_body.strip()
+        return ""
+
+    def _coerce_review_submit_event(self, event: object) -> str:
+        if event == "COMMENT":
+            return "COMMENT"
+        return "COMMENT"
+
     def _submit_pending_review(
         self,
         base_path: str,
@@ -398,15 +414,20 @@ class GitHubReviewClient:
         pull_number: int,
         args: dict[str, Any],
     ) -> object:
+        submit_body = self._review_submit_body(args)
+        if not self._draft_review_comments and not submit_body:
+            return {"skipped": True, "reason": "no review comments or body to submit"}
+
+        event = self._coerce_review_submit_event(args.get("event", "COMMENT"))
         if self._pending_review_id is None or self._draft_review_comments or self._draft_review_body:
-            self._create_pending_review(base_path, owner, repo, pull_number, {})
+            self._create_pending_review(base_path, owner, repo, pull_number, args)
         review_id = self._ensure_pending_review_id(owner, repo, pull_number)
         return gh_api_json(
             f"{base_path}/reviews/{review_id}/events",
             method="POST",
             input_json={
-                "event": args.get("event", "COMMENT"),
-                "body": args.get("body", ""),
+                "event": event,
+                "body": submit_body,
             },
         )
 
@@ -494,11 +515,22 @@ class GitHubReviewClient:
                 return f"{message}: {detail}" if detail else message
             return None
 
+        submit_succeeded = any(
+            invocation.tool_name == "pull_request_review_write"
+            and invocation.method == "submit_pending"
+            and invocation.success
+            for invocation in self.invocations
+        )
         failed_writes = [
             invocation
             for invocation in self.invocations
             if invocation.tool_name in {"add_comment_to_pending_review", "pull_request_review_write"}
             and not invocation.success
+            and not (
+                submit_succeeded
+                and invocation.tool_name == "pull_request_review_write"
+                and invocation.method == "submit_pending"
+            )
         ]
         if failed_writes:
             first = failed_writes[0]

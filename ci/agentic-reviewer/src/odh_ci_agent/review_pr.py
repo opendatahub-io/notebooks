@@ -122,6 +122,7 @@ Workflow:
 3. Leave feedback directly on GitHub:
    - Prefer inline comments for concrete issues on changed lines using `add_comment_to_pending_review`.
    - Submit the pending review as a COMMENT review with an empty body (inline comments only).
+   - If you have no inline comments to post, do not call `submit_pending`.
    - Never approve the PR.
    - Never request changes.
 4. Do not put the review summary in the GitHub review body. Output it only in your final response using the format below.
