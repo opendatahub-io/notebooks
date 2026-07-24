@@ -8,6 +8,7 @@ import os
 import sys
 from pathlib import Path
 
+from odh_ci_agent.agent_context import filter_changed_files
 from odh_ci_agent.github_api import gh_api_json, gh_api_list_pages, gh_api_pages
 from odh_ci_agent.patch_excerpt import capped_patch_excerpt
 
@@ -78,25 +79,28 @@ def main() -> None:
 
     all_filenames = [str(file_info["filename"]) for file_info in all_files if isinstance(file_info, dict)]
     typed_check_runs: list[dict[str, object]] = check_runs
+    raw_changed_files = [
+        {
+            "additions": file_info.get("additions"),
+            "deletions": file_info.get("deletions"),
+            "excerpt": capped_patch_excerpt(
+                file_info.get("patch") if isinstance(file_info.get("patch"), str) else None,
+                max_lines=MAX_PATCH_LINES,
+            ),
+            "filename": file_info["filename"],
+            "status": file_info.get("status"),
+        }
+        for file_info in files
+    ]
+    changed_files, agent_meta_files_omitted = filter_changed_files(raw_changed_files)
 
     context = {
         "additional_context": os.environ.get("ADDITIONAL_CONTEXT", "").strip(),
         "affected_image_targets": affected_image_targets(all_filenames),
+        "agent_meta_files_omitted": agent_meta_files_omitted,
         "base_ref": pr["base"]["ref"],
         "body": pr.get("body") or "",
-        "changed_files": [
-            {
-                "additions": file_info.get("additions"),
-                "deletions": file_info.get("deletions"),
-                "excerpt": capped_patch_excerpt(
-                    file_info.get("patch") if isinstance(file_info.get("patch"), str) else None,
-                    max_lines=MAX_PATCH_LINES,
-                ),
-                "filename": file_info["filename"],
-                "status": file_info.get("status"),
-            }
-            for file_info in files
-        ],
+        "changed_files": changed_files,
         "changed_files_omitted": max(0, len(all_files) - len(files)),
         "check_runs": summarized_check_runs(typed_check_runs),
         "check_runs_omitted": max(0, len(all_check_runs) - len(check_runs)),

@@ -221,6 +221,40 @@ def test_build_context_allows_push_runs_without_pull_request(monkeypatch) -> Non
     assert context["source_head_sha"] == "deadbeef"
 
 
+def test_pull_request_context_excludes_agent_meta_files(monkeypatch) -> None:
+    monkeypatch.setattr(
+        prepare,
+        "gh_api_json",
+        lambda _path: {
+            "base": {"ref": "main"},
+            "body": "",
+            "head": {"ref": "feature", "sha": "abc123"},
+            "title": "Example PR",
+        },
+    )
+    monkeypatch.setattr(
+        prepare,
+        "gh_api_list_pages",
+        lambda _path, timeout=180: [
+            {"filename": "ci/foo.py", "patch": "@@ diff", "additions": 1, "deletions": 0, "status": "modified"},
+            {
+                "filename": ".agents/plugins/github/SKILL.md",
+                "patch": "@@ plugin",
+                "additions": 1,
+                "deletions": 0,
+                "status": "added",
+            },
+        ],
+    )
+
+    context = prepare.pull_request_context("owner/repo", 123)
+
+    changed_files = context["changed_files"]
+    assert isinstance(changed_files, list)
+    assert [file_info["filename"] for file_info in changed_files] == ["ci/foo.py"]
+    assert context["agent_meta_files_omitted"] == 1
+
+
 def test_pull_request_context_caps_patch_and_counts_omitted(monkeypatch) -> None:
     monkeypatch.setattr(
         prepare,

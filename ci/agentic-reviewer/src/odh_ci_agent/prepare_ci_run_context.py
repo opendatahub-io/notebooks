@@ -9,6 +9,7 @@ import re
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 
+from odh_ci_agent.agent_context import filter_changed_files
 from odh_ci_agent.ci_summary import (
     build_clusters,
     int_value,
@@ -434,7 +435,7 @@ def pull_request_context(repository: str, pr_number: int) -> dict[str, object]:
     files = gh_api_list_pages(f"repos/{repository}/pulls/{pr_number}/files", timeout=180)
     typed_files = [file_info for file_info in files if isinstance(file_info, dict)]
 
-    changed_files = [
+    raw_changed_files = [
         {
             "additions": file_info.get("additions"),
             "deletions": file_info.get("deletions"),
@@ -447,12 +448,14 @@ def pull_request_context(repository: str, pr_number: int) -> dict[str, object]:
         }
         for file_info in typed_files[:MAX_CHANGED_FILES_WITH_PATCH]
     ]
+    changed_files, agent_meta_files_omitted = filter_changed_files(raw_changed_files)
 
     return {
+        "agent_meta_files_omitted": agent_meta_files_omitted,
         "base_ref": pr["base"]["ref"],
         "body": pr.get("body") or "",
         "changed_files": changed_files,
-        "changed_files_omitted": max(0, len(typed_files) - len(changed_files)),
+        "changed_files_omitted": max(0, len(typed_files) - len(raw_changed_files)),
         "head_ref": pr["head"]["ref"],
         "head_sha": pr["head"]["sha"],
         "number": pr_number,

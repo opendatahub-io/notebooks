@@ -61,6 +61,7 @@ def test_build_prompt_includes_repository_pr_and_context() -> None:
     assert "not in the GitHub review body" in prompt
     assert "stages one LINE review comment locally" in prompt
     assert "Do not paginate `get_files` just to rediscover the file list" in prompt
+    assert "Files under `.agents/plugins/` are IDE plugin docs" in prompt
     assert "intentionally targets Python 3.14" in prompt
     assert "## 📋 Review Summary" in prompt
 
