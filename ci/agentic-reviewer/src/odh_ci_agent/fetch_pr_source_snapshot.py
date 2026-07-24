@@ -80,7 +80,10 @@ def resolve_destination_workspace() -> Path:
     destination = (workspace_root / raw_destination).resolve()
     if destination == workspace_root:
         raise SystemExit("SOURCE_WORKSPACE must not be the workspace root")
-    destination.relative_to(workspace_root)
+    try:
+        destination.relative_to(workspace_root)
+    except ValueError as err:
+        raise SystemExit(f"SOURCE_WORKSPACE must stay under GITHUB_WORKSPACE: {raw_destination!r}") from err
     return destination
 
 
