@@ -9,7 +9,14 @@ import re
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 
-from odh_ci_agent.ci_summary import build_clusters, int_value, marker_for_run, render_progress_comment, utc_now_iso
+from odh_ci_agent.ci_summary import (
+    build_clusters,
+    int_value,
+    logs_fully_grounded,
+    marker_for_run,
+    render_progress_comment,
+    utc_now_iso,
+)
 from odh_ci_agent.github_api import gh_api_json, gh_api_list_pages, gh_api_pages, gh_job_log
 from odh_ci_agent.patch_excerpt import capped_patch_excerpt
 from odh_ci_agent.source_workspace import resolve_source_workspace
@@ -488,6 +495,7 @@ def build_context(
         "failed_jobs": failed_jobs,
         "github_repository": repository,
         "in_progress_jobs": in_progress_jobs,
+        "logs_fully_grounded": logs_fully_grounded(failed_jobs),
         "mode": mode,
         "matrix_progress": matrix_progress,
         "pr_number": pull_request_number,

@@ -75,6 +75,18 @@ def string_list(value: object) -> list[str]:
     return [item for item in value if isinstance(item, str)]
 
 
+def failed_job_has_grounding(failed_job: Mapping[str, object]) -> bool:
+    has_excerpt = bool(failed_job.get("log_excerpt") or failed_job.get("log_tail"))
+    has_error_contexts = len(string_list(failed_job.get("error_contexts"))) > 0
+    return has_excerpt or has_error_contexts
+
+
+def logs_fully_grounded(failed_jobs: object) -> bool:
+    if not isinstance(failed_jobs, list) or not failed_jobs:
+        return False
+    return all(isinstance(job, dict) and failed_job_has_grounding(job) for job in failed_jobs)
+
+
 def build_clusters(failed_jobs: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
     grouped: dict[str, list[str]] = defaultdict(list)
     for failed_job in failed_jobs:

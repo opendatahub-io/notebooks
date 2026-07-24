@@ -128,10 +128,58 @@ def test_build_context_uses_pull_request_and_trigger_job_name(monkeypatch) -> No
     assert context["pull_request"] == pr_context
     assert context["source_head_sha"] == "abc123"
     assert context["source_workspace"] == "/workspace/notebooks/unsafe-pr-source"
+    assert context["logs_fully_grounded"] is False
     assert context["trigger_job_name"] == "jupyter-datascience · linux/arm64 [odh]"
     progress = context["progress"]
     assert isinstance(progress, dict)
     assert progress["failed"] == 1
+
+
+def test_build_context_sets_logs_fully_grounded(monkeypatch) -> None:
+    monkeypatch.setenv("GITHUB_WORKSPACE", "/workspace/notebooks")
+    monkeypatch.setattr(
+        prepare,
+        "build_failed_jobs",
+        lambda *_args, **_kwargs: [
+            {
+                "conclusion": "failure",
+                "log_excerpt": "Error: build failed",
+                "log_tail": "",
+                "name": "jupyter-datascience · linux/arm64 [odh]",
+            }
+        ],
+    )
+    run = {
+        "conclusion": "failure",
+        "html_url": "https://example.invalid/run/56",
+        "id": 56,
+        "name": "Build Notebooks (pr)",
+        "pull_requests": [{"number": 123}],
+        "status": "completed",
+    }
+    jobs = [
+        {
+            "conclusion": "failure",
+            "html_url": "https://example.invalid/job/2",
+            "id": 2,
+            "name": "jupyter-datascience · linux/arm64 [odh]",
+            "status": "completed",
+            "steps": [],
+        },
+    ]
+
+    context = prepare.build_context(
+        "owner/repo",
+        run,
+        jobs,
+        {},
+        123,
+        "abc123",
+        trigger_job_id=2,
+        include_logs=True,
+    )
+
+    assert context["logs_fully_grounded"] is True
 
 
 def test_build_context_allows_push_runs_without_pull_request(monkeypatch) -> None:

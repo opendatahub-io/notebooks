@@ -4,7 +4,7 @@ import asyncio
 from typing import TYPE_CHECKING
 
 from google.antigravity.types import BuiltinTools
-from odh_ci_agent import summarize_ci_run
+from odh_ci_agent import ci_summary, summarize_ci_run
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -43,7 +43,31 @@ def test_build_prompt_includes_mode_and_context() -> None:
 
     assert "Mode: final" in prompt
     assert '"workflow_run_id": 123' in prompt
+    assert "## Procedure" in prompt
+    assert "Tool-use policy" in prompt
+    assert "Do not re-verify" in prompt
     assert "untrusted snapshot of PR code/data" in prompt
+
+
+def test_build_prompt_notes_when_logs_are_fully_grounded() -> None:
+    context = {
+        "failed_jobs": [{"log_excerpt": "Error: boom", "log_tail": ""}],
+        "mode": "failure",
+        "progress": {"failed": 1},
+        "source_workspace": "/workspace/notebooks/unsafe-pr-source",
+        "workflow_run_id": 1,
+    }
+
+    prompt = summarize_ci_run.build_prompt(context)
+
+    assert "prefer context-only analysis" in prompt
+
+
+def test_logs_fully_grounded() -> None:
+    assert ci_summary.logs_fully_grounded([]) is False
+    assert ci_summary.logs_fully_grounded([{"log_excerpt": "x"}]) is True
+    assert ci_summary.logs_fully_grounded([{"log_tail": ""}]) is False
+    assert ci_summary.logs_fully_grounded([{"error_contexts": ["Error: x"]}]) is True
 
 
 def test_build_config_enables_read_only_source_tools(monkeypatch) -> None:
