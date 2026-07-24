@@ -22,6 +22,7 @@ from odh_ci_agent.ci_summary import (
     render_final_success_comment,
     render_progress_comment,
 )
+from odh_ci_agent.env import bool_env, required_env
 from odh_ci_agent.github_api import read_github_token
 from odh_ci_agent.run_statistics import format_usage_metadata, record_agent_run
 from odh_ci_agent.source_workspace import resolve_source_workspace
@@ -33,17 +34,6 @@ SOURCE_READ_BUILTINS = [
     BuiltinTools.VIEW_FILE,
 ]
 SOURCE_READ_TOOL_NAMES = [tool.value for tool in SOURCE_READ_BUILTINS]
-
-
-def required_env(name: str) -> str:
-    value = os.environ.get(name, "").strip()
-    if value:
-        return value
-    raise SystemExit(f"Missing required environment variable: {name}")
-
-
-def bool_env(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def load_context(path: str) -> dict[str, object]:

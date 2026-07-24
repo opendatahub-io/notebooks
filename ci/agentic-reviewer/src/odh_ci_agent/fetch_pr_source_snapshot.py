@@ -3,22 +3,15 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 import tarfile
 import tempfile
 from pathlib import Path, PurePosixPath
 from urllib.request import Request, urlopen
 
+from odh_ci_agent.env import required_env
 from odh_ci_agent.github_api import read_github_token
 from odh_ci_agent.source_workspace import resolve_source_workspace
-
-
-def required_env(name: str) -> str:
-    value = os.environ.get(name, "").strip()
-    if value:
-        return value
-    raise SystemExit(f"Missing required environment variable: {name}")
 
 
 def tarball_request(repository: str, head_sha: str, token: str | None) -> Request:

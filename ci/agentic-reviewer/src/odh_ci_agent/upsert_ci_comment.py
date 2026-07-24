@@ -13,14 +13,8 @@ from odh_ci_agent.ci_summary import (
     marker_token,
     render_superseded_comment,
 )
+from odh_ci_agent.env import required_env
 from odh_ci_agent.github_api import gh_api_json, gh_api_list_pages
-
-
-def required_env(name: str) -> str:
-    value = os.environ.get(name, "").strip()
-    if value:
-        return value
-    raise SystemExit(f"Missing required environment variable: {name}")
 
 
 def load_context(path: str) -> dict[str, object]:

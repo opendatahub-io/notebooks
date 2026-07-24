@@ -7,6 +7,7 @@ import os
 import sys
 
 from odh_ci_agent.ci_summary import int_value, render_superseded_comment
+from odh_ci_agent.env import required_env
 from odh_ci_agent.github_api import (
     GitHubCommandError,
     gh_api_json,
@@ -19,13 +20,6 @@ from odh_ci_agent.pr_review_summary import (
     is_review_summary_comment,
     marker_for_run,
 )
-
-
-def required_env(name: str) -> str:
-    value = os.environ.get(name, "").strip()
-    if value:
-        return value
-    raise SystemExit(f"Missing required environment variable: {name}")
 
 
 def load_body(path: str) -> str:

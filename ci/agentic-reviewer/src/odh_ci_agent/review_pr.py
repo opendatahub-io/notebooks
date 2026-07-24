@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig, types
 
 from odh_ci_agent import mcp_github
+from odh_ci_agent.env import bool_env, required_env
 from odh_ci_agent.github_api import parse_positive_issue_number
 from odh_ci_agent.github_review_tools import (
     GitHubReviewClient,
@@ -34,18 +35,6 @@ class ReviewInputs:
     model: str | None
     review_context_json: str | None = None
     defense_in_depth_exclude_header: bool = False
-
-
-def required_env(name: str) -> str:
-    value = os.environ.get(name, "").strip()
-    if value:
-        return value
-    raise SystemExit(f"Missing required environment variable: {name}")
-
-
-def bool_env(name: str) -> bool:
-    value = os.environ.get(name, "").strip().lower()
-    return value in {"1", "true", "yes", "on"}
 
 
 def load_inputs() -> ReviewInputs:

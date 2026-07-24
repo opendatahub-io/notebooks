@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from odh_ci_agent.agent_context import filter_changed_files
+from odh_ci_agent.env import required_env
 from odh_ci_agent.github_api import gh_api_json, gh_api_list_pages, gh_api_pages
 from odh_ci_agent.patch_excerpt import capped_patch_excerpt
 
@@ -23,13 +24,6 @@ import gha_pr_changed_files  # pyright: ignore[reportMissingImports]  # noqa: E4
 MAX_PATCH_LINES = 50
 MAX_CHANGED_FILES = 200
 MAX_CHECK_RUNS = 100
-
-
-def required_env(name: str) -> str:
-    value = os.environ.get(name, "").strip()
-    if value:
-        return value
-    raise SystemExit(f"Missing required environment variable: {name}")
 
 
 def affected_image_targets(changed_files: list[str]) -> list[str]:

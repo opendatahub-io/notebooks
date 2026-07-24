@@ -18,6 +18,7 @@ from odh_ci_agent.ci_summary import (
     render_progress_comment,
     utc_now_iso,
 )
+from odh_ci_agent.env import required_env
 from odh_ci_agent.github_api import gh_api_json, gh_api_list_pages, gh_api_pages, gh_job_log
 from odh_ci_agent.patch_excerpt import capped_patch_excerpt
 from odh_ci_agent.source_workspace import resolve_source_workspace
@@ -38,13 +39,6 @@ MAX_PATCH_LINES = 40
 GITHUB_ERROR_RE = re.compile(r"##\[error\]")
 LOG_TIMESTAMP_RE = re.compile(r"^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s?(?P<message>.*)$")
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
-
-
-def required_env(name: str) -> str:
-    value = os.environ.get(name, "").strip()
-    if value:
-        return value
-    raise SystemExit(f"Missing required environment variable: {name}")
 
 
 def output_path(env_name: str, default_name: str) -> str:
