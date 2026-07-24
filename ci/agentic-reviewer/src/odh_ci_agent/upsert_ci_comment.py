@@ -144,6 +144,18 @@ def main() -> None:
             raise SystemExit("Expected GitHub update comment response to be a JSON object")
         comment_url = str(updated["html_url"])
 
+        prior_comment = latest_prior_summary_comment(comment_objects, run_id=run_id)
+        if prior_comment is not None:
+            superseded_body = render_superseded_comment(
+                str(prior_comment.get("body", "")), new_run_url=workflow_run_url
+            )
+            gh_api_json(
+                f"repos/{repository}/issues/comments/{int_value(prior_comment['id'])}",
+                method="PATCH",
+                input_json={"body": superseded_body},
+                timeout=180,
+            )
+
     write_step_summary(comment_url, mode)
     print(comment_url)
 
