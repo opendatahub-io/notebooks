@@ -7,6 +7,7 @@ import json
 import os
 import re
 from collections.abc import Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 
 from odh_ci_agent.agent_context import filter_changed_files
@@ -373,25 +374,36 @@ def build_failed_jobs(
     *,
     include_logs: bool,
 ) -> list[dict[str, object]]:
-    failed_jobs: list[dict[str, object]] = []
-    for index, job in enumerate(jobs):
-        if job.get("conclusion") not in {"failure", "cancelled"}:
-            continue
+    failed_candidates: list[tuple[int, Mapping[str, object]]] = [
+        (index, job) for index, job in enumerate(jobs) if job.get("conclusion") in {"failure", "cancelled"}
+    ]
 
-        log_tail = ""
+    logs_to_fetch = failed_candidates[:MAX_FAILED_JOBS_WITH_LOGS] if include_logs else []
+    log_results: dict[int, tuple[str, str]] = {}
+    if logs_to_fetch:
+        with ThreadPoolExecutor(max_workers=min(8, len(logs_to_fetch))) as pool:
+            futures = {
+                int_value(job["id"]): pool.submit(fetch_job_log, repository, int_value(job["id"]))
+                for _, job in logs_to_fetch
+            }
+            for job_id, future in futures.items():
+                log_results[job_id] = future.result()
+
+    failed_jobs: list[dict[str, object]] = []
+    for index, job in failed_candidates:
+        job_id = int_value(job["id"])
         log_excerpt = ""
         error_contexts: list[str] = []
         log_error = ""
-        if include_logs and len(failed_jobs) < MAX_FAILED_JOBS_WITH_LOGS:
-            job_log, log_error = fetch_job_log(repository, int_value(job["id"]))
+        if job_id in log_results:
+            job_log, log_error = log_results[job_id]
             if not log_error:
                 log_excerpt = failed_step_excerpt(job_log, job)
-                log_tail = log_excerpt
                 error_contexts = whole_log_error_contexts(job_log)
 
         failed_jobs.append(
             {
-                "id": int_value(job["id"]),
+                "id": job_id,
                 "name": str(job.get("name", "")),
                 "failed_step": failed_step_name(job),
                 "conclusion": str(job.get("conclusion", "")),
@@ -399,7 +411,7 @@ def build_failed_jobs(
                 "index": index,
                 "log_error": log_error or None,
                 "log_excerpt": log_excerpt,
-                "log_tail": log_tail,
+                "log_tail": log_excerpt,
                 "status": str(job.get("status", "")),
                 "url": str(job.get("html_url", "")),
             }
