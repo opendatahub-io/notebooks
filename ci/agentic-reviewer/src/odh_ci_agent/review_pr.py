@@ -13,7 +13,7 @@ from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig, type
 
 from odh_ci_agent import mcp_github
 from odh_ci_agent.env import bool_env, required_env
-from odh_ci_agent.github_api import parse_positive_issue_number
+from odh_ci_agent.github_api import parse_positive_issue_number, split_repository
 from odh_ci_agent.github_review_tools import (
     GitHubReviewClient,
     make_github_review_tools,
@@ -132,7 +132,7 @@ When you are done, reply with one line saying whether you posted inline review c
 def build_prompt(inputs: ReviewInputs) -> str:
     extra_focus = _escape_fence(inputs.additional_context) if inputs.additional_context else "(none)"
     prepared_context = _escape_fence(inputs.review_context_json or "null")
-    owner, repo = mcp_github.parse_github_repository(inputs.repository)
+    owner, repo = split_repository(inputs.repository)
     pr_number = inputs.pull_request_number
     context_mode = (
         "Prepared review context is present and already contains the full PR metadata, "

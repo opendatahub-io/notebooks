@@ -60,15 +60,6 @@ GITHUB_REVIEW_DISABLED_TOOLS = (
 MCP_TOOL_PREFIX = "mcp"
 
 
-def parse_github_repository(repository: str) -> tuple[str, str]:
-    """Split ``owner/repo`` into owner and repository name."""
-
-    owner, separator, repo = repository.partition("/")
-    if not owner or not separator or not repo:
-        raise ValueError(f"Invalid GitHub repository slug: {repository!r}")
-    return owner, repo
-
-
 def prefixed_tool_name(server_name: str, tool_name: str) -> str:
     """Return the SDK-visible MCP tool name for a server/tool pair."""
 

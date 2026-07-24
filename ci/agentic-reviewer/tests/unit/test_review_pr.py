@@ -301,15 +301,3 @@ def test_review_run_failed_ignores_vague_excuse_when_write_succeeded() -> None:
     )
 
     assert reason is None
-
-
-def test_parse_github_repository_splits_owner_and_repo() -> None:
-    assert mcp_github.parse_github_repository("opendatahub-io/notebooks") == (
-        "opendatahub-io",
-        "notebooks",
-    )
-
-
-def test_parse_github_repository_rejects_invalid_slug() -> None:
-    with pytest.raises(ValueError, match="Invalid GitHub repository slug"):
-        mcp_github.parse_github_repository("invalid")
