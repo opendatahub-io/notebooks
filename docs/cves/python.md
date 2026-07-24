@@ -12,37 +12,71 @@ Python CVEs in notebook images can come from:
 
 The resolution strategy differs based on which type is affected.
 
-## Centralized CVE Constraints
+## Centralized dependency rules
 
-To prevent CVEs from returning through transitive dependencies, we maintain a centralized constraints file:
+Global lock inputs live under `dependencies/` and are always passed to
+`uv pip compile` during `make refresh-lock-files`:
 
+| File | uv flag | Purpose |
+|------|---------|---------|
+| `dependencies/constraints.txt` | `--constraints` | Global version **floors** (`package>=X`) |
+| `dependencies/overrides.txt` | `--override` | Global **forced pins/ranges** when a floor is insufficient |
+| `pyproject.toml` `[tool.uv.override-dependencies]` | (from pyproject) | **Image-specific** overrides |
+
+See [`dependencies/README.md`](../../dependencies/README.md) for format rules and branch policy.
+
+**Prefer `constraints.txt` over `overrides.txt`.** Put shared rules in the `.txt`
+files; put subset-specific rules in individual `pyproject.toml` files.
+
+### `constraints.txt` structure
+
+Two sections:
+
+```text
+# --- CVE-motivated floors ---
+# RHAIENG-XXXX: CVE-YYYY-ZZZZ short description
+package>=fixed_version
+
+# --- General floors ---
+# Non-CVE policy/resolver floors
+other-package>=version
 ```
-dependencies/cve-constraints.txt
-```
 
-This file is automatically applied during lock file generation via `uv pip compile --constraints`. It ensures that even packages not explicitly in `pyproject.toml` (transitive dependencies) never go below the fixed version for CVEs we've resolved.
+Keep **one line and one comment per package** (most restrictive floor only).
+Do not maintain a historical ledger of superseded CVE fixes.
 
-### How It Works
+### Branch policy
+
+| Repo / branch | When to update `constraints.txt` |
+|---------------|----------------------------------|
+| `opendatahub-io/notebooks` `main` | Lock-renewal auto-syncs with the latest AIPCC index. Once a fixed version is on AIPCC, lock renewal picks it up — do not add constraints solely to track a fix the index already ships. |
+| `red-hat-data-services/notebooks` `rhoai-x.y` | Audit proof of what the release enforces. **Keep updating** when backporting CVE fixes. |
+
+### How it works
 
 1. **Constraints file format** (requirements.txt style):
    ```
-   # CVE-ID: Description
-   # Reference: https://...
+   # RHAIENG-XXXX: CVE-YYYY-ZZZZ description
    package>=fixed_version
    ```
 
-2. **Automatic application**: The `pylocks_generator.sh` script applies these constraints to all lock file generations.
+2. **Automatic application**: `scripts/pylocks_generator.py` always passes
+   `--constraints` and `--override` for the global files to all lock generations.
 
-3. **Override for conflicts**: Some packages (like odh-elyra's appengine-python-standard) have conflicting version requirements. For these, use `override-dependencies` in the specific image's `pyproject.toml`.
+3. **Override for conflicts**: When a floor is insufficient or loses resolver
+   conflicts, use `dependencies/overrides.txt` (global) or `override-dependencies`
+   in a specific image's `pyproject.toml` (image-specific).
 
-### Adding a New CVE Constraint
+### Adding a new CVE constraint
 
-1. Add the constraint to `dependencies/cve-constraints.txt`:
+1. Add the constraint to `dependencies/constraints.txt` in the CVE section:
    ```
    # RHAIENG-XXXX: CVE-YYYY-ZZZZZ package_name vulnerability description
    # Upstream: https://github.com/...
    package_name>=fixed_version
    ```
+   On `main`, only add if the resolver/index sync alone cannot guarantee the floor.
+   On `rhoai-x.y` release branches, add to document and enforce the fix.
 
 2. Regenerate all lock files:
    ```bash
@@ -150,7 +184,7 @@ lock refresh will fail. Instead, request the build and revisit once it is availa
 
 If the direct dependency can't be upgraded but the transitive package version is flexible:
 
-1. Add to `dependencies/cve-constraints.txt`:
+1. Add to `dependencies/constraints.txt` (CVE section):
    ```
    # RHAIENG-2448: CVE-XXXX-YYYY tornado quadratic DoS
    tornado>=6.5.3
@@ -210,7 +244,7 @@ make jupyter-datascience-ubi9-python-3.12
 4. **Conflict**: odh-elyra depends on appengine-python-standard which requires urllib3<2
 
 **Solution**:
-1. Add to `dependencies/cve-constraints.txt` for general protection:
+1. Add to `dependencies/constraints.txt` for general protection:
    ```
    # RHAIENG-2458: CVE-2025-66418 urllib3 decompression vulnerability
    urllib3>=2.7.0
@@ -239,8 +273,10 @@ make jupyter-datascience-ubi9-python-3.12
 
 ## Related Files
 
-- `dependencies/cve-constraints.txt` - Centralized CVE constraints
-- `scripts/pylocks_generator.sh` - Lock file generator (applies constraints)
+- `dependencies/constraints.txt` - Global version floors (CVE and general sections)
+- `dependencies/overrides.txt` - Global forced pins/ranges
+- `dependencies/README.md` - Format rules and branch policy
+- `scripts/pylocks_generator.py` - Lock file generator (applies global inputs)
 - `pyproject.toml` - Direct dependencies and override-dependencies
 - `pylock.toml` / `uv.lock.d/` - Generated lock files
 

@@ -87,7 +87,7 @@ The `check-generated-code` job runs `ci/generate_code.sh`, then verifies a clean
 - **Pull requests:** lock regen is scoped to image directories whose lock chain the PR
   touched (`pyproject.toml`, `pylock.toml`, `requirements.*.txt`, or `uv.lock.d/*`). If the PR only changes
   unrelated files, `pylocks_generator` is skipped so external AIPCC index churn does not
-  fail the job. Shared inputs (`dependencies/cve-constraints.txt`, lock generator scripts)
+  fail the job. Shared inputs (`dependencies/constraints.txt`, `dependencies/overrides.txt`, lock generator scripts)
   still trigger full lock regen. CI fetches base and PR head refs (same pattern as
   `build-notebooks-pr.yaml`), then runs `pylocks_generator --pr-base origin/<base-branch>
   --pr-to-ref <pr-branch>` with `gha_pr_changed_files.list_changed_files()` (`git diff`

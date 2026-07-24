@@ -83,13 +83,15 @@ from scripts.index_url_resolver import IndexResolutionError, ResolvedIndexConfig
 # region Configuration
 ROOT_DIR = Path(__file__).resolve().parent.parent
 UV = ROOT_DIR / "uv"
-CVE_CONSTRAINTS_FILE = ROOT_DIR / "dependencies" / "cve-constraints.txt"
+CONSTRAINTS_FILE = ROOT_DIR / "dependencies" / "constraints.txt"
+OVERRIDES_FILE = ROOT_DIR / "dependencies" / "overrides.txt"
 PYLOCK_TO_REQUIREMENTS = ROOT_DIR / "scripts" / "lockfile-generators" / "helpers" / "pylock-to-requirements.py"
 PUBLIC_INDEX = "--default-index=https://pypi.org/simple"
 MAIN_DIRS = ("jupyter", "runtimes", "codeserver")
 # Shared lock inputs: a PR touching any of these regenerates all image project locks.
 GLOBAL_LOCK_INPUTS: tuple[Path, ...] = (
-    Path("dependencies/cve-constraints.txt"),
+    Path("dependencies/constraints.txt"),
+    Path("dependencies/overrides.txt"),
     Path("scripts/pylocks_generator.py"),
     Path("scripts/index_url_resolver.py"),
 )
@@ -511,10 +513,10 @@ def run_lock(
     if upgrade:
         cmd.append("--upgrade")
 
-    # Use relative path to avoid absolute paths in pylock.toml headers
-    if CVE_CONSTRAINTS_FILE.is_file():
-        relative_constraints = os.path.relpath(CVE_CONSTRAINTS_FILE, project_dir)
-        cmd.extend(["--constraints", relative_constraints])
+    # Use relative paths to avoid absolute paths in pylock.toml headers
+    relative_constraints = os.path.relpath(CONSTRAINTS_FILE, project_dir)
+    relative_overrides = os.path.relpath(OVERRIDES_FILE, project_dir)
+    cmd.extend(["--constraints", relative_constraints, "--override", relative_overrides])
 
     lock_path = project_dir / output
     exclude_newer = resolve_exclude_newer(

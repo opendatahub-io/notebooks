@@ -361,13 +361,53 @@ def test_resolve_pr_scoped_touched_codeserver(
     )
 
 
+def test_global_lock_inputs_include_constraints_and_overrides() -> None:
+    assert Path("dependencies/constraints.txt") in pg.GLOBAL_LOCK_INPUTS
+    assert Path("dependencies/overrides.txt") in pg.GLOBAL_LOCK_INPUTS
+
+
+def test_run_lock_always_passes_constraints_and_overrides(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_dir = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12"
+    project_dir.mkdir(parents=True)
+    (project_dir / "pyproject.toml").write_text("[project]\nname = \"test\"\n", encoding="utf-8")
+    log = pg.LogBuffer()
+    captured_cmd: list[str] = []
+
+    def fake_run(cmd, **kwargs):
+        captured_cmd[:] = cmd
+        return pg.subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(pg.subprocess, "run", fake_run)
+
+    success = pg.run_lock(
+        project_dir,
+        "cpu",
+        ["--default-index=https://example.invalid/simple/?format=json"],
+        pg.IndexMode.rh_index,
+        "3.12",
+        False,
+        False,
+        "2026-05-18T00:00:00Z",
+        log,
+    )
+
+    assert success is True
+    constraints_idx = captured_cmd.index("--constraints")
+    overrides_idx = captured_cmd.index("--override")
+    assert captured_cmd[constraints_idx + 1].endswith("dependencies/constraints.txt")
+    assert captured_cmd[overrides_idx + 1].endswith("dependencies/overrides.txt")
+
+
 def test_resolve_pr_scoped_global_input_expands_to_all(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
         pg,
         "_list_changed_files",
-        lambda _base, _to="HEAD": ["dependencies/cve-constraints.txt"],
+        lambda _base, _to="HEAD": ["dependencies/constraints.txt"],
     )
     scoped = pg.resolve_pr_scoped_target_dirs("base", pg.LogBuffer())
     all_dirs = pg.discover_all_image_project_dirs()
