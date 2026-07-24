@@ -26,13 +26,13 @@ def parse_patch_commentable_lines(patch: str | None) -> tuple[set[int], set[int]
                 left_line = int(match.group(1))
                 right_line = int(match.group(3))
             continue
-        if line.startswith(("---", "+++")):
+        if line.startswith(("+++ ", "--- ")):
             continue
-        if line.startswith("+") and not line.startswith("++"):
+        if line.startswith("+"):
             right_lines.add(right_line)
             right_line += 1
             continue
-        if line.startswith("-") and not line.startswith("--"):
+        if line.startswith("-"):
             left_lines.add(left_line)
             left_line += 1
             continue

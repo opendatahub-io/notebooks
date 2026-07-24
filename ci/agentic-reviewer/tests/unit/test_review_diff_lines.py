@@ -57,6 +57,19 @@ def test_diff_line_index_validate_comment_rejects_out_of_range_line() -> None:
     assert "1, 2, 3" in error
 
 
+def test_parse_patch_commentable_lines_handles_double_prefix_content() -> None:
+    patch = """@@ -1,3 +1,3 @@
+ context
+---counter;
++++counter;
+"""
+
+    right_lines, left_lines = parse_patch_commentable_lines(patch)
+
+    assert 2 in right_lines
+    assert 2 in left_lines
+
+
 def test_diff_line_index_validate_comment_accepts_changed_line() -> None:
     index = DiffLineIndex.from_pull_files(
         [
