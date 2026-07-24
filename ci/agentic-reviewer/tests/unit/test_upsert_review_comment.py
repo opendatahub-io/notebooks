@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from odh_ci_agent.pr_review_summary import (
-    marker_for_run,
     is_active_review_summary_comment,
     is_superseded_comment,
+    marker_for_run,
 )
 from odh_ci_agent.upsert_review_comment import (
     latest_active_review_summary_comment,

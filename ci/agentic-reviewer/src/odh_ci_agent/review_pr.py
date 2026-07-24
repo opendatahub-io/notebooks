@@ -21,6 +21,8 @@ from odh_ci_agent.github_review_tools import (
 from odh_ci_agent.pr_review_summary import ensure_marker, extract_review_summary_body, marker_for_run
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
     from google.antigravity.types import UsageMetadata
 
 
@@ -184,7 +186,7 @@ def write_review_body(path: str, body: str) -> None:
         file_handle.write(body.rstrip() + "\n")
 
 
-def invoked_review_tools(tool_calls: list[mcp_github.NamedToolCall]) -> list[str]:
+def invoked_review_tools(tool_calls: Iterable[mcp_github.NamedToolCall]) -> list[str]:
     allowed = set(mcp_github.GITHUB_REVIEW_TOOLS)
     return [tool_call.name for tool_call in tool_calls if tool_call.name in allowed]
 
@@ -226,7 +228,7 @@ def _review_write_attempted(review_client: GitHubReviewClient) -> bool:
 
 def review_run_failed(
     text: str,
-    tool_calls: list[mcp_github.NamedToolCall],
+    tool_calls: Sequence[mcp_github.NamedToolCall],
     *,
     has_prepared_context: bool,
     review_client: GitHubReviewClient | None = None,
@@ -245,10 +247,7 @@ def review_run_failed(
         and _review_write_attempted(review_client)
         and _text_hides_tool_error_behind_vague_github_excuse(text)
     ):
-        return (
-            "agent said review comments could not be posted on GitHub "
-            "instead of reporting the review tool error"
-        )
+        return "agent said review comments could not be posted on GitHub instead of reporting the review tool error"
     if not has_prepared_context and not invoked_review_tools(tool_calls):
         return "review completed without invoking GitHub review tools"
     return None

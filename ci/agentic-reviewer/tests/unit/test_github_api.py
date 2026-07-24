@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from odh_ci_agent import github_api
 
 

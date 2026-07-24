@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from unittest.mock import call, patch
 
-import pytest
-
 from odh_ci_agent.github_api import GitHubCommandError
 from odh_ci_agent.github_review_tools import GitHubReviewClient, ReviewToolInvocation, make_github_review_tools
 
@@ -20,7 +18,7 @@ def test_add_comment_stages_line_payload() -> None:
     )
 
     assert result == {"staged": True, "comment_count": 1}
-    assert client._draft_review_comments == [  # noqa: SLF001
+    assert client._draft_review_comments == [
         {
             "body": "nit",
             "path": "README.md",
@@ -41,7 +39,7 @@ def test_add_comment_renders_suggestion_block() -> None:
         line=5,
     )
 
-    assert client._draft_review_comments == [  # noqa: SLF001
+    assert client._draft_review_comments == [
         {
             "body": "Replace this branch.\n\n```suggestion\nif flag:\n    return True\n```",
             "path": "README.md",
@@ -53,7 +51,7 @@ def test_add_comment_renders_suggestion_block() -> None:
 
 def test_submit_pending_creates_review_with_staged_comments() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
-    client._head_commit_id = "abc123"  # noqa: SLF001
+    client._head_commit_id = "abc123"
 
     client.add_comment_to_pending_review(
         path="README.md",
@@ -71,8 +69,8 @@ def test_submit_pending_creates_review_with_staged_comments() -> None:
     ) as mock_api:
         client.pull_request_review_write(method="submit_pending", event="COMMENT", body="")
 
-    assert client._pending_review_id == 99  # noqa: SLF001
-    assert client._draft_review_comments == []  # noqa: SLF001
+    assert client._pending_review_id == 99
+    assert client._draft_review_comments == []
     mock_api.assert_has_calls(
         [
             call(
@@ -101,7 +99,7 @@ def test_submit_pending_creates_review_with_staged_comments() -> None:
 
 def test_submit_pending_review_uses_events_endpoint() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
-    client._pending_review_id = 77  # noqa: SLF001
+    client._pending_review_id = 77
 
     with patch("odh_ci_agent.github_review_tools.gh_api_json", return_value={"state": "COMMENTED"}) as mock_api:
         client.pull_request_review_write(method="submit_pending", event="COMMENT", body="")
@@ -115,7 +113,7 @@ def test_submit_pending_review_uses_events_endpoint() -> None:
 
 def test_create_pending_review_recreates_existing_pending_review_with_staged_comments() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
-    client._head_commit_id = "abc123"  # noqa: SLF001
+    client._head_commit_id = "abc123"
     client.add_comment_to_pending_review(
         path="README.md",
         body="nit",
@@ -149,7 +147,7 @@ def test_create_pending_review_recreates_existing_pending_review_with_staged_com
             ],
         ),
     ):
-        response = client._create_pending_review(  # noqa: SLF001
+        response = client._create_pending_review(
             "repos/owner/repo/pulls/12",
             "owner",
             "repo",
@@ -158,8 +156,8 @@ def test_create_pending_review_recreates_existing_pending_review_with_staged_com
         )
 
     assert response == {"id": 77, "state": "PENDING"}
-    assert client._pending_review_id == 77  # noqa: SLF001
-    assert client._draft_review_comments == []  # noqa: SLF001
+    assert client._pending_review_id == 77
+    assert client._draft_review_comments == []
 
 
 def test_find_pending_review_id_falls_back_to_single_bot_review_when_user_lookup_is_denied() -> None:
@@ -186,7 +184,7 @@ def test_find_pending_review_id_falls_back_to_single_bot_review_when_user_lookup
             ],
         ),
     ):
-        review_id = client._find_pending_review_id("owner", "repo", 12)  # noqa: SLF001
+        review_id = client._find_pending_review_id("owner", "repo", 12)
 
     assert review_id == 55
 
@@ -199,20 +197,19 @@ def test_posting_failure_reason_when_all_comment_attempts_fail() -> None:
                 tool_name="add_comment_to_pending_review",
                 method=None,
                 success=False,
-                error='GitHub CLI command failed with exit code 422: gh api\nstdout:\n\nstderr:\nInvalid request',
+                error="GitHub CLI command failed with exit code 422: gh api\nstdout:\n\nstderr:\nInvalid request",
             ),
             ReviewToolInvocation(
                 tool_name="add_comment_to_pending_review",
                 method=None,
                 success=False,
-                error='GitHub CLI command failed with exit code 422: gh api\nstdout:\n\nstderr:\nInvalid request',
+                error="GitHub CLI command failed with exit code 422: gh api\nstdout:\n\nstderr:\nInvalid request",
             ),
         ]
     )
 
     assert client.posting_failure_reason() == (
-        "failed to post inline review comments (2 attempt(s)): "
-        "GitHub CLI command failed with exit code 422: gh api"
+        "failed to post inline review comments (2 attempt(s)): GitHub CLI command failed with exit code 422: gh api"
     )
 
 
@@ -257,13 +254,12 @@ def test_posting_failure_reason_when_failed_create_without_comments() -> None:
             tool_name="pull_request_review_write",
             method="create",
             success=False,
-            error='gh: Unprocessable Entity (HTTP 422)',
+            error="gh: Unprocessable Entity (HTTP 422)",
         )
     )
 
     assert client.posting_failure_reason() == (
-        "GitHub review tool pull_request_review_write(create) failed: "
-        "gh: Unprocessable Entity (HTTP 422)"
+        "GitHub review tool pull_request_review_write(create) failed: gh: Unprocessable Entity (HTTP 422)"
     )
 
 

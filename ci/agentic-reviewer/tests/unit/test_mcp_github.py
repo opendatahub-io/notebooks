@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, cast
 
 from google.antigravity.hooks import policy
 from google.antigravity.types import ToolCall
-
 from odh_ci_agent import mcp_github
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 @dataclass(slots=True)
 class ToolCallLike:
     name: str
-    args: dict[str, object] | None = None
+    args: Mapping[str, Any] = field(default_factory=dict)
     server_name: str | None = None
 
 
@@ -72,7 +75,7 @@ def test_review_policies_allow_harness_call_mcp_tool_from_trajectory() -> None:
                 },
             },
         )
-        result = await hook.run(None, tool_call)
+        result = await hook.run(cast("Any", None), tool_call)
         return result.allow
 
     assert asyncio.run(allowed()) is True
@@ -87,7 +90,7 @@ def test_review_policies_allow_harness_list_resources() -> None:
             name=mcp_github.HARNESS_LIST_RESOURCES,
             args={"ServerName": mcp_github.GITHUB_REVIEW_SERVER_NAME},
         )
-        result = await hook.run(None, tool_call)
+        result = await hook.run(cast("Any", None), tool_call)
         return result.allow
 
     assert asyncio.run(allowed()) is True
@@ -105,7 +108,7 @@ def test_review_policies_deny_harness_call_mcp_tool_for_disallowed_remote_tool()
                 "ToolName": "merge_pull_request",
             },
         )
-        result = await hook.run(None, tool_call)
+        result = await hook.run(cast("Any", None), tool_call)
         return result.allow
 
     assert asyncio.run(denied()) is False

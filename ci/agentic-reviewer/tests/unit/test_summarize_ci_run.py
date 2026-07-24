@@ -4,7 +4,6 @@ import asyncio
 from typing import TYPE_CHECKING
 
 from google.antigravity.types import BuiltinTools
-
 from odh_ci_agent import summarize_ci_run
 
 if TYPE_CHECKING:

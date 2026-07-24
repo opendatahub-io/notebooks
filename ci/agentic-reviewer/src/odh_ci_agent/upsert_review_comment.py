@@ -37,9 +37,7 @@ def latest_active_review_summary_comment(
     comments: list[dict[str, object]],
 ) -> dict[str, object] | None:
     active_comments = [
-        comment
-        for comment in comments
-        if is_active_review_summary_comment(str(comment.get("body", "")))
+        comment for comment in comments if is_active_review_summary_comment(str(comment.get("body", "")))
     ]
     if not active_comments:
         return None

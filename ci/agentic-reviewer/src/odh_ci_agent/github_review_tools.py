@@ -19,8 +19,7 @@ from odh_ci_agent.github_api import (
 from odh_ci_agent.mcp_github import GITHUB_REVIEW_TOOLS, PULL_REQUEST_READ_METHODS
 
 _READ_METHOD_DESCRIPTION = (
-    "Action to retrieve pull request data. "
-    f"Valid values: {', '.join(PULL_REQUEST_READ_METHODS)}."
+    f"Action to retrieve pull request data. Valid values: {', '.join(PULL_REQUEST_READ_METHODS)}."
 )
 
 PULL_REQUEST_READ_SCHEMA = {
@@ -79,7 +78,7 @@ ADD_COMMENT_SCHEMA = {
     "type": "object",
     "description": (
         "Stage one line-level review comment locally for the current user's pending pull request review. "
-        "The comment is posted to GitHub only when `pull_request_review_write(method=\"submit_pending\")` runs."
+        'The comment is posted to GitHub only when `pull_request_review_write(method="submit_pending")` runs.'
     ),
     "properties": {
         "owner": {"type": "string", "description": "Repository owner."},
@@ -261,6 +260,13 @@ class GitHubReviewClient:
             self._authenticated_login = str(user["login"])
         return self._authenticated_login
 
+    def _coerce_review_id(self, review_id: object) -> int:
+        if isinstance(review_id, int):
+            return review_id
+        if isinstance(review_id, str) and review_id.isdigit():
+            return int(review_id)
+        raise TypeError(f"Expected review id to be int-like, got {review_id!r}")
+
     def _find_pending_review_id(self, owner: str, repo: str, pull_number: int) -> int:
         login = self._current_user_login()
         reviews = gh_api_list_pages(self._pull_path(owner, repo, pull_number) + "/reviews", timeout=180)
@@ -276,15 +282,19 @@ class GitHubReviewClient:
             if login is not None and reviewer_login == login:
                 return int(review["id"])
         if login is None:
-            bot_pending_reviews = [
-                review
-                for review in pending_reviews
-                if str((review.get("user") or {}).get("login", "")).endswith("[bot]")
-            ]
-            if len(bot_pending_reviews) == 1:
-                return int(bot_pending_reviews[0]["id"])
+            bot_pending_review_ids: list[int] = []
+            for pending_review in pending_reviews:
+                pending_user = pending_review.get("user")
+                pending_login = pending_user.get("login") if isinstance(pending_user, dict) else None
+                pending_review_id = pending_review.get("id")
+                if isinstance(pending_login, str) and pending_login.endswith("[bot]") and pending_review_id is not None:
+                    bot_pending_review_ids.append(self._coerce_review_id(pending_review_id))
+            if len(bot_pending_review_ids) == 1:
+                return bot_pending_review_ids[0]
             if len(pending_reviews) == 1:
-                return int(pending_reviews[0]["id"])
+                pending_review_id = pending_reviews[0].get("id")
+                if pending_review_id is not None:
+                    return self._coerce_review_id(pending_review_id)
         raise ValueError("No pending pull request review found for the current token")
 
     def _ensure_pending_review_id(self, owner: str, repo: str, pull_number: int) -> int:
@@ -295,12 +305,12 @@ class GitHubReviewClient:
         try:
             self._pending_review_id = self._find_pending_review_id(owner, repo, pull_number)
             return self._pending_review_id
-        except ValueError:
+        except ValueError as err:
             response = self._create_pending_review(base_path, owner, repo, pull_number, {})
             if isinstance(response, dict) and response.get("id") is not None:
                 self._pending_review_id = int(response["id"])
             if self._pending_review_id is None:
-                raise ValueError("Failed to create or reuse a pending pull request review")
+                raise ValueError("Failed to create or reuse a pending pull request review") from err
             return self._pending_review_id
 
     def _delete_pending_review(self, base_path: str, review_id: int) -> object:
@@ -335,6 +345,7 @@ class GitHubReviewClient:
             )
 
         if method == "delete_pending":
+
             def _delete_pending() -> object:
                 self._clear_local_draft()
                 if self._pending_review_id is None:
@@ -422,17 +433,14 @@ class GitHubReviewClient:
         return self._record_invocation("add_comment_to_pending_review", None, _stage_comment)
 
     def inline_comments_posted(self) -> bool:
-        return (
-            any(
-                invocation.tool_name == "add_comment_to_pending_review" and invocation.success
-                for invocation in self.invocations
-            )
-            and any(
-                invocation.tool_name == "pull_request_review_write"
-                and invocation.method == "submit_pending"
-                and invocation.success
-                for invocation in self.invocations
-            )
+        return any(
+            invocation.tool_name == "add_comment_to_pending_review" and invocation.success
+            for invocation in self.invocations
+        ) and any(
+            invocation.tool_name == "pull_request_review_write"
+            and invocation.method == "submit_pending"
+            and invocation.success
+            for invocation in self.invocations
         )
 
     def _first_error_snippet(self, invocations: list[ReviewToolInvocation]) -> str:
@@ -456,9 +464,7 @@ class GitHubReviewClient:
         """Return a failure reason when the agent tried but failed to post a review."""
 
         comment_attempts = [
-            invocation
-            for invocation in self.invocations
-            if invocation.tool_name == "add_comment_to_pending_review"
+            invocation for invocation in self.invocations if invocation.tool_name == "add_comment_to_pending_review"
         ]
         create_attempts = [
             invocation

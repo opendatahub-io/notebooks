@@ -84,9 +84,14 @@ def prefixed_tool_names(server_name: str, tool_names: Sequence[str]) -> tuple[st
 class NamedToolCall(Protocol):
     """Minimal tool-call protocol used for logging and auditing."""
 
-    name: str
-    args: Mapping[str, Any]
-    server_name: str | None
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def args(self) -> Mapping[str, Any]: ...
+
+    @property
+    def server_name(self) -> str | None: ...
 
 
 def _arg_str(args: Mapping[str, Any], *keys: str) -> str | None:
@@ -170,7 +175,7 @@ def invoked_mcp_tools(
         target_server, target_tool = resolve_mcp_target(tool_call)
         if target_tool == HARNESS_LIST_RESOURCES:
             continue
-        if target_server == server_name and target_tool in allowed_tools:
+        if target_server == server_name and target_tool is not None and target_tool in allowed_tools:
             invoked.append(target_tool)
         elif tool_call.name in allowed_tools:
             invoked.append(tool_call.name)
@@ -268,13 +273,7 @@ def unexpected_tool_calls(
     """Return invoked tool names that are not in the allowed set."""
 
     if server_name is None:
-        return sorted(
-            {
-                tool_call.name
-                for tool_call in tool_calls
-                if tool_call.name not in set(allowed_tools)
-            }
-        )
+        return sorted({tool_call.name for tool_call in tool_calls if tool_call.name not in set(allowed_tools)})
     return sorted(
         {
             tool_call.name

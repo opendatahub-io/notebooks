@@ -172,7 +172,16 @@ def is_error_anchor(line: str) -> bool:
     stripped = line.strip()
     lowered = stripped.lower()
     return (
-        stripped.startswith(("Error:", "ERROR ", "Exception:", "Traceback (most recent call last):", "FAILED ", "SUBFAILED")) or "permission denied" in lowered or "fetcherror" in lowered or "no module named" in lowered or "=> not found" in lowered or "unsatisfied dependencies" in lowered or "make: ***" in lowered or "assert " in lowered
+        stripped.startswith(
+            ("Error:", "ERROR ", "Exception:", "Traceback (most recent call last):", "FAILED ", "SUBFAILED")
+        )
+        or "permission denied" in lowered
+        or "fetcherror" in lowered
+        or "no module named" in lowered
+        or "=> not found" in lowered
+        or "unsatisfied dependencies" in lowered
+        or "make: ***" in lowered
+        or "assert " in lowered
     )
 
 
