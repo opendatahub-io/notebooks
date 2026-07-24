@@ -169,26 +169,6 @@ def log_line_timestamp(line: str) -> datetime | None:
     return parse_iso8601_timestamp(match.group("timestamp"))
 
 
-def is_error_anchor(line: str) -> bool:
-    if GITHUB_ERROR_RE.search(line) is not None:
-        return True
-
-    stripped = line.strip()
-    lowered = stripped.lower()
-    return (
-        stripped.startswith(
-            ("Error:", "ERROR ", "Exception:", "Traceback (most recent call last):", "FAILED ", "SUBFAILED")
-        )
-        or "permission denied" in lowered
-        or "fetcherror" in lowered
-        or "no module named" in lowered
-        or "=> not found" in lowered
-        or "unsatisfied dependencies" in lowered
-        or "make: ***" in lowered
-        or "assert " in lowered
-    )
-
-
 def error_anchor_kind(line: str) -> str | None:
     if GITHUB_ERROR_RE.search(line) is not None:
         return "github_error"
@@ -337,7 +317,7 @@ def failed_step_excerpt(log_text: str, job: Mapping[str, object]) -> str:
     if github_error_indices:
         step_lines = step_lines[: github_error_indices[0] + 1]
 
-    anchor_indices = [index for index, line in enumerate(step_lines) if is_error_anchor(line)]
+    anchor_indices = [index for index, line in enumerate(step_lines) if error_anchor_kind(line) is not None]
     if not anchor_indices:
         return clip_excerpt(step_lines[-MAX_LOG_LINES:])
 
