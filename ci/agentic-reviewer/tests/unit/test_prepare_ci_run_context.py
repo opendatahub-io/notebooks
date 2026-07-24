@@ -129,7 +129,9 @@ def test_build_context_uses_pull_request_and_trigger_job_name(monkeypatch) -> No
     assert context["source_head_sha"] == "abc123"
     assert context["source_workspace"] == "/workspace/notebooks"
     assert context["trigger_job_name"] == "jupyter-datascience · linux/arm64 [odh]"
-    assert context["progress"]["failed"] == 1  # type: ignore[index]
+    progress = context["progress"]
+    assert isinstance(progress, dict)
+    assert progress["failed"] == 1
 
 
 def test_build_context_allows_push_runs_without_pull_request(monkeypatch) -> None:
@@ -197,8 +199,10 @@ def test_pull_request_context_caps_patch_and_counts_omitted(monkeypatch) -> None
     assert context["number"] == 123
     assert context["title"] == "Example PR"
     assert context["changed_files_omitted"] == 0
-    assert context["changed_files"][0]["filename"] == "a.py"  # type: ignore[index]
-    assert context["changed_files"][0]["patch_excerpt"] is not None  # type: ignore[index]
+    changed_files = context["changed_files"]
+    assert isinstance(changed_files, list)
+    assert changed_files[0]["filename"] == "a.py"
+    assert changed_files[0]["patch_excerpt"] is not None
 
 
 def test_failed_step_excerpt_uses_failed_step_window_not_post_failure_dmesg() -> None:
