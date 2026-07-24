@@ -227,9 +227,10 @@ def _text_hides_tool_error_behind_vague_github_excuse(text: str) -> bool:
     return any(phrase in lowered for phrase in _VAGUE_GITHUB_EXCUSE_PHRASES)
 
 
-def _review_write_attempted(review_client: GitHubReviewClient) -> bool:
+def _review_write_failed(review_client: GitHubReviewClient) -> bool:
     return any(
         invocation.tool_name in {"add_comment_to_pending_review", "pull_request_review_write"}
+        and not invocation.success
         for invocation in review_client.invocations
     )
 
@@ -252,7 +253,7 @@ def review_run_failed(
             return "agent claimed inline review comments were posted but GitHub review tools did not succeed"
     if (
         review_client is not None
-        and _review_write_attempted(review_client)
+        and _review_write_failed(review_client)
         and _text_hides_tool_error_behind_vague_github_excuse(text)
     ):
         return "agent said review comments could not be posted on GitHub instead of reporting the review tool error"

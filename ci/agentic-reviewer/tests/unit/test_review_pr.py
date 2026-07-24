@@ -283,7 +283,7 @@ def test_review_run_failed_detects_vague_github_excuse_when_posting_failed() -> 
     assert reason == "failed to post inline review comments (1 attempt(s)): Invalid request"
 
 
-def test_review_run_failed_detects_vague_github_excuse_without_posting_failure() -> None:
+def test_review_run_failed_ignores_vague_excuse_when_write_succeeded() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
     client.invocations.append(
         ReviewToolInvocation(
@@ -300,9 +300,7 @@ def test_review_run_failed_detects_vague_github_excuse_without_posting_failure()
         review_client=client,
     )
 
-    assert reason == (
-        "agent said review comments could not be posted on GitHub instead of reporting the review tool error"
-    )
+    assert reason is None
 
 
 def test_parse_github_repository_splits_owner_and_repo() -> None:
