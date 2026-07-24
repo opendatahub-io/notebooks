@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 SUMMARY_MARKER_PREFIX = "antigravity-ci-summary"
 MAX_RUNNING_JOBS_IN_COMMENT = 10
 
-OOM_PATTERNS = ("Killed process", "exit 137", "out of memory", "oom")
+OOM_PATTERNS = ("killed process", "exit 137", "out of memory", "oom")
 HERMETO_PATTERNS = ("cachi2", "hermetic build", "prefetch", "hermeto")
 TRIVY_PATTERNS = ("trivy", "vulnerability scanner")
 FIPS_PATTERNS = ("check-payload", "fips")
@@ -45,15 +45,15 @@ def int_value(value: object) -> int:
 
 def cluster_failed_job(failed_step: str, log_tail: str) -> str:
     haystack = f"{failed_step}\n{log_tail}".lower()
-    if any(pattern.lower() in haystack for pattern in OOM_PATTERNS):
+    if any(pattern in haystack for pattern in OOM_PATTERNS):
         return "oom_or_killed"
-    if any(pattern.lower() in haystack for pattern in HERMETO_PATTERNS):
+    if any(pattern in haystack for pattern in HERMETO_PATTERNS):
         return "hermeto_prefetch"
-    if any(pattern.lower() in haystack for pattern in TRIVY_PATTERNS):
+    if any(pattern in haystack for pattern in TRIVY_PATTERNS):
         return "trivy_scan"
-    if any(pattern.lower() in haystack for pattern in FIPS_PATTERNS):
+    if any(pattern in haystack for pattern in FIPS_PATTERNS):
         return "fips_check"
-    if any(pattern.lower() in haystack for pattern in PLAYWRIGHT_PATTERNS):
+    if any(pattern in haystack for pattern in PLAYWRIGHT_PATTERNS):
         return "playwright"
     if "make " in haystack or failed_step.startswith("Build: make "):
         return "make_build"
