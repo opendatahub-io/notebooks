@@ -7,8 +7,8 @@ files, rewrites managed ``BASE_IMAGE`` and ``RELEASE`` assignments plus the
 root ``Makefile`` release defaults, resolves newer RHDS ``channel: fast``
 releases to the highest already-published phase per target repository, uses
 ``skopeo`` to select the latest build in the chosen release-and-phase family,
-and pins each resolved ``BASE_IMAGE`` to an immutable ``repository@sha256:…``
-reference.
+and pins each resolved ``BASE_IMAGE`` to an immutable
+``repository:tag@sha256:…`` reference.
 """
 
 from __future__ import annotations
@@ -795,7 +795,7 @@ def resolve_image_digest(
         return image if "@" in image else f"{repository}@{ref}"
 
     if digest_cache is not None and image in digest_cache:
-        pinned = f"{repository}@{digest_cache[image]}"
+        pinned = f"{repository}:{ref}@{digest_cache[image]}"
         if source_tag_by_digest is not None:
             source_tag_by_digest[pinned] = ref
         return pinned
@@ -810,7 +810,7 @@ def resolve_image_digest(
 
     if digest_cache is not None:
         digest_cache[image] = digest
-    pinned = f"{repository}@{digest}"
+    pinned = f"{repository}:{ref}@{digest}"
     if source_tag_by_digest is not None:
         source_tag_by_digest[pinned] = ref
     return pinned

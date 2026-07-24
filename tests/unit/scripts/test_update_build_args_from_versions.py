@@ -42,8 +42,7 @@ RHDS_ROCM_EA2_IMAGE = "quay.io/aipcc/base-images/rocm-7.1-el9.6:3.5.0-ea.2-17779
 def pin_image_for_test(tagged_image: str) -> str:
     if "@" in tagged_image:
         return tagged_image
-    repository, _tag = tagged_image.rsplit(":", 1)
-    return f"{repository}@{TEST_IMAGE_DIGEST}"
+    return f"{tagged_image}@{TEST_IMAGE_DIGEST}"
 
 
 def pinned_base_image(tagged_image: str) -> str:
@@ -698,7 +697,7 @@ def test_resolve_image_digest_uses_skopeo_inspect(monkeypatch: pytest.MonkeyPatc
     pinned = updater.resolve_image_digest("quay.io/aipcc/base-images/cpu:3.5.0-1782914735")
 
     assert inspect_calls == ["quay.io/aipcc/base-images/cpu:3.5.0-1782914735"]
-    assert pinned == f"quay.io/aipcc/base-images/cpu@{digest}"
+    assert pinned == f"quay.io/aipcc/base-images/cpu:3.5.0-1782914735@{digest}"
     assert pinned != pin_image_for_test("quay.io/aipcc/base-images/cpu:3.5.0-1782914735")
 
 
@@ -720,7 +719,7 @@ def test_resolve_image_digest_records_source_tag_for_digest_reference(
         source_tag_by_digest=source_tag_by_digest,
     )
 
-    assert pinned == f"quay.io/aipcc/base-images/cpu@{digest}"
+    assert pinned == f"quay.io/aipcc/base-images/cpu:3.5.0-ea.2-1777919771@{digest}"
     assert source_tag_by_digest[pinned] == "3.5.0-ea.2-1777919771"
 
 
