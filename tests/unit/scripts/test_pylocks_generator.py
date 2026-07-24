@@ -408,15 +408,20 @@ def test_run_lock_always_passes_constraints_and_overrides(
     )
 
 
+@pytest.mark.parametrize(
+    "global_input",
+    ["dependencies/constraints.txt", "dependencies/overrides.txt"],
+)
 def test_resolve_pr_scoped_global_input_expands_to_all(
+    global_input: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
         pg,
         "_list_changed_files",
-        lambda _base, _to="HEAD": ["dependencies/constraints.txt"],
+        lambda _base, _to="HEAD": [global_input],
     )
     scoped = pg.resolve_pr_scoped_target_dirs("base", pg.LogBuffer())
     all_dirs = pg.discover_all_image_project_dirs()
-    assert scoped == all_dirs, "global input change should expand to all image dirs"
+    assert scoped == all_dirs, f"{global_input} change should expand to all image dirs"
     assert len(scoped) > 1, "expected multiple image project dirs for global-input fallback"
