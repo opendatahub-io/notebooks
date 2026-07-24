@@ -35,13 +35,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
-      - name: Dependency Review
+      - name: Dependency Review (pull_request)
+        if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0
         with:
           # Block high/critical advisories introduced by the PR; ignore lower noise.
           fail-on-severity: high
           # No SPDX allowlist yet; vulnerability checks only.
           license-check: false
-          # Needed for workflow_dispatch; ignored for pull_request events.
-          base-ref: ${{ inputs.base-ref || github.event.pull_request.base.sha || github.sha }}
-          head-ref: ${{ inputs.head-ref || github.event.pull_request.head.sha || github.sha }}
+
+      - name: Dependency Review (dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0
+        with:
+          fail-on-severity: high
+          license-check: false
+          base-ref: ${{ inputs.base-ref }}
+          head-ref: ${{ inputs.head-ref || github.sha }}
