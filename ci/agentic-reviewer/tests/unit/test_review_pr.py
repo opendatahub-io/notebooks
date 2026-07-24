@@ -152,8 +152,11 @@ def test_bool_env_falsey_values(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_persist_review_summary_writes_marked_body(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
-    body_path = tmp_path / "review-summary-body.md"
-    monkeypatch.setenv("REVIEW_BODY_PATH", str(body_path))
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    body_path = workspace / "review-summary-body.md"
+    monkeypatch.setenv("GITHUB_WORKSPACE", str(workspace))
+    monkeypatch.setenv("REVIEW_BODY_PATH", "review-summary-body.md")
     monkeypatch.setenv("GITHUB_RUN_ID", "123")
 
     review_pr.persist_review_summary("## 📋 Review Summary\n\nAll good.\n\nPosted a review with inline comments.")

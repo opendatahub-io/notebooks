@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from odh_ci_agent.source_workspace import resolve_source_workspace
+from odh_ci_agent.source_workspace import resolve_review_body_path, resolve_source_workspace
 
 
 def test_resolve_source_workspace_relative_under_github_workspace(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
@@ -40,3 +40,22 @@ def test_resolve_source_workspace_rejects_path_outside_workspace(monkeypatch: py
 
     with pytest.raises(SystemExit, match="must stay under GITHUB_WORKSPACE"):
         resolve_source_workspace()
+
+
+def test_resolve_review_body_path_under_workspace(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    monkeypatch.setenv("GITHUB_WORKSPACE", str(workspace))
+    monkeypatch.setenv("REVIEW_BODY_PATH", "review-summary-body.md")
+
+    assert resolve_review_body_path() == workspace / "review-summary-body.md"
+
+
+def test_resolve_review_body_path_rejects_traversal(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    monkeypatch.setenv("GITHUB_WORKSPACE", str(workspace))
+    monkeypatch.setenv("REVIEW_BODY_PATH", "../outside.md")
+
+    with pytest.raises(SystemExit, match="must stay under GITHUB_WORKSPACE"):
+        resolve_review_body_path()

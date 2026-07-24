@@ -21,6 +21,7 @@ from odh_ci_agent.github_review_tools import (
 )
 from odh_ci_agent.pr_review_summary import ensure_marker, extract_review_summary_body, marker_for_run
 from odh_ci_agent.run_statistics import format_usage_metadata, record_agent_run
+from odh_ci_agent.source_workspace import resolve_path_under_workspace
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -261,7 +262,10 @@ def persist_review_summary(text: str) -> None:
     if run_id_raw.isdigit() and int(run_id_raw) > 0:
         run_id = int(run_id_raw)
         summary_body = ensure_marker(summary_body, marker_for_run(run_id), run_id=run_id)
-    write_review_body(body_path, summary_body)
+    write_review_body(
+        str(resolve_path_under_workspace(body_path, label="REVIEW_BODY_PATH")),
+        summary_body,
+    )
 
 
 async def run_review(inputs: ReviewInputs) -> int:

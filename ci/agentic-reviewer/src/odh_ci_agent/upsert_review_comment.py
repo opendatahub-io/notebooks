@@ -20,6 +20,7 @@ from odh_ci_agent.pr_review_summary import (
     is_review_summary_comment,
     marker_for_run,
 )
+from odh_ci_agent.source_workspace import resolve_review_body_path
 
 
 def load_body(path: str) -> str:
@@ -105,10 +106,9 @@ def main() -> None:
         label="pull request number",
     )
     run_id = int(required_env("GITHUB_RUN_ID"))
-    body_path = required_env("REVIEW_BODY_PATH")
     workflow_run_url = required_env("WORKFLOW_RUN_URL")
 
-    body = load_body(body_path)
+    body = load_body(str(resolve_review_body_path()))
     marker = marker_for_run(run_id)
     body = ensure_marker(body, marker, run_id=run_id)
 
