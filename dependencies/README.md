@@ -6,7 +6,7 @@ dependency rules:
 | Layer | File | uv flag | Purpose |
 |-------|------|---------|---------|
 | 1 | `constraints.txt` | `--constraints` | Global version **floors** (`package>=X`) |
-| 2 | `overrides.txt` | `--override` | Global **forced pins/ranges** when a floor is insufficient |
+| 2 | `overrides.txt` | `--override` | Global **forced pins/ranges** when a floor is insufficient; **replaces** package-declared requirements (runtime risk — see below) |
 | 3 | `pyproject.toml` `[tool.uv.override-dependencies]` | (from pyproject) | **Image-specific** overrides |
 
 Both global files are always passed to `uv pip compile`, even when empty.
@@ -44,6 +44,12 @@ guarantee. On `rhoai-x.y`, constraints also record CVE remediation for the relea
 
 Forced pins or ranges that `constraints.txt` cannot express, or that lose in resolver
 conflicts. Keep this file smaller than `constraints.txt`.
+
+**Runtime risk:** `uv --override` replaces package-declared requirements rather than
+adding a bound. A successful lock resolution therefore does **not** guarantee the
+forced version works at runtime with every image's dependency tree. Before adding a
+global entry, require compatibility evidence (tests, upstream guidance, or a
+deliberate all-image audit) — this file applies to **every** image.
 
 **Review obligation:** every time you touch this file, carefully review all entries
 for obsolete, broken, or dangerous pins. Fix or remove anything no longer justified
