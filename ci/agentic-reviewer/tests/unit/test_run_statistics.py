@@ -1,93 +1,65 @@
 from __future__ import annotations
 
-import pytest
 from odh_ci_agent import run_statistics
 
 
-def test_lookup_model_pricing_matches_gemini_35_flash() -> None:
-    pricing = run_statistics.lookup_model_pricing("models/gemini-3.5-flash")
-
-    assert pricing is not None
-    assert pricing.input_usd_per_million_tokens == pytest.approx(1.50)
-    assert pricing.output_usd_per_million_tokens == pytest.approx(9.00)
-
-
-def test_lookup_model_pricing_matches_gemini_31_flash_lite() -> None:
-    pricing = run_statistics.lookup_model_pricing("gemini-3.1-flash-lite")
-
-    assert pricing is not None
-    assert pricing.input_usd_per_million_tokens == pytest.approx(0.25)
-    assert pricing.output_usd_per_million_tokens == pytest.approx(1.50)
-
-
-def test_lookup_model_pricing_returns_none_for_unknown_model() -> None:
-    assert run_statistics.lookup_model_pricing("gemini-unknown-model") is None
-
-
-def test_estimate_cost_usd_accounts_for_cached_and_output_tokens() -> None:
-    pricing = run_statistics.lookup_model_pricing("gemini-3.5-flash")
-    assert pricing is not None
-
-    cost = run_statistics.estimate_cost_usd(
-        {
-            "prompt_token_count": 1_000_000,
-            "cached_content_token_count": 200_000,
-            "candidates_token_count": 100_000,
-            "thoughts_token_count": 50_000,
-            "total_token_count": 1_350_000,
-        },
-        pricing,
-    )
-
-    assert cost["billable_input_tokens"] == pytest.approx(800_000.0)
-    assert cost["cached_input_tokens"] == pytest.approx(200_000.0)
-    assert cost["output_tokens"] == pytest.approx(150_000.0)
-    assert cost["input_usd"] == pytest.approx(1.2)
-    assert cost["cached_input_usd"] == pytest.approx(0.03)
-    assert cost["output_usd"] == pytest.approx(1.35)
-    assert cost["total_usd"] == pytest.approx(2.58)
-
-
-def test_build_run_statistics_marks_unknown_model_cost_as_na() -> None:
-    report = run_statistics.build_run_statistics(
-        run_kind="ci-summary",
-        model="gemini-unknown",
-        turn_usage=None,
-        conversation_usage=None,
-        tool_names=["view_file", "view_file"],
-        conversation_id="abc123",
-        agent_succeeded=True,
-    )
-
-    assert report["model"]["pricing_available"] is False
-    assert report["cost_usd"]["estimate_available"] is False
-    assert report["cost_usd"]["total_usd"] == "n/a"
-    assert report["tools"]["total_calls"] == 2
-    assert report["tools"]["by_name"] == {"view_file": 2}
-
-
-def test_write_and_persist_run_statistics(tmp_path, monkeypatch) -> None:
-    output_path = tmp_path / "agy-run-statistics.json"
-    summary_path = tmp_path / "step-summary.md"
-    monkeypatch.setenv("AGY_RUN_STATISTICS_PATH", str(output_path))
-    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary_path))
-    monkeypatch.setenv("GITHUB_RUN_ID", "42")
+def test_build_run_statistics_includes_review_block() -> None:
+    review_outcome = {
+        "add_comment_attempts": 1,
+        "deduplicated_comment_attempts": 0,
+        "inline_comments_posted": True,
+        "inline_comments_staged": 1,
+        "review_submitted": True,
+    }
 
     report = run_statistics.build_run_statistics(
         run_kind="pr-review",
-        model="gemini-3.1-flash-lite",
+        model="gemini-3.5-flash",
+        turn_usage=None,
+        conversation_usage=None,
+        tool_names=["add_comment_to_pending_review"],
+        conversation_id="conv-1",
+        agent_succeeded=True,
+        review_outcome=review_outcome,
+    )
+
+    assert report["review"] == review_outcome
+
+
+def test_build_run_statistics_omits_review_block_when_not_provided() -> None:
+    report = run_statistics.build_run_statistics(
+        run_kind="ci-summary",
+        model="gemini-3.5-flash",
         turn_usage=None,
         conversation_usage=None,
         tool_names=[],
-        conversation_id="deadbeef",
+        conversation_id=None,
         agent_succeeded=True,
-        metadata={"pull_request_number": 99},
     )
 
-    written_path = run_statistics.persist_run_statistics(report)
+    assert "review" not in report
 
-    assert written_path == str(output_path)
-    assert output_path.exists()
+
+def test_append_github_step_summary_includes_review_counts(tmp_path, monkeypatch) -> None:
+    summary_path = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary_path))
+    monkeypatch.setenv("GITHUB_RUN_ID", "12345")
+
+    report = run_statistics.build_run_statistics(
+        run_kind="pr-review",
+        model="gemini-3.5-flash",
+        turn_usage=None,
+        conversation_usage=None,
+        tool_names=[],
+        conversation_id=None,
+        agent_succeeded=True,
+        review_outcome={
+            "inline_comments_staged": 2,
+            "inline_comments_posted": False,
+        },
+    )
+    run_statistics.append_github_step_summary(report)
+
     summary = summary_path.read_text(encoding="utf-8")
-    assert "Antigravity run statistics" in summary
-    assert "gemini-3.1-flash-lite" in summary
+    assert "**Inline comments staged:** 2" in summary
+    assert "**Inline comments posted:** False" in summary

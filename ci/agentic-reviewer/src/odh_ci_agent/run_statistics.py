@@ -173,6 +173,7 @@ def build_run_statistics(
     agent_succeeded: bool,
     failure_reason: str | None = None,
     metadata: Mapping[str, object] | None = None,
+    review_outcome: Mapping[str, object] | None = None,
 ) -> dict[str, Any]:
     normalized_model = normalize_model_id(model)
     pricing = lookup_model_pricing(model)
@@ -224,6 +225,8 @@ def build_run_statistics(
         },
         "metadata": dict(metadata or {}),
     }
+    if review_outcome is not None:
+        report["review"] = dict(review_outcome)
     return report
 
 
@@ -275,6 +278,10 @@ def append_github_step_summary(report: Mapping[str, object]) -> None:
         lines.append(f"- **Conversation id:** `{report['conversation_id']}`")
     if isinstance(cost, dict) and cost.get("estimate_available") is False:
         lines.append("- **Cost note:** pricing table has no entry for this model")
+    review = report.get("review")
+    if isinstance(review, dict):
+        lines.append(f"- **Inline comments staged:** {review.get('inline_comments_staged', 'n/a')}")
+        lines.append(f"- **Inline comments posted:** {review.get('inline_comments_posted', 'n/a')}")
     lines.append("")
     artifact_name = f"antigravity-run-statistics-{os.environ.get('GITHUB_RUN_ID', 'local')}.json"
     lines.append(f"Full JSON report uploaded as artifact `{artifact_name}` (`agy-run-statistics.json`).")
@@ -300,6 +307,7 @@ def record_agent_run(
     agent_succeeded: bool,
     failure_reason: str | None = None,
     metadata: Mapping[str, object] | None = None,
+    review_outcome: Mapping[str, object] | None = None,
 ) -> str:
     report = build_run_statistics(
         run_kind=run_kind,
@@ -311,6 +319,7 @@ def record_agent_run(
         agent_succeeded=agent_succeeded,
         failure_reason=failure_reason,
         metadata=metadata,
+        review_outcome=review_outcome,
     )
     path = persist_run_statistics(report)
     print_run_statistics(report)
