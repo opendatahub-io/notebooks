@@ -372,7 +372,7 @@ def test_run_lock_always_passes_constraints_and_overrides(
 ) -> None:
     project_dir = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12"
     project_dir.mkdir(parents=True)
-    (project_dir / "pyproject.toml").write_text("[project]\nname = \"test\"\n", encoding="utf-8")
+    (project_dir / "pyproject.toml").write_text('[project]\nname = "test"\n', encoding="utf-8")
     log = pg.LogBuffer()
     captured_cmd: list[str] = []
 
