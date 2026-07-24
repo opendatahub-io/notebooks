@@ -1,0 +1,56 @@
+# yamllint disable rule:line-length
+---
+name: Dependency Review
+
+# Free on public repositories. Private repos need GitHub Code Security.
+# https://github.com/security/plans
+"on":
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      base-ref:
+        description: Base git ref for comparison (required for manual runs)
+        required: false
+        default: main
+        type: string
+      head-ref:
+        description: Head git ref for comparison (defaults to the ref that triggered the run)
+        required: false
+        default: ''
+        type: string
+
+concurrency:
+  group: dependency-review-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  dependency-review:
+    name: Dependency review
+    # Private RHDS needs paid Code Security; keep free on public repos/forks.
+    if: github.repository != 'red-hat-data-services/notebooks'
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Dependency Review (pull_request)
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0
+        with:
+          # Block high/critical advisories introduced by the PR; ignore lower noise.
+          fail-on-severity: high
+          # No SPDX allowlist yet; vulnerability checks only.
+          license-check: false
+
+      - name: Dependency Review (dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0
+        with:
+          fail-on-severity: high
+          license-check: false
+          base-ref: ${{ inputs.base-ref }}
+          head-ref: ${{ inputs.head-ref || github.sha }}
