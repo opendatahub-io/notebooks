@@ -91,7 +91,7 @@ def main() -> None:
     repository = required_env("GITHUB_REPOSITORY")
     head_sha = required_env("PR_HEAD_SHA")
     destination = resolve_destination_workspace()
-    token = os.environ.get("GITHUB_TOKEN", "").strip() or None
+    token = os.environ.get("GITHUB_TOKEN", "").strip() or None  # nosemgrep: python-hardcoded-password
 
     shutil.rmtree(destination, ignore_errors=True)
     destination.mkdir(parents=True, exist_ok=True)

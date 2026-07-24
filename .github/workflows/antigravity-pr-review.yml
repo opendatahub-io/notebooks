@@ -48,6 +48,7 @@ jobs:
         uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b'  # v2.1.1
         with:
           app-id: '${{ vars.APP_ID }}'
+          # nosemgrep: generic-hardcoded-secret
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
           permission-contents: 'read'
           permission-issues: 'write'
@@ -68,6 +69,7 @@ jobs:
         env:
           ADDITIONAL_CONTEXT: '${{ inputs.additional_context || github.event.inputs.additional_context }}'
           GITHUB_REPOSITORY: '${{ github.repository }}'
+          # nosemgrep: generic-hardcoded-secret
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           PULL_REQUEST_NUMBER: '${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
           REVIEW_CONTEXT_PATH: 'review-context.json'
@@ -77,10 +79,12 @@ jobs:
         env:
           ADDITIONAL_CONTEXT: '${{ inputs.additional_context || github.event.inputs.additional_context }}'
           AGY_TRAJECTORY_DIR: 'agy-trajectory/pr-review'
+          # nosemgrep: generic-hardcoded-secret
           GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
           GEMINI_MODEL: '${{ vars.GEMINI_MODEL }}'
           GITHUB_REPOSITORY: '${{ github.repository }}'
           GITHUB_RUN_ID: '${{ github.run_id }}'
+          # nosemgrep: generic-hardcoded-secret
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           PULL_REQUEST_NUMBER: '${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
           REVIEW_BODY_PATH: 'review-summary-body.md'
@@ -100,6 +104,7 @@ jobs:
         env:
           GITHUB_REPOSITORY: '${{ github.repository }}'
           GITHUB_RUN_ID: '${{ github.run_id }}'
+          # nosemgrep: generic-hardcoded-secret
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           PULL_REQUEST_NUMBER: '${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
           REVIEW_BODY_PATH: 'review-summary-body.md'
@@ -116,6 +121,7 @@ jobs:
           SERVER_URL: '${{ github.server_url }}'
         uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'  # v7.0.1
         with:
+          # nosemgrep: generic-hardcoded-secret
           github-token: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           script: |-
             const prNumber = Number(process.env.PR_NUMBER);

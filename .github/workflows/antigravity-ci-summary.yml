@@ -47,6 +47,7 @@ jobs:
         uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b'  # v2.1.1
         with:
           app-id: '${{ vars.APP_ID }}'
+          # nosemgrep: generic-hardcoded-secret
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
           permission-actions: 'read'
           permission-contents: 'read'
@@ -93,6 +94,7 @@ jobs:
           COMMENT_BODY_PATH: 'ci-comment-body.md'
           CI_RUN_CONTEXT_PATH: 'ci-run-context.json'
           GITHUB_REPOSITORY: '${{ github.repository }}'
+          # nosemgrep: generic-hardcoded-secret
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           SOURCE_WORKSPACE: 'unsafe-pr-source'
           TRIGGER_JOB_ID: '${{ steps.resolve_target.outputs.trigger_job_id }}'
@@ -104,6 +106,7 @@ jobs:
           ${{ steps.prep.outputs.source_head_sha != '' }}
         env:
           GITHUB_REPOSITORY: '${{ github.repository }}'
+          # nosemgrep: generic-hardcoded-secret
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           PR_HEAD_SHA: '${{ steps.prep.outputs.source_head_sha }}'
           SOURCE_WORKSPACE: 'unsafe-pr-source'
@@ -117,9 +120,11 @@ jobs:
           AGY_TRAJECTORY_DIR: 'agy-trajectory/ci-summary'
           COMMENT_BODY_PATH: 'ci-comment-body.md'
           CI_RUN_CONTEXT_PATH: 'ci-run-context.json'
+          # nosemgrep: generic-hardcoded-secret
           GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
           GEMINI_MODEL: '${{ vars.GEMINI_MODEL }}'
           GITHUB_REPOSITORY: '${{ github.repository }}'
+          # nosemgrep: generic-hardcoded-secret
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           SOURCE_WORKSPACE: 'unsafe-pr-source'
           SUMMARIZE_MODE: '${{ steps.prep.outputs.mode }}'
@@ -140,6 +145,7 @@ jobs:
         env:
           COMMENT_BODY_PATH: 'ci-comment-body.md'
           CI_RUN_CONTEXT_PATH: 'ci-run-context.json'
+          # nosemgrep: generic-hardcoded-secret
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
         run: 'uv run --package odh-ci-agent odh-ci-upsert-ci-comment'
 

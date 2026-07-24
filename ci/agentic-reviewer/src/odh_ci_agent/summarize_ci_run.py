@@ -74,7 +74,7 @@ def should_enable_actions_fallback(context: Mapping[str, object]) -> bool:
 
 
 def build_config(context: Mapping[str, object]) -> LocalAgentConfig:
-    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    token = os.environ.get("GITHUB_TOKEN", "").strip()  # nosemgrep: python-hardcoded-password
     source_workspace = os.environ.get("SOURCE_WORKSPACE", os.environ.get("GITHUB_WORKSPACE", os.getcwd()))
     mcp_servers = []
     policies = [
