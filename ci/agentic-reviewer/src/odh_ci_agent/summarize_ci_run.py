@@ -157,9 +157,10 @@ async def summarize(context: Mapping[str, object], body_path: str) -> int:
         write_body(body_path, render_final_success_comment(context))
         return 0
 
-    config = build_config(context)
-    if not config.mcp_servers and not os.environ.get("GEMINI_API_KEY", "").strip():
+    if not os.environ.get("GEMINI_API_KEY", "").strip():
         raise SystemExit("Missing GEMINI_API_KEY for CI summarization")
+
+    config = build_config(context)
 
     async with Agent(config) as agent:
         response = await agent.chat(build_prompt(context))

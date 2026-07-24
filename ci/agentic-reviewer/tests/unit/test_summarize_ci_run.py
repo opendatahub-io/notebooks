@@ -48,6 +48,7 @@ def test_build_prompt_includes_mode_and_context() -> None:
 
 def test_build_config_enables_read_only_source_tools(monkeypatch) -> None:
     monkeypatch.setenv("GITHUB_WORKSPACE", "/workspace/notebooks")
+    monkeypatch.setenv("AGY_TRAJECTORY_DIR", "/workspace/notebooks/agy-trajectory")
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     context = {"failed_jobs": [{"log_excerpt": "grounded excerpt", "log_tail": ""}]}
 
