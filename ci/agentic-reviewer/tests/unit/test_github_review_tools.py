@@ -418,3 +418,80 @@ def test_create_pending_review_revalidates_before_post() -> None:
             raise AssertionError("expected ValueError")
         except ValueError as exc:
             assert "Line 999 could not be resolved" in str(exc)
+
+
+def test_review_outcome_empty_run() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+
+    assert client.review_outcome() == {
+        "add_comment_attempts": 0,
+        "deduplicated_comment_attempts": 0,
+        "inline_comments_posted": False,
+        "inline_comments_staged": 0,
+        "review_submitted": False,
+    }
+
+
+def test_review_outcome_staged_and_submitted() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    client._draft_review_comments.append(
+        {
+            "body": "nit",
+            "path": "README.md",
+            "line": 5,
+            "side": "RIGHT",
+        }
+    )
+    client.invocations.extend(
+        [
+            ReviewToolInvocation(tool_name="add_comment_to_pending_review", method=None, success=True),
+            ReviewToolInvocation(tool_name="pull_request_review_write", method="submit_pending", success=True),
+        ]
+    )
+
+    assert client.review_outcome() == {
+        "add_comment_attempts": 1,
+        "deduplicated_comment_attempts": 0,
+        "inline_comments_posted": True,
+        "inline_comments_staged": 1,
+        "review_submitted": True,
+    }
+
+
+def test_review_outcome_staged_without_submit() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    client._draft_review_comments.append(
+        {
+            "body": "nit",
+            "path": "README.md",
+            "line": 5,
+            "side": "RIGHT",
+        }
+    )
+    client.invocations.append(
+        ReviewToolInvocation(tool_name="add_comment_to_pending_review", method=None, success=True)
+    )
+
+    outcome = client.review_outcome()
+    assert outcome["inline_comments_staged"] == 1
+    assert outcome["review_submitted"] is False
+    assert outcome["inline_comments_posted"] is False
+
+
+def test_review_outcome_counts_deduplicated_attempts() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    kwargs = {
+        "path": "README.md",
+        "body": "nit",
+        "subjectType": "LINE",
+        "line": 5,
+    }
+
+    with _patch_diff_index(client, _stub_diff_index(("README.md", {5}))):
+        client.add_comment_to_pending_review(**kwargs)
+        client.add_comment_to_pending_review(**kwargs)
+
+    outcome = client.review_outcome()
+    assert outcome["add_comment_attempts"] == 2
+    assert outcome["deduplicated_comment_attempts"] == 1
+    assert outcome["inline_comments_staged"] == 1

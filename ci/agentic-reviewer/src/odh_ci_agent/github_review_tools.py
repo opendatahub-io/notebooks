@@ -150,6 +150,7 @@ class GitHubReviewClient:
     _authenticated_login_unavailable: bool = field(default=False, init=False)
     _draft_review_body: str | None = field(default=None, init=False)
     _draft_review_comments: list[dict[str, object]] = field(default_factory=list, init=False)
+    _deduplicated_comment_attempts: int = field(default=0, init=False)
     _diff_line_index: DiffLineIndex | None = field(default=None, init=False)
     invocations: list[ReviewToolInvocation] = field(default_factory=list, init=False)
 
@@ -506,6 +507,7 @@ class GitHubReviewClient:
 
             dedupe_key = self._comment_dedupe_key(payload)
             if any(self._comment_dedupe_key(existing) == dedupe_key for existing in self._draft_review_comments):
+                self._deduplicated_comment_attempts += 1
                 return {
                     "staged": True,
                     "comment_count": len(self._draft_review_comments),
@@ -532,6 +534,23 @@ class GitHubReviewClient:
             and invocation.success
             for invocation in self.invocations
         )
+
+    def review_outcome(self) -> dict[str, object]:
+        add_comment_attempts = sum(
+            1 for invocation in self.invocations if invocation.tool_name == "add_comment_to_pending_review"
+        )
+        return {
+            "add_comment_attempts": add_comment_attempts,
+            "deduplicated_comment_attempts": self._deduplicated_comment_attempts,
+            "inline_comments_posted": self.inline_comments_posted(),
+            "inline_comments_staged": len(self._draft_review_comments),
+            "review_submitted": any(
+                invocation.tool_name == "pull_request_review_write"
+                and invocation.method == "submit_pending"
+                and invocation.success
+                for invocation in self.invocations
+            ),
+        }
 
     def _first_error_snippet(self, invocations: list[ReviewToolInvocation]) -> str:
         for invocation in invocations:
