@@ -324,6 +324,7 @@ async def run_review(inputs: ReviewInputs) -> int:
                     "pull_request_number": inputs.pull_request_number,
                     "repository": inputs.repository,
                 },
+                review_outcome=review_client.review_outcome(),
             )
             return 1
 
@@ -348,6 +349,7 @@ async def run_review(inputs: ReviewInputs) -> int:
                     "pull_request_number": inputs.pull_request_number,
                     "repository": inputs.repository,
                 },
+                review_outcome=review_client.review_outcome(),
             )
             return 1
 
@@ -363,6 +365,7 @@ async def run_review(inputs: ReviewInputs) -> int:
                 "pull_request_number": inputs.pull_request_number,
                 "repository": inputs.repository,
             },
+            review_outcome=review_client.review_outcome(),
         )
 
     persist_review_summary(text)
