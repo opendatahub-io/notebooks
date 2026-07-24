@@ -195,6 +195,7 @@
       "matchDatasources": ["docker"],
       "matchPackageNames": ["/^quay\\.io\\/aipcc\\//"],
       "groupName": "konflux BASE_IMAGE {{{depNameSanitized}}}",
+      "pinDigests": true,
       "recreateWhen": "always",
       "semanticCommits": "enabled",
     },
@@ -276,6 +277,7 @@
       // https://docs.renovatebot.com/configuration-options/#matchpackagenames
       "matchPackageNames": ["/^registry\\.redhat\\.io\\/rhai\\//"],
       "groupName": "Red Hat registry base images",
+      "pinDigests": true,
       "semanticCommits": "enabled",
     },
     {
