@@ -479,8 +479,10 @@ def build_context(
     *,
     trigger_job_id: int | None,
     include_logs: bool,
+    progress: dict[str, int] | None = None,
 ) -> dict[str, object]:
-    progress = progress_counts(jobs)
+    if progress is None:
+        progress = progress_counts(jobs)
     matrix_progress = matrix_job_counts(jobs)
     run_status = str(run.get("status", ""))
     raw_conclusion = run.get("conclusion")
@@ -558,6 +560,7 @@ def main() -> None:
         source_head_sha,
         trigger_job_id=trigger_job_id,
         include_logs=include_logs,
+        progress=progress,
     )
 
     context_path = output_path("CI_RUN_CONTEXT_PATH", "ci-run-context.json")
