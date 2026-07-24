@@ -60,6 +60,13 @@ def cluster_failed_job(failed_step: str, log_tail: str) -> str:
     return "other"
 
 
+def escape_markdown_table_cell(value: object) -> str:
+    """Escape untrusted text for markdown table cells."""
+
+    text = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", " ")
+    return text.replace("|", "\\|").replace("`", "\\`")
+
+
 def string_list(value: object) -> list[str]:
     """Normalize a JSON-like field back into a list of strings."""
 
@@ -151,8 +158,8 @@ def render_progress_comment(context: Mapping[str, object]) -> str:
             ]
         )
         for failed_job in failed_jobs:
-            job_name = str(failed_job.get("name", "")).replace("|", "\\|")
-            failed_step = str(failed_job.get("failed_step", "")).replace("|", "\\|")
+            job_name = escape_markdown_table_cell(failed_job.get("name", ""))
+            failed_step = escape_markdown_table_cell(failed_job.get("failed_step", ""))
             url = str(failed_job.get("url", ""))
             lines.append(f"| {job_name} | {failed_step} | [logs]({url}) |")
         lines.append("")
@@ -179,8 +186,8 @@ def render_failed_jobs_table(failed_jobs: Sequence[Mapping[str, object]], *, max
         "| --- | --- | --- |",
     ]
     for failed_job in failed_jobs[:max_rows]:
-        job_name = str(failed_job.get("name", "")).replace("|", "\\|")
-        failed_step = str(failed_job.get("failed_step", "")).replace("|", "\\|")
+        job_name = escape_markdown_table_cell(failed_job.get("name", ""))
+        failed_step = escape_markdown_table_cell(failed_job.get("failed_step", ""))
         url = str(failed_job.get("url", ""))
         lines.append(f"| {job_name} | {failed_step} | [logs]({url}) |")
     remaining = len(failed_jobs) - max_rows

@@ -39,6 +39,12 @@ def test_string_list_filters_non_strings() -> None:
     assert ci_summary.string_list(["one", 2, None, "three"]) == ["one", "three"]
 
 
+def test_escape_markdown_table_cell_sanitizes_untrusted_text() -> None:
+    assert ci_summary.escape_markdown_table_cell("job|name") == "job\\|name"
+    assert ci_summary.escape_markdown_table_cell("step`one`") == "step\\`one\\`"
+    assert ci_summary.escape_markdown_table_cell("line\r\nbreak") == "line break"
+
+
 def test_render_progress_comment_includes_failures_running_jobs_and_marker() -> None:
     context = {
         "failed_jobs": [
