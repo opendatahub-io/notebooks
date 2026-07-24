@@ -79,6 +79,7 @@ no-binary-package = [
     # exempt our own packages
     "notebooks",
     "copr-rebuild",
+    "odh-ci-agent",
     # sdist-only deps (pure Python, no system library requirements)
     "openshift-python-wrapper", "pyhelper-utils", "python-simple-logger", "timeout-sampler",
 ]
@@ -88,7 +89,7 @@ no-binary-package = [
 exclude-dependencies = ["requests-gssapi"]
 
 [tool.uv.workspace]
-members = ["base-images/copr"]
+members = ["base-images/copr", "ci/agentic-reviewer"]
 
 # https://github.com/astral-sh/uv/issues/3957#issuecomment-2659350181
 [build-system]
@@ -126,7 +127,7 @@ reportUnnecessaryTypeIgnoreComment = "error"
 reportPossiblyUnboundVariable = "warning"
 reportOptionalMemberAccess = "none"
 reportOptionalSubscript = "none"
-include = ["ci/", "tests/", "base-images/"]
+include = ["ci/", "tests/", "base-images/", "ci/agentic-reviewer/"]
 ignore = [ ]
 pythonVersion = "3.14"
 pythonPlatform = "Linux"

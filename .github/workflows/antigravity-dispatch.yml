@@ -1,0 +1,120 @@
+---
+name: '🔀 Antigravity Dispatch'
+
+"on":
+  pull_request:
+    types:
+      - 'opened'
+      - 'reopened'
+      - 'edited'
+  issue_comment:
+    types:
+      - 'created'
+  pull_request_review_comment:
+    types:
+      - 'created'
+  pull_request_review:
+    types:
+      - 'submitted'
+
+defaults:
+  run:
+    shell: 'bash'
+
+jobs:
+  dispatch:
+    if: |-
+      (
+        github.event_name == 'pull_request' &&
+        (
+          github.event.pull_request.head.repo.fork == false ||
+          contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+        )
+      ) || (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        github.event.sender.type == 'User' &&
+        (
+          startsWith(github.event.comment.body || '', '/agy review') ||
+          startsWith(github.event.comment.body || '', '/gemini-cli review')
+        ) &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+      ) || (
+        github.event_name == 'pull_request_review_comment' &&
+        github.event.sender.type == 'User' &&
+        (
+          startsWith(github.event.comment.body || '', '/agy review') ||
+          startsWith(github.event.comment.body || '', '/gemini-cli review')
+        ) &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+      ) || (
+        github.event_name == 'pull_request_review' &&
+        github.event.sender.type == 'User' &&
+        (
+          startsWith(github.event.review.body || '', '/agy review') ||
+          startsWith(github.event.review.body || '', '/gemini-cli review')
+        ) &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.review.author_association)
+      )
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'read'
+    outputs:
+      additional_context: '${{ steps.extract_command.outputs.additional_context }}'
+      command: '${{ steps.extract_command.outputs.command }}'
+      pull_request_number: '${{ steps.extract_command.outputs.pull_request_number }}'
+    steps:
+      - name: 'Extract command'
+        id: 'extract_command'
+        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'  # v7.0.1
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body || github.event.review.body || '' }}
+          EVENT_TYPE: ${{ github.event_name }}.${{ github.event.action }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+        with:
+          script: |
+            const commentBody = process.env.COMMENT_BODY || '';
+            const eventType = process.env.EVENT_TYPE;
+            const reviewCommands = ['/agy review', '/gemini-cli review'];
+            const matchedCommand = reviewCommands.find((command) => commentBody.startsWith(command));
+            const pullRequestNumber = process.env.PULL_REQUEST_NUMBER || process.env.ISSUE_NUMBER || '';
+            if (pullRequestNumber && !/^[1-9][0-9]*$/.test(pullRequestNumber)) {
+              throw new Error(`Invalid pull request number: ${pullRequestNumber}`);
+            }
+
+            core.setOutput('pull_request_number', pullRequestNumber);
+
+            if (['pull_request.opened', 'pull_request.reopened', 'pull_request.edited'].includes(eventType)) {
+              core.setOutput('command', 'review');
+              core.setOutput('additional_context', '');
+              return;
+            }
+
+            if (matchedCommand) {
+              core.setOutput('command', 'review');
+              core.setOutput(
+                'additional_context',
+                commentBody.slice(matchedCommand.length).trim(),
+              );
+              return;
+            }
+
+            core.setOutput('command', 'fallthrough');
+            core.setOutput('additional_context', '');
+
+  review:
+    needs: 'dispatch'
+    if: |-
+      ${{ needs.dispatch.outputs.command == 'review' }}
+    uses: './.github/workflows/antigravity-pr-review.yml'
+    permissions:
+      contents: 'read'
+      issues: 'write'
+      pull-requests: 'write'
+    with:
+      additional_context: '${{ needs.dispatch.outputs.additional_context }}'
+      pull_request_number: '${{ needs.dispatch.outputs.pull_request_number }}'
+    secrets:
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

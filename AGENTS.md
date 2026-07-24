@@ -21,6 +21,7 @@ and follow linked documents for topic-specific detail.
 | [docs/cves/python.md](docs/cves/python.md) / [docs/cves/nodejs.md](docs/cves/nodejs.md) | You are fixing CVEs or lockfile-driven security updates |
 | [docs/cves/agents-cve-autofix.md](docs/cves/agents-cve-autofix.md) | You are an automated CVE fix agent (jira-autofix) |
 | [`.github/AGENTS.md`](.github/AGENTS.md) | You are editing GitHub Actions or action metadata |
+| [`ci/agentic-reviewer/AGENTS.md`](ci/agentic-reviewer/AGENTS.md) | You are editing Antigravity PR review / CI summary agents |
 | [`tests/browser/AGENTS.md`](tests/browser/AGENTS.md) | You are editing Playwright tests or browser tooling |
 | [docs/agents/testing.md](docs/agents/testing.md) | You need the test catalog: types, markers, commands, CI parity |
 | `ci/security-scan/` | You need Quay vulnerability scan results or the weekly security workflow |

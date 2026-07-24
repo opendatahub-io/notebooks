@@ -540,7 +540,8 @@ check-actions:
 .PHONY: test-unit
 test-unit:
 	@echo "Running Python unit tests"
-	uv run pytest -m 'not buildonlytest' --ignore=tests/containers tests/ ntb/
+	uv sync --locked --all-packages
+	uv run pytest -m 'not buildonlytest' --ignore=tests/containers tests/ ntb/ ci/agentic-reviewer/tests/
 	@echo "Running Go unit tests"
 	GOTOOLCHAIN=auto GONOSUMDB=golang.org/toolchain \
 	  go test -C scripts/buildinputs -cover ./...

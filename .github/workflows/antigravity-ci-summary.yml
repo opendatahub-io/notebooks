@@ -1,0 +1,179 @@
+---
+name: '🧠 Antigravity CI Summary'
+
+"on":
+  workflow_run:
+    workflows:
+      - 'Build Notebooks (pr)'
+      - 'Build Notebooks (push)'
+    types:
+      - 'completed'
+  workflow_dispatch:
+    inputs:
+      workflow_run_id:
+        description: 'Existing Build Notebooks (pr) workflow run ID to summarize'
+        required: true
+        type: 'string'
+      trigger_job_id:
+        description: 'Optional GitHub Actions job ID to use for last-updated messaging'
+        required: false
+        type: 'string'
+  pull_request:
+    types:
+      - 'edited'
+
+concurrency:
+  group: 'ci-summary-${{ github.event.workflow_run.pull_requests[0].number || github.event.workflow_run.id || github.event.inputs.workflow_run_id || github.run_id }}'
+  cancel-in-progress: true
+
+jobs:
+  update:
+    if: |-
+      github.event_name == 'workflow_dispatch' || (
+        github.event_name == 'pull_request' &&
+        contains(github.event.pull_request.body, '<!-- agy-ci-summary:')
+      ) || (
+        github.event.workflow_run.event == 'push' || (
+          github.event.workflow_run.event == 'pull_request' &&
+          github.event.workflow_run.head_repository.full_name == github.repository
+        )
+      )
+    runs-on: 'ubuntu-latest'
+    timeout-minutes: 12
+    permissions:
+      actions: 'read'
+      contents: 'read'
+      issues: 'write'
+      pull-requests: 'write'
+    steps:
+      - name: 'Mint identity token'
+        id: 'mint_identity_token'
+        if: |-
+          ${{ vars.APP_ID }}
+        uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b'  # v2.1.1
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-actions: 'read'
+          permission-contents: 'read'
+          permission-issues: 'write'
+          permission-pull-requests: 'write'
+
+      - name: 'Checkout repository'
+        uses: 'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd'  # v6.0.2
+        with:
+          persist-credentials: false
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.ref }}
+
+      - name: 'Setup uv and Python'
+        uses: './.github/actions/setup-uv'
+
+      - name: 'Install from uv.lock (project + dev deps)'
+        run: 'uv sync --locked --package odh-ci-agent'
+
+      - name: 'Resolve target workflow run'
+        id: 'resolve_target'
+        env:
+          EVENT_NAME: '${{ github.event_name }}'
+          EVENT_WORKFLOW_RUN_ID: '${{ github.event.workflow_run.id }}'
+          INPUT_TRIGGER_JOB_ID: '${{ github.event.inputs.trigger_job_id }}'
+          INPUT_WORKFLOW_RUN_ID: '${{ github.event.inputs.workflow_run_id }}'
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |-
+          set -euo pipefail
+
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            WORKFLOW_RUN_ID="${INPUT_WORKFLOW_RUN_ID}"
+            TRIGGER_JOB_ID="${INPUT_TRIGGER_JOB_ID}"
+          elif [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            WORKFLOW_RUN_ID="$(printf '%s' "${PR_BODY}" | sed -n 's/.*<!-- agy-ci-summary:\([1-9][0-9]*\) -->.*/\1/p' | head -n1)"
+            if [[ -z "${WORKFLOW_RUN_ID}" ]]; then
+              echo "No <!-- agy-ci-summary:RUN_ID --> marker found in pull request body." >&2
+              exit 1
+            fi
+            TRIGGER_JOB_ID=""
+          else
+            WORKFLOW_RUN_ID="${EVENT_WORKFLOW_RUN_ID}"
+            TRIGGER_JOB_ID=""
+          fi
+
+          if [[ ! "${WORKFLOW_RUN_ID}" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Invalid workflow run ID: ${WORKFLOW_RUN_ID}" >&2
+            exit 1
+          fi
+
+          echo "workflow_run_id=${WORKFLOW_RUN_ID}" >> "${GITHUB_OUTPUT}"
+          if [[ -n "${TRIGGER_JOB_ID}" ]]; then
+            echo "trigger_job_id=${TRIGGER_JOB_ID}" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: 'Prepare CI run context'
+        id: 'prep'
+        env:
+          COMMENT_BODY_PATH: 'ci-comment-body.md'
+          CI_RUN_CONTEXT_PATH: 'ci-run-context.json'
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          SOURCE_WORKSPACE: 'unsafe-pr-source'
+          TRIGGER_JOB_ID: '${{ steps.resolve_target.outputs.trigger_job_id }}'
+          WORKFLOW_RUN_ID: '${{ steps.resolve_target.outputs.workflow_run_id }}'
+        run: 'uv run --package odh-ci-agent odh-ci-prepare-ci-run-context'
+
+      - name: 'Fetch untrusted PR source snapshot'
+        if: |-
+          ${{ steps.prep.outputs.source_head_sha != '' }}
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          PR_HEAD_SHA: '${{ steps.prep.outputs.source_head_sha }}'
+          SOURCE_WORKSPACE: 'unsafe-pr-source'
+        run: 'uv run --package odh-ci-agent odh-ci-fetch-pr-source-snapshot'
+
+      - name: 'Summarize CI run'
+        id: 'summarize'
+        if: |-
+          ${{ steps.prep.outputs.mode != 'progress' }}
+        env:
+          AGY_RUN_STATISTICS_PATH: 'agy-run-statistics.json'
+          AGY_TRAJECTORY_DIR: 'agy-trajectory/ci-summary'
+          COMMENT_BODY_PATH: 'ci-comment-body.md'
+          CI_RUN_CONTEXT_PATH: 'ci-run-context.json'
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: '${{ vars.GEMINI_MODEL }}'
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          SOURCE_WORKSPACE: 'unsafe-pr-source'
+          SUMMARIZE_MODE: '${{ steps.prep.outputs.mode }}'
+        run: 'uv run --package odh-ci-agent odh-ci-summarize-ci-run'
+
+      - name: 'Upload Antigravity run statistics'
+        if: |-
+          always() && hashFiles('agy-run-statistics.json') != ''
+        uses: 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'  # v7.0.1
+        with:
+          name: 'antigravity-run-statistics-${{ github.run_id }}'
+          path: 'agy-run-statistics.json'
+          if-no-files-found: 'warn'
+
+      - name: 'Upload Antigravity run trajectory'
+        if: |-
+          always() && hashFiles('agy-trajectory/ci-summary/**') != ''
+        uses: 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'  # v7.0.1
+        with:
+          name: 'antigravity-ci-summary-${{ github.run_id }}'
+          path: 'agy-trajectory/ci-summary/'
+          if-no-files-found: 'error'
+
+      - name: 'Upsert CI summary comment'
+        if: |-
+          ${{ steps.prep.outputs.has_pr == 'true' }}
+        env:
+          COMMENT_BODY_PATH: 'ci-comment-body.md'
+          CI_RUN_CONTEXT_PATH: 'ci-run-context.json'
+          GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+        run: 'uv run --package odh-ci-agent odh-ci-upsert-ci-comment'
+
+      - name: 'Publish CI summary to workflow summary'
+        if: |-
+          ${{ steps.prep.outputs.has_pr != 'true' }}
+        run: 'cat ci-comment-body.md >> "$GITHUB_STEP_SUMMARY"'
