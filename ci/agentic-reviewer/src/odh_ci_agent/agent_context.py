@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
 
 AGENT_META_PREFIXES = (".agents/plugins/", ".agents/skills/")
 

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import sys
 from dataclasses import dataclass
@@ -20,11 +19,10 @@ from odh_ci_agent.github_review_tools import (
     review_tool_policies,
 )
 from odh_ci_agent.pr_review_summary import ensure_marker, extract_review_summary_body, marker_for_run
+from odh_ci_agent.run_statistics import format_usage_metadata, record_agent_run
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
-
-    from google.antigravity.types import UsageMetadata
 
 
 @dataclass(slots=True)
@@ -184,12 +182,6 @@ def build_config(inputs: ReviewInputs) -> tuple[LocalAgentConfig, GitHubReviewCl
     return config, client
 
 
-def format_usage_metadata(usage_metadata: UsageMetadata | None) -> str:
-    if usage_metadata is None:
-        return "null"
-    return json.dumps(usage_metadata.model_dump(), sort_keys=True)
-
-
 def write_review_body(path: str, body: str) -> None:
     with open(path, "w", encoding="utf-8") as file_handle:
         file_handle.write(body.rstrip() + "\n")
@@ -298,6 +290,7 @@ async def run_review(inputs: ReviewInputs) -> int:
         text = "".join(text_chunks)
 
         tool_calls = [tool_call async for tool_call in response.tool_calls]
+        tool_names = mcp_github.tool_call_names(tool_calls)
 
         print("\n--- conversation_id ---")
         print(agent.conversation_id or "null")
@@ -307,9 +300,9 @@ async def run_review(inputs: ReviewInputs) -> int:
         print(format_usage_metadata(response.usage_metadata))
         print("\n--- total_usage ---")
         print(format_usage_metadata(agent.conversation.total_usage))
-        if tool_calls:
+        if tool_names:
             print("\n--- tool_calls ---")
-            for tool_name in mcp_github.tool_call_names(tool_calls):
+            for tool_name in tool_names:
                 print(tool_name)
 
         disallowed = mcp_github.unexpected_tool_calls(
@@ -318,6 +311,20 @@ async def run_review(inputs: ReviewInputs) -> int:
         )
         if disallowed:
             print(f"\nFAIL: disallowed tools invoked: {disallowed}", file=sys.stderr)
+            record_agent_run(
+                run_kind="pr-review",
+                model=config.model,
+                turn_usage=response.usage_metadata,
+                conversation_usage=agent.conversation.total_usage,
+                tool_names=tool_names,
+                conversation_id=agent.conversation_id,
+                agent_succeeded=False,
+                failure_reason=f"disallowed tools invoked: {', '.join(disallowed)}",
+                metadata={
+                    "pull_request_number": inputs.pull_request_number,
+                    "repository": inputs.repository,
+                },
+            )
             return 1
 
         failure_reason = review_run_failed(
@@ -328,7 +335,35 @@ async def run_review(inputs: ReviewInputs) -> int:
         )
         if failure_reason:
             print(f"\nFAIL: {failure_reason}", file=sys.stderr)
+            record_agent_run(
+                run_kind="pr-review",
+                model=config.model,
+                turn_usage=response.usage_metadata,
+                conversation_usage=agent.conversation.total_usage,
+                tool_names=tool_names,
+                conversation_id=agent.conversation_id,
+                agent_succeeded=False,
+                failure_reason=failure_reason,
+                metadata={
+                    "pull_request_number": inputs.pull_request_number,
+                    "repository": inputs.repository,
+                },
+            )
             return 1
+
+        record_agent_run(
+            run_kind="pr-review",
+            model=config.model,
+            turn_usage=response.usage_metadata,
+            conversation_usage=agent.conversation.total_usage,
+            tool_names=tool_names,
+            conversation_id=agent.conversation_id,
+            agent_succeeded=True,
+            metadata={
+                "pull_request_number": inputs.pull_request_number,
+                "repository": inputs.repository,
+            },
+        )
 
     persist_review_summary(text)
     return 0

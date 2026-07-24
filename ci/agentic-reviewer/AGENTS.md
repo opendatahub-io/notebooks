@@ -27,7 +27,9 @@ uv run --package odh-ci-agent odh-ci-review-pr
 make test-unit  # includes ci/agentic-reviewer/tests/unit/
 ```
 
-Required env vars for review: `GEMINI_API_KEY`, `GITHUB_TOKEN`, `GITHUB_REPOSITORY`, `PULL_REQUEST_NUMBER`, `AGY_TRAJECTORY_DIR`. CI also sets `REVIEW_CONTEXT_PATH`.
+Required env vars for review: `GEMINI_API_KEY`, `GITHUB_TOKEN`, `GITHUB_REPOSITORY`, `PULL_REQUEST_NUMBER`, `AGY_TRAJECTORY_DIR`. CI also sets `REVIEW_CONTEXT_PATH` and `AGY_RUN_STATISTICS_PATH` (defaults to `agy-run-statistics.json`).
+
+After each agent run, `odh-ci-review-pr` and `odh-ci-summarize-ci-run` write `agy-run-statistics.json` with token usage, tool-call counts, configured `GEMINI_MODEL`, and a USD cost estimate when the model is in the hardcoded Gemini Flash / Flash-Lite pricing table. Workflows upload it as artifact `antigravity-run-statistics-<run_id>`.
 
 ## Debugging with Antigravity trajectory SQLite dumps
 

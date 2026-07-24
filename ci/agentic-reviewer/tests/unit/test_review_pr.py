@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 from google.antigravity.tools.tool_runner import ToolWithSchema
-from odh_ci_agent import mcp_github, review_pr
+from odh_ci_agent import mcp_github, review_pr, run_statistics
 from odh_ci_agent.github_review_tools import GitHubReviewClient, ReviewToolInvocation, make_github_review_tools
 
 EXAMPLE_VALUE = "placeholder-value"
@@ -159,7 +159,7 @@ def test_persist_review_summary_writes_marked_body(tmp_path, monkeypatch: pytest
 
 
 def test_format_usage_metadata_none() -> None:
-    assert review_pr.format_usage_metadata(None) == "null"
+    assert run_statistics.format_usage_metadata(None) == "null"
 
 
 def test_review_run_failed_detects_policy_denial() -> None:

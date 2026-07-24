@@ -134,6 +134,7 @@ jobs:
         if: |-
           ${{ steps.prep.outputs.mode != 'progress' }}
         env:
+          AGY_RUN_STATISTICS_PATH: 'agy-run-statistics.json'
           AGY_TRAJECTORY_DIR: 'agy-trajectory/ci-summary'
           COMMENT_BODY_PATH: 'ci-comment-body.md'
           CI_RUN_CONTEXT_PATH: 'ci-run-context.json'
@@ -144,6 +145,15 @@ jobs:
           SOURCE_WORKSPACE: 'unsafe-pr-source'
           SUMMARIZE_MODE: '${{ steps.prep.outputs.mode }}'
         run: 'uv run --package odh-ci-agent odh-ci-summarize-ci-run'
+
+      - name: 'Upload Antigravity run statistics'
+        if: |-
+          always() && hashFiles('agy-run-statistics.json') != ''
+        uses: 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'  # v7.0.1
+        with:
+          name: 'antigravity-run-statistics-${{ github.run_id }}'
+          path: 'agy-run-statistics.json'
+          if-no-files-found: 'warn'
 
       - name: 'Upload Antigravity run trajectory'
         if: |-

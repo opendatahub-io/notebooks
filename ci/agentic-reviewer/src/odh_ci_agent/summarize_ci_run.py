@@ -10,7 +10,7 @@ import sys
 from collections.abc import Mapping
 
 from google.antigravity import Agent, CapabilitiesConfig, LocalAgentConfig, types
-from google.antigravity.types import BuiltinTools, UsageMetadata
+from google.antigravity.types import BuiltinTools
 
 from odh_ci_agent import mcp_github
 from odh_ci_agent.ci_summary import (
@@ -23,6 +23,7 @@ from odh_ci_agent.ci_summary import (
     render_progress_comment,
 )
 from odh_ci_agent.github_api import read_github_token
+from odh_ci_agent.run_statistics import format_usage_metadata, record_agent_run
 from odh_ci_agent.source_workspace import resolve_source_workspace
 
 SOURCE_READ_BUILTINS = [
@@ -51,12 +52,6 @@ def load_context(path: str) -> dict[str, object]:
     if not isinstance(data, dict):
         raise SystemExit("CI run context must be a JSON object")
     return data
-
-
-def format_usage_metadata(usage_metadata: UsageMetadata | None) -> str:
-    if usage_metadata is None:
-        return "null"
-    return json.dumps(usage_metadata.model_dump(), sort_keys=True)
 
 
 def should_enable_actions_fallback(context: Mapping[str, object]) -> bool:
@@ -194,6 +189,7 @@ async def summarize(context: Mapping[str, object], body_path: str) -> int:
         text = "".join(text_chunks)
 
         tool_calls = [tool_call async for tool_call in response.tool_calls]
+        tool_names = mcp_github.tool_call_names(tool_calls)
 
         write_body(body_path, render_failure_comment(context, text))
 
@@ -205,9 +201,9 @@ async def summarize(context: Mapping[str, object], body_path: str) -> int:
         print(format_usage_metadata(response.usage_metadata))
         print("--- total_usage ---")
         print(format_usage_metadata(agent.conversation.total_usage))
-        if tool_calls:
+        if tool_names:
             print("--- tool_calls ---")
-            for tool_name in mcp_github.tool_call_names(tool_calls):
+            for tool_name in tool_names:
                 print(tool_name)
 
         allowed_tools = list(SOURCE_READ_TOOL_NAMES)
@@ -220,9 +216,37 @@ async def summarize(context: Mapping[str, object], body_path: str) -> int:
             allowed_tools,
             server_name=actions_server_name,
         )
+        run_metadata = {
+            "mode": context.get("mode"),
+            "pr_number": context.get("pr_number"),
+            "workflow_run_id": context.get("workflow_run_id"),
+            "logs_fully_grounded": context.get("logs_fully_grounded"),
+        }
         if disallowed:
             print(f"FAIL: disallowed tools invoked: {disallowed}", file=sys.stderr)
+            record_agent_run(
+                run_kind="ci-summary",
+                model=config.model,
+                turn_usage=response.usage_metadata,
+                conversation_usage=agent.conversation.total_usage,
+                tool_names=tool_names,
+                conversation_id=agent.conversation_id,
+                agent_succeeded=False,
+                failure_reason=f"disallowed tools invoked: {', '.join(disallowed)}",
+                metadata=run_metadata,
+            )
             return 1
+
+        record_agent_run(
+            run_kind="ci-summary",
+            model=config.model,
+            turn_usage=response.usage_metadata,
+            conversation_usage=agent.conversation.total_usage,
+            tool_names=tool_names,
+            conversation_id=agent.conversation_id,
+            agent_succeeded=True,
+            metadata=run_metadata,
+        )
 
     return 0
 
