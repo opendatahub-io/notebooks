@@ -249,7 +249,12 @@ def append_github_step_summary(report: Mapping[str, object]) -> None:
     cost = report.get("cost_usd")
     tools = report.get("tools")
     usage = report.get("usage")
-    if not isinstance(model, dict) or not isinstance(cost, dict) or not isinstance(tools, dict) or not isinstance(usage, dict):
+    if (
+        not isinstance(model, dict)
+        or not isinstance(cost, dict)
+        or not isinstance(tools, dict)
+        or not isinstance(usage, dict)
+    ):
         return
 
     conversation_usage = usage.get("conversation_total")
