@@ -18,6 +18,9 @@ name: '🧠 Antigravity CI Summary'
         description: 'Optional GitHub Actions job ID to use for last-updated messaging'
         required: false
         type: 'string'
+  pull_request:
+    types:
+      - 'edited'
 
 concurrency:
   group: 'ci-summary-${{ github.event.workflow_run.pull_requests[0].number || github.event.workflow_run.id || github.event.inputs.workflow_run_id || github.run_id }}'
@@ -27,6 +30,9 @@ jobs:
   update:
     if: |-
       github.event_name == 'workflow_dispatch' || (
+        github.event_name == 'pull_request' &&
+        contains(github.event.pull_request.body, '<!-- agy-ci-summary:')
+      ) || (
         github.event.workflow_run.event == 'push' || (
           github.event.workflow_run.event == 'pull_request' &&
           github.event.workflow_run.head_repository.full_name == github.repository
@@ -57,6 +63,7 @@ jobs:
         uses: 'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd'  # v6.0.2
         with:
           persist-credentials: false
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.ref }}
 
       - name: 'Setup uv and Python'
         uses: './.github/actions/setup-uv'
@@ -71,15 +78,28 @@ jobs:
           EVENT_WORKFLOW_RUN_ID: '${{ github.event.workflow_run.id }}'
           INPUT_TRIGGER_JOB_ID: '${{ github.event.inputs.trigger_job_id }}'
           INPUT_WORKFLOW_RUN_ID: '${{ github.event.inputs.workflow_run_id }}'
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |-
           set -euo pipefail
 
           if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
             WORKFLOW_RUN_ID="${INPUT_WORKFLOW_RUN_ID}"
             TRIGGER_JOB_ID="${INPUT_TRIGGER_JOB_ID}"
+          elif [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            WORKFLOW_RUN_ID="$(printf '%s' "${PR_BODY}" | sed -n 's/.*<!-- agy-ci-summary:\([1-9][0-9]*\) -->.*/\1/p' | head -n1)"
+            if [[ -z "${WORKFLOW_RUN_ID}" ]]; then
+              echo "No <!-- agy-ci-summary:RUN_ID --> marker found in pull request body." >&2
+              exit 1
+            fi
+            TRIGGER_JOB_ID=""
           else
             WORKFLOW_RUN_ID="${EVENT_WORKFLOW_RUN_ID}"
             TRIGGER_JOB_ID=""
+          fi
+
+          if [[ ! "${WORKFLOW_RUN_ID}" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Invalid workflow run ID: ${WORKFLOW_RUN_ID}" >&2
+            exit 1
           fi
 
           echo "workflow_run_id=${WORKFLOW_RUN_ID}" >> "${GITHUB_OUTPUT}"
