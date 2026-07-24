@@ -150,6 +150,7 @@ class GitHubReviewClient:
     _authenticated_login_unavailable: bool = field(default=False, init=False)
     _draft_review_body: str | None = field(default=None, init=False)
     _draft_review_comments: list[dict[str, object]] = field(default_factory=list, init=False)
+    _seen_dedupe_keys: set[tuple[object, ...]] = field(default_factory=set, init=False)
     _deduplicated_comment_attempts: int = field(default=0, init=False)
     _diff_line_index: DiffLineIndex | None = field(default=None, init=False)
     invocations: list[ReviewToolInvocation] = field(default_factory=list, init=False)
@@ -193,6 +194,7 @@ class GitHubReviewClient:
     def _clear_local_draft(self) -> None:
         self._draft_review_body = None
         self._draft_review_comments.clear()
+        self._seen_dedupe_keys.clear()
 
     def _load_diff_line_index(self, owner: str, repo: str, pull_number: int) -> DiffLineIndex:
         if self._diff_line_index is not None:
@@ -506,7 +508,7 @@ class GitHubReviewClient:
                 payload["start_side"] = str(args["startSide"]).upper()
 
             dedupe_key = self._comment_dedupe_key(payload)
-            if any(self._comment_dedupe_key(existing) == dedupe_key for existing in self._draft_review_comments):
+            if dedupe_key in self._seen_dedupe_keys:
                 self._deduplicated_comment_attempts += 1
                 return {
                     "staged": True,
@@ -517,6 +519,7 @@ class GitHubReviewClient:
             index = self._load_diff_line_index(owner, repo, pull_number)
             self._validate_staged_comment(index, payload)
             self._draft_review_comments.append(payload)
+            self._seen_dedupe_keys.add(dedupe_key)
             return {
                 "staged": True,
                 "comment_count": len(self._draft_review_comments),
