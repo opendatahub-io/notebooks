@@ -393,6 +393,9 @@ class GitHubReviewClient:
             )
 
         if method == "submit_pending":
+            submit_body = self._review_submit_body(args)
+            if not self._draft_review_comments and not submit_body:
+                return {"skipped": True, "reason": "no review comments or body to submit"}
             return self._record_invocation(
                 "pull_request_review_write",
                 method,
@@ -468,9 +471,6 @@ class GitHubReviewClient:
         args: dict[str, Any],
     ) -> object:
         submit_body = self._review_submit_body(args)
-        if not self._draft_review_comments and not submit_body:
-            return {"skipped": True, "reason": "no review comments or body to submit"}
-
         event = self._coerce_review_submit_event(args.get("event", "COMMENT"))
         if self._pending_review_id is None or self._draft_review_comments or self._draft_review_body:
             self._create_pending_review(base_path, owner, repo, pull_number, args)

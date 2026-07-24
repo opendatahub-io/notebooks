@@ -140,6 +140,8 @@ def test_submit_pending_skips_empty_review_without_api_call() -> None:
 
     assert result == {"skipped": True, "reason": "no review comments or body to submit"}
     mock_api.assert_not_called()
+    assert client.invocations == []
+    assert client.review_outcome()["review_submitted"] is False
 
 
 def test_submit_pending_coerces_request_changes_to_comment() -> None:
