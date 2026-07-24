@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from odh_ci_agent import run_statistics
 
 
@@ -7,16 +8,16 @@ def test_lookup_model_pricing_matches_gemini_35_flash() -> None:
     pricing = run_statistics.lookup_model_pricing("models/gemini-3.5-flash")
 
     assert pricing is not None
-    assert pricing.input_usd_per_million_tokens == 1.50
-    assert pricing.output_usd_per_million_tokens == 9.00
+    assert pricing.input_usd_per_million_tokens == pytest.approx(1.50)
+    assert pricing.output_usd_per_million_tokens == pytest.approx(9.00)
 
 
 def test_lookup_model_pricing_matches_gemini_31_flash_lite() -> None:
     pricing = run_statistics.lookup_model_pricing("gemini-3.1-flash-lite")
 
     assert pricing is not None
-    assert pricing.input_usd_per_million_tokens == 0.25
-    assert pricing.output_usd_per_million_tokens == 1.50
+    assert pricing.input_usd_per_million_tokens == pytest.approx(0.25)
+    assert pricing.output_usd_per_million_tokens == pytest.approx(1.50)
 
 
 def test_lookup_model_pricing_returns_none_for_unknown_model() -> None:
@@ -38,13 +39,13 @@ def test_estimate_cost_usd_accounts_for_cached_and_output_tokens() -> None:
         pricing,
     )
 
-    assert cost["billable_input_tokens"] == 800_000.0
-    assert cost["cached_input_tokens"] == 200_000.0
-    assert cost["output_tokens"] == 150_000.0
-    assert cost["input_usd"] == 1.2
-    assert cost["cached_input_usd"] == 0.03
-    assert cost["output_usd"] == 1.35
-    assert cost["total_usd"] == 2.58
+    assert cost["billable_input_tokens"] == pytest.approx(800_000.0)
+    assert cost["cached_input_tokens"] == pytest.approx(200_000.0)
+    assert cost["output_tokens"] == pytest.approx(150_000.0)
+    assert cost["input_usd"] == pytest.approx(1.2)
+    assert cost["cached_input_usd"] == pytest.approx(0.03)
+    assert cost["output_usd"] == pytest.approx(1.35)
+    assert cost["total_usd"] == pytest.approx(2.58)
 
 
 def test_build_run_statistics_marks_unknown_model_cost_as_na() -> None:
