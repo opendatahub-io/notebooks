@@ -6,13 +6,22 @@ name: Dependency Review
 # https://github.com/security/plans
 "on":
   pull_request:
+  workflow_dispatch:
+    inputs:
+      base-ref:
+        description: Base git ref for comparison (required for manual runs)
+        required: false
+        default: main
+        type: string
+      head-ref:
+        description: Head git ref for comparison (defaults to the ref that triggered the run)
+        required: false
+        default: ''
+        type: string
 
 concurrency:
   group: dependency-review-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
-permissions:
-  contents: read
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   dependency-review:
@@ -20,6 +29,8 @@ jobs:
     # Private RHDS needs paid Code Security; keep free on public repos/forks.
     if: github.repository != 'red-hat-data-services/notebooks'
     runs-on: ubuntu-26.04
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
@@ -31,3 +42,6 @@ jobs:
           fail-on-severity: high
           # No SPDX allowlist yet; vulnerability checks only.
           license-check: false
+          # Needed for workflow_dispatch; ignored for pull_request events.
+          base-ref: ${{ inputs.base-ref || github.event.pull_request.base.sha || github.sha }}
+          head-ref: ${{ inputs.head-ref || github.event.pull_request.head.sha || github.sha }}
