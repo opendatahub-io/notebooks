@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from functools import cached_property
 
 _HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
@@ -77,6 +78,7 @@ class DiffLineIndex:
             index.left[filename] = left_lines
         return index
 
+    @cached_property
     def known_paths(self) -> set[str]:
         return set(self.right) | set(self.left)
 
@@ -92,7 +94,7 @@ class DiffLineIndex:
         if normalized_side not in {"LEFT", "RIGHT"}:
             return f"Invalid side {side!r}; use LEFT or RIGHT"
 
-        if path not in self.known_paths():
+        if path not in self.known_paths:
             return f"Path {path!r} is not part of the pull request diff"
 
         commentable = self.right[path] if normalized_side == "RIGHT" else self.left[path]
