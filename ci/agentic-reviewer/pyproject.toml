@@ -1,0 +1,25 @@
+# https://docs.astral.sh/uv/concepts/projects/config/
+[project]
+name = "odh-ci-agent"
+version = "0.1.0"
+description = "Antigravity-powered GitHub PR review and CI summary agents for OpenDataHub notebooks CI."
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "google-antigravity>=0.1.3",
+]
+
+[project.scripts]
+odh-ci-review-pr = "odh_ci_agent.review_pr:main"
+odh-ci-prepare-review-context = "odh_ci_agent.prepare_review_context:main"
+odh-ci-prepare-ci-run-context = "odh_ci_agent.prepare_ci_run_context:main"
+odh-ci-summarize-ci-run = "odh_ci_agent.summarize_ci_run:main"
+odh-ci-upsert-ci-comment = "odh_ci_agent.upsert_ci_comment:main"
+odh-ci-upsert-review-comment = "odh_ci_agent.upsert_review_comment:main"
+odh-ci-fetch-pr-source-snapshot = "odh_ci_agent.fetch_pr_source_snapshot:main"
+
+[build-system]
+requires = ["uv-build>=0.11.8,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = ["odh_ci_agent"]

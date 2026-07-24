@@ -1,0 +1,159 @@
+---
+name: '🔎 Antigravity Pull Request Review'
+
+"on":
+  workflow_call:
+    inputs:
+      pull_request_number:
+        type: 'string'
+        description: 'Pull request number to review'
+        required: true
+      additional_context:
+        type: 'string'
+        description: 'Any additional context from the request'
+        required: false
+    secrets:
+      GEMINI_API_KEY:
+        required: true
+      APP_PRIVATE_KEY:
+        required: false
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: 'Pull request number to review'
+        required: true
+        type: 'string'
+      additional_context:
+        description: 'Any additional context from the request'
+        required: false
+        type: 'string'
+
+concurrency:
+  group: '${{ github.workflow }}-review-${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: 'ubuntu-latest'
+    timeout-minutes: 10
+    permissions:
+      contents: 'read'
+      issues: 'write'
+      pull-requests: 'write'
+    steps:
+      - name: 'Mint identity token'
+        id: 'mint_identity_token'
+        if: |-
+          ${{ vars.APP_ID }}
+        uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b'  # v2.1.1
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-contents: 'read'
+          permission-issues: 'write'
+          permission-pull-requests: 'write'
+
+      - name: 'Checkout repository'
+        uses: 'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd'  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: 'Setup uv and Python'
+        uses: './.github/actions/setup-uv'
+
+      - name: 'Install from uv.lock (project + dev deps)'
+        run: 'uv sync --locked --package odh-ci-agent'
+
+      - name: 'Validate pull request number'
+        id: 'validate_pr'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER_RAW: ${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}
+        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'  # v7.0.1
+        with:
+          github-token: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          script: |-
+            const raw = process.env.PR_NUMBER_RAW || '';
+            if (!/^[1-9][0-9]*$/.test(raw)) {
+              throw new Error(`Invalid pull request number: ${raw}`);
+            }
+            const prNumber = Number(raw);
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+            await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            core.setOutput('pull_request_number', String(prNumber));
+
+      - name: 'Prepare review context'
+        env:
+          ADDITIONAL_CONTEXT: ${{ inputs.additional_context || github.event.inputs.additional_context }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          PULL_REQUEST_NUMBER: ${{ steps.validate_pr.outputs.pull_request_number }}
+          REVIEW_CONTEXT_PATH: 'review-context.json'
+        run: 'uv run --package odh-ci-agent odh-ci-prepare-review-context'
+
+      - name: 'Run Antigravity pull request review'
+        env:
+          ADDITIONAL_CONTEXT: ${{ inputs.additional_context || github.event.inputs.additional_context }}
+          AGY_RUN_STATISTICS_PATH: 'agy-run-statistics.json'
+          AGY_TRAJECTORY_DIR: 'agy-trajectory/pr-review'
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          PULL_REQUEST_NUMBER: ${{ steps.validate_pr.outputs.pull_request_number }}
+          REVIEW_BODY_PATH: 'review-summary-body.md'
+          REVIEW_CONTEXT_PATH: 'review-context.json'
+        run: 'uv run --package odh-ci-agent odh-ci-review-pr'
+
+      - name: 'Upload Antigravity run statistics'
+        if: |-
+          always() && hashFiles('agy-run-statistics.json') != ''
+        uses: 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'  # v7.0.1
+        with:
+          name: 'antigravity-run-statistics-${{ github.run_id }}'
+          path: 'agy-run-statistics.json'
+          if-no-files-found: 'warn'
+
+      - name: 'Upload Antigravity run trajectory'
+        if: |-
+          always() && hashFiles('agy-trajectory/pr-review/**') != ''
+        uses: 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'  # v7.0.1
+        with:
+          name: 'antigravity-pr-review-${{ github.run_id }}'
+          path: 'agy-trajectory/pr-review/'
+          if-no-files-found: 'error'
+
+      - name: 'Upsert review summary comment'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          PULL_REQUEST_NUMBER: ${{ steps.validate_pr.outputs.pull_request_number }}
+          REVIEW_BODY_PATH: 'review-summary-body.md'
+          WORKFLOW_RUN_URL: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+        run: 'uv run --package odh-ci-agent odh-ci-upsert-review-comment'
+
+      - name: 'Post review failure comment'
+        if: |-
+          ${{ failure() }}
+        env:
+          PR_NUMBER: ${{ steps.validate_pr.outputs.pull_request_number }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
+        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'  # v7.0.1
+        with:
+          github-token: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          script: |-
+            const prNumber = Number(process.env.PR_NUMBER);
+            if (!Number.isInteger(prNumber) || prNumber <= 0) {
+              throw new Error(`Invalid pull request number: ${process.env.PR_NUMBER}`);
+            }
+            const [owner, repo] = process.env.REPOSITORY.split('/');
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: prNumber,
+              body: `There was a problem with the Antigravity PR review. Please check the [workflow logs](${process.env.SERVER_URL}/${process.env.REPOSITORY}/actions/runs/${process.env.RUN_ID}) for details.`,
+            })
