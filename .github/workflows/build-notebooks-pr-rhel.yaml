@@ -48,12 +48,12 @@ jobs:
 
       # Here we are checking out the pull request, so that we can build from the new code
       # We can do this because we already checked that the submitting user is a contributor
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: "refs/pull/${{ github.event.number }}/merge"
           persist-credentials: false  # https://github.com/actions/checkout/issues/2312
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         if: ${{ github.event_name != 'pull_request_target' }}
         with:
           persist-credentials: false  # https://github.com/actions/checkout/issues/2312
