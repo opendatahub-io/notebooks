@@ -459,11 +459,6 @@ class GitHubReviewClient:
             return self._draft_review_body.strip()
         return ""
 
-    def _coerce_review_submit_event(self, event: object) -> str:
-        if event == "COMMENT":
-            return "COMMENT"
-        return "COMMENT"
-
     def _submit_pending_review(
         self,
         base_path: str,
@@ -473,7 +468,6 @@ class GitHubReviewClient:
         args: dict[str, Any],
     ) -> object:
         submit_body = self._review_submit_body(args)
-        event = self._coerce_review_submit_event(args.get("event", "COMMENT"))
         if self._pending_review_id is None or self._draft_review_comments or self._draft_review_body:
             self._create_pending_review(base_path, owner, repo, pull_number, args)
         review_id = self._ensure_pending_review_id(owner, repo, pull_number)
@@ -481,7 +475,7 @@ class GitHubReviewClient:
             f"{base_path}/reviews/{review_id}/events",
             method="POST",
             input_json={
-                "event": event,
+                "event": "COMMENT",
                 "body": submit_body,
             },
         )
