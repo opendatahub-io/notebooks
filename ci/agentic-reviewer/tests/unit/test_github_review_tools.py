@@ -6,6 +6,15 @@ from odh_ci_agent.github_api import GitHubCommandError
 from odh_ci_agent.github_review_tools import GitHubReviewClient, ReviewToolInvocation, make_github_review_tools
 
 
+def test_with_pr_defaults_pins_bound_repository() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+
+    with patch("odh_ci_agent.github_review_tools.gh_api_json", return_value={"number": 12}) as mock_api:
+        client.pull_request_read(method="get", owner="evil", repo="other", pullNumber=999)
+
+    mock_api.assert_called_once_with("repos/owner/repo/pulls/12")
+
+
 def test_add_comment_stages_line_payload() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
 

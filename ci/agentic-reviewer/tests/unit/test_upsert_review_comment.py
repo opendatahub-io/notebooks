@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from unittest.mock import patch
+
+from odh_ci_agent.github_api import GitHubCommandError
 from odh_ci_agent.pr_review_summary import (
     is_active_review_summary_comment,
     is_superseded_comment,
@@ -8,6 +11,7 @@ from odh_ci_agent.pr_review_summary import (
 from odh_ci_agent.upsert_review_comment import (
     latest_review_summary_comment,
     other_active_review_summary_comments,
+    supersede_review_summary_comments,
 )
 
 
@@ -63,3 +67,27 @@ def test_is_active_review_summary_comment() -> None:
     assert is_active_review_summary_comment(active_body) is True
     assert is_superseded_comment(superseded_body) is True
     assert is_active_review_summary_comment(superseded_body) is False
+
+
+def test_supersede_review_summary_comments_continues_after_patch_failure() -> None:
+    marker = marker_for_run(10)
+    comments = [
+        _comment(1, f"## Summary\n\n{marker}"),
+        _comment(2, f"## Summary\n\n{marker_for_run(11)}"),
+    ]
+
+    with patch(
+        "odh_ci_agent.upsert_review_comment.gh_api_json",
+        side_effect=[
+            GitHubCommandError(("gh", "api"), 404, "", "not found"),
+            {"id": 1},
+        ],
+    ) as mock_api:
+        supersede_review_summary_comments(
+            comments,
+            repository="owner/repo",
+            keep_comment_id=2,
+            workflow_run_url="https://example.com/run/3",
+        )
+
+    assert mock_api.call_count == 1

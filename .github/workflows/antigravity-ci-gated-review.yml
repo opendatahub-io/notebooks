@@ -32,9 +32,8 @@ jobs:
           ${{ vars.APP_ID }}
         uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b'  # v2.1.1
         with:
-          app-id: '${{ vars.APP_ID }}'
-          # nosemgrep: generic-hardcoded-secret
-          private-key: '${{ secrets.APP_PRIVATE_KEY }}'
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
           permission-actions: 'read'
           permission-contents: 'read'
           permission-issues: 'write'
@@ -56,10 +55,9 @@ jobs:
           github.event.workflow_run.pull_requests[0] != null
         env:
           ADDITIONAL_CONTEXT: 'CI-gated follow-up review after a successful notebook matrix build.'
-          GITHUB_REPOSITORY: '${{ github.repository }}'
-          # nosemgrep: generic-hardcoded-secret
-          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-          PULL_REQUEST_NUMBER: '${{ github.event.workflow_run.pull_requests[0].number }}'
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          PULL_REQUEST_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
           REVIEW_CONTEXT_PATH: 'review-context.json'
         run: 'uv run --package odh-ci-agent odh-ci-prepare-review-context'
 
@@ -68,14 +66,12 @@ jobs:
           github.event.workflow_run.pull_requests[0] != null
         env:
           ADDITIONAL_CONTEXT: 'CI-gated follow-up review after a successful notebook matrix build.'
-          # nosemgrep: generic-hardcoded-secret
-          GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
-          GEMINI_MODEL: '${{ vars.GEMINI_MODEL }}'
-          GITHUB_REPOSITORY: '${{ github.repository }}'
-          GITHUB_RUN_ID: '${{ github.run_id }}'
-          # nosemgrep: generic-hardcoded-secret
-          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-          PULL_REQUEST_NUMBER: '${{ github.event.workflow_run.pull_requests[0].number }}'
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          PULL_REQUEST_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
           REVIEW_BODY_PATH: 'review-summary-body.md'
           REVIEW_CONTEXT_PATH: 'review-context.json'
         run: 'uv run --package odh-ci-agent odh-ci-review-pr'
@@ -84,11 +80,10 @@ jobs:
         if: |-
           github.event.workflow_run.pull_requests[0] != null
         env:
-          GITHUB_REPOSITORY: '${{ github.repository }}'
-          GITHUB_RUN_ID: '${{ github.run_id }}'
-          # nosemgrep: generic-hardcoded-secret
-          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-          PULL_REQUEST_NUMBER: '${{ github.event.workflow_run.pull_requests[0].number }}'
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          PULL_REQUEST_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
           REVIEW_BODY_PATH: 'review-summary-body.md'
           WORKFLOW_RUN_URL: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
         run: 'uv run --package odh-ci-agent odh-ci-upsert-review-comment'

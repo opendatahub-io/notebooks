@@ -128,9 +128,9 @@ class ReviewToolInvocation:
 def _with_pr_defaults(kwargs: dict[str, Any], repository: str, pull_number: int) -> dict[str, Any]:
     owner, repo = split_repository(repository)
     args = dict(kwargs)
-    args.setdefault("owner", owner)
-    args.setdefault("repo", repo)
-    args.setdefault("pullNumber", pull_number)
+    args["owner"] = owner
+    args["repo"] = repo
+    args["pullNumber"] = pull_number
     return args
 
 

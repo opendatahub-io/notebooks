@@ -10,6 +10,8 @@ import tempfile
 from pathlib import Path, PurePosixPath
 from urllib.request import Request, urlopen
 
+from odh_ci_agent.github_api import read_github_token
+
 
 def required_env(name: str) -> str:
     value = os.environ.get(name, "").strip()
@@ -91,7 +93,7 @@ def main() -> None:
     repository = required_env("GITHUB_REPOSITORY")
     head_sha = required_env("PR_HEAD_SHA")
     destination = resolve_destination_workspace()
-    token = os.environ.get("GITHUB_TOKEN", "").strip() or None  # nosemgrep: python-hardcoded-password
+    github_credential = read_github_token() or None
 
     shutil.rmtree(destination, ignore_errors=True)
     destination.mkdir(parents=True, exist_ok=True)
@@ -101,7 +103,7 @@ def main() -> None:
 
     try:
         with (
-            urlopen(tarball_request(repository, head_sha, token), timeout=180) as response,  # noqa: S310
+            urlopen(tarball_request(repository, head_sha, github_credential), timeout=180) as response,  # noqa: S310
             open(temp_path, "wb") as out_file,
         ):
             shutil.copyfileobj(response, out_file)

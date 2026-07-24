@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -34,6 +35,17 @@ def split_repository(repository: str) -> tuple[str, str]:
     if not separator or not owner or not repo:
         raise ValueError(f"Repository must be in owner/repo format, got {repository!r}")
     return owner, repo
+
+
+def parse_positive_issue_number(raw: str, *, label: str = "issue number") -> int:
+    stripped = raw.strip()
+    if not stripped.isdigit() or stripped == "0" or (len(stripped) > 1 and stripped[0] == "0"):
+        raise ValueError(f"Invalid {label}: {raw!r}")
+    return int(stripped)
+
+
+def read_github_token() -> str:
+    return os.environ.get("GITHUB_TOKEN", "").strip()
 
 
 def _query_path(path: str, query: Mapping[str, object] | None = None) -> str:

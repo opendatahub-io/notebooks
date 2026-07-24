@@ -47,9 +47,8 @@ jobs:
           ${{ vars.APP_ID }}
         uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b'  # v2.1.1
         with:
-          app-id: '${{ vars.APP_ID }}'
-          # nosemgrep: generic-hardcoded-secret
-          private-key: '${{ secrets.APP_PRIVATE_KEY }}'
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
           permission-contents: 'read'
           permission-issues: 'write'
           permission-pull-requests: 'write'
@@ -65,28 +64,43 @@ jobs:
       - name: 'Install from uv.lock (project + dev deps)'
         run: 'uv sync --locked --package odh-ci-agent'
 
+      - name: 'Validate pull request number'
+        id: 'validate_pr'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER_RAW: ${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}
+        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'  # v7.0.1
+        with:
+          github-token: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          script: |-
+            const raw = process.env.PR_NUMBER_RAW || '';
+            if (!/^[1-9][0-9]*$/.test(raw)) {
+              throw new Error(`Invalid pull request number: ${raw}`);
+            }
+            const prNumber = Number(raw);
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+            await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            core.setOutput('pull_request_number', String(prNumber));
+
       - name: 'Prepare review context'
         env:
-          ADDITIONAL_CONTEXT: '${{ inputs.additional_context || github.event.inputs.additional_context }}'
-          GITHUB_REPOSITORY: '${{ github.repository }}'
-          # nosemgrep: generic-hardcoded-secret
-          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-          PULL_REQUEST_NUMBER: '${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
+          ADDITIONAL_CONTEXT: ${{ inputs.additional_context || github.event.inputs.additional_context }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          PULL_REQUEST_NUMBER: ${{ steps.validate_pr.outputs.pull_request_number }}
           REVIEW_CONTEXT_PATH: 'review-context.json'
         run: 'uv run --package odh-ci-agent odh-ci-prepare-review-context'
 
       - name: 'Run Antigravity pull request review'
         env:
-          ADDITIONAL_CONTEXT: '${{ inputs.additional_context || github.event.inputs.additional_context }}'
+          ADDITIONAL_CONTEXT: ${{ inputs.additional_context || github.event.inputs.additional_context }}
           AGY_TRAJECTORY_DIR: 'agy-trajectory/pr-review'
-          # nosemgrep: generic-hardcoded-secret
-          GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
-          GEMINI_MODEL: '${{ vars.GEMINI_MODEL }}'
-          GITHUB_REPOSITORY: '${{ github.repository }}'
-          GITHUB_RUN_ID: '${{ github.run_id }}'
-          # nosemgrep: generic-hardcoded-secret
-          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-          PULL_REQUEST_NUMBER: '${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          PULL_REQUEST_NUMBER: ${{ steps.validate_pr.outputs.pull_request_number }}
           REVIEW_BODY_PATH: 'review-summary-body.md'
           REVIEW_CONTEXT_PATH: 'review-context.json'
         run: 'uv run --package odh-ci-agent odh-ci-review-pr'
@@ -102,11 +116,10 @@ jobs:
 
       - name: 'Upsert review summary comment'
         env:
-          GITHUB_REPOSITORY: '${{ github.repository }}'
-          GITHUB_RUN_ID: '${{ github.run_id }}'
-          # nosemgrep: generic-hardcoded-secret
-          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-          PULL_REQUEST_NUMBER: '${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
+          PULL_REQUEST_NUMBER: ${{ steps.validate_pr.outputs.pull_request_number }}
           REVIEW_BODY_PATH: 'review-summary-body.md'
           WORKFLOW_RUN_URL: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
         run: 'uv run --package odh-ci-agent odh-ci-upsert-review-comment'
@@ -115,14 +128,13 @@ jobs:
         if: |-
           ${{ failure() }}
         env:
-          PR_NUMBER: '${{ inputs.pull_request_number || github.event.inputs.pull_request_number }}'
-          REPOSITORY: '${{ github.repository }}'
-          RUN_ID: '${{ github.run_id }}'
-          SERVER_URL: '${{ github.server_url }}'
+          PR_NUMBER: ${{ steps.validate_pr.outputs.pull_request_number }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
         uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'  # v7.0.1
         with:
-          # nosemgrep: generic-hardcoded-secret
-          github-token: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          github-token: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
           script: |-
             const prNumber = Number(process.env.PR_NUMBER);
             if (!Number.isInteger(prNumber) || prNumber <= 0) {

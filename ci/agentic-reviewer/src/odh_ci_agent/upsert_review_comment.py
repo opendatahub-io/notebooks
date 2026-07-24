@@ -4,9 +4,15 @@
 from __future__ import annotations
 
 import os
+import sys
 
 from odh_ci_agent.ci_summary import int_value, render_superseded_comment
-from odh_ci_agent.github_api import gh_api_json, gh_api_list_pages
+from odh_ci_agent.github_api import (
+    GitHubCommandError,
+    gh_api_json,
+    gh_api_list_pages,
+    parse_positive_issue_number,
+)
 from odh_ci_agent.pr_review_summary import (
     ensure_marker,
     is_active_review_summary_comment,
@@ -70,12 +76,15 @@ def supersede_review_summary_comments(
             str(comment.get("body", "")),
             new_run_url=workflow_run_url,
         )
-        gh_api_json(
-            f"repos/{repository}/issues/comments/{int_value(comment['id'])}",
-            method="PATCH",
-            input_json={"body": superseded_body},
-            timeout=180,
-        )
+        try:
+            gh_api_json(
+                f"repos/{repository}/issues/comments/{int_value(comment['id'])}",
+                method="PATCH",
+                input_json={"body": superseded_body},
+                timeout=180,
+            )
+        except GitHubCommandError as exc:
+            print(f"warning: failed to supersede comment {comment.get('id')}: {exc}", file=sys.stderr)
 
 
 def write_step_summary(comment_url: str) -> None:
@@ -97,7 +106,10 @@ def write_step_summary(comment_url: str) -> None:
 
 def main() -> None:
     repository = required_env("GITHUB_REPOSITORY")
-    issue_number = int(required_env("PULL_REQUEST_NUMBER"))
+    issue_number = parse_positive_issue_number(
+        required_env("PULL_REQUEST_NUMBER"),
+        label="pull request number",
+    )
     run_id = int(required_env("GITHUB_RUN_ID"))
     body_path = required_env("REVIEW_BODY_PATH")
     workflow_run_url = required_env("WORKFLOW_RUN_URL")

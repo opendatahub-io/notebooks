@@ -21,6 +21,7 @@ from odh_ci_agent.ci_summary import (
     render_progress_comment,
     string_list,
 )
+from odh_ci_agent.github_api import read_github_token
 
 SOURCE_READ_BUILTINS = [
     BuiltinTools.LIST_DIR,
@@ -74,15 +75,15 @@ def should_enable_actions_fallback(context: Mapping[str, object]) -> bool:
 
 
 def build_config(context: Mapping[str, object]) -> LocalAgentConfig:
-    token = os.environ.get("GITHUB_TOKEN", "").strip()  # nosemgrep: python-hardcoded-password
+    github_credential = read_github_token()
     source_workspace = os.environ.get("SOURCE_WORKSPACE", os.environ.get("GITHUB_WORKSPACE", os.getcwd()))
     mcp_servers = []
     policies = [
         mcp_github.policy.deny_all(),
         *[mcp_github.policy.allow(tool_name) for tool_name in SOURCE_READ_TOOL_NAMES],
     ]
-    if token and should_enable_actions_fallback(context):
-        actions_server = mcp_github.make_actions_readonly_server(token)
+    if github_credential and should_enable_actions_fallback(context):
+        actions_server = mcp_github.make_actions_readonly_server(github_credential)
         mcp_servers.append(actions_server)
         policies.extend(mcp_github.actions_read_policies(actions_server))
 
