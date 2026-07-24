@@ -72,16 +72,15 @@ def normalize_model_id(model: str | object | None) -> str | None:
     return normalized
 
 
-def lookup_model_pricing(model: str | object | None) -> ModelPricing | None:
-    normalized = normalize_model_id(model)
-    if not normalized:
+def lookup_model_pricing(model: str | None) -> ModelPricing | None:
+    if not model:
         return None
 
-    if normalized in GEMINI_FLASH_MODEL_PRICING:
-        return GEMINI_FLASH_MODEL_PRICING[normalized]
+    if model in GEMINI_FLASH_MODEL_PRICING:
+        return GEMINI_FLASH_MODEL_PRICING[model]
 
     for model_id, pricing in sorted(GEMINI_FLASH_MODEL_PRICING.items(), key=lambda item: len(item[0]), reverse=True):
-        if normalized.startswith(model_id):
+        if model.startswith(model_id):
             return pricing
     return None
 
@@ -176,7 +175,7 @@ def build_run_statistics(
     review_outcome: Mapping[str, object] | None = None,
 ) -> dict[str, Any]:
     normalized_model = normalize_model_id(model)
-    pricing = lookup_model_pricing(model)
+    pricing = lookup_model_pricing(normalized_model)
     turn_usage_dict = usage_metadata_to_dict(turn_usage)
     conversation_usage_dict = usage_metadata_to_dict(conversation_usage)
     tool_summary = summarize_tool_calls(list(tool_names))

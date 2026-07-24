@@ -212,7 +212,7 @@ def clip_excerpt(lines: Sequence[str]) -> str:
 
     head_keep = max(1, len(lines) // 3)
     tail_keep = max(1, len(lines) // 3)
-    clipped = [*list(lines[:head_keep]), "...", *list(lines[-tail_keep:])]
+    clipped = [*lines[:head_keep], "...", *lines[-tail_keep:]]
     excerpt = "\n".join(clipped)
     if len(excerpt) <= MAX_LOG_CHARS:
         return excerpt
