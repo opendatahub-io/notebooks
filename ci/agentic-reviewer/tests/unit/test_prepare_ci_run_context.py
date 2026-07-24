@@ -67,6 +67,7 @@ def test_matrix_job_counts() -> None:
 
 def test_build_context_uses_pull_request_and_trigger_job_name(monkeypatch) -> None:
     monkeypatch.setenv("GITHUB_WORKSPACE", "/workspace/notebooks")
+    monkeypatch.delenv("SOURCE_WORKSPACE", raising=False)
     run = {
         "conclusion": None,
         "html_url": "https://example.invalid/run/55",

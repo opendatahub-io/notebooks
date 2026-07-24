@@ -4,6 +4,15 @@ from unittest.mock import call, patch
 
 from odh_ci_agent.github_api import GitHubCommandError
 from odh_ci_agent.github_review_tools import GitHubReviewClient, ReviewToolInvocation, make_github_review_tools
+from odh_ci_agent.review_diff_lines import DiffLineIndex
+
+
+def _stub_diff_index(*paths: tuple[str, set[int]]) -> DiffLineIndex:
+    return DiffLineIndex(right=dict(paths), left={})
+
+
+def _patch_diff_index(client: GitHubReviewClient, index: DiffLineIndex):
+    return patch.object(client, "_load_diff_line_index", return_value=index)
 
 
 def test_with_pr_defaults_pins_bound_repository() -> None:
@@ -18,13 +27,14 @@ def test_with_pr_defaults_pins_bound_repository() -> None:
 def test_add_comment_stages_line_payload() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
 
-    result = client.add_comment_to_pending_review(
-        path="README.md",
-        body="nit",
-        subjectType="LINE",
-        line=5,
-        side="RIGHT",
-    )
+    with _patch_diff_index(client, _stub_diff_index(("README.md", {5}))):
+        result = client.add_comment_to_pending_review(
+            path="README.md",
+            body="nit",
+            subjectType="LINE",
+            line=5,
+            side="RIGHT",
+        )
 
     assert result == {"staged": True, "comment_count": 1}
     assert client._draft_review_comments == [
@@ -40,13 +50,14 @@ def test_add_comment_stages_line_payload() -> None:
 def test_add_comment_renders_suggestion_block() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
 
-    client.add_comment_to_pending_review(
-        path="README.md",
-        body="Replace this branch.",
-        suggestion="if flag:\n    return True",
-        subjectType="LINE",
-        line=5,
-    )
+    with _patch_diff_index(client, _stub_diff_index(("README.md", {5}))):
+        client.add_comment_to_pending_review(
+            path="README.md",
+            body="Replace this branch.",
+            suggestion="if flag:\n    return True",
+            subjectType="LINE",
+            line=5,
+        )
 
     assert client._draft_review_comments == [
         {
@@ -62,21 +73,22 @@ def test_submit_pending_creates_review_with_staged_comments() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
     client._head_commit_id = "abc123"
 
-    client.add_comment_to_pending_review(
-        path="README.md",
-        body="nit",
-        subjectType="LINE",
-        line=5,
-    )
+    with _patch_diff_index(client, _stub_diff_index(("README.md", {5}))):
+        client.add_comment_to_pending_review(
+            path="README.md",
+            body="nit",
+            subjectType="LINE",
+            line=5,
+        )
 
-    with patch(
-        "odh_ci_agent.github_review_tools.gh_api_json",
-        side_effect=[
-            {"id": 99, "state": "PENDING"},
-            {"state": "COMMENTED"},
-        ],
-    ) as mock_api:
-        client.pull_request_review_write(method="submit_pending", event="COMMENT", body="")
+        with patch(
+            "odh_ci_agent.github_review_tools.gh_api_json",
+            side_effect=[
+                {"id": 99, "state": "PENDING"},
+                {"state": "COMMENTED"},
+            ],
+        ) as mock_api:
+            client.pull_request_review_write(method="submit_pending", event="COMMENT", body="")
 
     assert client._pending_review_id == 99
     assert client._draft_review_comments == []
@@ -172,14 +184,16 @@ def test_posting_failure_reason_ignores_failed_submit_when_later_submit_succeeds
 def test_create_pending_review_recreates_existing_pending_review_with_staged_comments() -> None:
     client = GitHubReviewClient(repository="owner/repo", pull_number=12)
     client._head_commit_id = "abc123"
-    client.add_comment_to_pending_review(
-        path="README.md",
-        body="nit",
-        subjectType="LINE",
-        line=5,
-    )
+    with _patch_diff_index(client, _stub_diff_index(("README.md", {5}))):
+        client.add_comment_to_pending_review(
+            path="README.md",
+            body="nit",
+            subjectType="LINE",
+            line=5,
+        )
 
     with (
+        _patch_diff_index(client, _stub_diff_index(("README.md", {5}))),
         patch.object(client, "_current_user_login", return_value="ci-bot"),
         patch(
             "odh_ci_agent.github_review_tools.gh_api_list_pages",
@@ -344,3 +358,63 @@ def test_make_github_review_tools_returns_client_and_tools() -> None:
     review_tool = next(tool for tool in tools if tool.fn.__name__ == "pull_request_review_write")
     assert "posted to GitHub only when" in comment_tool.input_schema["description"]
     assert "submit_pending" in review_tool.input_schema["description"]
+
+
+def test_add_comment_rejects_out_of_range_line_at_stage_time() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    index = _stub_diff_index(
+        ("ci/agentic-reviewer/src/odh_ci_agent/fetch_pr_source_snapshot.py", {1, 2, 3}),
+    )
+
+    with _patch_diff_index(client, index):
+        try:
+            client.add_comment_to_pending_review(
+                path="ci/agentic-reviewer/src/odh_ci_agent/fetch_pr_source_snapshot.py",
+                body="wrong file",
+                subjectType="LINE",
+                line=146,
+            )
+            raise AssertionError("expected ValueError")
+        except ValueError as exc:
+            assert "Line 146 could not be resolved" in str(exc)
+
+    assert client._draft_review_comments == []
+    assert client.invocations[-1].success is False
+
+
+def test_add_comment_deduplicates_identical_staged_payload() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    kwargs = {
+        "path": "README.md",
+        "body": "nit",
+        "subjectType": "LINE",
+        "line": 5,
+    }
+
+    with _patch_diff_index(client, _stub_diff_index(("README.md", {5}))):
+        first = client.add_comment_to_pending_review(**kwargs)
+        second = client.add_comment_to_pending_review(**kwargs)
+
+    assert first == {"staged": True, "comment_count": 1}
+    assert second == {"staged": True, "comment_count": 1, "deduplicated": True}
+    assert len(client._draft_review_comments) == 1
+
+
+def test_create_pending_review_revalidates_before_post() -> None:
+    client = GitHubReviewClient(repository="owner/repo", pull_number=12)
+    client._head_commit_id = "abc123"
+    client._draft_review_comments.append(
+        {
+            "body": "nit",
+            "path": "README.md",
+            "line": 999,
+            "side": "RIGHT",
+        }
+    )
+
+    with _patch_diff_index(client, _stub_diff_index(("README.md", {5}))):
+        try:
+            client._create_pending_review("repos/owner/repo/pulls/12", "owner", "repo", 12, {})
+            raise AssertionError("expected ValueError")
+        except ValueError as exc:
+            assert "Line 999 could not be resolved" in str(exc)

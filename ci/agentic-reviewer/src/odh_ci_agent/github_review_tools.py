@@ -17,6 +17,7 @@ from odh_ci_agent.github_api import (
     split_repository,
 )
 from odh_ci_agent.mcp_github import GITHUB_REVIEW_TOOLS, PULL_REQUEST_READ_METHODS
+from odh_ci_agent.review_diff_lines import DiffLineIndex
 
 _READ_METHOD_DESCRIPTION = (
     f"Action to retrieve pull request data. Valid values: {', '.join(PULL_REQUEST_READ_METHODS)}."
@@ -94,7 +95,10 @@ ADD_COMMENT_SCHEMA = {
             "description": "Comment target level. Only LINE comments are supported in CI.",
             "enum": ["LINE"],
         },
-        "line": {"type": "number", "description": "Diff line number for LINE comments."},
+        "line": {
+            "type": "number",
+            "description": "Line number in the pull request head file (RIGHT) or base file (LEFT) on a changed +/- diff line.",
+        },
         "side": {
             "type": "string",
             "description": "Diff side for LINE comments.",
@@ -146,6 +150,7 @@ class GitHubReviewClient:
     _authenticated_login_unavailable: bool = field(default=False, init=False)
     _draft_review_body: str | None = field(default=None, init=False)
     _draft_review_comments: list[dict[str, object]] = field(default_factory=list, init=False)
+    _diff_line_index: DiffLineIndex | None = field(default=None, init=False)
     invocations: list[ReviewToolInvocation] = field(default_factory=list, init=False)
 
     def _pull_path(self, owner: str, repo: str, pull_number: int) -> str:
@@ -187,6 +192,52 @@ class GitHubReviewClient:
     def _clear_local_draft(self) -> None:
         self._draft_review_body = None
         self._draft_review_comments.clear()
+
+    def _load_diff_line_index(self, owner: str, repo: str, pull_number: int) -> DiffLineIndex:
+        if self._diff_line_index is not None:
+            return self._diff_line_index
+        files = gh_api_list_pages(f"{self._pull_path(owner, repo, pull_number)}/files", timeout=180)
+        self._diff_line_index = DiffLineIndex.from_pull_files(files)
+        return self._diff_line_index
+
+    @staticmethod
+    def _comment_dedupe_key(payload: dict[str, object]) -> tuple[object, ...]:
+        return (
+            payload["path"],
+            payload["line"],
+            payload.get("start_line"),
+            payload["side"],
+            payload["body"],
+        )
+
+    def _validate_staged_comment(
+        self,
+        index: DiffLineIndex,
+        payload: dict[str, object],
+    ) -> None:
+        path = str(payload["path"])
+        line = int(str(payload["line"]))
+        side = str(payload["side"])
+        start_line_raw = payload.get("start_line")
+        start_line = int(str(start_line_raw)) if start_line_raw is not None else None
+        error = index.validate_comment(path=path, line=line, side=side, start_line=start_line)
+        if error:
+            raise ValueError(error)
+
+    def _validated_draft_comments(
+        self,
+        owner: str,
+        repo: str,
+        pull_number: int,
+    ) -> list[dict[str, object]]:
+        if not self._draft_review_comments:
+            return []
+        index = self._load_diff_line_index(owner, repo, pull_number)
+        validated: list[dict[str, object]] = []
+        for comment in self._draft_review_comments:
+            self._validate_staged_comment(index, comment)
+            validated.append(dict(comment))
+        return validated
 
     def _render_comment_body(self, body: str, suggestion: object | None) -> str:
         rendered_body = body.strip()
@@ -368,8 +419,9 @@ class GitHubReviewClient:
         args: dict[str, Any],
     ) -> object:
         payload: dict[str, object] = {}
-        if self._draft_review_comments:
-            payload["comments"] = list(self._draft_review_comments)
+        validated_comments = self._validated_draft_comments(owner, repo, pull_number)
+        if validated_comments:
+            payload["comments"] = validated_comments
             payload["commit_id"] = self._head_commit_sha(owner, repo, pull_number)
         body = args.get("body")
         if isinstance(body, str) and body.strip():
@@ -433,8 +485,14 @@ class GitHubReviewClient:
 
     def add_comment_to_pending_review(self, **kwargs: Any) -> object:
         args = _with_pr_defaults(kwargs, self.repository, self.pull_number)
+        owner = str(args["owner"])
+        repo = str(args["repo"])
+        pull_number = int(args["pullNumber"])
 
         def _stage_comment() -> object:
+            if "line" not in args:
+                raise ValueError("line is required for LINE review comments")
+
             payload: dict[str, object] = {
                 "body": self._render_comment_body(str(args["body"]), args.get("suggestion")),
                 "path": str(args["path"]),
@@ -445,6 +503,17 @@ class GitHubReviewClient:
                 payload["start_line"] = int(args["startLine"])
             if "startSide" in args:
                 payload["start_side"] = str(args["startSide"]).upper()
+
+            dedupe_key = self._comment_dedupe_key(payload)
+            if any(self._comment_dedupe_key(existing) == dedupe_key for existing in self._draft_review_comments):
+                return {
+                    "staged": True,
+                    "comment_count": len(self._draft_review_comments),
+                    "deduplicated": True,
+                }
+
+            index = self._load_diff_line_index(owner, repo, pull_number)
+            self._validate_staged_comment(index, payload)
             self._draft_review_comments.append(payload)
             return {
                 "staged": True,
