@@ -74,13 +74,14 @@ def test_supersede_review_summary_comments_continues_after_patch_failure() -> No
     comments = [
         _comment(1, f"## Summary\n\n{marker}"),
         _comment(2, f"## Summary\n\n{marker_for_run(11)}"),
+        _comment(3, f"## Summary\n\n{marker_for_run(12)}"),
     ]
 
     with patch(
         "odh_ci_agent.upsert_review_comment.gh_api_json",
         side_effect=[
             GitHubCommandError(("gh", "api"), 404, "", "not found"),
-            {"id": 1},
+            {"id": 3},
         ],
     ) as mock_api:
         supersede_review_summary_comments(
@@ -90,4 +91,4 @@ def test_supersede_review_summary_comments_continues_after_patch_failure() -> No
             workflow_run_url="https://example.com/run/3",
         )
 
-    assert mock_api.call_count == 1
+    assert mock_api.call_count == 2
