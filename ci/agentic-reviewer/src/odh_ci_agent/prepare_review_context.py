@@ -76,12 +76,12 @@ def main() -> None:
         raise SystemExit("Expected check runs response to contain JSON objects")
     check_runs = [check_run for check_run in all_check_runs if isinstance(check_run, dict)][:MAX_CHECK_RUNS]
 
-    changed_files = [str(file_info["filename"]) for file_info in files]
+    all_filenames = [str(file_info["filename"]) for file_info in all_files if isinstance(file_info, dict)]
     typed_check_runs: list[dict[str, object]] = check_runs
 
     context = {
         "additional_context": os.environ.get("ADDITIONAL_CONTEXT", "").strip(),
-        "affected_image_targets": affected_image_targets(changed_files),
+        "affected_image_targets": affected_image_targets(all_filenames),
         "base_ref": pr["base"]["ref"],
         "body": pr.get("body") or "",
         "changed_files": [
