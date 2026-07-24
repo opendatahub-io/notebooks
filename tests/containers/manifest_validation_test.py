@@ -805,6 +805,43 @@ def _packages_from_quay(image_ref: str, quay_auth: str) -> dict[str, str]:
     return packages
 
 
+def _validate_code_server_via_sbom(
+    subtests: pytest_subtests.SubTests,
+    tag: _TagInfo,
+    code_server_deps: list[dict[str, str]],
+    *,
+    has_cosign: bool,
+) -> None:
+    """Validate code-server software items using SBOM data instead of Clair.
+
+    Clair cannot resolve npm packages that use ``0.0.0`` dev-style versions,
+    so code-server is skipped in the Clair path.  This function fetches the
+    SBOM (via cosign) and validates code-server annotations against it,
+    ensuring manifest drift is still caught.
+    """
+    if not has_cosign:
+        with subtests.test(msg=f"{tag.is_name} tag {tag.tag_name}: code-server SBOM fallback"):
+            pytest.fail("cosign is required for code-server validation but not found on PATH")
+        return
+
+    # Pre-Konflux images have no SBOM attached.
+    if "quay.io/modh/" in tag.image_ref:
+        with subtests.test(msg=f"{tag.is_name} tag {tag.tag_name}: code-server SBOM fallback"):
+            pytest.skip(f"Pre-Konflux image (no SBOM) for code-server check: {tag.image_ref}")
+        return
+
+    source_hint = _imagestream_to_source_hint(tag.is_name)
+    python_version = _extract_python_version(tag.image_ref)
+    try:
+        sbom_packages = _packages_from_sbom(tag.image_ref, source_hint=source_hint, python_version=python_version)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        with subtests.test(msg=f"{tag.is_name} tag {tag.tag_name}: code-server SBOM fetch"):
+            pytest.fail(f"Failed to fetch SBOM for code-server validation of {tag.image_ref}: {exc}")
+        return
+
+    _compare_manifest_vs_actual(subtests, tag.is_name, tag.tag_name, code_server_deps, sbom_packages, is_software=True)
+
+
 @pytest.mark.manifest_validation
 @pytest.mark.parametrize("base_dir", _BASE_DIRS, ids=["odh", "rhoai"])
 def test_old_tag_annotations_match_quay(
@@ -843,9 +880,15 @@ def test_old_tag_annotations_match_quay(
             continue
 
         _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, t.python_deps, actual_packages)
-        # Clair cannot resolve code-server (npm package with 0.0.0 dev version).
-        quay_software = [sw for sw in t.software if sw["name"] != "code-server"]
-        _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, quay_software, actual_packages, is_software=True)
+        # Clair cannot resolve code-server (npm package with 0.0.0 dev version),
+        # so validate it separately via SBOM fallback instead of silently dropping it.
+        clair_software = [sw for sw in t.software if sw["name"] != "code-server"]
+        code_server_software = [sw for sw in t.software if sw["name"] == "code-server"]
+        _compare_manifest_vs_actual(subtests, t.is_name, t.tag_name, clair_software, actual_packages, is_software=True)
+        if code_server_software:
+            _validate_code_server_via_sbom(
+                subtests, t, code_server_software, has_cosign=shutil.which("cosign") is not None
+            )
 
     if skipped_scans:
         summary = ", ".join(skipped_scans)
