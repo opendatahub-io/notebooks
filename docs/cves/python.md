@@ -55,7 +55,7 @@ Do not maintain a historical ledger of superseded CVE fixes.
 ### How it works
 
 1. **Constraints file format** (requirements.txt style):
-   ```
+   ```text
    # RHAIENG-XXXX: CVE-YYYY-ZZZZ description
    package>=fixed_version
    ```
@@ -70,7 +70,7 @@ Do not maintain a historical ledger of superseded CVE fixes.
 ### Adding a new CVE constraint
 
 1. Add the constraint to `dependencies/constraints.txt` in the CVE section:
-   ```
+   ```text
    # RHAIENG-XXXX: CVE-YYYY-ZZZZZ package_name vulnerability description
    # Upstream: https://github.com/...
    package_name>=fixed_version
