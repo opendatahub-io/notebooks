@@ -41,7 +41,22 @@ jobs:
       - name: Setup uv and Python
         uses: ./.github/actions/setup-uv
 
+      # Fork PRs do not receive repository secrets (GIT_CRYPT_KEY). Skip with a
+      # warning so the job stays green; same-repo PRs and pushes still validate.
+      - name: Check registry secrets availability
+        id: secrets
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+        run: |
+          if [[ -z "${GIT_CRYPT_KEY}" ]]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Skipping imagestream software-version validation::GIT_CRYPT_KEY is unavailable (common for fork PRs). Push the branch to the main repo for full CI. See CONTRIBUTING.md#contributing-from-branches-vs-forks."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Unlock encrypted secrets with git-crypt
+        if: steps.secrets.outputs.available == 'true'
         run: |
           echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
           trap 'rm -f ./git-crypt-key' EXIT
@@ -50,6 +65,7 @@ jobs:
           GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
 
       - name: Configure registry auth from pull-secret
+        if: steps.secrets.outputs.available == 'true'
         run: |
           mkdir -p "$HOME/.config/containers"
           cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
@@ -57,7 +73,7 @@ jobs:
           cp ci/secrets/pull-secret.json "$HOME/.docker/config.json"
 
       - name: Configure Quay.io API auth for RHOAI namespace
-        if: env.RHOAI_QUAY_BOT_USERNAME != ''
+        if: steps.secrets.outputs.available == 'true' && env.RHOAI_QUAY_BOT_USERNAME != ''
         run: |
           QUAY_AUTH=$(echo -n "${RHOAI_QUAY_BOT_USERNAME}:${RHOAI_QUAY_BOT_PASSWORD}" | base64 -w 0)
           echo "::add-mask::$QUAY_AUTH"
@@ -68,5 +84,6 @@ jobs:
           RHOAI_QUAY_BOT_PASSWORD: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
 
       - name: Validate manifest annotations against Quay.io Clair scan
+        if: steps.secrets.outputs.available == 'true'
         run: |
           uv run pytest tests/containers/manifest_validation_test.py::test_old_tag_annotations_match_quay -v
