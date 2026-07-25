@@ -29,10 +29,12 @@ Watching it would trigger rebuilds of every single image whenever any shared pre
 
 ## PR comment triggers
 
-PR build pipelines are triggered by `pathChanged()` CEL expressions on push, or manually
-via PR comments (`/build-konflux`, `/kfbuild-all`, `/build-<type>`). See
-[docs/konflux.md](../docs/konflux.md#pr-comment-triggers-repo-specific) for the full
-command list and `/retest` behavior.
+PR build pipelines auto-trigger when `pathChanged()` CEL expressions match on
+push. Manual triggers use either built-in PaC commands (`/test`, `/retest` — CEL
+still evaluated) or custom `on-comment` regexes (`/build-konflux`, `/kfbuild-all`,
+`/build-<type>` — CEL bypassed). See
+[docs/konflux.md](../docs/konflux.md#how-pr-comment-commands-match-pipelines) for
+the full command list, behavior table, and known PaC limitations.
 
 ## Base images
 

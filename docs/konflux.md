@@ -248,29 +248,29 @@ All PipelineRuns in `.tekton/` override compute resources for several tasks that
 
 ### PR builds
 
-Comment `/retest` on the pull request to retrigger Konflux PR pipelines. PaC
-*intends* bare `/retest` to retry only failed pipelines, but in our Konflux
-setup that filtering is **unreliable**: bare `/retest` often re-runs **all**
-pipelines that already ran on the commit, including ones that already passed.
-This is especially likely after PipelineRun pruning (`max-keep-runs: 3` on our
-pipelines) — see [tektoncd/pipelines-as-code#2580](https://github.com/tektoncd/pipelines-as-code/issues/2580).
-Verified on [PR #4161](https://github.com/opendatahub-io/notebooks/pull/4161)
-(5 passed + 2 failed → all 7 restarted after bare `/retest`).
+Bare `/retest` and bare `/test` are [PaC GitOps commands](https://pipelinesascode.com/docs/guides/gitops-commands/) that still evaluate each pipeline's `on-cel-expression` (including `pathChanged()`). They only affect pipelines whose CEL matches the PR's changed files — typically the same subset that auto-triggered on push. They do **not** start all 22 pipelines. Use `/build-konflux` or `/kfbuild-all` to bypass CEL and trigger everything (see [How PR comment commands match pipelines](#how-pr-comment-commands-match-pipelines) below).
 
-If the PipelineRun has `cancel-in-progress: "true"` (our pipelines do), `/retest`
-also **cancels all in-progress runs** before starting new ones -- PaC treats the
-`/retest` comment as a new event and applies the cancel-in-progress logic
-([PaC cancel_pipelineruns.go](https://github.com/openshift-pipelines/pipelines-as-code/blob/main/pkg/pipelineascode/cancel_pipelineruns.go),
-[PR #1833](https://github.com/openshift-pipelines/pipelines-as-code/pull/1833)).
+PaC *intends* bare `/retest` to retry only **failed** pipelines within that CEL-matched subset, but in our Konflux setup that success filtering is **unreliable**: bare `/retest` often re-runs **all** CEL-matched pipelines on the commit, including ones that already passed. This is especially likely after PipelineRun pruning (`max-keep-runs: 3` on our pipelines) — see [tektoncd/pipelines-as-code#2580](https://github.com/tektoncd/pipelines-as-code/issues/2580) ([`filterSuccessfulTemplates`](https://github.com/openshift-pipelines/pipelines-as-code/blob/main/pkg/matcher/annotation_matcher.go#L451); GitHub [`GetCommitStatuses`](https://github.com/openshift-pipelines/pipelines-as-code/blob/main/pkg/provider/github/github.go#L383-L385) returns `nil`, so Konflux Checks API results are not used as fallback). Verified on [PR #4161](https://github.com/opendatahub-io/notebooks/pull/4161) (5 passed + 2 failed → all 7 CEL-matched pipelines restarted after bare `/retest`).
 
-Bare `/test` re-runs all annotation-matched PR pipelines with **no** success
-filtering (use when you explicitly want a full rerun). To retrigger a **single**
-pipeline, use `/retest <pipelinerun-name>` or `/test <pipelinerun-name>`
-(always targets that pipeline, regardless of previous outcome). To explicitly
-trigger all PR build pipelines, use `/build-konflux` or `/kfbuild-all` (see
-[PR comment triggers](#pr-comment-triggers-repo-specific) below).
+Bare `/test` uses the same CEL scope as bare `/retest` but has **no** success filter. Verified on [PR #4164](https://github.com/opendatahub-io/notebooks/pull/4164) (reference-only → **0** new runs) and [PR #4160](https://github.com/opendatahub-io/notebooks/pull/4160) (CUDA paths → **7** runs, not 22).
 
-See [PaC GitOps Commands](https://pipelinesascode.com/docs/guides/gitops-commands/).
+If the PipelineRun has `cancel-in-progress: "true"` (our pipelines do), bare `/retest` and bare `/test` also **cancel all in-progress runs** before starting new ones — PaC treats the comment as a new event and applies cancel-in-progress logic ([PaC `cancel_pipelineruns.go`](https://github.com/openshift-pipelines/pipelines-as-code/blob/main/pkg/pipelineascode/cancel_pipelineruns.go), [PR #1833](https://github.com/openshift-pipelines/pipelines-as-code/pull/1833)).
+
+To retrigger a **single** pipeline (bypassing CEL), use `/retest <pipelinerun-name>` or `/test <pipelinerun-name>` ([PaC push-commands docs](https://pipelinesascode.com/docs/guides/gitops-commands/push-commands/) — restarts the named PipelineRun regardless of event-matching annotations).
+
+#### How PR comment commands match pipelines
+
+PaC evaluates PipelineRun templates differently depending on the comment:
+
+| Command | Matching | Scope on ODH | Success filter |
+|---------|----------|--------------|----------------|
+| `/build-konflux` / `/kfbuild-all` | `on-comment` regex; **CEL skipped** ([source](https://github.com/openshift-pipelines/pipelines-as-code/blob/main/pkg/matcher/annotation_matcher.go#L275-L307)) | All **22** PR pipelines | None |
+| `/build-<type>` | `on-comment` regex; **CEL skipped** | One pipeline | None |
+| bare `/test` | Built-in GitOps; **CEL evaluated** | Pipelines whose `pathChanged()` is true for this PR | None |
+| bare `/retest` | Same CEL scope as bare `/test` | Same subset | *Intended* failed-only; **unreliable** on GitHub — [#2580](https://github.com/tektoncd/pipelines-as-code/issues/2580) |
+| `/test <name>` / `/retest <name>` | By `metadata.name` | One pipeline (even if CEL false / never ran) | None for `/test`; `/retest` always reruns named pipeline |
+
+Custom `on-comment` triggers (`/build-konflux`, `/kfbuild-all`, `/build-*`) match the regex in each `*-pull-request.yaml` and skip CEL entirely. Built-in `/test` and `/retest` do not use `on-comment`; PaC falls through to `on-cel-expression` evaluation ([CEL precedence](https://github.com/openshift-pipelines/pipelines-as-code/blob/main/pkg/matcher/annotation_matcher.go#L176-L202)). Repo `on-comment` regexes were unified in [PR #4157](https://github.com/opendatahub-io/notebooks/pull/4157).
 
 **Note:** When PaC retriggers a pipeline, it **replaces** the GitHub check run
 (same external ID) rather than creating a new one. The GitHub Checks API only
@@ -315,7 +315,8 @@ Our push pipelines use `on-cel-expression` combining event + branch + `pathChang
 
 **Reference-only PRs** (e.g. MintMaker "Update Konflux references" that only
 touch `.tekton/multiarch-*`) do not match per-pipeline `pathChanged()` CEL
-expressions and will not auto-trigger component builds. Post `/build-konflux` or
+expressions and will not auto-trigger component builds. Bare `/test` and bare
+`/retest` also match nothing on such PRs. Post `/build-konflux` or
 `/test <pipelinerun-name>` manually on such PRs.
 
 ### Push builds (post-merge)
