@@ -288,11 +288,11 @@ Beyond `/retest`, PipelineRun YAMLs declare [Pipelines-as-Code trigger annotatio
 - `pipelinesascode.tekton.dev/on-target-branch` -- target branch filter
 - `pipelinesascode.tekton.dev/on-comment` -- regex matched against PR comments (e.g. `"^/build-konflux"`)
 - `pipelinesascode.tekton.dev/on-label` -- PR labels that trigger the pipeline when added
-- `pipelinesascode.tekton.dev/on-cel-expression` -- CEL expression; takes priority over all the above when present
+- `pipelinesascode.tekton.dev/on-cel-expression` -- CEL expression; when PaC evaluates it, takes priority over `on-event`, `on-target-branch`, `on-label`, and legacy path annotations. **Not evaluated** when a PR comment matches `on-comment` — custom `/build-*` commands skip CEL ([PaC `annotation_matcher.go` L275–307](https://github.com/openshift-pipelines/pipelines-as-code/blob/main/pkg/matcher/annotation_matcher.go#L275-L307)). Built-in bare `/test` and `/retest` do not use `on-comment`; PaC falls through to CEL for those (see [How PR comment commands match pipelines](#how-pr-comment-commands-match-pipelines))
 - `pipelinesascode.tekton.dev/on-path-change` -- only trigger when files matching a glob changed
 - `pipelinesascode.tekton.dev/on-path-change-ignore` -- don't trigger when only these paths changed
 
-Our push pipelines use `on-cel-expression` combining event + branch + `pathChanged()`. The PR pipelines use `on-comment`, `on-label`, `on-event`, and `on-target-branch`. For `.tekton/` file and component naming conventions (`metadata.name` contract, `-ci` suffix, service account patterns), see [`.tekton/README-odh.md`](../.tekton/README-odh.md).
+Our push pipelines use `on-cel-expression` combining event + branch + `pathChanged()`. PR pipelines declare both `on-cel-expression` (auto-trigger on push, and bare `/test`/`/retest`) and `on-comment` (manual `/build-konflux`, `/kfbuild-all`, `/build-*`). For `.tekton/` file and component naming conventions (`metadata.name` contract, `-ci` suffix, service account patterns), see [`.tekton/README-odh.md`](../.tekton/README-odh.md).
 
 **ODH and RHDS** use the same `on-comment` trigger pattern (since
 [PR #4157](https://github.com/opendatahub-io/notebooks/pull/4157)). Each
