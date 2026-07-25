@@ -23,7 +23,8 @@ independently based on their own job/pipeline registries.
 
 | Command | Prow response | PaC/Konflux response |
 |---------|--------------|---------------------|
-| `/retest` (bare) | Retriggers all failed Prow presubmit jobs | Retriggers all failed PaC pipelines. Ignores successful and in-progress ones. |
+| `/retest` (bare) | Retriggers all failed Prow presubmit jobs | Often re-runs all Konflux pipelines that already ran on the commit (including passed ones); see [konflux.md](konflux.md#pr-builds) and [tektoncd/pipelines-as-code#2580](https://github.com/tektoncd/pipelines-as-code/issues/2580) |
+| `/test` (bare) | Retriggers all failed Prow presubmit jobs | Re-runs all annotation-matched PR pipelines (no success filter) |
 | `/retest <name>` | Retriggers the named Prow job if it failed | Triggers the named PaC pipeline regardless of previous outcome — even if it never ran on this PR |
 | `/test <name>` | Same as `/retest <name>` for Prow | Same as `/retest <name>` for PaC |
 | `/ok-to-test` | Trusts a fork PR for Prow CI | Trusts a fork PR for PaC pipelines |
@@ -51,20 +52,11 @@ for OWNERS approvers. See the [review mapping table](tide.md#github-review-appro
 These commands are handled exclusively by PaC. See [docs/konflux.md](konflux.md#triggering-builds)
 for the full list.
 
-**ODH (`opendatahub-io/notebooks`):**
-
 | Command | Effect |
 |---------|--------|
 | `/kfbuild-all` or `/build-konflux` | Triggers all PR build pipelines |
-| `/build-<image-type>` | Triggers a single component (e.g. `/build-minimal-cpu`, `/build-runtime-datascience`) |
-| `/group-test` | Triggers the integration test pipeline |
-
-**RHDS (`red-hat-data-services/notebooks`):**
-
-| Command | Effect |
-|---------|--------|
-| `/build-konflux` | Triggers all RHDS PR build pipelines |
-| `/build-<image-type>` | Triggers a specific image build |
+| `/build-<type>` | Triggers a specific image build (e.g. `/build-base-cpu`, `/build-runtime-pytorch-cuda`) |
+| `/group-test` | Triggers the integration test pipeline (ODH only) |
 
 RHDS also supports label-based triggers (`kfbuild-all`, `kfbuild-cuda`, etc.).
 
@@ -80,7 +72,7 @@ GHA workflow, use the GitHub UI "Re-run" button on the Actions or Checks tab.
 PR opened/updated
   ├── GitHub Actions: runs automatically (code-quality, security, etc.)
   ├── Konflux/PaC: runs if pathChanged() matches .tekton/ CEL expressions
-  │                 or triggered manually via /kfbuild-all, /build-*, /test, /retest
+  │                 or triggered manually via /build-konflux, /test, /retest
   └── Prow/Tide: watches for label state
                   └── When lgtm + approved + all checks green → auto-merge
 ```

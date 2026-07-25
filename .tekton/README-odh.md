@@ -27,6 +27,13 @@ The `prefetch-input/odh/` directory at the repo root contains shared RPM and gen
 
 Watching it would trigger rebuilds of every single image whenever any shared prefetch input changes. Instead, changes to shared prefetch inputs should be rebuilt via `/kfbuild-all`, `/build-konflux`, or `trigger-pac-build`. See [PR #3232 (RHAIENG-4234)](https://github.com/opendatahub-io/notebooks/pull/3232) which centralized prefetch inputs and explicitly removed them from triggers.
 
+## PR comment triggers
+
+PR build pipelines are triggered by `pathChanged()` CEL expressions on push, or manually
+via PR comments (`/build-konflux`, `/kfbuild-all`, `/build-<type>`). See
+[docs/konflux.md](../docs/konflux.md#pr-comment-triggers-repo-specific) for the full
+command list and `/retest` behavior.
+
 ## Base images
 
 Base image pipelines (cuda, rocm) have version-specific filenames but version-agnostic component names. Multiple files share one component, so `trigger-pac-build` can't disambiguate them. These are triggered by `pathChanged()` on real pushes.
