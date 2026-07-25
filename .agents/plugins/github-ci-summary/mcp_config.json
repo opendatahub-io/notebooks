@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "github_pr": {
+      "serverUrl": "https://api.githubcopilot.com/mcp/x/pull_requests",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_TOKEN}"
+      }
+    },
+    "github_actions": {
+      "serverUrl": "https://api.githubcopilot.com/mcp/x/actions/readonly",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_TOKEN}"
+      }
+    }
+  }
+}

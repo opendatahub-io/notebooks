@@ -40,9 +40,10 @@ class ResolvedIndexConfig:
 _RHOAI_INDEX_PATH_RE = re.compile(
     r"/rhoai/(?P<release>[^/]+)/(?P<accelerator>[^/]+)-ubi9(?:-test)?/simple/?$",
 )
-# Accepts tag (:3.5.0-…) or digest (@sha256:…) refs; image name stops at : or @.
+# Accepts tag (:3.5.0-…), digest (@sha256:…), or tag+digest (:3.5.0-…@sha256:…).
+# Image name stops at : or @.
 _BASE_IMAGE_RE = re.compile(
-    r"^quay\.io/aipcc/base-images/(?P<image>[^:@]+)(?::(?P<tag>[^@]+)|@sha256:[0-9a-f]+)$",
+    r"^quay\.io/aipcc/base-images/(?P<image>[^:@]+)(?::(?P<tag>[^@]+)(?:@sha256:[0-9a-f]+)?|@sha256:[0-9a-f]+)$",
 )
 _RELEASE_OVERRIDE_RE = re.compile(r"^(?P<minor>\d+\.\d+)(?:-EA(?P<ea>\d+))?$")
 _ACCELERATOR_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (

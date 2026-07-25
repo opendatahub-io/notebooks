@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -361,15 +362,66 @@ def test_resolve_pr_scoped_touched_codeserver(
     )
 
 
+def test_global_lock_inputs_include_constraints_and_overrides() -> None:
+    assert Path("dependencies/constraints.txt") in pg.GLOBAL_LOCK_INPUTS
+    assert Path("dependencies/overrides.txt") in pg.GLOBAL_LOCK_INPUTS
+
+
+def test_run_lock_always_passes_constraints_and_overrides(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_dir = tmp_path / "jupyter" / "minimal" / "ubi9-python-3.12"
+    project_dir.mkdir(parents=True)
+    (project_dir / "pyproject.toml").write_text('[project]\nname = "test"\n', encoding="utf-8")
+    log = pg.LogBuffer()
+    captured_cmd: list[str] = []
+
+    def fake_run(cmd, **kwargs):
+        captured_cmd[:] = cmd
+        return pg.subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(pg.subprocess, "run", fake_run)
+
+    success = pg.run_lock(
+        project_dir,
+        "cpu",
+        ["--default-index=https://example.invalid/simple/?format=json"],
+        pg.IndexMode.rh_index,
+        "3.12",
+        False,
+        False,
+        "2026-05-18T00:00:00Z",
+        log,
+    )
+
+    assert success is True
+    expected_constraints = os.path.relpath(pg.CONSTRAINTS_FILE, project_dir)
+    expected_overrides = os.path.relpath(pg.OVERRIDES_FILE, project_dir)
+    constraints_idx = captured_cmd.index("--constraints")
+    overrides_idx = captured_cmd.index("--override")
+    assert captured_cmd[constraints_idx + 1] == expected_constraints, (
+        f"expected constraints path {expected_constraints!r}, got {captured_cmd[constraints_idx + 1]!r}"
+    )
+    assert captured_cmd[overrides_idx + 1] == expected_overrides, (
+        f"expected overrides path {expected_overrides!r}, got {captured_cmd[overrides_idx + 1]!r}"
+    )
+
+
+@pytest.mark.parametrize(
+    "global_input",
+    ["dependencies/constraints.txt", "dependencies/overrides.txt"],
+)
 def test_resolve_pr_scoped_global_input_expands_to_all(
+    global_input: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
         pg,
         "_list_changed_files",
-        lambda _base, _to="HEAD": ["dependencies/cve-constraints.txt"],
+        lambda _base, _to="HEAD": [global_input],
     )
     scoped = pg.resolve_pr_scoped_target_dirs("base", pg.LogBuffer())
     all_dirs = pg.discover_all_image_project_dirs()
-    assert scoped == all_dirs, "global input change should expand to all image dirs"
+    assert scoped == all_dirs, f"{global_input} change should expand to all image dirs"
     assert len(scoped) > 1, "expected multiple image project dirs for global-input fallback"

@@ -55,9 +55,8 @@ for the full list.
 
 | Command | Effect |
 |---------|--------|
-| `/kfbuild all` | Triggers all PR build pipelines |
-| `/kfbuild <component>` | Triggers a single component build |
-| `/kfbuild <source-path>` | Triggers by source directory |
+| `/kfbuild-all` or `/build-konflux` | Triggers all PR build pipelines |
+| `/build-<image-type>` | Triggers a single component (e.g. `/build-minimal-cpu`, `/build-runtime-datascience`) |
 | `/group-test` | Triggers the integration test pipeline |
 
 **RHDS (`red-hat-data-services/notebooks`):**
@@ -81,7 +80,7 @@ GHA workflow, use the GitHub UI "Re-run" button on the Actions or Checks tab.
 PR opened/updated
   ├── GitHub Actions: runs automatically (code-quality, security, etc.)
   ├── Konflux/PaC: runs if pathChanged() matches .tekton/ CEL expressions
-  │                 or triggered manually via /kfbuild, /test, /retest
+  │                 or triggered manually via /kfbuild-all, /build-*, /test, /retest
   └── Prow/Tide: watches for label state
                   └── When lgtm + approved + all checks green → auto-merge
 ```
