@@ -287,9 +287,16 @@ Our push pipelines use `on-cel-expression` combining event + branch + `pathChang
 
 **ODH (`opendatahub-io/notebooks`):**
 
-- `/kfbuild all` -- triggers all PR build pipelines
-- `/kfbuild <component-name>` -- triggers a single component, e.g. `/kfbuild odh-base-image-cpu-py312-ubi9`
-- `/kfbuild <source-path>` -- triggers by source directory, e.g. `/kfbuild base-images/cpu/ubi9-python-3.12`
+- `/kfbuild-all` or `/build-konflux` -- triggers all PR build pipelines
+- `/build-<image-type>` -- triggers a single component, e.g.:
+  - `/build-runtime-minimal-cpu`, `/build-runtime-datascience`
+  - `/build-runtime-pytorch-cuda`, `/build-runtime-pytorch-rocm`, `/build-runtime-pytorch-llmcompressor`
+  - `/build-runtime-tensorflow-cuda`, `/build-runtime-tensorflow-rocm`
+  - `/build-datascience`, `/build-codeserver`, `/build-trustyai`
+  - `/build-minimal-cpu`, `/build-minimal-cuda`, `/build-minimal-rocm`
+  - `/build-pytorch-cuda`, `/build-pytorch-rocm`, `/build-pytorch-llmcompressor`
+  - `/build-tensorflow-cuda`, `/build-tensorflow-rocm`
+  - `/build-base-cpu`, `/build-base-cuda-12-9`, `/build-base-cuda-13-0`, `/build-base-rocm`
 - `/group-test` -- triggers the integration test pipeline that tests images from the `stable` branch (see [Integration Testing guide](konflux-integration.md))
 
 **RHDS (`red-hat-data-services/notebooks`):**
@@ -298,11 +305,12 @@ PipelineRuns live in `red-hat-data-services/notebooks@main:.tekton/`.
 
 - `/build-konflux` -- triggers all RHDS PR build pipelines
 - `/build-<image-type>` -- triggers a specific image, e.g.:
-  - `/build-runtime-minimal-cpu`, `/build-runtime-datascience-cpu`
-  - `/build-runtime-pytorch-cuda`, `/build-runtime-pytorch-rocm`, `/build-runtime-pytorch-llmcompressor-cuda`
+  - `/build-runtime-minimal-cpu`, `/build-runtime-datascience`
+  - `/build-runtime-pytorch-cuda`, `/build-runtime-pytorch-rocm`, `/build-runtime-pytorch-llmcompressor`
   - `/build-runtime-tensorflow-cuda`, `/build-runtime-tensorflow-rocm`
-  - `/build-jupyter-datascience`, `/build-codeserver`
-  - `/build-workbench-jupyter-minimal-cpu`, `/build-workbench-jupyter-minimal-cuda`, `/build-workbench-jupyter-minimal-rocm`
+  - `/build-datascience`, `/build-codeserver`
+  - `/build-minimal-cpu`, `/build-minimal-cuda`, `/build-minimal-rocm`
+  - `/build-pytorch-cuda`, `/build-pytorch-rocm`, `/build-pytorch-llmcompressor`
   - `/build-tensorflow-cuda`, `/build-tensorflow-rocm`
 - `kfbuild-*` labels -- PR labels also trigger builds (e.g. `kfbuild-all`, `kfbuild-runtime`, `kfbuild-workbench`, `kfbuild-cpu`, `kfbuild-cuda`, `kfbuild-rocm`, `kfbuild-pytorch`, `kfbuild-tensorflow`, etc.)
 
@@ -360,9 +368,9 @@ successfully triggered a push pipeline. Also confirmed working in
 [ACS](https://redhat-internal.slack.com/archives/C05TS9N0S7L/p1771841918073429) and
 [AAP Hub](https://redhat-internal.slack.com/archives/C07BMJL2X42/p1771333521169669).
 
-**Warning:** Custom `on-comment` triggers (like `/kfbuild`) also work on commit comments,
+**Warning:** Custom `on-comment` triggers (like `/kfbuild-all` or `/build-konflux`) also work on commit comments,
 but they match **all** pipelines with a matching regex -- including PR pipelines. Commenting
-`/kfbuild all` on a commit triggers all PR build pipelines, not push pipelines. Use the
+`/kfbuild-all` on a commit triggers all PR build pipelines, not push pipelines. Use the
 built-in `/test <name>` for commit comments instead.
 
 See also: [Running Build Pipelines (Konflux docs)](https://konflux-ci.dev/docs/building/running/),
@@ -400,7 +408,7 @@ Push pipelines declare a `build.appstudio.openshift.io/build-nudge-files` annota
 
 ### `prefetch-input/` path watching
 
-Most pipelines intentionally do not watch `prefetch-input/` in their CEL expressions — changing prefetched inputs will not retrigger those builds. This is deliberate: `prefetch-input/odh/` is shared across all images, and watching it would trigger 30+ simultaneous rebuilds on any change. Changes to shared prefetch inputs should be rebuilt via `/kfbuild all` or `trigger-pac-build`. See [PR #3232](https://github.com/opendatahub-io/notebooks/pull/3232) (RHAIENG-4234) which centralized prefetch inputs and removed them from triggers. A few workbench pipelines (pytorch-cuda, pytorch-rocm, trustyai) still watch image-specific paths like `prefetch-input/mongocli/**`.
+Most pipelines intentionally do not watch `prefetch-input/` in their CEL expressions — changing prefetched inputs will not retrigger those builds. This is deliberate: `prefetch-input/odh/` is shared across all images, and watching it would trigger 30+ simultaneous rebuilds on any change. Changes to shared prefetch inputs should be rebuilt via `/kfbuild-all`, `/build-konflux`, or `trigger-pac-build`. See [PR #3232](https://github.com/opendatahub-io/notebooks/pull/3232) (RHAIENG-4234) which centralized prefetch inputs and removed them from triggers. A few workbench pipelines (pytorch-cuda, pytorch-rocm, trustyai) still watch image-specific paths like `prefetch-input/mongocli/**`.
 
 ### Tenant RBAC for build operations
 
