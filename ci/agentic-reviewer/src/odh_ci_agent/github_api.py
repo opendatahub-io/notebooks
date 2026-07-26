@@ -54,9 +54,12 @@ def authenticated_user_login() -> str:
     """Return the login for the token in GITHUB_TOKEN (workflow or GitHub App bot)."""
 
     user = gh_api_json("user")
-    if not isinstance(user, dict) or not user.get("login"):
+    if not isinstance(user, dict):
         raise SystemExit("Expected GitHub user response to include login")
-    return str(user["login"])
+    login = user.get("login")
+    if not isinstance(login, str) or not login:
+        raise SystemExit("Expected GitHub user response to include login")
+    return login
 
 
 def _query_path(path: str, query: Mapping[str, object] | None = None) -> str:
