@@ -51,6 +51,7 @@ spec:
   - name: build-platforms
     value:
     - linux/x86_64
+    - linux-d160-m4xlarge/arm64
   - name: build-args-file
     value: jupyter/pytorch/ubi9-python-3.12/build-args/konflux.cuda.conf
   - name: rhel-subscription-activation-key
@@ -64,7 +65,7 @@ spec:
     - path: jupyter/pytorch/ubi9-python-3.12
       type: pip
       binary:
-        arch: "x86_64"
+        arch: "x86_64,aarch64"
       requirements_files: [requirements.cuda.txt]
   pipelineRef:
     resolver: git
