@@ -10,6 +10,7 @@ from odh_ci_agent.ci_summary import int_value, render_superseded_comment
 from odh_ci_agent.env import required_env
 from odh_ci_agent.github_api import (
     GitHubCommandError,
+    authenticated_user_login,
     gh_api_json,
     gh_api_list_pages,
     parse_positive_issue_number,
@@ -17,7 +18,7 @@ from odh_ci_agent.github_api import (
 from odh_ci_agent.pr_review_summary import (
     ensure_marker,
     is_active_review_summary_comment,
-    is_review_summary_comment,
+    is_antigravity_review_summary_comment,
     marker_for_run,
 )
 from odh_ci_agent.source_workspace import resolve_review_body_path
@@ -37,9 +38,11 @@ def comment_sort_key(comment: dict[str, object]) -> tuple[str, int]:
 
 def latest_review_summary_comment(
     comments: list[dict[str, object]],
+    *,
+    author_login: str,
 ) -> dict[str, object] | None:
     review_summary_comments = [
-        comment for comment in comments if is_review_summary_comment(str(comment.get("body", "")))
+        comment for comment in comments if is_antigravity_review_summary_comment(comment, author_login=author_login)
     ]
     if not review_summary_comments:
         return None
@@ -49,12 +52,14 @@ def latest_review_summary_comment(
 def other_active_review_summary_comments(
     comments: list[dict[str, object]],
     *,
+    author_login: str,
     keep_comment_id: int,
 ) -> list[dict[str, object]]:
     return [
         comment
         for comment in comments
         if int_value(comment["id"]) != keep_comment_id
+        and is_antigravity_review_summary_comment(comment, author_login=author_login)
         and is_active_review_summary_comment(str(comment.get("body", "")))
     ]
 
@@ -62,11 +67,16 @@ def other_active_review_summary_comments(
 def supersede_review_summary_comments(
     comments: list[dict[str, object]],
     *,
+    author_login: str,
     repository: str,
     keep_comment_id: int,
     workflow_run_url: str,
 ) -> None:
-    for comment in other_active_review_summary_comments(comments, keep_comment_id=keep_comment_id):
+    for comment in other_active_review_summary_comments(
+        comments,
+        author_login=author_login,
+        keep_comment_id=keep_comment_id,
+    ):
         superseded_body = render_superseded_comment(
             str(comment.get("body", "")),
             new_run_url=workflow_run_url,
@@ -114,8 +124,9 @@ def main() -> None:
 
     comments = gh_api_list_pages(f"repos/{repository}/issues/{issue_number}/comments")
     comment_objects = [comment for comment in comments if isinstance(comment, dict)]
+    author_login = authenticated_user_login()
 
-    existing_comment = latest_review_summary_comment(comment_objects)
+    existing_comment = latest_review_summary_comment(comment_objects, author_login=author_login)
 
     if existing_comment is None:
         created = gh_api_json(
@@ -142,6 +153,7 @@ def main() -> None:
 
     supersede_review_summary_comments(
         comment_objects,
+        author_login=author_login,
         repository=repository,
         keep_comment_id=keep_comment_id,
         workflow_run_url=workflow_run_url,

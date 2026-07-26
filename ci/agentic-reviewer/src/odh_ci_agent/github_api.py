@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import json
 import os
 import subprocess
@@ -46,6 +47,19 @@ def parse_positive_issue_number(raw: str, *, label: str = "issue number") -> int
 
 def read_github_token() -> str:
     return os.environ.get("GITHUB_TOKEN", "").strip()
+
+
+@functools.lru_cache(maxsize=1)
+def authenticated_user_login() -> str:
+    """Return the login for the token in GITHUB_TOKEN (workflow or GitHub App bot)."""
+
+    user = gh_api_json("user")
+    if not isinstance(user, dict):
+        raise SystemExit("Expected GitHub user response to include login")
+    login = user.get("login")
+    if not isinstance(login, str) or not login:
+        raise SystemExit("Expected GitHub user response to include login")
+    return login
 
 
 def _query_path(path: str, query: Mapping[str, object] | None = None) -> str:
