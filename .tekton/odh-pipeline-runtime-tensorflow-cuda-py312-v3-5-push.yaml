@@ -11,7 +11,7 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: |
       event == "push"
       && target_branch == "rhoai-3.5"
-      && !("manifests/base/params-latest.env".pathChanged())
+      && !("manifests/rhoai/base/params-latest.env".pathChanged())
       && (".tekton/odh-pipeline-runtime-tensorflow-cuda-py312-v3-5-push.yaml".pathChanged() || "runtimes/tensorflow/ubi9-python-3.12/**".pathChanged() || "cuda/**".pathChanged() )
   labels:
     appstudio.openshift.io/application: rhoai-v3-5
