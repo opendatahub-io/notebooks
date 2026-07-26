@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Annotated, Literal, TypeAlias
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter
 from pydantic.json_schema import GenerateJsonSchema
@@ -167,10 +167,10 @@ class GpuFlavor(StrictModel):
     odh: OdhGpuPolicy
 
 
-CudaFlavors: TypeAlias = dict[str, GpuFlavor]
+type CudaFlavors = dict[str, GpuFlavor]
 """CUDA flavor policies. Keys are image/flavor IDs (e.g. minimal, pytorch-llmcompressor)."""
 
-RocmFlavors: TypeAlias = dict[str, GpuFlavor]
+type RocmFlavors = dict[str, GpuFlavor]
 """ROCm flavor policies. Keys are image/flavor IDs."""
 
 
@@ -216,7 +216,7 @@ class VersionsConfig(StrictModel):
 _VERSIONS_CONFIG_ADAPTER = TypeAdapter(VersionsConfig)
 
 
-def build_json_schema() -> dict[str, object]:
+def build_json_schema() -> dict[str, Any]:
     """Build the JSON Schema document for ``versions_config.yml``."""
     schema = _VERSIONS_CONFIG_ADAPTER.json_schema(schema_generator=GenerateJsonSchema)
     return {
