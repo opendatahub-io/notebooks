@@ -15,17 +15,18 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter
 from pydantic.json_schema import GenerateJsonSchema
 
-SEMVER_PATTERN = r"^\d+\.\d+\.\d+$"
-PYTHON_VERSION_PATTERN = r"^\d+\.\d+$"
-STREAM_VERSION_PATTERN = r"^\d+\.\d+$"
-RHDS_OS_BASE_PATTERN = r"^el\d+\.\d+$"
+_SEMVER_FRAGMENT = r"[0-9]+\.[0-9]+\.[0-9]+"
+_STREAM_FRAGMENT = r"[0-9]+\.[0-9]+"
+SEMVER_PATTERN = rf"^{_SEMVER_FRAGMENT}$"
+PYTHON_VERSION_PATTERN = rf"^{_STREAM_FRAGMENT}$"
+STREAM_VERSION_PATTERN = rf"^{_STREAM_FRAGMENT}$"
+RHDS_OS_BASE_PATTERN = r"^el[0-9]+\.[0-9]+$"
 FULL_VERSION_PLACEHOLDER = "<full_version>"
-RHDS_FAST_CPU_VERSION_PATTERN = rf"^({SEMVER_PATTERN[1:-1]}|{re.escape(FULL_VERSION_PLACEHOLDER)})$"
-ACC_VERSION_PATTERN = rf"^({STREAM_VERSION_PATTERN[1:-1]}|{re.escape(FULL_VERSION_PLACEHOLDER)})$"
+RHDS_FAST_CPU_VERSION_PATTERN = rf"^({_SEMVER_FRAGMENT}|{re.escape(FULL_VERSION_PLACEHOLDER)})$"
+ACC_VERSION_PATTERN = rf"^({_STREAM_FRAGMENT}|{re.escape(FULL_VERSION_PLACEHOLDER)})$"
 
 STRICT_CONFIG = ConfigDict(
     extra="forbid",
-    str_strip_whitespace=True,
     frozen=True,
 )
 

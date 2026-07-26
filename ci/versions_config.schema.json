@@ -25,30 +25,24 @@
           "description": "Shared CPU policy for all managed CPU workbenches."
         },
         "cuda": {
-          "additionalProperties": {
-            "$ref": "#/$defs/GpuFlavor"
-          },
+          "$ref": "#/$defs/CudaFlavors",
           "description": "CUDA flavor map keyed by image/flavor ID (open keys; sync enforces the managed inventory).",
           "minProperties": 1,
           "propertyNames": {
             "minLength": 1,
             "type": "string"
           },
-          "title": "CUDA flavors",
-          "type": "object"
+          "title": "CUDA flavors"
         },
         "rocm": {
-          "additionalProperties": {
-            "$ref": "#/$defs/GpuFlavor"
-          },
+          "$ref": "#/$defs/RocmFlavors",
           "description": "ROCm flavor map keyed by image/flavor ID (open keys; sync enforces the managed inventory).",
           "minProperties": 1,
           "propertyNames": {
             "minLength": 1,
             "type": "string"
           },
-          "title": "ROCm flavors",
-          "type": "object"
+          "title": "ROCm flavors"
         }
       },
       "required": [
@@ -92,6 +86,12 @@
       "title": "CpuArtifact",
       "type": "object"
     },
+    "CudaFlavors": {
+      "additionalProperties": {
+        "$ref": "#/$defs/GpuFlavor"
+      },
+      "type": "object"
+    },
     "GpuFlavor": {
       "additionalProperties": false,
       "description": "Shared GPU flavor policy block.",
@@ -102,7 +102,7 @@
             "13.0",
             "7.14"
           ],
-          "pattern": "^(\\d+\\.\\d+|<full_version>)$",
+          "pattern": "^([0-9]+\\.[0-9]+|<full_version>)$",
           "title": "Accelerator version",
           "type": "string"
         },
@@ -192,7 +192,7 @@
           "examples": [
             "3.5.0"
           ],
-          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
           "title": "Full version",
           "type": "string"
         },
@@ -201,7 +201,7 @@
           "examples": [
             "el9.6"
           ],
-          "pattern": "^el\\d+\\.\\d+$",
+          "pattern": "^el[0-9]+\\.[0-9]+$",
           "title": "RHDS OS base",
           "type": "string"
         },
@@ -210,7 +210,7 @@
           "examples": [
             "3.12"
           ],
-          "pattern": "^\\d+\\.\\d+$",
+          "pattern": "^[0-9]+\\.[0-9]+$",
           "title": "Python version",
           "type": "string"
         }
@@ -239,7 +239,7 @@
             "<full_version>",
             "3.5.0"
           ],
-          "pattern": "^(\\d+\\.\\d+\\.\\d+|<full_version>)$",
+          "pattern": "^([0-9]+\\.[0-9]+\\.[0-9]+|<full_version>)$",
           "title": "RHDS CPU version",
           "type": "string"
         }
@@ -300,6 +300,12 @@
         "channel"
       ],
       "title": "RhdsStableGpuPolicy",
+      "type": "object"
+    },
+    "RocmFlavors": {
+      "additionalProperties": {
+        "$ref": "#/$defs/GpuFlavor"
+      },
       "type": "object"
     }
   },
