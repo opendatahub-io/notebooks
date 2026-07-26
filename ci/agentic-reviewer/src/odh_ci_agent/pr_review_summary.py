@@ -5,6 +5,7 @@ from __future__ import annotations
 from odh_ci_agent.ci_summary import utc_now_iso
 
 REVIEW_SUMMARY_MARKER_PREFIX = "antigravity-pr-review"
+REVIEW_SUMMARY_MARKER_TOKEN_PREFIX = f"<!-- {REVIEW_SUMMARY_MARKER_PREFIX} run_id="
 REVIEW_SUMMARY_HEADER = "## 📋 Review Summary"
 SUPERSEDED_NOTICE = "Superseded by newer run:"
 
@@ -14,11 +15,27 @@ def is_superseded_comment(body: str) -> bool:
 
 
 def is_review_summary_comment(body: str) -> bool:
-    return REVIEW_SUMMARY_MARKER_PREFIX in body
+    # Require the hidden HTML marker, not bare substring matches (e.g. antigravity-pr-review.yml in bot reviews).
+    return REVIEW_SUMMARY_MARKER_TOKEN_PREFIX in body
 
 
 def is_active_review_summary_comment(body: str) -> bool:
     return is_review_summary_comment(body) and not is_superseded_comment(body)
+
+
+def comment_author_login(comment: dict[str, object]) -> str | None:
+    user = comment.get("user")
+    if isinstance(user, dict) and isinstance(user.get("login"), str):
+        return user["login"]
+    return None
+
+
+def is_antigravity_review_summary_comment(comment: dict[str, object], *, author_login: str) -> bool:
+    """True for review-summary issue comments posted by this workflow identity."""
+
+    if not is_review_summary_comment(str(comment.get("body", ""))):
+        return False
+    return comment_author_login(comment) == author_login
 
 
 def marker_for_run(run_id: int, *, updated_at: str | None = None) -> str:
@@ -27,7 +44,7 @@ def marker_for_run(run_id: int, *, updated_at: str | None = None) -> str:
 
 
 def marker_token(run_id: int) -> str:
-    return f"<!-- {REVIEW_SUMMARY_MARKER_PREFIX} run_id={run_id} "
+    return f"{REVIEW_SUMMARY_MARKER_TOKEN_PREFIX}{run_id} "
 
 
 def comment_contains_run_marker(body: str, run_id: int) -> bool:

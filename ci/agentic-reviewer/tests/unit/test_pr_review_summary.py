@@ -37,3 +37,21 @@ def test_ensure_marker_appends_once() -> None:
 
     assert marker in first
     assert first == second
+
+
+def test_is_review_summary_comment_requires_html_marker() -> None:
+    marker = pr_review_summary.marker_for_run(99)
+    coderabbit_like = (
+        "## 📋 Review Summary\n\nUpdates `antigravity-pr-review.yml` and `antigravity-ci-gated-review.yml`.\n"
+    )
+
+    assert pr_review_summary.is_review_summary_comment(coderabbit_like) is False
+    assert pr_review_summary.is_review_summary_comment(f"{coderabbit_like}\n\n{marker}") is True
+
+
+def test_is_antigravity_review_summary_comment_requires_author_login() -> None:
+    marker = pr_review_summary.marker_for_run(7)
+    comment = {"body": f"## 📋 Review Summary\n\n{marker}", "user": {"login": "github-actions[bot]"}}
+
+    assert pr_review_summary.is_antigravity_review_summary_comment(comment, author_login="github-actions[bot]") is True
+    assert pr_review_summary.is_antigravity_review_summary_comment(comment, author_login="other[bot]") is False
