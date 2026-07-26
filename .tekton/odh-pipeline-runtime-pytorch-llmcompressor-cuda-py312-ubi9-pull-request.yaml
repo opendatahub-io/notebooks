@@ -38,6 +38,7 @@ spec:
   - name: build-platforms
     value:
     - linux-d160-m2xlarge/amd64
+    - linux-d160-m2xlarge/arm64
   - name: dockerfile
     value: runtimes/pytorch+llmcompressor/ubi9-python-3.12/Dockerfile.konflux.cuda
   - name: path-context
@@ -55,7 +56,7 @@ spec:
     - path: runtimes/pytorch+llmcompressor/ubi9-python-3.12
       type: pip
       binary:
-        arch: x86_64
+        arch: x86_64,aarch64
       requirements_files: [requirements.cuda.txt]
   taskRunSpecs:
   - pipelineTaskName: prefetch-dependencies

@@ -26,6 +26,10 @@ spec:
     value: '{{revision}}'
   - name: output-image
     value: quay.io/opendatahub/odh-pipeline-runtime-tensorflow-cuda-py312-ubi9:odh-stable
+  - name: build-platforms
+    value:
+    - linux-d160-m4xlarge/amd64
+    - linux-d160-m4xlarge/arm64
   - name: dockerfile
     value: runtimes/tensorflow/ubi9-python-3.12/Dockerfile.konflux.cuda
   - name: build-args-file
@@ -44,7 +48,7 @@ spec:
     - path: runtimes/tensorflow/ubi9-python-3.12
       type: pip
       binary:
-        arch: x86_64
+        arch: x86_64,aarch64
       requirements_files: [requirements.cuda.txt]
   - name: additional-tags
     value:

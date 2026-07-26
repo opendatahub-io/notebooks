@@ -26,6 +26,12 @@ spec:
     value: '{{revision}}'
   - name: output-image
     value: quay.io/opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9:odh-stable
+  - name: build-platforms
+    value:
+    - linux-d160-m2xlarge/amd64
+    - linux-d160-m2xlarge/arm64
+    - linux/ppc64le
+    - linux/s390x
   - name: dockerfile
     value: jupyter/trustyai/ubi9-python-3.12/Dockerfile.konflux.cpu
   - name: build-args-file
@@ -46,7 +52,7 @@ spec:
     - path: jupyter/trustyai/ubi9-python-3.12
       type: pip
       binary:
-        arch: x86_64
+        arch: x86_64,aarch64,ppc64le,s390x
       requirements_files: [requirements.cpu.txt]
   - name: additional-tags
     value:
