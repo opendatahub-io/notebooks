@@ -39,6 +39,7 @@ jobs:
     permissions:
       contents: 'read'
       issues: 'write'
+      packages: 'read'
       pull-requests: 'write'
     steps:
       - name: 'Mint identity token'
@@ -63,6 +64,14 @@ jobs:
 
       - name: 'Install from uv.lock (project + dev deps)'
         run: 'uv sync --locked --package odh-ci-agent'
+
+      # odh-ci-prepare-review-context pulls the buildinputs image to resolve affected image targets.
+      - name: 'Login to GitHub Container Registry'
+        uses: 'docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0'  # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 'Validate pull request number'
         id: 'validate_pr'
