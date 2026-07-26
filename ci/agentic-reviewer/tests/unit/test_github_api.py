@@ -53,8 +53,16 @@ def test_parse_positive_issue_number_rejects_invalid_values(raw: str) -> None:
 
 def test_authenticated_user_login_returns_login() -> None:
     github_api.authenticated_user_login.cache_clear()
-    with patch("odh_ci_agent.github_api.gh_api_json", return_value={"login": "github-actions[bot]"}):
-        assert github_api.authenticated_user_login() == "github-actions[bot]"
+    try:
+        with patch(
+            "odh_ci_agent.github_api.gh_api_json",
+            return_value={"login": "github-actions[bot]"},
+        ) as mock_gh_api_json:
+            assert github_api.authenticated_user_login() == "github-actions[bot]"
+            assert github_api.authenticated_user_login() == "github-actions[bot]"
+            mock_gh_api_json.assert_called_once_with("user")
+    finally:
+        github_api.authenticated_user_login.cache_clear()
 
 
 @pytest.mark.parametrize("user_response", [{"login": 12345}, {"login": ""}, {"login": None}, {}])
