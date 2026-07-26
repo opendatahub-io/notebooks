@@ -11,6 +11,13 @@ and updates the root `Makefile` release defaults. The implementation lives in
 `scripts/update_build_args_from_versions.py`, and the standard entry point is
 `make sync-build-args-from-versions`.
 
+Editor validation uses the checked-in JSON Schema
+([`ci/versions_config.schema.json`](../ci/versions_config.schema.json)), generated
+from Pydantic models in [`ci/versions_config_schema.py`](../ci/versions_config_schema.py).
+The sync script still applies its own structural checks at runtime. Regenerate
+the schema after model changes with `uv run python -m ci.versions_config_schema`
+(`# yaml-language-server: $schema=…` in `versions_config.yml` points at it).
+
 ## What This Flow Manages
 
 The sync flow manages:
