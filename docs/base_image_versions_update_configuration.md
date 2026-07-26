@@ -15,8 +15,9 @@ Editor validation uses the checked-in JSON Schema
 ([`ci/versions_config.schema.json`](../ci/versions_config.schema.json)), generated
 from Pydantic models in [`ci/versions_config_schema.py`](../ci/versions_config_schema.py).
 The sync script still applies its own structural checks at runtime. Regenerate
-the schema after model changes with `uv run python -m ci.versions_config_schema`
-(`# yaml-language-server: $schema=…` in `versions_config.yml` points at it).
+the schema with `bash ci/generate_code.sh` (or
+`uv run python -m ci.versions_config_schema`);
+`# yaml-language-server: $schema=…` in `versions_config.yml` points at it.
 
 ## What This Flow Manages
 
