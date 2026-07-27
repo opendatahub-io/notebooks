@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=./ci/versions_config.schema.json
 ---
 schema_version: 1
 
@@ -41,7 +42,6 @@ artifacts:
           channel: fast
         odh:
           origin: in-house
-
     rocm:
       minimal:
         acc_version: "7.14"
