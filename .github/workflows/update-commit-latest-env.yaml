@@ -21,12 +21,12 @@ env:
 jobs:
   sync-commit-latest:
     if: |
-      !(github.repository == 'red-hat-data-services/notebooks' && env.BASE_BRANCH == 'main') &&
+      !(github.repository == 'red-hat-data-services/notebooks' && (github.event_name == 'workflow_dispatch' && inputs.target_branch || 'main') == 'main') &&
       !(github.repository == 'opendatahub-io/notebooks' && github.event_name == 'workflow_dispatch' && inputs.target_branch != 'main') &&
-      (github.event_name != 'schedule' || env.BASE_BRANCH == 'main')
+      (github.event_name != 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.target_branch || 'main') == 'main')
     runs-on: ubuntu-26.04
     concurrency:
-      group: update-commit-latest-env-${{ env.BASE_BRANCH }}
+      group: update-commit-latest-env-${{ github.event_name == 'workflow_dispatch' && inputs.target_branch || 'main' }}
       cancel-in-progress: false
     permissions:
       contents: write
