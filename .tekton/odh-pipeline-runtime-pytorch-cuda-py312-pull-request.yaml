@@ -48,6 +48,7 @@ spec:
   - name: build-platforms
     value:
     - linux-extra-fast/amd64
+    - linux-d160-m2xlarge/arm64
   - name: image-expires-after
     value: 5d
   - name: enable-slack-failure-notification
@@ -61,7 +62,7 @@ spec:
     - path: runtimes/pytorch/ubi9-python-3.12
       type: pip
       binary:
-        arch: "x86_64"
+        arch: "x86_64,aarch64"
       requirements_files: [requirements.cuda.txt]
   pipelineRef:
     resolver: git
