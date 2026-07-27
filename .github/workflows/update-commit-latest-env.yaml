@@ -7,14 +7,16 @@ name: Update commit-latest.env on params-latest.env change
     - cron: '0 11 * * *'  # Daily at 11:00 UTC
 
 env:
-  BASE_BRANCH: main
-  UPDATE_BRANCH: ci/update-commit-latest-env
+  BASE_BRANCH: ${{ github.ref_name }}
 
 jobs:
   sync-commit-latest:
+    if: |
+      !(github.repository == 'red-hat-data-services/notebooks' && github.ref_name == 'main') &&
+      (github.event_name != 'schedule' || github.ref_name == 'main')
     runs-on: ubuntu-26.04
     concurrency:
-      group: update-commit-latest-env
+      group: update-commit-latest-env-${{ github.ref_name }}
       cancel-in-progress: false
     permissions:
       contents: write
@@ -26,6 +28,28 @@ jobs:
           ref: ${{ env.BASE_BRANCH }}
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
+
+      - name: Select update mode for branch
+        id: mode
+        run: |
+          set -euo pipefail
+          update_branch="ci/update-commit-latest-env-${BASE_BRANCH//\//-}"
+
+          if [[ "${BASE_BRANCH}" == "main" ]]; then
+            echo "variant=both" >> "${GITHUB_OUTPUT}"
+            echo "rhoai_tag=" >> "${GITHUB_OUTPUT}"
+            echo "target_scope=ODH+RHOAI" >> "${GITHUB_OUTPUT}"
+          elif [[ "${BASE_BRANCH}" =~ ^rhoai-[0-9]+\.[0-9]+$ ]]; then
+            echo "variant=rhoai" >> "${GITHUB_OUTPUT}"
+            echo "rhoai_tag=${BASE_BRANCH}" >> "${GITHUB_OUTPUT}"
+            echo "target_scope=RHOAI only" >> "${GITHUB_OUTPUT}"
+          else
+            echo "Unsupported branch for this workflow: ${BASE_BRANCH}"
+            echo "Allowed branches: main or rhoai-X.Y"
+            exit 1
+          fi
+
+          echo "update_branch=${update_branch}" >> "${GITHUB_OUTPUT}"
 
       - name: Install skopeo
         uses: ./.github/actions/apt-install
@@ -45,7 +69,15 @@ jobs:
           RHOAI_QUAY_BOT_PASSWORD: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
 
       - name: Update commit-latest.env manifests
-        run: uv run scripts/update-commit-latest-env.py --variant both
+        run: |
+          set -euo pipefail
+          cmd=(uv run scripts/update-commit-latest-env.py --variant "${{ steps.mode.outputs.variant }}")
+          if [[ -n "${{ steps.mode.outputs.rhoai_tag }}" ]]; then
+            cmd+=(--rhoai-version-tag "${{ steps.mode.outputs.rhoai_tag }}")
+          fi
+
+          echo "Running update scope: ${{ steps.mode.outputs.target_scope }}"
+          "${cmd[@]}"
 
       - name: Commit, push branch, and open or refresh pull request
         env:
@@ -53,25 +85,26 @@ jobs:
         run: |
           set -euo pipefail
 
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
 
-          git add \
-            manifests/odh/base/commit-latest.env \
-            manifests/rhoai/base/commit-latest.env
+          git add manifests/rhoai/base/commit-latest.env
+          if [[ "${{ steps.mode.outputs.variant }}" == "both" ]]; then
+            git add manifests/odh/base/commit-latest.env
+          fi
 
           if git diff --cached --quiet; then
             echo "No effective changes in commit-latest.env files, skipping PR update."
             exit 0
           fi
 
-          git checkout -B "${UPDATE_BRANCH}"
+          git checkout -B "${{ steps.mode.outputs.update_branch }}"
           git commit -m "ci: update commit SHAs in commit-latest.env"
-          git push --force-with-lease -u origin "${UPDATE_BRANCH}"
+          git push --force-with-lease -u origin "${{ steps.mode.outputs.update_branch }}"
 
           existing_pr="$(gh pr list \
             --repo "${GITHUB_REPOSITORY}" \
-            --head "${UPDATE_BRANCH}" \
+            --head "${{ steps.mode.outputs.update_branch }}" \
             --base "${BASE_BRANCH}" \
             --state open \
             --json number \
@@ -85,6 +118,6 @@ jobs:
           gh pr create \
             --repo "${GITHUB_REPOSITORY}" \
             --title "ci: update commit SHAs in commit-latest.env" \
-            --head "${UPDATE_BRANCH}" \
+            --head "${{ steps.mode.outputs.update_branch }}" \
             --base "${BASE_BRANCH}" \
-            --body "Automated refresh of ODH and RHOAI commit-latest.env from Quay image vcs-ref labels. Created by .github/workflows/update-commit-latest-env.yaml."
+            --body "Automated refresh of ${{ steps.mode.outputs.target_scope }} commit-latest.env from Quay image vcs-ref labels. Created by .github/workflows/update-commit-latest-env.yaml."
