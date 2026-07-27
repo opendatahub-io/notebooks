@@ -13,9 +13,12 @@ ODH variant:
   Writes ``manifests/odh/base/commit-latest.env``.
 
 RHOAI variant:
-  Probes quay.io/rhoai to find the most recently created ``rhoai-X.Y`` tag
-  Uses that tag across all RHOAI images, extracting vcs-ref from each. Writes
+  Uses a ``rhoai-X.Y`` tag across all RHOAI images, extracting vcs-ref from each. Writes
   ``manifests/rhoai/base/commit-latest.env``.
+  Tag selection priority:
+    1) ``--rhoai-version-tag``
+    2) ``GITHUB_REF_NAME`` when it matches ``rhoai-X.Y`` (for branch-driven GHA runs)
+    3) auto-detected most recently created ``rhoai-X.Y`` tag on quay.io/rhoai
   Quay.io images are 1:1 mapped with the RedHat catalogue images, so vcs-ref remains the same.
 
 Pipeline runtime images are intentionally skipped (only odh-workbench-* processed).
@@ -428,6 +431,7 @@ async def resolve_rhoai_version_tag(
     if args.rhoai_version_tag:
         normalized = normalize_rhoai_version_tag(args.rhoai_version_tag)
         if normalized:
+            log.info("using RHOAI tag from --rhoai-version-tag", tag=normalized)
             return normalized
         log.error("invalid RHOAI version tag", tag=args.rhoai_version_tag)
         return None
@@ -435,6 +439,7 @@ async def resolve_rhoai_version_tag(
     branch = os.environ.get("GITHUB_REF_NAME", "")
     normalized = normalize_rhoai_version_tag(branch)
     if normalized:
+        log.info("using RHOAI tag from branch name", branch=branch, tag=normalized)
         return normalized
 
     log.info("auto-detecting latest RHOAI tag from quay.io/rhoai...")
@@ -483,8 +488,8 @@ async def main() -> None:
         default=None,
         help=(
             "Pin a specific RHOAI tag (e.g. 'rhoai-3.5'). "
-            "When omitted the script auto-detects the most recently created rhoai-X.Y tag. "
-            "GITHUB_REF_NAME is also checked as a fallback before auto-detection."
+            "When omitted the script uses GITHUB_REF_NAME when it matches rhoai-X.Y; "
+            "otherwise it auto-detects the most recently created rhoai-X.Y tag."
         ),
     )
     args = parser.parse_args()
