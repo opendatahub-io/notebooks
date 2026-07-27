@@ -4,44 +4,87 @@ name: Update commit-latest.env on params-latest.env change
 "on":
   workflow_dispatch:
   schedule:
-    - cron: '0 11 * * *'  # Daily at midnight UTC
-  push:
-    branches:
-      - main
-      - rhoai-*
-    paths:
-      - 'manifests/base/params-latest.env'
+    - cron: '0 11 * * *'  # Daily at 11:00 UTC
+
+env:
+  BASE_BRANCH: main
+  UPDATE_BRANCH: ci/update-commit-latest-env
 
 jobs:
-  sync-commit:
+  sync-commit-latest:
     runs-on: ubuntu-26.04
     concurrency:
-      group: update-commit-latest-env-${{ github.ref }}
+      group: update-commit-latest-env
       cancel-in-progress: false
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
+          ref: ${{ env.BASE_BRANCH }}
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
-      - name: Update manifests/base/commit-latest.env
-        id: update_env
-        run: |
-          python3 scripts/update-commit-latest-env.py
+      - name: Install skopeo
+        uses: ./.github/actions/apt-install
+        with:
+          packages: skopeo
+          update: 'false'
 
-      - name: Commit and push changes
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Configure Quay.io pull auth for RHOAI namespace
+        if: env.RHOAI_QUAY_BOT_USERNAME != ''
         run: |
+          printf '%s' "${RHOAI_QUAY_BOT_PASSWORD}" | skopeo login --username "${RHOAI_QUAY_BOT_USERNAME}" --password-stdin quay.io
+        env:
+          RHOAI_QUAY_BOT_USERNAME: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
+          RHOAI_QUAY_BOT_PASSWORD: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
+
+      - name: Update commit-latest.env manifests
+        run: uv run scripts/update-commit-latest-env.py --variant both
+
+      - name: Commit, push branch, and open or refresh pull request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-          # Check for changes before committing
-          if ! git diff --quiet manifests/base/commit-latest.env; then
-            git add manifests/base/commit-latest.env
-            git commit -m "ci: update commit SHAs for image digests changes"
-            git push
-          else
-            echo "No effective changes in manifests/base/commit-latest.env, skipping commit."
+          git add \
+            manifests/odh/base/commit-latest.env \
+            manifests/rhoai/base/commit-latest.env
+
+          if git diff --cached --quiet; then
+            echo "No effective changes in commit-latest.env files, skipping PR update."
+            exit 0
           fi
+
+          git checkout -B "${UPDATE_BRANCH}"
+          git commit -m "ci: update commit SHAs in commit-latest.env"
+          git push --force-with-lease -u origin "${UPDATE_BRANCH}"
+
+          existing_pr="$(gh pr list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --head "${UPDATE_BRANCH}" \
+            --base "${BASE_BRANCH}" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')"
+
+          if [[ -n "${existing_pr}" ]]; then
+            echo "Updated branch for existing PR #${existing_pr}."
+            exit 0
+          fi
+
+          gh pr create \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "ci: update commit SHAs in commit-latest.env" \
+            --head "${UPDATE_BRANCH}" \
+            --base "${BASE_BRANCH}" \
+            --body "Automated refresh of ODH and RHOAI commit-latest.env from Quay image vcs-ref labels. Created by .github/workflows/update-commit-latest-env.yaml."
