@@ -17,7 +17,7 @@ import testcontainers.core.container
 
 import ntb
 from tests import index_config_utils
-from tests.containers import docker_utils
+from tests.containers import conftest, docker_utils
 
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -273,6 +273,9 @@ class TestBaseImage:
 
     @allure.issue("RHAIENG-2189")
     def test_python_package_index(self, image: str, subtests: pytest_subtests.SubTests):
+        image_metadata = conftest.get_image_metadata(image)
+        if image_metadata.workbench_type is conftest.WorkbenchType.CHE_CODE:
+            pytest.skip("che-code is PyPI-first (RHAISTRAT-1482), no AIPCC index")
         """Verify all images have AIPCC index config.
 
         All images (both ODH and RHOAI) use AIPCC wheels and must point pip/uv

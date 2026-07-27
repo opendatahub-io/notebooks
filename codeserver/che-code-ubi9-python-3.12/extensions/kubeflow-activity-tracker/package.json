@@ -1,0 +1,32 @@
+{
+  "name": "kubeflow-activity-tracker",
+  "displayName": "Kubeflow Activity Tracker",
+  "description": "Tracks user activity for Kubeflow Notebook idle culling",
+  "publisher": "rhoai",
+  "license": "Apache-2.0",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.63.0"
+  },
+  "activationEvents": [
+    "*"
+  ],
+  "main": "./out/extension.js",
+  "capabilities": {
+    "virtualWorkspaces": true,
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.63.0",
+    "jest-mock-vscode": "^4.0.0",
+    "typescript": "^7.0.0",
+    "vitest": "^3.0.0"
+  }
+}

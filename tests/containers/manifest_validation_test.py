@@ -76,7 +76,7 @@ def _imagestream_to_source_hint(is_name: str) -> str:
         if middle.startswith("rocm-"):
             middle = middle.replace("rocm-", "rocm/", 1)
         return f"/jupyter/{middle}/"
-    if stem.startswith("code-server"):
+    if stem.startswith(("code-server", "che-code")):
         return "/codeserver/"
     if stem.startswith("runtime-"):
         middle = stem.removeprefix("runtime-")
