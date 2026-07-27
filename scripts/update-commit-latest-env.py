@@ -13,9 +13,12 @@ ODH variant:
   Writes ``manifests/odh/base/commit-latest.env``.
 
 RHOAI variant:
-  Probes quay.io/rhoai to find the most recently created ``rhoai-X.Y`` tag
-  Uses that tag across all RHOAI images, extracting vcs-ref from each. Writes
+  Uses a ``rhoai-X.Y`` tag across all RHOAI images, extracting vcs-ref from each. Writes
   ``manifests/rhoai/base/commit-latest.env``.
+  Tag selection priority:
+    1) ``--rhoai-version-tag``
+    2) ``GITHUB_REF_NAME`` when it matches ``rhoai-X.Y`` (for branch-driven GHA runs)
+    3) auto-detected most recently created ``rhoai-X.Y`` tag on quay.io/rhoai
   Quay.io images are 1:1 mapped with the RedHat catalogue images, so vcs-ref remains the same.
 
 Pipeline runtime images are intentionally skipped (only odh-workbench-* processed).
@@ -84,13 +87,40 @@ def load_workbench_images(params_path: pathlib.Path) -> list[tuple[str, str]]:
     return result
 
 
-def rhoai_image_base(odh_url: str) -> str:
-    """Derive the quay.io/rhoai image base (no tag) from a quay.io/opendatahub URL.
+def _is_placeholder_image_url(image_url: str) -> bool:
+    return not image_url or image_url.strip().lower() == "dummy"
+
+
+def _is_rstudio_entry(variable: str, image_url: str) -> bool:
+    token = f"{variable} {image_url}".lower()
+    return "rstudio" in token
+
+
+def _odh_image_base_from_variable(variable: str) -> str:
+    image_name = variable.removesuffix("-n")
+    return f"quay.io/opendatahub/{image_name}"
+
+
+def rhoai_image_base(variable: str, odh_url: str) -> str:
+    """Derive the quay.io/rhoai image base (no tag) from workbench metadata.
 
     quay.io/opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9:<tag>
     → quay.io/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9
+
+    If the source URL is missing or a placeholder (e.g. ``dummy``), derive the
+    ODH image base from the variable name to keep RHOAI updates working.
     """
-    base = odh_url.rsplit(":", 1)[0]
+    if _is_placeholder_image_url(odh_url) or not odh_url.startswith("quay.io/opendatahub/"):
+        base = _odh_image_base_from_variable(variable)
+        log.warning(
+            "RHOAI: using ODH-derived image base fallback",
+            variable=variable,
+            source_image=odh_url,
+            derived_base=base,
+        )
+    else:
+        base = odh_url.rsplit(":", 1)[0]
+
     base = base.replace("quay.io/opendatahub/", "quay.io/rhoai/", 1)
     base = base.replace("-ubi9", "-rhel9")
     return base
@@ -428,6 +458,7 @@ async def resolve_rhoai_version_tag(
     if args.rhoai_version_tag:
         normalized = normalize_rhoai_version_tag(args.rhoai_version_tag)
         if normalized:
+            log.info("using RHOAI tag from --rhoai-version-tag", tag=normalized)
             return normalized
         log.error("invalid RHOAI version tag", tag=args.rhoai_version_tag)
         return None
@@ -435,6 +466,7 @@ async def resolve_rhoai_version_tag(
     branch = os.environ.get("GITHUB_REF_NAME", "")
     normalized = normalize_rhoai_version_tag(branch)
     if normalized:
+        log.info("using RHOAI tag from branch name", branch=branch, tag=normalized)
         return normalized
 
     log.info("auto-detecting latest RHOAI tag from quay.io/rhoai...")
@@ -447,7 +479,11 @@ async def collect_rhoai_entries(
     semaphore: asyncio.Semaphore,
 ) -> list[tuple[str, str]] | None:
     async def process_one(variable: str, odh_url: str) -> tuple[str, str] | None:
-        image_url = f"{rhoai_image_base(odh_url)}:{rhoai_tag}"
+        if _is_rstudio_entry(variable, odh_url):
+            log.info("RHOAI: skipping RStudio workbench entry", variable=variable)
+            return "", ""
+
+        image_url = f"{rhoai_image_base(variable, odh_url)}:{rhoai_tag}"
         _, cfg = await skopeo_inspect_config(image_url, semaphore)
         if cfg is None:
             log.error("RHOAI: inspect failed", image=image_url)
@@ -463,7 +499,11 @@ async def collect_rhoai_entries(
     ])
     if any(result is None for result in results):
         return None
-    return list(results)
+    entries = [entry for entry in results if entry and entry[0]]
+    if not entries:
+        log.error("RHOAI: no workbench entries produced after filtering")
+        return None
+    return entries
 
 
 async def main() -> None:
@@ -483,8 +523,8 @@ async def main() -> None:
         default=None,
         help=(
             "Pin a specific RHOAI tag (e.g. 'rhoai-3.5'). "
-            "When omitted the script auto-detects the most recently created rhoai-X.Y tag. "
-            "GITHUB_REF_NAME is also checked as a fallback before auto-detection."
+            "When omitted the script uses GITHUB_REF_NAME when it matches rhoai-X.Y; "
+            "otherwise it auto-detects the most recently created rhoai-X.Y tag."
         ),
     )
     args = parser.parse_args()
