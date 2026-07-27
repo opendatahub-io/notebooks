@@ -1,0 +1,48 @@
+# Transitive closure of PEP 517 build-system.requires (plus scikit-build
+# cmake/ninja tools, including scikit-build-core defaults) for packages
+# reachable from requirements.cpu.txt.
+#
+# extract-build-deps.py walks every sdist, AND-merges constraints, evaluates
+# markers per Konflux arch (union), and logs which arches lack wheels.
+#
+# To regenerate requirements-build.cpu.txt:
+#
+#   uv pip compile --python-version 3.12 --python-platform linux --no-header \
+#       jupyter/universal/ubi9-python-3.12/requirements-build.in \
+#       -o jupyter/universal/ubi9-python-3.12/requirements-build.cpu.txt
+#
+# To re-extract build deps from sdists (when requirements.cpu.txt changes):
+#
+#   uv run python3 jupyter/universal/ubi9-python-3.12/extract-build-deps.py \
+#       jupyter/universal/ubi9-python-3.12/requirements.cpu.txt
+#
+
+build
+calver
+cffi>=1.0.1
+cmake>=3.15
+cython>=3.0.0
+expandvars
+flit-core<4,>=3.12
+hatch-fancy-pypi-readme>=23.2.0
+hatch-jupyter-builder>=0.8.3
+hatch-nodejs-version>=0.3.2
+hatch-vcs<0.6.0,>=0.5
+hatchling<2,>=1.29
+jupyter-builder>=1.0.2
+jupyter-client>=6
+jupyter-packaging>=0.10
+jupyterlab<5.0.0a0,>=4.0.6
+maturin<2.0,>=1.9
+ninja>=1.5
+packaging>=20.0
+pdm-backend
+pkgconfig
+poetry-core>=2.0.0
+scikit-build-core>=0.10
+setuptools!=24.0.0,!=34.0.0,!=34.0.1,!=34.0.2,!=34.0.3,!=34.1.0,!=34.1.1,!=34.2.0,!=34.3.0,!=34.3.1,!=34.3.2,!=36.2.0,<83.1,>=82.0.1
+setuptools-rust>=1.11.0
+setuptools-scm[toml]
+typing-extensions
+vcs-versioning<3,>=2.0.0.dev0
+wheel

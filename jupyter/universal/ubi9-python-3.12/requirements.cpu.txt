@@ -1,0 +1,362 @@
+aiohappyeyeballs==2.7.1
+    # via aiohttp
+aiohttp==3.14.1
+    # via
+    #   jupyter-server-proxy
+    #   papermill
+aiosignal==1.4.0
+    # via aiohttp
+anyio==4.14.2
+    # via
+    #   httpx
+    #   jupyter-server
+    #   jupyterlab-git-core
+argon2-cffi==25.1.0
+    # via
+    #   jupyter-server
+    #   minio
+argon2-cffi-bindings==25.1.0
+    # via argon2-cffi
+arrow==1.4.0
+    # via isoduration
+asttokens==3.0.2
+    # via stack-data
+async-lru==2.3.0
+    # via jupyterlab
+attrs==26.1.0
+    # via
+    #   aiohttp
+    #   jsonschema
+    #   referencing
+babel==2.18.0
+    # via jupyterlab-server
+beautifulsoup4==4.15.0
+    # via nbconvert
+bleach==6.4.0
+    # via nbconvert
+certifi==2026.6.17
+    # via
+    #   httpcore
+    #   httpx
+    #   minio
+    #   requests
+cffi==2.1.0
+    # via argon2-cffi-bindings
+charset-normalizer==3.4.9
+    # via requests
+click==8.4.2
+    # via papermill
+colorama==0.4.6
+    # via nbdime
+comm==0.2.3
+    # via ipykernel
+debugpy==1.8.21
+    # via ipykernel
+decorator==5.3.1
+    # via ipython
+defusedxml==0.7.1
+    # via nbconvert
+entrypoints==0.4
+    # via papermill
+executing==2.2.1
+    # via stack-data
+fastjsonschema==2.21.2
+    # via nbformat
+fqdn==1.5.1
+    # via jsonschema
+frozenlist==1.8.0
+    # via
+    #   aiohttp
+    #   aiosignal
+gitdb==4.0.12
+    # via gitpython
+gitpython==3.1.52
+    # via nbdime
+h11==0.16.0
+    # via httpcore
+httpcore==1.0.9
+    # via httpx
+httpx==0.28.1
+    # via jupyterlab
+idna==3.18
+    # via
+    #   anyio
+    #   httpx
+    #   jsonschema
+    #   requests
+    #   yarl
+ipykernel==7.3.0
+    # via jupyterlab
+ipython==9.15.0
+    # via ipykernel
+ipython-pygments-lexers==1.1.1
+    # via ipython
+isoduration==20.11.0
+    # via jsonschema
+jedi==0.20.0
+    # via ipython
+jinja2==3.1.6
+    # via
+    #   jupyter-server
+    #   jupyterlab
+    #   jupyterlab-server
+    #   nbconvert
+    #   nbdime
+json5==0.15.0
+    # via jupyterlab-server
+jsonpointer==3.1.1
+    # via jsonschema
+jsonschema==4.26.0
+    # via
+    #   jupyter-events
+    #   jupyterlab-server
+    #   nbformat
+jsonschema-specifications==2025.9.1
+    # via jsonschema
+jupyter-builder==1.1.0
+    # via jupyterlab
+jupyter-client==8.9.1
+    # via
+    #   ipykernel
+    #   jupyter-server
+    #   nbclient
+jupyter-core==5.9.1
+    # via
+    #   ipykernel
+    #   jupyter-builder
+    #   jupyter-client
+    #   jupyter-server
+    #   jupyterlab
+    #   nbclient
+    #   nbconvert
+    #   nbformat
+jupyter-events==0.12.1
+    # via jupyter-server
+jupyter-lsp==2.3.1
+    # via jupyterlab
+jupyter-server==2.20.0
+    # via
+    #   jupyter-lsp
+    #   jupyter-server-proxy
+    #   jupyterlab
+    #   jupyterlab-git
+    #   jupyterlab-server
+    #   nbdime
+    #   nbgitpuller
+    #   notebook-shim
+jupyter-server-proxy==4.5.0
+jupyter-server-terminals==0.5.4
+    # via jupyter-server
+jupyterlab==4.6.1
+jupyterlab-git==0.54.0
+jupyterlab-git-core==0.54.0
+    # via jupyterlab-git
+jupyterlab-pygments==0.3.0
+    # via nbconvert
+jupyterlab-server==2.28.0
+    # via jupyterlab
+lark==1.3.1
+    # via rfc3987-syntax
+markupsafe==3.0.3
+    # via
+    #   jinja2
+    #   nbconvert
+matplotlib-inline==0.2.2
+    # via
+    #   ipykernel
+    #   ipython
+minio==7.2.20
+mistune==3.3.3
+    # via nbconvert
+multidict==6.7.1
+    # via
+    #   aiohttp
+    #   yarl
+nbclient==0.11.0
+    # via
+    #   nbconvert
+    #   papermill
+nbconvert==7.17.1
+    # via jupyter-server
+nbdime==4.0.4
+    # via jupyterlab-git-core
+nbformat==5.10.4
+    # via
+    #   jupyter-server
+    #   jupyterlab-git-core
+    #   nbclient
+    #   nbconvert
+    #   nbdime
+    #   papermill
+nbgitpuller==1.3.0
+nest-asyncio2==1.7.2
+    # via ipykernel
+notebook-shim==0.2.4
+    # via jupyterlab
+packaging==26.2
+    # via
+    #   ipykernel
+    #   jupyter-events
+    #   jupyter-server
+    #   jupyterlab
+    #   jupyterlab-git-core
+    #   jupyterlab-server
+    #   nbconvert
+pandocfilters==1.5.1
+    # via nbconvert
+papermill==2.7.0
+parso==0.8.7
+    # via jedi
+pexpect==4.9.0
+    # via
+    #   ipython
+    #   jupyterlab-git-core
+platformdirs==4.10.0
+    # via jupyter-core
+prometheus-client==0.25.0
+    # via jupyter-server
+prompt-toolkit==3.0.52
+    # via ipython
+propcache==0.5.2
+    # via
+    #   aiohttp
+    #   yarl
+psutil==7.2.2
+    # via
+    #   ipykernel
+    #   ipython
+ptyprocess==0.7.0
+    # via
+    #   pexpect
+    #   terminado
+pure-eval==0.2.3
+    # via stack-data
+pycparser==3.0
+    # via cffi
+pycryptodome==3.23.0
+    # via minio
+pygments==2.20.0
+    # via
+    #   ipython
+    #   ipython-pygments-lexers
+    #   nbconvert
+    #   nbdime
+python-dateutil==2.9.0.post0
+    # via
+    #   arrow
+    #   jupyter-client
+python-json-logger==4.1.0
+    # via jupyter-events
+pyyaml==6.0.3
+    # via
+    #   jupyter-events
+    #   papermill
+pyzmq==27.1.0
+    # via
+    #   ipykernel
+    #   jupyter-client
+    #   jupyter-server
+referencing==0.37.0
+    # via
+    #   jsonschema
+    #   jsonschema-specifications
+    #   jupyter-events
+requests==2.34.2
+    # via
+    #   jupyterlab-server
+    #   nbdime
+    #   papermill
+rfc3339-validator==0.1.4
+    # via
+    #   jsonschema
+    #   jupyter-events
+rfc3986-validator==0.1.1
+    # via
+    #   jsonschema
+    #   jupyter-events
+rfc3987-syntax==1.1.0
+    # via jsonschema
+rpds-py==2026.6.3
+    # via
+    #   jsonschema
+    #   referencing
+send2trash==2.1.0
+    # via jupyter-server
+simpervisor==1.0.0
+    # via jupyter-server-proxy
+six==1.17.0
+    # via
+    #   python-dateutil
+    #   rfc3339-validator
+smmap==5.0.3
+    # via gitdb
+soupsieve==2.8.4
+    # via beautifulsoup4
+stack-data==0.6.3
+    # via ipython
+tenacity==9.1.4
+    # via papermill
+terminado==0.18.1
+    # via
+    #   jupyter-server
+    #   jupyter-server-terminals
+tinycss2==1.5.1
+    # via bleach
+tornado==6.5.7
+    # via
+    #   ipykernel
+    #   jupyter-client
+    #   jupyter-server
+    #   jupyter-server-proxy
+    #   jupyterlab
+    #   nbdime
+    #   nbgitpuller
+    #   terminado
+tqdm==4.68.4
+    # via papermill
+traitlets==5.15.1
+    # via
+    #   ipykernel
+    #   ipython
+    #   jupyter-builder
+    #   jupyter-client
+    #   jupyter-core
+    #   jupyter-events
+    #   jupyter-server
+    #   jupyter-server-proxy
+    #   jupyterlab
+    #   jupyterlab-git
+    #   jupyterlab-git-core
+    #   matplotlib-inline
+    #   nbclient
+    #   nbconvert
+    #   nbformat
+typing-extensions==4.16.0
+    # via
+    #   aiohttp
+    #   aiosignal
+    #   anyio
+    #   beautifulsoup4
+    #   jupyter-client
+    #   minio
+    #   referencing
+tzdata==2026.3
+    # via arrow
+uri-template==1.3.0
+    # via jsonschema
+urllib3==2.7.0
+    # via
+    #   minio
+    #   requests
+wcwidth==0.8.2
+    # via prompt-toolkit
+webcolors==25.10.0
+    # via jsonschema
+webencodings==0.5.1
+    # via
+    #   bleach
+    #   tinycss2
+websocket-client==1.9.0
+    # via jupyter-server
+yarl==1.24.2
+    # via aiohttp

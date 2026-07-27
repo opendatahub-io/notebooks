@@ -57,6 +57,8 @@ class TestJupyterLabImage:
     @allure.issue("RHOAIENG-32156")
     @allure.description("Check that Trash Cleanup extension is installed and enabled")
     def test_trash_cleanup_installed(self, jupyterlab_image: conftest.Image) -> None:
+        if "-universal-" in jupyterlab_image.labels.get("name", ""):
+            pytest.skip("Universal image does not ship odh-jupyter-trash-cleanup")
         with WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0]) as container:
             extension_check_pattern = r"^\s*odh-jupyter-trash-cleanup[^\n]*enabled[^\n]*OK"
             container.start(wait_for_readiness=False)
@@ -76,6 +78,8 @@ class TestJupyterLabImage:
         Jupyter news notifications, which is undesirable in enterprise environments.
         See: https://github.com/opendatahub-io/notebooks/issues/331
         """
+        if "-universal-" in jupyterlab_image.labels.get("name", ""):
+            pytest.skip("Universal image does not configure announcement disabling")
         extension_name = "@jupyterlab/apputils-extension:announcements"
         with WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0]) as container:
             container.start(wait_for_readiness=False)
@@ -90,6 +94,8 @@ class TestJupyterLabImage:
     @allure.issue("RHOAIENG-16568")
     @allure.description("Check that PDF export is working correctly")
     def test_pdf_export(self, jupyterlab_image: conftest.Image, container_arch: str) -> None:
+        if "-universal-" in jupyterlab_image.labels.get("name", ""):
+            pytest.skip("Universal image does not ship pandoc/texlive for PDF export")
         if container_arch in ("s390x", "ppc64le"):
             pytest.skip(f"PDF export not supported on {container_arch} architecture")
         test_file_name = "test.ipynb"
@@ -134,6 +140,9 @@ class TestJupyterLabImage:
     @allure.issue("RHOAIENG-24348")
     @allure.description("Check that custom-built (to be FIPS-compliant) mongocli binary runs.")
     def test_mongocli_binary_runs(self, jupyterlab_image: conftest.Image) -> None:
+        name = jupyterlab_image.labels.get("name", "")
+        if "-universal-" in name:
+            pytest.skip("Universal image does not ship mongocli")
         if "-minimal-" in jupyterlab_image.name and all(
             accelerator not in jupyterlab_image.name for accelerator in ["-cuda-", "-rocm-"]
         ):

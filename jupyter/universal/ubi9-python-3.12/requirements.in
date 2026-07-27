@@ -1,0 +1,26 @@
+# Direct dependencies for the universal JupyterLab workbench + pipeline runtime.
+#
+# To regenerate requirements.cpu.txt (full transitive closure, no hashes):
+#
+#   uv pip compile --python-version 3.12 --python-platform linux --no-header \
+#       jupyter/universal/ubi9-python-3.12/requirements.in \
+#       -o jupyter/universal/ubi9-python-3.12/requirements.cpu.txt
+#
+
+# JupyterLab workbench
+jupyterlab
+jupyter-server
+jupyter-server-proxy
+jupyter-server-terminals
+jupyterlab-git
+nbdime
+nbgitpuller
+
+# Pipeline runtime (Elyra/AI Pipelines bootstrapper deps)
+ipykernel
+papermill
+nbclient
+nbconvert
+nbformat
+minio
+urllib3

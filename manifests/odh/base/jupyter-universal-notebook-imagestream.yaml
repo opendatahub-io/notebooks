@@ -1,0 +1,41 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-url: "https://github.com/opendatahub-io/notebooks/tree/main/jupyter/universal/ubi9-python-3.12"
+    opendatahub.io/notebook-image-name: "JupyterLab | Universal | CPU | Python 3.12"
+    opendatahub.io/notebook-image-desc: "Universal JupyterLab image: interactive workbench (when NOTEBOOK_ARGS is set) or AI Pipelines runtime (when command is overridden). Python packages from PyPI."
+    opendatahub.io/notebook-image-order: "24"
+  name: jupyter-universal-notebook
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    # N Version of the image
+    - annotations:
+        # language=json
+        opendatahub.io/notebook-software: |
+          [
+            {"name": "JupyterLab", "version": "4.4"},
+            {"name": "Python", "version": "v3.12"}
+          ]
+        # language=json
+        opendatahub.io/notebook-python-dependencies: |
+          [
+            {"name": "ipykernel", "version": "7.3"},
+            {"name": "papermill", "version": "2.7"},
+            {"name": "jupyterlab-git", "version": "0.56"},
+            {"name": "nbgitpuller", "version": "1.2"}
+          ]
+        openshift.io/imported-from: quay.io/opendatahub/odh-workbench-jupyter-universal-cpu-py312-ubi9
+        opendatahub.io/workbench-image-recommended: 'true'
+        opendatahub.io/notebook-build-commit: odh-workbench-jupyter-universal-cpu-py312-ubi9-commit-n_PLACEHOLDER
+      from:
+        kind: DockerImage
+        name: odh-workbench-jupyter-universal-cpu-py312-ubi9-n_PLACEHOLDER
+      name: "3.5"
+      referencePolicy:
+        type: Source

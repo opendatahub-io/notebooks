@@ -17,7 +17,7 @@ import testcontainers.core.container
 
 import ntb
 from tests import index_config_utils
-from tests.containers import docker_utils
+from tests.containers import conftest, docker_utils
 
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -285,6 +285,9 @@ class TestBaseImage:
         RHOAI/AIPCC base images configure the index via pip.conf and uv.toml,
         without exporting those env vars in the final image.
 
+        PyPI-first images (che-code, universal) intentionally use PyPI and are
+        skipped — see RHAISTRAT-1482.
+
         References:
         - Christian Heimes (AIPCC): "you cannot mix our wheels with upstream PyPI"
           https://redhat-internal.slack.com/archives/C07JX0EMKCZ/p1762148168064779
@@ -292,6 +295,10 @@ class TestBaseImage:
           https://redhat-internal.slack.com/archives/C0987K24BNV/p1761159166691689
         - Customer docs: https://access.redhat.com/articles/7137881
         """
+        image_metadata = conftest.get_image_metadata(image)
+        name = image_metadata.labels.get("name", "")
+        if "-universal-" in name or "-che-code-" in name:
+            pytest.skip(f"PyPI-first image (RHAISTRAT-1482): {name}")
         with docker_utils.running_container(image=image) as container:
 
             def read_container_file(path: str) -> str:
