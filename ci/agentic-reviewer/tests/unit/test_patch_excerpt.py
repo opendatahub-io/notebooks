@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from odh_ci_agent import patch_excerpt
 
 
@@ -24,3 +25,16 @@ def test_short_patch_unchanged() -> None:
     excerpt = patch_excerpt.capped_patch_excerpt(patch, max_lines=50)
 
     assert excerpt == patch
+
+
+def test_empty_patch_returns_none() -> None:
+    assert patch_excerpt.capped_patch_excerpt(None, max_lines=50) is None
+    assert patch_excerpt.capped_patch_excerpt("", max_lines=50) is None
+
+
+@pytest.mark.parametrize("max_lines", [0, -1])
+def test_invalid_max_lines_raises(max_lines: int) -> None:
+    with pytest.raises(ValueError, match="max_lines"):
+        patch_excerpt.capped_patch_excerpt(None, max_lines=max_lines)
+    with pytest.raises(ValueError, match="max_lines"):
+        patch_excerpt.capped_patch_excerpt("line\n", max_lines=max_lines)
