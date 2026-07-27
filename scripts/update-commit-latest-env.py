@@ -45,6 +45,7 @@ import pathlib
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 import structlog
@@ -61,6 +62,7 @@ RHOAI_PROBE_IMAGE = "quay.io/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9
 
 QUAY_API_BASE = "https://quay.io/api/v1"
 QUAY_PAGE_SIZE = 100
+MAX_QUAY_PAGES = 50
 SKOPEO_TIMEOUT_SEC = 60
 SKOPEO_CONCURRENCY = 10
 
@@ -104,14 +106,17 @@ def parse_image_ref(image_url: str) -> tuple[str, str]:
 
 def parse_quay_repository(image: str) -> tuple[str, str]:
     """Return (namespace, repository) for a quay.io image URL without tag."""
-    if not image.startswith("quay.io/"):
+    candidate = image if "://" in image else f"https://{image}"
+    parsed = urllib.parse.urlparse(candidate)
+    if parsed.hostname != "quay.io":
         msg = f"not a quay.io repository: {image}"
         raise ValueError(msg)
-    path = image.removeprefix("quay.io/")
-    namespace, _, repository = path.partition("/")
-    if not namespace or not repository:
+    parts = [part for part in parsed.path.split("/") if part]
+    if len(parts) < 2:
         msg = f"invalid quay.io repository: {image}"
         raise ValueError(msg)
+    namespace = parts[0]
+    repository = "/".join(parts[1:])
     return namespace, repository
 
 
@@ -128,7 +133,8 @@ def vcs_ref_from_odh_main_tag(tag: str) -> str | None:
 
 
 def vcs_ref_from_config(cfg: dict) -> str | None:
-    return cfg.get("config", {}).get("Labels", {}).get("vcs-ref")
+    labels = (cfg.get("config") or {}).get("Labels") or {}
+    return labels.get("vcs-ref")
 
 
 def commit_env_key(variable: str) -> str:
@@ -147,7 +153,7 @@ def _fetch_quay_json(url: str) -> dict:
     try:
         with urllib.request.urlopen(request, timeout=SKOPEO_TIMEOUT_SEC) as response:
             payload = json.loads(response.read().decode())
-    except urllib.error.URLError as exc:
+    except (urllib.error.URLError, TimeoutError) as exc:
         msg = f"Quay API request failed for {url}: {exc}"
         raise ValueError(msg) from exc
     except json.JSONDecodeError as exc:
@@ -165,7 +171,7 @@ async def quay_list_matching_tags(repository: str, pattern: re.Pattern) -> list[
     tags: list[tuple[str, int]] = []
     page = 1
 
-    while True:
+    while page <= MAX_QUAY_PAGES:
         url = (
             f"{QUAY_API_BASE}/repository/{namespace}/{repo}/tag/"
             f"?limit={QUAY_PAGE_SIZE}&page={page}&onlyActiveTags=true"
@@ -189,6 +195,8 @@ async def quay_list_matching_tags(repository: str, pattern: re.Pattern) -> list[
         if not payload.get("has_additional"):
             break
         page += 1
+    else:
+        log.warning("quay pagination exceeded max pages", repository=repository, max_pages=MAX_QUAY_PAGES)
 
     return tags
 
@@ -422,6 +430,7 @@ async def resolve_rhoai_version_tag(
         if normalized:
             return normalized
         log.error("invalid RHOAI version tag", tag=args.rhoai_version_tag)
+        return None
 
     branch = os.environ.get("GITHUB_REF_NAME", "")
     normalized = normalize_rhoai_version_tag(branch)
@@ -489,14 +498,12 @@ async def main() -> None:
     run_rhoai = args.variant in ("rhoai", "both")
     semaphore = asyncio.Semaphore(SKOPEO_CONCURRENCY)
 
-    pending_writes: list[tuple[pathlib.Path, list[tuple[str, str]]]] = []
-
     if run_odh:
         odh_entries = await collect_odh_entries(workbench_images, semaphore)
         if odh_entries is None:
             log.error("ODH: one or more images could not be processed")
             sys.exit(1)
-        pending_writes.append((ODH_COMMIT_LATEST, odh_entries))
+        write_commit_env(odh_entries, ODH_COMMIT_LATEST)
 
     if run_rhoai:
         rhoai_tag = await resolve_rhoai_version_tag(args, semaphore)
@@ -513,10 +520,7 @@ async def main() -> None:
         if rhoai_entries is None:
             log.error("RHOAI: one or more images could not be processed")
             sys.exit(1)
-        pending_writes.append((RHOAI_COMMIT_LATEST, rhoai_entries))
-
-    for dest, entries in pending_writes:
-        write_commit_env(entries, dest)
+        write_commit_env(rhoai_entries, RHOAI_COMMIT_LATEST)
 
 
 if __name__ == "__main__":
