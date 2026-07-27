@@ -3,20 +3,30 @@ name: Update commit-latest.env on params-latest.env change
 
 "on":
   workflow_dispatch:
+    inputs:
+      target_branch:
+        description: |
+          Branch to refresh commit-latest.env on.
+          RHDS (red-hat-data-services/notebooks): specify a rhoai-X.Y release branch (e.g. rhoai-2.25).
+          ODH (opendatahub-io/notebooks): use main only.
+        required: true
+        default: main
+        type: string
   schedule:
     - cron: '0 11 * * *'  # Daily at 11:00 UTC
 
 env:
-  BASE_BRANCH: ${{ github.ref_name }}
+  BASE_BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.target_branch || 'main' }}
 
 jobs:
   sync-commit-latest:
     if: |
-      !(github.repository == 'red-hat-data-services/notebooks' && github.ref_name == 'main') &&
-      (github.event_name != 'schedule' || github.ref_name == 'main')
+      !(github.repository == 'red-hat-data-services/notebooks' && env.BASE_BRANCH == 'main') &&
+      !(github.repository == 'opendatahub-io/notebooks' && github.event_name == 'workflow_dispatch' && inputs.target_branch != 'main') &&
+      (github.event_name != 'schedule' || env.BASE_BRANCH == 'main')
     runs-on: ubuntu-26.04
     concurrency:
-      group: update-commit-latest-env-${{ github.ref_name }}
+      group: update-commit-latest-env-${{ env.BASE_BRANCH }}
       cancel-in-progress: false
     permissions:
       contents: write
@@ -35,6 +45,12 @@ jobs:
           set -euo pipefail
           update_branch="ci/update-commit-latest-env-${BASE_BRANCH//\//-}"
 
+          if [[ "${GITHUB_REPOSITORY}" == "opendatahub-io/notebooks" && "${BASE_BRANCH}" != "main" ]]; then
+            echo "ODH repositories support main only for this workflow."
+            echo "Leave target_branch as main when running manually on opendatahub-io/notebooks."
+            exit 1
+          fi
+
           if [[ "${BASE_BRANCH}" == "main" ]]; then
             echo "variant=both" >> "${GITHUB_OUTPUT}"
             echo "rhoai_tag=" >> "${GITHUB_OUTPUT}"
@@ -45,7 +61,7 @@ jobs:
             echo "target_scope=RHOAI only" >> "${GITHUB_OUTPUT}"
           else
             echo "Unsupported branch for this workflow: ${BASE_BRANCH}"
-            echo "Allowed branches: main or rhoai-X.Y"
+            echo "Allowed branches: main (ODH) or rhoai-X.Y (RHDS on-demand)"
             exit 1
           fi
 
