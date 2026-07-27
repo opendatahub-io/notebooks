@@ -1,0 +1,381 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "versions_config.schema.json",
+  "$defs": {
+    "Artifacts": {
+      "additionalProperties": false,
+      "description": "Artifact groups managed by the versions sync flow.",
+      "properties": {
+        "base_image": {
+          "$ref": "#/$defs/BaseImageArtifacts"
+        }
+      },
+      "required": [
+        "base_image"
+      ],
+      "title": "Artifacts",
+      "type": "object"
+    },
+    "BaseImageArtifacts": {
+      "additionalProperties": false,
+      "description": "Managed base-image policy tree.",
+      "properties": {
+        "cpu": {
+          "$ref": "#/$defs/CpuArtifact",
+          "description": "Shared CPU policy for all managed CPU workbenches."
+        },
+        "cuda": {
+          "$ref": "#/$defs/CudaFlavors",
+          "description": "CUDA flavor map keyed by image/flavor ID (open keys; sync enforces the managed inventory).",
+          "minProperties": 1,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "CUDA flavors"
+        },
+        "rocm": {
+          "$ref": "#/$defs/RocmFlavors",
+          "description": "ROCm flavor map keyed by image/flavor ID (open keys; sync enforces the managed inventory).",
+          "minProperties": 1,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "ROCm flavors"
+        }
+      },
+      "required": [
+        "cpu",
+        "cuda",
+        "rocm"
+      ],
+      "title": "BaseImageArtifacts",
+      "type": "object"
+    },
+    "CpuArtifact": {
+      "additionalProperties": false,
+      "description": "Shared CPU base-image policy (not per image-name).",
+      "properties": {
+        "rhds": {
+          "discriminator": {
+            "mapping": {
+              "fast": "#/$defs/RhdsFastCpuPolicy",
+              "stable": "#/$defs/RhdsStableCpuPolicy"
+            },
+            "propertyName": "channel"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/RhdsFastCpuPolicy"
+            },
+            {
+              "$ref": "#/$defs/RhdsStableCpuPolicy"
+            }
+          ],
+          "title": "RHDS CPU policy"
+        },
+        "odh": {
+          "$ref": "#/$defs/OdhCpuPolicy"
+        }
+      },
+      "required": [
+        "rhds",
+        "odh"
+      ],
+      "title": "CpuArtifact",
+      "type": "object"
+    },
+    "CudaFlavors": {
+      "additionalProperties": {
+        "$ref": "#/$defs/GpuFlavor"
+      },
+      "type": "object"
+    },
+    "GpuFlavor": {
+      "additionalProperties": false,
+      "description": "Shared GPU flavor policy block.",
+      "properties": {
+        "acc_version": {
+          "description": "Accelerator stream (major.minor) shared by RHDS and ODH for this flavor, or \"<full_version>\". Nested acc_version under rhds/odh is not allowed.",
+          "examples": [
+            "13.0",
+            "7.14"
+          ],
+          "pattern": "^([0-9]+\\.[0-9]+|<full_version>)$",
+          "title": "Accelerator version",
+          "type": "string"
+        },
+        "rhds": {
+          "discriminator": {
+            "mapping": {
+              "fast": "#/$defs/RhdsFastGpuPolicy",
+              "stable": "#/$defs/RhdsStableGpuPolicy"
+            },
+            "propertyName": "channel"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/RhdsFastGpuPolicy"
+            },
+            {
+              "$ref": "#/$defs/RhdsStableGpuPolicy"
+            }
+          ],
+          "title": "RHDS GPU policy"
+        },
+        "odh": {
+          "$ref": "#/$defs/OdhGpuPolicy"
+        }
+      },
+      "required": [
+        "acc_version",
+        "rhds",
+        "odh"
+      ],
+      "title": "GpuFlavor",
+      "type": "object"
+    },
+    "OdhCpuPolicy": {
+      "additionalProperties": false,
+      "description": "ODH CPU base-image policy.",
+      "properties": {
+        "origin": {
+          "description": "ODH image origin: \"in-house\" or \"midstream\".",
+          "enum": [
+            "in-house",
+            "midstream"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "version": {
+          "const": "latest",
+          "description": "CPU ODH targets must stay on the rolling latest tag.",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "origin",
+        "version"
+      ],
+      "title": "OdhCpuPolicy",
+      "type": "object"
+    },
+    "OdhGpuPolicy": {
+      "additionalProperties": false,
+      "description": "ODH GPU base-image policy. Stream comes from flavor-level acc_version.",
+      "properties": {
+        "origin": {
+          "description": "ODH image origin: \"in-house\" or \"midstream\".",
+          "enum": [
+            "in-house",
+            "midstream"
+          ],
+          "title": "Origin",
+          "type": "string"
+        }
+      },
+      "required": [
+        "origin"
+      ],
+      "title": "OdhGpuPolicy",
+      "type": "object"
+    },
+    "Release": {
+      "additionalProperties": false,
+      "description": "Release metadata shared across RHDS and ODH base-image resolution.",
+      "properties": {
+        "full_version": {
+          "description": "Product release in semantic version form; drives RHDS selection and Makefile RELEASE.",
+          "examples": [
+            "3.5.0"
+          ],
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "title": "Full version",
+          "type": "string"
+        },
+        "rhds_os_base": {
+          "description": "RHDS CUDA/ROCm repository OS suffix, for example \"el9.6\".",
+          "examples": [
+            "el9.6"
+          ],
+          "pattern": "^el[0-9]+\\.[0-9]+$",
+          "title": "RHDS OS base",
+          "type": "string"
+        },
+        "python_version": {
+          "description": "Python interpreter major.minor version used for ODH CPU repository naming.",
+          "examples": [
+            "3.12"
+          ],
+          "pattern": "^[0-9]+\\.[0-9]+$",
+          "title": "Python version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "full_version",
+        "rhds_os_base",
+        "python_version"
+      ],
+      "title": "Release",
+      "type": "object"
+    },
+    "RhdsFastCpuPolicy": {
+      "additionalProperties": false,
+      "description": "RHDS CPU policy for the progressing (fast) channel.",
+      "properties": {
+        "channel": {
+          "const": "fast",
+          "description": "Must be \"fast\" for this policy shape.",
+          "title": "Channel",
+          "type": "string"
+        },
+        "version": {
+          "description": "RHDS fast CPU release version, or \"<full_version>\" to follow release.full_version.",
+          "examples": [
+            "<full_version>",
+            "3.5.0"
+          ],
+          "pattern": "^([0-9]+\\.[0-9]+\\.[0-9]+|<full_version>)$",
+          "title": "RHDS CPU version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel",
+        "version"
+      ],
+      "title": "RhdsFastCpuPolicy",
+      "type": "object"
+    },
+    "RhdsFastGpuPolicy": {
+      "additionalProperties": false,
+      "description": "RHDS GPU policy for the progressing (fast) channel. Stream comes from flavor-level acc_version.",
+      "properties": {
+        "channel": {
+          "const": "fast",
+          "description": "Must be \"fast\" for this policy shape.",
+          "title": "Channel",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel"
+      ],
+      "title": "RhdsFastGpuPolicy",
+      "type": "object"
+    },
+    "RhdsStableCpuPolicy": {
+      "additionalProperties": false,
+      "description": "RHDS CPU policy for the stable channel (version is derived from release.full_version).",
+      "properties": {
+        "channel": {
+          "const": "stable",
+          "description": "Must be \"stable\" for this policy shape.",
+          "title": "Channel",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel"
+      ],
+      "title": "RhdsStableCpuPolicy",
+      "type": "object"
+    },
+    "RhdsStableGpuPolicy": {
+      "additionalProperties": false,
+      "description": "RHDS GPU policy for the stable channel. Stream matching uses flavor-level acc_version.",
+      "properties": {
+        "channel": {
+          "const": "stable",
+          "description": "Must be \"stable\" for this policy shape.",
+          "title": "Channel",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel"
+      ],
+      "title": "RhdsStableGpuPolicy",
+      "type": "object"
+    },
+    "RocmFlavors": {
+      "additionalProperties": {
+        "$ref": "#/$defs/GpuFlavor"
+      },
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Top-level ``versions_config.yml`` document (``schema_version: 1``).",
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Config schema revision; only version 1 is supported today.",
+      "title": "Schema version",
+      "type": "integer"
+    },
+    "release": {
+      "$ref": "#/$defs/Release"
+    },
+    "artifacts": {
+      "$ref": "#/$defs/Artifacts"
+    }
+  },
+  "required": [
+    "schema_version",
+    "release",
+    "artifacts"
+  ],
+  "title": "VersionsConfig",
+  "type": "object",
+  "examples": [
+    {
+      "schema_version": 1,
+      "release": {
+        "full_version": "3.5.0",
+        "rhds_os_base": "el9.6",
+        "python_version": "3.12"
+      },
+      "artifacts": {
+        "base_image": {
+          "cpu": {
+            "rhds": {
+              "channel": "fast",
+              "version": "<full_version>"
+            },
+            "odh": {
+              "origin": "in-house",
+              "version": "latest"
+            }
+          },
+          "cuda": {
+            "minimal": {
+              "acc_version": "13.0",
+              "rhds": {
+                "channel": "fast"
+              },
+              "odh": {
+                "origin": "in-house"
+              }
+            }
+          },
+          "rocm": {
+            "minimal": {
+              "acc_version": "7.14",
+              "rhds": {
+                "channel": "fast"
+              },
+              "odh": {
+                "origin": "in-house"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
