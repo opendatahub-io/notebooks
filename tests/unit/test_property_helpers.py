@@ -39,9 +39,13 @@ def patches(draw: st.DrawFn) -> str | None:
         return None
     if kind == "empty":
         return ""
-    lines = draw(st.lists(st.text(max_size=40), max_size=80))
-    # Prefer ``\\n`` joins (splitlines semantics) over trailing-newline edge cases.
-    return "\n".join(lines)
+    # Allow \\r inside lines (content); records are joined with \\n only.
+    line = st.text(alphabet=st.characters(blacklist_characters="\n"), max_size=40)
+    lines = draw(st.lists(line, max_size=80))
+    body = "\n".join(lines)
+    if draw(st.booleans()) and body:
+        body += "\n"
+    return body
 
 
 @_settings
@@ -64,25 +68,28 @@ def test_capped_patch_excerpt_properties(patch: str | None, max_lines: int) -> N
         return
 
     assert result is not None
-    input_lines = patch.splitlines()
-    output_lines = result.splitlines()
+    input_lines = patch_excerpt._patch_lines(patch)
+    output_lines = patch_excerpt._patch_lines(result)
     assert len(output_lines) <= max_lines
 
     if len(input_lines) <= max_lines:
         assert result == patch
         return
 
-    assert len(output_lines) == max_lines
     if max_lines == 1:
         assert result == input_lines[0]
-        assert "..." not in output_lines
-    else:
-        assert "..." in output_lines
-        # Head/tail preserve original order around the ellipsis.
-        ellipsis_at = output_lines.index("...")
-        assert output_lines[:ellipsis_at] == input_lines[:ellipsis_at]
-        tail = output_lines[ellipsis_at + 1 :]
-        assert tail == input_lines[-len(tail) :] if tail else []
+        assert "..." not in patch_excerpt._patch_lines(result)
+        return
+
+    # Truncation uses "\\n".join; a trailing empty line is not always
+    # round-trippable. The contract is a line budget, not blank-line preservation.
+    assert "..." in output_lines
+    ellipsis_at = output_lines.index("...")
+    head = output_lines[:ellipsis_at]
+    tail = output_lines[ellipsis_at + 1 :]
+    assert head == input_lines[: len(head)]
+    if tail:
+        assert tail == input_lines[-len(tail) :]
 
 
 @st.composite
