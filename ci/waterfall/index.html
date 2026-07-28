@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Notebooks Workbench Build Waterfall</title>
+<style>
+:root {
+  --bg: #1a1a2e;
+  --surface: #16213e;
+  --border: #2a3a5e;
+  --text: #e0e0e0;
+  --muted: #8899aa;
+  --green: #2ecc71;
+  --red: #e74c3c;
+  --yellow: #f39c12;
+  --blue: #3498db;
+  --grey: #555;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+  background: var(--bg);
+  color: var(--text);
+  padding: 16px;
+  font-size: 13px;
+}
+h1 { font-size: 18px; margin-bottom: 4px; }
+.subtitle { color: var(--muted); margin-bottom: 16px; font-size: 12px; }
+.tabs { display: flex; gap: 2px; margin-bottom: 16px; }
+.tab {
+  padding: 6px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  color: var(--muted);
+}
+.tab.active { background: var(--border); color: var(--text); border-bottom-color: var(--border); }
+.matrix-container { overflow-x: auto; }
+table.waterfall {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 900px;
+}
+table.waterfall th, table.waterfall td {
+  border: 1px solid var(--border);
+  padding: 4px 6px;
+  text-align: center;
+  vertical-align: middle;
+}
+table.waterfall th {
+  background: var(--surface);
+  font-weight: 600;
+  font-size: 11px;
+  white-space: nowrap;
+}
+table.waterfall th.row-header {
+  text-align: left;
+  min-width: 130px;
+  font-size: 12px;
+}
+.cell {
+  min-width: 70px;
+  min-height: 36px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: default;
+  text-decoration: none;
+}
+a.cell { cursor: pointer; }
+a.cell:hover { opacity: 0.85; text-decoration: none; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+.cell.success { background: var(--green); color: #000; }
+.cell.failed { background: var(--red); color: #fff; }
+.cell.running { background: var(--yellow); color: #000; animation: pulse 2s infinite; }
+.cell.unknown { background: var(--grey); color: #ccc; }
+.cell.stale { background: #4a5568; color: #e2e8f0; border: 2px dashed var(--muted); }
+.cell.missing { background: transparent; border: 1px dashed var(--border); color: var(--muted); }
+.legend { display: flex; gap: 16px; margin: 12px 0; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+.legend-swatch { width: 14px; height: 14px; border-radius: 2px; }
+.sha { font-family: monospace; font-size: 11px; color: var(--blue); }
+.branch-tag {
+  display: inline-block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.time-label { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.duration { font-size: 10px; color: var(--muted); }
+.filter-bar { margin-bottom: 12px; display: flex; gap: 8px; align-items: center; }
+.filter-bar select, .filter-bar input {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); padding: 4px 8px; border-radius: 3px; font-size: 12px;
+}
+.stats { display: flex; gap: 20px; margin-bottom: 12px; }
+.stat { text-align: center; }
+.stat-value { font-size: 24px; font-weight: 700; }
+.stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+.stat-value.green { color: var(--green); }
+.stat-value.red { color: var(--red); }
+.stat-value.yellow { color: var(--yellow); }
+#loading { text-align: center; padding: 60px; color: var(--muted); }
+</style>
+</head>
+<body>
+<h1>Notebooks Workbench Build Waterfall</h1>
+<p class="subtitle">Latest-status matrix — <a href="waterfall.html">timeline waterfall</a> | oc + KubeArchive</p>
+
+<div id="loading">Loading data.json...</div>
+<div id="app" style="display:none">
+  <div class="stats" id="stats"></div>
+  <div class="filter-bar">
+    <label>Cluster: <select id="filter-cluster"><option value="all">All</option></select></label>
+    <label>Version: <select id="filter-version"><option value="all">All</option></select></label>
+    <label>Status: <select id="filter-status">
+      <option value="all">All</option>
+      <option value="success">Success</option>
+      <option value="failed">Failed</option>
+      <option value="running">Running</option>
+      <option value="unknown">Unknown</option>
+      <option value="stale">Stale (Prometheus)</option>
+    </select></label>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--green)"></div>Success</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--red)"></div>Failed</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--yellow)"></div>Running</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--grey)"></div>Unknown</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#4a5568;border:1px dashed var(--muted)"></div>Stale Prometheus</div>
+    <div class="legend-item"><div class="legend-swatch" style="border:1px dashed var(--border)"></div>Not triggered</div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="matrix-container" id="matrix"></div>
+</div>
+
+<script>
+const COMPONENT_ORDER = [
+  'minimal-cpu', 'minimal-cuda', 'minimal-rocm', 'datascience-cpu',
+  'pytorch-cuda', 'pytorch-rocm', 'pytorch-llm-cuda',
+  'tensorflow-cuda', 'tensorflow-rocm', 'trustyai-cpu', 'codeserver-cpu',
+  'rt-minimal-cpu', 'rt-datascience', 'rt-pytorch-cuda', 'rt-pytorch-rocm',
+  'rt-pytorch-llm', 'rt-tf-cuda', 'rt-tf-rocm',
+];
+
+// Order matters: runtimes and codeserver before generic workbench patterns.
+const COMPONENT_SHORT = [
+  ['rt-minimal-cpu', /pipeline-runtime-minimal-cpu/],
+  ['rt-datascience', /pipeline-runtime-datascience-cpu/],
+  ['rt-pytorch-llm', /pipeline-runtime-pytorch-llmcompressor/],
+  ['rt-pytorch-cuda', /pipeline-runtime-pytorch-cuda/],
+  ['rt-pytorch-rocm', /pipeline-runtime-pytorch-rocm/],
+  ['rt-tf-cuda', /pipeline-runtime-tensorflow-cuda/],
+  ['rt-tf-rocm', /pipeline-runtime-tensorflow-rocm/],
+  ['codeserver-cpu', /codeserver-datascience-cpu/],
+  ['minimal-cpu', /jupyter-minimal-cpu|rstudio-minimal-cpu/],
+  ['minimal-cuda', /jupyter-minimal-cuda|rstudio-minimal-cuda/],
+  ['minimal-rocm', /jupyter-minimal-rocm/],
+  ['datascience-cpu', /jupyter-datascience-cpu/],
+  ['pytorch-cuda', /jupyter-pytorch-cuda|wb-jupyter-pytorch-cuda/],
+  ['pytorch-rocm', /jupyter-pytorch-rocm|wb-jupyter-pytorch-rocm/],
+  ['pytorch-llm-cuda', /jupyter-pytorch-llmcompressor|wb-jupyter-pytorch-llmcompressor/],
+  ['tensorflow-cuda', /jupyter-tensorflow-cuda|wb-jupyter-tensorflow-cuda/],
+  ['tensorflow-rocm', /jupyter-tensorflow-rocm|wb-jupyter-tensorflow-rocm/],
+  ['trustyai-cpu', /trustyai-cpu/],
+];
+
+function shortComponent(full) {
+  if (/workbenches-operator|workbenches-controller/.test(full)) return null;
+  for (const [short, re] of COMPONENT_SHORT) {
+    if (re.test(full)) return short;
+  }
+  return full.replace(/^odh-workbench-jupyter-/, '').replace(/^odh-workbench-/, '').replace(/^odh-pipeline-runtime-/, 'rt-').replace(/^odh-wb-/, '').replace(/-py31[12].*/, '');
+}
+
+function statusClass(successVal, reason) {
+  if (reason === 'Running') return 'running';
+  if (successVal === 1 || successVal === '1') return 'success';
+  if (successVal === 0 || successVal === '0') return 'failed';
+  return 'unknown';
+}
+
+const PROM_STALE_SECONDS = 3 * 24 * 3600; // rhoai-monitoring collector often stale/disabled
+
+function isPrometheusStale(lastRunTs, generatedAt) {
+  if (!lastRunTs) return true;
+  const nowSec = generatedAt ? Date.parse(generatedAt) / 1000 : Date.now() / 1000;
+  return (nowSec - lastRunTs) > PROM_STALE_SECONDS;
+}
+
+function statusLabel(cls) {
+  if (cls === 'stale') return '~';
+  return cls === 'success' ? '✓' : cls === 'failed' ? '✗' : cls === 'running' ? '⟳' : '?';
+}
+
+function konfluxUrl(component, instance, namespace, application) {
+  const base = instance === 'stone-prd-rh01'
+    ? 'https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com'
+    : 'https://konflux-ui.apps.stone-prod-p02.hjvn.p1.openshiftapps.com';
+  const ns = instance === 'stone-prd-rh01' ? 'open-data-hub-tenant' : 'rhoai-tenant';
+  const app = application || 'unknown';
+
+  // RHDS components have a version suffix matching the application name
+  // e.g. component "odh-workbench-jupyter-minimal-cuda-py312" in app "rhoai-v3-3"
+  //   → full component name is "odh-workbench-jupyter-minimal-cuda-py312-v3-3"
+  // ODH components have "-ubi9-ci" or "-ubi9" suffix, no version
+  let fullComponent = component;
+  if (instance === 'stone-prod-p02' && app.startsWith('rhoai-v')) {
+    const versionSuffix = app.replace('rhoai-', '');  // "v3-3", "v3-5-ea-2", etc.
+    if (!component.endsWith(versionSuffix) && !component.endsWith('-ci')) {
+      fullComponent = `${component}-${versionSuffix}`;
+    }
+  }
+
+  return `${base}/ns/${ns}/applications/${app}/components/${fullComponent}/activity/pipelineruns`;
+}
+
+function formatDuration(sec) {
+  if (!sec) return '';
+  const m = Math.round(sec / 60);
+  return m > 0 ? `${m}m` : `${Math.round(sec)}s`;
+}
+
+function formatTime(ts) {
+  if (!ts) return '';
+  const d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
+  return d.toISOString().replace('T', ' ').replace(/:\d{2}\.\d+Z/, ' UTC');
+}
+
+function renderWaterfall(data, cluster, version, statusFilter) {
+  const metrics = data.prometheus_metrics || [];
+  const liveRuns = data.live_pipelineruns || {};
+  const generatedAt = data.generated_at;
+
+  // Merge all entries: Prometheus metrics + live runs
+  let entries = [];
+
+  // Prometheus metrics (latest status per component × version)
+  for (const m of metrics) {
+    if (cluster !== 'all' && m.instance !== (cluster === 'odh' ? 'stone-prd-rh01' : 'stone-prod-p02')) continue;
+    if (version !== 'all' && m.rhoai_version !== version) continue;
+    const cls = statusClass(m.success);
+    const stale = isPrometheusStale(m.last_run_ts, generatedAt);
+    const displayCls = stale ? 'stale' : cls;
+    if (statusFilter !== 'all' && displayCls !== statusFilter) continue;
+    const short = shortComponent(m.component);
+    if (!short) continue;
+    entries.push({
+      component: m.component,
+      short: short,
+      version: m.rhoai_version || m.application,
+      application: m.application,
+      instance: m.instance,
+      statusClass: cls,
+      displayClass: displayCls,
+      duration: m.duration_sec,
+      lastRun: m.last_run_ts,
+      reportedStatus: cls,
+      source: 'prometheus',
+      ui_url: konfluxUrl(m.component, m.instance, null, m.application),
+    });
+  }
+
+  // Live runs (override/supplement Prometheus with real-time)
+  for (const [clusterName, runs] of Object.entries(liveRuns)) {
+    if (cluster !== 'all' && cluster !== clusterName) continue;
+    for (const run of runs) {
+      const cls = run.reason === 'Running' ? 'running' :
+                  run.status === 'True' ? 'success' :
+                  run.status === 'False' ? 'failed' : 'unknown';
+      if (statusFilter !== 'all' && cls !== statusFilter) continue;
+      const versionLabel = run.branch ? (run.event_type === 'pull_request' ? `PR@${run.branch}` : run.branch) : 'live';
+      const short = shortComponent(run.component);
+      if (!short) continue;
+      entries.push({
+        component: run.component,
+        short: short,
+        version: versionLabel,
+        sha: run.sha,
+        branch: run.branch,
+        event_type: run.event_type,
+        instance: clusterName === 'odh' ? 'stone-prd-rh01' : 'stone-prod-p02',
+        statusClass: cls,
+        displayClass: cls,
+        reason: run.reason,
+        start: run.start,
+        completion: run.completion,
+        ui_url: run.ui_url,
+        source: 'live',
+      });
+    }
+  }
+
+  // Group by version (rows) × component (columns)
+  const versions = [...new Set(entries.map(e => e.version))].sort();
+  const components = [...new Set(entries.map(e => e.short))].sort((a, b) => {
+    const ia = COMPONENT_ORDER.indexOf(a);
+    const ib = COMPONENT_ORDER.indexOf(b);
+    if (ia === -1 && ib === -1) return a.localeCompare(b);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+
+  // Build lookup (live > archived > prometheus)
+  const sourceRank = { live: 3, archived: 2, prometheus: 1 };
+  const lookup = {};
+  for (const e of entries) {
+    const key = `${e.version}|${e.short}`;
+    const rank = sourceRank[e.source] || 0;
+    if (!lookup[key] || rank > (sourceRank[lookup[key].source] || 0)) lookup[key] = e;
+  }
+
+  // Stats (stale Prometheus cells excluded from failed/success counts)
+  const total = entries.length;
+  const successes = entries.filter(e => e.displayClass === 'success').length;
+  const failures = entries.filter(e => e.displayClass === 'failed').length;
+  const running = entries.filter(e => e.displayClass === 'running').length;
+  const stale = entries.filter(e => e.displayClass === 'stale').length;
+
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="stat-value">${total}</div><div class="stat-label">Total</div></div>
+    <div class="stat"><div class="stat-value green">${successes}</div><div class="stat-label">Success</div></div>
+    <div class="stat"><div class="stat-value red">${failures}</div><div class="stat-label">Failed</div></div>
+    <div class="stat"><div class="stat-value yellow">${running}</div><div class="stat-label">Running</div></div>
+    ${stale ? `<div class="stat"><div class="stat-value" style="color:#aab">${stale}</div><div class="stat-label">Stale</div></div>` : ''}
+  `;
+
+  // Render table
+  let html = '<table class="waterfall"><thead><tr><th class="row-header">Version / Branch</th>';
+  for (const c of components) {
+    html += `<th>${c}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+
+  for (const ver of versions) {
+    html += `<tr><td class="row-header"><span class="branch-tag">${ver}</span>`;
+    const sample = lookup[`${ver}|${components[0]}`];
+    if (sample && sample.sha) {
+      html += `<br><span class="sha">${sample.sha.substring(0, 8)}</span>`;
+    }
+    if (sample && sample.lastRun) {
+      html += `<br><span class="time-label">${formatTime(sample.lastRun)}</span>`;
+    }
+    html += '</td>';
+
+    for (const comp of components) {
+      const entry = lookup[`${ver}|${comp}`];
+      if (!entry) {
+        html += '<td><div class="cell missing">—</div></td>';
+        continue;
+      }
+      const label = statusLabel(entry.displayClass || entry.statusClass);
+      const dur = entry.duration ? `<br><span class="duration">${formatDuration(entry.duration)}</span>` : '';
+      let title = `${entry.component}\n${entry.version}`;
+      if (entry.sha) title += `\nSHA: ${entry.sha.substring(0, 8)}`;
+      if (entry.displayClass === 'stale') {
+        title += `\nPrometheus snapshot: ${formatTime(entry.lastRun)}`;
+        title += `\nReported then: ${entry.reportedStatus || entry.statusClass}`;
+        title += '\nCollector may be stale — check Konflux UI for current status';
+      } else {
+        title += `\nStatus: ${entry.statusClass}`;
+        if (entry.source === 'archived') title += '\nSource: KubeArchive (GC’d from live cluster)';
+      }
+      if (entry.duration) title += `\nDuration: ${formatDuration(entry.duration)}`;
+      if (entry.event_type) title += `\nEvent: ${entry.event_type}`;
+      const escapedTitle = title.replace(/"/g, '&quot;');
+      const cellCls = entry.displayClass || entry.statusClass;
+      if (entry.ui_url) {
+        html += `<td><a href="${entry.ui_url}" target="_blank" title="${escapedTitle}" class="cell ${cellCls}">${label}${dur}</a></td>`;
+      } else {
+        html += `<td><div class="cell ${cellCls}" title="${escapedTitle}">${label}${dur}</div></td>`;
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  document.getElementById('matrix').innerHTML = html;
+}
+
+async function init() {
+  let data;
+  try {
+    const resp = await fetch('data.json');
+    data = await resp.json();
+  } catch (e) {
+    document.getElementById('loading').textContent = 'Failed to load data.json. Run: python3 collect.py';
+    return;
+  }
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  // Populate filters from branch labels (Prometheus disabled)
+  const versions = new Set();
+  for (const runs of Object.values(data.live_pipelineruns || {})) {
+    for (const run of runs) {
+      if (run.branch) versions.add(run.branch);
+    }
+  }
+  const versionList = [...versions].sort();
+  const vSelect = document.getElementById('filter-version');
+  for (const v of versionList) {
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    vSelect.appendChild(opt);
+  }
+
+  const cSelect = document.getElementById('filter-cluster');
+  cSelect.innerHTML = '<option value="all">All</option><option value="odh">ODH (stone-prd-rh01)</option><option value="rhds">RHDS (stone-prod-p02)</option>';
+
+  function refresh() {
+    renderWaterfall(data,
+      document.getElementById('filter-cluster').value,
+      document.getElementById('filter-version').value,
+      document.getElementById('filter-status').value
+    );
+  }
+
+  document.getElementById('filter-cluster').addEventListener('change', refresh);
+  document.getElementById('filter-version').addEventListener('change', refresh);
+  document.getElementById('filter-status').addEventListener('change', refresh);
+
+  refresh();
+
+  // Show generation time
+  if (data.generated_at) {
+    document.querySelector('.subtitle').appendChild(
+      document.createTextNode(` | Data collected: ${data.generated_at}`)
+    );
+  }
+}
+
+init();
+</script>
+</body>
+</html>
