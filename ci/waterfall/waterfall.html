@@ -16,7 +16,7 @@
   --blue: #3498db;
   --grey: #555;
   --wave: rgba(52, 152, 219, 0.12);
-  --wf-header-h: 72px;
+  --wf-header-h: 112px;
   --wf-summary-row-h: 44px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -116,29 +116,43 @@ h1 { font-size: 18px; margin-bottom: 4px; }
 .wf-columns {
   display: flex;
   flex: 1;
+  position: relative;
 }
 .wf-col {
-  flex: 0 0 54px;
+  flex: 0 0 60px;
   border-right: 1px solid var(--border);
   position: relative;
+  overflow: visible;
 }
 .wf-col-header {
   height: var(--wf-header-h);
   border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 4px 2px 6px;
+  position: relative;
+  overflow: visible;
   background: var(--surface);
+}
+.wf-col-header span {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  display: block;
+  transform: rotate(-45deg);
+  transform-origin: bottom left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  line-height: 1;
 }
 .wf-col-top {
   position: sticky;
   top: 0;
-  z-index: 2;
-  background: var(--surface);
+  overflow: visible;
+  background: transparent;
 }
 .wf-summary-rows {
   border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 .wf-summary-row {
   height: var(--wf-summary-row-h);
@@ -190,16 +204,6 @@ a.wf-summary-cell:hover { outline: 1px solid #fff; }
   font-weight: 400;
   opacity: 0.85;
   margin-top: 1px;
-}
-.wf-col-header span {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--muted);
-  max-height: 64px;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .wf-col-body {
   position: relative;
@@ -381,7 +385,7 @@ const MIN_BAR_PX = 8;
 const BOARD_PAD_MS = 1000 * 60 * 30;
 const GAP_THRESHOLD_MS = 12 * 60 * 60 * 1000; // compress idle gaps longer than 12h
 const BREAK_HEIGHT_PX = 32;
-const HEADER_H = 72;
+const HEADER_H = 112;
 const SUMMARY_ROW_H = 44;
 const SUMMARY_H = SUMMARY_ROW_H * 2;
 
@@ -732,11 +736,14 @@ function renderTimeline(data, cluster, branchRow, eventFilter, showWaves) {
   html += '</div></div>';
 
   html += '<div class="wf-columns">';
-  for (const col of columns) {
+  columns.forEach((col, colIndex) => {
     const { lastBuild, current } = summaryForColumn(colData[col] || []);
+    // Leftmost column highest z-index so rotated labels paint above neighbors' header bg.
+    // https://stackoverflow.com/questions/33804066
+    const stackZ = columns.length - colIndex;
     html += `<div class="wf-col" style="height:${totalBoardHeight}px">`;
-    html += '<div class="wf-col-top">';
-    html += `<div class="wf-col-header"><span title="${col}">${col}</span></div>`;
+    html += `<div class="wf-col-top" style="z-index:${stackZ}">`;
+    html += `<div class="wf-col-header"><span title="${escAttr(col)}">${col}</span></div>`;
     html += '<div class="wf-summary-rows">';
     html += `<div class="wf-summary-row">${renderSummaryCell(lastBuild, 'last')}</div>`;
     html += `<div class="wf-summary-row">${renderSummaryCell(current, 'current')}</div>`;
@@ -768,7 +775,7 @@ function renderTimeline(data, cluster, branchRow, eventFilter, showWaves) {
     }
 
     html += '</div></div>';
-  }
+  });
   html += '</div></div>';
 
   wrap.innerHTML = html;
