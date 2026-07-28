@@ -440,6 +440,13 @@ def load_rhoai_workbench_related_images(
     return cache[release_tag]
 
 
+def _quay_rhoai_ref_from_registry_ref(image_ref: str) -> str | None:
+    prefix = "registry.redhat.io/rhoai/"
+    if not image_ref.startswith(prefix):
+        return None
+    return f"quay.io/rhoai/{image_ref.removeprefix(prefix)}"
+
+
 def _resolve_rhoai_released_image(
     path: Path,
     related_images_cache: dict[str, dict[str, str]],
@@ -477,8 +484,18 @@ def _resolve_rhoai_released_image(
             f"No {related_image_name} entry in RHOAI-Build-Config for release {release_tag!r}"
         )
 
-    config_payload = _SKOPEO_INSPECT.inspect_config(digest_ref)
-    commit_sha = extract_short_vcs_ref(config_payload, digest_ref)
+    commit_ref = digest_ref
+    try:
+        config_payload = _SKOPEO_INSPECT.inspect_config(commit_ref)
+    except ValueError as exc:
+        if "manifest unknown" not in str(exc):
+            raise
+        quay_ref = _quay_rhoai_ref_from_registry_ref(digest_ref)
+        if quay_ref is None:
+            raise
+        commit_ref = quay_ref
+        config_payload = _SKOPEO_INSPECT.inspect_image(commit_ref).payload
+    commit_sha = extract_short_vcs_ref(config_payload, commit_ref)
     released_suffix = match.group("suffix")
     return ReleasedImage(
         base_key=base_key,
