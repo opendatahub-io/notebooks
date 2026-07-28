@@ -175,6 +175,8 @@ gcc -shared -fPIC \
 python -m pip uninstall -y patchelf
 EOF
 
+USER 1001
+
 ### BEGIN AIPCC pip and uv config files
 ARG INDEX_URL
 ENV PIP_INDEX_URL=${INDEX_URL}
