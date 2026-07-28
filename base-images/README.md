@@ -79,6 +79,17 @@ References:
 
 ## Adding a New Accelerator Version
 
+> **NOTE (midstream migration):** Since [opendatahub-io/notebooks#3678](https://github.com/opendatahub-io/notebooks/pull/3678),
+> ODH CUDA/ROCm c9s base images layer on [opendatahub-io/base-containers](https://github.com/opendatahub-io/base-containers)
+> midstream images (`odh-midstream-cuda-base-*`, `odh-midstream-rocm-base-*`) instead of installing
+> GPU packages in-tree. For routine SDK bumps: pick the matching midstream tag, digest-pin the `FROM`,
+> and open the SDK/repo change against **base-containers** first.
+>
+> The steps below describe the **legacy in-repo workflow** (vendor Dockerfiles, `cuda-repos/`, GPG keys).
+> We keep them on purpose — we should not be helplessly beholden to midstream alone, and contributors
+> should retain knowledge of how to build accelerator bases here. See #3678 for the last implementation
+> of that approach before the migration.
+
 The CUDA and ROCm Dockerfiles are adapted from upstream vendor references:
 
 - **CUDA**: [gitlab.com/nvidia/container-images/cuda](https://gitlab.com/nvidia/container-images/cuda) (see `dist/<version>/ubi9/` for base, runtime, and cudnn stages)
