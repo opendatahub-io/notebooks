@@ -25,7 +25,7 @@ dependencies = [
     "onnxconverter-common~=1.16.0",
     "onnx>=1.21.0; platform_machine != 's390x'",  # CVE-2026-28500
     "codeflare-sdk~=0.31.2",
-    "feast~=0.54.1",
+    "feast>=0.63.0",
 
     # DB connectors
     "pymongo~=4.14.1",
@@ -51,7 +51,7 @@ dependencies = [
     "requests~=2.32.5",
     "tornado~=6.5.2",
     "traitlets~=5.14.3",
-    "urllib3~=2.6.0",
+    "urllib3>=2.7.0",
 
     # Base packages
     "setuptools==80.9.0",
@@ -62,13 +62,13 @@ dependencies = [
 
 override-dependencies = [
     # RHAIENG-3211: CVE-2026-26007 cryptography Subgroup Attack
-    "cryptography>=46.0.5",
+    "cryptography>=46.0.7",
     # tf2onnx has pinned protobuf version, that causes conflict with other packages
     "protobuf==6.31.1",
-    "keras~=3.13.2",
+    "keras>=3.14.0",
     # RHAIENG-3209: CVE-2026-25990  Pillow: Out-of-bounds Write
     # Upstream: https://github.com/vllm-project/llm-compressor/releases/tag/0.7.1.1
-    "pillow>=12.1.1",
+    "pillow>=12.3.0",
 ]
 
 environments = [

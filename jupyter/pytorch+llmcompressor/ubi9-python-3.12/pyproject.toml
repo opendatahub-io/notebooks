@@ -35,7 +35,7 @@ dependencies = [
     "onnxconverter-common~=1.16.0",  # ONNX 1.21+ (skl2onnx); was ~=1.13.0
     "onnx>=1.21.0; platform_machine != 's390x'",  # CVE-2026-28500
     "kubeflow-training==1.9.3",
-    "feast~=0.54.1",
+    "feast>=0.63.0",
 
     # DB connectors
     "pymongo~=4.14.1",
@@ -47,9 +47,9 @@ dependencies = [
     "odh-elyra==4.2.4",
     "odh-jupyter-trash-cleanup==0.1.1",
 
-    "jupyterlab==4.4.7",
+    "jupyterlab==4.5.7",
     "jupyter-bokeh~=4.0.5",
-    "jupyter-server~=2.17.0",
+    "jupyter-server~=2.20.0",
     "jupyter-server-proxy~=4.4.0",
     "jupyter-server-terminals~=0.5.3",
     "jupyterlab-git~=0.51.2",
@@ -83,6 +83,10 @@ explicit = true
 # RHAIIS pins are mirrored in constraint-dependencies; overrides below are
 # notebooks-only where constraints cannot replace a transitive upper bound.
 override-dependencies = [
+    # RHAIENG-6097+: llmcompressor caps pillow<=12.2.0
+    "pillow>=12.3.0",
+    # RHAIENG-5789/5895: jupyterlab CVE batch (odh-elyra<4.5 cap)
+    "jupyterlab>=4.5.7",
     # RHAIENG-2458: elyra pins urllib3 below RHAIIS/CVE floor; constraints alone do not replace transitive caps
     "urllib3>=2.7.0",
     # RHOAIENG-53183: notebooks-only CVE (not in RHAIIS model-opt constraints.txt)
@@ -105,7 +109,7 @@ constraint-dependencies = [
     "datasets==4.0.0",
     "accelerate==1.10.0",
     "pynvml==12.0.0",
-    "pillow==12.2.0",
+    "pillow>=12.3.0",
     "urllib3>=2.7.0",
     "aiohttp>=3.14.0",
     "filelock>=3.20.3",

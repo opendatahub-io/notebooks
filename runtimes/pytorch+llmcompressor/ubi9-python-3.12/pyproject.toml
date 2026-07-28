@@ -31,7 +31,7 @@ dependencies = [
     "skl2onnx~=1.19.1",
     "onnxconverter-common~=1.16.0",  # ONNX 1.21+ (skl2onnx); was ~=1.13.0
     "onnx>=1.21.0; platform_machine != 's390x'",  # CVE-2026-28500
-    "feast~=0.54.1",
+    "feast>=0.63.0",
 
     # DB connectors
     "pymongo~=4.14.1",
@@ -78,6 +78,8 @@ explicit = true
 # RHAIIS uses constraints.txt only (no uv-style overrides). RHAIIS pins live in
 # constraint-dependencies below; direct deps cover requests/urllib3 where needed.
 override-dependencies = [
+    # RHAIENG-6097+: llmcompressor caps pillow<=12.2.0
+    "pillow>=12.3.0",
     # feast~=0.54.1 caps pyarrow<=17; RHAIIS constraints.txt requires pyarrow>=23 (CVE floor)
     "pyarrow>=23.0.1,<24.0.0",
 ]
@@ -95,7 +97,7 @@ constraint-dependencies = [
     "datasets==4.0.0",
     "accelerate==1.10.0",
     "pynvml==12.0.0",
-    "pillow==12.2.0",
+    "pillow>=12.3.0",
     "urllib3>=2.7.0",
     "aiohttp>=3.14.0",
     "filelock>=3.20.3",
