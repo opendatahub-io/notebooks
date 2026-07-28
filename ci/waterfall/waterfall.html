@@ -166,7 +166,12 @@ h1 { font-size: 18px; margin-bottom: 4px; }
 a.wf-summary-cell { cursor: pointer; }
 a.wf-summary-cell:hover { outline: 1px solid #fff; }
 .wf-summary-cell.success { background: var(--green); color: #000; }
-.wf-summary-cell.failed { background: var(--red); color: #fff; }
+.wf-summary-cell.failed, .wf-summary-cell.build-failed { background: var(--red); color: #fff; }
+.wf-summary-cell.check-failed {
+  background: var(--green);
+  color: #000;
+  box-shadow: inset 0 0 0 2px var(--red);
+}
 .wf-summary-cell.running {
   background: var(--yellow);
   color: #000;
@@ -258,9 +263,14 @@ a.wf-summary-cell:hover { outline: 1px solid #fff; }
   text-decoration: none;
   border: 1px solid rgba(0, 0, 0, 0.15);
 }
+.wf-slot.check-failed {
+  background: rgba(46, 204, 113, 0.18);
+  box-shadow: inset 0 0 0 2px var(--red);
+}
 .wf-slot:hover { outline: 1px solid #fff; z-index: 2; }
 .wf-slot.success { background: rgba(46, 204, 113, 0.18); }
 .wf-slot.failed { background: rgba(231, 76, 60, 0.18); }
+.wf-slot.build-failed { background: rgba(231, 76, 60, 0.18); }
 .wf-slot.running { background: rgba(243, 156, 18, 0.18); }
 .wf-slot.unknown { background: rgba(85, 85, 85, 0.22); }
 .wf-slot-bar {
@@ -273,6 +283,8 @@ a.wf-summary-cell:hover { outline: 1px solid #fff; }
 }
 .wf-slot-bar.success { background: var(--green); }
 .wf-slot-bar.failed { background: var(--red); }
+.wf-slot-bar.build-failed { background: var(--red); }
+.wf-slot-bar.check-failed { background: var(--green); }
 .wf-slot-bar.running {
   background: var(--yellow);
   animation: pulse 2s infinite;
@@ -322,7 +334,8 @@ a.wf-summary-cell:hover { outline: 1px solid #fff; }
   </div>
   <div class="legend">
     <div class="legend-item"><div class="legend-swatch" style="background:var(--green)"></div>Success</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--red)"></div>Failed</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--red)"></div>Build failed</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--green);box-shadow:inset 0 0 0 2px var(--red)"></div>Check failed (image built)</div>
     <div class="legend-item"><div class="legend-swatch" style="background:var(--yellow)"></div>Running</div>
     <div class="legend-item"><div class="legend-swatch" style="background:var(--grey)"></div>Unknown</div>
     <div class="legend-item"><div class="legend-swatch" style="background:var(--wave);border:1px dashed var(--blue)"></div>Same SHA wave</div>
@@ -386,8 +399,10 @@ function versionRow(run) {
 }
 
 function statusClass(run) {
-  if (run.reason === 'Running') return 'running';
-  if (run.status === 'True') return 'success';
+  if (run.failure_class === 'running' || run.reason === 'Running') return 'running';
+  if (run.failure_class === 'ok' || run.status === 'True') return 'success';
+  if (run.failure_class === 'build_failed') return 'build-failed';
+  if (run.failure_class === 'check_failed') return 'check-failed';
   if (run.status === 'False') return 'failed';
   return 'unknown';
 }
@@ -428,6 +443,7 @@ function buildTitle(run) {
     `Start: ${run.start || run.created}`,
   ];
   if (run.completion) lines.push(`End: ${run.completion}`);
+  if (run.failed_tasks?.length) lines.push(`Failed tasks: ${run.failed_tasks.join(', ')}`);
   return lines.join('\n');
 }
 
@@ -443,8 +459,13 @@ function formatElapsed(ms) {
 
 function lastBuildText(run) {
   const cls = statusClass(run);
+  if (cls === 'check-failed') {
+    const task = (run.failed_tasks || [])[0] || 'check';
+    const short = task.replace(/-check$/, '').replace(/^sast-/, '');
+    return `check·${short}`;
+  }
   if (cls === 'success') return 'success';
-  if (cls === 'failed') return 'failed';
+  if (cls === 'build-failed' || cls === 'failed') return 'failed';
   return 'unknown';
 }
 
@@ -480,7 +501,8 @@ function renderSummaryCell(run, rowKind) {
 
 function branchSummaryCounts(columns, colData) {
   let success = 0;
-  let failed = 0;
+  let buildFailed = 0;
+  let checkFailed = 0;
   let running = 0;
   let idle = 0;
   for (const col of columns) {
@@ -488,14 +510,16 @@ function branchSummaryCounts(columns, colData) {
     if (current) {
       running += 1;
     } else if (lastBuild) {
-      if (lastBuild.statusClass === 'success') success += 1;
-      else if (lastBuild.statusClass === 'failed') failed += 1;
+      const cls = statusClass(lastBuild);
+      if (cls === 'success') success += 1;
+      else if (cls === 'check-failed') checkFailed += 1;
+      else if (cls === 'build-failed' || cls === 'failed') buildFailed += 1;
       else idle += 1;
     } else {
       idle += 1;
     }
   }
-  return { success, failed, running, idle };
+  return { success, buildFailed, checkFailed, running, idle };
 }
 
 function collectRuns(data, cluster, branchRow, eventFilter) {
@@ -752,8 +776,9 @@ function renderTimeline(data, cluster, branchRow, eventFilter, showWaves) {
     ? ` | ${breaks.length} compressed gap${breaks.length === 1 ? '' : 's'} (>12h idle)`
     : '';
   meta.textContent = `${runs.length} builds across ${columns.length} components | `
-    + `latest: ${summaryCounts.success} ok, ${summaryCounts.failed} failed, `
-    + `${summaryCounts.running} running, ${summaryCounts.idle} idle | `
+    + `latest: ${summaryCounts.success} ok, ${summaryCounts.buildFailed} build-fail, `
+    + `${summaryCounts.checkFailed} check-fail, ${summaryCounts.running} running, `
+    + `${summaryCounts.idle} idle | `
     + `${formatTick(tMin)} → ${formatTick(tMax)} | newest at top${breakNote}`;
 }
 

@@ -37,9 +37,10 @@ These are the levers that change duration and payload (constants in `collect.py`
 | **`KA_WORKERS`** | `8` | Parallel KA fan-out; higher → faster but more burst load on KubeArchive | None |
 | **`HISTORY_MAX_PER_KEY`** | `50` | More archived runs fetched per query (KA returns up to 100); merge/cap is client-side | `pipelinerun_history` row count and JSON size |
 | **`live_pipelineruns` only** | No (history always built) | Same API calls as full run; only JSON merge differs | Smaller `data.json` (no `pipelinerun_history`) |
+| **Failure classification** | On (default) | +1 TaskRun list per failed live or latest-merged PipelineRun (`TR_CLASSIFY_WORKERS=8`); **not** applied to full timeline history | `failure_class`, `failed_tasks` on classified rows |
 | **Prometheus** | Off (removed Jul 2026) | Was ~1 HTTP query + parsing when enabled | `prometheus_metrics: []` |
 
-**Current default mode:** `oc` live list + per-component KubeArchive, both clusters, matrix merge + timeline history (`HISTORY_MAX_PER_KEY=50`).
+**Current default mode:** `oc` live list + per-component KubeArchive, both clusters, matrix merge + timeline history (`HISTORY_MAX_PER_KEY=50`), plus TaskRun lookups for failed live/latest rows (build vs check).
 
 ---
 
@@ -56,10 +57,11 @@ Environment unless noted: macOS, `oc` logged into ODH + RHDS, VPN for stone-prod
 | 2026-07-28 | `oc` + KA per app, **5 RHDS apps** allowlist | **~30 s** (informal) | ~2 live + ~8 KA | ~44 | — | — |
 | 2026-07-28 | `oc` + **per-component KA** (`KA_WORKERS=8`), matrix only | **~2 min** | ~115 (2 + 113 KA) | 182 | — | ~144 KB |
 | 2026-07-28 | Same + **`pipelinerun_history`** (`HISTORY_MAX_PER_KEY=50`) | **~1 min 43 s** (`103 s`) | ~115 (unchanged) | 182 | 5,019 | **~3.9 MB** |
+| 2026-07-28 | Same + **failure classification** (TaskRun lookups for failed live/latest) | **~3 min 1 s** (`181 s`) | ~115 KA + **~72 TaskRun** (ODH 11, RHDS 61) | 182 | 5,018 | **~4.3 MB** |
 
 Rows before 2026-07-28 are from the same prototype session (see [BUGS.md](BUGS.md)); timings are wall-clock from operator runs, not automated benchmarks.
 
-### Latest run detail (2026-07-28, full history mode)
+### Run detail (2026-07-28, full history, no failure classification)
 
 ```
 Collecting odh (arewm-tenant/api-stone-prd-rh01-pg1f-p1-openshiftapps-com:6443/jdanek)...
@@ -86,6 +88,36 @@ Wrote data.json (4096187 bytes, 182 latest + 5019 history)
 
 **Rough split:** RHDS is ~70% of KA queries and likely ~70–85% of wall time (more queries, VPN, busier archive).
 
+### Run detail (2026-07-28, full history + failure classification)
+
+Adds `failure_class` / `failed_tasks` via parallel TaskRun lists for failed **live** PipelineRuns and failed **latest-per-cell** merged rows only (not all ~5k history bars).
+
+```
+Collecting odh (arewm-tenant/api-stone-prd-rh01-pg1f-p1-openshiftapps-com:6443/jdanek)...
+  live PipelineRuns: 5
+  KubeArchive: 18/18 component(s) with archived builds
+  failure detail: 9/11 via TaskRuns (4 build, 5 check)
+  merged: 36 component×branch entries
+  history: 1561 timeline build(s)
+Collecting rhds (ai-tenant/api-stone-prod-p02-hjvn-p1-openshiftapps-com:6443/jdanek)...
+  live PipelineRuns: 2
+  KubeArchive: 91/95 component(s) with archived builds
+  failure detail: 61/61 via TaskRuns (60 build, 1 check)
+  merged: 146 component×branch entries
+  history: 3457 timeline build(s)
+
+Wrote data.json (4273549 bytes, 182 latest + 5018 history)
+```
+
+| Phase | ODH | RHDS | Notes |
+|-------|-----|------|-------|
+| KA PipelineRun queries | 18 | 95 | Unchanged from prior mode |
+| TaskRun classification | 11 lookups (9 with tasks) | 61 lookups (61 with tasks) | `oc get taskrun` (live) or `kubectl ka get taskruns` (archived); 8 parallel |
+| Wall-time delta vs prior row | — | — | **~+78 s** (~75% slower); dominated by RHDS failure fan-out |
+| JSON size delta | — | — | **~+175 KB** (`failure_class` / `failed_tasks` on classified rows) |
+
+**UI impact:** negligible — same one-shot `data.json` fetch; browser render unchanged.
+
 ---
 
 ## API load (current default)
@@ -95,8 +127,9 @@ Per full collect:
 | Backend | Calls | Concurrency | Per-call behavior |
 |---------|-------|-------------|-------------------|
 | `oc get pipelinerun` | 2 | Serial (per cluster) | Labeled list; client filters to notebooks components |
-| `kubectl ka get` | 113 (18 ODH + 95 RHDS) | Up to 8 | `type=build` + `component=<name>`; up to 100 archived runs each |
-| **Total** | **~115** | Burst over ~1–3 min | No Tekton Results API, no Prometheus |
+| `kubectl ka get` (PipelineRuns) | 113 (18 ODH + 95 RHDS) | Up to 8 | `type=build` + `component=<name>`; up to 100 archived runs each |
+| `oc get taskrun` / `kubectl ka get taskruns` | **~0–150** (varies) | Up to 8 | One list per failed live or latest-merged PipelineRun; **72** in 2026-07-28 sample |
+| **Total** | **~115 + failed count** | Burst over ~2–4 min | No Tekton Results API, no Prometheus |
 
 Compared to disabled `rhoai-monitoring` Tekton Results polling ([KFLUXSPRT-8417](https://redhat.atlassian.net/browse/KFLUXSPRT-8417)): this collector uses **narrow KubeArchive reads**, not hourly Results list scans across ~70 components × apps.
 
@@ -110,8 +143,10 @@ Compared to disabled `rhoai-monitoring` Tekton Results polling ([KFLUXSPRT-8417]
 | `KA_TIMEOUT_SEC` | 600 s | Each `kubectl ka get` (per component) |
 | `OC_CONTEXT_TIMEOUT_SEC` | 30 s | `oc config get-contexts` |
 | `KA_WORKERS` | 8 | Max parallel KA subprocesses |
+| `TR_CLASSIFY_WORKERS` | 8 | Max parallel TaskRun classification subprocesses |
+| `TR_TIMEOUT_SEC` | 90 s | Each live `oc get taskrun` list |
 
-Worst-case theoretical wall time is large (113 × 600 s if serialized and all time out); in practice runs complete in **~2–3 minutes** when KubeArchive is healthy.
+Worst-case theoretical wall time is large (113 × 600 s KA + failed-count × 600 s TaskRun KA if serialized and all time out); in practice runs complete in **~2–4 minutes** when KubeArchive is healthy (upper end when many merged failures need TaskRun detail).
 
 ---
 

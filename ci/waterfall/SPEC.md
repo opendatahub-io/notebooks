@@ -146,7 +146,21 @@ For duplicate keys:
 1. Higher **source rank** wins: `live` (2) > `archived` (1)
 2. Same source → newer `metadata.creationTimestamp` wins
 
-### 4.5 Output schema (`data.json`)
+### 4.6 Failure classification (build vs check)
+
+For **live** PipelineRuns and **latest merged** failures, the collector lists TaskRuns (`oc get taskrun` / `kubectl ka get taskruns`) and sets:
+
+| `failure_class` | Meaning |
+|-----------------|---------|
+| `build_failed` | A build-stage task failed (`build-images`, `prefetch-dependencies`, …) |
+| `check_failed` | Image build succeeded but a post-build task failed (`fips-check`, `clair-scan`, `sast-*`, …) |
+| `failed` | PipelineRun failed; TaskRun detail unavailable (older history bars) |
+
+UI: **check failed** = green fill + red inset border (image built); **build failed** = full red.
+
+TaskRun lookups are **not** run for full timeline history (API cost); classified names propagate into `pipelinerun_history` when the same PipelineRun appears there.
+
+### 4.7 Output schema (`data.json`)
 
 ```json
 {
@@ -176,6 +190,8 @@ For duplicate keys:
 | `event_type` | string | e.g. `push`, `pull_request`, `test-comment` |
 | `status` | string | Condition `Succeeded.status` (`True` / `False` / `Unknown`) |
 | `reason` | string | Condition `Succeeded.reason` (e.g. `Running`, `Succeeded`) |
+| `failure_class` | string | `ok` \| `running` \| `build_failed` \| `check_failed` \| `failed` \| `unknown` — from TaskRuns when classified |
+| `failed_tasks` | string[] | Optional pipeline task names that failed (e.g. `fips-check`) |
 | `start` | string? | ISO timestamp |
 | `completion` | string? | ISO timestamp |
 | `created` | string | metadata.creationTimestamp |
@@ -251,10 +267,11 @@ Collector regex gate: `odh-workbench-`, `odh-wb-`, or `odh-pipeline-runtime-` in
 
 | Display | CSS class | Condition |
 |---------|-----------|-----------|
-| ✓ | `success` | `status === 'True'` or Prometheus `success === 1` |
-| ✗ | `failed` | `status === 'False'` or Prometheus `success === 0` |
-| ⟳ | `running` | `reason === 'Running'` |
-| ? | `unknown` | otherwise |
+| ✓ green | `success` | PipelineRun succeeded |
+| ✗ red | `failed` / `build-failed` | Build-stage task failed |
+| ✓ + red border | `check-failed` | Image built; post-build check failed (e.g. `fips-check`) |
+| ⟳ yellow | `running` | `reason === 'Running'` |
+| ? grey | `unknown` | otherwise |
 | ~ | `stale` | Prometheus only: `last_run_ts` older than 3 days (unused while Prometheus disabled) |
 | — | `missing` | no entry for that row×column |
 

@@ -75,7 +75,12 @@ a.cell { cursor: pointer; }
 a.cell:hover { opacity: 0.85; text-decoration: none; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
 .cell.success { background: var(--green); color: #000; }
-.cell.failed { background: var(--red); color: #fff; }
+.cell.failed, .cell.build-failed { background: var(--red); color: #fff; }
+.cell.check-failed {
+  background: var(--green);
+  color: #000;
+  box-shadow: inset 0 0 0 2px var(--red);
+}
 .cell.running { background: var(--yellow); color: #000; animation: pulse 2s infinite; }
 .cell.unknown { background: var(--grey); color: #ccc; }
 .cell.stale { background: #4a5568; color: #e2e8f0; border: 2px dashed var(--muted); }
@@ -123,7 +128,9 @@ a.cell:hover { opacity: 0.85; text-decoration: none; }
     <label>Status: <select id="filter-status">
       <option value="all">All</option>
       <option value="success">Success</option>
-      <option value="failed">Failed</option>
+      <option value="failed">Failed (any)</option>
+      <option value="build-failed">Build failed</option>
+      <option value="check-failed">Check failed</option>
       <option value="running">Running</option>
       <option value="unknown">Unknown</option>
       <option value="stale">Stale (Prometheus)</option>
@@ -131,7 +138,8 @@ a.cell:hover { opacity: 0.85; text-decoration: none; }
   </div>
   <div class="legend">
     <div class="legend-item"><div class="legend-swatch" style="background:var(--green)"></div>Success</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--red)"></div>Failed</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--red)"></div>Build failed</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--green);box-shadow:inset 0 0 0 2px var(--red)"></div>Check failed (image built)</div>
     <div class="legend-item"><div class="legend-swatch" style="background:var(--yellow)"></div>Running</div>
     <div class="legend-item"><div class="legend-swatch" style="background:var(--grey)"></div>Unknown</div>
     <div class="legend-item"><div class="legend-swatch" style="background:#4a5568;border:1px dashed var(--muted)"></div>Stale Prometheus</div>
@@ -197,7 +205,17 @@ function isPrometheusStale(lastRunTs, generatedAt) {
 
 function statusLabel(cls) {
   if (cls === 'stale') return '~';
-  return cls === 'success' ? '✓' : cls === 'failed' ? '✗' : cls === 'running' ? '⟳' : '?';
+  if (cls === 'check-failed') return '✓';
+  return cls === 'success' ? '✓' : cls === 'failed' || cls === 'build-failed' ? '✗' : cls === 'running' ? '⟳' : '?';
+}
+
+function displayClassForRun(run) {
+  if (run.reason === 'Running') return 'running';
+  if (run.status === 'True') return 'success';
+  if (run.failure_class === 'build_failed') return 'build-failed';
+  if (run.failure_class === 'check_failed') return 'check-failed';
+  if (run.status === 'False') return 'failed';
+  return 'unknown';
 }
 
 function konfluxUrl(component, instance, namespace, application) {
@@ -272,9 +290,7 @@ function renderWaterfall(data, cluster, version, statusFilter) {
   for (const [clusterName, runs] of Object.entries(liveRuns)) {
     if (cluster !== 'all' && cluster !== clusterName) continue;
     for (const run of runs) {
-      const cls = run.reason === 'Running' ? 'running' :
-                  run.status === 'True' ? 'success' :
-                  run.status === 'False' ? 'failed' : 'unknown';
+      const cls = displayClassForRun(run);
       if (statusFilter !== 'all' && cls !== statusFilter) continue;
       const versionLabel = run.branch ? (run.event_type === 'pull_request' ? `PR@${run.branch}` : run.branch) : 'live';
       const short = shortComponent(run.component);
@@ -289,6 +305,8 @@ function renderWaterfall(data, cluster, version, statusFilter) {
         instance: clusterName === 'odh' ? 'stone-prd-rh01' : 'stone-prod-p02',
         statusClass: cls,
         displayClass: cls,
+        failure_class: run.failure_class,
+        failed_tasks: run.failed_tasks,
         reason: run.reason,
         start: run.start,
         completion: run.completion,
@@ -321,7 +339,9 @@ function renderWaterfall(data, cluster, version, statusFilter) {
   // Stats (stale Prometheus cells excluded from failed/success counts)
   const total = entries.length;
   const successes = entries.filter(e => e.displayClass === 'success').length;
-  const failures = entries.filter(e => e.displayClass === 'failed').length;
+  const failures = entries.filter(e => ['failed', 'build-failed', 'check-failed'].includes(e.displayClass)).length;
+  const buildFailures = entries.filter(e => e.displayClass === 'build-failed' || e.displayClass === 'failed').length;
+  const checkFailures = entries.filter(e => e.displayClass === 'check-failed').length;
   const running = entries.filter(e => e.displayClass === 'running').length;
   const stale = entries.filter(e => e.displayClass === 'stale').length;
 
@@ -329,6 +349,7 @@ function renderWaterfall(data, cluster, version, statusFilter) {
     <div class="stat"><div class="stat-value">${total}</div><div class="stat-label">Total</div></div>
     <div class="stat"><div class="stat-value green">${successes}</div><div class="stat-label">Success</div></div>
     <div class="stat"><div class="stat-value red">${failures}</div><div class="stat-label">Failed</div></div>
+    ${checkFailures ? `<div class="stat"><div class="stat-value" style="color:var(--green)">${checkFailures}</div><div class="stat-label">Check fail</div></div>` : ''}
     <div class="stat"><div class="stat-value yellow">${running}</div><div class="stat-label">Running</div></div>
     ${stale ? `<div class="stat"><div class="stat-value" style="color:#aab">${stale}</div><div class="stat-label">Stale</div></div>` : ''}
   `;
@@ -366,7 +387,8 @@ function renderWaterfall(data, cluster, version, statusFilter) {
         title += `\nReported then: ${entry.reportedStatus || entry.statusClass}`;
         title += '\nCollector may be stale — check Konflux UI for current status';
       } else {
-        title += `\nStatus: ${entry.statusClass}`;
+        title += `\nStatus: ${entry.displayClass || entry.statusClass}`;
+        if (entry.failed_tasks?.length) title += `\nFailed tasks: ${entry.failed_tasks.join(', ')}`;
         if (entry.source === 'archived') title += '\nSource: KubeArchive (GC’d from live cluster)';
       }
       if (entry.duration) title += `\nDuration: ${formatDuration(entry.duration)}`;

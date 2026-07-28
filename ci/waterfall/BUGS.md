@@ -33,6 +33,7 @@ Related: [SPEC.md](SPEC.md) (as-implemented behavior), [AGENTS.md](AGENTS.md) (k
 | **WF-016** | `rhoai-2.25` row very sparse (few cells) | Application-wide KA query hits 100-result cap; newest 100 are operator/FBC, zero workbench after filter | KubeArchive queries use `appstudio.openshift.io/component=<name>` per canonical stem × stream suffix (parallel, bounded) | `collect.py`, `SPEC.md` |
 | **WF-017** | Matrix showed only latest status per cell; no Buildbot-style timeline | Collector emitted one row per component×branch; UI was matrix-only | Add `pipelinerun_history` (up to 50 runs per key) in `collect.py`; new `waterfall.html` timeline (columns = components, time vertical, colored bars) | `collect.py`, `waterfall.html`, `SPEC.md` |
 | **WF-018** | UI subtitle still mentioned Prometheus | Copy not updated when collector dropped Prometheus | Subtitle now says `oc + KubeArchive`; links to timeline view | `index.html` |
+| **WF-019** | Check failures (e.g. `fips-check`) shown as full build failure | UI used PipelineRun `status=False` only; codeserver built but FIPS task failed ([Slack thread](https://redhat-internal.slack.com/archives/C096ZR053RQ/p1785240519612979)) | Classify via TaskRuns: `build_failed` vs `check_failed`; green+red border for checks | `collect.py`, `index.html`, `waterfall.html` |
 
 ### WF-008 / WF-009 detail (data-source arc)
 

@@ -18,6 +18,19 @@ KA_TIMEOUT_SEC = 600       # archived pipelineruns per component query
 OC_CONTEXT_TIMEOUT_SEC = 30  # oc config get-contexts
 KA_WORKERS = 8             # parallel component queries (bounded)
 HISTORY_MAX_PER_KEY = 50   # timeline cap per component×branch row
+TR_CLASSIFY_WORKERS = 8    # parallel TaskRun lookups for failure detail
+TR_TIMEOUT_SEC = 90        # per PipelineRun TaskRun list
+
+# Pipeline tasks whose failure means the image build itself failed (not a post-build check).
+BUILD_PIPELINE_TASKS = frozenset({
+    "rhoai-init",
+    "init",
+    "clone-repository",
+    "prefetch-dependencies",
+    "build-images",
+    "build-image-index",
+    "build-source-image",
+})
 
 # Canonical Konflux component name stems (before -ubi9 or -{rhoai-version} suffix).
 # Matches .tekton/*-ubi9-push.yaml and RHDS rhoai-*-push.yaml naming.
@@ -299,6 +312,109 @@ def build_history(live: list, archived: list) -> list:
     return history
 
 
+def baseline_failure_class(entry: dict) -> str:
+    if entry.get("reason") == "Running":
+        return "running"
+    if entry.get("status") == "True":
+        return "ok"
+    if entry.get("status") == "False":
+        return "failed"
+    return "unknown"
+
+
+def failure_class_from_tasks(failed_tasks: list[str]) -> str:
+    if not failed_tasks:
+        return "failed"
+    if any(task in BUILD_PIPELINE_TASKS for task in failed_tasks):
+        return "build_failed"
+    return "check_failed"
+
+
+def taskrun_failed_pipeline_tasks(taskruns: list) -> list[str]:
+    failed: list[str] = []
+    for taskrun in taskruns:
+        conditions = taskrun.get("status", {}).get("conditions", [])
+        succeeded = next((c for c in conditions if c.get("type") == "Succeeded"), {})
+        if succeeded.get("status") == "True":
+            continue
+        task = taskrun.get("metadata", {}).get("labels", {}).get("tekton.dev/pipelineTask", "")
+        if task:
+            failed.append(task)
+    return sorted(set(failed))
+
+
+def get_taskruns_for_pipelinerun(
+    context: str, namespace: str, pipelinerun_name: str, archived: bool,
+) -> list:
+    label = f"tekton.dev/pipelineRun={pipelinerun_name}"
+    if archived:
+        cmd = [
+            "kubectl", "ka", "get", "taskruns", "-n", namespace,
+            "--context", context, "--archived=true",
+            "-l", label, "-o", "json",
+        ]
+        timeout = KA_TIMEOUT_SEC
+    else:
+        cmd = [
+            "oc", "get", "taskrun", "-n", namespace, "--context", context,
+            "-l", label, "-o", "json",
+        ]
+        timeout = TR_TIMEOUT_SEC
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return []
+    if result.returncode != 0:
+        return []
+    return json.loads(result.stdout or "{}").get("items", [])
+
+
+def classify_pipelinerun_failure(
+    context: str, namespace: str, entry: dict,
+) -> tuple[str, list[str]]:
+    taskruns = get_taskruns_for_pipelinerun(
+        context, namespace, entry["name"], archived=entry.get("source") == "archived",
+    )
+    failed_tasks = taskrun_failed_pipeline_tasks(taskruns)
+    return failure_class_from_tasks(failed_tasks), failed_tasks
+
+
+def enrich_failure_classes(context: str, namespace: str, entries: list) -> dict[str, dict]:
+    """Classify failed PipelineRuns via TaskRuns; returns name -> detail."""
+    failed = [entry for entry in entries if entry.get("status") == "False"]
+    if not failed:
+        return {}
+
+    details: dict[str, dict] = {}
+    with ThreadPoolExecutor(max_workers=TR_CLASSIFY_WORKERS) as pool:
+        futures = {
+            pool.submit(classify_pipelinerun_failure, context, namespace, entry): entry["name"]
+            for entry in failed
+        }
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                failure_class, failed_tasks = future.result()
+            except Exception as exc:
+                print(f"  [warn] classify {name}: {exc}", file=sys.stderr)
+                continue
+            details[name] = {
+                "failure_class": failure_class,
+                "failed_tasks": failed_tasks,
+            }
+    return details
+
+
+def apply_failure_classes(entries: list, details: dict[str, dict]) -> None:
+    for entry in entries:
+        entry["failure_class"] = baseline_failure_class(entry)
+        detail = details.get(entry["name"])
+        if detail:
+            entry["failure_class"] = detail["failure_class"]
+            if detail.get("failed_tasks"):
+                entry["failed_tasks"] = detail["failed_tasks"]
+
+
 def collect_cluster(cluster_name: str, cfg: dict) -> tuple[list, list]:
     ctx = get_oc_context(cfg["context_grep"])
     if not ctx:
@@ -322,7 +438,31 @@ def collect_cluster(cluster_name: str, cfg: dict) -> tuple[list, list]:
 
     combined = live + archived
     merged = merge_runs(combined)
+
+    # TaskRun lookups only for live + latest-per-cell failures (not full history).
+    to_classify: dict[str, dict] = {entry["name"]: entry for entry in live}
+    for entry in merged:
+        if entry.get("status") == "False":
+            to_classify[entry["name"]] = entry
+    failure_details = enrich_failure_classes(ctx, cfg["namespace"], list(to_classify.values()))
+
+    apply_failure_classes(live, failure_details)
+    apply_failure_classes(archived, failure_details)
+    apply_failure_classes(merged, failure_details)
+
     history = build_history(live, archived)
+    apply_failure_classes(history, failure_details)
+
+    classified = sum(1 for d in failure_details.values() if d.get("failed_tasks"))
+    check_failed = sum(1 for d in failure_details.values() if d.get("failure_class") == "check_failed")
+    build_failed = sum(1 for d in failure_details.values() if d.get("failure_class") == "build_failed")
+    if failure_details:
+        print(
+            f"  failure detail: {classified}/{len(failure_details)} via TaskRuns "
+            f"({build_failed} build, {check_failed} check)",
+            file=sys.stderr,
+        )
+
     print(f"  merged: {len(merged)} component×branch entries", file=sys.stderr)
     print(f"  history: {len(history)} timeline build(s)", file=sys.stderr)
     return merged, history
