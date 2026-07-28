@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workbench Build Waterfall — Timeline</title>
+<style>
+:root {
+  --bg: #1a1a2e;
+  --surface: #16213e;
+  --border: #2a3a5e;
+  --text: #e0e0e0;
+  --muted: #8899aa;
+  --green: #2ecc71;
+  --red: #e74c3c;
+  --yellow: #f39c12;
+  --blue: #3498db;
+  --grey: #555;
+  --wave: rgba(52, 152, 219, 0.12);
+  --wf-header-h: 72px;
+  --wf-summary-row-h: 44px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+  background: var(--bg);
+  color: var(--text);
+  padding: 16px;
+  font-size: 13px;
+}
+h1 { font-size: 18px; margin-bottom: 4px; }
+.subtitle { color: var(--muted); margin-bottom: 12px; font-size: 12px; }
+.subtitle a { color: var(--blue); }
+.filter-bar {
+  margin-bottom: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.filter-bar select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.legend { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+.legend-swatch { width: 14px; height: 14px; border-radius: 2px; }
+#loading { text-align: center; padding: 60px; color: var(--muted); }
+
+.wf-wrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  max-height: calc(100vh - 200px);
+}
+.wf-board {
+  display: flex;
+  min-width: max-content;
+}
+.wf-time-axis {
+  flex: 0 0 88px;
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+.wf-time-axis .wf-corner {
+  height: var(--wf-header-h);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--surface);
+}
+.wf-summary-axis {
+  position: sticky;
+  top: var(--wf-header-h);
+  z-index: 4;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.wf-summary-row-label {
+  height: var(--wf-summary-row-h);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.wf-summary-row-label:last-child {
+  border-bottom: none;
+}
+.wf-time-body {
+  position: relative;
+}
+.wf-time-tick {
+  position: absolute;
+  right: 8px;
+  font-size: 10px;
+  color: var(--text);
+  transform: translateY(-50%);
+  white-space: nowrap;
+  z-index: 6;
+  padding-left: 4px;
+  border-left: 1px solid var(--border);
+}
+.wf-columns {
+  display: flex;
+  flex: 1;
+}
+.wf-col {
+  flex: 0 0 54px;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.wf-col-header {
+  height: var(--wf-header-h);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 4px 2px 6px;
+  background: var(--surface);
+}
+.wf-col-top {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+}
+.wf-summary-rows {
+  border-bottom: 1px solid var(--border);
+}
+.wf-summary-row {
+  height: var(--wf-summary-row-h);
+  border-bottom: 1px solid var(--border);
+  padding: 2px;
+}
+.wf-summary-row:last-child {
+  border-bottom: none;
+}
+.wf-summary-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  border-radius: 2px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  padding: 1px;
+  overflow: hidden;
+}
+a.wf-summary-cell { cursor: pointer; }
+a.wf-summary-cell:hover { outline: 1px solid #fff; }
+.wf-summary-cell.success { background: var(--green); color: #000; }
+.wf-summary-cell.failed { background: var(--red); color: #fff; }
+.wf-summary-cell.running {
+  background: var(--yellow);
+  color: #000;
+  animation: pulse 2s infinite;
+}
+.wf-summary-cell.unknown { background: var(--grey); color: #ccc; }
+.wf-summary-cell.idle {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  font-weight: 400;
+}
+.wf-summary-sub {
+  font-family: monospace;
+  font-size: 8px;
+  font-weight: 400;
+  opacity: 0.85;
+  margin-top: 1px;
+}
+.wf-col-header span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  max-height: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wf-col-body {
+  position: relative;
+}
+.wf-time-break {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(26, 26, 46, 0.92),
+    rgba(26, 26, 46, 0.92) 4px,
+    rgba(42, 58, 94, 0.45) 4px,
+    rgba(42, 58, 94, 0.45) 8px
+  );
+  border-top: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border);
+}
+.wf-time-axis .wf-time-break {
+  justify-content: flex-end;
+  padding-right: 6px;
+}
+.wf-break-label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  background: var(--surface);
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  line-height: 1.4;
+}
+.wf-break-slashes {
+  color: var(--blue);
+  font-weight: 700;
+  padding: 0 1px;
+}
+.wf-wave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed rgba(52, 152, 219, 0.35);
+  background: var(--wave);
+  pointer-events: none;
+  z-index: 0;
+}
+.wf-slot {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  display: block;
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  z-index: 1;
+  text-decoration: none;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+.wf-slot:hover { outline: 1px solid #fff; z-index: 2; }
+.wf-slot.success { background: rgba(46, 204, 113, 0.18); }
+.wf-slot.failed { background: rgba(231, 76, 60, 0.18); }
+.wf-slot.running { background: rgba(243, 156, 18, 0.18); }
+.wf-slot.unknown { background: rgba(85, 85, 85, 0.22); }
+.wf-slot-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 6px;
+  border-top: 1px solid rgba(0, 0, 0, 0.25);
+}
+.wf-slot-bar.success { background: var(--green); }
+.wf-slot-bar.failed { background: var(--red); }
+.wf-slot-bar.running {
+  background: var(--yellow);
+  animation: pulse 2s infinite;
+}
+.wf-slot-bar.unknown { background: var(--grey); }
+@keyframes pulse { 0%, 100% { opacity: 0.92; } 50% { opacity: 0.65; } }
+
+.wf-meta {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.wf-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+<h1>Workbench Build Waterfall — Timeline</h1>
+<p class="subtitle">
+  Buildbot-style timeline per branch — <a href="index.html">matrix view</a> |
+  <a href="https://docs.buildbot.net/latest/manual/configuration/www/ui/waterfall_view.html" target="_blank" rel="noopener">Buildbot waterfall reference</a>
+</p>
+
+<div id="loading">Loading data.json...</div>
+<div id="app" style="display:none">
+  <div class="filter-bar">
+    <label>Cluster:
+      <select id="filter-cluster">
+        <option value="rhds">RHDS (stone-prod-p02)</option>
+        <option value="odh">ODH (stone-prd-rh01)</option>
+      </select>
+    </label>
+    <label>Branch / release:
+      <select id="filter-branch"></select>
+    </label>
+    <label>Event:
+      <select id="filter-event">
+        <option value="push">push only</option>
+        <option value="all">all events</option>
+        <option value="pull_request">PR only</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="filter-waves" checked> SHA waves</label>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--green)"></div>Success</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--red)"></div>Failed</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--yellow)"></div>Running</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--grey)"></div>Unknown</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--wave);border:1px dashed var(--blue)"></div>Same SHA wave</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:linear-gradient(to bottom,rgba(46,204,113,0.18) 60%,var(--green) 60%)"></div>Idle slot up + duration (solid) at bottom</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:repeating-linear-gradient(-45deg,#2a3a5e,#2a3a5e 2px,#16213e 2px,#16213e 4px);border:1px dashed var(--border)"></div>Compressed idle gap (— // —)</div>
+  </div>
+  <div class="wf-meta" id="wf-meta"></div>
+  <div class="wf-wrap" id="wf-wrap"></div>
+</div>
+
+<script>
+const COMPONENT_ORDER = [
+  'minimal-cpu', 'minimal-cuda', 'minimal-rocm', 'datascience-cpu',
+  'pytorch-cuda', 'pytorch-rocm', 'pytorch-llm-cuda',
+  'tensorflow-cuda', 'tensorflow-rocm', 'trustyai-cpu', 'codeserver-cpu',
+  'rt-minimal-cpu', 'rt-datascience', 'rt-pytorch-cuda', 'rt-pytorch-rocm',
+  'rt-pytorch-llm', 'rt-tf-cuda', 'rt-tf-rocm',
+];
+
+const COMPONENT_SHORT = [
+  ['rt-minimal-cpu', /pipeline-runtime-minimal-cpu/],
+  ['rt-datascience', /pipeline-runtime-datascience-cpu/],
+  ['rt-pytorch-llm', /pipeline-runtime-pytorch-llmcompressor/],
+  ['rt-pytorch-cuda', /pipeline-runtime-pytorch-cuda/],
+  ['rt-pytorch-rocm', /pipeline-runtime-pytorch-rocm/],
+  ['rt-tf-cuda', /pipeline-runtime-tensorflow-cuda/],
+  ['rt-tf-rocm', /pipeline-runtime-tensorflow-rocm/],
+  ['codeserver-cpu', /codeserver-datascience-cpu/],
+  ['minimal-cpu', /jupyter-minimal-cpu|rstudio-minimal-cpu/],
+  ['minimal-cuda', /jupyter-minimal-cuda|rstudio-minimal-cuda/],
+  ['minimal-rocm', /jupyter-minimal-rocm/],
+  ['datascience-cpu', /jupyter-datascience-cpu/],
+  ['pytorch-cuda', /jupyter-pytorch-cuda|wb-jupyter-pytorch-cuda/],
+  ['pytorch-rocm', /jupyter-pytorch-rocm|wb-jupyter-pytorch-rocm/],
+  ['pytorch-llm-cuda', /jupyter-pytorch-llmcompressor|wb-jupyter-pytorch-llmcompressor/],
+  ['tensorflow-cuda', /jupyter-tensorflow-cuda|wb-jupyter-tensorflow-cuda/],
+  ['tensorflow-rocm', /jupyter-tensorflow-rocm|wb-jupyter-tensorflow-rocm/],
+  ['trustyai-cpu', /trustyai-cpu/],
+];
+
+const PX_PER_MS = 1 / (1000 * 60 * 8); // ~8 minutes per pixel in active regions
+const MIN_BAR_PX = 8;
+const BOARD_PAD_MS = 1000 * 60 * 30;
+const GAP_THRESHOLD_MS = 12 * 60 * 60 * 1000; // compress idle gaps longer than 12h
+const BREAK_HEIGHT_PX = 32;
+const HEADER_H = 72;
+const SUMMARY_ROW_H = 44;
+const SUMMARY_H = SUMMARY_ROW_H * 2;
+
+function shortComponent(full) {
+  if (/workbenches-operator|workbenches-controller/.test(full)) return null;
+  for (const [short, re] of COMPONENT_SHORT) {
+    if (re.test(full)) return short;
+  }
+  return null;
+}
+
+function versionRow(run) {
+  if (!run.branch) return 'live';
+  return run.event_type === 'pull_request' ? `PR@${run.branch}` : run.branch;
+}
+
+function statusClass(run) {
+  if (run.reason === 'Running') return 'running';
+  if (run.status === 'True') return 'success';
+  if (run.status === 'False') return 'failed';
+  return 'unknown';
+}
+
+function parseTs(value) {
+  if (!value) return null;
+  const t = Date.parse(value);
+  return Number.isNaN(t) ? null : t;
+}
+
+function runStartMs(run) {
+  return parseTs(run.start) ?? parseTs(run.created) ?? 0;
+}
+
+function runEndMs(run) {
+  const end = parseTs(run.completion);
+  if (end) return end;
+  if (run.reason === 'Running') return Date.now();
+  const start = runStartMs(run);
+  return start + 45 * 60 * 1000;
+}
+
+function formatTick(ms) {
+  const d = new Date(ms);
+  const mon = d.toLocaleString('en-US', { month: 'short', day: 'numeric' });
+  const hm = d.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${mon} ${hm}`;
+}
+
+function buildTitle(run) {
+  const lines = [
+    run.component,
+    `Branch: ${run.branch || '?'}`,
+    `Event: ${run.event_type || '?'}`,
+    `Status: ${run.status}/${run.reason}`,
+    `SHA: ${(run.sha || '').substring(0, 8)}`,
+    `Source: ${run.source}`,
+    `Start: ${run.start || run.created}`,
+  ];
+  if (run.completion) lines.push(`End: ${run.completion}`);
+  return lines.join('\n');
+}
+
+function formatElapsed(ms) {
+  const sec = Math.max(0, Math.floor(ms / 1000));
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m`;
+  const hr = Math.floor(min / 60);
+  const rem = min % 60;
+  return rem ? `${hr}h ${rem}m` : `${hr}h`;
+}
+
+function lastBuildText(run) {
+  const cls = statusClass(run);
+  if (cls === 'success') return 'success';
+  if (cls === 'failed') return 'failed';
+  return 'unknown';
+}
+
+function summaryForColumn(colRuns) {
+  const current = colRuns.find(r => r.reason === 'Running') || null;
+  const lastBuild = colRuns.find(r => r.reason !== 'Running') || null;
+  return { current, lastBuild };
+}
+
+function escAttr(value) {
+  return String(value).replace(/"/g, '&quot;');
+}
+
+function renderSummaryCell(run, rowKind) {
+  if (!run) {
+    const idleLabel = rowKind === 'current' ? 'idle' : '—';
+    const title = rowKind === 'current' ? 'No in-flight build' : 'No completed build';
+    return `<div class="wf-summary-cell idle" title="${title}">${idleLabel}</div>`;
+  }
+  const cls = statusClass(run);
+  const href = run.ui_url || '#';
+  const title = escAttr(buildTitle(run));
+  if (rowKind === 'current') {
+    const elapsed = formatElapsed(Date.now() - runStartMs(run));
+    return `<a class="wf-summary-cell ${cls}" href="${href}" target="_blank" rel="noopener" `
+      + `title="${title}">building<br><span class="wf-summary-sub">${elapsed}</span></a>`;
+  }
+  const sha = (run.sha || '').substring(0, 8);
+  const sub = sha ? `<br><span class="wf-summary-sub">${sha}</span>` : '';
+  return `<a class="wf-summary-cell ${cls}" href="${href}" target="_blank" rel="noopener" `
+    + `title="${title}">${lastBuildText(run)}${sub}</a>`;
+}
+
+function branchSummaryCounts(columns, colData) {
+  let success = 0;
+  let failed = 0;
+  let running = 0;
+  let idle = 0;
+  for (const col of columns) {
+    const { lastBuild, current } = summaryForColumn(colData[col] || []);
+    if (current) {
+      running += 1;
+    } else if (lastBuild) {
+      if (lastBuild.statusClass === 'success') success += 1;
+      else if (lastBuild.statusClass === 'failed') failed += 1;
+      else idle += 1;
+    } else {
+      idle += 1;
+    }
+  }
+  return { success, failed, running, idle };
+}
+
+function collectRuns(data, cluster, branchRow, eventFilter) {
+  const history = data.pipelinerun_history?.[cluster]
+    ?? data.live_pipelineruns?.[cluster]
+    ?? [];
+  const runs = [];
+  for (const run of history) {
+    if (versionRow(run) !== branchRow) continue;
+    if (eventFilter === 'push' && run.event_type !== 'push') continue;
+    if (eventFilter === 'pull_request' && run.event_type !== 'pull_request') continue;
+    const short = shortComponent(run.component);
+    if (!short) continue;
+    runs.push({ ...run, short, statusClass: statusClass(run) });
+  }
+  return runs;
+}
+
+function groupByColumn(runs) {
+  const cols = {};
+  for (const run of runs) {
+    (cols[run.short] ||= []).push(run);
+  }
+  for (const short of Object.keys(cols)) {
+    cols[short].sort((a, b) => runStartMs(b) - runStartMs(a));
+  }
+  return cols;
+}
+
+function computeWaves(runs) {
+  const bySha = {};
+  for (const run of runs) {
+    const sha = (run.sha || '').substring(0, 8);
+    if (!sha) continue;
+    if (!bySha[sha]) bySha[sha] = { sha, start: runStartMs(run), end: runEndMs(run), count: 0 };
+    bySha[sha].count += 1;
+    bySha[sha].start = Math.min(bySha[sha].start, runStartMs(run));
+    bySha[sha].end = Math.max(bySha[sha].end, runEndMs(run));
+  }
+  return Object.values(bySha).filter(w => w.count >= 2).sort((a, b) => b.start - a.start);
+}
+
+function mergeBusyIntervals(runs) {
+  const raw = runs.map(r => [runStartMs(r), runEndMs(r)]).sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  for (const [s, e] of raw) {
+    if (!merged.length || s > merged[merged.length - 1][1]) {
+      merged.push([s, e]);
+    } else {
+      merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], e);
+    }
+  }
+  return merged;
+}
+
+function gapSegmentType(durationMs) {
+  return durationMs > GAP_THRESHOLD_MS ? 'break' : 'active';
+}
+
+function buildTimePieces(tMin, tMax, merged) {
+  const pieces = [];
+  const addGap = (tHigh, tLow) => {
+    if (tHigh <= tLow) return;
+    const gapMs = tHigh - tLow;
+    pieces.push({ type: gapSegmentType(gapMs), tHigh, tLow, gapMs });
+  };
+
+  if (!merged.length) {
+    addGap(tMax, tMin);
+    return pieces;
+  }
+
+  if (tMax > merged[merged.length - 1][1]) {
+    addGap(tMax, merged[merged.length - 1][1]);
+  }
+
+  for (let i = merged.length - 1; i >= 0; i--) {
+    const [s, e] = merged[i];
+    pieces.push({ type: 'active', tHigh: e, tLow: s, gapMs: e - s });
+    if (i > 0) {
+      addGap(s, merged[i - 1][1]);
+    }
+  }
+
+  if (tMin < merged[0][0]) {
+    addGap(merged[0][0], tMin);
+  }
+
+  return pieces;
+}
+
+function formatGap(ms) {
+  const hrs = ms / (1000 * 60 * 60);
+  if (hrs < 48) return `${Math.round(hrs)}h with no builds`;
+  const days = Math.round(hrs / 24);
+  return `${days}d with no builds`;
+}
+
+function createTimeScale(tMin, tMax, runs) {
+  const merged = mergeBusyIntervals(runs);
+  const pieces = buildTimePieces(tMin, tMax, merged);
+
+  let y = 20;
+  for (const piece of pieces) {
+    piece.yTop = y;
+    piece.height = piece.type === 'break'
+      ? BREAK_HEIGHT_PX
+      : Math.max((piece.tHigh - piece.tLow) * PX_PER_MS, 6);
+    y += piece.height;
+  }
+
+  const boardBodyHeight = Math.max(400, y - 20);
+
+  function yFor(ms) {
+    for (const piece of pieces) {
+      if (ms <= piece.tHigh && ms >= piece.tLow) {
+        const span = piece.tHigh - piece.tLow;
+        if (span <= 0) return piece.yTop;
+        return piece.yTop + ((piece.tHigh - ms) / span) * piece.height;
+      }
+    }
+    if (ms > tMax) return 20;
+    return boardBodyHeight;
+  }
+
+  function hFor(tStart, tEnd) {
+    return Math.max(MIN_BAR_PX, yFor(tStart) - yFor(tEnd));
+  }
+
+  const breaks = pieces.filter(p => p.type === 'break');
+  const ticks = buildTicks(pieces);
+
+  return { pieces, breaks, ticks, boardBodyHeight, yFor, hFor };
+}
+
+function buildTicks(pieces) {
+  const ticks = [];
+  for (const piece of pieces) {
+    ticks.push({ ms: piece.tHigh, y: piece.yTop });
+    if (piece.type === 'active' && piece.height >= 36) {
+      const steps = Math.min(6, Math.max(1, Math.floor(piece.height / 48)));
+      for (let i = 1; i < steps; i++) {
+        const frac = i / steps;
+        ticks.push({
+          ms: piece.tHigh - frac * (piece.tHigh - piece.tLow),
+          y: piece.yTop + frac * piece.height,
+        });
+      }
+    }
+    ticks.push({ ms: piece.tLow, y: piece.yTop + piece.height });
+  }
+
+  const seen = new Set();
+  return ticks.filter(tick => {
+    const key = Math.round(tick.y / 3);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function renderBreakMarkers(breaks) {
+  return breaks.map(piece => {
+    const title = formatGap(piece.gapMs).replace(/"/g, '&quot;');
+    return `<div class="wf-time-break" style="top:${piece.yTop}px;height:${piece.height}px" `
+      + `title="${title} — time compressed">`
+      + `<span class="wf-break-label">—<span class="wf-break-slashes">//</span>—</span></div>`;
+  }).join('');
+}
+
+function renderTimeline(data, cluster, branchRow, eventFilter, showWaves) {
+  const runs = collectRuns(data, cluster, branchRow, eventFilter);
+  const wrap = document.getElementById('wf-wrap');
+  const meta = document.getElementById('wf-meta');
+
+  if (!runs.length) {
+    wrap.innerHTML = '<div class="wf-empty">No builds for this branch. Try another branch or re-run collect.py.</div>';
+    meta.textContent = '';
+    return;
+  }
+
+  const columns = COMPONENT_ORDER.filter(c => runs.some(r => r.short === c));
+  const colData = groupByColumn(runs);
+
+  let tMax = Math.max(...runs.map(runEndMs));
+  let tMin = Math.min(...runs.map(runStartMs));
+  tMax += BOARD_PAD_MS;
+  tMin -= BOARD_PAD_MS;
+
+  const scale = createTimeScale(tMin, tMax, runs);
+  const { yFor, hFor, boardBodyHeight, breaks, ticks } = scale;
+  const totalBoardHeight = HEADER_H + SUMMARY_H + boardBodyHeight;
+  const breakHtml = renderBreakMarkers(breaks);
+  const summaryCounts = branchSummaryCounts(columns, colData);
+
+  const waves = showWaves ? computeWaves(runs) : [];
+
+  let html = '<div class="wf-board">';
+  html += `<div class="wf-time-axis" style="height:${totalBoardHeight}px">`;
+  html += '<div class="wf-corner"></div>';
+  html += '<div class="wf-summary-axis">';
+  html += '<div class="wf-summary-row-label">Last build</div>';
+  html += '<div class="wf-summary-row-label">Current</div>';
+  html += '</div>';
+  html += `<div class="wf-time-body" style="height:${boardBodyHeight}px">`;
+  html += breakHtml;
+  for (const tick of ticks) {
+    html += `<div class="wf-time-tick" style="top:${tick.y}px">${formatTick(tick.ms)}</div>`;
+  }
+  html += '</div></div>';
+
+  html += '<div class="wf-columns">';
+  for (const col of columns) {
+    const { lastBuild, current } = summaryForColumn(colData[col] || []);
+    html += `<div class="wf-col" style="height:${totalBoardHeight}px">`;
+    html += '<div class="wf-col-top">';
+    html += `<div class="wf-col-header"><span title="${col}">${col}</span></div>`;
+    html += '<div class="wf-summary-rows">';
+    html += `<div class="wf-summary-row">${renderSummaryCell(lastBuild, 'last')}</div>`;
+    html += `<div class="wf-summary-row">${renderSummaryCell(current, 'current')}</div>`;
+    html += '</div></div>';
+    html += `<div class="wf-col-body" style="height:${boardBodyHeight}px">`;
+    html += breakHtml;
+
+    for (const wave of waves) {
+      const top = yFor(wave.end);
+      const height = Math.max(4, yFor(wave.start) - yFor(wave.end));
+      html += `<div class="wf-wave" style="top:${top}px;height:${height}px" title="SHA ${wave.sha} (${wave.count} builds)"></div>`;
+    }
+
+    const colRuns = colData[col] || [];
+    for (let i = 0; i < colRuns.length; i++) {
+      const run = colRuns[i];
+      const start = runStartMs(run);
+      const end = runEndMs(run);
+      const barHeight = hFor(start, end);
+      const slotTop = i === 0 ? yFor(tMax) : yFor(runStartMs(colRuns[i - 1]));
+      const slotBottom = yFor(start);
+      const slotHeight = Math.max(barHeight, slotBottom - slotTop);
+      const title = buildTitle(run).replace(/"/g, '&quot;');
+      const href = run.ui_url || '#';
+      html += `<a class="wf-slot ${run.statusClass}" href="${href}" target="_blank" rel="noopener" `
+        + `style="top:${slotTop}px;height:${slotHeight}px" title="${title}">`
+        + `<span class="wf-slot-bar ${run.statusClass}" style="height:${barHeight}px"></span>`
+        + `</a>`;
+    }
+
+    html += '</div></div>';
+  }
+  html += '</div></div>';
+
+  wrap.innerHTML = html;
+  const breakNote = breaks.length
+    ? ` | ${breaks.length} compressed gap${breaks.length === 1 ? '' : 's'} (>12h idle)`
+    : '';
+  meta.textContent = `${runs.length} builds across ${columns.length} components | `
+    + `latest: ${summaryCounts.success} ok, ${summaryCounts.failed} failed, `
+    + `${summaryCounts.running} running, ${summaryCounts.idle} idle | `
+    + `${formatTick(tMin)} → ${formatTick(tMax)} | newest at top${breakNote}`;
+}
+
+function populateBranches(data, cluster) {
+  const rows = new Set();
+  const history = data.pipelinerun_history?.[cluster] ?? data.live_pipelineruns?.[cluster] ?? [];
+  for (const run of history) {
+    if (run.branch) rows.add(versionRow(run));
+  }
+  const select = document.getElementById('filter-branch');
+  const prev = select.value;
+  select.innerHTML = '';
+  const sorted = [...rows].sort();
+  for (const row of sorted) {
+    const opt = document.createElement('option');
+    opt.value = row;
+    opt.textContent = row;
+    select.appendChild(opt);
+  }
+  if (prev && sorted.includes(prev)) select.value = prev;
+  else if (sorted.includes('rhoai-3.6-ea.1')) select.value = 'rhoai-3.6-ea.1';
+  else if (sorted.includes('main')) select.value = 'main';
+}
+
+async function init() {
+  let data;
+  try {
+    const resp = await fetch('data.json');
+    data = await resp.json();
+  } catch (e) {
+    document.getElementById('loading').textContent = 'Failed to load data.json. Run: python3 collect.py';
+    return;
+  }
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  if (data.generated_at) {
+    const el = document.querySelector('.subtitle');
+    el.appendChild(document.createTextNode(` | Data: ${data.generated_at}`));
+  }
+
+  function refresh() {
+    const cluster = document.getElementById('filter-cluster').value;
+    populateBranches(data, cluster);
+    renderTimeline(
+      data,
+      cluster,
+      document.getElementById('filter-branch').value,
+      document.getElementById('filter-event').value,
+      document.getElementById('filter-waves').checked,
+    );
+  }
+
+  document.getElementById('filter-cluster').addEventListener('change', refresh);
+  document.getElementById('filter-branch').addEventListener('change', refresh);
+  document.getElementById('filter-event').addEventListener('change', refresh);
+  document.getElementById('filter-waves').addEventListener('change', refresh);
+
+  refresh();
+}
+
+init();
+</script>
+</body>
+</html>
