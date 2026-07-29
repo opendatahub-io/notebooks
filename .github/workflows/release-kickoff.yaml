@@ -75,6 +75,36 @@ jobs:
         with:
           packages: skopeo git-crypt
 
+      - name: Login to quay.io/aipcc (if the secret is present)
+        shell: bash
+        env:
+          AIPCC_USER: ${{ secrets.AIPCC_QUAY_BOT_USERNAME }}
+          AIPCC_PASS: ${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}
+        run: |
+          if [[ -z "${AIPCC_USER}" ]]; then
+            echo "AIPCC_QUAY_BOT_USERNAME is not set, skipping quay.io/aipcc login"
+            exit 0
+          fi
+          printf '%s' "${AIPCC_PASS}" | skopeo login --username "${AIPCC_USER}" --password-stdin quay.io
+
+      - name: Prepare Podman temp directory
+        run: mkdir -p "$TMPDIR"
+
+      # Registry auth must be configured before Install Podman. install-podman-action runs
+      # `sudo podman system reset`, which can leave root-owned files under ~/.config/containers.
+      - name: Unlock encrypted secrets with git-crypt
+        run: |
+          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
+          trap 'rm -f ./git-crypt-key' EXIT
+          git-crypt unlock ./git-crypt-key
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+
+      - name: Configure registry auth from pull-secret
+        run: |
+          mkdir -p "$HOME/.config/containers"
+          cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
+
       - name: Apply versions_config release overrides (optional)
         env:
           RELEASE_FULL_VERSION: ${{ github.event.inputs.release_full_version }}
@@ -166,36 +196,6 @@ jobs:
             echo "Applied versions_config.yml release overrides:"
             git diff -- versions_config.yml
           fi
-
-      - name: Login to quay.io/aipcc (if the secret is present)
-        shell: bash
-        env:
-          AIPCC_USER: ${{ secrets.AIPCC_QUAY_BOT_USERNAME }}
-          AIPCC_PASS: ${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}
-        run: |
-          if [[ -z "${AIPCC_USER}" ]]; then
-            echo "AIPCC_QUAY_BOT_USERNAME is not set, skipping quay.io/aipcc login"
-            exit 0
-          fi
-          printf '%s' "${AIPCC_PASS}" | skopeo login --username "${AIPCC_USER}" --password-stdin quay.io
-
-      - name: Prepare Podman temp directory
-        run: mkdir -p "$TMPDIR"
-
-      # Registry auth must be configured before Install Podman. install-podman-action runs
-      # `sudo podman system reset`, which can leave root-owned files under ~/.config/containers.
-      - name: Unlock encrypted secrets with git-crypt
-        run: |
-          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
-          trap 'rm -f ./git-crypt-key' EXIT
-          git-crypt unlock ./git-crypt-key
-        env:
-          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
-
-      - name: Configure registry auth from pull-secret
-        run: |
-          mkdir -p "$HOME/.config/containers"
-          cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
 
       - name: Install Podman
         uses: ./.github/actions/install-podman-action
