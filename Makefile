@@ -466,6 +466,7 @@ sync-build-args-from-versions:
 #   5=create RHDS rpm lockfile (root prefetch input)
 #   6=create RHDS rpm lockfile (codeserver prefetch input)
 #   7=rollout tags on imagestreams
+#   8=validate manifests (make test)
 # Notes:
 #   - KICKOFF_START_STEP=auto (default) resumes from .kickoff-release.state when present
 #   - After a successful full run, the state file is removed
@@ -493,8 +494,8 @@ kickoff-release:
 			start_step="1"; \
 		fi; \
 	fi; \
-	if [[ ! "$$start_step" =~ ^[1-7]$$ ]]; then \
-		echo "ERROR: KICKOFF_START_STEP must be auto or an integer from 1 to 7 (got: $(KICKOFF_START_STEP))."; \
+	if [[ ! "$$start_step" =~ ^[1-8]$$ ]]; then \
+		echo "ERROR: KICKOFF_START_STEP must be auto or an integer from 1 to 8 (got: $(KICKOFF_START_STEP))."; \
 		echo "If resuming automatically, delete an invalid state file and retry:"; \
 		echo "  rm -f $$(printf '%q' "$$state_file")"; \
 		exit 1; \
@@ -511,7 +512,7 @@ kickoff-release:
 	echo "▶️  Running from KICKOFF_START_STEP=$$start_step"
 	@record_step_completion() { \
 		local step="$$1"; \
-		if (( step < 7 )); then \
+		if (( step < 8 )); then \
 			echo "$$((step + 1))" > "$$state_file"; \
 		else \
 			rm -f "$$state_file"; \
@@ -522,11 +523,11 @@ kickoff-release:
 		local desc="$$2"; \
 		shift 2; \
 		if (( start_step <= step )); then \
-			echo "➡️  [$$step/7] $$desc"; \
+			echo "➡️  [$$step/8] $$desc"; \
 			"$$@"; \
 			record_step_completion "$$step"; \
 		else \
-			echo "⏭️  [$$step/7] Skipping $$desc"; \
+			echo "⏭️  [$$step/8] Skipping $$desc"; \
 		fi; \
 	}; \
 	last_rpm_flavor=""; \
@@ -541,11 +542,11 @@ kickoff-release:
 				$(MAKE) clean-rpm-lockfile-cache; \
 				last_rpm_flavor="$$flavor"; \
 			fi; \
-			echo "➡️  [$$step/7] $$desc"; \
+			echo "➡️  [$$step/8] $$desc"; \
 			"$$@"; \
 			record_step_completion "$$step"; \
 		else \
-			echo "⏭️  [$$step/7] Skipping $$desc"; \
+			echo "⏭️  [$$step/8] Skipping $$desc"; \
 		fi; \
 	}; \
 	run_step 1 "sync-build-args-from-versions" $(MAKE) sync-build-args-from-versions; \
@@ -554,7 +555,8 @@ kickoff-release:
 	run_rpm_step odh 4 "create ODH rpm lockfile (codeserver prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml; \
 	run_rpm_step rhds 5 "create RHDS rpm lockfile (root prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --activation-key "$${SUBSCRIPTION_ACTIVATION_KEY}" --org "$${SUBSCRIPTION_ORG}" --rpm-input prefetch-input/rhds/rpms.in.yaml; \
 	run_rpm_step rhds 6 "create RHDS rpm lockfile (codeserver prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --activation-key "$${SUBSCRIPTION_ACTIVATION_KEY}" --org "$${SUBSCRIPTION_ORG}" --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rhds/rpms.in.yaml; \
-	run_step 7 "rollout tags on imagestreams" uv run manifests/tools/rollout_tag_on_imagestreams.py
+	run_step 7 "rollout tags on imagestreams" uv run manifests/tools/rollout_tag_on_imagestreams.py; \
+	run_step 8 "validate manifests (make test)" $(MAKE) test
 
 # ======================================================================================
 #   gmake update-imagestream-annotations
