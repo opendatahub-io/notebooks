@@ -106,9 +106,10 @@ jobs:
       # `sudo podman system reset`, which can leave root-owned files under ~/.config/containers.
       - name: Unlock encrypted secrets with git-crypt
         run: |
-          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
-          trap 'rm -f ./git-crypt-key' EXIT
-          git-crypt unlock ./git-crypt-key
+          KEY_PATH="$(mktemp "${RUNNER_TEMP}/git-crypt-key.XXXXXX")"
+          printf '%s' "${GIT_CRYPT_KEY}" | base64 --decode > "${KEY_PATH}"
+          trap 'rm -f "${KEY_PATH}"' EXIT
+          git-crypt unlock "${KEY_PATH}"
         env:
           GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
 
