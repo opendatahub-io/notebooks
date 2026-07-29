@@ -170,7 +170,7 @@ endef
 #######################################        Build helpers                 #######################################
 
 # https://stackoverflow.com/questions/78899903/how-to-create-a-make-target-which-is-an-implicit-dependency-for-all-other-target
-skip-init-for := all-images deploy% undeploy% test% validate% refresh-lock-files sync-build-args-from-versions sync-commit-env-files update-imagestream-annotations refresh-imagestream-metadata scan-image-vulnerabilities print-release
+skip-init-for := all-images deploy% undeploy% test% validate% refresh-lock-files sync-build-args-from-versions sync-commit-env-files update-imagestream-annotations refresh-imagestream-metadata scan-image-vulnerabilities print-release kickoff-release clean-rpm-lockfile-cache
 # CI uses the pre-built container image via buildinputs_runner.py instead
 ifneq ($(CI),true)
 ifneq (,$(filter-out $(skip-init-for),$(MAKECMDGOALS) $(.DEFAULT_GOAL)))
@@ -551,8 +551,8 @@ kickoff-release:
 	}; \
 	run_step 1 "sync-build-args-from-versions" $(MAKE) sync-build-args-from-versions; \
 	run_step 2 "refresh-lock-files" env FORCE_LOCKFILES_UPGRADE=1 $(MAKE) refresh-lock-files; \
-	run_rpm_step odh 3 "create ODH rpm lockfile (root prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input prefetch-input/odh/rpms.in.yaml; \
-	run_rpm_step odh 4 "create ODH rpm lockfile (codeserver prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml; \
+	run_rpm_step odh 3 "create ODH rpm lockfile (root prefetch input)" env -u SUBSCRIPTION_ACTIVATION_KEY -u SUBSCRIPTION_ORG ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input prefetch-input/odh/rpms.in.yaml; \
+	run_rpm_step odh 4 "create ODH rpm lockfile (codeserver prefetch input)" env -u SUBSCRIPTION_ACTIVATION_KEY -u SUBSCRIPTION_ORG ./scripts/lockfile-generators/create-rpm-lockfile.sh --rpm-input codeserver/ubi9-python-3.12/prefetch-input/odh/rpms.in.yaml; \
 	run_rpm_step rhds 5 "create RHDS rpm lockfile (root prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --activation-key "$${SUBSCRIPTION_ACTIVATION_KEY}" --org "$${SUBSCRIPTION_ORG}" --rpm-input prefetch-input/rhds/rpms.in.yaml; \
 	run_rpm_step rhds 6 "create RHDS rpm lockfile (codeserver prefetch input)" ./scripts/lockfile-generators/create-rpm-lockfile.sh --activation-key "$${SUBSCRIPTION_ACTIVATION_KEY}" --org "$${SUBSCRIPTION_ORG}" --rpm-input codeserver/ubi9-python-3.12/prefetch-input/rhds/rpms.in.yaml; \
 	run_step 7 "rollout tags on imagestreams" uv run manifests/tools/rollout_tag_on_imagestreams.py; \
