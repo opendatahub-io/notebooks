@@ -1,13 +1,6 @@
 ---
 # Manual release kickoff: apply optional versions_config overrides, run make kickoff-release,
 # validate with make test, and open a PR with the resulting changes.
-# Required repo secrets on opendatahub-io/notebooks:
-#   - GIT_CRYPT_KEY
-#   - SUBSCRIPTION_ACTIVATION_KEY
-#   - SUBSCRIPTION_ORG
-#   - GH_ACCESS_TOKEN
-# Recommended:
-#   - AIPCC_QUAY_BOT_USERNAME / AIPCC_QUAY_BOT_PASSWORD (RHDS base-image resolution)
 name: Release Kickoff Action
 
 permissions: {}
