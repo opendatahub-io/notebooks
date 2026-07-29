@@ -86,6 +86,71 @@ make sync-build-args-from-versions SYNC_BUILD_ARGS_ARGS=--check
 If the version update also requires lockfile refreshes, run
 `make refresh-lock-files` after the sync.
 
+### Kick off a new release (maintainers)
+
+Use this flow when starting a **new release stream** (for example, `3.5` → `3.6`).
+For mid-release image bumps only, use `make sync-build-args-from-versions` instead
+(see above).
+
+1. Update [`versions_config.yml`](versions_config.yml) (`release.full_version` and any
+   preferred base-image settings).
+2. Run the orchestrated kickoff recipe locally **or** via GitHub Actions.
+
+The kickoff recipe runs these steps in order:
+
+1. `make sync-build-args-from-versions`
+2. `make refresh-lock-files` (with `FORCE_LOCKFILES_UPGRADE=1`)
+3. Generate ODH RPM lockfile (root prefetch input)
+4. Generate ODH RPM lockfile (codeserver prefetch input)
+5. Generate RHDS RPM lockfile (root prefetch input)
+6. Generate RHDS RPM lockfile (codeserver prefetch input)
+7. Roll out imagestream tags (`manifests/tools/rollout_tag_on_imagestreams.py`)
+8. Validate with `make test`
+
+#### Local kickoff
+
+Export RHDS subscription credentials once per shell session, then run kickoff:
+
+```shell
+export SUBSCRIPTION_ACTIVATION_KEY='...'
+export SUBSCRIPTION_ORG='...'
+gmake kickoff-release
+```
+
+If a step fails, rerun the same command to auto-resume from
+`.kickoff-release.state`, or force a step:
+
+```shell
+gmake kickoff-release KICKOFF_START_STEP=5
+```
+
+To clear cached RPM lockfile generator images between ODH/RHDS phases manually:
+
+```shell
+gmake clean-rpm-lockfile-cache
+```
+
+#### GitHub Actions kickoff
+
+On `opendatahub-io/notebooks`, run **Actions → Release Kickoff Action → Run workflow**.
+
+Optional workflow inputs:
+
+- `release_full_version`, `release_rhds_os_base`, `release_python_version`
+- `versions_overrides` (`dot.path=value`, one per line), for example:
+
+```text
+artifacts.base_image.cuda.tensorflow.acc_version=13.0
+artifacts.base_image.cpu.rhds.channel=fast
+artifacts.base_image.rocm.pytorch.rhds.channel=stable
+```
+
+The workflow applies overrides, runs `make kickoff-release`, and opens a PR titled
+`GHA: Kick off new release <full_version>`.
+
+Required repository secrets: `GIT_CRYPT_KEY`, `SUBSCRIPTION_ACTIVATION_KEY`,
+`SUBSCRIPTION_ORG`, `GH_ACCESS_TOKEN`.
+
 ### Deploy & Test
 
 #### Prepare Python + uv + pytest env
