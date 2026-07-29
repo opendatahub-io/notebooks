@@ -87,6 +87,18 @@ jobs:
           fi
           printf '%s' "${AIPCC_PASS}" | skopeo login --username "${AIPCC_USER}" --password-stdin quay.io
 
+      - name: Login to quay.io/rhoai (if the secret is present)
+        shell: bash
+        env:
+          RHOAI_USER: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
+          RHOAI_PASS: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
+        run: |
+          if [[ -z "${RHOAI_USER}" ]]; then
+            echo "RHOAI_QUAY_BOT_USERNAME is not set, skipping quay.io/rhoai login"
+            exit 0
+          fi
+          printf '%s' "${RHOAI_PASS}" | skopeo login --username "${RHOAI_USER}" --password-stdin quay.io
+
       - name: Prepare Podman temp directory
         run: mkdir -p "$TMPDIR"
 
