@@ -93,9 +93,6 @@ jobs:
           import yaml
 
 
-          cfg_path = Path("versions_config.yml")
-          doc = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
-
           direct_overrides = {
               "release.full_version": os.environ.get("RELEASE_FULL_VERSION", "").strip(),
               "release.rhds_os_base": os.environ.get("RELEASE_RHDS_OS_BASE", "").strip(),
@@ -121,6 +118,11 @@ jobs:
 
           effective = {k: v for k, v in direct_overrides.items() if v}
           effective.update(dynamic_overrides)
+          if not effective:
+              raise SystemExit(0)
+
+          cfg_path = Path("versions_config.yml")
+          doc = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
 
           def _parse_value(raw: str):
               lowered = raw.lower()
@@ -158,11 +160,11 @@ jobs:
           )
           PY
 
-          if [[ -n "${RELEASE_FULL_VERSION}${RELEASE_RHDS_OS_BASE}${RELEASE_PYTHON_VERSION}${VERSIONS_OVERRIDES}" ]]; then
+          if git diff --quiet -- versions_config.yml; then
+            echo "No versions_config.yml release overrides provided."
+          else
             echo "Applied versions_config.yml release overrides:"
             git diff -- versions_config.yml
-          else
-            echo "No versions_config.yml release overrides provided."
           fi
 
       - name: Login to quay.io/aipcc (if the secret is present)
@@ -224,10 +226,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
           RELEASE_FULL_VERSION_INPUT: ${{ github.event.inputs.release_full_version }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
 
-          git add -u
+          git add -A .
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
@@ -240,7 +243,7 @@ jobs:
           fi
 
           git commit -m "Kick off release updates for ${RELEASE_FULL_VERSION}"
-          git push -u "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "${KICKOFF_BRANCH}"
+          git push -u "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "${KICKOFF_BRANCH}"
 
           gh label create "automated-release-kickoff" \
             --description "Auto-created PR by release kickoff workflow" \
