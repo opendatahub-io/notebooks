@@ -1,0 +1,265 @@
+---
+# Manual release kickoff: apply optional versions_config overrides, run make kickoff-release,
+# validate with make test, and open a PR with the resulting changes.
+name: Release Kickoff Action
+
+permissions: {}
+
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to update"
+        required: false
+        default: "main"
+      release_full_version:
+        description: "Optional override for versions_config.yml release.full_version (e.g. 3.6.0)"
+        required: false
+        default: ""
+      release_rhds_os_base:
+        description: "Optional override for versions_config.yml release.rhds_os_base (e.g. el9.6)"
+        required: false
+        default: ""
+      release_python_version:
+        description: "Optional override for versions_config.yml release.python_version (e.g. 3.12)"
+        required: false
+        default: ""
+      versions_overrides:
+        description: |
+          Optional overrides for any versions_config.yml fields as dot.path=value pairs, one per line.
+          Example:
+          artifacts.base_image.cuda.tensorflow.acc_version=13.0
+          artifacts.base_image.cpu.rhds.channel=fast
+          artifacts.base_image.rocm.pytorch.rhds.channel=stable
+        required: false
+        default: ""
+
+jobs:
+  kickoff-release:
+    runs-on: ubuntu-26.04
+    concurrency:
+      group: kickoff-release-${{ github.ref }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read
+    env:
+      BRANCH: ${{ github.event.inputs.branch || 'main' }}
+      TMPDIR: /var/tmp
+      CI: "true"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ env.BRANCH }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Create kickoff branch
+        run: |
+          BRANCH_NAME="release-kickoff-$(date +%Y%m%d-%H%M)"
+          git checkout -b "$BRANCH_NAME"
+          echo "KICKOFF_BRANCH=$BRANCH_NAME" >> "${GITHUB_ENV}"
+
+      - name: Setup uv and Python
+        uses: ./.github/actions/setup-uv
+
+      - name: Install skopeo and git-crypt
+        uses: ./.github/actions/apt-install
+        with:
+          packages: skopeo git-crypt
+
+      - name: Apply versions_config release overrides (optional)
+        env:
+          RELEASE_FULL_VERSION: ${{ github.event.inputs.release_full_version }}
+          RELEASE_RHDS_OS_BASE: ${{ github.event.inputs.release_rhds_os_base }}
+          RELEASE_PYTHON_VERSION: ${{ github.event.inputs.release_python_version }}
+          VERSIONS_OVERRIDES: ${{ github.event.inputs.versions_overrides }}
+        run: |
+          set -euo pipefail
+
+          ./uv run python - <<'PY'
+          from __future__ import annotations
+
+          import os
+          from pathlib import Path
+
+          import yaml
+
+
+          direct_overrides = {
+              "release.full_version": os.environ.get("RELEASE_FULL_VERSION", "").strip(),
+              "release.rhds_os_base": os.environ.get("RELEASE_RHDS_OS_BASE", "").strip(),
+              "release.python_version": os.environ.get("RELEASE_PYTHON_VERSION", "").strip(),
+          }
+
+          raw_pairs = os.environ.get("VERSIONS_OVERRIDES", "")
+          dynamic_overrides: dict[str, str] = {}
+          for raw_line in raw_pairs.splitlines():
+              line = raw_line.strip()
+              if not line or line.startswith("#"):
+                  continue
+              if "=" not in line:
+                  raise ValueError(
+                      "Invalid versions_overrides line "
+                      f"{line!r}. Expected dot.path=value."
+                  )
+              key, value = line.split("=", 1)
+              key = key.strip()
+              if not key:
+                  raise ValueError(f"Invalid versions_overrides line {line!r}: empty key.")
+              dynamic_overrides[key] = value.strip()
+
+          effective = {k: v for k, v in direct_overrides.items() if v}
+          effective.update(dynamic_overrides)
+          if not effective:
+              raise SystemExit(0)
+
+          cfg_path = Path("versions_config.yml")
+          doc = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+
+          def _parse_value(raw: str):
+              lowered = raw.lower()
+              if lowered == "true":
+                  return True
+              if lowered == "false":
+                  return False
+              try:
+                  if raw.isdigit() or (raw.startswith("-") and raw[1:].isdigit()):
+                      return int(raw)
+              except ValueError:
+                  pass
+              return raw
+
+          for dotted_key, raw_value in effective.items():
+              node = doc
+              parts = dotted_key.split(".")
+              for part in parts[:-1]:
+                  if part not in node or not isinstance(node[part], dict):
+                      raise KeyError(
+                          f"Path '{dotted_key}' is invalid at '{part}'. "
+                          "Only existing keys are allowed."
+                      )
+                  node = node[part]
+              leaf = parts[-1]
+              if leaf not in node:
+                  raise KeyError(
+                      f"Path '{dotted_key}' does not exist in versions_config.yml."
+                  )
+              node[leaf] = _parse_value(raw_value)
+
+          cfg_path.write_text(
+              yaml.safe_dump(doc, sort_keys=False, default_flow_style=False),
+              encoding="utf-8",
+          )
+          PY
+
+          if git diff --quiet -- versions_config.yml; then
+            echo "No versions_config.yml release overrides provided."
+          else
+            echo "Applied versions_config.yml release overrides:"
+            git diff -- versions_config.yml
+          fi
+
+      - name: Login to quay.io/aipcc (if the secret is present)
+        shell: bash
+        env:
+          AIPCC_USER: ${{ secrets.AIPCC_QUAY_BOT_USERNAME }}
+          AIPCC_PASS: ${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}
+        run: |
+          if [[ -z "${AIPCC_USER}" ]]; then
+            echo "AIPCC_QUAY_BOT_USERNAME is not set, skipping quay.io/aipcc login"
+            exit 0
+          fi
+          printf '%s' "${AIPCC_PASS}" | skopeo login --username "${AIPCC_USER}" --password-stdin quay.io
+
+      - name: Prepare Podman temp directory
+        run: mkdir -p "$TMPDIR"
+
+      # Registry auth must be configured before Install Podman. install-podman-action runs
+      # `sudo podman system reset`, which can leave root-owned files under ~/.config/containers.
+      - name: Unlock encrypted secrets with git-crypt
+        run: |
+          echo "${GIT_CRYPT_KEY}" | base64 --decode > ./git-crypt-key
+          trap 'rm -f ./git-crypt-key' EXIT
+          git-crypt unlock ./git-crypt-key
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+
+      - name: Configure registry auth from pull-secret
+        run: |
+          mkdir -p "$HOME/.config/containers"
+          cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
+
+      - name: Install Podman
+        uses: ./.github/actions/install-podman-action
+        with:
+          platform: linux/amd64
+
+      - name: Mask subscription credentials
+        env:
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
+          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+        run: |
+          if [[ -z "$SUBSCRIPTION_ACTIVATION_KEY" || -z "$SUBSCRIPTION_ORG" ]]; then
+            echo "SUBSCRIPTION_ACTIVATION_KEY and SUBSCRIPTION_ORG repository secrets are required." >&2
+            exit 1
+          fi
+          echo "::add-mask::${SUBSCRIPTION_ACTIVATION_KEY}"
+          echo "::add-mask::${SUBSCRIPTION_ORG}"
+
+      - name: Run release kickoff recipe
+        env:
+          SUBSCRIPTION_ACTIVATION_KEY: ${{ secrets.SUBSCRIPTION_ACTIVATION_KEY }}
+          SUBSCRIPTION_ORG: ${{ secrets.SUBSCRIPTION_ORG }}
+        run: |
+          set -euo pipefail
+          make kickoff-release
+
+      - name: Create Pull Request with updates
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+          RELEASE_FULL_VERSION_INPUT: ${{ github.event.inputs.release_full_version }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          git add -A .
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          if [[ -n "${RELEASE_FULL_VERSION_INPUT}" ]]; then
+            RELEASE_FULL_VERSION="${RELEASE_FULL_VERSION_INPUT}"
+          else
+            RELEASE_FULL_VERSION="$(./uv run python -c "import yaml; print(yaml.safe_load(open('versions_config.yml', encoding='utf-8'))['release']['full_version'])")"
+          fi
+
+          git commit -m "Kick off release updates for ${RELEASE_FULL_VERSION}"
+          git push -u "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "${KICKOFF_BRANCH}"
+
+          gh label create "automated-release-kickoff" \
+            --description "Auto-created PR by release kickoff workflow" \
+            --color "0E8A16" \
+            2>/dev/null || true
+
+          gh pr create \
+            --title "GHA: Kick off new release ${RELEASE_FULL_VERSION}" \
+            --head "${KICKOFF_BRANCH}" \
+            --body "$(cat <<EOF
+          Automated release kickoff run for release **${RELEASE_FULL_VERSION}** using:
+
+          - optional \`versions_config.yml\` overrides from workflow inputs
+          - \`make kickoff-release\` (build-args sync, lock refresh, ODH/RHDS RPM locks, rollout)
+          - \`make test\` validation gate inside kickoff-release
+          EOF
+          )" \
+            --label "automated-release-kickoff" \
+            --base "${BRANCH}"
