@@ -1,72 +1,57 @@
-# yaml-language-server: $schema=./ci/versions_config.schema.json
-# =============================================================================
-# IMPORTANT: PRIMARY RELEASE COMMANDS
-# - New release stream (for example, 3.5 -> 3.6):
-#     1) Update full_version in this file and preferred image versions.
-#     2) Run: make kickoff-release
-# - Mid-release image version updates:
-#     1) Update preferred image versions in this file.
-#     2) Run: make sync-build-args-from-versions
-#     3) Run: make refresh-lock-files to refresh the lock files.
-# =============================================================================
----
 schema_version: 1
-
 release:
-  full_version: "3.5.0"
-  rhds_os_base: "el9.6"
-  python_version: "3.12"
-
+  full_version: 3.6.0
+  rhds_os_base: el9.6
+  python_version: '3.12'
 artifacts:
   base_image:
     cpu:
       rhds:
         channel: fast
-        version: "<full_version>"
+        version: <full_version>
       odh:
         origin: in-house
-        version: "latest"
-
+        version: latest
     cuda:
       minimal:
-        acc_version: "13.0"
+        acc_version: '13.0'
         rhds:
           channel: fast
         odh:
           origin: in-house
       pytorch:
-        acc_version: "13.0"
+        acc_version: '13.0'
         rhds:
           channel: fast
         odh:
           origin: in-house
       pytorch-llmcompressor:
-        acc_version: "13.0"
+        acc_version: '13.0'
         rhds:
           channel: fast
         odh:
           origin: in-house
       tensorflow:
-        acc_version: "12.9"
+        acc_version: '12.9'
         rhds:
           channel: fast
         odh:
           origin: in-house
     rocm:
       minimal:
-        acc_version: "7.14"
+        acc_version: '7.14'
         rhds:
           channel: fast
         odh:
           origin: in-house
       pytorch:
-        acc_version: "7.14"
+        acc_version: '7.14'
         rhds:
           channel: fast
         odh:
           origin: in-house
       tensorflow:
-        acc_version: "7.14"
+        acc_version: '7.14'
         rhds:
           channel: fast
         odh:
