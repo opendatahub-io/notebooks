@@ -75,30 +75,6 @@ jobs:
         with:
           packages: skopeo git-crypt
 
-      - name: Login to quay.io/aipcc (if the secret is present)
-        shell: bash
-        env:
-          AIPCC_USER: ${{ secrets.AIPCC_QUAY_BOT_USERNAME }}
-          AIPCC_PASS: ${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}
-        run: |
-          if [[ -z "${AIPCC_USER}" ]]; then
-            echo "AIPCC_QUAY_BOT_USERNAME is not set, skipping quay.io/aipcc login"
-            exit 0
-          fi
-          printf '%s' "${AIPCC_PASS}" | skopeo login --username "${AIPCC_USER}" --password-stdin quay.io
-
-      - name: Login to quay.io/rhoai (if the secret is present)
-        shell: bash
-        env:
-          RHOAI_USER: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
-          RHOAI_PASS: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
-        run: |
-          if [[ -z "${RHOAI_USER}" ]]; then
-            echo "RHOAI_QUAY_BOT_USERNAME is not set, skipping quay.io/rhoai login"
-            exit 0
-          fi
-          printf '%s' "${RHOAI_PASS}" | skopeo login --username "${RHOAI_USER}" --password-stdin quay.io
-
       - name: Prepare Podman temp directory
         run: mkdir -p "$TMPDIR"
 
@@ -117,6 +93,30 @@ jobs:
         run: |
           mkdir -p "$HOME/.config/containers"
           cp ci/secrets/pull-secret.json "$HOME/.config/containers/auth.json"
+
+      - name: Login to quay.io/aipcc (if the secret is present)
+        shell: bash
+        env:
+          AIPCC_USER: ${{ secrets.AIPCC_QUAY_BOT_USERNAME }}
+          AIPCC_PASS: ${{ secrets.AIPCC_QUAY_BOT_PASSWORD }}
+        run: |
+          if [[ -z "${AIPCC_USER}" || -z "${AIPCC_PASS}" ]]; then
+            echo "AIPCC_QUAY_BOT_USERNAME/AIPCC_QUAY_BOT_PASSWORD is not set, skipping quay.io/aipcc login"
+            exit 0
+          fi
+          printf '%s' "${AIPCC_PASS}" | skopeo login --username "${AIPCC_USER}" --password-stdin quay.io
+
+      - name: Login to quay.io/rhoai (if the secret is present)
+        shell: bash
+        env:
+          RHOAI_USER: ${{ secrets.RHOAI_QUAY_BOT_USERNAME }}
+          RHOAI_PASS: ${{ secrets.RHOAI_QUAY_BOT_PASSWORD }}
+        run: |
+          if [[ -z "${RHOAI_USER}" || -z "${RHOAI_PASS}" ]]; then
+            echo "RHOAI_QUAY_BOT_USERNAME/RHOAI_QUAY_BOT_PASSWORD is not set, skipping quay.io/rhoai login"
+            exit 0
+          fi
+          printf '%s' "${RHOAI_PASS}" | skopeo login --username "${RHOAI_USER}" --password-stdin quay.io
 
       - name: Apply versions_config release overrides (optional)
         env:
