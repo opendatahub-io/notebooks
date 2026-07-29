@@ -368,10 +368,10 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/cb/a8/20d0723294217e4
 
 [[packages]]
 name = "feast"
-version = "0.54.1"
+version = "0.65.0"
 marker = "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux'"
-sdist = { url = "https://files.pythonhosted.org/packages/c6/e7/0598b9042d80c43af6f67fe60dc00df658dd2c65e7c217630b6494f3cbef/feast-0.54.1.tar.gz", upload-time = 2025-12-04T05:52:24Z, size = 6133444, hashes = { sha256 = "c72bb646e90139fb5ae13bb66e327659b69842b01482d8bdcc0b71c3fdbfe070" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/6d/08/f6e5c36fa71c2c717b22954857205803aa86c8891a0123be76df33c4ef94/feast-0.54.1-py2.py3-none-any.whl", upload-time = 2025-12-04T05:52:21Z, size = 7619663, hashes = { sha256 = "41c1c5e732197d95759fa4cbad886708b582763c003f67c77ab66d736f885550" } }]
+sdist = { url = "https://files.pythonhosted.org/packages/df/83/3f3501b449bc17989353c07239c82941a66350126af54920ef0aa1f549bd/feast-0.65.0.tar.gz", upload-time = 2026-07-20T13:38:31Z, size = 7879801, hashes = { sha256 = "2f2c8c9ae6179fba9ec161205e7c30ab5a952e203cf444880e208c217691b9e2" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/51/45/3d6f346c7136433186ba0a4005bc648ff12e0181c2926ce1f75794ad327c/feast-0.65.0-py3-none-any.whl", upload-time = 2026-07-20T13:38:29Z, size = 9253730, hashes = { sha256 = "1b40680587e49202869b85dd17a1a65d1c2aaf6d91bdc2b12d1a100ccca4cd3b" } }]
 
 [[packages]]
 name = "filelock"
@@ -932,10 +932,10 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/9e/c9/b2622292ea83fbb
 
 [[packages]]
 name = "nltk"
-version = "3.9.4"
+version = "3.10.0"
 marker = "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux'"
-sdist = { url = "https://files.pythonhosted.org/packages/74/a1/b3b4adf15585a5bc4c357adde150c01ebeeb642173ded4d871e89468767c/nltk-3.9.4.tar.gz", upload-time = 2026-03-24T06:13:40Z, size = 2946864, hashes = { sha256 = "ed03bc098a40481310320808b2db712d95d13ca65b27372f8a403949c8b523d0" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/9d/91/04e965f8e717ba0ab4bdca5c112deeab11c9e750d94c4d4602f050295d39/nltk-3.9.4-py3-none-any.whl", upload-time = 2026-03-24T06:13:38Z, size = 1552087, hashes = { sha256 = "f2fa301c3a12718ce4a0e9305c5675299da5ad9e26068218b69d692fda84828f" } }]
+sdist = { url = "https://files.pythonhosted.org/packages/96/02/df4f105b28a7c16b0e41423bc09cf0f1b8a305df4ef0b10ca74a2e4c648c/nltk-3.10.0.tar.gz", upload-time = 2026-07-08T02:39:13Z, size = 3089244, hashes = { sha256 = "4fbac1d98203cbcd1b5d94a2877fb822300072d80604a5e7fae49d2c5f84e8c1" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/6e/89/a0b0f35e2820d6a99d75ea1c11977ee6d5c9e6658eceb45b0c7620881faa/nltk-3.10.0-py3-none-any.whl", upload-time = 2026-07-08T02:39:09Z, size = 1716144, hashes = { sha256 = "54ff84d4916d3ef127e8953bee0023f6a6b320b75d634a19e06ef056d3d244bf" } }]
 
 [[packages]]
 name = "numpy"
@@ -1135,27 +1135,25 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/9e/c3/059298687310d52
 
 [[packages]]
 name = "pillow"
-version = "12.2.0"
+version = "12.3.0"
 marker = "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux'"
-sdist = { url = "https://files.pythonhosted.org/packages/8c/21/c2bcdd5906101a30244eaffc1b6e6ce71a31bd0742a01eb89e660ebfac2d/pillow-12.2.0.tar.gz", upload-time = 2026-04-01T14:46:17Z, size = 46987819, hashes = { sha256 = "a830b1a40919539d07806aa58e1b114df53ddd43213d9c8b75847eee6c0182b5" } }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/3d/bb7fca845737cf9d7dbde16ed1843984665ff2e0a518f5db43e77ec540b9/pillow-12.3.0.tar.gz", upload-time = 2026-07-01T11:56:38Z, size = 47025035, hashes = { sha256 = "3b8182a766685eaa002637e28b4ec8d6b18819a0c71f579bf0dbaa5830297cce" } }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/9e/c05e19657fd57841e476be1ab46c4d501bffbadbafdc31a6d665f8b737b6/pillow-12.2.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", upload-time = 2026-04-01T14:43:20Z, size = 8094744, hashes = { sha256 = "b86024e52a1b269467a802258c25521e6d742349d760728092e1bc2d135b4d76" } },
-    { url = "https://files.pythonhosted.org/packages/43/e3/fdc657359e919462369869f1c9f0e973f353f9a9ee295a39b1fea8ee1a77/pillow-12.2.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", upload-time = 2026-04-01T14:43:26Z, size = 7087215, hashes = { sha256 = "62f5409336adb0663b7caa0da5c7d9e7bdbaae9ce761d34669420c2a801b2780" } },
-    { url = "https://files.pythonhosted.org/packages/67/f9/029a27095ad20f854f9dba026b3ea6428548316e057e6fc3545409e86651/pillow-12.2.0-cp312-cp312-musllinux_1_2_x86_64.whl", upload-time = 2026-04-01T14:43:32Z, size = 7212112, hashes = { sha256 = "fc3d34d4a8fbec3e88a79b92e5465e0f9b842b628675850d860b8bd300b159f5" } },
-    { url = "https://files.pythonhosted.org/packages/69/bc/8986948f05e3ea490b8442ea1c1d4d990b24a7e43d8a51b2c7d8b1dced36/pillow-12.2.0-cp313-cp313-ios_13_0_x86_64_iphonesimulator.whl", upload-time = 2026-04-01T14:43:45Z, size = 3640401, hashes = { sha256 = "766cef22385fa1091258ad7e6216792b156dc16d8d3fa607e7545b2b72061f1c" } },
-    { url = "https://files.pythonhosted.org/packages/a8/68/b93e09e5e8549019e61acf49f65b1a8530765a7f812c77a7461bca7e4494/pillow-12.2.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", upload-time = 2026-04-01T14:43:57Z, size = 8090669, hashes = { sha256 = "03f6fab9219220f041c74aeaa2939ff0062bd5c364ba9ce037197f4c6d498cd9" } },
-    { url = "https://files.pythonhosted.org/packages/67/ee/21d4e8536afd1a328f01b359b4d3997b291ffd35a237c877b331c1c3b71c/pillow-12.2.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", upload-time = 2026-04-01T14:44:02Z, size = 7082423, hashes = { sha256 = "eedf4b74eda2b5a4b2b2fb4c006d6295df3bf29e459e198c90ea48e130dc75c3" } },
-    { url = "https://files.pythonhosted.org/packages/ed/1e/409007f56a2fdce61584fd3acbc2bbc259857d555196cedcadc68c015c82/pillow-12.2.0-cp313-cp313-musllinux_1_2_x86_64.whl", upload-time = 2026-04-01T14:44:08Z, size = 7208580, hashes = { sha256 = "1e1757442ed87f4912397c6d35a0db6a7b52592156014706f17658ff58bbf795" } },
-    { url = "https://files.pythonhosted.org/packages/3c/83/5982eb4a285967baa70340320be9f88e57665a387e3a53a7f0db8231a0cd/pillow-12.2.0-cp313-cp313t-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", upload-time = 2026-04-01T14:44:26Z, size = 8126550, hashes = { sha256 = "d362d1878f00c142b7e1a16e6e5e780f02be8195123f164edf7eddd911eefe7c" } },
-    { url = "https://files.pythonhosted.org/packages/36/a3/f9a77144231fb8d40ee27107b4463e205fa4677e2ca2548e14da5cf18dce/pillow-12.2.0-cp313-cp313t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", upload-time = 2026-04-01T14:44:32Z, size = 7115667, hashes = { sha256 = "efd8c21c98c5cc60653bcb311bef2ce0401642b7ce9d09e03a7da87c878289d4" } },
-    { url = "https://files.pythonhosted.org/packages/c0/a8/27fb307055087f3668f6d0a8ccb636e7431d56ed0750e07a60547b1e083e/pillow-12.2.0-cp313-cp313t-musllinux_1_2_x86_64.whl", upload-time = 2026-04-01T14:44:37Z, size = 7238241, hashes = { sha256 = "dac8d77255a37e81a2efcbd1fc05f1c15ee82200e6c240d7e127e25e365c39ea" } },
-    { url = "https://files.pythonhosted.org/packages/b0/63/703f86fd4c422a9cf722833670f4f71418fb116b2853ff7da722ea43f184/pillow-12.2.0-cp314-cp314-ios_13_0_x86_64_iphonesimulator.whl", upload-time = 2026-04-01T14:44:53Z, size = 3640159, hashes = { sha256 = "6a6e67ea2e6feda684ed370f9a1c52e7a243631c025ba42149a2cc5934dec295" } },
-    { url = "https://files.pythonhosted.org/packages/5e/03/688747d2e91cfbe0e64f316cd2e8005698f76ada3130d0194664174fa5de/pillow-12.2.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", upload-time = 2026-04-01T14:45:04Z, size = 8091599, hashes = { sha256 = "7b14cc0106cd9aecda615dd6903840a058b4700fcb817687d0ee4fc8b6e389be" } },
-    { url = "https://files.pythonhosted.org/packages/11/8d/d2532ad2a603ca2b93ad9f5135732124e57811d0168155852f37fbce2458/pillow-12.2.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", upload-time = 2026-04-01T14:45:09Z, size = 7083360, hashes = { sha256 = "4bfd07bc812fbd20395212969e41931001fd59eb55a60658b0e5710872e95286" } },
-    { url = "https://files.pythonhosted.org/packages/5f/f7/769d5632ffb0988f1c5e7660b3e731e30f7f8ec4318e94d0a5d674eb65a4/pillow-12.2.0-cp314-cp314-musllinux_1_2_x86_64.whl", upload-time = 2026-04-01T14:45:15Z, size = 7209321, hashes = { sha256 = "deede7c263feb25dba4e82ea23058a235dcc2fe1f6021025dc71f2b618e26104" } },
-    { url = "https://files.pythonhosted.org/packages/1c/3c/7fbc17cfb7e4fe0ef1642e0abc17fc6c94c9f7a16be41498e12e2ba60408/pillow-12.2.0-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", upload-time = 2026-04-01T14:45:33Z, size = 8127807, hashes = { sha256 = "1610dd6c61621ae1cf811bef44d77e149ce3f7b95afe66a4512f8c59f25d9ebe" } },
-    { url = "https://files.pythonhosted.org/packages/6e/32/2880fb3a074847ac159d8f902cb43278a61e85f681661e7419e6596803ed/pillow-12.2.0-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", upload-time = 2026-04-01T14:45:39Z, size = 7116720, hashes = { sha256 = "8e9c4f5b3c546fa3458a29ab22646c1c6c787ea8f5ef51300e5a60300736905e" } },
-    { url = "https://files.pythonhosted.org/packages/18/53/773f5edca692009d883a72211b60fdaf8871cbef075eaa9d577f0a2f989e/pillow-12.2.0-cp314-cp314t-musllinux_1_2_x86_64.whl", upload-time = 2026-04-01T14:45:44Z, size = 7239413, hashes = { sha256 = "f278f034eb75b4e8a13a54a876cc4a5ab39173d2cdd93a638e1b467fc545ac43" } },
+    { url = "https://files.pythonhosted.org/packages/84/21/a35af28dcc61f37ed850a2d64c65c701321dfbf25085e469d5559360cbbf/pillow-12.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", upload-time = 2026-07-01T11:54:13Z, size = 6940830, hashes = { sha256 = "78cb2c6865a35ab8ff8b75fd122f6033b92a62c82801110e48ddd6c936a45d91" } },
+    { url = "https://files.pythonhosted.org/packages/1d/72/cf78ac9780bb93c28328f408973845a309d4d145041665f734572ced1b52/pillow-12.3.0-cp312-cp312-musllinux_1_2_x86_64.whl", upload-time = 2026-07-01T11:54:17Z, size = 7052934, hashes = { sha256 = "0dd2064cbc55aaec028ef5fbb60fa47bb6c3e7918e07ff17935284b227a9d2df" } },
+    { url = "https://files.pythonhosted.org/packages/df/39/ecf519435a200c693fe053a6ee4d835b41cf963a4dfc2551c4e637cb2a71/pillow-12.3.0-cp313-cp313-ios_13_0_x86_64_iphonesimulator.whl", upload-time = 2026-07-01T11:54:29Z, size = 3696433, hashes = { sha256 = "ae26d61dfa7a47befdc7572b521024e8745f3d809bd95ca9505a7bba9ef849ec" } },
+    { url = "https://files.pythonhosted.org/packages/f7/62/de5bdd77d935331f4f802edc11e4d82950f642caad6cb2f949837b8560e2/pillow-12.3.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", upload-time = 2026-07-01T11:54:38Z, size = 6937129, hashes = { sha256 = "0847a763afefb695bc912d7c131e7e0632d4edc1d8698f58ddabec8e46b8b6d3" } },
+    { url = "https://files.pythonhosted.org/packages/6b/1d/f13de01a553988ab895ba1c722e06cf3144d4f57656fd5b81b6d881f1179/pillow-12.3.0-cp313-cp313-musllinux_1_2_x86_64.whl", upload-time = 2026-07-01T11:54:42Z, size = 7049439, hashes = { sha256 = "756c768d0c9c2955feb7a56c37ea24aea2e369f8d36a88da270b6a9f19e62b5e" } },
+    { url = "https://files.pythonhosted.org/packages/c8/02/8d0bc62ef0302318c46ff2a512822d2610e81c7aa46c9b3abe6cbaca5ad0/pillow-12.3.0-cp314-cp314-ios_13_0_x86_64_iphonesimulator.whl", upload-time = 2026-07-01T11:54:55Z, size = 3696262, hashes = { sha256 = "a45650e8ce7fafffd731db8550230db6b0d306d181a90b67d3e6bca2f1990930" } },
+    { url = "https://files.pythonhosted.org/packages/5c/44/c85361f65dbe00eea8576ee467c768d25129989efb76e94f205e9ca9bb46/pillow-12.3.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", upload-time = 2026-07-01T11:55:03Z, size = 6936962, hashes = { sha256 = "251bf95b67017e27b13d82f5b326234ca62d70f9cf4c2b9032de2358a3b12c7b" } },
+    { url = "https://files.pythonhosted.org/packages/f0/f4/68c491844841ede6bed70189546b3ee9731cf9f2cbad396faff5e1ccba45/pillow-12.3.0-cp314-cp314-musllinux_1_2_x86_64.whl", upload-time = 2026-07-01T11:55:08Z, size = 7048116, hashes = { sha256 = "23aceaa007d6172b02c277f0cd359c79492bbb14f7072b4ede9fbcaf20648130" } },
+    { url = "https://files.pythonhosted.org/packages/cc/91/420637fcb8f1bc11029e403b4538e6694744428d8246118e45719f944556/pillow-12.3.0-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", upload-time = 2026-07-01T11:55:24Z, size = 6989642, hashes = { sha256 = "bf16ba1b4d0b6b7c8e534936632270cf70eb00dbe09005bc345b2677b726855c" } },
+    { url = "https://files.pythonhosted.org/packages/d2/87/24233f785f55474dc02ce3e739c5528a77e3a862e9333d1dd7a25cc31f70/pillow-12.3.0-cp314-cp314t-musllinux_1_2_x86_64.whl", upload-time = 2026-07-01T11:55:28Z, size = 7096716, hashes = { sha256 = "30f2aa603c41533cc25c05acd0da21636e84a315768feb631c937177db558931" } },
+    { url = "https://files.pythonhosted.org/packages/52/7e/1f67e6f4ece6b582ee4b539decbcc9f848dc245a93ed8cd7338bafef72f1/pillow-12.3.0-cp315-cp315-ios_13_0_x86_64_iphonesimulator.whl", upload-time = 2026-07-01T11:55:41Z, size = 3696331, hashes = { sha256 = "4998562bf62a445225f22e07c896bb04b35b1b1f2eb6d760584c9c51d7a5f78c" } },
+    { url = "https://files.pythonhosted.org/packages/f8/6d/043e96ff814fc31a33077e4cba86082167db520c93632afdf2042febbb0c/pillow-12.3.0-cp315-cp315-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", upload-time = 2026-07-01T11:55:50Z, size = 6947439, hashes = { sha256 = "6b02afb9b97f65fbca5f31db6a2a3ba21aa93030225f150fa3f249717e938fb4" } },
+    { url = "https://files.pythonhosted.org/packages/0f/ce/e63064e2122923ff687c8ad792d0d736a7b3920a56a46982e81a7fdd25d6/pillow-12.3.0-cp315-cp315-musllinux_1_2_x86_64.whl", upload-time = 2026-07-01T11:55:55Z, size = 7060394, hashes = { sha256 = "e795b7eb908249c4e43c7c99fac7c2c75dab0c43566e37db472a355f63693d71" } },
+    { url = "https://files.pythonhosted.org/packages/36/16/cf6eeaae8d0fce8dd390a33437cf68c5d5bd73834a2bc6e2f14efda0ab45/pillow-12.3.0-cp315-cp315t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", upload-time = 2026-07-01T11:56:11Z, size = 6997047, hashes = { sha256 = "cf1845d02ad822a369a49f2bb9345b1614744267682e7a03527dc3bf6eea1777" } },
+    { url = "https://files.pythonhosted.org/packages/a0/e1/ffc9cfc2eea0d178da8018e18e959301ad9d6bc9f3edb7181e748a474b97/pillow-12.3.0-cp315-cp315t-musllinux_1_2_x86_64.whl", upload-time = 2026-07-01T11:56:16Z, size = 7105895, hashes = { sha256 = "f13c32a3abd6079a66d9526e18dad9b6d280384d49d7c54040cd57b6424041d9" } },
 ]
 
 [[packages]]
@@ -1181,10 +1179,10 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/4b/a6/38c8e2f318bf67d
 
 [[packages]]
 name = "prometheus-client"
-version = "0.25.0"
+version = "0.24.1"
 marker = "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux'"
-sdist = { url = "https://files.pythonhosted.org/packages/1b/fb/d9aa83ffe43ce1f19e557c0971d04b90561b0cfd50762aafb01968285553/prometheus_client-0.25.0.tar.gz", upload-time = 2026-04-09T19:53:42Z, size = 86035, hashes = { sha256 = "5e373b75c31afb3c86f1a52fa1ad470c9aace18082d39ec0d2f918d11cc9ba28" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/8d/9b/d4b1e644385499c8346fa9b622a3f030dce14cd6ef8a1871c221a17a67e7/prometheus_client-0.25.0-py3-none-any.whl", upload-time = 2026-04-09T19:53:41Z, size = 64154, hashes = { sha256 = "d5aec89e349a6ec230805d0df882f3807f74fd6c1a2fa86864e3c2279059fed1" } }]
+sdist = { url = "https://files.pythonhosted.org/packages/f0/58/a794d23feb6b00fc0c72787d7e87d872a6730dd9ed7c7b3e954637d8f280/prometheus_client-0.24.1.tar.gz", upload-time = 2026-01-14T15:26:26Z, size = 85616, hashes = { sha256 = "7e0ced7fbbd40f7b84962d5d2ab6f17ef88a72504dcf7c0b40737b43b2a461f9" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/74/c3/24a2f845e3917201628ecaba4f18bab4d18a337834c1df2a159ee9d22a42/prometheus_client-0.24.1-py3-none-any.whl", upload-time = 2026-01-14T15:26:24Z, size = 64057, hashes = { sha256 = "150db128af71a5c2482b36e588fc8a6b95e498750da4b17065947c16070f4055" } }]
 
 [[packages]]
 name = "prompt-toolkit"

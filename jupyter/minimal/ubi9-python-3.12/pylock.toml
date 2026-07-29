@@ -446,6 +446,13 @@ sdist = { url = "https://files.pythonhosted.org/packages/19/74/a633ee74eb36c44aa
 wheels = [{ url = "https://files.pythonhosted.org/packages/41/45/1a4ed80516f02155c51f51e8cedb3c1902296743db0bbc66608a0db2814f/jsonschema_specifications-2025.9.1-py3-none-any.whl", upload-time = 2025-09-08T01:34:57Z, size = 18437, hashes = { sha256 = "98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe" } }]
 
 [[packages]]
+name = "jupyter-builder"
+version = "1.1.1"
+marker = "(python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'ppc64le' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux')"
+sdist = { url = "https://files.pythonhosted.org/packages/c3/61/47f7ae054f5cd3983c10e1d65a6eb7fcd4b87ebb1056e190ef7d63ff4f19/jupyter_builder-1.1.1.tar.gz", upload-time = 2026-07-17T13:14:47Z, size = 971667, hashes = { sha256 = "1a13977912b08deda77fce2c803940131c27cf77a27ed64b9ffca25aa0ed7e6c" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/83/cc/f6a12de1c890ea5dd2816c5c76d5ac6d3ed52db3c37f78691328207d13b9/jupyter_builder-1.1.1-py3-none-any.whl", upload-time = 2026-07-17T13:14:45Z, size = 913264, hashes = { sha256 = "f9c14bc55c0488a073f62af12d468936fcf9ecb7e9dd802f6f9c33de46ad70db" } }]
+
+[[packages]]
 name = "jupyter-client"
 version = "8.9.1"
 marker = "(python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'ppc64le' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux')"
@@ -475,10 +482,10 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/23/e8/9d61dcbd1dce8ef
 
 [[packages]]
 name = "jupyter-server"
-version = "2.17.0"
+version = "2.20.0"
 marker = "(python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'ppc64le' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux')"
-sdist = { url = "https://files.pythonhosted.org/packages/5b/ac/e040ec363d7b6b1f11304cc9f209dac4517ece5d5e01821366b924a64a50/jupyter_server-2.17.0.tar.gz", upload-time = 2025-08-21T14:42:54Z, size = 731949, hashes = { sha256 = "c38ea898566964c888b4772ae1ed58eca84592e88251d2cfc4d171f81f7e99d5" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/92/80/a24767e6ca280f5a49525d987bf3e4d7552bf67c8be07e8ccf20271f8568/jupyter_server-2.17.0-py3-none-any.whl", upload-time = 2025-08-21T14:42:52Z, size = 388221, hashes = { sha256 = "e8cb9c7db4251f51ed307e329b81b72ccf2056ff82d50524debde1ee1870e13f" } }]
+sdist = { url = "https://files.pythonhosted.org/packages/6b/dc/db3a582633170186f8c8b31298d7eb26ad0eb031a1f53476c258b64eed05/jupyter_server-2.20.0.tar.gz", upload-time = 2026-06-17T12:09:09Z, size = 756523, hashes = { sha256 = "b5778ba337d8015a3dc2b80803ecdd5ac18d3797fddf61a50ea5fb472b4ebe14" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/f3/71/8c002223e873a870f5c41dc69b0a7c922301123e4a31d5d01ecb700aef77/jupyter_server-2.20.0-py3-none-any.whl", upload-time = 2026-06-17T12:09:07Z, size = 393143, hashes = { sha256 = "c3b67c93c471e947c18b5026f04f21614218adb706df8f48227d3ee8e0a7cdcc" } }]
 
 [[packages]]
 name = "jupyter-server-proxy"
@@ -496,10 +503,10 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/d1/2d/6674563f71c6320
 
 [[packages]]
 name = "jupyterlab"
-version = "4.4.7"
+version = "4.6.2"
 marker = "(python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'ppc64le' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux')"
-sdist = { url = "https://files.pythonhosted.org/packages/d0/07/b3beaeb5722d4a55e345a38884c67baebd9cec2269c5309ce494485a5858/jupyterlab-4.4.7.tar.gz", upload-time = 2025-09-03T13:26:40Z, size = 22965570, hashes = { sha256 = "8c8e225492f4513ebde9bbbc00a05b651ab9a1f5b0013015d96fabf671c37188" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/7e/01/44f35124896dd5c73b26705c25bb8af2089895b32f057a1e4a3488847333/jupyterlab-4.4.7-py3-none-any.whl", upload-time = 2025-09-03T13:26:35Z, size = 12291583, hashes = { sha256 = "808bae6136b507a4d18f04254218bfe71ed8ba399a36ef3280d5f259e69abf80" } }]
+sdist = { url = "https://files.pythonhosted.org/packages/7a/7f/51c0c856ab286bdaf5709cf61ed13584ed9d4bee906479707da45b11b353/jupyterlab-4.6.2.tar.gz", upload-time = 2026-07-21T12:05:24Z, size = 28183650, hashes = { sha256 = "e18ce8b34f3de350e93cd5b2c4f3ae884cbe266eb76bf5d6825a4ed34c13bcff" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/63/1f/e39b248c76bb3736bc05a9491a6aa1315414c32dea12f548ecc1b24c758e/jupyterlab-4.6.2-py3-none-any.whl", upload-time = 2026-07-21T12:05:19Z, size = 17166703, hashes = { sha256 = "5964447036629adfcd3fc0969effc1da6f47d2cbd0a60b2c2eea7c31be0ec6a8" } }]
 
 [[packages]]
 name = "jupyterlab-git"
