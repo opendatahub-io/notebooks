@@ -10,6 +10,27 @@ on:  # yamllint disable-line rule:truthy
         description: "Branch to update"
         required: false
         default: "main"
+      release_full_version:
+        description: "Optional override for versions_config.yml release.full_version (e.g. 3.6.0)"
+        required: false
+        default: ""
+      release_rhds_os_base:
+        description: "Optional override for versions_config.yml release.rhds_os_base (e.g. el9.6)"
+        required: false
+        default: ""
+      release_python_version:
+        description: "Optional override for versions_config.yml release.python_version (e.g. 3.12)"
+        required: false
+        default: ""
+      versions_overrides:
+        description: |
+          Optional overrides for any versions_config.yml fields as dot.path=value pairs, one per line.
+          Example:
+          artifacts.base_image.cuda.tensorflow.acc_version=13.0
+          artifacts.base_image.cpu.rhds.channel=fast
+          artifacts.base_image.rocm.pytorch.rhds.channel=stable
+        required: false
+        default: ""
 
 jobs:
   kickoff-release:
@@ -51,6 +72,96 @@ jobs:
         uses: ./.github/actions/apt-install
         with:
           packages: skopeo
+
+      - name: Apply versions_config release overrides (optional)
+        env:
+          RELEASE_FULL_VERSION: ${{ github.event.inputs.release_full_version }}
+          RELEASE_RHDS_OS_BASE: ${{ github.event.inputs.release_rhds_os_base }}
+          RELEASE_PYTHON_VERSION: ${{ github.event.inputs.release_python_version }}
+          VERSIONS_OVERRIDES: ${{ github.event.inputs.versions_overrides }}
+        run: |
+          set -euo pipefail
+
+          ./uv run python - <<'PY'
+          from __future__ import annotations
+
+          import os
+          from pathlib import Path
+
+          import yaml
+
+
+          cfg_path = Path("versions_config.yml")
+          doc = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+
+          direct_overrides = {
+              "release.full_version": os.environ.get("RELEASE_FULL_VERSION", "").strip(),
+              "release.rhds_os_base": os.environ.get("RELEASE_RHDS_OS_BASE", "").strip(),
+              "release.python_version": os.environ.get("RELEASE_PYTHON_VERSION", "").strip(),
+          }
+
+          raw_pairs = os.environ.get("VERSIONS_OVERRIDES", "")
+          dynamic_overrides: dict[str, str] = {}
+          for raw_line in raw_pairs.splitlines():
+              line = raw_line.strip()
+              if not line or line.startswith("#"):
+                  continue
+              if "=" not in line:
+                  raise ValueError(
+                      "Invalid versions_overrides line "
+                      f"{line!r}. Expected dot.path=value."
+                  )
+              key, value = line.split("=", 1)
+              key = key.strip()
+              if not key:
+                  raise ValueError(f"Invalid versions_overrides line {line!r}: empty key.")
+              dynamic_overrides[key] = value.strip()
+
+          effective = {k: v for k, v in direct_overrides.items() if v}
+          effective.update(dynamic_overrides)
+
+          def _parse_value(raw: str):
+              lowered = raw.lower()
+              if lowered == "true":
+                  return True
+              if lowered == "false":
+                  return False
+              try:
+                  if raw.isdigit() or (raw.startswith("-") and raw[1:].isdigit()):
+                      return int(raw)
+              except ValueError:
+                  pass
+              return raw
+
+          for dotted_key, raw_value in effective.items():
+              node = doc
+              parts = dotted_key.split(".")
+              for part in parts[:-1]:
+                  if part not in node or not isinstance(node[part], dict):
+                      raise KeyError(
+                          f"Path '{dotted_key}' is invalid at '{part}'. "
+                          "Only existing keys are allowed."
+                      )
+                  node = node[part]
+              leaf = parts[-1]
+              if leaf not in node:
+                  raise KeyError(
+                      f"Path '{dotted_key}' does not exist in versions_config.yml."
+                  )
+              node[leaf] = _parse_value(raw_value)
+
+          cfg_path.write_text(
+              yaml.safe_dump(doc, sort_keys=False, default_flow_style=False),
+              encoding="utf-8",
+          )
+          PY
+
+          if [[ -n "${RELEASE_FULL_VERSION}${RELEASE_RHDS_OS_BASE}${RELEASE_PYTHON_VERSION}${VERSIONS_OVERRIDES}" ]]; then
+            echo "Applied versions_config.yml release overrides:"
+            git diff -- versions_config.yml
+          else
+            echo "No versions_config.yml release overrides provided."
+          fi
 
       - name: Login to quay.io/aipcc (if the secret is present)
         shell: bash
