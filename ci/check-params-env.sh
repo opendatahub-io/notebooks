@@ -683,89 +683,106 @@ function check_image_variable_matches_name_and_commitref_and_size() {
                 local image_base
                 image_base="${BASH_REMATCH[1]}"
 
-                if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
-                    expected_name="rhoai/${image_base%-ubi9}-rhel9"
-                else
-                    expected_name="opendatahub/${image_base}"
-                fi
                 expected_commitref="main"
                 expected_build_name="konflux"
 
                 case "${image_base}" in
                     odh-workbench-jupyter-minimal-cpu-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9"
                             expected_img_size=991
                         else
+                            expected_name="opendatahub/odh-workbench-jupyter-minimal-cpu-py312-ubi9"
                             expected_img_size=1017
                         fi
                         ;;
                     odh-workbench-jupyter-minimal-cuda-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-minimal-cuda-py312-rhel9"
                             expected_img_size=3423
                         else
+                            expected_name="opendatahub/odh-workbench-jupyter-minimal-cuda-py312-ubi9"
                             expected_img_size=6757
                         fi
                         ;;
                     odh-workbench-jupyter-minimal-rocm-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-minimal-rocm-py312-rhel9"
                             expected_img_size=5001
                         else
+                            expected_name="opendatahub/odh-workbench-jupyter-minimal-rocm-py312-ubi9"
                             expected_img_size=5295
                         fi
                         ;;
                     odh-workbench-jupyter-datascience-cpu-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-datascience-cpu-py312-rhel9"
                             expected_img_size=1838
                         else
+                            expected_name="opendatahub/odh-workbench-jupyter-datascience-cpu-py312-ubi9"
                             expected_img_size=1592
                         fi
                         ;;
                     odh-workbench-jupyter-pytorch-cuda-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-pytorch-cuda-py312-rhel9"
                             expected_img_size=7450
                         else
+                            expected_name="opendatahub/odh-workbench-jupyter-pytorch-cuda-py312-ubi9"
                             expected_img_size=11590
                         fi
                         ;;
                     odh-workbench-jupyter-pytorch-rocm-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-pytorch-rocm-py312-rhel9"
                             expected_img_size=6689
                         else
+                            expected_name="opendatahub/odh-workbench-jupyter-pytorch-rocm-py312-ubi9"
                             expected_img_size=6519
                         fi
                         ;;
                     odh-workbench-jupyter-tensorflow-cuda-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-tensorflow-cuda-py312-rhel9"
                             expected_img_size=6267
                         else
+                            expected_name="opendatahub/odh-workbench-jupyter-tensorflow-cuda-py312-ubi9"
                             expected_img_size=10581
                         fi
                         ;;
                     odh-workbench-jupyter-tensorflow-rocm-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-tensorflow-rocm-py312-rhel9"
                             expected_img_size=6235
                         else
+                            expected_name="opendatahub/odh-workbench-jupyter-tensorflow-rocm-py312-ubi9"
                             expected_img_size=6367
                         fi
                         ;;
                     odh-workbench-jupyter-trustyai-cpu-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-trustyai-cpu-py312-rhel9"
                             expected_img_size=2467
                         else
+                            expected_name="opendatahub/odh-workbench-jupyter-trustyai-cpu-py312-ubi9"
                             expected_img_size=2312
                         fi
                         ;;
                     odh-workbench-codeserver-datascience-cpu-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-codeserver-datascience-cpu-py312-rhel9"
                             expected_img_size=1330
                         else
+                            expected_name="opendatahub/odh-workbench-codeserver-datascience-cpu-py312-ubi9"
                             expected_img_size=1366
                         fi
                         ;;
                     odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9)
                         if [ "${_MANIFESTS_VARIANT}" = "rhoai" ]; then
+                            expected_name="rhoai/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-rhel9"
                             expected_img_size=6165
                         else
+                            expected_name="opendatahub/odh-workbench-jupyter-pytorch-llmcompressor-cuda-py312-ubi9"
                             expected_img_size=11565
                         fi
                         ;;
@@ -808,14 +825,14 @@ function check_image_variable_matches_name_and_commitref_and_size() {
     # 1. Percentual size change
     percent_change=$((100 * actual_img_size / expected_img_size - 100))
     abs_percent_change=${percent_change#-}
-    test ${abs_percent_change} -le ${SIZE_PERCENTUAL_TRESHOLD} || {
+    test "${abs_percent_change}" -le "${SIZE_PERCENTUAL_TRESHOLD}" || {
         echo "Image size changed by ${abs_percent_change}% (expected: ${expected_img_size} MB; actual: ${actual_img_size} MB; treshold: ${SIZE_PERCENTUAL_TRESHOLD}%)."
         return 2
     }
     # 2. Absolute size change
     size_difference=$((actual_img_size - expected_img_size))
     abs_size_difference=${size_difference#-}
-    test ${abs_size_difference} -le ${SIZE_ABSOLUTE_TRESHOLD} || {
+    test "${abs_size_difference}" -le "${SIZE_ABSOLUTE_TRESHOLD}" || {
         echo "Image size changed by ${abs_size_difference} MB (expected: ${expected_img_size} MB; actual: ${actual_img_size} MB; treshold: ${SIZE_ABSOLUTE_TRESHOLD} MB)."
         return 2
     }
@@ -981,10 +998,11 @@ function check_image() {
     echo "Image created: '${image_created}'"
     echo "Image size: ${image_size_mb} MB"
 
+    local validation_ret_code
     check_image_variable_matches_name_and_commitref_and_size "${image_variable}" "${image_name}" "${image_commitref}" \
         "${openshift_build_name}" "${image_size_mb}"
-    local size_validation_ret_code=$?
-    test "${size_validation_ret_code}" -eq 0 || return "${size_validation_ret_code}"
+    validation_ret_code=$?
+    test "${validation_ret_code}" -eq 0 || test "${validation_ret_code}" -eq 2 || return "${validation_ret_code}"
 
     check_image_commit_id_matches_metadata "${image_variable}" "${image_commit_id}" || return 1
 
@@ -992,6 +1010,8 @@ function check_image() {
         # We presume the image is build on Konflux and as such we are using explicit repository name for each image type.
         check_image_repo_name "${image_variable}" "${image_url}" || return 1
     fi
+
+    test "${validation_ret_code}" -eq 0 || return "${validation_ret_code}"
 
     echo "---------------------------------------------"
 }
