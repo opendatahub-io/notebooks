@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   instant-merge:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: insta-merge
         if: ${{ github.event.sender.login == 'red-hat-konflux[bot]' && ( contains(github.event.pull_request.title, 'Update odh-workbench-jupyter-') || contains(github.event.pull_request.title, 'Update odh-workbench-codeserver-') || contains(github.event.pull_request.title, 'Update odh-pipeline-runtime-') ) }}

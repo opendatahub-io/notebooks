@@ -14,7 +14,7 @@ permissions:
 jobs:
   add-label:
     if: contains(github.event.pull_request.labels.*.name, 'konflux-nudge') == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
 
       # SECURITY: never clone untrusted code in pull_request_target workflows

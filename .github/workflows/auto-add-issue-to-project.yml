@@ -7,7 +7,7 @@ on:  # yamllint disable-line rule:truthy
 jobs:
   add-to-project:
     name: Add issue to projects
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Generate github-app token
         id: app-token

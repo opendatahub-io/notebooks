@@ -67,7 +67,7 @@ jobs:
   # 2. Check if the Manifest PR is merged
   Manifests_merged:
     needs: Update_manifests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       pr_merged_m: ${{ steps.check_pr.outputs.pr_merged }}
     steps:
@@ -100,7 +100,7 @@ jobs:
   BuildConfigs_merged:
     needs: Update_buildConfigs
     if: ${{ inputs.update_buildconfigs && github.event.inputs.release_type == 'Release' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       pr_merged_b: ${{ steps.check_pr.outputs.pr_merged }}
     steps:

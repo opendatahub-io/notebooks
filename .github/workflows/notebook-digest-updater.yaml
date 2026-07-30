@@ -17,7 +17,7 @@ env:
   RELEASE_VERSION_N_1: 2024a
 jobs:
   initialize:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     steps:
@@ -42,7 +42,7 @@ jobs:
 
   update-n-version:
     needs: [initialize]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     steps:
@@ -137,7 +137,7 @@ jobs:
 
   update-n-1-version:
     needs: [initialize, update-n-version]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     steps:
@@ -228,7 +228,7 @@ jobs:
 
   open-pull-request:
     needs: [update-n-version, update-n-1-version]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       pull-requests: write
     steps:

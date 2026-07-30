@@ -29,7 +29,7 @@ env:
 jobs:
   gen:
     name: Generate job matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # rhds/notebooks builds from AIPCC bases and requires pull_request_target trigger
     if: ${{ github.repository == 'red-hat-data-services/notebooks' }}
     outputs:

@@ -42,7 +42,7 @@ on:  # yamllint disable-line rule:truthy
 
 jobs:
   refresh-pipfile-locks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     concurrency:
       group: refresh-pipfile-locks-${{ matrix.python-version }}-${{ github.ref }}
       cancel-in-progress: false
