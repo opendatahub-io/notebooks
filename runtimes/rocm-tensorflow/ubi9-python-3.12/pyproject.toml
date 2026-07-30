@@ -23,7 +23,7 @@ dependencies = [
     "skl2onnx~=1.19.1",
     # skl2onnx; onnxconverter-common~=1.16 required for ONNX 1.21+ (onnx.mapping removal)
     "onnxconverter-common~=1.16.0",
-    "onnx>=1.21.0; platform_machine != 's390x'",  # CVE-2026-28500
+    "onnx>=1.22.0; platform_machine != 's390x'",  # CVE-2026-28500
     "codeflare-sdk~=0.31.2",
     "feast>=0.63.0",
 
@@ -43,7 +43,7 @@ dependencies = [
     "markupsafe~=3.0.2",
     "minio~=7.2.16",
     "nbclient~=0.10.2",
-    "nbconvert~=7.16.6",
+    "nbconvert>=7.17.1",
     "nbformat~=5.10.4",
     "papermill~=2.6.0",
     "pyzmq~=27.1.0",

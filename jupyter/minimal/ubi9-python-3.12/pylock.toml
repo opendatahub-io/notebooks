@@ -342,10 +342,10 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/a0/61/5c78b91c3143ed5
 
 [[packages]]
 name = "gitpython"
-version = "3.1.50"
+version = "3.1.57"
 marker = "(python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'ppc64le' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux')"
-sdist = { url = "https://files.pythonhosted.org/packages/33/f6/354ae6491228b5eb40e10d89c4d13c651fe1cf7556e35ebdded50cff57ce/gitpython-3.1.50.tar.gz", upload-time = 2026-05-06T04:01:26Z, size = 219798, hashes = { sha256 = "80da2d12504d52e1f998772dc5baf6e553f8d2fcfe1fcc226c9d9a2ee3372dcc" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/20/7a/1c6e3562dfd8950adbb11ffbc65d21e7c89d01a6e4f137fa981056de25c5/gitpython-3.1.50-py3-none-any.whl", upload-time = 2026-05-06T04:01:23Z, size = 212507, hashes = { sha256 = "d352abe2908d07355014abdd21ddf798c2a961469239afec4962e9da884858f9" } }]
+sdist = { url = "https://files.pythonhosted.org/packages/ba/0d/132ed135c871b6bf91adf16a0e43797cd535b81d4973b5d09291c54fc5ee/gitpython-3.1.57.tar.gz", upload-time = 2026-07-26T07:33:26Z, size = 225898, hashes = { sha256 = "c493ec57c0ef6b19743798b6a5af859c71814b524e7e6f97baa2f8e658961488" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/41/6e/2139de986d9c7c3ac86f1f8be43858ce90bdfe2f7175e6c80c650ba15242/gitpython-3.1.57-py3-none-any.whl", upload-time = 2026-07-26T07:33:24Z, size = 217151, hashes = { sha256 = "4ccf7d73c10f5c9e76043fbb2675ac5a1b3ff5b41e648f56bcbed5f63792ecaf" } }]
 
 [[packages]]
 name = "h11"
@@ -510,10 +510,17 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/63/1f/e39b248c76bb373
 
 [[packages]]
 name = "jupyterlab-git"
-version = "0.51.4"
+version = "0.54.0"
 marker = "(python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'ppc64le' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux')"
-sdist = { url = "https://files.pythonhosted.org/packages/37/40/00b0e9f414463f90828b8a30f7a968c73fd50a963b62dac67afe97f96da0/jupyterlab_git-0.51.4.tar.gz", upload-time = 2026-01-05T08:10:21Z, size = 14474620, hashes = { sha256 = "fc5a9d53a7034da12df8e33f1f40864e5fcbf001eeb78948de30fea47579bfcc" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/73/17/aa650652295046a572c28658da2f828233ffa78db92b6b107d9efcc65cde/jupyterlab_git-0.51.4-py3-none-any.whl", upload-time = 2026-01-05T08:10:18Z, size = 369099, hashes = { sha256 = "b49ce4a69ec22a9a265c447ff08442ee0efc533d9f109eb76b5d735f33f4e510" } }]
+sdist = { url = "https://files.pythonhosted.org/packages/c9/fd/7f674383567128ebbda0b91750cb49df082cd14cf0e099ab007f5daea67b/jupyterlab_git-0.54.0.tar.gz", upload-time = 2026-06-17T07:26:59Z, size = 20158, hashes = { sha256 = "4d0b46d3d17376a5c610633a2191868f577f46341e112dc9dece1f501cd46b65" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/f6/81/58a8bc9528bc3355b5e2e630fb7e238cad65e2e2391eac8c308d9a9e8679/jupyterlab_git-0.54.0-py3-none-any.whl", upload-time = 2026-06-17T07:26:57Z, size = 11397, hashes = { sha256 = "b33f96aef13d814a6c023d74d843f0d7d2e9d1fd8a283bc91f69921a68936d7d" } }]
+
+[[packages]]
+name = "jupyterlab-git-core"
+version = "0.54.0"
+marker = "(python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'ppc64le' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform == 'linux') or (python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux')"
+sdist = { url = "https://files.pythonhosted.org/packages/84/76/53411bedeeba5d339fb197384a9a3f9ddd9de2adef76df97aeca0da2ed78/jupyterlab_git_core-0.54.0.tar.gz", upload-time = 2026-06-17T07:27:03Z, size = 315241, hashes = { sha256 = "5ce935fc0ac42d908f57def7e74df506c3a8049e1365d158721bd5ec2076fe87" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/3f/fd/70246be863a774d48146877541055ddd495cfadfa0bad76b0c8b33f3dcbf/jupyterlab_git_core-0.54.0-py3-none-any.whl", upload-time = 2026-06-17T07:27:01Z, size = 613258, hashes = { sha256 = "a163c7b3748292a7e83f514ae9cd838aa4c538ceb6224530626b56771a55053e" } }]
 
 [[packages]]
 name = "jupyterlab-pygments"

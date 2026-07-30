@@ -31,7 +31,7 @@ dependencies = [
     "scikit-learn~=1.7.2",
     "scipy~=1.16.1",
     "skl2onnx~=1.19.1; platform_machine != 's390x'",
-    "onnx>=1.21.0; platform_machine != 's390x'",
+    "onnx>=1.22.0; platform_machine != 's390x'",  # CVE-2026-44512/63632
     "kubeflow-training==1.9.3",
     "feast>=0.63.0",
 
