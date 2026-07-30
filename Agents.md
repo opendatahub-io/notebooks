@@ -163,6 +163,13 @@ Key CI files:
 - `.github/workflows/` - GitHub Actions workflows
 - `ci/` - Custom CI scripts and configurations
 
+**CI failure triage:** For recurring Build Notebooks / hermetic failures on
+`rhoai-2.25` (especially `dnf` NEVR conflicts that mean Hermeto RPM pins are
+stale), see [docs/ci-failure-triage.md](docs/ci-failure-triage.md). Relock RPMs
+with the **RPM Lock Files Renewal Action**
+(`.github/workflows/rpms-lock-renewal.yaml`) — keep that separate from pylock
+updates.
+
 ### Deployment
 
 1. **Local Development**:
@@ -184,6 +191,9 @@ make undeploy9-${NOTEBOOK_NAME} # Cleanup
 1. **Build Failures**:
    - Verify dependency versions
    - Review Dockerfile syntax
+   - Hermetic `dnf` conflicts (`cannot install both … from @System`) usually mean
+     stale `rpms.lock.yaml` vs a newer floating base image — see
+     [docs/ci-failure-triage.md](docs/ci-failure-triage.md)
 
 2. **Test Failures**:
    - Ensure container runtime is running
@@ -197,7 +207,8 @@ make undeploy9-${NOTEBOOK_NAME} # Cleanup
 
 ### Getting Help
 
-1. **Documentation**: Check `docs/` directory for detailed guides
+1. **Documentation**: Check `docs/` directory for detailed guides (including
+   [docs/ci-failure-triage.md](docs/ci-failure-triage.md) for CI)
 2. **Issues**: Report issues on GitHub with detailed reproduction steps
 3. **Community**: Engage with OpenDataHub community for support
 
