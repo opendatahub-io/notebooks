@@ -49,7 +49,7 @@ def _pretty_value_repr(value: object) -> str:
     All other values use the default repr().
     """
     if isinstance(value, (dict, list)):
-        return _highlight_json(json.dumps(value, indent=2))
+        return _highlight_json(json.dumps(value, indent=2, default=str))
     return repr(value)
 
 
