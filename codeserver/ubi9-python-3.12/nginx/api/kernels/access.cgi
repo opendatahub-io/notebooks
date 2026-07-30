@@ -19,7 +19,7 @@ echo
 # A bare /codeserver/healthz curl fails when NB_PREFIX is set because nginx only
 # routes prefixed /codeserver/* to code-server. -L follows the probe redirect chain.
 NB_PREFIX="${NB_PREFIX:-}"
-HEALTHZ=$(curl -sL "http://localhost:8888${NB_PREFIX}/api")
+HEALTHZ=$(curl -sLf --max-time 5 "http://localhost:8888${NB_PREFIX}/api")
 # Example HEALTHZ JSON: {"status":"alive","lastHeartbeat":1742345025123}
 
 # --- Derive last_activity (RFC3339 / ISO 8601) ---
@@ -37,6 +37,9 @@ fi
 # --- Map code-server status to Jupyter execution_state ---
 # code-server uses alive/expired; the culler expects busy/idle (Jupyter kernel terms).
 STATUS=$(sed 's/alive/busy/;s/expired/idle/' <<< "$(echo "$HEALTHZ" | grep -Po 'status":"\K.*?(?=")')")
+
+# Default to busy (safe: prevents premature culling when state is unknown)
+[ -z "$STATUS" ] || { [ "$STATUS" != "busy" ] && [ "$STATUS" != "idle" ]; } && STATUS="busy"
 
 # --- Emit synthetic kernel list (always one entry for the IDE session) ---
 echo '[{"id":"code-server","name":"code-server","last_activity":"'"$LAST_ACTIVITY"'","execution_state":"'"$STATUS"'","connections":1}]'
