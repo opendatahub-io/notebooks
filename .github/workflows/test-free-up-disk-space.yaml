@@ -1,0 +1,79 @@
+---
+name: Test Free Up Disk Space Action
+
+"on":
+  push:
+    branches: [main, stable, 'rhoai-*']
+    paths: &free-up-disk-space-paths
+      - '.github/actions/free-up-disk-space/**'
+      - '.github/workflows/test-free-up-disk-space.yaml'
+  pull_request:
+    paths: *free-up-disk-space-paths
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test-free-up:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Record free space before cleanup
+        id: before
+        run: |
+          set -Eeuxo pipefail
+          # Avail on / in 1K-blocks (df default)
+          avail_kb="$(df -Pk / | awk 'NR==2 {print $4}')"
+          echo "avail_kb=${avail_kb}" >> "${GITHUB_OUTPUT}"
+          df -h /
+          echo "Free before: ${avail_kb} KiB"
+
+      - name: Free up disk space
+        uses: ./.github/actions/free-up-disk-space
+
+      - name: Assert cleanup reclaimed space and removed known paths
+        env:
+          BEFORE_KB: ${{ steps.before.outputs.avail_kb }}
+        run: |
+          set -Eeuxo pipefail
+
+          after_kb="$(df -Pk / | awk 'NR==2 {print $4}')"
+          df -h /
+          echo "Free before: ${BEFORE_KB} KiB"
+          echo "Free after:  ${after_kb} KiB"
+
+          gained_kb="$((after_kb - BEFORE_KB))"
+          echo "Gained: ${gained_kb} KiB"
+
+          # Expect at least ~5 GiB reclaimed on a stock ubuntu-26.04 runner
+          # (android/dotnet/CodeQL alone are usually well above this).
+          min_gain_kb=$((5 * 1024 * 1024))
+          if (( gained_kb < min_gain_kb )); then
+            echo "::error::Expected at least 5 GiB freed, got $((gained_kb / 1024 / 1024)) GiB"
+            exit 1
+          fi
+
+          # Paths the action deletes; tolerate already-missing.
+          for path in \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL
+          do
+            if [[ -e "${path}" ]]; then
+              echo "::error::Expected ${path} to be removed by free-up-disk-space"
+              exit 1
+            fi
+            echo "OK: ${path} absent"
+          done
+
+          echo "Free-up disk space self-test OK"

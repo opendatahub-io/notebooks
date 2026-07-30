@@ -29,7 +29,7 @@ env:
 jobs:
   gen:
     name: Generate job matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       has_jobs: ${{ steps.gen.outputs.has_jobs }}

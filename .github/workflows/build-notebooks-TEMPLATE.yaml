@@ -173,22 +173,21 @@ jobs:
       - name: Prepare build environment
         run: |
           set -Eeuxo pipefail
-          # Match downstream/main: store rootful graphs under /mnt (larger than /).
+
+          # opendatahub-io/notebooks#3965; the only promise GitHub gives us
+          #  is >=15GiB disk space on /. In practice, we can either get a single
+          #  volume machine or a two volume machine (with extra volume mounted
+          #  under /mnt. Either case, /mnt should be large enough to fit our images.
           sudo mkdir -p /mnt/containers/storage
           sudo chown -R "${USER}:${USER}" /mnt/containers/storage
 
-      # codeserver npm ci can exhaust 16GB GHA runners during parallel postinstall.
-      - name: Add swap for codeserver GHA builds
-        if: ${{ contains(inputs.target, 'codeserver') }}
-        run: |
-          set -Eeuxo pipefail
-          sudo swapoff -a || true
-          sudo rm -f /swapfile /mnt/swapfile
-          sudo fallocate -l 16G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-          free -h
+      # RHDS AIPCC ROCm pytorch builds ENOSPC near end of uv pip layer commit on
+      # single-volume ubuntu-26.04 runners (~145GiB). Other ROCm targets fit;
+      # only reclaim runner preinstalls for the two known failures (RHAIENG-6586).
+      - name: Free up disk space
+        uses: ./.github/actions/free-up-disk-space
+        if: ${{ inputs.target == 'rocm-jupyter-pytorch-ubi9-python-3.12' ||
+          inputs.target == 'rocm-runtime-pytorch-ubi9-python-3.12' }}
 
       # endregion
 
@@ -389,6 +388,8 @@ jobs:
       - name: "Build: make ${{ inputs.target }}"
         id: make-target
         run: |
+          # Print disk and memory stats every 30s so OOM/disk-full failures
+          # leave a breadcrumb trail in the logs.
           uv run scripts/monitor_resources.py &
           uv run make ${{ inputs.target }}
         env:
@@ -408,6 +409,7 @@ jobs:
       # long builds and check-payload image mounts — run Playwright first.
       # https://playwright.dev/docs/ci
       # https://playwright.dev/docs/docker
+      # opendatahub-io/notebooks#3965: podman storage is configured to have sufficient disk space
       - name: Run Playwright tests
         if: ${{ !cancelled() && contains(inputs.target, 'codeserver') && steps.make-target.outcome == 'success' }}
         uses: ./.github/actions/playwright-test
