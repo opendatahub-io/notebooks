@@ -54,7 +54,7 @@ dev = [
 ]
 
 [tool.uv]
-required-version = ">=0.10,<0.12"
+required-version = ">=0.11.8,<0.13"
 # Supply-chain hardening: only resolve package versions published ≥3 days ago.
 # See https://docs.astral.sh/uv/concepts/resolution/#time-restricted-reproducible-resolutions
 exclude-newer = "3 days"
@@ -93,7 +93,7 @@ members = ["base-images/copr", "ci/agentic-reviewer"]
 
 # https://github.com/astral-sh/uv/issues/3957#issuecomment-2659350181
 [build-system]
-requires = ["uv-build>=0.11.8,<0.12"]
+requires = ["uv-build>=0.11.8,<0.13"]
 build-backend = "uv_build"
 
 # https://docs.astral.sh/uv/concepts/build-backend/#modules
