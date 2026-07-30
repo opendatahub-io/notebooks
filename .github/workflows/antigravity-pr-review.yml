@@ -34,7 +34,8 @@ concurrency:
 
 jobs:
   review:
-    runs-on: 'ubuntu-latest'
+    # ubuntu-latest is ubuntu-24.04; stock podman/crun flakes in prepare-review-context (opendatahub-io/notebooks#4211).
+    runs-on: 'ubuntu-26.04'
     timeout-minutes: 10
     permissions:
       contents: 'read'
@@ -72,6 +73,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 'Install Podman'
+        uses: './.github/actions/install-podman-action'
+        with:
+          platform: 'linux/amd64'
 
       - name: 'Validate pull request number'
         id: 'validate_pr'

@@ -18,7 +18,8 @@ jobs:
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_repository.full_name == github.repository
-    runs-on: 'ubuntu-latest'
+    # ubuntu-latest is ubuntu-24.04; stock podman/crun flakes in prepare-review-context (opendatahub-io/notebooks#4211).
+    runs-on: 'ubuntu-26.04'
     timeout-minutes: 12
     permissions:
       actions: 'read'
@@ -58,6 +59,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 'Install Podman'
+        uses: './.github/actions/install-podman-action'
+        with:
+          platform: 'linux/amd64'
 
       - name: 'Prepare review context'
         if: |-
