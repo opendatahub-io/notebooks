@@ -53,6 +53,14 @@ def read_github_token() -> str:
 def authenticated_user_login() -> str:
     """Return the login for the token in GITHUB_TOKEN (workflow or GitHub App bot)."""
 
+    explicit_login = os.environ.get("REVIEW_AUTHOR_LOGIN", "").strip()
+    if explicit_login:
+        return explicit_login
+
+    app_slug = os.environ.get("GITHUB_APP_SLUG", "").strip()
+    if app_slug:
+        return f"{app_slug}[bot]"
+
     user = gh_api_json("user")
     if not isinstance(user, dict):
         raise SystemExit("Expected GitHub user response to include login")
