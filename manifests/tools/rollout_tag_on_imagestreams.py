@@ -40,6 +40,7 @@ ROOT_DIR = SCRIPT_DIR.parents[1]
 _RECOMMENDED_KEY = "opendatahub.io/workbench-image-recommended"
 _OUTDATED_KEY = "opendatahub.io/image-tag-outdated"
 _COMMIT_KEY = "opendatahub.io/notebook-build-commit"
+_DEFAULT_IMAGE_KEY = "opendatahub.io/default-image"
 _PLACEHOLDER_RE = re.compile(r"^(?P<prefix>.+?)(?P<suffix>-(?:n|\d+(?:-\d+)*))_PLACEHOLDER$")
 _VERSIONED_KEY_RE = re.compile(r"^(?P<base>.+?)(?P<suffix>-(?:n|\d+(?:-\d+)*))$")
 _ODH_RELEASE_FAMILY_RE = re.compile(r"^(?P<major>\d+)\.(?P<minor>\d+)$")
@@ -698,6 +699,16 @@ def normalize_rollout_state(tag: dict[str, Any], index: int) -> None:
     annotations[_OUTDATED_KEY] = SingleQuotedScalarString("true")
 
 
+def normalize_default_image_annotation(tags: Any, path: Path) -> None:
+    is_minimal_default_imagestream = path.name == "jupyter-minimal-notebook-imagestream.yaml"
+    for index, tag in enumerate(tags):
+        annotations = tag.setdefault("annotations", {})
+        if is_minimal_default_imagestream and index == 0:
+            annotations[_DEFAULT_IMAGE_KEY] = DoubleQuotedScalarString("true")
+            continue
+        annotations.pop(_DEFAULT_IMAGE_KEY, None)
+
+
 def rollout_tag_sequence(tags: Any, target_tag_name: str, *, keep_history: bool) -> bool:
     if not tags:
         return False
@@ -749,6 +760,8 @@ def rollout_imagestream_file(path: Path, target_tag_name: str, *, keep_history: 
         raise ValueError(f"ImageStream has no spec.tags: {path}")
 
     changed = rollout_tag_sequence(tags, target_tag_name, keep_history=keep_history)
+    if changed:
+        normalize_default_image_annotation(tags, path)
     if changed and not dry_run:
         output = io.StringIO()
         if len(docs) > 1:
