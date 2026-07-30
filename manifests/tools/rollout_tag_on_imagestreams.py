@@ -699,14 +699,20 @@ def normalize_rollout_state(tag: dict[str, Any], index: int) -> None:
     annotations[_OUTDATED_KEY] = SingleQuotedScalarString("true")
 
 
-def normalize_default_image_annotation(tags: Any, path: Path) -> None:
+def normalize_default_image_annotation(tags: Any, path: Path) -> bool:
+    changed = False
     is_minimal_default_imagestream = path.name == "jupyter-minimal-notebook-imagestream.yaml"
     for index, tag in enumerate(tags):
         annotations = tag.setdefault("annotations", {})
         if is_minimal_default_imagestream and index == 0:
-            annotations[_DEFAULT_IMAGE_KEY] = DoubleQuotedScalarString("true")
+            if annotations.get(_DEFAULT_IMAGE_KEY) != "true":
+                annotations[_DEFAULT_IMAGE_KEY] = DoubleQuotedScalarString("true")
+                changed = True
             continue
-        annotations.pop(_DEFAULT_IMAGE_KEY, None)
+        if _DEFAULT_IMAGE_KEY in annotations:
+            annotations.pop(_DEFAULT_IMAGE_KEY, None)
+            changed = True
+    return changed
 
 
 def rollout_tag_sequence(tags: Any, target_tag_name: str, *, keep_history: bool) -> bool:
@@ -760,8 +766,7 @@ def rollout_imagestream_file(path: Path, target_tag_name: str, *, keep_history: 
         raise ValueError(f"ImageStream has no spec.tags: {path}")
 
     changed = rollout_tag_sequence(tags, target_tag_name, keep_history=keep_history)
-    if changed:
-        normalize_default_image_annotation(tags, path)
+    changed |= normalize_default_image_annotation(tags, path)
     if changed and not dry_run:
         output = io.StringIO()
         if len(docs) > 1:
