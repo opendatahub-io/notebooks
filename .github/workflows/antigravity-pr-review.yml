@@ -34,7 +34,8 @@ concurrency:
 
 jobs:
   review:
-    runs-on: 'ubuntu-latest'
+    # ubuntu-latest is ubuntu-24.04; stock podman/crun flakes in prepare-review-context (opendatahub-io/notebooks#4211).
+    runs-on: 'ubuntu-26.04'
     timeout-minutes: 10
     permissions:
       contents: 'read'
@@ -72,6 +73,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 'Install Podman'
+        uses: './.github/actions/install-podman-action'
+        with:
+          platform: 'linux/amd64'
 
       - name: 'Validate pull request number'
         id: 'validate_pr'
@@ -135,10 +141,12 @@ jobs:
 
       - name: 'Upsert review summary comment'
         env:
+          GITHUB_APP_SLUG: ${{ steps.mint_identity_token.outputs.app-slug }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_TOKEN: ${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}
           PULL_REQUEST_NUMBER: ${{ steps.validate_pr.outputs.pull_request_number }}
+          REVIEW_AUTHOR_LOGIN: ${{ steps.mint_identity_token.outputs.app-slug != '' && format('{0}[bot]', steps.mint_identity_token.outputs.app-slug) || 'github-actions[bot]' }}
           REVIEW_BODY_PATH: 'review-summary-body.md'
           WORKFLOW_RUN_URL: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
         run: 'uv run --package odh-ci-agent odh-ci-upsert-review-comment'

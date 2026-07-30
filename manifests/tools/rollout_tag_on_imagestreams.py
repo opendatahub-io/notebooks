@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import copy
 import importlib
+import io
 import re
 import sys
 import urllib.error
@@ -39,6 +40,7 @@ ROOT_DIR = SCRIPT_DIR.parents[1]
 _RECOMMENDED_KEY = "opendatahub.io/workbench-image-recommended"
 _OUTDATED_KEY = "opendatahub.io/image-tag-outdated"
 _COMMIT_KEY = "opendatahub.io/notebook-build-commit"
+_DEFAULT_IMAGE_KEY = "opendatahub.io/default-image"
 _PLACEHOLDER_RE = re.compile(r"^(?P<prefix>.+?)(?P<suffix>-(?:n|\d+(?:-\d+)*))_PLACEHOLDER$")
 _VERSIONED_KEY_RE = re.compile(r"^(?P<base>.+?)(?P<suffix>-(?:n|\d+(?:-\d+)*))$")
 _ODH_RELEASE_FAMILY_RE = re.compile(r"^(?P<major>\d+)\.(?P<minor>\d+)$")
@@ -46,6 +48,7 @@ _ODH_GA_BUILD_TAG_RE = re.compile(r"^(?P<major>\d+)\.(?P<minor>\d+)-v\d+\.(?P<bu
 _RHOAI_WORKBENCH_BASE_KEY_RE = re.compile(
     r"^odh-workbench-(?P<middle>.+)-py(?P<pyver>\d+)-(?P<platform>ubi9|c9s)$"
 )
+_ROLLOUT_TRAILING_COMMENT_RE = re.compile(r"^\s*# N - 1 Version of the image\s*$")
 _RHOAI_BUILD_CONFIG_REPO = "red-hat-data-services/RHOAI-Build-Config"
 _RHOAI_BUILD_CONFIG_CSV_PATH = "bundle/manifests/rhods-operator.clusterserviceversion.yaml"
 _SKOPEO_INSPECT = importlib.import_module("manifests.tools.skopeo_inspect")
@@ -696,6 +699,22 @@ def normalize_rollout_state(tag: dict[str, Any], index: int) -> None:
     annotations[_OUTDATED_KEY] = SingleQuotedScalarString("true")
 
 
+def normalize_default_image_annotation(tags: Any, path: Path) -> bool:
+    changed = False
+    is_minimal_default_imagestream = path.name == "jupyter-minimal-notebook-imagestream.yaml"
+    for index, tag in enumerate(tags):
+        annotations = tag.setdefault("annotations", {})
+        if is_minimal_default_imagestream and index == 0:
+            if annotations.get(_DEFAULT_IMAGE_KEY) != "true":
+                annotations[_DEFAULT_IMAGE_KEY] = DoubleQuotedScalarString("true")
+                changed = True
+            continue
+        if _DEFAULT_IMAGE_KEY in annotations:
+            annotations.pop(_DEFAULT_IMAGE_KEY, None)
+            changed = True
+    return changed
+
+
 def rollout_tag_sequence(tags: Any, target_tag_name: str, *, keep_history: bool) -> bool:
     if not tags:
         return False
@@ -720,6 +739,21 @@ def rollout_tag_sequence(tags: Any, target_tag_name: str, *, keep_history: bool)
     return True
 
 
+def cleanup_trailing_rollout_comment(yaml_text: str) -> str:
+    lines = yaml_text.splitlines(keepends=True)
+    if not lines:
+        return yaml_text
+
+    # ruamel can keep the removed third-tag marker as a dangling EOF comment.
+    # Remove only trailing comment-only lines that match this rollout marker.
+    index = len(lines) - 1
+    while index >= 0 and lines[index].strip() == "":
+        index -= 1
+    if index >= 0 and _ROLLOUT_TRAILING_COMMENT_RE.fullmatch(lines[index].rstrip("\n")):
+        del lines[index]
+    return "".join(lines)
+
+
 def rollout_imagestream_file(path: Path, target_tag_name: str, *, keep_history: bool, dry_run: bool, yml: YAML) -> bool:
     with path.open("r", encoding="utf-8") as handle:
         docs = list(yml.load_all(handle))
@@ -732,12 +766,14 @@ def rollout_imagestream_file(path: Path, target_tag_name: str, *, keep_history: 
         raise ValueError(f"ImageStream has no spec.tags: {path}")
 
     changed = rollout_tag_sequence(tags, target_tag_name, keep_history=keep_history)
+    changed |= normalize_default_image_annotation(tags, path)
     if changed and not dry_run:
-        with path.open("w", encoding="utf-8") as handle:
-            if len(docs) > 1:
-                yml.dump_all(docs, handle)
-            else:
-                yml.dump(document, handle)
+        output = io.StringIO()
+        if len(docs) > 1:
+            yml.dump_all(docs, output)
+        else:
+            yml.dump(document, output)
+        path.write_text(cleanup_trailing_rollout_comment(output.getvalue()), encoding="utf-8")
     return changed
 
 
