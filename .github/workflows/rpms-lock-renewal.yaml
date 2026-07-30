@@ -35,7 +35,10 @@ on:  # yamllint disable-line rule:truthy
 jobs:
   refresh-rpm-lock-files:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    # Match build-notebooks-TEMPLATE / install-podman-action (Podman 5.7+).
+    # ubuntu-latest is still 24.04 and fails the AppArmor pasta peer reload
+    # (apparmor_parser exits 2 when /etc/apparmor.d/usr.bin.pasta is absent).
+    runs-on: ubuntu-26.04
     concurrency:
       group: refresh-rpm-lock-files-${{ github.ref }}
       cancel-in-progress: false
