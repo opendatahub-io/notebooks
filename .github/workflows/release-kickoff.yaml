@@ -155,6 +155,7 @@ jobs:
 
           import os
           import re
+          from collections.abc import Mapping, Sequence
           from io import StringIO
           from pathlib import Path
           from typing import Any
@@ -198,7 +199,7 @@ jobs:
               node: Any = doc
               parts = dotted_key.split(".")
               for part in parts[:-1]:
-                  if part not in node or not isinstance(node[part], dict):
+                  if part not in node or not isinstance(node[part], Mapping):
                       raise KeyError(
                           f"Path '{dotted_key}' is invalid at '{part}'. Only existing keys are allowed."
                       )
@@ -206,7 +207,12 @@ jobs:
               leaf = parts[-1]
               if leaf not in node:
                   raise KeyError(f"Path '{dotted_key}' does not exist in versions_config.yml.")
-              node[leaf] = preserve_scalar_style(node[leaf], parse_scalar_value(raw_value))
+              old_value = node[leaf]
+              if isinstance(old_value, Mapping) or (
+                  isinstance(old_value, Sequence) and not isinstance(old_value, str)
+              ):
+                  raise ValueError(f"Path '{dotted_key}' must target a scalar value.")
+              node[leaf] = preserve_scalar_style(old_value, parse_scalar_value(raw_value))
 
           def apply_overrides(content: str, overrides: dict[str, str]) -> str:
               if not overrides:
