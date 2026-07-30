@@ -181,6 +181,14 @@ jobs:
           sudo mkdir -p /mnt/containers/storage
           sudo chown -R "${USER}:${USER}" /mnt/containers/storage
 
+      # RHDS AIPCC ROCm pytorch builds ENOSPC near end of uv pip layer commit on
+      # single-volume ubuntu-26.04 runners (~145GiB). Other ROCm targets fit;
+      # only reclaim runner preinstalls for the two known failures (RHAIENG-6586).
+      - name: Free up disk space
+        uses: ./.github/actions/free-up-disk-space
+        if: ${{ inputs.target == 'rocm-jupyter-pytorch-ubi9-python-3.12' ||
+          inputs.target == 'rocm-runtime-pytorch-ubi9-python-3.12' }}
+
       # endregion
 
       # region Podman setup
