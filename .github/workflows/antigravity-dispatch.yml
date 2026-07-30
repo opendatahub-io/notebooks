@@ -111,6 +111,7 @@ jobs:
     permissions:
       contents: 'read'
       issues: 'write'
+      packages: 'read'
       pull-requests: 'write'
     with:
       additional_context: '${{ needs.dispatch.outputs.additional_context }}'
