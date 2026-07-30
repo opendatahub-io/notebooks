@@ -82,10 +82,8 @@ separate.
 
 | Symptom | Likely cause | Direction |
 | --- | --- | --- |
-| `ModuleNotFoundError: ci.logging_config` | Incomplete GHA infra backport | Backport `ci/logging_config.py` (or stop importing it) |
 | Podman `runroot must be set` | Incomplete `storage.conf` in CI | Set explicit `runroot` in `ci/cached-builds/storage.conf` |
 | Kind / papermill timeouts on qemu arches | Slow startup under emulation | Probe / wait timeouts (image or test harness) |
-| ROCm `ENOSPC` under `/var/tmp` | Large layers + tmp on small root FS | Point Podman tmp/copy dirs at large disk |
 
 When unsure, treat hermetic `dnf` NEVR conflicts as **relock RPMs first**, then
 re-evaluate.
