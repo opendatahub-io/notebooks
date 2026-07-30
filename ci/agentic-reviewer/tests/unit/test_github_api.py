@@ -97,6 +97,25 @@ def test_authenticated_user_login_falls_back_when_user_endpoint_forbidden(monkey
         github_api.authenticated_user_login.cache_clear()
 
 
+def test_authenticated_user_login_reraises_non_forbidden_api_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    github_api.authenticated_user_login.cache_clear()
+    monkeypatch.delenv("REVIEW_AUTHOR_LOGIN", raising=False)
+    monkeypatch.delenv("GITHUB_APP_SLUG", raising=False)
+    server_error = github_api.GitHubCommandError(
+        ("gh", "api", "user"),
+        1,
+        '{"message":"Internal Server Error","status":"500"}',
+        "gh: Internal Server Error (HTTP 500)\n",
+    )
+    try:
+        with patch("odh_ci_agent.github_api.gh_api_json", side_effect=server_error):
+            with pytest.raises(github_api.GitHubCommandError) as exc_info:
+                github_api.authenticated_user_login()
+            assert exc_info.value is server_error
+    finally:
+        github_api.authenticated_user_login.cache_clear()
+
+
 def test_authenticated_user_login_prefers_explicit_override(monkeypatch: pytest.MonkeyPatch) -> None:
     github_api.authenticated_user_login.cache_clear()
     monkeypatch.setenv("REVIEW_AUTHOR_LOGIN", "custom-bot[bot]")
