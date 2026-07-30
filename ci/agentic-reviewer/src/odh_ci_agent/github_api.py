@@ -50,7 +50,9 @@ def read_github_token() -> str:
 
 
 def _is_user_endpoint_forbidden(exc: GitHubCommandError) -> bool:
-    return "Resource not accessible by integration" in exc.stdout or "Resource not accessible by integration" in exc.stderr
+    return (
+        "Resource not accessible by integration" in exc.stdout or "Resource not accessible by integration" in exc.stderr
+    )
 
 
 def _login_from_user_api() -> str:
