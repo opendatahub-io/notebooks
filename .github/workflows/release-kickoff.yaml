@@ -154,76 +154,107 @@ jobs:
           from __future__ import annotations
 
           import os
+          import re
+          from io import StringIO
           from pathlib import Path
+          from typing import Any
 
-          import yaml
+          from ruamel.yaml import YAML
+          from ruamel.yaml.scalarstring import DoubleQuotedScalarString, SingleQuotedScalarString
 
+          _DOCUMENT_START_RE = re.compile(r"(?s)(.*?^---\n)(.*)", re.MULTILINE)
+
+          def parse_scalar_value(raw: str) -> Any:
+              lowered = raw.lower()
+              if lowered == "true":
+                  return True
+              if lowered == "false":
+                  return False
+              if raw.isdigit() or (raw.startswith("-") and raw[1:].isdigit()):
+                  return int(raw)
+              return raw
+
+          def preserve_scalar_style(old_value: Any, new_value: Any) -> Any:
+              if isinstance(old_value, DoubleQuotedScalarString):
+                  return DoubleQuotedScalarString(str(new_value))
+              if isinstance(old_value, SingleQuotedScalarString):
+                  return SingleQuotedScalarString(str(new_value))
+              return new_value
+
+          def build_yaml() -> YAML:
+              yml = YAML()
+              yml.preserve_quotes = True
+              yml.width = 1024 * 1024
+              yml.indent(mapping=2, sequence=4, offset=2)
+              return yml
+
+          def split_document(content: str) -> tuple[str, str]:
+              match = _DOCUMENT_START_RE.match(content)
+              if match is None:
+                  raise ValueError("Expected --- document start in versions_config.yml")
+              return match.group(1), match.group(2)
+
+          def set_nested_scalar(doc: dict[str, Any], dotted_key: str, raw_value: str) -> None:
+              node: Any = doc
+              parts = dotted_key.split(".")
+              for part in parts[:-1]:
+                  if part not in node or not isinstance(node[part], dict):
+                      raise KeyError(
+                          f"Path '{dotted_key}' is invalid at '{part}'. Only existing keys are allowed."
+                      )
+                  node = node[part]
+              leaf = parts[-1]
+              if leaf not in node:
+                  raise KeyError(f"Path '{dotted_key}' does not exist in versions_config.yml.")
+              node[leaf] = preserve_scalar_style(node[leaf], parse_scalar_value(raw_value))
+
+          def apply_overrides(content: str, overrides: dict[str, str]) -> str:
+              if not overrides:
+                  return content
+
+              header, body = split_document(content)
+              yml = build_yaml()
+              doc = yml.load(body)
+              if not isinstance(doc, dict):
+                  raise ValueError("versions_config.yml body must be a mapping.")
+
+              for dotted_key, raw_value in overrides.items():
+                  set_nested_scalar(doc, dotted_key, raw_value)
+
+              buf = StringIO()
+              yml.dump(doc, buf)
+              return header + buf.getvalue()
+
+          def parse_override_lines(raw_pairs: str) -> dict[str, str]:
+              overrides: dict[str, str] = {}
+              for raw_line in raw_pairs.splitlines():
+                  line = raw_line.strip()
+                  if not line or line.startswith("#"):
+                      continue
+                  if "=" not in line:
+                      raise ValueError(f"Invalid override line {line!r}. Expected dot.path=value.")
+                  key, value = line.split("=", 1)
+                  key = key.strip()
+                  if not key:
+                      raise ValueError(f"Invalid override line {line!r}: empty key.")
+                  overrides[key] = value.strip()
+              return overrides
 
           direct_overrides = {
               "release.full_version": os.environ.get("RELEASE_FULL_VERSION", "").strip(),
               "release.rhds_os_base": os.environ.get("RELEASE_RHDS_OS_BASE", "").strip(),
               "release.python_version": os.environ.get("RELEASE_PYTHON_VERSION", "").strip(),
           }
-
-          raw_pairs = os.environ.get("VERSIONS_OVERRIDES", "")
-          dynamic_overrides: dict[str, str] = {}
-          for raw_line in raw_pairs.splitlines():
-              line = raw_line.strip()
-              if not line or line.startswith("#"):
-                  continue
-              if "=" not in line:
-                  raise ValueError(
-                      "Invalid versions_overrides line "
-                      f"{line!r}. Expected dot.path=value."
-                  )
-              key, value = line.split("=", 1)
-              key = key.strip()
-              if not key:
-                  raise ValueError(f"Invalid versions_overrides line {line!r}: empty key.")
-              dynamic_overrides[key] = value.strip()
-
           effective = {k: v for k, v in direct_overrides.items() if v}
-          effective.update(dynamic_overrides)
+          effective.update(parse_override_lines(os.environ.get("VERSIONS_OVERRIDES", "")))
           if not effective:
               raise SystemExit(0)
 
           cfg_path = Path("versions_config.yml")
-          doc = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
-
-          def _parse_value(raw: str):
-              lowered = raw.lower()
-              if lowered == "true":
-                  return True
-              if lowered == "false":
-                  return False
-              try:
-                  if raw.isdigit() or (raw.startswith("-") and raw[1:].isdigit()):
-                      return int(raw)
-              except ValueError:
-                  pass
-              return raw
-
-          for dotted_key, raw_value in effective.items():
-              node = doc
-              parts = dotted_key.split(".")
-              for part in parts[:-1]:
-                  if part not in node or not isinstance(node[part], dict):
-                      raise KeyError(
-                          f"Path '{dotted_key}' is invalid at '{part}'. "
-                          "Only existing keys are allowed."
-                      )
-                  node = node[part]
-              leaf = parts[-1]
-              if leaf not in node:
-                  raise KeyError(
-                      f"Path '{dotted_key}' does not exist in versions_config.yml."
-                  )
-              node[leaf] = _parse_value(raw_value)
-
-          cfg_path.write_text(
-              yaml.safe_dump(doc, sort_keys=False, default_flow_style=False),
-              encoding="utf-8",
-          )
+          original = cfg_path.read_text(encoding="utf-8")
+          updated = apply_overrides(original, effective)
+          if updated != original:
+              cfg_path.write_text(updated, encoding="utf-8")
           PY
 
           if git diff --quiet -- versions_config.yml; then
