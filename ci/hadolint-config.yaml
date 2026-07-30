@@ -44,3 +44,12 @@ ignored:
   - DL3003
   # DL3048 style: Invalid label key (seems like a hadolint bug not accepting `com.redhat.license_terms="https://..."`)
   - DL3048
+  # DL3064 warning: Potentially sensitive data should not be used in ARG/ENV.
+  # False positive on rstudio SECRET_DIR (a path, not a secret value).
+  - DL3064
+  # DL3066 info: Non-numeric user-id may not be resolvable by host system.
+  # Our images intentionally use named users (e.g. USER default) mapped inside the container.
+  - DL3066
+  # SC3046 warning: In POSIX sh, 'source' in place of '.' is undefined.
+  # Our RUN commands execute in bash, not POSIX sh.
+  - SC3046
