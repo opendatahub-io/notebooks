@@ -69,6 +69,7 @@ def test_authenticated_user_login_returns_login(monkeypatch: pytest.MonkeyPatch)
 
 def test_authenticated_user_login_uses_github_app_slug(monkeypatch: pytest.MonkeyPatch) -> None:
     github_api.authenticated_user_login.cache_clear()
+    monkeypatch.delenv("REVIEW_AUTHOR_LOGIN", raising=False)
     monkeypatch.setenv("GITHUB_APP_SLUG", "odh-antigravity")
     try:
         with patch("odh_ci_agent.github_api.gh_api_json") as mock_gh_api_json:
@@ -77,6 +78,23 @@ def test_authenticated_user_login_uses_github_app_slug(monkeypatch: pytest.Monke
     finally:
         github_api.authenticated_user_login.cache_clear()
         monkeypatch.delenv("GITHUB_APP_SLUG", raising=False)
+
+
+def test_authenticated_user_login_falls_back_when_user_endpoint_forbidden(monkeypatch: pytest.MonkeyPatch) -> None:
+    github_api.authenticated_user_login.cache_clear()
+    monkeypatch.delenv("REVIEW_AUTHOR_LOGIN", raising=False)
+    monkeypatch.delenv("GITHUB_APP_SLUG", raising=False)
+    forbidden = github_api.GitHubCommandError(
+        ("gh", "api", "user"),
+        1,
+        '{"message":"Resource not accessible by integration","status":"403"}',
+        "gh: Resource not accessible by integration (HTTP 403)\n",
+    )
+    try:
+        with patch("odh_ci_agent.github_api.gh_api_json", side_effect=forbidden):
+            assert github_api.authenticated_user_login() == "github-actions[bot]"
+    finally:
+        github_api.authenticated_user_login.cache_clear()
 
 
 def test_authenticated_user_login_prefers_explicit_override(monkeypatch: pytest.MonkeyPatch) -> None:

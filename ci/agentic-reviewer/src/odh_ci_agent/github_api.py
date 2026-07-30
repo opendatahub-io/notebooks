@@ -49,6 +49,20 @@ def read_github_token() -> str:
     return os.environ.get("GITHUB_TOKEN", "").strip()
 
 
+def _is_user_endpoint_forbidden(exc: GitHubCommandError) -> bool:
+    return "Resource not accessible by integration" in exc.stdout or "Resource not accessible by integration" in exc.stderr
+
+
+def _login_from_user_api() -> str:
+    user = gh_api_json("user")
+    if not isinstance(user, dict):
+        raise SystemExit("Expected GitHub user response to include login")
+    login = user.get("login")
+    if not isinstance(login, str) or not login:
+        raise SystemExit("Expected GitHub user response to include login")
+    return login
+
+
 @functools.lru_cache(maxsize=1)
 def authenticated_user_login() -> str:
     """Return the login for the token in GITHUB_TOKEN (workflow or GitHub App bot)."""
@@ -61,13 +75,12 @@ def authenticated_user_login() -> str:
     if app_slug:
         return f"{app_slug}[bot]"
 
-    user = gh_api_json("user")
-    if not isinstance(user, dict):
-        raise SystemExit("Expected GitHub user response to include login")
-    login = user.get("login")
-    if not isinstance(login, str) or not login:
-        raise SystemExit("Expected GitHub user response to include login")
-    return login
+    try:
+        return _login_from_user_api()
+    except GitHubCommandError as exc:
+        if _is_user_endpoint_forbidden(exc):
+            return "github-actions[bot]"
+        raise
 
 
 def _query_path(path: str, query: Mapping[str, object] | None = None) -> str:
