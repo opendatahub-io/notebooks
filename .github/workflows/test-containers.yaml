@@ -136,6 +136,7 @@ jobs:
           uv run pytest tests/containers \
             -m 'not openshift and not cuda and not rocm and not manifest_validation' \
             --image="${TEST_IMAGE}" \
+            --junitxml=junit.xml -o junit_family=legacy \
             -v
 
       - name: Upload test results

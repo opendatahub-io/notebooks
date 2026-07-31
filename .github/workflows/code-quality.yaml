@@ -114,6 +114,7 @@ jobs:
             --cov-branch
             --cov-report=term-missing
             --cov-report=xml:coverage.xml
+            --junitxml=junit.xml -o junit_family=legacy
             -o log_file=logs/pytest-logs.txt -o log_file_level=DEBUG
           # PR: compare to the PR base (fork PRs vs upstream main, not the fork default branch).
           # Push: compare to the previous tip of this branch (not origin/main on stable/rhoai-*).
