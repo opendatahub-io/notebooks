@@ -88,10 +88,12 @@ make refresh-lock-files
   pipeline regen, imagestream manifest updates), a scoped pathspec is fine — but only right
   after checking `git status`/`git diff --stat` for that scope so you know exactly what it
   matches, using a tight pattern anchored to a shared prefix and suffix (e.g.
-  `git add .tekton/odh-*-pull-request.yaml`, not `git add .tekton/*` or `git add .`). Re-run
-  `git status` before committing to confirm nothing else rode along. If the changed set is
-  short enough to read at a glance, just spell out the filenames — a glob earns its keep only
-  when the set is too large to enumerate by hand.
+  `git add .tekton/odh-*-pull-request.yaml`, not `git add .tekton/*` or `git add .`). Before
+  committing, re-run `git status` and skim `git diff --cached` for the staged paths —
+  `git status` only shows which paths are staged, not which hunks, so a file you explicitly
+  staged can still carry an unrelated edit. If the changed set is short enough to read at a
+  glance, just spell out the filenames — a glob earns its keep only when the set is too large
+  to enumerate by hand.
 
 ## Boundaries
 
